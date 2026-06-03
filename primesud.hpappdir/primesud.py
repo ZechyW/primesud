@@ -1,16 +1,32 @@
+import gc
+
 from tml import tml
 from hpprime import dimgrob, eval as ppleval
 
 from world import MOB_TEMPLATES
 from player import (
-    make_player, make_room_state, make_mob_instances,
-    show_prompt, _wait_digit, _poll_char, _resync_keyboard,
-    save_game as _save_game, load_game as _load_game,
+    make_player,
+    make_room_state,
+    make_mob_instances,
+    show_prompt,
+    _wait_digit,
+    _poll_char,
+    _resync_keyboard,
+    save_game as _save_game,
+    load_game as _load_game,
 )
 from commands import _dispatch_command, cmd_look
 
+# ── Key command shortcuts ─────────────────────────────────────────────────────
+# Maps physical key bit-index → command string placed in the input buffer.
+# Add entries here to register new shortcuts; no other code changes needed.
+_KEY_COMMANDS = {
+    3: "help",  # 'help' key
+}
+
 
 # ── World tick ────────────────────────────────────────────────────────────────
+
 
 def world_tick(player, room_state, mob_instances):
     now = int(ppleval("Ticks"))
@@ -25,6 +41,7 @@ def world_tick(player, room_state, mob_instances):
 
 
 # ── Main classes ──────────────────────────────────────────────────────────────
+
 
 class Game:
     """Holds game state and drives the main loop."""
@@ -57,6 +74,17 @@ class Game:
         tr.clear()
         tr.print("=== PRIMESUD ===")
         tr.print("A single-user dungeon.")
+
+        # ----- Debug -----
+        def fmt_bytes(n):
+            for unit in ("B", "KB", "MB"):
+                if n < 1024:
+                    return "{} {}".format(n, unit)
+                n //= 1024
+            return "{} GB".format(n)
+
+        tr.print("Memory free: {}".format(fmt_bytes(gc.mem_free())))
+        # ----- Debug -----
         tr.print("")
         tr.print("1. New Game")
         tr.print("2. Load Game")
@@ -85,22 +113,26 @@ class Game:
         cmd_look(tr, player, room_state, mob_instances)
 
         while True:
-            char = _poll_char(tr)
+            char = _poll_char(tr, _KEY_COMMANDS)
             if char is not None:
-                if char == '\n':
+                if char == "\n":
                     result = _dispatch_command(
-                        self.input_buf, tr, player, room_state, mob_instances)
+                        self.input_buf, tr, player, room_state, mob_instances
+                    )
                     if result == "quit":
                         break
                     self.input_buf = ""
                     show_prompt(tr, player, self.input_buf)
-                elif char == '\b':
+                elif char == "\b":
                     self.input_buf = self.input_buf[:-1]
                     show_prompt(tr, player, self.input_buf)
-                elif char == '\e':
+                elif char == "\e":
                     self.input_buf = ""
                     show_prompt(tr, player, self.input_buf)
-                elif char not in ('\L', '\R', '\SR'):
+                elif char in _KEY_COMMANDS.values():
+                    self.input_buf = char
+                    show_prompt(tr, player, self.input_buf)
+                elif char not in ("\L", "\R", "\SR"):
                     self.input_buf += char
                     show_prompt(tr, player, self.input_buf)
 

@@ -20,6 +20,7 @@ def _show_combat_options(tr, player, combatants, mob_instances, target_iid):
         tpl = MOB_TEMPLATES[inst["tpl"]]
         mark = "*" if iid == target_iid else " "
         tr.print("{}[{}] HP:{}/{}".format(mark, tpl["name"], inst["hp"], tpl["hp_max"]))
+    tr.print("")
     for idx, sk_vnum in enumerate(player["skills"]):
         sk = SKILLS[sk_vnum]
         tr.print("{}. {} (MP:{})".format(idx + 1, sk["name"], sk["mp_cost"]))
@@ -70,6 +71,7 @@ def combat_loop(tr, player, mob_iid, mob_instances, room_state):
     target_iid = mob_iid
     mob_mods = {iid: {} for iid in combatants}
 
+    tr.print("")
     _show_combat_options(tr, player, combatants, mob_instances, target_iid)
     combat_buf = ""
     show_prompt(tr, player, combat_buf)
@@ -196,6 +198,7 @@ def _handle_victory(tr, player, mob_iid, inst, tpl, room_state):
     if tpl["respawn"] > 0:
         inst["respawn_at"] = int(ppleval("Ticks")) + tpl["respawn"]
 
+    tr.print("")
     show_status(tr, player)
     return "victory"
 

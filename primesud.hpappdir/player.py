@@ -192,7 +192,7 @@ def _wait_digit(max_val):
         ppleval("WAIT(1/1e3)")
 
 
-def _poll_char(tr):
+def _poll_char(tr, key_commands=None):
     """Non-blocking: return the next char if a new key was pressed, else None."""
     cur = keyboard()
     changed = cur ^ tr.last_keyboard_state
@@ -237,6 +237,8 @@ def _poll_char(tr):
                 tr.symb_hold = True
                 tr.symb_index = 0
             else:
+                if key_commands and bit in key_commands:
+                    return key_commands[bit]
                 if tr.shift_hold:
                     tr.is_shift = True
                 if tr.alpha_hold:

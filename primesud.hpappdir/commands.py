@@ -6,6 +6,7 @@ from combat import combat_loop
 # ── Commands ──────────────────────────────────────────────────────────────────
 
 def cmd_look(tr, player, room_state, mob_instances, long=False):
+    tr.print("")
     room = ROOMS[player["room"]]
     tr.print("[ {} ]".format(room["name"]))
     tr.print(room["long"] if long else room["short"])
@@ -134,6 +135,7 @@ def cmd_stats(tr, player):
     tr.print("ATK:{} DEF:{}".format(player_stat(player, "atk"), player_stat(player, "def")))
     equipped = {s: ITEM_TEMPLATES[v]["name"] for s, v in player["equip"].items() if v is not None}
     if equipped:
+        tr.print("")
         for slot, name in equipped.items():
             tr.print("  {}: {}".format(slot, name))
 
