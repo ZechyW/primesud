@@ -32,15 +32,15 @@ _KEY_COMMANDS = {
 
 def world_tick(player, room_state, mob_instances):
     now = int(ppleval("Ticks"))
-    for iid, inst in mob_instances.items():
+    for mob_id, inst in mob_instances.items():
         if inst["state"] == "dead" and inst.get("respawn_at", 0) > 0:
             if now >= inst["respawn_at"]:
                 tpl = MOB_TEMPLATES[inst["tpl"]]
                 inst["hp"] = tpl["hp_max"]
                 inst["state"] = "idle"
                 inst["respawn_at"] = 0
-                if iid not in room_state[inst["room"]]["mobs"]:
-                    room_state[inst["room"]]["mobs"].append(iid)
+                if mob_id not in room_state[inst["room"]]["mobs"]:
+                    room_state[inst["room"]]["mobs"].append(mob_id)
 
     player["hp"] = min(player["hp_max"], player["hp"] + player["con"] // HP_REGEN_PER_CON)
     player["mp"] = min(player["mp_max"], player["mp"] + player["int"] // MP_REGEN_PER_INT)
@@ -127,7 +127,6 @@ class Game:
                     result = handle_combat_input(tr, char, self.combat, player, mob_instances, room_state)
                     if result is not None:
                         self.combat = None
-                        cmd_look(tr, player, room_state, mob_instances)
                         show_prompt(tr, player, self.input_buf)
                 else:
                     if char == "\n":
@@ -159,7 +158,6 @@ class Game:
                 result = tick_combat(tr, now, self.combat, player, mob_instances, room_state)
                 if result is not None:
                     self.combat = None
-                    cmd_look(tr, player, room_state, mob_instances)
                     show_prompt(tr, player, self.input_buf)
 
             if now >= next_world:

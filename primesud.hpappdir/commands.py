@@ -224,10 +224,10 @@ def _cmd_fight(tr, player, args, room_state, mob_instances):
         tr.print("No enemies here.")
         return None
     if args:
-        mob_iid = resolve_mob_name(" ".join(args), live, mob_instances)
-        if mob_iid is None:
+        mob_id = resolve_mob_name(" ".join(args), live, mob_instances)
+        if mob_id is None:
             tr.print("No such enemy.")
             return None
     else:
-        mob_iid = live[0]
-    return enter_combat(tr, player, mob_iid, mob_instances, room_state)
+        mob_id = live[0]
+    return enter_combat(tr, player, mob_id, mob_instances, room_state)

@@ -14,9 +14,9 @@ from world import (
 
 def player_stat(player, stat):
     base = player.get(stat, 0)
-    for iid in player["equip"].values():
-        if iid is not None:
-            base += ITEM_TEMPLATES[iid].get("stats", {}).get(stat, 0)
+    for item_vnum in player["equip"].values():
+        if item_vnum is not None:
+            base += ITEM_TEMPLATES[item_vnum].get("stats", {}).get(stat, 0)
     return base
 
 
@@ -33,11 +33,11 @@ def resolve_name(fragment, vnum_list, templates):
 
 def resolve_mob_name(fragment, inst_ids, mob_instances):
     frag = fragment.lower()
-    for iid in inst_ids:
-        inst = mob_instances[iid]
+    for mob_id in inst_ids:
+        inst = mob_instances[mob_id]
         name = MOB_TEMPLATES[inst["tpl"]]["name"].lower()
         if name == frag or name.startswith(frag):
-            return iid
+            return mob_id
     return None
 
 
@@ -66,8 +66,8 @@ def make_room_state():
 
 def make_mob_instances():
     instances = {}
-    for iid, init in MOB_INIT.items():
-        instances[iid] = dict(init)
+    for mob_id, init in MOB_INIT.items():
+        instances[mob_id] = dict(init)
     return instances
 
 
@@ -104,9 +104,9 @@ def save_game(player, room_state, mob_instances):
         lines.append("p.eq.{}={}".format(slot, vnum if vnum is not None else ""))
     for rvnum, rs in room_state.items():
         lines.append("r.{}.items={}".format(rvnum, "|".join(str(v) for v in rs["items"])))
-    for iid, inst in mob_instances.items():
-        lines.append("m.{}.tpl={}|hp={}|state={}|room={}|respawn_at={}".format(
-            iid, inst["tpl"], inst["hp"], inst["state"],
+    for mob_id, inst in mob_instances.items():
+        lines.append("m.{}=tpl={}|hp={}|state={}|room={}|respawn_at={}".format(
+            mob_id, inst["tpl"], inst["hp"], inst["state"],
             inst["room"], inst.get("respawn_at", 0)))
     try:
         payload = "\n".join(lines)
@@ -149,15 +149,15 @@ def load_game(player, room_state, mob_instances):
             room_state[rvnum]["items"] = [int(v) for v in val.split("|") if v]
         elif key.startswith("m."):
             parts_key = key.split(".")
-            iid = int(parts_key[1])
+            mob_id = int(parts_key[1])
             fields = {"tpl": 0, "hp": 0, "state": "idle", "room": 0, "respawn_at": 0}
             for pair in val.split("|"):
                 if "=" in pair:
                     fk, fv = pair.split("=", 1)
                     fields[fk] = int(fv) if fk != "state" else fv
-            mob_instances[iid] = fields
+            mob_instances[mob_id] = fields
             if fields["state"] != "dead":
-                room_state[fields["room"]]["mobs"].append(iid)
+                room_state[fields["room"]]["mobs"].append(mob_id)
 
     return True
 

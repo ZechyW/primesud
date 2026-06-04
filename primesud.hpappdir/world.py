@@ -13,10 +13,12 @@
 R_VILLAGE_SQUARE   = 1000
 R_DUNGEON_ENTRANCE = 1001
 R_DUNGEON_HALL     = 1002
+R_TRAINING_ROOM    = 1003
 
 # ── Mob template VNUMs ───────────
 M_RAT    = 2000
 M_GOBLIN = 2001
+M_DUMMY  = 2002
 
 # ── Item template VNUMs ──────────
 I_SWORD_IRON  = 3000
@@ -37,7 +39,7 @@ ROOMS = {
         "long":  "The village square is mostly rubble. A well stands at the centre, "
                  "dry and long forgotten. A path leads north to the market ruins, "
                  "and a dark stairway descends south into the dungeon.",
-        "exits": {"s": R_DUNGEON_ENTRANCE},
+        "exits": {"n": R_TRAINING_ROOM, "s": R_DUNGEON_ENTRANCE},
     },
     R_DUNGEON_ENTRANCE: {
         "name":  "Dungeon Entrance",
@@ -54,6 +56,14 @@ ROOMS = {
                  "Bones crunch underfoot. The entrance passage is back to the north.",
         "exits": {"n": R_DUNGEON_ENTRANCE},
     },
+    R_TRAINING_ROOM: {
+        "name":  "Training Yard",
+        "short": "A sandy yard. A battered training dummy stands in the centre.",
+        "long":  "A small sandy yard fenced off from the square. A battered wooden "
+                 "training dummy stands bolted to a post in the centre, its surface "
+                 "scarred from countless blows.",
+        "exits": {"s": R_VILLAGE_SQUARE},
+    },
 }
 
 # Initial item and mob placement per room.
@@ -62,6 +72,7 @@ ROOM_INIT = {
     R_VILLAGE_SQUARE:   {"items": [],          "mobs": []},
     R_DUNGEON_ENTRANCE: {"items": [I_DAGGER],  "mobs": [1]},
     R_DUNGEON_HALL:     {"items": [],          "mobs": [2, 3]},
+    R_TRAINING_ROOM:    {"items": [],          "mobs": [4]},
 }
 
 # ── Item templates ───────────────
@@ -106,14 +117,24 @@ MOB_TEMPLATES = {
         "ai": "aggressive",
         "respawn": 60000,
     },
+    M_DUMMY: {
+        "name": "Training Dummy",
+        "desc": "A battered wooden dummy bolted to a post.",
+        "hp_max": 500, "atk": 0, "def": 0,
+        "xp": 0, "gold": 0,
+        "loot": [],
+        "ai": "passive",
+        "respawn": 5000,
+    },
 }
 
 # Initial mob instance table.
 # Copied into mutable mob_instances at game start.
 MOB_INIT = {
-    1: {"tpl": M_RAT,    "hp": 8,  "room": R_DUNGEON_ENTRANCE, "state": "idle", "respawn_at": 0},
-    2: {"tpl": M_GOBLIN, "hp": 18, "room": R_DUNGEON_HALL,     "state": "idle", "respawn_at": 0},
-    3: {"tpl": M_RAT,    "hp": 8,  "room": R_DUNGEON_HALL,     "state": "idle", "respawn_at": 0},
+    1: {"tpl": M_RAT,    "hp": 8,   "room": R_DUNGEON_ENTRANCE, "state": "idle", "respawn_at": 0},
+    2: {"tpl": M_GOBLIN, "hp": 18,  "room": R_DUNGEON_HALL,     "state": "idle", "respawn_at": 0},
+    3: {"tpl": M_RAT,    "hp": 8,   "room": R_DUNGEON_HALL,     "state": "idle", "respawn_at": 0},
+    4: {"tpl": M_DUMMY,  "hp": 500, "room": R_TRAINING_ROOM,    "state": "idle", "respawn_at": 0},
 }
 
 # ── Skills ───────────────────────
