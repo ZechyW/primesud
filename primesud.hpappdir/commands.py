@@ -1,12 +1,11 @@
 from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS
 from player import player_stat, resolve_name, resolve_mob_name, save_game
-from combat import combat_loop
+from combat import enter_combat
 
 
 # ── Commands ──────────────────────────────────────────────────────────────────
 
 def cmd_look(tr, player, room_state, mob_instances, long=False):
-    tr.print("")
     room = ROOMS[player["room"]]
     tr.print("[ {} ]".format(room["name"]))
     tr.print(room["long"] if long else room["short"])
@@ -28,6 +27,7 @@ def cmd_move(tr, player, direction, room_state, mob_instances):
         tr.print("No exit to the {}.".format(direction))
         return
     player["room"] = exits[direction]
+    tr.print("")
     cmd_look(tr, player, room_state, mob_instances)
 
 
@@ -176,6 +176,7 @@ def _dispatch_command(raw, tr, player, room_state, mob_instances):
     args = parts[1:]
 
     if verb == "5":
+        tr.print("")
         cmd_look(tr, player, room_state, mob_instances, long=True)
         return None
 
@@ -190,6 +191,7 @@ def _dispatch_command(raw, tr, player, room_state, mob_instances):
     elif verb in ("k", "skills"):
         cmd_skills(tr, player)
     elif verb in ("l", "look"):
+        tr.print("")
         cmd_look(tr, player, room_state, mob_instances, long=True)
     elif verb == "take":
         cmd_take(tr, player, args, room_state)
@@ -202,7 +204,7 @@ def _dispatch_command(raw, tr, player, room_state, mob_instances):
     elif verb == "use":
         cmd_use(tr, player, args)
     elif verb in ("f", "fight"):
-        _cmd_fight(tr, player, args, room_state, mob_instances)
+        return _cmd_fight(tr, player, args, room_state, mob_instances)
     elif verb == "save":
         ok = save_game(player, room_state, mob_instances)
         tr.print("Saved." if ok else "Save failed.")
@@ -220,15 +222,12 @@ def _cmd_fight(tr, player, args, room_state, mob_instances):
     live = [i for i in rs["mobs"] if mob_instances[i]["state"] != "dead"]
     if not live:
         tr.print("No enemies here.")
-        return
+        return None
     if args:
         mob_iid = resolve_mob_name(" ".join(args), live, mob_instances)
         if mob_iid is None:
             tr.print("No such enemy.")
-            return
+            return None
     else:
         mob_iid = live[0]
-
-    result = combat_loop(tr, player, mob_iid, mob_instances, room_state)
-    if result in ("dead", "victory", "fled"):
-        cmd_look(tr, player, room_state, mob_instances)
+    return enter_combat(tr, player, mob_iid, mob_instances, room_state)
