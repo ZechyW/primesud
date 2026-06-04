@@ -1,4 +1,4 @@
-from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, R_VILLAGE_SQUARE
+from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS
 from player import player_stat, resolve_name, resolve_mob_name, save_game
 from combat import combat_loop
 
@@ -230,11 +230,5 @@ def _cmd_fight(tr, player, args, room_state, mob_instances):
         mob_iid = live[0]
 
     result = combat_loop(tr, player, mob_iid, mob_instances, room_state)
-    if result == "dead":
-        tr.print("Game over.")
-        player["hp"] = player["hp_max"]
-        player["mp"] = player["mp_max"]
-        player["room"] = R_VILLAGE_SQUARE
-        cmd_look(tr, player, room_state, mob_instances)
-    elif result == "victory":
+    if result in ("dead", "victory", "fled"):
         cmd_look(tr, player, room_state, mob_instances)

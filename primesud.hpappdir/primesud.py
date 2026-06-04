@@ -3,6 +3,7 @@ import gc
 from tml import tml
 from hpprime import dimgrob, eval as ppleval
 
+from config import DARK_MODE, BG_COLOR, TAB_SIZE, WORLD_TICK_MS, AUTOSAVE_TICKS, HP_REGEN_PER_CON, MP_REGEN_PER_INT, POLL_MS
 from world import MOB_TEMPLATES
 from player import (
     make_player,
@@ -39,6 +40,9 @@ def world_tick(player, room_state, mob_instances):
                 inst["respawn_at"] = 0
                 room_state[inst["room"]]["mobs"].append(iid)
 
+    player["hp"] = min(player["hp_max"], player["hp"] + player["con"] // HP_REGEN_PER_CON)
+    player["mp"] = min(player["mp_max"], player["mp"] + player["int"] // MP_REGEN_PER_INT)
+
 
 # ── Main classes ──────────────────────────────────────────────────────────────
 
@@ -47,9 +51,8 @@ class Game:
     """Holds game state and drives the main loop."""
 
     def __init__(self):
-        self.tr = tml(dark_mode=True, tab_size=8, bg_color=0x3000)
+        self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR)
         self.input_buf = ""
-        self.config = {"tick_interval": 5000}
         self.player = None
         self.room_state = None
         self.mob_instances = None
@@ -67,7 +70,8 @@ class Game:
         return _load_game(self.player, self.room_state, self.mob_instances)
 
     def save_game(self):
-        return _save_game(self.player, self.room_state, self.mob_instances)
+        if not _save_game(self.player, self.room_state, self.mob_instances):
+            self.tr.print("Save failed.")
 
     def run_title(self):
         tr = self.tr
@@ -105,7 +109,8 @@ class Game:
         mob_instances = self.mob_instances
 
         t = int(ppleval("Ticks"))
-        next_tick = t + self.config["tick_interval"]
+        next_tick = t + WORLD_TICK_MS
+        tick_count = 0
 
         _resync_keyboard(tr)
 
@@ -139,9 +144,14 @@ class Game:
             t = int(ppleval("Ticks"))
             if t >= next_tick:
                 world_tick(player, room_state, mob_instances)
-                next_tick += self.config["tick_interval"]
+                next_tick += WORLD_TICK_MS
+                show_prompt(tr, player, self.input_buf)
+                tick_count += 1
+                if tick_count >= AUTOSAVE_TICKS:
+                    self.save_game()
+                    tick_count = 0
 
-            ppleval("WAIT(1/1e3)")
+            ppleval("WAIT({}/1e3)".format(POLL_MS))
 
 
 class PrimeSud:

@@ -1,11 +1,25 @@
 from urandom import randint
 from hpprime import eval as ppleval
 
-from world import ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SK_ATTACK
+from config import COMBAT_TICK_MS, DEATH_MSG_DELAY, POLL_MS
+from world import ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SK_ATTACK, R_VILLAGE_SQUARE
 from player import player_stat, show_status, show_prompt, _poll_char
 
 
 # ── Combat ────────────────────────────────────────────────────────────────────
+
+def _handle_death(tr, player):
+    tr.print("")
+    tr.print("Your lifeforce ebbs away...")
+    ppleval("WAIT({})".format(DEATH_MSG_DELAY))
+    tr.print("A distant warmth draws you back.")
+    ppleval("WAIT({})".format(DEATH_MSG_DELAY))
+    player["room"] = R_VILLAGE_SQUARE
+    player["hp"] = 1
+    player["mp"] = 1
+    tr.print("You come to your senses. Alive, but barely.")
+
+
 
 def calc_damage(atk, def_, power, mod_atk=0, mod_def=0):
     raw = power + max(0, (atk + mod_atk) - (def_ + mod_def))
@@ -25,6 +39,7 @@ def _show_combat_options(tr, player, combatants, mob_instances, target_iid):
         sk = SKILLS[sk_vnum]
         tr.print("{}. {} (MP:{})".format(idx + 1, sk["name"], sk["mp_cost"]))
     tr.print("{}. Flee".format(len(player["skills"]) + 1))
+    tr.print("")
 
 
 def _apply_skill(tr, player, sk_vnum, target_iid, mob_instances, mob_mods):
@@ -174,10 +189,10 @@ def combat_loop(tr, player, mob_iid, mob_instances, room_state):
                             mods.pop(key, None)
                             mods.pop(base, None)
                 if player["hp"] == 0:
-                    tr.print("You have died.")
+                    _handle_death(tr, player)
                     return "dead"
 
-        ppleval("WAIT(1/1e3)")
+        ppleval("WAIT({}/1e3)".format(POLL_MS))
 
 
 def _handle_victory(tr, player, mob_iid, inst, tpl, room_state):

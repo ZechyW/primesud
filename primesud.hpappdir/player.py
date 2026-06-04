@@ -3,12 +3,11 @@ from hpprime import eval as ppleval, keyboard
 from cas import get_key
 from uio import FileIO
 
+from config import SAVE_FILE, POLL_MS
 from world import (
     ROOM_INIT, ITEM_TEMPLATES, MOB_TEMPLATES, MOB_INIT,
     R_VILLAGE_SQUARE, SK_ATTACK, SK_HEAL,
 )
-
-SAVE_FILE = "primesud.sav"
 
 
 # ── Player model ──────────────────────────────────────────────────────────────
@@ -189,7 +188,7 @@ def _wait_digit(max_val):
             digit = DIGIT_KEYS.get(bit)
             if digit is not None and 1 <= digit <= max_val:
                 return digit
-        ppleval("WAIT(1/1e3)")
+        ppleval("WAIT({}/1e3)".format(POLL_MS))
 
 
 def _poll_char(tr, key_commands=None):
