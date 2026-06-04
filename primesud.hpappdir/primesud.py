@@ -3,6 +3,8 @@ import gc
 from tml import tml
 from hpprime import dimgrob, eval as ppleval
 
+from config import DARK_MODE, BG_COLOR, TAB_SIZE, WORLD_TICK_MS, AUTOSAVE_TICKS, HP_REGEN_PER_CON, MP_REGEN_PER_INT, POLL_MS
+from combat import handle_combat_input, tick_combat
 from world import MOB_TEMPLATES
 from player import (
     make_player,
@@ -37,7 +39,11 @@ def world_tick(player, room_state, mob_instances):
                 inst["hp"] = tpl["hp_max"]
                 inst["state"] = "idle"
                 inst["respawn_at"] = 0
-                room_state[inst["room"]]["mobs"].append(iid)
+                if iid not in room_state[inst["room"]]["mobs"]:
+                    room_state[inst["room"]]["mobs"].append(iid)
+
+    player["hp"] = min(player["hp_max"], player["hp"] + player["con"] // HP_REGEN_PER_CON)
+    player["mp"] = min(player["mp_max"], player["mp"] + player["int"] // MP_REGEN_PER_INT)
 
 
 # ── Main classes ──────────────────────────────────────────────────────────────
@@ -47,9 +53,9 @@ class Game:
     """Holds game state and drives the main loop."""
 
     def __init__(self):
-        self.tr = tml(dark_mode=True, tab_size=8, bg_color=0x3000)
+        self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR)
         self.input_buf = ""
-        self.config = {"tick_interval": 5000}
+        self.combat = None
         self.player = None
         self.room_state = None
         self.mob_instances = None
@@ -67,7 +73,8 @@ class Game:
         return _load_game(self.player, self.room_state, self.mob_instances)
 
     def save_game(self):
-        return _save_game(self.player, self.room_state, self.mob_instances)
+        if not _save_game(self.player, self.room_state, self.mob_instances):
+            self.tr.print("Save failed.")
 
     def run_title(self):
         tr = self.tr
@@ -104,44 +111,67 @@ class Game:
         room_state = self.room_state
         mob_instances = self.mob_instances
 
-        t = int(ppleval("Ticks"))
-        next_tick = t + self.config["tick_interval"]
+        now = int(ppleval("Ticks"))
+        next_world = now + WORLD_TICK_MS
+        tick_count = 0
+        self.combat = None
 
         _resync_keyboard(tr)
-
         show_prompt(tr, player, self.input_buf)
         cmd_look(tr, player, room_state, mob_instances)
 
         while True:
-            char = _poll_char(tr, _KEY_COMMANDS)
+            char = _poll_char(tr, None if self.combat else _KEY_COMMANDS)
             if char is not None:
-                if char == "\n":
-                    result = _dispatch_command(
-                        self.input_buf, tr, player, room_state, mob_instances
-                    )
-                    if result == "quit":
-                        break
-                    self.input_buf = ""
-                    show_prompt(tr, player, self.input_buf)
-                elif char == "\b":
-                    self.input_buf = self.input_buf[:-1]
-                    show_prompt(tr, player, self.input_buf)
-                elif char == "\e":
-                    self.input_buf = ""
-                    show_prompt(tr, player, self.input_buf)
-                elif char in _KEY_COMMANDS.values():
-                    self.input_buf = char
-                    show_prompt(tr, player, self.input_buf)
-                elif char not in ("\L", "\R", "\SR"):
-                    self.input_buf += char
+                if self.combat:
+                    result = handle_combat_input(tr, char, self.combat, player, mob_instances, room_state)
+                    if result is not None:
+                        self.combat = None
+                        cmd_look(tr, player, room_state, mob_instances)
+                        show_prompt(tr, player, self.input_buf)
+                else:
+                    if char == "\n":
+                        result = _dispatch_command(
+                            self.input_buf, tr, player, room_state, mob_instances
+                        )
+                        if result == "quit":
+                            break
+                        elif result is not None:
+                            self.combat = result
+                        self.input_buf = ""
+                        show_prompt(tr, player, self.input_buf)
+                    elif char == "\b":
+                        self.input_buf = self.input_buf[:-1]
+                        show_prompt(tr, player, self.input_buf)
+                    elif char == "\e":
+                        self.input_buf = ""
+                        show_prompt(tr, player, self.input_buf)
+                    elif char in _KEY_COMMANDS.values():
+                        self.input_buf = char
+                        show_prompt(tr, player, self.input_buf)
+                    elif char not in ("\L", "\R", "\SR"):
+                        self.input_buf += char
+                        show_prompt(tr, player, self.input_buf)
+
+            now = int(ppleval("Ticks"))
+
+            if self.combat is not None:
+                result = tick_combat(tr, now, self.combat, player, mob_instances, room_state)
+                if result is not None:
+                    self.combat = None
+                    cmd_look(tr, player, room_state, mob_instances)
                     show_prompt(tr, player, self.input_buf)
 
-            t = int(ppleval("Ticks"))
-            if t >= next_tick:
+            if now >= next_world:
                 world_tick(player, room_state, mob_instances)
-                next_tick += self.config["tick_interval"]
+                next_world += WORLD_TICK_MS
+                show_prompt(tr, player, self.combat["buf"] if self.combat else self.input_buf)
+                tick_count += 1
+                if tick_count >= AUTOSAVE_TICKS:
+                    self.save_game()
+                    tick_count = 0
 
-            ppleval("WAIT(1/1e3)")
+            ppleval("WAIT({}/1e3)".format(POLL_MS))
 
 
 class PrimeSud:
