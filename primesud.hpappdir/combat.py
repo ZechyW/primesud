@@ -54,7 +54,7 @@ def _try_special_move(tr, player, inst, tpl):
     for line in move[:-1]:
         tr.print(line.format(name))
     bonus = calc_damage(player["str"], tpl["def"], 8)
-    tr.print("{} [+{}]".format(move[-1].format(name), bonus))
+    tr.print("{} [{}]".format(move[-1].format(name), bonus))
     return bonus
 
 
@@ -205,7 +205,8 @@ def enter_combat(tr, player, mob_id, mob_instances, room_state):
         "player_atk_timer": now,
         "buf": "",
     }
-    _show_combat_options(tr, player, combatants, mob_instances, mob_id)
+    # TODO: Do we really need to show this automatically?  Maybe only if the player presses enter with no command.
+    # _show_combat_options(tr, player, combatants, mob_instances, mob_id)
     show_prompt(tr, player, "")
     return combat
 

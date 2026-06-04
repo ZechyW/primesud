@@ -53,7 +53,21 @@ class Game:
     """Holds game state and drives the main loop."""
 
     def __init__(self):
-        self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR)
+        self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font="std5x10green")
+        _orig_print = self.tr.print
+        _cols = self.tr.columns
+        def _wrapped_print(*args, sep=' ', end='\n'):
+            text = sep.join(str(a) for a in args)
+            lines = []
+            while len(text) > _cols:
+                i = text.rfind(' ', 0, _cols)
+                if i <= 0:
+                    i = _cols
+                lines.append(text[:i])
+                text = text[i:].lstrip(' ')
+            lines.append(text)
+            _orig_print('\n'.join(lines), end=end)
+        self.tr.print = _wrapped_print
         self.input_buf = ""
         self.combat = None
         self.player = None
@@ -96,6 +110,7 @@ class Game:
         tr.print("1. New Game")
         tr.print("2. Load Game")
         tr.print("3. Quit")
+        tr.print("")
         while True:
             choice = _wait_digit(3)
             if choice == 1:
@@ -211,8 +226,10 @@ class PrimeSud:
                     game.tr.print("No save found. Starting new game.")
                     game.new_game()
 
-            game.game_loop()
-            game.save_game()
+            try:
+                game.game_loop()
+            finally:
+                game.save_game()
 
 
 PrimeSud().run()
