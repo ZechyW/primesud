@@ -1,1 +1,19 @@
 /.vscode
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Test / coverage
+.pytest_cache/
+.coverage
+
+# Build / packaging
+*.egg-info/
+dist/
+build/
+
+# Env
+.env
+.venv/
