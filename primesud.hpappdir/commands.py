@@ -1,14 +1,14 @@
-from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS
-from player import player_stat, resolve_name, resolve_mob_name, save_game
-from combat import enter_combat
+from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SK_ATTACK
+from player import get_curr_stat, get_obj_list, get_char_room, save_char
+from combat import set_fighting, do_flee, use_skill
 
 
-# ── Commands ──────────────────────────────────────────────────────────────────
+# ── Commands (cf. 1stMud do_* in interp.c / fight.c) ─────────────────────────
 
-def cmd_look(tr, player, room_state, mob_instances, long=False):
+def do_look(tr, player, args, room_state, mob_instances, _long=True):
     room = ROOMS[player["room"]]
     tr.print("[ {} ]".format(room["name"]))
-    tr.print(room["long"] if long else room["short"])
+    tr.print(room["long"] if _long else room["short"])
     rs = room_state[player["room"]]
     exits = " ".join(room["exits"].keys()).upper()
     tr.print("Exits: {}".format(exits) if exits else "Exits: none")
@@ -21,22 +21,22 @@ def cmd_look(tr, player, room_state, mob_instances, long=False):
         tr.print("Mobs:  {}".format(names))
 
 
-def cmd_move(tr, player, direction, room_state, mob_instances):
+def do_move(tr, player, direction, room_state, mob_instances):
     exits = ROOMS[player["room"]]["exits"]
     if direction not in exits:
         tr.print("No exit to the {}.".format(direction))
         return
     player["room"] = exits[direction]
     tr.print("")
-    cmd_look(tr, player, room_state, mob_instances)
+    do_look(tr, player, [], room_state, mob_instances, _long=False)
 
 
-def cmd_take(tr, player, args, room_state):
+def do_get(tr, player, args, room_state, mob_instances):
     if not args:
-        tr.print("Take what?")
+        tr.print("Get what?")
         return
     rs = room_state[player["room"]]
-    vnum = resolve_name(" ".join(args), rs["items"], ITEM_TEMPLATES)
+    vnum = get_obj_list(" ".join(args), rs["items"], ITEM_TEMPLATES)
     if vnum is None:
         tr.print("Nothing here called that.")
         return
@@ -45,11 +45,11 @@ def cmd_take(tr, player, args, room_state):
     tr.print("You take the {}.".format(ITEM_TEMPLATES[vnum]["name"]))
 
 
-def cmd_drop(tr, player, args, room_state):
+def do_drop(tr, player, args, room_state, mob_instances):
     if not args:
         tr.print("Drop what?")
         return
-    vnum = resolve_name(" ".join(args), player["inv"], ITEM_TEMPLATES)
+    vnum = get_obj_list(" ".join(args), player["inv"], ITEM_TEMPLATES)
     if vnum is None:
         tr.print("You're not carrying that.")
         return
@@ -58,7 +58,7 @@ def cmd_drop(tr, player, args, room_state):
     tr.print("You drop the {}.".format(ITEM_TEMPLATES[vnum]["name"]))
 
 
-def cmd_inv(tr, player):
+def do_inventory(tr, player, args, room_state, mob_instances):
     if not player["inv"]:
         tr.print("You carry nothing.")
         return
@@ -70,11 +70,11 @@ def cmd_inv(tr, player):
         tr.print("  {} x{}".format(name, n) if n > 1 else "  {}".format(name))
 
 
-def cmd_equip(tr, player, args):
+def do_wear(tr, player, args, room_state, mob_instances):
     if not args:
         tr.print("Equip what?")
         return
-    vnum = resolve_name(" ".join(args), player["inv"], ITEM_TEMPLATES)
+    vnum = get_obj_list(" ".join(args), player["inv"], ITEM_TEMPLATES)
     if vnum is None:
         tr.print("You're not carrying that.")
         return
@@ -90,9 +90,9 @@ def cmd_equip(tr, player, args):
     tr.print("You equip the {}.".format(tpl["name"]))
 
 
-def cmd_unequip(tr, player, args):
+def do_remove(tr, player, args, room_state, mob_instances):
     if not args:
-        tr.print("Unequip which slot?")
+        tr.print("Remove which slot?")
         return
     slot = args[0].lower()
     if slot not in player["equip"]:
@@ -107,11 +107,11 @@ def cmd_unequip(tr, player, args):
     tr.print("You unequip the {}.".format(ITEM_TEMPLATES[vnum]["name"]))
 
 
-def cmd_use(tr, player, args):
+def do_quaff(tr, player, args, room_state, mob_instances):
     if not args:
         tr.print("Use what?")
         return
-    vnum = resolve_name(" ".join(args), player["inv"], ITEM_TEMPLATES)
+    vnum = get_obj_list(" ".join(args), player["inv"], ITEM_TEMPLATES)
     if vnum is None:
         tr.print("You're not carrying that.")
         return
@@ -127,12 +127,12 @@ def cmd_use(tr, player, args):
             tpl["name"], gained, player["hp"], player["hp_max"]))
 
 
-def cmd_stats(tr, player):
+def do_score(tr, player, args, room_state, mob_instances):
     tr.print("Level {} ({}/{} XP)".format(player["level"], player["xp"], player["xp_next"]))
     tr.print("HP:{}/{} MP:{}/{}".format(player["hp"], player["hp_max"], player["mp"], player["mp_max"]))
     tr.print("STR:{} DEX:{} INT:{} CON:{}".format(
         player["str"], player["dex"], player["int"], player["con"]))
-    tr.print("ATK:{} DEF:{}".format(player_stat(player, "atk"), player_stat(player, "def")))
+    tr.print("ATK:{} DEF:{}".format(get_curr_stat(player, "atk"), get_curr_stat(player, "def")))
     equipped = {s: ITEM_TEMPLATES[v]["name"] for s, v in player["equip"].items() if v is not None}
     if equipped:
         tr.print("")
@@ -140,17 +140,47 @@ def cmd_stats(tr, player):
             tr.print("  {}: {}".format(slot, name))
 
 
-def cmd_skills(tr, player):
+def do_skills(tr, player, args, room_state, mob_instances):
     for sk_vnum in player["skills"]:
         sk = SKILLS[sk_vnum]
         tr.print("  {} (MP:{})".format(sk["name"], sk["mp_cost"]))
 
 
-def cmd_help(tr):
+def do_help(tr, player, args, room_state, mob_instances):
     tr.print("Move: 7 8 9 / 4 5 6 / 1 2 3 (or n/s/e/w/ne/...)")
     tr.print("5=look  i=inv  equip  unequip  u=use  st=stats")
-    tr.print("k=skills  l=look  f=fight  save  q=quit")
+    tr.print("sk=skills  l=look  k/kill=fight  flee  save  q=quit")
 
+
+def do_kill(tr, player, args, room_state, mob_instances):
+    if player["fighting"] is not None:
+        tr.print("You are already fighting!")
+        return
+    rs = room_state[player["room"]]
+    live = [i for i in rs["mobs"] if mob_instances[i]["state"] != "dead"]
+    if not live:
+        tr.print("No enemies here.")
+        return
+    if args:
+        mob_id = get_char_room(" ".join(args), live, mob_instances)
+        if mob_id is None:
+            tr.print("No such enemy.")
+            return
+    else:
+        mob_id = live[0]
+    set_fighting(tr, player, mob_id, mob_instances, room_state)
+
+
+def do_save(tr, player, args, room_state, mob_instances):
+    ok = save_char(player, room_state, mob_instances)
+    tr.print("Saved." if ok else "Save failed.")
+
+
+def do_quit(tr, player, args, room_state, mob_instances):
+    return "quit"
+
+
+# ── Direction map ─────────────────────────────────────────────────────────────
 
 _DIRECTION_MAP = {
     "n": "n", "north": "n",
@@ -167,67 +197,82 @@ _DIRECTION_MAP = {
     "1": "sw", "2": "s",  "3": "se",
 }
 
+# Maps digit chars to the display text shown in the input buffer.
+_DIGIT_SUBST = {
+    "1": "sw", "2": "s",  "3": "se",
+    "4": "w",              "6": "e",
+    "7": "nw", "8": "n",  "9": "ne",
+    "5": "look",
+}
 
-def _dispatch_command(raw, tr, player, room_state, mob_instances):
+# ── Command table (cf. 1stMud cmd_table[] in interp.c) ───────────────────────
+
+_CMD_TABLE = {
+    "i":        do_inventory,
+    "inv":      do_inventory,
+    "l":        do_look,
+    "look":     do_look,
+    "st":       do_score,
+    "stats":    do_score,
+    "score":    do_score,
+    "sk":       do_skills,
+    "skills":   do_skills,
+    "get":      do_get,
+    "take":     do_get,
+    "drop":     do_drop,
+    "equip":    do_wear,
+    "wear":     do_wear,
+    "unequip":  do_remove,
+    "remove":   do_remove,
+    "u":        do_quaff,
+    "use":      do_quaff,
+    "quaff":    do_quaff,
+    "k":        do_kill,
+    "kill":     do_kill,
+    "f":        do_kill,
+    "fight":    do_kill,
+    "flee":     do_flee,
+    "fl":       do_flee,
+    "save":     do_save,
+    "h":        do_help,
+    "help":     do_help,
+    "?":        do_help,
+    "q":        do_quit,
+    "quit":     do_quit,
+}
+
+
+# ── Interpreter (cf. 1stMud interpret() in interp.c) ─────────────────────────
+
+def interpret(raw, tr, player, room_state, mob_instances):
     parts = raw.strip().lower().split()
     if not parts:
         return None
     verb = parts[0]
     args = parts[1:]
 
-    if verb == "5":
-        tr.print("")
-        cmd_look(tr, player, room_state, mob_instances, long=True)
+    direction = _DIRECTION_MAP.get(verb)
+    if direction is not None:
+        do_move(tr, player, direction, room_state, mob_instances)
         return None
 
-    if verb in _DIRECTION_MAP:
-        cmd_move(tr, player, _DIRECTION_MAP[verb], room_state, mob_instances)
-        return None
+    fn = _CMD_TABLE.get(verb)
+    if fn is not None:
+        return fn(tr, player, args, room_state, mob_instances)
 
-    if verb in ("i", "inv"):
-        cmd_inv(tr, player)
-    elif verb in ("st", "stats"):
-        cmd_stats(tr, player)
-    elif verb in ("k", "skills"):
-        cmd_skills(tr, player)
-    elif verb in ("l", "look"):
-        tr.print("")
-        cmd_look(tr, player, room_state, mob_instances, long=True)
-    elif verb == "take":
-        cmd_take(tr, player, args, room_state)
-    elif verb == "drop":
-        cmd_drop(tr, player, args, room_state)
-    elif verb == "equip":
-        cmd_equip(tr, player, args)
-    elif verb == "unequip":
-        cmd_unequip(tr, player, args)
-    elif verb == "use":
-        cmd_use(tr, player, args)
-    elif verb in ("f", "fight"):
-        return _cmd_fight(tr, player, args, room_state, mob_instances)
-    elif verb == "save":
-        ok = save_game(player, room_state, mob_instances)
-        tr.print("Saved." if ok else "Save failed.")
-    elif verb in ("h", "help", "?"):
-        cmd_help(tr)
-    elif verb in ("q", "quit"):
-        return "quit"
-    else:
-        tr.print("Unknown command. ? for help.")
-    return None
-
-
-def _cmd_fight(tr, player, args, room_state, mob_instances):
-    rs = room_state[player["room"]]
-    live = [i for i in rs["mobs"] if mob_instances[i]["state"] != "dead"]
-    if not live:
-        tr.print("No enemies here.")
-        return None
-    if args:
-        mob_id = resolve_mob_name(" ".join(args), live, mob_instances)
-        if mob_id is None:
-            tr.print("No such enemy.")
+    # Skill name dispatch (excludes SK_ATTACK which is auto-attack only)
+    for sk_vnum in player["skills"]:
+        if sk_vnum == SK_ATTACK:
+            continue
+        if verb == SKILLS[sk_vnum]["name"].lower():
+            if player["fighting"] is None:
+                tr.print("You're not in combat.")
+            elif player["mp"] < SKILLS[sk_vnum]["mp_cost"]:
+                tr.print("Not enough MP!")
+            else:
+                player["mp"] -= SKILLS[sk_vnum]["mp_cost"]
+                use_skill(tr, player, sk_vnum, mob_instances, room_state)
             return None
-    else:
-        mob_id = live[0]
-    return enter_combat(tr, player, mob_id, mob_instances, room_state)
+
+    tr.print("Unknown command. ? for help.")
+    return None

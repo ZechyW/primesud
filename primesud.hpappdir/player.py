@@ -12,7 +12,7 @@ from world import (
 
 # ── Player model ──────────────────────────────────────────────────────────────
 
-def player_stat(player, stat):
+def get_curr_stat(player, stat):
     base = player.get(stat, 0)
     for item_vnum in player["equip"].values():
         if item_vnum is not None:
@@ -20,7 +20,7 @@ def player_stat(player, stat):
     return base
 
 
-def resolve_name(fragment, vnum_list, templates):
+def get_obj_list(fragment, vnum_list, templates):
     frag = fragment.lower()
     for vnum in vnum_list:
         if templates[vnum]["name"].lower() == frag:
@@ -31,7 +31,7 @@ def resolve_name(fragment, vnum_list, templates):
     return None
 
 
-def resolve_mob_name(fragment, inst_ids, mob_instances):
+def get_char_room(fragment, inst_ids, mob_instances):
     frag = fragment.lower()
     for mob_id in inst_ids:
         inst = mob_instances[mob_id]
@@ -41,7 +41,7 @@ def resolve_mob_name(fragment, inst_ids, mob_instances):
     return None
 
 
-def make_player():
+def create_char():
     return {
         "name": "",
         "level": 1, "xp": 0, "xp_next": 100,
@@ -54,21 +54,23 @@ def make_player():
             "chest": None, "legs": None, "feet": None, "hands": None,
         },
         "skills": [SK_ATTACK, SK_HEAL],
+        "fighting": None,
     }
 
 
-def make_room_state():
-    state = {}
+def reset_area():
+    """Create fresh room state and mob instances (cf. 1stMud reset_area)."""
+    room_state = {}
     for vnum, init in ROOM_INIT.items():
-        state[vnum] = {"items": list(init["items"]), "mobs": list(init["mobs"])}
-    return state
+        room_state[vnum] = {"items": list(init["items"]), "mobs": list(init["mobs"])}
 
-
-def make_mob_instances():
-    instances = {}
+    mob_instances = {}
     for mob_id, init in MOB_INIT.items():
-        instances[mob_id] = dict(init)
-    return instances
+        inst = dict(init)
+        inst["affects"] = {}
+        mob_instances[mob_id] = inst
+
+    return room_state, mob_instances
 
 
 # ── Display ───────────────────────────────────────────────────────────────────
@@ -93,7 +95,7 @@ def show_prompt(tr, player, buf):
 
 # ── Persistence ───────────────────────────────────────────────────────────────
 
-def save_game(player, room_state, mob_instances):
+def save_char(player, room_state, mob_instances):
     lines = []
     for key in ("name", "level", "xp", "xp_next", "str", "dex", "int", "con",
                 "hp", "hp_max", "mp", "mp_max", "room"):
@@ -105,8 +107,9 @@ def save_game(player, room_state, mob_instances):
     for rvnum, rs in room_state.items():
         lines.append("r.{}.items={}".format(rvnum, "|".join(str(v) for v in rs["items"])))
     for mob_id, inst in mob_instances.items():
+        state = "idle" if inst["state"] == "aggro" else inst["state"]
         lines.append("m.{}=tpl={}|hp={}|state={}|room={}|respawn_at={}".format(
-            mob_id, inst["tpl"], inst["hp"], inst["state"],
+            mob_id, inst["tpl"], inst["hp"], state,
             inst["room"], inst.get("respawn_at", 0)))
     try:
         payload = "\n".join(lines)
@@ -117,7 +120,7 @@ def save_game(player, room_state, mob_instances):
         return False
 
 
-def load_game(player, room_state, mob_instances):
+def load_char(player, room_state, mob_instances):
     try:
         with FileIO(SAVE_FILE, "rb") as f:
             data = f.read().decode("ascii")
@@ -150,7 +153,7 @@ def load_game(player, room_state, mob_instances):
         elif key.startswith("m."):
             parts_key = key.split(".")
             mob_id = int(parts_key[1])
-            fields = {"tpl": 0, "hp": 0, "state": "idle", "room": 0, "respawn_at": 0}
+            fields = {"tpl": 0, "hp": 0, "state": "idle", "room": 0, "respawn_at": 0, "affects": {}}
             for pair in val.split("|"):
                 if "=" in pair:
                     fk, fv = pair.split("=", 1)

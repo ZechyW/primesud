@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock
 from combat import calc_damage, _try_special_move
-from player import make_player
+from player import create_char
 from world import I_DAGGER
 
 
@@ -54,7 +54,7 @@ def _mock_tpl():
 
 def test_special_move_never_fires_when_armed():
     """Special moves are unarmed only — equipping any weapon must suppress them entirely."""
-    player = make_player()
+    player = create_char()
     player["equip"]["weapon"] = I_DAGGER
     tr = MagicMock()
     inst = {"hp": 100}
@@ -64,7 +64,7 @@ def test_special_move_never_fires_when_armed():
 
 def test_special_move_always_fires_at_max_dex():
     """With dex=100 the trigger chance (290 %) exceeds any randint(1,100) roll, so it always fires."""
-    player = make_player()
+    player = create_char()
     player["dex"] = 100
     player["str"] = 10
     tr = MagicMock()
@@ -75,7 +75,7 @@ def test_special_move_always_fires_at_max_dex():
 
 def test_special_move_prints_mob_name():
     """The flavour text printed by a special move must include the target mob's name."""
-    player = make_player()
+    player = create_char()
     player["dex"] = 100
     tr = MagicMock()
     inst = {"hp": 100}

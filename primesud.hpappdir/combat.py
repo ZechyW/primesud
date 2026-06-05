@@ -1,9 +1,9 @@
 from urandom import randint
 from hpprime import eval as ppleval
 
-from config import COMBAT_TICK_MS, DEATH_MSG_DELAY, POLL_MS
+from config import DEATH_MSG_DELAY
 from world import ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SK_ATTACK, R_VILLAGE_SQUARE
-from player import player_stat, show_status, show_prompt
+from player import get_curr_stat, show_status, show_prompt
 
 
 # ── Special unarmed moves (adapted from 1stMud fight.c) ──────────────────────
@@ -58,67 +58,13 @@ def _try_special_move(tr, player, inst, tpl):
     return bonus
 
 
-# ── Combat ────────────────────────────────────────────────────────────────────
-
-def _handle_death(tr, player):
-    tr.print("Your lifeforce ebbs away...")
-    ppleval("WAIT({})".format(DEATH_MSG_DELAY))
-    tr.print("A distant warmth draws you back.")
-    ppleval("WAIT({})".format(DEATH_MSG_DELAY))
-    player["room"] = R_VILLAGE_SQUARE
-    player["hp"] = 1
-    player["mp"] = 1
-    tr.print("You come to your senses. Alive, but barely.")
-    tr.print("")
-
+# ── Damage ────────────────────────────────────────────────────────────────────
 
 def calc_damage(atk, def_, power, mod_atk=0, mod_def=0):
     raw = power + max(0, (atk + mod_atk) - (def_ + mod_def))
     band = raw // 5
     variance = randint(-band, band) if band else 0
     return max(0, raw + variance)
-
-
-def _show_combat_options(tr, player, combatants, mob_instances, target_id):
-    for mob_id in combatants:
-        inst = mob_instances[mob_id]
-        tpl = MOB_TEMPLATES[inst["tpl"]]
-        mark = "*" if mob_id == target_id else " "
-        tr.print("{}[{}] HP:{}/{}".format(mark, tpl["name"], inst["hp"], tpl["hp_max"]))
-    tr.print("")
-    for idx, sk_vnum in enumerate(player["skills"]):
-        sk = SKILLS[sk_vnum]
-        tr.print("{}. {} (MP:{})".format(idx + 1, sk["name"], sk["mp_cost"]))
-    tr.print("{}. Flee".format(len(player["skills"]) + 1))
-    tr.print("")
-
-
-def _apply_skill(tr, player, sk_vnum, target_id, mob_instances, mob_mods):
-    sk = SKILLS[sk_vnum]
-    inst = mob_instances[target_id]
-    tpl = MOB_TEMPLATES[inst["tpl"]]
-    mods = mob_mods[target_id]
-    effect = sk["effect"]
-    if effect == "damage":
-        dmg = calc_damage(
-            player_stat(player, "atk"), tpl["def"], sk["power"],
-            mod_atk=mods.get("p_atk", 0),
-            mod_def=mods.get("m_def", 0),
-        )
-        inst["hp"] = max(0, inst["hp"] - dmg)
-        vs, vp = _damage_verb(dmg)
-        punct = _damage_punct(dmg)
-        tr.print("Your {} {} {}{} [{}]".format(sk["name"], vp, tpl["name"], punct, dmg))
-    elif effect == "heal":
-        gained = min(sk["power"], player["hp_max"] - player["hp"])
-        player["hp"] += gained
-        tr.print("{}: +{} HP. ({}/{})".format(
-            sk["name"], gained, player["hp"], player["hp_max"]))
-    elif effect == "debuff":
-        key = "m_" + sk["stat"]
-        mods[key] = mods.get(key, 0) - sk["amount"]
-        mods[key + "_t"] = sk["turns"]
-        tr.print("{} weakens {}!".format(sk["name"], tpl["name"]))
 
 
 def _damage_verb(dmg):
@@ -184,166 +130,192 @@ def _mob_condition(inst, tpl):
     return "{} is bleeding to death.".format(name)
 
 
-def enter_combat(tr, player, mob_id, mob_instances, room_state):
+# ── Combat state (cf. 1stMud set_fighting / stop_fighting) ───────────────────
+
+def set_fighting(tr, player, mob_id, mob_instances, room_state):
+    """Enter combat: mark all room mobs aggro, set player target."""
     rs = room_state[player["room"]]
-    combatants = [i for i in rs["mobs"] if mob_instances[i]["state"] != "dead"]
-    for mob_id in combatants:
-        mob_instances[mob_id]["state"] = "aggro"
-        tr.print("--- {} attacks! ---".format(MOB_TEMPLATES[mob_instances[mob_id]["tpl"]]["name"]))
-
-    now = int(ppleval("Ticks"))
-    stagger = COMBAT_TICK_MS // max(len(combatants), 1)
-    mob_timers = {mob_id: now + i * stagger for i, mob_id in enumerate(combatants)}
-    mob_mods = {mob_id: {} for mob_id in combatants}
-
+    for mid in rs["mobs"]:
+        inst = mob_instances[mid]
+        if inst["state"] != "dead":
+            inst["state"] = "aggro"
+            if mid == mob_id:
+                tr.print("--- {} attacks! ---".format(MOB_TEMPLATES[inst["tpl"]]["name"]))
+            else:
+                tr.print("--- {} joins the fight! ---".format(MOB_TEMPLATES[inst["tpl"]]["name"]))
     tr.print("")
-    combat = {
-        "combatants": combatants,
-        "mob_mods": mob_mods,
-        "mob_timers": mob_timers,
-        "target_id": mob_id,
-        "player_atk_timer": now,
-        "buf": "",
-    }
-    # TODO: Do we really need to show this automatically?  Maybe only if the player presses enter with no command.
-    # _show_combat_options(tr, player, combatants, mob_instances, mob_id)
-    show_prompt(tr, player, "")
-    return combat
+    player["fighting"] = mob_id
 
 
-def handle_combat_input(tr, char, combat, player, mob_instances, room_state):
-    combatants = combat["combatants"]
-    mob_mods = combat["mob_mods"]
-    mob_timers = combat["mob_timers"]
-
-    if char == '\n':
-        val = None
-        try:
-            val = int(combat["buf"].strip())
-        except Exception:
-            pass
-        combat["buf"] = ""
-        show_prompt(tr, player, combat["buf"])
-        if val is not None:
-            n_skills = len(player["skills"])
-            if val == n_skills + 1:
-                flee_chance = 40 + (player["dex"] - 10) * 5
-                if randint(1, 100) <= flee_chance:
-                    tr.print("You flee!")
-                    for mob_id in combatants:
-                        mob_instances[mob_id]["state"] = "idle"
-                    return "fled"
-                tr.print("You couldn't escape!")
-                _show_combat_options(tr, player, combatants, mob_instances, combat["target_id"])
-            elif 1 <= val <= n_skills:
-                sk_vnum = player["skills"][val - 1]
-                if player["mp"] < SKILLS[sk_vnum]["mp_cost"]:
-                    tr.print("Not enough MP!")
-                else:
-                    player["mp"] -= SKILLS[sk_vnum]["mp_cost"]
-                    _apply_skill(tr, player, sk_vnum, combat["target_id"], mob_instances, mob_mods)
-                    if mob_instances[combat["target_id"]]["hp"] == 0:
-                        inst = mob_instances[combat["target_id"]]
-                        tpl = MOB_TEMPLATES[inst["tpl"]]
-                        result = _handle_victory(tr, player, combat["target_id"], inst, tpl, room_state)
-                        combatants.remove(combat["target_id"])
-                        mob_mods.pop(combat["target_id"], None)
-                        mob_timers.pop(combat["target_id"], None)
-                        if not combatants:
-                            return result
-                        combat["target_id"] = combatants[0]
-                    _show_combat_options(tr, player, combatants, mob_instances, combat["target_id"])
-    elif char == '\b':
-        combat["buf"] = combat["buf"][:-1]
-        show_prompt(tr, player, combat["buf"])
-    elif char == '\e':
-        combat["buf"] = ""
-        show_prompt(tr, player, combat["buf"])
-    elif char.isdigit() and len(combat["buf"]) < 2:
-        combat["buf"] += char
-        show_prompt(tr, player, combat["buf"])
-    return None
+def stop_fighting(player, mob_instances):
+    """End combat: reset all aggro mobs to idle, clear player target."""
+    for inst in mob_instances.values():
+        if inst["state"] == "aggro":
+            inst["state"] = "idle"
+            inst["affects"] = {}
+    player["fighting"] = None
 
 
-def tick_combat(tr, now, combat, player, mob_instances, room_state):
-    combatants = combat["combatants"]
-    mob_mods = combat["mob_mods"]
-    mob_timers = combat["mob_timers"]
-    attacked = False
+# ── Skills ────────────────────────────────────────────────────────────────────
 
-    # Player auto-attack
-    if now - combat["player_atk_timer"] >= COMBAT_TICK_MS:
-        combat["player_atk_timer"] = now
-        inst = mob_instances[combat["target_id"]]
-        tpl = MOB_TEMPLATES[inst["tpl"]]
-        mods = mob_mods[combat["target_id"]]
-        sk = SKILLS[SK_ATTACK]
+def _apply_skill(tr, player, sk_vnum, target_id, mob_instances):
+    sk = SKILLS[sk_vnum]
+    inst = mob_instances[target_id]
+    tpl = MOB_TEMPLATES[inst["tpl"]]
+    affects = inst["affects"]
+    effect = sk["effect"]
+    if effect == "damage":
         dmg = calc_damage(
-            player_stat(player, "atk"), tpl["def"], sk["power"],
-            mod_atk=mods.get("p_atk", 0),
-            mod_def=mods.get("m_def", 0),
+            get_curr_stat(player, "atk"), tpl["def"], sk["power"],
+            mod_atk=affects.get("p_atk", 0),
+            mod_def=affects.get("m_def", 0),
         )
         inst["hp"] = max(0, inst["hp"] - dmg)
         vs, vp = _damage_verb(dmg)
         punct = _damage_punct(dmg)
-        tr.print("You {} {}{} [{}]".format(vs, tpl["name"], punct, dmg))
-        attacked = True
-        if inst["hp"] > 0:
-            bonus = _try_special_move(tr, player, inst, tpl)
-            if bonus:
-                inst["hp"] = max(0, inst["hp"] - bonus)
-        if inst["hp"] == 0:
-            result = _handle_victory(tr, player, combat["target_id"], inst, tpl, room_state)
-            combatants.remove(combat["target_id"])
-            mob_mods.pop(combat["target_id"], None)
-            mob_timers.pop(combat["target_id"], None)
-            if not combatants:
-                return result
-            combat["target_id"] = combatants[0]
-            _show_combat_options(tr, player, combatants, mob_instances, combat["target_id"])
-            attacked = False
+        tr.print("Your {} {} {}{} [{}]".format(sk["name"], vp, tpl["name"], punct, dmg))
+    elif effect == "heal":
+        gained = min(sk["power"], player["hp_max"] - player["hp"])
+        player["hp"] += gained
+        tr.print("{}: +{} HP. ({}/{})".format(
+            sk["name"], gained, player["hp"], player["hp_max"]))
+    elif effect == "debuff":
+        key = "m_" + sk["stat"]
+        affects[key] = affects.get(key, 0) - sk["amount"]
+        affects[key + "_t"] = sk["turns"]
+        tr.print("{} weakens {}!".format(sk["name"], tpl["name"]))
 
-    # Per-mob attacks
-    for mob_id in list(combatants):
-        if now - mob_timers[mob_id] >= COMBAT_TICK_MS:
-            mob_timers[mob_id] = now
-            inst = mob_instances[mob_id]
-            tpl = MOB_TEMPLATES[inst["tpl"]]
-            mods = mob_mods[mob_id]
-            mob_atk = tpl["atk"] + mods.get("m_atk", 0)
-            dmg = calc_damage(mob_atk, player_stat(player, "def"), tpl["atk"])
-            player["hp"] = max(0, player["hp"] - dmg)
-            vs, vp = _damage_verb(dmg)
-            punct = _damage_punct(dmg)
-            tr.print("{} {} you{} [{}]".format(tpl["name"], vp, punct, dmg))
-            for key in list(mods.keys()):
-                if key.endswith("_t"):
-                    mods[key] -= 1
-                    if mods[key] <= 0:
-                        base = key[:-2]
-                        mods.pop(key, None)
-                        mods.pop(base, None)
-            if player["hp"] == 0:
-                _handle_death(tr, player)
-                return "dead"
 
-    if attacked:
-        inst = mob_instances[combat["target_id"]]
+def use_skill(tr, player, sk_vnum, mob_instances, room_state):
+    """Use a skill against the current target, handling kill if it occurs."""
+    target_id = player["fighting"]
+    _apply_skill(tr, player, sk_vnum, target_id, mob_instances)
+    if mob_instances[target_id]["hp"] == 0:
+        inst = mob_instances[target_id]
         tpl = MOB_TEMPLATES[inst["tpl"]]
-        tr.print(_mob_condition(inst, tpl))
+        raw_kill(tr, player, target_id, inst, tpl, room_state)
+        _advance_target(player, mob_instances, room_state)
+
+
+def _advance_target(player, mob_instances, room_state):
+    """After killing current target: auto-engage next aggro mob or stop fighting."""
+    rs = room_state[player["room"]]
+    next_id = None
+    for mid in rs["mobs"]:
+        if mob_instances[mid]["state"] == "aggro":
+            next_id = mid
+            break
+    if next_id is not None:
+        player["fighting"] = next_id
+    else:
+        stop_fighting(player, mob_instances)
+
+
+# ── Violence update (cf. 1stMud violence_update, called every PULSE_VIOLENCE) ─
+
+def violence_update(tr, player, mob_instances, room_state):
+    """Auto-attack round for player and all aggro mobs in the room."""
+    target_id = player["fighting"]
+    if target_id is None:
+        return
+
+    inst = mob_instances.get(target_id)
+    if inst is None or inst["state"] == "dead":
+        stop_fighting(player, mob_instances)
+        return
+
+    tpl = MOB_TEMPLATES[inst["tpl"]]
+    affects = inst["affects"]
+    sk = SKILLS[SK_ATTACK]
+
+    # Player auto-attack
+    dmg = calc_damage(
+        get_curr_stat(player, "atk"), tpl["def"], sk["power"],
+        mod_atk=affects.get("p_atk", 0),
+        mod_def=affects.get("m_def", 0),
+    )
+    inst["hp"] = max(0, inst["hp"] - dmg)
+    vs, vp = _damage_verb(dmg)
+    punct = _damage_punct(dmg)
+    tr.print("You {} {}{} [{}]".format(vs, tpl["name"], punct, dmg))
+
+    if inst["hp"] > 0:
+        bonus = _try_special_move(tr, player, inst, tpl)
+        if bonus:
+            inst["hp"] = max(0, inst["hp"] - bonus)
+
+    if inst["hp"] == 0:
+        raw_kill(tr, player, target_id, inst, tpl, room_state)
+        _advance_target(player, mob_instances, room_state)
+        return
+
+    # All aggro mobs in room counter-attack
+    rs = room_state[player["room"]]
+    for mob_id in list(rs["mobs"]):
+        mob_inst = mob_instances[mob_id]
+        if mob_inst["state"] != "aggro":
+            continue
+        mob_tpl = MOB_TEMPLATES[mob_inst["tpl"]]
+        mob_affects = mob_inst["affects"]
+        mob_atk = mob_tpl["atk"] + mob_affects.get("m_atk", 0)
+        dmg2 = calc_damage(mob_atk, get_curr_stat(player, "def"), mob_tpl["atk"])
+        player["hp"] = max(0, player["hp"] - dmg2)
+        vs2, vp2 = _damage_verb(dmg2)
+        punct2 = _damage_punct(dmg2)
+        tr.print("{} {} you{} [{}]".format(mob_tpl["name"], vp2, punct2, dmg2))
+        for key in list(mob_affects.keys()):
+            if key.endswith("_t"):
+                mob_affects[key] -= 1
+                if mob_affects[key] <= 0:
+                    base = key[:-2]
+                    mob_affects.pop(key, None)
+                    mob_affects.pop(base, None)
+        if player["hp"] == 0:
+            char_death(tr, player)
+            stop_fighting(player, mob_instances)
+            return
+
+    if player["fighting"] is not None:
+        tr.print(_mob_condition(mob_instances[player["fighting"]],
+                                MOB_TEMPLATES[mob_instances[player["fighting"]]["tpl"]]))
         tr.print("")
-        show_prompt(tr, player, combat["buf"])
-
-    return None
 
 
-def _handle_victory(tr, player, mob_id, inst, tpl, room_state):
+# ── Flee ──────────────────────────────────────────────────────────────────────
+
+def do_flee(tr, player, args, mob_instances):
+    if player["fighting"] is None:
+        tr.print("You're not fighting anyone.")
+        return
+    flee_chance = 40 + (player["dex"] - 10) * 5
+    if randint(1, 100) <= flee_chance:
+        tr.print("You flee!")
+        stop_fighting(player, mob_instances)
+    else:
+        tr.print("You couldn't escape!")
+
+
+# ── Death / Victory ───────────────────────────────────────────────────────────
+
+def char_death(tr, player):
+    tr.print("Your lifeforce ebbs away...")
+    ppleval("WAIT({})".format(DEATH_MSG_DELAY))
+    tr.print("A distant warmth draws you back.")
+    ppleval("WAIT({})".format(DEATH_MSG_DELAY))
+    player["room"] = R_VILLAGE_SQUARE
+    player["hp"] = 1
+    player["mp"] = 1
+    tr.print("You come to your senses. Alive, but barely.")
+    tr.print("")
+
+
+def raw_kill(tr, player, mob_id, inst, tpl, room_state):
     tr.print("{} is defeated!".format(tpl["name"]))
     player["xp"] += tpl["xp"]
     tr.print("+{} XP".format(tpl["xp"]))
 
     while player["xp"] >= player["xp_next"]:
-        _level_up(tr, player)
+        advance_level(tr, player)
 
     for item_vnum, chance in tpl["loot"]:
         if randint(1, 100) <= chance:
@@ -351,16 +323,14 @@ def _handle_victory(tr, player, mob_id, inst, tpl, room_state):
             tr.print("Found: {}".format(ITEM_TEMPLATES[item_vnum]["name"]))
 
     inst["state"] = "dead"
-    room_state[inst["room"]]["mobs"]  # instance stays; removed from display via state check
     if tpl["respawn"] > 0:
         inst["respawn_at"] = int(ppleval("Ticks")) + tpl["respawn"]
 
     tr.print("")
     show_status(tr, player)
-    return "victory"
 
 
-def _level_up(tr, player):
+def advance_level(tr, player):
     player["level"] += 1
     player["xp"] -= player["xp_next"]
     player["xp_next"] = player["xp_next"] * 3 // 2

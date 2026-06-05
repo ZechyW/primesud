@@ -3,21 +3,20 @@ import gc
 from tml import tml
 from hpprime import dimgrob, eval as ppleval
 
-from config import DARK_MODE, BG_COLOR, TAB_SIZE, WORLD_TICK_MS, AUTOSAVE_TICKS, HP_REGEN_PER_CON, MP_REGEN_PER_INT, POLL_MS
-from combat import handle_combat_input, tick_combat
+from config import DARK_MODE, BG_COLOR, TAB_SIZE, WORLD_TICK_MS, COMBAT_TICK_MS, AUTOSAVE_TICKS, HP_REGEN_PER_CON, MP_REGEN_PER_INT, POLL_MS
+from combat import violence_update
 from world import MOB_TEMPLATES
 from player import (
-    make_player,
-    make_room_state,
-    make_mob_instances,
+    create_char,
+    reset_area,
     show_prompt,
     _wait_digit,
     _poll_char,
     _resync_keyboard,
-    save_game as _save_game,
-    load_game as _load_game,
+    save_char as _save_char,
+    load_char as _load_char,
 )
-from commands import _dispatch_command, cmd_look
+from commands import interpret, do_look, _DIGIT_SUBST
 
 # ── Key command shortcuts ─────────────────────────────────────────────────────
 # Maps physical key bit-index → command string placed in the input buffer.
@@ -69,25 +68,22 @@ class Game:
             _orig_print('\n'.join(lines), end=end)
         self.tr.print = _wrapped_print
         self.input_buf = ""
-        self.combat = None
         self.player = None
         self.room_state = None
         self.mob_instances = None
 
     def new_game(self, name="Hero"):
-        self.player = make_player()
+        self.player = create_char()
         self.player["name"] = name
-        self.room_state = make_room_state()
-        self.mob_instances = make_mob_instances()
+        self.room_state, self.mob_instances = reset_area()
 
     def load_game(self):
-        self.player = make_player()
-        self.room_state = make_room_state()
-        self.mob_instances = make_mob_instances()
-        return _load_game(self.player, self.room_state, self.mob_instances)
+        self.player = create_char()
+        self.room_state, self.mob_instances = reset_area()
+        return _load_char(self.player, self.room_state, self.mob_instances)
 
     def save_game(self):
-        if not _save_game(self.player, self.room_state, self.mob_instances):
+        if not _save_char(self.player, self.room_state, self.mob_instances):
             self.tr.print("Save failed.")
 
     def run_title(self):
@@ -128,57 +124,45 @@ class Game:
 
         now = int(ppleval("Ticks"))
         next_world = now + WORLD_TICK_MS
+        next_combat = now + COMBAT_TICK_MS
         tick_count = 0
-        self.combat = None
 
         _resync_keyboard(tr)
         show_prompt(tr, player, self.input_buf)
-        cmd_look(tr, player, room_state, mob_instances)
+        do_look(tr, player, [], room_state, mob_instances)
 
         while True:
-            char = _poll_char(tr, None if self.combat else _KEY_COMMANDS)
+            char = _poll_char(tr, _KEY_COMMANDS)
             if char is not None:
-                if self.combat:
-                    result = handle_combat_input(tr, char, self.combat, player, mob_instances, room_state)
-                    if result is not None:
-                        self.combat = None
-                        show_prompt(tr, player, self.input_buf)
-                else:
-                    if char == "\n":
-                        result = _dispatch_command(
-                            self.input_buf, tr, player, room_state, mob_instances
-                        )
-                        if result == "quit":
-                            break
-                        elif result is not None:
-                            self.combat = result
-                        self.input_buf = ""
-                        show_prompt(tr, player, self.input_buf)
-                    elif char == "\b":
-                        self.input_buf = self.input_buf[:-1]
-                        show_prompt(tr, player, self.input_buf)
-                    elif char == "\e":
-                        self.input_buf = ""
-                        show_prompt(tr, player, self.input_buf)
-                    elif char in _KEY_COMMANDS.values():
-                        self.input_buf = char
-                        show_prompt(tr, player, self.input_buf)
-                    elif char not in ("\L", "\R", "\SR"):
-                        self.input_buf += char
-                        show_prompt(tr, player, self.input_buf)
+                if char == "\n":
+                    if interpret(self.input_buf, tr, player, room_state, mob_instances) == "quit":
+                        break
+                    self.input_buf = ""
+                    show_prompt(tr, player, self.input_buf)
+                elif char == "\b":
+                    self.input_buf = self.input_buf[:-1]
+                    show_prompt(tr, player, self.input_buf)
+                elif char == "\e":
+                    self.input_buf = ""
+                    show_prompt(tr, player, self.input_buf)
+                elif char in _KEY_COMMANDS.values():
+                    self.input_buf = char
+                    show_prompt(tr, player, self.input_buf)
+                elif char not in ("\L", "\R", "\SR"):
+                    self.input_buf += _DIGIT_SUBST.get(char, char)
+                    show_prompt(tr, player, self.input_buf)
 
             now = int(ppleval("Ticks"))
 
-            if self.combat is not None:
-                result = tick_combat(tr, now, self.combat, player, mob_instances, room_state)
-                if result is not None:
-                    self.combat = None
-                    show_prompt(tr, player, self.input_buf)
+            if now >= next_combat:
+                next_combat = now + COMBAT_TICK_MS
+                violence_update(tr, player, mob_instances, room_state)
+                show_prompt(tr, player, self.input_buf)
 
             if now >= next_world:
                 world_tick(player, room_state, mob_instances)
                 next_world += WORLD_TICK_MS
-                show_prompt(tr, player, self.combat["buf"] if self.combat else self.input_buf)
+                show_prompt(tr, player, self.input_buf)
                 tick_count += 1
                 if tick_count >= AUTOSAVE_TICKS:
                     self.save_game()
