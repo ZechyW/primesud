@@ -1,4 +1,3 @@
-import math
 from hpprime import eval as ppleval, keyboard
 from cas import get_key
 from uio import FileIO
@@ -167,33 +166,6 @@ def load_char(player, room_state, mob_instances):
 
 # ── Input utilities ───────────────────────────────────────────────────────────
 
-def _pressed_keys():
-    state = keyboard()
-    keys = set()
-    while state:
-        n = state & (-state)
-        keys.add(round(math.log2(n)))
-        state &= state - 1
-    return keys
-
-
-def _wait_digit(max_val):
-    """Block until a digit key 1..max_val is pressed. Returns the int."""
-    # Digit bit indices from tml._default_key_map:
-    # 1=42, 2=43, 3=44, 4=37, 5=38, 6=39, 7=32, 8=33, 9=34
-    DIGIT_KEYS = {42: 1, 43: 2, 44: 3, 37: 4, 38: 5, 39: 6, 32: 7, 33: 8, 34: 9}
-    last = _pressed_keys()
-    while True:
-        cur = _pressed_keys()
-        new = cur - last
-        last = cur
-        for bit in new:
-            digit = DIGIT_KEYS.get(bit)
-            if digit is not None and 1 <= digit <= max_val:
-                return digit
-        ppleval("WAIT({}/1e3)".format(POLL_MS))
-
-
 def _poll_char(tr, key_commands=None):
     """Non-blocking: return the next char if a new key was pressed, else None."""
     cur = keyboard()
@@ -267,7 +239,7 @@ def _poll_char(tr, key_commands=None):
 
 
 def _resync_keyboard(tr):
-    """Reset tr keyboard state after a blocking input section (e.g. run_title)."""
+    """Reset tr keyboard state after a blocking input section."""
     tr.last_keyboard_state = keyboard()
     tr.is_alpha = tr.is_shift = tr.alpha_hold = tr.shift_hold = tr.symb_hold = False
     tr._refresh_indicators()

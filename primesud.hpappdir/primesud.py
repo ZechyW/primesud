@@ -10,7 +10,6 @@ from player import (
     create_char,
     reset_area,
     show_prompt,
-    _wait_digit,
     _poll_char,
     _resync_keyboard,
     save_char as _save_char,
@@ -92,7 +91,6 @@ class Game:
         tr.print("=== PRIMESUD ===")
         tr.print("A single-user dungeon.")
 
-        # ----- Debug -----
         def fmt_bytes(n):
             for unit in ("B", "KB", "MB"):
                 if n < 1024:
@@ -101,20 +99,7 @@ class Game:
             return "{} GB".format(n)
 
         tr.print("Memory free: {}".format(fmt_bytes(gc.mem_free())))
-        # ----- Debug -----
         tr.print("")
-        tr.print("1. New Game")
-        tr.print("2. Load Game")
-        tr.print("3. Quit")
-        tr.print("")
-        while True:
-            choice = _wait_digit(3)
-            if choice == 1:
-                return "new"
-            if choice == 2:
-                return "load"
-            if choice == 3:
-                return "quit"
 
     def game_loop(self):
         tr = self.tr
@@ -149,7 +134,11 @@ class Game:
                     self.input_buf = char
                     show_prompt(tr, player, self.input_buf)
                 elif char not in ("\L", "\R", "\SR"):
-                    self.input_buf += _DIGIT_SUBST.get(char, char)
+                    subst = _DIGIT_SUBST.get(char)
+                    if subst is not None and not self.input_buf:
+                        self.input_buf = subst
+                    else:
+                        self.input_buf += char
                     show_prompt(tr, player, self.input_buf)
 
             now = int(ppleval("Ticks"))
@@ -199,16 +188,11 @@ class PrimeSud:
         """Entry point: run the game inside the environment context manager."""
         with self:
             game = self.game
-            mode = game.run_title()
+            game.run_title()
 
-            if mode == "quit":
-                return
-            if mode == "new":
+            if not game.load_game():
+                game.tr.print("No save found. Starting new game.")
                 game.new_game()
-            elif mode == "load":
-                if not game.load_game():
-                    game.tr.print("No save found. Starting new game.")
-                    game.new_game()
 
             try:
                 game.game_loop()
