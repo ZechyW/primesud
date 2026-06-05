@@ -3,7 +3,10 @@ import gc
 from tml import tml
 from hpprime import dimgrob, eval as ppleval
 
-from config import DARK_MODE, BG_COLOR, TAB_SIZE, WORLD_TICK_MS, COMBAT_TICK_MS, AUTOSAVE_TICKS, HP_REGEN_PER_CON, MP_REGEN_PER_INT, POLL_MS
+from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
+                    MS_PER_PULSE, PULSE_VIOLENCE, PULSE_TICK,
+                    AUTOSAVE_TICKS, HP_REGEN_NUM, HP_REGEN_DENOM,
+                    MP_REGEN_NUM, MP_REGEN_DENOM)
 from combat import violence_update
 from world import MOB_TEMPLATES
 from player import (
@@ -40,8 +43,8 @@ def world_tick(player, room_state, mob_instances):
                 if mob_id not in room_state[inst["room"]]["mobs"]:
                     room_state[inst["room"]]["mobs"].append(mob_id)
 
-    player["hp"] = min(player["hp_max"], player["hp"] + player["con"] // HP_REGEN_PER_CON)
-    player["mp"] = min(player["mp_max"], player["mp"] + player["int"] // MP_REGEN_PER_INT)
+    player["hp"] = min(player["hp_max"], player["hp"] + player["con"] * HP_REGEN_NUM // HP_REGEN_DENOM)
+    player["mp"] = min(player["mp_max"], player["mp"] + player["int"] * MP_REGEN_NUM // MP_REGEN_DENOM)
 
 
 # ── Main classes ──────────────────────────────────────────────────────────────
@@ -107,10 +110,10 @@ class Game:
         room_state = self.room_state
         mob_instances = self.mob_instances
 
-        now = int(ppleval("Ticks"))
-        next_world = now + WORLD_TICK_MS
-        next_combat = now + COMBAT_TICK_MS
+        pulse      = 0
         tick_count = 0
+        now        = int(ppleval("Ticks"))
+        next_pulse = now + MS_PER_PULSE
 
         _resync_keyboard(tr)
         show_prompt(tr, player, self.input_buf)
@@ -142,20 +145,24 @@ class Game:
                     show_prompt(tr, player, self.input_buf)
 
             now = int(ppleval("Ticks"))
+            if now >= next_pulse:
+                next_pulse += MS_PER_PULSE
+                pulse += 1
 
-            if now >= next_combat:
-                next_combat = now + COMBAT_TICK_MS
-                violence_update(tr, player, mob_instances, room_state)
-                show_prompt(tr, player, self.input_buf)
+                if pulse % PULSE_VIOLENCE == 0:
+                    violence_update(tr, player, mob_instances, room_state)
+                    show_prompt(tr, player, self.input_buf)
 
-            if now >= next_world:
-                world_tick(player, room_state, mob_instances)
-                next_world += WORLD_TICK_MS
-                show_prompt(tr, player, self.input_buf)
-                tick_count += 1
-                if tick_count >= AUTOSAVE_TICKS:
-                    self.save_game()
-                    tick_count = 0
+                if pulse % PULSE_TICK == 0:
+                    world_tick(player, room_state, mob_instances)
+                    show_prompt(tr, player, self.input_buf)
+                    tick_count += 1
+                    if tick_count >= AUTOSAVE_TICKS:
+                        self.save_game()
+                        tick_count = 0
+
+                if pulse >= 14400:  # wrap at 1 hour (3600 s × 4 pulses/s)
+                    pulse = 0
 
             ppleval("WAIT({}/1e3)".format(POLL_MS))
 

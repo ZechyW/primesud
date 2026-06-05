@@ -1,5 +1,5 @@
-from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SK_ATTACK
-from player import get_curr_stat, get_obj_list, get_char_room, save_char
+from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS
+from player import get_hitroll, get_damroll, get_AC, get_obj_list, get_char_room, save_char
 from combat import set_fighting, do_flee, use_skill
 
 
@@ -129,10 +129,12 @@ def do_quaff(tr, player, args, room_state, mob_instances):
 
 def do_score(tr, player, args, room_state, mob_instances):
     tr.print("Level {} ({}/{} XP)".format(player["level"], player["xp"], player["xp_next"]))
-    tr.print("HP:{}/{} MP:{}/{}".format(player["hp"], player["hp_max"], player["mp"], player["mp_max"]))
-    tr.print("STR:{} DEX:{} INT:{} CON:{}".format(
-        player["str"], player["dex"], player["int"], player["con"]))
-    tr.print("ATK:{} DEF:{}".format(get_curr_stat(player, "atk"), get_curr_stat(player, "def")))
+    tr.print("HP:{}/{} MP:{}/{}".format(
+        player["hp"], player["hp_max"], player["mp"], player["mp_max"]))
+    tr.print("STR:{} DEX:{} INT:{} WIS:{} CON:{}".format(
+        player["str"], player["dex"], player["int"], player["wis"], player["con"]))
+    tr.print("Hitroll:{} Damroll:{} AC:{}".format(
+        get_hitroll(player), get_damroll(player), get_AC(player)))
     equipped = {s: ITEM_TEMPLATES[v]["name"] for s, v in player["equip"].items() if v is not None}
     if equipped:
         tr.print("")
@@ -141,9 +143,16 @@ def do_score(tr, player, args, room_state, mob_instances):
 
 
 def do_skills(tr, player, args, room_state, mob_instances):
-    for sk_vnum in player["skills"]:
-        sk = SKILLS[sk_vnum]
-        tr.print("  {} (MP:{})".format(sk["name"], sk["mp_cost"]))
+    for sk_vnum, pct in sorted(player["learned"].items()):
+        sk = SKILLS.get(sk_vnum)
+        if sk is None:
+            continue
+        sk_type = sk.get("type", "")
+        if sk_type == "active":
+            tr.print("  {} {}% (MP:{})".format(
+                sk["name"], pct, sk.get("mp_cost", 0)))
+        elif sk_type in ("weapon", "passive"):
+            tr.print("  {} {}%".format(sk["name"], pct))
 
 
 def do_help(tr, player, args, room_state, mob_instances):
@@ -191,13 +200,11 @@ _DIRECTION_MAP = {
     "nw": "nw", "northwest": "nw",
     "se": "se", "southeast": "se",
     "sw": "sw", "southwest": "sw",
-    # Numpad digit shortcuts (1-9, matching compass layout)
     "7": "nw", "8": "n", "9": "ne",
-    "4": "w",              "6": "e",
+    "4": "w",             "6": "e",
     "1": "sw", "2": "s",  "3": "se",
 }
 
-# Maps digit chars to the display text shown in the input buffer.
 _DIGIT_SUBST = {
     "1": "sw", "2": "s",  "3": "se",
     "4": "w",              "6": "e",
@@ -205,44 +212,44 @@ _DIGIT_SUBST = {
     "5": "look",
 }
 
-# ── Command table (cf. 1stMud cmd_table[] in interp.c) ───────────────────────
+# ── Command table ─────────────────────────────────────────────────────────────
 
 _CMD_TABLE = {
-    "i":        do_inventory,
-    "inv":      do_inventory,
-    "l":        do_look,
-    "look":     do_look,
-    "st":       do_score,
-    "stats":    do_score,
-    "score":    do_score,
-    "sk":       do_skills,
-    "skills":   do_skills,
-    "get":      do_get,
-    "take":     do_get,
-    "drop":     do_drop,
-    "equip":    do_wear,
-    "wear":     do_wear,
-    "unequip":  do_remove,
-    "remove":   do_remove,
-    "u":        do_quaff,
-    "use":      do_quaff,
-    "quaff":    do_quaff,
-    "k":        do_kill,
-    "kill":     do_kill,
-    "f":        do_kill,
-    "fight":    do_kill,
-    "flee":     do_flee,
-    "fl":       do_flee,
-    "save":     do_save,
-    "h":        do_help,
-    "help":     do_help,
-    "?":        do_help,
-    "q":        do_quit,
-    "quit":     do_quit,
+    "i":       do_inventory,
+    "inv":     do_inventory,
+    "l":       do_look,
+    "look":    do_look,
+    "st":      do_score,
+    "stats":   do_score,
+    "score":   do_score,
+    "sk":      do_skills,
+    "skills":  do_skills,
+    "get":     do_get,
+    "take":    do_get,
+    "drop":    do_drop,
+    "equip":   do_wear,
+    "wear":    do_wear,
+    "unequip": do_remove,
+    "remove":  do_remove,
+    "u":       do_quaff,
+    "use":     do_quaff,
+    "quaff":   do_quaff,
+    "k":       do_kill,
+    "kill":    do_kill,
+    "f":       do_kill,
+    "fight":   do_kill,
+    "flee":    do_flee,
+    "fl":      do_flee,
+    "save":    do_save,
+    "h":       do_help,
+    "help":    do_help,
+    "?":       do_help,
+    "q":       do_quit,
+    "quit":    do_quit,
 }
 
 
-# ── Interpreter (cf. 1stMud interpret() in interp.c) ─────────────────────────
+# ── Interpreter ───────────────────────────────────────────────────────────────
 
 def interpret(raw, tr, player, room_state, mob_instances):
     parts = raw.strip().lower().split()
@@ -260,19 +267,23 @@ def interpret(raw, tr, player, room_state, mob_instances):
     if fn is not None:
         return fn(tr, player, args, room_state, mob_instances)
 
-    # Skill name dispatch (excludes SK_ATTACK which is auto-attack only)
-    for sk_vnum in player["skills"]:
-        if sk_vnum == SK_ATTACK:
+    # Skill name dispatch — active skills only
+    for sk_vnum, pct in player["learned"].items():
+        sk = SKILLS.get(sk_vnum)
+        if sk is None or sk.get("type") != "active":
             continue
-        if verb == SKILLS[sk_vnum]["name"].lower():
-            if player["fighting"] is None:
-                tr.print("You're not in combat.")
-            elif player["mp"] < SKILLS[sk_vnum]["mp_cost"]:
-                tr.print("Not enough MP!")
-            else:
-                player["mp"] -= SKILLS[sk_vnum]["mp_cost"]
-                use_skill(tr, player, sk_vnum, mob_instances, room_state)
-            return None
+        if verb != sk["name"].lower():
+            continue
+        if player["fighting"] is None:
+            tr.print("You're not in combat.")
+        elif player.get("wait", 0) > 0:
+            tr.print("You are still recovering.")
+        elif player["mp"] < sk.get("mp_cost", 0):
+            tr.print("Not enough MP!")
+        else:
+            player["mp"] -= sk.get("mp_cost", 0)
+            use_skill(tr, player, sk_vnum, mob_instances, room_state)
+        return None
 
     tr.print("Unknown command. ? for help.")
     return None

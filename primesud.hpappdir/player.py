@@ -5,18 +5,132 @@ from uio import FileIO
 from config import SAVE_FILE, POLL_MS
 from world import (
     ROOM_INIT, ITEM_TEMPLATES, MOB_TEMPLATES, MOB_INIT,
-    R_VILLAGE_SQUARE, SK_ATTACK, SK_HEAL,
+    R_VILLAGE_SQUARE,
+    SK_UNARMED, SK_SLASH, SK_HEAL, SK_WEAKEN, SK_DODGE,
+    STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP,
 )
 
 
 # ── Player model ──────────────────────────────────────────────────────────────
 
-def get_curr_stat(player, stat):
-    base = player.get(stat, 0)
-    for item_vnum in player["equip"].values():
-        if item_vnum is not None:
-            base += ITEM_TEMPLATES[item_vnum].get("stats", {}).get(stat, 0)
-    return base
+def create_char():
+    return {
+        "name":     "",
+        "level":    1,  "xp": 0, "xp_next": 100,
+        "str":      10, "dex": 10, "int": 10, "wis": 10, "con": 10,
+        "hp":       30, "hp_max": 30,
+        "mp":       15, "mp_max": 15,
+        "hitroll":  0,
+        "damroll":  0,
+        "AC":       100,   # base unarmored (100 = poor; negative = better)
+        "wait":     0,     # skill lag in pulses
+        "daze":     0,     # stun in pulses
+        "room":     R_VILLAGE_SQUARE,
+        "inv":      [],
+        "equip": {
+            "weapon": None, "offhand": None, "head": None,
+            "chest": None, "legs": None, "feet": None, "hands": None,
+        },
+        "learned": {
+            SK_UNARMED: 40,   # basic brawling
+            SK_SLASH:   50,
+            SK_HEAL:    75,
+            SK_WEAKEN:  50,
+            SK_DODGE:   10,
+        },
+        "fighting": None,
+    }
+
+
+def reset_area():
+    """Create fresh room state and mob instances (cf. 1stMud reset_area)."""
+    room_state = {}
+    for vnum, init in ROOM_INIT.items():
+        room_state[vnum] = {"items": list(init["items"]), "mobs": list(init["mobs"])}
+
+    mob_instances = {}
+    for mob_id, init in MOB_INIT.items():
+        tpl = MOB_TEMPLATES[init["tpl"]]
+        ps  = tpl["perm_stat"]
+        mob_instances[mob_id] = {
+            "tpl":        init["tpl"],
+            "hp":         tpl["hp_max"],
+            "state":      "idle",
+            "room":       init["room"],
+            "respawn_at": 0,
+            "affects":    {},
+            "wait":       0,
+            "daze":       0,
+            # Combat stats flattened from template for hot-path access
+            "level":      tpl["level"],
+            "str":        ps["str"],
+            "dex":        ps["dex"],
+            "int":        ps["int"],
+            "wis":        ps["wis"],
+            "con":        ps["con"],
+            "hitroll":    tpl["hitroll"],
+            "damroll":    tpl["damroll"],
+            "AC":         tpl["AC"],
+        }
+
+    return room_state, mob_instances
+
+
+def _enrich_mob_instance(inst):
+    """Fill in template-derived combat stats on a freshly loaded mob instance."""
+    tpl = MOB_TEMPLATES[inst["tpl"]]
+    ps  = tpl["perm_stat"]
+    inst.setdefault("wait",    0)
+    inst.setdefault("daze",    0)
+    inst.setdefault("affects", {})
+    inst["level"]   = tpl["level"]
+    inst["str"]     = ps["str"]
+    inst["dex"]     = ps["dex"]
+    inst["int"]     = ps["int"]
+    inst["wis"]     = ps["wis"]
+    inst["con"]     = ps["con"]
+    inst["hitroll"] = tpl["hitroll"]
+    inst["damroll"] = tpl["damroll"]
+    inst["AC"]      = tpl["AC"]
+
+
+# ── Stat application helpers ──────────────────────────────────────────────────
+
+def _clamp_stat(v):
+    return min(25, max(0, v))
+
+
+def get_hitroll(char):
+    """Effective hitroll: base + STR bonus + equipped weapon bonus."""
+    total = char.get("hitroll", 0) + STR_APP_TOHIT[_clamp_stat(char.get("str", 10))]
+    equip = char.get("equip")
+    if equip:
+        for vnum in equip.values():
+            if vnum is not None:
+                total += ITEM_TEMPLATES[vnum].get("hitroll", 0)
+    return total
+
+
+def get_damroll(char):
+    """Effective damroll: base + STR bonus + equipped weapon bonus."""
+    total = char.get("damroll", 0) + STR_APP_TODAM[_clamp_stat(char.get("str", 10))]
+    equip = char.get("equip")
+    if equip:
+        for vnum in equip.values():
+            if vnum is not None:
+                total += ITEM_TEMPLATES[vnum].get("damroll", 0)
+    return total
+
+
+def get_AC(char):
+    """Effective AC: base + DEX bonus + equipped armour bonus."""
+    total = char.get("AC", 100) + DEX_APP_DEF[_clamp_stat(char.get("dex", 10))]
+    equip = char.get("equip")
+    if equip:
+        for vnum in equip.values():
+            if vnum is not None:
+                total += ITEM_TEMPLATES[vnum].get("AC", 0)
+    return total
 
 
 def get_obj_list(fragment, vnum_list, templates):
@@ -38,38 +152,6 @@ def get_char_room(fragment, inst_ids, mob_instances):
         if name == frag or name.startswith(frag):
             return mob_id
     return None
-
-
-def create_char():
-    return {
-        "name": "",
-        "level": 1, "xp": 0, "xp_next": 100,
-        "str": 10, "dex": 10, "int": 10, "con": 10,
-        "hp": 30, "hp_max": 30, "mp": 15, "mp_max": 15,
-        "room": R_VILLAGE_SQUARE,
-        "inv": [],
-        "equip": {
-            "weapon": None, "offhand": None, "head": None,
-            "chest": None, "legs": None, "feet": None, "hands": None,
-        },
-        "skills": [SK_ATTACK, SK_HEAL],
-        "fighting": None,
-    }
-
-
-def reset_area():
-    """Create fresh room state and mob instances (cf. 1stMud reset_area)."""
-    room_state = {}
-    for vnum, init in ROOM_INIT.items():
-        room_state[vnum] = {"items": list(init["items"]), "mobs": list(init["mobs"])}
-
-    mob_instances = {}
-    for mob_id, init in MOB_INIT.items():
-        inst = dict(init)
-        inst["affects"] = {}
-        mob_instances[mob_id] = inst
-
-    return room_state, mob_instances
 
 
 # ── Display ───────────────────────────────────────────────────────────────────
@@ -96,13 +178,18 @@ def show_prompt(tr, player, buf):
 
 def save_char(player, room_state, mob_instances):
     lines = []
-    for key in ("name", "level", "xp", "xp_next", "str", "dex", "int", "con",
-                "hp", "hp_max", "mp", "mp_max", "room"):
+    for key in ("name", "level", "xp", "xp_next",
+                "str", "dex", "int", "wis", "con",
+                "hp", "hp_max", "mp", "mp_max",
+                "hitroll", "damroll", "AC", "room"):
         lines.append("p.{}={}".format(key, player[key]))
     lines.append("p.inv={}".format("|".join(str(v) for v in player["inv"])))
-    lines.append("p.skills={}".format("|".join(str(v) for v in player["skills"])))
     for slot, vnum in player["equip"].items():
         lines.append("p.eq.{}={}".format(slot, vnum if vnum is not None else ""))
+    learned_parts = []
+    for sk, pct in player["learned"].items():
+        learned_parts.append("{}:{}".format(sk, pct))
+    lines.append("p.learned={}".format("|".join(learned_parts)))
     for rvnum, rs in room_state.items():
         lines.append("r.{}.items={}".format(rvnum, "|".join(str(v) for v in rs["items"])))
     for mob_id, inst in mob_instances.items():
@@ -126,8 +213,10 @@ def load_char(player, room_state, mob_instances):
     except Exception:
         return False
 
-    int_keys = {"level", "xp", "xp_next", "str", "dex", "int", "con",
-                "hp", "hp_max", "mp", "mp_max", "room"}
+    int_keys = {"level", "xp", "xp_next",
+                "str", "dex", "int", "wis", "con",
+                "hp", "hp_max", "mp", "mp_max",
+                "hitroll", "damroll", "AC", "room"}
 
     for rs in room_state.values():
         rs["mobs"] = []
@@ -141,8 +230,14 @@ def load_char(player, room_state, mob_instances):
             player["equip"][slot] = int(val) if val else None
         elif key == "p.inv":
             player["inv"] = [int(v) for v in val.split("|") if v]
-        elif key == "p.skills":
-            player["skills"] = [int(v) for v in val.split("|") if v]
+        elif key == "p.learned":
+            for entry in val.split("|"):
+                if ":" in entry:
+                    sk_str, pct_str = entry.split(":", 1)
+                    try:
+                        player["learned"][int(sk_str)] = int(pct_str)
+                    except ValueError:
+                        pass
         elif key.startswith("p."):
             pkey = key[2:]
             player[pkey] = int(val) if pkey in int_keys else val
@@ -150,13 +245,14 @@ def load_char(player, room_state, mob_instances):
             rvnum = int(key.split(".")[1])
             room_state[rvnum]["items"] = [int(v) for v in val.split("|") if v]
         elif key.startswith("m."):
-            parts_key = key.split(".")
-            mob_id = int(parts_key[1])
-            fields = {"tpl": 0, "hp": 0, "state": "idle", "room": 0, "respawn_at": 0, "affects": {}}
+            mob_id = int(key.split(".")[1])
+            fields = {"tpl": 0, "hp": 0, "state": "idle",
+                      "room": 0, "respawn_at": 0}
             for pair in val.split("|"):
                 if "=" in pair:
                     fk, fv = pair.split("=", 1)
                     fields[fk] = int(fv) if fk != "state" else fv
+            _enrich_mob_instance(fields)
             mob_instances[mob_id] = fields
             if fields["state"] != "dead":
                 room_state[fields["room"]]["mobs"].append(mob_id)
