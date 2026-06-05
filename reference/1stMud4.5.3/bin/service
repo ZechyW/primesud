@@ -1,0 +1,89 @@
+#!/bin/sh
+#
+# firstmud  Start 1stMud MUD Services
+#
+# description:  Starts/stops 1stMud MUD Services
+#
+
+binary=1stMud
+pidfile=../bin/$binary.pid
+logfile=../log/$binary.log
+
+# Function declarations
+#
+start_firstmud() {
+  while [ 1 ]; do
+    ../bin/$binary --startup-script $2 $3 $4 $5 $6 $7 $8 $9 >> $logfile 2>&1 &
+    pid="$!"
+    echo $pid > $pidfile
+
+    wait $pid
+    run="$?"
+    if [ "$run" = 1 ]; then
+      exit 0
+    fi
+  done
+}
+
+# Run the code
+#
+status=""
+if [ -r $pidfile ]; then
+  pid=`cat $pidfile`
+
+  if [ -n "$pid" ]; then 
+    status=`ps -a | grep $pid`
+  fi
+fi
+
+case "$1" in
+status)
+  if [ -n "$status" ]; then
+    echo "$binary is running."
+  else
+    echo "$binary is NOT running."
+  fi
+  ;;
+
+start)
+  if [ -n "$status" ]; then
+    echo "$binary is ALREADY running."
+    exit
+  fi
+
+  echo "Starting $binary MUD Services..."
+  start_firstmud &
+  ;;
+
+stop)
+  if [ -z "$status" ]; then
+    echo "$binary is NOT running ALREADY."
+    exit
+  fi
+
+  echo "Stopping $binary MUD Services..."
+  kill $pid
+  sleep 1
+
+  rm -f $pidfile
+
+  status=`ps -a | grep $pid`
+  if [ -n "$status" ]; then sleep 1; fi
+
+  status=`ps -a | grep $pid`
+  if [ -n "$status" ]; then sleep 1; fi
+
+  status=`ps -a | grep $pid`
+  if [ -n "$status" ]; then kill -9 $pid; fi
+  ;;
+
+restart)
+  $0 stop
+  $0 start
+  ;;
+
+*)
+  echo "Usage:"
+  echo "       $0 {start|stop|restart|status}"
+  ;;
+esac

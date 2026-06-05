@@ -1,0 +1,306 @@
+38
+
+#COLOR
+name			clear~
+description		Reset color.~
+slot			clear~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			gossip~
+description		Gossip channel color.~
+slot			gossip~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			music~
+description		Music channel color.~
+slot			music~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			q/a~
+description		Question and answer channel colors.~
+slot			qa~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			quote~
+description		Quote channel color.~
+slot			quote~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			gratz~
+description		Grats channel color.~
+slot			gratz~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			shout1~
+description		Shout command color.~
+slot			shout1~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			shout2~
+description		Shout text color.~
+slot			shout2~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			immtalk~
+description		Immtalk channel color.~
+slot			immtalk~
+col_attr		 0 0 0
+flags			immortal~
+#END
+
+#COLOR
+name			tells1~
+description		Tell command color.~
+slot			tells1~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			tells2~
+description		Tell text color.~
+slot			tells2~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			say1~
+description		Say command color.~
+slot			say1~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			say2~
+description		Say text color.~
+slot			say2~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			skill~
+description		Skill messages color.~
+slot			skills~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			yhit~
+description		Your hit color.~
+slot			yhit~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			ohit~
+description		Others hit color.~
+slot			ohit~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			vhit~
+description		Victims hit color.~
+slot			vhit~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			whorace~
+description		Race color in who command.~
+slot			whorace~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			whoclass~
+description		Class color in who command.~
+slot			whoclass~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			wholvl~
+description		Level color in who command.~
+slot			wholvl~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			roomtitle~
+description		Room titles color.~
+slot			roomtitle~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			score1~
+description		Score color 1.~
+slot			score1~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			score2~
+description		Score color 2.~
+slot			score2~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			score3~
+description		Score color 3.~
+slot			score3~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			score4~
+description		Score color 4.~
+slot			score4~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			wiznet~
+description		Wiznet color.~
+slot			wiznet~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			gtell1~
+description		Group tell command color.~
+slot			gtell1~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			gtell2~
+description		Group tell text color.~
+slot			gtell2~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			btalk~
+description		Buddy channel color.~
+slot			btalk~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			whosex~
+description		Sex color in who command.~
+slot			whosex~
+col_attr		 0 0 0
+flags			none~
+#END
+
+#COLOR
+name			automap~
+description		Automap in room descriptions.~
+slot			automap~
+col_attr		 1 31 0
+flags			none~
+#END
+
+#COLOR
+name			autoexits~
+description		Exits in room display color.~
+slot			autoexits~
+col_attr		 0 32 0
+flags			none~
+#END
+
+#COLOR
+name			mobiles~
+description		Color of characters in rooms.~
+slot			mobiles~
+col_attr		 0 33 0
+flags			none~
+#END
+
+#COLOR
+name			objects~
+description		Color of objects.~
+slot			objects~
+col_attr		 0 33 0
+flags			none~
+#END
+
+#COLOR
+name			socials~
+description		Color of socials.~
+slot			socials~
+col_attr		 9 9 0
+flags			none~
+#END
+
+#COLOR
+name			olcborder~
+description		Color of border in olc editor.~
+slot			olcborder~
+col_attr		 0 31 0
+flags			immortal~
+#END
+
+#COLOR
+name			olcvar~
+description		Color of variables in olc editor.~
+slot			olcvar~
+col_attr		 1 37 0
+flags			immortal~
+#END
+
+#COLOR
+name			olcval~
+description		Color of variable values in olc editor.~
+slot			olcval~
+col_attr		 0 37 0
+flags			immortal~
+#END
+#!

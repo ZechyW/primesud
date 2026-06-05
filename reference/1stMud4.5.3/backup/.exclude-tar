@@ -1,0 +1,11 @@
+1stMud*
+*.o
+*~
+*.out
+core*
+*.orig
+*.rej
+*.tmp*
+CVS
+*.log
+.\#*
