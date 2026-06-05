@@ -204,32 +204,51 @@ MOB_INIT = {
 #   "passive"   — passive combat skill; checked automatically each round
 #
 # beats: skill lag in pulses (PULSE_VIOLENCE = 12 = one full combat round)
+#
+# Improvement tuning (cf. 1stMud check_improve in skills.c):
+#   rating     — intrinsic difficulty of the skill (1stMud: per-class cost from
+#                skills.dat; here we use the minimum non-zero class value so a
+#                classless player trains at the rate of the most natural class).
+#                Higher = harder to improve. Multiplied into the improvement gate.
+#   multiplier — context in which the skill is trained (1stMud: passed by each
+#                check_improve call site in fight.c). Encodes how demanding the
+#                training opportunity is: 1 for always-succeeding active skills,
+#                5 for normal weapon/attack use, 6 for harder passive skills.
+#                Higher = fewer improvement rolls per use.
+#   Gate formula: chance = 10*INT_learn / (multiplier * rating * 4) + level
+#   Roll 1..1000 — improvement only proceeds when roll <= chance.
 SKILLS = {
     SK_ATTACK: {
         "name": "attack", "type": "internal",
     },
+    # Active skills: rating/multiplier kept low — player-triggered, always succeed
     SK_SLASH: {
         "name": "slash", "type": "active",
         "effect": "weapon_strike", "bonus_damroll": 5,
         "mp_cost": 4, "beats": 12,
+        "rating": 1, "multiplier": 1,
     },
     SK_HEAL: {
         "name": "heal", "type": "active",
         "effect": "heal", "power": 25,
         "mp_cost": 6, "beats": 12,
+        "rating": 1, "multiplier": 1,
     },
     SK_WEAKEN: {
         "name": "weaken", "type": "active",
         "effect": "debuff", "stat": "hitroll", "amount": 3, "turns": 2,
         "mp_cost": 5, "beats": 12,
+        "rating": 1, "multiplier": 1,
     },
-    SK_UNARMED: {"name": "unarmed",  "type": "weapon"},
-    SK_SWORD:   {"name": "sword",    "type": "weapon"},
-    SK_DAGGER:  {"name": "dagger",   "type": "weapon"},
-    SK_SECOND_ATTACK: {"name": "second attack",   "type": "passive"},
-    SK_THIRD_ATTACK:  {"name": "third attack",    "type": "passive"},
-    SK_DODGE:         {"name": "dodge",           "type": "passive"},
-    SK_PARRY:         {"name": "parry",           "type": "passive"},
-    SK_SHIELD_BLOCK:  {"name": "shield block",    "type": "passive"},
-    SK_ENHANCED_DMG:  {"name": "enhanced damage", "type": "passive"},
+    # Weapon proficiencies: multiplier=5 (cf. fight.c one_hit), rating from skills.dat minimum
+    SK_UNARMED: {"name": "unarmed",  "type": "weapon", "rating": 4, "multiplier": 5},
+    SK_SWORD:   {"name": "sword",    "type": "weapon", "rating": 2, "multiplier": 5},
+    SK_DAGGER:  {"name": "dagger",   "type": "weapon", "rating": 2, "multiplier": 5},
+    # Passive skills: multipliers and ratings from fight.c / skills.dat
+    SK_SECOND_ATTACK: {"name": "second attack",   "type": "passive", "rating": 3, "multiplier": 5},
+    SK_THIRD_ATTACK:  {"name": "third attack",    "type": "passive", "rating": 4, "multiplier": 6},
+    SK_DODGE:         {"name": "dodge",           "type": "passive", "rating": 4, "multiplier": 6},
+    SK_PARRY:         {"name": "parry",           "type": "passive", "rating": 4, "multiplier": 6},
+    SK_SHIELD_BLOCK:  {"name": "shield block",    "type": "passive", "rating": 2, "multiplier": 6},
+    SK_ENHANCED_DMG:  {"name": "enhanced damage", "type": "passive", "rating": 3, "multiplier": 6},
 }

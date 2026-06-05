@@ -1,6 +1,8 @@
 from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS
 from player import get_hitroll, get_damroll, get_AC, get_obj_list, get_char_room, save_char
-from combat import set_fighting, do_flee, use_skill
+from combat import set_fighting, stop_fighting, use_skill
+
+from urandom import randint
 
 
 # ── Commands (cf. 1stMud do_* in interp.c / fight.c) ─────────────────────────
@@ -22,12 +24,14 @@ def do_look(tr, player, args, room_state, mob_instances, _long=True):
 
 
 def do_move(tr, player, direction, room_state, mob_instances):
+    if player["fighting"] is not None:
+        tr.print("No way! You are fighting!")
+        return
     exits = ROOMS[player["room"]]["exits"]
     if direction not in exits:
         tr.print("No exit to the {}.".format(direction))
         return
     player["room"] = exits[direction]
-    tr.print("")
     do_look(tr, player, [], room_state, mob_instances, _long=False)
 
 
@@ -180,6 +184,27 @@ def do_kill(tr, player, args, room_state, mob_instances):
     set_fighting(tr, player, mob_id, mob_instances, room_state)
 
 
+def do_flee(tr, player, args, room_state, mob_instances):
+    if player["fighting"] is None:
+        tr.print("You're not fighting anyone.")
+        return
+    exits = list(ROOMS[player["room"]]["exits"].items())
+    if not exits:
+        tr.print("There is nowhere to run!")
+        return
+    # Try exits in random order (up to 6 attempts, cf. 1stMud)
+    attempts = list(range(len(exits)))
+    for _ in range(min(6, len(exits))):
+        idx = randint(0, len(attempts) - 1)
+        direction, dest = exits[attempts.pop(idx)]
+        player["room"] = dest
+        stop_fighting(player, mob_instances)
+        tr.print("You flee {}!".format(direction))
+        do_look(tr, player, [], room_state, mob_instances)
+        return
+    tr.print("There is nowhere to run!")
+
+
 def do_save(tr, player, args, room_state, mob_instances):
     ok = save_char(player, room_state, mob_instances)
     tr.print("Saved." if ok else "Save failed.")
@@ -255,6 +280,7 @@ def interpret(raw, tr, player, room_state, mob_instances):
     parts = raw.strip().lower().split()
     if not parts:
         return None
+    tr.print("")
     verb = parts[0]
     args = parts[1:]
 

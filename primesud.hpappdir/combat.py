@@ -11,7 +11,7 @@ from world import (
     STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP,
     THAC0_00, THAC0_32,
 )
-from player import get_hitroll, get_damroll, get_AC, show_status, show_prompt
+from player import get_hitroll, get_damroll, get_AC, show_prompt
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -122,11 +122,47 @@ def WaitState(ch, pulses):
 
 # ── Skill improvement ─────────────────────────────────────────────────────────
 
-def _try_improve(player, sk_vnum, chance=10):
-    """chance% probability of gaining 1 skill point (capped at 100)."""
+def _int_learn(int_stat):
+    # Approximates 1stMud int_app[INT].learn (range 1–9 over INT 3–25)
+    return max(1, int_stat // 3)
+
+
+def check_improve(tr, player, sk_vnum, success):
+    # cf. 1stMud check_improve (skills.c). rating/multiplier per skill in world.py.
+    # success=True: used correctly, chance of +1 (harder near 100).
+    # success=False: missed/failed, learn-from-mistakes, faster at low skill.
     current = player["learned"].get(sk_vnum, 0)
-    if 0 < current < 100 and randint(1, 100) <= chance:
-        player["learned"][sk_vnum] = current + 1
+    if current <= 0 or current >= 100:
+        return
+
+    sk        = SKILLS[sk_vnum]
+    sk_rating = sk.get("rating", 1)
+    sk_mult   = sk.get("multiplier", 1)
+
+    chance = 10 * _int_learn(player.get("int", 10))
+    chance //= max(1, sk_mult * sk_rating * 4)
+    chance += player["level"]
+
+    if randint(1, 1000) > chance:
+        return
+
+    sk_name = sk["name"]
+    if success:
+        inner = min(95, max(5, 100 - current))
+        if randint(1, 100) < inner:
+            player["learned"][sk_vnum] += 1
+            tr.print("You have become better at {}!".format(sk_name))
+            player["xp"] += 2 * sk_rating
+    else:
+        inner = min(30, max(5, current // 2))
+        if randint(1, 100) < inner:
+            gain = randint(1, 3)
+            player["learned"][sk_vnum] = min(100, current + gain)
+            tr.print("You learn from your mistakes, and your {} improves.".format(sk_name))
+            player["xp"] += 2 * sk_rating
+
+    if player["learned"].get(sk_vnum) == 100:
+        tr.print("You have mastered {}!".format(sk_name))
 
 
 # ── Defensive checks (player defending against mob attack) ────────────────────
@@ -136,7 +172,7 @@ def check_dodge(tr, player, mob_inst):
     if skill > 0 and randint(1, 100) <= skill // 2:
         tpl = MOB_TEMPLATES[mob_inst["tpl"]]
         tr.print("You dodge {}'s attack.".format(tpl["name"]))
-        _try_improve(player, SK_DODGE)
+        check_improve(tr, player, SK_DODGE, True)
         return True
     return False
 
@@ -148,7 +184,7 @@ def check_parry(tr, player, mob_inst):
     if skill > 0 and randint(1, 100) <= skill // 2:
         tpl = MOB_TEMPLATES[mob_inst["tpl"]]
         tr.print("You parry {}'s attack.".format(tpl["name"]))
-        _try_improve(player, SK_PARRY)
+        check_improve(tr, player, SK_PARRY, True)
         return True
     return False
 
@@ -161,7 +197,7 @@ def check_shield_block(tr, player, mob_inst):
     if skill > 0 and randint(1, 100) <= skill // 2:
         tpl = MOB_TEMPLATES[mob_inst["tpl"]]
         tr.print("You block {}'s attack.".format(tpl["name"]))
-        _try_improve(player, SK_SHIELD_BLOCK)
+        check_improve(tr, player, SK_SHIELD_BLOCK, True)
         return True
     return False
 
@@ -197,6 +233,7 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
     if roll == 0 or (roll != 19 and roll < thac0 - victim_ac):
         vs, _ = _damage_verb(0)
         tr.print("You {} {}.".format(vs, tpl["name"]))
+        check_improve(tr, player, sk_vnum, False)
         return 0
 
     # Damage
@@ -212,6 +249,7 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
     # Enhanced damage passive
     enh = player["learned"].get(SK_ENHANCED_DMG, 0)
     if enh > 0 and randint(1, 100) <= enh:
+        check_improve(tr, player, SK_ENHANCED_DMG, True)
         dam += 2 * dam * randint(1, 100) // 300
 
     # Damroll (scaled by weapon skill)
@@ -227,11 +265,11 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
     target_inst["hp"] = max(0, target_inst["hp"] - dam)
 
     weapon_name = wtpl["name"] if wtpl else "fist"
-    vs, _ = _damage_verb(dam)
+    vs, vp = _damage_verb(dam)
     punct = _damage_punct(dam)
-    tr.print("Your {} {} {}{} [{}]".format(weapon_name, vs, tpl["name"], punct, dam))
+    tr.print("Your {} {} {}{} [{}]".format(weapon_name, vp, tpl["name"], punct, dam))
 
-    _try_improve(player, sk_vnum)
+    check_improve(tr, player, sk_vnum, True)
     return dam
 
 
@@ -338,7 +376,7 @@ def _try_special_move(tr, player, target_inst):
     dam = max(1, randint(lo, hi))
     target_inst["hp"] = max(0, target_inst["hp"] - dam)
     tr.print("{} [{}]".format(move[-1].format(name), dam))
-    _try_improve(player, SK_UNARMED)
+    check_improve(tr, player, SK_UNARMED, True)
     return dam
 
 
@@ -368,7 +406,7 @@ def multi_hit(tr, player, target_inst):
     second = player["learned"].get(SK_SECOND_ATTACK, 0)
     if second > 0 and randint(1, 100) <= second // 2:
         one_hit(tr, player, target_inst)
-        _try_improve(player, SK_SECOND_ATTACK, chance=5)
+        check_improve(tr, player, SK_SECOND_ATTACK, True)
         if target_inst["hp"] == 0:
             return True
 
@@ -376,7 +414,7 @@ def multi_hit(tr, player, target_inst):
     third = player["learned"].get(SK_THIRD_ATTACK, 0)
     if third > 0 and randint(1, 100) <= third // 4:
         one_hit(tr, player, target_inst)
-        _try_improve(player, SK_THIRD_ATTACK, chance=6)
+        check_improve(tr, player, SK_THIRD_ATTACK, True)
         if target_inst["hp"] == 0:
             return True
 
@@ -397,7 +435,6 @@ def set_fighting(tr, player, mob_id, mob_instances, room_state):
                 tr.print("--- {} attacks! ---".format(tpl["name"]))
             else:
                 tr.print("--- {} joins the fight! ---".format(tpl["name"]))
-    tr.print("")
     player["fighting"] = mob_id
 
 
@@ -440,6 +477,7 @@ def use_skill(tr, player, sk_vnum, mob_instances, room_state):
     target    = mob_instances[target_id]
 
     _apply_skill(tr, player, sk, target)
+    check_improve(tr, player, sk_vnum, True)
     WaitState(player, sk.get("beats", 0))
 
     if target["hp"] == 0:
@@ -526,28 +564,6 @@ def violence_update(tr, player, mob_instances, room_state):
         tr.print("")
 
 
-# ── Flee ──────────────────────────────────────────────────────────────────────
-
-def do_flee(tr, player, args, room_state, mob_instances):
-    if player["fighting"] is None:
-        tr.print("You're not fighting anyone.")
-        return
-    exits = list(ROOMS[player["room"]]["exits"].items())
-    if not exits:
-        tr.print("There is nowhere to run!")
-        return
-    # Try exits in random order (up to 6 attempts, cf. 1stMud)
-    attempts = list(range(len(exits)))
-    for _ in range(min(6, len(exits))):
-        idx = randint(0, len(attempts) - 1)
-        direction, dest = exits[attempts.pop(idx)]
-        player["room"] = dest
-        stop_fighting(player, mob_instances)
-        tr.print("You flee {}!".format(direction))
-        tr.print("[ {} ]".format(ROOMS[dest]["name"]))
-        return
-    tr.print("There is nowhere to run!")
-
 
 # ── Death / Victory ───────────────────────────────────────────────────────────
 
@@ -583,7 +599,6 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state):
         inst["respawn_at"] = int(ppleval("Ticks")) + tpl["respawn"]
 
     tr.print("")
-    show_status(tr, player)
 
 
 def advance_level(tr, player):

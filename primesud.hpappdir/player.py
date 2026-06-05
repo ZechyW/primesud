@@ -156,19 +156,11 @@ def get_char_room(fragment, inst_ids, mob_instances):
 
 # ── Display ───────────────────────────────────────────────────────────────────
 
-def show_status(tr, player):
-    tr.set_status("HP:{}/{} MP:{}/{} L:{}".format(
-        player["hp"], player["hp_max"],
-        player["mp"], player["mp_max"],
-        player["level"],
-    ))
-
-
 def show_prompt(tr, player, buf):
-    prefix = "HP:{}/{} MP:{}/{} L:{}>".format(
+    prefix = "HP:{}/{} MP:{}/{} {}tnl>".format(
         player["hp"], player["hp_max"],
         player["mp"], player["mp_max"],
-        player["level"],
+        player["xp_next"] - player["xp"],
     )
     avail = max(1, tr.columns - 6 - len(prefix))
     tr.set_status(prefix + buf[-avail:])
