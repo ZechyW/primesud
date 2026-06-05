@@ -1,26 +1,48 @@
 from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS
 from player import get_hitroll, get_damroll, get_AC, get_obj_list, get_char_room, save_char
 from combat import set_fighting, stop_fighting, use_skill
+from automap import build_compact_lines, build_full_lines, COMPACT_W
 
 from urandom import randint
+
+
+def _wrap(text, width):
+    lines = []
+    while len(text) > width:
+        i = text.rfind(' ', 0, width)
+        if i <= 0:
+            i = width
+        lines.append(text[:i])
+        text = text[i:].lstrip(' ')
+    lines.append(text)
+    return lines
 
 
 # ── Commands (cf. 1stMud do_* in interp.c / fight.c) ─────────────────────────
 
 def do_look(tr, player, args, room_state, mob_instances, _long=True):
     room = ROOMS[player["room"]]
-    tr.print("[ {} ]".format(room["name"]))
-    tr.print(room["long"] if _long else room["short"])
     rs = room_state[player["room"]]
+    text_w = tr.columns - COMPACT_W - 1
+
+    text = ["[ {} ]".format(room["name"])]
+    text.extend(_wrap(room["long"] if _long else room["short"], text_w))
     exits = " ".join(room["exits"].keys()).upper()
-    tr.print("Exits: {}".format(exits) if exits else "Exits: none")
+    text.append("Exits: {}".format(exits) if exits else "Exits: none")
+    live_mobs = [i for i in rs["mobs"] if mob_instances[i]["state"] != "dead"]
     if rs["items"]:
         names = ", ".join(ITEM_TEMPLATES[v]["name"] for v in rs["items"])
-        tr.print("Items: {}".format(names))
-    live_mobs = [i for i in rs["mobs"] if mob_instances[i]["state"] != "dead"]
+        text.append("Items: {}".format(names))
     if live_mobs:
         names = ", ".join(MOB_TEMPLATES[mob_instances[i]["tpl"]]["name"] for i in live_mobs)
-        tr.print("Mobs:  {}".format(names))
+        text.append("Mobs:  {}".format(names))
+
+    map_lines = build_compact_lines(player, ROOMS)
+    n = max(len(map_lines), len(text))
+    for i in range(n):
+        ml = map_lines[i] if i < len(map_lines) else ' ' * COMPACT_W
+        tl = text[i] if i < len(text) else ''
+        tr.print(ml + ' ' + tl)
 
 
 def do_move(tr, player, direction, room_state, mob_instances):
@@ -205,6 +227,11 @@ def do_flee(tr, player, args, room_state, mob_instances):
     tr.print("There is nowhere to run!")
 
 
+def do_map(tr, player, args, room_state, mob_instances):
+    for line in build_full_lines(player, ROOMS):
+        tr.print(line)
+
+
 def do_save(tr, player, args, room_state, mob_instances):
     ok = save_char(player, room_state, mob_instances)
     tr.print("Saved." if ok else "Save failed.")
@@ -265,6 +292,7 @@ _CMD_TABLE = {
     "fight":   do_kill,
     "flee":    do_flee,
     "fl":      do_flee,
+    "map":     do_map,
     "save":    do_save,
     "h":       do_help,
     "help":    do_help,
