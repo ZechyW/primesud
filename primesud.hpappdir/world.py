@@ -161,11 +161,11 @@ for _r in range(5):
         if _r > 0: _ex["s"] = 1100 + (_r - 1) * 5 + _c
         if _c < 4: _ex["e"] = 1100 + _r * 5 + (_c + 1)
         if _c > 0: _ex["w"] = 1100 + _r * 5 + (_c - 1)
-        _ex["up"] = R_ARENA_SAFE
+        _ex["u"] = R_ARENA_SAFE
         if _r == 0 and _c == 2:
             _ex["s"] = R_TRAINING_ROOM
         if _r == 2 and _c == 2:
-            _ex["down"] = R_DUNGEON_C
+            _ex["d"] = R_DUNGEON_C
         _n = _arena_name(_r, _c)
         ROOMS[_v] = {"name": _n, "short": "You are in the Arena.", "long": _AL, "exits": _ex}
 
@@ -174,11 +174,11 @@ ROOMS[R_ARENA_SAFE] = {
     "short": "You are in a safe room, away from the Arena.",
     "long":  ("You are in a safe room, away from all the mean rabbits and snails "
               "of the Arena.  You can rest here, and go down to return to the Arena."),
-    "exits": {"down": R_ARENA_ENTRY},
+    "exits": {"d": R_ARENA_ENTRY},
 }
 
 for _v, _name, _ex in (
-    (R_DUNGEON_C,  "The Center of the Dungeon",        {"n": R_DUNGEON_N,  "e": R_DUNGEON_E,  "s": R_DUNGEON_S,  "w": R_DUNGEON_W,  "up": R_ARENA_CENTER}),
+    (R_DUNGEON_C,  "The Center of the Dungeon",        {"n": R_DUNGEON_N,  "e": R_DUNGEON_E,  "s": R_DUNGEON_S,  "w": R_DUNGEON_W,  "u": R_ARENA_CENTER}),
     (R_DUNGEON_NW, "The North West Corner of the Dungeon", {"e": R_DUNGEON_N,  "s": R_DUNGEON_W}),
     (R_DUNGEON_N,  "The North Wall of the Dungeon",    {"e": R_DUNGEON_NE, "s": R_DUNGEON_C,  "w": R_DUNGEON_NW}),
     (R_DUNGEON_NE, "The North East Corner of the Dungeon", {"s": R_DUNGEON_E,  "w": R_DUNGEON_N}),

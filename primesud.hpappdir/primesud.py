@@ -121,7 +121,7 @@ class Game:
             return "{} GB".format(n)
 
         tr.print("Memory free: {}".format(fmt_bytes(gc.mem_free())))
-        tr.print("-" *64)
+        # tr.print("-" *64)
         tr.print("")
 
     def game_loop(self):
