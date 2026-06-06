@@ -71,7 +71,7 @@ Find all tagged locations:
 Currently tagged:
 - `config.py` — `KEY_COMMANDS`, `NAV_KEYS` (HP Prime hardware key mappings)
 - `primesud.py` — nav-pad auto-submit branch in game loop
-- `commands.py` — `_DIGIT_SUBST`, `do_macro`
+- `commands.py` — `_MACRO_SUBST`, `do_macro`
 - `combat.py` — `_SPECIAL_MOVES` section, unarmed special-move block in `multi_hit`
 
 ## Working style

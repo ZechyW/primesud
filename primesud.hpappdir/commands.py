@@ -269,49 +269,48 @@ def do_quit(tr, player, args, room_state, mob_instances):
 # ── Direction map ─────────────────────────────────────────────────────────────
 
 _DIRECTION_MAP = {
-    "n": "n", "north": "n",
-    "s": "s", "south": "s",
-    "e": "e", "east": "e",
-    "w": "w", "west": "w",
+    "n": "n", "north":     "n",
+    "s": "s", "south":     "s",
+    "e": "e", "east":      "e",
+    "w": "w", "west":      "w",
+
     "ne": "ne", "northeast": "ne",
     "nw": "nw", "northwest": "nw",
     "se": "se", "southeast": "se",
     "sw": "sw", "southwest": "sw",
-    "up":   "up",
-    "down": "down", "dn": "down",
-    "7": "nw", "8": "n", "9": "ne",
-    "4": "w",             "6": "e",
-    "1": "sw", "2": "s",  "3": "se",
+
+    "u": "u", "up":   "u",
+    "d": "d", "down": "d",
 }
 
-_DIGIT_SUBST = {  # [PRIMESUD] user-configurable digit macros — no 1stMud equivalent
-    "1": "sw", "3": "se",
-    "7": "nw", "9": "ne",
+_MACRO_SUBST = {  # [PRIMESUD] user-configurable digit macros — no 1stMud equivalent
+    # Starts with some defaults
+    "1": "kill",
     "5": "look",
 }
 
 
 def do_macro(tr, player, args, room_state, mob_instances):  # [PRIMESUD]
     if not args:
-        if not _DIGIT_SUBST:
+        if not _MACRO_SUBST:
             tr.print("No macros set. Usage: macro <0-9> [command]")
         else:
-            for k in sorted(_DIGIT_SUBST):
-                tr.print("  {} : {}".format(k, _DIGIT_SUBST[k]))
+            for k in sorted(_MACRO_SUBST):
+                tr.print("  {} : {}".format(k, _MACRO_SUBST[k]))
         return None
     key = args[0]
     if len(key) != 1 or key not in "0123456789":
         tr.print("Key must be a single digit 0-9.")
         return None
     if len(args) == 1:
-        if key in _DIGIT_SUBST:
-            del _DIGIT_SUBST[key]
+        if key in _MACRO_SUBST:
+            del _MACRO_SUBST[key]
             tr.print("Macro {} cleared.".format(key))
         else:
             tr.print("No macro on {}.".format(key))
     else:
         cmd = " ".join(args[1:])
-        _DIGIT_SUBST[key] = cmd
+        _MACRO_SUBST[key] = cmd
         tr.print("{} => {}".format(key, cmd))
     return None
 
@@ -330,17 +329,11 @@ _CMD_TABLE = {
     "get":     do_get,
     "take":    do_get,
     "drop":    do_drop,
-    "equip":   do_wear,
     "wear":    do_wear,
-    "unequip": do_remove,
     "remove":  do_remove,
-    "u":       do_quaff,
-    "use":     do_quaff,
     "quaff":   do_quaff,
     "k":       do_kill,
     "kill":    do_kill,
-    "f":       do_kill,
-    "fight":   do_kill,
     "flee":    do_flee,
     "fl":      do_flee,
     "macro":   do_macro,

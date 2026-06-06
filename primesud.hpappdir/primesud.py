@@ -20,7 +20,7 @@ from player import (
     load_char as _load_char,
     _roll_hp,
 )
-from commands import interpret, do_look, _DIGIT_SUBST
+from commands import interpret, do_look, _MACRO_SUBST
 
 
 # ── World tick ────────────────────────────────────────────────────────────────
@@ -83,10 +83,10 @@ class Game:
     def load_game(self):
         self.player = create_char()
         self.room_state, self.mob_instances = reset_area()
-        return _load_char(self.player, self.room_state, self.mob_instances, _DIGIT_SUBST)
+        return _load_char(self.player, self.room_state, self.mob_instances, _MACRO_SUBST)
 
     def save_game(self):
-        if not _save_char(self.player, self.room_state, self.mob_instances, _DIGIT_SUBST):
+        if not _save_char(self.player, self.room_state, self.mob_instances, _MACRO_SUBST):
             self.tr.print("Save failed.")
         else:
             self.tr.print("Saved.")
@@ -145,7 +145,7 @@ class Game:
                         self.input_buf = char
                         show_prompt(tr, player, self.input_buf)
                 elif char not in ("\L", "\R", "\SR"):
-                    subst = _DIGIT_SUBST.get(char)
+                    subst = _MACRO_SUBST.get(char)
                     if subst is not None and not self.input_buf:
                         self.input_buf = subst
                     else:

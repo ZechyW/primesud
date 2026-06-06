@@ -33,11 +33,15 @@ SAVE_FILE = "primesud.sav"
 # Nav keys auto-submit immediately in the game loop; others populate the buffer.
 # Adjust indices here if they differ on a specific hardware revision.
 KEY_COMMANDS = {  # [PRIMESUD]
-    3:  "help",  # Help key
-    2:  "n",     # Up    → north
-    7:  "w",     # Left  → west
-    8:  "e",     # Right → east
-    12: "s",     # Down  → south
-    14: "macro", # Menu key
+    1:  "nw",  # ↖ NW
+    2:  "n",   # ↑ N    (d-pad Up)
+    3:  "ne",  # ↗ NE
+    6:  "u",   # up
+    7:  "w",   # ← W    (d-pad Left)
+    8:  "e",   # → E    (d-pad Right)
+    9:  "d",   # down
+    11: "sw",  # ↙ SW
+    12: "s",   # ↓ S    (d-pad Down)
+    13: "se",  # ↘ SE
 }
-NAV_KEYS = {"n", "s", "e", "w"}  # [PRIMESUD] subset of KEY_COMMANDS that auto-submit
+NAV_KEYS = {"n", "s", "e", "w", "ne", "nw", "se", "sw", "u", "d"}  # [PRIMESUD] all KEY_COMMANDS directions auto-submit
