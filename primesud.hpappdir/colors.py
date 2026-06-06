@@ -26,6 +26,8 @@ _RESET_CODES = ('x', 'X')
 
 def strip_colors(text):
     """Return text with all {X color codes removed."""
+    if COLOR_CODE not in text:
+        return text
     out = []
     i = 0
     n = len(text)
@@ -91,6 +93,9 @@ def colored_print(text, tr_print, set_color, reset_color):
     Unknown codes are silently skipped.
     Always leaves the font in the default (reset) state on return.
     """
+    if COLOR_CODE not in text:
+        tr_print(text, end='')
+        return
     i = 0
     n = len(text)
     buf = []

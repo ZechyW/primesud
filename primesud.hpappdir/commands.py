@@ -22,6 +22,8 @@ def _wrap(text, width):
     return lines
 
 
+_EXIT_ORDER = ("n", "ne", "e", "se", "s", "sw", "w", "nw", "u", "d")
+
 # ── Commands (cf. 1stMud do_* in interp.c / fight.c) ─────────────────────────
 
 def do_look(tr, player, args, room_state, mob_instances, _long=True):
@@ -32,7 +34,7 @@ def do_look(tr, player, args, room_state, mob_instances, _long=True):
     text = ["[ {} ]".format(room["name"])]
     text.append("")
     text.extend(_wrap(room["long"] if _long else room["short"], text_w))
-    exits = " ".join(room["exits"].keys()).upper()
+    exits = " ".join(d for d in _EXIT_ORDER if d in room["exits"]).upper()
     text.append("[Exits: {}]".format(exits) if exits else "[Exits: none]")
     text.append("")
     live_mobs = [i for i in rs["mobs"] if mob_instances[i]["state"] != "dead"]
