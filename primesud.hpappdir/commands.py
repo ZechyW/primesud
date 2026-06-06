@@ -22,7 +22,7 @@ def _wrap(text, width):
     return lines
 
 
-_EXIT_ORDER = ("n", "ne", "e", "se", "s", "sw", "w", "nw", "u", "d")
+_EXIT_ORDER = ("n", "e", "s", "w", "u", "d")
 
 # ── Commands (cf. 1stMud do_* in interp.c / fight.c) ─────────────────────────
 
@@ -218,7 +218,7 @@ def do_skills(tr, player, args, room_state, mob_instances):
 
 
 def do_help(tr, player, args, room_state, mob_instances):
-    tr.print("Move: 7 8 9 / 4 5 6 / 1 2 3 (or n/s/e/w/ne/...)")
+    tr.print("Move: 2/8=n/s  4/6=w/e  7/9=u/d (or n/s/e/w/u/d)")
     tr.print("5=look  i=inv  equip  unequip  u=use  st=stats")
     tr.print("sk=skills  l=look  k/kill=fight  flee  save  q=quit")
 
@@ -284,11 +284,6 @@ _DIRECTION_MAP = {
     "s": "s", "south":     "s",
     "e": "e", "east":      "e",
     "w": "w", "west":      "w",
-
-    "ne": "ne", "northeast": "ne",
-    "nw": "nw", "northwest": "nw",
-    "se": "se", "southeast": "se",
-    "sw": "sw", "southwest": "sw",
 
     "u": "u", "up":   "u",
     "d": "d", "down": "d",

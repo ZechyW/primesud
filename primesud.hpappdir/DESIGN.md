@@ -10,6 +10,7 @@ Reference this before porting a new mechanic to avoid re-litigating settled deci
 
 | Feature | Decision | Reason |
 |---|---|---|
+| Intercardinal directions (NE/NW/SE/SW) | **Removed** | 1stMud has no diagonal movement (`MAX_DIR = 6`: N E S W U D). Intercardinals were briefly added as a d-pad experiment but no world areas use them; removed for simplicity |
 | Move / MV | **Not ported** | No gameplay value in a single-player calculator game; MV drain/regen omitted entirely |
 | Race system | **Deferred** | All characters use human baseline stats (13 flat, max 18). Add when content justifies it |
 | Class system | **Deferred** | Classless for now; THAC0 curve uses a balanced midpoint. Add when skill trees justify it |

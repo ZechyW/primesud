@@ -39,16 +39,12 @@ SAVE_FILE = "primesud.sav"
 # auto_submit=True: execute immediately; False: load into input buffer.
 # Adjust indices here if they differ on a specific hardware revision.
 KEY_COMMANDS = {  # [PRIMESUD]
-    1:  ("nw", True),   # ↖ NW
     2:  ("n",  True),   # ↑ N    (d-pad Up)
-    3:  ("ne", True),   # ↗ NE
     6:  ("u",  True),   # up
     7:  ("w",  True),   # ← W    (d-pad Left)
     8:  ("e",  True),   # → E    (d-pad Right)
     9:  ("d",  True),   # down
-    11: ("sw", True),   # ↙ SW
     12: ("s",  True),   # ↓ S    (d-pad Down)
-    13: ("se", True),   # ↘ SE
 }
 
 # ── Default digit macros [PRIMESUD] ───────────────────────────────────────────
