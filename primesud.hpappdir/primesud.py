@@ -22,6 +22,7 @@ from player import (
     _roll_hp,
 )
 from commands import interpret, do_look, _MACRO_SUBST
+from colors import color_wrap, colored_print, strip_colors
 
 
 # ── World tick ────────────────────────────────────────────────────────────────
@@ -52,7 +53,6 @@ class Game:
     """Holds game state and drives the main loop."""
 
     def __init__(self):
-        # std5x10green: 64 cols x 24 rows (excluding status bar)
         self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font=FONT)
         self._font_w = grobw(FONT_GROB)
         self._font_h = grobh(FONT_GROB)
@@ -64,20 +64,13 @@ class Game:
         _cols = TERMINAL_COLS
         def _wrapped_print(*args, sep=' ', end='\n'):
             text = sep.join(str(a) for a in args)
-            lines = []
-            while len(text) > _cols:
-                i = text.rfind(' ', 0, _cols + 1)
-                if i <= 0:
-                    i = _cols
-                lines.append(text[:i])
-                text = text[i:].lstrip(' ')
-            lines.append(text)
+            lines = color_wrap(text, _cols)
             for idx, line in enumerate(lines):
-                _orig_print(line, end='')
+                colored_print(line, _orig_print, self.set_color, self.reset_color)
                 is_last = (idx == len(lines) - 1)
                 # If tml auto-wrapped (non-empty line landed in the last col),
                 # cursor_x resets to 0 — the explicit newline would double-advance.
-                auto_wrapped = bool(line) and self.tr.cursor_x == 0
+                auto_wrapped = bool(strip_colors(line)) and self.tr.cursor_x == 0
                 if not is_last and not auto_wrapped:
                     _orig_print('', end='\n')
                 elif is_last and end and not auto_wrapped:
@@ -117,11 +110,7 @@ class Game:
     def run_title(self):
         tr = self.tr
         tr.clear()
-        tr.print("=== PRIME", end='')
-        self.set_color(0xFF0000)
-        tr.print("SUD", end='')
-        self.reset_color()
-        tr.print(" ===")
+        tr.print("=== PRIME{RSUD{x ===")
         tr.print("A single-user dungeon.")
 
         def fmt_bytes(n):
@@ -132,6 +121,7 @@ class Game:
             return "{} GB".format(n)
 
         tr.print("Memory free: {}".format(fmt_bytes(gc.mem_free())))
+        tr.print("-" *64)
         tr.print("")
 
     def game_loop(self):

@@ -12,7 +12,7 @@ The game runs entirely in a terminal-style text UI rendered directly on the calc
 primesud.hpappdir/
 ├── primesud.py          # Main game entry point — PrimeSud + Game classes
 ├── tml.py               # Text Mode Layer library (reusable, treat as stable)
-├── std5x10green.font    # Custom bitmap font used by tml. 64 cols x 24 rows (excluding status bar)
+├── std5x10.font    # Custom bitmap font used by tml. 64 cols x 24 rows (excluding status bar)
 ├── DESIGN.md            # Intentional design decisions and 1stMud deviations — read before porting
 ├── primesud.hpapp       # Binary HP Prime app package
 ├── primesud.hpappprgm   # Binary program metadata
@@ -25,7 +25,7 @@ primesud.hpappdir/
 - **Language:** Python — but HP Prime's restricted MicroPython-like subset, not standard CPython
 - **Available modules:** `hpprime`, `uio`, `cas`, `math`, `utime` — ask the user if unsure about others.
 - **No package manager.** There is no pip and no ability to bring in pypi external dependencies in general.
-- **Font:** `std5x10green.font` — a PNG-based bitmap font with a custom trailer byte encoding character dimensions
+- **Font:** `std5x10.font` — a PNG-based bitmap font with a custom trailer byte encoding character dimensions
 
 ## Architecture
 

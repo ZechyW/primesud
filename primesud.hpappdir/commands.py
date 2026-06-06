@@ -320,6 +320,9 @@ def _macro_row(keys):
     for c in cells:
         while len(c) < height:
             c.append(" " * _CELL_W)
+    for ki, key in enumerate(keys):
+        s = cells[ki][0]
+        cells[ki][0] = s[0] + "{R" + key + "{x" + s[2:]
     return ["|{}|{}|{}|".format(cells[0][i], cells[1][i], cells[2][i])
             for i in range(height)]
 
@@ -332,7 +335,10 @@ def do_macro(tr, player, args, room_state, mob_instances):  # [PRIMESUD]
         # bottom row: 0 centred in the middle column
         blank = " " * _CELL_W
         tr.print(_MACRO_SEP)
-        for mid in _macro_cell("0"):
+        cell0 = _macro_cell("0")
+        s = cell0[0]
+        cell0[0] = s[0] + "{R0{x" + s[2:]
+        for mid in cell0:
             tr.print("|{}|{}|{}|".format(blank, mid, blank))
         tr.print(_MACRO_SEP)
         return None
