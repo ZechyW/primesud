@@ -7,7 +7,8 @@ from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     MS_PER_PULSE, PULSE_VIOLENCE, PULSE_TICK,
                     AUTOSAVE_TICKS, HP_REGEN_NUM, HP_REGEN_DENOM,
                     MP_REGEN_NUM, MP_REGEN_DENOM,
-                    KEY_COMMANDS as _KEY_COMMANDS, NAV_KEYS as _NAV_KEYS)
+                    KEY_COMMANDS as _KEY_COMMANDS, NAV_KEYS as _NAV_KEYS,
+                    TERMINAL_COLS)
 from combat import violence_update
 from world import MOB_TEMPLATES
 from player import (
@@ -54,21 +55,27 @@ class Game:
         # std5x10green: 64 cols x 24 rows (excluding status bar), green colour
         self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font="std5x10green")
         _orig_print = self.tr.print
-        _cols = self.tr.columns
+        _cols = TERMINAL_COLS
         def _wrapped_print(*args, sep=' ', end='\n'):
             text = sep.join(str(a) for a in args)
             lines = []
-            # Use >= not >: tml auto-advances the row the moment cursor_x reaches
-            # _cols, so a line of exactly _cols chars triggers that advance AND
-            # then the \n advances again, producing a blank row.
-            while len(text) >= _cols:
-                i = text.rfind(' ', 0, _cols)
+            while len(text) > _cols:
+                i = text.rfind(' ', 0, _cols + 1)
                 if i <= 0:
-                    i = _cols - 1
+                    i = _cols
                 lines.append(text[:i])
                 text = text[i:].lstrip(' ')
             lines.append(text)
-            _orig_print('\n'.join(lines), end=end)
+            for idx, line in enumerate(lines):
+                _orig_print(line, end='')
+                is_last = (idx == len(lines) - 1)
+                # If tml auto-wrapped (non-empty line landed in the last col),
+                # cursor_x resets to 0 — the explicit newline would double-advance.
+                auto_wrapped = bool(line) and self.tr.cursor_x == 0
+                if not is_last and not auto_wrapped:
+                    _orig_print('', end='\n')
+                elif is_last and end and not auto_wrapped:
+                    _orig_print('', end=end)
         self.tr.print = _wrapped_print
         self.input_buf = ""
         self.player = None

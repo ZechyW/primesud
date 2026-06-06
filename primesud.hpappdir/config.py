@@ -1,7 +1,9 @@
 # ── Display ───────────────────────────────────────────────────────────────────
-DARK_MODE = True
-BG_COLOR  = 0x3000
-TAB_SIZE  = 8
+DARK_MODE     = True
+BG_COLOR      = 0x3000
+TAB_SIZE      = 8
+TERMINAL_COLS = 64   # character columns (std5x10green font, 320 px wide)
+TERMINAL_ROWS = 24   # character rows    (std5x10green font, 240 px high, excl. status bar)
 
 # ── Timing — pulse system (1stMud convention) ─────────────────────────────────
 PULSE_PER_SECOND = 4                          # base pulse rate
@@ -10,7 +12,7 @@ PULSE_VIOLENCE   = 3  * PULSE_PER_SECOND      # 12  pulses — combat round (3 s
 PULSE_TICK       = 30 * PULSE_PER_SECOND      # 120 pulses — world tick (30 s)
 PULSE_AREA       = 120 * PULSE_PER_SECOND     # 480 pulses — area reset (2 min)
 POLL_MS          = 10                          # keyboard polling interval (ms)
-AUTOSAVE_TICKS   = 2                           # autosave every N world ticks (2 × 30 s = 60 s)
+AUTOSAVE_TICKS   = 4                           # autosave every N world ticks (4 × 30 s = 120 s)
 DEATH_MSG_DELAY  = 1                           # seconds between death flavour lines
 
 # ── Regeneration (scaled for 30 s world tick) ─────────────────────────────────
@@ -45,3 +47,12 @@ KEY_COMMANDS = {  # [PRIMESUD]
     13: "se",  # ↘ SE
 }
 NAV_KEYS = {"n", "s", "e", "w", "ne", "nw", "se", "sw", "u", "d"}  # [PRIMESUD] all KEY_COMMANDS directions auto-submit
+
+# ── Default digit macros [PRIMESUD] ───────────────────────────────────────────
+# Maps digit key "0"-"9" → command string. Edit to taste.
+DEFAULT_MACROS = {  # [PRIMESUD]
+    "7": "kill",
+    "5": "look",
+    "1": "score",
+    "0": "macro"
+}

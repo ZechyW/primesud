@@ -3,7 +3,7 @@ from cas import get_key
 from uio import FileIO
 from urandom import randint
 
-from config import SAVE_FILE, POLL_MS
+from config import SAVE_FILE, POLL_MS, TERMINAL_COLS
 from world import (
     ROOM_INIT, ITEM_TEMPLATES, MOB_TEMPLATES, MOB_INIT,
     R_VILLAGE_SQUARE,
@@ -176,7 +176,7 @@ def show_prompt(tr, player, buf):
         player["mp"], player["mp_max"],
         player["xp_next"] - player["xp"],
     )
-    avail = max(1, tr.columns - 6 - len(prefix))
+    avail = max(1, TERMINAL_COLS - 6 - len(prefix))
     tr.set_status(prefix + buf[-avail:])
 
 
@@ -319,9 +319,6 @@ def _poll_char(tr, key_commands=None):
                 else:
                     tr.is_shift = True
                 tr._refresh_indicators()
-            elif bit == 1:  # Symb
-                tr.symb_hold = True
-                tr.symb_index = 0
             else:
                 if key_commands and bit in key_commands:
                     return key_commands[bit]
@@ -333,7 +330,7 @@ def _poll_char(tr, key_commands=None):
                 char = tr.key_map.get(bit, [None, None, None, None])[mod_idx]
                 if not tr.alpha_lock:
                     tr.is_alpha = False
-                if tr.is_shift and not tr.symb_hold:
+                if tr.is_shift:
                     tr.is_shift = False
                 tr._refresh_indicators()
                 return char
@@ -343,9 +340,6 @@ def _poll_char(tr, key_commands=None):
                 tr._refresh_indicators()
             elif bit == 41:
                 tr.shift_hold = False
-                tr._refresh_indicators()
-            elif bit == 1:
-                tr.symb_hold = False
                 tr._refresh_indicators()
     return None
 

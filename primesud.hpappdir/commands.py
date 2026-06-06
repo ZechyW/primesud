@@ -2,6 +2,7 @@ from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS
 from player import get_hitroll, get_damroll, get_AC, get_obj_list, get_char_room, save_char
 from combat import set_fighting, stop_fighting, use_skill, _get_thac0
 from automap import build_compact_lines, build_full_lines, COMPACT_W
+from config import DEFAULT_MACROS, TERMINAL_COLS
 
 from urandom import randint
 
@@ -26,7 +27,7 @@ def _wrap(text, width):
 def do_look(tr, player, args, room_state, mob_instances, _long=True):
     room = ROOMS[player["room"]]
     rs = room_state[player["room"]]
-    text_w = tr.columns - COMPACT_W - 1
+    text_w = TERMINAL_COLS - COMPACT_W - 1
 
     text = ["[ {} ]".format(room["name"])]
     text.append("")
@@ -158,10 +159,18 @@ def do_quaff(tr, player, args, room_state, mob_instances):
             tpl["name"], gained, player["hp"], player["hp_max"]))
 
 
+_SCORE_INNER     = TERMINAL_COLS - 2
+_SCORE_LEFT      = (TERMINAL_COLS - 7) // 2
+_SCORE_RIGHT     = TERMINAL_COLS - 7 - _SCORE_LEFT
+_SCORE_SEP_OUTER = "+" + "-" * _SCORE_INNER + "+"
+_SCORE_SEP_INNER = "+" + "-" * (_SCORE_LEFT + 2) + "+" + "-" * (_SCORE_RIGHT + 2) + "+"
+_SCORE_ROW_FMT   = "| {{:<{}}} | {{:<{}}} |".format(_SCORE_LEFT, _SCORE_RIGHT)
+_SCORE_NAME_FMT  = "|{{:^{}}}|".format(_SCORE_INNER)
+
 def do_score(tr, player, args, room_state, mob_instances):
-    # 64-col two-column box mirroring 1stMud dlm_score layout (see DESIGN.md)
+    # two-column box mirroring 1stMud dlm_score layout (see DESIGN.md)
     def _row(l, r):
-        return '| {:<28} | {:<29} |'.format(l, r)
+        return _SCORE_ROW_FMT.format(l, r)
     def _stat(name, val):
         # [perm/curr] — identical until affect system is added
         return '{:<13}: [{:2d}/{:2d}]'.format(name, val, val)
@@ -171,15 +180,15 @@ def do_score(tr, player, args, room_state, mob_instances):
     p = player
     thac0 = _get_thac0(p['level'])
     lines = [
-        '+--------------------------------------------------------------+',
-        '|{:^62}|'.format(p.get('name', '???')),
-        '+------------------------------+-------------------------------+',
+        _SCORE_SEP_OUTER,
+        _SCORE_NAME_FMT.format(p.get('name', '???')),
+        _SCORE_SEP_INNER,
         _row(_stat('Strength',     p['str']), _val('Level',     p['level'])),
         _row(_stat('Intelligence', p['int']), _val('Thac0',     thac0)),
         _row(_stat('Wisdom',       p['wis']), _val('Practices', p.get('practice', 0))),
         _row(_stat('Dexterity',    p['dex']), _val('Trains',    p.get('train', 0))),
         _row(_stat('Constitution', p['con']), ''),
-        '+------------------------------+-------------------------------+',
+        _SCORE_SEP_INNER,
         _row('Hit    : [{:5d}/{:5d}]'.format(p['hp'],  p['hp_max']),
              _val('Hitroll', get_hitroll(p))),
         _row('Mana   : [{:5d}/{:5d}]'.format(p['mp'],  p['mp_max']),
@@ -187,7 +196,7 @@ def do_score(tr, player, args, room_state, mob_instances):
         _row('Exp    : [{:>10} ]'.format(p['xp']),
              _val('AC',      get_AC(p))),
         _row('To Lvl : [{:>10} ]'.format(p['xp_next'] - p['xp']), ''),
-        '+--------------------------------------------------------------+',
+        _SCORE_SEP_OUTER,
     ]
     for line in lines:
         tr.print(line)
@@ -283,20 +292,49 @@ _DIRECTION_MAP = {
     "d": "d", "down": "d",
 }
 
-_MACRO_SUBST = {  # [PRIMESUD] user-configurable digit macros — no 1stMud equivalent
-    # Starts with some defaults
-    "1": "kill",
-    "5": "look",
-}
+_MACRO_SUBST = dict(DEFAULT_MACROS)  # [PRIMESUD] user-configurable digit macros — no 1stMud equivalent
 
+_MACRO_ROWS = [("7", "8", "9"), ("4", "5", "6"), ("1", "2", "3")]
+_CELL_W     = (TERMINAL_COLS - 4) // 3  # 4 for the four | separators
+_CMD_INDENT = 4                          # len(" K: ")
+_MACRO_SEP  = "+" + ("-" * _CELL_W + "+") * 3
+
+def _macro_cell(key):
+    def pad(s):
+        return s + " " * (_CELL_W - len(s))
+    cmd = _MACRO_SUBST.get(key)
+    if cmd is None:
+        return [pad(" {}:".format(key))]
+    content_w = _CELL_W - _CMD_INDENT
+    lines = []
+    rest = cmd
+    while rest:
+        prefix = " {}: ".format(key) if not lines else " " * _CMD_INDENT
+        lines.append(pad(prefix + rest[:content_w]))
+        rest = rest[content_w:]
+    return lines
+
+def _macro_row(keys):
+    cells = [_macro_cell(k) for k in keys]
+    height = max(len(c) for c in cells)
+    for c in cells:
+        while len(c) < height:
+            c.append(" " * _CELL_W)
+    return ["|{}|{}|{}|".format(cells[0][i], cells[1][i], cells[2][i])
+            for i in range(height)]
 
 def do_macro(tr, player, args, room_state, mob_instances):  # [PRIMESUD]
     if not args:
-        if not _MACRO_SUBST:
-            tr.print("No macros set. Usage: macro <0-9> [command]")
-        else:
-            for k in sorted(_MACRO_SUBST):
-                tr.print("  {} : {}".format(k, _MACRO_SUBST[k]))
+        for keys in _MACRO_ROWS:
+            tr.print(_MACRO_SEP)
+            for line in _macro_row(keys):
+                tr.print(line)
+        # bottom row: 0 centred in the middle column
+        blank = " " * _CELL_W
+        tr.print(_MACRO_SEP)
+        for mid in _macro_cell("0"):
+            tr.print("|{}|{}|{}|".format(blank, mid, blank))
+        tr.print(_MACRO_SEP)
         return None
     key = args[0]
     if len(key) != 1 or key not in "0123456789":
