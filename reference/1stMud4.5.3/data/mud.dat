@@ -1,0 +1,51 @@
+
+#MUD
+name			1stMud~
+unique_id		0
+bind_ip_address		0.0.0.0~
+default_port		4000
+webport_offset		1
+login_prompt		By What Name Shall You Be Known? ~
+min_save_lvl		2
+mud_flags		+n
+pulsepersec		4
+arena			0
+share_value		100
+rand_factor		2
+weath_unit		10
+max_vector		30
+climate_factor		2
+last_copyover		0
+stats.logins		0
+stats.quests		0
+stats.qcomplete		0
+stats.levels		0
+stats.newbies		0
+stats.deletions		0
+stats.mobdeaths		0
+stats.auctions		0
+stats.aucsold		0
+stats.pdied		0
+stats.pkill		0
+stats.remorts		0
+stats.wars		0
+stats.gquests		0
+stats.connections	0
+stats.online		0
+stats.web_requests	0
+stats.chan_msgs		0
+stats.lastupdate	0
+longest_uptime		0
+stats.version		0
+bonus.mod		0
+bonus.time		-1
+bonus.status		0
+bonus.msg		~
+max_points		40
+group_lvl_limit		7
+pcdam			100
+mobdam			100
+disabled_signals	+n
+cmdline_options		+n
+#END
+#!

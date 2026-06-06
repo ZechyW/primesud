@@ -1,0 +1,13 @@
+beginhelp:
+	@echo "============================================================================="
+	@echo " Change into the config directory and run ./configure to create a Makefile"
+	@echo ""
+	@echo " The setup.sh script will rebuild the ./configure script using the *.in"
+	@echo " files should you need to. You must have autoconf2.53 or greater installed."
+	@echo " For any reason the configure script is unable to build a Makefile you can"
+	@echo " use the Makefile.fail file as a default one."
+	@echo ""
+	@echo " Notes: The Makefile(s) generated require GNU make. This may mean on some"
+	@echo "       systems like BSD, you will most likely need to use gmake instead "
+	@echo "       of make to compile the code."
+	@echo "============================================================================="

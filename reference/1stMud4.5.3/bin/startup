@@ -1,0 +1,44 @@
+#! /bin/csh -f
+
+# Starting directory.
+set bin = ../bin
+
+# Our program.
+set binary = $bin/1stMud
+
+# Set the port number.
+set port = 4000
+
+# A single log file.
+set logfile = ../log/$0.log
+
+# Shutdown file produced.
+set shutdown = ../data/shutdown.txt
+
+# Change to bin directory.
+cd $bin
+
+# Set limits.
+nohup
+nice
+
+limit coredumpsize unlimited
+limit stack 1024k
+
+if ( -e $shutdown ) rm -f $shutdown
+
+while ( 1 )
+    # Record starting time
+    date > $logfile
+
+    # Run the program.
+    $binary --startup-script $1 $2 $3 $4 $5 $6 $7 $8 $9 > $logfile 2>&1 &
+
+    # Restart, giving old connections a chance to die.
+    if ( -e $shutdown ) then
+	rm -f $shutdown
+	exit 0
+    endif
+
+    sleep 10
+end

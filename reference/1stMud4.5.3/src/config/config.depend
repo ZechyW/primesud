@@ -1,0 +1,39 @@
+.IGNORE: resetconfig
+.PHONY: resetconfig
+resetconfig: indent clean
+	@rm -f $(CONFIG)/config.cache
+	@rm -f $(CONFIG)/config.log
+	@rm -f $(CONFIG)/config.status
+	@rm -rf $(CONFIG)/autom4te.cache
+	@rm -f $(CONFIG)/stamp-h*
+	@rm -f $(HDIR)/config.h
+	@rm -f Makefile
+	@cp -f $(CONFIG)/Makefile.orig Makefile
+	@rm -f .depend
+	@rm -f $(EXE)*
+	@rm -f $(BIN)/$(EXE)*
+	@rm -f ../data/shutdown.txt
+	@rm -f ../data/plr_index.dat
+	@rm -f ../data/i3/*.hist ../data/i3/i3.mudlist ../data/i3/i3.chanlist
+	@rm -f ../log/*.log
+	@echo "$(PACKAGE) configuration reset."
+
+$(CONFIG)/configure: $(CONFIG)/configure.in
+	@cd $(CONFIG); autoconf
+
+$(CONFIG)/config.h.in: $(CONFIG)/stamp-h.in
+
+$(CONFIG)/stamp-h.in: $(CONFIG)/configure.in
+	@cd $(CONFIG); autoheader
+	@date > $(CONFIG)/stamp-h.in
+
+$(HDIR)/config.h: $(CONFIG)/stamp-h
+
+$(CONFIG)/stamp-h: $(CONFIG)/config.h.in $(CONFIG)/config.status
+	@cd $(CONFIG); ./config.status
+
+Makefile: $(CONFIG)/Makefile.in $(CONFIG)/config.depend $(CONFIG)/config.status
+	@cd $(CONFIG); ./config.status
+
+$(CONFIG)/config.status: $(CONFIG)/configure
+	@cd $(CONFIG); ./config.status --recheck

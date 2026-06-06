@@ -1,0 +1,163 @@
+MAKEDEP  = @MAKEDEP_PROG@
+INDENT	 = @INDENT_PROG@
+TOUCH	 = @TOUCH_PROG@
+CTAGS	 = @CTAGS_PROG@
+LINT	 = @LINT_PROG@
+CVS	 = @CVS_PROG@
+INSTALL  = @INSTALL@
+PACKAGE  = @PACKAGE_STRING@
+CC       = @CXX@
+PROF     = @CXXFLAGS@
+WARN     = -Wall -Werror
+LIBS     = @LIBS@
+SRC	 = @srcdir@
+VPATH    = @srcdir@
+CONFIG	 = config
+BIN	 = ../bin
+ifdef CYGWIN
+EXE	 = @PACKAGE_NAME@.exe
+else
+EXE	 = @PACKAGE_NAME@
+endif
+HDIR	 = h
+ODIR     = o
+
+D_FLAGS = @DEFS@
+C_FLAGS = $(WARN) $(PROF) $(D_FLAGS) -I$(HDIR)
+L_FLAGS = $(PROF) $(LIBS)
+
+C_FILES   := $(wildcard *.c)
+O_FILES   := $(patsubst %.c, $(ODIR)/%.o, $(C_FILES))
+H_FILES	  := $(wildcard $(HDIR)/*.h)
+SRCS	  := $(C_FILES) $(H_FILES)
+
+.PHONY: default
+default:
+	@echo -e "\t$(EXE)"
+	@echo -e "\tall"
+	@echo -e "\tinstall"
+	@echo -e "\tclean"
+	@echo -e "\tdepend"
+	@if test  "$(INDENT)" != "error" ; then \
+		echo -e "\tindent"; \
+	fi
+	@if test  "$(TOUCH)" != "error" ; then \
+		echo -e "\ttouch"; \
+	fi
+	@if test  "$(CTAGS)" != "error" ; then \
+		echo -e "\ttags"; \
+	fi
+	@if test  "$(LINT)" != "error" ; then \
+		echo -e "\tlint"; \
+	fi
+	@if test  -f $(CONFIG)/stamp-h ; then \
+		echo -e "\tresetconfig"; \
+	fi
+	@if test  "$(CVS)" != "error" ; then \
+		if test  -d CVS ; then \
+			echo -e "\tcvsupdate"; \
+		fi \
+	fi
+	@echo -e "\tbackup"
+
+.PHONY: all
+all: clean $(EXE)
+
+$(EXE): setup $(sort $(O_FILES))
+	@if test -x $(EXE) ; then mv -f $(EXE) $(EXE).old ; fi
+	@$(CC) -o $(EXE) $(O_FILES) $(L_FLAGS)
+	@echo "$(PACKAGE) built."
+
+.PHONY: install
+install: $(EXE)
+	@if test -x $(BIN)/$(EXE) ; then mv -f $(BIN)/$(EXE) $(BIN)/$(EXE).old ; fi
+	@$(INSTALL) $(EXE) $(BIN)/$(EXE)
+	@echo "$(PACKAGE) installed to $(BIN)."
+
+$(ODIR)/%.o: %.c
+	@echo "`date +"%X"` : Compiling $<..."
+	@$(CC) -c $(C_FLAGS) -o $@ $<
+
+%.header: %.h
+	@mv -f $< $(HDIR)
+
+.PHONY: pre-setup
+pre-setup:
+	@if test  -z "`cat .depend`" ; then $(MAKE) depend; fi
+	@if test  ! -d $(HDIR) ; then mkdir $(HDIR); fi
+	@if test  ! -d $(ODIR) ; then mkdir $(ODIR); fi
+
+.PHONY: setup
+setup: pre-setup $(patsubst %.h, %.header, $(wildcard *.h))
+
+.IGNORE: clean
+.PHONY: clean
+clean:
+	@rm -f *.o *.orig *.rej *~ $(ODIR)/*.* $(HDIR)/*~ $(HDIR)/*.orig $(HDIR)/*.rej \
+	$(CONFIG)/*~ $(EXE)* tags
+	@echo "Done cleaning $(PACKAGE)."
+
+.IGNORE: indent
+.PHONY: indent
+indent:
+	@if test  "$(INDENT)" != "error" ; then \
+		$(INDENT) $(SRCS); \
+		echo "Done formating $(PACKAGE) files."; \
+	fi
+
+.PHONY: touch
+touch:
+	@if test  "$(TOUCH)" != "error" ; then \
+		$(TOUCH) $(SRCS); \
+		echo "Done touching $(PACKAGE) files."; \
+	fi
+
+.PHONY: tags
+tags:
+	@if test  "$(CTAGS)" != "error" ; then \
+		$(CTAGS) $(SRCS); \
+		echo "$(PACKAGE) tag file created."; \
+	fi
+
+.PHONY: lint
+lint:
+	@if test  "$(LINT)" != "error" ; then \
+		$(LINT) $(SRCS); \
+		echo "$(PACKAGE) source files linted."; \
+	fi
+
+.PHONY: backup
+backup:
+	@if test  -f $(BIN)/backup ; then \
+		echo "$(BIN)/backup script not found."; \
+	else \
+		$(BIN)/backup clean; \
+		$(BIN)/backup all; \
+	fi
+
+.PHONY: cvsupdate
+cvsupdate:
+	@if test  "$(CVS)" != "error" ; then \
+		if test  -d CVS ; then \
+			$(CVS) update; \
+		else \
+			echo "No CVS info found! Try using cvs checkout first."; \
+		fi \
+	fi
+
+.IGNORE: depend
+.PHONY: depend
+depend:
+	@case $(MAKEDEP) in \
+		makedepend) \
+			$(MAKEDEP) -DDEPEND -p$(ODIR)/ -f- -- $(C_FLAGS) -- $(SRCS) > .depend ;; \
+		mkdep) \
+			$(MAKEDEP) $(C_FLAGS) -DDEPEND $(C_FILES) ;; \
+		*) \
+			$(CC) -E -MM -DDEPEND $(SRCS) -I$(HDIR) | sed 's/\(.*\)\.o:/$(ODIR)\/\1.o:/g' > .depend ;; \
+	esac
+	@echo "$(PACKAGE) dependencies made."
+
+@CONFIG_DEPEND@
+
+include .depend

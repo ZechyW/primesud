@@ -1,0 +1,290 @@
+
+##############################################################################
+# Process this file with autoconf2.53+ to produce a configure script.        #
+##############################################################################
+
+AC_PREREQ(2.53)
+AC_INIT(1stMud, 4.5.3, bugs@firstmud.com, firstmud-4.5.3.tar.gz)
+AC_COPYRIGHT([2004 Markanth markanth@firstmud.com])
+AC_CONFIG_HEADERS([../h/config.h:config.h.in])
+AC_CONFIG_SRCDIR([../comm.c])
+AC_PROG_CXX
+AC_PROG_INSTALL
+AC_GNU_SOURCE
+
+##############################################################################
+# Check types.                                                               #
+##############################################################################
+
+AC_C_CONST
+AC_C_INLINE
+AC_C_PROTOTYPES
+AC_C_VOLATILE
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+AC_TYPE_UID_T
+AC_TYPE_SIGNAL
+AC_HEADER_TIME
+AC_STRUCT_TM
+AC_STRUCT_TIMEZONE
+
+AC_CHECK_TYPES([socklen_t, int64_t, bool, _Bool])
+
+##############################################################################
+# Check some sizes.							     #
+##############################################################################
+
+AC_CHECK_SIZEOF(char, 0)
+AC_CHECK_SIZEOF(short, 0)
+AC_CHECK_SIZEOF(int, 0)
+AC_CHECK_SIZEOF(long, 0)
+AC_CHECK_SIZEOF(long long, 0)
+
+##############################################################################
+# Check need ilbraries.							     #
+##############################################################################
+
+AC_CHECK_LIB(crypt, crypt)
+AC_CHECK_LIB(z, deflate)
+AC_CHECK_LIB(socket, socket)
+AC_CHECK_LIB(nsl, gethostbyname)
+AC_CHECK_LIB(resolv, inet_aton)
+AC_CHECK_LIB(mysqlclient, mysql_query)
+
+##############################################################################
+# Check for needed header files.					     #
+##############################################################################
+
+AC_HEADER_DIRENT
+AC_HEADER_STDC
+AC_HEADER_STAT
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h limits.h stdbool.h netdb.h ])
+AC_CHECK_HEADERS([netinet/in.h sys/socket.h crypt.h zlib.h])
+AC_CHECK_HEADERS([sys/utsname.h sys/param.h sys/resource.h mysql.h])
+
+##############################################################################
+# Custom code to make sure we have socklen_t.				     #
+##############################################################################
+
+if test "${have_socklen_t}" = ""; then
+	AC_MSG_CHECKING([compile of socklen_t variable])
+	AC_COMPILE_IFELSE(
+	AC_LANG_PROGRAM([
+	#include <stdio.h>
+	#ifdef HAVE_SYS_TYPES_H
+	#include <sys/types.h>
+	#endif
+	#ifdef HAVE_NETINET_IN_H
+	#include <netinet/in.h>
+	#endif
+	#ifdef HAVE_SYS_SOCKET_H
+	#include <sys/socket.h>
+	#elif defined HAVE_SOCKET_H
+	#include <socket.h>
+	#endif],
+	[socklen_t sz = 100;
+	sz--;
+	exit(0);]),
+	[AC_DEFINE(HAVE_SOCKLEN_T, 1, [Define if socklen_t was found.])
+	AC_MSG_RESULT(yes)],
+	[AC_DEFINE(socklen_t, int, 
+	[Define if socklen_t was NOT found.])])
+fi
+
+##############################################################################
+# Seems sometimes printfing a time_t var is different on some systems.       #
+##############################################################################
+
+format_time_t=\"%d\"
+AC_MSG_CHECKING([if time_t is an not a long])
+AC_COMPILE_IFELSE(
+AC_LANG_PROGRAM([
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#include <stdio.h>
+#include <stdarg.h>],
+[#ifndef __attribute__ 
+#define __atribute__(x) 
+#endif
+time_t tm = 60 * 10;
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)))
+printf(stdout, "%d", tm);
+exit(0);]),
+[AC_MSG_RESULT(yes)],
+[AC_MSG_RESULT(no)
+format_time_t=\"%ld\"])
+
+AC_DEFINE_UNQUOTED(TIME_T_FMT, ${format_time_t}, 
+[Defined for time_t variables when printing.])
+
+##############################################################################
+# Check for structure members.						     #
+##############################################################################
+
+AC_CHECK_MEMBERS([struct tm.tm_gmtoff])
+ 
+##############################################################################
+# Check if 'timezone' is a variable or a function.			     #
+##############################################################################
+
+AC_MSG_CHECKING([timezone variable])
+AC_COMPILE_IFELSE(
+AC_LANG_PROGRAM([
+#ifdef TIME_WITH_SYS_TIME
+#include <sys/time.h>
+#include <time.h>
+#else
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
+#endif],
+[timezone += 1;
+exit (0);]),
+[AC_DEFINE(HAVE_TIMEZONE_VAR, 1, 
+[Define if system has extern timezone variable.])
+AC_MSG_RESULT(yes)],
+AC_MSG_RESULT(no))
+
+##############################################################################
+# Check for some functions.						     #
+##############################################################################
+
+AC_FUNC_FORK
+AC_FUNC_MEMCMP
+AC_FUNC_MALLOC
+AC_FUNC_MEMCMP
+AC_FUNC_MKTIME
+AC_FUNC_STAT
+AC_FUNC_STRFTIME
+AC_FUNC_STRNLEN
+AC_FUNC_VPRINTF
+AC_FUNC_FNMATCH
+AC_CHECK_FUNCS([atexit crypt gettimeofday inet_aton strrev strerror])
+AC_CHECK_FUNCS([psignal strsignal setrlimit setitimer getuid])
+AC_CHECK_FUNCS([getpwuid scandir])
+
+##############################################################################
+# Setup and check for arguments passed to the configure script.		     #
+##############################################################################
+
+AC_ARG_ENABLE(web, 
+AC_HELP_STRING([--disable-web], [disables the integrated web server.]),
+[if test "${enable_web}" = "no"; then 
+AC_DEFINE(DISABLE_WEBSRV, 1, [Disables the integrated web server.]) 
+fi])
+
+AC_ARG_ENABLE(i3, 
+AC_HELP_STRING([--disable-i3], [disables intermud 3 network.]), 
+[if test "${enable_i3}" = "no"; then 
+AC_DEFINE(DISABLE_I3, 1, [Disables the InterMud 3 Network.]) 
+fi])
+
+AC_ARG_ENABLE(sendstat, 
+AC_HELP_STRING([--disable-sendstat], 
+[disables sending stats back to firstmud.com.]), 
+[if test "${enable_sendstat}" = "no"; then 
+AC_DEFINE(DISABLE_SENDSTAT, 1, [Disables sending stats back to firstmud.com.]) 
+fi])
+
+AC_ARG_ENABLE(oldrand, 
+AC_HELP_STRING([--enable-oldrand], [uses the old random number system.]),
+[if test "${enable_oldrand}" = "yes"; then
+AC_DEFINE(OLD_RAND, 1, [Use the old random number system.]) fi])
+
+if test -n "${have_libz}"; then
+	AC_ARG_ENABLE(mccp, 
+	AC_HELP_STRING([--disable-mccp], 
+	[disables mud client compression protocol.]), 
+	[if test "${enable_mccp}" = "no"; then 
+	AC_DEFINE(DISABLE_MCCP, 1, [Disables Mud Client Compression Protocol.])
+	fi])
+fi
+
+if test -n "${have_libcrypt}"; then
+	AC_ARG_ENABLE(crypt,
+	AC_HELP_STRING([--disable-crypt], [disables password encryption.]),
+	[if test "${enable_crypt}" = "no"; then 
+	AC_DEFINE(DISABLE_CRYPT, 1, [Define to use encrypted passwords.]) 
+	fi])
+fi
+
+AC_ARG_ENABLE(alphapfiles, 
+AC_HELP_STRING([--enable-alphapfiles], 
+[prefixes player files with an initial directory.]),
+[if test "${enable_alphapfiles}" = "yes"; then 
+AC_DEFINE(INITIAL_ALPHA_PFILEDIRS, 1, 
+[Define to prefix player files with an alpha letter.]) 
+fi])
+
+AC_ARG_ENABLE(mysql, 
+AC_HELP_STRING([--enable-mysql[=INC_PATH]], 
+[enables using MySQL to store data.]),
+[if test -n "${have_libmysqlclient}"; then
+case ${enable_mysql} in
+no) AC_DEFINE(DISABLE_MYSQL, 1, [Define to enable MySQL support.]) ;;
+yes) ;;
+*) MYSQL_INC=${enable_mysql} ;;
+esac
+fi], AC_DEFINE(DISABLE_MYSQL, 1))
+
+AC_SUBST(MYSQL_INC)
+
+AC_ARG_ENABLE(hostname, 
+AC_HELP_STRING(--enable-hostname=HOST, [specify a server hostname.]),
+[case ${enable_hostname} in
+no | yes) AC_MSG_ERROR([You must specify a HOST.]) ;;
+*) AC_DEFINE(SERVER_HOST, ${enable_hostname}, 
+[Defines a specific server hostname.]) ;;
+esac])
+
+##############################################################################
+# Check for system programs.						     #
+##############################################################################
+
+AC_CHECK_PROGS(MAKEDEP_PROG,[makedepend mkdep],error)
+AC_CHECK_PROGS(INDENT_PROG,[indent astyle],error)
+AC_CHECK_PROGS(CTAGS_PROG,[ctags etags],error)
+AC_CHECK_PROG(TOUCH_PROG,[touch],touch,error)
+AC_CHECK_PROG(LINT_PROG,[lint],lint,error)
+AC_CHECK_PROG(GDB_PROG,[gdb],gdb,error)
+AC_CHECK_PROG(MAIL_PROG,[sendmail],sendmail,error)
+AC_CHECK_PROG(CVS_PROG,[cvs],cvs,error)
+# AC_CHECK_PROG(MAKE_PROG,[gmake make],error)
+
+if test "${GDB_PROG}" != "error"; then
+       AC_DEFINE(HAVE_GDB, 1, [Have the gdb program.])
+       AC_CONFIG_FILES([${HOME}/.gdbinit:gdbinit.in])
+fi
+
+if test "${MAIL_PROG}" != "error"; then
+       AC_DEFINE(HAVE_SENDMAIL, 1, [Have the sendmail program.])
+fi
+
+if test "${INDENT_PROG}" = "indent"; then 
+       AC_CONFIG_FILES([${HOME}/.indent.pro:indent.pro.in])
+fi
+
+##############################################################################
+# Add configuration only dependencies to the Makefile.                       #
+##############################################################################
+
+CONFIG_DEPEND=config.depend
+AC_SUBST_FILE(CONFIG_DEPEND)
+
+##############################################################################
+# Create the Makefile and other files.                                       #
+##############################################################################
+
+AC_CONFIG_COMMANDS([stamp-h], [date >stamp-h])
+
+AC_CONFIG_COMMANDS([.depend], [echo >../.depend])
+
+AC_OUTPUT([../Makefile:Makefile.in])
+
+##############################################################################
+# The End.  Markanth (markanth@firstmud.com)				     #
+##############################################################################
