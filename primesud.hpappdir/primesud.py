@@ -18,6 +18,7 @@ from player import (
     _resync_keyboard,
     save_char as _save_char,
     load_char as _load_char,
+    _roll_hp,
 )
 from commands import interpret, do_look, _DIGIT_SUBST
 
@@ -31,7 +32,9 @@ def world_tick(player, room_state, mob_instances):
         if inst["state"] == "dead" and inst.get("respawn_at", 0) > 0:
             if now >= inst["respawn_at"]:
                 tpl = MOB_TEMPLATES[inst["tpl"]]
-                inst["hp"] = tpl["hp_max"]
+                _hp = _roll_hp(tpl["hp_dice"])
+                inst["hp"] = _hp
+                inst["hp_max"] = _hp
                 inst["state"] = "idle"
                 inst["respawn_at"] = 0
                 if mob_id not in room_state[inst["room"]]["mobs"]:

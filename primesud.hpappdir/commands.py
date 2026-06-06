@@ -277,6 +277,8 @@ _DIRECTION_MAP = {
     "nw": "nw", "northwest": "nw",
     "se": "se", "southeast": "se",
     "sw": "sw", "southwest": "sw",
+    "up":   "up",
+    "down": "down", "dn": "down",
     "7": "nw", "8": "n", "9": "ne",
     "4": "w",             "6": "e",
     "1": "sw", "2": "s",  "3": "se",

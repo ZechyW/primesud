@@ -1,6 +1,7 @@
 # PrimeSud — Design Decisions
 
-Intentional deviations from 1stMud and design choices made for PrimeSud.
+General mechanics and gameplay feel are inspired by, and sometimes ported directly from, 1stmud (`reference/1stMud4.5.3`).
+This doc lists intentional deviations from 1stMud and design choices made for PrimeSud.
 Reference this before porting a new mechanic to avoid re-litigating settled decisions.
 
 ---

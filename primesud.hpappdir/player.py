@@ -1,6 +1,7 @@
 from hpprime import eval as ppleval, keyboard
 from cas import get_key
 from uio import FileIO
+from urandom import randint
 
 from config import SAVE_FILE, POLL_MS
 from world import (
@@ -12,6 +13,14 @@ from world import (
 
 
 # ── Player model ──────────────────────────────────────────────────────────────
+
+def _roll_hp(hp_dice):
+    num, size, bonus = hp_dice
+    total = bonus
+    for _ in range(num):
+        total += randint(1, size)
+    return max(1, total)
+
 
 def create_char():
     return {
@@ -53,9 +62,11 @@ def reset_area():
     for mob_id, init in MOB_INIT.items():
         tpl = MOB_TEMPLATES[init["tpl"]]
         ps  = tpl["perm_stat"]
+        _hp = _roll_hp(tpl["hp_dice"])
         mob_instances[mob_id] = {
             "tpl":        init["tpl"],
-            "hp":         tpl["hp_max"],
+            "hp":         _hp,
+            "hp_max":     _hp,
             "state":      "idle",
             "room":       init["room"],
             "respawn_at": 0,
@@ -93,6 +104,8 @@ def _enrich_mob_instance(inst):
     inst["hitroll"] = tpl["hitroll"]
     inst["damroll"] = tpl["damroll"]
     inst["AC"]      = tpl["AC"]
+    if inst.get("hp_max", 0) == 0:
+        inst["hp_max"] = inst["hp"]
 
 
 # ── Stat application helpers ──────────────────────────────────────────────────
@@ -191,8 +204,8 @@ def save_char(player, room_state, mob_instances, macros=None):
         lines.append("r.{}.items={}".format(rvnum, "|".join(str(v) for v in rs["items"])))
     for mob_id, inst in mob_instances.items():
         state = "idle" if inst["state"] == "aggro" else inst["state"]
-        lines.append("m.{}=tpl={}|hp={}|state={}|room={}|respawn_at={}".format(
-            mob_id, inst["tpl"], inst["hp"], state,
+        lines.append("m.{}=tpl={}|hp={}|hp_max={}|state={}|room={}|respawn_at={}".format(
+            mob_id, inst["tpl"], inst["hp"], inst.get("hp_max", inst["hp"]), state,
             inst["room"], inst.get("respawn_at", 0)))
     try:
         payload = "\n".join(lines)
@@ -249,7 +262,7 @@ def load_char(player, room_state, mob_instances, macros=None):
             room_state[rvnum]["items"] = [int(v) for v in val.split("|") if v]
         elif key.startswith("m."):
             mob_id = int(key.split(".")[1])
-            fields = {"tpl": 0, "hp": 0, "state": "idle",
+            fields = {"tpl": 0, "hp": 0, "hp_max": 0, "state": "idle",
                       "room": 0, "respawn_at": 0}
             for pair in val.split("|"):
                 if "=" in pair:

@@ -38,6 +38,27 @@ def _get_thac0(level):
     return t
 
 
+_XP_BASE = {
+    -9: 1, -8: 2, -7: 5, -6: 9, -5: 11, -4: 22, -3: 33, -2: 50,
+    -1: 66, 0: 83, 1: 99, 2: 121, 3: 143, 4: 165,
+}
+
+
+def _xp_for_kill(player_level, mob_level):
+    lr = mob_level - player_level
+    if lr <= -10:
+        base = 0
+    elif lr > 4:
+        base = 160 + 20 * (lr - 4)
+    else:
+        base = _XP_BASE[lr]
+    if player_level < 6:
+        base = 10 * base // (player_level + 4)
+    if base <= 0:
+        return 0
+    return randint(base * 3 // 4, base * 5 // 4)
+
+
 def _weapon_skill(player):
     """Return (sk_vnum, learned_pct, weapon_tpl_or_None) for current main weapon."""
     wvnum = player["equip"].get("weapon")
@@ -101,7 +122,8 @@ def _damage_punct(dmg):
 
 
 def _mob_condition(inst, tpl):
-    pct = inst["hp"] * 100 // tpl["hp_max"] if tpl["hp_max"] > 0 else -1
+    _hm = inst.get("hp_max", 1)
+    pct = inst["hp"] * 100 // _hm if _hm > 0 else -1
     name = tpl["name"]
     if pct >= 100: return "{} is in excellent condition.".format(name)
     if pct >= 90:  return "{} has a few scratches.".format(name)
@@ -430,7 +452,7 @@ def set_fighting(tr, player, mob_id, mob_instances, room_state):
     for mid in rs["mobs"]:
         inst = mob_instances[mid]
         tpl  = MOB_TEMPLATES[inst["tpl"]]
-        if inst["state"] != "dead" and tpl.get("ai") != "passive":
+        if inst["state"] != "dead" and not tpl.get("passive"):
             inst["state"] = "aggro"
             if mid == mob_id:
                 tr.print("--- {} attacks! ---".format(tpl["name"]))
@@ -538,7 +560,7 @@ def violence_update(tr, player, mob_instances, room_state):
         if mob_inst["wait"] > 0:
             continue
         mob_tpl = MOB_TEMPLATES[mob_inst["tpl"]]
-        if mob_tpl.get("ai") == "passive":
+        if mob_tpl.get("passive"):
             continue
 
         _mob_one_hit(tr, mob_inst, player)
@@ -584,8 +606,9 @@ def char_death(tr, player):
 
 def raw_kill(tr, player, mob_id, inst, tpl, room_state):
     tr.print("{} is defeated!".format(tpl["name"]))
-    player["xp"] += tpl["xp"]
-    tr.print("+{} XP".format(tpl["xp"]))
+    xp = _xp_for_kill(player["level"], inst["level"])
+    player["xp"] += xp
+    tr.print("+{} XP".format(xp))
 
     while player["xp"] >= player["xp_next"]:
         advance_level(tr, player)
