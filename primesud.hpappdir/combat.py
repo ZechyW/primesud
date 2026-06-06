@@ -8,7 +8,8 @@ from world import (
     SK_UNARMED, SK_SECOND_ATTACK, SK_THIRD_ATTACK,
     SK_DODGE, SK_PARRY, SK_SHIELD_BLOCK, SK_ENHANCED_DMG,
     WEAPON_TYPE_SKILL,
-    STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP,
+    STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
+    CLASS_HP_MIN, CLASS_HP_MAX,
     THAC0_00, THAC0_32,
 )
 from player import get_hitroll, get_damroll, get_AC, show_prompt
@@ -320,7 +321,7 @@ def _mob_one_hit(tr, mob_inst, player):
     return dam
 
 
-# ── Special unarmed moves (primesud flavour, cf. 1stMud special_move) ────────
+# ── Special unarmed moves [PRIMESUD] (cf. 1stMud special_move for inspiration) ─
 
 _SPECIAL_MOVES = [
     (
@@ -389,7 +390,7 @@ def multi_hit(tr, player, target_inst):
     if target_inst["hp"] == 0:
         return True
 
-    # Unarmed special move (primesud flavour)
+    # [PRIMESUD] Unarmed special move — no 1stMud equivalent
     if player["equip"].get("weapon") is None:
         _try_special_move(tr, player, target_inst)
         if target_inst["hp"] == 0:
@@ -602,17 +603,33 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state):
 
 
 def advance_level(tr, player):
-    player["level"]   += 1
-    player["xp"]      -= player["xp_next"]
-    player["xp_next"]  = player["xp_next"] * 3 // 2
+    player["level"] += 1
+    player["xp"]    -= player["xp_next"]
+    # xp_next stays 1000 (flat cost per level — 1stMud exp_per_level with 40 pts, human)
 
-    con = min(25, max(0, player["con"]))
-    hp_gain = max(1, CON_APP_HITP[con] + randint(1, 5))
-    mp_gain = max(1, player["int"] // 5 + randint(1, 3))
+    con  = min(25, max(0, player["con"]))
+    wis  = min(25, max(0, player["wis"]))
+    int_ = min(25, max(0, player["int"]))
 
-    player["hp_max"] += hp_gain
-    player["mp_max"] += mp_gain
-    player["hp"]      = player["hp_max"]
-    player["mp"]      = player["mp_max"]
-    tr.print("*** Level up! Now level {}. (+{} HP, +{} MP) ***".format(
-        player["level"], hp_gain, mp_gain))
+    # HP: (con_app.hitp + class_hp_roll) * 9/10, min 2  (1stMud advance_level)
+    hp_roll = randint(CLASS_HP_MIN, CLASS_HP_MAX + 1)
+    add_hp  = max(2, (CON_APP_HITP[con] + hp_roll) * 9 // 10)
+
+    # MP: number_range(2, (2*INT + WIS)//5) * 9/10, min 2  (1stMud advance_level)
+    mp_hi  = max(2, (2 * int_ + wis) // 5)
+    add_mp = max(2, randint(2, mp_hi) * 9 // 10)
+
+    add_prac = WIS_APP_PRACTICE[wis]
+
+    player["hp_max"]   += add_hp
+    player["mp_max"]   += add_mp
+    player["hp"]        = player["hp_max"]
+    player["mp"]        = player["mp_max"]
+    player["practice"] += add_prac
+    player["train"]    += 1
+
+    tr.print("You raise a level!!")
+    tr.print("You gain {} hit {}, {} mana, and {} {}.".format(
+        add_hp,  "point" if add_hp  == 1 else "points",
+        add_mp,
+        add_prac, "practice" if add_prac == 1 else "practices"))

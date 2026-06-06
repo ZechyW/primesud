@@ -12,7 +12,8 @@ The game runs entirely in a terminal-style text UI rendered directly on the calc
 primesud.hpappdir/
 ├── primesud.py          # Main game entry point — PrimeSud + Game classes
 ├── tml.py               # Text Mode Layer library (reusable, treat as stable)
-├── std5x10green.font    # Custom bitmap font used by tml
+├── std5x10green.font    # Custom bitmap font used by tml. 64 cols x 24 rows (excluding status bar)
+├── DESIGN.md            # Intentional design decisions and 1stMud deviations — read before porting
 ├── primesud.hpapp       # Binary HP Prime app package
 ├── primesud.hpappprgm   # Binary program metadata
 └── primesud.hpappnote   # Binary note file
@@ -56,6 +57,22 @@ A reusable terminal abstraction written by Piotr Kowalewski (komame). Renders ch
 5. **Graphic buffers G1–G9.** The HP Prime has 9 graphic buffers (GROBs). G9 is used by `tml` for the font. G0 is the display. Avoid clobbering G9 or buffers `tml` relies on.
 
 6. **`KeyboardInterrupt` is the exit signal.** The calculator's On key raises it. The context manager in `PrimeSud.__exit__` already handles this — don't swallow it elsewhere.
+
+## PrimeSUD-only extensions — `[PRIMESUD]` tag
+
+Code with no 1stMud equivalent, or that intentionally diverges from 1stMud behaviour,
+is marked with a `# [PRIMESUD]` comment. When porting mechanics from 1stMud, do not
+overwrite tagged items without checking whether the Prime variant differs on purpose.
+
+Find all tagged locations:
+
+    grep -r "\[PRIMESUD\]" primesud.hpappdir/
+
+Currently tagged:
+- `config.py` — `KEY_COMMANDS`, `NAV_KEYS` (HP Prime hardware key mappings)
+- `primesud.py` — nav-pad auto-submit branch in game loop
+- `commands.py` — `_DIGIT_SUBST`, `do_macro`
+- `combat.py` — `_SPECIAL_MOVES` section, unarmed special-move block in `multi_hit`
 
 ## Working style
 

@@ -7,7 +7,7 @@ from world import (
     ROOM_INIT, ITEM_TEMPLATES, MOB_TEMPLATES, MOB_INIT,
     R_VILLAGE_SQUARE,
     SK_UNARMED, SK_SLASH, SK_HEAL, SK_WEAKEN, SK_DODGE,
-    STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP,
+    STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
 )
 
 
@@ -16,10 +16,11 @@ from world import (
 def create_char():
     return {
         "name":     "",
-        "level":    1,  "xp": 0, "xp_next": 100,
-        "str":      10, "dex": 10, "int": 10, "wis": 10, "con": 10,
-        "hp":       30, "hp_max": 30,
-        "mp":       15, "mp_max": 15,
+        "level":    1,  "xp": 0, "xp_next": 1000,
+        "str":      13, "dex": 13, "int": 13, "wis": 13, "con": 13,
+        "hp":       20, "hp_max": 20,
+        "mp":       100, "mp_max": 100,
+        "practice": 5,  "train": 3,
         "hitroll":  0,
         "damroll":  0,
         "AC":       100,   # base unarmored (100 = poor; negative = better)
@@ -168,12 +169,13 @@ def show_prompt(tr, player, buf):
 
 # ── Persistence ───────────────────────────────────────────────────────────────
 
-def save_char(player, room_state, mob_instances):
+def save_char(player, room_state, mob_instances, macros=None):
     lines = []
     for key in ("name", "level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
-                "hitroll", "damroll", "AC", "room"):
+                "hitroll", "damroll", "AC", "room",
+                "practice", "train"):
         lines.append("p.{}={}".format(key, player[key]))
     lines.append("p.inv={}".format("|".join(str(v) for v in player["inv"])))
     for slot, vnum in player["equip"].items():
@@ -182,6 +184,9 @@ def save_char(player, room_state, mob_instances):
     for sk, pct in player["learned"].items():
         learned_parts.append("{}:{}".format(sk, pct))
     lines.append("p.learned={}".format("|".join(learned_parts)))
+    if macros is not None:
+        for k, v in macros.items():
+            lines.append("p.macro.{}={}".format(k, v))
     for rvnum, rs in room_state.items():
         lines.append("r.{}.items={}".format(rvnum, "|".join(str(v) for v in rs["items"])))
     for mob_id, inst in mob_instances.items():
@@ -198,7 +203,7 @@ def save_char(player, room_state, mob_instances):
         return False
 
 
-def load_char(player, room_state, mob_instances):
+def load_char(player, room_state, mob_instances, macros=None):
     try:
         with FileIO(SAVE_FILE, "rb") as f:
             data = f.read().decode("ascii")
@@ -208,7 +213,11 @@ def load_char(player, room_state, mob_instances):
     int_keys = {"level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
-                "hitroll", "damroll", "AC", "room"}
+                "hitroll", "damroll", "AC", "room",
+                "practice", "train"}
+
+    if macros is not None:
+        macros.clear()
 
     for rs in room_state.values():
         rs["mobs"] = []
@@ -230,6 +239,8 @@ def load_char(player, room_state, mob_instances):
                         player["learned"][int(sk_str)] = int(pct_str)
                     except ValueError:
                         pass
+        elif key.startswith("p.macro.") and macros is not None:
+            macros[key[8:]] = val
         elif key.startswith("p."):
             pkey = key[2:]
             player[pkey] = int(val) if pkey in int_keys else val

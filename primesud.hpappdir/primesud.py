@@ -6,7 +6,8 @@ from hpprime import dimgrob, eval as ppleval
 from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     MS_PER_PULSE, PULSE_VIOLENCE, PULSE_TICK,
                     AUTOSAVE_TICKS, HP_REGEN_NUM, HP_REGEN_DENOM,
-                    MP_REGEN_NUM, MP_REGEN_DENOM)
+                    MP_REGEN_NUM, MP_REGEN_DENOM,
+                    KEY_COMMANDS as _KEY_COMMANDS, NAV_KEYS as _NAV_KEYS)
 from combat import violence_update
 from world import MOB_TEMPLATES
 from player import (
@@ -19,13 +20,6 @@ from player import (
     load_char as _load_char,
 )
 from commands import interpret, do_look, _DIGIT_SUBST
-
-# ── Key command shortcuts ─────────────────────────────────────────────────────
-# Maps physical key bit-index → command string placed in the input buffer.
-# Add entries here to register new shortcuts; no other code changes needed.
-_KEY_COMMANDS = {
-    3: "help",  # 'help' key
-}
 
 
 # ── World tick ────────────────────────────────────────────────────────────────
@@ -54,16 +48,20 @@ class Game:
     """Holds game state and drives the main loop."""
 
     def __init__(self):
+        # std5x10green: 64 cols x 24 rows (excluding status bar), green colour
         self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font="std5x10green")
         _orig_print = self.tr.print
         _cols = self.tr.columns
         def _wrapped_print(*args, sep=' ', end='\n'):
             text = sep.join(str(a) for a in args)
             lines = []
-            while len(text) > _cols:
+            # Use >= not >: tml auto-advances the row the moment cursor_x reaches
+            # _cols, so a line of exactly _cols chars triggers that advance AND
+            # then the \n advances again, producing a blank row.
+            while len(text) >= _cols:
                 i = text.rfind(' ', 0, _cols)
                 if i <= 0:
-                    i = _cols
+                    i = _cols - 1
                 lines.append(text[:i])
                 text = text[i:].lstrip(' ')
             lines.append(text)
@@ -82,11 +80,13 @@ class Game:
     def load_game(self):
         self.player = create_char()
         self.room_state, self.mob_instances = reset_area()
-        return _load_char(self.player, self.room_state, self.mob_instances)
+        return _load_char(self.player, self.room_state, self.mob_instances, _DIGIT_SUBST)
 
     def save_game(self):
-        if not _save_char(self.player, self.room_state, self.mob_instances):
+        if not _save_char(self.player, self.room_state, self.mob_instances, _DIGIT_SUBST):
             self.tr.print("Save failed.")
+        else:
+            self.tr.print("Saved.")
 
     def run_title(self):
         tr = self.tr
@@ -134,8 +134,13 @@ class Game:
                     self.input_buf = ""
                     show_prompt(tr, player, self.input_buf)
                 elif char in _KEY_COMMANDS.values():
-                    self.input_buf = char
-                    show_prompt(tr, player, self.input_buf)
+                    if char in _NAV_KEYS:  # [PRIMESUD] immediate nav-pad movement
+                        if interpret(char, tr, player, room_state, mob_instances) == "quit":
+                            break
+                        show_prompt(tr, player, self.input_buf)
+                    else:
+                        self.input_buf = char
+                        show_prompt(tr, player, self.input_buf)
                 elif char not in ("\L", "\R", "\SR"):
                     subst = _DIGIT_SUBST.get(char)
                     if subst is not None and not self.input_buf:

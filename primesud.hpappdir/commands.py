@@ -1,6 +1,6 @@
 from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS
 from player import get_hitroll, get_damroll, get_AC, get_obj_list, get_char_room, save_char
-from combat import set_fighting, stop_fighting, use_skill
+from combat import set_fighting, stop_fighting, use_skill, _get_thac0
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 
 from urandom import randint
@@ -8,10 +8,13 @@ from urandom import randint
 
 def _wrap(text, width):
     lines = []
-    while len(text) > width:
+    # Use >= so a line of exactly `width` chars is split: the combined
+    # map+text line would otherwise reach _cols and trigger tml's auto-advance
+    # before the \n, producing a blank row (see _wrapped_print in primesud.py).
+    while len(text) >= width:
         i = text.rfind(' ', 0, width)
         if i <= 0:
-            i = width
+            i = width - 1
         lines.append(text[:i])
         text = text[i:].lstrip(' ')
     lines.append(text)
@@ -26,9 +29,11 @@ def do_look(tr, player, args, room_state, mob_instances, _long=True):
     text_w = tr.columns - COMPACT_W - 1
 
     text = ["[ {} ]".format(room["name"])]
+    text.append("")
     text.extend(_wrap(room["long"] if _long else room["short"], text_w))
     exits = " ".join(room["exits"].keys()).upper()
-    text.append("Exits: {}".format(exits) if exits else "Exits: none")
+    text.append("[Exits: {}]".format(exits) if exits else "[Exits: none]")
+    text.append("")
     live_mobs = [i for i in rs["mobs"] if mob_instances[i]["state"] != "dead"]
     if rs["items"]:
         names = ", ".join(ITEM_TEMPLATES[v]["name"] for v in rs["items"])
@@ -51,7 +56,7 @@ def do_move(tr, player, direction, room_state, mob_instances):
         return
     exits = ROOMS[player["room"]]["exits"]
     if direction not in exits:
-        tr.print("No exit to the {}.".format(direction))
+        tr.print("Alas, you cannot go that way.")
         return
     player["room"] = exits[direction]
     do_look(tr, player, [], room_state, mob_instances, _long=False)
@@ -154,18 +159,38 @@ def do_quaff(tr, player, args, room_state, mob_instances):
 
 
 def do_score(tr, player, args, room_state, mob_instances):
-    tr.print("Level {} ({}/{} XP)".format(player["level"], player["xp"], player["xp_next"]))
-    tr.print("HP:{}/{} MP:{}/{}".format(
-        player["hp"], player["hp_max"], player["mp"], player["mp_max"]))
-    tr.print("STR:{} DEX:{} INT:{} WIS:{} CON:{}".format(
-        player["str"], player["dex"], player["int"], player["wis"], player["con"]))
-    tr.print("Hitroll:{} Damroll:{} AC:{}".format(
-        get_hitroll(player), get_damroll(player), get_AC(player)))
-    equipped = {s: ITEM_TEMPLATES[v]["name"] for s, v in player["equip"].items() if v is not None}
-    if equipped:
-        tr.print("")
-        for slot, name in equipped.items():
-            tr.print("  {}: {}".format(slot, name))
+    # 64-col two-column box mirroring 1stMud dlm_score layout (see DESIGN.md)
+    def _row(l, r):
+        return '| {:<28} | {:<29} |'.format(l, r)
+    def _stat(name, val):
+        # [perm/curr] — identical until affect system is added
+        return '{:<13}: [{:2d}/{:2d}]'.format(name, val, val)
+    def _val(name, v):
+        return '{:<13}: [{:>11} ]'.format(name, v)
+
+    p = player
+    thac0 = _get_thac0(p['level'])
+    lines = [
+        '+--------------------------------------------------------------+',
+        '|{:^62}|'.format(p.get('name', '???')),
+        '+------------------------------+-------------------------------+',
+        _row(_stat('Strength',     p['str']), _val('Level',     p['level'])),
+        _row(_stat('Intelligence', p['int']), _val('Thac0',     thac0)),
+        _row(_stat('Wisdom',       p['wis']), _val('Practices', p.get('practice', 0))),
+        _row(_stat('Dexterity',    p['dex']), _val('Trains',    p.get('train', 0))),
+        _row(_stat('Constitution', p['con']), ''),
+        '+------------------------------+-------------------------------+',
+        _row('Hit    : [{:5d}/{:5d}]'.format(p['hp'],  p['hp_max']),
+             _val('Hitroll', get_hitroll(p))),
+        _row('Mana   : [{:5d}/{:5d}]'.format(p['mp'],  p['mp_max']),
+             _val('Damroll', get_damroll(p))),
+        _row('Exp    : [{:>10} ]'.format(p['xp']),
+             _val('AC',      get_AC(p))),
+        _row('To Lvl : [{:>10} ]'.format(p['xp_next'] - p['xp']), ''),
+        '+--------------------------------------------------------------+',
+    ]
+    for line in lines:
+        tr.print(line)
 
 
 def do_skills(tr, player, args, room_state, mob_instances):
@@ -257,12 +282,36 @@ _DIRECTION_MAP = {
     "1": "sw", "2": "s",  "3": "se",
 }
 
-_DIGIT_SUBST = {
-    "1": "sw", "2": "s",  "3": "se",
-    "4": "w",              "6": "e",
-    "7": "nw", "8": "n",  "9": "ne",
+_DIGIT_SUBST = {  # [PRIMESUD] user-configurable digit macros — no 1stMud equivalent
+    "1": "sw", "3": "se",
+    "7": "nw", "9": "ne",
     "5": "look",
 }
+
+
+def do_macro(tr, player, args, room_state, mob_instances):  # [PRIMESUD]
+    if not args:
+        if not _DIGIT_SUBST:
+            tr.print("No macros set. Usage: macro <0-9> [command]")
+        else:
+            for k in sorted(_DIGIT_SUBST):
+                tr.print("  {} : {}".format(k, _DIGIT_SUBST[k]))
+        return None
+    key = args[0]
+    if len(key) != 1 or key not in "0123456789":
+        tr.print("Key must be a single digit 0-9.")
+        return None
+    if len(args) == 1:
+        if key in _DIGIT_SUBST:
+            del _DIGIT_SUBST[key]
+            tr.print("Macro {} cleared.".format(key))
+        else:
+            tr.print("No macro on {}.".format(key))
+    else:
+        cmd = " ".join(args[1:])
+        _DIGIT_SUBST[key] = cmd
+        tr.print("{} => {}".format(key, cmd))
+    return None
 
 # ── Command table ─────────────────────────────────────────────────────────────
 
@@ -292,6 +341,7 @@ _CMD_TABLE = {
     "fight":   do_kill,
     "flee":    do_flee,
     "fl":      do_flee,
+    "macro":   do_macro,
     "map":     do_map,
     "save":    do_save,
     "h":       do_help,

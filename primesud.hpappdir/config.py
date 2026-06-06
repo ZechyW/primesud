@@ -22,8 +22,22 @@ MP_REGEN_DENOM = 5
 
 # ── Automap ───────────────────────────────────────────────────────────────────
 MAP_HALF_W   = 6   # grid half-width  in room-steps (full grid = 2*W+1 = 13 cols)
-MAP_HALF_H   = 4   # grid half-height in room-steps (full grid = 2*H+1 =  9 rows)
+MAP_HALF_H   = 6   # grid half-height in room-steps (full grid = 2*H+1 =  9 rows)
 MAP_MAX_DEPTH = 3  # recursion depth for exit tracing
 
 # ── Persistence ───────────────────────────────────────────────────────────────
 SAVE_FILE = "primesud.sav"
+
+# ── Key command shortcuts [PRIMESUD] ──────────────────────────────────────────
+# Maps HP Prime physical key bit-index → command string.
+# Nav keys auto-submit immediately in the game loop; others populate the buffer.
+# Adjust indices here if they differ on a specific hardware revision.
+KEY_COMMANDS = {  # [PRIMESUD]
+    3:  "help",  # Help key
+    2:  "n",     # Up    → north
+    7:  "w",     # Left  → west
+    8:  "e",     # Right → east
+    12: "s",     # Down  → south
+    14: "macro", # Menu key
+}
+NAV_KEYS = {"n", "s", "e", "w"}  # [PRIMESUD] subset of KEY_COMMANDS that auto-submit
