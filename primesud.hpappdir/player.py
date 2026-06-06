@@ -321,7 +321,8 @@ def _poll_char(tr, key_commands=None):
                 tr._refresh_indicators()
             else:
                 if key_commands and bit in key_commands:
-                    return key_commands[bit]
+                    cmd, auto_submit = key_commands[bit]
+                    return (cmd, auto_submit)
                 if tr.shift_hold:
                     tr.is_shift = True
                 if tr.alpha_hold:
@@ -333,7 +334,7 @@ def _poll_char(tr, key_commands=None):
                 if tr.is_shift:
                     tr.is_shift = False
                 tr._refresh_indicators()
-                return char
+                return (char, None)
         else:  # key released
             if bit == 36:
                 tr.alpha_hold = False

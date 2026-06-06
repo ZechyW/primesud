@@ -7,7 +7,7 @@ from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     MS_PER_PULSE, PULSE_VIOLENCE, PULSE_TICK,
                     AUTOSAVE_TICKS, HP_REGEN_NUM, HP_REGEN_DENOM,
                     MP_REGEN_NUM, MP_REGEN_DENOM,
-                    KEY_COMMANDS as _KEY_COMMANDS, NAV_KEYS as _NAV_KEYS,
+                    KEY_COMMANDS as _KEY_COMMANDS,
                     TERMINAL_COLS)
 from combat import violence_update
 from world import MOB_TEMPLATES
@@ -130,8 +130,9 @@ class Game:
         do_look(tr, player, [], room_state, mob_instances)
 
         while True:
-            char = _poll_char(tr, _KEY_COMMANDS)
-            if char is not None:
+            result = _poll_char(tr, _KEY_COMMANDS)
+            if result is not None:
+                char, auto_submit = result
                 if char == "\n":
                     if interpret(self.input_buf, tr, player, room_state, mob_instances) == "quit":
                         break
@@ -143,14 +144,13 @@ class Game:
                 elif char == "\e":
                     self.input_buf = ""
                     show_prompt(tr, player, self.input_buf)
-                elif char in _KEY_COMMANDS.values():
-                    if char in _NAV_KEYS:  # [PRIMESUD] immediate nav-pad movement
-                        if interpret(char, tr, player, room_state, mob_instances) == "quit":
-                            break
-                        show_prompt(tr, player, self.input_buf)
-                    else:
-                        self.input_buf = char
-                        show_prompt(tr, player, self.input_buf)
+                elif auto_submit is True:  # [PRIMESUD] hardware key — immediate submit
+                    if interpret(char, tr, player, room_state, mob_instances) == "quit":
+                        break
+                    show_prompt(tr, player, self.input_buf)
+                elif auto_submit is False:  # [PRIMESUD] hardware key — load into buffer
+                    self.input_buf = char
+                    show_prompt(tr, player, self.input_buf)
                 elif char not in ("\L", "\R", "\SR"):
                     subst = _MACRO_SUBST.get(char)
                     if subst is not None and not self.input_buf:

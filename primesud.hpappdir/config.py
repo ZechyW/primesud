@@ -31,22 +31,21 @@ MAP_MAX_DEPTH = 3  # recursion depth for exit tracing
 SAVE_FILE = "primesud.sav"
 
 # ── Key command shortcuts [PRIMESUD] ──────────────────────────────────────────
-# Maps HP Prime physical key bit-index → command string.
-# Nav keys auto-submit immediately in the game loop; others populate the buffer.
+# Maps HP Prime physical key bit-index → (command, auto_submit).
+# auto_submit=True: execute immediately; False: load into input buffer.
 # Adjust indices here if they differ on a specific hardware revision.
 KEY_COMMANDS = {  # [PRIMESUD]
-    1:  "nw",  # ↖ NW
-    2:  "n",   # ↑ N    (d-pad Up)
-    3:  "ne",  # ↗ NE
-    6:  "u",   # up
-    7:  "w",   # ← W    (d-pad Left)
-    8:  "e",   # → E    (d-pad Right)
-    9:  "d",   # down
-    11: "sw",  # ↙ SW
-    12: "s",   # ↓ S    (d-pad Down)
-    13: "se",  # ↘ SE
+    1:  ("nw", True),   # ↖ NW
+    2:  ("n",  True),   # ↑ N    (d-pad Up)
+    3:  ("ne", True),   # ↗ NE
+    6:  ("u",  True),   # up
+    7:  ("w",  True),   # ← W    (d-pad Left)
+    8:  ("e",  True),   # → E    (d-pad Right)
+    9:  ("d",  True),   # down
+    11: ("sw", True),   # ↙ SW
+    12: ("s",  True),   # ↓ S    (d-pad Down)
+    13: ("se", True),   # ↘ SE
 }
-NAV_KEYS = {"n", "s", "e", "w", "ne", "nw", "se", "sw", "u", "d"}  # [PRIMESUD] all KEY_COMMANDS directions auto-submit
 
 # ── Default digit macros [PRIMESUD] ───────────────────────────────────────────
 # Maps digit key "0"-"9" → command string. Edit to taste.
