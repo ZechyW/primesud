@@ -1,14 +1,14 @@
 import gc
 
 from tml import tml
-from hpprime import dimgrob, eval as ppleval
+from hpprime import dimgrob, eval as ppleval, getpix, pixon, grobw, grobh, strblit2
 
 from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     MS_PER_PULSE, PULSE_VIOLENCE, PULSE_TICK,
                     AUTOSAVE_TICKS, HP_REGEN_NUM, HP_REGEN_DENOM,
                     MP_REGEN_NUM, MP_REGEN_DENOM,
                     KEY_COMMANDS as _KEY_COMMANDS,
-                    TERMINAL_COLS)
+                    TERMINAL_COLS, FONT, FONT_GROB, COLOR_GROB)
 from combat import violence_update
 from world import MOB_TEMPLATES
 from player import (
@@ -52,8 +52,14 @@ class Game:
     """Holds game state and drives the main loop."""
 
     def __init__(self):
-        # std5x10green: 64 cols x 24 rows (excluding status bar), green colour
-        self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font="std5x10green")
+        # std5x10green: 64 cols x 24 rows (excluding status bar)
+        self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font=FONT)
+        self._font_w = grobw(FONT_GROB)
+        self._font_h = grobh(FONT_GROB)
+        dimgrob(COLOR_GROB, self._font_w, self._font_h, 0)
+        strblit2(COLOR_GROB, 0, 0, self._font_w, self._font_h, FONT_GROB, 0, 0, self._font_w, self._font_h)
+        _w_x = (ord('W') - 32) * self.tr.char_width + self.tr.char_width // 2
+        self._font_fg = getpix(FONT_GROB, _w_x, self.tr.char_height // 2)
         _orig_print = self.tr.print
         _cols = TERMINAL_COLS
         def _wrapped_print(*args, sep=' ', end='\n'):
@@ -82,6 +88,16 @@ class Game:
         self.room_state = None
         self.mob_instances = None
 
+    def set_color(self, color):
+        strblit2(FONT_GROB, 0, 0, self._font_w, self._font_h, COLOR_GROB, 0, 0, self._font_w, self._font_h)
+        for y in range(self._font_h):
+            for x in range(self._font_w):
+                if getpix(FONT_GROB, x, y) == self._font_fg:
+                    pixon(FONT_GROB, x, y, color)
+
+    def reset_color(self):
+        strblit2(FONT_GROB, 0, 0, self._font_w, self._font_h, COLOR_GROB, 0, 0, self._font_w, self._font_h)
+
     def new_game(self, name="Hero"):
         self.player = create_char()
         self.player["name"] = name
@@ -101,7 +117,11 @@ class Game:
     def run_title(self):
         tr = self.tr
         tr.clear()
-        tr.print("=== PRIMESUD ===")
+        tr.print("=== PRIME", end='')
+        self.set_color(0xFF0000)
+        tr.print("SUD", end='')
+        self.reset_color()
+        tr.print(" ===")
         tr.print("A single-user dungeon.")
 
         def fmt_bytes(n):
