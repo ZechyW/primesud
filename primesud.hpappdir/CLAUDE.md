@@ -58,6 +58,26 @@ A reusable terminal abstraction written by Piotr Kowalewski (komame). Renders ch
 
 6. **`KeyboardInterrupt` is the exit signal.** The calculator's On key raises it. The context manager in `PrimeSud.__exit__` already handles this — don't swallow it elsewhere.
 
+## Colour codes
+
+PrimeSud uses the **same `{X` escape syntax as 1stMud** — embed codes directly in any string passed to `tr.print()` and they are handled transparently by `colors.py`. No need to read that file to use colours.
+
+| Code | Colour | Code | Colour |
+|------|--------|------|--------|
+| `{d` | dark grey | `{D` | grey |
+| `{r` | red | `{R` | bright red |
+| `{g` | green | `{G` | bright green |
+| `{y` | yellow | `{Y` | bright yellow |
+| `{b` | blue | `{B` | bright blue |
+| `{m` | magenta | `{M` | bright magenta |
+| `{c` | cyan | `{C` | bright cyan |
+| `{w` | light grey | `{W` | white |
+| `{x` / `{X` | reset to default | | |
+
+Example: `tr.print("{Ghello{x world")` — "hello" in bright green, " world" in default foreground.
+
+To mix colour codes with Python string formatting, build by concatenation (`"{G" + name + "{x"`) rather than `.format()` — the `{` delimiter conflicts with format-string syntax.
+
 ## PrimeSUD-only extensions — `[PRIMESUD]` tag
 
 Code with no 1stMud equivalent, or that intentionally diverges from 1stMud behaviour,

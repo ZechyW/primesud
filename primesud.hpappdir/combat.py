@@ -5,9 +5,7 @@ from config import DEATH_MSG_DELAY, PULSE_VIOLENCE
 from world import (
     ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, ROOMS,
     R_VILLAGE_SQUARE,
-    SK_UNARMED, SK_SECOND_ATTACK, SK_THIRD_ATTACK,
-    SK_DODGE, SK_PARRY, SK_SHIELD_BLOCK, SK_ENHANCED_DMG,
-    WEAPON_TYPE_SKILL,
+    GSN_HAND_TO_HAND, GSN_PARRY,
     STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
     CLASS_HP_MIN, CLASS_HP_MAX,
     THAC0_00, THAC0_32,
@@ -63,10 +61,8 @@ def _weapon_skill(player):
     """Return (sk_vnum, learned_pct, weapon_tpl_or_None) for current main weapon."""
     wvnum = player["equip"].get("weapon")
     if wvnum is not None:
-        wtpl  = ITEM_TEMPLATES[wvnum]
-        sk_vn = WEAPON_TYPE_SKILL.get(wtpl.get("weapon_type", ""), SK_UNARMED)
-        return sk_vn, player["learned"].get(sk_vn, 20), wtpl
-    return SK_UNARMED, player["learned"].get(SK_UNARMED, 20), None
+        return GSN_HAND_TO_HAND, player["learned"].get(GSN_HAND_TO_HAND, 20), ITEM_TEMPLATES[wvnum]
+    return GSN_HAND_TO_HAND, player["learned"].get(GSN_HAND_TO_HAND, 20), None
 
 
 # ── Damage flavour ────────────────────────────────────────────────────────────
@@ -190,37 +186,14 @@ def check_improve(tr, player, sk_vnum, success):
 
 # ── Defensive checks (player defending against mob attack) ────────────────────
 
-def check_dodge(tr, player, mob_inst):
-    skill = player["learned"].get(SK_DODGE, 0)
-    if skill > 0 and randint(1, 100) <= skill // 2:
-        tpl = MOB_TEMPLATES[mob_inst["tpl"]]
-        tr.print("You dodge {}'s attack.".format(tpl["name"]))
-        check_improve(tr, player, SK_DODGE, True)
-        return True
-    return False
-
-
 def check_parry(tr, player, mob_inst):
     if player["equip"].get("weapon") is None:
         return False
-    skill = player["learned"].get(SK_PARRY, 0)
+    skill = player["learned"].get(GSN_PARRY, 0)
     if skill > 0 and randint(1, 100) <= skill // 2:
         tpl = MOB_TEMPLATES[mob_inst["tpl"]]
         tr.print("You parry {}'s attack.".format(tpl["name"]))
-        check_improve(tr, player, SK_PARRY, True)
-        return True
-    return False
-
-
-def check_shield_block(tr, player, mob_inst):
-    offhand = player["equip"].get("offhand")
-    if offhand is None or ITEM_TEMPLATES[offhand].get("type") != "shield":
-        return False
-    skill = player["learned"].get(SK_SHIELD_BLOCK, 0)
-    if skill > 0 and randint(1, 100) <= skill // 2:
-        tpl = MOB_TEMPLATES[mob_inst["tpl"]]
-        tr.print("You block {}'s attack.".format(tpl["name"]))
-        check_improve(tr, player, SK_SHIELD_BLOCK, True)
+        check_improve(tr, player, GSN_PARRY, True)
         return True
     return False
 
@@ -239,9 +212,9 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
         wvnum = player["equip"].get(slot)
         if wvnum is None:
             return 0
-        wtpl  = ITEM_TEMPLATES[wvnum]
-        sk_vn = WEAPON_TYPE_SKILL.get(wtpl.get("weapon_type", ""), SK_UNARMED)
-        sk_vnum, skill = sk_vn, player["learned"].get(sk_vn, 20)
+        wtpl    = ITEM_TEMPLATES[wvnum]
+        sk_vnum = GSN_HAND_TO_HAND
+        skill   = player["learned"].get(GSN_HAND_TO_HAND, 20)
 
     # THAC0
     mob_hitroll_pen = affects.get("m_hitroll", 0)  # debuff on mob affects its attack, not ours
@@ -268,12 +241,6 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
         lo = max(1, 1 + 4 * skill // 100)
         hi = max(lo, 2 * player["level"] * skill // 300)
         dam = randint(lo, hi)
-
-    # Enhanced damage passive
-    enh = player["learned"].get(SK_ENHANCED_DMG, 0)
-    if enh > 0 and randint(1, 100) <= enh:
-        check_improve(tr, player, SK_ENHANCED_DMG, True)
-        dam += 2 * dam * randint(1, 100) // 300
 
     # Damroll (scaled by weapon skill)
     dam += (get_damroll(player) + bonus_damroll) * min(100, skill) // 100
@@ -317,11 +284,7 @@ def _mob_one_hit(tr, mob_inst, player):
         return 0
 
     # Defensive checks (player skills)
-    if check_dodge(tr, player, mob_inst):
-        return 0
     if check_parry(tr, player, mob_inst):
-        return 0
-    if check_shield_block(tr, player, mob_inst):
         return 0
 
     # Damage
@@ -393,13 +356,13 @@ def _try_special_move(tr, player, target_inst):
     for line in move[:-1]:
         tr.print(line.format(name))
     # Damage: same unarmed formula as one_hit
-    skill = player["learned"].get(SK_UNARMED, 20)
+    skill = player["learned"].get(GSN_HAND_TO_HAND, 20)
     lo  = max(1, 1 + 4 * skill // 100)
     hi  = max(lo, 2 * player["level"] * skill // 300)
     dam = max(1, randint(lo, hi))
     target_inst["hp"] = max(0, target_inst["hp"] - dam)
     tr.print("{} [{}]".format(move[-1].format(name), dam))
-    check_improve(tr, player, SK_UNARMED, True)
+    check_improve(tr, player, GSN_HAND_TO_HAND, True)
     return dam
 
 
@@ -422,22 +385,6 @@ def multi_hit(tr, player, target_inst):
     offhand = player["equip"].get("offhand")
     if offhand is not None and ITEM_TEMPLATES[offhand].get("type") == "weapon":
         one_hit(tr, player, target_inst, slot="offhand")
-        if target_inst["hp"] == 0:
-            return True
-
-    # Second attack
-    second = player["learned"].get(SK_SECOND_ATTACK, 0)
-    if second > 0 and randint(1, 100) <= second // 2:
-        one_hit(tr, player, target_inst)
-        check_improve(tr, player, SK_SECOND_ATTACK, True)
-        if target_inst["hp"] == 0:
-            return True
-
-    # Third attack
-    third = player["learned"].get(SK_THIRD_ATTACK, 0)
-    if third > 0 and randint(1, 100) <= third // 4:
-        one_hit(tr, player, target_inst)
-        check_improve(tr, player, SK_THIRD_ATTACK, True)
         if target_inst["hp"] == 0:
             return True
 
@@ -468,45 +415,6 @@ def stop_fighting(player, mob_instances):
             inst["state"] = "idle"
             inst["affects"] = {}
     player["fighting"] = None
-
-
-# ── Skill application ─────────────────────────────────────────────────────────
-
-def _apply_skill(tr, player, sk, target_inst):
-    effect = sk.get("effect", "")
-    tpl    = MOB_TEMPLATES[target_inst["tpl"]]
-
-    if effect == "weapon_strike":
-        one_hit(tr, player, target_inst, bonus_damroll=sk.get("bonus_damroll", 0))
-
-    elif effect == "heal":
-        gained = min(sk["power"], player["hp_max"] - player["hp"])
-        player["hp"] += gained
-        tr.print("{}: +{} HP. ({}/{})".format(
-            sk["name"], gained, player["hp"], player["hp_max"]))
-
-    elif effect == "debuff":
-        key = "m_" + sk["stat"]
-        affects = target_inst["affects"]
-        affects[key]       = affects.get(key, 0) - sk["amount"]
-        affects[key + "_t"] = sk["turns"]
-        tr.print("{} weakens {}!".format(sk["name"], tpl["name"]))
-
-
-def use_skill(tr, player, sk_vnum, mob_instances, room_state):
-    """Use a skill against the current target."""
-    sk        = SKILLS[sk_vnum]
-    target_id = player["fighting"]
-    target    = mob_instances[target_id]
-
-    _apply_skill(tr, player, sk, target)
-    check_improve(tr, player, sk_vnum, True)
-    WaitState(player, sk.get("beats", 0))
-
-    if target["hp"] == 0:
-        tpl = MOB_TEMPLATES[target["tpl"]]
-        raw_kill(tr, player, target_id, target, tpl, room_state)
-        _advance_target(player, mob_instances, room_state)
 
 
 def _advance_target(player, mob_instances, room_state):

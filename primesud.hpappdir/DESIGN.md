@@ -42,6 +42,7 @@ Reference this before porting a new mechanic to avoid re-litigating settled deci
 
 ## Explicitly kept from 1stMud
 
+- `{X` colour-code syntax — identical to 1stMud (see *Colour codes* in CLAUDE.md)
 - THAC0 combat curve (`THAC0_00 = 20`, `THAC0_32 = -2`, classless midpoint)
 - `advance_level` HP/MP formulas: `(CON_APP_HITP[con] + hp_roll) * 9/10`, min 2
 - MP formula: `randint(2, (2*INT + WIS) // 5) * 9/10`, min 2

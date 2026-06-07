@@ -52,27 +52,11 @@ I_SWORD_IRON  = 3000
 I_POTION_HP   = 3001
 I_DAGGER      = 3002
 
-# ── Skill VNUMs ──────────────────
-# Internal / auto-attack
-SK_ATTACK       = 4000
-
-# Active skills (manually triggered)
-SK_SLASH        = 4001
-SK_HEAL         = 4002
-SK_WEAKEN       = 4003
-
-# Weapon proficiencies (passive — affect one_hit damage/accuracy)
-SK_UNARMED      = 4010
-SK_SWORD        = 4011
-SK_DAGGER       = 4012
-
-# Passive combat skills
-SK_SECOND_ATTACK = 4020
-SK_THIRD_ATTACK  = 4021
-SK_DODGE         = 4022
-SK_PARRY         = 4023
-SK_SHIELD_BLOCK  = 4024
-SK_ENHANCED_DMG  = 4025
+# ── Skill VNUMs (cf. 1stMud gsn_* in index.h) ────────────────────────────────
+GSN_KICK         = 4001
+GSN_CURE_LIGHT   = 4002
+GSN_HAND_TO_HAND = 4010
+GSN_PARRY        = 4020
 
 # ── Stat application tables (ROM 2.4 values, index by stat 0–25) ──────────────
 # str_app: tohit (THAC0 bonus, negative = better), todam (damage roll bonus)
@@ -243,11 +227,6 @@ ITEM_TEMPLATES = {
     },
 }
 
-# Weapon type → proficiency skill VNUM
-WEAPON_TYPE_SKILL = {
-    "sword":  SK_SWORD,
-    "dagger": SK_DAGGER,
-}
 
 # ── Mob templates ────────────────
 # perm_stat: base attributes (str/dex/int/wis/con)
@@ -416,13 +395,11 @@ MOB_INIT[25] = {"tpl": M_BEAR,   "room": R_DUNGEON_NE}
 MOB_INIT[26] = {"tpl": M_WOLF,   "room": R_DUNGEON_SW}
 MOB_INIT[27] = {"tpl": M_WOLF,   "room": R_DUNGEON_SW}
 
-# ── Skills ───────────────────────
-# type:
-#   "internal"  — auto-attack, not manually triggered
-#   "active"    — manually triggered; has mp_cost and beats (skill lag in pulses)
-#   "weapon"    — weapon proficiency; affects damage/accuracy in one_hit
-#   "passive"   — passive combat skill; checked automatically each round
-#
+# ── Skills (cf. 1stMud skill_table; ordered list for prefix-match tiebreaking) ─
+# type:     "active"  — manually triggered physical skill; beats apply
+#           "spell"   — cast via 'cast <prefix>'; mana/beats/heal_dice apply
+#           "weapon"  — proficiency checked in one_hit
+#           "passive" — checked automatically each round
 # beats: skill lag in pulses (PULSE_VIOLENCE = 12 = one full combat round)
 #
 # Improvement tuning (cf. 1stMud check_improve in skills.c):
@@ -432,43 +409,23 @@ MOB_INIT[27] = {"tpl": M_WOLF,   "room": R_DUNGEON_SW}
 #                Higher = harder to improve. Multiplied into the improvement gate.
 #   multiplier — context in which the skill is trained (1stMud: passed by each
 #                check_improve call site in fight.c). Encodes how demanding the
-#                training opportunity is: 1 for always-succeeding active skills,
-#                5 for normal weapon/attack use, 6 for harder passive skills.
+#                training opportunity is: 1 for spells and kick (fight.c do_kick),
+#                5 for weapon proficiency (fight.c one_hit), 6 for harder passives.
 #                Higher = fewer improvement rolls per use.
 #   Gate formula: chance = 10*INT_learn / (multiplier * rating * 4) + level
 #   Roll 1..1000 — improvement only proceeds when roll <= chance.
-SKILLS = {
-    SK_ATTACK: {
-        "name": "attack", "type": "internal",
-    },
-    # Active skills: rating/multiplier kept low — player-triggered, always succeed
-    SK_SLASH: {
-        "name": "slash", "type": "active",
-        "effect": "weapon_strike", "bonus_damroll": 5,
-        "mp_cost": 4, "beats": 12,
-        "rating": 1, "multiplier": 1,
-    },
-    SK_HEAL: {
-        "name": "heal", "type": "active",
-        "effect": "heal", "power": 25,
-        "mp_cost": 6, "beats": 12,
-        "rating": 1, "multiplier": 1,
-    },
-    SK_WEAKEN: {
-        "name": "weaken", "type": "active",
-        "effect": "debuff", "stat": "hitroll", "amount": 3, "turns": 2,
-        "mp_cost": 5, "beats": 12,
-        "rating": 1, "multiplier": 1,
-    },
-    # Weapon proficiencies: multiplier=5 (cf. fight.c one_hit), rating from skills.dat minimum
-    SK_UNARMED: {"name": "unarmed",  "type": "weapon", "rating": 4, "multiplier": 5},
-    SK_SWORD:   {"name": "sword",    "type": "weapon", "rating": 2, "multiplier": 5},
-    SK_DAGGER:  {"name": "dagger",   "type": "weapon", "rating": 2, "multiplier": 5},
-    # Passive skills: multipliers and ratings from fight.c / skills.dat
-    SK_SECOND_ATTACK: {"name": "second attack",   "type": "passive", "rating": 3, "multiplier": 5},
-    SK_THIRD_ATTACK:  {"name": "third attack",    "type": "passive", "rating": 4, "multiplier": 6},
-    SK_DODGE:         {"name": "dodge",           "type": "passive", "rating": 4, "multiplier": 6},
-    SK_PARRY:         {"name": "parry",           "type": "passive", "rating": 4, "multiplier": 6},
-    SK_SHIELD_BLOCK:  {"name": "shield block",    "type": "passive", "rating": 2, "multiplier": 6},
-    SK_ENHANCED_DMG:  {"name": "enhanced damage", "type": "passive", "rating": 3, "multiplier": 6},
-}
+SKILL_TABLE = [
+    (GSN_KICK,         {"name": "kick",         "type": "active",
+                        "beats": 12, "mana": 0, "rating": 3, "multiplier": 1,
+                        "target": "char_offensive"}),
+    (GSN_CURE_LIGHT,   {"name": "cure light",   "type": "spell",
+                        "beats": 12, "mana": 10, "rating": 1, "multiplier": 1,
+                        "target": "char_defensive", "msg_off": "!Cure Light!",
+                        "effect": "heal", "heal_dice": (1, 8, 1), "level_div": 4}),
+    (GSN_HAND_TO_HAND, {"name": "hand to hand", "type": "weapon",
+                        "rating": 4, "multiplier": 5}),
+    (GSN_PARRY,        {"name": "parry",        "type": "passive",
+                        "rating": 4, "multiplier": 6}),
+]
+
+SKILLS = {vnum: data for vnum, data in SKILL_TABLE}

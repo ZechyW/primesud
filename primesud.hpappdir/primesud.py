@@ -49,7 +49,7 @@ def world_tick(player, room_state, mob_instances):
 def _wrap_plain(text, width):
     """Plain-text word-wrap (no colour codes); fast path in _wrapped_print."""
     lines = []
-    while len(text) >= width:
+    while len(text) > width:
         i = text.rfind(' ', 0, width)
         if i <= 0:
             i = width - 1
@@ -94,7 +94,10 @@ class Game:
                 lines = _wrap_plain(text, _cols)
                 n = len(lines)
                 for idx, line in enumerate(lines):
-                    _orig_print(line, end=end if idx == n - 1 else '\n')
+                    _orig_print(line, end='')
+                    auto_wrapped = line and self.tr.cursor_x == 0
+                    if not auto_wrapped:
+                        _orig_print('', end=end if idx == n - 1 else '\n')
                 return
             lines = color_wrap(text, _cols)
             n = len(lines)

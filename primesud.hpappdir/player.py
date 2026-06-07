@@ -7,10 +7,14 @@ from config import SAVE_FILE, POLL_MS, TERMINAL_COLS
 from world import (
     ROOM_INIT, ITEM_TEMPLATES, MOB_TEMPLATES, MOB_INIT,
     R_VILLAGE_SQUARE,
-    SK_UNARMED, SK_SLASH, SK_HEAL, SK_WEAKEN, SK_DODGE,
+    GSN_HAND_TO_HAND, GSN_KICK, GSN_CURE_LIGHT, GSN_PARRY,
     STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
 )
 
+
+# ── Player flag bits (cf. 1stMud PLR_* in bits.h) ─────────────────────────────
+PLR_AUTOMAP  = 1
+PLR_DEFAULTS = PLR_AUTOMAP
 
 # ── Player model ──────────────────────────────────────────────────────────────
 
@@ -42,13 +46,13 @@ def create_char():
             "chest": None, "legs": None, "feet": None, "hands": None,
         },
         "learned": {
-            SK_UNARMED: 40,   # basic brawling
-            SK_SLASH:   50,
-            SK_HEAL:    75,
-            SK_WEAKEN:  50,
-            SK_DODGE:   10,
+            GSN_HAND_TO_HAND: 40,
+            GSN_KICK:         50,
+            GSN_CURE_LIGHT:   75,
+            GSN_PARRY:        10,
         },
         "fighting": None,
+        "flags":    PLR_DEFAULTS,
     }
 
 
@@ -188,7 +192,7 @@ def save_char(player, room_state, mob_instances, macros=None):
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
                 "hitroll", "damroll", "AC", "room",
-                "practice", "train"):
+                "practice", "train", "flags"):
         lines.append("p.{}={}".format(key, player[key]))
     lines.append("p.inv={}".format("|".join(str(v) for v in player["inv"])))
     for slot, vnum in player["equip"].items():
@@ -227,7 +231,7 @@ def load_char(player, room_state, mob_instances, macros=None):
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
                 "hitroll", "damroll", "AC", "room",
-                "practice", "train"}
+                "practice", "train", "flags"}
 
     if macros is not None:
         macros.clear()
