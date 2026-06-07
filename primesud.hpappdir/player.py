@@ -29,6 +29,7 @@ def _roll_hp(hp_dice):
 def create_char():
     return {
         "name":     "",
+        "is_npc":   False,
         "level":    1,  "xp": 0, "xp_next": 1000,
         "str":      13, "dex": 13, "int": 13, "wis": 13, "con": 13,
         "hp":       20, "hp_max": 20,
@@ -39,6 +40,7 @@ def create_char():
         "AC":       100,   # base unarmored (100 = poor; negative = better)
         "wait":     0,     # skill lag in pulses
         "daze":     0,     # stun in pulses
+        "affects":  {},
         "room":     R_VILLAGE_SQUARE,
         "inv":      [],
         "equip": {
@@ -69,6 +71,8 @@ def reset_area():
         _hp = _roll_hp(tpl["hp_dice"])
         mob_instances[mob_id] = {
             "tpl":        init["tpl"],
+            "is_npc":     True,
+            "name":       tpl["name"],
             "hp":         _hp,
             "hp_max":     _hp,
             "state":      "idle",
@@ -77,6 +81,9 @@ def reset_area():
             "affects":    {},
             "wait":       0,
             "daze":       0,
+            "fighting":   None,
+            "learned":    dict(tpl.get("skills", {})),
+            "off_flags":  dict(tpl.get("off_flags", {})),
             # Combat stats flattened from template for hot-path access
             "level":      tpl["level"],
             "str":        ps["str"],
@@ -96,18 +103,23 @@ def _enrich_mob_instance(inst):
     """Fill in template-derived combat stats on a freshly loaded mob instance."""
     tpl = MOB_TEMPLATES[inst["tpl"]]
     ps  = tpl["perm_stat"]
-    inst.setdefault("wait",    0)
-    inst.setdefault("daze",    0)
-    inst.setdefault("affects", {})
-    inst["level"]   = tpl["level"]
-    inst["str"]     = ps["str"]
-    inst["dex"]     = ps["dex"]
-    inst["int"]     = ps["int"]
-    inst["wis"]     = ps["wis"]
-    inst["con"]     = ps["con"]
-    inst["hitroll"] = tpl["hitroll"]
-    inst["damroll"] = tpl["damroll"]
-    inst["AC"]      = tpl["AC"]
+    inst.setdefault("wait",     0)
+    inst.setdefault("daze",     0)
+    inst.setdefault("affects",  {})
+    inst.setdefault("fighting", None)
+    inst["is_npc"]   = True
+    inst["name"]     = tpl["name"]
+    inst["learned"]  = dict(tpl.get("skills", {}))
+    inst["off_flags"] = dict(tpl.get("off_flags", {}))
+    inst["level"]    = tpl["level"]
+    inst["str"]      = ps["str"]
+    inst["dex"]      = ps["dex"]
+    inst["int"]      = ps["int"]
+    inst["wis"]      = ps["wis"]
+    inst["con"]      = ps["con"]
+    inst["hitroll"]  = tpl["hitroll"]
+    inst["damroll"]  = tpl["damroll"]
+    inst["AC"]       = tpl["AC"]
     if inst.get("hp_max", 0) == 0:
         inst["hp_max"] = inst["hp"]
 

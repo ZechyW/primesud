@@ -257,6 +257,8 @@ MOB_TEMPLATES = {
         "gold": 5,
         "loot": [(I_DAGGER, 20), (I_POTION_HP, 25)],
         "respawn": 60000,
+        "off_flags": {"kick": True},
+        "skills": {GSN_KICK: 75},
     },
     M_DUMMY: {
         "name": "Training Dummy",
@@ -338,6 +340,8 @@ MOB_TEMPLATES[M_BEAR] = {
     "damage": (1, 6, 2),
     "gold": 0, "loot": [],
     "respawn": 120000,
+    "off_flags": {"kick": True},
+    "skills": {GSN_KICK: 75},
 }
 MOB_TEMPLATES[M_WOLF] = {
     "name": "Wolf",
@@ -349,6 +353,8 @@ MOB_TEMPLATES[M_WOLF] = {
     "damage": (1, 6, 2),
     "gold": 0, "loot": [],
     "respawn": 120000,
+    "off_flags": {"kick": True},
+    "skills": {GSN_KICK: 75},
 }
 MOB_TEMPLATES[M_BEAST] = {
     "name": "Beast",
@@ -360,6 +366,8 @@ MOB_TEMPLATES[M_BEAST] = {
     "damage": (1, 6, 3),
     "gold": 0, "loot": [],
     "respawn": 180000,
+    "off_flags": {"kick": True},
+    "skills": {GSN_KICK: 75},
 }
 
 # Initial mob placement.

@@ -1,7 +1,7 @@
-# PrimeSud — Design Decisions
+# PrimeSUD — Design Decisions
 
 General mechanics and gameplay feel are inspired by, and sometimes ported directly from, 1stmud (`reference/1stMud4.5.3`).
-This doc lists intentional deviations from 1stMud and design choices made for PrimeSud.
+This doc lists intentional deviations from 1stMud and design choices made for PrimeSUD.
 Reference this before porting a new mechanic to avoid re-litigating settled decisions.
 
 ---
@@ -30,7 +30,7 @@ Reference this before porting a new mechanic to avoid re-litigating settled deci
 
 ## Simplified or adjusted
 
-| Feature | 1stMud | PrimeSud | Reason |
+| Feature | 1stMud | PrimeSUD | Reason |
 |---|---|---|---|
 | EXP per level | `exp_per_level(ch, points)` — scales with creation points and race/class mult | Flat **1000 XP / level** | Equivalent to 1stMud formula at 40 creation points, human race (100% mult) |
 | Class HP die | Per-class `hp_min`/`hp_max` (Warrior 11–15, Mage 6–8, …) | **7–10** (Cleric/Paladin midpoint) | Classless placeholder; change when classes are added |

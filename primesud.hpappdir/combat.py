@@ -5,7 +5,7 @@ from config import DEATH_MSG_DELAY, PULSE_VIOLENCE
 from world import (
     ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, ROOMS,
     R_VILLAGE_SQUARE,
-    GSN_HAND_TO_HAND, GSN_PARRY,
+    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY,
     STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
     CLASS_HP_MIN, CLASS_HP_MAX,
     THAC0_00, THAC0_32,
@@ -306,6 +306,75 @@ def _mob_one_hit(tr, mob_inst, player):
     return dam
 
 
+def do_kick(tr, ch, args, room_state, mob_instances):
+    """Kick for player or mob (cf. 1stMud do_kick in fight.c)."""
+    if ch["is_npc"]:
+        target = ch["fighting"]   # player dict, set by set_fighting
+        if target is None:
+            return None
+    else:
+        if GSN_KICK not in ch["learned"]:
+            tr.print("You better leave the martial arts to fighters.")
+            return None
+        if ch["fighting"] is None:
+            tr.print("You aren't fighting anyone.")
+            return None
+        if ch.get("wait", 0) > 0:
+            tr.print("You are still recovering.")
+            return None
+        target_id = ch["fighting"]
+        target    = mob_instances[target_id]
+
+    skill_pct = ch["learned"].get(GSN_KICK, 0)
+    WaitState(ch, SKILLS[GSN_KICK]["beats"])
+
+    if skill_pct > randint(1, 100):
+        dam = randint(1, max(1, ch["level"]))
+        target["hp"] = max(0, target["hp"] - dam)
+        _, vp  = _damage_verb(dam)
+        punct  = _damage_punct(dam)
+        if ch["is_npc"]:
+            tr.print("{} kicks you{} [{}]".format(ch["name"], punct, dam))
+        else:
+            tpl = MOB_TEMPLATES[target["tpl"]]
+            tr.print("Your kick {} {}{} [{}]".format(vp, tpl["name"], punct, dam))
+            check_improve(tr, ch, GSN_KICK, True)
+            if target["hp"] == 0:
+                raw_kill(tr, ch, target_id, target, tpl, room_state)
+                _advance_target(ch, mob_instances, room_state)
+    else:
+        if ch["is_npc"]:
+            tr.print("{}'s kick misses you.".format(ch["name"]))
+        else:
+            tpl = MOB_TEMPLATES[target["tpl"]]
+            tr.print("Your kick misses {}.".format(tpl["name"]))
+            check_improve(tr, ch, GSN_KICK, False)
+    return None
+
+
+def mob_hit(tr, mob_inst, player, room_state, mob_instances):
+    """Full attack sequence for one mob per combat round (cf. 1stMud mob_hit)."""
+    _mob_one_hit(tr, mob_inst, player)
+    if player["hp"] == 0:
+        return
+
+    # Second and third attacks: level-derived chance (cf. 1stMud gsn_second/third_attack)
+    skill = min(100, mob_inst["level"] * 12 + 20)
+    if randint(1, 100) <= skill // 2:
+        _mob_one_hit(tr, mob_inst, player)
+        if player["hp"] == 0:
+            return
+
+    if randint(1, 100) <= skill // 4:
+        _mob_one_hit(tr, mob_inst, player)
+        if player["hp"] == 0:
+            return
+
+    # Off-flag specials (cf. 1stMud mob_hit random switch)
+    if mob_inst["off_flags"].get("kick") and randint(0, 8) == 3:
+        do_kick(tr, mob_inst, [], room_state, mob_instances)
+
+
 # ── Special unarmed moves [PRIMESUD] (cf. 1stMud special_move for inspiration) ─
 
 _SPECIAL_MOVES = [
@@ -400,7 +469,8 @@ def set_fighting(tr, player, mob_id, mob_instances, room_state):
         inst = mob_instances[mid]
         tpl  = MOB_TEMPLATES[inst["tpl"]]
         if inst["state"] != "dead" and not tpl.get("passive"):
-            inst["state"] = "aggro"
+            inst["state"]   = "aggro"
+            inst["fighting"] = player
             if mid == mob_id:
                 tr.print("--- {} attacks! ---".format(tpl["name"]))
             else:
@@ -412,8 +482,9 @@ def stop_fighting(player, mob_instances):
     """End combat: reset aggro mobs to idle, clear player target."""
     for inst in mob_instances.values():
         if inst["state"] == "aggro":
-            inst["state"] = "idle"
-            inst["affects"] = {}
+            inst["state"]    = "idle"
+            inst["fighting"] = None
+            inst["affects"]  = {}
     player["fighting"] = None
 
 
@@ -458,7 +529,6 @@ def violence_update(tr, player, mob_instances, room_state):
         if killed:
             raw_kill(tr, player, target_id, target, tpl, room_state)
             _advance_target(player, mob_instances, room_state)
-            return
 
     # Mob counter-attacks
     for mob_id in list(rs["mobs"]):
@@ -471,7 +541,7 @@ def violence_update(tr, player, mob_instances, room_state):
         if mob_tpl.get("passive"):
             continue
 
-        _mob_one_hit(tr, mob_inst, player)
+        mob_hit(tr, mob_inst, player, room_state, mob_instances)
 
         # Tick debuff timers
         affects = mob_inst["affects"]

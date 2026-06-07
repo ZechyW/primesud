@@ -1,8 +1,8 @@
-# PrimeSud — CLAUDE.md
+# PrimeSUD — CLAUDE.md
 
 ## What this project is
 
-**PrimeSud** is a text-based, single-user RPG for the HP Prime graphing calculator, heavily inspired by MUDs (Multi-User Dungeons). The name: **Prime** (calculator) + **SUD** (Single-User Dungeon).
+**PrimeSUD** is a text-based, single-user RPG for the HP Prime graphing calculator, heavily inspired by MUDs (Multi-User Dungeons). The name: **Prime** (calculator) + **SUD** (Single-User Dungeon).
 
 The game runs entirely in a terminal-style text UI rendered directly on the calculator's 320×240 screen via a custom text layer (`tml.py`).
 
@@ -10,7 +10,7 @@ The game runs entirely in a terminal-style text UI rendered directly on the calc
 
 ```
 primesud.hpappdir/
-├── primesud.py          # Main game entry point — PrimeSud + Game classes
+├── primesud.py          # Main game entry point — PrimeSUD + Game classes
 ├── tml.py               # Text Mode Layer library (reusable, treat as stable)
 ├── std5x10.font    # Custom bitmap font used by tml. 64 cols x 24 rows (excluding status bar)
 ├── DESIGN.md            # Intentional design decisions and 1stMud deviations — read before porting
@@ -29,7 +29,7 @@ primesud.hpappdir/
 
 ## Architecture
 
-### `PrimeSud` (context manager)
+### `PrimeSUD` (context manager)
 Handles environment setup/teardown: saves and restores calculator settings (`AAngle`, `AFormat`, `AComplex`, `Bits`, `HSeparator`) and clears graphic buffers on exit. Suppresses `KeyboardInterrupt` so the user can exit cleanly with the calculator's On key.
 
 ### `Game`
@@ -56,11 +56,11 @@ A reusable terminal abstraction written by Piotr Kowalewski (komame). Renders ch
 
 5. **Graphic buffers G1–G9.** The HP Prime has 9 graphic buffers (GROBs). G9 is used by `tml` for the font. G0 is the display. Avoid clobbering G9 or buffers `tml` relies on.
 
-6. **`KeyboardInterrupt` is the exit signal.** The calculator's On key raises it. The context manager in `PrimeSud.__exit__` already handles this — don't swallow it elsewhere.
+6. **`KeyboardInterrupt` is the exit signal.** The calculator's On key raises it. The context manager in `PrimeSUD.__exit__` already handles this — don't swallow it elsewhere.
 
 ## Colour codes
 
-PrimeSud uses the **same `{X` escape syntax as 1stMud** — embed codes directly in any string passed to `tr.print()` and they are handled transparently by `colors.py`. No need to read that file to use colours.
+PrimeSUD uses the **same `{X` escape syntax as 1stMud** — embed codes directly in any string passed to `tr.print()` and they are handled transparently by `colors.py`. No need to read that file to use colours.
 
 | Code | Colour | Code | Colour |
 |------|--------|------|--------|

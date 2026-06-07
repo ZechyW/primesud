@@ -1,6 +1,6 @@
-from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_KICK, GSN_CURE_LIGHT
+from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT
 from player import get_hitroll, get_damroll, get_AC, get_obj_list, get_char_room, save_char, PLR_AUTOMAP, PLR_DEFAULTS
-from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, _damage_verb, _damage_punct, raw_kill, _advance_target
+from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from config import DEFAULT_MACROS, TERMINAL_COLS
 
@@ -319,38 +319,6 @@ def prefix_lookup(table, key):
         if fallback is None and name.startswith(key):
             fallback = val
     return fallback
-
-
-def do_kick(tr, player, args, room_state, mob_instances):
-    if GSN_KICK not in player["learned"]:
-        tr.print("You better leave the martial arts to fighters.")
-        return None
-    if player["fighting"] is None:
-        tr.print("You aren't fighting anyone.")
-        return None
-    if player.get("wait", 0) > 0:
-        tr.print("You are still recovering.")
-        return None
-
-    target_id = player["fighting"]
-    target    = mob_instances[target_id]
-    tpl       = MOB_TEMPLATES[target["tpl"]]
-    skill_pct = player["learned"].get(GSN_KICK, 0)
-
-    WaitState(player, SKILLS[GSN_KICK]["beats"])
-    if skill_pct > randint(1, 100):                      # cf. 1stMud: get_skill() > number_percent()
-        dam = randint(1, max(1, player["level"]))
-        target["hp"] = max(0, target["hp"] - dam)
-        _, vp = _damage_verb(dam)
-        tr.print("Your kick {} {}{} [{}]".format(vp, tpl["name"], _damage_punct(dam), dam))
-        check_improve(tr, player, GSN_KICK, True)
-        if target["hp"] == 0:
-            raw_kill(tr, player, target_id, target, tpl, room_state)
-            _advance_target(player, mob_instances, room_state)
-    else:
-        tr.print("Your kick misses {}.".format(tpl["name"]))
-        check_improve(tr, player, GSN_KICK, False)
-    return None
 
 
 def do_cast(tr, player, args, room_state, mob_instances):
