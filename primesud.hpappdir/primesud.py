@@ -99,6 +99,9 @@ class Game:
             lines = color_wrap(text, _cols)
             n = len(lines)
             for idx, line in enumerate(lines):
+                # has_vis: True once any printable text is flushed; guards
+                # against treating cursor_x==0 as an auto-wrap when the line
+                # contained only colour codes and nothing was actually printed.
                 i, llen, buf, colored, has_vis = 0, len(line), [], False, False
                 while i < llen:
                     if line[i] == _CC and i + 1 < llen:
@@ -142,15 +145,15 @@ class Game:
         """Recolour the font grob for subsequent glyph rendering.
 
         Cache hit (same color): immediate return, ~0 ms.
-        Cache miss: restores pristine font from COLOR_GROB, then pixon-paints the
-        ~1037 precomputed fg pixels (~3.6 ms vs ~26 ms full-scan — ~7x speedup).
-        Local _po capture shaves a further ~2% vs global pixon lookup.
+        Cache miss: pixon-paints the ~1037 precomputed fg pixels (~3.6 ms vs
+        ~26 ms full-scan — ~7x speedup).  No strblit2 restore needed: bg pixels
+        are never touched by colour operations, so painting all fg pixels is
+        sufficient for any color→color transition.  Local _po capture shaves a
+        further ~2% vs global pixon lookup.
         """
         if color == self._current_fg:
             return
         self._current_fg = color
-        fw, fh = self._font_w, self._font_h
-        strblit2(FONT_GROB, 0, 0, fw, fh, COLOR_GROB, 0, 0, fw, fh)
         _po = pixon
         for y, xs in enumerate(self._fg_rows):
             for x in xs:

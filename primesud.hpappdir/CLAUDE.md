@@ -74,6 +74,25 @@ Currently tagged:
 - `commands.py` — `_MACRO_SUBST`, `do_macro`
 - `combat.py` — `_SPECIAL_MOVES` section, unarmed special-move block in `multi_hit`
 
+## Benchmarking
+
+HP Prime has no profiler, so timing is done inline with `ppleval("Ticks")` (milliseconds).
+
+**Pattern:** add a benchmark block to `run_title()` in `primesud.py` — it runs after `Game.__init__` (so all GROBs and precomputed data are ready) but before the game loop, and the screen is clear.
+
+Example (adapt as needed):
+
+```python
+REPS = 100
+t0 = int(ppleval("Ticks"))
+for i in range(REPS):
+    # ... code under test ...
+t_ms = int(ppleval("Ticks")) - t0
+tr.print("result: {} ms ({} ms/call)".format(t_ms, t_ms // REPS))
+```
+
+End the block with `tr.input("")` to pause and read results before the game continues.  Clean up any side-effects (e.g. restore FONT_GROB via `strblit2` and reset `self._current_fg = None`) before the `tr.input` call so the game starts in a consistent state.
+
 ## Working style
 
 - Write code first, then briefly explain key decisions — especially anything non-obvious about HP Prime's constraints or PPL interop.
