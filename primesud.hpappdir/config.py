@@ -27,7 +27,7 @@ MP_REGEN_NUM   = 6
 MP_REGEN_DENOM = 5
 
 # ── Automap ───────────────────────────────────────────────────────────────────
-MAP_HALF_W   = 6   # grid half-width  in room-steps (full grid = 2*W+1 = 13 cols)
+MAP_HALF_W   = 5   # grid half-width  in room-steps (full grid = 2*W+1 = 13 cols)
 MAP_HALF_H   = 6   # grid half-height in room-steps (full grid = 2*H+1 =  9 rows)
 MAP_MAX_DEPTH = 3  # recursion depth for exit tracing
 
