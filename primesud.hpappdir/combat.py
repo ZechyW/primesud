@@ -1,11 +1,10 @@
 from urandom import randint
-from hpprime import eval as ppleval
 
-from config import (DEATH_MSG_DELAY, PULSE_VIOLENCE,
+from config import (PULSE_VIOLENCE,
                     STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
                     CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_32)
 from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, ROOMS,
-                   R_STARTING_ROOM, GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY)
+                   GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY)
 from player import get_hitroll, get_damroll, get_AC, show_prompt
 
 
@@ -503,6 +502,12 @@ def _advance_target(player, mob_instances, room_state):
 # ── Violence update (called every PULSE_VIOLENCE) ─────────────────────────────
 
 def violence_update(tr, player, mob_instances, room_state):
+    """One combat pulse: player attacks, then all aggro mobs counter-attack.
+
+    Returns:
+        True if the player died this pulse (caller should show the respawn room);
+        None otherwise.
+    """
     target_id = player["fighting"]
     if target_id is None:
         return
@@ -553,9 +558,8 @@ def violence_update(tr, player, mob_instances, room_state):
                     affects.pop(base, None)
 
         if player["hp"] == 0:
-            char_death(tr, player)
             stop_fighting(player, mob_instances)
-            return
+            return True
 
     if player["fighting"] is not None:
         fid  = player["fighting"]
@@ -566,20 +570,6 @@ def violence_update(tr, player, mob_instances, room_state):
 
 
 # ── Death / Victory ───────────────────────────────────────────────────────────
-
-def char_death(tr, player):
-    tr.print("Your lifeforce ebbs away...")
-    ppleval("WAIT({})".format(DEATH_MSG_DELAY))
-    tr.print("A distant warmth draws you back.")
-    ppleval("WAIT({})".format(DEATH_MSG_DELAY))
-    player["room"] = R_STARTING_ROOM
-    player["hp"]   = 1
-    player["mp"]   = 1
-    player["wait"] = 0
-    player["daze"] = 0
-    tr.print("You come to your senses. Alive, but barely.")
-    tr.print("")
-
 
 def raw_kill(tr, player, mob_id, inst, tpl, room_state):
     tr.print("{} is defeated!".format(tpl["name"]))

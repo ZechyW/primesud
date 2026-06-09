@@ -9,7 +9,9 @@ from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     AUTOSAVE_TICKS, HP_REGEN_NUM, HP_REGEN_DENOM,
                     MP_REGEN_NUM, MP_REGEN_DENOM,
                     KEY_COMMANDS as _KEY_COMMANDS,
-                    TERMINAL_COLS, FONT, FONT_GROB, COLOR_GROB)
+                    TERMINAL_COLS, FONT, FONT_GROB, COLOR_GROB,
+                    DEATH_MSG_DELAY)
+from world import R_STARTING_ROOM
 from combat import violence_update
 from player import (
     create_char,
@@ -259,7 +261,20 @@ class Game:
                 pulse += 1
 
                 if pulse % PULSE_VIOLENCE == 0:
-                    violence_update(tr, player, mob_instances, room_state)
+                    if violence_update(tr, player, mob_instances, room_state):
+                        # [PRIMESUD] Handle auto respawn on death
+                        tr.print("Your lifeforce ebbs away...")
+                        ppleval("WAIT({})".format(DEATH_MSG_DELAY))
+                        tr.print("A distant warmth draws you back.")
+                        ppleval("WAIT({})".format(DEATH_MSG_DELAY))
+                        player["room"] = R_STARTING_ROOM
+                        player["hp"]   = 1
+                        player["mp"]   = 1
+                        player["wait"] = 0
+                        player["daze"] = 0
+                        tr.print("You come to your senses. Alive, but barely.")
+                        tr.print("")
+                        do_look(tr, player, [], room_state, mob_instances)
                     show_prompt(tr, player, self.input_buf)
 
                 if pulse % PULSE_TICK == 0:
