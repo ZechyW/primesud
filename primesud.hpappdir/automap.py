@@ -19,13 +19,30 @@ _EXIT_CHAR = {"n": "|", "s": "|", "e": "-", "w": "-"}
 _FULL_LEGEND = [
     "  X  You are here",
     "  o  Room",
+    "  U  Room (up exit)",
+    "  D  Room (down exit)",
+    "  B  Room (up+down)",
     "  |  N/S exit",
     "  -  E/W exit",
 ]
 
 
+def _room_char(room):
+    if room is None:
+        return 'o'
+    has_u = 'u' in room['exits']
+    has_d = 'd' in room['exits']
+    if has_u and has_d:
+        return 'B'
+    if has_u:
+        return 'U'
+    if has_d:
+        return 'D'
+    return 'o'
+
+
 def _map_exits(rooms, start_vnum, grid, start_gx, start_gy):
-    grid[start_gy][start_gx] = 'o'
+    grid[start_gy][start_gx] = _room_char(rooms.get(start_vnum))
     queue = [(start_vnum, start_gx, start_gy, 0)]
     head = 0
     while head < len(queue):
@@ -49,7 +66,7 @@ def _map_exits(rooms, start_vnum, grid, start_gx, start_gy):
                 continue
             grid[ey][ex] = _EXIT_CHAR[direction]
             if grid[ry][rx] == ' ':
-                grid[ry][rx] = 'o'
+                grid[ry][rx] = _room_char(rooms.get(dest_vnum))
                 queue.append((dest_vnum, rx, ry, depth + 1))
 
 

@@ -23,6 +23,7 @@ def _wrap(text, width):
 
 
 _EXIT_ORDER = ("n", "e", "s", "w", "u", "d")
+_EXIT_NAMES = {"n": "north", "e": "east", "s": "south", "w": "west", "u": "up", "d": "down"}
 
 # ── Commands (cf. 1stMud do_* in interp.c / fight.c) ─────────────────────────
 
@@ -72,7 +73,7 @@ def do_look(tr, player, args, room_state, mob_instances, _long=True):
         for tl in text:
             tr.print(tl)
 
-    exits = " ".join(d for d in _EXIT_ORDER if d in room["exits"]).upper()
+    exits = " ".join(_EXIT_NAMES.get(d, d) for d in _EXIT_ORDER if d in room["exits"])
     exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
     tr.print("{g" + exit_string + "{x")
     tr.print("")
