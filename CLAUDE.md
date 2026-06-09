@@ -9,15 +9,17 @@ The game runs entirely in a terminal-style text UI rendered directly on the calc
 ## Repository layout
 
 ```
+CLAUDE.md                # This file
+DESIGN.md                # Intentional design decisions and 1stMud deviations — read before porting
+REFERENCE.md             # 1stMud implementation reference snippets
 primesud.hpappdir/
 ├── primesud.py          # Main game entry point — PrimeSUD + Game classes
 ├── tml.py               # Text Mode Layer library (reusable, treat as stable)
 ├── std5x10.font    # Custom bitmap font used by tml. 64 cols x 24 rows (excluding status bar)
-├── DESIGN.md            # Intentional design decisions and 1stMud deviations — read before porting
 ├── primesud.hpapp       # Binary HP Prime app package
 ├── primesud.hpappprgm   # Binary program metadata
 └── primesud.hpappnote   # Binary note file
-../reference/            # Reference game implementations (JezzBall, Star Trek)
+reference/               # Reference game implementations (1stMud, JezzBall, Star Trek)
 ```
 
 ## Tech stack

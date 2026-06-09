@@ -24,32 +24,38 @@ _FULL_LEGEND = [
 ]
 
 
-def _map_exits(rooms, vnum, grid, gx, gy, depth):
-    room = rooms.get(vnum)
-    if room is None:
-        return
-    grid[gy][gx] = 'o'
-    if depth >= MAP_MAX_DEPTH:
-        return
-    for direction, dest_vnum in room["exits"].items():
-        delta = _DIR_DELTA.get(direction)
-        if delta is None:
+def _map_exits(rooms, start_vnum, grid, start_gx, start_gy):
+    grid[start_gy][start_gx] = 'o'
+    queue = [(start_vnum, start_gx, start_gy, 0)]
+    head = 0
+    while head < len(queue):
+        vnum, gx, gy, depth = queue[head]
+        head += 1
+        if depth >= MAP_MAX_DEPTH:
             continue
-        dx, dy = delta
-        ex, ey = gx + dx, gy + dy
-        rx, ry = gx + 2 * dx, gy + 2 * dy
-        if not (0 <= ex < GW and 0 <= ey < GH):
+        room = rooms.get(vnum)
+        if room is None:
             continue
-        if not (0 <= rx < GW and 0 <= ry < GH):
-            continue
-        grid[ey][ex] = _EXIT_CHAR[direction]
-        if grid[ry][rx] == ' ':
-            _map_exits(rooms, dest_vnum, grid, rx, ry, depth + 1)
+        for direction, dest_vnum in room["exits"].items():
+            delta = _DIR_DELTA.get(direction)
+            if delta is None:
+                continue
+            dx, dy = delta
+            ex, ey = gx + dx, gy + dy
+            rx, ry = gx + 2 * dx, gy + 2 * dy
+            if not (0 <= ex < GW and 0 <= ey < GH):
+                continue
+            if not (0 <= rx < GW and 0 <= ry < GH):
+                continue
+            grid[ey][ex] = _EXIT_CHAR[direction]
+            if grid[ry][rx] == ' ':
+                grid[ry][rx] = 'o'
+                queue.append((dest_vnum, rx, ry, depth + 1))
 
 
 def _build_grid(player, rooms):
     grid = [[' '] * GW for _ in range(GH)]
-    _map_exits(rooms, player["room"], grid, MAP_HALF_W, MAP_HALF_H, 0)
+    _map_exits(rooms, player["room"], grid, MAP_HALF_W, MAP_HALF_H)
     grid[MAP_HALF_H][MAP_HALF_W] = 'X'
     return grid
 
@@ -60,10 +66,10 @@ def build_compact_lines(player, rooms):
     cx, cy = MAP_HALF_W, MAP_HALF_H
     r_w = MAP_HALF_W
     r_h = MAP_HALF_H - 2
-    border = '+' + '-' * _CW + '+'
+    border = "{R" + '+' + '-' * _CW + '+' + "{x"
     lines = [border]
     for y in range(cy - r_h, cy + r_h + 1):
-        lines.append('|' + ''.join(grid[y][cx - r_w:cx + r_w + 1]) + '|')
+        lines.append('{R|{x' + ''.join(grid[y][cx - r_w:cx + r_w + 1]) + '{R|{x')
     lines.append(border)
     return lines
 

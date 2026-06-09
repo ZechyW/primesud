@@ -56,20 +56,11 @@ def do_look(tr, player, args, room_state, mob_instances, _long=True):
     automap_on = player.get("flags", PLR_DEFAULTS) & PLR_AUTOMAP
     text_w = TERMINAL_COLS - COMPACT_W - 1 if automap_on else TERMINAL_COLS
 
-    text = ["[ {} ]".format(room["name"])]
-    text.append("")
-    text.extend(_wrap(room["long"] if _long else room["short"], text_w))
-    exits = " ".join(d for d in _EXIT_ORDER if d in room["exits"]).upper()
-    text.append("[Exits: {}]".format(exits) if exits else "[Exits: none]")
-    text.append("")
-    live_mobs = [i for i in rs["mobs"] if mob_instances[i]["state"] != "dead"]
-    if rs["items"]:
-        names = ", ".join(ITEM_TEMPLATES[v]["name"] for v in rs["items"])
-        text.append("Items: {}".format(names))
-    if live_mobs:
-        names = ", ".join(MOB_TEMPLATES[mob_instances[i]["tpl"]]["name"] for i in live_mobs)
-        text.append("Mobs:  {}".format(names))
+    tr.print("{Y" + room["name"] + "{x")
 
+    text = []
+    text.extend(_wrap(room["long"] if _long else room["short"], text_w))
+    
     if automap_on:
         map_lines = build_compact_lines(player, ROOMS)
         n = max(len(map_lines), len(text))
@@ -80,6 +71,18 @@ def do_look(tr, player, args, room_state, mob_instances, _long=True):
     else:
         for tl in text:
             tr.print(tl)
+
+    exits = " ".join(d for d in _EXIT_ORDER if d in room["exits"]).upper()
+    exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
+    tr.print("{g" + exit_string + "{x")
+    tr.print("")
+    live_mobs = [i for i in rs["mobs"] if mob_instances[i]["state"] != "dead"]
+    if rs["items"]:
+        names = ", ".join(ITEM_TEMPLATES[v]["name"] for v in rs["items"])
+        tr.print("Items: {}".format(names))
+    if live_mobs:
+        names = ", ".join(MOB_TEMPLATES[mob_instances[i]["tpl"]]["name"] for i in live_mobs)
+        tr.print("Mobs:  {}".format(names))
 
 
 def do_move(tr, player, direction, room_state, mob_instances):

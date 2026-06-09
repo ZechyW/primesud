@@ -1,9 +1,8 @@
 from hpprime import eval as ppleval, keyboard
 from cas import get_key
-from uio import FileIO
 from urandom import randint
 
-from config import SAVE_FILE, POLL_MS, TERMINAL_COLS
+from config import SAVE_VAR, POLL_MS, TERMINAL_COLS
 from world import (
     ROOM_INIT, ITEM_TEMPLATES, MOB_TEMPLATES, MOB_INIT,
     R_VILLAGE_SQUARE,
@@ -197,6 +196,12 @@ def show_prompt(tr, player, buf):
 
 
 # ── Persistence ───────────────────────────────────────────────────────────────
+# Save data is stored in a PPL home variable (SAVE_VAR) via HVars so it
+# survives app reinstalls.  Serialisation constraints:
+#   - Lines are joined with '~'; no saved field value may contain '~'.
+#   - No field value may contain '"' (would break the PPL string literal).
+#   - HVars returns the string "Error: Invalid input" when the variable does
+#     not exist yet (i.e. no save found); load_char treats this as no-save.
 
 def save_char(player, room_state, mob_instances, macros=None):
     lines = []
@@ -224,9 +229,8 @@ def save_char(player, room_state, mob_instances, macros=None):
             mob_id, inst["tpl"], inst["hp"], inst.get("hp_max", inst["hp"]), state,
             inst["room"], inst.get("respawn_at", 0)))
     try:
-        payload = "\n".join(lines)
-        with FileIO(SAVE_FILE, "wb") as f:
-            f.write(payload.encode("ascii"))
+        payload = "~".join(lines)
+        ppleval('HVars("' + SAVE_VAR + '"):="' + payload + '"')
         return True
     except Exception:
         return False
@@ -234,8 +238,9 @@ def save_char(player, room_state, mob_instances, macros=None):
 
 def load_char(player, room_state, mob_instances, macros=None):
     try:
-        with FileIO(SAVE_FILE, "rb") as f:
-            data = f.read().decode("ascii")
+        data = ppleval('HVars("' + SAVE_VAR + '")')
+        if not data or not isinstance(data, str) or data.startswith("Error:"):
+            return False
     except Exception:
         return False
 
@@ -251,7 +256,7 @@ def load_char(player, room_state, mob_instances, macros=None):
     for rs in room_state.values():
         rs["mobs"] = []
 
-    for line in data.split("\n"):
+    for line in data.split("~"):
         if "=" not in line:
             continue
         key, val = line.split("=", 1)
