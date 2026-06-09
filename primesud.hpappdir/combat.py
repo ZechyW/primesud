@@ -596,9 +596,6 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state):
             tr.print("Found: {}".format(ITEM_TEMPLATES[item_vnum]["name"]))
 
     inst["state"] = "dead"
-    if tpl["respawn"] > 0:
-        inst["respawn_at"] = int(ppleval("Ticks")) + tpl["respawn"]
-
     tr.print("")
 
 

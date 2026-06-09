@@ -53,6 +53,11 @@ def create_char():
     }
 
 
+def _stat_from_level(level):
+    """Uniform mob stat derived from level (cf. 1stMud create_mobile perm_stat)."""
+    return min(25, 11 + level // 4)
+
+
 def reset_area():
     """Create fresh room state and mob instances (cf. 1stMud reset_area).
 
@@ -69,8 +74,8 @@ def reset_area():
             tpl_vnum  = entry[1]
             room_vnum = entry[2]
             tpl = MOB_TEMPLATES[tpl_vnum]
-            ps  = tpl["perm_stat"]
             _hp = _roll_hp(tpl["hp_dice"])
+            _st = _stat_from_level(tpl["level"])
             mob_instances[mob_id] = {
                 "tpl":        tpl_vnum,
                 "is_npc":     True,
@@ -79,7 +84,6 @@ def reset_area():
                 "hp_max":     _hp,
                 "state":      "idle",
                 "room":       room_vnum,
-                "respawn_at": 0,
                 "affects":    {},
                 "wait":       0,
                 "daze":       0,
@@ -88,11 +92,11 @@ def reset_area():
                 "off_flags":  dict(tpl.get("off_flags", {})),
                 # Combat stats flattened from template for hot-path access
                 "level":      tpl["level"],
-                "str":        ps["str"],
-                "dex":        ps["dex"],
-                "int":        ps["int"],
-                "wis":        ps["wis"],
-                "con":        ps["con"],
+                "str":        _st,
+                "dex":        _st,
+                "int":        _st,
+                "wis":        _st,
+                "con":        _st,
                 "hitroll":    tpl["hitroll"],
                 "damroll":    tpl["damroll"],
                 "AC":         tpl["AC"],
@@ -105,10 +109,25 @@ def reset_area():
     return room_state, mob_instances
 
 
+def revive_dead_mobs(room_state, mob_instances):
+    """Re-spawn only dead mobs in-place (cf. 1stMud reset_room 'M': only spawn
+    if mob count < limit, i.e. the slot is empty/dead)."""
+    for mob_id, inst in mob_instances.items():
+        if inst["state"] == "dead":
+            tpl = MOB_TEMPLATES[inst["tpl"]]
+            _hp = _roll_hp(tpl["hp_dice"])
+            inst["hp"]      = _hp
+            inst["hp_max"]  = _hp
+            inst["state"]   = "idle"
+            inst["affects"] = {}
+            if mob_id not in room_state[inst["room"]]["mobs"]:
+                room_state[inst["room"]]["mobs"].append(mob_id)
+
+
 def _enrich_mob_instance(inst):
     """Fill in template-derived combat stats on a freshly loaded mob instance."""
     tpl = MOB_TEMPLATES[inst["tpl"]]
-    ps  = tpl["perm_stat"]
+    _st = _stat_from_level(tpl["level"])
     inst.setdefault("wait",     0)
     inst.setdefault("daze",     0)
     inst.setdefault("affects",  {})
@@ -118,11 +137,11 @@ def _enrich_mob_instance(inst):
     inst["learned"]  = dict(tpl.get("skills", {}))
     inst["off_flags"] = dict(tpl.get("off_flags", {}))
     inst["level"]    = tpl["level"]
-    inst["str"]      = ps["str"]
-    inst["dex"]      = ps["dex"]
-    inst["int"]      = ps["int"]
-    inst["wis"]      = ps["wis"]
-    inst["con"]      = ps["con"]
+    inst["str"]      = _st
+    inst["dex"]      = _st
+    inst["int"]      = _st
+    inst["wis"]      = _st
+    inst["con"]      = _st
     inst["hitroll"]  = tpl["hitroll"]
     inst["damroll"]  = tpl["damroll"]
     inst["AC"]       = tpl["AC"]
@@ -210,7 +229,7 @@ def show_prompt(tr, player, buf):
 #   - HVars returns the string "Error: Invalid input" when the variable does
 #     not exist yet (i.e. no save found); load_char treats this as no-save.
 
-def save_char(player, room_state, mob_instances, macros=None):
+def save_char(player, room_state, mob_instances, area_state=None, macros=None):
     lines = []
     for key in ("name", "level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
@@ -228,13 +247,15 @@ def save_char(player, room_state, mob_instances, macros=None):
     if macros is not None:
         for k, v in macros.items():
             lines.append("p.macro.{}={}".format(k, v))
+    if area_state is not None:
+        lines.append("a.age={}".format(area_state["age"]))
     for rvnum, rs in room_state.items():
         lines.append("r.{}.items={}".format(rvnum, "|".join(str(v) for v in rs["items"])))
     for mob_id, inst in mob_instances.items():
         state = "idle" if inst["state"] == "aggro" else inst["state"]
-        lines.append("m.{}=tpl={}|hp={}|hp_max={}|state={}|room={}|respawn_at={}".format(
+        lines.append("m.{}=tpl={}|hp={}|hp_max={}|state={}|room={}".format(
             mob_id, inst["tpl"], inst["hp"], inst.get("hp_max", inst["hp"]), state,
-            inst["room"], inst.get("respawn_at", 0)))
+            inst["room"]))
     try:
         payload = "~".join(lines)
         ppleval('HVars("' + SAVE_VAR + '"):="' + payload + '"')
@@ -243,7 +264,7 @@ def save_char(player, room_state, mob_instances, macros=None):
         return False
 
 
-def load_char(player, room_state, mob_instances, macros=None):
+def load_char(player, room_state, mob_instances, area_state=None, macros=None):
     try:
         data = ppleval('HVars("' + SAVE_VAR + '")')
         if not data or not isinstance(data, str) or data.startswith("Error:"):
@@ -288,10 +309,11 @@ def load_char(player, room_state, mob_instances, macros=None):
         elif key.startswith("r.") and key.endswith(".items"):
             rvnum = int(key.split(".")[1])
             room_state[rvnum]["items"] = [int(v) for v in val.split("|") if v]
+        elif key == "a.age" and area_state is not None:
+            area_state["age"] = int(val)
         elif key.startswith("m."):
             mob_id = int(key.split(".")[1])
-            fields = {"tpl": 0, "hp": 0, "hp_max": 0, "state": "idle",
-                      "room": 0, "respawn_at": 0}
+            fields = {"tpl": 0, "hp": 0, "hp_max": 0, "state": "idle", "room": 0}
             for pair in val.split("|"):
                 if "=" in pair:
                     fk, fv = pair.split("=", 1)

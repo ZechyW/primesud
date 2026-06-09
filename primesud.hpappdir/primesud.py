@@ -3,47 +3,48 @@ import gc
 from tml import tml
 from hpprime import dimgrob, eval as ppleval, getpix, pixon, grobw, grobh, strblit2
 
+from urandom import randint
 from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
-                    MS_PER_PULSE, PULSE_VIOLENCE, PULSE_TICK,
+                    MS_PER_PULSE, PULSE_VIOLENCE, PULSE_TICK, PULSE_AREA,
                     AUTOSAVE_TICKS, HP_REGEN_NUM, HP_REGEN_DENOM,
                     MP_REGEN_NUM, MP_REGEN_DENOM,
                     KEY_COMMANDS as _KEY_COMMANDS,
                     TERMINAL_COLS, FONT, FONT_GROB, COLOR_GROB)
 from combat import violence_update
-from world import MOB_TEMPLATES
 from player import (
     create_char,
     reset_area,
+    revive_dead_mobs,
     show_prompt,
     _poll_char,
     _resync_keyboard,
     save_char as _save_char,
     load_char as _load_char,
-    _roll_hp,
 )
 from commands import interpret, do_look, _MACRO_SUBST
 from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap
 
 
-# ── World tick ────────────────────────────────────────────────────────────────
+# ── World tick / area update ──────────────────────────────────────────────────
+
+# Area age thresholds (cf. 1stMud area_update: age < 3 skip; age >= 15 reset
+# when player present; age >= 31 hard cap).  Single-player simplification:
+# player is always present, so the condition collapses to age >= 15.
+_AREA_AGE_MIN   = 3   # skip reset below this age
+_AREA_AGE_RESET = 15  # reset threshold (player always present)
 
 
 def world_tick(player, room_state, mob_instances):
-    now = int(ppleval("Ticks"))
-    for mob_id, inst in mob_instances.items():
-        if inst["state"] == "dead" and inst.get("respawn_at", 0) > 0:
-            if now >= inst["respawn_at"]:
-                tpl = MOB_TEMPLATES[inst["tpl"]]
-                _hp = _roll_hp(tpl["hp_dice"])
-                inst["hp"] = _hp
-                inst["hp_max"] = _hp
-                inst["state"] = "idle"
-                inst["respawn_at"] = 0
-                if mob_id not in room_state[inst["room"]]["mobs"]:
-                    room_state[inst["room"]]["mobs"].append(mob_id)
-
     player["hp"] = min(player["hp_max"], player["hp"] + player["con"] * HP_REGEN_NUM // HP_REGEN_DENOM)
     player["mp"] = min(player["mp_max"], player["mp"] + player["int"] * MP_REGEN_NUM // MP_REGEN_DENOM)
+
+
+def area_update(area_state, room_state, mob_instances):
+    """Increment area age and reset if threshold reached (cf. 1stMud area_update)."""
+    area_state["age"] += 1
+    if area_state["age"] >= _AREA_AGE_MIN and area_state["age"] >= _AREA_AGE_RESET:
+        revive_dead_mobs(room_state, mob_instances)
+        area_state["age"] = randint(0, 3)
 
 
 def _wrap_plain(text, width):
@@ -143,6 +144,7 @@ class Game:
         self.player = None
         self.room_state = None
         self.mob_instances = None
+        self._area_state = {"age": 0}
 
     def set_color(self, color):
         """Recolour the font grob for subsequent glyph rendering.
@@ -173,14 +175,18 @@ class Game:
         self.player = create_char()
         self.player["name"] = name
         self.room_state, self.mob_instances = reset_area()
+        self._area_state = {"age": 0}
 
     def load_game(self):
         self.player = create_char()
         self.room_state, self.mob_instances = reset_area()
-        return _load_char(self.player, self.room_state, self.mob_instances, _MACRO_SUBST)
+        self._area_state = {"age": 0}
+        return _load_char(self.player, self.room_state, self.mob_instances,
+                          self._area_state, _MACRO_SUBST)
 
     def save_game(self):
-        if not _save_char(self.player, self.room_state, self.mob_instances, _MACRO_SUBST):
+        if not _save_char(self.player, self.room_state, self.mob_instances,
+                          self._area_state, _MACRO_SUBST):
             self.tr.print("Save failed.")
         else:
             self.tr.print("Saved.")
@@ -206,6 +212,7 @@ class Game:
         player = self.player
         room_state = self.room_state
         mob_instances = self.mob_instances
+        area_state = self._area_state
 
         pulse      = 0
         tick_count = 0
@@ -262,6 +269,9 @@ class Game:
                     if tick_count >= AUTOSAVE_TICKS:
                         self.save_game()
                         tick_count = 0
+
+                if pulse % PULSE_AREA == 0:
+                    area_update(area_state, room_state, mob_instances)
 
                 if pulse >= 14400:  # wrap at 1 hour (3600 s × 4 pulses/s)
                     pulse = 0

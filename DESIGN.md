@@ -74,6 +74,19 @@ Stat application tables (`STR_APP_TOHIT`, `DEX_APP_DEF`, etc.) and THAC0/HP-die 
 
 `reset_area()` in `player.py` processes `RESETS` in order. Mob instance IDs are determined by position (first `M` entry → ID 1), so the ordering is stable across resets and compatible with the save format.
 
+**Mob limits.** 1stMud's `M` reset line carries two extra fields omitted here:
+
+```
+M 0  <mob_vnum>  <global_limit>  <room_vnum>  <room_limit>
+```
+
+- `global_limit` — skip spawn if `pMobIndex->count >= limit` (world-wide live count of that template)
+- `room_limit` — skip spawn if that many of the same template are already alive in the target room
+
+PrimeSUD drops both fields because each `RESETS` entry owns exactly one fixed mob instance slot. `revive_dead_mobs()` achieves the same effect implicitly: it only touches `state == "dead"` slots, so alive mobs are never duplicated. The effective per-slot limit is always 1.
+
+To mirror 1stMud properly (multiple instances per template, e.g. a pack of 5 goblins from one reset entry), add an explicit count field: `("M", mob_vnum, room_vnum, count)`, allocate `count` consecutive instance IDs per entry in `reset_area()`, and track a per-template live count to enforce the global cap.
+
 ### What was skipped or adapted
 
 | 1stMud feature | Status |
