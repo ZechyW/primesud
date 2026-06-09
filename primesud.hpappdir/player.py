@@ -124,31 +124,6 @@ def revive_dead_mobs(room_state, mob_instances):
                 room_state[inst["room"]]["mobs"].append(mob_id)
 
 
-def _enrich_mob_instance(inst):
-    """Fill in template-derived combat stats on a freshly loaded mob instance."""
-    tpl = MOB_TEMPLATES[inst["tpl"]]
-    _st = _stat_from_level(tpl["level"])
-    inst.setdefault("wait",     0)
-    inst.setdefault("daze",     0)
-    inst.setdefault("affects",  {})
-    inst.setdefault("fighting", None)
-    inst["is_npc"]   = True
-    inst["name"]     = tpl["name"]
-    inst["learned"]  = dict(tpl.get("skills", {}))
-    inst["off_flags"] = dict(tpl.get("off_flags", {}))
-    inst["level"]    = tpl["level"]
-    inst["str"]      = _st
-    inst["dex"]      = _st
-    inst["int"]      = _st
-    inst["wis"]      = _st
-    inst["con"]      = _st
-    inst["hitroll"]  = tpl["hitroll"]
-    inst["damroll"]  = tpl["damroll"]
-    inst["AC"]       = tpl["AC"]
-    if inst.get("hp_max", 0) == 0:
-        inst["hp_max"] = inst["hp"]
-
-
 # ── Stat application helpers ──────────────────────────────────────────────────
 
 def _clamp_stat(v):
@@ -252,10 +227,9 @@ def save_char(player, room_state, mob_instances, area_state=None, macros=None):
     for rvnum, rs in room_state.items():
         lines.append("r.{}.items={}".format(rvnum, "|".join(str(v) for v in rs["items"])))
     for mob_id, inst in mob_instances.items():
-        state = "idle" if inst["state"] == "aggro" else inst["state"]
-        lines.append("m.{}=tpl={}|hp={}|hp_max={}|state={}|room={}".format(
-            mob_id, inst["tpl"], inst["hp"], inst.get("hp_max", inst["hp"]), state,
-            inst["room"]))
+        if inst["state"] == "dead":
+            lines.append("m.{}=tpl={}|state=dead|room={}".format(
+                mob_id, inst["tpl"], inst["room"]))
     try:
         payload = "~".join(lines)
         ppleval('HVars("' + SAVE_VAR + '"):="' + payload + '"')
@@ -280,9 +254,6 @@ def load_char(player, room_state, mob_instances, area_state=None, macros=None):
 
     if macros is not None:
         macros.clear()
-
-    for rs in room_state.values():
-        rs["mobs"] = []
 
     for line in data.split("~"):
         if "=" not in line:
@@ -313,15 +284,23 @@ def load_char(player, room_state, mob_instances, area_state=None, macros=None):
             area_state["age"] = int(val)
         elif key.startswith("m."):
             mob_id = int(key.split(".")[1])
-            fields = {"tpl": 0, "hp": 0, "hp_max": 0, "state": "idle", "room": 0}
+            saved = {}
             for pair in val.split("|"):
                 if "=" in pair:
                     fk, fv = pair.split("=", 1)
-                    fields[fk] = int(fv) if fk != "state" else fv
-            _enrich_mob_instance(fields)
-            mob_instances[mob_id] = fields
-            if fields["state"] != "dead":
-                room_state[fields["room"]]["mobs"].append(mob_id)
+                    saved[fk] = fv
+            inst = mob_instances.get(mob_id)
+            if inst and str(inst["tpl"]) == saved.get("tpl", ""):
+                if "state" in saved:    # fv: should be "dead"
+                    inst["state"] = saved["state"]
+                if "room" in saved:     # fv: room vnum (int)
+                    inst["room"] = int(saved["room"])
+
+    for rs in room_state.values():
+        rs["mobs"] = []
+    for mob_id, inst in mob_instances.items():
+        if inst["state"] != "dead":
+            room_state[inst["room"]]["mobs"].append(mob_id)
 
     return True
 
