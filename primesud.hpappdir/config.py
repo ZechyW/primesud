@@ -1,4 +1,5 @@
-# ── Display ───────────────────────────────────────────────────────────────────
+# fmt: off
+# ── Display ───────────────────────────────────────────────────────────────────────────
 DARK_MODE     = True
 FONT          = "std5x10"
 BG_COLOR      = 0
@@ -7,34 +8,34 @@ TAB_SIZE      = 8
 TERMINAL_COLS = 64   # character columns (std5x10 font, 320 px wide)
 TERMINAL_ROWS = 24   # character rows    (std5x10 font, 240 px high, excl. status bar)
 FONT_GROB     = 9    # grob tml blits font glyphs from (HP Prime default)
-COLOR_GROB    = 8    # holds unmodified font copy; restored into FONT_GROB on colour reset
+COLOR_GROB    = 8    # unmodified font copy; restored into FONT_GROB on colour reset
 
-# ── Timing — pulse system (1stMud convention) ─────────────────────────────────
+# ── Timing — pulse system (1stMud convention) ─────────────────────────────────────────
 PULSE_PER_SECOND = 4                          # base pulse rate
 MS_PER_PULSE     = 1000 // PULSE_PER_SECOND   # 250 ms per pulse
 PULSE_VIOLENCE   = 3  * PULSE_PER_SECOND      # 12  pulses — combat round (3 s)
 PULSE_TICK       = 30 * PULSE_PER_SECOND      # 120 pulses — world tick (30 s)
 PULSE_AREA       = 120 * PULSE_PER_SECOND     # 480 pulses — area reset (2 min)
 POLL_MS          = 10                          # keyboard polling interval (ms)
-AUTOSAVE_TICKS   = 4                           # autosave every N world ticks (4 × 30 s = 120 s)
+AUTOSAVE_TICKS   = 4                           # autosave every N world ticks (4 × 30 s)
 DEATH_MSG_DELAY  = 1                           # seconds between death flavour lines
 
-# ── Regeneration (scaled for 30 s world tick) ─────────────────────────────────
+# ── Regeneration (scaled for 30 s world tick) ─────────────────────────────────────────
 # HP per tick = con * HP_REGEN_NUM // HP_REGEN_DENOM  → con=10 gives 12 HP/30 s
 HP_REGEN_NUM   = 6
 HP_REGEN_DENOM = 5
 MP_REGEN_NUM   = 6
 MP_REGEN_DENOM = 5
 
-# ── Automap ───────────────────────────────────────────────────────────────────
-MAP_HALF_W   = 5   # grid half-width  in room-steps (full grid = 2*W+1 = 13 cols)
-MAP_HALF_H   = 6   # grid half-height in room-steps (full grid = 2*H+1 =  9 rows)
-MAP_MAX_DEPTH = 2  # recursion depth for exit tracing
+# ── Automap ───────────────────────────────────────────────────────────────────────────
+MAP_HALF_W    = 5   # grid half-width  in room-steps (full grid = 2*W+1 = 13 cols)
+MAP_HALF_H    = 6   # grid half-height in room-steps (full grid = 2*H+1 =  9 rows)
+MAP_MAX_DEPTH = 2   # recursion depth for exit tracing
 
-# ── Persistence ───────────────────────────────────────────────────────────────
+# ── Persistence ───────────────────────────────────────────────────────────────────────
 SAVE_VAR = "primesud_save"
 
-# ── Key command shortcuts [PRIMESUD] ──────────────────────────────────────────
+# ── Key command shortcuts [PRIMESUD] ──────────────────────────────────────────────────
 # Maps HP Prime physical key bit-index → (command, auto_submit).
 # auto_submit=True: execute immediately; False: load into input buffer.
 # Adjust indices here if they differ on a specific hardware revision.
@@ -47,7 +48,7 @@ KEY_COMMANDS = {  # [PRIMESUD]
     12: ("s",  True),   # ↓ S    (d-pad Down)
 }
 
-# ── Default digit macros [PRIMESUD] ───────────────────────────────────────────
+# ── Default digit macros [PRIMESUD] ───────────────────────────────────────────────────
 # Maps digit key "0"-"9" → command string. Edit to taste.
 DEFAULT_MACROS = {  # [PRIMESUD]
     "7": "kill",
