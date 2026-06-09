@@ -115,6 +115,24 @@ tr.print("result: {} ms ({} ms/call)".format(t_ms, t_ms // REPS))
 
 End the block with `tr.input("")` to pause and read results before the game continues.  Clean up any side-effects (e.g. restore FONT_GROB via `strblit2` and reset `self._current_fg = None`) before the `tr.input` call so the game starts in a consistent state.
 
+## Docstrings
+
+All functions and methods use **Google-style docstrings**. One-line summary, then `Args:`, `Returns:`, `Raises:` sections as needed. Omit sections that don't apply.
+
+```python
+def deal_damage(target, amount, damage_type):
+    """Apply damage to a target, applying resistances.
+
+    Args:
+        target (Entity): The entity receiving damage.
+        amount (int): Raw damage before resistances.
+        damage_type (int): One of the DAMAGE_* constants.
+
+    Returns:
+        int: Actual damage dealt after resistances.
+    """
+```
+
 ## Working style
 
 - Write code first, then briefly explain key decisions — especially anything non-obvious about HP Prime's constraints or PPL interop.
