@@ -2,13 +2,9 @@ from hpprime import eval as ppleval, keyboard
 from cas import get_key
 from urandom import randint
 
-from config import SAVE_VAR, POLL_MS, TERMINAL_COLS
-from world import (
-    ROOM_INIT, ITEM_TEMPLATES, MOB_TEMPLATES, MOB_INIT,
-    R_VILLAGE_SQUARE,
-    GSN_HAND_TO_HAND, GSN_KICK, GSN_CURE_LIGHT, GSN_PARRY,
-    STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
-)
+from config import SAVE_VAR, POLL_MS, TERMINAL_COLS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF
+from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, RESETS
+from world_consts import R_VILLAGE_SQUARE, GSN_HAND_TO_HAND, GSN_KICK, GSN_CURE_LIGHT, GSN_PARRY
 
 
 # ── Player flag bits (cf. 1stMud PLR_* in bits.h) ─────────────────────────────
@@ -58,42 +54,53 @@ def create_char():
 
 
 def reset_area():
-    """Create fresh room state and mob instances (cf. 1stMud reset_area)."""
-    room_state = {}
-    for vnum, init in ROOM_INIT.items():
-        room_state[vnum] = {"items": list(init["items"]), "mobs": list(init["mobs"])}
+    """Create fresh room state and mob instances (cf. 1stMud reset_area).
+
+    Processes RESETS sequentially; mob instance IDs are assigned in order
+    (first 'M' entry gets ID 1, etc.) matching the old MOB_INIT numbering.
+    """
+    room_state = {vnum: {"items": [], "mobs": []} for vnum in ROOMS}
 
     mob_instances = {}
-    for mob_id, init in MOB_INIT.items():
-        tpl = MOB_TEMPLATES[init["tpl"]]
-        ps  = tpl["perm_stat"]
-        _hp = _roll_hp(tpl["hp_dice"])
-        mob_instances[mob_id] = {
-            "tpl":        init["tpl"],
-            "is_npc":     True,
-            "name":       tpl["name"],
-            "hp":         _hp,
-            "hp_max":     _hp,
-            "state":      "idle",
-            "room":       init["room"],
-            "respawn_at": 0,
-            "affects":    {},
-            "wait":       0,
-            "daze":       0,
-            "fighting":   None,
-            "learned":    dict(tpl.get("skills", {})),
-            "off_flags":  dict(tpl.get("off_flags", {})),
-            # Combat stats flattened from template for hot-path access
-            "level":      tpl["level"],
-            "str":        ps["str"],
-            "dex":        ps["dex"],
-            "int":        ps["int"],
-            "wis":        ps["wis"],
-            "con":        ps["con"],
-            "hitroll":    tpl["hitroll"],
-            "damroll":    tpl["damroll"],
-            "AC":         tpl["AC"],
-        }
+    mob_id = 1
+    for entry in RESETS:
+        cmd = entry[0]
+        if cmd == "M":
+            tpl_vnum  = entry[1]
+            room_vnum = entry[2]
+            tpl = MOB_TEMPLATES[tpl_vnum]
+            ps  = tpl["perm_stat"]
+            _hp = _roll_hp(tpl["hp_dice"])
+            mob_instances[mob_id] = {
+                "tpl":        tpl_vnum,
+                "is_npc":     True,
+                "name":       tpl["name"],
+                "hp":         _hp,
+                "hp_max":     _hp,
+                "state":      "idle",
+                "room":       room_vnum,
+                "respawn_at": 0,
+                "affects":    {},
+                "wait":       0,
+                "daze":       0,
+                "fighting":   None,
+                "learned":    dict(tpl.get("skills", {})),
+                "off_flags":  dict(tpl.get("off_flags", {})),
+                # Combat stats flattened from template for hot-path access
+                "level":      tpl["level"],
+                "str":        ps["str"],
+                "dex":        ps["dex"],
+                "int":        ps["int"],
+                "wis":        ps["wis"],
+                "con":        ps["con"],
+                "hitroll":    tpl["hitroll"],
+                "damroll":    tpl["damroll"],
+                "AC":         tpl["AC"],
+            }
+            room_state[room_vnum]["mobs"].append(mob_id)
+            mob_id += 1
+        elif cmd == "O":
+            room_state[entry[2]]["items"].append(entry[1])
 
     return room_state, mob_instances
 

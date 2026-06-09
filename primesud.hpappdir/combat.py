@@ -1,15 +1,11 @@
 from urandom import randint
 from hpprime import eval as ppleval
 
-from config import DEATH_MSG_DELAY, PULSE_VIOLENCE
-from world import (
-    ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, ROOMS,
-    R_VILLAGE_SQUARE,
-    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY,
-    STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
-    CLASS_HP_MIN, CLASS_HP_MAX,
-    THAC0_00, THAC0_32,
-)
+from config import (DEATH_MSG_DELAY, PULSE_VIOLENCE,
+                    STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
+                    CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_32)
+from world import ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, ROOMS
+from world_consts import R_VILLAGE_SQUARE, GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY
 from player import get_hitroll, get_damroll, get_AC, show_prompt
 
 

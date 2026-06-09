@@ -56,3 +56,22 @@ DEFAULT_MACROS = {  # [PRIMESUD]
     "1": "score",
     "0": "macro"
 }
+
+# ── Stat application tables (ROM 2.4 values, index by stat 0–25) ──────────────────────
+# str_app: tohit (THAC0 bonus, negative = better), todam (damage roll bonus)
+STR_APP_TOHIT    = (-5,-5,-3,-3,-2,-2,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 3, 3, 4, 4, 5, 6, 7)
+STR_APP_TODAM    = (-4,-4,-2,-1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 4, 4, 5, 5, 6, 7, 8)
+# dex_app: defensive AC modifier (negative = better)
+DEX_APP_DEF      = (60,50,40,35,30,25,20,15,10, 5, 0, 0, 0, 0, 0,-1,-2,-3,-4,-5,-6,-7,-8,-9,-10,-11)
+# con_app: bonus HP gained per level-up
+CON_APP_HITP     = (-4,-3,-2,-2,-1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3, 3, 4, 4, 5, 6, 7, 8)
+# wis_app: bonus practices gained per level-up (1stMud wis_app[].practice)
+WIS_APP_PRACTICE = (0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,3,3,3,3,4,4,4,5)
+
+# ── Classless HP die (Cleric/Paladin range) ───────────────────────────────────────────
+CLASS_HP_MIN = 7
+CLASS_HP_MAX = 10
+
+# ── THAC0 constants (classless, balanced midpoint) ────────────────────────────────────
+THAC0_00 = 20   # THAC0 at level 1  (higher = worse to-hit)
+THAC0_32 = -2   # THAC0 at level 32 (lower  = better to-hit)
