@@ -1,5 +1,4 @@
-from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE
-from world_consts import GSN_CURE_LIGHT
+from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT
 from player import get_hitroll, get_damroll, get_AC, get_obj_list, get_char_room, save_char, PLR_AUTOMAP, PLR_DEFAULTS
 from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick
 from automap import build_compact_lines, build_full_lines, COMPACT_W

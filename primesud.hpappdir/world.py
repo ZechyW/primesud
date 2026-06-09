@@ -4,7 +4,17 @@
 ## defines global skill table.   ##
 ###################################
 
-from world_consts import GSN_KICK, GSN_CURE_LIGHT, GSN_HAND_TO_HAND, GSN_PARRY
+# fmt: off
+# ── Cross-area room VNUMs (cf. 1stMud gsn_* / room vnums in index.h) ──────────
+R_STARTING_ROOM  = 1000   # player respawn/starting room (currently Village Square)
+
+# ── Skills ────────────────────────────────────────────────────────────────────
+GSN_KICK         = 4001
+GSN_CURE_LIGHT   = 4002
+GSN_HAND_TO_HAND = 4010
+GSN_PARRY        = 4020
+# fmt: on
+
 from area_school import (
     ROOMS,
     MOBILES  as MOB_TEMPLATES,

@@ -3,8 +3,8 @@ from cas import get_key
 from urandom import randint
 
 from config import SAVE_VAR, POLL_MS, TERMINAL_COLS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF
-from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, RESETS
-from world_consts import R_VILLAGE_SQUARE, GSN_HAND_TO_HAND, GSN_KICK, GSN_CURE_LIGHT, GSN_PARRY
+from world import (ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, RESETS,
+                   R_STARTING_ROOM, GSN_HAND_TO_HAND, GSN_KICK, GSN_CURE_LIGHT, GSN_PARRY)
 
 
 # ── Player flag bits (cf. 1stMud PLR_* in bits.h) ─────────────────────────────
@@ -36,7 +36,7 @@ def create_char():
         "wait":     0,     # skill lag in pulses
         "daze":     0,     # stun in pulses
         "affects":  {},
-        "room":     R_VILLAGE_SQUARE,
+        "room":     R_STARTING_ROOM,
         "inv":      [],
         "equip": {
             "weapon": None, "offhand": None, "head": None,

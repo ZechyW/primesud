@@ -2,7 +2,6 @@
 # Area: Mud School (starter area)
 # VNUM ranges: Rooms 1000–1199, Mobs 2000–2099, Items 3000–3099, Skills 4000–4099
 
-from world_consts import GSN_KICK, GSN_PARRY
 
 AREA = {"name": "Mud School", "vnums": (1000, 1199), "levels": (1, 5)}
 
@@ -176,7 +175,6 @@ MOBILES = {
         "loot": [(I_DAGGER, 20), (I_POTION_HP, 25)],
         "respawn": 60000,
         "off_flags": {"kick": True},
-        "skills": {GSN_KICK: 75},
     },
     M_DUMMY: {
         "name": "Training Dummy",
@@ -257,7 +255,6 @@ MOBILES = {
         "gold": 0, "loot": [],
         "respawn": 120000,
         "off_flags": {"kick": True},
-        "skills": {GSN_KICK: 75},
     },
     M_WOLF: {
         "name": "Wolf",
@@ -270,7 +267,6 @@ MOBILES = {
         "gold": 0, "loot": [],
         "respawn": 120000,
         "off_flags": {"kick": True},
-        "skills": {GSN_KICK: 75},
     },
     M_BEAST: {
         "name": "Beast",
@@ -283,7 +279,6 @@ MOBILES = {
         "gold": 0, "loot": [],
         "respawn": 180000,
         "off_flags": {"kick": True},
-        "skills": {GSN_KICK: 75},
     },
 }
 

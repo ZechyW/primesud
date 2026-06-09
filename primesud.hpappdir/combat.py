@@ -4,8 +4,8 @@ from hpprime import eval as ppleval
 from config import (DEATH_MSG_DELAY, PULSE_VIOLENCE,
                     STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
                     CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_32)
-from world import ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, ROOMS
-from world_consts import R_VILLAGE_SQUARE, GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY
+from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, ROOMS,
+                   R_STARTING_ROOM, GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY)
 from player import get_hitroll, get_damroll, get_AC, show_prompt
 
 
@@ -321,7 +321,10 @@ def do_kick(tr, ch, args, room_state, mob_instances):
         target_id = ch["fighting"]
         target    = mob_instances[target_id]
 
-    skill_pct = ch["learned"].get(GSN_KICK, 0)
+    if ch["is_npc"]:
+        skill_pct = ch["level"] if ch["level"] <= 2 else ch["level"] // 2 + ch["level"] // 3
+    else:
+        skill_pct = ch["learned"].get(GSN_KICK, 0)
     WaitState(ch, SKILLS[GSN_KICK]["beats"])
 
     if skill_pct > randint(1, 100):
@@ -569,7 +572,7 @@ def char_death(tr, player):
     ppleval("WAIT({})".format(DEATH_MSG_DELAY))
     tr.print("A distant warmth draws you back.")
     ppleval("WAIT({})".format(DEATH_MSG_DELAY))
-    player["room"] = R_VILLAGE_SQUARE
+    player["room"] = R_STARTING_ROOM
     player["hp"]   = 1
     player["mp"]   = 1
     player["wait"] = 0
