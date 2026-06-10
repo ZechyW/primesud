@@ -1,0 +1,316 @@
+# PrimeSUD — Area File Reference
+
+Area files are Python modules (`area_<name>.py`) in `primesud.hpappdir/`. They replace
+the text-based `.are` files used by 1stMud — parsing text at runtime would be
+memory-intensive and slow on the HP Prime. The structure mirrors 1stMud's sections but
+uses plain Python dicts and tuples.
+
+`world.py` loads every area module and merges `ROOMS`, `MOBILES`, `OBJECTS`, and
+`RESETS` into the game-wide tables. `SKILL_TABLE` and `SKILLS` live in `world.py`
+directly — skills are global, not per-area.
+
+Cross-area VNUM constants that game logic needs to hardcode (e.g. respawn room, skill
+IDs) go in `world_consts.py`. Area files may define their own local constants for
+internal cross-referencing only.
+
+---
+
+## Module layout
+
+Sections appear in this fixed order:
+
+```
+# fmt: off          ← must be first line; keeps aligned dicts from being reformatted
+# Area: <name>
+# Builders: <names>
+# VNUM ranges: Rooms XXXX-XXXX, Mobs XXXX-XXXX, Items XXXX-XXXX
+
+AREA = { ... }      ← area metadata
+
+# ── Room VNUMs ──
+R_FOO = 1234
+...
+
+# ── Mob template VNUMs ──
+M_FOO = 1234
+...
+
+# ── Item template VNUMs ──
+I_FOO = 1234
+...
+
+# ── Rooms ──
+ROOMS = { ... }
+
+# ── Mob templates ──
+MOBILES = { ... }
+
+# ── Item templates ──
+OBJECTS = { ... }
+
+# ── Resets ──
+RESETS = ( ... )
+```
+
+---
+
+## `AREA` — metadata dict
+
+```python
+AREA = {
+    "name":     "Mud School",
+    "builders": "None",
+    "vnums":    (3700, 3799),   # inclusive VNUM range claimed by this area
+    "credits":  "Hatchet",
+    "levels":   (1, 5),         # recommended level range
+    "version":  4,              # .are file version (informational)
+}
+```
+
+All fields are optional except `name` and `vnums`. `world.py` uses `vnums` to detect
+VNUM collisions at load time.
+
+---
+
+## VNUM constants
+
+Each section declares named constants before its dict so the dicts can reference other
+rooms/mobs/items by name rather than bare integers.
+
+| Prefix | Meaning            | Example                       |
+|--------|--------------------|-------------------------------|
+| `R_`   | Room VNUM          | `R_VILLAGE_SQUARE = 1000`     |
+| `M_`   | Mob template VNUM  | `M_GOBLIN = 2001`             |
+| `I_`   | Item template VNUM | `I_IRON_SWORD = 3000`         |
+
+Within an area file, always reference by constant name, never by raw integer. Raw
+integers are acceptable only for exits that point to rooms in other areas (those VNUMs
+belong to `world_consts.py` or are self-evident from context).
+
+---
+
+## `ROOMS`
+
+```python
+ROOMS = {
+    R_VILLAGE_SQUARE: {
+        "name":   "Village Square",
+        "short":  "A crumbling square. A well stands at the centre.",
+        "long":   "Long multi-line description...",
+        "exits":  {"n": R_MARKET, "s": R_DUNGEON_ENTRANCE},
+        "flags":  {"no_mob": True, "indoors": True},
+        "sector": 1,
+    },
+    ...
+}
+```
+
+| Key      | Type           | Required | Notes |
+|----------|----------------|----------|-------|
+| `name`   | str            | yes      | Shown in the room header line |
+| `short`  | str            | yes      | One-line description for brief view |
+| `long`   | str            | yes      | Full room description; use `\n` for line breaks |
+| `exits`  | dict           | yes      | Direction string → destination VNUM. Valid directions: `"n"`, `"e"`, `"s"`, `"w"`, `"u"`, `"d"` |
+| `flags`  | dict           | no       | Boolean room flags (see below) |
+| `sector` | int            | no       | Terrain type; defaults to `0` if omitted |
+
+### Room flags
+
+| Flag            | Meaning |
+|-----------------|---------|
+| `no_mob`        | Mobs will not wander into this room |
+| `indoors`       | Room is inside a building |
+| `dark`          | Room is unlit; player needs a light source |
+| `safe`          | No combat allowed |
+| `_unknown_bits` | List of uninterpreted bit positions from the original `.are` conversion; preserve, don't add new ones |
+
+### Doors (deferred)
+
+Door state on exits is not yet implemented. Until then, annotate the exit with a
+comment showing the original door data:
+
+```python
+"exits": {
+    "e": R_LOCKED_ROOM,  # door: {"isdoor": True, "closed": True, "locked": True}
+},
+```
+
+---
+
+## `MOBILES`
+
+```python
+MOBILES = {
+    M_GOBLIN: {
+        "name":      "Goblin",
+        "desc":      "A goblin crouches here, eyeing you hungrily.",
+        "level":     3,
+        "hp_dice":   (3, 3, 10),   # max HP = 3d3 + 10
+        "hitroll":   1,
+        "AC":        0,
+        "damage":    (1, 4, 1),    # per hit: 1d4 + 1
+        "gold":      15,
+        "loot":      [],
+        "act_flags": {"aggressive": True, "stay_area": True},
+        "aff_flags": {"infrared": True},
+        "off_flags": {"dodge": True, "trip": True},
+        "imm_flags": {"charm": True},
+        "res_flags": {"poison": True},
+        "vuln_flags": {"magic": True},
+    },
+    ...
+}
+```
+
+| Key         | Type  | Required | Notes |
+|-------------|-------|----------|-------|
+| `name`      | str   | yes      | Short name used in combat messages |
+| `desc`      | str   | yes      | "A foo is here." line shown in room |
+| `level`     | int   | yes      | Used to derive THAC0 and stat scaling |
+| `hp_dice`   | tuple | yes      | `(num_dice, die_size, bonus)` — max HP |
+| `hitroll`   | int   | yes      | Added to attack roll |
+| `AC`        | int   | yes      | Armour class; lower is better (negative = very hard to hit) |
+| `damage`    | tuple | yes      | `(num_dice, die_size, bonus)` per hit; comment the `dam_type` string |
+| `gold`      | int   | yes      | Gold carried (unused until economy is implemented) |
+| `loot`      | list  | yes      | Item VNUMs dropped on death; leave `[]` until E/G resets are implemented |
+| `act_flags` | dict  | no       | Behaviour flags (see below) |
+| `aff_flags` | dict  | no       | Permanent affect flags |
+| `off_flags` | dict  | no       | Combat offence flags |
+| `imm_flags` | dict  | no       | Damage immunities |
+| `res_flags` | dict  | no       | Damage resistances (half damage) |
+| `vuln_flags`| dict  | no       | Damage vulnerabilities (double damage) |
+
+### `act_flags`
+
+| Flag          | Meaning |
+|---------------|---------|
+| `sentinel`    | Does not wander |
+| `aggressive`  | Attacks players on sight |
+| `wimpy`       | Flees when HP drops low |
+| `stay_area`   | Will not follow players out of the area |
+| `scavenger`   | Picks up items from the ground |
+| `train`       | Mob is a trainer (for `train` command) |
+| `practice`    | Mob is a practitioner (for `practice` command) |
+| `nopurge`     | Survives area purge |
+| `noalign`     | No alignment (informational; alignment not implemented) |
+| `cleric`      | Has cleric skills (informational) |
+| `warrior`     | Has warrior skills (informational) |
+
+### `off_flags` (combat)
+
+Common values: `area_attack`, `bash`, `berserk`, `crush`, `disarm`, `dodge`, `fast`,
+`kick`, `kick_dirt`, `parry`, `tail`, `trip`, `assist_race`.
+
+### `aff_flags` (affects)
+
+Common values: `detect_evil`, `infrared`, `dark_vision`, `sanctuary`.
+
+---
+
+## `OBJECTS`
+
+```python
+OBJECTS = {
+    I_IRON_SWORD: {
+        "name":        "Iron Sword",
+        "desc":        "A plain iron sword lies here.",
+        "type":        "weapon",
+        "slot":        "weapon",
+        "weight":      30,
+        "value":       200,
+        "dice":        (1, 6, 0),    # weapon only: damage dice
+        "weapon_type": "sword",      # weapon only
+        "hitroll":     1,            # weapon only
+        "damroll":     0,            # weapon only
+        "extra_flags": {"melt_drop": True},
+    },
+    I_LEATHER_VEST: {
+        "name":   "Leather Vest",
+        "desc":   "A worn leather vest lies here.",
+        "type":   "armor",
+        "slot":   "body",
+        "weight": 40,
+        "value":  100,
+        "AC":     1,                 # armor only: AC bonus
+        "extra_flags": {},
+    },
+    ...
+}
+```
+
+| Key           | Type       | Required    | Notes |
+|---------------|------------|-------------|-------|
+| `name`        | str        | yes         | Shown in inventory and equipment lists |
+| `desc`        | str        | yes         | "You see a foo here." line in rooms |
+| `type`        | str        | yes         | `weapon`, `armor`, `key`, `treasure`, `light`, … |
+| `slot`        | str\|None  | yes         | Equipment slot; `None` for non-wearable items |
+| `weight`      | int        | yes         | Item weight (currently informational) |
+| `value`       | int        | yes         | Shop buy price (unused until economy implemented) |
+| `dice`        | tuple      | weapons     | `(num_dice, die_size, bonus)` — damage roll |
+| `weapon_type` | str        | weapons     | `sword`, `dagger`, `mace`, `axe`, `flail`, `whip`, `staff`, `polearm`, … |
+| `hitroll`     | int        | weapons     | Added to attack roll when wielded |
+| `damroll`     | int        | weapons     | Added to damage roll when wielded |
+| `AC`          | int        | armor       | AC bonus when worn |
+| `extra_flags` | dict       | no          | Item flags (see below) |
+
+### Equipment slots
+
+`weapon`, `shield`, `body`, `head`, `legs`, `feet`, `hands`, `arms`, `neck`, `waist`,
+`wrist`, `about`, `hold`
+
+### `extra_flags`
+
+| Flag         | Meaning |
+|--------------|---------|
+| `glow`       | Item glows (acts as light source) |
+| `magic`      | Item is magical |
+| `melt_drop`  | Item disappears when dropped (starter gear guard) |
+| `_unknown_bits` | Uninterpreted bits from `.are` conversion |
+
+---
+
+## `RESETS`
+
+```python
+RESETS = (
+    ("M", M_GOBLIN, R_DUNGEON_HALL),   # spawn one mob instance
+    ("O", I_IRON_SWORD, R_DUNGEON_HALL),  # place one item copy
+    # TODO: E 0 <mob_vnum> 0 <slot>   — equip mob (deferred: needs loot system)
+    # TODO: G 0 <item_vnum> 0         — give item to mob (deferred)
+    # TODO: F 0 <room_vnum> <door> 0  — set door state (deferred: needs door system)
+    ...
+)
+```
+
+`reset_area()` in `player.py` processes entries in order. Mob instance IDs are assigned
+sequentially by position (first `M` entry → ID 1), so ordering is stable across resets
+and compatible with the save format.
+
+| Command | Format                              | Meaning |
+|---------|-------------------------------------|---------|
+| `"M"`   | `("M", mob_vnum, room_vnum)`        | Spawn one mob instance |
+| `"O"`   | `("O", item_vnum, room_vnum)`       | Place one item copy in the room |
+
+Unimplemented reset types from 1stMud (`E`, `G`, `F`, `P`, `D`, `R`) are preserved as
+`# TODO` comments in the original converted form so they can be implemented later
+without re-consulting the source `.are` file.
+
+**Mob limits.** 1stMud's `M` line carries `global_limit` and `room_limit` fields
+(skipped when the live count meets the cap). PrimeSUD drops both because each entry owns
+exactly one fixed slot — `revive_dead_mobs()` only touches `state == "dead"` slots, so
+alive mobs are never duplicated. The effective per-slot limit is always 1. To support
+multiple instances per template (e.g. a pack of 5 goblins), add an explicit count field
+`("M", mob_vnum, room_vnum, count)` and allocate consecutive instance IDs per entry in
+`reset_area()`.
+
+---
+
+## Conventions
+
+- **`# fmt: off` is mandatory.** The aligned column style in VNUM constants and mob/item
+  dicts would be destroyed by an auto-formatter. Do not remove it.
+- **`_unknown_bits`** keys in flag dicts record uninterpreted bit positions from the
+  original `.are` file. Preserve them; do not add new ones manually.
+- **`# TODO` comments** mark `.are` features that weren't converted because the
+  corresponding PrimeSUD system (doors, mob equipment, shops) is not yet implemented.
+  Keep them verbatim from the source file so the original data isn't lost.

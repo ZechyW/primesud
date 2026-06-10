@@ -15,7 +15,7 @@ GSN_HAND_TO_HAND = 4010
 GSN_PARRY        = 4020
 # fmt: on
 
-from area_school import (
+from area_toy import (
     ROOMS,
     MOBILES  as MOB_TEMPLATES,
     OBJECTS  as ITEM_TEMPLATES,

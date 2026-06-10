@@ -216,6 +216,12 @@ def parse_areadata(lines):
             area["min_level"] = int(val)
         elif key == "MaxLevel":
             area["max_level"] = int(val)
+        elif key == "Version":
+            area["version"] = int(val) if val.isdigit() else val
+        elif key == "Builders":
+            area["builders"] = val
+        elif key == "Credits":
+            area["credits"] = val
     return area
 
 
@@ -521,15 +527,28 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
 
     aname    = area_data.get("name", "Unknown")
     vnums    = area_data.get("vnums", (0, 0))
+    version  = area_data.get("version", None)
     min_lvl  = area_data.get("min_level", 1)
     max_lvl  = area_data.get("max_level", 10)
+    builders = area_data.get("builders", "Unknown")
+    credits  = area_data.get("credits", "Unknown")
 
     w("# fmt: off")
     w(f"# Area: {aname}")
+    w(f"# Builders: {builders}")
     w(f"# VNUM ranges: Rooms {vnums[0]}-{vnums[1]}")
+    w(f"# Credits: {credits}")
     w("")
     w("")
-    w(f'AREA = {{"name": {aname!r}, "vnums": {vnums!r}, "levels": ({min_lvl}, {max_lvl})}}')
+    w("AREA = {")
+    w(f'    "name":     {aname!r},')
+    w(f'    "builders": {builders!r},')
+    w(f'    "vnums":    {vnums!r},')
+    w(f'    "credits":  {credits!r},')
+    w(f'    "levels":   ({min_lvl}, {max_lvl}),')
+    if version is not None:
+        w(f'    "version":  {version!r},')
+    w("}")
     w("")
 
     # ── Constants ──

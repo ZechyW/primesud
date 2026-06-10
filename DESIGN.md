@@ -42,61 +42,25 @@ Reference this before porting a new mechanic to avoid re-litigating settled deci
 
 ## Area file system
 
-1stMud stores world content in `.are` text files parsed at server startup. Each file has sections: `#AREADATA`, `#MOBILES`, `#OBJECTS`, `#ROOMS`, `#SPECIALS`, `#RESETS`, `#SHOPS`, `#MOBPROGS`, `#OBJPROGS`, `#ROOMPROGS`.
+See **[AREA_FILES.md](AREA_FILES.md)** for the full format reference — module layout,
+section order, field schemas for rooms/mobs/items/resets, and conventions.
 
-PrimeSUD borrows the **structural organisation** but keeps data as Python modules — parsing text files at runtime on HP Prime would be memory-intensive and slow.
+Key design decisions summarised here for completeness:
 
-### Layout
-
-Each area is a Python module (`area_school.py`, etc.) with four sections mirroring 1stMud:
-
-| Section | Python name | Notes |
-|---|---|---|
-| `#MOBILES` | `MOBILES` dict | Mob templates keyed by VNUM |
-| `#OBJECTS` | `OBJECTS` dict | Item templates keyed by VNUM |
-| `#ROOMS` | `ROOMS` dict | Room definitions keyed by VNUM |
-| `#RESETS` | `RESETS` tuple | Sequential spawn/placement script (see below) |
-
-`world.py` is a loader that merges all area dicts into the game-wide `ROOMS`, `MOB_TEMPLATES`, `ITEM_TEMPLATES`, and `RESETS`. `SKILL_TABLE` and `SKILLS` stay in `world.py` — skills are global, not per-area.
-
-Cross-area VNUM constants that game logic needs to hardcode (respawn room, skill IDs) live in `world_consts.py`. Area files may define their own local constants for internal use only.
-
-Stat application tables (`STR_APP_TOHIT`, `DEX_APP_DEF`, etc.) and THAC0/HP-die constants are in `config.py` — they are game mechanics, not world data.
-
-### RESETS
-
-1stMud reset commands ported:
-
-| Command | Format | Meaning |
-|---|---|---|
-| `M` | `("M", mob_vnum, room_vnum)` | Place one mob instance; IDs assigned sequentially |
-| `O` | `("O", item_vnum, room_vnum)` | Place one item copy in room |
-
-`reset_area()` in `player.py` processes `RESETS` in order. Mob instance IDs are determined by position (first `M` entry → ID 1), so the ordering is stable across resets and compatible with the save format.
-
-**Mob limits.** 1stMud's `M` reset line carries two extra fields omitted here:
-
-```
-M 0  <mob_vnum>  <global_limit>  <room_vnum>  <room_limit>
-```
-
-- `global_limit` — skip spawn if `pMobIndex->count >= limit` (world-wide live count of that template)
-- `room_limit` — skip spawn if that many of the same template are already alive in the target room
-
-PrimeSUD drops both fields because each `RESETS` entry owns exactly one fixed mob instance slot. `revive_dead_mobs()` achieves the same effect implicitly: it only touches `state == "dead"` slots, so alive mobs are never duplicated. The effective per-slot limit is always 1.
-
-To mirror 1stMud properly (multiple instances per template, e.g. a pack of 5 goblins from one reset entry), add an explicit count field: `("M", mob_vnum, room_vnum, count)`, allocate `count` consecutive instance IDs per entry in `reset_area()`, and track a per-template live count to enforce the global cap.
-
-### What was skipped or adapted
-
-| 1stMud feature | Status |
-|---|---|
-| `#SPECIALS` | Adapted: `"special"` string key in `MOBILES` template, resolved to a Python function at load time in `world.py` when needed |
-| `#SHOPS` | Deferred: add `"shopkeeper": True` flag in `MOBILES` when shop mechanics are implemented |
-| `#MOBPROGS / #OBJPROGS / #ROOMPROGS` | Skipped: these are a full scripting VM; no equivalent planned |
-| `AREADATA` climate / stats fields | Skipped: server-side simulation concepts with no single-player hook |
-| `F` reset (door state) | Deferred: add when lockable doors are implemented |
-| `E` / `G` resets (mob equipment / inventory) | Deferred: add when mob loot-on-body is implemented |
+- Areas are Python modules (`area_<name>.py`) rather than parsed `.are` text files —
+  runtime text parsing would be memory-intensive and slow on the HP Prime.
+- Mob reset limits (`global_limit`, `room_limit`) are dropped: each `RESETS` entry owns
+  exactly one fixed slot; `revive_dead_mobs()` enforces this implicitly.
+- `#SPECIALS` adapted: `"special"` string key in `MOBILES`, resolved to a Python
+  function at load time in `world.py`.
+- `#SHOPS`, `E`/`G` resets (mob equipment), and `F` resets (door state) are deferred
+  until their respective systems are implemented.
+- `#MOBPROGS / #OBJPROGS / #ROOMPROGS` skipped — full scripting VM, no equivalent
+  planned.
+- `SKILL_TABLE` and `SKILLS` stay in `world.py` — skills are global, not per-area.
+- Cross-area VNUMs hardcoded in game logic belong in `world_consts.py`.
+- Stat tables (`STR_APP_TOHIT`, etc.) and THAC0 constants are in `config.py` — game
+  mechanics, not world data.
 
 ---
 
