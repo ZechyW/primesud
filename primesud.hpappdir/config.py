@@ -72,6 +72,10 @@ WIS_APP_PRACTICE = (0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,3,3,3,3,4,4,4,5)
 CLASS_HP_MIN = 7
 CLASS_HP_MAX = 10
 
+# ── Level cap ─────────────────────────────────────────────────────────────────────────
+MAX_LEVEL = 50  # [PRIMESUD] 1stMud caps at 32
+
 # ── THAC0 constants (classless, balanced midpoint) ────────────────────────────────────
-THAC0_00 = 20   # THAC0 at level 1  (higher = worse to-hit)
-THAC0_32 = -2   # THAC0 at level 32 (lower  = better to-hit)
+THAC0_PLATEAU = 32   # level at which natural THAC0 stops improving
+THAC0_00      = 20   # THAC0 at level 1              (higher = worse to-hit)
+THAC0_MIN     = -2   # THAC0 at level THAC0_PLATEAU  (lower  = better to-hit)

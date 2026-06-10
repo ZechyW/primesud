@@ -2,7 +2,7 @@ from urandom import randint
 
 from config import (PULSE_VIOLENCE,
                     STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
-                    CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_32)
+                    CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_MIN, THAC0_PLATEAU)
 from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, ROOMS,
                    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY)
 from player import get_hitroll, get_damroll, get_AC, show_prompt
@@ -26,22 +26,11 @@ def _dice(num, size):
     return total
 
 
-def _interpolate(level, lo, hi):
-    """Linear interpolation from lo (level 1) to hi (level 32).
-
-    Args:
-        level (int): Character level (1–32).
-        lo (int): Value at level 1.
-        hi (int): Value at level 32.
-
-    Returns:
-        int: Interpolated value.
-    """
-    return lo + (hi - lo) * (level - 1) // 31
-
-
 def _get_thac0(level):
     """Base THAC0 for a given level (classless curve, before hitroll/skill adj).
+
+    Natural THAC0 plateaus at THAC0_PLATEAU; above that only hitroll/AC move
+    the needle.  [PRIMESUD] 1stMud interpolates straight to level 32 (its cap).
 
     Args:
         level (int): Character level.
@@ -49,7 +38,9 @@ def _get_thac0(level):
     Returns:
         int: Base THAC0, clamped to minimum -5 after soft-cap.
     """
-    t = _interpolate(level, THAC0_00, THAC0_32)
+    eff = min(level, THAC0_PLATEAU)
+    # linearly interpolate THAC0 from THAC0_00 (level 1) to THAC0_MIN (level THAC0_PLATEAU)
+    t = THAC0_00 + (THAC0_MIN - THAC0_00) * (eff - 1) // (THAC0_PLATEAU - 1)
     if t < 0:
         t = t // 2
     if t < -5:

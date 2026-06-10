@@ -137,5 +137,5 @@ def deal_damage(target, amount, damage_type):
 
 - Write code first, then briefly explain key decisions — especially anything non-obvious about HP Prime's constraints or PPL interop.
 - Keep changes minimal and targeted. Do not refactor surrounding code unless asked.
-- When in doubt about whether a Python feature is available on HP Prime, assume it is not and use the simplest possible alternative.
+- When in doubt about whether a Python feature is available on HP Prime, ask for a human check.
 
