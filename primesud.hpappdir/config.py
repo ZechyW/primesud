@@ -6,7 +6,7 @@ BG_COLOR      = 0
 # or BG_COLOR 0x3000 for use with green font
 TAB_SIZE      = 8
 TERMINAL_COLS = 64   # character columns (std5x10 font, 320 px wide)
-TERMINAL_ROWS = 24   # character rows    (std5x10 font, 240 px high, excl. status bar)
+TERMINAL_ROWS = 22   # character rows    (std5x10 font, 240 px high, excl. status bar)
 FONT_GROB     = 9    # grob tml blits font glyphs from (HP Prime default)
 COLOR_GROB    = 8    # unmodified font copy; restored into FONT_GROB on colour reset
 

@@ -75,7 +75,7 @@ EXIT_FLAGS = {
 WEAR_SLOT = {
     1: "finger", 2: "neck", 3: "body", 4: "head", 5: "legs",
     6: "feet", 7: "hands", 8: "arms", 9: "shield", 10: "about",
-    11: "waist", 12: "wrist", 13: "weapon", 14: "hold", 16: "float",
+    11: "waist", 12: "wrist", 13: "wield", 14: "hold", 16: "float",
 }
 APPLY_LOC = {
     1: "str", 2: "dex", 3: "int", 4: "wis", 5: "con",
@@ -257,9 +257,10 @@ def parse_mobiles(lines):
 
         # hp_dice  mana_dice  dam_dice  'dam_type'
         parts = lines[i].split(); i += 1
-        hp_dice  = parse_dice(parts[0]) if parts else (1, 1, 0)
-        dam_dice = parse_dice(parts[2]) if len(parts) > 2 else (1, 1, 0)
-        dam_type = parts[3].strip("'") if len(parts) > 3 else "hit"
+        hp_dice   = parse_dice(parts[0]) if parts else (1, 1, 0)
+        mana_dice = parse_dice(parts[1]) if len(parts) > 1 else (1, 1, 0)
+        dam_dice  = parse_dice(parts[2]) if len(parts) > 2 else (1, 1, 0)
+        dam_type  = parts[3].strip("'") if len(parts) > 3 else "hit"
 
         # ac_pierce  ac_bash  ac_slash  ac_exotic  (stored × 10 per REFERENCE.md)
         parts = lines[i].split(); i += 1
@@ -278,10 +279,12 @@ def parse_mobiles(lines):
 
         # start_pos  default_pos  sex  wealth
         parts = lines[i].split(); i += 1
+        sex  = parts[2] if len(parts) > 2 else "neutral"
         gold = int(parts[3]) if len(parts) > 3 else 0
 
         # form_flags  part_flags  size  material
-        i += 1
+        parts = lines[i].split(); i += 1
+        size = parts[2] if len(parts) > 2 else "medium"
 
         # optional trailer lines: S / M / F
         while i < len(lines):
@@ -294,22 +297,28 @@ def parse_mobiles(lines):
                 break
 
         mobs.append((vnum, {
-            "name":       strip_article(short_descr),
-            "desc":       long_descr,
-            "level":      level,
-            "hitroll":    hitroll,
-            "hp_dice":    hp_dice,
-            "damage":     dam_dice,
-            "dam_type":   dam_type,
-            "AC":         ac,
-            "gold":       gold,
-            "alignment":  alignment,
-            "act_flags":  decode_flags(act_bits, ACT_FLAGS, skip={0}),  # omit IS_NPC
-            "aff_flags":  decode_flags(aff_bits, AFF_FLAGS),
-            "off_flags":  decode_flags(off_bits, OFF_FLAGS),
-            "imm_flags":  decode_flags(imm_bits, RESIST_FLAGS),
-            "res_flags":  decode_flags(res_bits, RESIST_FLAGS),
-            "vuln_flags": decode_flags(vuln_bits, RESIST_FLAGS),
+            "keywords":    keywords,
+            "short_descr": short_descr,
+            "long_descr":  long_descr,
+            "description": description,
+            "race":        race,
+            "act_flags":   decode_flags(act_bits, ACT_FLAGS, skip={0}),  # omit IS_NPC
+            "aff_flags":   decode_flags(aff_bits, AFF_FLAGS),
+            "alignment":   alignment,
+            "level":       level,
+            "hitroll":     hitroll,
+            "hp_dice":     hp_dice,
+            "mana_dice":   mana_dice,
+            "damage":      dam_dice,
+            "dam_type":    dam_type,
+            "AC":          ac,
+            "off_flags":   decode_flags(off_bits, OFF_FLAGS),
+            "imm_flags":   decode_flags(imm_bits, RESIST_FLAGS),
+            "res_flags":   decode_flags(res_bits, RESIST_FLAGS),
+            "vuln_flags":  decode_flags(vuln_bits, RESIST_FLAGS),
+            "sex":         sex,
+            "gold":        gold,
+            "size":        size,
         }))
     return mobs
 
@@ -343,6 +352,7 @@ def parse_objects(lines):
 
         # level  weight  cost  condition
         lw_line = lines[i].split(); i += 1
+        level  = int(lw_line[0]) if lw_line else 0
         weight = int(lw_line[1]) if len(lw_line) > 1 else 0
         cost   = int(lw_line[2]) if len(lw_line) > 2 else 0
 
@@ -364,32 +374,32 @@ def parse_objects(lines):
                     pass
             elif tline == "E":
                 i += 1
-                _kw, i = read_tilde_string(lines, i)
+                ekw,  i = read_tilde_string(lines, i)
                 edesc, i = read_tilde_string(lines, i)
-                extra_descs.append(edesc)
+                extra_descs.append((ekw, edesc))
             elif tline in ("F", "O") or tline == "":
                 i += 1
             else:
                 break
 
-        # Determine equipment slot from wear_flags
-        slot = None
-        if 13 in wear_bits:
-            slot = "weapon"
-        else:
-            for pos in sorted(wear_bits):
-                if pos in WEAR_SLOT and pos != 0:  # 0 = ITEM_TAKE, not a slot
-                    slot = WEAR_SLOT[pos]
-                    break
-
-        # Prefer extra_desc as descriptive text; fall back to room description
-        desc_text = extra_descs[0] if extra_descs else description
+        # Build wear_flags dict (bit 0 = ITEM_TAKE; WEAR_SLOT covers equip slots)
+        wear_flags = {}
+        if 0 in wear_bits:
+            wear_flags["take"] = True
+        for pos in sorted(wear_bits):
+            if pos in WEAR_SLOT:
+                wear_flags[WEAR_SLOT[pos]] = True
+                break
 
         obj = {
-            "name":        strip_article(short_descr),
-            "desc":        desc_text,
+            "keywords":    keywords,
+            "short_descr": short_descr,
+            "description": description,
+            "extra_descs": extra_descs,
+            "material":    material,
             "type":        item_type,
-            "slot":        slot,
+            "wear_flags":  wear_flags,
+            "level":       level,
             "weight":      weight,
             "value":       cost,
             "extra_flags": extra_bits,
@@ -402,8 +412,11 @@ def parse_objects(lines):
                 int(val_line[2]) if len(val_line) > 2 else 1,
                 0,
             )
-            obj["hitroll"] = applies.get("hitroll", 0)
-            obj["damroll"] = applies.get("damroll", 0)
+            wf_bits = parse_bitstring(val_line[4]) if len(val_line) > 4 else set()
+            obj["weapon_flags"] = decode_flags(wf_bits, {
+                0: "flaming", 1: "frost", 2: "vampiric", 3: "sharp",
+                4: "vorpal", 5: "two_hands", 6: "shocking", 7: "poison",
+            })
         elif item_type == "armor" and val_line:
             try:
                 obj["AC"] = int(val_line[0])
@@ -412,6 +425,9 @@ def parse_objects(lines):
         elif item_type == "potion" and val_line:
             obj["spell_level"] = int(val_line[0]) if val_line else 0
             obj["spells"] = [s for s in val_line[1:] if not s.startswith("+")]
+
+        if applies:
+            obj["stat_bonuses"] = applies
 
         objs.append((vnum, obj))
     return objs
@@ -552,7 +568,7 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
     w("")
 
     # ── Constants ──
-    BAR = "-"
+    BAR = "─"
     w(f"# ── Room VNUMs {BAR * 65}")
     for vnum, _ in rooms:
         w(f"{room_map[vnum]:<34} = {vnum}")
@@ -564,6 +580,44 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
     w(f"# ── Item template VNUMs {BAR * 56}")
     for vnum, _ in objs:
         w(f"{obj_map[vnum]:<34} = {vnum}")
+    w("")
+
+    # ── MOBILES ──
+    w(f"# ── Mob templates {BAR * 62}")
+    w("# hp_dice / mana_dice / damage: (num_dice, die_size, bonus)")
+    w("# AC: avg(pierce,bash,slash,exotic) / 10 per REFERENCE.md  # TODO: verify scale")
+    w("# hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)")
+    w("# loot: left empty — populate from RESETS E/G lines if needed")
+    w("MOBILES = {")
+    for vnum, mob in mobs:
+        cname = mob_map[vnum]
+        w(f"    {cname}: {{")
+        w(f'        "keywords":    {mob["keywords"]!r},')
+        w(f'        "short_descr": {mob["short_descr"]!r},')
+        w(f'        "long_descr":  {mob["long_descr"]!r},')
+        w(f'        "description": {mob["description"]!r},')
+        w(f'        "race":        {mob["race"]!r},')
+        for flag_key in ("act_flags", "aff_flags"):
+            fd = mob[flag_key]
+            if fd:
+                w(f'        "{flag_key}": {_repr_flags(fd)},')
+        w(f'        "alignment": {mob["alignment"]},')
+        w(f'        "level":     {mob["level"]},')
+        w(f'        "hitroll":   {mob["hitroll"]},')
+        w(f'        "hp_dice":   {mob["hp_dice"]!r},')
+        w(f'        "mana_dice": {mob["mana_dice"]!r},')
+        w(f'        "damage":    {mob["damage"]!r},  # dam_type: {mob["dam_type"]!r}')
+        w(f'        "AC":        {mob["AC"]},')
+        for flag_key in ("off_flags", "imm_flags", "res_flags", "vuln_flags"):
+            fd = mob[flag_key]
+            if fd:
+                w(f'        "{flag_key}": {_repr_flags(fd)},')
+        w(f'        "sex":  {mob["sex"]!r},')
+        w(f'        "gold": {mob["gold"]},')
+        w(f'        "size": {mob["size"]!r},')
+        w(f'        "loot": [],  # TODO: from RESETS E/G')
+        w("    },")
+    w("}")
     w("")
 
     # ── ROOMS ──
@@ -592,62 +646,18 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
     w("}")
     w("")
 
-    # ── MOBILES ──
-    w(f"# ── Mob templates {BAR * 62}")
-    w("# hp_dice / damage: (num_dice, die_size, bonus)")
-    w("# AC: avg(pierce,bash,slash,exotic) / 10 per REFERENCE.md  # TODO: verify scale")
-    w("# hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)")
-    w("# loot: left empty — populate from RESETS E/G lines if needed")
-    w("MOBILES = {")
-    for vnum, mob in mobs:
-        cname = mob_map[vnum]
-        # Title-case display name
-        display_name = " ".join(w2.capitalize() for w2 in mob["name"].split())
-        desc = mob["desc"].replace("\n", " ").strip()
-        w(f"    {cname}: {{")
-        w(f'        "name":    {display_name!r},')
-        w(f'        "desc":    {desc!r},')
-        w(f'        "level":   {mob["level"]},')
-        w(f'        "hp_dice": {mob["hp_dice"]!r},')
-        w(f'        "hitroll": {mob["hitroll"]}, "AC": {mob["AC"]},')
-        w(f'        "damage":  {mob["damage"]!r},  # dam_type: {mob["dam_type"]!r}')
-        w(f'        "gold":    {mob["gold"]},')
-        w(f'        "loot":    [],  # TODO: from RESETS E/G')
-        for flag_key in ("act_flags", "aff_flags", "off_flags",
-                         "imm_flags", "res_flags", "vuln_flags"):
-            fd = mob[flag_key]
-            if fd:
-                w(f'        "{flag_key}": {_repr_flags(fd)},')
-        w("    },")
-    w("}")
-    w("")
-
     # ── OBJECTS ──
     w(f"# ── Item templates {BAR * 61}")
     w("OBJECTS = {")
     for vnum, obj in objs:
         cname = obj_map[vnum]
-        display_name = " ".join(w2.capitalize() for w2 in obj["name"].split())
-        desc = obj["desc"].replace("\n", " ").strip()
         w(f"    {cname}: {{")
-        w(f'        "name": {display_name!r},')
-        w(f'        "desc": {desc!r},')
-        w(f'        "type": {obj["type"]!r}, "slot": {obj["slot"]!r},')
-        w(f'        "weight": {obj["weight"]}, "value": {obj["value"]},')
-        if obj["type"] == "weapon":
-            wt = obj.get("weapon_type", "unknown")
-            dc = obj.get("dice", (1, 1, 0))
-            hr = obj.get("hitroll", 0)
-            dr = obj.get("damroll", 0)
-            w(f'        "dice": {dc!r}, "weapon_type": {wt!r},')
-            w(f'        "hitroll": {hr}, "damroll": {dr},')
-        elif obj["type"] == "armor" and "AC" in obj:
-            w(f'        "AC": {obj["AC"]},')
-        elif obj["type"] == "potion":
-            if "spell_level" in obj:
-                w(f'        "spell_level": {obj["spell_level"]},')
-            if obj.get("spells"):
-                w(f'        "spells": {obj["spells"]!r},')
+        w(f'        "keywords":    {obj["keywords"]!r},')
+        w(f'        "short_descr": {obj["short_descr"]!r},')
+        w(f'        "description": {obj["description"]!r},')
+        w(f'        "material":    {obj["material"]!r},')
+        w(f'        "type": {obj["type"]!r},')
+        w(f'        "wear_flags": {_repr_flags(obj["wear_flags"])},')
         if obj.get("extra_flags"):
             bits = decode_flags(obj["extra_flags"], {
                 0: "glow", 1: "hum", 6: "magic", 7: "nodrop",
@@ -656,6 +666,24 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
             })
             if bits:
                 w(f'        "extra_flags": {_repr_flags(bits)},')
+        if obj["type"] == "weapon":
+            wt = obj.get("weapon_type", "unknown")
+            dc = obj.get("dice", (1, 1, 0))
+            w(f'        "weapon_type": {wt!r}, "dice": {dc!r},')
+            wf = obj.get("weapon_flags", {})
+            w(f'        "weapon_flags": {_repr_flags(wf)},')
+        elif obj["type"] == "armor" and "AC" in obj:
+            w(f'        "AC": {obj["AC"]},')
+        elif obj["type"] == "potion":
+            if "spell_level" in obj:
+                w(f'        "spell_level": {obj["spell_level"]},')
+            if obj.get("spells"):
+                w(f'        "spells": {obj["spells"]!r},')
+        if obj.get("stat_bonuses"):
+            w(f'        "stat_bonuses": {obj["stat_bonuses"]!r},')
+        w(f'        "level": {obj["level"]}, "weight": {obj["weight"]}, "value": {obj["value"]},')
+        if obj["extra_descs"]:
+            w(f'        "extra_descs": {obj["extra_descs"]!r},')
         w("    },")
     w("}")
     w("")
@@ -698,8 +726,8 @@ def convert(are_path, out_path=None):
     resets    = parse_resets(sects.get("RESETS", []))
 
     room_map = make_const_map("R", rooms, lambda d: d["name"])
-    mob_map  = make_const_map("M", mobs,  lambda d: d["name"])
-    obj_map  = make_const_map("I", objs,  lambda d: d["name"])
+    mob_map  = make_const_map("M", mobs,  lambda d: d["keywords"])
+    obj_map  = make_const_map("I", objs,  lambda d: d["keywords"])
 
     code = emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map)
 

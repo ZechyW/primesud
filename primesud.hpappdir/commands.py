@@ -1,4 +1,5 @@
 from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT
+from picker import pick_from
 from player import get_hitroll, get_damroll, get_AC, get_obj_list, get_char_room, save_char, PLR_AUTOMAP, PLR_DEFAULTS
 from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick
 from automap import build_compact_lines, build_full_lines, COMPACT_W
@@ -19,6 +20,17 @@ def _wrap(text, width):
         lines.append(text[:i])
         text = text[i:].lstrip(' ')
     lines.append(text)
+    return lines
+
+
+def _wrap_paragraphs(text, width):
+    """Word-wrap text, preserving blank-line paragraph breaks from .are descriptions."""
+    lines = []
+    for para in text.split('\n\n'):
+        flat = ' '.join(para.split('\n'))
+        if lines:
+            lines.append('')
+        lines.extend(_wrap(flat, width))
     return lines
 
 
@@ -60,7 +72,7 @@ def do_look(tr, player, args, room_state, mob_instances, _long=True):
     tr.print("{Y" + room["name"] + "{x")
 
     text = []
-    text.extend(_wrap(room["long"] if _long else room["short"], text_w))
+    text.extend(_wrap_paragraphs(room["long"] if _long else room["short"], text_w))
     
     if automap_on:
         map_lines = build_compact_lines(player, ROOMS)
@@ -79,10 +91,10 @@ def do_look(tr, player, args, room_state, mob_instances, _long=True):
     tr.print("")
     live_mobs = [i for i in rs["mobs"] if mob_instances[i]["state"] != "dead"]
     if rs["items"]:
-        names = ", ".join(ITEM_TEMPLATES[v]["name"] for v in rs["items"])
+        names = ", ".join(ITEM_TEMPLATES[v]["short_descr"] for v in rs["items"])
         tr.print("Items: {}".format(names))
     if live_mobs:
-        names = ", ".join(MOB_TEMPLATES[mob_instances[i]["tpl"]]["name"] for i in live_mobs)
+        names = ", ".join(MOB_TEMPLATES[mob_instances[i]["tpl"]]["short_descr"] for i in live_mobs)
         tr.print("Mobs:  {}".format(names))
 
 
@@ -107,9 +119,13 @@ def do_get(tr, player, args, room_state, mob_instances):
     if vnum is None:
         tr.print("Nothing here called that.")
         return
+    tpl = ITEM_TEMPLATES[vnum]
+    if 'take' not in tpl.get('wear_flags', {}):
+        tr.print("You can't take that.")
+        return
     rs["items"].remove(vnum)
     player["inv"].append(vnum)
-    tr.print("You take the {}.".format(ITEM_TEMPLATES[vnum]["name"]))
+    tr.print("You take the {}.".format(tpl["short_descr"]))
 
 
 def do_drop(tr, player, args, room_state, mob_instances):
@@ -122,7 +138,7 @@ def do_drop(tr, player, args, room_state, mob_instances):
         return
     player["inv"].remove(vnum)
     room_state[player["room"]]["items"].append(vnum)
-    tr.print("You drop the {}.".format(ITEM_TEMPLATES[vnum]["name"]))
+    tr.print("You drop the {}.".format(ITEM_TEMPLATES[vnum]["short_descr"]))
 
 
 def do_inventory(tr, player, args, room_state, mob_instances):
@@ -133,7 +149,7 @@ def do_inventory(tr, player, args, room_state, mob_instances):
     for v in player["inv"]:
         counts[v] = counts.get(v, 0) + 1
     for v, n in counts.items():
-        name = ITEM_TEMPLATES[v]["name"]
+        name = ITEM_TEMPLATES[v]["short_descr"]
         tr.print("  {} x{}".format(name, n) if n > 1 else "  {}".format(name))
 
 
@@ -146,7 +162,11 @@ def do_wear(tr, player, args, room_state, mob_instances):
         tr.print("You're not carrying that.")
         return
     tpl = ITEM_TEMPLATES[vnum]
-    slot = tpl.get("slot")
+    slot = None
+    for f in tpl.get("wear_flags", {}):
+        if f != 'take':
+            slot = f
+            break
     if slot is None:
         tr.print("That can't be equipped.")
         return
@@ -154,7 +174,7 @@ def do_wear(tr, player, args, room_state, mob_instances):
         player["inv"].append(player["equip"][slot])
     player["inv"].remove(vnum)
     player["equip"][slot] = vnum
-    tr.print("You equip the {}.".format(tpl["name"]))
+    tr.print("You equip the {}.".format(tpl["short_descr"]))
 
 
 def do_remove(tr, player, args, room_state, mob_instances):
@@ -171,7 +191,7 @@ def do_remove(tr, player, args, room_state, mob_instances):
         return
     player["inv"].append(vnum)
     player["equip"][slot] = None
-    tr.print("You unequip the {}.".format(ITEM_TEMPLATES[vnum]["name"]))
+    tr.print("You unequip the {}.".format(ITEM_TEMPLATES[vnum]["short_descr"]))
 
 
 def do_quaff(tr, player, args, room_state, mob_instances):
@@ -191,7 +211,7 @@ def do_quaff(tr, player, args, room_state, mob_instances):
         gained = min(tpl["use_hp"], player["hp_max"] - player["hp"])
         player["hp"] += gained
         tr.print("You drink the {}. +{} HP. ({}/{})".format(
-            tpl["name"], gained, player["hp"], player["hp_max"]))
+            tpl["short_descr"], gained, player["hp"], player["hp_max"]))
 
 
 _SCORE_INNER     = TERMINAL_COLS - 2
@@ -272,8 +292,14 @@ def do_kill(tr, player, args, room_state, mob_instances):
         if mob_id is None:
             tr.print("No such enemy.")
             return
-    else:
+    elif len(live) == 1:
         mob_id = live[0]
+    else:
+        names = [mob_instances[i]["name"] for i in live]
+        idx = pick_from(tr, "{YKill whom?{x", names)
+        if idx < 0:
+            return
+        mob_id = live[idx]
     set_fighting(tr, player, mob_id, mob_instances, room_state)
 
 

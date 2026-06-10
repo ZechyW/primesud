@@ -87,7 +87,7 @@ def _weapon_skill(player):
     Returns:
         tuple: (sk_vnum (int), learned_pct (int), weapon_tpl (dict or None)).
     """
-    wvnum = player["equip"].get("weapon")
+    wvnum = player["equip"].get("wield")
     if wvnum is not None:
         return GSN_HAND_TO_HAND, player["learned"].get(GSN_HAND_TO_HAND, 20), ITEM_TEMPLATES[wvnum]
     return GSN_HAND_TO_HAND, player["learned"].get(GSN_HAND_TO_HAND, 20), None
@@ -269,7 +269,7 @@ def check_parry(tr, player, mob_inst):
     Returns:
         bool: True if the attack was parried.
     """
-    if player["equip"].get("weapon") is None:
+    if player["equip"].get("wield") is None:
         return False
     skill = player["learned"].get(GSN_PARRY, 0)
     if skill > 0 and randint(1, 100) <= skill // 2:
@@ -544,7 +544,7 @@ def _try_special_move(tr, player, target_inst):
     Returns:
         int: Damage dealt (0 if not triggered or player has a weapon).
     """
-    if player["equip"].get("weapon") is not None:
+    if player["equip"].get("wield") is not None:
         return 0
     chance = 20 + (player["dex"] - 10) * 3
     if randint(1, 100) > chance:
@@ -584,7 +584,7 @@ def multi_hit(tr, player, target_inst):
         return True
 
     # [PRIMESUD] Unarmed special move — no 1stMud equivalent
-    if player["equip"].get("weapon") is None:
+    if player["equip"].get("wield") is None:
         _try_special_move(tr, player, target_inst)
         if target_inst["hp"] == 0:
             return True

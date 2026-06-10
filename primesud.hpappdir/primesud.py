@@ -102,6 +102,9 @@ class Game:
             text = sep.join(str(a) for a in args)
             if _CC not in text:
                 # Fast path: skip color_wrap and all colour-code scanning.
+                # Reset lazily here — a previous colored print may have left _current_fg set.
+                if self._current_fg is not None:
+                    self.reset_color()
                 lines = _wrap_plain(text, _cols)
                 n = len(lines)
                 for idx, line in enumerate(lines):
@@ -121,6 +124,8 @@ class Game:
                     if line[i] == _CC and i + 1 < llen:
                         code = line[i + 1]
                         if buf:
+                            if not colored and self._current_fg is not None:
+                                self.reset_color()
                             _orig_print(''.join(buf), end='')
                             has_vis = True
                             buf = []
@@ -128,7 +133,8 @@ class Game:
                             self.set_color(_ANSI[code])
                             colored = True
                         elif code in _RST:
-                            self.reset_color()
+                            # Lazy reset: defer reset_color until plain text actually
+                            # needs default color. Consecutive same-color lines skip it.
                             colored = False
                         elif code == _CC:
                             buf.append(_CC)
@@ -137,10 +143,10 @@ class Game:
                         buf.append(line[i])
                         i += 1
                 if buf:
+                    if not colored and self._current_fg is not None:
+                        self.reset_color()
                     _orig_print(''.join(buf), end='')
                     has_vis = True
-                if colored:
-                    self.reset_color()
                 is_last = idx == n - 1
                 # If tml auto-wrapped (non-empty line landed in the last col),
                 # cursor_x resets to 0 — the explicit newline would double-advance.
@@ -205,36 +211,44 @@ class Game:
         tr = self.tr
         tr.clear()
 
-        # ── ASCII art placeholder (64 cols × ~8 rows) ─────────────────
-        # Uncomment and replace with real art when ready.
-        tr.print("{C                                                 ")
-        tr.print("   ____  ____  ___ __  __ _____  ____  _   _ ____  ")
-        tr.print("  |  _ \|  _ \|_ _|  \/  | ____|/ ___|| | | |  _ \ ")
-        tr.print("  | |_) | |_) || || |\/| |  _|  \___ \| | | | | | |")
-        tr.print("  |  __/|  _ < | || |  | | |___  ___) | |_| | |_| |")
-        tr.print("  |_|   |_| \_\___|_|  |_|_____||____/ \___/|____/ ")
-        tr.print("                                                   {x")
-        # ──────────────────────────────────────────────────────────────
-
-        tr.print("=== PRIME{RSUD{x ===")
-        tr.print("A single-user dungeon.")
-        tr.print("")
-        tr.print("{c       Original DikuMUD by Hans Staerfeldt, Katja Nyboe,")
-        tr.print("       Tom Madsen, Michael Seifert, and Sebastian Hammer")
-        tr.print("       Based on MERC 2.1 code by Hatchet, Furey, and Kahn")
-        tr.print("       ROM 2.4 copyright (c) 1993-1998 Russ Taylor.")
-        tr.print("       1stMud Server copyright (c) 2001-2004, Markanth.{x")
-        tr.print("")
-
         def fmt_bytes(n):
             for unit in ("B", "KB", "MB"):
                 if n < 1024:
                     return "{} {}".format(n, unit)
                 n //= 1024
             return "{} GB".format(n)
+        free_mem = fmt_bytes(gc.mem_free())
+        mem_part = "{{G(Mem. free: {})".format(free_mem)
+        pad = 64 - 23 - len(mem_part) - 1
+        _first = '{C 8888888b.          d8b' + ' ' * pad + mem_part + '{x'
+        tr.print(_first)
+        tr.print('{C 888   Y88b         Y8P                                       {x')
+        tr.print('{C 888    888                                                   {x')
+        tr.print('{C 888   d88P 888d888 888 88888b.d88b.   .d88b.                 {x')
+        tr.print('{C 8888888P"  888P"   888 888 "888 "88b d8P  Y8b                {x')
+        tr.print('{C 888        888     888 888  888  888 88888888                {x')
+        tr.print('{C 888        888     888 888  888  888 Y8b.                    {x')
+        tr.print('{C 888        888     888 888  888  888  "Y8888                 {x')
+        tr.print('{C                             .d8888b.  888     888 8888888b.  {x')
+        tr.print('{C                            d88P  Y88b 888     888 888  "Y88b {x')
+        tr.print('{C                            Y88b.      888     888 888    888 {x')
+        tr.print('{C                             "Y888b.   888     888 888    888 {x')
+        tr.print('{C                                "Y88b. 888     888 888    888 {x')
+        tr.print('{C                                  "888 888     888 888    888 {x')
+        tr.print('{C                            Y88b  d88P Y88b. .d88P 888  .d88P {x')
+        tr.print('{C                             "Y8888P"   "Y88888P"  8888888P"  {x')
+        tr.print("{c      Original DikuMUD by Hans Staerfeldt, Katja Nyboe,       {x")
+        tr.print("{c      Tom Madsen, Michael Seifert, and Sebastian Hammer       {x")
+        tr.print("{c      Based on MERC 2.1 code by Hatchet, Furey, and Kahn      {x")
+        tr.print("{c      ROM 2.4 copyright (c) 1993-1998 Russ Taylor.            {x")
+        tr.print("{c      1stMud Server copyright (c) 2001-2004, Markanth.        {x")
+        tr.input(  "                    [Press Enter to start]                    "  )
+        
+        tr.print()
 
-        tr.print("Memory free: {}".format(fmt_bytes(gc.mem_free())))
-        tr.print("")
+
+        
+        # tr.print("Memory free: {G" + mem + "{x")
 
     def game_loop(self):
         tr = self.tr

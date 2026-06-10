@@ -39,7 +39,7 @@ def create_char():
         "room":     R_STARTING_ROOM,
         "inv":      [],
         "equip": {
-            "weapon": None, "offhand": None, "head": None,
+            "wield": None, "offhand": None, "head": None,
             "chest": None, "legs": None, "feet": None, "hands": None,
         },
         "learned": {
@@ -79,7 +79,7 @@ def reset_area():
             mob_instances[mob_id] = {
                 "tpl":        tpl_vnum,
                 "is_npc":     True,
-                "name":       tpl["name"],
+                "name":       tpl["short_descr"],
                 "hp":         _hp,
                 "hp_max":     _hp,
                 "state":      "idle",
@@ -163,23 +163,27 @@ def get_AC(char):
     return total
 
 
+def is_name(fragment, namelist):
+    """True if every word in fragment prefix-matches a word in namelist (cf. 1stMud is_name)."""
+    if not fragment or not namelist:
+        return False
+    keywords = namelist.lower().split()
+    for part in fragment.lower().split():
+        if not any(kw.startswith(part) for kw in keywords):
+            return False
+    return True
+
+
 def get_obj_list(fragment, vnum_list, templates):
-    frag = fragment.lower()
     for vnum in vnum_list:
-        if templates[vnum]["name"].lower() == frag:
-            return vnum
-    for vnum in vnum_list:
-        if templates[vnum]["name"].lower().startswith(frag):
+        if is_name(fragment, templates[vnum].get("keywords", "")):
             return vnum
     return None
 
 
 def get_char_room(fragment, inst_ids, mob_instances):
-    frag = fragment.lower()
     for mob_id in inst_ids:
-        inst = mob_instances[mob_id]
-        name = MOB_TEMPLATES[inst["tpl"]]["name"].lower()
-        if name == frag or name.startswith(frag):
+        if is_name(fragment, MOB_TEMPLATES[mob_instances[mob_id]["tpl"]].get("keywords", "")):
             return mob_id
     return None
 
@@ -279,7 +283,8 @@ def load_char(player, room_state, mob_instances, area_state=None, macros=None):
             player[pkey] = int(val) if pkey in int_keys else val
         elif key.startswith("r.") and key.endswith(".items"):
             rvnum = int(key.split(".")[1])
-            room_state[rvnum]["items"] = [int(v) for v in val.split("|") if v]
+            if rvnum in room_state:
+                room_state[rvnum]["items"] = [int(v) for v in val.split("|") if v]
         elif key == "a.age" and area_state is not None:
             area_state["age"] = int(val)
         elif key.startswith("m."):
@@ -294,7 +299,12 @@ def load_char(player, room_state, mob_instances, area_state=None, macros=None):
                 if "state" in saved:    # fv: should be "dead"
                     inst["state"] = saved["state"]
                 if "room" in saved:     # fv: room vnum (int)
-                    inst["room"] = int(saved["room"])
+                    r = int(saved["room"])
+                    if r in room_state:
+                        inst["room"] = r
+
+    if player["room"] not in room_state:
+        player["room"] = R_STARTING_ROOM
 
     for rs in room_state.values():
         rs["mobs"] = []

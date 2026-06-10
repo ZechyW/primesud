@@ -158,6 +158,11 @@ editor which stat formula (0=default, 1=easy, 2=normal, 3=hard, 4=random) to
 use when the builder triggers the `autoset` command, which auto-generates AC,
 HP/mana/damage dice, and `hitroll` from the mob's level.
 
+**`group`** — faction tag for automatic mutual assist.  Any NPC will join
+combat on behalf of another NPC that shares the same non-zero `group` value,
+without requiring `ASSIST_ALL` or `ASSIST_RACE` flags (see `fight.c`).  `0`
+means no group (mob won't assist via this mechanism).
+
 **`hitroll` but no `damroll`** — mobs have no separate `damroll` field.  The
 `+B` bonus in the damage dice (`NdD+B`, line 8) serves that role — it is a flat
 damage bonus packed into the dice spec.  `hitroll` exists as its own field
