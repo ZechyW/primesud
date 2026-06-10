@@ -255,7 +255,7 @@ def do_skills(tr, player, args, room_state, mob_instances):
 def do_help(tr, player, args, room_state, mob_instances):
     tr.print("Move: 2/8=n/s  4/6=w/e  7/9=u/d (or n/s/e/w/u/d)")
     tr.print("5=look  i=inv  wear  remove  quaff  st=stats  sk=skills")
-    tr.print("k/kill=fight  kick  cast <spell>  flee  save  q=quit")
+    tr.print("k/kill=fight  kick  cast <spell>  flee  save  credits  q=quit")
 
 
 def do_kill(tr, player, args, room_state, mob_instances):
@@ -306,6 +306,32 @@ def do_map(tr, player, args, room_state, mob_instances):
 def do_save(tr, player, args, room_state, mob_instances):
     ok = save_char(player, room_state, mob_instances)
     tr.print("Saved." if ok else "Save failed.")
+
+
+def do_credits(tr, player, args, room_state, mob_instances):
+    tr.print("{WPrimeSUD{x -- a single-user dungeon for the HP Prime")
+    tr.print("Port by ZechyW.  Not for commercial distribution.")
+    tr.print("")
+    tr.print("{W1stMud ROM Derivative{x")
+    tr.print("  {c(c) 2001-2003 Ryan Jennings (Markanth){x")
+    tr.print("  markanth@firstmud.com")
+    tr.print("")
+    tr.print("{WROM 2.4 beta{x")
+    tr.print("  {c(c) 1993-1998 Russ Taylor{x")
+    tr.print("  rtaylor@hypercube.org")
+    tr.print("")
+    tr.print("{WMerc 2.1{x")
+    tr.print("  {c(c) 1992-1993 Michael Chastain  mec@shell.portal.com{x")
+    tr.print("            Michael Quan       michael@uclink.berkeley.edu")
+    tr.print("            Mitchell Tse       hatchet@uclink.berkeley.edu")
+    tr.print("")
+    tr.print("{WDikuMud{x -- creators of the original game")
+    tr.print("  {c(c) 1990-1991 Sebastian Hammer       quinn@freja.diku.dk{x")
+    tr.print("            Michael Seifert        seifert@freja.diku.dk")
+    tr.print("            Hans Henrik Staerfeldt bombman@freja.diku.dk")
+    tr.print("            Tom Madsen             noop@freja.diku.dk")
+    tr.print("            Katja Nyboe            katz@freja.diku.dk")
+    tr.print("  DIKU, Computer Science Institute, Copenhagen University")
 
 
 def do_quit(tr, player, args, room_state, mob_instances):
@@ -472,6 +498,7 @@ _CMD_TABLE = [
     ("automap",  do_automap),
     ("autolist", do_autolist),
     ("save",     do_save),
+    ("credits",  do_credits),
     ("h",        do_help),
     ("help",     do_help),
     ("?",        do_help),

@@ -98,7 +98,7 @@ def reset_area():
                 "wis":        _st,
                 "con":        _st,
                 "hitroll":    tpl["hitroll"],
-                "damroll":    tpl["damroll"],
+                "damroll":    tpl.get("damroll", 0),
                 "AC":         tpl["AC"],
             }
             room_state[room_vnum]["mobs"].append(mob_id)

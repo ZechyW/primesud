@@ -1,3 +1,11 @@
+# PrimeSUD — single-user dungeon for the HP Prime
+# Port by ZechyW.  Not for commercial distribution.
+#
+# Based on 1stMud ROM Derivative (c) 2001-2003 Ryan Jennings
+# Based on ROM 2.4 beta (c) 1993-1996 Russ Taylor
+# Based on Merc 2.1 (c) 1992-1993 Chastain, Quan, Tse
+# Based on DikuMud (c) 1990-1991 Hammer, Seifert, Storfeldt, Madsen, Nyboe
+
 import gc
 
 from tml import tml
@@ -193,11 +201,30 @@ class Game:
         else:
             self.tr.print("Saved.")
 
-    def run_title(self):
+    def show_greeting(self):
         tr = self.tr
         tr.clear()
+
+        # ── ASCII art placeholder (64 cols × ~8 rows) ─────────────────
+        # Uncomment and replace with real art when ready.
+        tr.print("{C                                                 ")
+        tr.print("   ____  ____  ___ __  __ _____  ____  _   _ ____  ")
+        tr.print("  |  _ \|  _ \|_ _|  \/  | ____|/ ___|| | | |  _ \ ")
+        tr.print("  | |_) | |_) || || |\/| |  _|  \___ \| | | | | | |")
+        tr.print("  |  __/|  _ < | || |  | | |___  ___) | |_| | |_| |")
+        tr.print("  |_|   |_| \_\___|_|  |_|_____||____/ \___/|____/ ")
+        tr.print("                                                   {x")
+        # ──────────────────────────────────────────────────────────────
+
         tr.print("=== PRIME{RSUD{x ===")
         tr.print("A single-user dungeon.")
+        tr.print("")
+        tr.print("{c       Original DikuMUD by Hans Staerfeldt, Katja Nyboe,")
+        tr.print("       Tom Madsen, Michael Seifert, and Sebastian Hammer")
+        tr.print("       Based on MERC 2.1 code by Hatchet, Furey, and Kahn")
+        tr.print("       ROM 2.4 copyright (c) 1993-1998 Russ Taylor.")
+        tr.print("       1stMud Server copyright (c) 2001-2004, Markanth.{x")
+        tr.print("")
 
         def fmt_bytes(n):
             for unit in ("B", "KB", "MB"):
@@ -322,7 +349,7 @@ class PrimeSud:
         """Entry point: run the game inside the environment context manager."""
         with self:
             game = self.game
-            game.run_title()
+            game.show_greeting()
 
             if not game.load_game():
                 game.tr.print("No save found. Starting new game.")

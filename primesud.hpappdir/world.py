@@ -6,7 +6,7 @@
 
 # fmt: off
 # ── Cross-area room VNUMs (cf. 1stMud gsn_* / room vnums in index.h) ──────────
-R_STARTING_ROOM  = 1000   # player respawn/starting room (currently Village Square)
+R_STARTING_ROOM  = 3700   # player respawn/starting room (currently Village Square)
 
 # ── Skills ────────────────────────────────────────────────────────────────────
 GSN_KICK         = 4001
@@ -15,7 +15,7 @@ GSN_HAND_TO_HAND = 4010
 GSN_PARRY        = 4020
 # fmt: on
 
-from area_toy import (
+from area_school import (
     ROOMS,
     MOBILES  as MOB_TEMPLATES,
     OBJECTS  as ITEM_TEMPLATES,
