@@ -1,4 +1,4 @@
-Reference material for PrimeSud development.
+Reference material for PrimeSUD development.
 
 ---
 

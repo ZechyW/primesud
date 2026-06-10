@@ -104,7 +104,11 @@
 #define MUDCREDITS        	        	"Markanth [markanth@firstmud.com]"
 
 #ifndef TIME_T_FMT
+#ifdef WIN32
+#define TIME_T_FMT  "%I64d"
+#else
 #define TIME_T_FMT  "%ld"
+#endif
 #endif
 
 #define SECOND        	        	        	   1L
@@ -599,6 +603,9 @@ prog_t;
 #define AREA_VERSION    4
 #define PFILE_VERSION   12
 
+#ifdef STRING_NONE
+#undef STRING_NONE
+#endif
 typedef enum
 {
 	STRING_NONE,

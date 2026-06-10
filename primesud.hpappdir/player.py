@@ -1,16 +1,15 @@
 from hpprime import eval as ppleval, keyboard
 from cas import get_key
-from uio import FileIO
 from urandom import randint
 
-from config import SAVE_FILE, POLL_MS, TERMINAL_COLS
-from world import (
-    ROOM_INIT, ITEM_TEMPLATES, MOB_TEMPLATES, MOB_INIT,
-    R_VILLAGE_SQUARE,
-    SK_UNARMED, SK_SLASH, SK_HEAL, SK_WEAKEN, SK_DODGE,
-    STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
-)
+from config import SAVE_VAR, POLL_MS, TERMINAL_COLS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF
+from world import (ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, RESETS,
+                   R_STARTING_ROOM, GSN_HAND_TO_HAND, GSN_KICK, GSN_CURE_LIGHT, GSN_PARRY)
 
+
+# ── Player flag bits (cf. 1stMud PLR_* in bits.h) ─────────────────────────────
+PLR_AUTOMAP  = 1
+PLR_DEFAULTS = PLR_AUTOMAP
 
 # ── Player model ──────────────────────────────────────────────────────────────
 
@@ -25,6 +24,7 @@ def _roll_hp(hp_dice):
 def create_char():
     return {
         "name":     "",
+        "is_npc":   False,
         "level":    1,  "xp": 0, "xp_next": 1000,
         "str":      13, "dex": 13, "int": 13, "wis": 13, "con": 13,
         "hp":       20, "hp_max": 20,
@@ -35,77 +35,93 @@ def create_char():
         "AC":       100,   # base unarmored (100 = poor; negative = better)
         "wait":     0,     # skill lag in pulses
         "daze":     0,     # stun in pulses
-        "room":     R_VILLAGE_SQUARE,
+        "affects":  {},
+        "room":     R_STARTING_ROOM,
         "inv":      [],
         "equip": {
             "weapon": None, "offhand": None, "head": None,
             "chest": None, "legs": None, "feet": None, "hands": None,
         },
         "learned": {
-            SK_UNARMED: 40,   # basic brawling
-            SK_SLASH:   50,
-            SK_HEAL:    75,
-            SK_WEAKEN:  50,
-            SK_DODGE:   10,
+            GSN_HAND_TO_HAND: 40,
+            GSN_KICK:         50,
+            GSN_CURE_LIGHT:   75,
+            GSN_PARRY:        10,
         },
         "fighting": None,
+        "flags":    PLR_DEFAULTS,
     }
 
 
+def _stat_from_level(level):
+    """Uniform mob stat derived from level (cf. 1stMud create_mobile perm_stat)."""
+    return min(25, 11 + level // 4)
+
+
 def reset_area():
-    """Create fresh room state and mob instances (cf. 1stMud reset_area)."""
-    room_state = {}
-    for vnum, init in ROOM_INIT.items():
-        room_state[vnum] = {"items": list(init["items"]), "mobs": list(init["mobs"])}
+    """Create fresh room state and mob instances (cf. 1stMud reset_area).
+
+    Processes RESETS sequentially; mob instance IDs are assigned in order
+    (first 'M' entry gets ID 1, etc.) matching the old MOB_INIT numbering.
+    """
+    room_state = {vnum: {"items": [], "mobs": []} for vnum in ROOMS}
 
     mob_instances = {}
-    for mob_id, init in MOB_INIT.items():
-        tpl = MOB_TEMPLATES[init["tpl"]]
-        ps  = tpl["perm_stat"]
-        _hp = _roll_hp(tpl["hp_dice"])
-        mob_instances[mob_id] = {
-            "tpl":        init["tpl"],
-            "hp":         _hp,
-            "hp_max":     _hp,
-            "state":      "idle",
-            "room":       init["room"],
-            "respawn_at": 0,
-            "affects":    {},
-            "wait":       0,
-            "daze":       0,
-            # Combat stats flattened from template for hot-path access
-            "level":      tpl["level"],
-            "str":        ps["str"],
-            "dex":        ps["dex"],
-            "int":        ps["int"],
-            "wis":        ps["wis"],
-            "con":        ps["con"],
-            "hitroll":    tpl["hitroll"],
-            "damroll":    tpl["damroll"],
-            "AC":         tpl["AC"],
-        }
+    mob_id = 1
+    for entry in RESETS:
+        cmd = entry[0]
+        if cmd == "M":
+            tpl_vnum  = entry[1]
+            room_vnum = entry[2]
+            tpl = MOB_TEMPLATES[tpl_vnum]
+            _hp = _roll_hp(tpl["hp_dice"])
+            _st = _stat_from_level(tpl["level"])
+            mob_instances[mob_id] = {
+                "tpl":        tpl_vnum,
+                "is_npc":     True,
+                "name":       tpl["name"],
+                "hp":         _hp,
+                "hp_max":     _hp,
+                "state":      "idle",
+                "room":       room_vnum,
+                "affects":    {},
+                "wait":       0,
+                "daze":       0,
+                "fighting":   None,
+                "learned":    dict(tpl.get("skills", {})),
+                "off_flags":  dict(tpl.get("off_flags", {})),
+                # Combat stats flattened from template for hot-path access
+                "level":      tpl["level"],
+                "str":        _st,
+                "dex":        _st,
+                "int":        _st,
+                "wis":        _st,
+                "con":        _st,
+                "hitroll":    tpl["hitroll"],
+                "damroll":    tpl["damroll"],
+                "AC":         tpl["AC"],
+            }
+            room_state[room_vnum]["mobs"].append(mob_id)
+            mob_id += 1
+        elif cmd == "O":
+            room_state[entry[2]]["items"].append(entry[1])
 
     return room_state, mob_instances
 
 
-def _enrich_mob_instance(inst):
-    """Fill in template-derived combat stats on a freshly loaded mob instance."""
-    tpl = MOB_TEMPLATES[inst["tpl"]]
-    ps  = tpl["perm_stat"]
-    inst.setdefault("wait",    0)
-    inst.setdefault("daze",    0)
-    inst.setdefault("affects", {})
-    inst["level"]   = tpl["level"]
-    inst["str"]     = ps["str"]
-    inst["dex"]     = ps["dex"]
-    inst["int"]     = ps["int"]
-    inst["wis"]     = ps["wis"]
-    inst["con"]     = ps["con"]
-    inst["hitroll"] = tpl["hitroll"]
-    inst["damroll"] = tpl["damroll"]
-    inst["AC"]      = tpl["AC"]
-    if inst.get("hp_max", 0) == 0:
-        inst["hp_max"] = inst["hp"]
+def revive_dead_mobs(room_state, mob_instances):
+    """Re-spawn only dead mobs in-place (cf. 1stMud reset_room 'M': only spawn
+    if mob count < limit, i.e. the slot is empty/dead)."""
+    for mob_id, inst in mob_instances.items():
+        if inst["state"] == "dead":
+            tpl = MOB_TEMPLATES[inst["tpl"]]
+            _hp = _roll_hp(tpl["hp_dice"])
+            inst["hp"]      = _hp
+            inst["hp_max"]  = _hp
+            inst["state"]   = "idle"
+            inst["affects"] = {}
+            if mob_id not in room_state[inst["room"]]["mobs"]:
+                room_state[inst["room"]]["mobs"].append(mob_id)
 
 
 # ── Stat application helpers ──────────────────────────────────────────────────
@@ -181,14 +197,20 @@ def show_prompt(tr, player, buf):
 
 
 # ── Persistence ───────────────────────────────────────────────────────────────
+# Save data is stored in a PPL home variable (SAVE_VAR) via HVars so it
+# survives app reinstalls.  Serialisation constraints:
+#   - Lines are joined with '~'; no saved field value may contain '~'.
+#   - No field value may contain '"' (would break the PPL string literal).
+#   - HVars returns the string "Error: Invalid input" when the variable does
+#     not exist yet (i.e. no save found); load_char treats this as no-save.
 
-def save_char(player, room_state, mob_instances, macros=None):
+def save_char(player, room_state, mob_instances, area_state=None, macros=None):
     lines = []
     for key in ("name", "level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
                 "hitroll", "damroll", "AC", "room",
-                "practice", "train"):
+                "practice", "train", "flags"):
         lines.append("p.{}={}".format(key, player[key]))
     lines.append("p.inv={}".format("|".join(str(v) for v in player["inv"])))
     for slot, vnum in player["equip"].items():
@@ -200,26 +222,27 @@ def save_char(player, room_state, mob_instances, macros=None):
     if macros is not None:
         for k, v in macros.items():
             lines.append("p.macro.{}={}".format(k, v))
+    if area_state is not None:
+        lines.append("a.age={}".format(area_state["age"]))
     for rvnum, rs in room_state.items():
         lines.append("r.{}.items={}".format(rvnum, "|".join(str(v) for v in rs["items"])))
     for mob_id, inst in mob_instances.items():
-        state = "idle" if inst["state"] == "aggro" else inst["state"]
-        lines.append("m.{}=tpl={}|hp={}|hp_max={}|state={}|room={}|respawn_at={}".format(
-            mob_id, inst["tpl"], inst["hp"], inst.get("hp_max", inst["hp"]), state,
-            inst["room"], inst.get("respawn_at", 0)))
+        if inst["state"] == "dead":
+            lines.append("m.{}=tpl={}|state=dead|room={}".format(
+                mob_id, inst["tpl"], inst["room"]))
     try:
-        payload = "\n".join(lines)
-        with FileIO(SAVE_FILE, "wb") as f:
-            f.write(payload.encode("ascii"))
+        payload = "~".join(lines)
+        ppleval('HVars("' + SAVE_VAR + '"):="' + payload + '"')
         return True
     except Exception:
         return False
 
 
-def load_char(player, room_state, mob_instances, macros=None):
+def load_char(player, room_state, mob_instances, area_state=None, macros=None):
     try:
-        with FileIO(SAVE_FILE, "rb") as f:
-            data = f.read().decode("ascii")
+        data = ppleval('HVars("' + SAVE_VAR + '")')
+        if not data or not isinstance(data, str) or data.startswith("Error:"):
+            return False
     except Exception:
         return False
 
@@ -227,15 +250,12 @@ def load_char(player, room_state, mob_instances, macros=None):
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
                 "hitroll", "damroll", "AC", "room",
-                "practice", "train"}
+                "practice", "train", "flags"}
 
     if macros is not None:
         macros.clear()
 
-    for rs in room_state.values():
-        rs["mobs"] = []
-
-    for line in data.split("\n"):
+    for line in data.split("~"):
         if "=" not in line:
             continue
         key, val = line.split("=", 1)
@@ -260,18 +280,27 @@ def load_char(player, room_state, mob_instances, macros=None):
         elif key.startswith("r.") and key.endswith(".items"):
             rvnum = int(key.split(".")[1])
             room_state[rvnum]["items"] = [int(v) for v in val.split("|") if v]
+        elif key == "a.age" and area_state is not None:
+            area_state["age"] = int(val)
         elif key.startswith("m."):
             mob_id = int(key.split(".")[1])
-            fields = {"tpl": 0, "hp": 0, "hp_max": 0, "state": "idle",
-                      "room": 0, "respawn_at": 0}
+            saved = {}
             for pair in val.split("|"):
                 if "=" in pair:
                     fk, fv = pair.split("=", 1)
-                    fields[fk] = int(fv) if fk != "state" else fv
-            _enrich_mob_instance(fields)
-            mob_instances[mob_id] = fields
-            if fields["state"] != "dead":
-                room_state[fields["room"]]["mobs"].append(mob_id)
+                    saved[fk] = fv
+            inst = mob_instances.get(mob_id)
+            if inst and str(inst["tpl"]) == saved.get("tpl", ""):
+                if "state" in saved:    # fv: should be "dead"
+                    inst["state"] = saved["state"]
+                if "room" in saved:     # fv: room vnum (int)
+                    inst["room"] = int(saved["room"])
+
+    for rs in room_state.values():
+        rs["mobs"] = []
+    for mob_id, inst in mob_instances.items():
+        if inst["state"] != "dead":
+            room_state[inst["room"]]["mobs"].append(mob_id)
 
     return True
 

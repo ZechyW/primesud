@@ -17,3 +17,7 @@ build/
 # Env
 .env
 .venv/
+
+# 1stmud reference
+/reference/1stmud4.5.3/src/o
+/reference/1stmud4.5.3/log

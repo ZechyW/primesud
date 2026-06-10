@@ -1,6 +1,6 @@
-from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS
-from player import get_hitroll, get_damroll, get_AC, get_obj_list, get_char_room, save_char
-from combat import set_fighting, stop_fighting, use_skill, _get_thac0
+from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT
+from player import get_hitroll, get_damroll, get_AC, get_obj_list, get_char_room, save_char, PLR_AUTOMAP, PLR_DEFAULTS
+from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from config import DEFAULT_MACROS, TERMINAL_COLS
 
@@ -22,33 +22,68 @@ def _wrap(text, width):
     return lines
 
 
+_EXIT_ORDER = ("n", "e", "s", "w", "u", "d")
+_EXIT_NAMES = {"n": "north", "e": "east", "s": "south", "w": "west", "u": "up", "d": "down"}
+
 # ── Commands (cf. 1stMud do_* in interp.c / fight.c) ─────────────────────────
+
+_FLAG_TABLE = (
+    (PLR_AUTOMAP, "automap", "Map in room descriptions"),
+)
+
+
+def do_automap(tr, player, args, room_state, mob_instances):
+    player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOMAP
+    if player["flags"] & PLR_AUTOMAP:
+        tr.print("You now see an automap in room descriptions.")
+    else:
+        tr.print("You no longer see automap room descriptions.")
+
+
+def do_autolist(tr, player, args, room_state, mob_instances):
+    tr.print(" Command    Status  Description")
+    tr.print(" " + "-" * (TERMINAL_COLS - 2))
+    flags = player.get("flags", PLR_DEFAULTS)
+    for bit, name, desc in _FLAG_TABLE:
+        status = "ON" if flags & bit else "OFF"
+        tr.print(" {G" + name + " " * (10 - len(name)) +
+                 " {W" + status + " " * (6 - len(status)) +
+                 "{w " + desc + "{x")
+
 
 def do_look(tr, player, args, room_state, mob_instances, _long=True):
     room = ROOMS[player["room"]]
     rs = room_state[player["room"]]
-    text_w = TERMINAL_COLS - COMPACT_W - 1
+    automap_on = player.get("flags", PLR_DEFAULTS) & PLR_AUTOMAP
+    text_w = TERMINAL_COLS - COMPACT_W - 1 if automap_on else TERMINAL_COLS
 
-    text = ["[ {} ]".format(room["name"])]
-    text.append("")
+    tr.print("{Y" + room["name"] + "{x")
+
+    text = []
     text.extend(_wrap(room["long"] if _long else room["short"], text_w))
-    exits = " ".join(room["exits"].keys()).upper()
-    text.append("[Exits: {}]".format(exits) if exits else "[Exits: none]")
-    text.append("")
+    
+    if automap_on:
+        map_lines = build_compact_lines(player, ROOMS)
+        n = max(len(map_lines), len(text))
+        for i in range(n):
+            ml = map_lines[i] if i < len(map_lines) else ' ' * COMPACT_W
+            tl = text[i] if i < len(text) else ''
+            tr.print(ml + ' ' + tl)
+    else:
+        for tl in text:
+            tr.print(tl)
+
+    exits = " ".join(_EXIT_NAMES.get(d, d) for d in _EXIT_ORDER if d in room["exits"])
+    exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
+    tr.print("{g" + exit_string + "{x")
+    tr.print("")
     live_mobs = [i for i in rs["mobs"] if mob_instances[i]["state"] != "dead"]
     if rs["items"]:
         names = ", ".join(ITEM_TEMPLATES[v]["name"] for v in rs["items"])
-        text.append("Items: {}".format(names))
+        tr.print("Items: {}".format(names))
     if live_mobs:
         names = ", ".join(MOB_TEMPLATES[mob_instances[i]["tpl"]]["name"] for i in live_mobs)
-        text.append("Mobs:  {}".format(names))
-
-    map_lines = build_compact_lines(player, ROOMS)
-    n = max(len(map_lines), len(text))
-    for i in range(n):
-        ml = map_lines[i] if i < len(map_lines) else ' ' * COMPACT_W
-        tl = text[i] if i < len(text) else ''
-        tr.print(ml + ' ' + tl)
+        tr.print("Mobs:  {}".format(names))
 
 
 def do_move(tr, player, direction, room_state, mob_instances):
@@ -208,17 +243,19 @@ def do_skills(tr, player, args, room_state, mob_instances):
         if sk is None:
             continue
         sk_type = sk.get("type", "")
-        if sk_type == "active":
-            tr.print("  {} {}% (MP:{})".format(
-                sk["name"], pct, sk.get("mp_cost", 0)))
+        if sk_type == "spell":
+            tr.print("  cast {} {}% (MP:{})".format(
+                sk["name"], pct, sk.get("mana", 0)))
+        elif sk_type == "active":
+            tr.print("  {} {}%".format(sk["name"], pct))
         elif sk_type in ("weapon", "passive"):
             tr.print("  {} {}%".format(sk["name"], pct))
 
 
 def do_help(tr, player, args, room_state, mob_instances):
-    tr.print("Move: 7 8 9 / 4 5 6 / 1 2 3 (or n/s/e/w/ne/...)")
-    tr.print("5=look  i=inv  equip  unequip  u=use  st=stats")
-    tr.print("sk=skills  l=look  k/kill=fight  flee  save  q=quit")
+    tr.print("Move: 2/8=n/s  4/6=w/e  7/9=u/d (or n/s/e/w/u/d)")
+    tr.print("5=look  i=inv  wear  remove  quaff  st=stats  sk=skills")
+    tr.print("k/kill=fight  kick  cast <spell>  flee  save  q=quit")
 
 
 def do_kill(tr, player, args, room_state, mob_instances):
@@ -275,6 +312,59 @@ def do_quit(tr, player, args, room_state, mob_instances):
     return "quit"
 
 
+# ── Skill / spell dispatch ────────────────────────────────────────────────────
+
+def prefix_lookup(table, key):
+    """Scan list of (name, value) pairs; exact match first, then first prefix."""
+    fallback = None
+    for name, val in table:
+        if name == key:
+            return val
+        if fallback is None and name.startswith(key):
+            fallback = val
+    return fallback
+
+
+def do_cast(tr, player, args, room_state, mob_instances):
+    if not args:
+        tr.print("Cast which spell?")
+        return None
+    spell_key = args[0]
+    sk_vnum = None
+    for vnum, sk in SKILL_TABLE:
+        if sk.get("type") != "spell":
+            continue
+        name = sk["name"]
+        if name == spell_key or name.startswith(spell_key):
+            sk_vnum = vnum
+            break
+    if sk_vnum is None or player["learned"].get(sk_vnum, 0) == 0:
+        tr.print("You don't know any spell called that.")
+        return None
+    sk = SKILLS[sk_vnum]
+    if player.get("wait", 0) > 0:
+        tr.print("You are still recovering.")
+        return None
+    mana = sk.get("mana", 0)
+    if player["mp"] < mana:
+        tr.print("You don't have enough mana.")
+        return None
+    player["mp"] -= mana
+    WaitState(player, sk.get("beats", 0))
+    effect = sk.get("effect", "")
+    if effect == "heal":
+        num, size, bonus = sk["heal_dice"]
+        roll = bonus + player["level"] // sk.get("level_div", 1)
+        for _ in range(num):
+            roll += randint(1, size)
+        gained = min(roll, player["hp_max"] - player["hp"])
+        player["hp"] += gained
+        tr.print("You feel better! +{} HP. ({}/{})".format(
+            gained, player["hp"], player["hp_max"]))
+    check_improve(tr, player, sk_vnum, True)
+    return None
+
+
 # ── Direction map ─────────────────────────────────────────────────────────────
 
 _DIRECTION_MAP = {
@@ -282,11 +372,6 @@ _DIRECTION_MAP = {
     "s": "s", "south":     "s",
     "e": "e", "east":      "e",
     "w": "w", "west":      "w",
-
-    "ne": "ne", "northeast": "ne",
-    "nw": "nw", "northwest": "nw",
-    "se": "se", "southeast": "se",
-    "sw": "sw", "southwest": "sw",
 
     "u": "u", "up":   "u",
     "d": "d", "down": "d",
@@ -320,6 +405,9 @@ def _macro_row(keys):
     for c in cells:
         while len(c) < height:
             c.append(" " * _CELL_W)
+    for ki, key in enumerate(keys):
+        s = cells[ki][0]
+        cells[ki][0] = s[0] + "{R" + key + "{x" + s[2:]
     return ["|{}|{}|{}|".format(cells[0][i], cells[1][i], cells[2][i])
             for i in range(height)]
 
@@ -332,7 +420,10 @@ def do_macro(tr, player, args, room_state, mob_instances):  # [PRIMESUD]
         # bottom row: 0 centred in the middle column
         blank = " " * _CELL_W
         tr.print(_MACRO_SEP)
-        for mid in _macro_cell("0"):
+        cell0 = _macro_cell("0")
+        s = cell0[0]
+        cell0[0] = s[0] + "{R0{x" + s[2:]
+        for mid in cell0:
             tr.print("|{}|{}|{}|".format(blank, mid, blank))
         tr.print(_MACRO_SEP)
         return None
@@ -354,35 +445,39 @@ def do_macro(tr, player, args, room_state, mob_instances):  # [PRIMESUD]
 
 # ── Command table ─────────────────────────────────────────────────────────────
 
-_CMD_TABLE = {
-    "i":       do_inventory,
-    "inv":     do_inventory,
-    "l":       do_look,
-    "look":    do_look,
-    "st":      do_score,
-    "stats":   do_score,
-    "score":   do_score,
-    "sk":      do_skills,
-    "skills":  do_skills,
-    "get":     do_get,
-    "take":    do_get,
-    "drop":    do_drop,
-    "wear":    do_wear,
-    "remove":  do_remove,
-    "quaff":   do_quaff,
-    "k":       do_kill,
-    "kill":    do_kill,
-    "flee":    do_flee,
-    "fl":      do_flee,
-    "macro":   do_macro,
-    "map":     do_map,
-    "save":    do_save,
-    "h":       do_help,
-    "help":    do_help,
-    "?":       do_help,
-    "q":       do_quit,
-    "quit":    do_quit,
-}
+_CMD_TABLE = [
+    ("i",        do_inventory),
+    ("inv",      do_inventory),
+    ("l",        do_look),
+    ("look",     do_look),
+    ("st",       do_score),
+    ("score",    do_score),
+    ("stats",    do_score),
+    ("sk",       do_skills),
+    ("skills",   do_skills),
+    ("get",      do_get),
+    ("take",     do_get),
+    ("drop",     do_drop),
+    ("wear",     do_wear),
+    ("remove",   do_remove),
+    ("quaff",    do_quaff),
+    ("k",        do_kill),
+    ("kill",     do_kill),
+    ("kick",     do_kick),
+    ("cast",     do_cast),
+    ("flee",     do_flee),
+    ("fl",       do_flee),
+    ("macro",    do_macro),
+    ("map",      do_map),
+    ("automap",  do_automap),
+    ("autolist", do_autolist),
+    ("save",     do_save),
+    ("h",        do_help),
+    ("help",     do_help),
+    ("?",        do_help),
+    ("q",        do_quit),
+    ("quit",     do_quit),
+]
 
 
 # ── Interpreter ───────────────────────────────────────────────────────────────
@@ -400,27 +495,10 @@ def interpret(raw, tr, player, room_state, mob_instances):
         do_move(tr, player, direction, room_state, mob_instances)
         return None
 
-    fn = _CMD_TABLE.get(verb)
+    fn = prefix_lookup(_CMD_TABLE, verb)
+
     if fn is not None:
         return fn(tr, player, args, room_state, mob_instances)
-
-    # Skill name dispatch — active skills only
-    for sk_vnum, pct in player["learned"].items():
-        sk = SKILLS.get(sk_vnum)
-        if sk is None or sk.get("type") != "active":
-            continue
-        if verb != sk["name"].lower():
-            continue
-        if player["fighting"] is None:
-            tr.print("You're not in combat.")
-        elif player.get("wait", 0) > 0:
-            tr.print("You are still recovering.")
-        elif player["mp"] < sk.get("mp_cost", 0):
-            tr.print("Not enough MP!")
-        else:
-            player["mp"] -= sk.get("mp_cost", 0)
-            use_skill(tr, player, sk_vnum, mob_instances, room_state)
-        return None
 
     tr.print("Unknown command. ? for help.")
     return None

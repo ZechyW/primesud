@@ -55,6 +55,7 @@
 #pragma warning(disable:4800)
 #pragma warning(disable:4309)
 #pragma warning(disable:4550)
+#pragma warning(disable:4996)
 #ifndef __FUNCTION__
 #define __FUNCTION__        	__FILE__
 #endif
@@ -183,6 +184,10 @@ char *alloca();
 
 #include "globals.h"
 
+/* logf conflicts with float logf(float) from <math.h> on MSVC */
+#ifdef WIN32
+#define logf mud_logf
+#endif
 #include "proto.h"
 
 #if defined DISABLE_CRYPT || !defined HAVE_CRYPT
