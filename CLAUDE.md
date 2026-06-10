@@ -139,11 +139,3 @@ def deal_damage(target, amount, damage_type):
 - Keep changes minimal and targeted. Do not refactor surrounding code unless asked.
 - When in doubt about whether a Python feature is available on HP Prime, assume it is not and use the simplest possible alternative.
 
-## Connection constraints
-
-The user's connection is unstable. Reading or sending more than ~750 lines in a single turn can trigger API connection errors.
-
-**Rules:**
-- Never read more than 750 lines in one `Read` call (use `offset` + `limit`).
-- Never produce a response that would contain more than ~750 lines of quoted file content.
-- For tasks that require reading large files (e.g. cross-file verification, audits), plan the work in sections of ≤750 lines each and confirm the plan with the user before starting.
