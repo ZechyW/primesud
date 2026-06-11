@@ -1,6 +1,6 @@
 from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT
 from picker import pick_from
-from player import get_hitroll, get_damroll, get_AC, get_obj_list, get_char_room, save_char, PLR_AUTOMAP, PLR_DEFAULTS
+from player import get_hitroll, get_damroll, get_AC, get_curr_stat, get_obj_list, get_char_room, save_char, is_name, PLR_AUTOMAP, PLR_DEFAULTS
 from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from config import DEFAULT_MACROS, TERMINAL_COLS
@@ -63,7 +63,41 @@ def do_autolist(tr, player, args, room_state, mob_instances):
                  "{w " + desc + "{x")
 
 
+def _look_item(tr, player, args, room_state):
+    """Show an item's description from inventory, room, or equipped slots (cf. 1stMud do_look in act_info.c)."""
+    target = " ".join(args)
+    rs = room_state[player["room"]]
+    equipped = [v for v in player["equip"].values() if v is not None]
+    vnum = (get_obj_list(target, player["inv"], ITEM_TEMPLATES)
+            or get_obj_list(target, rs["items"], ITEM_TEMPLATES)
+            or get_obj_list(target, equipped, ITEM_TEMPLATES))
+    if vnum is None:
+        tr.print("You don't see that here.")
+        return
+    tpl = ITEM_TEMPLATES[vnum]
+    for line in _wrap_paragraphs(tpl.get("description", tpl["short_descr"]), TERMINAL_COLS):
+        tr.print(line)
+    for ed in tpl.get("extra_descs", []):
+        if is_name(target, ed.get("keywords", "")):
+            for line in _wrap_paragraphs(ed.get("desc", ""), TERMINAL_COLS):
+                tr.print(line)
+
+
 def do_look(tr, player, args, room_state, mob_instances, _long=True):
+    """Display the current room or examine an item (cf. 1stMud do_look in act_info.c).
+
+    Args:
+        tr: Terminal renderer.
+        player (dict): Player state dict.
+        args (list): Parsed command arguments; non-empty triggers item look.
+        room_state (dict): Per-room mutable state.
+        mob_instances (dict): Live mob instance dicts keyed by mob ID.
+        _long (bool): Show long room description when True; short when False.
+    """
+    if args:
+        # TODO: extend to room extra_descs, mob descriptions, and item extra_descs on other targets
+        _look_item(tr, player, args, room_state)
+        return
     room = ROOMS[player["room"]]
     rs = room_state[player["room"]]
     automap_on = player.get("flags", PLR_DEFAULTS) & PLR_AUTOMAP
@@ -115,12 +149,26 @@ def do_get(tr, player, args, room_state, mob_instances):
         tr.print("Get what?")
         return
     rs = room_state[player["room"]]
-    vnum = get_obj_list(" ".join(args), rs["items"], ITEM_TEMPLATES)
+    arg = " ".join(args)
+    if arg == "all" or arg.startswith("all."):
+        filter_kw = arg[4:] if arg.startswith("all.") else None
+        for vnum in list(rs["items"]):
+            tpl = ITEM_TEMPLATES[vnum]
+            if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
+                continue
+            if "take" not in tpl.get("wear_flags", {}):
+                tr.print("You can't take the {}.".format(tpl["short_descr"]))
+                continue
+            rs["items"].remove(vnum)
+            player["inv"].append(vnum)
+            tr.print("You take the {}.".format(tpl["short_descr"]))
+        return
+    vnum = get_obj_list(arg, rs["items"], ITEM_TEMPLATES)
     if vnum is None:
         tr.print("Nothing here called that.")
         return
     tpl = ITEM_TEMPLATES[vnum]
-    if 'take' not in tpl.get('wear_flags', {}):
+    if "take" not in tpl.get("wear_flags", {}):
         tr.print("You can't take that.")
         return
     rs["items"].remove(vnum)
@@ -132,7 +180,18 @@ def do_drop(tr, player, args, room_state, mob_instances):
     if not args:
         tr.print("Drop what?")
         return
-    vnum = get_obj_list(" ".join(args), player["inv"], ITEM_TEMPLATES)
+    arg = " ".join(args)
+    if arg == "all" or arg.startswith("all."):
+        filter_kw = arg[4:] if arg.startswith("all.") else None
+        for vnum in list(player["inv"]):
+            tpl = ITEM_TEMPLATES[vnum]
+            if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
+                continue
+            player["inv"].remove(vnum)
+            room_state[player["room"]]["items"].append(vnum)
+            tr.print("You drop the {}.".format(tpl["short_descr"]))
+        return
+    vnum = get_obj_list(arg, player["inv"], ITEM_TEMPLATES)
     if vnum is None:
         tr.print("You're not carrying that.")
         return
@@ -141,57 +200,175 @@ def do_drop(tr, player, args, room_state, mob_instances):
     tr.print("You drop the {}.".format(ITEM_TEMPLATES[vnum]["short_descr"]))
 
 
+def _obj_flags(tpl):
+    """Build coloured flag prefix string for item display (cf. 1stMud format_obj_to_char in act_info.c)."""
+    ef = tpl.get("extra_flags", {})
+    out = ""
+    if ef.get("glow"):   out += "{Y(Glowing){x "
+    if ef.get("hum"):    out += "{C(Humming){x "
+    if ef.get("magic"):  out += "{M(Magical){x "
+    if ef.get("invis"):  out += "{c(Invis){x "
+    if ef.get("evil"):   out += "{R(Red Aura){x "
+    if ef.get("bless"):  out += "{B(Blue Aura){x "
+    return out
+
+
 def do_inventory(tr, player, args, room_state, mob_instances):
+    max_carry = min(37, 17 + player["level"])
+    tr.print("{{YYou are carrying {{W{}/{}{{Y items:{{x".format(len(player["inv"]), max_carry))
     if not player["inv"]:
-        tr.print("You carry nothing.")
         return
     counts = {}
     for v in player["inv"]:
         counts[v] = counts.get(v, 0) + 1
     for v, n in counts.items():
-        name = ITEM_TEMPLATES[v]["short_descr"]
-        tr.print("  {} x{}".format(name, n) if n > 1 else "  {}".format(name))
+        tpl = ITEM_TEMPLATES[v]
+        flags = _obj_flags(tpl)
+        name = tpl["short_descr"]
+        tr.print("  {}{} x{}".format(flags, name, n) if n > 1 else "  {}{}".format(flags, name))
+
+
+_WEAR_MSG = {
+    "light":  "You light {} and hold it.",
+    "wield":  "You wield {}.",
+    "hold":   "You hold {} in your hand.",
+    "body":   "You wear {} on your torso.",
+    "head":   "You wear {} on your head.",
+    "legs":   "You wear {} on your legs.",
+    "feet":   "You wear {} on your feet.",
+    "hands":  "You wear {} on your hands.",
+    "arms":   "You wear {} on your arms.",
+    "shield": "You wear {} as a shield.",
+    "about":  "You wear {} about your torso.",
+    "waist":  "You wear {} about your waist.",
+    "neck":   "You wear {} around your neck.",
+    "wrist":  "You wear {} around your wrist.",
+}
+
+
+def _wear_one(tr, player, vnum, tpl, slot):
+    """Equip one item into slot, enforcing level and curse checks (cf. 1stMud wear_obj in act_obj.c)."""
+    if player["level"] < tpl.get("level", 1):
+        tr.print("You are too weak to use the {}.".format(tpl["short_descr"]))
+        return
+    cur = player["equip"][slot]
+    if cur is not None:
+        cur_tpl = ITEM_TEMPLATES[cur]
+        if cur_tpl.get("extra_flags", {}).get("noremove"):
+            tr.print("You can't remove the {}, it's cursed.".format(cur_tpl["short_descr"]))
+            return
+        player["inv"].append(cur)
+    player["inv"].remove(vnum)
+    player["equip"][slot] = vnum
+    tr.print(_WEAR_MSG[slot].format(tpl["short_descr"]))
 
 
 def do_wear(tr, player, args, room_state, mob_instances):
+    """Equip an item from inventory, or wear all wearable items (cf. 1stMud do_wear in act_obj.c).
+
+    Args:
+        tr: Terminal renderer.
+        player (dict): Player state dict.
+        args (list): Parsed command arguments; first token may be "all".
+        room_state (dict): Per-room mutable state (unused).
+        mob_instances (dict): Live mob instances (unused).
+    """
     if not args:
-        tr.print("Equip what?")
+        tr.print("Wear what?")
+        return
+    if args[0].lower() == "all":
+        for vnum in list(player["inv"]):
+            tpl = ITEM_TEMPLATES[vnum]
+            slot = next((f for f in tpl.get("wear_flags", {}) if f != "take"), None)
+            if slot is None or slot not in player["equip"]:
+                continue
+            _wear_one(tr, player, vnum, tpl, slot)
         return
     vnum = get_obj_list(" ".join(args), player["inv"], ITEM_TEMPLATES)
     if vnum is None:
         tr.print("You're not carrying that.")
         return
     tpl = ITEM_TEMPLATES[vnum]
-    slot = None
-    for f in tpl.get("wear_flags", {}):
-        if f != 'take':
-            slot = f
-            break
-    if slot is None:
-        tr.print("That can't be equipped.")
+    slot = next((f for f in tpl.get("wear_flags", {}) if f != "take"), None)
+    if slot is None or slot not in player["equip"]:
+        tr.print("You can't wear that.")
         return
-    if player["equip"][slot] is not None:
-        player["inv"].append(player["equip"][slot])
-    player["inv"].remove(vnum)
-    player["equip"][slot] = vnum
-    tr.print("You equip the {}.".format(tpl["short_descr"]))
+    _wear_one(tr, player, vnum, tpl, slot)
+
+
+def _remove_one(tr, player, slot, vnum):
+    """Unequip one item, checking for curse (cf. 1stMud remove_obj in act_obj.c)."""
+    tpl = ITEM_TEMPLATES[vnum]
+    if tpl.get("extra_flags", {}).get("noremove"):
+        tr.print("You can't remove the {}, it's cursed.".format(tpl["short_descr"]))
+        return
+    player["equip"][slot] = None
+    player["inv"].append(vnum)
+    tr.print("You remove the {}.".format(tpl["short_descr"]))
 
 
 def do_remove(tr, player, args, room_state, mob_instances):
+    """Remove a worn item by name and return it to inventory (cf. 1stMud do_remove in act_obj.c).
+
+    Args:
+        tr: Terminal renderer.
+        player (dict): Player state dict.
+        args (list): Parsed command arguments; first token may be "all".
+        room_state (dict): Per-room mutable state (unused).
+        mob_instances (dict): Live mob instances (unused).
+    """
     if not args:
-        tr.print("Remove which slot?")
+        tr.print("Remove what?")
         return
-    slot = args[0].lower()
-    if slot not in player["equip"]:
-        tr.print("No such slot.")
+    if args[0].lower() == "all":
+        for slot, vnum in list(player["equip"].items()):
+            if vnum is not None:
+                _remove_one(tr, player, slot, vnum)
         return
-    vnum = player["equip"][slot]
-    if vnum is None:
-        tr.print("Nothing equipped there.")
-        return
-    player["inv"].append(vnum)
-    player["equip"][slot] = None
-    tr.print("You unequip the {}.".format(ITEM_TEMPLATES[vnum]["short_descr"]))
+    target = " ".join(args)
+    for slot, vnum in player["equip"].items():
+        if vnum is not None and is_name(target, ITEM_TEMPLATES[vnum].get("keywords", "")):
+            _remove_one(tr, player, slot, vnum)
+            return
+    tr.print("You aren't wearing that.")
+
+
+_WEAR_LABELS = (
+    ("light",  "{g<{Wused as light{g>{x      "),
+    ("wield",  "{g<{Wwielded{g>{x           "),
+    ("hold",   "{g<{Wheld{g>{x              "),
+    ("body",   "{g<{Wworn on body{g>{x      "),
+    ("head",   "{g<{Wworn on head{g>{x      "),
+    ("legs",   "{g<{Wworn on legs{g>{x      "),
+    ("feet",   "{g<{Wworn on feet{g>{x      "),
+    ("hands",  "{g<{Wworn on hands{g>{x     "),
+    ("arms",   "{g<{Wworn on arms{g>{x      "),
+    ("shield", "{g<{Wworn as shield{g>{x    "),
+    ("about",  "{g<{Wworn about body{g>{x   "),
+    ("waist",  "{g<{Wworn about waist{g>{x  "),
+    ("neck",   "{g<{Wworn around neck{g>{x  "),
+    ("wrist",  "{g<{Wworn around wrist{g>{x "),
+)
+
+
+def do_equipment(tr, player, args, room_state, mob_instances):
+    """List all equipment slots and what is worn in each (cf. 1stMud do_equipment in act_info.c).
+
+    Args:
+        tr: Terminal renderer.
+        player (dict): Player state dict.
+        args (list): Parsed command arguments (unused).
+        room_state (dict): Per-room mutable state (unused).
+        mob_instances (dict): Live mob instances (unused).
+    """
+    tr.print("You are wearing:")
+    for slot, label in _WEAR_LABELS:
+        vnum = player["equip"].get(slot)
+        if vnum is not None:
+            tpl = ITEM_TEMPLATES[vnum]
+            tr.print(label + _obj_flags(tpl) + "{Y" + tpl["short_descr"] + "{x")
+        else:
+            tr.print(label + "nothing")
 
 
 def do_quaff(tr, player, args, room_state, mob_instances):
@@ -238,11 +415,11 @@ def do_score(tr, player, args, room_state, mob_instances):
         _SCORE_SEP_OUTER,
         _SCORE_NAME_FMT.format(p.get('name', '???')),
         _SCORE_SEP_INNER,
-        _row(_stat('Strength',     p['str']), _val('Level',     p['level'])),
-        _row(_stat('Intelligence', p['int']), _val('Thac0',     thac0)),
-        _row(_stat('Wisdom',       p['wis']), _val('Practices', p.get('practice', 0))),
-        _row(_stat('Dexterity',    p['dex']), _val('Trains',    p.get('train', 0))),
-        _row(_stat('Constitution', p['con']), ''),
+        _row(_stat('Strength',     get_curr_stat(p, 'str')), _val('Level',     p['level'])),
+        _row(_stat('Intelligence', get_curr_stat(p, 'int')), _val('Thac0',     thac0)),
+        _row(_stat('Wisdom',       get_curr_stat(p, 'wis')), _val('Practices', p.get('practice', 0))),
+        _row(_stat('Dexterity',    get_curr_stat(p, 'dex')), _val('Trains',    p.get('train', 0))),
+        _row(_stat('Constitution', get_curr_stat(p, 'con')), ''),
         _SCORE_SEP_INNER,
         _row('Hit    : [{:5d}/{:5d}]'.format(p['hp'],  p['hp_max']),
              _val('Hitroll', get_hitroll(p))),
@@ -495,6 +672,167 @@ def do_macro(tr, player, args, room_state, mob_instances):  # [PRIMESUD]
         tr.print("{} => {}".format(key, cmd))
     return None
 
+_TRAIN_STATS = [
+    ("str", "strength"),
+    ("dex", "dexterity"),
+    ("int", "intelligence"),
+    ("wis", "wisdom"),
+    ("con", "constitution"),
+]
+
+
+def do_train(tr, player, args, room_state, mob_instances):
+    """Permanently raise a stat by 1 using a train point (cf. 1stMud do_train in act_move.c).
+
+    Requires a mob with act_flags["train"] in the room.  Stats cap at 25;
+    each improvement costs 1 train point.
+
+    Args:
+        tr: Terminal instance.
+        player (dict): Player state dict.
+        args (list): Parsed command words; optional stat name.
+        room_state (dict): Per-room mutable state.
+        mob_instances (dict): Live mob instance dicts.
+    """
+    rs = room_state[player["room"]]
+    trainer = None
+    for mid in rs["mobs"]:
+        inst = mob_instances[mid]
+        if inst["state"] != "dead":
+            if MOB_TEMPLATES[inst["tpl"]].get("act_flags", {}).get("train"):
+                trainer = mid
+                break
+    if trainer is None:
+        tr.print("You can't do that here.")
+        return
+
+    if not args:
+        tr.print("You have {} training session{}.".format(
+            player["train"], "" if player["train"] == 1 else "s"))
+        available = [lng for key, lng in _TRAIN_STATS if player[key] < 25]
+        if available:
+            tr.print("You can train: {}.".format(", ".join(available)))
+        else:
+            tr.print("All your stats are at maximum.")
+        return
+
+    arg = args[0].lower()
+    stat_key = None
+    for key, lng in _TRAIN_STATS:
+        if key.startswith(arg) or lng.startswith(arg):
+            stat_key = key
+            break
+
+    if stat_key is None:
+        tr.print("Valid stats: str, dex, int, wis, con.")
+        return
+
+    if player[stat_key] >= 25:
+        tr.print("Your {} is already at maximum.".format(
+            dict(_TRAIN_STATS)[stat_key]))
+        return
+
+    if player["train"] < 1:
+        tr.print("You don't have any training sessions.")
+        return
+
+    player["train"] -= 1
+    player[stat_key] += 1
+    tr.print("Your {} increases!".format(dict(_TRAIN_STATS)[stat_key]))
+
+
+def do_affects(tr, player, args, room_state, mob_instances):
+    """List all active player affects with name, location, modifier, duration (cf. 1stMud do_affects in act_info.c).
+
+    Args:
+        tr: Terminal instance.
+        player (dict): Player state dict.
+        args (list): Unused.
+        room_state (dict): Unused.
+        mob_instances (dict): Unused.
+    """
+    affects = player.get("affects", {})
+    if not affects:
+        tr.print("You are not affected by any spells.")
+        return
+    tr.print("You are affected by:")
+    for sn, aff in affects.items():
+        sk = SKILLS.get(sn)
+        name = sk["name"] if sk else "unknown"
+        mod = aff["modifier"]
+        dur = aff["duration"]
+        dur_str = "permanent" if dur < 0 else "{} tick{}".format(dur, "" if dur == 1 else "s")
+        tr.print("  {}: modifies {} by {:+d} for {}".format(
+            name, aff["loc"], mod, dur_str))
+
+
+_PRACTICE_CAP = 75  # matches 1stMud skill_adept for all classes
+
+
+def do_practice(tr, player, args, room_state, mob_instances):
+    """Improve a skill percentage using a practice point (cf. 1stMud do_practice in act_info.c).
+
+    Without an argument shows current skills and practice count.  With a skill
+    name, requires a mob with act_flags["practice"] in the room; costs 1
+    practice point; gain = INT_learn (max(1, int//3)), capped at 75%.
+
+    Args:
+        tr: Terminal instance.
+        player (dict): Player state dict.
+        args (list): Parsed command words; optional skill name.
+        room_state (dict): Per-room mutable state.
+        mob_instances (dict): Live mob instance dicts.
+    """
+    if not args:
+        do_skills(tr, player, [], room_state, mob_instances)
+        tr.print("You have {} practice session{}.".format(
+            player["practice"], "" if player["practice"] == 1 else "s"))
+        return
+
+    rs = room_state[player["room"]]
+    teacher = None
+    for mid in rs["mobs"]:
+        inst = mob_instances[mid]
+        if inst["state"] != "dead":
+            if MOB_TEMPLATES[inst["tpl"]].get("act_flags", {}).get("practice"):
+                teacher = mid
+                break
+    if teacher is None:
+        tr.print("You can't do that here.")
+        return
+
+    if player["practice"] < 1:
+        tr.print("You have no practice sessions left.")
+        return
+
+    arg = " ".join(args).lower()
+    sk_vnum = None
+    for vnum in player["learned"]:
+        sk = SKILLS.get(vnum)
+        if sk and sk["name"].startswith(arg):
+            sk_vnum = vnum
+            break
+
+    if sk_vnum is None:
+        tr.print("You don't know that skill.")
+        return
+
+    current = player["learned"][sk_vnum]
+    if current >= _PRACTICE_CAP:
+        tr.print("You are already learned at {}.".format(SKILLS[sk_vnum]["name"]))
+        return
+
+    gain = max(1, get_curr_stat(player, "int") // 3)
+    player["practice"] -= 1
+    new_pct = min(_PRACTICE_CAP, current + gain)
+    player["learned"][sk_vnum] = new_pct
+
+    if new_pct >= _PRACTICE_CAP:
+        tr.print("You are now learned at {}.".format(SKILLS[sk_vnum]["name"]))
+    else:
+        tr.print("You practice {}.".format(SKILLS[sk_vnum]["name"]))
+
+
 # ── Command table ─────────────────────────────────────────────────────────────
 
 _CMD_TABLE = [
@@ -510,9 +848,11 @@ _CMD_TABLE = [
     ("get",      do_get),
     ("take",     do_get),
     ("drop",     do_drop),
-    ("wear",     do_wear),
-    ("remove",   do_remove),
-    ("quaff",    do_quaff),
+    ("wear",      do_wear),
+    ("wield",     do_wear),
+    ("remove",    do_remove),
+    ("equipment", do_equipment),
+    ("quaff",     do_quaff),
     ("k",        do_kill),
     ("kill",     do_kill),
     ("kick",     do_kick),
@@ -523,6 +863,9 @@ _CMD_TABLE = [
     ("map",      do_map),
     ("automap",  do_automap),
     ("autolist", do_autolist),
+    ("train",    do_train),
+    ("practice", do_practice),
+    ("affects",  do_affects),
     ("save",     do_save),
     ("credits",  do_credits),
     ("h",        do_help),
