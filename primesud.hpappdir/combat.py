@@ -616,6 +616,7 @@ def set_fighting(tr, player, mob_id, mob_instances, room_state):
     inst["state"]    = "aggro"
     inst["fighting"] = player
     player["fighting"] = mob_id
+    player["pos"]      = "fighting"
     tr.print("--- {} attacks! ---".format(tpl["short_descr"]))
 
 
@@ -673,6 +674,7 @@ def stop_fighting(player, mob_instances):
             inst["fighting"] = None
             inst["affects"]  = {}
     player["fighting"] = None
+    player["pos"]      = "standing"
 
 
 def _advance_target(player, mob_instances, room_state):

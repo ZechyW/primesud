@@ -7,7 +7,7 @@ command set incrementally on top of it.  Reference: `interp.c`, `act_info.c`,
 `act_obj.c`, `act_move.c`, `act_comm.c`, `fight.c` in `reference/1stMud4.5.3/src/`.
 Intentional deviations are marked `[PRIMESUD]` and documented below.
 
-**Status: in progress.**
+**Status: Phase 0 complete. Phase 1 next.**
 
 ---
 
@@ -119,17 +119,17 @@ Regen scaling by position will be added to `tick_update` (`player.py`) when
 
 ---
 
-## Phase 0 — Infrastructure (no new commands)
+## Phase 0 — Infrastructure (no new commands) ✓ DONE
 
 Changes only to dispatch machinery; no observable behaviour change for any
 existing command except that position messages become possible.
 
-1. Add `_POS_ORDER` and position-message table to `commands.py`.
-2. Change `_CMD_TABLE` tuples to `(name, fn, min_pos, noprefix)`.
-3. Reorder `_CMD_TABLE` entries to match COMMANDS.md load order.
-4. Update `interpret()` with the new dispatch flow above; remove `prefix_lookup`.
-5. Add `player["pos"] = "standing"` to `create_char` in `player.py`.
-6. Update `set_fighting()` / `stop_fighting()` in `combat.py` to set/clear pos.
+1. ✓ Add `_POS_ORDER` and position-message table to `commands.py`.
+2. ✓ Change `_CMD_TABLE` tuples to `(name, fn, min_pos, noprefix)`.
+3. ✓ Reorder `_CMD_TABLE` entries to match COMMANDS.md load order.
+4. ✓ Update `interpret()` with the new dispatch flow above; remove `prefix_lookup`.
+5. ✓ Add `player["pos"] = "standing"` to `create_char` in `player.py`.
+6. ✓ Update `set_fighting()` / `stop_fighting()` in `combat.py` to set/clear pos.
 
 ## Phase 1 — Position commands and room information
 

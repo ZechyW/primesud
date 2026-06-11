@@ -1,3 +1,4 @@
+from hpprime import eval as ppleval
 from util import free_mem
 from colors import color_len
 
@@ -39,6 +40,20 @@ def _wrap_paragraphs(text, width):
 
 _EXIT_ORDER = ("n", "e", "s", "w", "u", "d")
 _EXIT_NAMES = {"n": "north", "e": "east", "s": "south", "w": "west", "u": "up", "d": "down"}
+
+# Position system (cf. 1stMud position_t enum in defines.h; gaps 1-3 omitted [PRIMESUD])
+_POS_ORDER = {
+    "dead": 0, "sleeping": 4, "resting": 5,
+    "sitting": 6, "fighting": 7, "standing": 8,
+}
+
+_POS_MSG = {
+    "dead":     "Lie still; you are DEAD.",
+    "sleeping": "In your dreams, or what?",
+    "resting":  "Nah... You feel too relaxed...",
+    "sitting":  "Better stand up first.",
+    "fighting": "No way!  You are still fighting!",
+}
 
 # ── Commands (cf. 1stMud do_* in interp.c / fight.c) ─────────────────────────
 
@@ -143,7 +158,11 @@ def do_move(tr, player, direction, room_state, mob_instances):
     if direction not in exits:
         tr.print("Alas, you cannot go that way.")
         return
-    player["room"] = exits[direction]
+    dest = exits[direction]
+    if dest not in ROOMS:
+        tr.print("That way is not yet open.")
+        return
+    player["room"] = dest
     do_look(tr, player, [], room_state, mob_instances, _long=False)
 
 
@@ -206,14 +225,14 @@ def do_drop(tr, player, args, room_state, mob_instances):
 def _obj_flags(tpl):
     """Build coloured flag prefix string for item display (cf. 1stMud format_obj_to_char in act_info.c)."""
     ef = tpl.get("extra_flags", {})
-    out = ""
-    if ef.get("glow"):   out += "{Y(Glowing){x "
-    if ef.get("hum"):    out += "{C(Humming){x "
-    if ef.get("magic"):  out += "{M(Magical){x "
-    if ef.get("invis"):  out += "{c(Invis){x "
-    if ef.get("evil"):   out += "{R(Red Aura){x "
-    if ef.get("bless"):  out += "{B(Blue Aura){x "
-    return out
+    parts = []
+    if ef.get("glow"):   parts.append("{Y(Glowing){x ")
+    if ef.get("hum"):    parts.append("{C(Humming){x ")
+    if ef.get("magic"):  parts.append("{M(Magical){x ")
+    if ef.get("invis"):  parts.append("{c(Invis){x ")
+    if ef.get("evil"):   parts.append("{R(Red Aura){x ")
+    if ef.get("bless"):  parts.append("{B(Blue Aura){x ")
+    return "".join(parts)
 
 
 def do_inventory(tr, player, args, room_state, mob_instances):
@@ -279,7 +298,7 @@ def do_wear(tr, player, args, room_state, mob_instances):
     if not args:
         tr.print("Wear what?")
         return
-    if args[0].lower() == "all":
+    if args[0] == "all":
         for vnum in list(player["inv"]):
             tpl = ITEM_TEMPLATES[vnum]
             slot = next((f for f in tpl.get("wear_flags", {}) if f != "take"), None)
@@ -323,7 +342,7 @@ def do_remove(tr, player, args, room_state, mob_instances):
     if not args:
         tr.print("Remove what?")
         return
-    if args[0].lower() == "all":
+    if args[0] == "all":
         for slot, vnum in list(player["equip"].items()):
             if vnum is not None:
                 _remove_one(tr, player, slot, vnum)
@@ -425,6 +444,12 @@ def do_score(tr, player, args, room_state, mob_instances):
     name_raw = p.get('name', '???')
     name_col = "{c" + name_raw + "{x" + ' ' * (_SCORE_LEFT - len(name_raw))
     mem_col  = ' ' * (_SCORE_RIGHT - color_len(mem_str)) + mem_str
+
+    session_secs = (int(ppleval("Ticks")) - p.get('_logon_ms', 0)) // 1000
+    total_played = p.get('played', 0) + session_secs
+    hours = total_played // 3600            # cf. 1stMud act_info.c: played/HOUR
+    age   = 17 + total_played // 72000      # cf. 1stMud act_info.c: 17 + played/(20*HOUR)
+
     lines = [
         _SCORE_SEP_OUTER,
         "{W|{x " + name_col + "   " + mem_col + " {W|{x",
@@ -435,13 +460,16 @@ def do_score(tr, player, args, room_state, mob_instances):
         _row(_stat('Dexterity',    get_curr_stat(p, 'dex')), _val('Trains',    p.get('train', 0))),
         _row(_stat('Constitution', get_curr_stat(p, 'con')), ''),
         _SCORE_SEP_INNER,
-        _row('{C Hit    : [{R' + '{:5d}'.format(p['hp'])     + '{C/{R' + '{:5d}'.format(p['hp_max']) + '{C]{x',
+        _row('{CHit      : [{R' + '{:5d}'.format(p['hp'])     + '{C/{R' + '{:5d}'.format(p['hp_max']) + '{C]{x',
              _val('Hitroll', get_hitroll(p),  bright=True)),
-        _row('{C Mana   : [{M' + '{:5d}'.format(p['mp'])     + '{C/{M' + '{:5d}'.format(p['mp_max']) + '{C]{x',
+        _row('{CMana     : [{M' + '{:5d}'.format(p['mp'])     + '{C/{M' + '{:5d}'.format(p['mp_max']) + '{C]{x',
              _val('Damroll', get_damroll(p), bright=True)),
-        _row('{C Exp    : [{w' + '{:>10}'.format(p['xp'])    + '{C ]{x',
+        _row('{CExp      : [{w' + '{:>10}'.format(p['xp'])    + '{C ]{x',
              _val('AC',      get_AC(p),      bright=True)),
-        _row('{C To Lvl : [{w' + '{:>10}'.format(p['xp_next'] - p['xp']) + '{C ]{x', ''),
+        _row('{CTo Lvl   : [{w' + '{:>10}'.format(p['xp_next'] - p['xp']) + '{C ]{x',
+             _val('Hours',   hours,          bright=True)),
+        _row('{CPosition : [{w' + '{:>10}'.format(p['pos'])    + '{C ]{x',
+             _val('Age',      age,                  bright=True)),
         _SCORE_SEP_OUTER,
     ]
     for line in lines:
@@ -507,6 +535,8 @@ def do_flee(tr, player, args, room_state, mob_instances):
     for _ in range(min(6, len(exits))):
         idx = randint(0, len(attempts) - 1)
         direction, dest = exits[attempts.pop(idx)]
+        if dest not in ROOMS:
+            continue
         player["room"] = dest
         stop_fighting(player, mob_instances)
         tr.print("You flee {}!".format(direction))
@@ -556,17 +586,6 @@ def do_quit(tr, player, args, room_state, mob_instances):
 
 
 # ── Skill / spell dispatch ────────────────────────────────────────────────────
-
-def prefix_lookup(table, key):
-    """Scan list of (name, value) pairs; exact match first, then first prefix."""
-    fallback = None
-    for name, val in table:
-        if name == key:
-            return val
-        if fallback is None and name.startswith(key):
-            fallback = val
-    return fallback
-
 
 def do_cast(tr, player, args, room_state, mob_instances):
     if not args:
@@ -730,11 +749,13 @@ def do_train(tr, player, args, room_state, mob_instances):
             tr.print("All your stats are at maximum.")
         return
 
-    arg = args[0].lower()
+    arg = args[0]
     stat_key = None
+    stat_lng = None
     for key, lng in _TRAIN_STATS:
         if key.startswith(arg) or lng.startswith(arg):
             stat_key = key
+            stat_lng = lng
             break
 
     if stat_key is None:
@@ -742,8 +763,7 @@ def do_train(tr, player, args, room_state, mob_instances):
         return
 
     if player[stat_key] >= 25:
-        tr.print("Your {} is already at maximum.".format(
-            dict(_TRAIN_STATS)[stat_key]))
+        tr.print("Your {} is already at maximum.".format(stat_lng))
         return
 
     if player["train"] < 1:
@@ -752,7 +772,7 @@ def do_train(tr, player, args, room_state, mob_instances):
 
     player["train"] -= 1
     player[stat_key] += 1
-    tr.print("Your {} increases!".format(dict(_TRAIN_STATS)[stat_key]))
+    tr.print("Your {} increases!".format(stat_lng))
 
 
 def do_affects(tr, player, args, room_state, mob_instances):
@@ -819,7 +839,7 @@ def do_practice(tr, player, args, room_state, mob_instances):
         tr.print("You have no practice sessions left.")
         return
 
-    arg = " ".join(args).lower()
+    arg = " ".join(args)
     sk_vnum = None
     for vnum in player["learned"]:
         sk = SKILLS.get(vnum)
@@ -848,45 +868,36 @@ def do_practice(tr, player, args, room_state, mob_instances):
 
 
 # ── Command table ─────────────────────────────────────────────────────────────
+# Entries in 1stMud load order (cf. COMMANDS.md); [PRIMESUD] shortcuts interleaved.
+# Schema: (name, fn, min_pos, noprefix)
 
 _CMD_TABLE = [
-    ("i",        do_inventory),
-    ("inv",      do_inventory),
-    ("l",        do_look),
-    ("look",     do_look),
-    ("st",       do_score),
-    ("score",    do_score),
-    ("stats",    do_score),
-    ("sk",       do_skills),
-    ("skills",   do_skills),
-    ("get",      do_get),
-    ("take",     do_get),
-    ("drop",     do_drop),
-    ("wear",      do_wear),
-    ("wield",     do_wear),
-    ("remove",    do_remove),
-    ("equipment", do_equipment),
-    ("quaff",     do_quaff),
-    ("k",        do_kill),
-    ("kill",     do_kill),
-    ("kick",     do_kick),
-    ("cast",     do_cast),
-    ("flee",     do_flee),
-    ("fl",       do_flee),
-    ("macro",    do_macro),
-    ("map",      do_map),
-    ("automap",  do_automap),
-    ("autolist", do_autolist),
-    ("train",    do_train),
-    ("practice", do_practice),
-    ("affects",  do_affects),
-    ("save",     do_save),
-    ("credits",  do_credits),
-    ("h",        do_help),
-    ("help",     do_help),
-    ("?",        do_help),
-    ("q",        do_quit),
-    ("quit",     do_quit),
+    ("cast",      do_cast,      "fighting", False),   # #8
+    ("get",       do_get,       "resting",  False),   # #13
+    ("kill",      do_kill,      "fighting", False),   # #19
+    ("look",      do_look,      "resting",  False),   # #20
+    ("practice",  do_practice,  "sleeping", False),   # #24
+    ("wield",     do_wear,      "resting",  False),   # #31
+    ("affects",   do_affects,   "dead",     False),   # #33
+    ("credits",   do_credits,   "dead",     False),   # #41
+    ("equipment", do_equipment, "dead",     False),   # #42
+    ("help",      do_help,      "dead",     False),   # #44
+    ("score",     do_score,     "dead",     False),   # #49
+    ("skills",    do_skills,    "dead",     False),   # #50
+    ("autolist",  do_autolist,  "dead",     False),   # #63
+    ("drop",      do_drop,      "resting",  False),   # #115
+    ("quaff",     do_quaff,     "resting",  False),   # #129
+    ("remove",    do_remove,    "resting",  False),   # #131
+    ("take",      do_get,       "resting",  False),   # #133
+    ("wear",      do_wear,      "resting",  False),   # #138
+    ("flee",      do_flee,      "fighting", False),   # #147
+    ("kick",      do_kick,      "fighting", False),   # #148
+    ("automap",   do_automap,   "sleeping", False),   # #154
+    ("quit",      do_quit,      "dead",     True),    # #162 noprefix
+    ("save",      do_save,      "dead",     False),   # #166
+    ("train",     do_train,     "resting",  False),   # #171
+    ("macro",     do_macro,     "dead",     False),   # [PRIMESUD]
+    ("map",       do_map,       "resting",  False),   # #291
 ]
 
 
@@ -905,9 +916,16 @@ def interpret(raw, tr, player, room_state, mob_instances):
         do_move(tr, player, direction, room_state, mob_instances)
         return None
 
-    fn = prefix_lookup(_CMD_TABLE, verb)
-
-    if fn is not None:
+    pos = player.get("pos", "standing")
+    for name, fn, min_pos, noprefix in _CMD_TABLE:
+        if noprefix:
+            if verb != name:
+                continue
+        elif not name.startswith(verb):
+            continue
+        if _POS_ORDER[pos] < _POS_ORDER[min_pos]:
+            tr.print(_POS_MSG.get(pos, ""))
+            return None
         return fn(tr, player, args, room_state, mob_instances)
 
     tr.print("Unknown command. ? for help.")

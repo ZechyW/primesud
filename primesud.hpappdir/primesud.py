@@ -184,6 +184,7 @@ class Game:
     def new_game(self, name="Hero"):
         self.player = create_char()
         self.player["name"] = name
+        self.player["_logon_ms"] = int(ppleval("Ticks"))
         self.room_state, self.mob_instances = reset_area()
         self._area_state = {"age": 0}
 
@@ -191,10 +192,16 @@ class Game:
         self.player = create_char()
         self.room_state, self.mob_instances = reset_area()
         self._area_state = {"age": 0}
-        return _load_char(self.player, self.room_state, self.mob_instances,
-                          self._area_state, _MACRO_SUBST)
+        result = _load_char(self.player, self.room_state, self.mob_instances,
+                            self._area_state, _MACRO_SUBST)
+        self.player["_logon_ms"] = int(ppleval("Ticks"))
+        return result
 
     def save_game(self):
+        now = int(ppleval("Ticks"))
+        elapsed = (now - self.player.get("_logon_ms", now)) // 1000
+        self.player["played"] = self.player.get("played", 0) + elapsed
+        self.player["_logon_ms"] = now
         if not _save_char(self.player, self.room_state, self.mob_instances,
                           self._area_state, _MACRO_SUBST):
             self.tr.print("Save failed.")
@@ -360,7 +367,9 @@ class PrimeSud:
             try:
                 game.game_loop()
             finally:
+                # ppleval('HVars("DBGSAVE_ENTER"):="1"')  # [PRIMESUD] debug: did finally run?
                 game.save_game()
+                # ppleval('HVars("DBGSAVE_DONE"):="2"')   # [PRIMESUD] debug: did save_game return?
 
 
 PrimeSud().run()

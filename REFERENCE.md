@@ -9,6 +9,9 @@ positions, levels, flags, and categories (source: `data/commands.dat`).
 See also: **[CMD_PLAN.md](CMD_PLAN.md)** — plan for porting the command dispatch
 infrastructure and extending the command set.
 
+See also: **[BUILTINS.md](BUILTINS.md)** — HP Prime Python built-in type method
+availability (verified via `dir()` on-device).
+
 ---
 
 ## Custom colour slots

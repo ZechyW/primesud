@@ -74,7 +74,10 @@ def create_char():
             GSN_PARRY:        10,
         },
         "fighting": None,
+        "pos":      "standing",
         "flags":    PLR_DEFAULTS,
+        "played":   0,     # cumulative playtime in seconds (cf. 1stMud pcdata->played)
+        "_logon_ms": 0,    # session start ticks — ephemeral, not persisted
     }
 
 
@@ -467,7 +470,7 @@ def save_char(player, room_state, mob_instances, area_state=None, macros=None):
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
                 "hitroll", "damroll", "AC", "room",
-                "practice", "train", "flags"):
+                "practice", "train", "flags", "played"):
         lines.append("p.{}={}".format(key, player[key]))
     lines.append("p.inv={}".format("|".join(str(v) for v in player["inv"])))
     for slot, vnum in player["equip"].items():
@@ -522,7 +525,7 @@ def load_char(player, room_state, mob_instances, area_state=None, macros=None):
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
                 "hitroll", "damroll", "AC", "room",
-                "practice", "train", "flags"}
+                "practice", "train", "flags", "played"}
 
     if macros is not None:
         macros.clear()

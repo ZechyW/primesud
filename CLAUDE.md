@@ -59,7 +59,7 @@ A reusable terminal abstraction written by Piotr Kowalewski (komame). Renders ch
 
 ## Constraints and pitfalls
 
-1. **HP Prime Python is not CPython.** Many standard library modules do not exist.
+1. **HP Prime Python is not CPython.** Many standard library modules do not exist, and built-in types expose a reduced method set. See **[BUILTINS.md](BUILTINS.md)** for verified method availability (confirmed via `dir()` on-device).
 
 2. **Memory is very limited.** The HP Prime has a small heap. Avoid large data structures, deep call stacks, string concatenation in loops (build lists and `join`), or caching things that can be recomputed.
 
