@@ -20,13 +20,6 @@ POLL_MS          = 10                          # keyboard polling interval (ms)
 AUTOSAVE_TICKS   = 4                           # autosave every N world ticks (4 × 30 s)
 DEATH_MSG_DELAY  = 1                           # seconds between death flavour lines
 
-# ── Regeneration (scaled for 30 s world tick) ─────────────────────────────────────────
-# HP per tick = con * HP_REGEN_NUM // HP_REGEN_DENOM  → con=10 gives 12 HP/30 s
-HP_REGEN_NUM   = 6
-HP_REGEN_DENOM = 5
-MP_REGEN_NUM   = 6
-MP_REGEN_DENOM = 5
-
 # ── Automap ───────────────────────────────────────────────────────────────────────────
 MAP_HALF_W    = 5   # grid half-width  in room-steps (full grid = 2*W+1 = 13 cols)
 MAP_HALF_H    = 6   # grid half-height in room-steps (full grid = 2*H+1 =  9 rows)

@@ -3,7 +3,7 @@ from cas import get_key
 from urandom import randint
 
 from config import SAVE_VAR, POLL_MS, TERMINAL_COLS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF
-from world import (ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, RESETS,
+from world import (ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, RESETS, SKILLS,
                    R_STARTING_ROOM, GSN_HAND_TO_HAND, GSN_KICK, GSN_CURE_LIGHT, GSN_PARRY)
 
 
@@ -52,8 +52,20 @@ def create_char():
         "room":     R_STARTING_ROOM,
         "inv":      [],
         "equip": {
-            "wield": None, "offhand": None, "head": None,
-            "chest": None, "legs": None, "feet": None, "hands": None,
+            "light":  None,
+            "wield":  None,
+            "hold":   None,
+            "body":   None,
+            "head":   None,
+            "legs":   None,
+            "feet":   None,
+            "hands":  None,
+            "arms":   None,
+            "shield": None,
+            "about":  None,
+            "waist":  None,
+            "neck":   None,
+            "wrist":  None,
         },
         "learned": {
             GSN_HAND_TO_HAND: 40,
@@ -158,6 +170,88 @@ def _clamp_stat(v):
     return min(25, max(0, v))
 
 
+def get_curr_stat(char, stat):
+    """Effective stat value: base + affect modifiers (cf. 1stMud get_curr_stat in handler.c).
+
+    Args:
+        char (dict): Character state dict (player or mob instance).
+        stat (str): Stat name — one of "str", "dex", "int", "wis", "con".
+
+    Returns:
+        int: Clamped stat value in [0, 25].
+    """
+    base = char.get(stat, 10)
+    for aff in char.get("affects", {}).values():
+        if aff["loc"] == stat:
+            base += aff["modifier"]
+    return _clamp_stat(base)
+
+
+def affect_modify(char, loc, modifier, add):
+    """Apply or remove a stat modifier for one affect location (cf. 1stMud affect_modify in handler.c).
+
+    Mutates hp_max, mp_max, AC, hitroll, damroll directly.  Stat fields
+    (str/dex/int/wis/con) are not touched here; their affect-adjusted value
+    is computed on the fly by get_curr_stat (Task 3).
+
+    Args:
+        char (dict): Character state dict (player or mob instance).
+        loc (str): Affect location — one of "str", "dex", "int", "wis", "con",
+            "hp", "mp", "AC", "hitroll", "damroll".
+        modifier (int): Raw modifier value (positive = bonus).
+        add (bool): True to apply, False to remove.
+    """
+    if not add:
+        modifier = -modifier
+    if loc == "hp":
+        char["hp_max"] = max(1, char["hp_max"] + modifier)
+    elif loc == "mp":
+        char["mp_max"] = max(1, char["mp_max"] + modifier)
+    elif loc == "AC":
+        char["AC"] += modifier
+    elif loc == "hitroll":
+        char["hitroll"] += modifier
+    elif loc == "damroll":
+        char["damroll"] += modifier
+    # str/dex/int/wis/con: no direct mutation — get_curr_stat folds affects in
+
+
+def affect_to_char(char, sn, loc, modifier, duration):
+    """Apply a timed affect to a character (cf. 1stMud affect_to_char in handler.c).
+
+    Stores the affect in char["affects"] keyed by sn (skill/spell number) and
+    immediately applies the modifier via affect_modify.  Overwrites any existing
+    affect with the same sn.
+
+    Args:
+        char (dict): Character state dict (player or mob instance).
+        sn (int): Skill/spell number identifying this affect.
+        loc (str): Affect location (see affect_modify).
+        modifier (int): Stat modifier value.
+        duration (int): Duration in ticks (≥ 1).
+    """
+    existing = char["affects"].get(sn)
+    if existing is not None:
+        affect_modify(char, existing["loc"], existing["modifier"], False)
+    char["affects"][sn] = {"loc": loc, "modifier": modifier, "duration": duration}
+    affect_modify(char, loc, modifier, True)
+
+
+def affect_remove(char, sn):
+    """Remove an active affect from a character (cf. 1stMud affect_remove in handler.c).
+
+    Unapplies the modifier via affect_modify then deletes the entry from
+    char["affects"].  No-op if sn is not in the affects dict.
+
+    Args:
+        char (dict): Character state dict (player or mob instance).
+        sn (int): Skill/spell number to remove.
+    """
+    aff = char["affects"].pop(sn, None)
+    if aff is not None:
+        affect_modify(char, aff["loc"], aff["modifier"], False)
+
+
 def get_hitroll(char):
     """Effective hitroll: base + STR bonus + equipped weapon bonus (cf. 1stMud GetHitroll macro in macro.h).
 
@@ -167,7 +261,7 @@ def get_hitroll(char):
     Returns:
         int: Total hitroll modifier.
     """
-    total = char.get("hitroll", 0) + STR_APP_TOHIT[_clamp_stat(char.get("str", 10))]
+    total = char.get("hitroll", 0) + STR_APP_TOHIT[get_curr_stat(char, "str")]
     equip = char.get("equip")
     if equip:
         for vnum in equip.values():
@@ -185,7 +279,7 @@ def get_damroll(char):
     Returns:
         int: Total damroll modifier.
     """
-    total = char.get("damroll", 0) + STR_APP_TODAM[_clamp_stat(char.get("str", 10))]
+    total = char.get("damroll", 0) + STR_APP_TODAM[get_curr_stat(char, "str")]
     equip = char.get("equip")
     if equip:
         for vnum in equip.values():
@@ -203,7 +297,7 @@ def get_AC(char):
     Returns:
         int: Total AC (lower is better; negative is excellent).
     """
-    total = char.get("AC", 100) + DEX_APP_DEF[_clamp_stat(char.get("dex", 10))]
+    total = char.get("AC", 100) + DEX_APP_DEF[get_curr_stat(char, "dex")]
     equip = char.get("equip")
     if equip:
         for vnum in equip.values():
@@ -232,19 +326,34 @@ def is_name(fragment, namelist):
 
 
 def get_obj_list(fragment, vnum_list, templates):
-    """Find the first item in vnum_list whose keywords match fragment (cf. 1stMud get_obj_list in handler.c).
+    """Find the Nth item in vnum_list whose keywords match fragment (cf. 1stMud get_obj_list in handler.c).
+
+    Supports "2.sword" prefix syntax (cf. 1stMud number_argument in interp.c):
+    the integer before '.' is the ordinal; without a prefix returns the first match.
 
     Args:
-        fragment (str): Player-typed name fragment.
+        fragment (str): Player-typed name fragment, optionally prefixed "N.".
         vnum_list (list): Ordered list of item vnums to search.
         templates (dict): Item template dict mapping vnum → template.
 
     Returns:
-        int or None: First matching vnum, or None if not found.
+        int or None: Nth matching vnum, or None if not found.
     """
+    if '.' in fragment:
+        prefix, rest = fragment.split('.', 1)
+        try:
+            nth = int(prefix)
+            fragment = rest
+        except ValueError:
+            nth = 1
+    else:
+        nth = 1
+    count = 0
     for vnum in vnum_list:
         if is_name(fragment, templates[vnum].get("keywords", "")):
-            return vnum
+            count += 1
+            if count == nth:
+                return vnum
     return None
 
 
@@ -263,6 +372,54 @@ def get_char_room(fragment, inst_ids, mob_instances):
         if is_name(fragment, MOB_TEMPLATES[mob_instances[mob_id]["tpl"]].get("keywords", "")):
             return mob_id
     return None
+
+
+# ── Tick regen ───────────────────────────────────────────────────────────────
+
+def tick_update(tr, player):
+    """Regenerate HP and MP once per world tick (cf. 1stMud hit_gain/mana_gain in update.c).
+
+    Position is always treated as resting — no position system [PRIMESUD].
+    Hunger/thirst conditions omitted [PRIMESUD].
+
+    Args:
+        tr: Terminal for printing regen messages.
+        player (dict): Player state dict.
+    """
+    con  = get_curr_stat(player, "con")
+    int_ = get_curr_stat(player, "int")
+    wis  = get_curr_stat(player, "wis")
+    level = player.get("level", 1)
+
+    # HP: max(3, CON-3 + level//2) + (hp_max-10), halved for resting
+    hp_gain = max(3, con - 3 + level // 2) + max(0, player["hp_max"] - 10)
+    hp_gain = max(1, hp_gain // 2)
+
+    # MP: (INT + WIS + level) // 4  (base /2, then /2 again for resting)
+    mp_gain = max(1, (int_ + wis + level) // 4)
+
+    hp_was_full = player["hp"] >= player["hp_max"]
+    mp_was_full = player["mp"] >= player["mp_max"]
+
+    player["hp"] = min(player["hp_max"], player["hp"] + hp_gain)
+    player["mp"] = min(player["mp_max"], player["mp"] + mp_gain)
+
+    if not hp_was_full and player["hp"] >= player["hp_max"]:
+        tr.print("You feel better!")
+    if not mp_was_full and player["mp"] >= player["mp_max"]:
+        tr.print("You feel full of mana!")
+
+    for sn in list(player["affects"]):
+        aff = player["affects"].get(sn)
+        if aff is None:
+            continue
+        if aff["duration"] > 0:
+            aff["duration"] -= 1
+        elif aff["duration"] == 0:
+            msg = SKILLS.get(sn, {}).get("msg_off", "")
+            if msg and not msg.startswith("!"):
+                tr.print(msg)
+            affect_remove(player, sn)
 
 
 # ── Display ───────────────────────────────────────────────────────────────────

@@ -5,7 +5,7 @@ from config import (PULSE_VIOLENCE,
                     CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_MIN, THAC0_PLATEAU)
 from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, ROOMS,
                    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY)
-from player import get_hitroll, get_damroll, get_AC, show_prompt
+from player import get_hitroll, get_damroll, get_AC, get_curr_stat, show_prompt
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -230,7 +230,7 @@ def check_improve(tr, player, sk_vnum, success):
     sk_rating = sk.get("rating", 1)
     sk_mult   = sk.get("multiplier", 1)
 
-    chance = 10 * _int_learn(player.get("int", 10))
+    chance = 10 * _int_learn(get_curr_stat(player, "int"))
     chance //= max(1, sk_mult * sk_rating * 4)
     chance += player["level"]
 

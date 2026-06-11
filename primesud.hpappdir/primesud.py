@@ -14,8 +14,7 @@ from hpprime import dimgrob, eval as ppleval, getpix, pixon, grobw, grobh, strbl
 from urandom import randint
 from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     MS_PER_PULSE, PULSE_VIOLENCE, PULSE_TICK, PULSE_AREA,
-                    AUTOSAVE_TICKS, HP_REGEN_NUM, HP_REGEN_DENOM,
-                    MP_REGEN_NUM, MP_REGEN_DENOM,
+                    AUTOSAVE_TICKS,
                     KEY_COMMANDS as _KEY_COMMANDS,
                     TERMINAL_COLS, FONT, FONT_GROB, COLOR_GROB,
                     DEATH_MSG_DELAY)
@@ -25,6 +24,7 @@ from player import (
     create_char,
     reset_area,
     revive_dead_mobs,
+    tick_update,
     show_prompt,
     _poll_char,
     _resync_keyboard,
@@ -42,11 +42,6 @@ from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap
 # player is always present, so the condition collapses to age >= 15.
 _AREA_AGE_MIN   = 3   # skip reset below this age
 _AREA_AGE_RESET = 15  # reset threshold (player always present)
-
-
-def world_tick(player, room_state, mob_instances):
-    player["hp"] = min(player["hp_max"], player["hp"] + player["con"] * HP_REGEN_NUM // HP_REGEN_DENOM)
-    player["mp"] = min(player["mp_max"], player["mp"] + player["int"] * MP_REGEN_NUM // MP_REGEN_DENOM)
 
 
 def area_update(area_state, room_state, mob_instances):
@@ -319,7 +314,7 @@ class Game:
                     show_prompt(tr, player, self.input_buf)
 
                 if pulse % PULSE_TICK == 0:
-                    world_tick(player, room_state, mob_instances)
+                    tick_update(tr, player)
                     show_prompt(tr, player, self.input_buf)
                     tick_count += 1
                     if tick_count >= AUTOSAVE_TICKS:
