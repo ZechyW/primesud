@@ -1,3 +1,6 @@
+from util import free_mem
+from colors import color_len
+
 from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT
 from picker import pick_from
 from player import get_hitroll, get_damroll, get_AC, get_curr_stat, get_obj_list, get_char_room, save_char, is_name, PLR_AUTOMAP, PLR_DEFAULTS
@@ -391,29 +394,40 @@ def do_quaff(tr, player, args, room_state, mob_instances):
             tpl["short_descr"], gained, player["hp"], player["hp_max"]))
 
 
-_SCORE_INNER     = TERMINAL_COLS - 2
-_SCORE_LEFT      = (TERMINAL_COLS - 7) // 2
-_SCORE_RIGHT     = TERMINAL_COLS - 7 - _SCORE_LEFT
-_SCORE_SEP_OUTER = "+" + "-" * _SCORE_INNER + "+"
-_SCORE_SEP_INNER = "+" + "-" * (_SCORE_LEFT + 2) + "+" + "-" * (_SCORE_RIGHT + 2) + "+"
-_SCORE_ROW_FMT   = "| {{:<{}}} | {{:<{}}} |".format(_SCORE_LEFT, _SCORE_RIGHT)
-_SCORE_NAME_FMT  = "|{{:^{}}}|".format(_SCORE_INNER)
+_SCORE_INNER = TERMINAL_COLS - 2
+_SCORE_LEFT  = (TERMINAL_COLS - 7) // 2
+_SCORE_RIGHT = TERMINAL_COLS - 7 - _SCORE_LEFT
+_SCORE_SEP_OUTER = "{W+" + "-" * _SCORE_INNER + "+{x"
+_SCORE_SEP_INNER = "{W+" + "-" * (_SCORE_LEFT + 2) + "+" + "-" * (_SCORE_RIGHT + 2) + "+{x"
 
 def do_score(tr, player, args, room_state, mob_instances):
+    """Display the character score sheet (cf. 1stMud dlm_score in act_info.c)."""
     # two-column box mirroring 1stMud dlm_score layout (see DESIGN.md)
     def _row(l, r):
-        return _SCORE_ROW_FMT.format(l, r)
+        lpad = ' ' * (_SCORE_LEFT  - color_len(l))
+        rpad = ' ' * (_SCORE_RIGHT - color_len(r))
+        return "{W|{x " + l + lpad + " {W|{x " + r + rpad + " {W|{x"
     def _stat(name, val):
         # [perm/curr] — identical until affect system is added
-        return '{:<13}: [{:2d}/{:2d}]'.format(name, val, val)
-    def _val(name, v):
-        return '{:<13}: [{:>11} ]'.format(name, v)
+        return '{c' + '{:<13}'.format(name) + ': [{w' + '{:2d}/{:2d}'.format(val, val) + '{c]{x'
+    def _val(name, v, bright=False):
+        nc = '{C' if bright else '{c'
+        # values stay as dim white
+        vc = '{w'
+        return nc + '{:<13}'.format(name) + ': [' + vc + '{:>11}'.format(v) + nc + ' ]{x'
+
+    def _free_mem():
+        return "{G(Mem. free: " + str(free_mem()) + "){x"
 
     p = player
     thac0 = _get_thac0(p['level'])
+    mem_str = _free_mem()
+    name_raw = p.get('name', '???')
+    name_col = "{c" + name_raw + "{x" + ' ' * (_SCORE_LEFT - len(name_raw))
+    mem_col  = ' ' * (_SCORE_RIGHT - color_len(mem_str)) + mem_str
     lines = [
         _SCORE_SEP_OUTER,
-        _SCORE_NAME_FMT.format(p.get('name', '???')),
+        "{W|{x " + name_col + "   " + mem_col + " {W|{x",
         _SCORE_SEP_INNER,
         _row(_stat('Strength',     get_curr_stat(p, 'str')), _val('Level',     p['level'])),
         _row(_stat('Intelligence', get_curr_stat(p, 'int')), _val('Thac0',     thac0)),
@@ -421,13 +435,13 @@ def do_score(tr, player, args, room_state, mob_instances):
         _row(_stat('Dexterity',    get_curr_stat(p, 'dex')), _val('Trains',    p.get('train', 0))),
         _row(_stat('Constitution', get_curr_stat(p, 'con')), ''),
         _SCORE_SEP_INNER,
-        _row('Hit    : [{:5d}/{:5d}]'.format(p['hp'],  p['hp_max']),
-             _val('Hitroll', get_hitroll(p))),
-        _row('Mana   : [{:5d}/{:5d}]'.format(p['mp'],  p['mp_max']),
-             _val('Damroll', get_damroll(p))),
-        _row('Exp    : [{:>10} ]'.format(p['xp']),
-             _val('AC',      get_AC(p))),
-        _row('To Lvl : [{:>10} ]'.format(p['xp_next'] - p['xp']), ''),
+        _row('{C Hit    : [{R' + '{:5d}'.format(p['hp'])     + '{C/{R' + '{:5d}'.format(p['hp_max']) + '{C]{x',
+             _val('Hitroll', get_hitroll(p),  bright=True)),
+        _row('{C Mana   : [{M' + '{:5d}'.format(p['mp'])     + '{C/{M' + '{:5d}'.format(p['mp_max']) + '{C]{x',
+             _val('Damroll', get_damroll(p), bright=True)),
+        _row('{C Exp    : [{w' + '{:>10}'.format(p['xp'])    + '{C ]{x',
+             _val('AC',      get_AC(p),      bright=True)),
+        _row('{C To Lvl : [{w' + '{:>10}'.format(p['xp_next'] - p['xp']) + '{C ]{x', ''),
         _SCORE_SEP_OUTER,
     ]
     for line in lines:

@@ -6,8 +6,6 @@
 # Based on Merc 2.1 (c) 1992-1993 Chastain, Quan, Tse
 # Based on DikuMud (c) 1990-1991 Hammer, Seifert, Storfeldt, Madsen, Nyboe
 
-import gc
-
 from tml import tml
 from hpprime import dimgrob, eval as ppleval, getpix, pixon, grobw, grobh, strblit2
 
@@ -18,6 +16,7 @@ from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     KEY_COMMANDS as _KEY_COMMANDS,
                     TERMINAL_COLS, FONT, FONT_GROB, COLOR_GROB,
                     DEATH_MSG_DELAY)
+from util import free_mem
 from world import R_STARTING_ROOM
 from combat import violence_update
 from player import (
@@ -206,14 +205,7 @@ class Game:
         tr = self.tr
         tr.clear()
 
-        def fmt_bytes(n):
-            for unit in ("B", "KB", "MB"):
-                if n < 1024:
-                    return "{} {}".format(n, unit)
-                n //= 1024
-            return "{} GB".format(n)
-        free_mem = fmt_bytes(gc.mem_free())
-        mem_part = "{{G(Mem. free: {})".format(free_mem)
+        mem_part = "{{G(Mem. free: {})".format(free_mem())
         pad = 64 - 23 - len(mem_part) - 1
         _first = '{C 8888888b.          d8b' + ' ' * pad + mem_part + '{x'
         tr.print(_first)

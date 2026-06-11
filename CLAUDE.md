@@ -26,7 +26,7 @@ primesud.hpappdir/
 ├── picker.py            # Contextual target picker (pick_from)
 ├── automap.py           # Automap renderer
 ├── tml.py               # Text Mode Layer library (reusable, treat as stable)
-├── std5x10.font         # Custom bitmap font; 64 cols × 24 rows (excluding status bar)
+├── std5x10.font         # Custom bitmap font; 64 cols × 22 rows usable (excluding status bar)
 ├── primesud.hpapp       # Binary HP Prime app package
 ├── primesud.hpappprgm   # Binary program metadata
 └── primesud.hpappnote   # Binary note file

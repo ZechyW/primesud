@@ -1,24 +1,24 @@
 COLOR_CODE = '{'
 
 # {X color codes → RGB.  Lowercase = dim, uppercase = bright (1stMud convention).
-# White is the default foreground; {g is a readable green, not the default.
+# White is the default foreground
 ANSI_COLORS = {
-    'd': 0x555555,   # dark  (grey — pure black invisible on dark bg)
-    'r': 0xCC3333,
-    'g': 0x55AA55,
-    'y': 0xAAAA00,
-    'b': 0x3366CC,   # bumped vs. pure ANSI blue for legibility
-    'm': 0xAA33AA,
-    'c': 0x33AAAA,
-    'w': 0xCCCCCC,
-    'D': 0x888888,
-    'R': 0xFF5555,
-    'G': 0x55FF55,
-    'Y': 0xFFFF55,
-    'B': 0x5577FF,
-    'M': 0xFF55FF,
-    'C': 0x55FFFF,
-    'W': 0xFFFFFF,
+    'd': 0x000000,   # black
+    'r': 0x800000,   # maroon
+    'g': 0x008000,   # green
+    'y': 0x808000,   # olive
+    'b': 0x4169E1,   # royalblue
+    'm': 0x800080,   # purple
+    'c': 0x008080,   # teal
+    'w': 0xC0C0C0,   # silver
+    'D': 0x808080,   # gray
+    'R': 0xFF0000,   # red
+    'G': 0x00FF00,   # lime
+    'Y': 0xFFFF00,   # yellow
+    'B': 0x6495ED,   # cornflowerblue
+    'M': 0xFF00FF,   # magenta
+    'C': 0x00FFFF,   # cyan
+    'W': 0xFFFFFF,   # white
 }
 
 _RESET_CODES = ('x', 'X')
@@ -38,6 +38,11 @@ def strip_colors(text):
             out.append(text[i])
             i += 1
     return ''.join(out)
+
+
+def color_len(text):
+    """Return the visible (non-color-code) length of text."""
+    return len(strip_colors(text))
 
 
 def _wrap_raw_index(text, cols):

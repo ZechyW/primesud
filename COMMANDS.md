@@ -4,29 +4,68 @@ Source: `reference/1stMud4.5.3/data/commands.dat`
 
 ## How command lookup works
 
+Before lookup, two pre-checks run (cf. `interp.c:interpret`):
+
+1. `PLR_FREEZE` — frozen players are rejected immediately; no command runs.
+2. `AFF_HIDE` — the hide affect is stripped from the character on every command.
+
 Commands are stored in a hash table keyed by `tolower(name[0]) % MAX_CMD_HASH`
 (MAX_CMD_HASH = 126, defined in `defines.h`).  Each bucket is a linked list in
-**load order** (the order entries appear in `commands.dat`).  Lookup walks the
-bucket and takes the **first** entry that prefix-matches and passes the level
-check — so earlier entries win over later ones sharing a prefix.
+**load order** (the order entries appear in `commands.dat`).  The loop break
+condition is:
 
-Exception: the `noprefix` flag forces **exact-match** comparison (`str_cmp`
-instead of `str_prefix`), bypassing prefix collision.
+```
+noprefix set  → exact match only (str_cmp), level NOT checked
+noprefix clear → prefix match (str_prefix) AND level check (get_trust >= cmd->level)
+```
+
+So earlier entries win over later ones sharing a prefix; and for prefix commands,
+a player whose level is too low simply skips that entry (sees "Huh?", not a
+permission error).  `noprefix` commands skip the level check entirely in lookup —
+the level is only enforced if the `do_fun` itself checks trust internally.
+
+After the command is found, `check_disabled` runs before dispatch; it handles
+commands temporarily disabled at runtime via `do_disable` — separate from the
+`deleted` OLC flag.
+
+**No match:** falls through to `check_social` (socials share a separate hash
+keyed the same way), then to the I3 hook, then prints one of seven random
+"Huh?"-style messages.
 
 ## Flags
 
 | Flag | Meaning |
 |------|---------|
-| `noprefix` | Exact match only — no abbreviation |
-| `no_order` | Cannot be issued via `order <mob> <cmd>` |
-| `noalias` | Cannot be triggered through an alias |
-| `deleted` | Disabled/removed; still in table but not accessible |
+| `noprefix` | Exact match only (str_cmp instead of str_prefix); also bypasses level check in lookup |
+| `no_order` | Cannot be issued via `order <mob> <cmd>` (checked against `ch->master`) |
+| `noalias` | Cannot be triggered through an alias (enforced in `substitute_alias`) |
+| `deleted` | Sets `OLC_DELETED` (BIT_B) — an OLC pending-deletion marker only. The interpreter never checks this bit; the command remains in the hash and is fully accessible to players. |
 
 ## Position constants (minimum required position)
 
-`dead` < `sleeping` < `resting` < `sitting` < `standing` < `fighting`
+Full enum from `defines.h` (value in parentheses):
 
-`dead` means the command works at any position (even while dead).
+`dead (0)` < `mortal (1)` < `incap (2)` < `stunned (3)` < `sleeping (4)` < `resting (5)` < `sitting (6)` < `fighting (7)` < `standing (8)`
+
+No command in `commands.dat` uses `mortal`, `incap`, `stunned`, or `sitting` as
+its minimum position, but all appear in the position-blocked messages below.
+
+`dead` (value 0) means the command works at any position: `ch->position < 0` is
+always false.
+
+### Position-blocked messages (cf. `interp.c`)
+
+Printed when `ch->position < cmd->position`:
+
+| Player position | Message |
+|-----------------|---------|
+| `dead` | Lie still; you are DEAD. |
+| `mortal` / `incap` | You are hurt far too bad for that. |
+| `stunned` | You are too stunned to do that. |
+| `sleeping` | In your dreams, or what? |
+| `resting` | Nah... You feel too relaxed... |
+| `sitting` | Better stand up first. |
+| `fighting` | No way!  You are still fighting! |
 
 ## Level thresholds
 
