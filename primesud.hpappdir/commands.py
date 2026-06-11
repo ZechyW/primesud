@@ -295,7 +295,7 @@ def do_kill(tr, player, args, room_state, mob_instances):
     elif len(live) == 1:
         mob_id = live[0]
     else:
-        names = [mob_instances[i]["name"] for i in live]
+        names = [MOB_TEMPLATES[mob_instances[i]["tpl"]]["short_descr"] for i in live]
         idx = pick_from(tr, "{YKill whom?{x", names)
         if idx < 0:
             return

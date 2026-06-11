@@ -683,3 +683,21 @@ comments.  The first integer after the command letter is always discarded
 | `F` | `0  room_vnum  exit_num  flags`              | Set exit flags directly (deferred)                               |
 
 PrimeSUD currently processes `M` and `O` only; see DESIGN.md § *Area file system*.
+
+---
+
+## Colour codes
+
+Same `{X` escape syntax as 1stMud — embed in strings passed to `tr.print()`, handled by `colors.py`.
+
+| Code | Colour | Code | Colour |
+|------|--------|------|--------|
+| `{d` | dark grey | `{D` | grey |
+| `{r` | red | `{R` | bright red |
+| `{g` | green | `{G` | bright green |
+| `{y` | yellow | `{Y` | bright yellow |
+| `{b` | blue | `{B` | bright blue |
+| `{m` | magenta | `{M` | bright magenta |
+| `{c` | cyan | `{C` | bright cyan |
+| `{w` | light grey | `{W` | white |
+| `{x` / `{X` | reset to default | | |

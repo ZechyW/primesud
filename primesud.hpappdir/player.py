@@ -14,6 +14,14 @@ PLR_DEFAULTS = PLR_AUTOMAP
 # ── Player model ──────────────────────────────────────────────────────────────
 
 def _roll_hp(hp_dice):
+    """Roll HP from an hp_dice tuple (cf. 1stMud create_mobile in db.c).
+
+    Args:
+        hp_dice (tuple): (num (int), size (int), bonus (int)).
+
+    Returns:
+        int: Total HP, minimum 1.
+    """
     num, size, bonus = hp_dice
     total = bonus
     for _ in range(num):
@@ -22,6 +30,11 @@ def _roll_hp(hp_dice):
 
 
 def create_char():
+    """Return a fresh player state dict with default starting values.
+
+    Returns:
+        dict: Player state dict.
+    """
     return {
         "name":     "",
         "is_npc":   False,
@@ -54,7 +67,14 @@ def create_char():
 
 
 def _stat_from_level(level):
-    """Uniform mob stat derived from level (cf. 1stMud create_mobile perm_stat)."""
+    """Uniform mob stat derived from level (cf. 1stMud create_mobile perm_stat).
+
+    Args:
+        level (int): Mob level.
+
+    Returns:
+        int: Stat value in range [11, 25].
+    """
     return min(25, 11 + level // 4)
 
 
@@ -63,6 +83,9 @@ def reset_area():
 
     Processes RESETS sequentially; mob instance IDs are assigned in order
     (first 'M' entry gets ID 1, etc.) matching the old MOB_INIT numbering.
+
+    Returns:
+        tuple: (room_state (dict), mob_instances (dict)).
     """
     room_state = {vnum: {"items": [], "mobs": []} for vnum in ROOMS}
 
@@ -79,7 +102,6 @@ def reset_area():
             mob_instances[mob_id] = {
                 "tpl":        tpl_vnum,
                 "is_npc":     True,
-                "name":       tpl["short_descr"],
                 "hp":         _hp,
                 "hp_max":     _hp,
                 "state":      "idle",
@@ -111,7 +133,12 @@ def reset_area():
 
 def revive_dead_mobs(room_state, mob_instances):
     """Re-spawn only dead mobs in-place (cf. 1stMud reset_room 'M': only spawn
-    if mob count < limit, i.e. the slot is empty/dead)."""
+    if mob count < limit, i.e. the slot is empty/dead).
+
+    Args:
+        room_state (dict): Room state mapping room ID → room state dict.
+        mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
+    """
     for mob_id, inst in mob_instances.items():
         if inst["state"] == "dead":
             tpl = MOB_TEMPLATES[inst["tpl"]]
@@ -127,11 +154,19 @@ def revive_dead_mobs(room_state, mob_instances):
 # ── Stat application helpers ──────────────────────────────────────────────────
 
 def _clamp_stat(v):
+    """Clamp a stat value to the valid range [0, 25]."""
     return min(25, max(0, v))
 
 
 def get_hitroll(char):
-    """Effective hitroll: base + STR bonus + equipped weapon bonus."""
+    """Effective hitroll: base + STR bonus + equipped weapon bonus (cf. 1stMud GetHitroll macro in macro.h).
+
+    Args:
+        char (dict): Character state dict (player or mob instance).
+
+    Returns:
+        int: Total hitroll modifier.
+    """
     total = char.get("hitroll", 0) + STR_APP_TOHIT[_clamp_stat(char.get("str", 10))]
     equip = char.get("equip")
     if equip:
@@ -142,7 +177,14 @@ def get_hitroll(char):
 
 
 def get_damroll(char):
-    """Effective damroll: base + STR bonus + equipped weapon bonus."""
+    """Effective damroll: base + STR bonus + equipped weapon bonus (cf. 1stMud GetDamroll macro in macro.h).
+
+    Args:
+        char (dict): Character state dict (player or mob instance).
+
+    Returns:
+        int: Total damroll modifier.
+    """
     total = char.get("damroll", 0) + STR_APP_TODAM[_clamp_stat(char.get("str", 10))]
     equip = char.get("equip")
     if equip:
@@ -153,7 +195,14 @@ def get_damroll(char):
 
 
 def get_AC(char):
-    """Effective AC: base + DEX bonus + equipped armour bonus."""
+    """Effective AC: base + DEX bonus + equipped armour bonus.
+
+    Args:
+        char (dict): Character state dict (player or mob instance).
+
+    Returns:
+        int: Total AC (lower is better; negative is excellent).
+    """
     total = char.get("AC", 100) + DEX_APP_DEF[_clamp_stat(char.get("dex", 10))]
     equip = char.get("equip")
     if equip:
@@ -164,7 +213,15 @@ def get_AC(char):
 
 
 def is_name(fragment, namelist):
-    """True if every word in fragment prefix-matches a word in namelist (cf. 1stMud is_name)."""
+    """True if every word in fragment prefix-matches a word in namelist (cf. 1stMud is_name).
+
+    Args:
+        fragment (str): Space-separated words typed by the player.
+        namelist (str): Space-separated keywords from the mob/item template.
+
+    Returns:
+        bool: True if all fragment words prefix-match at least one keyword.
+    """
     if not fragment or not namelist:
         return False
     keywords = namelist.lower().split()
@@ -175,6 +232,16 @@ def is_name(fragment, namelist):
 
 
 def get_obj_list(fragment, vnum_list, templates):
+    """Find the first item in vnum_list whose keywords match fragment (cf. 1stMud get_obj_list in handler.c).
+
+    Args:
+        fragment (str): Player-typed name fragment.
+        vnum_list (list): Ordered list of item vnums to search.
+        templates (dict): Item template dict mapping vnum → template.
+
+    Returns:
+        int or None: First matching vnum, or None if not found.
+    """
     for vnum in vnum_list:
         if is_name(fragment, templates[vnum].get("keywords", "")):
             return vnum
@@ -182,6 +249,16 @@ def get_obj_list(fragment, vnum_list, templates):
 
 
 def get_char_room(fragment, inst_ids, mob_instances):
+    """Find the first mob in inst_ids whose keywords match fragment (cf. 1stMud get_char_room in handler.c).
+
+    Args:
+        fragment (str): Player-typed name fragment.
+        inst_ids (list): Ordered list of mob instance IDs to search.
+        mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
+
+    Returns:
+        int or None: First matching mob instance ID, or None if not found.
+    """
     for mob_id in inst_ids:
         if is_name(fragment, MOB_TEMPLATES[mob_instances[mob_id]["tpl"]].get("keywords", "")):
             return mob_id
@@ -191,6 +268,13 @@ def get_char_room(fragment, inst_ids, mob_instances):
 # ── Display ───────────────────────────────────────────────────────────────────
 
 def show_prompt(tr, player, buf):
+    """Update the terminal status bar with the current HP/MP/XP prompt.
+
+    Args:
+        tr: Terminal instance.
+        player (dict): Player state dict.
+        buf (str): Current input buffer shown on the right of the prompt.
+    """
     prefix = "HP:{}/{} MP:{}/{} {}tnl>".format(
         player["hp"], player["hp_max"],
         player["mp"], player["mp_max"],
@@ -209,6 +293,18 @@ def show_prompt(tr, player, buf):
 #     not exist yet (i.e. no save found); load_char treats this as no-save.
 
 def save_char(player, room_state, mob_instances, area_state=None, macros=None):
+    """Serialise player and world state to a PPL HVars variable (cf. 1stMud save_char_obj in save.c).
+
+    Args:
+        player (dict): Player state dict.
+        room_state (dict): Room state mapping room ID → room state dict.
+        mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
+        area_state (dict or None): Area-level state (e.g. age counter); skipped if None.
+        macros (dict or None): Macro key→command mapping; skipped if None.
+
+    Returns:
+        bool: True on success, False if the PPL write raised an exception.
+    """
     lines = []
     for key in ("name", "level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
@@ -243,6 +339,21 @@ def save_char(player, room_state, mob_instances, area_state=None, macros=None):
 
 
 def load_char(player, room_state, mob_instances, area_state=None, macros=None):
+    """Deserialise player and world state from the PPL HVars variable (cf. 1stMud load_char_obj in save.c).
+
+    Mutates player, room_state, mob_instances, and optionally area_state and
+    macros in-place.
+
+    Args:
+        player (dict): Player state dict to populate.
+        room_state (dict): Room state mapping room ID → room state dict.
+        mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
+        area_state (dict or None): Area-level state dict to populate; skipped if None.
+        macros (dict or None): Macro dict to populate; skipped if None.
+
+    Returns:
+        bool: True if a save was found and loaded, False if no save exists or on error.
+    """
     try:
         data = ppleval('HVars("' + SAVE_VAR + '")')
         if not data or not isinstance(data, str) or data.startswith("Error:"):

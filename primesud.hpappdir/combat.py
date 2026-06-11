@@ -55,7 +55,7 @@ _XP_BASE = {
 
 
 def _xp_for_kill(player_level, mob_level):
-    """XP awarded for killing a mob, based on level difference.
+    """XP awarded for killing a mob, based on level difference (cf. 1stMud xp_compute in fight.c).
 
     Args:
         player_level (int): Player's current level.
@@ -96,7 +96,7 @@ def _weapon_skill(player):
 # ── Damage flavour ────────────────────────────────────────────────────────────
 
 def _damage_verb(dmg):
-    """Return verb pair for a damage amount.
+    """Return verb pair for a damage amount (cf. 1stMud dam_message in fight.c).
 
     Args:
         dmg (int): Damage dealt (0 = miss).
@@ -147,7 +147,7 @@ def _damage_verb(dmg):
 
 
 def _damage_punct(dmg):
-    """Return punctuation string matching damage severity.
+    """Return punctuation string matching damage severity (cf. 1stMud dam_message in fight.c).
 
     Args:
         dmg (int): Damage dealt.
@@ -174,7 +174,7 @@ def _mob_condition(inst, tpl):
     """
     _hm = inst.get("hp_max", 1)
     pct = inst["hp"] * 100 // _hm if _hm > 0 else -1
-    name = tpl["name"]
+    name = tpl["short_descr"]
     if pct >= 100: return "{} is in excellent condition.".format(name)
     if pct >= 90:  return "{} has a few scratches.".format(name)
     if pct >= 75:  return "{} has some small wounds and bruises.".format(name)
@@ -259,7 +259,7 @@ def check_improve(tr, player, sk_vnum, success):
 # ── Defensive checks (player defending against mob attack) ────────────────────
 
 def check_parry(tr, player, mob_inst):
-    """Check if player successfully parries mob's attack.
+    """Check if player successfully parries mob's attack (cf. 1stMud check_parry in fight.c).
 
     Args:
         tr: Terminal for printing parry messages.
@@ -274,7 +274,7 @@ def check_parry(tr, player, mob_inst):
     skill = player["learned"].get(GSN_PARRY, 0)
     if skill > 0 and randint(1, 100) <= skill // 2:
         tpl = MOB_TEMPLATES[mob_inst["tpl"]]
-        tr.print("You parry {}'s attack.".format(tpl["name"]))
+        tr.print("You parry {}'s attack.".format(tpl["short_descr"]))
         check_improve(tr, player, GSN_PARRY, True)
         return True
     return False
@@ -283,7 +283,7 @@ def check_parry(tr, player, mob_inst):
 # ── Core attack: one_hit ──────────────────────────────────────────────────────
 
 def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
-    """One attack from player against target_inst.
+    """One attack from player against target_inst (cf. 1stMud one_hit in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
@@ -321,7 +321,7 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
     roll = randint(0, 19)
     if roll == 0 or (roll != 19 and roll < thac0 - victim_ac):
         vs, _ = _damage_verb(0)
-        tr.print("You {} {}.".format(vs, tpl["name"]))
+        tr.print("You {} {}.".format(vs, tpl["short_descr"]))
         check_improve(tr, player, sk_vnum, False)
         return 0
 
@@ -347,17 +347,17 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
     dam = max(1, dam)
     target_inst["hp"] = max(0, target_inst["hp"] - dam)
 
-    weapon_name = wtpl["name"] if wtpl else "fist"
+    weapon_name = wtpl["short_descr"] if wtpl else "fist"
     vs, vp = _damage_verb(dam)
     punct = _damage_punct(dam)
-    tr.print("Your {} {} {}{} [{}]".format(weapon_name, vp, tpl["name"], punct, dam))
+    tr.print("Your {} {} {}{} [{}]".format(weapon_name, vp, tpl["short_descr"], punct, dam))
 
     check_improve(tr, player, sk_vnum, True)
     return dam
 
 
 def _mob_one_hit(tr, mob_inst, player):
-    """One attack from mob against player.
+    """One attack from mob against player (cf. 1stMud one_hit in fight.c, NPC side).
 
     Args:
         tr: Terminal for printing combat messages.
@@ -382,7 +382,7 @@ def _mob_one_hit(tr, mob_inst, player):
     roll = randint(0, 19)
     if roll == 0 or (roll != 19 and roll < thac0 - player_ac):
         _, vp = _damage_verb(0)
-        tr.print("{} {} you.".format(tpl["name"], vp))
+        tr.print("{} {} you.".format(tpl["short_descr"], vp))
         return 0
 
     # Defensive checks (player skills)
@@ -404,7 +404,7 @@ def _mob_one_hit(tr, mob_inst, player):
 
     _, vp = _damage_verb(dam)
     punct = _damage_punct(dam)
-    tr.print("{} {} you{} [{}]".format(tpl["name"], vp, punct, dam))
+    tr.print("{} {} you{} [{}]".format(tpl["short_descr"], vp, punct, dam))
     return dam
 
 
@@ -447,20 +447,20 @@ def do_kick(tr, ch, args, room_state, mob_instances):
         _, vp  = _damage_verb(dam)
         punct  = _damage_punct(dam)
         if ch["is_npc"]:
-            tr.print("{} kicks you{} [{}]".format(ch["name"], punct, dam))
+            tr.print("{} kicks you{} [{}]".format(MOB_TEMPLATES[ch["tpl"]]["short_descr"], punct, dam))
         else:
             tpl = MOB_TEMPLATES[target["tpl"]]
-            tr.print("Your kick {} {}{} [{}]".format(vp, tpl["name"], punct, dam))
+            tr.print("Your kick {} {}{} [{}]".format(vp, tpl["short_descr"], punct, dam))
             check_improve(tr, ch, GSN_KICK, True)
             if target["hp"] == 0:
                 raw_kill(tr, ch, target_id, target, tpl, room_state)
                 _advance_target(ch, mob_instances, room_state)
     else:
         if ch["is_npc"]:
-            tr.print("{}'s kick misses you.".format(ch["name"]))
+            tr.print("{}'s kick misses you.".format(MOB_TEMPLATES[ch["tpl"]]["short_descr"]))
         else:
             tpl = MOB_TEMPLATES[target["tpl"]]
-            tr.print("Your kick misses {}.".format(tpl["name"]))
+            tr.print("Your kick misses {}.".format(tpl["short_descr"]))
             check_improve(tr, ch, GSN_KICK, False)
     return None
 
@@ -550,7 +550,7 @@ def _try_special_move(tr, player, target_inst):
     if randint(1, 100) > chance:
         return 0
     tpl  = MOB_TEMPLATES[target_inst["tpl"]]
-    name = tpl["name"]
+    name = tpl["short_descr"]
     move = _SPECIAL_MOVES[randint(0, len(_SPECIAL_MOVES) - 1)]
     for line in move[:-1]:
         tr.print(line.format(name))
@@ -568,7 +568,7 @@ def _try_special_move(tr, player, target_inst):
 # ── Multi-hit (player's full attack sequence) ─────────────────────────────────
 
 def multi_hit(tr, player, target_inst):
-    """Full attack sequence for one combat round.
+    """Full attack sequence for one combat round (cf. 1stMud multi_hit in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
@@ -602,31 +602,66 @@ def multi_hit(tr, player, target_inst):
 # ── Combat state ──────────────────────────────────────────────────────────────
 
 def set_fighting(tr, player, mob_id, mob_instances, room_state):
-    """Enter combat: mark all non-passive room mobs aggro, set player target.
+    """Enter combat: engage a single mob against the player (cf. 1stMud set_fighting in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
         player (dict): Player state dict.
-        mob_id (int): ID of the mob initiating combat.
+        mob_id (int): ID of the mob to engage.
         mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
         room_state (dict): Room state mapping room ID → room state dict.
     """
-    rs = room_state[player["room"]]
-    for mid in rs["mobs"]:
-        inst = mob_instances[mid]
-        tpl  = MOB_TEMPLATES[inst["tpl"]]
-        if inst["state"] != "dead" and not tpl.get("passive"):
-            inst["state"]   = "aggro"
-            inst["fighting"] = player
-            if mid == mob_id:
-                tr.print("--- {} attacks! ---".format(tpl["name"]))
-            else:
-                tr.print("--- {} joins the fight! ---".format(tpl["name"]))
+    inst = mob_instances[mob_id]
+    tpl  = MOB_TEMPLATES[inst["tpl"]]
+    inst["state"]    = "aggro"
+    inst["fighting"] = player
     player["fighting"] = mob_id
+    tr.print("--- {} attacks! ---".format(tpl["short_descr"]))
+
+
+def check_assist(tr, player, attacked_id, mob_instances, room_state):
+    """Let idle room mobs join combat against the player (cf. 1stMud check_assist in fight.c).
+
+    Checks every idle mob in the room; those whose off_flags qualify jump in.
+    Triggers: assist_all (always), assist_vnum (same template), assist_race
+    (same race field), or matching non-zero group value.
+
+    Args:
+        tr: Terminal for printing combat messages.
+        player (dict): Player state dict.
+        attacked_id (int): ID of the mob the player is currently attacking.
+        mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
+        room_state (dict): Room state mapping room ID → room state dict.
+    """
+    rs            = room_state[player["room"]]
+    attacked_inst = mob_instances[attacked_id]
+    attacked_tpl  = MOB_TEMPLATES[attacked_inst["tpl"]]
+
+    for mid in rs["mobs"]:
+        if mid == attacked_id:
+            continue
+        inst = mob_instances[mid]
+        if inst["state"] in ("dead", "aggro"):
+            continue
+        tpl = MOB_TEMPLATES[inst["tpl"]]
+        if tpl.get("passive"):
+            continue
+
+        off = tpl.get("off_flags", {})
+        grp = tpl.get("group")
+        if (off.get("assist_all")
+                or (off.get("assist_vnum") and inst["tpl"] == attacked_inst["tpl"])
+                or (off.get("assist_race")
+                    and tpl.get("race") == attacked_tpl.get("race"))
+                or (grp and grp == attacked_tpl.get("group"))):
+            inst["state"]    = "aggro"
+            inst["fighting"] = player
+            tr.print("--- {} screams and joins the fight! ---".format(
+                tpl["short_descr"]))
 
 
 def stop_fighting(player, mob_instances):
-    """End combat: reset aggro mobs to idle, clear player target.
+    """End combat: reset aggro mobs to idle, clear player target (cf. 1stMud stop_fighting in fight.c).
 
     Args:
         player (dict): Player state dict.
@@ -663,7 +698,7 @@ def _advance_target(player, mob_instances, room_state):
 # ── Violence update (called every PULSE_VIOLENCE) ─────────────────────────────
 
 def violence_update(tr, player, mob_instances, room_state):
-    """One combat pulse: player attacks, then all aggro mobs counter-attack.
+    """One combat pulse: player attacks, then all aggro mobs counter-attack (cf. 1stMud violence_update in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
@@ -700,6 +735,8 @@ def violence_update(tr, player, mob_instances, room_state):
         if killed:
             raw_kill(tr, player, target_id, target, tpl, room_state)
             _advance_target(player, mob_instances, room_state)
+        else:
+            check_assist(tr, player, target_id, mob_instances, room_state)
 
     # Mob counter-attacks
     for mob_id in list(rs["mobs"]):
@@ -739,7 +776,7 @@ def violence_update(tr, player, mob_instances, room_state):
 # ── Death / Victory ───────────────────────────────────────────────────────────
 
 def raw_kill(tr, player, mob_id, inst, tpl, room_state):
-    """Handle mob death: award XP, level-up if needed, drop loot, mark dead.
+    """Handle mob death: award XP, level-up if needed, drop loot, mark dead (cf. 1stMud raw_kill in fight.c).
 
     Args:
         tr: Terminal for printing kill/loot messages.
@@ -749,7 +786,7 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state):
         tpl (dict): Mob template dict.
         room_state (dict): Room state mapping room ID → room state dict.
     """
-    tr.print("{} is defeated!".format(tpl["name"]))
+    tr.print("{} is defeated!".format(tpl["short_descr"]))
     xp = _xp_for_kill(player["level"], inst["level"])
     player["xp"] += xp
     tr.print("+{} XP".format(xp))
@@ -760,7 +797,7 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state):
     for item_vnum, chance in tpl["loot"]:
         if randint(1, 100) <= chance:
             player["inv"].append(item_vnum)
-            tr.print("Found: {}".format(ITEM_TEMPLATES[item_vnum]["name"]))
+            tr.print("Found: {}".format(ITEM_TEMPLATES[item_vnum]["short_descr"]))
 
     inst["state"] = "dead"
     tr.print("")
