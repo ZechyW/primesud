@@ -94,6 +94,12 @@ class Game:
         _RST = _RESET_CODES
         def _wrapped_print(*args, sep=' ', end='\n'):
             text = sep.join(str(a) for a in args)
+            i = 0
+            while i + 1 < len(text) and text[i] == _CC:
+                i += 2
+            if i < len(text):
+                # Always capitalise first letter of output
+                text = text[:i] + text[i].upper() + text[i + 1:]
             if _CC not in text:
                 # Fast path: skip color_wrap and all colour-code scanning.
                 # Reset lazily here — a previous colored print may have left _current_fg set.
@@ -282,7 +288,7 @@ class Game:
                 elif auto_submit is False:  # [PRIMESUD] hardware key — load into buffer
                     self.input_buf = char
                     show_prompt(tr, player, self.input_buf)
-                elif char not in ("\L", "\R", "\SR"):
+                elif char is not None and char not in ("\L", "\R", "\SR"):
                     subst = _MACRO_SUBST.get(char)
                     if subst is not None and not self.input_buf:
                         self.input_buf = subst

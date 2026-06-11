@@ -19,7 +19,6 @@ Design choices:
   - act_flags, off_flags, imm/res/vuln_flags: decoded into name→True dicts
     using flag tables from REFERENCE.md; included even if PrimeSUD ignores them
   - Exits: simple dir→vnum mapping; door flags added as inline comments
-  - Room short: first sentence of long description (auto-generated)
   - Constant names: generated from display text, deduplicated with _<vnum>
 """
 
@@ -490,8 +489,7 @@ def parse_rooms(lines):
 
         rooms.append((vnum, {
             "name":       name,
-            "short":      first_sentence(description),
-            "long":       description,
+            "desc":       description,
             "exits":      exits,
             "exit_notes": exit_notes,
             "flags":      room_flags,
@@ -626,10 +624,8 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
     for vnum, room in rooms:
         cname = room_map[vnum]
         w(f"    {cname}: {{")
-        w(f'        "name":  {room["name"]!r},')
-        w(f'        "short": {room["short"]!r},')
-        long_repr = repr(room["long"])
-        w(f'        "long":  {long_repr},')
+        w(f'        "name": {room["name"]!r},')
+        w(f'        "desc": {repr(room["desc"])},')
         w(f'        "exits": {{')
         for d in sorted(room["exits"], key=lambda x: "neswud".index(x)):
             to_vnum = room["exits"][d]

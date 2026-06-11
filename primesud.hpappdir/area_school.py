@@ -590,9 +590,8 @@ MOBILES = {
 # ── Rooms ──────────────────────────────────────────────────────────────────────
 ROOMS = {
     R_ENTRANCE_TO_MUD_SCHOOL: {
-        "name":  'Entrance to Mud School',
-        "short": 'This is the entrance to the Merc Mud School.',
-        "long":  "This is the entrance to the Merc Mud School.  Go north to go through mud\nschool.  If you have been here before and want to go directly to the arena,\ngo south.\n\nA sign warns 'You may not pass these doors once you have passed level 5.'",
+        "name": 'Entrance to Mud School',
+        "desc": "This is the entrance to the Merc Mud School.  Go north to go through mud\nschool.  If you have been here before and want to go directly to the arena,\ngo south.\n\nA sign warns 'You may not pass these doors once you have passed level 5.'",
         "exits": {
             "n": R_ROOM_IN_MUD_SCHOOL_3757,
             "s": R_NORTH_WALL_OF_ARENA_3744,  # door: {"isdoor": True, "closed": True}
@@ -601,9 +600,8 @@ ROOMS = {
         "flags": {"no_mob": True, "indoors": True},
     },
     R_ROOM_IN_MUD_SCHOOL: {
-        "name":  'A Room in Mud School',
-        "short": 'You are in a square white room.',
-        "long":  'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  The exits are west and south.  A small plaque is on the\nwall.',
+        "name": 'A Room in Mud School',
+        "desc": 'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  The exits are west and south.  A small plaque is on the\nwall.',
         "exits": {
             "s": R_ROOM_IN_MUD_SCHOOL_3757,
             "w": R_CENTER_ROOM,
@@ -611,9 +609,8 @@ ROOMS = {
         "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
     },
     R_CENTER_ROOM: {
-        "name":  'The Center Room',
-        "short": 'You are in a square white room.',
-        "long":  'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  Exits lead in ALL directions.',
+        "name": 'The Center Room',
+        "desc": 'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  Exits lead in ALL directions.',
         "exits": {
             "n": R_ROOM_IN_MUD_SCHOOL_3703,
             "e": R_ROOM_IN_MUD_SCHOOL,
@@ -625,9 +622,8 @@ ROOMS = {
         "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
     },
     R_ROOM_IN_MUD_SCHOOL_3703: {
-        "name":  'A Room in Mud School',
-        "short": 'You are in a square white room.',
-        "long":  'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  Exits lead north and south.',
+        "name": 'A Room in Mud School',
+        "desc": 'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  Exits lead north and south.',
         "exits": {
             "n": R_ROOM_IN_MUD_SCHOOL_3709,
             "s": R_CENTER_ROOM,
@@ -635,45 +631,40 @@ ROOMS = {
         "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
     },
     R_ROOM_IN_MUD_SCHOOL_3704: {
-        "name":  'A Room in Mud School',
-        "short": 'You are in a square white room.',
-        "long":  'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  The only exit is east.',
+        "name": 'A Room in Mud School',
+        "desc": 'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  The only exit is east.',
         "exits": {
             "e": R_CENTER_ROOM,
         },
         "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
     },
     R_ROOM_IN_MUD_SCHOOL_3705: {
-        "name":  'A Room in Mud School',
-        "short": 'You are in a square white room.',
-        "long":  'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  The only exit is north.',
+        "name": 'A Room in Mud School',
+        "desc": 'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  The only exit is north.',
         "exits": {
             "n": R_CENTER_ROOM,
         },
         "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
     },
     R_ROOM_IN_MUD_SCHOOL_3707: {
-        "name":  'A Room in Mud School',
-        "short": 'You are in a square white room.',
-        "long":  'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  The only exit is up.',
+        "name": 'A Room in Mud School',
+        "desc": 'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  The only exit is up.',
         "exits": {
             "u": R_CENTER_ROOM,
         },
         "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
     },
     R_ROOM_IN_MUD_SCHOOL_3708: {
-        "name":  'A Room in Mud School',
-        "short": 'You are in a square white room.',
-        "long":  'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  The only exit is down.',
+        "name": 'A Room in Mud School',
+        "desc": 'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  The only exit is down.',
         "exits": {
             "d": R_CENTER_ROOM,
         },
         "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
     },
     R_ROOM_IN_MUD_SCHOOL_3709: {
-        "name":  'A Room in Mud School',
-        "short": 'You are in a square white room.',
-        "long":  'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  Exits reach west and down.',
+        "name": 'A Room in Mud School',
+        "desc": 'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  Exits reach west and down.',
         "exits": {
             "w": R_ROOM_IN_MUD_SCHOOL_3711,
             "d": R_BLOB_CAGE,
@@ -681,18 +672,16 @@ ROOMS = {
         "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
     },
     R_BLOB_CAGE: {
-        "name":  'The Blob Cage',
-        "short": 'You are in a smelly cage.',
-        "long":  'You are in a smelly cage.  Strangely, the walls are still clean!\nYou see a sign here.  The only exit is up.',
+        "name": 'The Blob Cage',
+        "desc": 'You are in a smelly cage.  Strangely, the walls are still clean!\nYou see a sign here.  The only exit is up.',
         "exits": {
             "u": R_ROOM_IN_MUD_SCHOOL_3709,
         },
         "flags": {"indoors": True, "_unknown_bits": [17]},
     },
     R_ROOM_IN_MUD_SCHOOL_3711: {
-        "name":  'A Room in Mud School',
-        "short": 'You are in a square white room.',
-        "long":  'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.',
+        "name": 'A Room in Mud School',
+        "desc": 'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.',
         "exits": {
             "e": R_ROOM_IN_MUD_SCHOOL_3709,
             "d": R_CAGE_ROOM,
@@ -700,9 +689,8 @@ ROOMS = {
         "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
     },
     R_CAGE_ROOM: {
-        "name":  'The Cage Room',
-        "short": 'You are in the cage room.',
-        "long":  'You are in the cage room.  All around are 4 cages.  Light fluoresces off the\nceiling in soft white tones.  Of course, there is a big sign on the wall.\nExits lead into the cardinal directions plus down.',
+        "name": 'The Cage Room',
+        "desc": 'You are in the cage room.  All around are 4 cages.  Light fluoresces off the\nceiling in soft white tones.  Of course, there is a big sign on the wall.\nExits lead into the cardinal directions plus down.',
         "exits": {
             "n": R_CAGE,
             "e": R_CAGE_3716,
@@ -713,45 +701,40 @@ ROOMS = {
         "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
     },
     R_CAGE: {
-        "name":  'A Cage',
-        "short": 'You are in a cage.',
-        "long":  'You are in a cage.  Blood and gore are everywhere.  The keepers must be lax\nin the upkeep here!  There is a sign on the wall.  The only exit is south.',
+        "name": 'A Cage',
+        "desc": 'You are in a cage.  Blood and gore are everywhere.  The keepers must be lax\nin the upkeep here!  There is a sign on the wall.  The only exit is south.',
         "exits": {
             "s": R_CAGE_ROOM,
         },
         "flags": {"indoors": True, "_unknown_bits": [17]},
     },
     R_CAGE_3714: {
-        "name":  'A Cage',
-        "short": 'You are in a cage.',
-        "long":  'You are in a cage.  Blood and gore are everywhere.  The keepers must be lax\nin the upkeep here!  There is a sign on the wall.  The only exit is east.',
+        "name": 'A Cage',
+        "desc": 'You are in a cage.  Blood and gore are everywhere.  The keepers must be lax\nin the upkeep here!  There is a sign on the wall.  The only exit is east.',
         "exits": {
             "e": R_CAGE_ROOM,
         },
         "flags": {"indoors": True, "_unknown_bits": [17]},
     },
     R_CAGE_3715: {
-        "name":  'A Cage',
-        "short": 'You are in a cage.',
-        "long":  'You are in a cage.  Blood and gore are everywhere.  The keepers must be lax\nin the upkeep here!  There is a sign on the wall.  The only exit is north.',
+        "name": 'A Cage',
+        "desc": 'You are in a cage.  Blood and gore are everywhere.  The keepers must be lax\nin the upkeep here!  There is a sign on the wall.  The only exit is north.',
         "exits": {
             "n": R_CAGE_ROOM,
         },
         "flags": {"indoors": True, "_unknown_bits": [17]},
     },
     R_CAGE_3716: {
-        "name":  'A Cage',
-        "short": 'You are in a cage.',
-        "long":  'You are in a cage.  Blood and gore are everywhere.  The keepers must be lax\nin the upkeep here!  There is a sign on the wall.  The only exit is west.',
+        "name": 'A Cage',
+        "desc": 'You are in a cage.  Blood and gore are everywhere.  The keepers must be lax\nin the upkeep here!  There is a sign on the wall.  The only exit is west.',
         "exits": {
             "w": R_CAGE_ROOM,
         },
         "flags": {"indoors": True, "_unknown_bits": [17]},
     },
     R_ROOM_IN_MUD_SCHOOL_3717: {
-        "name":  'A Room in Mud School',
-        "short": 'You are in a square white room.',
-        "long":  'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  Find your own exit here.',
+        "name": 'A Room in Mud School',
+        "desc": 'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  Find your own exit here.',
         "exits": {
             "e": R_ROOM_IN_MUD_SCHOOL_3719,  # door: {"isdoor": True, "closed": True}
             "s": R_STORE_IN_MUD_SCHOOL,
@@ -760,18 +743,16 @@ ROOMS = {
         "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
     },
     R_STORE_IN_MUD_SCHOOL: {
-        "name":  'The Store in Mud School',
-        "short": 'You are in a cramped room.',
-        "long":  'You are in a cramped room.  Stacked neatly on shelves everywhere are items\nand packages.  Light fluoresces off the ceiling in soft white tones.  Of\ncourse, there is a sign on the wall.  The only exit is north.',
+        "name": 'The Store in Mud School',
+        "desc": 'You are in a cramped room.  Stacked neatly on shelves everywhere are items\nand packages.  Light fluoresces off the ceiling in soft white tones.  Of\ncourse, there is a sign on the wall.  The only exit is north.',
         "exits": {
             "n": R_ROOM_IN_MUD_SCHOOL_3717,
         },
         "flags": {"indoors": True, "_unknown_bits": [17]},
     },
     R_ROOM_IN_MUD_SCHOOL_3719: {
-        "name":  'A Room in Mud School',
-        "short": 'You are in a square white room.',
-        "long":  'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  The exits are north and west, with a door to the east.',
+        "name": 'A Room in Mud School',
+        "desc": 'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  The exits are north and west, with a door to the east.',
         "exits": {
             "n": R_DARKENED_ROOM,
             "e": R_END_OF_MUD_SCHOOL,  # door: {"isdoor": True, "closed": True, "locked": True, "pickproof": True}
@@ -780,27 +761,24 @@ ROOMS = {
         "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
     },
     R_DARKENED_ROOM: {
-        "name":  'The Darkened Room',
-        "short": 'This room was purposefully darkened so that you would need to hold on to...',
-        "long":  'This room was purposefully darkened so that you would need to hold on to a\nlight source to go through.  The walls are, of course, blank, and white.\nThe only exit is south.',
+        "name": 'The Darkened Room',
+        "desc": 'This room was purposefully darkened so that you would need to hold on to a\nlight source to go through.  The walls are, of course, blank, and white.\nThe only exit is south.',
         "exits": {
             "s": R_ROOM_IN_MUD_SCHOOL_3719,
         },
         "flags": {"dark": True, "indoors": True, "_unknown_bits": [17]},
     },
     R_END_OF_MUD_SCHOOL: {
-        "name":  'The End of Mud School!',
-        "short": 'This is a very bright room, with a marble pedestal in the center.',
-        "long":  'This is a very bright room, with a marble pedestal in the center.  Behind\nthe pedestal stands a person cloaked in Silver.  Tapestries flow from every\nwall, and you feel very happy to be here right now.  There is a big sign here.\nThe only exit is on the other side of the gate north of you.',
+        "name": 'The End of Mud School!',
+        "desc": 'This is a very bright room, with a marble pedestal in the center.  Behind\nthe pedestal stands a person cloaked in Silver.  Tapestries flow from every\nwall, and you feel very happy to be here right now.  There is a big sign here.\nThe only exit is on the other side of the gate north of you.',
         "exits": {
             "n": R_SOUTH_WALL_OF_ARENA,  # door: {"isdoor": True, "closed": True}
         },
         "flags": {"indoors": True, "_unknown_bits": [17]},
     },
     R_SOUTH_WALL_OF_ARENA: {
-        "name":  'South Wall of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'South Wall of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_ARENA_3729,
             "e": R_SOUTH_WALL_OF_ARENA_3725,
@@ -810,9 +788,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_SOUTH_WALL_OF_ARENA_3723: {
-        "name":  'South Wall of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'South Wall of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_ARENA,
             "e": R_SOUTH_WALL_OF_ARENA,
@@ -822,9 +799,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_SOUTH_WEST_CORNER_OF_ARENA: {
-        "name":  'South West Corner of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'South West Corner of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_WEST_WALL_OF_ARENA,
             "e": R_SOUTH_WALL_OF_ARENA_3723,
@@ -833,9 +809,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_SOUTH_WALL_OF_ARENA_3725: {
-        "name":  'South Wall of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'South Wall of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_ARENA_3730,
             "e": R_SOUTH_EAST_CORNER_OF_ARENA,
@@ -845,9 +820,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_SOUTH_EAST_CORNER_OF_ARENA: {
-        "name":  'South East Corner of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'South East Corner of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_EAST_WALL_OF_ARENA,
             "w": R_SOUTH_WALL_OF_ARENA_3725,
@@ -856,9 +830,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_WEST_WALL_OF_ARENA: {
-        "name":  'West Wall of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'West Wall of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_WEST_WALL_OF_ARENA_3732,
             "e": R_ARENA,
@@ -868,9 +841,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_ARENA: {
-        "name":  'Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_ARENA_3733,
             "e": R_ARENA_3729,
@@ -881,9 +853,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_ARENA_3729: {
-        "name":  'Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_CENTER_OF_ARENA,
             "e": R_ARENA_3730,
@@ -894,9 +865,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_ARENA_3730: {
-        "name":  'Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_ARENA_3735,
             "e": R_EAST_WALL_OF_ARENA,
@@ -907,9 +877,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_EAST_WALL_OF_ARENA: {
-        "name":  'East Wall of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'East Wall of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_EAST_WALL_OF_ARENA_3736,
             "s": R_SOUTH_EAST_CORNER_OF_ARENA,
@@ -919,9 +888,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_WEST_WALL_OF_ARENA_3732: {
-        "name":  'West Wall of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'West Wall of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_WEST_WALL_OF_ARENA_3737,
             "e": R_ARENA_3733,
@@ -931,9 +899,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_ARENA_3733: {
-        "name":  'Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_ARENA_3738,
             "e": R_CENTER_OF_ARENA,
@@ -944,9 +911,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_CENTER_OF_ARENA: {
-        "name":  'Center of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.  There is a BIG SIGN here.',
+        "name": 'Center of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.  There is a BIG SIGN here.',
         "exits": {
             "n": R_ARENA_3739,
             "e": R_ARENA_3735,
@@ -958,9 +924,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_ARENA_3735: {
-        "name":  'Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_ARENA_3740,
             "e": R_EAST_WALL_OF_ARENA_3736,
@@ -971,9 +936,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_EAST_WALL_OF_ARENA_3736: {
-        "name":  'East Wall of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'East Wall of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_EAST_WALL_OF_ARENA_3741,
             "s": R_EAST_WALL_OF_ARENA,
@@ -983,9 +947,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_WEST_WALL_OF_ARENA_3737: {
-        "name":  'West Wall of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'West Wall of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_NORTH_WEST_CORNER_OF_ARENA,
             "e": R_ARENA_3738,
@@ -995,9 +958,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_ARENA_3738: {
-        "name":  'Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_NORTH_WALL_OF_ARENA,
             "e": R_ARENA_3739,
@@ -1008,9 +970,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_ARENA_3739: {
-        "name":  'Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_NORTH_WALL_OF_ARENA_3744,
             "e": R_ARENA_3740,
@@ -1021,9 +982,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_ARENA_3740: {
-        "name":  'Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_NORTH_WALL_OF_ARENA_3745,
             "e": R_EAST_WALL_OF_ARENA_3741,
@@ -1034,9 +994,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_EAST_WALL_OF_ARENA_3741: {
-        "name":  'East Wall of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'East Wall of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "n": R_NORTH_EAST_CORNER_OF_ARENA,
             "s": R_EAST_WALL_OF_ARENA_3736,
@@ -1046,9 +1005,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_NORTH_WEST_CORNER_OF_ARENA: {
-        "name":  'North West Corner of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'North West Corner of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "e": R_NORTH_WALL_OF_ARENA,
             "s": R_WEST_WALL_OF_ARENA_3737,
@@ -1057,9 +1015,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_NORTH_WALL_OF_ARENA: {
-        "name":  'North Wall of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  You can barely see the ceiling.  You feel as if you are being watched\nby some divine being.',
+        "name": 'North Wall of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  You can barely see the ceiling.  You feel as if you are being watched\nby some divine being.',
         "exits": {
             "e": R_NORTH_WALL_OF_ARENA_3744,
             "s": R_ARENA_3738,
@@ -1069,9 +1026,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_NORTH_WALL_OF_ARENA_3744: {
-        "name":  'North Wall of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'North Wall of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "e": R_NORTH_WALL_OF_ARENA_3745,
             "s": R_ARENA_3739,
@@ -1081,9 +1037,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_NORTH_WALL_OF_ARENA_3745: {
-        "name":  'North Wall of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'North Wall of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "e": R_NORTH_EAST_CORNER_OF_ARENA,
             "s": R_ARENA_3740,
@@ -1093,9 +1048,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_NORTH_EAST_CORNER_OF_ARENA: {
-        "name":  'North East Corner of Arena',
-        "short": 'You are in the Arena.',
-        "long":  'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
+        "name": 'North East Corner of Arena',
+        "desc": 'You are in the Arena.  Remember, if you wish to get out of this Arena, just\ngo up.  Ceilings can barely be seen in this huge Arena.  You feel as if you are\nbeing watched by some divine being.',
         "exits": {
             "s": R_EAST_WALL_OF_ARENA_3741,
             "w": R_NORTH_WALL_OF_ARENA_3745,
@@ -1104,9 +1058,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_CENTER_OF_THE_DUNGEON: {
-        "name":  'The Center of the Dungeon',
-        "short": 'You are in the center of a large room.',
-        "long":  'You are in the center of a large room.  A faint light from above shows that\nthe floors are all covered with slime.  A feeling of dread comes over you as\nyou notice that this is NOT a great place to go.  Exits go in all directions.\nOf special note is the one that brings you back up!!!',
+        "name": 'The Center of the Dungeon',
+        "desc": 'You are in the center of a large room.  A faint light from above shows that\nthe floors are all covered with slime.  A feeling of dread comes over you as\nyou notice that this is NOT a great place to go.  Exits go in all directions.\nOf special note is the one that brings you back up!!!',
         "exits": {
             "n": R_NORTH_WALL_OF_THE_DUNGEON,
             "e": R_EAST_WALL_OF_THE_DUNGEON,
@@ -1117,9 +1070,8 @@ ROOMS = {
         "flags": {"indoors": True},
     },
     R_NORTH_WEST_CORNER_OF_THE_DUNGEON: {
-        "name":  'The North West Corner of the Dungeon',
-        "short": 'You are against a wall in the dungeon.',
-        "long":  'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
+        "name": 'The North West Corner of the Dungeon',
+        "desc": 'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
         "exits": {
             "e": R_NORTH_WALL_OF_THE_DUNGEON,
             "s": R_WEST_WALL_OF_THE_DUNGEON,
@@ -1127,9 +1079,8 @@ ROOMS = {
         "flags": {"dark": True, "indoors": True},
     },
     R_NORTH_WALL_OF_THE_DUNGEON: {
-        "name":  'The North Wall of the Dungeon',
-        "short": 'You are against a wall in the dungeon.',
-        "long":  'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
+        "name": 'The North Wall of the Dungeon',
+        "desc": 'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
         "exits": {
             "e": R_NORTH_EAST_CORNER_OF_THE_DUNGEON,
             "s": R_CENTER_OF_THE_DUNGEON,
@@ -1138,9 +1089,8 @@ ROOMS = {
         "flags": {"dark": True, "indoors": True},
     },
     R_NORTH_EAST_CORNER_OF_THE_DUNGEON: {
-        "name":  'The North East Corner of the Dungeon',
-        "short": 'You are against a wall in the dungeon.',
-        "long":  'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
+        "name": 'The North East Corner of the Dungeon',
+        "desc": 'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
         "exits": {
             "s": R_EAST_WALL_OF_THE_DUNGEON,
             "w": R_NORTH_WALL_OF_THE_DUNGEON,
@@ -1148,9 +1098,8 @@ ROOMS = {
         "flags": {"dark": True, "indoors": True},
     },
     R_WEST_WALL_OF_THE_DUNGEON: {
-        "name":  'The West Wall of the Dungeon',
-        "short": 'You are against a wall in the dungeon.',
-        "long":  'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
+        "name": 'The West Wall of the Dungeon',
+        "desc": 'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
         "exits": {
             "n": R_NORTH_WEST_CORNER_OF_THE_DUNGEON,
             "e": R_CENTER_OF_THE_DUNGEON,
@@ -1159,9 +1108,8 @@ ROOMS = {
         "flags": {"dark": True, "indoors": True},
     },
     R_EAST_WALL_OF_THE_DUNGEON: {
-        "name":  'The East Wall of the Dungeon',
-        "short": 'You are against a wall in the dungeon.',
-        "long":  'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
+        "name": 'The East Wall of the Dungeon',
+        "desc": 'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
         "exits": {
             "n": R_NORTH_EAST_CORNER_OF_THE_DUNGEON,
             "s": R_SOUTH_EAST_CORNER_OF_THE_DUNGEON,
@@ -1170,9 +1118,8 @@ ROOMS = {
         "flags": {"dark": True, "indoors": True},
     },
     R_SOUTH_WEST_CORNER_OF_THE_DUNGEON: {
-        "name":  'The South West Corner of the Dungeon',
-        "short": 'You are against a wall in the dungeon.',
-        "long":  'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
+        "name": 'The South West Corner of the Dungeon',
+        "desc": 'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
         "exits": {
             "n": R_WEST_WALL_OF_THE_DUNGEON,
             "e": R_SOUTH_WALL_OF_THE_DUNGEON,
@@ -1180,9 +1127,8 @@ ROOMS = {
         "flags": {"dark": True, "indoors": True},
     },
     R_SOUTH_WALL_OF_THE_DUNGEON: {
-        "name":  'The South Wall of the Dungeon',
-        "short": 'You are against a wall in the dungeon.',
-        "long":  'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
+        "name": 'The South Wall of the Dungeon',
+        "desc": 'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
         "exits": {
             "n": R_CENTER_OF_THE_DUNGEON,
             "e": R_SOUTH_EAST_CORNER_OF_THE_DUNGEON,
@@ -1191,9 +1137,8 @@ ROOMS = {
         "flags": {"dark": True, "indoors": True},
     },
     R_SOUTH_EAST_CORNER_OF_THE_DUNGEON: {
-        "name":  'The South East Corner of the Dungeon',
-        "short": 'You are against a wall in the dungeon.',
-        "long":  'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
+        "name": 'The South East Corner of the Dungeon',
+        "desc": 'You are against a wall in the dungeon.  It is quite dark here.  The lack of\nany windows in the area explains the smell around you.',
         "exits": {
             "n": R_EAST_WALL_OF_THE_DUNGEON,
             "w": R_SOUTH_WALL_OF_THE_DUNGEON,
@@ -1201,9 +1146,8 @@ ROOMS = {
         "flags": {"dark": True, "indoors": True},
     },
     R_ROOM_IN_MUD_SCHOOL_3757: {
-        "name":  'A Room in Mud School',
-        "short": 'You are in a room in Mud School.',
-        "long":  "You are in a room in Mud School.  Paintings of the heroic graduates of mud\nschool adorn the walls. To the west is Furey's Training Room, and to the east\nis Zump's Guild Room.  North of you is the next Station of Mud School.\nThere is a sign on the wall (type 'LOOK SIGN' to read it).",
+        "name": 'A Room in Mud School',
+        "desc": "You are in a room in Mud School.  Paintings of the heroic graduates of mud\nschool adorn the walls. To the west is Furey's Training Room, and to the east\nis Zump's Guild Room.  North of you is the next Station of Mud School.\nThere is a sign on the wall (type 'LOOK SIGN' to read it).",
         "exits": {
             "n": R_ROOM_IN_MUD_SCHOOL,
             "e": R_ZUMP_S_GUILD_ROOM,
@@ -1214,9 +1158,8 @@ ROOMS = {
         "sector": 1,
     },
     R_FUREY_S_TRAINING_ROOM: {
-        "name":  "Furey's Training Room",
-        "short": "You are in Furey's Training Room.",
-        "long":  "You are in Furey's Training Room.  Around you are all sorts of physical\nand mental training tools.  The whole room is filled with magic, holiness,\nand sweat.  There is a sign on the wall.",
+        "name": "Furey's Training Room",
+        "desc": "You are in Furey's Training Room.  Around you are all sorts of physical\nand mental training tools.  The whole room is filled with magic, holiness,\nand sweat.  There is a sign on the wall.",
         "exits": {
             "e": R_ROOM_IN_MUD_SCHOOL_3757,
         },
@@ -1224,9 +1167,8 @@ ROOMS = {
         "sector": 1,
     },
     R_ZUMP_S_GUILD_ROOM: {
-        "name":  "Zump's Guild Room",
-        "short": 'You are in a room filled with weapons, books, and many combat dummies, s...',
-        "long":  'You are in a room filled with weapons, books, and many combat dummies, some\ncut and stabbed many times, others burnt to a crisp.  The room is filled with\nsweat and an aura of magic.  There is a sign on the wall.',
+        "name": "Zump's Guild Room",
+        "desc": 'You are in a room filled with weapons, books, and many combat dummies, some\ncut and stabbed many times, others burnt to a crisp.  The room is filled with\nsweat and an aura of magic.  There is a sign on the wall.',
         "exits": {
             "w": R_ROOM_IN_MUD_SCHOOL_3757,
         },
@@ -1234,11 +1176,11 @@ ROOMS = {
         "sector": 1,
     },
     R_SAFE_ROOM: {
-        "name":  'A Safe Room',
-        "short": 'You are in a safe room, away from all the mean rabbits and snails of the...',
-        "long":  'You are in a safe room, away from all the mean rabbits and snails of the Arena.\nYou can rest here, and go up to go back to the Temple of Midgaard.',
+        "name": 'A Safe Room',
+        "desc": 'You are in a safe room, away from all the mean rabbits and snails of the Arena.\nYou can rest here, and go up to go back to the Temple of Midgaard.',
         "exits": {
-            "u": 3001,
+            # "u": 3001,
+            "u": R_ENTRANCE_TO_MUD_SCHOOL,
         },
         "flags": {"no_mob": True, "indoors": True},
     },

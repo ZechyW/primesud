@@ -95,8 +95,7 @@ belong to `world_consts.py` or are self-evident from context).
 ROOMS = {
     R_VILLAGE_SQUARE: {
         "name":   "Village Square",
-        "short":  "A crumbling square. A well stands at the centre.",
-        "long":   "Long multi-line description...",
+        "desc":   "Long multi-line description...",
         "exits":  {"n": R_MARKET, "s": R_DUNGEON_ENTRANCE},
         "flags":  {"no_mob": True, "indoors": True},
         "sector": 1,
@@ -108,8 +107,7 @@ ROOMS = {
 | Key      | Type           | Required | Notes |
 |----------|----------------|----------|-------|
 | `name`   | str            | yes      | Shown in the room header line |
-| `short`  | str            | yes      | One-line description for brief view |
-| `long`   | str            | yes      | Full room description; use `\n` for line breaks |
+| `desc`   | str            | yes      | Room description; use `\n` for line breaks |
 | `exits`  | dict           | yes      | Direction string → destination VNUM. Valid directions: `"n"`, `"e"`, `"s"`, `"w"`, `"u"`, `"d"` |
 | `flags`  | dict           | no       | Boolean room flags (see below) |
 | `sector` | int            | no       | Terrain type; defaults to `0` if omitted |

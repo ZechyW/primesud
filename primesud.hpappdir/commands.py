@@ -101,7 +101,7 @@ def _look_item(tr, player, args, room_state):
                 tr.print(line)
 
 
-def do_look(tr, player, args, room_state, mob_instances, _long=True):
+def do_look(tr, player, args, room_state, mob_instances):
     """Display the current room or examine an item (cf. 1stMud do_look in act_info.c).
 
     Args:
@@ -110,7 +110,6 @@ def do_look(tr, player, args, room_state, mob_instances, _long=True):
         args (list): Parsed command arguments; non-empty triggers item look.
         room_state (dict): Per-room mutable state.
         mob_instances (dict): Live mob instance dicts keyed by mob ID.
-        _long (bool): Show long room description when True; short when False.
     """
     if args:
         # TODO: extend to room extra_descs, mob descriptions, and item extra_descs on other targets
@@ -124,7 +123,7 @@ def do_look(tr, player, args, room_state, mob_instances, _long=True):
     tr.print("{Y" + room["name"] + "{x")
 
     text = []
-    text.extend(_wrap_paragraphs(room["long"] if _long else room["short"], text_w))
+    text.extend(_wrap_paragraphs(room["desc"], text_w))
     
     if automap_on:
         map_lines = build_compact_lines(player, ROOMS)
@@ -163,7 +162,7 @@ def do_move(tr, player, direction, room_state, mob_instances):
         tr.print("That way is not yet open.")
         return
     player["room"] = dest
-    do_look(tr, player, [], room_state, mob_instances, _long=False)
+    do_look(tr, player, [], room_state, mob_instances)
 
 
 def do_get(tr, player, args, room_state, mob_instances):

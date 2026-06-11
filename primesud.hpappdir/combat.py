@@ -617,7 +617,7 @@ def set_fighting(tr, player, mob_id, mob_instances, room_state):
     inst["fighting"] = player
     player["fighting"] = mob_id
     player["pos"]      = "fighting"
-    tr.print("--- {} attacks! ---".format(tpl["short_descr"]))
+    tr.print("{} attacks!".format(tpl["short_descr"]))
 
 
 def check_assist(tr, player, attacked_id, mob_instances, room_state):
@@ -657,7 +657,7 @@ def check_assist(tr, player, attacked_id, mob_instances, room_state):
                 or (grp and grp == attacked_tpl.get("group"))):
             inst["state"]    = "aggro"
             inst["fighting"] = player
-            tr.print("--- {} screams and joins the fight! ---".format(
+            tr.print("{} screams and joins the fight!".format(
                 tpl["short_descr"]))
 
 
