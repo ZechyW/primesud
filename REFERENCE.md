@@ -3,6 +3,9 @@
 Snippets of implementation detail from the reference 1stMud 4.5.3 source
 (`reference/1stMud4.5.3/`).
 
+See also: **[COMMANDS.md](COMMANDS.md)** — full command table with load order,
+positions, levels, flags, and categories (source: `data/commands.dat`).
+
 ---
 
 ## Custom colour slots
