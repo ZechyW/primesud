@@ -195,13 +195,15 @@ def mobile_update(tr, player, mob_instances, room_state):
             continue
         dirs = list(exits.keys())
         direction = dirs[randint(0, len(dirs) - 1)]
-        dest_vnum = exits[direction]
+        exit_val = exits[direction]
+        if isinstance(exit_val, dict) and exit_val.get("closed"):  # cf. EX_CLOSED check, update.c:499
+            continue
+        dest_vnum = exit_val["to"] if isinstance(exit_val, dict) else exit_val
         if dest_vnum not in ROOMS:
             continue
         dest_flags = ROOMS[dest_vnum].get("flags", {})
         if dest_flags.get("no_mob"):  # cf. ROOM_NO_MOB check, update.c:500
             continue
-        # [PRIMESUD] EX_CLOSED not tracked — all listed exits treated as open
         if act.get("stay_area") and ROOMS[dest_vnum].get("area") != ROOMS[inst["room"]].get("area"):
             continue  # cf. ACT_STAY_AREA check, update.c:501
         if act.get("outdoors") and dest_flags.get("indoors"):
@@ -500,14 +502,14 @@ def show_prompt(tr, player, buf):
 #   - HVars returns the string "Error: Invalid input" when the variable does
 #     not exist yet (i.e. no save found); load_char treats this as no-save.
 
-def save_char(player, room_state, mob_instances, area_state=None, macros=None):
+def save_char(player, room_state, mob_instances, area_states=None, macros=None):
     """Serialise player and world state to a PPL HVars variable (cf. 1stMud save_char_obj in save.c).
 
     Args:
         player (dict): Player state dict.
         room_state (dict): Room state mapping room ID → room state dict.
         mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
-        area_state (dict or None): Area-level state (e.g. age counter); skipped if None.
+        area_states (list or None): List of area state dicts (tag, age, resets); skipped if None.
         macros (dict or None): Macro key→command mapping; skipped if None.
 
     Returns:
@@ -530,8 +532,9 @@ def save_char(player, room_state, mob_instances, area_state=None, macros=None):
     if macros is not None:
         for k, v in macros.items():
             lines.append("p.macro.{}={}".format(k, v))
-    if area_state is not None:
-        lines.append("a.age={}".format(area_state["age"]))
+    if area_states is not None:
+        for _as in area_states:
+            lines.append("a.{}.age={}".format(_as["tag"], _as["age"]))
     tpl_rooms = {}
     for inst in mob_instances.values():
         tpl = inst["tpl"]
@@ -550,17 +553,17 @@ def save_char(player, room_state, mob_instances, area_state=None, macros=None):
         return False
 
 
-def load_char(player, room_state, mob_instances, area_state=None, macros=None):
+def load_char(player, room_state, mob_instances, area_states=None, macros=None):
     """Deserialise player and world state from the PPL HVars variable (cf. 1stMud load_char_obj in save.c).
 
-    Mutates player, room_state, mob_instances, and optionally area_state and
+    Mutates player, room_state, mob_instances, and optionally area_states and
     macros in-place.
 
     Args:
         player (dict): Player state dict to populate.
         room_state (dict): Room state mapping room ID → room state dict.
         mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
-        area_state (dict or None): Area-level state dict to populate; skipped if None.
+        area_states (list or None): List of area state dicts (tag, age, resets); skipped if None.
         macros (dict or None): Macro dict to populate; skipped if None.
 
     Returns:
@@ -582,6 +585,7 @@ def load_char(player, room_state, mob_instances, area_state=None, macros=None):
     if macros is not None:
         macros.clear()
 
+    _area_by_tag = {s["tag"]: s for s in area_states} if area_states is not None else {}
     mob_saves = {}  # tpl_vnum → [room, room, ...]
 
     for line in data.split("~"):
@@ -610,8 +614,10 @@ def load_char(player, room_state, mob_instances, area_state=None, macros=None):
             rvnum = int(key.split(".")[1])
             if rvnum in room_state:
                 room_state[rvnum]["items"] = [int(v) for v in val.split("|") if v]
-        elif key == "a.age" and area_state is not None:
-            area_state["age"] = int(val)
+        elif key.startswith("a.") and key.endswith(".age"):
+            tag = key[2:-4]
+            if tag in _area_by_tag:
+                _area_by_tag[tag]["age"] = int(val)
         elif key.startswith("m."):
             mob_saves[int(key[2:])] = [int(r) for r in val.split("|") if r]
 

@@ -69,4 +69,13 @@ Verified with `dir(str)` on-device.
 
 ---
 
+## Language / Syntax Restrictions
+
+Features not supported by HP Prime's MicroPython (confirmed via `SyntaxError` at runtime):
+
+| Feature | Workaround |
+|:--------|:-----------|
+| `{**a, **b}` dict unpacking in literals | `d = {}; d.update(a); d.update(b)` |
+| `f"..."` f-strings | `"{} ...".format(x)` |
+
 <!-- Add sections for other builtins as verified: list, dict, int, etc. -->

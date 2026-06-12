@@ -46,7 +46,9 @@ KEY_COMMANDS = {  # [PRIMESUD]
 # Maps digit key "0"-"9" → command string. Edit to taste.
 DEFAULT_MACROS = {  # [PRIMESUD]
     "7": "kill",
-    "5": "look",
+    "8": "flee",
+    "4": "look",
+    "5": "open",
     "1": "score",
     "0": "macro"
 }

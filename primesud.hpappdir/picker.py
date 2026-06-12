@@ -19,20 +19,24 @@ def pick_from(tr, title, options):
         int: 0-based index of the selected option, or -1 if cancelled.
     """
     shown = options[:_MAX_OPTS]
-    tr.print(title)
+    tr.print("{Y" + title + "{x")
     for i, opt in enumerate(shown):
-        tr.print("  {y{}){x {}".format(i + 1, opt))
+        suffix = " {C(default){x" if i == 0 else ""
+        tr.print("  {y" + str(i + 1) + "){x " + opt + suffix)
     if len(options) > _MAX_OPTS:
-        tr.print("  {d({} more not shown){x".format(len(options) - _MAX_OPTS))
-    tr.print("  {d0) cancel{x")
+        tr.print("  {w(" + str(len(options) - _MAX_OPTS) + " more not shown){x")
+    tr.print("  {w0) cancel{x")
 
     while True:
-        raw = tr.input(prompt="> ")
+        raw = tr.input(prompt=": ", alpha=False)
         raw = raw.strip()
-        if raw and raw[0] == '0':
+        if not raw:
+            return 0
+        if raw[0] == '0':
             return -1
         if raw[0].isdigit():
             idx = int(raw[0]) - 1
             if 0 <= idx < len(shown):
                 return idx
-        tr.print("{dEnter 1-{} or 0 to cancel.{x".format(len(shown)))
+        rang = "1" if len(shown) == 1 else "1-" + str(len(shown))
+        tr.print("{wEnter " + rang + " (or 0 to cancel).{x")

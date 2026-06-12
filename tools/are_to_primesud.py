@@ -18,7 +18,8 @@ Design choices:
   - loot: left empty; populate from RESETS E/G lines manually
   - act_flags, off_flags, imm/res/vuln_flags: decoded into name→True dicts
     using flag tables from REFERENCE.md; included even if PrimeSUD ignores them
-  - Exits: simple dir→vnum mapping; door flags added as inline comments
+  - Exits: plain vnum for open passages; dict {"to": vnum, "isdoor": True, ...}
+    for exits with any door flags — all EXIT_FLAGS encoded as name→True keys
   - Constant names: generated from display text, deduplicated with _<vnum>
 """
 
@@ -63,7 +64,8 @@ RESIST_FLAGS = {
 ROOM_FLAGS = {
     0: "dark", 2: "no_mob", 3: "indoors", 4: "arena", 5: "bank",
     9: "private", 10: "safe", 11: "solitary", 12: "pet_shop",
-    13: "no_recall", 18: "law", 19: "nowhere", 20: "noexplore",
+    13: "no_recall", 14: "imp_only", 15: "gods_only", 16: "heroes_only",
+    17: "newbies_only", 18: "law", 19: "nowhere", 20: "noexplore",
     21: "noautomap", 22: "save_objs",
 }
 EXIT_FLAGS = {
@@ -631,8 +633,15 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
             to_vnum = room["exits"][d]
             to_c    = r(to_vnum, room_map)
             note    = room["exit_notes"].get(d)
-            suffix  = f"  # door: {_repr_flags(note)}" if note else ""
-            w(f'            "{d}": {to_c},{suffix}')
+            if note:
+                parts = [f'"to": {to_c}']
+                for flag in ("isdoor", "closed", "locked", "pickproof", "nopass",
+                             "doorbell", "easy", "hard", "infuriating", "noclose", "nolock"):
+                    if note.get(flag):
+                        parts.append(f'"{flag}": True')
+                w(f'            "{d}": {{{", ".join(parts)}}},')
+            else:
+                w(f'            "{d}": {to_c},')
         w("        },")
         if room["flags"]:
             w(f'        "flags": {_repr_flags(room["flags"])},')

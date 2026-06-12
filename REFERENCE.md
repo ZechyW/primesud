@@ -629,8 +629,12 @@ Flag values decoded:
 | 10  | `ROOM_SAFE`      | No combat                               |
 | 11  | `ROOM_SOLITARY`  | Max 1 occupant                          |
 | 12  | `ROOM_PET_SHOP`  | Pet shop                                |
-| 13  | `ROOM_NO_RECALL` | Cannot recall from here                 |
-| 18  | `ROOM_LAW`       | Law zone (auto-set for VNUMs 3000–3399) |
+| 13  | `ROOM_NO_RECALL`    | Cannot recall from here                 |
+| 14  | `ROOM_IMP_ONLY`     | Immortal (imp) access only              |
+| 15  | `ROOM_GODS_ONLY`    | God-level access only                   |
+| 16  | `ROOM_HEROES_ONLY`  | Hero-level access only                  |
+| 17  | `ROOM_NEWBIES_ONLY` | Newbie access only                      |
+| 18  | `ROOM_LAW`          | Law zone (auto-set for VNUMs 3000–3399) |
 | 19  | `ROOM_NOWHERE`   | Unreachable via normal exits            |
 | 20  | `ROOM_NOEXPLORE` | Not counted for explore tracking        |
 | 21  | `ROOM_NOAUTOMAP` | Hidden from automap                     |

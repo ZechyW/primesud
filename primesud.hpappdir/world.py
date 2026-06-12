@@ -6,7 +6,7 @@
 
 # fmt: off
 # ── Cross-area room VNUMs (cf. 1stMud gsn_* / room vnums in index.h) ──────────
-R_STARTING_ROOM  = 3700   # player respawn/starting room (currently Village Square)
+R_STARTING_ROOM  = 3700   # player respawn/starting room (Mud School entrance)
 
 # ── Skills ────────────────────────────────────────────────────────────────────
 GSN_KICK         = 4001
@@ -17,9 +17,15 @@ GSN_PARRY        = 4020
 
 from area_school import (
     ROOMS    as _school_rooms,
-    MOBILES  as MOB_TEMPLATES,
-    OBJECTS  as ITEM_TEMPLATES,
-    RESETS,
+    MOBILES  as _school_mobs,
+    OBJECTS  as _school_items,
+    RESETS   as _school_resets,
+)
+from area_midgaard import (
+    ROOMS    as _midgaard_rooms,
+    MOBILES  as _midgaard_mobs,
+    OBJECTS  as _midgaard_items,
+    RESETS   as _midgaard_resets,
 )
 
 # Tag every room with its area name (cf. room->area pointer in 1stMud db.c).
@@ -28,6 +34,18 @@ ROOMS = {}
 for _vnum, _room in _school_rooms.items():
     _room["area"] = "mud_school"
     ROOMS[_vnum] = _room
+for _vnum, _room in _midgaard_rooms.items():
+    _room["area"] = "midgaard"
+    ROOMS[_vnum] = _room
+
+MOB_TEMPLATES = {}; MOB_TEMPLATES.update(_school_mobs);  MOB_TEMPLATES.update(_midgaard_mobs)
+ITEM_TEMPLATES = {}; ITEM_TEMPLATES.update(_school_items); ITEM_TEMPLATES.update(_midgaard_items)
+RESETS          = _school_resets + _midgaard_resets
+
+AREA_DEFS = (
+    {"tag": "mud_school", "resets": _school_resets},
+    {"tag": "midgaard",   "resets": _midgaard_resets},
+)
 
 # ── Skills (cf. 1stMud skill_table; ordered list for prefix-match tiebreaking) ─
 # type:     "active"  — manually triggered physical skill; beats apply

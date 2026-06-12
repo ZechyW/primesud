@@ -594,7 +594,7 @@ ROOMS = {
         "desc": "This is the entrance to the Merc Mud School.  Go north to go through mud\nschool.  If you have been here before and want to go directly to the arena,\ngo south.\n\nA sign warns 'You may not pass these doors once you have passed level 5.'",
         "exits": {
             "n": R_ROOM_IN_MUD_SCHOOL_3757,
-            "s": R_NORTH_WALL_OF_ARENA_3744,  # door: {"isdoor": True, "closed": True}
+            "s": {"to": R_NORTH_WALL_OF_ARENA_3744, "isdoor": True, "closed": True},
             "d": 3001,
         },
         "flags": {"no_mob": True, "indoors": True},
@@ -606,7 +606,7 @@ ROOMS = {
             "s": R_ROOM_IN_MUD_SCHOOL_3757,
             "w": R_CENTER_ROOM,
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
     },
     R_CENTER_ROOM: {
         "name": 'The Center Room',
@@ -619,7 +619,7 @@ ROOMS = {
             "u": R_ROOM_IN_MUD_SCHOOL_3708,
             "d": R_ROOM_IN_MUD_SCHOOL_3707,
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
     },
     R_ROOM_IN_MUD_SCHOOL_3703: {
         "name": 'A Room in Mud School',
@@ -628,7 +628,7 @@ ROOMS = {
             "n": R_ROOM_IN_MUD_SCHOOL_3709,
             "s": R_CENTER_ROOM,
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
     },
     R_ROOM_IN_MUD_SCHOOL_3704: {
         "name": 'A Room in Mud School',
@@ -636,7 +636,7 @@ ROOMS = {
         "exits": {
             "e": R_CENTER_ROOM,
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
     },
     R_ROOM_IN_MUD_SCHOOL_3705: {
         "name": 'A Room in Mud School',
@@ -644,7 +644,7 @@ ROOMS = {
         "exits": {
             "n": R_CENTER_ROOM,
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
     },
     R_ROOM_IN_MUD_SCHOOL_3707: {
         "name": 'A Room in Mud School',
@@ -652,7 +652,7 @@ ROOMS = {
         "exits": {
             "u": R_CENTER_ROOM,
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
     },
     R_ROOM_IN_MUD_SCHOOL_3708: {
         "name": 'A Room in Mud School',
@@ -660,7 +660,7 @@ ROOMS = {
         "exits": {
             "d": R_CENTER_ROOM,
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
     },
     R_ROOM_IN_MUD_SCHOOL_3709: {
         "name": 'A Room in Mud School',
@@ -669,7 +669,7 @@ ROOMS = {
             "w": R_ROOM_IN_MUD_SCHOOL_3711,
             "d": R_BLOB_CAGE,
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
     },
     R_BLOB_CAGE: {
         "name": 'The Blob Cage',
@@ -677,7 +677,7 @@ ROOMS = {
         "exits": {
             "u": R_ROOM_IN_MUD_SCHOOL_3709,
         },
-        "flags": {"indoors": True, "_unknown_bits": [17]},
+        "flags": {"indoors": True, "newbies_only": True},
     },
     R_ROOM_IN_MUD_SCHOOL_3711: {
         "name": 'A Room in Mud School',
@@ -686,7 +686,7 @@ ROOMS = {
             "e": R_ROOM_IN_MUD_SCHOOL_3709,
             "d": R_CAGE_ROOM,
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
     },
     R_CAGE_ROOM: {
         "name": 'The Cage Room',
@@ -698,7 +698,7 @@ ROOMS = {
             "w": R_CAGE_3714,
             "d": R_ROOM_IN_MUD_SCHOOL_3717,
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
     },
     R_CAGE: {
         "name": 'A Cage',
@@ -706,7 +706,7 @@ ROOMS = {
         "exits": {
             "s": R_CAGE_ROOM,
         },
-        "flags": {"indoors": True, "_unknown_bits": [17]},
+        "flags": {"indoors": True, "newbies_only": True},
     },
     R_CAGE_3714: {
         "name": 'A Cage',
@@ -714,7 +714,7 @@ ROOMS = {
         "exits": {
             "e": R_CAGE_ROOM,
         },
-        "flags": {"indoors": True, "_unknown_bits": [17]},
+        "flags": {"indoors": True, "newbies_only": True},
     },
     R_CAGE_3715: {
         "name": 'A Cage',
@@ -722,7 +722,7 @@ ROOMS = {
         "exits": {
             "n": R_CAGE_ROOM,
         },
-        "flags": {"indoors": True, "_unknown_bits": [17]},
+        "flags": {"indoors": True, "newbies_only": True},
     },
     R_CAGE_3716: {
         "name": 'A Cage',
@@ -730,17 +730,17 @@ ROOMS = {
         "exits": {
             "w": R_CAGE_ROOM,
         },
-        "flags": {"indoors": True, "_unknown_bits": [17]},
+        "flags": {"indoors": True, "newbies_only": True},
     },
     R_ROOM_IN_MUD_SCHOOL_3717: {
         "name": 'A Room in Mud School',
         "desc": 'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  Find your own exit here.',
         "exits": {
-            "e": R_ROOM_IN_MUD_SCHOOL_3719,  # door: {"isdoor": True, "closed": True}
+            "e": {"to": R_ROOM_IN_MUD_SCHOOL_3719, "isdoor": True, "closed": True},
             "s": R_STORE_IN_MUD_SCHOOL,
             "u": R_CAGE_ROOM,
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
     },
     R_STORE_IN_MUD_SCHOOL: {
         "name": 'The Store in Mud School',
@@ -748,17 +748,17 @@ ROOMS = {
         "exits": {
             "n": R_ROOM_IN_MUD_SCHOOL_3717,
         },
-        "flags": {"indoors": True, "_unknown_bits": [17]},
+        "flags": {"indoors": True, "newbies_only": True},
     },
     R_ROOM_IN_MUD_SCHOOL_3719: {
         "name": 'A Room in Mud School',
         "desc": 'You are in a square white room.  The walls are all blank, with no windows.\nLight fluoresces off the ceiling in soft white tones.  Of course, there is a\nsign on the wall.  The exits are north and west, with a door to the east.',
         "exits": {
             "n": R_DARKENED_ROOM,
-            "e": R_END_OF_MUD_SCHOOL,  # door: {"isdoor": True, "closed": True, "locked": True, "pickproof": True}
-            "w": R_ROOM_IN_MUD_SCHOOL_3717,  # door: {"isdoor": True, "closed": True}
+            "e": {"to": R_END_OF_MUD_SCHOOL, "isdoor": True, "closed": True, "locked": True, "pickproof": True},
+            "w": {"to": R_ROOM_IN_MUD_SCHOOL_3717, "isdoor": True, "closed": True},
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
     },
     R_DARKENED_ROOM: {
         "name": 'The Darkened Room',
@@ -766,15 +766,15 @@ ROOMS = {
         "exits": {
             "s": R_ROOM_IN_MUD_SCHOOL_3719,
         },
-        "flags": {"dark": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"dark": True, "indoors": True, "newbies_only": True},
     },
     R_END_OF_MUD_SCHOOL: {
         "name": 'The End of Mud School!',
         "desc": 'This is a very bright room, with a marble pedestal in the center.  Behind\nthe pedestal stands a person cloaked in Silver.  Tapestries flow from every\nwall, and you feel very happy to be here right now.  There is a big sign here.\nThe only exit is on the other side of the gate north of you.',
         "exits": {
-            "n": R_SOUTH_WALL_OF_ARENA,  # door: {"isdoor": True, "closed": True}
+            "n": {"to": R_SOUTH_WALL_OF_ARENA, "isdoor": True, "closed": True},
         },
-        "flags": {"indoors": True, "_unknown_bits": [17]},
+        "flags": {"indoors": True, "newbies_only": True},
     },
     R_SOUTH_WALL_OF_ARENA: {
         "name": 'South Wall of Arena',
@@ -919,7 +919,7 @@ ROOMS = {
             "s": R_ARENA_3729,
             "w": R_ARENA_3733,
             "u": R_SAFE_ROOM,
-            "d": R_CENTER_OF_THE_DUNGEON,  # door: {"isdoor": True, "closed": True}
+            "d": {"to": R_CENTER_OF_THE_DUNGEON, "isdoor": True, "closed": True},
         },
         "flags": {"indoors": True},
     },
@@ -1065,7 +1065,7 @@ ROOMS = {
             "e": R_EAST_WALL_OF_THE_DUNGEON,
             "s": R_SOUTH_WALL_OF_THE_DUNGEON,
             "w": R_WEST_WALL_OF_THE_DUNGEON,
-            "u": R_CENTER_OF_ARENA,  # door: {"isdoor": True, "closed": True}
+            "u": {"to": R_CENTER_OF_ARENA, "isdoor": True, "closed": True},
         },
         "flags": {"indoors": True},
     },
@@ -1154,7 +1154,7 @@ ROOMS = {
             "s": R_ENTRANCE_TO_MUD_SCHOOL,
             "w": R_FUREY_S_TRAINING_ROOM,
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
         "sector": 1,
     },
     R_FUREY_S_TRAINING_ROOM: {
@@ -1163,7 +1163,7 @@ ROOMS = {
         "exits": {
             "e": R_ROOM_IN_MUD_SCHOOL_3757,
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
         "sector": 1,
     },
     R_ZUMP_S_GUILD_ROOM: {
@@ -1172,7 +1172,7 @@ ROOMS = {
         "exits": {
             "w": R_ROOM_IN_MUD_SCHOOL_3757,
         },
-        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [17]},
+        "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
         "sector": 1,
     },
     R_SAFE_ROOM: {

@@ -5,6 +5,9 @@ the text-based `.are` files used by 1stMud — parsing text at runtime would be
 memory-intensive and slow on the HP Prime. The structure mirrors 1stMud's sections but
 uses plain Python dicts and tuples.
 
+> **Do not edit area files directly.** They are generated from `.are` source files by
+> `tools/are_to_primesud.py`. Edit the converter and regenerate instead.
+
 `world.py` loads every area module and merges `ROOMS`, `MOBILES`, `OBJECTS`, and
 `RESETS` into the game-wide tables. `SKILL_TABLE` and `SKILLS` live in `world.py`
 directly — skills are global, not per-area.
@@ -122,16 +125,30 @@ ROOMS = {
 | `safe`          | No combat allowed |
 | `_unknown_bits` | List of uninterpreted bit positions from the original `.are` conversion; preserve, don't add new ones |
 
-### Doors (deferred)
+### Doors
 
-Door state on exits is not yet implemented. Until then, annotate the exit with a
-comment showing the original door data:
+Use a dict instead of a plain integer for exits that have a door. Only include keys whose value is `True` — the converter never emits `False` entries:
 
 ```python
 "exits": {
-    "e": R_LOCKED_ROOM,  # door: {"isdoor": True, "closed": True, "locked": True}
+    "e": {"to": R_LOCKED_ROOM, "isdoor": True, "closed": True, "locked": True},
 },
 ```
+
+| Key            | Meaning |
+|----------------|---------|
+| `to`           | Destination VNUM (always present in dict form) |
+| `isdoor`       | Required for `open`/`close` to work |
+| `closed`       | Door starts closed |
+| `locked`       | Door starts locked (implies `closed`) |
+| `pickproof`    | Cannot be picked |
+| `nopass`       | Blocks `pass door` spell |
+| `doorbell`     | Has a doorbell |
+| `easy`/`hard`/`infuriating` | Pick difficulty |
+| `noclose`      | Cannot be closed |
+| `nolock`       | Cannot be locked |
+
+The automap will not draw past a currently-closed door (matching 1stMud behaviour).
 
 ---
 

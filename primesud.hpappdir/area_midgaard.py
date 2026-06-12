@@ -1933,7 +1933,7 @@ ROOMS = {
         "desc": 'You are inside a tidy office.  A big desk made from dark wood is standing\nin the centre of the room.',
         "exits": {
             "e": R_PARK_ROAD,
-            "w": R_CAPTAIN_S_OFFICE,  # door: {"isdoor": True, "closed": True, "locked": True}
+            "w": {"to": R_CAPTAIN_S_OFFICE, "isdoor": True, "closed": True, "locked": True},
         },
         "flags": {"indoors": True, "law": True},
     },
@@ -2262,8 +2262,8 @@ ROOMS = {
         "name": "Captain's Office",
         "desc": 'You are in the Office of the Captain of the Guard.  The Midgaard Coat of\nArms is hanging on the north wall and a heavy steel door is to the south.',
         "exits": {
-            "e": R_CITYGUARD_HEAD_QUARTERS,  # door: {"isdoor": True, "closed": True, "locked": True}
-            "s": R_JAIL,  # door: {"isdoor": True, "closed": True, "locked": True}
+            "e": {"to": R_CITYGUARD_HEAD_QUARTERS, "isdoor": True, "closed": True, "locked": True},
+            "s": {"to": R_JAIL, "isdoor": True, "closed": True, "locked": True},
         },
         "flags": {"indoors": True, "law": True},
     },
@@ -2271,7 +2271,7 @@ ROOMS = {
         "name": 'The Jail',
         "desc": 'You are in a dark and humid jail.  The dark stone walls are hard and cold\nto the touch.  A heavy steel door is to the north.',
         "exits": {
-            "n": R_CAPTAIN_S_OFFICE,  # door: {"isdoor": True, "closed": True, "locked": True}
+            "n": {"to": R_CAPTAIN_S_OFFICE, "isdoor": True, "closed": True, "locked": True},
         },
         "flags": {"indoors": True, "law": True},
     },
@@ -2299,7 +2299,7 @@ ROOMS = {
         "name": "Melancholy's Maps",
         "desc": "As you walk in, a sudden gust of wind enters the shop and sends several\nscraps of paper fly around the room.  You blink as the dust you've stirred\nup stings your eyes, and take a look around the shop.  This shop is cluttered\nwith old pieces of parchment, stacks of books, and odd scraps.  A desk with\nslightly less clutter than the rest of the shop is in front of you.  A scroll\ncase full of scrolls is behind the desk.  A bookcase is to the right of you,\nand to the left is a window overlooking the Common Square.  A small door,\nhalf hidden by a stack of books, leads to a room in the back of the shop.",
         "exits": {
-            "n": R_MELANCHOLY_S_ROOM,  # door: {"isdoor": True, "closed": True, "locked": True, "pickproof": True}
+            "n": {"to": R_MELANCHOLY_S_ROOM, "isdoor": True, "closed": True, "locked": True, "pickproof": True},
             "s": R_EASTERN_END_OF_POOR_ALLEY,
         },
         "flags": {"no_mob": True, "law": True, "_unknown_bits": [1]},
@@ -2308,7 +2308,7 @@ ROOMS = {
         "name": "Melancholy's Room",
         "desc": "A faint smell of incense teases your nose as you enter this room.  You\nstep onto a soft bearskin rug and look around.  A simple bed lies against\nthe far wall.  At the foot of it is a sturdy, ironbound chest, most likely\nfull of Melancholy's trappings from her adventuring days.  On a small table\nunder a window to the east is a vase with a single white rose.  Other than\nthat, the room is quite bare.",
         "exits": {
-            "s": R_MELANCHOLY_S_MAPS,  # door: {"isdoor": True, "closed": True, "locked": True, "pickproof": True}
+            "s": {"to": R_MELANCHOLY_S_MAPS, "isdoor": True, "closed": True, "locked": True, "pickproof": True},
             "u": 1219,
         },
         "flags": {"no_mob": True, "private": True, "law": True, "_unknown_bits": [1]},

@@ -56,7 +56,7 @@ def pick_from(tr, title, options):
 
     Args:
         tr: tml renderer instance.
-        title (str): Header line, e.g. "{YKill whom?{x".
+        title (str): Header line, plain text — colour wrapping applied internally.
         options (list[str]): Display strings.  At most 9 are shown.
 
     Returns:
@@ -64,40 +64,10 @@ def pick_from(tr, title, options):
     """
 ```
 
-### Implementation
-
-```python
-_MAX_OPTS = 9
-
-def pick_from(tr, title, options):
-    shown = options[:_MAX_OPTS]
-    tr.print(title)
-    for i, opt in enumerate(shown):
-        tr.print("  {}{}) {}{}".format("{y", i + 1, "{x", opt))
-    if len(options) > _MAX_OPTS:
-        tr.print("  {d... ({} more not shown){x".format(len(options) - _MAX_OPTS))
-    tr.print("  {d0) cancel{x")
-
-    while True:
-        raw = tr.input(prompt="{d>{x ")
-        raw = raw.strip()
-        if not raw or raw[0] == '0':
-            return -1
-        if raw[0].isdigit():
-            idx = int(raw[0]) - 1
-            if 0 <= idx < len(shown):
-                return idx
-        tr.print("{dEnter 1-{} or 0 to cancel.{x".format(len(shown)))
-```
-
 **Notes:**
-- `tr.input(prompt=…)` blocks until Enter, returns the typed string with cursor
-  echo handled by tml.  No extra keyboard code needed.
-- Prompt must be plain text — `tr.input()` calls the original `tml.print()` which
-  does not process colour codes.  Colour codes in list rows are fine because those
-  use `tr.print`, which is monkey-patched to the colour-aware `_wrapped_print`.
+- `tr.input(prompt=…)` blocks until Enter; no extra keyboard code needed.
 - Only `raw[0]` is inspected — typing "2foo" still selects option 2.
-- Empty input (bare Enter) **re-prompts** — only explicit `'0'` cancels.
+- Empty input (bare Enter) defaults to option 1.
 - Re-prompts on out-of-range or non-digit input rather than silently looping.
 - Side-effect-free: does not mutate `player`, `room_state`, or `mob_instances`.
 
@@ -123,11 +93,9 @@ def do_kill(tr, player, args, room_state, mob_instances):
         if target_id is None:
             tr.print("They are not here.")
             return
-    elif len(live) == 1:
-        target_id = live[0]           # auto-select if only one target
     else:
         names = [mob_instances[i]["name"] for i in live]
-        idx = pick_from(tr, "{YKill whom?{x", names)
+        idx = pick_from(tr, "Kill whom?", names)
         if idx < 0:
             return
         target_id = live[idx]
@@ -136,7 +104,8 @@ def do_kill(tr, player, args, room_state, mob_instances):
 ```
 
 Conventions:
-- If only **one** valid target exists, **skip the picker** — auto-select silently.
+- **Always show the picker** when no argument was supplied, even for a single option —
+  prevents accidental action from a mispress.
 - If **no** valid targets exist, print the normal error message.
 - If the player already typed an argument (`kill rat`), use the existing fuzzy-match
   path; the picker is never shown.
@@ -148,6 +117,8 @@ Conventions:
 | Done | Command | Picker title | Option source |
 |------|---------|-------------|---------------|
 | ✅ | `do_kill` | `{YKill whom?{x` | live mobs in current room |
+| ✅ | `do_open` | `{YOpen which door?{x` | `isdoor`+`closed` exits in current room |
+| ✅ | `do_close` | `{YClose which door?{x` | `isdoor`+open exits in current room |
 | ☐ | `do_get` | `{YPick up what?{x` | items on ground in current room |
 | ☐ | `do_drop` | `{YDrop what?{x` | items in player inventory |
 | ☐ | `do_wear` | `{YWear what?{x` | equippable items in inventory (has `"slot"` key) |

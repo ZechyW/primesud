@@ -53,7 +53,10 @@ def _map_exits(rooms, start_vnum, grid, start_gx, start_gy):
         room = rooms.get(vnum)
         if room is None:
             continue
-        for direction, dest_vnum in room["exits"].items():
+        for direction, exit_val in room["exits"].items():
+            if isinstance(exit_val, dict) and exit_val.get("closed"):
+                continue
+            dest_vnum = exit_val["to"] if isinstance(exit_val, dict) else exit_val
             delta = _DIR_DELTA.get(direction)
             if delta is None:
                 continue

@@ -17,7 +17,7 @@ from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     TERMINAL_COLS, FONT, FONT_GROB, COLOR_GROB,
                     DEATH_MSG_DELAY)
 from util import free_mem
-from world import R_STARTING_ROOM, RESETS, ROOMS
+from world import R_STARTING_ROOM, ROOMS, AREA_DEFS
 from combat import violence_update
 from player import (
     create_char,
@@ -53,16 +53,19 @@ _RESET_MSGS = (
 )
 
 
-def area_update(tr, player, area_state, room_state, mob_instances):
-    """Increment area age and reset if threshold reached (cf. 1stMud area_update, db.c)."""
-    area_state["age"] += 1
-    if area_state["age"] >= _AREA_AGE_MIN and area_state["age"] >= _AREA_AGE_RESET:
-        reset_mobs(mob_instances, room_state, RESETS)
-        area_state["age"] = randint(0, 3)
-        # School area is intentionally silent (cf. db.c:1335 else-if excludes it); other areas get a random message.
-        if (area_state.get("tag") != "mud_school"
-                and ROOMS[player["room"]].get("area") == area_state.get("tag")):
-            tr.print(_RESET_MSGS[randint(0, len(_RESET_MSGS) - 1)])
+def area_update(tr, player, area_states, room_state, mob_instances):
+    """Increment each area's age and reset any that reach the threshold (cf. 1stMud area_update, db.c)."""
+    for area_state in area_states:
+        area_state["age"] += 1
+        if area_state["age"] >= _AREA_AGE_MIN and area_state["age"] >= _AREA_AGE_RESET:
+            reset_mobs(mob_instances, room_state, area_state["resets"])
+            if area_state["tag"] == "mud_school":
+                area_state["age"] = 13  # resets every 2 ticks (cf. db.c:1330: age = 15-2)
+            else:
+                area_state["age"] = randint(0, 3)
+                # School area is intentionally silent (cf. db.c:1335 else-if excludes it).
+                if ROOMS[player["room"]].get("area") == area_state["tag"]:
+                    tr.print(_RESET_MSGS[randint(0, len(_RESET_MSGS) - 1)])
 
 
 def _wrap_plain(text, width):
@@ -174,7 +177,7 @@ class Game:
         self.player = None
         self.room_state = None
         self.mob_instances = None
-        self._area_state = {"age": 0, "tag": "mud_school"}
+        self._area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
 
     def set_color(self, color):
         """Recolour the font grob for subsequent glyph rendering.
@@ -206,14 +209,14 @@ class Game:
         self.player["name"] = name
         self.player["_logon_ms"] = int(ppleval("Ticks"))
         self.room_state, self.mob_instances = reset_area()
-        self._area_state = {"age": 0, "tag": "mud_school"}
+        self._area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
 
     def load_game(self):
         self.player = create_char()
         self.room_state, self.mob_instances = reset_area()
-        self._area_state = {"age": 0, "tag": "mud_school"}
+        self._area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
         result = _load_char(self.player, self.room_state, self.mob_instances,
-                            self._area_state, _MACRO_SUBST)
+                            self._area_states, _MACRO_SUBST)
         self.player["_logon_ms"] = int(ppleval("Ticks"))
         return result
 
@@ -223,7 +226,7 @@ class Game:
         self.player["played"] = self.player.get("played", 0) + elapsed
         self.player["_logon_ms"] = now
         if not _save_char(self.player, self.room_state, self.mob_instances,
-                          self._area_state, _MACRO_SUBST):
+                          self._area_states, _MACRO_SUBST):
             self.tr.print("Save failed.")
         else:
             self.tr.print("Saved.")
@@ -269,7 +272,7 @@ class Game:
         player = self.player
         room_state = self.room_state
         mob_instances = self.mob_instances
-        area_state = self._area_state
+        area_states = self._area_states
 
         pulse      = 0
         tick_count = 0
@@ -344,7 +347,7 @@ class Game:
                     mobile_update(tr, player, mob_instances, room_state)
 
                 if pulse % PULSE_AREA == 0:
-                    area_update(tr, player, area_state, room_state, mob_instances)
+                    area_update(tr, player, area_states, room_state, mob_instances)
 
                 if pulse >= 14400:  # wrap at 1 hour (3600 s × 4 pulses/s)
                     pulse = 0
@@ -380,6 +383,7 @@ class PrimeSud:
         """Entry point: run the game inside the environment context manager."""
         with self:
             game = self.game
+
             game.show_greeting()
 
             if not game.load_game():

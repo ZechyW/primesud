@@ -38,8 +38,18 @@ def _wrap_paragraphs(text, width):
     return lines
 
 
-_EXIT_ORDER = ("n", "e", "s", "w", "u", "d")
-_EXIT_NAMES = {"n": "north", "e": "east", "s": "south", "w": "west", "u": "up", "d": "down"}
+# (abbrev, full_name, reverse) — single source for all direction lookups
+_DIRS = (("n","north","s"), ("e","east","w"), ("s","south","n"),
+         ("w","west","e"), ("u","up","d"), ("d","down","u"))
+_EXIT_ORDER  = tuple(d[0] for d in _DIRS)
+_EXIT_NAMES  = {d[0]: d[1] for d in _DIRS}
+_REV_DIR     = {d[0]: d[2] for d in _DIRS}
+_DIR_ALIASES = {k: d[0] for d in _DIRS for k in (d[0], d[1])}
+
+
+def _exit_to(exit_val):
+    """Return destination vnum from a plain-vnum or dict exit."""
+    return exit_val["to"] if isinstance(exit_val, dict) else exit_val
 
 # Position system (cf. 1stMud position_t enum in defines.h; gaps 1-3 omitted [PRIMESUD])
 _POS_ORDER = {
@@ -136,7 +146,10 @@ def do_look(tr, player, args, room_state, mob_instances):
         for tl in text:
             tr.print(tl)
 
-    exits = " ".join(_EXIT_NAMES.get(d, d) for d in _EXIT_ORDER if d in room["exits"])
+    exits = " ".join(
+        _EXIT_NAMES.get(d, d) for d in _EXIT_ORDER
+        if d in room["exits"] and not (isinstance(room["exits"][d], dict) and room["exits"][d].get("closed"))
+    )
     exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
     tr.print("{g" + exit_string + "{x")
     tr.print("")
@@ -157,12 +170,96 @@ def do_move(tr, player, direction, room_state, mob_instances):
     if direction not in exits:
         tr.print("Alas, you cannot go that way.")
         return
-    dest = exits[direction]
+    exit_val = exits[direction]
+    if isinstance(exit_val, dict) and exit_val.get("closed"):
+        tr.print("The door is closed.")
+        return
+    dest = _exit_to(exit_val)
     if dest not in ROOMS:
         tr.print("That way is not yet open.")
         return
     player["room"] = dest
     do_look(tr, player, [], room_state, mob_instances)
+
+
+def do_open(tr, player, args, room_state, mob_instances):
+    """Open a door in a given direction (cf. 1stMud do_open in act_move.c)."""
+    exits = ROOMS[player["room"]]["exits"]
+    if args:
+        direction = _DIR_ALIASES.get(args[0].lower())
+        if direction is None:
+            tr.print("Open what?")
+            return
+    else:
+        candidates = [d for d in _EXIT_ORDER
+                      if isinstance(exits.get(d), dict)
+                      and exits[d].get("isdoor") and exits[d].get("closed")]
+        if not candidates:
+            tr.print("There are no doors to open here.")
+            return
+        idx = pick_from(tr, "Open which door?",
+                        [_EXIT_NAMES[d] for d in candidates])
+        if idx < 0:
+            return
+        direction = candidates[idx]
+    exit_val = exits.get(direction)
+    if not isinstance(exit_val, dict) or not exit_val.get("isdoor"):
+        tr.print("You can't do that.")
+        return
+    if not exit_val.get("closed"):
+        tr.print("It's already open.")
+        return
+    if exit_val.get("locked"):
+        tr.print("It's locked.")
+        return
+    exit_val["closed"] = False
+    tr.print("Ok.")
+    dest = exit_val["to"]
+    rev = _REV_DIR.get(direction)
+    if rev and dest in ROOMS:
+        rev_exit = ROOMS[dest]["exits"].get(rev)
+        if isinstance(rev_exit, dict) and _exit_to(rev_exit) == player["room"]:
+            rev_exit["closed"] = False
+
+
+def do_close(tr, player, args, room_state, mob_instances):
+    """Close a door in a given direction (cf. 1stMud do_close in act_move.c)."""
+    exits = ROOMS[player["room"]]["exits"]
+    if args:
+        direction = _DIR_ALIASES.get(args[0].lower())
+        if direction is None:
+            tr.print("Close what?")
+            return
+    else:
+        candidates = [d for d in _EXIT_ORDER
+                      if isinstance(exits.get(d), dict)
+                      and exits[d].get("isdoor") and not exits[d].get("closed")]
+        if not candidates:
+            tr.print("There are no open doors to close here.")
+            return
+        idx = pick_from(tr, "Close which door?",
+                        [_EXIT_NAMES[d] for d in candidates])
+        if idx < 0:
+            return
+        direction = candidates[idx]
+    exit_val = exits.get(direction)
+    if not isinstance(exit_val, dict) or not exit_val.get("isdoor"):
+        tr.print("You can't do that.")
+        return
+    if exit_val.get("closed"):
+        tr.print("It's already closed.")
+        return
+    if exit_val.get("noclose"):
+        tr.print("You can't do that.")
+        return
+    exit_val["closed"] = True
+    tr.print("Ok.")
+    dest = exit_val["to"]
+    rev = _REV_DIR.get(direction)
+    if rev and dest in ROOMS:
+        rev_exit = ROOMS[dest]["exits"].get(rev)
+        if isinstance(rev_exit, dict) and _exit_to(rev_exit) == player["room"]:
+            rev_exit["closed"] = True
 
 
 def do_get(tr, player, args, room_state, mob_instances):
@@ -510,11 +607,9 @@ def do_kill(tr, player, args, room_state, mob_instances):
         if mob_id is None:
             tr.print("No such enemy.")
             return
-    elif len(live) == 1:
-        mob_id = live[0]
     else:
         names = [MOB_TEMPLATES[mob_instances[i]["tpl"]]["short_descr"] for i in live]
-        idx = pick_from(tr, "{YKill whom?{x", names)
+        idx = pick_from(tr, "Kill whom?", names)
         if idx < 0:
             return
         mob_id = live[idx]
@@ -533,7 +628,10 @@ def do_flee(tr, player, args, room_state, mob_instances):
     attempts = list(range(len(exits)))
     for _ in range(min(6, len(exits))):
         idx = randint(0, len(attempts) - 1)
-        direction, dest = exits[attempts.pop(idx)]
+        direction, exit_val = exits[attempts.pop(idx)]
+        if isinstance(exit_val, dict) and exit_val.get("closed"):
+            continue
+        dest = _exit_to(exit_val)
         if dest not in ROOMS:
             continue
         player["room"] = dest
@@ -882,7 +980,9 @@ _CMD_TABLE = [
     ("score",     do_score,     "dead",     False),   # #49
     ("skills",    do_skills,    "dead",     False),   # #50
     ("autolist",  do_autolist,  "dead",     False),   # #63
+    ("close",     do_close,     "resting",  False),   # #113
     ("drop",      do_drop,      "resting",  False),   # #115
+    ("open",      do_open,      "resting",  False),   # #124
     ("quaff",     do_quaff,     "resting",  False),   # #129
     ("remove",    do_remove,    "resting",  False),   # #131
     ("take",      do_get,       "resting",  False),   # #133
