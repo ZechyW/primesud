@@ -16,10 +16,11 @@ MS_PER_PULSE     = 1000 // PULSE_PER_SECOND   # 250 ms per pulse
 PULSE_VIOLENCE   = 3  * PULSE_PER_SECOND      # 12  pulses — combat round (3 s)
 PULSE_MOBILE     = 4  * PULSE_PER_SECOND      # 16  pulses — mob wander (4 s)
 PULSE_TICK       = 30 * PULSE_PER_SECOND      # 120 pulses — world tick (30 s)
-PULSE_AREA       = 120 * PULSE_PER_SECOND     # 480 pulses — area reset (2 min)
-POLL_MS          = 10                          # keyboard polling interval (ms)
-AUTOSAVE_TICKS   = 4                           # autosave every N world ticks (4 × 30 s)
-DEATH_MSG_DELAY  = 1                           # seconds between death flavour lines
+# PULSE_AREA     = 120 * PULSE_PER_SECOND     # 480 pulses — area reset (2 min)
+PULSE_AREA       = 30 * PULSE_PER_SECOND      # Quicker (30s) age ticks for better UX
+POLL_MS          = 10                         # keyboard polling interval (ms)
+AUTOSAVE_TICKS   = 4                          # autosave every N world ticks (4 × 30 s)
+DEATH_MSG_DELAY  = 1                          # seconds between death flavour lines
 
 # ── Automap ───────────────────────────────────────────────────────────────────────────
 MAP_HALF_W    = 5   # grid half-width  in room-steps (full grid = 2*W+1 = 13 cols)

@@ -2,16 +2,32 @@ from hpprime import eval as ppleval, keyboard
 from cas import get_key
 from urandom import randint
 
-from config import SAVE_VAR, POLL_MS, TERMINAL_COLS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF
-from world import (ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, RESETS, SKILLS,
-                   R_STARTING_ROOM, GSN_HAND_TO_HAND, GSN_KICK, GSN_CURE_LIGHT, GSN_PARRY)
-
+from config import (
+    SAVE_VAR,
+    TERMINAL_COLS,
+    STR_APP_TOHIT,
+    STR_APP_TODAM,
+    DEX_APP_DEF,
+)
+from world import (
+    ROOMS,
+    ITEM_TEMPLATES,
+    MOB_TEMPLATES,
+    RESETS,
+    SKILLS,
+    R_STARTING_ROOM,
+    GSN_HAND_TO_HAND,
+    GSN_KICK,
+    GSN_CURE_LIGHT,
+    GSN_PARRY,
+)
 
 # ── Player flag bits (cf. 1stMud PLR_* in bits.h) ─────────────────────────────
-PLR_AUTOMAP  = 1
+PLR_AUTOMAP = 1
 PLR_DEFAULTS = PLR_AUTOMAP
 
 # ── Player model ──────────────────────────────────────────────────────────────
+
 
 def _roll_hp(hp_dice):
     """Roll HP from an hp_dice tuple (cf. 1stMud create_mobile in db.c).
@@ -36,48 +52,57 @@ def create_char():
         dict: Player state dict.
     """
     return {
-        "name":     "",
-        "is_npc":   False,
-        "level":    1,  "xp": 0, "xp_next": 1000,
-        "str":      13, "dex": 13, "int": 13, "wis": 13, "con": 13,
-        "hp":       20, "hp_max": 20,
-        "mp":       100, "mp_max": 100,
-        "practice": 5,  "train": 3,
-        "hitroll":  0,
-        "damroll":  0,
-        "AC":       100,   # base unarmored (100 = poor; negative = better)
-        "wait":     0,     # skill lag in pulses
-        "daze":     0,     # stun in pulses
-        "affects":  {},
-        "room":     R_STARTING_ROOM,
-        "inv":      [],
+        "name": "",
+        "is_npc": False,
+        "level": 1,
+        "xp": 0,
+        "xp_next": 1000,
+        "str": 13,
+        "dex": 13,
+        "int": 13,
+        "wis": 13,
+        "con": 13,
+        "hp": 20,
+        "hp_max": 20,
+        "mp": 100,
+        "mp_max": 100,
+        "practice": 5,
+        "train": 3,
+        "hitroll": 0,
+        "damroll": 0,
+        "AC": 100,  # base unarmored (100 = poor; negative = better)
+        "wait": 0,  # skill lag in pulses
+        "daze": 0,  # stun in pulses
+        "affects": {},
+        "room": R_STARTING_ROOM,
+        "inv": [],
         "equip": {
-            "light":  None,
-            "wield":  None,
-            "hold":   None,
-            "body":   None,
-            "head":   None,
-            "legs":   None,
-            "feet":   None,
-            "hands":  None,
-            "arms":   None,
+            "light": None,
+            "wield": None,
+            "hold": None,
+            "body": None,
+            "head": None,
+            "legs": None,
+            "feet": None,
+            "hands": None,
+            "arms": None,
             "shield": None,
-            "about":  None,
-            "waist":  None,
-            "neck":   None,
-            "wrist":  None,
+            "about": None,
+            "waist": None,
+            "neck": None,
+            "wrist": None,
         },
         "learned": {
             GSN_HAND_TO_HAND: 40,
-            GSN_KICK:         50,
-            GSN_CURE_LIGHT:   75,
-            GSN_PARRY:        10,
+            GSN_KICK: 50,
+            GSN_CURE_LIGHT: 75,
+            GSN_PARRY: 10,
         },
         "fighting": None,
-        "pos":      "standing",
-        "flags":    PLR_DEFAULTS,
-        "played":   0,     # cumulative playtime in seconds (cf. 1stMud pcdata->played)
-        "_logon_ms": 0,    # session start ticks — ephemeral, not persisted
+        "pos": "standing",
+        "flags": PLR_DEFAULTS,
+        "played": 0,  # cumulative playtime in seconds (cf. 1stMud pcdata->played)
+        "_logon_ms": 0,  # session start ticks — ephemeral, not persisted
     }
 
 
@@ -179,7 +204,8 @@ def mobile_update(tr, player, mob_instances, room_state):
             # 5% chance to despawn when outside home area (cf. char_update, update.c:541)
             if player["room"] == inst["room"]:
                 tpl = MOB_TEMPLATES[inst["tpl"]]
-                tr.print("{} wanders on home.".format(tpl["short_descr"].capitalize()))
+                _sd = tpl["short_descr"]
+                tr.print("{} wanders on home.".format(_sd[0].upper() + _sd[1:]))
             room_state[inst["room"]]["mobs"].remove(mob_id)
             del mob_instances[mob_id]
             continue
@@ -211,9 +237,16 @@ def mobile_update(tr, player, mob_instances, room_state):
         if act.get("indoors") and not dest_flags.get("indoors"):
             continue
         old_room = inst["room"]
+        tpl = MOB_TEMPLATES[inst["tpl"]]
+        _sd = tpl["short_descr"]
+        name = _sd[0].upper() + _sd[1:]
+        if player["room"] == old_room:
+            tr.print("{} leaves {}.".format(name, direction))
         room_state[old_room]["mobs"].remove(mob_id)
         inst["room"] = dest_vnum
         room_state[dest_vnum]["mobs"].append(mob_id)
+        if player["room"] == dest_vnum:
+            tr.print("{} has arrived.".format(name))
 
 
 # ── Stat application helpers ──────────────────────────────────────────────────
@@ -535,6 +568,14 @@ def save_char(player, room_state, mob_instances, area_states=None, macros=None):
     if area_states is not None:
         for _as in area_states:
             lines.append("a.{}.age={}".format(_as["tag"], _as["age"]))
+    # Build reset-room map for single-instance mobs (gl=1): if the only live
+    # instance is already in its reset room, omit it — reset_area() will
+    # restore it there on load without any save entry needed.
+    _single_reset_room = {}
+    for entry in RESETS:
+        if entry[0] == "M" and entry[2] == 1:
+            _single_reset_room[entry[1]] = entry[3]
+
     tpl_rooms = {}
     for inst in mob_instances.values():
         tpl = inst["tpl"]
@@ -542,6 +583,9 @@ def save_char(player, room_state, mob_instances, area_states=None, macros=None):
             tpl_rooms[tpl] = []
         tpl_rooms[tpl].append(inst["room"])
     for tpl_vnum, rooms in tpl_rooms.items():
+        if (len(rooms) == 1
+                and _single_reset_room.get(tpl_vnum) == rooms[0]):
+            continue
         lines.append("m.{}={}".format(tpl_vnum, "|".join(str(r) for r in rooms)))
     for rvnum, rs in room_state.items():
         lines.append("r.{}.items={}".format(rvnum, "|".join(str(v) for v in rs["items"])))
