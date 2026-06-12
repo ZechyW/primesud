@@ -4,7 +4,7 @@ from config import (PULSE_VIOLENCE,
                     STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
                     CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_MIN, THAC0_PLATEAU,
                     ATTACK_TABLE, DAM_NONE, DAM_BASH)
-from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, ROOMS,
+from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
                    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY)
 from player import get_hitroll, get_damroll, get_AC, get_curr_stat, show_prompt, save_char
 
@@ -855,6 +855,8 @@ def violence_update(tr, player, mob_instances, room_state):
 
 # ── Death / Victory ───────────────────────────────────────────────────────────
 
+# [PRIMESUD] uniform distribution over all variants; 1stMud uses number_bits(4)
+# with per-mob part flags, giving ~50% chance of the fallback "death cry" line.
 _DEATH_CRIES = [
     "{} hits the ground ... DEAD.",
     "{} splatters blood on your armor.",
@@ -862,6 +864,9 @@ _DEATH_CRIES = [
     "{}'s heart is torn from its chest.",
     "{}'s severed head plops on the ground.",
     "{}'s arm is sliced from its dead body.",
+    "{}'s leg is sliced from its dead body.",
+    "{}'s head is shattered, and its brains splash all over you.",
+    "You hear {}'s death cry.",
 ]
 
 
@@ -882,13 +887,15 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state, mob_instances):
         room_state (dict): Room state mapping room ID → room state dict.
         mob_instances (dict): Mob instance mapping mob ID → instance dict.
     """
-    _death_cry(tr, tpl)
     xp = _xp_for_kill(player["level"], inst["level"])
     player["xp"] += xp
-    tr.print("+{} XP".format(xp))
+    tr.print("You receive {} experience {}.".format(
+        xp, "point" if xp == 1 else "points"))
 
     while player["xp"] >= player["xp_next"]:
         advance_level(tr, player)
+
+    _death_cry(tr, tpl)
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
     save_char(player, room_state, mob_instances)
@@ -940,3 +947,7 @@ def advance_level(tr, player):
         add_hp,  "point" if add_hp  == 1 else "points",
         add_mp,
         add_prac, "practice" if add_prac == 1 else "practices"))
+    for _sn, data in SKILL_TABLE:
+        if data.get("min_level") == player["level"]:
+            kind = "spell" if data["type"] == "spell" else "skill"
+            tr.print("You can now use the {} {}.".format(data["name"], kind))

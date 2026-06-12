@@ -61,16 +61,16 @@ AREA_DEFS = (
 #   multiplier is passed per call site in check_improve(), not stored here.
 #   Roll 1..1000 — improvement only proceeds when roll <= chance.
 SKILL_TABLE = [
-    (GSN_KICK,         {"name": "kick",         "type": "active",
+    (GSN_KICK,         {"name": "kick",         "type": "active",  "min_level": 1,
                         "beats": 12, "mana": 0, "rating": 3,
                         "target": "char_offensive"}),
-    (GSN_CURE_LIGHT,   {"name": "cure light",   "type": "spell",
+    (GSN_CURE_LIGHT,   {"name": "cure light",   "type": "spell",   "min_level": 1,
                         "beats": 12, "mana": 10, "rating": 1,
                         "target": "char_defensive", "msg_off": "!Cure Light!",
                         "effect": "heal", "heal_dice": (1, 8, 1), "level_div": 4}),
-    (GSN_HAND_TO_HAND, {"name": "hand to hand", "type": "weapon",
+    (GSN_HAND_TO_HAND, {"name": "hand to hand", "type": "weapon",  "min_level": 1,
                         "rating": 4}),
-    (GSN_PARRY,        {"name": "parry",        "type": "passive",
+    (GSN_PARRY,        {"name": "parry",        "type": "passive", "min_level": 1,
                         "rating": 4}),
 ]
 

@@ -760,8 +760,7 @@ def _macro_row(keys):
             c.append(" " * _CELL_W)
     for ki, key in enumerate(keys):
         s = cells[ki][0]
-        # cells[ki][0] = s[0] + "{R" + key + "{x" + s[2:]
-        cells[ki][0] = s[0] + key + s[2:]
+        cells[ki][0] = s[0] + "{R" + key + "{x" + s[2:]
     return ["|{}|{}|{}|".format(cells[0][i], cells[1][i], cells[2][i])
             for i in range(height)]
 
@@ -776,8 +775,7 @@ def do_macro(tr, player, args, room_state, mob_instances):  # [PRIMESUD]
         tr.print(_MACRO_SEP)
         cell0 = _macro_cell("0")
         s = cell0[0]
-        # cell0[0] = s[0] + "{R0{x" + s[2:]
-        cell0[0] = s[0] + "0" + s[2:]
+        cell0[0] = s[0] + "{R0{x" + s[2:]
         for mid in cell0:
             tr.print("|{}|{}|{}|".format(blank, mid, blank))
         tr.print(_MACRO_SEP)
