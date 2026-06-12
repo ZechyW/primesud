@@ -55,24 +55,23 @@ AREA_DEFS = (
 # beats: skill lag in pulses (PULSE_VIOLENCE = 12 = one full combat round)
 #
 # Improvement tuning (cf. 1stMud check_improve in skills.c):
-#   rating     — intrinsic difficulty of the skill (minimum non-zero class cost
-#                from skills.dat; higher = harder to improve)
-#   multiplier — training context (1 for spells/kick, 5 for weapon prof, 6 for
-#                harder passives); higher = fewer improvement rolls per use
+#   rating — intrinsic difficulty of the skill (minimum non-zero class cost
+#             from skills.dat; higher = harder to improve)
 #   Gate formula: chance = 10*INT_learn / (multiplier * rating * 4) + level
+#   multiplier is passed per call site in check_improve(), not stored here.
 #   Roll 1..1000 — improvement only proceeds when roll <= chance.
 SKILL_TABLE = [
     (GSN_KICK,         {"name": "kick",         "type": "active",
-                        "beats": 12, "mana": 0, "rating": 3, "multiplier": 1,
+                        "beats": 12, "mana": 0, "rating": 3,
                         "target": "char_offensive"}),
     (GSN_CURE_LIGHT,   {"name": "cure light",   "type": "spell",
-                        "beats": 12, "mana": 10, "rating": 1, "multiplier": 1,
+                        "beats": 12, "mana": 10, "rating": 1,
                         "target": "char_defensive", "msg_off": "!Cure Light!",
                         "effect": "heal", "heal_dice": (1, 8, 1), "level_div": 4}),
     (GSN_HAND_TO_HAND, {"name": "hand to hand", "type": "weapon",
-                        "rating": 4, "multiplier": 5}),
+                        "rating": 4}),
     (GSN_PARRY,        {"name": "parry",        "type": "passive",
-                        "rating": 4, "multiplier": 6}),
+                        "rating": 4}),
 ]
 
 SKILLS = {vnum: data for vnum, data in SKILL_TABLE}

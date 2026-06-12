@@ -228,7 +228,7 @@ def _int_learn(int_stat):
     return max(1, int_stat // 3)
 
 
-def check_improve(tr, player, sk_vnum, success):
+def check_improve(tr, player, sk_vnum, success, multiplier):
     """Attempt to improve a skill after use (cf. 1stMud check_improve in skills.c).
 
     Args:
@@ -237,6 +237,8 @@ def check_improve(tr, player, sk_vnum, success):
         sk_vnum (int): Skill vnum to potentially improve.
         success (bool): True if skill was used correctly (harder to improve near 100);
             False if missed/failed (learn-from-mistakes, faster at low skill).
+        multiplier (int): Training context difficulty (1=easy, 6=hard); passed per
+            call site as in 1stMud rather than stored in the skill table.
     """
     current = player["learned"].get(sk_vnum, 0)
     if current <= 0 or current >= 100:
@@ -244,10 +246,9 @@ def check_improve(tr, player, sk_vnum, success):
 
     sk        = SKILLS[sk_vnum]
     sk_rating = sk.get("rating", 1)
-    sk_mult   = sk.get("multiplier", 1)
 
     chance = 10 * _int_learn(get_curr_stat(player, "int"))
-    chance //= max(1, sk_mult * sk_rating * 4)
+    chance //= max(1, multiplier * sk_rating * 4)
     chance += player["level"]
 
     if randint(1, 1000) > chance:
@@ -269,31 +270,73 @@ def check_improve(tr, player, sk_vnum, success):
             player["xp"] += 2 * sk_rating
 
     if player["learned"].get(sk_vnum) == 100:
-        tr.print("You have mastered {}!".format(sk_name))
+        tr.print("{{GYou have mastered {}!{{x".format(sk_name))
 
 
-# ── Defensive checks (player defending against mob attack) ────────────────────
+# ── Skill lookup ─────────────────────────────────────────────────────────────
 
-def check_parry(tr, player, mob_inst):
-    """Check if player successfully parries mob's attack (cf. 1stMud check_parry in fight.c).
+def get_skill(entity, sn, is_mob=False):
+    """Effective skill score for a player or mob, with status penalties applied
+    (cf. 1stMud get_skill in handler.c).
+
+    Args:
+        entity (dict): Player or mob instance dict.
+        sn (int): Skill GSN constant, or -1 for generic level-based score.
+        is_mob (bool): True if entity is a mob instance.
+
+    Returns:
+        int: Effective skill percentage, clamped 0-100.
+    """
+    if is_mob:
+        lvl = entity["level"]
+        skill = lvl if lvl <= 2 else lvl // 2 + lvl // 3
+    else:
+        skill = entity["learned"].get(sn, 0) if sn != -1 else entity["level"] * 5 // 2
+
+    if entity.get("daze", 0) > 0:
+        skill = skill * 2 // 3
+
+    return max(0, min(100, skill))
+
+
+# ── Defensive checks ──────────────────────────────────────────────────────────
+
+def check_parry(tr, player, mob_inst, mob_is_attacker):
+    """Check if the defender parries the attacker's strike (cf. 1stMud check_parry in fight.c).
 
     Args:
         tr: Terminal for printing parry messages.
         player (dict): Player state dict.
-        mob_inst (dict): Attacking mob instance dict.
+        mob_inst (dict): Mob instance dict (attacker or defender depending on mob_is_attacker).
+        mob_is_attacker (bool): True = mob attacks player (player defends);
+                                False = player attacks mob (mob defends).
 
     Returns:
         bool: True if the attack was parried.
     """
-    if player["equip"].get("wield") is None:
+    tpl = MOB_TEMPLATES[mob_inst["tpl"]]
+
+    if mob_is_attacker:
+        if player["equip"].get("wield") is None:
+            return False
+        skill    = get_skill(player, GSN_PARRY)
+        lv_delta = player["level"] - mob_inst["level"]
+    else:
+        skill = get_skill(mob_inst, GSN_PARRY, is_mob=True)
+        if tpl.get("dam_type", "none") == "none":
+            skill //= 2
+        lv_delta = mob_inst["level"] - player["level"]
+
+    chance = skill // 2 + lv_delta
+    if randint(1, 100) > chance:
         return False
-    skill = player["learned"].get(GSN_PARRY, 0)
-    if skill > 0 and randint(1, 100) <= skill // 2:
-        tpl = MOB_TEMPLATES[mob_inst["tpl"]]
+
+    if mob_is_attacker:
         tr.print("You parry {}'s attack.".format(tpl["short_descr"]))
-        check_improve(tr, player, GSN_PARRY, True)
-        return True
-    return False
+        check_improve(tr, player, GSN_PARRY, True, 6)
+    else:
+        tr.print("{} parries your attack.".format(tpl["short_descr"]))
+    return True
 
 
 # ── Core attack: one_hit ──────────────────────────────────────────────────────
@@ -346,7 +389,10 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
             tr.print("Your {} {} {}.".format(attack_noun, vp, tpl["short_descr"]))
         else:
             tr.print("You {} {}.".format(vs, tpl["short_descr"]))
-        check_improve(tr, player, sk_vnum, False)
+        return 0
+
+    # Mob parry check
+    if check_parry(tr, player, target_inst, mob_is_attacker=False):
         return 0
 
     # Damage
@@ -378,7 +424,7 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
     else:
         tr.print("You {} {}{} [{}]".format(vs, tpl["short_descr"], punct, dam))
 
-    check_improve(tr, player, sk_vnum, True)
+    check_improve(tr, player, sk_vnum, True, 5)
     return dam
 
 
@@ -413,7 +459,7 @@ def _mob_one_hit(tr, mob_inst, player):
         return 0
 
     # Defensive checks (player skills)
-    if check_parry(tr, player, mob_inst):
+    if check_parry(tr, player, mob_inst, mob_is_attacker=True):
         return 0
 
     # Damage
@@ -484,7 +530,7 @@ def do_kick(tr, ch, args, room_state, mob_instances):
         else:
             tpl = MOB_TEMPLATES[target["tpl"]]
             tr.print("Your kick {} {}{} [{}]".format(vp, tpl["short_descr"], punct, dam))
-            check_improve(tr, ch, GSN_KICK, True)
+            check_improve(tr, ch, GSN_KICK, True, 1)
             if target["hp"] == 0:
                 raw_kill(tr, ch, target_id, target, tpl, room_state, mob_instances)
                 _advance_target(ch, mob_instances, room_state)
@@ -494,7 +540,7 @@ def do_kick(tr, ch, args, room_state, mob_instances):
         else:
             tpl = MOB_TEMPLATES[target["tpl"]]
             tr.print("Your kick misses {}.".format(tpl["short_descr"]))
-            check_improve(tr, ch, GSN_KICK, False)
+            check_improve(tr, ch, GSN_KICK, False, 1)
     return None
 
 
@@ -594,7 +640,7 @@ def _try_special_move(tr, player, target_inst):
     dam = max(1, randint(lo, hi))
     target_inst["hp"] = max(0, target_inst["hp"] - dam)
     tr.print("{} [{}]".format(move[-1].format(name), dam))
-    check_improve(tr, player, GSN_HAND_TO_HAND, True)
+    check_improve(tr, player, GSN_HAND_TO_HAND, True, 5)
     return dam
 
 
