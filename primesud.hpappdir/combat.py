@@ -453,7 +453,7 @@ def do_kick(tr, ch, args, room_state, mob_instances):
             tr.print("Your kick {} {}{} [{}]".format(vp, tpl["short_descr"], punct, dam))
             check_improve(tr, ch, GSN_KICK, True)
             if target["hp"] == 0:
-                raw_kill(tr, ch, target_id, target, tpl, room_state)
+                raw_kill(tr, ch, target_id, target, tpl, room_state, mob_instances)
                 _advance_target(ch, mob_instances, room_state)
     else:
         if ch["is_npc"]:
@@ -642,7 +642,7 @@ def check_assist(tr, player, attacked_id, mob_instances, room_state):
         if mid == attacked_id:
             continue
         inst = mob_instances[mid]
-        if inst["state"] in ("dead", "aggro"):
+        if inst["state"] == "aggro":
             continue
         tpl = MOB_TEMPLATES[inst["tpl"]]
         if tpl.get("passive"):
@@ -717,7 +717,7 @@ def violence_update(tr, player, mob_instances, room_state):
         return
 
     target = mob_instances.get(target_id)
-    if target is None or target["state"] == "dead":
+    if target is None:
         stop_fighting(player, mob_instances)
         return
 
@@ -735,7 +735,7 @@ def violence_update(tr, player, mob_instances, room_state):
     if player["wait"] <= 0:
         killed = multi_hit(tr, player, target)
         if killed:
-            raw_kill(tr, player, target_id, target, tpl, room_state)
+            raw_kill(tr, player, target_id, target, tpl, room_state, mob_instances)
             _advance_target(player, mob_instances, room_state)
         else:
             check_assist(tr, player, target_id, mob_instances, room_state)
@@ -777,8 +777,8 @@ def violence_update(tr, player, mob_instances, room_state):
 
 # ── Death / Victory ───────────────────────────────────────────────────────────
 
-def raw_kill(tr, player, mob_id, inst, tpl, room_state):
-    """Handle mob death: award XP, level-up if needed, drop loot, mark dead (cf. 1stMud raw_kill in fight.c).
+def raw_kill(tr, player, mob_id, inst, tpl, room_state, mob_instances):
+    """Handle mob death: award XP, level-up if needed, drop loot, extract mob (cf. 1stMud raw_kill in fight.c).
 
     Args:
         tr: Terminal for printing kill/loot messages.
@@ -787,6 +787,7 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state):
         inst (dict): Mob instance dict.
         tpl (dict): Mob template dict.
         room_state (dict): Room state mapping room ID → room state dict.
+        mob_instances (dict): Mob instance mapping mob ID → instance dict.
     """
     tr.print("{} is defeated!".format(tpl["short_descr"]))
     xp = _xp_for_kill(player["level"], inst["level"])
@@ -801,7 +802,8 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state):
             player["inv"].append(item_vnum)
             tr.print("Found: {}".format(ITEM_TEMPLATES[item_vnum]["short_descr"]))
 
-    inst["state"] = "dead"
+    room_state[inst["room"]]["mobs"].remove(mob_id)
+    del mob_instances[mob_id]
     tr.print("")
 
 

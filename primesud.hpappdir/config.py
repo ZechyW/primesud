@@ -14,6 +14,7 @@ COLOR_GROB    = 8    # unmodified font copy; restored into FONT_GROB on colour r
 PULSE_PER_SECOND = 4                          # base pulse rate
 MS_PER_PULSE     = 1000 // PULSE_PER_SECOND   # 250 ms per pulse
 PULSE_VIOLENCE   = 3  * PULSE_PER_SECOND      # 12  pulses — combat round (3 s)
+PULSE_MOBILE     = 4  * PULSE_PER_SECOND      # 16  pulses — mob wander (4 s)
 PULSE_TICK       = 30 * PULSE_PER_SECOND      # 120 pulses — world tick (30 s)
 PULSE_AREA       = 120 * PULSE_PER_SECOND     # 480 pulses — area reset (2 min)
 POLL_MS          = 10                          # keyboard polling interval (ms)

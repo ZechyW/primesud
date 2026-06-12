@@ -11,18 +11,19 @@ from hpprime import dimgrob, eval as ppleval, getpix, pixon, grobw, grobh, strbl
 
 from urandom import randint
 from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
-                    MS_PER_PULSE, PULSE_VIOLENCE, PULSE_TICK, PULSE_AREA,
+                    MS_PER_PULSE, PULSE_VIOLENCE, PULSE_MOBILE, PULSE_TICK, PULSE_AREA,
                     AUTOSAVE_TICKS,
                     KEY_COMMANDS as _KEY_COMMANDS,
                     TERMINAL_COLS, FONT, FONT_GROB, COLOR_GROB,
                     DEATH_MSG_DELAY)
 from util import free_mem
-from world import R_STARTING_ROOM
+from world import R_STARTING_ROOM, RESETS, ROOMS
 from combat import violence_update
 from player import (
     create_char,
     reset_area,
-    revive_dead_mobs,
+    reset_mobs,
+    mobile_update,
     tick_update,
     show_prompt,
     _poll_char,
@@ -43,12 +44,25 @@ _AREA_AGE_MIN   = 3   # skip reset below this age
 _AREA_AGE_RESET = 15  # reset threshold (player always present)
 
 
-def area_update(area_state, room_state, mob_instances):
-    """Increment area age and reset if threshold reached (cf. 1stMud area_update)."""
+_RESET_MSGS = (
+    "The area repopulates itself.",
+    "You notice a change in the area.",
+    "Time completes another cycle bringing life to the area.",
+    "You feel a sudden deja-vu bringing change to the area.",
+    "You hear noises off in the distance...",
+)
+
+
+def area_update(tr, player, area_state, room_state, mob_instances):
+    """Increment area age and reset if threshold reached (cf. 1stMud area_update, db.c)."""
     area_state["age"] += 1
     if area_state["age"] >= _AREA_AGE_MIN and area_state["age"] >= _AREA_AGE_RESET:
-        revive_dead_mobs(room_state, mob_instances)
+        reset_mobs(mob_instances, room_state, RESETS)
         area_state["age"] = randint(0, 3)
+        # School area is intentionally silent (cf. db.c:1335 else-if excludes it); other areas get a random message.
+        if (area_state.get("tag") != "mud_school"
+                and ROOMS[player["room"]].get("area") == area_state.get("tag")):
+            tr.print(_RESET_MSGS[randint(0, len(_RESET_MSGS) - 1)])
 
 
 def _wrap_plain(text, width):
@@ -160,7 +174,7 @@ class Game:
         self.player = None
         self.room_state = None
         self.mob_instances = None
-        self._area_state = {"age": 0}
+        self._area_state = {"age": 0, "tag": "mud_school"}
 
     def set_color(self, color):
         """Recolour the font grob for subsequent glyph rendering.
@@ -192,12 +206,12 @@ class Game:
         self.player["name"] = name
         self.player["_logon_ms"] = int(ppleval("Ticks"))
         self.room_state, self.mob_instances = reset_area()
-        self._area_state = {"age": 0}
+        self._area_state = {"age": 0, "tag": "mud_school"}
 
     def load_game(self):
         self.player = create_char()
         self.room_state, self.mob_instances = reset_area()
-        self._area_state = {"age": 0}
+        self._area_state = {"age": 0, "tag": "mud_school"}
         result = _load_char(self.player, self.room_state, self.mob_instances,
                             self._area_state, _MACRO_SUBST)
         self.player["_logon_ms"] = int(ppleval("Ticks"))
@@ -326,8 +340,11 @@ class Game:
                         self.save_game()
                         tick_count = 0
 
+                if pulse % PULSE_MOBILE == 0:
+                    mobile_update(tr, player, mob_instances, room_state)
+
                 if pulse % PULSE_AREA == 0:
-                    area_update(area_state, room_state, mob_instances)
+                    area_update(tr, player, area_state, room_state, mob_instances)
 
                 if pulse >= 14400:  # wrap at 1 hour (3600 s × 4 pulses/s)
                     pulse = 0

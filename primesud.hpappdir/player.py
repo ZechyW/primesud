@@ -93,77 +93,125 @@ def _stat_from_level(level):
     return min(25, 11 + level // 4)
 
 
+def _tpl_live_count(mob_instances, tpl_vnum):
+    """Count live instances of a template across all rooms (cf. pMobIndex->count in db.c)."""
+    return sum(1 for inst in mob_instances.values() if inst["tpl"] == tpl_vnum)
+
+
+def _tpl_room_count(mob_instances, room_vnum, tpl_vnum):
+    """Count live instances of a template in a specific room (cf. per-room scan in reset_room, db.c)."""
+    return sum(1 for inst in mob_instances.values()
+               if inst["tpl"] == tpl_vnum and inst["room"] == room_vnum)
+
+
+def reset_mobs(mob_instances, room_state, resets):
+    """Spawn mobs for each M entry up to global and room limits (cf. 1stMud reset_room 'M' case, db.c).
+
+    Mutates mob_instances and room_state in place.  Safe to call on a
+    partially-populated mob_instances (area tick) as well as an empty one
+    (full reset via reset_area).
+
+    Args:
+        mob_instances (dict): Mob instance mapping mob ID → instance dict.
+        room_state (dict): Room state mapping room vnum → room state dict.
+        resets (tuple): Area RESETS sequence.
+    """
+    mob_id = max(mob_instances, default=0) + 1
+    for entry in resets:
+        if entry[0] != "M":
+            continue
+        tpl_vnum, gl, room_vnum, rl = entry[1], entry[2], entry[3], entry[4]
+        if _tpl_live_count(mob_instances, tpl_vnum) >= gl:
+            continue
+        if _tpl_room_count(mob_instances, room_vnum, tpl_vnum) >= rl:
+            continue
+        tpl = MOB_TEMPLATES[tpl_vnum]
+        _hp = _roll_hp(tpl["hp_dice"])
+        _st = _stat_from_level(tpl["level"])
+        mob_instances[mob_id] = {
+            "tpl":        tpl_vnum,
+            "is_npc":     True,
+            "hp":         _hp,
+            "hp_max":     _hp,
+            "state":      "idle",
+            "room":       room_vnum,
+            "home_area":  ROOMS[room_vnum].get("area"),
+            "affects":    {},
+            "wait":       0,
+            "daze":       0,
+            "fighting":   None,
+            "learned":    dict(tpl.get("skills", {})),
+            "off_flags":  dict(tpl.get("off_flags", {})),
+            # Combat stats flattened from template for hot-path access
+            "level":      tpl["level"],
+            "str":        _st,
+            "dex":        _st,
+            "int":        _st,
+            "wis":        _st,
+            "con":        _st,
+            "hitroll":    tpl["hitroll"],
+            "damroll":    tpl.get("damroll", 0),
+            "AC":         tpl["AC"],
+        }
+        room_state[room_vnum]["mobs"].append(mob_id)
+        mob_id += 1
+
+
 def reset_area():
     """Create fresh room state and mob instances (cf. 1stMud reset_area).
-
-    Processes RESETS sequentially; mob instance IDs are assigned in order
-    (first 'M' entry gets ID 1, etc.) matching the old MOB_INIT numbering.
 
     Returns:
         tuple: (room_state (dict), mob_instances (dict)).
     """
     room_state = {vnum: {"items": [], "mobs": []} for vnum in ROOMS}
-
     mob_instances = {}
-    mob_id = 1
+    reset_mobs(mob_instances, room_state, RESETS)
     for entry in RESETS:
-        cmd = entry[0]
-        if cmd == "M":
-            tpl_vnum  = entry[1]
-            room_vnum = entry[2]
-            tpl = MOB_TEMPLATES[tpl_vnum]
-            _hp = _roll_hp(tpl["hp_dice"])
-            _st = _stat_from_level(tpl["level"])
-            mob_instances[mob_id] = {
-                "tpl":        tpl_vnum,
-                "is_npc":     True,
-                "hp":         _hp,
-                "hp_max":     _hp,
-                "state":      "idle",
-                "room":       room_vnum,
-                "affects":    {},
-                "wait":       0,
-                "daze":       0,
-                "fighting":   None,
-                "learned":    dict(tpl.get("skills", {})),
-                "off_flags":  dict(tpl.get("off_flags", {})),
-                # Combat stats flattened from template for hot-path access
-                "level":      tpl["level"],
-                "str":        _st,
-                "dex":        _st,
-                "int":        _st,
-                "wis":        _st,
-                "con":        _st,
-                "hitroll":    tpl["hitroll"],
-                "damroll":    tpl.get("damroll", 0),
-                "AC":         tpl["AC"],
-            }
-            room_state[room_vnum]["mobs"].append(mob_id)
-            mob_id += 1
-        elif cmd == "O":
+        if entry[0] == "O":
             room_state[entry[2]]["items"].append(entry[1])
-
     return room_state, mob_instances
 
 
-def revive_dead_mobs(room_state, mob_instances):
-    """Re-spawn only dead mobs in-place (cf. 1stMud reset_room 'M': only spawn
-    if mob count < limit, i.e. the slot is empty/dead).
-
-    Args:
-        room_state (dict): Room state mapping room ID → room state dict.
-        mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
-    """
-    for mob_id, inst in mob_instances.items():
-        if inst["state"] == "dead":
-            tpl = MOB_TEMPLATES[inst["tpl"]]
-            _hp = _roll_hp(tpl["hp_dice"])
-            inst["hp"]      = _hp
-            inst["hp_max"]  = _hp
-            inst["state"]   = "idle"
-            inst["affects"] = {}
-            if mob_id not in room_state[inst["room"]]["mobs"]:
-                room_state[inst["room"]]["mobs"].append(mob_id)
+def mobile_update(tr, player, mob_instances, room_state):
+    """Wander mobs and despawn any that strayed out of their home area (cf. 1stMud mobile_update, char_update in update.c)."""
+    for mob_id, inst in list(mob_instances.items()):
+        if ROOMS[inst["room"]].get("area") != inst["home_area"] and randint(1, 100) <= 5:
+            # 5% chance to despawn when outside home area (cf. char_update, update.c:541)
+            if player["room"] == inst["room"]:
+                tpl = MOB_TEMPLATES[inst["tpl"]]
+                tr.print("{} wanders on home.".format(tpl["short_descr"].capitalize()))
+            room_state[inst["room"]]["mobs"].remove(mob_id)
+            del mob_instances[mob_id]
+            continue
+        if inst["fighting"] is not None:
+            continue
+        act = MOB_TEMPLATES[inst["tpl"]].get("act_flags", {})
+        if act.get("sentinel"):
+            continue
+        if randint(0, 7) != 0:  # 1/8 chance — matches number_bits(3)==0
+            continue
+        exits = ROOMS[inst["room"]].get("exits", {})
+        if not exits:
+            continue
+        dirs = list(exits.keys())
+        direction = dirs[randint(0, len(dirs) - 1)]
+        dest_vnum = exits[direction]
+        if dest_vnum not in ROOMS:
+            continue
+        dest_flags = ROOMS[dest_vnum].get("flags", {})
+        if dest_flags.get("no_mob"):  # cf. ROOM_NO_MOB check, update.c:500
+            continue
+        # [PRIMESUD] EX_CLOSED not tracked — all listed exits treated as open
+        if act.get("stay_area") and ROOMS[dest_vnum].get("area") != ROOMS[inst["room"]].get("area"):
+            continue  # cf. ACT_STAY_AREA check, update.c:501
+        if act.get("outdoors") and dest_flags.get("indoors"):
+            continue
+        if act.get("indoors") and not dest_flags.get("indoors"):
+            continue
+        old_room = inst["room"]
+        room_state[old_room]["mobs"].remove(mob_id)
+        inst["room"] = dest_vnum
+        room_state[dest_vnum]["mobs"].append(mob_id)
 
 
 # ── Stat application helpers ──────────────────────────────────────────────────
@@ -484,12 +532,16 @@ def save_char(player, room_state, mob_instances, area_state=None, macros=None):
             lines.append("p.macro.{}={}".format(k, v))
     if area_state is not None:
         lines.append("a.age={}".format(area_state["age"]))
+    tpl_rooms = {}
+    for inst in mob_instances.values():
+        tpl = inst["tpl"]
+        if tpl not in tpl_rooms:
+            tpl_rooms[tpl] = []
+        tpl_rooms[tpl].append(inst["room"])
+    for tpl_vnum, rooms in tpl_rooms.items():
+        lines.append("m.{}={}".format(tpl_vnum, "|".join(str(r) for r in rooms)))
     for rvnum, rs in room_state.items():
         lines.append("r.{}.items={}".format(rvnum, "|".join(str(v) for v in rs["items"])))
-    for mob_id, inst in mob_instances.items():
-        if inst["state"] == "dead":
-            lines.append("m.{}=tpl={}|state=dead|room={}".format(
-                mob_id, inst["tpl"], inst["room"]))
     try:
         payload = "~".join(lines)
         ppleval('HVars("' + SAVE_VAR + '"):="' + payload + '"')
@@ -530,6 +582,8 @@ def load_char(player, room_state, mob_instances, area_state=None, macros=None):
     if macros is not None:
         macros.clear()
 
+    mob_saves = {}  # tpl_vnum → [room, room, ...]
+
     for line in data.split("~"):
         if "=" not in line:
             continue
@@ -559,20 +613,17 @@ def load_char(player, room_state, mob_instances, area_state=None, macros=None):
         elif key == "a.age" and area_state is not None:
             area_state["age"] = int(val)
         elif key.startswith("m."):
-            mob_id = int(key.split(".")[1])
-            saved = {}
-            for pair in val.split("|"):
-                if "=" in pair:
-                    fk, fv = pair.split("=", 1)
-                    saved[fk] = fv
-            inst = mob_instances.get(mob_id)
-            if inst and str(inst["tpl"]) == saved.get("tpl", ""):
-                if "state" in saved:    # fv: should be "dead"
-                    inst["state"] = saved["state"]
-                if "room" in saved:     # fv: room vnum (int)
-                    r = int(saved["room"])
-                    if r in room_state:
-                        inst["room"] = r
+            mob_saves[int(key[2:])] = [int(r) for r in val.split("|") if r]
+
+    # Apply saved mob rooms: delete killed instances, patch wandered rooms.
+    # Same vnum appearing multiple times means multiple instances in one room — correct.
+    for tpl_vnum, saved_rooms in mob_saves.items():
+        inst_ids = sorted(i for i, inst in mob_instances.items() if inst["tpl"] == tpl_vnum)
+        for mid in inst_ids[len(saved_rooms):]:   # excess = killed since last save
+            del mob_instances[mid]
+        for mid, room_vnum in zip(inst_ids, saved_rooms):
+            if room_vnum in ROOMS:
+                mob_instances[mid]["room"] = room_vnum
 
     if player["room"] not in room_state:
         player["room"] = R_STARTING_ROOM
@@ -580,8 +631,7 @@ def load_char(player, room_state, mob_instances, area_state=None, macros=None):
     for rs in room_state.values():
         rs["mobs"] = []
     for mob_id, inst in mob_instances.items():
-        if inst["state"] != "dead":
-            room_state[inst["room"]]["mobs"].append(mob_id)
+        room_state[inst["room"]]["mobs"].append(mob_id)
 
     return True
 

@@ -507,9 +507,9 @@ def parse_resets(lines):
         cmd = parts[0]
         if cmd == "S":
             break
-        if cmd == "M" and len(parts) >= 5:
-            # M  0  mob_vnum  room_max  room_vnum  area_max
-            resets.append(("M", int(parts[2]), int(parts[4])))
+        if cmd == "M" and len(parts) >= 6:
+            # M  0  mob_vnum  global_limit  room_vnum  room_limit
+            resets.append(("M", int(parts[2]), int(parts[3]), int(parts[4]), int(parts[5])))
         elif cmd == "O" and len(parts) >= 5:
             # O  0  obj_vnum  0  room_vnum
             resets.append(("O", int(parts[2]), int(parts[4])))
@@ -686,16 +686,16 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
 
     # ── RESETS ──
     w(f"# ── Resets {BAR * 69}")
-    w('# ("M", mob_template_vnum, room_vnum)  — spawn one mob instance')
+    w('# ("M", mob_template_vnum, global_limit, room_vnum, room_limit)  — spawn mob instance up to limits')
     w('# ("O", item_template_vnum, room_vnum) — place one item copy in room')
     w('# E/G/P/R/D/F resets from .are are not yet handled — see # TODO lines')
     w("RESETS = (")
     for reset in resets:
         if reset[0] == "M":
-            _, mv, rv = reset
+            _, mv, gl, rv, rl = reset
             mc = r(mv, mob_map)
             rc = r(rv, room_map)
-            w(f'    ("M", {mc}, {rc}),')
+            w(f'    ("M", {mc}, {gl}, {rc}, {rl}),')
         elif reset[0] == "O":
             _, ov, rv = reset
             oc = r(ov, obj_map)

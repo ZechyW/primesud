@@ -140,7 +140,7 @@ def do_look(tr, player, args, room_state, mob_instances):
     exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
     tr.print("{g" + exit_string + "{x")
     tr.print("")
-    live_mobs = [i for i in rs["mobs"] if mob_instances[i]["state"] != "dead"]
+    live_mobs = rs["mobs"]
     if rs["items"]:
         names = ", ".join(ITEM_TEMPLATES[v]["short_descr"] for v in rs["items"])
         tr.print("Items: {}".format(names))
@@ -501,7 +501,7 @@ def do_kill(tr, player, args, room_state, mob_instances):
         tr.print("You are already fighting!")
         return
     rs = room_state[player["room"]]
-    live = [i for i in rs["mobs"] if mob_instances[i]["state"] != "dead"]
+    live = rs["mobs"]
     if not live:
         tr.print("No enemies here.")
         return
@@ -730,10 +730,9 @@ def do_train(tr, player, args, room_state, mob_instances):
     trainer = None
     for mid in rs["mobs"]:
         inst = mob_instances[mid]
-        if inst["state"] != "dead":
-            if MOB_TEMPLATES[inst["tpl"]].get("act_flags", {}).get("train"):
-                trainer = mid
-                break
+        if MOB_TEMPLATES[inst["tpl"]].get("act_flags", {}).get("train"):
+            trainer = mid
+            break
     if trainer is None:
         tr.print("You can't do that here.")
         return
@@ -826,10 +825,9 @@ def do_practice(tr, player, args, room_state, mob_instances):
     teacher = None
     for mid in rs["mobs"]:
         inst = mob_instances[mid]
-        if inst["state"] != "dead":
-            if MOB_TEMPLATES[inst["tpl"]].get("act_flags", {}).get("practice"):
-                teacher = mid
-                break
+        if MOB_TEMPLATES[inst["tpl"]].get("act_flags", {}).get("practice"):
+            teacher = mid
+            break
     if teacher is None:
         tr.print("You can't do that here.")
         return

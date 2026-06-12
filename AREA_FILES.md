@@ -271,8 +271,8 @@ OBJECTS = {
 
 ```python
 RESETS = (
-    ("M", M_GOBLIN, R_DUNGEON_HALL),   # spawn one mob instance
-    ("O", I_IRON_SWORD, R_DUNGEON_HALL),  # place one item copy
+    ("M", M_GOBLIN, 3, R_DUNGEON_HALL, 3),  # spawn goblin: global_limit=3, room_limit=3
+    ("O", I_IRON_SWORD, R_DUNGEON_HALL),     # place one item copy
     # TODO: E 0 <mob_vnum> 0 <slot>   — equip mob (deferred: needs loot system)
     # TODO: G 0 <item_vnum> 0         — give item to mob (deferred)
     # TODO: F 0 <room_vnum> <door> 0  — set door state (deferred: needs door system)
@@ -280,26 +280,24 @@ RESETS = (
 )
 ```
 
-`reset_area()` in `player.py` processes entries in order. Mob instance IDs are assigned
-sequentially by position (first `M` entry → ID 1), so ordering is stable across resets
-and compatible with the save format.
-
-| Command | Format                              | Meaning |
-|---------|-------------------------------------|---------|
-| `"M"`   | `("M", mob_vnum, room_vnum)`        | Spawn one mob instance |
-| `"O"`   | `("O", item_vnum, room_vnum)`       | Place one item copy in the room |
+| Command | Format                                                  | Meaning |
+|---------|---------------------------------------------------------|---------|
+| `"M"`   | `("M", mob_vnum, global_limit, room_vnum, room_limit)` | Spawn up to one mob instance if under both caps |
+| `"O"`   | `("O", item_vnum, room_vnum)`                          | Place one item copy in the room |
 
 Unimplemented reset types from 1stMud (`E`, `G`, `F`, `P`, `D`, `R`) are preserved as
 `# TODO` comments in the original converted form so they can be implemented later
 without re-consulting the source `.are` file.
 
-**Mob limits.** 1stMud's `M` line carries `global_limit` and `room_limit` fields
-(skipped when the live count meets the cap). PrimeSUD drops both because each entry owns
-exactly one fixed slot — `revive_dead_mobs()` only touches `state == "dead"` slots, so
-alive mobs are never duplicated. The effective per-slot limit is always 1. To support
-multiple instances per template (e.g. a pack of 5 goblins), add an explicit count field
-`("M", mob_vnum, room_vnum, count)` and allocate consecutive instance IDs per entry in
-`reset_area()`.
+**Mob limits and dynamic allocation.** `reset_mobs(mob_instances, room_state, resets)`
+in `player.py` processes each `"M"` entry and spawns at most one instance if both caps
+allow it: `global_limit` (max live instances of that template across all rooms) and
+`room_limit` (max live instances in that specific room). Dead mobs are removed from
+`mob_instances` immediately on death — there are no `state="dead"` slots. On the area
+tick, `reset_mobs` is called on the live `mob_instances` dict; missing mobs are
+filled up to their limits one per reset cycle, matching 1stMud's `reset_room` 'M'
+behaviour. `reset_area()` (game start / full wipe only) creates a fresh empty
+`mob_instances` and calls `reset_mobs` to populate it.
 
 ---
 

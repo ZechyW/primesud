@@ -16,11 +16,18 @@ GSN_PARRY        = 4020
 # fmt: on
 
 from area_school import (
-    ROOMS,
+    ROOMS    as _school_rooms,
     MOBILES  as MOB_TEMPLATES,
     OBJECTS  as ITEM_TEMPLATES,
     RESETS,
 )
+
+# Tag every room with its area name (cf. room->area pointer in 1stMud db.c).
+# world.py is the authority — area modules carry no tag of their own.
+ROOMS = {}
+for _vnum, _room in _school_rooms.items():
+    _room["area"] = "mud_school"
+    ROOMS[_vnum] = _room
 
 # ── Skills (cf. 1stMud skill_table; ordered list for prefix-match tiebreaking) ─
 # type:     "active"  — manually triggered physical skill; beats apply

@@ -1179,8 +1179,7 @@ ROOMS = {
         "name": 'A Safe Room',
         "desc": 'You are in a safe room, away from all the mean rabbits and snails of the Arena.\nYou can rest here, and go up to go back to the Temple of Midgaard.',
         "exits": {
-            # "u": 3001,
-            "u": R_ENTRANCE_TO_MUD_SCHOOL,
+            "u": 3001,
         },
         "flags": {"no_mob": True, "indoors": True},
     },
@@ -1483,7 +1482,7 @@ OBJECTS = {
 }
 
 # ── Resets ─────────────────────────────────────────────────────────────────────
-# ("M", mob_template_vnum, room_vnum)  — spawn one mob instance
+# ("M", mob_template_vnum, global_limit, room_vnum, room_limit)  — spawn mob instance up to limits
 # ("O", item_template_vnum, room_vnum) — place one item copy in room
 # E/G/P/R/D/F resets from .are are not yet handled — see # TODO lines
 RESETS = (
@@ -1494,40 +1493,40 @@ RESETS = (
     # TODO: F 0 3721 0 0 +YY
     # TODO: F 0 3734 5 0 +YY
     # TODO: F 0 3748 4 0 +YY
-    ("M", M_ACOLYTE_CLERIC, R_ROOM_IN_MUD_SCHOOL),
-    ("M", M_BLOB, R_BLOB_CAGE),
-    ("M", M_ADEPT_CLERIC, R_CAGE_ROOM),
-    ("M", M_MONSTER_AGGRESSIVE, R_CAGE),
+    ("M", M_ACOLYTE_CLERIC, 1, R_ROOM_IN_MUD_SCHOOL, 1),
+    ("M", M_BLOB, 1, R_BLOB_CAGE, 1),
+    ("M", M_ADEPT_CLERIC, 1, R_CAGE_ROOM, 1),
+    ("M", M_MONSTER_AGGRESSIVE, 1, R_CAGE, 1),
     # TODO: E 0 3707 0 7
     # TODO: E 0 3712 0 13
-    ("M", M_MONSTER_WIMPY_AGGRESSIVE, R_CAGE_3714),
+    ("M", M_MONSTER_WIMPY_AGGRESSIVE, 1, R_CAGE_3714, 1),
     # TODO: E 0 3708 0 8
     # TODO: E 0 3713 0 14
-    ("M", M_MONSTER_WIMPY, R_CAGE_3715),
+    ("M", M_MONSTER_WIMPY, 1, R_CAGE_3715, 1),
     # TODO: E 0 3706 0 6
     # TODO: E 0 3711 0 12
-    ("M", M_MONSTER, R_CAGE_3716),
+    ("M", M_MONSTER, 1, R_CAGE_3716, 1),
     # TODO: E 0 3705 0 3
     # TODO: E 0 3705 0 4
-    ("M", M_ADEPT_CLERIC_3717, R_STORE_IN_MUD_SCHOOL),
+    ("M", M_ADEPT_CLERIC_3717, 1, R_STORE_IN_MUD_SCHOOL, 1),
     # TODO: G 0 3138 0
     # TODO: G 0 3031 0
-    ("M", M_BIG_CREATURE, R_DARKENED_ROOM),
+    ("M", M_BIG_CREATURE, 1, R_DARKENED_ROOM, 1),
     # TODO: E 0 3709 0 9
     # TODO: E 0 3710 0 10
     # TODO: E 0 3714 0 17
     # TODO: E 0 3713 0 14
-    ("M", M_DIPLOMA_BEAST, R_END_OF_MUD_SCHOOL),
+    ("M", M_DIPLOMA_BEAST, 1, R_END_OF_MUD_SCHOOL, 1),
     # TODO: E 0 3715 0 17
-    ("M", M_ADEPT, R_END_OF_MUD_SCHOOL),
-    ("M", M_SNAIL, R_SOUTH_WEST_CORNER_OF_ARENA),
-    ("M", M_FOX, R_SOUTH_EAST_CORNER_OF_ARENA),
-    ("M", M_RABBIT, R_CENTER_OF_ARENA),
-    ("M", M_LIZARD, R_NORTH_WEST_CORNER_OF_ARENA),
-    ("M", M_BOAR, R_NORTH_EAST_CORNER_OF_ARENA),
-    ("M", M_BEAST, R_NORTH_WEST_CORNER_OF_THE_DUNGEON),
-    ("M", M_BEAR, R_NORTH_EAST_CORNER_OF_THE_DUNGEON),
-    ("M", M_WOLF, R_SOUTH_WEST_CORNER_OF_THE_DUNGEON),
-    ("M", M_ADEPT_CLERIC_3718, R_FUREY_S_TRAINING_ROOM),
-    ("M", M_PRIEST_CLERIC, R_ZUMP_S_GUILD_ROOM),
+    ("M", M_ADEPT, 1, R_END_OF_MUD_SCHOOL, 1),
+    ("M", M_SNAIL, 5, R_SOUTH_WEST_CORNER_OF_ARENA, 5),
+    ("M", M_FOX, 3, R_SOUTH_EAST_CORNER_OF_ARENA, 3),
+    ("M", M_RABBIT, 4, R_CENTER_OF_ARENA, 4),
+    ("M", M_LIZARD, 3, R_NORTH_WEST_CORNER_OF_ARENA, 3),
+    ("M", M_BOAR, 3, R_NORTH_EAST_CORNER_OF_ARENA, 3),
+    ("M", M_BEAST, 1, R_NORTH_WEST_CORNER_OF_THE_DUNGEON, 1),
+    ("M", M_BEAR, 2, R_NORTH_EAST_CORNER_OF_THE_DUNGEON, 2),
+    ("M", M_WOLF, 2, R_SOUTH_WEST_CORNER_OF_THE_DUNGEON, 2),
+    ("M", M_ADEPT_CLERIC_3718, 1, R_FUREY_S_TRAINING_ROOM, 1),
+    ("M", M_PRIEST_CLERIC, 1, R_ZUMP_S_GUILD_ROOM, 1),
 )
