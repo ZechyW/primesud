@@ -6,7 +6,7 @@ from config import (PULSE_VIOLENCE,
                     ATTACK_TABLE, DAM_NONE, DAM_BASH)
 from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, ROOMS,
                    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY)
-from player import get_hitroll, get_damroll, get_AC, get_curr_stat, show_prompt
+from player import get_hitroll, get_damroll, get_AC, get_curr_stat, show_prompt, save_char
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -889,6 +889,9 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state, mob_instances):
 
     while player["xp"] >= player["xp_next"]:
         advance_level(tr, player)
+
+    # [PRIMESUD] save after every kill (1stmud only saves on level up)
+    save_char(player, room_state, mob_instances)
 
     for item_vnum, chance in tpl["loot"]:
         if randint(1, 100) <= chance:

@@ -21,7 +21,7 @@ Verified with `dir(str)` on-device.
 | `encode`     |                                                                           |
 | `endswith`   |                                                                           |
 | `find`       |                                                                           |
-| `format`     | Caution: `{` conflicts with `{X` colour codes — use concatenation instead |
+| `format`     | Caution: `{` conflicts with `{X` colour codes — use `%` formatting instead |
 | `index`      |                                                                           |
 | `isalpha`    |                                                                           |
 | `isdigit`    |                                                                           |
@@ -76,6 +76,6 @@ Features not supported by HP Prime's MicroPython (confirmed via `SyntaxError` at
 | Feature | Workaround |
 |:--------|:-----------|
 | `{**a, **b}` dict unpacking in literals | `d = {}; d.update(a); d.update(b)` |
-| `f"..."` f-strings | `"{} ...".format(x)` |
+| `f"..."` f-strings | `"... %s ..." % x` — prefer `%` over `.format()` when colour codes are present, as `%` uses no `{` delimiters |
 
 <!-- Add sections for other builtins as verified: list, dict, int, etc. -->

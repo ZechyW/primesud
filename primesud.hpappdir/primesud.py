@@ -32,7 +32,7 @@ from player import (
     load_char as _load_char,
 )
 from commands import interpret, do_look, _MACRO_SUBST
-from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap
+from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full
 
 
 # ── World tick / area update ──────────────────────────────────────────────────
@@ -109,6 +109,8 @@ class Game:
         _CC = COLOR_CODE
         _ANSI = ANSI_COLORS
         _RST = _RESET_CODES
+        _pxy = self.tr.print_xy
+        _pch = self.tr._put_char
         def _wrapped_print(*args, sep=' ', end='\n'):
             text = sep.join(str(a) for a in args)
             i = 0
@@ -130,48 +132,71 @@ class Game:
                     if not auto_wrapped:
                         _orig_print('', end=end if idx == n - 1 else '\n')
                 return
-            lines = color_wrap(text, _cols)
-            n = len(lines)
-            for idx, line in enumerate(lines):
-                # has_vis: True once any printable text is flushed; guards
-                # against treating cursor_x==0 as an auto-wrap when the line
-                # contained only colour codes and nothing was actually printed.
-                i, llen, buf, colored, has_vis = 0, len(line), [], False, False
-                while i < llen:
-                    if line[i] == _CC and i + 1 < llen:
-                        code = line[i + 1]
-                        if buf:
-                            if not colored and self._current_fg is not None:
-                                self.reset_color()
-                            _orig_print(''.join(buf), end='')
-                            has_vis = True
-                            buf = []
-                        if code in _ANSI:
-                            self.set_color(_ANSI[code])
-                            colored = True
-                        elif code in _RST:
-                            # Lazy reset: defer reset_color until plain text actually
-                            # needs default color. Consecutive same-color lines skip it.
-                            colored = False
-                        elif code == _CC:
-                            buf.append(_CC)
-                        i += 2
+            # Colour-first rendering: inline split+group in one pass, then render
+            # one set_color/reset_color per distinct colour.
+            # Fast check skips wrap scan when visible length clearly fits.
+            if len(text) - 2 * text.count(_CC) <= _cols and '{{' not in text:
+                pieces = (text,)
+            else:
+                pieces = color_wrap_full(text, _cols)
+            n = len(pieces)
+            for idx, piece in enumerate(pieces):
+                # Parse and group in one pass via C-level split.
+                # parts[0] = text before first code; each subsequent part =
+                # code_char + text (or empty for '{{' escape).
+                x = 0
+                current = None
+                colour_order = []
+                groups = {}
+                parts = piece.split(_CC)
+                seg = parts[0]
+                if seg:
+                    colour_order.append(None)
+                    groups[None] = [(0, seg)]
+                    x = len(seg)
+                skip = False
+                for part in parts[1:]:
+                    if not part:
+                        # '{{' escape: literal '{'.
+                        if current not in groups:
+                            colour_order.append(current)
+                            groups[current] = []
+                        groups[current].append((x, _CC))
+                        x += 1
+                        skip = True
+                        continue
+                    if skip:
+                        skip = False
+                        seg = part
                     else:
-                        buf.append(line[i])
-                        i += 1
-                if buf:
-                    if not colored and self._current_fg is not None:
+                        code = part[0]
+                        seg = part[1:]
+                        if code in _ANSI:
+                            current = _ANSI[code]
+                        elif code in _RST:
+                            current = None
+                        else:
+                            seg = _CC + part
+                    if seg:
+                        if current not in groups:
+                            colour_order.append(current)
+                            groups[current] = []
+                        groups[current].append((x, seg))
+                        x += len(seg)
+                row = self.tr.cursor_y
+                for colour in colour_order:
+                    if colour is None:
                         self.reset_color()
-                    _orig_print(''.join(buf), end='')
-                    has_vis = True
+                    else:
+                        self.set_color(colour)
+                    for x_pos, seg in groups[colour]:
+                        _pxy(x_pos, row, seg)
                 is_last = idx == n - 1
-                # If tml auto-wrapped (non-empty line landed in the last col),
-                # cursor_x resets to 0 — the explicit newline would double-advance.
-                auto_wrapped = has_vis and self.tr.cursor_x == 0
-                if not is_last and not auto_wrapped:
-                    _orig_print('', end='\n')
-                elif is_last and end and not auto_wrapped:
-                    _orig_print('', end=end)
+                if not is_last:
+                    _pch('\n')
+                elif end:
+                    for c in end:
+                        _pch(c)
         self.tr.print = _wrapped_print
         self.input_buf = ""
         self.player = None
@@ -282,6 +307,8 @@ class Game:
         _resync_keyboard(tr)
         show_prompt(tr, player, self.input_buf)
         do_look(tr, player, [], room_state, mob_instances)
+
+
 
         while True:
             result = _poll_char(tr, _KEY_COMMANDS)

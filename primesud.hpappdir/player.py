@@ -8,6 +8,7 @@ from config import (
     STR_APP_TOHIT,
     STR_APP_TODAM,
     DEX_APP_DEF,
+    EXIT_NAMES,
 )
 from world import (
     ROOMS,
@@ -241,7 +242,7 @@ def mobile_update(tr, player, mob_instances, room_state):
         _sd = tpl["short_descr"]
         name = _sd[0].upper() + _sd[1:]
         if player["room"] == old_room:
-            tr.print("{} leaves {}.".format(name, direction))
+            tr.print("{} leaves {}.".format(name, EXIT_NAMES.get(direction, direction)))
         room_state[old_room]["mobs"].remove(mob_id)
         inst["room"] = dest_vnum
         room_state[dest_vnum]["mobs"].append(mob_id)

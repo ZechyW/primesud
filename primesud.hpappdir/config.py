@@ -30,6 +30,14 @@ MAP_MAX_DEPTH = 2   # recursion depth for exit tracing
 # ── Persistence ───────────────────────────────────────────────────────────────────────
 SAVE_VAR = "primesud_save"
 
+# ── Directions ───────────────────────────────────────────────────────────────────────
+_DIRS       = (("n","north","s"), ("e","east","w"), ("s","south","n"),
+               ("w","west","e"),  ("u","up","d"),   ("d","down","u"))
+EXIT_ORDER  = tuple(d[0] for d in _DIRS)
+EXIT_NAMES  = {d[0]: d[1] for d in _DIRS}
+REV_DIR     = {d[0]: d[2] for d in _DIRS}
+DIR_ALIASES = {k: d[0] for d in _DIRS for k in (d[0], d[1])}
+
 # ── Key command shortcuts [PRIMESUD] ──────────────────────────────────────────────────
 # Maps HP Prime physical key bit-index → (command, auto_submit).
 # auto_submit=True: execute immediately; False: load into input buffer.

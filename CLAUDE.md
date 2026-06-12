@@ -73,7 +73,7 @@ A reusable terminal abstraction written by Piotr Kowalewski (komame). Renders ch
 
 ## Colour codes
 
-Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` — handled transparently by `colors.py`. Mix with Python formatting via concatenation (`"{G" + name + "{x"`), not `.format()` — the `{` delimiter conflicts. Full table in REFERENCE.md § Colour codes.
+Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` — handled transparently by `colors.py`. When mixing with Python formatting, prefer `%` formatting (`"{G%s{x" % name`, `"hp: %d" % hp`) over `.format()` — `%` uses no `{` delimiters so it composes cleanly with colour codes. Concatenation (`"{G" + name + "{x"`) also works but is more verbose. Full table in REFERENCE.md § Colour codes.
 
 ## PrimeSUD-only extensions — `[PRIMESUD]` tag
 
@@ -87,7 +87,7 @@ Find all tagged locations:
 
 ## Benchmarking
 
-HP Prime has no profiler. Add a block to `run_title()` in `primesud.py` (after `Game.__init__`, before the game loop): capture `int(ppleval("Ticks"))` before and after a loop of N repetitions, print the delta, then call `tr.input("")` to pause. Clean up any side-effects before the pause so the game starts in a consistent state.
+HP Prime has no profiler. Add a block to `run()` in `primesud.py` (before `game.show_greeting()`): capture `int(ppleval("Ticks"))` before and after a loop of N repetitions, print the delta, then call `tr.input("")` to pause. Clean up any side-effects before the pause so the game starts in a consistent state.
 
 ## Docstrings
 

@@ -7,7 +7,7 @@ from picker import pick_from
 from player import get_hitroll, get_damroll, get_AC, get_curr_stat, get_obj_list, get_char_room, save_char, is_name, PLR_AUTOMAP, PLR_DEFAULTS
 from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick
 from automap import build_compact_lines, build_full_lines, COMPACT_W
-from config import DEFAULT_MACROS, TERMINAL_COLS
+from config import DEFAULT_MACROS, TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES
 
 from urandom import randint
 
@@ -37,14 +37,6 @@ def _wrap_paragraphs(text, width):
         lines.extend(_wrap(flat, width))
     return lines
 
-
-# (abbrev, full_name, reverse) — single source for all direction lookups
-_DIRS = (("n","north","s"), ("e","east","w"), ("s","south","n"),
-         ("w","west","e"), ("u","up","d"), ("d","down","u"))
-_EXIT_ORDER  = tuple(d[0] for d in _DIRS)
-_EXIT_NAMES  = {d[0]: d[1] for d in _DIRS}
-_REV_DIR     = {d[0]: d[2] for d in _DIRS}
-_DIR_ALIASES = {k: d[0] for d in _DIRS for k in (d[0], d[1])}
 
 
 def _exit_to(exit_val):
@@ -147,7 +139,7 @@ def do_look(tr, player, args, room_state, mob_instances):
             tr.print(tl)
 
     exits = " ".join(
-        _EXIT_NAMES.get(d, d) for d in _EXIT_ORDER
+        EXIT_NAMES.get(d, d) for d in EXIT_ORDER
         if d in room["exits"] and not (isinstance(room["exits"][d], dict) and room["exits"][d].get("closed"))
     )
     exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
@@ -186,19 +178,19 @@ def do_open(tr, player, args, room_state, mob_instances):
     """Open a door in a given direction (cf. 1stMud do_open in act_move.c)."""
     exits = ROOMS[player["room"]]["exits"]
     if args:
-        direction = _DIR_ALIASES.get(args[0].lower())
+        direction = DIR_ALIASES.get(args[0].lower())
         if direction is None:
             tr.print("Open what?")
             return
     else:
-        candidates = [d for d in _EXIT_ORDER
+        candidates = [d for d in EXIT_ORDER
                       if isinstance(exits.get(d), dict)
                       and exits[d].get("isdoor") and exits[d].get("closed")]
         if not candidates:
             tr.print("There are no doors to open here.")
             return
         idx = pick_from(tr, "Open which door?",
-                        [_EXIT_NAMES[d] for d in candidates])
+                        [EXIT_NAMES[d] for d in candidates])
         if idx < 0:
             return
         direction = candidates[idx]
@@ -215,7 +207,7 @@ def do_open(tr, player, args, room_state, mob_instances):
     exit_val["closed"] = False
     tr.print("Ok.")
     dest = exit_val["to"]
-    rev = _REV_DIR.get(direction)
+    rev = REV_DIR.get(direction)
     if rev and dest in ROOMS:
         rev_exit = ROOMS[dest]["exits"].get(rev)
         if isinstance(rev_exit, dict) and _exit_to(rev_exit) == player["room"]:
@@ -226,19 +218,19 @@ def do_close(tr, player, args, room_state, mob_instances):
     """Close a door in a given direction (cf. 1stMud do_close in act_move.c)."""
     exits = ROOMS[player["room"]]["exits"]
     if args:
-        direction = _DIR_ALIASES.get(args[0].lower())
+        direction = DIR_ALIASES.get(args[0].lower())
         if direction is None:
             tr.print("Close what?")
             return
     else:
-        candidates = [d for d in _EXIT_ORDER
+        candidates = [d for d in EXIT_ORDER
                       if isinstance(exits.get(d), dict)
                       and exits[d].get("isdoor") and not exits[d].get("closed")]
         if not candidates:
             tr.print("There are no open doors to close here.")
             return
         idx = pick_from(tr, "Close which door?",
-                        [_EXIT_NAMES[d] for d in candidates])
+                        [EXIT_NAMES[d] for d in candidates])
         if idx < 0:
             return
         direction = candidates[idx]
@@ -255,7 +247,7 @@ def do_close(tr, player, args, room_state, mob_instances):
     exit_val["closed"] = True
     tr.print("Ok.")
     dest = exit_val["to"]
-    rev = _REV_DIR.get(direction)
+    rev = REV_DIR.get(direction)
     if rev and dest in ROOMS:
         rev_exit = ROOMS[dest]["exits"].get(rev)
         if isinstance(rev_exit, dict) and _exit_to(rev_exit) == player["room"]:
@@ -768,7 +760,8 @@ def _macro_row(keys):
             c.append(" " * _CELL_W)
     for ki, key in enumerate(keys):
         s = cells[ki][0]
-        cells[ki][0] = s[0] + "{R" + key + "{x" + s[2:]
+        # cells[ki][0] = s[0] + "{R" + key + "{x" + s[2:]
+        cells[ki][0] = s[0] + key + s[2:]
     return ["|{}|{}|{}|".format(cells[0][i], cells[1][i], cells[2][i])
             for i in range(height)]
 
@@ -783,7 +776,8 @@ def do_macro(tr, player, args, room_state, mob_instances):  # [PRIMESUD]
         tr.print(_MACRO_SEP)
         cell0 = _macro_cell("0")
         s = cell0[0]
-        cell0[0] = s[0] + "{R0{x" + s[2:]
+        # cell0[0] = s[0] + "{R0{x" + s[2:]
+        cell0[0] = s[0] + "0" + s[2:]
         for mid in cell0:
             tr.print("|{}|{}|{}|".format(blank, mid, blank))
         tr.print(_MACRO_SEP)
