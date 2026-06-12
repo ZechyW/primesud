@@ -76,3 +76,67 @@ MAX_LEVEL = 50  # [PRIMESUD] 1stMud caps at 32
 THAC0_PLATEAU = 32   # level at which natural THAC0 stops improving
 THAC0_00      = 20   # THAC0 at level 1              (higher = worse to-hit)
 THAC0_MIN     = -2   # THAC0 at level THAC0_PLATEAU  (lower  = better to-hit)
+
+# ── Damage classes (cf. 1stMud dam_class enum in merc.h) ──────────────────────────────
+DAM_NONE      = -1   # "none" / TYPE_HIT bare attack — falls back to DAM_BASH
+DAM_BASH      =  0
+DAM_PIERCE    =  1
+DAM_SLASH     =  2
+DAM_FIRE      =  3
+DAM_COLD      =  4
+DAM_LIGHTNING =  5
+DAM_ACID      =  6
+DAM_POISON    =  7
+DAM_NEGATIVE  =  8
+DAM_HOLY      =  9
+DAM_ENERGY    = 10
+DAM_OTHER     = 11
+
+# ── Attack table (cf. 1stMud attack_table in const.c) ─────────────────────────────────
+# Maps dam_type area-file key → (display noun, dam_class).
+# Noun differs from key for: divine, peckb, shbite, flbite, frbite, acbite, drain.
+# dam_class used for AC-type selection (pierce/slash/bash/exotic) and future res/imm.
+ATTACK_TABLE = {
+    "none":      ("hit",           DAM_NONE),
+    "slice":     ("slice",         DAM_SLASH),
+    "stab":      ("stab",          DAM_PIERCE),
+    "slash":     ("slash",         DAM_SLASH),
+    "whip":      ("whip",          DAM_SLASH),
+    "claw":      ("claw",          DAM_SLASH),
+    "blast":     ("blast",         DAM_BASH),
+    "pound":     ("pound",         DAM_BASH),
+    "crush":     ("crush",         DAM_BASH),
+    "grep":      ("grep",          DAM_SLASH),
+    "bite":      ("bite",          DAM_PIERCE),
+    "pierce":    ("pierce",        DAM_PIERCE),
+    "suction":   ("suction",       DAM_BASH),
+    "beating":   ("beating",       DAM_BASH),
+    "digestion": ("digestion",     DAM_ACID),
+    "charge":    ("charge",        DAM_BASH),
+    "slap":      ("slap",          DAM_BASH),
+    "punch":     ("punch",         DAM_BASH),
+    "wrath":     ("wrath",         DAM_ENERGY),
+    "magic":     ("magic",         DAM_ENERGY),
+    "divine":    ("divine power",  DAM_HOLY),
+    "cleave":    ("cleave",        DAM_SLASH),
+    "scratch":   ("scratch",       DAM_PIERCE),
+    "peck":      ("peck",          DAM_PIERCE),
+    "peckb":     ("peck",          DAM_BASH),
+    "chop":      ("chop",          DAM_SLASH),
+    "sting":     ("sting",         DAM_PIERCE),
+    "smash":     ("smash",         DAM_BASH),
+    "shbite":    ("shocking bite", DAM_LIGHTNING),
+    "flbite":    ("flaming bite",  DAM_FIRE),
+    "frbite":    ("freezing bite", DAM_COLD),
+    "acbite":    ("acidic bite",   DAM_ACID),
+    "chomp":     ("chomp",         DAM_PIERCE),
+    "drain":     ("life drain",    DAM_NEGATIVE),
+    "thrust":    ("thrust",        DAM_PIERCE),
+    "slime":     ("slime",         DAM_ACID),
+    "shock":     ("shock",         DAM_LIGHTNING),
+    "thwack":    ("thwack",        DAM_BASH),
+    "flame":     ("flame",         DAM_FIRE),
+    "chill":     ("chill",         DAM_COLD),
+    "code":      ("code",          DAM_OTHER),
+    "radiation": ("radiation",     DAM_POISON),
+}

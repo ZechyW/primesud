@@ -2,7 +2,8 @@ from urandom import randint
 
 from config import (PULSE_VIOLENCE,
                     STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
-                    CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_MIN, THAC0_PLATEAU)
+                    CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_MIN, THAC0_PLATEAU,
+                    ATTACK_TABLE, DAM_NONE, DAM_BASH)
 from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, ROOMS,
                    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY)
 from player import get_hitroll, get_damroll, get_AC, get_curr_stat, show_prompt
@@ -162,6 +163,21 @@ def _damage_punct(dmg):
     return "!!!!"
 
 
+def _attack_info(dam_type):
+    """Resolve display noun and damage class for a dam_type key (cf. 1stMud attack_table in const.c).
+
+    Args:
+        dam_type (str): Attack type name from area file (e.g. 'bite', 'divine').
+
+    Returns:
+        tuple: (noun (str), dam_class (int)).
+    """
+    noun, dc = ATTACK_TABLE.get(dam_type, ("hit", DAM_BASH))
+    if dc == DAM_NONE:
+        dc = DAM_BASH
+    return noun, dc
+
+
 def _mob_condition(inst, tpl):
     """Return a condition description string for a mob.
 
@@ -317,16 +333,17 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
 
     victim_ac = get_AC(target_inst) // 10
 
-    # True when the weapon has a named attack type (not TYPE_HIT / "none")
-    _dt = wtpl["dam_type"] if wtpl is not None else None
-    armed = bool(_dt and _dt != "none")
+    # Resolve attack noun and damage class from the table
+    _dt_key = wtpl["dam_type"] if wtpl is not None else "none"
+    attack_noun, dam_class = _attack_info(_dt_key)
+    armed = _dt_key != "none"
 
     # Hit check
     roll = randint(0, 19)
     if roll == 0 or (roll != 19 and roll < thac0 - victim_ac):
         vs, vp = _damage_verb(0)
         if armed:
-            tr.print("Your {} {} {}.".format(_dt, vp, tpl["short_descr"]))
+            tr.print("Your {} {} {}.".format(attack_noun, vp, tpl["short_descr"]))
         else:
             tr.print("You {} {}.".format(vs, tpl["short_descr"]))
         check_improve(tr, player, sk_vnum, False)
@@ -357,7 +374,7 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
     vs, vp = _damage_verb(dam)
     punct = _damage_punct(dam)
     if armed:
-        tr.print("Your {} {} {}{} [{}]".format(_dt, vp, tpl["short_descr"], punct, dam))
+        tr.print("Your {} {} {}{} [{}]".format(attack_noun, vp, tpl["short_descr"], punct, dam))
     else:
         tr.print("You {} {}{} [{}]".format(vs, tpl["short_descr"], punct, dam))
 
@@ -388,7 +405,7 @@ def _mob_one_hit(tr, mob_inst, player):
 
     player_ac = get_AC(player) // 10
 
-    attack_noun = tpl.get("dam_type", "hit")
+    attack_noun, dam_class = _attack_info(tpl.get("dam_type", "none"))
 
     roll = randint(0, 19)
     if roll == 0 or (roll != 19 and roll < thac0 - player_ac):
