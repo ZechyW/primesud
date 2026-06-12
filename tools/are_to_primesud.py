@@ -408,6 +408,7 @@ def parse_objects(lines):
 
         if item_type == "weapon" and val_line:
             obj["weapon_type"] = val_line[0]
+            obj["dam_type"]    = val_line[3] if len(val_line) > 3 else "hit"
             obj["dice"] = (
                 int(val_line[1]) if len(val_line) > 1 else 1,
                 int(val_line[2]) if len(val_line) > 2 else 1,
@@ -606,7 +607,7 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
         w(f'        "hitroll":   {mob["hitroll"]},')
         w(f'        "hp_dice":   {mob["hp_dice"]!r},')
         w(f'        "mana_dice": {mob["mana_dice"]!r},')
-        w(f'        "damage":    {mob["damage"]!r},  # dam_type: {mob["dam_type"]!r}')
+        w(f'        "damage":    {mob["damage"]!r},  "dam_type": {mob["dam_type"]!r},')
         w(f'        "AC":        {mob["AC"]},')
         for flag_key in ("off_flags", "imm_flags", "res_flags", "vuln_flags"):
             fd = mob[flag_key]
@@ -673,8 +674,9 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
                 w(f'        "extra_flags": {_repr_flags(bits)},')
         if obj["type"] == "weapon":
             wt = obj.get("weapon_type", "unknown")
+            an = obj.get("dam_type", "hit")
             dc = obj.get("dice", (1, 1, 0))
-            w(f'        "weapon_type": {wt!r}, "dice": {dc!r},')
+            w(f'        "weapon_type": {wt!r}, "dam_type": {an!r}, "dice": {dc!r},')
             wf = obj.get("weapon_flags", {})
             w(f'        "weapon_flags": {_repr_flags(wf)},')
         elif obj["type"] == "armor" and "AC" in obj:

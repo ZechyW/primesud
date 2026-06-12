@@ -185,7 +185,8 @@ MOBILES = {
 | `hp_dice`   | tuple | yes      | `(num_dice, die_size, bonus)` — max HP |
 | `hitroll`   | int   | yes      | Added to attack roll |
 | `AC`        | int   | yes      | Armour class; lower is better (negative = very hard to hit) |
-| `damage`    | tuple | yes      | `(num_dice, die_size, bonus)` per hit; comment the `dam_type` string |
+| `damage`    | tuple | yes      | `(num_dice, die_size, bonus)` per hit |
+| `dam_type`  | str   | yes      | Attack noun for combat messages (e.g. `'claw'`, `'bite'`, `'beating'`); also the damage category for future resistance checks |
 | `gold`      | int   | yes      | Gold carried (unused until economy is implemented) |
 | `loot`      | list  | yes      | Item VNUMs dropped on death; leave `[]` until E/G resets are implemented |
 | `act_flags` | dict  | no       | Behaviour flags (see below) |
@@ -263,6 +264,7 @@ OBJECTS = {
 | `value`       | int        | yes         | Shop buy price (unused until economy implemented) |
 | `dice`        | tuple      | weapons     | `(num_dice, die_size, bonus)` — damage roll |
 | `weapon_type` | str        | weapons     | `sword`, `dagger`, `mace`, `axe`, `flail`, `whip`, `staff`, `polearm`, … |
+| `dam_type`    | str        | weapons     | Attack noun for combat messages, matching `attack_table` (e.g. `'slash'`, `'pierce'`, `'pound'`) |
 | `hitroll`     | int        | weapons     | Added to attack roll when wielded |
 | `damroll`     | int        | weapons     | Added to damage roll when wielded |
 | `AC`          | int        | armor       | AC bonus when worn |

@@ -317,11 +317,18 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
 
     victim_ac = get_AC(target_inst) // 10
 
+    # True when the weapon has a named attack type (not TYPE_HIT / "none")
+    _dt = wtpl["dam_type"] if wtpl is not None else None
+    armed = bool(_dt and _dt != "none")
+
     # Hit check
     roll = randint(0, 19)
     if roll == 0 or (roll != 19 and roll < thac0 - victim_ac):
-        vs, _ = _damage_verb(0)
-        tr.print("You {} {}.".format(vs, tpl["short_descr"]))
+        vs, vp = _damage_verb(0)
+        if armed:
+            tr.print("Your {} {} {}.".format(_dt, vp, tpl["short_descr"]))
+        else:
+            tr.print("You {} {}.".format(vs, tpl["short_descr"]))
         check_improve(tr, player, sk_vnum, False)
         return 0
 
@@ -347,10 +354,12 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
     dam = max(1, dam)
     target_inst["hp"] = max(0, target_inst["hp"] - dam)
 
-    weapon_name = wtpl["short_descr"] if wtpl else "fist"
     vs, vp = _damage_verb(dam)
     punct = _damage_punct(dam)
-    tr.print("Your {} {} {}{} [{}]".format(weapon_name, vp, tpl["short_descr"], punct, dam))
+    if armed:
+        tr.print("Your {} {} {}{} [{}]".format(_dt, vp, tpl["short_descr"], punct, dam))
+    else:
+        tr.print("You {} {}{} [{}]".format(vs, tpl["short_descr"], punct, dam))
 
     check_improve(tr, player, sk_vnum, True)
     return dam
@@ -379,10 +388,11 @@ def _mob_one_hit(tr, mob_inst, player):
 
     player_ac = get_AC(player) // 10
 
+    attack_noun = tpl.get("dam_type", "hit")
+
     roll = randint(0, 19)
     if roll == 0 or (roll != 19 and roll < thac0 - player_ac):
-        _, vp = _damage_verb(0)
-        tr.print("{} {} you.".format(tpl["short_descr"], vp))
+        tr.print("{}'s {} misses you.".format(tpl["short_descr"], attack_noun))
         return 0
 
     # Defensive checks (player skills)
@@ -404,7 +414,13 @@ def _mob_one_hit(tr, mob_inst, player):
 
     _, vp = _damage_verb(dam)
     punct = _damage_punct(dam)
-    tr.print("{} {} you{} [{}]".format(tpl["short_descr"], vp, punct, dam))
+    tr.print("{}'s {} {} you{} [{}]".format(tpl["short_descr"], attack_noun, vp, punct, dam))
+
+    if dam > player["hp_max"] // 4:
+        tr.print("That really did HURT!")
+    if player["hp"] < player["hp_max"] // 4:
+        tr.print("You sure are BLEEDING!")
+
     return dam
 
 
@@ -617,7 +633,6 @@ def set_fighting(tr, player, mob_id, mob_instances, room_state):
     inst["fighting"] = player
     player["fighting"] = mob_id
     player["pos"]      = "fighting"
-    tr.print("{} attacks!".format(tpl["short_descr"]))
 
 
 def check_assist(tr, player, attacked_id, mob_instances, room_state):
@@ -657,7 +672,7 @@ def check_assist(tr, player, attacked_id, mob_instances, room_state):
                 or (grp and grp == attacked_tpl.get("group"))):
             inst["state"]    = "aggro"
             inst["fighting"] = player
-            tr.print("{} screams and joins the fight!".format(
+            tr.print("{} screams and attacks!".format(
                 tpl["short_descr"]))
 
 
@@ -777,6 +792,21 @@ def violence_update(tr, player, mob_instances, room_state):
 
 # ── Death / Victory ───────────────────────────────────────────────────────────
 
+_DEATH_CRIES = [
+    "{} hits the ground ... DEAD.",
+    "{} splatters blood on your armor.",
+    "{} spills its guts all over the floor.",
+    "{}'s heart is torn from its chest.",
+    "{}'s severed head plops on the ground.",
+    "{}'s arm is sliced from its dead body.",
+]
+
+
+def _death_cry(tr, tpl):
+    """Random death flavour message (cf. 1stMud death_cry in fight.c)."""
+    tr.print(_DEATH_CRIES[randint(0, len(_DEATH_CRIES) - 1)].format(tpl["short_descr"]))
+
+
 def raw_kill(tr, player, mob_id, inst, tpl, room_state, mob_instances):
     """Handle mob death: award XP, level-up if needed, drop loot, extract mob (cf. 1stMud raw_kill in fight.c).
 
@@ -789,7 +819,7 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state, mob_instances):
         room_state (dict): Room state mapping room ID → room state dict.
         mob_instances (dict): Mob instance mapping mob ID → instance dict.
     """
-    tr.print("{} is defeated!".format(tpl["short_descr"]))
+    _death_cry(tr, tpl)
     xp = _xp_for_kill(player["level"], inst["level"])
     player["xp"] += xp
     tr.print("+{} XP".format(xp))

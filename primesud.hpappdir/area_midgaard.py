@@ -411,7 +411,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 999),
-        "damage":    (1, 8, 32),  # dam_type: 'magic'
+        "damage":    (1, 8, 32),  "dam_type": 'magic',
         "AC":        -2,
         "off_flags": {"area_attack": True, "dodge": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -432,7 +432,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 20),  # dam_type: 'beating'
+        "damage":    (1, 8, 20),  "dam_type": 'beating',
         "AC":        -2,
         "off_flags": {"bash": True, "berserk": True, "dodge": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -453,7 +453,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 20),  # dam_type: 'beating'
+        "damage":    (1, 8, 20),  "dam_type": 'beating',
         "AC":        -2,
         "off_flags": {"disarm": True, "dodge": True, "kick_dirt": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -474,7 +474,7 @@ MOBILES = {
         "hitroll":   10,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 32),  # dam_type: 'punch'
+        "damage":    (1, 8, 32),  "dam_type": 'punch',
         "AC":        -2,
         "off_flags": {"bash": True, "disarm": True, "kick": True, "parry": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -495,7 +495,7 @@ MOBILES = {
         "hitroll":   10,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 32),  # dam_type: 'punch'
+        "damage":    (1, 8, 32),  "dam_type": 'punch',
         "AC":        -2,
         "off_flags": {"bash": True, "disarm": True, "dodge": True, "kick_dirt": True, "parry": True, "trip": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -517,7 +517,7 @@ MOBILES = {
         "hitroll":   1,
         "hp_dice":   (6, 8, 80),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 5, 1),  # dam_type: 'punch'
+        "damage":    (1, 5, 1),  "dam_type": 'punch',
         "AC":        0,
         "off_flags": {"disarm": True, "dodge": True, "kick_dirt": True, "trip": True},
         "sex":  'either',
@@ -537,7 +537,7 @@ MOBILES = {
         "hitroll":   10,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 32),  # dam_type: 'beating'
+        "damage":    (1, 8, 32),  "dam_type": 'beating',
         "AC":        -2,
         "off_flags": {"bash": True, "disarm": True, "kick": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -558,7 +558,7 @@ MOBILES = {
         "hitroll":   5,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 4, 23),  # dam_type: 'beating'
+        "damage":    (1, 4, 23),  "dam_type": 'beating',
         "AC":        -2,
         "off_flags": {"dodge": True, "fast": True, "kick_dirt": True, "trip": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -579,7 +579,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 20),  # dam_type: 'punch'
+        "damage":    (1, 8, 20),  "dam_type": 'punch',
         "AC":        -2,
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
         "sex":  'male',
@@ -599,7 +599,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 22),  # dam_type: 'slap'
+        "damage":    (1, 8, 22),  "dam_type": 'slap',
         "AC":        -2,
         "off_flags": {"area_attack": True, "dodge": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -620,7 +620,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 20),  # dam_type: 'punch'
+        "damage":    (1, 8, 20),  "dam_type": 'punch',
         "AC":        -2,
         "off_flags": {"area_attack": True, "dodge": True, "trip": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -642,7 +642,7 @@ MOBILES = {
         "hitroll":   30,
         "hp_dice":   (1, 1, 3999),
         "mana_dice": (1, 1, 499),
-        "damage":    (5, 4, 40),  # dam_type: 'crush'
+        "damage":    (5, 4, 40),  "dam_type": 'crush',
         "AC":        -3,
         "off_flags": {"area_attack": True, "bash": True, "berserk": True, "disarm": True, "dodge": True, "fast": True, "kick": True, "parry": True, "rescue": True, "trip": True, "crush": True, "assist_guard": True},
         "imm_flags": {"summon": True, "charm": True, "mental": True},
@@ -666,7 +666,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 999),
-        "damage":    (2, 4, 30),  # dam_type: 'divine'
+        "damage":    (2, 4, 30),  "dam_type": 'divine',
         "AC":        -2,
         "off_flags": {"dodge": True, "fast": True, "kick": True, "parry": True, "_unknown_bits": [35, 40, 46, 49, 50, 51, 52, 62]},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True, "_unknown_bits": [32, 33, 39, 44, 53, 60]},
@@ -689,7 +689,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 1999),
         "mana_dice": (1, 1, 999),
-        "damage":    (3, 8, 24),  # dam_type: 'magic'
+        "damage":    (3, 8, 24),  "dam_type": 'magic',
         "AC":        -2,
         "off_flags": {"dodge": True, "fade": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -713,7 +713,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 1999),
         "mana_dice": (1, 1, 999),
-        "damage":    (3, 8, 24),  # dam_type: 'divine'
+        "damage":    (3, 8, 24),  "dam_type": 'divine',
         "AC":        -2,
         "off_flags": {"disarm": True, "dodge": True, "fast": True, "kick": True, "parry": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -735,7 +735,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 1999),
         "mana_dice": (1, 1, 199),
-        "damage":    (3, 8, 24),  # dam_type: 'punch'
+        "damage":    (3, 8, 24),  "dam_type": 'punch',
         "AC":        -2,
         "off_flags": {"backstab": True, "disarm": True, "dodge": True, "fast": True, "kick_dirt": True, "trip": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -757,7 +757,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 1999),
         "mana_dice": (1, 1, 199),
-        "damage":    (3, 8, 24),  # dam_type: 'beating'
+        "damage":    (3, 8, 24),  "dam_type": 'beating',
         "AC":        -2,
         "off_flags": {"area_attack": True, "bash": True, "berserk": True, "disarm": True, "kick": True, "parry": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -781,7 +781,7 @@ MOBILES = {
         "hitroll":   5,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 499),
-        "damage":    (10, 4, 10),  # dam_type: 'magic'
+        "damage":    (10, 4, 10),  "dam_type": 'magic',
         "AC":        -1,
         "off_flags": {"area_attack": True, "disarm": True, "fade": True},
         "imm_flags": {"summon": True, "charm": True},
@@ -805,7 +805,7 @@ MOBILES = {
         "hitroll":   5,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 499),
-        "damage":    (5, 8, 10),  # dam_type: 'divine'
+        "damage":    (5, 8, 10),  "dam_type": 'divine',
         "AC":        -1,
         "off_flags": {"berserk": True, "disarm": True, "kick": True, "parry": True},
         "imm_flags": {"summon": True, "charm": True},
@@ -828,7 +828,7 @@ MOBILES = {
         "hitroll":   8,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 99),
-        "damage":    (4, 10, 12),  # dam_type: 'pierce'
+        "damage":    (4, 10, 12),  "dam_type": 'pierce',
         "AC":        -2,
         "off_flags": {"backstab": True, "disarm": True, "dodge": True, "kick_dirt": True, "trip": True},
         "imm_flags": {"summon": True, "charm": True},
@@ -851,7 +851,7 @@ MOBILES = {
         "hitroll":   10,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 199),
-        "damage":    (11, 4, 10),  # dam_type: 'punch'
+        "damage":    (11, 4, 10),  "dam_type": 'punch',
         "AC":        -1,
         "off_flags": {"area_attack": True, "bash": True, "berserk": True, "disarm": True, "fast": True, "kick": True, "parry": True},
         "imm_flags": {"summon": True, "charm": True},
@@ -873,7 +873,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 499),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 18),  # dam_type: 'beating'
+        "damage":    (1, 8, 18),  "dam_type": 'beating',
         "AC":        -1,
         "off_flags": {"dodge": True, "fast": True, "kick_dirt": True, "trip": True},
         "imm_flags": {"summon": True, "charm": True},
@@ -895,7 +895,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 499),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 18),  # dam_type: 'beating'
+        "damage":    (1, 8, 18),  "dam_type": 'beating',
         "AC":        -1,
         "off_flags": {"dodge": True, "fast": True, "kick_dirt": True, "trip": True},
         "imm_flags": {"summon": True, "charm": True},
@@ -918,7 +918,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 499),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 18),  # dam_type: 'beating'
+        "damage":    (1, 8, 18),  "dam_type": 'beating',
         "AC":        -1,
         "off_flags": {"dodge": True, "kick_dirt": True, "trip": True},
         "imm_flags": {"summon": True, "charm": True},
@@ -940,7 +940,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 499),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 18),  # dam_type: 'beating'
+        "damage":    (1, 8, 18),  "dam_type": 'beating',
         "AC":        -1,
         "off_flags": {"dodge": True, "fast": True, "kick_dirt": True, "trip": True},
         "imm_flags": {"summon": True, "charm": True},
@@ -962,7 +962,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 499),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 18),  # dam_type: 'beating'
+        "damage":    (1, 8, 18),  "dam_type": 'beating',
         "AC":        -1,
         "off_flags": {"dodge": True, "fast": True, "kick_dirt": True, "trip": True},
         "imm_flags": {"summon": True, "charm": True},
@@ -984,7 +984,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 499),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 18),  # dam_type: 'beating'
+        "damage":    (1, 8, 18),  "dam_type": 'beating',
         "AC":        -1,
         "off_flags": {"backstab": True, "dodge": True, "fast": True, "kick_dirt": True, "trip": True},
         "imm_flags": {"summon": True, "charm": True},
@@ -1006,7 +1006,7 @@ MOBILES = {
         "hitroll":   2,
         "hp_dice":   (1, 1, 499),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 18),  # dam_type: 'beating'
+        "damage":    (1, 8, 18),  "dam_type": 'beating',
         "AC":        -1,
         "off_flags": {"backstab": True, "disarm": True, "dodge": True, "kick_dirt": True, "trip": True},
         "imm_flags": {"summon": True, "charm": True},
@@ -1028,7 +1028,7 @@ MOBILES = {
         "hitroll":   3,
         "hp_dice":   (15, 15, 160),
         "mana_dice": (1, 1, 149),
-        "damage":    (2, 4, 4),  # dam_type: 'punch'
+        "damage":    (2, 4, 4),  "dam_type": 'punch',
         "AC":        0,
         "off_flags": {"bash": True, "berserk": True, "disarm": True, "parry": True, "rescue": True, "assist_guard": True, "assist_vnum": True},
         "res_flags": {"magic": True},
@@ -1049,7 +1049,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (2, 6, 10),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 5, 0),  # dam_type: 'pound'
+        "damage":    (1, 5, 0),  "dam_type": 'pound',
         "AC":        1,
         "off_flags": {"trip": True, "assist_vnum": True},
         "vuln_flags": {"magic": True},
@@ -1070,7 +1070,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 6, 4),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 4, 0),  # dam_type: 'bite'
+        "damage":    (1, 4, 0),  "dam_type": 'bite',
         "AC":        1,
         "off_flags": {"dodge": True, "assist_race": True},
         "vuln_flags": {"magic": True},
@@ -1091,7 +1091,7 @@ MOBILES = {
         "hitroll":   1,
         "hp_dice":   (2, 6, 60),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 6, 1),  # dam_type: 'punch'
+        "damage":    (1, 6, 1),  "dam_type": 'punch',
         "AC":        0,
         "off_flags": {"backstab": True, "kick_dirt": True, "trip": True, "assist_align": True},
         "vuln_flags": {"magic": True},
@@ -1112,7 +1112,7 @@ MOBILES = {
         "hitroll":   -1,
         "hp_dice":   (2, 6, 22),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 6, 0),  # dam_type: 'beating'
+        "damage":    (1, 6, 0),  "dam_type": 'beating',
         "AC":        0,
         "off_flags": {"assist_vnum": True},
         "vuln_flags": {"magic": True},
@@ -1133,7 +1133,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (2, 6, 10),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 5, 0),  # dam_type: 'beating'
+        "damage":    (1, 5, 0),  "dam_type": 'beating',
         "AC":        0,
         "off_flags": {"dodge": True, "kick_dirt": True, "trip": True, "assist_vnum": True},
         "vuln_flags": {"magic": True},
@@ -1155,7 +1155,7 @@ MOBILES = {
         "hitroll":   1,
         "hp_dice":   (1, 6, 4),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 4, 0),  # dam_type: 'scratch'
+        "damage":    (1, 4, 0),  "dam_type": 'scratch',
         "AC":        0,
         "off_flags": {"berserk": True, "dodge": True, "fast": True, "assist_race": True},
         "vuln_flags": {"magic": True},
@@ -1176,7 +1176,7 @@ MOBILES = {
         "hitroll":   3,
         "hp_dice":   (15, 15, 160),
         "mana_dice": (1, 1, 149),
-        "damage":    (2, 4, 4),  # dam_type: 'punch'
+        "damage":    (2, 4, 4),  "dam_type": 'punch',
         "AC":        0,
         "off_flags": {"bash": True, "berserk": True, "disarm": True, "parry": True, "rescue": True, "assist_guard": True, "assist_vnum": True},
         "res_flags": {"magic": True},
@@ -1197,7 +1197,7 @@ MOBILES = {
         "hitroll":   3,
         "hp_dice":   (15, 15, 160),
         "mana_dice": (1, 1, 149),
-        "damage":    (2, 4, 4),  # dam_type: 'punch'
+        "damage":    (2, 4, 4),  "dam_type": 'punch',
         "AC":        0,
         "off_flags": {"bash": True, "berserk": True, "disarm": True, "parry": True, "rescue": True, "assist_guard": True, "assist_vnum": True},
         "res_flags": {"magic": True},
@@ -1219,7 +1219,7 @@ MOBILES = {
         "hitroll":   4,
         "hp_dice":   (20, 20, 200),
         "mana_dice": (1, 1, 199),
-        "damage":    (2, 4, 7),  # dam_type: 'punch'
+        "damage":    (2, 4, 7),  "dam_type": 'punch',
         "AC":        -1,
         "off_flags": {"bash": True, "berserk": True, "disarm": True, "fast": True, "parry": True, "rescue": True, "assist_guard": True, "assist_vnum": True},
         "res_flags": {"magic": True},
@@ -1241,7 +1241,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 999),
-        "damage":    (10, 10, 10),  # dam_type: 'magic'
+        "damage":    (10, 10, 10),  "dam_type": 'magic',
         "AC":        -2,
         "off_flags": {"dodge": True, "fade": True, "fast": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -1262,7 +1262,7 @@ MOBILES = {
         "hitroll":   3,
         "hp_dice":   (15, 15, 160),
         "mana_dice": (1, 1, 149),
-        "damage":    (2, 4, 4),  # dam_type: 'punch'
+        "damage":    (2, 4, 4),  "dam_type": 'punch',
         "AC":        0,
         "off_flags": {"bash": True, "berserk": True, "disarm": True, "parry": True, "rescue": True, "assist_guard": True, "assist_vnum": True},
         "res_flags": {"magic": True},
@@ -1283,7 +1283,7 @@ MOBILES = {
         "hitroll":   3,
         "hp_dice":   (15, 15, 160),
         "mana_dice": (1, 1, 149),
-        "damage":    (2, 4, 4),  # dam_type: 'punch'
+        "damage":    (2, 4, 4),  "dam_type": 'punch',
         "AC":        0,
         "off_flags": {"bash": True, "berserk": True, "disarm": True, "parry": True, "rescue": True, "assist_guard": True, "assist_vnum": True},
         "res_flags": {"magic": True},
@@ -1305,7 +1305,7 @@ MOBILES = {
         "hitroll":   2,
         "hp_dice":   (2, 6, 11),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 4, 0),  # dam_type: 'scratch'
+        "damage":    (1, 4, 0),  "dam_type": 'scratch',
         "AC":        0,
         "off_flags": {"dodge": True, "fast": True},
         "res_flags": {"magic": True},
@@ -1327,7 +1327,7 @@ MOBILES = {
         "hitroll":   2,
         "hp_dice":   (4, 6, 25),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 6, 0),  # dam_type: 'bite'
+        "damage":    (1, 6, 0),  "dam_type": 'bite',
         "AC":        0,
         "off_flags": {"fast": True, "trip": True},
         "res_flags": {"magic": True},
@@ -1349,7 +1349,7 @@ MOBILES = {
         "hitroll":   3,
         "hp_dice":   (3, 12, 50),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 6, 0),  # dam_type: 'bite'
+        "damage":    (1, 6, 0),  "dam_type": 'bite',
         "AC":        0,
         "off_flags": {"fast": True, "trip": True},
         "res_flags": {"magic": True},
@@ -1371,7 +1371,7 @@ MOBILES = {
         "hitroll":   3,
         "hp_dice":   (6, 10, 60),
         "mana_dice": (1, 1, 149),
-        "damage":    (2, 4, 1),  # dam_type: 'bite'
+        "damage":    (2, 4, 1),  "dam_type": 'bite',
         "AC":        0,
         "off_flags": {"bash": True, "berserk": True, "fast": True, "rescue": True},
         "res_flags": {"magic": True},
@@ -1393,7 +1393,7 @@ MOBILES = {
         "hitroll":   3,
         "hp_dice":   (6, 10, 80),
         "mana_dice": (1, 1, 99),
-        "damage":    (2, 5, 1),  # dam_type: 'bite'
+        "damage":    (2, 5, 1),  "dam_type": 'bite',
         "AC":        0,
         "off_flags": {"bash": True, "dodge": True, "fast": True},
         "res_flags": {"magic": True},
@@ -1415,7 +1415,7 @@ MOBILES = {
         "hitroll":   3,
         "hp_dice":   (6, 10, 130),
         "mana_dice": (1, 1, 99),
-        "damage":    (2, 5, 3),  # dam_type: 'claw'
+        "damage":    (2, 5, 3),  "dam_type": 'claw',
         "AC":        0,
         "off_flags": {"dodge": True, "fast": True, "trip": True},
         "res_flags": {"magic": True},
@@ -1437,7 +1437,7 @@ MOBILES = {
         "hitroll":   2,
         "hp_dice":   (4, 9, 205),
         "mana_dice": (1, 1, 99),
-        "damage":    (2, 8, 3),  # dam_type: 'chomp'
+        "damage":    (2, 8, 3),  "dam_type": 'chomp',
         "AC":        0,
         "off_flags": {"bash": True, "dodge": True, "fast": True},
         "res_flags": {"magic": True},
@@ -1459,7 +1459,7 @@ MOBILES = {
         "hitroll":   3,
         "hp_dice":   (4, 9, 325),
         "mana_dice": (1, 1, 99),
-        "damage":    (4, 4, 5),  # dam_type: 'claw'
+        "damage":    (4, 4, 5),  "dam_type": 'claw',
         "AC":        -1,
         "off_flags": {"bash": True, "dodge": True, "fast": True, "tail": True, "trip": True},
         "res_flags": {"magic": True},
@@ -1480,7 +1480,7 @@ MOBILES = {
         "hitroll":   2,
         "hp_dice":   (1, 1, 499),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 8, 12),  # dam_type: 'beating'
+        "damage":    (1, 8, 12),  "dam_type": 'beating',
         "AC":        -2,
         "off_flags": {"dodge": True, "fade": True},
         "imm_flags": {"summon": True, "charm": True},
@@ -1502,7 +1502,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (2, 6, 35),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 7, 0),  # dam_type: 'punch'
+        "damage":    (1, 7, 0),  "dam_type": 'punch',
         "AC":        0,
         "vuln_flags": {"magic": True},
         "sex":  'male',
@@ -1523,7 +1523,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (2, 6, 10),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 5, 0),  # dam_type: 'peck'
+        "damage":    (1, 5, 0),  "dam_type": 'peck',
         "AC":        0,
         "off_flags": {"bash": True, "dodge": True, "assist_race": True},
         "res_flags": {"drowning": True},
@@ -1546,7 +1546,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 4, 0),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 1, 0),  # dam_type: 'peckb'
+        "damage":    (1, 1, 0),  "dam_type": 'peckb',
         "AC":        1,
         "off_flags": {"dodge": True, "assist_race": True},
         "res_flags": {"drowning": True},
@@ -1569,7 +1569,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (2, 6, 0),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 3, 0),  # dam_type: 'peck'
+        "damage":    (1, 3, 0),  "dam_type": 'peck',
         "AC":        1,
         "off_flags": {"dodge": True, "fast": True, "assist_race": True},
         "vuln_flags": {"magic": True},
@@ -1591,7 +1591,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (2, 6, 5),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 4, 0),  # dam_type: 'peckb'
+        "damage":    (1, 4, 0),  "dam_type": 'peckb',
         "AC":        1,
         "off_flags": {"dodge": True, "assist_race": True},
         "res_flags": {"drowning": True},
@@ -1614,7 +1614,7 @@ MOBILES = {
         "hitroll":   4,
         "hp_dice":   (15, 15, 190),
         "mana_dice": (1, 1, 199),
-        "damage":    (2, 4, 6),  # dam_type: 'punch'
+        "damage":    (2, 4, 6),  "dam_type": 'punch',
         "AC":        0,
         "off_flags": {"bash": True, "berserk": True, "disarm": True, "fast": True, "parry": True, "rescue": True, "assist_vnum": True},
         "res_flags": {"magic": True},
@@ -1635,7 +1635,7 @@ MOBILES = {
         "hitroll":   3,
         "hp_dice":   (15, 15, 10),
         "mana_dice": (1, 1, 149),
-        "damage":    (2, 4, 4),  # dam_type: 'punch'
+        "damage":    (2, 4, 4),  "dam_type": 'punch',
         "AC":        0,
         "off_flags": {"bash": True, "berserk": True, "disarm": True, "fast": True, "parry": True, "rescue": True, "assist_vnum": True},
         "res_flags": {"magic": True},
@@ -1656,7 +1656,7 @@ MOBILES = {
         "hitroll":   2,
         "hp_dice":   (4, 12, 148),
         "mana_dice": (1, 1, 99),
-        "damage":    (2, 7, 1),  # dam_type: 'slap'
+        "damage":    (2, 7, 1),  "dam_type": 'slap',
         "AC":        0,
         "off_flags": {"dodge": True, "fast": True, "kick": True},
         "sex":  'female',
@@ -1677,7 +1677,7 @@ MOBILES = {
         "hitroll":   6,
         "hp_dice":   (6, 10, 500),
         "mana_dice": (1, 1, 199),
-        "damage":    (1, 8, 12),  # dam_type: 'punch'
+        "damage":    (1, 8, 12),  "dam_type": 'punch',
         "AC":        -2,
         "off_flags": {"disarm": True, "dodge": True, "trip": True, "assist_players": True},
         "imm_flags": {"summon": True, "charm": True},
@@ -1699,7 +1699,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (2, 6, 10),
         "mana_dice": (1, 1, 99),
-        "damage":    (1, 5, 0),  # dam_type: 'slap'
+        "damage":    (1, 5, 0),  "dam_type": 'slap',
         "AC":        1,
         "off_flags": {"berserk": True},
         "vuln_flags": {"magic": True},
@@ -1720,7 +1720,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 199),
-        "damage":    (1, 8, 10),  # dam_type: 'slap'
+        "damage":    (1, 8, 10),  "dam_type": 'slap',
         "AC":        -2,
         "off_flags": {"dodge": True, "fade": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -1741,7 +1741,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 199),
-        "damage":    (5, 6, 20),  # dam_type: 'slap'
+        "damage":    (5, 6, 20),  "dam_type": 'slap',
         "AC":        -2,
         "off_flags": {"dodge": True, "fade": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -1763,7 +1763,7 @@ MOBILES = {
         "hitroll":   3,
         "hp_dice":   (11, 10, 200),
         "mana_dice": (1, 1, 99),
-        "damage":    (4, 6, 4),  # dam_type: 'bite'
+        "damage":    (4, 6, 4),  "dam_type": 'bite',
         "AC":        -1,
         "off_flags": {"dodge": True, "fast": True, "trip": True, "assist_race": True},
         "res_flags": {"pierce": True, "poison": True},
@@ -1786,7 +1786,7 @@ MOBILES = {
         "hitroll":   0,
         "hp_dice":   (1, 1, 999),
         "mana_dice": (1, 1, 199),
-        "damage":    (5, 6, 20),  # dam_type: 'slap'
+        "damage":    (5, 6, 20),  "dam_type": 'slap',
         "AC":        -2,
         "off_flags": {"dodge": True, "fade": True},
         "imm_flags": {"summon": True, "charm": True, "magic": True, "weapon": True},
@@ -1808,7 +1808,7 @@ MOBILES = {
         "hitroll":   1,
         "hp_dice":   (6, 8, 400),
         "mana_dice": (1, 1, 99),
-        "damage":    (4, 5, 5),  # dam_type: 'stab'
+        "damage":    (4, 5, 5),  "dam_type": 'stab',
         "AC":        0,
         "off_flags": {"disarm": True, "dodge": True, "kick_dirt": True, "trip": True},
         "sex":  'either',
@@ -3343,7 +3343,7 @@ OBJECTS = {
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
         "extra_flags": {"hum": True, "bless": True},
-        "weapon_type": 'sword', "dice": (4, 10, 0),
+        "weapon_type": 'sword', "dam_type": 'cleave', "dice": (4, 10, 0),
         "weapon_flags": {"vorpal": True, "two_hands": True},
         "level": 42, "weight": 450, "value": 5600,
         "extra_descs": [('scimitar blade', "It is quite heavy.  The blade is made of some metal that you can't even\nspell.  The edge of the blade looks as if it could cut through anything\nor anyone.")],
@@ -3420,7 +3420,7 @@ OBJECTS = {
         "material":    'steel',
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
-        "weapon_type": 'dagger', "dice": (1, 4, 0),
+        "weapon_type": 'dagger', "dam_type": 'stab', "dice": (1, 4, 0),
         "weapon_flags": {},
         "level": 0, "weight": 10, "value": 157,
     },
@@ -3431,7 +3431,7 @@ OBJECTS = {
         "material":    'steel',
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
-        "weapon_type": 'sword', "dice": (1, 5, 0),
+        "weapon_type": 'sword', "dam_type": 'slice', "dice": (1, 5, 0),
         "weapon_flags": {},
         "level": 0, "weight": 30, "value": 250,
     },
@@ -3442,7 +3442,7 @@ OBJECTS = {
         "material":    'steel',
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
-        "weapon_type": 'sword', "dice": (2, 5, 0),
+        "weapon_type": 'sword', "dam_type": 'slash', "dice": (2, 5, 0),
         "weapon_flags": {},
         "level": 7, "weight": 50, "value": 610,
     },
@@ -3453,7 +3453,7 @@ OBJECTS = {
         "material":    'wood',
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
-        "weapon_type": 'mace', "dice": (1, 7, 0),
+        "weapon_type": 'mace', "dam_type": 'pound', "dice": (1, 7, 0),
         "weapon_flags": {},
         "stat_bonuses": {'hitroll': -1},
         "level": 3, "weight": 30, "value": 220,
@@ -3465,7 +3465,7 @@ OBJECTS = {
         "material":    'iron',
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
-        "weapon_type": 'mace', "dice": (2, 4, 0),
+        "weapon_type": 'mace', "dam_type": 'pound', "dice": (2, 4, 0),
         "weapon_flags": {},
         "stat_bonuses": {'damroll': 1},
         "level": 6, "weight": 100, "value": 390,
@@ -3477,7 +3477,7 @@ OBJECTS = {
         "material":    'iron',
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
-        "weapon_type": 'axe', "dice": (1, 6, 0),
+        "weapon_type": 'axe', "dam_type": 'chop', "dice": (1, 6, 0),
         "weapon_flags": {},
         "level": 1, "weight": 50, "value": 310,
     },
@@ -3488,7 +3488,7 @@ OBJECTS = {
         "material":    'steel',
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
-        "weapon_type": 'axe', "dice": (2, 5, 0),
+        "weapon_type": 'axe', "dam_type": 'chop', "dice": (2, 5, 0),
         "weapon_flags": {"two_hands": True},
         "level": 5, "weight": 90, "value": 650,
     },
@@ -3499,7 +3499,7 @@ OBJECTS = {
         "material":    'steel',
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
-        "weapon_type": 'staff', "dice": (1, 8, 0),
+        "weapon_type": 'staff', "dam_type": 'pierce', "dice": (1, 8, 0),
         "weapon_flags": {},
         "level": 4, "weight": 50, "value": 84,
     },
@@ -3510,7 +3510,7 @@ OBJECTS = {
         "material":    'wood',
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
-        "weapon_type": 'staff', "dice": (1, 8, 0),
+        "weapon_type": 'staff', "dam_type": 'pound', "dice": (1, 8, 0),
         "weapon_flags": {"two_hands": True},
         "stat_bonuses": {'AC': -2},
         "level": 9, "weight": 40, "value": 580,
@@ -3522,7 +3522,7 @@ OBJECTS = {
         "material":    'iron',
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
-        "weapon_type": 'flail', "dice": (1, 7, 0),
+        "weapon_type": 'flail', "dam_type": 'pound', "dice": (1, 7, 0),
         "weapon_flags": {},
         "stat_bonuses": {'AC': 1},
         "level": 1, "weight": 50, "value": 77,
@@ -4236,7 +4236,7 @@ OBJECTS = {
         "material":    'steel',
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
-        "weapon_type": 'sword', "dice": (2, 12, 0),
+        "weapon_type": 'sword', "dam_type": 'slash', "dice": (2, 12, 0),
         "weapon_flags": {"sharp": True},
         "level": 26, "weight": 50, "value": 2000,
         "extra_descs": [('sword long', 'This is the ceremonial sword of the Mayor of Midgaard.\nA\n13 20\nA\n12 20')],
@@ -4713,7 +4713,7 @@ OBJECTS = {
         "material":    'steel',
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
-        "weapon_type": 'sword', "dice": (4, 6, 0),
+        "weapon_type": 'sword', "dam_type": 'slash', "dice": (4, 6, 0),
         "weapon_flags": {},
         "stat_bonuses": {'hitroll': 2, 'damroll': 2},
         "level": 29, "weight": 50, "value": 3100,
@@ -4727,7 +4727,7 @@ OBJECTS = {
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
         "extra_flags": {"magic": True},
-        "weapon_type": 'sword', "dice": (3, 5, 0),
+        "weapon_type": 'sword', "dam_type": 'slash', "dice": (3, 5, 0),
         "weapon_flags": {},
         "stat_bonuses": {'hitroll': 1, 'damroll': 1},
         "level": 16, "weight": 50, "value": 1280,
@@ -4741,7 +4741,7 @@ OBJECTS = {
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
         "extra_flags": {"magic": True},
-        "weapon_type": 'dagger', "dice": (2, 5, 0),
+        "weapon_type": 'dagger', "dam_type": 'pierce', "dice": (2, 5, 0),
         "weapon_flags": {},
         "stat_bonuses": {'hitroll': 1, 'damroll': 1},
         "level": 8, "weight": 20, "value": 590,
@@ -4755,7 +4755,7 @@ OBJECTS = {
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
         "extra_flags": {"magic": True},
-        "weapon_type": 'mace', "dice": (2, 4, 0),
+        "weapon_type": 'mace', "dam_type": 'pound', "dice": (2, 4, 0),
         "weapon_flags": {},
         "stat_bonuses": {'hitroll': 1, 'damroll': 2},
         "level": 7, "weight": 100, "value": 620,

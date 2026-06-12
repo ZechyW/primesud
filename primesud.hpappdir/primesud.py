@@ -321,6 +321,7 @@ class Game:
                 if pulse % PULSE_VIOLENCE == 0:
                     if violence_update(tr, player, mob_instances, room_state):
                         # [PRIMESUD] Handle auto respawn on death
+                        tr.print("You have been KILLED!!")
                         tr.print("Your lifeforce ebbs away...")
                         ppleval("WAIT({})".format(DEATH_MSG_DELAY))
                         tr.print("A distant warmth draws you back.")

@@ -637,6 +637,8 @@ def do_flee(tr, player, args, room_state, mob_instances):
         player["room"] = dest
         stop_fighting(player, mob_instances)
         tr.print("You flee {}!".format(direction))
+        player["xp"] = max(0, player["xp"] - 10)
+        tr.print("You lost 10 exp.")
         do_look(tr, player, [], room_state, mob_instances)
         return
     tr.print("There is nowhere to run!")
