@@ -75,6 +75,8 @@ A reusable terminal abstraction written by Piotr Kowalewski (komame). Renders ch
 
 Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` — handled transparently by `colors.py`. When mixing with Python formatting, prefer `%` formatting (`"{G%s{x" % name`, `"hp: %d" % hp`) over `.format()` — `%` uses no `{` delimiters so it composes cleanly with colour codes. Concatenation (`"{G" + name + "{x"`) also works but is more verbose. Full table in REFERENCE.md § Colour codes.
 
+When porting 1stMud code that uses `CTAG(_CONSTANT)` (e.g. `CTAG(_MOBILES)`), the default colour for each constant is documented in REFERENCE.md § CTAG colour scheme. Use that table to pick the equivalent `{X` code.
+
 ## PrimeSUD-only extensions — `[PRIMESUD]` tag
 
 Code with no 1stMud equivalent, or that intentionally diverges from 1stMud behaviour,

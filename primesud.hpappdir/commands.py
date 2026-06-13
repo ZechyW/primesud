@@ -31,7 +31,7 @@ def _wrap_paragraphs(text, width):
     """Word-wrap text, preserving blank-line paragraph breaks from .are descriptions."""
     lines = []
     for para in text.split('\n\n'):
-        flat = ' '.join(para.split('\n'))
+        flat = ' '.join(para.split())  # [PRIMESUD] collapse whitespace runs (cf. erase_new_lines in automap.c)
         if lines:
             lines.append('')
         lines.extend(_wrap(flat, width))
@@ -143,7 +143,6 @@ def do_look(tr, player, args, room_state, mob_instances):
         if d in room["exits"] and not (isinstance(room["exits"][d], dict) and room["exits"][d].get("closed"))
     )
     exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
-    tr.print("")
     tr.print("{g" + exit_string + "{x")
     live_mobs = rs["mobs"]
     # Items: one per line, description field, stacked by identical text (cf. 1stMud show_list_to_char in act_info.c)
@@ -170,6 +169,21 @@ def do_look(tr, player, args, room_state, mob_instances):
     for mob_id in live_mobs:
         inst = mob_instances[mob_id]
         tpl = MOB_TEMPLATES[inst["tpl"]]
+        # Build AFF prefix string (cf. 1stMud show_char_to_char_0, act_info.c:191-214)
+        # Source: tpl["aff_flags"] (baseline, like pIndexData->affected_by).
+        # Dynamic spell AFF bits from inst["affects"] are not yet tracked here.
+        aff = tpl.get("aff_flags", {})
+        prefix = ""
+        if aff.get("invisible"):    prefix += "({cInvis{x) "
+        if aff.get("hide"):         prefix += "({DHide{x) "
+        if aff.get("charm"):        prefix += "({MCharmed{x) "
+        if aff.get("pass_door"):    prefix += "({cTranslucent{x) "
+        if aff.get("faerie_fire"):  prefix += "({MPink Aura{x) "
+        mob_align = tpl.get("alignment", 0)
+        p_aff = player.get("aff_flags", {})
+        if mob_align <= -350 and p_aff.get("detect_evil"):  prefix += "({RRed Aura{x) "
+        if mob_align >= 350 and p_aff.get("detect_good"):   prefix += "({YGolden Aura{x) "
+        if aff.get("sanctuary"):    prefix += "({WWhite Aura{x) "
         if inst["state"] == "idle":
             line = tpl.get("long_descr") or tpl["short_descr"]
         else:
@@ -179,7 +193,7 @@ def do_look(tr, player, args, room_state, mob_instances):
                 line = "%s is here, fighting YOU!" % name
             else:
                 line = "%s is here, fighting someone." % name
-        tr.print("{M%s{x" % line)
+        tr.print("%s{M%s{x" % (prefix, line))
 
 
 def do_move(tr, player, direction, room_state, mob_instances):
@@ -862,13 +876,13 @@ def do_train(tr, player, args, room_state, mob_instances):
             tr.print("You don't have any training sessions.")
             return
         stat_opts = [(k, lng) for k, lng in _TRAIN_STATS if player[k] < TRAIN_STAT_CAP]
-        vital_opts = [("hp", "hp"), ("mana", "mana")]
+        vital_opts = [("hp_max", "hp"), ("mp_max", "mana")]
         all_opts = stat_opts + vital_opts
         tr.print("You have {} training session{}.".format(
             player["train"], "" if player["train"] == 1 else "s"))
         names = []
         for k, lng in all_opts:
-            if k in ("hp", "mana"):
+            if k in ("hp_max", "mp_max"):
                 names.append("{} (max: {})".format(lng, player[k]))
             else:
                 names.append("{} ({}/{})".format(lng, player[k], TRAIN_STAT_CAP))
@@ -883,7 +897,7 @@ def do_train(tr, player, args, room_state, mob_instances):
         arg = args[0]
         chosen_key = None
         chosen_lng = None
-        for k, lng in _TRAIN_STATS + [("hp", "hp"), ("mana", "mana")]:
+        for k, lng in _TRAIN_STATS + [("hp_max", "hp"), ("mp_max", "mana")]:
             if lng.startswith(arg):
                 chosen_key = k
                 chosen_lng = lng
@@ -891,16 +905,16 @@ def do_train(tr, player, args, room_state, mob_instances):
         if chosen_key is None:
             tr.print("Valid training: str, dex, int, wis, con, hp, mana.")
             return
-        if chosen_key not in ("hp", "mana") and player[chosen_key] >= TRAIN_STAT_CAP:
+        if chosen_key not in ("hp_max", "mp_max") and player[chosen_key] >= TRAIN_STAT_CAP:
             tr.print("Your {} is already at maximum.".format(chosen_lng))
             return
 
     player["train"] -= 1
-    if chosen_key == "hp":
+    if chosen_key == "hp_max":
         player["hp_max"] += 10
         player["hp"] = min(player["hp_max"], player["hp"] + 10)
         tr.print("Your durability increases!")
-    elif chosen_key == "mana":
+    elif chosen_key == "mp_max":
         player["mp_max"] += 10
         player["mp"] = min(player["mp_max"], player["mp"] + 10)
         tr.print("Your power increases!")

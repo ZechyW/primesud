@@ -198,7 +198,7 @@ class Game:
                     for c in end:
                         _pch(c)
         self.tr.print = _wrapped_print
-        _orig_set_status = tr.set_status
+        _orig_set_status = self.tr.set_status
         def _wrapped_set_status(text):
             if self._current_fg is not None:
                 self.reset_color()
