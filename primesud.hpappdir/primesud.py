@@ -198,6 +198,12 @@ class Game:
                     for c in end:
                         _pch(c)
         self.tr.print = _wrapped_print
+        _orig_set_status = tr.set_status
+        def _wrapped_set_status(text):
+            if self._current_fg is not None:
+                self.reset_color()
+            _orig_set_status(text)
+        self.tr.set_status = _wrapped_set_status
         self.input_buf = ""
         self.player = None
         self.room_state = None
