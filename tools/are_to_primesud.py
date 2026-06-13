@@ -73,6 +73,15 @@ EXIT_FLAGS = {
     5: "pickproof", 6: "nopass", 7: "easy", 8: "hard",
     9: "infuriating", 10: "noclose", 11: "nolock",
 }
+EXTRA_FLAGS = {                                         # ITEM_* from bits.h (BIT_A=0 … BIT_a=26; BIT_X=23 unused)
+    0: "glow",        1: "hum",          2: "dark",        3: "lock",
+    4: "evil",        5: "invis",        6: "magic",       7: "nodrop",
+    8: "bless",       9: "anti_good",   10: "anti_evil",  11: "anti_neutral",
+   12: "noremove",   13: "inventory",   14: "nopurge",    15: "rot_death",
+   16: "vis_death",  17: "auctioned",   18: "nonmetal",   19: "nolocate",
+   20: "melt_drop",  21: "had_timer",   22: "sell_extract",
+   24: "burn_proof", 25: "nouncurse",   26: "quest",
+}
 WEAR_SLOT = {
     1: "finger", 2: "neck", 3: "body", 4: "head", 5: "legs",
     6: "feet", 7: "hands", 8: "arms", 9: "shield", 10: "about",
@@ -665,11 +674,7 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
         w(f'        "type": {obj["type"]!r},')
         w(f'        "wear_flags": {_repr_flags(obj["wear_flags"])},')
         if obj.get("extra_flags"):
-            bits = decode_flags(obj["extra_flags"], {
-                0: "glow", 1: "hum", 6: "magic", 7: "nodrop",
-                8: "bless", 13: "inventory", 14: "nopurge",
-                20: "melt_drop", 26: "quest",
-            })
+            bits = decode_flags(obj["extra_flags"], EXTRA_FLAGS)
             if bits:
                 w(f'        "extra_flags": {_repr_flags(bits)},')
         if obj["type"] == "weapon":

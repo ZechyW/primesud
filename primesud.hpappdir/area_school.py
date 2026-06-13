@@ -1368,7 +1368,7 @@ OBJECTS = {
         "material":    'brass',
         "type": 'key',
         "wear_flags": {"take": True},
-        "extra_flags": {"_unknown_bits": [15]},
+        "extra_flags": {"rot_death": True},
         "level": 0, "weight": 10, "value": 0,
     },
     I_DIPLOMA: {

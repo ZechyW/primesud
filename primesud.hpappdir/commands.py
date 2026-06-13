@@ -143,15 +143,43 @@ def do_look(tr, player, args, room_state, mob_instances):
         if d in room["exits"] and not (isinstance(room["exits"][d], dict) and room["exits"][d].get("closed"))
     )
     exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
-    tr.print("{g" + exit_string + "{x")
     tr.print("")
+    tr.print("{g" + exit_string + "{x")
     live_mobs = rs["mobs"]
-    if rs["items"]:
-        names = ", ".join(ITEM_TEMPLATES[v]["short_descr"] for v in rs["items"])
-        tr.print("Items: {}".format(names))
-    if live_mobs:
-        names = ", ".join(MOB_TEMPLATES[mob_instances[i]["tpl"]]["short_descr"] for i in live_mobs)
-        tr.print("Mobs:  {}".format(names))
+    # Items: one per line, description field, stacked by identical text (cf. 1stMud show_list_to_char in act_info.c)
+    seen = {}
+    order = []
+    for vnum in rs["items"]:
+        tpl = ITEM_TEMPLATES[vnum]
+        desc = tpl.get("description") or tpl["short_descr"]
+        if desc in seen:
+            seen[desc] += 1
+        else:
+            seen[desc] = 1
+            order.append((desc, tpl.get("extra_flags", {})))
+    for desc, flags in order:
+        n = seen[desc]
+        stack_prefix = "(%2d) " % n if n > 1 else "     "
+        flag_str = ""
+        if flags.get("invis"):  flag_str += "({cInvis{x) "
+        if flags.get("glow"):   flag_str += "({YGlowing{x) "
+        if flags.get("hum"):    flag_str += "({CHumming{x) "
+        if flags.get("magic"):  flag_str += "({MMagical{x) "
+        tr.print("%s%s{Y%s{x" % (flag_str, stack_prefix, desc))
+    # Mobs: one per line, long_descr at idle or constructed position string (cf. 1stMud show_char_to_char_0 in act_info.c)
+    for mob_id in live_mobs:
+        inst = mob_instances[mob_id]
+        tpl = MOB_TEMPLATES[inst["tpl"]]
+        if inst["state"] == "idle":
+            line = tpl.get("long_descr") or tpl["short_descr"]
+        else:
+            name = tpl["short_descr"]
+            name = name[0].upper() + name[1:] if name else name
+            if inst["fighting"] is player:
+                line = "%s is here, fighting YOU!" % name
+            else:
+                line = "%s is here, fighting someone." % name
+        tr.print("{M%s{x" % line)
 
 
 def do_move(tr, player, direction, room_state, mob_instances):
@@ -793,7 +821,7 @@ def do_macro(tr, player, args, room_state, mob_instances):  # [PRIMESUD]
     else:
         cmd = " ".join(args[1:])
         _MACRO_SUBST[key] = cmd
-        tr.print("{} => {}".format(key, cmd))
+        tr.print("{R%s{x mapped to '%s'." % (key, cmd))
     return None
 
 _TRAIN_STATS = [

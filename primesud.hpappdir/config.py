@@ -56,9 +56,12 @@ KEY_COMMANDS = {  # [PRIMESUD]
 DEFAULT_MACROS = {  # [PRIMESUD]
     "7": "kill",
     "8": "flee",
-    "4": "look",
-    "5": "open",
+    "4": "open",
+    "5": "get",
+    "6": "wear",
     "1": "score",
+    "2": "practice",
+    "3": "train",
     "0": "macro"
 }
 

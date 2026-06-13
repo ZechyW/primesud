@@ -4934,7 +4934,7 @@ OBJECTS = {
         "material":    'pearl',
         "type": 'gem',
         "wear_flags": {"take": True, "hold": True},
-        "extra_flags": {"_unknown_bits": [22]},
+        "extra_flags": {"sell_extract": True},
         "level": 0, "weight": 1, "value": 1000,
     },
     I_GARNET_GEM: {
@@ -4944,7 +4944,7 @@ OBJECTS = {
         "material":    'gem',
         "type": 'gem',
         "wear_flags": {"take": True, "hold": True},
-        "extra_flags": {"_unknown_bits": [22]},
+        "extra_flags": {"sell_extract": True},
         "level": 0, "weight": 1, "value": 500,
     },
     I_EMERALD_GEM: {
@@ -4954,7 +4954,7 @@ OBJECTS = {
         "material":    'gem',
         "type": 'gem',
         "wear_flags": {"take": True, "hold": True},
-        "extra_flags": {"_unknown_bits": [22]},
+        "extra_flags": {"sell_extract": True},
         "level": 0, "weight": 1, "value": 5000,
     },
     I_RUBY_GEM: {
@@ -4964,7 +4964,7 @@ OBJECTS = {
         "material":    'gem',
         "type": 'gem',
         "wear_flags": {"take": True, "hold": True},
-        "extra_flags": {"_unknown_bits": [22]},
+        "extra_flags": {"sell_extract": True},
         "level": 0, "weight": 1, "value": 6000,
     },
     I_DIAMOND_GEM: {
@@ -4974,7 +4974,7 @@ OBJECTS = {
         "material":    'gem',
         "type": 'gem',
         "wear_flags": {"take": True, "hold": True},
-        "extra_flags": {"_unknown_bits": [22]},
+        "extra_flags": {"sell_extract": True},
         "level": 0, "weight": 1, "value": 10000,
     },
     I_OPAL: {
@@ -4984,7 +4984,7 @@ OBJECTS = {
         "material":    'gem',
         "type": 'gem',
         "wear_flags": {"take": True, "hold": True},
-        "extra_flags": {"_unknown_bits": [22]},
+        "extra_flags": {"sell_extract": True},
         "level": 0, "weight": 1, "value": 2000,
     },
 }

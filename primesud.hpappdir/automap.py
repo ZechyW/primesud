@@ -28,6 +28,7 @@ _FULL_LEGEND = [
 
 
 def _room_char(room):
+    # [PRIMESUD] 1stMud only shows U/D/B for explored rooms; we show them unconditionally.
     if room is None:
         return 'o'
     has_u = 'u' in room['exits']
