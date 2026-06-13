@@ -364,7 +364,7 @@ class Game:
                     show_prompt(tr, player, self.input_buf)
 
                 if pulse % PULSE_TICK == 0:
-                    tick_update(tr, player)
+                    tick_update(tr, player, ROOMS[player["room"]])
                     show_prompt(tr, player, self.input_buf)
                     tick_count += 1
                     if tick_count >= AUTOSAVE_TICKS:

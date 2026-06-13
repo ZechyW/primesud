@@ -463,38 +463,40 @@ def get_char_room(fragment, inst_ids, mob_instances):
 
 # ── Tick regen ───────────────────────────────────────────────────────────────
 
-def tick_update(tr, player):
+def tick_update(tr, player, room):
     """Regenerate HP and MP once per world tick (cf. 1stMud hit_gain/mana_gain in update.c).
 
     Position is always treated as resting — no position system [PRIMESUD].
     Hunger/thirst conditions omitted [PRIMESUD].
 
     Args:
-        tr: Terminal for printing regen messages.
+        tr: Terminal for affect wear-off messages.
         player (dict): Player state dict.
+        room (dict): Current room (supplies heal_rate/mana_rate).
     """
     con  = get_curr_stat(player, "con")
     int_ = get_curr_stat(player, "int")
     wis  = get_curr_stat(player, "wis")
     level = player.get("level", 1)
 
-    # HP: max(3, CON-3 + level//2) + (hp_max-10), halved for resting
-    hp_gain = max(3, con - 3 + level // 2) + max(0, player["hp_max"] - 10)
-    hp_gain = max(1, hp_gain // 2)
+    # HP (cf. 1stMud hit_gain in update.c)
+    hp_gain = max(3, con - 3 + level // 2) + (player["hp_max"] - 10)
+    # TODO: fast_healing bonus — if roll < skill%, gain += roll * gain / 100
+    # Position: always resting [PRIMESUD] — sleeping=/1, resting=/2, standing=/4, fighting=/6
+    hp_gain //= 2
+    # Hunger/thirst omitted [PRIMESUD]
+    hp_gain = hp_gain * room.get("heal_rate", 100) // 100
+    # TODO: poison /4, plague /8, haste/slow /2
+    hp_gain = max(1, hp_gain)
 
-    # MP: (INT + WIS + level) // 4  (base /2, then /2 again for resting)
-    mp_gain = max(1, (int_ + wis + level) // 4)
-
-    hp_was_full = player["hp"] >= player["hp_max"]
-    mp_was_full = player["mp"] >= player["mp_max"]
+    # MP (cf. 1stMud mana_gain in update.c) — base (WIS+INT+level)/2, resting /2
+    mp_gain = (int_ + wis + level) // 4
+    mp_gain = mp_gain * room.get("mana_rate", 100) // 100
+    # TODO: poison /4, plague /8, haste/slow /2
+    mp_gain = max(1, mp_gain)
 
     player["hp"] = min(player["hp_max"], player["hp"] + hp_gain)
     player["mp"] = min(player["mp_max"], player["mp"] + mp_gain)
-
-    if not hp_was_full and player["hp"] >= player["hp_max"]:
-        tr.print("You feel better!")
-    if not mp_was_full and player["mp"] >= player["mp_max"]:
-        tr.print("You feel full of mana!")
 
     for sn in list(player["affects"]):
         aff = player["affects"].get(sn)

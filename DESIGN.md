@@ -15,7 +15,8 @@ Reference this before porting a new mechanic to avoid re-litigating settled deci
 | Race system | **Deferred** | All characters use human baseline stats (13 flat, max 18). Add when content justifies it |
 | Class system | **Deferred** | Classless for now; THAC0 curve uses a balanced midpoint. Add when skill trees justify it |
 | Stat rolling | **Deferred** | Fixed 13 across the board; no chargen reroll screen |
-| AC types (Pierce/Bash/Slash/Exotic) | **Not ported** | Single AC value; expand only if weapon damage types are added |
+| AC types (Pierce/Bash/Slash/Exotic) | **Deferred** | 1stMud `one_hit` (`fight.c`) selects one of four `armor[]` buckets (pierce/bash/slash/exotic) based on `dam_class`; `GetArmor` then adds the DEX defensive bonus. PrimeSUD keeps a single `AC` field. `ATTACK_TABLE` already carries the correct `dam_class` per weapon — expand to per-bucket AC (and then to res/imm/vuln flag checks) when the content warrants it |
+| Mob THAC0 by act type | **Deferred** | 1stMud `one_hit` uses per-class curves for NPCs: warrior `thac0_32 = -10`, thief `-4`, cleric `+2`, mage `+6`, default `-4`. PrimeSUD uses the single classless plateau (`THAC0_MIN = -2`) for both players and mobs. Port when NPC class diversity is needed for balance |
 | Saving throws | **Not ported** | Not implemented; add alongside spell effects if/when needed |
 | Alignment / deity | **Not ported** | Multiplayer/world-state concepts with no single-player hook |
 | Clan / rank / trivia | **Not ported** | Multiplayer concepts |
@@ -34,7 +35,9 @@ Reference this before porting a new mechanic to avoid re-litigating settled deci
 |---|---|---|---|
 | EXP per level | `exp_per_level(ch, points)` — scales with creation points and race/class mult | Flat **1000 XP / level** | Equivalent to 1stMud formula at 40 creation points, human race (100% mult) |
 | Class HP die | Per-class `hp_min`/`hp_max` (Warrior 11–15, Mage 6–8, …) | **7–10** (Cleric/Paladin midpoint) | Classless placeholder; change when classes are added |
-| Trainer mechanic | `do_train` / `do_practice` commands at trainer NPCs | **Tracked but unimplemented** | `practice` and `train` fields accumulate each level; no spend mechanic yet |
+| Level-up heal | Adds gains to `max_hit`/`max_mana` only; current HP/MP unchanged | **[PRIMESUD]** fully restores current HP and MP | Quality-of-life: eliminates "levelled at 1 HP mid-fight" awkwardness |
+| Pulse timing | `PULSE_VIOLENCE = 3×PPS`, `PULSE_MOBILE = 4×PPS`, `PULSE_TICK = 45×PPS` | **`2×PPS`, `5×PPS`, `30×PPS`** | Faster combat and regen ticks for single-player UX; slower mob wander |
+| Trainer mechanic | `do_train` / `do_practice` commands at trainer NPCs | **Implemented** | Stat cap in `TRAIN_STAT_CAP` (config.py, revisit for races); `train hp`/`mana` each +10; `do_train` no-arg shows picker [PRIMESUD] |
 | Stats display | `[perm/curr]` where curr includes active affects | `[val/val]` (identical until affect system added) | Slot is future-proofed in `do_score` — expand when affects are implemented |
 | Score layout | 75-col three-column box | **64-col two-column box** | HP Prime font gives 64 columns; two-column fits all relevant fields |
 
@@ -67,13 +70,14 @@ Key design decisions summarised here for completeness:
 ## Explicitly kept from 1stMud
 
 - `{X` colour-code syntax — identical to 1stMud (see *Colour codes* in CLAUDE.md)
-- THAC0 combat curve (`THAC0_00 = 20`, `THAC0_32 = -2`, classless midpoint)
-- `advance_level` HP/MP formulas: `(CON_APP_HITP[con] + hp_roll) * 9/10`, min 2
+- THAC0 combat curve — formula `thac0_00 + (thac0_32 - thac0_00) * level / 32` from `interpolate()` in `fight.c`; [PRIMESUD] `THAC0_MIN = -2` (classless midpoint; see *Mob THAC0 by act type* above)
+- `advance_level` HP/MP formulas: `(CON_APP_HITP[con] + hp_roll) * 9/10`, min 2; two-step HP roll mirrors `get_hp_gain` in `multiclass.c`
 - MP formula: `randint(2, (2*INT + WIS) // 5) * 9/10`, min 2
 - `WIS_APP_PRACTICE` table for per-level practice gains
-- `CON_APP_HITP`, `STR_APP_TOHIT/TODAM`, `DEX_APP_DEF` stat application tables
-- Pulse timing system (4 pulses/sec, PULSE_VIOLENCE = 3s, PULSE_TICK = 30s)
+- `CON_APP_HITP`, `STR_APP_TOHIT/TODAM`, `DEX_APP_DEF`, `INT_APP_LEARN` stat application tables (indices 0–25; 1stMud goes to 30 but stats are capped at 25)
+- Pulse rate: 4 pulses/sec (see *Pulse timing* above for per-pulse adjustments)
 - `check_improve` skill improvement mechanic
+- AC soft cap: `if victim_ac < -15: victim_ac = (victim_ac + 15) / 5 - 15` (both `one_hit` paths)
 - Multi-hit combat structure (`one_hit` → `multi_hit`)
 - Flee mechanic (random exit, up to 6 attempts)
 - Level-up message style: `"You raise a level!!"` then `"You gain N hit points, N mana, and N practices."`

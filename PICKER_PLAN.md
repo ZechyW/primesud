@@ -114,18 +114,32 @@ Conventions:
 
 ## Commands to update (Phase 1)
 
-| Done | Command | Picker title | Option source |
-|------|---------|-------------|---------------|
-| ✅ | `do_kill` | `{YKill whom?{x` | live mobs in current room |
-| ✅ | `do_open` | `{YOpen which door?{x` | `isdoor`+`closed` exits in current room |
-| ✅ | `do_close` | `{YClose which door?{x` | `isdoor`+open exits in current room |
-| ☐ | `do_get` | `{YPick up what?{x` | items on ground in current room |
-| ☐ | `do_drop` | `{YDrop what?{x` | items in player inventory |
-| ☐ | `do_wear` | `{YWear what?{x` | equippable items in inventory (has `"slot"` key) |
-| ☐ | `do_remove` | `{YRemove what?{x` | occupied equipment slots |
-| ☐ | `do_cast` | `{YCast which spell?{x` | spells in `SKILL_TABLE` where `player["learned"][vnum] > 0` |
+Picker titles are plain text — `pick_from` wraps them in `{Y...{x` internally.
+
+| Done | Command | Picker title (plain) | Option source |
+|------|---------|---------------------|---------------|
+| ✅ | `do_kill` | `Kill whom?` | live mobs in current room |
+| ✅ | `do_open` | `Open which door?` | `isdoor`+`closed` exits in current room |
+| ✅ | `do_close` | `Close which door?` | `isdoor`+open exits in current room |
+| ☐ | `do_get` | `Pick up what?` | items on ground in current room |
+| ☐ | `do_drop` | `Drop what?` | items in player inventory |
+| ☐ | `do_wear` | `Wear what?` | equippable items in inventory (has a non-`take` `wear_flags` entry) |
+| ☐ | `do_remove` | `Remove what?` | occupied equipment slots |
+| ☐ | `do_cast` | `Cast which spell?` | spells in `SKILL_TABLE` where `player["learned"][vnum] > 0` |
+| ✅ | `do_practice` | `Practice which skill?` | skills where `0 < pct < _PRACTICE_CAP (75)`, teacher mob required |
+| ✅ | `do_train` | `Train which stat?` | stats where `player[stat] < 25`, trainer mob required (already enforced) |
 
 Note: no `do_wield` — `do_wear` handles all equipment.
+
+**`do_practice` branching** (verified against 1stMud `act_info.c`):
+- No args + **no teacher in room** → show skills list + practice count (1stMud parity, no picker).
+- No args + **teacher in room** → picker of under-cap skills `[PRIMESUD]`.
+- With arg → fuzzy-match + practice (existing path, teacher required).
+
+**`do_train` branching** (verified against 1stMud `act_move.c`):
+- Trainer required for all cases (already enforced before the no-arg branch).
+- No args → picker of trainable stats (replaces text list).
+- With arg → train that stat (existing path).
 
 Phase 2 (if needed):
 - `do_use` — usable items in inventory
@@ -145,38 +159,14 @@ Pagination is out of scope for Phase 1.
 
 ---
 
-## Implementation checklist
-
-- [x] Create `picker.py` — `pick_from()` with colour list, plain-text prompt, re-prompt on empty/invalid
-- [x] Add `from picker import pick_from` to `commands.py`
-- [x] `do_kill` — picker when no args and 2+ live mobs; auto-select for single mob
-  - [ ] Smoke-test: 2+ mobs in room → picker appears; pick valid number → combat starts
-  - [ ] Smoke-test: single mob → no picker, auto-starts combat
-  - [ ] Smoke-test: `kill rat` with 2+ mobs → fuzzy-match, no picker
-  - [ ] Smoke-test: `0` in picker → cancels, no combat
-  - [ ] Smoke-test: bare Enter → re-prompts; out-of-range digit → re-prompts
-- [ ] `do_get` — picker when no args and 2+ floor items; auto-pick for single item
-  - [ ] Smoke-test: multiple items on ground → pick one; single item → auto-picks; `get sword` → fuzzy-matches
-- [ ] `do_drop` — picker when no args and 2+ inventory items; auto-drop for single item
-  - [ ] Smoke-test: 3 inventory items → picker; cancel with 0; typed arg bypasses picker
-- [ ] `do_wear` — picker filtered to items with a `"slot"` key and not already equipped
-  - [ ] Smoke-test: mix of equippable and non-equippable in inventory
-- [ ] `do_remove` — picker over occupied equipment slots; show as "slot: item name"
-  - [ ] Smoke-test: multiple slots equipped; single slot → auto-removes; nothing equipped → existing error
-- [ ] `do_cast` — picker over spells where `player["learned"][vnum] > 0`
-  - [ ] Confirm `player["learned"]` dict shape in `player.py: create_char` before coding
-  - [ ] Smoke-test: 2+ known spells → picker; 1 known spell → auto-casts; no known spells → existing error
-- [ ] Final pass: confirm typed arguments bypass picker for all updated commands
-
----
-
 ## Edge cases to verify
 
-- **0 or 1 targets** — picker never shown; existing code path runs unchanged.
+- **0 targets** — no picker; existing "nothing here" error message shown.
+- **1 target** — picker shown with single option labelled `(default)`; bare Enter selects it; `0` cancels.
 - **Exactly 9 targets** — all shown, no truncation line.
 - **10+ targets** — truncation line appears; pressing 9 selects the 9th shown item.
-- **Empty Enter** — re-prompts (does not cancel; requires explicit `0`).
-- **Out-of-range digit** (e.g. "5" when only 3 shown) — re-prompts.
+- **Empty Enter** — selects option 1 (the default); explicit `0` required to cancel.
+- **Out-of-range digit** (e.g. "5" when only 3 shown) — re-prompts with valid range hint.
 - **Non-digit input** — re-prompts; player can type `0` to cancel after a mistake.
 - **Player already in combat** presses a picker command — picker still works.
   All pulse processing (`violence_update`, `world_tick`, `area_update`) runs in the
@@ -189,22 +179,6 @@ Pagination is out of scope for Phase 1.
 
 ## Open questions
 
-1. **`do_cast` skill dict shape** — need to check `player["learned"]` structure to
-   build the spell-name list correctly.  `create_char` in `player.py` and the
-   `do_cast` body in `commands.py` are the primary references.
-2. ~~**`tr.input()` prompt display**~~ — **resolved**: `tr.input()` calls the original
-   `tml.print()` which does not process colour codes.  Use plain text for the prompt;
-   colour the list rows via `tr.print()` instead.
-3. **Truncation strategy** — "first 9" is the simplest rule, but for `do_get` in a
+1. **Truncation strategy** — "first 9" is the simplest rule, but for `do_get` in a
    cluttered room "most recently dropped" or "alphabetical" might be more useful.
    Decide at integration time based on what the option list naturally produces.
-
----
-
-## Files touched
-
-| File | Change |
-|------|--------|
-| `primesud.hpappdir/picker.py` | **New** — `pick_from()` |
-| `primesud.hpappdir/commands.py` | Import `pick_from`; update 6 commands (no `do_wield`) |
-| No changes to `tml.py`, `player.py`, `config.py` | |

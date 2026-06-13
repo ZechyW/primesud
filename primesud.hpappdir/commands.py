@@ -7,7 +7,7 @@ from picker import pick_from
 from player import get_hitroll, get_damroll, get_AC, get_curr_stat, get_obj_list, get_char_room, save_char, is_name, PLR_AUTOMAP, PLR_DEFAULTS
 from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick
 from automap import build_compact_lines, build_full_lines, COMPACT_W
-from config import DEFAULT_MACROS, TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES
+from config import DEFAULT_MACROS, TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES, INT_APP_LEARN, TRAIN_STAT_CAP
 
 from urandom import randint
 
@@ -592,12 +592,12 @@ def do_kill(tr, player, args, room_state, mob_instances):
     rs = room_state[player["room"]]
     live = rs["mobs"]
     if not live:
-        tr.print("No enemies here.")
+        tr.print("Kill whom?")
         return
     if args:
         mob_id = get_char_room(" ".join(args), live, mob_instances)
         if mob_id is None:
-            tr.print("No such enemy.")
+            tr.print("They aren't here.")
             return
     else:
         names = [MOB_TEMPLATES[mob_instances[i]["tpl"]]["short_descr"] for i in live]
@@ -714,7 +714,7 @@ def do_cast(tr, player, args, room_state, mob_instances):
         player["hp"] += gained
         tr.print("You feel better! +{} HP. ({}/{})".format(
             gained, player["hp"], player["hp_max"]))
-    check_improve(tr, player, sk_vnum, True)
+    check_improve(tr, player, sk_vnum, True, 1)
     return None
 
 
@@ -806,15 +806,15 @@ _TRAIN_STATS = [
 
 
 def do_train(tr, player, args, room_state, mob_instances):
-    """Permanently raise a stat by 1 using a train point (cf. 1stMud do_train in act_move.c).
+    """Permanently raise a stat or vital by spending a train point (cf. 1stMud do_train in act_move.c).
 
-    Requires a mob with act_flags["train"] in the room.  Stats cap at 25;
-    each improvement costs 1 train point.
+    Requires a mob with act_flags["train"] in the room.  Stats cap at TRAIN_STAT_CAP;
+    hp and mana training raise hp_max/mp_max by 10 with no cap.
 
     Args:
         tr: Terminal instance.
         player (dict): Player state dict.
-        args (list): Parsed command words; optional stat name.
+        args (list): Parsed command words; optional stat/vital name.
         room_state (dict): Per-room mutable state.
         mob_instances (dict): Live mob instance dicts.
     """
@@ -830,39 +830,55 @@ def do_train(tr, player, args, room_state, mob_instances):
         return
 
     if not args:
+        if player["train"] < 1:
+            tr.print("You don't have any training sessions.")
+            return
+        stat_opts = [(k, lng) for k, lng in _TRAIN_STATS if player[k] < TRAIN_STAT_CAP]
+        vital_opts = [("hp", "hp"), ("mana", "mana")]
+        all_opts = stat_opts + vital_opts
         tr.print("You have {} training session{}.".format(
             player["train"], "" if player["train"] == 1 else "s"))
-        available = [lng for key, lng in _TRAIN_STATS if player[key] < 25]
-        if available:
-            tr.print("You can train: {}.".format(", ".join(available)))
-        else:
-            tr.print("All your stats are at maximum.")
-        return
-
-    arg = args[0]
-    stat_key = None
-    stat_lng = None
-    for key, lng in _TRAIN_STATS:
-        if key.startswith(arg) or lng.startswith(arg):
-            stat_key = key
-            stat_lng = lng
-            break
-
-    if stat_key is None:
-        tr.print("Valid stats: str, dex, int, wis, con.")
-        return
-
-    if player[stat_key] >= 25:
-        tr.print("Your {} is already at maximum.".format(stat_lng))
-        return
-
-    if player["train"] < 1:
-        tr.print("You don't have any training sessions.")
-        return
+        names = []
+        for k, lng in all_opts:
+            if k in ("hp", "mana"):
+                names.append("{} (max: {})".format(lng, player[k]))
+            else:
+                names.append("{} ({}/{})".format(lng, player[k], TRAIN_STAT_CAP))
+        idx = pick_from(tr, "Train which?", names)
+        if idx < 0:
+            return
+        chosen_key, chosen_lng = all_opts[idx]
+    else:
+        if player["train"] < 1:
+            tr.print("You don't have any training sessions.")
+            return
+        arg = args[0]
+        chosen_key = None
+        chosen_lng = None
+        for k, lng in _TRAIN_STATS + [("hp", "hp"), ("mana", "mana")]:
+            if lng.startswith(arg):
+                chosen_key = k
+                chosen_lng = lng
+                break
+        if chosen_key is None:
+            tr.print("Valid training: str, dex, int, wis, con, hp, mana.")
+            return
+        if chosen_key not in ("hp", "mana") and player[chosen_key] >= TRAIN_STAT_CAP:
+            tr.print("Your {} is already at maximum.".format(chosen_lng))
+            return
 
     player["train"] -= 1
-    player[stat_key] += 1
-    tr.print("Your {} increases!".format(stat_lng))
+    if chosen_key == "hp":
+        player["hp_max"] += 10
+        player["hp"] = min(player["hp_max"], player["hp"] + 10)
+        tr.print("Your durability increases!")
+    elif chosen_key == "mana":
+        player["mp_max"] += 10
+        player["mp"] = min(player["mp_max"], player["mp"] + 10)
+        tr.print("Your power increases!")
+    else:
+        player[chosen_key] += 1
+        tr.print("Your {} increases!".format(chosen_lng))
 
 
 def do_affects(tr, player, args, room_state, mob_instances):
@@ -896,9 +912,9 @@ _PRACTICE_CAP = 75  # matches 1stMud skill_adept for all classes
 def do_practice(tr, player, args, room_state, mob_instances):
     """Improve a skill percentage using a practice point (cf. 1stMud do_practice in act_info.c).
 
-    Without an argument shows current skills and practice count.  With a skill
-    name, requires a mob with act_flags["practice"] in the room; costs 1
-    practice point; gain = INT_learn (max(1, int//3)), capped at 75%.
+    Without an argument and no teacher: lists skills + practice count (1stMud parity).
+    Without an argument and teacher present: picker of under-cap skills [PRIMESUD].
+    With a skill name: requires a mob with act_flags["practice"] in the room.
 
     Args:
         tr: Terminal instance.
@@ -907,12 +923,6 @@ def do_practice(tr, player, args, room_state, mob_instances):
         room_state (dict): Per-room mutable state.
         mob_instances (dict): Live mob instance dicts.
     """
-    if not args:
-        do_skills(tr, player, [], room_state, mob_instances)
-        tr.print("You have {} practice session{}.".format(
-            player["practice"], "" if player["practice"] == 1 else "s"))
-        return
-
     rs = room_state[player["room"]]
     teacher = None
     for mid in rs["mobs"]:
@@ -920,36 +930,61 @@ def do_practice(tr, player, args, room_state, mob_instances):
         if MOB_TEMPLATES[inst["tpl"]].get("act_flags", {}).get("practice"):
             teacher = mid
             break
-    if teacher is None:
-        tr.print("You can't do that here.")
+
+    if not args:
+        if teacher is None:
+            do_skills(tr, player, [], room_state, mob_instances)
+            tr.print("You have {} practice session{}.".format(
+                player["practice"], "" if player["practice"] == 1 else "s"))
+            return
+        if player["practice"] < 1:
+            tr.print("You have no practice sessions left.")
+            return
+        practicable = [(vnum, pct) for vnum, pct in player["learned"].items()
+                       if 0 < pct < _PRACTICE_CAP and SKILLS.get(vnum)]
+        if not practicable:
+            tr.print("You have nothing left to practice.")
+            return
+        tr.print("You have {} practice session{}.".format(
+            player["practice"], "" if player["practice"] == 1 else "s"))
+        names = ["{} ({}%)".format(SKILLS[vnum]["name"], pct) for vnum, pct in practicable]
+        idx = pick_from(tr, "Practice which skill?", names)
+        if idx < 0:
+            return
+        sk_vnum, _ = practicable[idx]
+    else:
+        if teacher is None:
+            tr.print("You can't do that here.")
+            return
+        if player["practice"] < 1:
+            tr.print("You have no practice sessions left.")
+            return
+        arg = " ".join(args)
+        sk_vnum = None
+        for vnum in player["learned"]:
+            sk = SKILLS.get(vnum)
+            if sk and sk["name"].startswith(arg):
+                sk_vnum = vnum
+                break
+        if sk_vnum is None:
+            tr.print("You don't know that skill.")
+            return
+        if player["learned"][sk_vnum] >= _PRACTICE_CAP:
+            tr.print("You are already learned at {}.".format(SKILLS[sk_vnum]["name"]))
+            return
+        if player["learned"][sk_vnum] < 1:
+            tr.print("You can't practice that.")
+            return
+
+    int_val = get_curr_stat(player, "int")
+    sk_rating = SKILLS[sk_vnum].get("rating", 1)
+    if sk_rating == 0:
+        tr.print("You can't practice that.")
         return
-
-    if player["practice"] < 1:
-        tr.print("You have no practice sessions left.")
-        return
-
-    arg = " ".join(args)
-    sk_vnum = None
-    for vnum in player["learned"]:
-        sk = SKILLS.get(vnum)
-        if sk and sk["name"].startswith(arg):
-            sk_vnum = vnum
-            break
-
-    if sk_vnum is None:
-        tr.print("You don't know that skill.")
-        return
-
-    current = player["learned"][sk_vnum]
-    if current >= _PRACTICE_CAP:
-        tr.print("You are already learned at {}.".format(SKILLS[sk_vnum]["name"]))
-        return
-
-    gain = max(1, get_curr_stat(player, "int") // 3)
+    gain = INT_APP_LEARN[min(25, max(0, int_val))] // sk_rating
     player["practice"] -= 1
-    new_pct = min(_PRACTICE_CAP, current + gain)
+    new_pct = min(_PRACTICE_CAP, player["learned"][sk_vnum] + gain)
     player["learned"][sk_vnum] = new_pct
-
     if new_pct >= _PRACTICE_CAP:
         tr.print("You are now learned at {}.".format(SKILLS[sk_vnum]["name"]))
     else:

@@ -2,6 +2,7 @@ from urandom import randint
 
 from config import (PULSE_VIOLENCE,
                     STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
+                    INT_APP_LEARN,
                     CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_MIN, THAC0_PLATEAU,
                     ATTACK_TABLE, DAM_NONE, DAM_BASH)
 from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
@@ -31,7 +32,7 @@ def _get_thac0(level):
     """Base THAC0 for a given level (classless curve, before hitroll/skill adj).
 
     Natural THAC0 plateaus at THAC0_PLATEAU; above that only hitroll/AC move
-    the needle.  [PRIMESUD] 1stMud interpolates straight to level 32 (its cap).
+    the needle.  [PRIMESUD] Classless — 1stMud uses per-class curves; see DESIGN.md.
 
     Args:
         level (int): Character level.
@@ -40,8 +41,9 @@ def _get_thac0(level):
         int: Base THAC0, clamped to minimum -5 after soft-cap.
     """
     eff = min(level, THAC0_PLATEAU)
-    # linearly interpolate THAC0 from THAC0_00 (level 1) to THAC0_MIN (level THAC0_PLATEAU)
-    t = THAC0_00 + (THAC0_MIN - THAC0_00) * (eff - 1) // (THAC0_PLATEAU - 1)
+    # cf. 1stMud interpolate(level, thac0_00, thac0_32) in fight.c
+    # Written as subtraction so the product is always positive, matching C truncation.
+    t = THAC0_00 - (THAC0_00 - THAC0_MIN) * eff // THAC0_PLATEAU
     if t < 0:
         t = t // 2
     if t < -5:
@@ -223,9 +225,9 @@ def _int_learn(int_stat):
         int_stat (int): Character INT stat.
 
     Returns:
-        int: Improvement rate, range 1–9 over INT 3–25.
+        int: Improvement rate (e.g. 25 at INT 13, 40 at INT 18).
     """
-    return max(1, int_stat // 3)
+    return INT_APP_LEARN[min(25, max(0, int_stat))]
 
 
 def check_improve(tr, player, sk_vnum, success, multiplier):
@@ -375,6 +377,8 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
     thac0 += 5 * (100 - skill) // 100
 
     victim_ac = get_AC(target_inst) // 10
+    if victim_ac < -15:  # soft cap (cf. 1stMud one_hit fight.c)
+        victim_ac = -((-victim_ac - 15) // 5) - 15
 
     # Resolve attack noun and damage class from the table
     _dt_key = wtpl["dam_type"] if wtpl is not None else "none"
@@ -450,6 +454,8 @@ def _mob_one_hit(tr, mob_inst, player):
     thac0 -= mob_hitroll * SKILL // 100
 
     player_ac = get_AC(player) // 10
+    if player_ac < -15:  # soft cap (cf. 1stMud one_hit fight.c)
+        player_ac = -((-player_ac - 15) // 5) - 15
 
     attack_noun, dam_class = _attack_info(tpl.get("dam_type", "none"))
 
@@ -925,8 +931,10 @@ def advance_level(tr, player):
     wis  = min(25, max(0, player["wis"]))
     int_ = min(25, max(0, player["int"]))
 
-    # HP: (con_app.hitp + class_hp_roll) * 9/10, min 2  (1stMud advance_level)
-    hp_roll = randint(CLASS_HP_MIN, CLASS_HP_MAX + 1)
+    # HP: (con_app.hitp + class_hp_roll) * 9/10, min 2  (cf. 1stMud advance_level in update.c)
+    # Two-step roll mirrors 1stMud get_hp_gain: number_range(hp_min,hp_max) → number_range(result,result+1)
+    hp_roll = randint(CLASS_HP_MIN, CLASS_HP_MAX)
+    hp_roll = randint(hp_roll, hp_roll + 1)
     add_hp  = max(2, (CON_APP_HITP[con] + hp_roll) * 9 // 10)
 
     # MP: number_range(2, (2*INT + WIS)//5) * 9/10, min 2  (1stMud advance_level)
@@ -937,7 +945,7 @@ def advance_level(tr, player):
 
     player["hp_max"]   += add_hp
     player["mp_max"]   += add_mp
-    player["hp"]        = player["hp_max"]
+    player["hp"]        = player["hp_max"]  # [PRIMESUD] 1stMud only adds to max; full heal for UX
     player["mp"]        = player["mp_max"]
     player["practice"] += add_prac
     player["train"]    += 1
