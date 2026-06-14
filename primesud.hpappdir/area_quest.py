@@ -46,7 +46,6 @@ I_WOLF_TOOTH                       = 217
 # hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
 # AC: avg(pierce,bash,slash,exotic) / 10 per REFERENCE.md  # TODO: verify scale
 # hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)
-# loot: left empty — populate from RESETS E/G lines if needed
 MOBILES = {
     M_EDURIN_QUESTMASTER_QUESTOR: {
         "keywords":    'Edurin Questmaster Questor',
@@ -69,7 +68,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 422,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_TRIVIA_SHOPKEEPER: {
         "keywords":    'trivia shopkeeper',
@@ -92,7 +90,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 122,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_200_REGISTRAR_GQUEST: {
         "keywords":    '#200\n\n\nRegistrar gquest',
@@ -115,7 +112,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 422,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
 }
 
@@ -326,9 +322,13 @@ OBJECTS = {
 }
 
 # ── Resets ─────────────────────────────────────────────────────────────────────
-# ("M", mob_template_vnum, global_limit, room_vnum, room_limit)  — spawn mob instance up to limits
-# ("O", item_template_vnum, room_vnum) — place one item copy in room
-# E/G/P/R/D/F resets from .are are not yet handled — see # TODO lines
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) — spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          — place one item copy in room
+# ("E", item_vnum, slot_name)                          — equip item on last M mob
+# ("G", item_vnum)                                     — give item to last M mob inventory
+# ("P", item_vnum, limit, container_vnum, max)         — [PRIMESUD] deferred: no containers
+# ("R", room_vnum, num_dirs)                           — [PRIMESUD] deferred: unused in current areas
+# F and D .are resets are baked into room exit flags at conversion time
 RESETS = (
     ("M", M_EDURIN_QUESTMASTER_QUESTOR, 1, R_QUESTORS_LOUNGE, 1),
     ("M", M_200_REGISTRAR_GQUEST, 1, R_REGISTAR_S_OFFICE, 1),

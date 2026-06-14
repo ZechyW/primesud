@@ -165,7 +165,6 @@ MOBILES = {
         "AC":        0,
         "damage":    (1, 4, 1),    # per hit: 1d4 + 1
         "gold":      15,
-        "loot":      [],
         "act_flags": {"aggressive": True, "stay_area": True},
         "aff_flags": {"infrared": True},
         "off_flags": {"dodge": True, "trip": True},
@@ -188,7 +187,6 @@ MOBILES = {
 | `damage`    | tuple | yes      | `(num_dice, die_size, bonus)` per hit |
 | `dam_type`  | str   | yes      | Attack noun for combat messages (e.g. `'claw'`, `'bite'`, `'beating'`); also the damage category for future resistance checks |
 | `gold`      | int   | yes      | Gold carried (unused until economy is implemented) |
-| `loot`      | list  | yes      | Item VNUMs dropped on death; leave `[]` until E/G resets are implemented |
 | `act_flags` | dict  | no       | Behaviour flags (see below) |
 | `aff_flags` | dict  | no       | Permanent affect flags |
 | `off_flags` | dict  | no       | Combat offence flags |
@@ -291,22 +289,26 @@ OBJECTS = {
 ```python
 RESETS = (
     ("M", M_GOBLIN, 3, R_DUNGEON_HALL, 3),  # spawn goblin: global_limit=3, room_limit=3
-    ("O", I_IRON_SWORD, R_DUNGEON_HALL),     # place one item copy
-    # TODO: E 0 <mob_vnum> 0 <slot>   — equip mob (deferred: needs loot system)
-    # TODO: G 0 <item_vnum> 0         — give item to mob (deferred)
-    # TODO: F 0 <room_vnum> <door> 0  — set door state (deferred: needs door system)
+    ("E", I_IRON_SWORD, "wield"),            # equip sword on last M mob
+    ("G", I_GOLD_POUCH),                     # give pouch to last M mob's inventory
+    ("O", I_IRON_SWORD, R_DUNGEON_HALL),     # place one item copy in room
     ...
 )
 ```
 
-| Command | Format                                                  | Meaning |
-|---------|---------------------------------------------------------|---------|
-| `"M"`   | `("M", mob_vnum, global_limit, room_vnum, room_limit)` | Spawn up to one mob instance if under both caps |
-| `"O"`   | `("O", item_vnum, room_vnum)`                          | Place one item copy in the room |
+| Command | Format                                                          | Meaning |
+|---------|-----------------------------------------------------------------|---------|
+| `"M"`   | `("M", mob_vnum, global_limit, room_vnum, room_limit)`         | Spawn mob up to both caps; sets mob context for E/G |
+| `"O"`   | `("O", item_vnum, room_vnum)`                                  | Place one item copy in room; clears mob context |
+| `"E"`   | `("E", item_vnum, slot_name)`                                  | Equip item on last M mob; skipped if last M was capped |
+| `"G"`   | `("G", item_vnum)`                                             | Give item to last M mob's inventory; skipped if last M was capped |
+| `"P"`   | `("P", item_vnum, limit, container_vnum, max)`                 | [PRIMESUD] deferred: no container system yet |
+| `"R"`   | `("R", room_vnum, num_dirs)`                                   | [PRIMESUD] deferred: unused in current areas |
 
-Unimplemented reset types from 1stMud (`E`, `G`, `F`, `P`, `D`, `R`) are preserved as
-`# TODO` comments in the original converted form so they can be implemented later
-without re-consulting the source `.are` file.
+**F and D .are resets** are consumed at conversion time and baked into the room exits
+dict — they do not appear in `RESETS`.  F completely overwrites a door's exit flags;
+D sets its closed/locked state.  On every area reset, `reset_area()` restores all
+door exits to the state encoded in the exits dict.
 
 **Mob limits and dynamic allocation.** `reset_mobs(mob_instances, room_state, resets)`
 in `player.py` processes each `"M"` entry and spawns at most one instance if both caps

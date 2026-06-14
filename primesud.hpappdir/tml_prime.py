@@ -1,9 +1,14 @@
-from hpprime import dimgrob, keyboard, strblit2
+from hpprime import dimgrob, eval as ppleval, keyboard, strblit2
 from cas import get_key
 from tml import tml
 
 _SB_UP = '\x10'   # shift+- : enter scrollback / scroll up further
 _SB_DN = '\x11'   # shift++ : scroll down (within scrollback)
+
+_FN_X2    = '\x12'  # x² key — index 26, row above numpad
+_FN_PM    = '\x13'  # +/- key — index 27
+_FN_PAREN = '\x14'  # ()  key — index 28
+_FN_COMMA = '\x15'  # ,   key — index 29
 
 
 class tml_prime(tml):
@@ -25,6 +30,10 @@ class tml_prime(tml):
     def __init__(self, scrollback_size=250, scroll_step=5,
                  hist_grob=7, save_grob=6, **kwargs):
         super().__init__(**kwargs)
+        self.key_map[26][0] = _FN_X2
+        self.key_map[27][0] = _FN_PM
+        self.key_map[28][0] = _FN_PAREN
+        self.key_map[29][0] = _FN_COMMA
         self.key_map[45][2] = _SB_UP
         self.key_map[50][2] = _SB_DN
         self._hist_size = scrollback_size
@@ -33,6 +42,7 @@ class tml_prime(tml):
         self._hist_grob = hist_grob
         self._save_grob = save_grob
         self._scroll_step = scroll_step
+        self._scrollback_ms = 0  # [PRIMESUD] time spent in scrollback; consumed by game_loop
         if scrollback_size > 0:
             dimgrob(hist_grob, self.width, scrollback_size * self.char_height, self.back_color)
             dimgrob(save_grob, self.width, self.height, self.back_color)
@@ -132,7 +142,9 @@ class tml_prime(tml):
                     self._refresh_indicators()
                     if self._hist_size > 0:
                         if char == _SB_UP and self._hist_count > 0:
+                            _t0 = int(ppleval("Ticks"))
                             forwarded = self._scrollback()
+                            self._scrollback_ms += int(ppleval("Ticks")) - _t0
                             self.resync_keyboard()
                             return (forwarded, None) if forwarded is not None else None
                         if char == _SB_DN:

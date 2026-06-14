@@ -695,7 +695,36 @@ comments.  The first integer after the command letter is always discarded
 | `D` | `0  room_vnum  exit_num  locks`              | Set door state: 0=open 1=closed 2=locked (deferred)              |
 | `F` | `0  room_vnum  exit_num  flags`              | Set exit flags directly (deferred)                               |
 
-PrimeSUD currently processes `M` and `O` only; see DESIGN.md § *Area file system*.
+PrimeSUD processes M/O/E/G at runtime; P/R are stored but deferred.  F/D are
+consumed at conversion time and baked into room exit dicts.
+
+#### `E` reset — wear location (`wloc_t` enum from `h/defines.h`)
+
+The `E` reset arg3 is a `wloc_t` integer, not a wear-flag bit position.  Converter
+maps it to a PrimeSUD slot name via `WLOC_SLOT`.
+
+| Value | `wloc_t` constant  | PrimeSUD slot   |
+| ----- | ------------------ | --------------- |
+| 0     | `WEAR_LIGHT`       | `"light"`       |
+| 1     | `WEAR_FINGER_L`    | `"finger_l"`    |
+| 2     | `WEAR_FINGER_R`    | `"finger_r"`    |
+| 3     | `WEAR_NECK_1`      | `"neck_1"`      |
+| 4     | `WEAR_NECK_2`      | `"neck_2"`      |
+| 5     | `WEAR_BODY`        | `"body"`        |
+| 6     | `WEAR_HEAD`        | `"head"`        |
+| 7     | `WEAR_LEGS`        | `"legs"`        |
+| 8     | `WEAR_FEET`        | `"feet"`        |
+| 9     | `WEAR_HANDS`       | `"hands"`       |
+| 10    | `WEAR_ARMS`        | `"arms"`        |
+| 11    | `WEAR_SHIELD`      | `"shield"`      |
+| 12    | `WEAR_ABOUT`       | `"about"`       |
+| 13    | `WEAR_WAIST`       | `"waist"`       |
+| 14    | `WEAR_WRIST_L`     | `"wrist_l"`     |
+| 15    | `WEAR_WRIST_R`     | `"wrist_r"`     |
+| 16    | `WEAR_WIELD`       | `"wield"`       |
+| 17    | `WEAR_HOLD`        | `"hold"`        |
+| 18    | `WEAR_FLOAT`       | `"float"`       |
+| 19    | `WEAR_SECONDARY`   | `"secondary"`   |
 
 ---
 

@@ -132,7 +132,6 @@ I_KEY_SILVER                       = 3430
 # hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
 # AC: avg(pierce,bash,slash,exotic) / 10 per REFERENCE.md  # TODO: verify scale
 # hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)
-# loot: left empty — populate from RESETS E/G lines if needed
 MOBILES = {
     M_OLDSTYLE_SKELETON_BONY: {
         "keywords":    'oldstyle skeleton bony',
@@ -152,7 +151,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_UNDEAD_ZOMBIE: {
         "keywords":    'oldstyle undead zombie',
@@ -173,7 +171,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 2,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_UNDEAD_GHOUL: {
         "keywords":    'oldstyle undead ghoul',
@@ -194,7 +191,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 7,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_UNDEAD_WRAITH: {
         "keywords":    'oldstyle undead wraith',
@@ -215,7 +211,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 50,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_UNDEAD_GUARDIAN_VAMPIRE: {
         "keywords":    'oldstyle undead guardian vampire',
@@ -236,7 +231,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 750,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_PRIEST: {
         "keywords":    'oldstyle priest',
@@ -257,7 +251,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 20,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_MI_GO_FUNGI: {
         "keywords":    'oldstyle Mi-Go Fungi',
@@ -277,7 +270,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 32,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_NIGHTGAUNT: {
         "keywords":    'oldstyle nightgaunt',
@@ -298,7 +290,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 7,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_HUNTING_HORROR: {
         "keywords":    'oldstyle hunting horror',
@@ -319,7 +310,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 100,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_WEEDS: {
         "keywords":    'oldstyle weeds',
@@ -340,7 +330,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 4,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_SNAPPER_JOE: {
         "keywords":    'oldstyle snapper joe',
@@ -361,7 +350,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 111,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_X_IST_EATER: {
         "keywords":    'oldstyle X-ist eater',
@@ -382,7 +370,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 78,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_SPIRIT_GHOST_KING_CROTUS: {
         "keywords":    'oldstyle spirit ghost king crotus',
@@ -403,7 +390,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 2,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_ROCK_SLUG: {
         "keywords":    'oldstyle rock slug',
@@ -423,7 +409,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_ETCHER: {
         "keywords":    'oldstyle etcher',
@@ -444,7 +429,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 2,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_WIFE_GHOST_SPECTER: {
         "keywords":    'oldstyle wife ghost specter',
@@ -465,7 +449,6 @@ MOBILES = {
         "sex":  'female',
         "gold": 6,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OLDSTYLE_BODY: {
         "keywords":    'oldstyle body',
@@ -485,7 +468,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 4,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
 }
 
@@ -1434,110 +1416,97 @@ OBJECTS = {
 }
 
 # ── Resets ─────────────────────────────────────────────────────────────────────
-# ("M", mob_template_vnum, global_limit, room_vnum, room_limit)  — spawn mob instance up to limits
-# ("O", item_template_vnum, room_vnum) — place one item copy in room
-# E/G/P/R/D/F resets from .are are not yet handled — see # TODO lines
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) — spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          — place one item copy in room
+# ("E", item_vnum, slot_name)                          — equip item on last M mob
+# ("G", item_vnum)                                     — give item to last M mob inventory
+# ("P", item_vnum, limit, container_vnum, max)         — [PRIMESUD] deferred: no containers
+# ("R", room_vnum, num_dirs)                           — [PRIMESUD] deferred: unused in current areas
+# F and D .are resets are baked into room exit flags at conversion time
 RESETS = (
-    # TODO: F 0 3405 5 0 +YYYnnY
-    # TODO: F 0 3408 3 0 +YYY
-    # TODO: F 0 3412 2 0 +YY
-    # TODO: F 0 3413 0 0 +YY
-    # TODO: F 0 3418 5 0 +YY
-    # TODO: F 0 3421 2 0 +YY
-    # TODO: F 0 3421 4 0 +YYYnnY
-    # TODO: F 0 3422 0 0 +YY
-    # TODO: F 0 3422 2 0 +YY
-    # TODO: F 0 3423 0 0 +YY
-    # TODO: F 0 3427 2 0 +YY
-    # TODO: F 0 3428 0 0 +YY
-    # TODO: F 0 3437 0 0 +YY
-    # TODO: F 0 3449 1 0 +YYYnnY
-    # TODO: F 0 3460 5 0 +YYYnnY
-    # TODO: F 0 3464 1 0 +YY
-    # TODO: F 0 3475 4 0 +YYY
     ("M", M_OLDSTYLE_PRIEST, 1, R_INSIDE_THE_CHAPEL, 1),
-    # TODO: G 0 3430 0
+    ("G", I_KEY_SILVER),
     ("O", I_CANDLESTICK, R_INSIDE_THE_CHAPEL),
     ("M", M_OLDSTYLE_UNDEAD_ZOMBIE, 7, R_ACOLYTE_S_BEDROOM, 3),
     ("M", M_OLDSTYLE_UNDEAD_ZOMBIE, 7, R_ACOLYTE_S_BEDROOM, 3),
     ("M", M_OLDSTYLE_UNDEAD_ZOMBIE, 7, R_ACOLYTE_S_BEDROOM, 3),
     ("M", M_OLDSTYLE_UNDEAD_GHOUL, 10, R_ACOLYTE_S_BEDROOM, 2),
     ("M", M_OLDSTYLE_SKELETON_BONY, 8, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD, 2),
-    # TODO: E 0 3421 0 16
+    ("E", I_RUSTY_SWORD_CURVED_SCIMITAR, "wield"),
     ("M", M_OLDSTYLE_UNDEAD_WRAITH, 1, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3411, 1),
-    # TODO: E 0 3425 0 17
+    ("E", I_AUBURN_ORB, "hold"),
     ("M", M_OLDSTYLE_BODY, 4, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3411, 1),
     ("M", M_OLDSTYLE_UNDEAD_ZOMBIE, 7, R_TOMB_OF_SHOHAN, 4),
     ("M", M_OLDSTYLE_UNDEAD_ZOMBIE, 7, R_TOMB_OF_SHOHAN, 4),
     ("M", M_OLDSTYLE_UNDEAD_ZOMBIE, 7, R_TOMB_OF_SHOHAN, 4),
     ("M", M_OLDSTYLE_UNDEAD_ZOMBIE, 7, R_TOMB_OF_SHOHAN, 4),
     ("M", M_OLDSTYLE_ROCK_SLUG, 5, R_GRAND_HALL_OF_KINGS_3417, 1),
-    # TODO: G 0 3422 0
+    ("G", I_PIECE_SLIME),
     ("M", M_OLDSTYLE_ROCK_SLUG, 5, R_SHRINE_OF_CRISTIS, 1),
-    # TODO: G 0 3422 0
+    ("G", I_PIECE_SLIME),
     ("M", M_OLDSTYLE_SKELETON_BONY, 8, R_TOMB_OF_CRISTIS, 2),
-    # TODO: E 0 3421 0 16
+    ("E", I_RUSTY_SWORD_CURVED_SCIMITAR, "wield"),
     ("M", M_OLDSTYLE_SPIRIT_GHOST_KING_CROTUS, 1, R_TOMB_OF_CROTUS, 1),
-    # TODO: E 0 3416 0 17
+    ("E", I_IRON_HEAVY_KEY, "hold"),
     ("O", I_SARCOPHAGUS_COFFIN, R_TOMB_OF_CROTUS),
-    # TODO: P 0 3417 5 3415 1
-    # TODO: P 0 3418 1 3415 1
+    ("P", I_FLASK_WINEFLASK, 5, I_SARCOPHAGUS_COFFIN, 1),
+    ("P", I_COINS, 1, I_SARCOPHAGUS_COFFIN, 1),
     ("M", M_OLDSTYLE_WEEDS, 4, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3426, 2),
     ("M", M_OLDSTYLE_WEEDS, 4, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3426, 2),
     ("M", M_OLDSTYLE_BODY, 4, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3426, 1),
     ("M", M_OLDSTYLE_SKELETON_BONY, 8, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3430, 2),
-    # TODO: E 0 3421 0 16
+    ("E", I_RUSTY_SWORD_CURVED_SCIMITAR, "wield"),
     ("M", M_OLDSTYLE_ROCK_SLUG, 5, R_GRAND_HALL_OF_KINGS_3432, 1),
-    # TODO: G 0 3422 0
+    ("G", I_PIECE_SLIME),
     ("M", M_OLDSTYLE_X_IST_EATER, 1, R_TOMB_OF_FRATH, 1),
-    # TODO: E 0 3414 0 16
-    # TODO: G 0 3412 0
-    # TODO: P 0 3413 2 3412 1
+    ("E", I_RAPIER_THIN, "wield"),
+    ("G", I_HEAD_JUBAL_MUMMY),
+    ("P", I_RING_BLACK_MARBLE, 2, I_HEAD_JUBAL_MUMMY, 1),
     ("M", M_OLDSTYLE_UNDEAD_GHOUL, 10, R_GRAND_HALL_OF_KINGS_3437, 2),
     ("M", M_OLDSTYLE_SKELETON_BONY, 8, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3441, 2),
-    # TODO: E 0 3421 0 16
+    ("E", I_RUSTY_SWORD_CURVED_SCIMITAR, "wield"),
     ("M", M_OLDSTYLE_ROCK_SLUG, 5, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3441, 1),
-    # TODO: G 0 3422 0
+    ("G", I_PIECE_SLIME),
     ("M", M_OLDSTYLE_BODY, 4, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3442, 1),
     ("M", M_OLDSTYLE_WEEDS, 4, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3444, 2),
     ("M", M_OLDSTYLE_WEEDS, 4, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3444, 2),
     ("M", M_OLDSTYLE_UNDEAD_GHOUL, 10, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3447, 2),
     ("M", M_OLDSTYLE_BODY, 4, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3448, 1),
     ("O", I_RATHCOR, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3448),
-    # TODO: P 0 3410 1 3420 1
+    ("P", I_ROD_KEY, 1, I_RATHCOR, 1),
     ("M", M_OLDSTYLE_SNAPPER_JOE, 1, R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3449, 1),
-    # TODO: E 0 3414 0 16
-    # TODO: E 0 3429 0 5
-    # TODO: E 0 3411 0 17
+    ("E", I_RAPIER_THIN, "wield"),
+    ("E", I_BREAST_PLATE_DENTED_WORN, "body"),
+    ("E", I_LARGE_BLACK_DIRTY_KEY, "hold"),
     ("M", M_OLDSTYLE_ROCK_SLUG, 5, R_ENTRANCE_TO_THE_FORBIDDEN_CATACOMBS, 1),
-    # TODO: G 0 3422 0
+    ("G", I_PIECE_SLIME),
     ("M", M_OLDSTYLE_NIGHTGAUNT, 5, R_CATACOMBS_3452, 1),
-    # TODO: E 0 3402 0 16
+    ("E", I_TICKLER, "wield"),
     ("M", M_OLDSTYLE_NIGHTGAUNT, 5, R_CATACOMBS_3453, 1),
-    # TODO: E 0 3402 0 16
+    ("E", I_TICKLER, "wield"),
     ("M", M_OLDSTYLE_UNDEAD_GHOUL, 10, R_CATACOMBS_3454, 2),
     ("M", M_OLDSTYLE_MI_GO_FUNGI, 3, R_CATACOMBS_3455, 1),
-    # TODO: E 0 3403 0 5
+    ("E", I_PLASMA_WEBBING, "body"),
     ("M", M_OLDSTYLE_NIGHTGAUNT, 5, R_CATACOMBS_3457, 1),
-    # TODO: E 0 3402 0 16
+    ("E", I_TICKLER, "wield"),
     ("M", M_OLDSTYLE_UNDEAD_GUARDIAN_VAMPIRE, 1, R_DEN_OF_THE_VAMPIRE, 1),
-    # TODO: E 0 3428 0 16
-    # TODO: E 0 3427 0 12
-    # TODO: E 0 3419 0 17
-    # TODO: G 0 3424 0
+    ("E", I_FLAMING_BLACK_SWORD_LONG_LONGSWORD, "wield"),
+    ("E", I_CAPE_DARK_BLACK, "about"),
+    ("E", I_KEY, "hold"),
+    ("G", I_SCROLL_TIGHTLY_ROLLED),
     ("M", M_OLDSTYLE_UNDEAD_GHOUL, 10, R_CATACOMBS_3462, 2),
     ("M", M_OLDSTYLE_MI_GO_FUNGI, 3, R_CATACOMBS_3463, 1),
-    # TODO: E 0 3403 0 5
+    ("E", I_PLASMA_WEBBING, "body"),
     ("M", M_OLDSTYLE_NIGHTGAUNT, 5, R_GILDED_HALLWAY, 1),
-    # TODO: E 0 3402 0 16
+    ("E", I_TICKLER, "wield"),
     ("M", M_OLDSTYLE_NIGHTGAUNT, 5, R_GILDED_HALLWAY, 1),
-    # TODO: E 0 3402 0 16
+    ("E", I_TICKLER, "wield"),
     ("M", M_OLDSTYLE_MI_GO_FUNGI, 3, R_GILDED_HALLWAY_3466, 1),
-    # TODO: E 0 3403 0 5
+    ("E", I_PLASMA_WEBBING, "body"),
     ("M", M_OLDSTYLE_ETCHER, 1, R_GILDED_HALLWAY_3468, 1),
-    # TODO: E 0 3423 0 5
+    ("E", I_SMOCK, "body"),
     ("M", M_OLDSTYLE_WIFE_GHOST_SPECTER, 1, R_GILDED_HALLWAY_3468, 1),
     ("M", M_OLDSTYLE_HUNTING_HORROR, 1, R_SECRET_PASSAGEWAY_3471, 1),
-    # TODO: E 0 3425 0 17
-    # TODO: G 0 3426 0
+    ("E", I_AUBURN_ORB, "hold"),
+    ("G", I_BAR_GOLD),
 )

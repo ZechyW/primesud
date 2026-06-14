@@ -15,7 +15,9 @@ from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     AUTOSAVE_TICKS,
                     KEY_COMMANDS as _KEY_COMMANDS,
                     TERMINAL_COLS, FONT, FONT_GROB, COLOR_GROB,
-                    DEATH_MSG_DELAY)
+                    DEATH_MSG_DELAY,
+                    SCROLLBACK_SIZE, SCROLL_STEP,
+                    FNKEY_SENTINELS)
 from util import free_mem
 from world import R_STARTING_ROOM, ROOMS, AREA_DEFS
 from combat import violence_update
@@ -86,7 +88,8 @@ class Game:
     """Holds game state and drives the main loop."""
 
     def __init__(self):
-        self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font=FONT)
+        self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font=FONT,
+                      scrollback_size=SCROLLBACK_SIZE, scroll_step=SCROLL_STEP)
         self._font_w = grobw(FONT_GROB)
         self._font_h = grobh(FONT_GROB)
         dimgrob(COLOR_GROB, self._font_w, self._font_h, 0)
@@ -316,10 +319,16 @@ class Game:
 
         while True:
             result = tr.poll_char(_KEY_COMMANDS)
+            if tr._scrollback_ms:  # [PRIMESUD] shift pulse clock forward by time spent in scrollback
+                next_pulse += tr._scrollback_ms
+                tr._scrollback_ms = 0
             if result is not None:
                 char, auto_submit = result
                 if char == "\n":
-                    if interpret(self.input_buf, tr, player, room_state, mob_instances) == "quit":
+                    _t0 = int(ppleval("Ticks"))
+                    _quit = interpret(self.input_buf, tr, player, room_state, mob_instances) == "quit"
+                    next_pulse += int(ppleval("Ticks")) - _t0  # [PRIMESUD] skip missed pulses during blocking input (e.g. picker)
+                    if _quit:
                         break
                     self.input_buf = ""
                     show_prompt(tr, player, self.input_buf)
@@ -330,7 +339,10 @@ class Game:
                     self.input_buf = ""
                     show_prompt(tr, player, self.input_buf)
                 elif auto_submit is True:  # [PRIMESUD] hardware key — immediate submit
-                    if interpret(char, tr, player, room_state, mob_instances) == "quit":
+                    _t0 = int(ppleval("Ticks"))
+                    _quit = interpret(char, tr, player, room_state, mob_instances) == "quit"
+                    next_pulse += int(ppleval("Ticks")) - _t0  # [PRIMESUD] skip missed pulses during blocking input
+                    if _quit:
                         break
                     show_prompt(tr, player, self.input_buf)
                 elif auto_submit is False:  # [PRIMESUD] hardware key — load into buffer
@@ -340,7 +352,7 @@ class Game:
                     subst = _MACRO_SUBST.get(char)
                     if subst is not None and not self.input_buf:
                         self.input_buf = subst
-                    else:
+                    elif char not in FNKEY_SENTINELS:
                         self.input_buf += char
                     show_prompt(tr, player, self.input_buf)
 

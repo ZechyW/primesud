@@ -6,7 +6,11 @@ Usage:
 
 Sections handled:   #AREADATA  #ROOMS  #MOBILES  #OBJECTS  #RESETS
 Sections skipped:   #SHOPS  #SPECIALS  #MOBPROGS  #OBJPROGS  #ROOMPROGS
-                    (skipped RESETS commands: E G P R D F — emitted as # TODO)
+
+RESETS handling:
+  M O E G  → emitted as runtime tuples in RESETS
+  P R      → emitted as deferred tuples (no runtime handler yet)
+  F D      → baked into room exit flags at conversion time; not in RESETS
 
 Design choices:
   - perm_stat omitted: not in .are format
@@ -15,7 +19,6 @@ Design choices:
     10 (REFERENCE.md: "Values stored × 10, so 100 = AC 10").  Verify manually.
   - hitroll: taken from level line field 4; no separate damroll in .are mobs
     (the +B bonus in damage dice IS the damroll analogue in 1stMud)
-  - loot: left empty; populate from RESETS E/G lines manually
   - act_flags, off_flags, imm/res/vuln_flags: decoded into name→True dicts
     using flag tables from REFERENCE.md; included even if PrimeSUD ignores them
   - Exits: plain vnum for open passages; dict {"to": vnum, "isdoor": True, ...}
@@ -100,6 +103,16 @@ APPLY_LOC = {
     12: "mana", 13: "hp", 17: "AC", 18: "hitroll", 19: "damroll",
 }
 DIR_NAME = {0: "n", 1: "e", 2: "s", 3: "w", 4: "u", 5: "d"}
+WLOC_SLOT = {                                           # wloc_t enum from h/defines.h (E reset arg3)
+    0:  "light",
+    1:  "finger_l", 2:  "finger_r",
+    3:  "neck_1",   4:  "neck_2",
+    5:  "body",     6:  "head",    7:  "legs",  8: "feet",
+    9:  "hands",    10: "arms",    11: "shield", 12: "about",
+    13: "waist",    14: "wrist_l", 15: "wrist_r",
+    16: "wield",    17: "hold",    18: "float",
+    19: "secondary",
+}
 
 
 # ── Bit-string helpers ────────────────────────────────────────────────────────
@@ -133,6 +146,31 @@ def decode_flags(bits, table, skip=None):
 
 
 # ── Dice and string helpers ───────────────────────────────────────────────────
+
+def split_tokens(line):
+    """Split a .are value line respecting single-quoted tokens (may contain spaces).
+
+    '15 'cure critical' '' '' ''  →  ['15', 'cure critical', '', '', '']
+    Falls back to str.split() for lines with no quotes.
+    """
+    tokens = []
+    i = 0
+    s = line.strip()
+    while i < len(s):
+        if s[i] == "'":
+            j = s.index("'", i + 1)
+            tokens.append(s[i + 1:j])
+            i = j + 1
+        elif s[i].isspace():
+            i += 1
+        else:
+            j = i
+            while j < len(s) and not s[j].isspace():
+                j += 1
+            tokens.append(s[i:j])
+            i = j
+    return tokens
+
 
 def parse_dice(s):
     """'NdM+B' or 'NdM-B' → (N, M, B)."""
@@ -365,8 +403,8 @@ def parse_objects(lines):
         extra_bits = parse_bitstring(parts[1]) if len(parts) > 1 else set()
         wear_bits  = parse_bitstring(parts[2]) if len(parts) > 2 else set()
 
-        # item-type-specific value line
-        val_line = lines[i].split(); i += 1
+        # item-type-specific value line (spell names may contain spaces: 'cure critical')
+        val_line = split_tokens(lines[i]); i += 1
 
         # level  weight  cost  condition
         lw_line = lines[i].split(); i += 1
@@ -443,7 +481,7 @@ def parse_objects(lines):
                 obj["AC"] = 0
         elif item_type == "potion" and val_line:
             obj["spell_level"] = int(val_line[0]) if val_line else 0
-            obj["spells"] = [s for s in val_line[1:] if not s.startswith("+")]
+            obj["spells"] = [s for s in val_line[1:] if s]
 
         if applies:
             obj["stat_bonuses"] = applies
@@ -523,7 +561,17 @@ def parse_rooms(lines):
 
 
 def parse_resets(lines):
+    """Parse #RESETS section.
+
+    Returns:
+        tuple: (resets, foverrides, doverrides)
+            resets:     list of (cmd, ...) tuples for M/O/E/G/P/R
+            foverrides: {(room_vnum, dir_name): exit_flags_dict} — F resets baked into exits
+            doverrides: {(room_vnum, dir_name): 0|1|2}           — D resets baked into exits
+    """
     resets = []
+    foverrides = {}
+    doverrides = {}
     for line in lines:
         parts = line.split()
         if not parts or parts[0] == "*":
@@ -537,9 +585,30 @@ def parse_resets(lines):
         elif cmd == "O" and len(parts) >= 5:
             # O  0  obj_vnum  0  room_vnum
             resets.append(("O", int(parts[2]), int(parts[4])))
-        elif cmd in "EGPRDF":
-            resets.append(("TODO", line.rstrip()))
-    return resets
+        elif cmd == "E" and len(parts) >= 5:
+            # E  0  item_vnum  0  wloc_num
+            slot = WLOC_SLOT.get(int(parts[4]), "hold")
+            resets.append(("E", int(parts[2]), slot))
+        elif cmd == "G" and len(parts) >= 3:
+            # G  0  item_vnum  [0]   (arg3 not read for G in 1stMud load_resets)
+            resets.append(("G", int(parts[2])))
+        elif cmd == "P" and len(parts) >= 6:
+            # P  0  item_vnum  global_limit  container_vnum  max_count
+            resets.append(("P", int(parts[2]), int(parts[3]), int(parts[4]), int(parts[5])))
+        elif cmd == "R" and len(parts) >= 4:
+            # R  0  room_vnum  num_dirs
+            resets.append(("R", int(parts[2]), int(parts[3])))
+        elif cmd == "F" and len(parts) >= 6:
+            # F  0  room_vnum  exit_num  0  +flags  — baked into exits at conversion time
+            d = DIR_NAME.get(int(parts[3]))
+            if d is not None:
+                foverrides[(int(parts[2]), d)] = decode_flags(parse_bitstring(parts[5]), EXIT_FLAGS)
+        elif cmd == "D" and len(parts) >= 5:
+            # D  0  room_vnum  exit_num  locks (0=open 1=closed 2=locked)
+            d = DIR_NAME.get(int(parts[3]))
+            if d is not None:
+                doverrides[(int(parts[2]), d)] = int(parts[4])
+    return resets, foverrides, doverrides
 
 
 # ── Python emitter ────────────────────────────────────────────────────────────
@@ -554,7 +623,7 @@ def _repr_flags(d):
     return "{" + ", ".join(parts) + "}"
 
 
-def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
+def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, foverrides=None, doverrides=None):
     out = []
 
     def w(s=""):
@@ -609,7 +678,6 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
     w("# hp_dice / mana_dice / damage: (num_dice, die_size, bonus)")
     w("# AC: avg(pierce,bash,slash,exotic) / 10 per REFERENCE.md  # TODO: verify scale")
     w("# hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)")
-    w("# loot: left empty — populate from RESETS E/G lines if needed")
     w("MOBILES = {")
     for vnum, mob in mobs:
         cname = mob_map[vnum]
@@ -637,7 +705,6 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
         w(f'        "sex":  {mob["sex"]!r},')
         w(f'        "gold": {mob["gold"]},')
         w(f'        "size": {mob["size"]!r},')
-        w(f'        "loot": [],  # TODO: from RESETS E/G')
         w("    },")
     w("}")
     w("")
@@ -654,14 +721,30 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
         for d in sorted(room["exits"], key=lambda x: "neswud".index(x)):
             to_vnum = room["exits"][d]
             to_c    = r(to_vnum, room_map)
-            note    = room["exit_notes"].get(d)
+            note    = room["exit_notes"].get(d) or {}
+            # F override completely replaces exit flags (cf. 1stMud rs_flags = arg5)
+            if foverrides and (vnum, d) in foverrides:
+                note = foverrides[(vnum, d)]
+            # D override sets closed/locked state (only valid on isdoor exits)
+            dstate = (doverrides or {}).get((vnum, d))
+            if dstate is not None and note.get("isdoor"):
+                note = dict(note)
+                if dstate == 0:
+                    note.pop("closed", None)
+                    note.pop("locked", None)
+                elif dstate == 1:
+                    note["closed"] = True
+                    note.pop("locked", None)
+                else:
+                    note["closed"] = True
+                    note["locked"] = True
             if note:
-                parts = [f'"to": {to_c}']
+                eparts = [f'"to": {to_c}']
                 for flag in ("isdoor", "closed", "locked", "pickproof", "nopass",
                              "doorbell", "easy", "hard", "infuriating", "noclose", "nolock"):
                     if note.get(flag):
-                        parts.append(f'"{flag}": True')
-                w(f'            "{d}": {{{", ".join(parts)}}},')
+                        eparts.append(f'"{flag}": True')
+                w(f'            "{d}": {{{", ".join(eparts)}}},')
             else:
                 w(f'            "{d}": {to_c},')
         w("        },")
@@ -714,9 +797,13 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
 
     # ── RESETS ──
     w(f"# ── Resets {BAR * 69}")
-    w('# ("M", mob_template_vnum, global_limit, room_vnum, room_limit)  — spawn mob instance up to limits')
-    w('# ("O", item_template_vnum, room_vnum) — place one item copy in room')
-    w('# E/G/P/R/D/F resets from .are are not yet handled — see # TODO lines')
+    w('# ("M", mob_vnum, global_limit, room_vnum, room_limit) — spawn mob up to limits')
+    w('# ("O", item_vnum, room_vnum)                          — place one item copy in room')
+    w('# ("E", item_vnum, slot_name)                          — equip item on last M mob')
+    w('# ("G", item_vnum)                                     — give item to last M mob inventory')
+    w('# ("P", item_vnum, limit, container_vnum, max)         — [PRIMESUD] deferred: no containers')
+    w('# ("R", room_vnum, num_dirs)                           — [PRIMESUD] deferred: unused in current areas')
+    w('# F and D .are resets are baked into room exit flags at conversion time')
     w("RESETS = (")
     for reset in resets:
         if reset[0] == "M":
@@ -729,8 +816,23 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
             oc = r(ov, obj_map)
             rc = r(rv, room_map)
             w(f'    ("O", {oc}, {rc}),')
-        else:
-            w(f"    # TODO: {reset[1]}")
+        elif reset[0] == "E":
+            _, iv, slot = reset
+            ic = r(iv, obj_map)
+            w(f'    ("E", {ic}, "{slot}"),')
+        elif reset[0] == "G":
+            _, iv = reset
+            ic = r(iv, obj_map)
+            w(f'    ("G", {ic}),')
+        elif reset[0] == "P":
+            _, iv, lim, cv, mx = reset
+            ic = r(iv, obj_map)
+            cc = r(cv, obj_map)
+            w(f'    ("P", {ic}, {lim}, {cc}, {mx}),')
+        elif reset[0] == "R":
+            _, rv, nd = reset
+            rc = r(rv, room_map)
+            w(f'    ("R", {rc}, {nd}),')
     w(")")
     w("")
 
@@ -747,13 +849,13 @@ def convert(are_path, out_path=None):
     rooms     = parse_rooms(sects.get("ROOMS", []))
     mobs      = parse_mobiles(sects.get("MOBILES", []))
     objs      = parse_objects(sects.get("OBJECTS", []))
-    resets    = parse_resets(sects.get("RESETS", []))
+    resets, foverrides, doverrides = parse_resets(sects.get("RESETS", []))
 
     room_map = make_const_map("R", rooms, lambda d: d["name"])
     mob_map  = make_const_map("M", mobs,  lambda d: d["keywords"])
     obj_map  = make_const_map("I", objs,  lambda d: d["keywords"])
 
-    code = emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map)
+    code = emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, foverrides, doverrides)
 
     if out_path:
         Path(out_path).write_text(code, encoding="utf-8")

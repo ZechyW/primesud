@@ -396,7 +396,6 @@ I_OPAL                             = 3378
 # hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
 # AC: avg(pierce,bash,slash,exotic) / 10 per REFERENCE.md  # TODO: verify scale
 # hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)
-# loot: left empty — populate from RESETS E/G lines if needed
 MOBILES = {
     M_WIZARD: {
         "keywords":    'wizard',
@@ -418,7 +417,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 15000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_BAKER: {
         "keywords":    'baker',
@@ -439,7 +437,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 500,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_GROCER: {
         "keywords":    'grocer',
@@ -460,7 +457,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 1300,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_WEAPONSMITH: {
         "keywords":    'weaponsmith',
@@ -481,7 +477,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 25000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_ARMOURER_ARMORER: {
         "keywords":    'armourer armorer',
@@ -502,7 +497,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 25000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_THIEF: {
         "keywords":    'thief',
@@ -523,7 +517,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 100,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_CAPTAIN: {
         "keywords":    'captain',
@@ -544,7 +537,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 1300,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_SAILOR: {
         "keywords":    'sailor',
@@ -565,7 +557,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 58,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_BOY: {
         "keywords":    'boy',
@@ -585,7 +576,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 4000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_JEWELLER: {
         "keywords":    'jeweller',
@@ -606,7 +596,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 58000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_LEATHER_WORKER: {
         "keywords":    'leather worker',
@@ -627,7 +616,6 @@ MOBILES = {
         "sex":  'female',
         "gold": 4500,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_HASSAN: {
         "keywords":    'Hassan',
@@ -651,7 +639,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 0,
         "size": 'huge',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_HEALER: {
         "keywords":    'healer',
@@ -674,7 +661,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 5000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_GUILDMASTER_MASTER: {
         "keywords":    'guildmaster master',
@@ -698,7 +684,6 @@ MOBILES = {
         "sex":  'female',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_GUILDMASTER_MASTER_3021: {
         "keywords":    'guildmaster master',
@@ -720,7 +705,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_GUILDMASTER_MASTER_3022: {
         "keywords":    'guildmaster master',
@@ -742,7 +726,6 @@ MOBILES = {
         "sex":  'female',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_GUILDMASTER_MASTER_3023: {
         "keywords":    'guildmaster master',
@@ -766,7 +749,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_SORCERER: {
         "keywords":    'sorcerer',
@@ -790,7 +772,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 2000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_TEMPLAR: {
         "keywords":    'templar',
@@ -813,7 +794,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 2000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_ASSASSIN: {
         "keywords":    'assassin',
@@ -836,7 +816,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 2000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_KNIGHT: {
         "keywords":    'knight',
@@ -859,7 +838,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 2000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_BARTENDER: {
         "keywords":    'bartender',
@@ -881,7 +859,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 150,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_WAITER: {
         "keywords":    'waiter',
@@ -903,7 +880,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 150,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_WAITER_3042: {
         "keywords":    'waiter',
@@ -926,7 +902,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 150,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_WAITER_3043: {
         "keywords":    'waiter',
@@ -948,7 +923,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 150,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_WAITER_3044: {
         "keywords":    'waiter',
@@ -970,7 +944,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 150,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_WAITER_3045: {
         "keywords":    'waiter',
@@ -992,7 +965,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 150,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_FILTHY: {
         "keywords":    'filthy',
@@ -1014,7 +986,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 200,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_CITYGUARD_GUARD: {
         "keywords":    'cityguard guard',
@@ -1035,7 +1006,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 150,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_JANITOR: {
         "keywords":    'janitor',
@@ -1056,7 +1026,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 10,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_FIDO_DOG: {
         "keywords":    'fido dog',
@@ -1077,7 +1046,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'small',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_VAGABOND: {
         "keywords":    'vagabond',
@@ -1098,7 +1066,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 18,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_DRUNK: {
         "keywords":    'drunk',
@@ -1119,7 +1086,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 65,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_BEGGAR: {
         "keywords":    'beggar',
@@ -1140,7 +1106,6 @@ MOBILES = {
         "sex":  'female',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_CAT: {
         "keywords":    'cat',
@@ -1162,7 +1127,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'small',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_CITYGUARD_GUARD_3067: {
         "keywords":    'cityguard guard',
@@ -1183,7 +1147,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 150,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_CITYGUARD_GUARD_3068: {
         "keywords":    'cityguard guard',
@@ -1204,7 +1167,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 150,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_CITYGUARD_GUARD_3069: {
         "keywords":    'cityguard guard',
@@ -1226,7 +1188,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 500,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_SHOPKEEPER_OLD_MAN: {
         "keywords":    'shopkeeper old man',
@@ -1248,7 +1209,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 5000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_CITYGUARD_GUARD_3071: {
         "keywords":    'cityguard guard',
@@ -1269,7 +1229,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 150,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_CITYGUARD_GUARD_3072: {
         "keywords":    'cityguard guard',
@@ -1290,7 +1249,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 150,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_KITTEN_CAT_PET: {
         "keywords":    'kitten cat pet',
@@ -1312,7 +1270,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'tiny',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_PUPPY_DOG_PET: {
         "keywords":    'puppy dog pet',
@@ -1334,7 +1291,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'small',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_BEAGLE_DOG_PET: {
         "keywords":    'beagle dog pet',
@@ -1356,7 +1312,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'small',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_ROTTWEILER_DOG_PET: {
         "keywords":    'rottweiler dog pet',
@@ -1378,7 +1333,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_WOLF_PET: {
         "keywords":    'wolf pet',
@@ -1400,7 +1354,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_EAGLE_BIRD_PET: {
         "keywords":    'eagle bird pet',
@@ -1422,7 +1375,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'small',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_LION_PET: {
         "keywords":    'lion pet',
@@ -1444,7 +1396,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_TIGER_PET: {
         "keywords":    'tiger pet',
@@ -1466,7 +1417,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_MAID: {
         "keywords":    'maid',
@@ -1488,7 +1438,6 @@ MOBILES = {
         "sex":  'female',
         "gold": 180,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_SEXTON: {
         "keywords":    'sexton',
@@ -1508,7 +1457,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 75,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_SWAN: {
         "keywords":    'swan',
@@ -1531,7 +1479,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'small',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_DUCKLING: {
         "keywords":    'duckling',
@@ -1554,7 +1501,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'tiny',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_SPARROW: {
         "keywords":    'sparrow',
@@ -1576,7 +1522,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'tiny',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_DUCK: {
         "keywords":    'duck',
@@ -1599,7 +1544,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'small',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_CAPTAIN_3140: {
         "keywords":    'captain',
@@ -1621,7 +1565,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 500,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_CITYGUARD_GUARD_3141: {
         "keywords":    'cityguard guard',
@@ -1642,7 +1585,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 150,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_SECRETARY: {
         "keywords":    'secretary',
@@ -1662,7 +1604,6 @@ MOBILES = {
         "sex":  'female',
         "gold": 100,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_MAYOR: {
         "keywords":    'mayor',
@@ -1685,7 +1626,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 1000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_CRIER: {
         "keywords":    'crier',
@@ -1706,7 +1646,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 14,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_ESME_WAITRESS: {
         "keywords":    'esme waitress',
@@ -1727,7 +1666,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 1000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_MELANCHOLY: {
         "keywords":    'Melancholy',
@@ -1748,7 +1686,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 1000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_LISTER_GREEN_TREE_SNAKE: {
         "keywords":    'lister green tree snake',
@@ -1771,7 +1708,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 0,
         "size": 'small',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_OTHO_MONEY_CHANGER_MONEYCHANGER: {
         "keywords":    'otho money changer moneychanger',
@@ -1793,7 +1729,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 1000,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_THIEF_3163: {
         "keywords":    'thief',
@@ -1814,7 +1749,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 100,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
 }
 
@@ -3644,7 +3578,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 12,
-        "spells": ["'detect", "invis'", "''", "''", "''"],
+        "spells": ['detect invis'],
         "level": 0, "weight": 10, "value": 220,
         "extra_descs": [('potion yellow', "The potion has a small label 'Detect The Invisible'.")],
     },
@@ -3951,7 +3885,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 20,
-        "spells": ["'heal'", "''", "''", "''"],
+        "spells": ['heal'],
         "level": 11, "weight": 10, "value": 800,
     },
     I_POTION_SANCT_SANCTUARY: {
@@ -3963,7 +3897,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 20,
-        "spells": ["'sanctuary'", "''", "''", "''"],
+        "spells": ['sanctuary'],
         "level": 11, "weight": 10, "value": 800,
     },
     I_POTION_DIVINE: {
@@ -3975,7 +3909,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"glow": True, "hum": True, "magic": True, "bless": True},
         "spell_level": 35,
-        "spells": ["'sanctuary'", "'stone", "skin'", "'armor'", "''"],
+        "spells": ['sanctuary', 'stone skin', 'armor'],
         "level": 16, "weight": 10, "value": 1800,
     },
     I_POTION_CURE_LIGHT: {
@@ -3987,7 +3921,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 5,
-        "spells": ["'cure", "light'", "''", "''", "''"],
+        "spells": ['cure light'],
         "level": 0, "weight": 10, "value": 150,
     },
     I_POTION_CURE_SERIOUS: {
@@ -3999,7 +3933,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 10,
-        "spells": ["'cure", "serious'", "''", "''", "''"],
+        "spells": ['cure serious'],
         "level": 1, "weight": 10, "value": 220,
     },
     I_POTION_CURE_CRITICAL_CRITIC: {
@@ -4011,7 +3945,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 15,
-        "spells": ["'cure", "critical'", "''", "''", "''"],
+        "spells": ['cure critical'],
         "level": 5, "weight": 10, "value": 390,
     },
     I_POTION_ANTIDOTE_BOTTLE: {
@@ -4023,7 +3957,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 14,
-        "spells": ["'cure", "poison'", "'cure", "light'", "'cure", "disease'", "''"],
+        "spells": ['cure poison', 'cure light', 'cure disease'],
         "level": 8, "weight": 10, "value": 550,
     },
     I_POTION_CURE_BLINDNESS: {
@@ -4035,7 +3969,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 13,
-        "spells": ["'cure", "blindness'", "''", "''", "''"],
+        "spells": ['cure blindness'],
         "level": 0, "weight": 10, "value": 230,
     },
     I_VIAL_HOLY_WATER: {
@@ -4047,7 +3981,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"glow": True, "magic": True, "bless": True},
         "spell_level": 20,
-        "spells": ["'bless'", "'protection", "evil'", "'remove", "curse'", "''"],
+        "spells": ['bless', 'protection evil', 'remove curse'],
         "level": 10, "weight": 10, "value": 720,
     },
     I_POTION_ARMOR: {
@@ -4059,7 +3993,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 10,
-        "spells": ["'armor'", "''", "''", "''"],
+        "spells": ['armor'],
         "level": 0, "weight": 10, "value": 200,
     },
     I_POTION_NEGATION: {
@@ -4071,7 +4005,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"hum": True, "magic": True},
         "spell_level": 35,
-        "spells": ["'cancellation'", "''", "''", "''"],
+        "spells": ['cancellation'],
         "level": 9, "weight": 10, "value": 830,
     },
     I_POTION_FLY_FLYING: {
@@ -4083,7 +4017,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 9,
-        "spells": ["'fly'", "''", "''", "''"],
+        "spells": ['fly'],
         "level": 3, "weight": 10, "value": 250,
     },
     I_POTION_TRUE_SIGHT: {
@@ -4095,7 +4029,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 10,
-        "spells": ["'detect", "invis'", "'detect", "magic'", "'detect", "hidden'", "''"],
+        "spells": ['detect invis', 'detect magic', 'detect hidden'],
         "level": 4, "weight": 10, "value": 290,
     },
     I_SHIELD_SMALL_METAL: {
@@ -4584,7 +4518,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 12,
-        "spells": ["'detect", "invis'", "''", "''", "''"],
+        "spells": ['detect invis'],
         "level": 0, "weight": 10, "value": 220,
         "extra_descs": [('potion yellow', "The potion has a small label 'Detect The Invisible'.")],
     },
@@ -4608,7 +4542,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 20,
-        "spells": ["'heal'", "''", "''", "''"],
+        "spells": ['heal'],
         "level": 11, "weight": 10, "value": 800,
     },
     I_POTION_SANCT_SANCTUARY_3281: {
@@ -4620,7 +4554,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 20,
-        "spells": ["'sanctuary'", "''", "''", "''"],
+        "spells": ['sanctuary'],
         "level": 11, "weight": 10, "value": 800,
     },
     I_POTION_DIVINE_3282: {
@@ -4632,7 +4566,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"glow": True, "hum": True, "magic": True, "bless": True},
         "spell_level": 35,
-        "spells": ["'sanctuary'", "'stone", "skin'", "'armor'", "''"],
+        "spells": ['sanctuary', 'stone skin', 'armor'],
         "level": 16, "weight": 10, "value": 1800,
     },
     I_POTION_CURE_LIGHT_3283: {
@@ -4644,7 +4578,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 5,
-        "spells": ["'cure", "light'", "''", "''", "''"],
+        "spells": ['cure light'],
         "level": 0, "weight": 10, "value": 150,
     },
     I_POTION_CURE_SERIOUS_3284: {
@@ -4656,7 +4590,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 10,
-        "spells": ["'cure", "serious'", "''", "''", "''"],
+        "spells": ['cure serious'],
         "level": 1, "weight": 10, "value": 220,
     },
     I_POTION_CURE_CRITICAL_CRITIC_3285: {
@@ -4668,7 +4602,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 15,
-        "spells": ["'cure", "critical'", "''", "''", "''"],
+        "spells": ['cure critical'],
         "level": 5, "weight": 10, "value": 390,
     },
     I_POTION_ANTIDOTE_BOTTLE_3286: {
@@ -4680,7 +4614,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 14,
-        "spells": ["'cure", "poison'", "'cure", "light'", "'cure", "disease'", "''"],
+        "spells": ['cure poison', 'cure light', 'cure disease'],
         "level": 8, "weight": 10, "value": 550,
     },
     I_POTION_CURE_BLINDNESS_3287: {
@@ -4692,7 +4626,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 13,
-        "spells": ["'cure", "blindness'", "''", "''", "''"],
+        "spells": ['cure blindness'],
         "level": 0, "weight": 10, "value": 230,
     },
     I_VIAL_HOLY_WATER_3288: {
@@ -4704,7 +4638,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"glow": True, "magic": True, "bless": True},
         "spell_level": 20,
-        "spells": ["'bless'", "'protection", "evil'", "'remove", "curse'", "''"],
+        "spells": ['bless', 'protection evil', 'remove curse'],
         "level": 10, "weight": 10, "value": 720,
     },
     I_POTION_ARMOR_3289: {
@@ -4716,7 +4650,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 10,
-        "spells": ["'armor'", "''", "''", "''"],
+        "spells": ['armor'],
         "level": 0, "weight": 10, "value": 200,
     },
     I_POTION_NEGATION_3290: {
@@ -4728,7 +4662,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"hum": True, "magic": True},
         "spell_level": 35,
-        "spells": ["'cancellation'", "''", "''", "''"],
+        "spells": ['cancellation'],
         "level": 9, "weight": 10, "value": 830,
     },
     I_POTION_FLY_FLYING_3291: {
@@ -4740,7 +4674,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 9,
-        "spells": ["'fly'", "''", "''", "''"],
+        "spells": ['fly'],
         "level": 3, "weight": 10, "value": 250,
     },
     I_POTION_TRUE_SIGHT_3292: {
@@ -4752,7 +4686,7 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "extra_flags": {"magic": True},
         "spell_level": 10,
-        "spells": ["'detect", "invis'", "'detect", "magic'", "'detect", "hidden'", "''"],
+        "spells": ['detect invis', 'detect magic', 'detect hidden'],
         "level": 4, "weight": 10, "value": 290,
     },
     I_LONG_SWORD: {
@@ -5039,268 +4973,266 @@ OBJECTS = {
 }
 
 # ── Resets ─────────────────────────────────────────────────────────────────────
-# ("M", mob_template_vnum, global_limit, room_vnum, room_limit)  — spawn mob instance up to limits
-# ("O", item_template_vnum, room_vnum) — place one item copy in room
-# E/G/P/R/D/F resets from .are are not yet handled — see # TODO lines
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) — spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          — place one item copy in room
+# ("E", item_vnum, slot_name)                          — equip item on last M mob
+# ("G", item_vnum)                                     — give item to last M mob inventory
+# ("P", item_vnum, limit, container_vnum, max)         — [PRIMESUD] deferred: no containers
+# ("R", room_vnum, num_dirs)                           — [PRIMESUD] deferred: unused in current areas
+# F and D .are resets are baked into room exit flags at conversion time
 RESETS = (
-    # TODO: F 0 3110 3 0 +YYY
-    # TODO: F 0 3142 1 0 +YYY
-    # TODO: F 0 3142 2 0 +YYY
-    # TODO: F 0 3143 0 0 +YYY
-    # TODO: F 0 3160 0 0 +YYYnnY
-    # TODO: F 0 3161 2 0 +YYYnnY
     ("O", I_BENCH, R_PROMENADE),
     ("O", I_BENCH, R_PROMENADE_3102),
     ("O", I_BENCH, R_AUSTRAL_SQUARE),
     ("M", M_MAID, 1, R_PARK_CAFE, 1),
-    # TODO: G 0 3100 0
-    # TODO: G 0 3101 0
-    # TODO: G 0 3102 0
+    ("G", I_TEA_CUP),
+    ("G", I_COFFEE_CUP),
+    ("G", I_WATER_CUP),
     ("M", M_SEXTON, 1, R_PARK_CAFE, 1),
-    # TODO: G 0 3121 0
+    ("G", I_KEY_RUSTY),
     ("O", I_JUKE_BOX_MUSIC, R_PARK_CAFE),
     ("M", M_SPARROW, 1, R_SMALL_PATH_IN_THE_PARK_3109, 1),
     ("M", M_CITYGUARD_GUARD, 18, R_SMALL_PATH_IN_THE_PARK_3109, 1),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: E 0 3363 0 15
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("E", I_BRACER_STANDARD_MERC, "wrist_r"),
     ("M", M_CITYGUARD_GUARD, 18, R_PARK_ROAD, 4),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: G 0 3120 0
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("G", I_KEY_IRON),
     ("M", M_CITYGUARD_GUARD, 18, R_PARK_ROAD, 4),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: E 0 3363 0 15
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("E", I_BRACER_STANDARD_MERC, "wrist_r"),
     ("M", M_DUCK, 2, R_PATH_IN_THE_PARK, 1),
     ("M", M_SWAN, 1, R_POND, 1),
     ("M", M_DUCKLING, 1, R_POND, 1),
     ("M", M_DUCK, 2, R_PATH_IN_THE_PARK_3115, 1),
     ("M", M_CITYGUARD_GUARD, 18, R_EMERALD_AVENUE, 1),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
     ("M", M_CITYGUARD_GUARD, 18, R_ROAD_CROSSING, 1),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
     ("M", M_CRIER, 1, R_ROAD_CROSSING, 1),
     ("M", M_CITYGUARD_GUARD, 18, R_EMERALD_AVENUE_3125, 1),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
     ("M", M_THIEF, 4, R_ON_THE_CONCOURSE_3128, 2),
-    # TODO: E 0 3351 0 16
+    ("E", I_DAGGER_STANDARD_MERC, "wield"),
     ("M", M_SECRETARY, 1, R_WAITING_ROOM, 1),
     ("M", M_MAYOR, 1, R_MAYOR_S_OFFICE, 1),
-    # TODO: E 0 3124 0 16
+    ("E", I_SWORD_LONG_3124, "wield"),
     ("M", M_CITYGUARD_GUARD_3069, 4, R_MAYOR_S_OFFICE, 4),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
     ("M", M_CITYGUARD_GUARD_3069, 4, R_MAYOR_S_OFFICE, 4),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
     ("M", M_CITYGUARD_GUARD_3069, 4, R_MAYOR_S_OFFICE, 4),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
     ("M", M_CITYGUARD_GUARD_3069, 4, R_MAYOR_S_OFFICE, 4),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
     ("O", I_FOUNTAIN_WATER, R_END_OF_PENNY_LANE),
     ("O", I_COINS, R_END_OF_PENNY_LANE),
     ("M", M_CAPTAIN_3140, 1, R_CAPTAIN_S_OFFICE, 1),
-    # TODO: E 0 3350 0 16
-    # TODO: G 0 3122 0
-    # TODO: G 0 3137 0
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("G", I_KEY_WOODEN),
+    ("G", I_KEY_STEEL),
     ("M", M_CITYGUARD_GUARD_3141, 4, R_CAPTAIN_S_OFFICE, 4),
-    # TODO: E 0 3350 0 16
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
     ("M", M_CITYGUARD_GUARD_3141, 4, R_CAPTAIN_S_OFFICE, 4),
-    # TODO: E 0 3350 0 16
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
     ("M", M_CITYGUARD_GUARD_3141, 4, R_CAPTAIN_S_OFFICE, 4),
-    # TODO: E 0 3350 0 16
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
     ("M", M_CITYGUARD_GUARD_3141, 4, R_CAPTAIN_S_OFFICE, 4),
-    # TODO: E 0 3350 0 16
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
     ("O", I_DESK_DRAWER, R_CAPTAIN_S_OFFICE),
-    # TODO: P 0 3123 1 3130 1
+    ("P", I_KEY_BRASS, 1, I_DESK_DRAWER, 1),
     ("O", I_SAFE, R_CAPTAIN_S_OFFICE),
-    # TODO: P 0 3132 1 3131 1
+    ("P", I_SILVER_COINS, 1, I_SAFE, 1),
     ("M", M_ESME_WAITRESS, 1, R_KATE_S_DINER, 1),
-    # TODO: G 0 3154 0
-    # TODO: G 0 3152 0
-    # TODO: G 0 3153 0
-    # TODO: G 0 3151 0
-    # TODO: G 0 3150 0
-    # TODO: G 0 3100 0
+    ("G", I_BEER_BOTTLE_KILLIAN_IRISH_RED),
+    ("G", I_BOWL_BEEF_STEW),
+    ("G", I_BISCUIT),
+    ("G", I_SOUP_BOWL),
+    ("G", I_COFFEE_CUP_CINNAMON),
+    ("G", I_TEA_CUP),
     ("O", I_JUKE_BOX_MUSIC, R_KATE_S_DINER),
     ("M", M_MELANCHOLY, 1, R_MELANCHOLY_S_MAPS, 1),
-    # TODO: G 0 3168 0
-    # TODO: G 0 3167 0
-    # TODO: G 0 3166 0
-    # TODO: G 0 3165 0
-    # TODO: G 0 3164 0
-    # TODO: G 0 3163 0
-    # TODO: G 0 3162 0
+    ("G", I_MAP_OLYMPUS),
+    ("G", I_MAP_NEW_THALOS),
+    ("G", I_MAP_MORIA_FIRST),
+    ("G", I_MAP_DWARVEN_KINGDOM_DWARF),
+    ("G", I_MAP_SOUTHERN_MIDGAARD),
+    ("G", I_MAP_THERA),
+    ("G", I_MAP_MIDGAARD),
     ("M", M_LISTER_GREEN_TREE_SNAKE, 1, R_MELANCHOLY_S_MAPS, 1),
     ("M", M_CITYGUARD_GUARD_3071, 2, R_INSIDE_THE_SOUTH_GATE_OF_MIDGAARD, 2),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: E 0 3361 0 12
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("E", I_CAPE_STANDARD_MERC, "about"),
     ("M", M_CITYGUARD_GUARD_3071, 2, R_INSIDE_THE_SOUTH_GATE_OF_MIDGAARD, 2),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: E 0 3362 0 13
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("E", I_BELT_STANDARD_MERC, "waist"),
     ("M", M_CITYGUARD_GUARD_3072, 1, R_INSIDE_THE_NORTH_GATE_OF_MIDGAARD, 1),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: E 0 3354 0 11
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("E", I_SHIELD_STANDARD_MERC, "shield"),
     ("M", M_OTHO_MONEY_CHANGER_MONEYCHANGER, 1, R_MONEY_CHANGER_S_ROOM, 1),
     ("O", I_JUKE_BOX_MUSIC, R_GREBE_S_TAVERN),
     ("O", I_JUKE_BOX_MUSIC, R_ANDY_S_PUB),
     ("O", I_JUKE_BOX_MUSIC, R_ROOM_IN_THE_PUB),
     ("M", M_HASSAN, 1, R_TEMPLE_OF_MOTA, 1),
-    # TODO: E 0 3005 0 16
+    ("E", I_SCIMITAR_BLADE, "wield"),
     ("M", M_GUILDMASTER_MASTER_3021, 1, R_CLERIC_S_INNER_SANCTUM, 1),
     ("M", M_WAITER_3043, 1, R_CLERIC_S_BAR, 1),
-    # TODO: G 0 3002 0
-    # TODO: G 0 3004 0
-    # TODO: E 0 3022 0 16
+    ("G", I_BOTTLE_ALE),
+    ("G", I_BOTTLE_LOCAL),
+    ("E", I_SWORD_LONG, "wield"),
     ("O", I_JUKE_BOX_MUSIC, R_CLERIC_S_BAR),
     ("M", M_TEMPLAR, 1, R_ENTRANCE_TO_CLERIC_S_GUILD, 1),
     ("M", M_CITYGUARD_GUARD, 18, R_ENTRANCE_TO_CLERIC_S_GUILD, 2),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: E 0 3355 0 4
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("E", I_CLOAK_STANDARD_MERC, "neck_2"),
     ("O", I_FOUNTAIN_WATER, R_TEMPLE_SQUARE),
     ("M", M_JANITOR, 5, R_ENTRANCE_TO_THE_GRUNTING_BOAR_INN, 5),
     ("M", M_BARTENDER, 1, R_GRUNTING_BOAR, 1),
-    # TODO: G 0 3000 0
-    # TODO: G 0 3001 0
-    # TODO: E 0 3022 0 16
+    ("G", I_BARREL_BEER),
+    ("G", I_BOTTLE_BEER),
+    ("E", I_SWORD_LONG, "wield"),
     ("M", M_DRUNK, 3, R_GRUNTING_BOAR, 3),
     ("O", I_JUKE_BOX_MUSIC, R_GRUNTING_BOAR),
     ("O", I_LETTER_RESIGNATION, R_DEFUNCT_RECEPTION),
     ("O", I_NOTICE_LIQUIDATION_BANK, R_DEFUNCT_RECEPTION),
     ("M", M_BAKER, 1, R_BAKERY, 1),
-    # TODO: G 0 3009 0
-    # TODO: G 0 3011 0
-    # TODO: G 0 3012 0
-    # TODO: G 0 3013 0
-    # TODO: G 0 3014 0
-    # TODO: E 0 3022 0 16
+    ("G", I_POTPIE_POT_PIE),
+    ("G", I_BREAD),
+    ("G", I_CINNAMON_ROLL),
+    ("G", I_COOKIES),
+    ("G", I_DANISH_BLUEBERRY),
+    ("E", I_SWORD_LONG, "wield"),
     ("M", M_GROCER, 1, R_GENERAL_STORE, 1),
-    # TODO: G 0 3030 0
-    # TODO: G 0 3031 0
-    # TODO: G 0 3138 0
-    # TODO: G 0 3032 0
-    # TODO: G 0 3033 0
-    # TODO: E 0 3022 0 16
+    ("G", I_TORCH),
+    ("G", I_LANTERN),
+    ("G", I_SKIN_WATER_BUFFALO),
+    ("G", I_BAG),
+    ("G", I_BOX),
+    ("E", I_SWORD_LONG, "wield"),
     ("M", M_WEAPONSMITH, 1, R_WEAPON_SHOP, 1),
-    # TODO: G 0 3020 0
-    # TODO: G 0 3021 0
-    # TODO: G 0 3022 0
-    # TODO: G 0 3023 0
-    # TODO: G 0 3024 0
-    # TODO: G 0 3025 0
-    # TODO: G 0 3026 0
-    # TODO: G 0 3027 0
-    # TODO: G 0 3028 0
-    # TODO: G 0 3029 0
-    # TODO: E 0 3022 0 16
+    ("G", I_DAGGER),
+    ("G", I_SWORD_SMALL),
+    ("G", I_SWORD_LONG),
+    ("G", I_CLUB),
+    ("G", I_MACE_HEAVY),
+    ("G", I_AXE_HAND),
+    ("G", I_AXE_BATTLE),
+    ("G", I_SPEAR),
+    ("G", I_STAFF),
+    ("G", I_FLAIL),
+    ("E", I_SWORD_LONG, "wield"),
     ("M", M_FIDO_DOG, 16, R_MAIN_STREET, 4),
     ("M", M_CITYGUARD_GUARD, 18, R_MARKET_SQUARE, 2),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: E 0 3356 0 6
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("E", I_HELMET_STANDARD_MERC, "head"),
     ("M", M_FIDO_DOG, 16, R_MAIN_STREET_3016, 4),
     ("M", M_SORCERER, 1, R_ENTRANCE_TO_MAGE_S_GUILD, 1),
     ("M", M_CITYGUARD_GUARD, 18, R_ENTRANCE_TO_MAGE_S_GUILD, 2),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: E 0 3357 0 7
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("E", I_LEGGINGS_STANDARD_MERC, "legs"),
     ("M", M_WAITER_3042, 1, R_MAGE_S_BAR, 1),
-    # TODO: G 0 3002 0
-    # TODO: G 0 3003 0
-    # TODO: E 0 3022 0 16
+    ("G", I_BOTTLE_ALE),
+    ("G", I_BOTTLE_FIREBREATHER),
+    ("E", I_SWORD_LONG, "wield"),
     ("O", I_JUKE_BOX_MUSIC, R_MAGE_S_BAR),
     ("M", M_GUILDMASTER_MASTER, 1, R_MAGE_S_LABORATORY, 1),
     ("M", M_ARMOURER_ARMORER, 1, R_ARMOURY, 1),
-    # TODO: G 0 3072 0
-    # TODO: G 0 3073 0
-    # TODO: G 0 3074 0
-    # TODO: G 0 3075 0
-    # TODO: G 0 3076 0
-    # TODO: G 0 3077 0
-    # TODO: G 0 3110 0
-    # TODO: G 0 3111 0
-    # TODO: G 0 3112 0
-    # TODO: G 0 3113 0
-    # TODO: G 0 3114 0
-    # TODO: G 0 3115 0
-    # TODO: G 0 3116 0
-    # TODO: G 0 3097 0
-    # TODO: G 0 3117 0
-    # TODO: E 0 3022 0 16
+    ("G", I_JERKIN_SCALE_MAIL),
+    ("G", I_COIF_SCALE_MAIL),
+    ("G", I_SKIRT_SCALE_MAIL),
+    ("G", I_BOOTS_REINFORCED),
+    ("G", I_GLOVES_REINFORCED),
+    ("G", I_SLEEVES_SCALE_MAIL),
+    ("G", I_SHIRT_CHAIN_MAIL),
+    ("G", I_COIF_CHAIN_MAIL),
+    ("G", I_SKIRT_CHAIN_MAIL),
+    ("G", I_BOOTS_IRONBOUND),
+    ("G", I_GAUNTLETS_CHAIN_MAIL),
+    ("G", I_SLEEVES_CHAIN_MAIL),
+    ("G", I_SHIELD_LARGE_METAL),
+    ("G", I_SHIELD_SMALL_METAL),
+    ("G", I_SHIELD_SMALL_WOODEN),
+    ("E", I_SWORD_LONG, "wield"),
     ("M", M_KNIGHT, 1, R_ENTRANCE_HALL_TO_THE_GUILD_OF_SWORDSMEN, 1),
-    # TODO: E 0 3349 0 16
+    ("E", I_LONG_SWORD, "wield"),
     ("M", M_CITYGUARD_GUARD, 18, R_ENTRANCE_HALL_TO_THE_GUILD_OF_SWORDSMEN, 2),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: E 0 3358 0 8
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("E", I_BOOTS_STANDARD_MERC, "feet"),
     ("M", M_WAITER_3045, 1, R_BAR_OF_SWORDSMEN, 1),
-    # TODO: G 0 3002 0
-    # TODO: G 0 3003 0
-    # TODO: G 0 3004 0
-    # TODO: E 0 3022 0 16
+    ("G", I_BOTTLE_ALE),
+    ("G", I_BOTTLE_FIREBREATHER),
+    ("G", I_BOTTLE_LOCAL),
+    ("E", I_SWORD_LONG, "wield"),
     ("O", I_JUKE_BOX_MUSIC, R_BAR_OF_SWORDSMEN),
     ("M", M_GUILDMASTER_MASTER_3023, 1, R_TOURNAMENT_AND_PRACTICE_YARD, 1),
     ("M", M_FIDO_DOG, 16, R_EASTERN_END_OF_POOR_ALLEY, 4),
     ("M", M_FIDO_DOG, 16, R_COMMON_SQUARE, 4),
     ("M", M_VAGABOND, 5, R_DARK_ALLEY, 5),
-    # TODO: E 0 3021 0 16
-    # TODO: E 0 3066 0 5
-    # TODO: E 0 3052 0 15
+    ("E", I_SWORD_SMALL, "wield"),
+    ("E", I_JERKIN_HARD_LEATHER, "body"),
+    ("E", I_BRACER_STRONG_LEATHER, "wrist_r"),
     ("M", M_CAT, 1, R_DARK_ALLEY, 1),
     ("M", M_ASSASSIN, 1, R_ENTRANCE_HALL_TO_THE_GUILD_OF_THIEVES, 1),
-    # TODO: E 0 3349 0 16
+    ("E", I_LONG_SWORD, "wield"),
     ("M", M_CITYGUARD_GUARD, 18, R_ENTRANCE_HALL_TO_THE_GUILD_OF_THIEVES, 2),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: E 0 3359 0 9
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("E", I_GLOVES_STANDARD_MERC, "hands"),
     ("M", M_THIEF, 4, R_ENTRANCE_HALL_TO_THE_GUILD_OF_THIEVES, 2),
-    # TODO: E 0 3351 0 16
+    ("E", I_DAGGER_STANDARD_MERC, "wield"),
     ("M", M_WAITER_3044, 1, R_THIEVES_BAR, 1),
-    # TODO: G 0 3003 0
-    # TODO: G 0 3004 0
-    # TODO: E 0 3022 0 16
+    ("G", I_BOTTLE_FIREBREATHER),
+    ("G", I_BOTTLE_LOCAL),
+    ("E", I_SWORD_LONG, "wield"),
     ("O", I_JUKE_BOX_MUSIC, R_THIEVES_BAR),
     ("M", M_GUILDMASTER_MASTER_3022, 1, R_SECRET_YARD, 1),
     ("M", M_BOY, 1, R_PET_SHOP, 1),
@@ -5310,84 +5242,84 @@ RESETS = (
     ("M", M_ROTTWEILER_DOG_PET, 1, R_PET_SHOP_STORE, 1),
     ("M", M_WOLF_PET, 1, R_PET_SHOP_STORE, 1),
     ("M", M_WIZARD, 1, R_MAGIC_SHOP, 1),
-    # TODO: G 0 3040 0
-    # TODO: G 0 3041 0
-    # TODO: G 0 3039 0
-    # TODO: G 0 3042 0
-    # TODO: G 0 3043 0
-    # TODO: G 0 3044 0
+    ("G", I_SCROLL_IDENTIFY),
+    ("G", I_POTION_YELLOW),
+    ("G", I_SCROLL_CANCELLATION),
+    ("G", I_SCROLL_RECALL),
+    ("G", I_RING_PROTECTION),
+    ("G", I_WAND_MAGIC_MISSILE_MISSILES),
     ("M", M_JEWELLER, 1, R_JEWELLER_S_SHOP, 1),
-    # TODO: G 0 3378 0
-    # TODO: G 0 3377 0
-    # TODO: G 0 3376 0
-    # TODO: G 0 3375 0
-    # TODO: G 0 3374 0
-    # TODO: G 0 3373 0
+    ("G", I_OPAL),
+    ("G", I_DIAMOND_GEM),
+    ("G", I_RUBY_GEM),
+    ("G", I_EMERALD_GEM),
+    ("G", I_GARNET_GEM),
+    ("G", I_PEARL),
     ("M", M_LEATHER_WORKER, 1, R_LEATHER_SHOP, 1),
-    # TODO: G 0 3060 0
-    # TODO: G 0 3061 0
-    # TODO: G 0 3062 0
-    # TODO: G 0 3063 0
-    # TODO: G 0 3064 0
-    # TODO: G 0 3065 0
-    # TODO: G 0 3066 0
-    # TODO: G 0 3067 0
-    # TODO: G 0 3068 0
-    # TODO: G 0 3069 0
-    # TODO: G 0 3070 0
-    # TODO: G 0 3071 0
-    # TODO: G 0 3052 0
-    # TODO: G 0 3053 0
-    # TODO: G 0 3054 0
+    ("G", I_JERKIN_LEATHER),
+    ("G", I_CAP_LEATHER),
+    ("G", I_PANTS_LEATHER),
+    ("G", I_BOOTS_LEATHER),
+    ("G", I_GLOVES_LEATHER),
+    ("G", I_SLEEVES_LEATHER),
+    ("G", I_JERKIN_HARD_LEATHER),
+    ("G", I_CAP_HARD_LEATHER),
+    ("G", I_PANTS_HARD_LEATHER),
+    ("G", I_BOOTS_HARD_LEATHER),
+    ("G", I_GLOVES_HARD_LEATHER),
+    ("G", I_SLEEVES_HARD_LEATHER),
+    ("G", I_BRACER_STRONG_LEATHER),
+    ("G", I_BELT_LEATHER),
+    ("G", I_GIRDLE_LEATHER),
     ("M", M_CITYGUARD_GUARD_3068, 2, R_INSIDE_THE_WEST_GATE_OF_MIDGAARD, 2),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: E 0 3361 0 12
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("E", I_CAPE_STANDARD_MERC, "about"),
     ("M", M_CITYGUARD_GUARD_3068, 2, R_INSIDE_THE_WEST_GATE_OF_MIDGAARD, 2),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: E 0 3362 0 13
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("E", I_BELT_STANDARD_MERC, "waist"),
     ("M", M_CITYGUARD_GUARD_3067, 2, R_INSIDE_THE_EAST_GATE_OF_MIDGAARD, 2),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: E 0 3360 0 10
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("E", I_SLEEVES_STANDARD_MERC, "arms"),
     ("M", M_CITYGUARD_GUARD_3067, 2, R_INSIDE_THE_EAST_GATE_OF_MIDGAARD, 2),
-    # TODO: E 0 3365 0 0
-    # TODO: E 0 3364 0 1
-    # TODO: E 0 3350 0 16
-    # TODO: E 0 3353 0 5
-    # TODO: E 0 3354 0 11
+    ("E", I_BANNER_WAR_MERC, "light"),
+    ("E", I_RING_SIGNET, "finger_l"),
+    ("E", I_SWORD_STANDARD_MERC, "wield"),
+    ("E", I_VEST_STANDARD_MERC, "body"),
+    ("E", I_SHIELD_STANDARD_MERC, "shield"),
     ("M", M_BEGGAR, 2, R_POOR_ALLEY, 1),
     ("M", M_FILTHY, 1, R_GRUBBY_INN, 1),
-    # TODO: G 0 3003 0
-    # TODO: G 0 3004 0
-    # TODO: E 0 3022 0 16
+    ("G", I_BOTTLE_FIREBREATHER),
+    ("G", I_BOTTLE_LOCAL),
+    ("E", I_SWORD_LONG, "wield"),
     ("M", M_THIEF_3163, 1, R_GRUBBY_INN, 1),
     ("M", M_BEGGAR, 2, R_GRUBBY_INN, 1),
     ("M", M_CAPTAIN, 1, R_LEVEE, 1),
-    # TODO: G 0 3050 0
-    # TODO: G 0 3051 0
+    ("G", I_RAFT),
+    ("G", I_CANOE),
     ("M", M_SAILOR, 1, R_ABANDONED_WAREHOUSE, 1),
     ("O", I_PIT, R_BY_THE_TEMPLE_ALTAR),
     ("M", M_HEALER, 5, R_BY_THE_TEMPLE_ALTAR, 1),
     ("M", M_SHOPKEEPER_OLD_MAN, 5, R_FOUNTAIN_OF_YOUTH_APOTHECARY, 1),
-    # TODO: G 0 3080 0
-    # TODO: G 0 3081 0
-    # TODO: G 0 3082 0
-    # TODO: G 0 3083 0
-    # TODO: G 0 3084 0
-    # TODO: G 0 3085 0
-    # TODO: G 0 3086 0
-    # TODO: G 0 3087 0
-    # TODO: G 0 3088 0
-    # TODO: G 0 3089 0
-    # TODO: G 0 3090 0
-    # TODO: G 0 3091 0
-    # TODO: G 0 3092 0
+    ("G", I_POTION_HEAL_HEALING),
+    ("G", I_POTION_SANCT_SANCTUARY),
+    ("G", I_POTION_DIVINE),
+    ("G", I_POTION_CURE_LIGHT),
+    ("G", I_POTION_CURE_SERIOUS),
+    ("G", I_POTION_CURE_CRITICAL_CRITIC),
+    ("G", I_POTION_ANTIDOTE_BOTTLE),
+    ("G", I_POTION_CURE_BLINDNESS),
+    ("G", I_VIAL_HOLY_WATER),
+    ("G", I_POTION_ARMOR),
+    ("G", I_POTION_NEGATION),
+    ("G", I_POTION_FLY_FLYING),
+    ("G", I_POTION_TRUE_SIGHT),
 )

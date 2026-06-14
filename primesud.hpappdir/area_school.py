@@ -127,7 +127,6 @@ I_GLAIVE_SUB_MERC                  = 3722
 # hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
 # AC: avg(pierce,bash,slash,exotic) / 10 per REFERENCE.md  # TODO: verify scale
 # hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)
-# loot: left empty — populate from RESETS E/G lines if needed
 MOBILES = {
     M_ACOLYTE_CLERIC: {
         "keywords":    'acolyte cleric',
@@ -149,7 +148,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_BLOB: {
         "keywords":    'blob',
@@ -172,7 +170,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'large',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_MONSTER: {
         "keywords":    'monster',
@@ -193,7 +190,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 10,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_MONSTER_WIMPY: {
         "keywords":    'monster wimpy',
@@ -215,7 +211,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 10,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_MONSTER_AGGRESSIVE: {
         "keywords":    'monster aggressive',
@@ -237,7 +232,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 10,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_MONSTER_WIMPY_AGGRESSIVE: {
         "keywords":    'monster wimpy aggressive',
@@ -259,7 +253,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 10,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_BIG_CREATURE: {
         "keywords":    'big creature',
@@ -282,7 +275,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 25,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_ADEPT_CLERIC: {
         "keywords":    'adept cleric',
@@ -304,7 +296,6 @@ MOBILES = {
         "sex":  'female',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_ADEPT: {
         "keywords":    'adept',
@@ -326,7 +317,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_RABBIT: {
         "keywords":    'rabbit',
@@ -346,7 +336,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'tiny',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_LIZARD: {
         "keywords":    'lizard',
@@ -368,7 +357,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'small',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_BOAR: {
         "keywords":    'boar',
@@ -388,7 +376,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_FOX: {
         "keywords":    'fox',
@@ -409,7 +396,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'small',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_SNAIL: {
         "keywords":    'snail',
@@ -428,7 +414,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'tiny',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_BEAST: {
         "keywords":    'beast',
@@ -452,7 +437,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 50,
         "size": 'large',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_BEAR: {
         "keywords":    'bear',
@@ -473,7 +457,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'large',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_WOLF: {
         "keywords":    'wolf',
@@ -494,7 +477,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_ADEPT_CLERIC_3717: {
         "keywords":    'adept cleric',
@@ -516,7 +498,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_ADEPT_CLERIC_3718: {
         "keywords":    'adept cleric',
@@ -538,7 +519,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_PRIEST_CLERIC: {
         "keywords":    'priest cleric',
@@ -560,7 +540,6 @@ MOBILES = {
         "sex":  'male',
         "gold": 0,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
     M_DIPLOMA_BEAST: {
         "keywords":    'diploma beast',
@@ -583,7 +562,6 @@ MOBILES = {
         "sex":  'either',
         "gold": 30,
         "size": 'medium',
-        "loot": [],  # TODO: from RESETS E/G
     },
 }
 
@@ -1538,42 +1516,39 @@ OBJECTS = {
 }
 
 # ── Resets ─────────────────────────────────────────────────────────────────────
-# ("M", mob_template_vnum, global_limit, room_vnum, room_limit)  — spawn mob instance up to limits
-# ("O", item_template_vnum, room_vnum) — place one item copy in room
-# E/G/P/R/D/F resets from .are are not yet handled — see # TODO lines
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) — spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          — place one item copy in room
+# ("E", item_vnum, slot_name)                          — equip item on last M mob
+# ("G", item_vnum)                                     — give item to last M mob inventory
+# ("P", item_vnum, limit, container_vnum, max)         — [PRIMESUD] deferred: no containers
+# ("R", room_vnum, num_dirs)                           — [PRIMESUD] deferred: unused in current areas
+# F and D .are resets are baked into room exit flags at conversion time
 RESETS = (
-    # TODO: F 0 3700 2 0 +YY
-    # TODO: F 0 3717 1 0 +YY
-    # TODO: F 0 3719 1 0 +YYYnnY
-    # TODO: F 0 3719 3 0 +YY
-    # TODO: F 0 3721 0 0 +YY
-    # TODO: F 0 3734 5 0 +YY
-    # TODO: F 0 3748 4 0 +YY
     ("M", M_ACOLYTE_CLERIC, 1, R_ROOM_IN_MUD_SCHOOL, 1),
     ("M", M_BLOB, 1, R_BLOB_CAGE, 1),
     ("M", M_ADEPT_CLERIC, 1, R_CAGE_ROOM, 1),
     ("M", M_MONSTER_AGGRESSIVE, 1, R_CAGE, 1),
-    # TODO: E 0 3707 0 7
-    # TODO: E 0 3712 0 13
+    ("E", I_LEGGINGS_SUB_MERC, "legs"),
+    ("E", I_BELT_SUB_MERC, "waist"),
     ("M", M_MONSTER_WIMPY_AGGRESSIVE, 1, R_CAGE_3714, 1),
-    # TODO: E 0 3708 0 8
-    # TODO: E 0 3713 0 14
+    ("E", I_BOOTS_SUB_MERC, "feet"),
+    ("E", I_BRACER_SUB_MERC, "wrist_l"),
     ("M", M_MONSTER_WIMPY, 1, R_CAGE_3715, 1),
-    # TODO: E 0 3706 0 6
-    # TODO: E 0 3711 0 12
+    ("E", I_HELMET_SUB_MERC, "head"),
+    ("E", I_CAPE_SUB_MERC, "about"),
     ("M", M_MONSTER, 1, R_CAGE_3716, 1),
-    # TODO: E 0 3705 0 3
-    # TODO: E 0 3705 0 4
+    ("E", I_CLOAK_SUB_MERC, "neck_1"),
+    ("E", I_CLOAK_SUB_MERC, "neck_2"),
     ("M", M_ADEPT_CLERIC_3717, 1, R_STORE_IN_MUD_SCHOOL, 1),
-    # TODO: G 0 3138 0
-    # TODO: G 0 3031 0
+    ("G", 3138),
+    ("G", 3031),
     ("M", M_BIG_CREATURE, 1, R_DARKENED_ROOM, 1),
-    # TODO: E 0 3709 0 9
-    # TODO: E 0 3710 0 10
-    # TODO: E 0 3714 0 17
-    # TODO: E 0 3713 0 14
+    ("E", I_GLOVES_SUB_MERC, "hands"),
+    ("E", I_SLEEVES_SUB_MERC, "arms"),
+    ("E", I_KEY, "hold"),
+    ("E", I_BRACER_SUB_MERC, "wrist_l"),
     ("M", M_DIPLOMA_BEAST, 1, R_END_OF_MUD_SCHOOL, 1),
-    # TODO: E 0 3715 0 17
+    ("E", I_DIPLOMA, "hold"),
     ("M", M_ADEPT, 1, R_END_OF_MUD_SCHOOL, 1),
     ("M", M_SNAIL, 5, R_SOUTH_WEST_CORNER_OF_ARENA, 5),
     ("M", M_FOX, 3, R_SOUTH_EAST_CORNER_OF_ARENA, 3),

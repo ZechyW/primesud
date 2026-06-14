@@ -58,6 +58,15 @@ for _vnum, _room in _quest_rooms.items():
     _room["area"] = "quest"
     ROOMS[_vnum] = _room
 
+# Snapshot initial door closed/locked state for reset (cf. 1stMud reset_room door loop, db.c:1411)
+DOOR_RESET = {}
+for _vnum, _room in ROOMS.items():
+    for _d, _ev in _room.get("exits", {}).items():
+        if isinstance(_ev, dict) and _ev.get("isdoor"):
+            if _vnum not in DOOR_RESET:
+                DOOR_RESET[_vnum] = {}
+            DOOR_RESET[_vnum][_d] = {"closed": bool(_ev.get("closed")), "locked": bool(_ev.get("locked"))}
+
 MOB_TEMPLATES = {}; MOB_TEMPLATES.update(_limbo_mobs);   MOB_TEMPLATES.update(_school_mobs);  MOB_TEMPLATES.update(_midgaard_mobs);  MOB_TEMPLATES.update(_quest_mobs)
 ITEM_TEMPLATES = {}; ITEM_TEMPLATES.update(_limbo_items); ITEM_TEMPLATES.update(_school_items); ITEM_TEMPLATES.update(_midgaard_items); ITEM_TEMPLATES.update(_quest_items)
 RESETS          = _limbo_resets + _school_resets + _midgaard_resets + _quest_resets

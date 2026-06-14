@@ -47,6 +47,10 @@ SECTOR_SYMBOLS = {
     "none":     '?',
 }
 
+# ── Scrollback [PRIMESUD] ─────────────────────────────────────────────────────────────
+SCROLLBACK_SIZE = 250  # rows to keep in history (0 = disabled)
+SCROLL_STEP     = 10   # rows scrolled per Shift+- / Shift++ keypress
+
 # ── Persistence ───────────────────────────────────────────────────────────────────────
 SAVE_VAR = "primesud_save"
 
@@ -78,12 +82,24 @@ DEFAULT_MACROS = {  # [PRIMESUD]
     "8": "flee",
     "4": "open",
     "5": "get",
-    "6": "wear",
+    "6": "drop",
     "1": "score",
     "2": "practice",
     "3": "train",
     "0": "macro"
 }
+
+# ── Function-row macro keys [PRIMESUD] ───────────────────────────────────────
+# Sentinels must match _FN_* in tml_prime.py. One row per key: sentinel → (display_name, default_command).
+FNKEY_TABLE = {
+    '\x12': ('x2', 'inventory'),      # x² key — index 26
+    '\x13': ('pm', 'equip'),  # +/- key — index 27
+    '\x14': ('()', 'wear'),       # ()  key — index 28
+    '\x15': (',',  'remove'),     # ,   key — index 29
+}
+FNKEY_SENTINELS      = frozenset(FNKEY_TABLE)
+FNKEY_NAMES          = {k: v[0] for k, v in FNKEY_TABLE.items()}
+DEFAULT_FNKEY_MACROS = {k: v[1] for k, v in FNKEY_TABLE.items()}
 
 # ── Stat application tables (1stMud ROM values, index by stat 0–25) ──────────────────────
 # str_app: tohit (hitroll bonus, positive = better to-hit), todam (damage roll bonus)

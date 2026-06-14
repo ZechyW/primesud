@@ -15,6 +15,7 @@ from world import (
     MOB_TEMPLATES,
     RESETS,
     SKILLS,
+    DOOR_RESET,
     R_STARTING_ROOM,
     GSN_HAND_TO_HAND,
     GSN_KICK,
@@ -134,6 +135,9 @@ def _tpl_room_count(mob_instances, room_vnum, tpl_vnum):
 def reset_mobs(mob_instances, room_state, resets):
     """Spawn mobs for each M entry up to global and room limits (cf. 1stMud reset_room 'M' case, db.c).
 
+    E and G entries following a successful M equip or give items to the spawned mob,
+    matching 1stMud's LastMob/last context chain.  O and P entries clear the context.
+
     Mutates mob_instances and room_state in place.  Safe to call on a
     partially-populated mob_instances (area tick) as well as an empty one
     (full reset via reset_area).
@@ -144,44 +148,58 @@ def reset_mobs(mob_instances, room_state, resets):
         resets (tuple): Area RESETS sequence.
     """
     mob_id = max(mob_instances, default=0) + 1
+    last_mob_id  = None   # cf. 1stMud LastMob in reset_room
+    last_spawned = False  # cf. 1stMud `last` flag in reset_room
     for entry in resets:
-        if entry[0] != "M":
-            continue
-        tpl_vnum, gl, room_vnum, rl = entry[1], entry[2], entry[3], entry[4]
-        if _tpl_live_count(mob_instances, tpl_vnum) >= gl:
-            continue
-        if _tpl_room_count(mob_instances, room_vnum, tpl_vnum) >= rl:
-            continue
-        tpl = MOB_TEMPLATES[tpl_vnum]
-        _hp = _roll_hp(tpl["hp_dice"])
-        _st = _stat_from_level(tpl["level"])
-        mob_instances[mob_id] = {
-            "tpl":        tpl_vnum,
-            "is_npc":     True,
-            "hp":         _hp,
-            "hp_max":     _hp,
-            "state":      "idle",
-            "room":       room_vnum,
-            "home_area":  ROOMS[room_vnum].get("area"),
-            "affects":    {},
-            "wait":       0,
-            "daze":       0,
-            "fighting":   None,
-            "learned":    dict(tpl.get("skills", {})),
-            "off_flags":  dict(tpl.get("off_flags", {})),
-            # Combat stats flattened from template for hot-path access
-            "level":      tpl["level"],
-            "str":        _st,
-            "dex":        _st,
-            "int":        _st,
-            "wis":        _st,
-            "con":        _st,
-            "hitroll":    tpl["hitroll"],
-            "damroll":    tpl.get("damroll", 0),
-            "AC":         tpl["AC"],
-        }
-        room_state[room_vnum]["mobs"].append(mob_id)
-        mob_id += 1
+        cmd = entry[0]
+        if cmd == "M":
+            tpl_vnum, gl, room_vnum, rl = entry[1], entry[2], entry[3], entry[4]
+            if _tpl_live_count(mob_instances, tpl_vnum) >= gl:
+                last_spawned = False
+                continue
+            if _tpl_room_count(mob_instances, room_vnum, tpl_vnum) >= rl:
+                last_spawned = False
+                continue
+            tpl = MOB_TEMPLATES[tpl_vnum]
+            _hp = _roll_hp(tpl["hp_dice"])
+            _st = _stat_from_level(tpl["level"])
+            mob_instances[mob_id] = {
+                "tpl":        tpl_vnum,
+                "is_npc":     True,
+                "hp":         _hp,
+                "hp_max":     _hp,
+                "state":      "idle",
+                "room":       room_vnum,
+                "home_area":  ROOMS[room_vnum].get("area"),
+                "affects":    {},
+                "wait":       0,
+                "daze":       0,
+                "fighting":   None,
+                "learned":    dict(tpl.get("skills", {})),
+                "off_flags":  dict(tpl.get("off_flags", {})),
+                "inv":        [],
+                "equip":      {},
+                # Combat stats flattened from template for hot-path access
+                "level":      tpl["level"],
+                "str":        _st,
+                "dex":        _st,
+                "int":        _st,
+                "wis":        _st,
+                "con":        _st,
+                "hitroll":    tpl["hitroll"],
+                "damroll":    tpl.get("damroll", 0),
+                "AC":         tpl["AC"],
+            }
+            room_state[room_vnum]["mobs"].append(mob_id)
+            last_mob_id  = mob_id
+            last_spawned = True
+            mob_id += 1
+        elif cmd == "E" and last_spawned:
+            mob_instances[last_mob_id]["equip"][entry[2]] = entry[1]
+        elif cmd == "G" and last_spawned:
+            mob_instances[last_mob_id]["inv"].append(entry[1])
+        elif cmd in ("O", "P"):
+            last_spawned = False  # breaks mob context (cf. 1stMud last=false on O)
 
 
 def reset_area():
@@ -196,6 +214,12 @@ def reset_area():
     for entry in RESETS:
         if entry[0] == "O":
             room_state[entry[2]]["items"].append(entry[1])
+    # Restore all door states to their reset-to values (cf. 1stMud reset_room door loop, db.c:1411)
+    for vnum, doors in DOOR_RESET.items():
+        exits = ROOMS[vnum]["exits"]
+        for d, state in doors.items():
+            exits[d]["closed"] = state["closed"]
+            exits[d]["locked"] = state["locked"]
     return room_state, mob_instances
 
 

@@ -903,13 +903,18 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state, mob_instances):
 
     _death_cry(tr, tpl)
 
+    # Drop equipped items and carried inventory to room floor (cf. 1stMud obj_to_room on death)
+    _floor = room_state[inst["room"]]["items"]
+    for _slot_vnum in inst.get("equip", {}).values():
+        if _slot_vnum is not None:
+            _floor.append(_slot_vnum)
+            tr.print("{} falls to the ground.".format(ITEM_TEMPLATES[_slot_vnum]["short_descr"]))
+    for _inv_vnum in inst.get("inv", []):
+        _floor.append(_inv_vnum)
+        tr.print("{} falls to the ground.".format(ITEM_TEMPLATES[_inv_vnum]["short_descr"]))
+
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
     save_char(player, room_state, mob_instances)
-
-    for item_vnum, chance in tpl["loot"]:
-        if randint(1, 100) <= chance:
-            player["inv"].append(item_vnum)
-            tr.print("Found: {}".format(ITEM_TEMPLATES[item_vnum]["short_descr"]))
 
     room_state[inst["room"]]["mobs"].remove(mob_id)
     del mob_instances[mob_id]

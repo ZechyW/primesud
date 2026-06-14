@@ -57,8 +57,11 @@ Key design decisions summarised here for completeness:
   exactly one fixed slot; `revive_dead_mobs()` enforces this implicitly.
 - `#SPECIALS` adapted: `"special"` string key in `MOBILES`, resolved to a Python
   function at load time in `world.py`.
-- `#SHOPS`, `E`/`G` resets (mob equipment), and `F` resets (door state) are deferred
-  until their respective systems are implemented.
+- `#SHOPS` is deferred until economy is implemented.
+- `P` resets (container contents) and `R` resets (randomize exits) are stored as
+  deferred tuples in `RESETS`; no runtime handler yet.
+- `E`/`G` resets (mob equipment/inventory) and `F`/`D` resets (door state) are
+  fully implemented.
 - `#MOBPROGS / #OBJPROGS / #ROOMPROGS` skipped — full scripting VM, no equivalent
   planned.
 - `SKILL_TABLE` and `SKILLS` stay in `world.py` — skills are global, not per-area.
