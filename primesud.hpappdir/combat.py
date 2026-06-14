@@ -371,7 +371,6 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
         skill   = player["learned"].get(GSN_HAND_TO_HAND, 20)
 
     # THAC0
-    mob_hitroll_pen = affects.get("m_hitroll", 0)  # debuff on mob affects its attack, not ours
     thac0 = _get_thac0(player["level"])
     thac0 -= get_hitroll(player) * skill // 100
     thac0 += 5 * (100 - skill) // 100
@@ -446,12 +445,14 @@ def _mob_one_hit(tr, mob_inst, player):
     tpl     = MOB_TEMPLATES[mob_inst["tpl"]]
     affects = mob_inst["affects"]
 
-    # Mobs fight at full natural skill (100)
-    SKILL = 100
+    # cf. 1stMud one_hit: skill = 20 + get_weapon_skill(ch, gsn_hand_to_hand)
+    # get_weapon_skill for NPC unarmed = Range(0, 40 + 2*level, 100); then +20 in one_hit
+    SKILL = 20 + min(100, 40 + 2 * mob_inst["level"])
 
     mob_hitroll = get_hitroll(mob_inst) + affects.get("m_hitroll", 0)
     thac0 = _get_thac0(mob_inst["level"])
     thac0 -= mob_hitroll * SKILL // 100
+    thac0 += 5 * (100 - SKILL) // 100
 
     player_ac = get_AC(player) // 10
     if player_ac < -15:  # soft cap (cf. 1stMud one_hit fight.c)
@@ -468,10 +469,10 @@ def _mob_one_hit(tr, mob_inst, player):
     if check_parry(tr, player, mob_inst, mob_is_attacker=True):
         return 0
 
-    # Damage
-    num, size, bonus = tpl["damage"]
-    dam = _dice(num, size) + bonus
-    dam += get_damroll(mob_inst) * SKILL // 100
+    # Damage: dice only — DICE_BONUS is already in mob_inst["damroll"] via create_mobile
+    num, size, _ = tpl["damage"]
+    dam = _dice(num, size)
+    dam += get_damroll(mob_inst) * min(100, SKILL) // 100
 
     if dam > 35:
         dam = (dam - 35) // 2 + 35

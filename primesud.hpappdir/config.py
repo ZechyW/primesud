@@ -51,6 +51,9 @@ SECTOR_SYMBOLS = {
 SCROLLBACK_SIZE = 250  # rows to keep in history (0 = disabled)
 SCROLL_STEP     = 7   # rows scrolled per Shift+- / Shift++ keypress
 
+# ── Command history [PRIMESUD] ────────────────────────────────────────────────────────
+CMD_HISTORY_MAX = 50  # maximum number of submitted commands to remember
+
 # ── Persistence ───────────────────────────────────────────────────────────────────────
 SAVE_VAR = "primesud_save"
 

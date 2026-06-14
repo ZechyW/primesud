@@ -44,7 +44,7 @@ I_WOLF_TOOTH                       = 217
 
 # ── Mob templates ──────────────────────────────────────────────────────────────
 # hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
-# AC: avg(pierce,bash,slash,exotic) / 10 per REFERENCE.md  # TODO: verify scale
+# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies ×10
 # hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)
 MOBILES = {
     M_EDURIN_QUESTMASTER_QUESTOR: {
@@ -61,7 +61,7 @@ MOBILES = {
         "hp_dice":   (396, 337, 17149),
         "mana_dice": (285, 13, 97),
         "damage":    (32, 14, 278),  "dam_type": 'smash',
-        "AC":        -36,
+        "AC":        -358,
         "imm_flags": {"summon": True, "magic": True, "weapon": True},
         "res_flags": {"charm": True},
         "vuln_flags": {"iron": True},
@@ -83,7 +83,7 @@ MOBILES = {
         "hp_dice":   (130, 114, 1899),
         "mana_dice": (96, 10, 95),
         "damage":    (11, 13, 94),  "dam_type": 'smash',
-        "AC":        -10,
+        "AC":        -93,
         "imm_flags": {"magic": True, "weapon": True},
         "res_flags": {"charm": True},
         "vuln_flags": {"iron": True},
@@ -105,7 +105,7 @@ MOBILES = {
         "hp_dice":   (396, 337, 17149),
         "mana_dice": (285, 13, 97),
         "damage":    (32, 14, 278),  "dam_type": 'smash',
-        "AC":        -36,
+        "AC":        -358,
         "imm_flags": {"summon": True, "magic": True, "weapon": True},
         "res_flags": {"charm": True},
         "vuln_flags": {"iron": True},

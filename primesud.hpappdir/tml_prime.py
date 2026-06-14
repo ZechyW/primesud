@@ -5,6 +5,9 @@ from tml import tml
 _SB_UP = '\x10'   # shift+- : enter scrollback / scroll up further
 _SB_DN = '\x11'   # shift++ : scroll down (within scrollback)
 
+_HIST_UP = '\x16'   # symb key (index 1) — recall older command
+_HIST_DN = '\x17'   # help key (index 3) — recall newer command
+
 _FN_X2    = '\x12'  # x² key — index 26, row above numpad
 _FN_PM    = '\x13'  # +/- key — index 27
 _FN_PAREN = '\x14'  # ()  key — index 28
@@ -125,6 +128,10 @@ class tml_prime(tml):
                     else:
                         self.is_shift = True
                     self._refresh_indicators()
+                elif bit == 1:   # Symb — command history up
+                    return (_HIST_UP, None)
+                elif bit == 3:   # Help — command history down
+                    return (_HIST_DN, None)
                 else:
                     if key_commands and bit in key_commands:
                         cmd, auto_submit = key_commands[bit]

@@ -6,7 +6,7 @@
 # Based on Merc 2.1 (c) 1992-1993 Chastain, Quan, Tse
 # Based on DikuMud (c) 1990-1991 Hammer, Seifert, Storfeldt, Madsen, Nyboe
 
-from tml_prime import tml_prime as tml
+from tml_prime import tml_prime as tml, _HIST_UP, _HIST_DN
 from hpprime import dimgrob, eval as ppleval, getpix, pixon, grobw, grobh, strblit2
 
 from urandom import randint
@@ -17,6 +17,7 @@ from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     TERMINAL_COLS, FONT, FONT_GROB, COLOR_GROB,
                     DEATH_MSG_DELAY,
                     SCROLLBACK_SIZE, SCROLL_STEP,
+                    CMD_HISTORY_MAX,
                     FNKEY_SENTINELS)
 from util import free_mem
 from world import R_STARTING_ROOM, ROOMS, AREA_DEFS
@@ -206,6 +207,9 @@ class Game:
             _orig_set_status(text)
         self.tr.set_status = _wrapped_set_status
         self.input_buf = ""
+        self._cmd_history = []   # [PRIMESUD] submitted commands, oldest first
+        self._hist_pos    = None # None = not browsing; int = index into _cmd_history
+        self._hist_saved  = ""   # input_buf snapshot from when browsing started
         self.player = None
         self.room_state = None
         self.mob_instances = None
@@ -325,6 +329,13 @@ class Game:
             if result is not None:
                 char, auto_submit = result
                 if char == "\n":
+                    if self.input_buf:  # [PRIMESUD] append to command history
+                        if not self._cmd_history or self._cmd_history[-1] != self.input_buf:
+                            self._cmd_history.append(self.input_buf)
+                            if len(self._cmd_history) > CMD_HISTORY_MAX:
+                                self._cmd_history.pop(0)
+                    self._hist_pos   = None
+                    self._hist_saved = ""
                     _t0 = int(ppleval("Ticks"))
                     _quit = interpret(self.input_buf, tr, player, room_state, mob_instances) == "quit"
                     next_pulse += int(ppleval("Ticks")) - _t0  # [PRIMESUD] skip missed pulses during blocking input (e.g. picker)
@@ -337,7 +348,28 @@ class Game:
                     show_prompt(tr, player, self.input_buf)
                 elif char == "\e":
                     self.input_buf = ""
+                    self._hist_pos   = None  # [PRIMESUD] ESC commits to the empty buffer
+                    self._hist_saved = ""
                     show_prompt(tr, player, self.input_buf)
+                elif char == _HIST_UP:  # [PRIMESUD] recall older command
+                    if self._cmd_history:
+                        if self._hist_pos is None:
+                            self._hist_saved = self.input_buf
+                            self._hist_pos = len(self._cmd_history) - 1
+                        elif self._hist_pos > 0:
+                            self._hist_pos -= 1
+                        self.input_buf = self._cmd_history[self._hist_pos]
+                        show_prompt(tr, player, self.input_buf)
+                elif char == _HIST_DN:  # [PRIMESUD] recall newer command / restore saved
+                    if self._hist_pos is not None:
+                        if self._hist_pos < len(self._cmd_history) - 1:
+                            self._hist_pos += 1
+                            self.input_buf = self._cmd_history[self._hist_pos]
+                        else:
+                            self.input_buf = self._hist_saved
+                            self._hist_pos   = None
+                            self._hist_saved = ""
+                        show_prompt(tr, player, self.input_buf)
                 elif auto_submit is True:  # [PRIMESUD] hardware key — immediate submit
                     _t0 = int(ppleval("Ticks"))
                     _quit = interpret(char, tr, player, room_state, mob_instances) == "quit"

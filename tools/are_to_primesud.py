@@ -318,11 +318,11 @@ def parse_mobiles(lines):
         dam_dice  = parse_dice(parts[2]) if len(parts) > 2 else (1, 1, 0)
         dam_type  = parts[3].strip("'") if len(parts) > 3 else "hit"
 
-        # ac_pierce  ac_bash  ac_slash  ac_exotic  (stored × 10 per REFERENCE.md)
+        # ac_pierce  ac_bash  ac_slash  ac_exotic
         parts = lines[i].split(); i += 1
         try:
             ac_vals = [int(x) for x in parts[:4]]
-            ac = sum(ac_vals) // len(ac_vals) // 10
+            ac = sum(ac_vals) // len(ac_vals)
         except (ValueError, ZeroDivisionError):
             ac = 10
 
@@ -676,7 +676,7 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, fover
     # ── MOBILES ──
     w(f"# ── Mob templates {BAR * 62}")
     w("# hp_dice / mana_dice / damage: (num_dice, die_size, bonus)")
-    w("# AC: avg(pierce,bash,slash,exotic) / 10 per REFERENCE.md  # TODO: verify scale")
+    w("# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies ×10")
     w("# hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)")
     w("MOBILES = {")
     for vnum, mob in mobs:

@@ -59,6 +59,31 @@ The mapping lives in `commands.py:_MACRO_SUBST` (initialised from
 
 ---
 
+## Command history
+
+Previously submitted commands are stored in `Game._cmd_history` (oldest first,
+capped at `config.py:CMD_HISTORY_MAX`).  Consecutive duplicates are
+not stored.
+
+| Key  | Action |
+|------|--------|
+| Symb (index 1) | Load the previous (older) command into the input buffer |
+| Help (index 3) | Load the next (newer) command; at the newest, restore the original half-typed input |
+
+**Saved input:** the first Symb press snapshots the current input buffer into
+`_hist_saved`.  Navigating Help all the way past the newest entry restores that
+snapshot, so a half-typed command is never lost.  ESC or Enter clear the snapshot.
+
+**Editing while browsing:** typing or backspacing modifies the input buffer
+without affecting the history list or exiting navigation mode (ephemeral edits).
+Pressing Help back to the end still restores the original `_hist_saved` text.
+
+Sentinels `_HIST_UP` / `_HIST_DN` are defined in `tml_prime.py` and returned by
+`poll_char` on key press.  History logic lives entirely in `game_loop`
+(`primesud.py`).
+
+---
+
 ## Scrollback history
 
 `tml_prime` (subclass of `tml`) captures each row that scrolls off the top into

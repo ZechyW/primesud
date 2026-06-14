@@ -4,7 +4,7 @@ from colors import color_len
 
 from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT, GSN_RECALL, R_RECALL
 from picker import pick_from
-from player import get_hitroll, get_damroll, get_AC, get_curr_stat, get_obj_list, get_char_room, save_char, is_name, PLR_AUTOMAP, PLR_DEFAULTS
+from player import get_hitroll, get_damroll, get_AC, get_curr_stat, get_obj_list, get_char_room, save_char, is_name, affect_modify, PLR_AUTOMAP, PLR_DEFAULTS
 from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from config import (DEFAULT_MACROS, DEFAULT_FNKEY_MACROS, FNKEY_SENTINELS, FNKEY_NAMES,
@@ -410,9 +410,13 @@ def _wear_one(tr, player, vnum, tpl, slot):
         if cur_tpl.get("extra_flags", {}).get("noremove"):
             tr.print("You can't remove the {}, it's cursed.".format(cur_tpl["short_descr"]))
             return
+        for loc, mod in cur_tpl.get("stat_bonuses", {}).items():
+            affect_modify(player, loc, mod, False)
         player["inv"].append(cur)
     player["inv"].remove(vnum)
     player["equip"][slot] = vnum
+    for loc, mod in tpl.get("stat_bonuses", {}).items():
+        affect_modify(player, loc, mod, True)
     tr.print(_WEAR_MSG[slot].format(tpl["short_descr"]))
 
 
@@ -455,6 +459,8 @@ def _remove_one(tr, player, slot, vnum):
     if tpl.get("extra_flags", {}).get("noremove"):
         tr.print("You can't remove the {}, it's cursed.".format(tpl["short_descr"]))
         return
+    for loc, mod in tpl.get("stat_bonuses", {}).items():
+        affect_modify(player, loc, mod, False)
     player["equip"][slot] = None
     player["inv"].append(vnum)
     tr.print("You remove the {}.".format(tpl["short_descr"]))

@@ -76,6 +76,7 @@ def create_char():
         "wait": 0,  # skill lag in pulses
         "daze": 0,  # stun in pulses
         "affects": {},
+        "mod_stat": {},
         "room": R_STARTING_ROOM,
         "inv": [],
         "equip": {
@@ -121,6 +122,70 @@ def _stat_from_level(level):
     return min(25, 11 + level // 4)
 
 
+_SIZE_RANK = {"tiny": 0, "small": 1, "medium": 2, "large": 3, "huge": 4, "giant": 5}
+
+
+def create_mobile(tpl_vnum):
+    """Instantiate a mob from its template (cf. 1stMud create_mobile in db.c).
+
+    Returns a placement-agnostic instance dict; caller must set "room" and
+    "home_area" before registering it in mob_instances.
+
+    Args:
+        tpl_vnum (int): Mob template VNUM.
+
+    Returns:
+        dict: Mob instance dict.
+    """
+    tpl = MOB_TEMPLATES[tpl_vnum]
+    hp  = _roll_hp(tpl["hp_dice"])
+    base = _stat_from_level(tpl["level"])
+    act  = tpl.get("act_flags", {})
+    off  = tpl.get("off_flags", {})
+
+    # Per-stat values start uniform then receive class/off/size bonuses
+    # (cf. 1stMud create_mobile perm_stat loop + ACT_WARRIOR/THIEF/CLERIC/MAGE blocks)
+    s_str = s_dex = s_int = s_wis = s_con = base
+    if act.get("warrior"):
+        s_str += 3; s_int -= 1; s_con += 2
+    if act.get("thief"):
+        s_dex += 3; s_int += 1; s_wis -= 1
+    if act.get("cleric"):
+        s_wis += 3; s_dex -= 1; s_str += 1
+    if act.get("mage"):
+        s_int += 3; s_str -= 1; s_dex += 1
+    if off.get("fast"):
+        s_dex += 2
+    size_delta = _SIZE_RANK.get(tpl.get("size", "medium"), 2) - 2   # 2 = SIZE_MEDIUM
+    s_str += size_delta
+    s_con += size_delta // 2
+
+    return {
+        "tpl":       tpl_vnum,
+        "is_npc":    True,
+        "hp":        hp,
+        "hp_max":    hp,
+        "state":     "idle",
+        "affects":   {},
+        "wait":      0,
+        "daze":      0,
+        "fighting":  None,
+        "learned":   dict(tpl.get("skills", {})),
+        "off_flags": dict(off),
+        "inv":       [],
+        "equip":     {},
+        "level":     tpl["level"],
+        "str":       s_str,
+        "dex":       s_dex,
+        "int":       s_int,
+        "wis":       s_wis,
+        "con":       s_con,
+        "hitroll":   tpl["hitroll"],
+        "damroll":   tpl["damage"][2],   # bonus = damroll (cf. 1stMud damage[DICE_BONUS])
+        "AC":        tpl["AC"] * 10,     # ×10 storage (cf. 1stMud load_mobiles read_number * 10)
+    }
+
+
 def _tpl_live_count(mob_instances, tpl_vnum):
     """Count live instances of a template across all rooms (cf. pMobIndex->count in db.c)."""
     return sum(1 for inst in mob_instances.values() if inst["tpl"] == tpl_vnum)
@@ -160,36 +225,10 @@ def reset_mobs(mob_instances, room_state, resets):
             if _tpl_room_count(mob_instances, room_vnum, tpl_vnum) >= rl:
                 last_spawned = False
                 continue
-            tpl = MOB_TEMPLATES[tpl_vnum]
-            _hp = _roll_hp(tpl["hp_dice"])
-            _st = _stat_from_level(tpl["level"])
-            mob_instances[mob_id] = {
-                "tpl":        tpl_vnum,
-                "is_npc":     True,
-                "hp":         _hp,
-                "hp_max":     _hp,
-                "state":      "idle",
-                "room":       room_vnum,
-                "home_area":  ROOMS[room_vnum].get("area"),
-                "affects":    {},
-                "wait":       0,
-                "daze":       0,
-                "fighting":   None,
-                "learned":    dict(tpl.get("skills", {})),
-                "off_flags":  dict(tpl.get("off_flags", {})),
-                "inv":        [],
-                "equip":      {},
-                # Combat stats flattened from template for hot-path access
-                "level":      tpl["level"],
-                "str":        _st,
-                "dex":        _st,
-                "int":        _st,
-                "wis":        _st,
-                "con":        _st,
-                "hitroll":    tpl["hitroll"],
-                "damroll":    tpl.get("damroll", 0),
-                "AC":         tpl["AC"],
-            }
+            inst = create_mobile(tpl_vnum)
+            inst["room"] = room_vnum
+            inst["home_area"] = ROOMS[room_vnum].get("area")
+            mob_instances[mob_id] = inst
             room_state[room_vnum]["mobs"].append(mob_id)
             last_mob_id  = mob_id
             last_spawned = True
@@ -292,19 +331,14 @@ def get_curr_stat(char, stat):
     Returns:
         int: Clamped stat value in [0, 25].
     """
-    base = char.get(stat, 10)
-    for aff in char.get("affects", {}).values():
-        if aff["loc"] == stat:
-            base += aff["modifier"]
-    return _clamp_stat(base)
+    return _clamp_stat(char.get(stat, 10) + char.get("mod_stat", {}).get(stat, 0))
 
 
 def affect_modify(char, loc, modifier, add):
     """Apply or remove a stat modifier for one affect location (cf. 1stMud affect_modify in handler.c).
 
-    Mutates hp_max, mp_max, AC, hitroll, damroll directly.  Stat fields
-    (str/dex/int/wis/con) are not touched here; their affect-adjusted value
-    is computed on the fly by get_curr_stat (Task 3).
+    Mutates hp_max, mp_max, AC, hitroll, damroll directly; accumulates
+    str/dex/int/wis/con into char["mod_stat"] (cf. 1stMud mod_stat[] in handler.c).
 
     Args:
         char (dict): Character state dict (player or mob instance).
@@ -325,7 +359,9 @@ def affect_modify(char, loc, modifier, add):
         char["hitroll"] += modifier
     elif loc == "damroll":
         char["damroll"] += modifier
-    # str/dex/int/wis/con: no direct mutation — get_curr_stat folds affects in
+    elif loc in ("str", "dex", "int", "wis", "con"):
+        ms = char.setdefault("mod_stat", {})
+        ms[loc] = ms.get(loc, 0) + modifier
 
 
 def affect_to_char(char, sn, loc, modifier, duration):
@@ -373,13 +409,7 @@ def get_hitroll(char):
     Returns:
         int: Total hitroll modifier.
     """
-    total = char.get("hitroll", 0) + STR_APP_TOHIT[get_curr_stat(char, "str")]
-    equip = char.get("equip")
-    if equip:
-        for vnum in equip.values():
-            if vnum is not None:
-                total += ITEM_TEMPLATES[vnum].get("hitroll", 0)
-    return total
+    return char.get("hitroll", 0) + STR_APP_TOHIT[get_curr_stat(char, "str")]
 
 
 def get_damroll(char):
@@ -391,13 +421,7 @@ def get_damroll(char):
     Returns:
         int: Total damroll modifier.
     """
-    total = char.get("damroll", 0) + STR_APP_TODAM[get_curr_stat(char, "str")]
-    equip = char.get("equip")
-    if equip:
-        for vnum in equip.values():
-            if vnum is not None:
-                total += ITEM_TEMPLATES[vnum].get("damroll", 0)
-    return total
+    return char.get("damroll", 0) + STR_APP_TODAM[get_curr_stat(char, "str")]
 
 
 def get_AC(char):
@@ -409,13 +433,7 @@ def get_AC(char):
     Returns:
         int: Total AC (lower is better; negative is excellent).
     """
-    total = char.get("AC", 100) + DEX_APP_DEF[get_curr_stat(char, "dex")]
-    equip = char.get("equip")
-    if equip:
-        for vnum in equip.values():
-            if vnum is not None:
-                total += ITEM_TEMPLATES[vnum].get("AC", 0)
-    return total
+    return char.get("AC", 100) + DEX_APP_DEF[get_curr_stat(char, "dex")]
 
 
 def is_name(fragment, namelist):

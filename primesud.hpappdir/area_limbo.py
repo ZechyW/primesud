@@ -45,7 +45,7 @@ I_DUMMY_OBJECT                     = 30
 
 # ── Mob templates ──────────────────────────────────────────────────────────────
 # hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
-# AC: avg(pierce,bash,slash,exotic) / 10 per REFERENCE.md  # TODO: verify scale
+# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies ×10
 # hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)
 MOBILES = {
     M_DUMMY_MOB: {
@@ -61,7 +61,7 @@ MOBILES = {
         "hp_dice":   (85, 71, 1073),
         "mana_dice": (62, 8, 61),
         "damage":    (7, 12, 48),  "dam_type": 'none',
-        "AC":        -5,
+        "AC":        -46,
         "sex":  'either',
         "gold": 0,
         "size": 'medium',
