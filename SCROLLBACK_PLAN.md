@@ -1,5 +1,15 @@
 # Scrollback Plan — tml.py
 
+## Implementation module
+
+Implemented as a **subclass of `tml`** in a new file (e.g. `tml_sb.py`), not
+by modifying `tml.py`. This honours the "stable library" constraint in CLAUDE.md.
+The subclass overrides `__init__`, `_scroll_up`, and `read_key`, and adds
+`_scrollback` / `_render_scrollback`. The game imports the subclass instead of
+`tml` directly.
+
+---
+
 ## Approach
 
 Store scrolled-off rows in a dedicated GROB (the "history GROB") arranged as a
@@ -25,8 +35,15 @@ the buffer is full).
 
 - G7 and G6 are the proposed defaults; both are constructor parameters (like the
   existing `grob=9`), so callers can override if they use those GROBs themselves.
-- `Ghist` and `Gsave` are allocated with `DIMGROB_P` at init time if
-  `scrollback_size > 0`.
+- `Ghist` and `Gsave` are allocated at init time if `scrollback_size > 0` using
+  the Python-native `dimgrob` function (import from `hpprime`):
+  ```python
+  dimgrob(hist_grob, width, scrollback_size * char_height, back_color)
+  dimgrob(save_grob, width, height, back_color)
+  ```
+  Signature: `dimgrob(graphic, width, height, color)` where `graphic` is the
+  integer GROB number. Prefer this over `ppleval('DIMGROB_P(...)')` — no string
+  building, no PPL eval overhead.
 
 ---
 

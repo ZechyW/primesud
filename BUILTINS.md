@@ -78,4 +78,16 @@ Features not supported by HP Prime's MicroPython (confirmed via `SyntaxError` at
 | `{**a, **b}` dict unpacking in literals | `d = {}; d.update(a); d.update(b)` |
 | `f"..."` f-strings | `"... %s ..." % x` — prefer `%` over `.format()` when colour codes are present, as `%` uses no `{` delimiters |
 
+---
+
+## OOP / subclassing (confirmed working)
+
+Verified via smoke tests in `primesud.py` (June 2026).
+
+| Feature | Notes |
+|:--------|:------|
+| `super()` (no-arg form) | Works — `super().__init__(...)` and `super().method()` both dispatch correctly |
+| `**kwargs` in function signatures | Works — `def f(**kw)` and `f(**kw)` call-site spreading both work |
+| Polymorphic dispatch from within base class | Works — `self.method()` inside a base-class method calls the subclass override when `self` is a subclass instance |
+
 <!-- Add sections for other builtins as verified: list, dict, int, etc. -->
