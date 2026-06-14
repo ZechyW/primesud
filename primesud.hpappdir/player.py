@@ -21,6 +21,7 @@ from world import (
     GSN_KICK,
     GSN_CURE_LIGHT,
     GSN_PARRY,
+    GSN_RECALL,
 )
 
 # ── Player flag bits (cf. 1stMud PLR_* in bits.h) ─────────────────────────────
@@ -98,6 +99,7 @@ def create_char():
             GSN_KICK: 50,
             GSN_CURE_LIGHT: 75,
             GSN_PARRY: 10,
+            GSN_RECALL: 50,   # cf. 1stMud nanny.c: learned[gsn_recall] = 50
         },
         "fighting": None,
         "pos": "standing",

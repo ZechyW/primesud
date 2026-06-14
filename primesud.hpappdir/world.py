@@ -7,12 +7,14 @@
 # fmt: off
 # ── Cross-area room VNUMs (cf. 1stMud gsn_* / room vnums in index.h) ──────────
 R_STARTING_ROOM  = 3700   # player respawn/starting room (Mud School entrance)
+R_RECALL         = 3001   # default recall destination (cf. 1stMud ROOM_VNUM_TEMPLE)
 
 # ── Skills ────────────────────────────────────────────────────────────────────
 GSN_KICK         = 4001
 GSN_CURE_LIGHT   = 4002
 GSN_HAND_TO_HAND = 4010
 GSN_PARRY        = 4020
+GSN_RECALL       = 4030
 # fmt: on
 
 from area_school import (
@@ -72,6 +74,8 @@ SKILL_TABLE = [
                         "rating": 4}),
     (GSN_PARRY,        {"name": "parry",        "type": "passive", "min_level": 1,
                         "rating": 4}),
+    (GSN_RECALL,       {"name": "recall",       "type": "active",  "min_level": 1,
+                        "beats": 0, "mana": 0, "rating": 4, "target": "none"}),
 ]
 
 SKILLS = {vnum: data for vnum, data in SKILL_TABLE}

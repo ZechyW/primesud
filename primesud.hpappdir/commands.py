@@ -2,7 +2,7 @@ from hpprime import eval as ppleval
 from util import free_mem
 from colors import color_len
 
-from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT
+from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT, GSN_RECALL, R_RECALL
 from picker import pick_from
 from player import get_hitroll, get_damroll, get_AC, get_curr_stat, get_obj_list, get_char_room, save_char, is_name, PLR_AUTOMAP, PLR_DEFAULTS
 from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick
@@ -1033,6 +1033,40 @@ def do_practice(tr, player, args, room_state, mob_instances):
         tr.print("You practice {}.".format(SKILLS[sk_vnum]["name"]))
 
 
+def do_recall(tr, player, args, room_state, mob_instances):
+    """Teleport to the area's recall room (cf. 1stMud perform_recall in act_move.c).
+
+    Per-area recall VNUMs (area->recall in 1stMud) are not yet implemented;
+    all areas fall back to R_RECALL (ROOM_VNUM_TEMPLE).  When a pet system is
+    added, pet teleport should mirror the player teleport here.
+    """
+    room = ROOMS[player["room"]]
+
+    if room.get("flags", {}).get("no_recall") \
+            or player.get("affects", {}).get("curse"):
+        tr.print("Your deity has forsaken you.")
+        return
+
+    location = R_RECALL
+    if player["room"] == location:
+        return
+
+    if player["fighting"] is not None:
+        skill = player["learned"].get(GSN_RECALL, 50)
+        if randint(1, 100) < 80 * skill // 100:
+            check_improve(tr, player, GSN_RECALL, False, 6)
+            WaitState(player, 4)
+            tr.print("You failed!.")
+            return
+        player["xp"] = max(0, player["xp"] - 25)
+        check_improve(tr, player, GSN_RECALL, True, 4)
+        tr.print("You recall from combat!  You lose 25 exps.")
+        stop_fighting(player, mob_instances)
+
+    player["room"] = location
+    do_look(tr, player, [], room_state, mob_instances)
+
+
 # ── Command table ─────────────────────────────────────────────────────────────
 # Entries in 1stMud load order (cf. COMMANDS.md); [PRIMESUD] shortcuts interleaved.
 # Schema: (name, fn, min_pos, noprefix)
@@ -1062,6 +1096,8 @@ _CMD_TABLE = [
     ("kick",      do_kick,      "fighting", False),   # #148
     ("automap",   do_automap,   "sleeping", False),   # #154
     ("quit",      do_quit,      "dead",     True),    # #162 noprefix
+    ("recall",    do_recall,    "fighting", False),   # #163
+    ("/",         do_recall,    "fighting", False),   # #164
     ("save",      do_save,      "dead",     False),   # #166
     ("train",     do_train,     "resting",  False),   # #171
     ("macro",     do_macro,     "dead",     False),   # [PRIMESUD]
