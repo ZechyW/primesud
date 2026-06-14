@@ -390,9 +390,9 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
     if roll == 0 or (roll != 19 and roll < thac0 - victim_ac):
         vs, vp = _damage_verb(0)
         if armed:
-            tr.print("Your {} {} {}.".format(attack_noun, vp, tpl["short_descr"]))
+            tr.print("{GYour %s %s {G%s.{x" % (attack_noun, vp, tpl["short_descr"]))
         else:
-            tr.print("You {} {}.".format(vs, tpl["short_descr"]))
+            tr.print("{GYou %s {G%s.{x" % (vs, tpl["short_descr"]))
         return 0
 
     # Mob parry check
@@ -424,9 +424,9 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
     vs, vp = _damage_verb(dam)
     punct = _damage_punct(dam)
     if armed:
-        tr.print("Your {} {} {}{} [{}]".format(attack_noun, vp, tpl["short_descr"], punct, dam))
+        tr.print("{GYour %s %s {G%s%s {W[{R%d{W]{x" % (attack_noun, vp, tpl["short_descr"], punct, dam))
     else:
-        tr.print("You {} {}{} [{}]".format(vs, tpl["short_descr"], punct, dam))
+        tr.print("{GYou %s {G%s%s {W[{R%d{W]{x" % (vs, tpl["short_descr"], punct, dam))
 
     check_improve(tr, player, sk_vnum, True, 5)
     return dam
@@ -461,7 +461,7 @@ def _mob_one_hit(tr, mob_inst, player):
 
     roll = randint(0, 19)
     if roll == 0 or (roll != 19 and roll < thac0 - player_ac):
-        tr.print("{}'s {} misses you.".format(tpl["short_descr"], attack_noun))
+        tr.print("{R%s's %s misses {Ryou.{x" % (tpl["short_descr"], attack_noun))
         return 0
 
     # Defensive checks (player skills)
@@ -483,7 +483,7 @@ def _mob_one_hit(tr, mob_inst, player):
 
     _, vp = _damage_verb(dam)
     punct = _damage_punct(dam)
-    tr.print("{}'s {} {} you{} [{}]".format(tpl["short_descr"], attack_noun, vp, punct, dam))
+    tr.print("{R%s's %s %s {Ryou%s {W[{R%d{W]{x" % (tpl["short_descr"], attack_noun, vp, punct, dam))
 
     if dam > player["hp_max"] // 4:
         tr.print("That really did HURT!")
@@ -532,20 +532,20 @@ def do_kick(tr, ch, args, room_state, mob_instances):
         _, vp  = _damage_verb(dam)
         punct  = _damage_punct(dam)
         if ch["is_npc"]:
-            tr.print("{} kicks you{} [{}]".format(MOB_TEMPLATES[ch["tpl"]]["short_descr"], punct, dam))
+            tr.print("{R%s kicks {Ryou%s {W[{R%d{W]{x" % (MOB_TEMPLATES[ch["tpl"]]["short_descr"], punct, dam))
         else:
             tpl = MOB_TEMPLATES[target["tpl"]]
-            tr.print("Your kick {} {}{} [{}]".format(vp, tpl["short_descr"], punct, dam))
+            tr.print("{GYour kick %s {G%s%s {W[{R%d{W]{x" % (vp, tpl["short_descr"], punct, dam))
             check_improve(tr, ch, GSN_KICK, True, 1)
             if target["hp"] == 0:
                 raw_kill(tr, ch, target_id, target, tpl, room_state, mob_instances)
                 _advance_target(ch, mob_instances, room_state)
     else:
         if ch["is_npc"]:
-            tr.print("{}'s kick misses you.".format(MOB_TEMPLATES[ch["tpl"]]["short_descr"]))
+            tr.print("{R%s's kick misses {Ryou.{x" % MOB_TEMPLATES[ch["tpl"]]["short_descr"])
         else:
             tpl = MOB_TEMPLATES[target["tpl"]]
-            tr.print("Your kick misses {}.".format(tpl["short_descr"]))
+            tr.print("{GYour kick misses {G%s.{x" % tpl["short_descr"])
             check_improve(tr, ch, GSN_KICK, False, 1)
     return None
 
@@ -585,35 +585,36 @@ def mob_hit(tr, mob_inst, player, room_state, mob_instances):
 
 _SPECIAL_MOVES = [
     (
-        "You pull your hands into your waist then snap them into {}'s stomach.",
-        "{} doubles over in agony, and falls to the ground gasping for breath.",
+        "{RYou pull your hands into your waist then snap them into %s's stomach.{x",
+        "{R%s doubles over in agony, and falls to the ground gasping for breath.{x",
     ),
     (
-        "You spin in a low circle, catching {} behind its ankle.",
-        "{} crashes to the ground, stunned.",
+        "{RYou spin in a low circle, catching %s behind its ankle.{x",
+        "{R%s crashes to the ground, stunned.{x",
     ),
     (
-        "You roll between {}'s legs and flip to your feet.",
-        "You spin around and smash your elbow into the back of {}'s head.",
-        "{} falls to the ground, stunned.",
+        "{RYou roll between %s's legs and flip to your feet.{x",
+        "{RYou spin around and smash your elbow into the back of %s's head.{x",
+        "{R%s falls to the ground, stunned.{x",
     ),
     (
-        "You somersault over {}'s head and land lightly on your toes.",
-        "You roll back onto your shoulders and kick both feet into {}'s back.",
-        "{} falls to the ground, stunned.",
-        "You flip back up to your feet.",
+        "{RYou somersault over %s's head and land lightly on your toes.{x",
+        "{RYou roll back onto your shoulders and kick both feet into %s's back.{x",
+        "{R%s falls to the ground, stunned.{x",
+        "{RYou flip back up to your feet.{x",
     ),
     (
-        "You grab {} by the waist and hoist it above your head.",
-        "{} crashes to the ground, stunned.",
+        "{RYou grab %s by the waist and hoist it above your head.{x",
+        "{R%s crashes to the ground, stunned.{x",
     ),
     (
-        "You grab {} by the head and slam its face into your knee.",
-        "{} crashes to the ground, stunned.",
+        "{RYou grab %s by the head and slam its face into your knee.{x",
+        "{R%s crashes to the ground, stunned.{x",
+        "{RYou flip back up to your feet.{x",
     ),
     (
-        "You duck under {}'s attack and pound your fist into its stomach.",
-        "{} doubles over in agony.",
+        "{RYou duck under %s's attack and pound your fist into its stomach.{x",
+        "{R%s doubles over in agony.{x",
     ),
 ]
 
@@ -638,14 +639,15 @@ def _try_special_move(tr, player, target_inst):
     name = tpl["short_descr"]
     move = _SPECIAL_MOVES[randint(0, len(_SPECIAL_MOVES) - 1)]
     for line in move[:-1]:
-        tr.print(line.format(name))
+        tr.print(line % name if "%s" in line else line)
     # Damage: same unarmed formula as one_hit
     skill = player["learned"].get(GSN_HAND_TO_HAND, 20)
     lo  = max(1, 1 + 4 * skill // 100)
     hi  = max(lo, 2 * player["level"] * skill // 300)
     dam = max(1, randint(lo, hi))
     target_inst["hp"] = max(0, target_inst["hp"] - dam)
-    tr.print("{} [{}]".format(move[-1].format(name), dam))
+    last = move[-1] % name if "%s" in move[-1] else move[-1]
+    tr.print("%s {W[{R%d{W]{x" % (last, dam))
     check_improve(tr, player, GSN_HAND_TO_HAND, True, 5)
     return dam
 

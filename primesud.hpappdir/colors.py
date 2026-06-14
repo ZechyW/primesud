@@ -5,7 +5,7 @@ COLOR_CODE = '{'
 ANSI_COLORS = {
     'd': 0x000000,   # black
     'r': 0x800000,   # maroon
-    'g': 0x008000,   # green
+    'g': 0x008000,   # green,
     'y': 0x808000,   # olive
     'b': 0x4169E1,   # royalblue
     'm': 0x800080,   # purple

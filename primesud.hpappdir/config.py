@@ -49,7 +49,7 @@ SECTOR_SYMBOLS = {
 
 # ── Scrollback [PRIMESUD] ─────────────────────────────────────────────────────────────
 SCROLLBACK_SIZE = 250  # rows to keep in history (0 = disabled)
-SCROLL_STEP     = 10   # rows scrolled per Shift+- / Shift++ keypress
+SCROLL_STEP     = 7   # rows scrolled per Shift+- / Shift++ keypress
 
 # ── Persistence ───────────────────────────────────────────────────────────────────────
 SAVE_VAR = "primesud_save"

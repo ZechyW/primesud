@@ -12,4 +12,4 @@ Loose ends that don't belong in a specific plan file.
 
 - Picker should implement pagination
 
-- Scrollback doesn't pause combat
+- Scrollback with mouse?
