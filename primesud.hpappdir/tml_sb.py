@@ -107,23 +107,26 @@ class tml_sb(tml):
 
     def _render_scrollback(self, depth):
         ch = self.char_height
+        # slot_start uses full depth (historical position in ring)
         slot_start = (self._hist_write - depth) % self._hist_size
+        # but we can only paint self.rows rows before hitting the status bar
+        display_rows = min(depth, self.rows)
 
-        # Region A: top 'depth' rows from history ring
-        if slot_start + depth <= self._hist_size:
-            strblit2(0, 0, 0, self.width, depth * ch,
-                     self._hist_grob, 0, slot_start * ch, self.width, depth * ch)
+        # Region A: display_rows history rows at top of screen
+        if slot_start + display_rows <= self._hist_size:
+            strblit2(0, 0, 0, self.width, display_rows * ch,
+                     self._hist_grob, 0, slot_start * ch, self.width, display_rows * ch)
         else:
             # Wraps around ring end — two blits
             tail = self._hist_size - slot_start
             strblit2(0, 0, 0, self.width, tail * ch,
                      self._hist_grob, 0, slot_start * ch, self.width, tail * ch)
-            head = depth - tail
+            head = display_rows - tail
             strblit2(0, 0, tail * ch, self.width, head * ch,
                      self._hist_grob, 0, 0, self.width, head * ch)
 
-        # Region B: bottom (rows - depth) rows from saved screen
-        if depth < self.rows:
-            rem = self.rows - depth
-            strblit2(0, 0, depth * ch, self.width, rem * ch,
+        # Region B: remaining rows from saved screen (only when depth < rows)
+        if display_rows < self.rows:
+            rem = self.rows - display_rows
+            strblit2(0, 0, display_rows * ch, self.width, rem * ch,
                      self._save_grob, 0, 0, self.width, rem * ch)
