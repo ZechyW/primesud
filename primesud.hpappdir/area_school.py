@@ -598,6 +598,7 @@ ROOMS = {
             "d": 3001,
         },
         "flags": {"no_mob": True, "indoors": True},
+        "sector": 'inside',
     },
     R_ROOM_IN_MUD_SCHOOL: {
         "name": 'A Room in Mud School',
@@ -607,6 +608,7 @@ ROOMS = {
             "w": R_CENTER_ROOM,
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_CENTER_ROOM: {
         "name": 'The Center Room',
@@ -620,6 +622,7 @@ ROOMS = {
             "d": R_ROOM_IN_MUD_SCHOOL_3707,
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_ROOM_IN_MUD_SCHOOL_3703: {
         "name": 'A Room in Mud School',
@@ -629,6 +632,7 @@ ROOMS = {
             "s": R_CENTER_ROOM,
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_ROOM_IN_MUD_SCHOOL_3704: {
         "name": 'A Room in Mud School',
@@ -637,6 +641,7 @@ ROOMS = {
             "e": R_CENTER_ROOM,
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_ROOM_IN_MUD_SCHOOL_3705: {
         "name": 'A Room in Mud School',
@@ -645,6 +650,7 @@ ROOMS = {
             "n": R_CENTER_ROOM,
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_ROOM_IN_MUD_SCHOOL_3707: {
         "name": 'A Room in Mud School',
@@ -653,6 +659,7 @@ ROOMS = {
             "u": R_CENTER_ROOM,
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_ROOM_IN_MUD_SCHOOL_3708: {
         "name": 'A Room in Mud School',
@@ -661,6 +668,7 @@ ROOMS = {
             "d": R_CENTER_ROOM,
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_ROOM_IN_MUD_SCHOOL_3709: {
         "name": 'A Room in Mud School',
@@ -670,6 +678,7 @@ ROOMS = {
             "d": R_BLOB_CAGE,
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_BLOB_CAGE: {
         "name": 'The Blob Cage',
@@ -678,6 +687,7 @@ ROOMS = {
             "u": R_ROOM_IN_MUD_SCHOOL_3709,
         },
         "flags": {"indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_ROOM_IN_MUD_SCHOOL_3711: {
         "name": 'A Room in Mud School',
@@ -687,6 +697,7 @@ ROOMS = {
             "d": R_CAGE_ROOM,
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_CAGE_ROOM: {
         "name": 'The Cage Room',
@@ -699,6 +710,7 @@ ROOMS = {
             "d": R_ROOM_IN_MUD_SCHOOL_3717,
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_CAGE: {
         "name": 'A Cage',
@@ -707,6 +719,7 @@ ROOMS = {
             "s": R_CAGE_ROOM,
         },
         "flags": {"indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_CAGE_3714: {
         "name": 'A Cage',
@@ -715,6 +728,7 @@ ROOMS = {
             "e": R_CAGE_ROOM,
         },
         "flags": {"indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_CAGE_3715: {
         "name": 'A Cage',
@@ -723,6 +737,7 @@ ROOMS = {
             "n": R_CAGE_ROOM,
         },
         "flags": {"indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_CAGE_3716: {
         "name": 'A Cage',
@@ -731,6 +746,7 @@ ROOMS = {
             "w": R_CAGE_ROOM,
         },
         "flags": {"indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_ROOM_IN_MUD_SCHOOL_3717: {
         "name": 'A Room in Mud School',
@@ -741,6 +757,7 @@ ROOMS = {
             "u": R_CAGE_ROOM,
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_STORE_IN_MUD_SCHOOL: {
         "name": 'The Store in Mud School',
@@ -749,6 +766,7 @@ ROOMS = {
             "n": R_ROOM_IN_MUD_SCHOOL_3717,
         },
         "flags": {"indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_ROOM_IN_MUD_SCHOOL_3719: {
         "name": 'A Room in Mud School',
@@ -759,6 +777,7 @@ ROOMS = {
             "w": {"to": R_ROOM_IN_MUD_SCHOOL_3717, "isdoor": True, "closed": True},
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_DARKENED_ROOM: {
         "name": 'The Darkened Room',
@@ -767,6 +786,7 @@ ROOMS = {
             "s": R_ROOM_IN_MUD_SCHOOL_3719,
         },
         "flags": {"dark": True, "indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_END_OF_MUD_SCHOOL: {
         "name": 'The End of Mud School!',
@@ -775,6 +795,7 @@ ROOMS = {
             "n": {"to": R_SOUTH_WALL_OF_ARENA, "isdoor": True, "closed": True},
         },
         "flags": {"indoors": True, "newbies_only": True},
+        "sector": 'inside',
     },
     R_SOUTH_WALL_OF_ARENA: {
         "name": 'South Wall of Arena',
@@ -786,6 +807,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_SOUTH_WALL_OF_ARENA_3723: {
         "name": 'South Wall of Arena',
@@ -797,6 +819,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_SOUTH_WEST_CORNER_OF_ARENA: {
         "name": 'South West Corner of Arena',
@@ -807,6 +830,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_SOUTH_WALL_OF_ARENA_3725: {
         "name": 'South Wall of Arena',
@@ -818,6 +842,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_SOUTH_EAST_CORNER_OF_ARENA: {
         "name": 'South East Corner of Arena',
@@ -828,6 +853,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_WEST_WALL_OF_ARENA: {
         "name": 'West Wall of Arena',
@@ -839,6 +865,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_ARENA: {
         "name": 'Arena',
@@ -851,6 +878,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_ARENA_3729: {
         "name": 'Arena',
@@ -863,6 +891,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_ARENA_3730: {
         "name": 'Arena',
@@ -875,6 +904,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_EAST_WALL_OF_ARENA: {
         "name": 'East Wall of Arena',
@@ -886,6 +916,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_WEST_WALL_OF_ARENA_3732: {
         "name": 'West Wall of Arena',
@@ -897,6 +928,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_ARENA_3733: {
         "name": 'Arena',
@@ -909,6 +941,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_CENTER_OF_ARENA: {
         "name": 'Center of Arena',
@@ -922,6 +955,7 @@ ROOMS = {
             "d": {"to": R_CENTER_OF_THE_DUNGEON, "isdoor": True, "closed": True},
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_ARENA_3735: {
         "name": 'Arena',
@@ -934,6 +968,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_EAST_WALL_OF_ARENA_3736: {
         "name": 'East Wall of Arena',
@@ -945,6 +980,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_WEST_WALL_OF_ARENA_3737: {
         "name": 'West Wall of Arena',
@@ -956,6 +992,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_ARENA_3738: {
         "name": 'Arena',
@@ -968,6 +1005,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_ARENA_3739: {
         "name": 'Arena',
@@ -980,6 +1018,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_ARENA_3740: {
         "name": 'Arena',
@@ -992,6 +1031,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_EAST_WALL_OF_ARENA_3741: {
         "name": 'East Wall of Arena',
@@ -1003,6 +1043,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_NORTH_WEST_CORNER_OF_ARENA: {
         "name": 'North West Corner of Arena',
@@ -1013,6 +1054,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_NORTH_WALL_OF_ARENA: {
         "name": 'North Wall of Arena',
@@ -1024,6 +1066,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_NORTH_WALL_OF_ARENA_3744: {
         "name": 'North Wall of Arena',
@@ -1035,6 +1078,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_NORTH_WALL_OF_ARENA_3745: {
         "name": 'North Wall of Arena',
@@ -1046,6 +1090,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_NORTH_EAST_CORNER_OF_ARENA: {
         "name": 'North East Corner of Arena',
@@ -1056,6 +1101,7 @@ ROOMS = {
             "u": R_SAFE_ROOM,
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_CENTER_OF_THE_DUNGEON: {
         "name": 'The Center of the Dungeon',
@@ -1068,6 +1114,7 @@ ROOMS = {
             "u": {"to": R_CENTER_OF_ARENA, "isdoor": True, "closed": True},
         },
         "flags": {"indoors": True},
+        "sector": 'inside',
     },
     R_NORTH_WEST_CORNER_OF_THE_DUNGEON: {
         "name": 'The North West Corner of the Dungeon',
@@ -1077,6 +1124,7 @@ ROOMS = {
             "s": R_WEST_WALL_OF_THE_DUNGEON,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_NORTH_WALL_OF_THE_DUNGEON: {
         "name": 'The North Wall of the Dungeon',
@@ -1087,6 +1135,7 @@ ROOMS = {
             "w": R_NORTH_WEST_CORNER_OF_THE_DUNGEON,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_NORTH_EAST_CORNER_OF_THE_DUNGEON: {
         "name": 'The North East Corner of the Dungeon',
@@ -1096,6 +1145,7 @@ ROOMS = {
             "w": R_NORTH_WALL_OF_THE_DUNGEON,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_WEST_WALL_OF_THE_DUNGEON: {
         "name": 'The West Wall of the Dungeon',
@@ -1106,6 +1156,7 @@ ROOMS = {
             "s": R_SOUTH_WEST_CORNER_OF_THE_DUNGEON,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_EAST_WALL_OF_THE_DUNGEON: {
         "name": 'The East Wall of the Dungeon',
@@ -1116,6 +1167,7 @@ ROOMS = {
             "w": R_CENTER_OF_THE_DUNGEON,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_SOUTH_WEST_CORNER_OF_THE_DUNGEON: {
         "name": 'The South West Corner of the Dungeon',
@@ -1125,6 +1177,7 @@ ROOMS = {
             "e": R_SOUTH_WALL_OF_THE_DUNGEON,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_SOUTH_WALL_OF_THE_DUNGEON: {
         "name": 'The South Wall of the Dungeon',
@@ -1135,6 +1188,7 @@ ROOMS = {
             "w": R_SOUTH_WEST_CORNER_OF_THE_DUNGEON,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_SOUTH_EAST_CORNER_OF_THE_DUNGEON: {
         "name": 'The South East Corner of the Dungeon',
@@ -1144,6 +1198,7 @@ ROOMS = {
             "w": R_SOUTH_WALL_OF_THE_DUNGEON,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_ROOM_IN_MUD_SCHOOL_3757: {
         "name": 'A Room in Mud School',
@@ -1155,7 +1210,7 @@ ROOMS = {
             "w": R_FUREY_S_TRAINING_ROOM,
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_FUREY_S_TRAINING_ROOM: {
         "name": "Furey's Training Room",
@@ -1164,7 +1219,7 @@ ROOMS = {
             "e": R_ROOM_IN_MUD_SCHOOL_3757,
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ZUMP_S_GUILD_ROOM: {
         "name": "Zump's Guild Room",
@@ -1173,7 +1228,7 @@ ROOMS = {
             "w": R_ROOM_IN_MUD_SCHOOL_3757,
         },
         "flags": {"no_mob": True, "indoors": True, "newbies_only": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_SAFE_ROOM: {
         "name": 'A Safe Room',
@@ -1182,6 +1237,7 @@ ROOMS = {
             "u": 3001,
         },
         "flags": {"no_mob": True, "indoors": True},
+        "sector": 'inside',
     },
 }
 

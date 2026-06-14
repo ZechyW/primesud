@@ -25,6 +25,7 @@ Reference this before porting a new mechanic to avoid re-litigating settled deci
 | Gold / silver | **Not yet** | Planned; placeholder slot exists in `do_score` right-column bottom |
 | Explore tracking | **Not yet** | Planned; placeholder exists in `do_score` footer area |
 | Pkills / pdeaths | **Not ported** | Single-player |
+| Per-mob `S kills deaths` stats | **Not ported** | 1stMud writes cumulative kill/death counts per mob prototype back to the `.are` file on shutdown (`fight.c:update_death`, `db2.c:load_mobiles`).  PrimeSUD area modules are static Python files — no write-back mechanism, and no analytics use for the data in a single-player game |
 | Stance system | **Not ported** | 1stMud-specific combat extension; out of scope |
 
 ---

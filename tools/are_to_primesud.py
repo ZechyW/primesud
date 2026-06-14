@@ -21,6 +21,7 @@ Design choices:
   - Exits: plain vnum for open passages; dict {"to": vnum, "isdoor": True, ...}
     for exits with any door flags — all EXIT_FLAGS encoded as name→True keys
   - Constant names: generated from display text, deduplicated with _<vnum>
+  - sector_type: decoded to name string (e.g. 1 → "city", 0 → "inside")
 """
 
 import re
@@ -72,6 +73,13 @@ EXIT_FLAGS = {
     0: "isdoor", 1: "closed", 2: "locked", 3: "doorbell",
     5: "pickproof", 6: "nopass", 7: "easy", 8: "hard",
     9: "infuriating", 10: "noclose", 11: "nolock",
+}
+SECTOR_NAMES = {                                        # sector_t enum values (cf. defines.h)
+     0: "inside",    1: "city",     2: "field",   3: "forest",
+     4: "hills",     5: "mountain", 6: "swim",    7: "noswim",
+     8: "ice",       9: "air",     10: "desert",  11: "road",
+    12: "path",     13: "swamp",   14: "jungle",  15: "cave",
+    16: "none",
 }
 EXTRA_FLAGS = {                                         # ITEM_* from bits.h (BIT_A=0 … BIT_a=26; BIT_X=23 unused)
     0: "glow",        1: "hum",          2: "dark",        3: "lock",
@@ -463,7 +471,11 @@ def parse_rooms(lines):
         # 0  room_flags  sector_type
         flag_parts = lines[i].split(); i += 1
         room_bits = parse_bitstring(flag_parts[1]) if len(flag_parts) > 1 else set()
-        sector    = int(flag_parts[2]) if len(flag_parts) > 2 else 0
+        if len(flag_parts) > 2:
+            sector_int = int(flag_parts[2])
+            sector = SECTOR_NAMES.get(sector_int, str(sector_int))
+        else:
+            sector = None
 
         exits      = {}
         exit_notes = {}
@@ -655,8 +667,8 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map):
         w("        },")
         if room["flags"]:
             w(f'        "flags": {_repr_flags(room["flags"])},')
-        if room["sector"]:
-            w(f'        "sector": {room["sector"]},')
+        if room["sector"] is not None:
+            w(f'        "sector": {room["sector"]!r},')
         w("    },")
     w("}")
     w("")

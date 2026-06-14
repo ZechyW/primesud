@@ -1829,7 +1829,7 @@ ROOMS = {
             "s": R_ON_THE_CONCOURSE_3270,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_PROMENADE: {
         "name": 'Promenade',
@@ -1840,7 +1840,7 @@ ROOMS = {
             "w": R_NORTHWEST_END_OF_CONCOURSE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_PROMENADE_3102: {
         "name": 'Promenade',
@@ -1852,7 +1852,7 @@ ROOMS = {
             "w": R_PROMENADE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_AUSTRAL_SQUARE: {
         "name": 'Austral Square',
@@ -1864,7 +1864,7 @@ ROOMS = {
             "w": R_PROMENADE_3102,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_NORTHEAST_END_OF_CONCOURSE: {
         "name": 'Northeast end of Concourse',
@@ -1875,7 +1875,7 @@ ROOMS = {
             "w": R_AUSTRAL_SQUARE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_PARK_ENTRANCE: {
         "name": 'Park Entrance',
@@ -1886,7 +1886,7 @@ ROOMS = {
             "s": R_SMALL_PATH_IN_THE_PARK,
         },
         "flags": {"no_mob": True, "law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_PARK_CAFE: {
         "name": 'Park Cafe',
@@ -1895,6 +1895,7 @@ ROOMS = {
             "w": R_PARK_ENTRANCE,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_SMALL_PATH_THROUGH_THE_PARK: {
         "name": 'Small path through the park',
@@ -1904,7 +1905,7 @@ ROOMS = {
             "s": R_PATH_IN_THE_PARK,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_SMALL_PATH_IN_THE_PARK: {
         "name": 'Small path in the park',
@@ -1915,7 +1916,7 @@ ROOMS = {
             "w": R_SMALL_PATH_THROUGH_THE_PARK,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_SMALL_PATH_IN_THE_PARK_3109: {
         "name": 'Small path in the park',
@@ -1926,7 +1927,7 @@ ROOMS = {
             "w": R_SMALL_PATH_IN_THE_PARK,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_CITYGUARD_HEAD_QUARTERS: {
         "name": 'Cityguard Head Quarters',
@@ -1936,6 +1937,7 @@ ROOMS = {
             "w": {"to": R_CAPTAIN_S_OFFICE, "isdoor": True, "closed": True, "locked": True},
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_PARK_ROAD: {
         "name": 'Park Road',
@@ -1947,7 +1949,7 @@ ROOMS = {
             "w": R_CITYGUARD_HEAD_QUARTERS,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_WESTERN_PARK_ENTRANCE: {
         "name": 'Western Park Entrance',
@@ -1957,7 +1959,7 @@ ROOMS = {
             "w": R_PARK_ROAD,
         },
         "flags": {"no_mob": True, "law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_PATH_IN_THE_PARK: {
         "name": 'A path in the park',
@@ -1968,7 +1970,7 @@ ROOMS = {
             "w": R_WESTERN_PARK_ENTRANCE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_POND: {
         "name": 'The Pond',
@@ -1978,7 +1980,7 @@ ROOMS = {
             "w": R_PATH_IN_THE_PARK,
         },
         "flags": {"law": True},
-        "sector": 6,
+        "sector": 'swim',
     },
     R_PATH_IN_THE_PARK_3115: {
         "name": 'A path in the park',
@@ -1989,7 +1991,7 @@ ROOMS = {
             "w": R_POND,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_EASTERN_PARK_ENTRANCE: {
         "name": 'Eastern Park Entrance',
@@ -1999,7 +2001,7 @@ ROOMS = {
             "w": R_PATH_IN_THE_PARK_3115,
         },
         "flags": {"no_mob": True, "law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_EMERALD_AVENUE: {
         "name": 'Emerald Avenue',
@@ -2011,7 +2013,7 @@ ROOMS = {
             "w": R_EASTERN_PARK_ENTRANCE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_PARK_ROAD_3118: {
         "name": 'Park Road',
@@ -2021,7 +2023,7 @@ ROOMS = {
             "s": R_PARK_ROAD_3135,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_EMERALD_AVENUE_3119: {
         "name": 'Emerald Avenue',
@@ -2032,7 +2034,7 @@ ROOMS = {
             "w": R_EMERALD_AVENUE_3133,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ROAD_CROSSING: {
         "name": 'Road Crossing',
@@ -2044,7 +2046,7 @@ ROOMS = {
             "w": R_PARK_ROAD_3135,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_EMERALD_AVENUE_3121: {
         "name": 'Emerald Avenue',
@@ -2054,7 +2056,7 @@ ROOMS = {
             "s": R_EMERALD_AVENUE_3125,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_PARK_ROAD_3122: {
         "name": 'Park Road',
@@ -2065,7 +2067,7 @@ ROOMS = {
             "s": R_PARK_ROAD_3126,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ELM_STREET: {
         "name": 'Elm Street',
@@ -2075,7 +2077,7 @@ ROOMS = {
             "w": R_PARK_ROAD_3122,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ELM_STREET_3124: {
         "name": 'Elm Street',
@@ -2086,7 +2088,7 @@ ROOMS = {
             "w": R_ELM_STREET,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_EMERALD_AVENUE_3125: {
         "name": 'Emerald Avenue',
@@ -2096,7 +2098,7 @@ ROOMS = {
             "s": R_ON_THE_CONCOURSE_3128,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_PARK_ROAD_3126: {
         "name": 'Park Road',
@@ -2106,7 +2108,7 @@ ROOMS = {
             "s": R_ON_THE_CONCOURSE_3129,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ON_THE_CONCOURSE: {
         "name": 'On the Concourse',
@@ -2116,7 +2118,7 @@ ROOMS = {
             "e": R_ON_THE_CONCOURSE_3128,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ON_THE_CONCOURSE_3128: {
         "name": 'On the Concourse',
@@ -2127,7 +2129,7 @@ ROOMS = {
             "w": R_ON_THE_CONCOURSE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ON_THE_CONCOURSE_3129: {
         "name": 'On the Concourse',
@@ -2138,7 +2140,7 @@ ROOMS = {
             "w": R_INSIDE_THE_SOUTH_GATE_OF_MIDGAARD,
         },
         "flags": {"dark": True, "law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ON_THE_CONCOURSE_3130: {
         "name": 'On the Concourse',
@@ -2148,7 +2150,7 @@ ROOMS = {
             "w": R_ON_THE_CONCOURSE_3129,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_PARK_ROAD_3131: {
         "name": 'Park Road',
@@ -2158,7 +2160,7 @@ ROOMS = {
             "s": R_PARK_ROAD,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_EMERALD_AVENUE_3132: {
         "name": 'Emerald Avenue',
@@ -2169,7 +2171,7 @@ ROOMS = {
             "s": R_EMERALD_AVENUE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_EMERALD_AVENUE_3133: {
         "name": 'Emerald Avenue',
@@ -2179,7 +2181,7 @@ ROOMS = {
             "s": R_ROAD_CROSSING,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_EMERALD_AVENUE_3134: {
         "name": 'Emerald Avenue',
@@ -2189,7 +2191,7 @@ ROOMS = {
             "w": R_EMERALD_AVENUE_3121,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_PARK_ROAD_3135: {
         "name": 'Park Road',
@@ -2199,7 +2201,7 @@ ROOMS = {
             "e": R_ROAD_CROSSING,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_PARK_ROAD_3136: {
         "name": 'Park Road',
@@ -2209,7 +2211,7 @@ ROOMS = {
             "w": R_ROAD_CROSSING,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_WAITING_ROOM: {
         "name": 'The Waiting Room',
@@ -2219,6 +2221,7 @@ ROOMS = {
             "w": R_EMERALD_AVENUE,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_MAYOR_S_OFFICE: {
         "name": "The Mayor's Office",
@@ -2227,6 +2230,7 @@ ROOMS = {
             "w": R_WAITING_ROOM,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_PENNY_LANE: {
         "name": 'Penny Lane',
@@ -2236,7 +2240,7 @@ ROOMS = {
             "w": R_EMERALD_AVENUE_3132,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_PENNY_LANE_3140: {
         "name": 'Penny Lane',
@@ -2247,7 +2251,7 @@ ROOMS = {
             "w": R_PENNY_LANE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_END_OF_PENNY_LANE: {
         "name": 'The end of Penny Lane',
@@ -2256,7 +2260,7 @@ ROOMS = {
             "s": R_PENNY_LANE_3140,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_CAPTAIN_S_OFFICE: {
         "name": "Captain's Office",
@@ -2266,6 +2270,7 @@ ROOMS = {
             "s": {"to": R_JAIL, "isdoor": True, "closed": True, "locked": True},
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_JAIL: {
         "name": 'The Jail',
@@ -2274,6 +2279,7 @@ ROOMS = {
             "n": {"to": R_CAPTAIN_S_OFFICE, "isdoor": True, "closed": True, "locked": True},
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_END_OF_ELM_STREET: {
         "name": 'The end of Elm Street',
@@ -2283,7 +2289,7 @@ ROOMS = {
             "s": R_ELM_STREET_3124,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_KATE_S_DINER: {
         "name": "Kate's Diner",
@@ -2294,6 +2300,7 @@ ROOMS = {
             "u": 1219,
         },
         "flags": {"indoors": True, "safe": True, "law": True},
+        "sector": 'inside',
     },
     R_MELANCHOLY_S_MAPS: {
         "name": "Melancholy's Maps",
@@ -2303,6 +2310,7 @@ ROOMS = {
             "s": R_EASTERN_END_OF_POOR_ALLEY,
         },
         "flags": {"no_mob": True, "law": True, "_unknown_bits": [1]},
+        "sector": 'inside',
     },
     R_MELANCHOLY_S_ROOM: {
         "name": "Melancholy's Room",
@@ -2312,6 +2320,7 @@ ROOMS = {
             "u": 1219,
         },
         "flags": {"no_mob": True, "private": True, "law": True, "_unknown_bits": [1]},
+        "sector": 'inside',
     },
     R_TEMPLE_OF_STUPID: {
         "name": 'Temple Of Stupid',
@@ -2321,6 +2330,7 @@ ROOMS = {
             "u": 1219,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_UNDER_THE_BRIDGE: {
         "name": 'Under the Bridge',
@@ -2329,7 +2339,7 @@ ROOMS = {
             "e": R_ON_THE_RIVER,
         },
         "flags": {"law": True},
-        "sector": 7,
+        "sector": 'noswim',
     },
     R_ON_THE_RIVER: {
         "name": 'On the River',
@@ -2339,7 +2349,7 @@ ROOMS = {
             "w": R_UNDER_THE_BRIDGE,
         },
         "flags": {"law": True},
-        "sector": 7,
+        "sector": 'noswim',
     },
     R_ON_THE_RIVER_3202: {
         "name": 'On the River',
@@ -2349,7 +2359,7 @@ ROOMS = {
             "w": R_ON_THE_RIVER,
         },
         "flags": {"law": True},
-        "sector": 7,
+        "sector": 'noswim',
     },
     R_ON_THE_RIVER_3203: {
         "name": 'On the River',
@@ -2361,7 +2371,7 @@ ROOMS = {
             "w": R_ON_THE_RIVER_3202,
         },
         "flags": {"no_mob": True, "law": True},
-        "sector": 7,
+        "sector": 'noswim',
     },
     R_ON_THE_RIVER_3204: {
         "name": 'On the River',
@@ -2371,7 +2381,7 @@ ROOMS = {
             "w": R_ON_THE_RIVER_3203,
         },
         "flags": {"law": True},
-        "sector": 7,
+        "sector": 'noswim',
     },
     R_ON_THE_RIVER_3205: {
         "name": 'On the River',
@@ -2380,7 +2390,7 @@ ROOMS = {
             "w": R_ON_THE_RIVER_3204,
         },
         "flags": {"law": True},
-        "sector": 7,
+        "sector": 'noswim',
     },
     R_WALL_ROAD: {
         "name": 'Wall Road',
@@ -2390,7 +2400,7 @@ ROOMS = {
             "s": R_WALL_ROAD_3251,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_WALL_ROAD_3251: {
         "name": 'Wall Road',
@@ -2401,7 +2411,7 @@ ROOMS = {
             "w": R_EASTERN_END_OF_ALLEY,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_WALL_ROAD_3252: {
         "name": 'Wall Road',
@@ -2411,7 +2421,7 @@ ROOMS = {
             "s": R_ON_THE_BRIDGE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ON_THE_BRIDGE: {
         "name": 'On the Bridge',
@@ -2421,7 +2431,7 @@ ROOMS = {
             "s": R_NORTHEAST_END_OF_CONCOURSE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_SOUTH_BRIDGE: {
         "name": 'The South Bridge',
@@ -2431,7 +2441,7 @@ ROOMS = {
             "s": R_PROMENADE_3102,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_INSIDE_THE_SOUTH_GATE_OF_MIDGAARD: {
         "name": 'Inside the South Gate of Midgaard',
@@ -2442,7 +2452,7 @@ ROOMS = {
             "w": R_ON_THE_CONCOURSE_3128,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_OUTSIDE_THE_SOUTH_GATE_OF_MIDGAARD: {
         "name": 'Outside the South Gate of Midgaard',
@@ -2451,7 +2461,7 @@ ROOMS = {
             "n": R_INSIDE_THE_SOUTH_GATE_OF_MIDGAARD,
         },
         "flags": {"law": True},
-        "sector": 3,
+        "sector": 'forest',
     },
     R_WALL_ROAD_3257: {
         "name": 'Wall Road',
@@ -2461,7 +2471,7 @@ ROOMS = {
             "s": R_INSIDE_THE_WEST_GATE_OF_MIDGAARD,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_WALL_ROAD_3258: {
         "name": 'Wall Road',
@@ -2472,7 +2482,7 @@ ROOMS = {
             "s": R_WALL_ROAD_3257,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_WALL_ROAD_3259: {
         "name": 'Wall Road',
@@ -2482,7 +2492,7 @@ ROOMS = {
             "s": R_WALL_ROAD_3258,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_NORTHWEST_CORNER: {
         "name": 'The Northwest Corner',
@@ -2492,7 +2502,7 @@ ROOMS = {
             "s": R_WALL_ROAD_3259,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_WALL_ROAD_3261: {
         "name": 'Wall Road',
@@ -2502,7 +2512,7 @@ ROOMS = {
             "w": R_NORTHWEST_CORNER,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_INSIDE_THE_NORTH_GATE_OF_MIDGAARD: {
         "name": 'Inside the North Gate of Midgaard',
@@ -2514,7 +2524,7 @@ ROOMS = {
             "w": R_WALL_ROAD_3261,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_WALL_ROAD_3263: {
         "name": 'Wall Road',
@@ -2524,7 +2534,7 @@ ROOMS = {
             "w": R_INSIDE_THE_NORTH_GATE_OF_MIDGAARD,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_NORTHEAST_CORNER: {
         "name": 'The Northeast Corner',
@@ -2534,7 +2544,7 @@ ROOMS = {
             "w": R_WALL_ROAD_3263,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_WALL_ROAD_3265: {
         "name": 'Wall Road',
@@ -2544,7 +2554,7 @@ ROOMS = {
             "s": R_WALL_ROAD_3266,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_WALL_ROAD_3266: {
         "name": 'Wall Road',
@@ -2555,7 +2565,7 @@ ROOMS = {
             "w": R_CLAN_ROAD_3316,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_WALL_ROAD_3267: {
         "name": 'Wall Road',
@@ -2565,7 +2575,7 @@ ROOMS = {
             "s": R_INSIDE_THE_EAST_GATE_OF_MIDGAARD,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_OUTSIDE_THE_NORTH_GATE_OF_MIDGAARD: {
         "name": 'Outside the North Gate of Midgaard',
@@ -2574,7 +2584,7 @@ ROOMS = {
             "s": R_INSIDE_THE_NORTH_GATE_OF_MIDGAARD,
         },
         "flags": {"law": True},
-        "sector": 2,
+        "sector": 'field',
     },
     R_ON_THE_CONCOURSE_3270: {
         "name": 'On the Concourse',
@@ -2584,7 +2594,7 @@ ROOMS = {
             "s": R_ON_THE_CONCOURSE_NEAR_THE_PARK,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ON_THE_CONCOURSE_NEAR_THE_PARK: {
         "name": 'On the Concourse near the park',
@@ -2594,7 +2604,7 @@ ROOMS = {
             "s": R_ON_THE_CONCOURSE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ON_THE_CONCOURSE_AT_PENNY_LANE: {
         "name": 'On the Concourse at Penny Lane',
@@ -2605,7 +2615,7 @@ ROOMS = {
             "w": R_PENNY_LANE_3140,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ON_THE_CONCOURSE_AT_ELM_STREET: {
         "name": 'On the Concourse at Elm Street',
@@ -2616,7 +2626,7 @@ ROOMS = {
             "w": R_ELM_STREET_3124,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_CLAN_ROAD: {
         "name": 'Clan Road',
@@ -2626,7 +2636,7 @@ ROOMS = {
             "w": R_WALL_ROAD_3258,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_CLAN_ROAD_3302: {
         "name": 'Clan Road',
@@ -2637,7 +2647,7 @@ ROOMS = {
             "w": R_CLAN_ROAD,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_CLAN_ROAD_3303: {
         "name": 'Clan Road',
@@ -2648,7 +2658,7 @@ ROOMS = {
             "w": R_CLAN_ROAD_3302,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_CLAN_ROAD_3314: {
         "name": 'Clan Road',
@@ -2660,7 +2670,7 @@ ROOMS = {
             "w": R_CLAN_ROAD_3303,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_CLAN_ROAD_3315: {
         "name": 'Clan Road',
@@ -2672,7 +2682,7 @@ ROOMS = {
             "w": R_CLAN_ROAD_3314,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_CLAN_ROAD_3316: {
         "name": 'Clan Road',
@@ -2682,7 +2692,7 @@ ROOMS = {
             "w": R_CLAN_ROAD_3315,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_MONEY_CHANGER_S_ROOM: {
         "name": "A Money Changer's Room",
@@ -2691,6 +2701,7 @@ ROOMS = {
             "n": R_CLAN_ROAD_3302,
         },
         "flags": {"indoors": True, "bank": True, "law": True},
+        "sector": 'inside',
     },
     R_GREBE_S_TAVERN: {
         "name": "Grebe's Tavern",
@@ -2699,6 +2710,7 @@ ROOMS = {
             "s": R_DARK_ALLEY,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_ANDY_S_PUB: {
         "name": "Andy's Pub",
@@ -2708,6 +2720,7 @@ ROOMS = {
             "s": R_BAR,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_ROOM_IN_THE_PUB: {
         "name": 'A Room in the Pub',
@@ -2719,6 +2732,7 @@ ROOMS = {
             "u": R_INN,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_BAR: {
         "name": 'The Bar',
@@ -2727,6 +2741,7 @@ ROOMS = {
             "n": R_ANDY_S_PUB,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_BAR_3358: {
         "name": 'The Bar',
@@ -2735,6 +2750,7 @@ ROOMS = {
             "n": R_ROOM_IN_THE_PUB,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_INN: {
         "name": 'The Inn',
@@ -2743,6 +2759,7 @@ ROOMS = {
             "d": R_ROOM_IN_THE_PUB,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_CLAN_ROAD_3360: {
         "name": 'Clan Road',
@@ -2752,7 +2769,7 @@ ROOMS = {
             "s": R_CLAN_ROAD_3314,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_DONATION_ROOM: {
         "name": 'The Donation Room',
@@ -2763,6 +2780,7 @@ ROOMS = {
             "w": R_ARMOR_DONATION_ROOM,
         },
         "flags": {"law": True, "save_objs": True},
+        "sector": 'inside',
     },
     R_ARMOR_DONATION_ROOM: {
         "name": 'Armor Donation Room',
@@ -2771,6 +2789,7 @@ ROOMS = {
             "e": R_DONATION_ROOM,
         },
         "flags": {"law": True, "save_objs": True},
+        "sector": 'inside',
     },
     R_WEAPONS_DONATION_ROOM: {
         "name": 'Weapons Donation Room',
@@ -2779,6 +2798,7 @@ ROOMS = {
             "w": R_DONATION_ROOM,
         },
         "flags": {"law": True, "save_objs": True},
+        "sector": 'inside',
     },
     R_TEMPLE_OF_MOTA: {
         "name": 'The Temple Of Mota',
@@ -2791,6 +2811,7 @@ ROOMS = {
             "u": 3700,
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_CLERIC_S_INNER_SANCTUM: {
         "name": "Cleric's Inner Sanctum",
@@ -2799,6 +2820,7 @@ ROOMS = {
             "e": R_CLERIC_S_BAR,
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_CLERIC_S_BAR: {
         "name": "Cleric's Bar",
@@ -2808,6 +2830,7 @@ ROOMS = {
             "w": R_CLERIC_S_INNER_SANCTUM,
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_ENTRANCE_TO_CLERIC_S_GUILD: {
         "name": "Entrance to Cleric's Guild",
@@ -2817,6 +2840,7 @@ ROOMS = {
             "e": R_TEMPLE_SQUARE,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_TEMPLE_SQUARE: {
         "name": 'The Temple Square',
@@ -2829,7 +2853,7 @@ ROOMS = {
             "u": R_IN_THE_AIR,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ENTRANCE_TO_THE_GRUNTING_BOAR_INN: {
         "name": 'Entrance to the Grunting Boar Inn',
@@ -2840,6 +2864,7 @@ ROOMS = {
             "u": R_DEFUNCT_RECEPTION,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_GRUNTING_BOAR: {
         "name": 'The Grunting Boar',
@@ -2848,6 +2873,7 @@ ROOMS = {
             "w": R_ENTRANCE_TO_THE_GRUNTING_BOAR_INN,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_DEFUNCT_RECEPTION: {
         "name": 'The Defunct Reception',
@@ -2856,6 +2882,7 @@ ROOMS = {
             "d": R_ENTRANCE_TO_THE_GRUNTING_BOAR_INN,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_BAKERY: {
         "name": 'The Bakery',
@@ -2864,6 +2891,7 @@ ROOMS = {
             "s": R_MAIN_STREET_3013,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_GENERAL_STORE: {
         "name": 'The General Store',
@@ -2872,6 +2900,7 @@ ROOMS = {
             "s": R_MAIN_STREET_3015,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_WEAPON_SHOP: {
         "name": 'The Weapon Shop',
@@ -2880,6 +2909,7 @@ ROOMS = {
             "s": R_MAIN_STREET_3016,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_MAIN_STREET: {
         "name": 'Main Street',
@@ -2891,7 +2921,7 @@ ROOMS = {
             "w": R_INSIDE_THE_WEST_GATE_OF_MIDGAARD,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_MAIN_STREET_3013: {
         "name": 'Main Street',
@@ -2903,7 +2933,7 @@ ROOMS = {
             "w": R_MAIN_STREET,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_MARKET_SQUARE: {
         "name": 'Market Square',
@@ -2915,7 +2945,7 @@ ROOMS = {
             "w": R_MAIN_STREET_3013,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_MAIN_STREET_3015: {
         "name": 'The Main Street',
@@ -2927,7 +2957,7 @@ ROOMS = {
             "w": R_MARKET_SQUARE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_MAIN_STREET_3016: {
         "name": 'The Main Street',
@@ -2939,7 +2969,7 @@ ROOMS = {
             "w": R_MAIN_STREET_3015,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ENTRANCE_TO_MAGE_S_GUILD: {
         "name": "Entrance to Mage's Guild",
@@ -2949,6 +2979,7 @@ ROOMS = {
             "s": R_MAGE_S_BAR,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_MAGE_S_BAR: {
         "name": "Mage's Bar",
@@ -2958,6 +2989,7 @@ ROOMS = {
             "e": R_MAGE_S_LABORATORY,
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_MAGE_S_LABORATORY: {
         "name": "Mage's Laboratory",
@@ -2966,6 +2998,7 @@ ROOMS = {
             "w": R_MAGE_S_BAR,
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_ARMOURY: {
         "name": 'The Armoury',
@@ -2974,6 +3007,7 @@ ROOMS = {
             "n": R_MAIN_STREET_3013,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_ENTRANCE_HALL_TO_THE_GUILD_OF_SWORDSMEN: {
         "name": 'Entrance Hall to the Guild of Swordsmen',
@@ -2983,6 +3017,7 @@ ROOMS = {
             "e": R_BAR_OF_SWORDSMEN,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_BAR_OF_SWORDSMEN: {
         "name": 'The Bar of Swordsmen',
@@ -2992,6 +3027,7 @@ ROOMS = {
             "w": R_ENTRANCE_HALL_TO_THE_GUILD_OF_SWORDSMEN,
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_TOURNAMENT_AND_PRACTICE_YARD: {
         "name": 'The Tournament and Practice Yard',
@@ -3000,6 +3036,7 @@ ROOMS = {
             "n": R_BAR_OF_SWORDSMEN,
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_EASTERN_END_OF_POOR_ALLEY: {
         "name": 'Eastern End of Poor Alley',
@@ -3011,7 +3048,7 @@ ROOMS = {
             "w": R_POOR_ALLEY,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_COMMON_SQUARE: {
         "name": 'The Common Square',
@@ -3023,7 +3060,7 @@ ROOMS = {
             "w": R_EASTERN_END_OF_POOR_ALLEY,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_DARK_ALLEY: {
         "name": 'The Dark Alley',
@@ -3035,7 +3072,7 @@ ROOMS = {
             "w": R_COMMON_SQUARE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ENTRANCE_HALL_TO_THE_GUILD_OF_THIEVES: {
         "name": 'Entrance Hall to the Guild of Thieves',
@@ -3045,6 +3082,7 @@ ROOMS = {
             "e": R_THIEVES_BAR,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_THIEVES_BAR: {
         "name": 'The Thieves Bar',
@@ -3054,6 +3092,7 @@ ROOMS = {
             "w": R_ENTRANCE_HALL_TO_THE_GUILD_OF_THIEVES,
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_SECRET_YARD: {
         "name": 'The Secret Yard',
@@ -3062,6 +3101,7 @@ ROOMS = {
             "n": R_THIEVES_BAR,
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_DUMP: {
         "name": 'The Dump',
@@ -3071,7 +3111,7 @@ ROOMS = {
             "s": R_SOUTH_BRIDGE,
         },
         "flags": {"no_mob": True, "law": True},
-        "sector": 2,
+        "sector": 'field',
     },
     R_PET_SHOP: {
         "name": 'The Pet Shop',
@@ -3080,6 +3120,7 @@ ROOMS = {
             "s": R_ALLEY_AT_LEVEE,
         },
         "flags": {"indoors": True, "pet_shop": True, "law": True},
+        "sector": 'inside',
     },
     R_PET_SHOP_STORE: {
         "name": 'Pet Shop Store',
@@ -3087,6 +3128,7 @@ ROOMS = {
         "exits": {
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_MAGIC_SHOP: {
         "name": 'The Magic Shop',
@@ -3095,6 +3137,7 @@ ROOMS = {
             "s": R_MAIN_STREET,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_JEWELLER_S_SHOP: {
         "name": "The Jeweller's Shop",
@@ -3103,6 +3146,7 @@ ROOMS = {
             "n": R_MAIN_STREET_3015,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_LEATHER_SHOP: {
         "name": 'The Leather Shop',
@@ -3111,6 +3155,7 @@ ROOMS = {
             "s": R_POOR_ALLEY,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_INSIDE_THE_WEST_GATE_OF_MIDGAARD: {
         "name": 'Inside the West Gate of Midgaard',
@@ -3122,7 +3167,7 @@ ROOMS = {
             "w": R_OUTSIDE_THE_WEST_GATE_OF_MIDGAARD,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_INSIDE_THE_EAST_GATE_OF_MIDGAARD: {
         "name": 'Inside the East Gate of Midgaard',
@@ -3134,7 +3179,7 @@ ROOMS = {
             "w": R_MAIN_STREET_3016,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_WALL_ROAD_3042: {
         "name": 'Wall Road',
@@ -3144,7 +3189,7 @@ ROOMS = {
             "s": R_WALL_ROAD_3043,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_WALL_ROAD_3043: {
         "name": 'Wall Road',
@@ -3155,7 +3200,7 @@ ROOMS = {
             "s": R_WALL_ROAD_3047,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_POOR_ALLEY: {
         "name": 'Poor Alley',
@@ -3167,7 +3212,7 @@ ROOMS = {
             "w": R_WALL_ROAD_3043,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ALLEY_AT_LEVEE: {
         "name": 'Alley at Levee',
@@ -3179,7 +3224,7 @@ ROOMS = {
             "w": R_DARK_ALLEY,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_EASTERN_END_OF_ALLEY: {
         "name": 'Eastern end of Alley',
@@ -3191,7 +3236,7 @@ ROOMS = {
             "w": R_ALLEY_AT_LEVEE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_WALL_ROAD_3047: {
         "name": 'Wall Road',
@@ -3201,7 +3246,7 @@ ROOMS = {
             "s": R_ON_THE_BRIDGE_3051,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_GRUBBY_INN: {
         "name": 'Grubby Inn',
@@ -3210,6 +3255,7 @@ ROOMS = {
             "n": R_EASTERN_END_OF_POOR_ALLEY,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_LEVEE: {
         "name": 'Levee',
@@ -3219,7 +3265,7 @@ ROOMS = {
             "s": R_ON_THE_RIVER_3203,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_ABANDONED_WAREHOUSE: {
         "name": 'Abandoned Warehouse',
@@ -3228,6 +3274,7 @@ ROOMS = {
             "n": R_EASTERN_END_OF_ALLEY,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_ON_THE_BRIDGE_3051: {
         "name": 'On the Bridge',
@@ -3237,7 +3284,7 @@ ROOMS = {
             "s": R_NORTHWEST_END_OF_CONCOURSE,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_OUTSIDE_THE_WEST_GATE_OF_MIDGAARD: {
         "name": 'Outside the West Gate of Midgaard',
@@ -3246,7 +3293,7 @@ ROOMS = {
             "e": R_INSIDE_THE_WEST_GATE_OF_MIDGAARD,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_OUTSIDE_THE_EAST_GATE_OF_MIDGAARD: {
         "name": 'Outside the East Gate of Midgaard',
@@ -3255,7 +3302,7 @@ ROOMS = {
             "w": R_INSIDE_THE_EAST_GATE_OF_MIDGAARD,
         },
         "flags": {"law": True},
-        "sector": 1,
+        "sector": 'city',
     },
     R_BY_THE_TEMPLE_ALTAR: {
         "name": 'By the Temple Altar',
@@ -3267,6 +3314,7 @@ ROOMS = {
             "d": 3,
         },
         "flags": {"indoors": True, "safe": True, "law": True},
+        "sector": 'inside',
     },
     R_FOUNTAIN_OF_YOUTH_APOTHECARY: {
         "name": 'The Fountain of Youth Apothecary',
@@ -3275,6 +3323,7 @@ ROOMS = {
             "s": R_EASTERN_END_OF_ALLEY,
         },
         "flags": {"indoors": True, "law": True},
+        "sector": 'inside',
     },
     R_IN_THE_AIR: {
         "name": 'In the air...',
@@ -3284,7 +3333,7 @@ ROOMS = {
             "d": R_TEMPLE_SQUARE,
         },
         "flags": {"no_mob": True, "law": True},
-        "sector": 9,
+        "sector": 'air',
     },
 }
 

@@ -7,7 +7,7 @@ from picker import pick_from
 from player import get_hitroll, get_damroll, get_AC, get_curr_stat, get_obj_list, get_char_room, save_char, is_name, PLR_AUTOMAP, PLR_DEFAULTS
 from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick
 from automap import build_compact_lines, build_full_lines, COMPACT_W
-from config import DEFAULT_MACROS, TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES, INT_APP_LEARN, TRAIN_STAT_CAP
+from config import DEFAULT_MACROS, TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES, INT_APP_LEARN, TRAIN_STAT_CAP, SECTOR_COLORS
 
 from urandom import randint
 
@@ -124,19 +124,19 @@ def do_look(tr, player, args, room_state, mob_instances):
 
     tr.print("{Y" + room["name"] + "{x")
 
-    text = []
-    text.extend(_wrap_paragraphs(room["desc"], text_w))
-    
+    color = SECTOR_COLORS.get(room.get("sector", "inside"), "")
+    desc_lines = _wrap_paragraphs(room["desc"], text_w)
+
     if automap_on:
         map_lines = build_compact_lines(player, ROOMS)
-        n = max(len(map_lines), len(text))
+        n = max(len(map_lines), len(desc_lines))
         for i in range(n):
             ml = map_lines[i] if i < len(map_lines) else ' ' * COMPACT_W
-            tl = text[i] if i < len(text) else ''
-            tr.print(ml + ' ' + tl)
+            tl = desc_lines[i] if i < len(desc_lines) else ''
+            tr.print(ml + ' ' + color + tl)
     else:
-        for tl in text:
-            tr.print(tl)
+        for tl in desc_lines:
+            tr.print(color + tl)
 
     exits = " ".join(
         EXIT_NAMES.get(d, d) for d in EXIT_ORDER
@@ -679,6 +679,13 @@ def do_flee(tr, player, args, room_state, mob_instances):
 
 
 def do_map(tr, player, args, room_state, mob_instances):
+    """Print a full-size automap of rooms reachable from the current room (cf. 1stMud do_map in automap.c).
+
+    Args:
+        tr: Terminal renderer.
+        player (dict): Player state dict.
+    """
+    # [TODO blind] 1stMud checks check_blind(ch) here and refuses if AFF_BLIND — add when blindness is implemented
     for line in build_full_lines(player, ROOMS):
         tr.print(line)
 

@@ -23,9 +23,29 @@ AUTOSAVE_TICKS   = 4                          # autosave every N world ticks
 DEATH_MSG_DELAY  = 1                          # seconds between death flavour lines
 
 # ── Automap ───────────────────────────────────────────────────────────────────────────
-MAP_HALF_W    = 5   # grid half-width  in room-steps (full grid = 2*W+1 = 13 cols)
-MAP_HALF_H    = 6   # grid half-height in room-steps (full grid = 2*H+1 =  9 rows)
-MAP_MAX_DEPTH = 2   # recursion depth for exit tracing
+MAP_HALF_W      = 5   # compact automap half-width  (full grid = 2*W+1 = 11 cols)
+MAP_HALF_H      = 6   # compact automap half-height (full grid = 2*H+1 = 13 rows)
+FULL_MAP_HALF_W = 9   # 'map' command half-width    (full grid = 2*W+1 = 11 cols)
+FULL_MAP_HALF_H = 8   # 'map' command half-height   (full grid = 2*H+1 = 15 rows, 17 total w/ borders)
+COMPACT_MAP_DEPTH = 2  # exit-tracing hops for compact map (cf. 1stMud fSmall: depth starts at 2)
+FULL_MAP_DEPTH    = 4  # exit-tracing hops for full map   (cf. 1stMud !fSmall: depth starts at 0)
+
+# Sector display (cf. 1stMud sector_color_table in automap.c; jungle has no entry → "")
+# game code uses room.get("sector", "inside") so hand-authored rooms default to "inside"
+SECTOR_COLORS = {
+    "inside":   "{w",  "city":     "{W",  "field":    "{G",  "forest": "{g",
+    "hills":    "{y",  "mountain": "{w",  "swim":     "{B",  "noswim": "{b",
+    "ice":      "{C",  "air":      "{C",  "desert":   "{y",  "road":   "{m",
+    "path":     "{M",  "swamp":    "{G",  "jungle":   "",    "cave":   "{w",
+    "none":     "{w",
+}
+SECTOR_SYMBOLS = {
+    "inside":   'o',   "city":     'o',   "field":    '*',   "forest": '*',
+    "hills":    '!',   "mountain": '@',   "swim":     '=',   "noswim": '=',
+    "ice":      'O',   "air":      '~',   "desert":   '+',   "road":   ':',
+    "path":     ':',   "swamp":    '&',   "jungle":   '?',   "cave":   '#',
+    "none":     '?',
+}
 
 # ── Persistence ───────────────────────────────────────────────────────────────────────
 SAVE_VAR = "primesud_save"

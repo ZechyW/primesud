@@ -184,7 +184,7 @@ character (the next `#` or section header):
 | ------ | ----------------------------- | -------------------------------------------------------------------------- |
 | `F`    | `field_name  flag`            | Remove bits from a field (`act` `aff` `off` `imm` `res` `vul` `for` `par`) |
 | `M`    | `trigger  prog_vnum  phrase~` | Attach a MobProg                                                           |
-| `S`    | `kills  deaths`               | Persistent kill/death counters                                             |
+| `S`    | `kills  deaths`               | Persistent kill/death counters: `kills` = kills scored by this mob prototype (players or other mobs killed); `deaths` = times this prototype has been killed.  Written back to the `.are` file on shutdown so stats survive server restarts.  Optional — absent if both are zero.  Source: `db2.c:load_mobiles`, `fight.c:update_death`. |
 
 #### Annotated example — #3702 monster
 

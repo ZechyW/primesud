@@ -497,7 +497,7 @@ ROOMS = {
         "exits": {
             "d": {"to": R_ENTRANCE_CHAMBER_TO_THE_GRAND_HALL_OF_KINGS, "isdoor": True, "closed": True, "locked": True, "pickproof": True},
         },
-        "sector": 1,
+        "sector": 'city',
     },
     R_STAIRWELL_INTO_DARKNESS: {
         "name": 'Stairwell into Darkness',
@@ -507,6 +507,7 @@ ROOMS = {
             "d": R_ENTRANCE_TO_THE_FORBIDDEN_CATACOMBS,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_ACOLYTE_S_BEDROOM: {
         "name": "The Acolyte's Bedroom",
@@ -514,6 +515,7 @@ ROOMS = {
         "exits": {
         },
         "flags": {"dark": True, "no_mob": True, "indoors": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -523,6 +525,7 @@ ROOMS = {
             "s": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3411,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3411: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -531,6 +534,7 @@ ROOMS = {
             "n": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_GRAND_HALL_OF_KINGS: {
         "name": 'The Grand Hall of Kings',
@@ -540,6 +544,7 @@ ROOMS = {
             "s": {"to": R_SHRINE_OF_SHOHAN, "isdoor": True, "closed": True},
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_SHRINE_OF_SHOHAN: {
         "name": 'The Shrine of Shohan',
@@ -549,6 +554,7 @@ ROOMS = {
             "s": R_TOMB_OF_SHOHAN,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_TOMB_OF_SHOHAN: {
         "name": 'The Tomb of Shohan',
@@ -558,6 +564,7 @@ ROOMS = {
             "e": R_TOMB_OF_CRISTIS,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3415: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -568,6 +575,7 @@ ROOMS = {
             "w": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_ENTRANCE_TO_THE_LOWER_CHAMBERS: {
         "name": 'Entrance to the Lower Chambers',
@@ -577,6 +585,7 @@ ROOMS = {
             "u": R_SHRINE_OF_CRISTIS,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_GRAND_HALL_OF_KINGS_3417: {
         "name": 'The Grand Hall of Kings',
@@ -586,6 +595,7 @@ ROOMS = {
             "w": R_GRAND_HALL_OF_KINGS,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_SHRINE_OF_CRISTIS: {
         "name": 'The Shrine of Cristis',
@@ -595,6 +605,7 @@ ROOMS = {
             "d": {"to": R_ENTRANCE_TO_THE_LOWER_CHAMBERS, "isdoor": True, "closed": True},
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_TOMB_OF_CRISTIS: {
         "name": 'The Tomb of Cristis',
@@ -604,6 +615,7 @@ ROOMS = {
             "w": R_TOMB_OF_SHOHAN,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3420: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -613,6 +625,7 @@ ROOMS = {
             "w": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3415,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_ENTRANCE_CHAMBER_TO_THE_GRAND_HALL_OF_KINGS: {
         "name": 'Entrance Chamber to the Grand Hall of Kings',
@@ -622,6 +635,7 @@ ROOMS = {
             "u": {"to": R_INSIDE_THE_CHAPEL, "isdoor": True, "closed": True, "locked": True, "pickproof": True},
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_GRAND_HALL_OF_KINGS_3422: {
         "name": 'The Grand Hall of Kings',
@@ -633,6 +647,7 @@ ROOMS = {
             "w": R_GRAND_HALL_OF_KINGS_3417,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_SHRINE_OF_CROTUS: {
         "name": 'The Shrine of Crotus',
@@ -642,6 +657,7 @@ ROOMS = {
             "s": R_TOMB_OF_CROTUS,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_TOMB_OF_CROTUS: {
         "name": 'The Tomb of Crotus',
@@ -651,6 +667,7 @@ ROOMS = {
             "e": R_TOMB_OF_MITNAR,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3425: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -660,6 +677,7 @@ ROOMS = {
             "w": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3420,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3426: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -669,6 +687,7 @@ ROOMS = {
             "e": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3430,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_GRAND_HALL_OF_KINGS_3427: {
         "name": 'The Grand Hall of Kings',
@@ -679,6 +698,7 @@ ROOMS = {
             "w": R_GRAND_HALL_OF_KINGS_3422,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_SHRINE_OF_MITNAR: {
         "name": 'The Shrine of Mitnar',
@@ -689,6 +709,7 @@ ROOMS = {
             "s": R_TOMB_OF_MITNAR,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_TOMB_OF_MITNAR: {
         "name": 'The Tomb of Mitnar',
@@ -698,6 +719,7 @@ ROOMS = {
             "w": R_TOMB_OF_CROTUS,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3430: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -708,6 +730,7 @@ ROOMS = {
             "w": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3426,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3431: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -717,6 +740,7 @@ ROOMS = {
             "e": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3436,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_GRAND_HALL_OF_KINGS_3432: {
         "name": 'The Grand Hall of Kings',
@@ -726,6 +750,7 @@ ROOMS = {
             "w": R_GRAND_HALL_OF_KINGS_3427,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_SHRINE_OF_FRATH: {
         "name": 'The Shrine of Frath',
@@ -735,6 +760,7 @@ ROOMS = {
             "w": R_SHRINE_OF_MITNAR,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_TOMB_OF_FRATH: {
         "name": 'The Tomb of Frath',
@@ -743,6 +769,7 @@ ROOMS = {
             "d": R_TOMB_OF_JUBAL,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3435: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -753,6 +780,7 @@ ROOMS = {
             "w": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3430,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3436: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -763,6 +791,7 @@ ROOMS = {
             "w": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3431,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_GRAND_HALL_OF_KINGS_3437: {
         "name": 'The Grand Hall of Kings',
@@ -772,6 +801,7 @@ ROOMS = {
             "w": R_GRAND_HALL_OF_KINGS_3432,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_SHRINE_OF_JUBAL: {
         "name": 'The Shrine of Jubal',
@@ -781,6 +811,7 @@ ROOMS = {
             "w": R_SHRINE_OF_FRATH,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_TOMB_OF_JUBAL: {
         "name": 'The Tomb of Jubal',
@@ -790,6 +821,7 @@ ROOMS = {
             "u": R_TOMB_OF_FRATH,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3440: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -800,6 +832,7 @@ ROOMS = {
             "w": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3435,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3441: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -810,6 +843,7 @@ ROOMS = {
             "w": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3436,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3442: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -819,6 +853,7 @@ ROOMS = {
             "s": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3443,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3443: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -828,6 +863,7 @@ ROOMS = {
             "s": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3444,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3444: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -837,6 +873,7 @@ ROOMS = {
             "e": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3449,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3445: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -846,6 +883,7 @@ ROOMS = {
             "w": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3440,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3446: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -856,6 +894,7 @@ ROOMS = {
             "w": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3441,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3447: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -866,6 +905,7 @@ ROOMS = {
             "w": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3442,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3448: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -874,6 +914,7 @@ ROOMS = {
             "n": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3447,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3449: {
         "name": 'The Lower Chambers and Tombs of the Undead',
@@ -883,6 +924,7 @@ ROOMS = {
             "w": R_LOWER_CHAMBERS_AND_TOMBS_OF_THE_UNDEAD_3444,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_ENTRANCE_TO_THE_FORBIDDEN_CATACOMBS: {
         "name": 'Entrance to the Forbidden Catacombs',
@@ -895,6 +937,7 @@ ROOMS = {
             "u": R_STAIRWELL_INTO_DARKNESS,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_CATACOMBS: {
         "name": 'The Catacombs',
@@ -904,6 +947,7 @@ ROOMS = {
             "s": R_ENTRANCE_TO_THE_FORBIDDEN_CATACOMBS,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_CATACOMBS_3452: {
         "name": 'The Catacombs',
@@ -913,6 +957,7 @@ ROOMS = {
             "w": R_ENTRANCE_TO_THE_FORBIDDEN_CATACOMBS,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_CATACOMBS_3453: {
         "name": 'The Catacombs',
@@ -921,6 +966,7 @@ ROOMS = {
             "n": R_ENTRANCE_TO_THE_FORBIDDEN_CATACOMBS,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_CATACOMBS_3454: {
         "name": 'The Catacombs',
@@ -929,6 +975,7 @@ ROOMS = {
             "e": R_ENTRANCE_TO_THE_FORBIDDEN_CATACOMBS,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_CATACOMBS_3455: {
         "name": 'The Catacombs',
@@ -938,6 +985,7 @@ ROOMS = {
             "w": R_CATACOMBS,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_CATACOMBS_3456: {
         "name": 'The Catacombs',
@@ -947,6 +995,7 @@ ROOMS = {
             "e": R_CATACOMBS_3457,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_CATACOMBS_3457: {
         "name": 'The Catacombs',
@@ -956,6 +1005,7 @@ ROOMS = {
             "w": R_CATACOMBS_3456,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_CATACOMBS_3458: {
         "name": 'The Catacombs',
@@ -966,6 +1016,7 @@ ROOMS = {
             "w": R_CATACOMBS_3459,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_CATACOMBS_3459: {
         "name": 'The Catacombs',
@@ -975,6 +1026,7 @@ ROOMS = {
             "w": R_DEN_OF_THE_VAMPIRE,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_DEN_OF_THE_VAMPIRE: {
         "name": 'Den of the Vampire',
@@ -984,6 +1036,7 @@ ROOMS = {
             "d": {"to": R_INSIDE_THE_COFFIN, "isdoor": True, "closed": True, "locked": True, "pickproof": True},
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_CATACOMBS_3461: {
         "name": 'The Catacombs',
@@ -993,6 +1046,7 @@ ROOMS = {
             "s": R_CATACOMBS_3452,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_CATACOMBS_3462: {
         "name": 'The Catacombs',
@@ -1002,6 +1056,7 @@ ROOMS = {
             "w": R_CATACOMBS_3461,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_CATACOMBS_3463: {
         "name": 'The Catacombs',
@@ -1011,6 +1066,7 @@ ROOMS = {
             "e": R_CATACOMBS_3464,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_CATACOMBS_3464: {
         "name": 'The Catacombs',
@@ -1021,6 +1077,7 @@ ROOMS = {
             "w": R_CATACOMBS_3463,
         },
         "flags": {"dark": True, "indoors": True, "no_recall": True},
+        "sector": 'inside',
     },
     R_GILDED_HALLWAY: {
         "name": 'The Gilded Hallway',
@@ -1030,6 +1087,7 @@ ROOMS = {
             "s": R_GILDED_HALLWAY_3466,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_GILDED_HALLWAY_3466: {
         "name": 'The Gilded Hallway',
@@ -1039,6 +1097,7 @@ ROOMS = {
             "s": R_GILDED_HALLWAY_3467,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_GILDED_HALLWAY_3467: {
         "name": 'The Gilded Hallway',
@@ -1048,6 +1107,7 @@ ROOMS = {
             "s": R_GILDED_HALLWAY_3468,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_GILDED_HALLWAY_3468: {
         "name": 'The Gilded Hallway',
@@ -1057,6 +1117,7 @@ ROOMS = {
             "s": R_GILDED_HALLWAY_3469,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_GILDED_HALLWAY_3469: {
         "name": 'The Gilded Hallway',
@@ -1065,6 +1126,7 @@ ROOMS = {
             "n": R_GILDED_HALLWAY_3468,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_SECRET_PASSAGEWAY: {
         "name": 'A Secret Passageway',
@@ -1073,6 +1135,7 @@ ROOMS = {
             "s": R_SECRET_PASSAGEWAY_3471,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_SECRET_PASSAGEWAY_3471: {
         "name": 'A Secret Passageway',
@@ -1081,6 +1144,7 @@ ROOMS = {
             "n": R_SECRET_PASSAGEWAY,
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
     R_SHORT_WAY_TO_HELL: {
         "name": 'The Short Way to Hell ...',
@@ -1088,6 +1152,7 @@ ROOMS = {
         "exits": {
         },
         "flags": {"no_mob": True, "indoors": True},
+        "sector": 'inside',
     },
     R_INSIDE_THE_COFFIN: {
         "name": 'Inside the coffin',
@@ -1096,6 +1161,7 @@ ROOMS = {
             "u": {"to": R_DEN_OF_THE_VAMPIRE, "isdoor": True, "closed": True, "locked": True},
         },
         "flags": {"dark": True, "indoors": True},
+        "sector": 'inside',
     },
 }
 

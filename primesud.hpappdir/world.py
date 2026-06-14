@@ -17,6 +17,12 @@ GSN_PARRY        = 4020
 GSN_RECALL       = 4030
 # fmt: on
 
+from area_limbo import (
+    ROOMS    as _limbo_rooms,
+    MOBILES  as _limbo_mobs,
+    OBJECTS  as _limbo_items,
+    RESETS   as _limbo_resets,
+)
 from area_school import (
     ROOMS    as _school_rooms,
     MOBILES  as _school_mobs,
@@ -29,24 +35,38 @@ from area_midgaard import (
     OBJECTS  as _midgaard_items,
     RESETS   as _midgaard_resets,
 )
+from area_quest import (
+    ROOMS    as _quest_rooms,
+    MOBILES  as _quest_mobs,
+    OBJECTS  as _quest_items,
+    RESETS   as _quest_resets,
+)
 
 # Tag every room with its area name (cf. room->area pointer in 1stMud db.c).
 # world.py is the authority — area modules carry no tag of their own.
 ROOMS = {}
+for _vnum, _room in _limbo_rooms.items():
+    _room["area"] = "limbo"
+    ROOMS[_vnum] = _room
 for _vnum, _room in _school_rooms.items():
     _room["area"] = "mud_school"
     ROOMS[_vnum] = _room
 for _vnum, _room in _midgaard_rooms.items():
     _room["area"] = "midgaard"
     ROOMS[_vnum] = _room
+for _vnum, _room in _quest_rooms.items():
+    _room["area"] = "quest"
+    ROOMS[_vnum] = _room
 
-MOB_TEMPLATES = {}; MOB_TEMPLATES.update(_school_mobs);  MOB_TEMPLATES.update(_midgaard_mobs)
-ITEM_TEMPLATES = {}; ITEM_TEMPLATES.update(_school_items); ITEM_TEMPLATES.update(_midgaard_items)
-RESETS          = _school_resets + _midgaard_resets
+MOB_TEMPLATES = {}; MOB_TEMPLATES.update(_limbo_mobs);   MOB_TEMPLATES.update(_school_mobs);  MOB_TEMPLATES.update(_midgaard_mobs);  MOB_TEMPLATES.update(_quest_mobs)
+ITEM_TEMPLATES = {}; ITEM_TEMPLATES.update(_limbo_items); ITEM_TEMPLATES.update(_school_items); ITEM_TEMPLATES.update(_midgaard_items); ITEM_TEMPLATES.update(_quest_items)
+RESETS          = _limbo_resets + _school_resets + _midgaard_resets + _quest_resets
 
 AREA_DEFS = (
+    {"tag": "limbo",     "resets": _limbo_resets},
     {"tag": "mud_school", "resets": _school_resets},
     {"tag": "midgaard",   "resets": _midgaard_resets},
+    {"tag": "quest",      "resets": _quest_resets},
 )
 
 # ── Skills (cf. 1stMud skill_table; ordered list for prefix-match tiebreaking) ─
