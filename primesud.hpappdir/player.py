@@ -1,5 +1,4 @@
-from hpprime import eval as ppleval, keyboard
-from cas import get_key
+from hpprime import eval as ppleval
 from urandom import randint
 
 from config import (
@@ -689,79 +688,3 @@ def load_char(player, room_state, mob_instances, area_states=None, macros=None):
         room_state[inst["room"]]["mobs"].append(mob_id)
 
     return True
-
-
-# ── Input utilities ───────────────────────────────────────────────────────────
-
-def _poll_char(tr, key_commands=None):
-    """Non-blocking: return the next char if a new key was pressed, else None."""
-    cur = keyboard()
-    changed = cur ^ tr.last_keyboard_state
-    if not changed:
-        return None
-    tr.last_keyboard_state = cur
-    for bit in range(52):
-        mask = 1 << bit
-        if not (changed & mask):
-            continue
-        if cur & mask:  # key pressed
-            get_key()
-            if bit == 36:  # Alpha
-                tr.alpha_hold = True
-                if tr.alpha_lock:
-                    if tr.is_shift:
-                        tr.shift_lock = not tr.shift_lock
-                    else:
-                        tr.alpha_lock = tr.is_alpha = False
-                        tr.shift_lock = False
-                    tr.is_shift = False
-                elif tr.is_alpha:
-                    if tr.is_shift:
-                        if tr.alpha_lock:
-                            tr.shift_lock = not tr.shift_lock
-                        else:
-                            tr.alpha_lock = True
-                        tr.is_shift = False
-                    else:
-                        tr.alpha_lock = True
-                else:
-                    tr.is_alpha = True
-                tr._refresh_indicators()
-            elif bit == 41:  # Shift
-                tr.shift_hold = True
-                if tr.is_shift:
-                    tr.is_shift = tr.shift_lock if not tr.is_shift else False
-                else:
-                    tr.is_shift = True
-                tr._refresh_indicators()
-            else:
-                if key_commands and bit in key_commands:
-                    cmd, auto_submit = key_commands[bit]
-                    return (cmd, auto_submit)
-                if tr.shift_hold:
-                    tr.is_shift = True
-                if tr.alpha_hold:
-                    tr.is_alpha = True
-                mod_idx = ((tr.is_shift ^ tr.shift_lock) << 1) | (tr.is_alpha | tr.alpha_lock)
-                char = tr.key_map.get(bit, [None, None, None, None])[mod_idx]
-                if not tr.alpha_lock:
-                    tr.is_alpha = False
-                if tr.is_shift:
-                    tr.is_shift = False
-                tr._refresh_indicators()
-                return (char, None)
-        else:  # key released
-            if bit == 36:
-                tr.alpha_hold = False
-                tr._refresh_indicators()
-            elif bit == 41:
-                tr.shift_hold = False
-                tr._refresh_indicators()
-    return None
-
-
-def _resync_keyboard(tr):
-    """Reset tr keyboard state after a blocking input section."""
-    tr.last_keyboard_state = keyboard()
-    tr.is_alpha = tr.is_shift = tr.alpha_hold = tr.shift_hold = tr.symb_hold = False
-    tr._refresh_indicators()

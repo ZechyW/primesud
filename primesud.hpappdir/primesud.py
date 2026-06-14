@@ -6,7 +6,7 @@
 # Based on Merc 2.1 (c) 1992-1993 Chastain, Quan, Tse
 # Based on DikuMud (c) 1990-1991 Hammer, Seifert, Storfeldt, Madsen, Nyboe
 
-from tml_sb import tml_sb as tml, SB_UP as _SB_UP, SB_DN as _SB_DN
+from tml_prime import tml_prime as tml
 from hpprime import dimgrob, eval as ppleval, getpix, pixon, grobw, grobh, strblit2
 
 from urandom import randint
@@ -26,8 +26,6 @@ from player import (
     mobile_update,
     tick_update,
     show_prompt,
-    _poll_char,
-    _resync_keyboard,
     save_char as _save_char,
     load_char as _load_char,
 )
@@ -310,14 +308,14 @@ class Game:
         now        = int(ppleval("Ticks"))
         next_pulse = now + MS_PER_PULSE
 
-        _resync_keyboard(tr)
+        tr.resync_keyboard()
         show_prompt(tr, player, self.input_buf)
         do_look(tr, player, [], room_state, mob_instances)
 
 
 
         while True:
-            result = _poll_char(tr, _KEY_COMMANDS)
+            result = tr.poll_char(_KEY_COMMANDS)
             if result is not None:
                 char, auto_submit = result
                 if char == "\n":
@@ -338,12 +336,6 @@ class Game:
                 elif auto_submit is False:  # [PRIMESUD] hardware key — load into buffer
                     self.input_buf = char
                     show_prompt(tr, player, self.input_buf)
-                elif char == _SB_UP:  # [PRIMESUD] enter scrollback
-                    if tr._hist_count > 0:
-                        tr._scrollback()
-                        _resync_keyboard(tr)
-                elif char == _SB_DN:  # [PRIMESUD] scroll-down key outside scrollback — ignore
-                    pass
                 elif char is not None and char not in ("\L", "\R", "\SR"):
                     subst = _MACRO_SUBST.get(char)
                     if subst is not None and not self.input_buf:

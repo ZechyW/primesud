@@ -1,19 +1,16 @@
-from hpprime import dimgrob, strblit2
+from hpprime import dimgrob, keyboard, strblit2
+from cas import get_key
 from tml import tml
 
-# Sentinels injected into the key map for scrollback navigation.
-# Shift+- (key 45, index 2) was None;  shift++ (key 50, index 2) was '\\'.
 _SB_UP = '\x10'   # shift+- : enter scrollback / scroll up further
 _SB_DN = '\x11'   # shift++ : scroll down (within scrollback)
 
-# Public aliases — import these in callers that bypass read_key() (e.g. _poll_char)
-SB_UP = _SB_UP
-SB_DN = _SB_DN
 
-class tml_sb(tml):
-    """tml subclass adding a ring-buffer scrollback history.
+class tml_prime(tml):
+    """tml subclass with HP Prime-specific enhancements: scrollback history and
+    non-blocking poll_char / resync_keyboard.
 
-    Extra constructor args:
+    Extra constructor args (scrollback):
         scrollback_size: rows to keep (0 = disabled, default 250)
         scroll_step:     rows scrolled per keypress (default 5)
         hist_grob:       GROB number for history ring (default 7)
@@ -28,7 +25,6 @@ class tml_sb(tml):
     def __init__(self, scrollback_size=250, scroll_step=5,
                  hist_grob=7, save_grob=6, **kwargs):
         super().__init__(**kwargs)
-        # Inject sentinels: key_map lists are mutable, index 2 = shift modifier
         self.key_map[45][2] = _SB_UP
         self.key_map[50][2] = _SB_DN
         self._hist_size = scrollback_size
@@ -56,7 +52,7 @@ class tml_sb(tml):
         super()._scroll_up()
 
     # ------------------------------------------------------------------
-    # Override: intercept shift+- sentinel to enter scrollback
+    # Override: intercept shift+- sentinel in the blocking read path
     # ------------------------------------------------------------------
 
     def read_key(self, code=False):
@@ -73,6 +69,89 @@ class tml_sb(tml):
                     return result
             else:
                 return char
+
+    # ------------------------------------------------------------------
+    # Non-blocking poll — replaces the standalone _poll_char function
+    # ------------------------------------------------------------------
+
+    def poll_char(self, key_commands=None):
+        """Non-blocking: return (char, auto_submit) if a new key was pressed, else None."""
+        cur = keyboard()
+        changed = cur ^ self.last_keyboard_state
+        if not changed:
+            return None
+        self.last_keyboard_state = cur
+        for bit in range(52):
+            mask = 1 << bit
+            if not (changed & mask):
+                continue
+            if cur & mask:  # key pressed
+                get_key()
+                if bit == 36:  # Alpha
+                    self.alpha_hold = True
+                    if self.alpha_lock:
+                        if self.is_shift:
+                            self.shift_lock = not self.shift_lock
+                        else:
+                            self.alpha_lock = self.is_alpha = False
+                            self.shift_lock = False
+                        self.is_shift = False
+                    elif self.is_alpha:
+                        if self.is_shift:
+                            if self.alpha_lock:
+                                self.shift_lock = not self.shift_lock
+                            else:
+                                self.alpha_lock = True
+                            self.is_shift = False
+                        else:
+                            self.alpha_lock = True
+                    else:
+                        self.is_alpha = True
+                    self._refresh_indicators()
+                elif bit == 41:  # Shift
+                    self.shift_hold = True
+                    if self.is_shift:
+                        self.is_shift = self.shift_lock if not self.is_shift else False
+                    else:
+                        self.is_shift = True
+                    self._refresh_indicators()
+                else:
+                    if key_commands and bit in key_commands:
+                        cmd, auto_submit = key_commands[bit]
+                        return (cmd, auto_submit)
+                    if self.shift_hold:
+                        self.is_shift = True
+                    if self.alpha_hold:
+                        self.is_alpha = True
+                    mod_idx = ((self.is_shift ^ self.shift_lock) << 1) | (self.is_alpha | self.alpha_lock)
+                    char = self.key_map.get(bit, [None, None, None, None])[mod_idx]
+                    if not self.alpha_lock:
+                        self.is_alpha = False
+                    if self.is_shift:
+                        self.is_shift = False
+                    self._refresh_indicators()
+                    if self._hist_size > 0:
+                        if char == _SB_UP and self._hist_count > 0:
+                            forwarded = self._scrollback()
+                            self.resync_keyboard()
+                            return (forwarded, None) if forwarded is not None else None
+                        if char == _SB_DN:
+                            return None
+                    return (char, None)
+            else:  # key released
+                if bit == 36:
+                    self.alpha_hold = False
+                    self._refresh_indicators()
+                elif bit == 41:
+                    self.shift_hold = False
+                    self._refresh_indicators()
+        return None
+
+    def resync_keyboard(self):
+        """Reset keyboard state after a blocking input section."""
+        self.last_keyboard_state = keyboard()
+        self.is_alpha = self.is_shift = self.alpha_hold = self.shift_hold = self.symb_hold = False
+        self._refresh_indicators()
 
     # ------------------------------------------------------------------
     # Scrollback sub-loop
@@ -107,12 +186,9 @@ class tml_sb(tml):
 
     def _render_scrollback(self, depth):
         ch = self.char_height
-        # slot_start uses full depth (historical position in ring)
         slot_start = (self._hist_write - depth) % self._hist_size
-        # but we can only paint self.rows rows before hitting the status bar
         display_rows = min(depth, self.rows)
 
-        # Region A: display_rows history rows at top of screen
         if slot_start + display_rows <= self._hist_size:
             strblit2(0, 0, 0, self.width, display_rows * ch,
                      self._hist_grob, 0, slot_start * ch, self.width, display_rows * ch)
@@ -125,7 +201,6 @@ class tml_sb(tml):
             strblit2(0, 0, tail * ch, self.width, head * ch,
                      self._hist_grob, 0, 0, self.width, head * ch)
 
-        # Region B: remaining rows from saved screen (only when depth < rows)
         if display_rows < self.rows:
             rem = self.rows - display_rows
             strblit2(0, 0, display_rows * ch, self.width, rem * ch,
