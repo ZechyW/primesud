@@ -102,15 +102,15 @@ class tml_prime(tml):
                 if self._touch_start_y is None:
                     self._touch_start_y = pt[1]
                 self._touch_last_y = pt[1]
-            elif self._touch_start_y is not None:
-                delta = self._touch_last_y - self._touch_start_y
-                self._touch_start_y = None
-                if delta < -self._swipe_threshold:
+                if self._touch_last_y - self._touch_start_y > self._swipe_threshold:
+                    self._touch_start_y = None
                     _t0 = int(ppleval("Ticks"))
                     forwarded = self._scrollback()
                     self._scrollback_ms += int(ppleval("Ticks")) - _t0
                     self.resync_keyboard()
                     return (forwarded, None) if forwarded is not None else None
+            elif self._touch_start_y is not None:
+                self._touch_start_y = None  # sub-threshold lift = tap, no-op
 
         cur = keyboard()
         changed = cur ^ self.last_keyboard_state
@@ -194,15 +194,15 @@ class tml_prime(tml):
                 if self._touch_start_y is None:
                     self._touch_start_y = pt[1]
                 self._touch_last_y = pt[1]
-            elif self._touch_start_y is not None:
-                delta = self._touch_last_y - self._touch_start_y
-                self._touch_start_y = None
-                if delta < -self._swipe_threshold:
+                if self._touch_last_y - self._touch_start_y > self._swipe_threshold:
+                    self._touch_start_y = None
                     _t0 = int(ppleval("Ticks"))
                     forwarded = self._scrollback()
                     self._scrollback_ms += int(ppleval("Ticks")) - _t0
                     self.resync_keyboard()
                     return (forwarded, None) if forwarded is not None else None
+            elif self._touch_start_y is not None:
+                self._touch_start_y = None  # sub-threshold lift = tap, no-op
         return None
 
     def resync_keyboard(self):
@@ -256,13 +256,13 @@ class tml_prime(tml):
                         t_base_y = pt[1]
                     t_last_y = pt[1]
                     delta = t_last_y - t_base_y
-                    if delta < -step_px:
+                    if delta > step_px:
                         depth = min(depth + self._touch_scroll_step, self._hist_count)
                         self._render_scrollback(depth)
-                        t_base_y -= step_px
-                    elif delta > step_px:
-                        depth = max(depth - self._touch_scroll_step, 0)
                         t_base_y += step_px
+                    elif delta < -step_px:
+                        depth = max(depth - self._touch_scroll_step, 0)
+                        t_base_y -= step_px
                         if depth == 0:
                             t_start = None
                             break
@@ -274,6 +274,7 @@ class tml_prime(tml):
 
         strblit2(0, 0, 0, self.width, self.height,
                  self._save_grob, 0, 0, self.width, self.height)
+        self.resync_keyboard()
         return result
 
     def _render_scrollback(self, depth):

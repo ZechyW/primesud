@@ -196,3 +196,33 @@ Tested on HP Prime emulator (PC).
 as "not touching" regardless of poll-or-event outcome, since the sentinel is unreliable.
 Physical device testing needed to confirm whether `(-1, 0)` is consistently present on
 real hardware, and to settle the poll-or-event question.
+
+---
+
+## Known issues (post-implementation)
+
+### 1. Scroll direction is inverted ✓ FIXED
+
+Swipe direction flipped in both `poll_char()` touch blocks and `_scrollback()` drag logic.
+`delta > threshold` now means scroll-back (swipe down); `delta < -threshold` means scroll-forward.
+
+### 2. Scrollback does not start until finger lift ✓ FIXED
+
+Threshold check moved into the *held* branch of both `poll_char()` touch blocks.
+`_scrollback()` is now called as soon as `delta > _swipe_threshold` while the finger
+is still down. The lift branch now only resets state for a sub-threshold tap.
+
+### 3. Next keypress swallowed after swipe-exit from scrollback
+
+**Current behaviour:** after swiping forward past depth 0 (exiting scrollback), the very
+next character typed is silently consumed and never delivered to the caller of
+`poll_char()`.
+
+**Root cause (hypothesis):** when `_scrollback()` exits, the keyboard state from the
+preceding swipe lift (or the first subsequent keypress) is left in a consumed or
+partially-advanced state inside `poll_char()`'s `changed` / `last_kb` tracking, so
+the first real keypress is seen as a no-change and discarded.
+
+**Fix:** call `self.resync_keyboard()` immediately before returning from `_scrollback()`
+(in addition to the call already present on entry). This resets `last_kb` to the
+current hardware state so the next `poll_char()` poll starts clean.
