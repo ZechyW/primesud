@@ -282,7 +282,7 @@ class Game:
         tr.print("[Q] Quit (restore or migrate the save manually)")
         tr.print("")
         while True:
-            choice = tr.input("Choice (N/Q): ").strip().lower()
+            choice = tr.input("Choice (N/Q): ", alpha=False).strip().lower()
             if choice == "n":
                 return True
             if choice == "q":
@@ -307,32 +307,32 @@ class Game:
         pad = 64 - 23 - len(mem_part) - 1
         _first = '{C 8888888b.          d8b' + ' ' * pad + mem_part + '{x'
         tr.print(_first)
-        tr.print('{C 888   Y88b         Y8P                                       {x')
-        tr.print('{C 888    888                                                   {x')
-        tr.print('{C 888   d88P 888d888 888 88888b.d88b.   .d88b.                 {x')
+        tr.print("{C 888   Y88b         Y8P                                       {x")
+        tr.print("{C 888    888                                                   {x")
+        tr.print("{C 888   d88P 888d888 888 88888b.d88b.   .d88b.                 {x")
         tr.print('{C 8888888P"  888P"   888 888 "888 "88b d8P  Y8b                {x')
-        tr.print('{C 888        888     888 888  888  888 88888888                {x')
-        tr.print('{C 888        888     888 888  888  888 Y8b.                    {x')
+        tr.print("{C 888        888     888 888  888  888 88888888                {x")
+        tr.print("{C 888        888     888 888  888  888 Y8b.                    {x")
         tr.print('{C 888        888     888 888  888  888  "Y8888                 {x')
-        tr.print('{C                             .d8888b.  888     888 8888888b.  {x')
+        tr.print("{C                             .d8888b.  888     888 8888888b.  {x")
         tr.print('{C                            d88P  Y88b 888     888 888  "Y88b {x')
-        tr.print('{C                            Y88b.      888     888 888    888 {x')
+        tr.print("{C                            Y88b.      888     888 888    888 {x")
         tr.print('{C                             "Y888b.   888     888 888    888 {x')
         tr.print('{C                                "Y88b. 888     888 888    888 {x')
         tr.print('{C                                  "888 888     888 888    888 {x')
-        tr.print('{C                            Y88b  d88P Y88b. .d88P 888  .d88P {x')
+        tr.print("{C                            Y88b  d88P Y88b. .d88P 888  .d88P {x")
         tr.print('{C                             "Y8888P"   "Y88888P"  8888888P"  {x')
         tr.print("{c      Original DikuMUD by Hans Staerfeldt, Katja Nyboe,       {x")
         tr.print("{c      Tom Madsen, Michael Seifert, and Sebastian Hammer       {x")
         tr.print("{c      Based on MERC 2.1 code by Hatchet, Furey, and Kahn      {x")
         tr.print("{c      ROM 2.4 copyright (c) 1993-1998 Russ Taylor.            {x")
         tr.print("{c      1stMud Server copyright (c) 2001-2004, Markanth.        {x")
-        tr.input(  "                    [Press Enter to start]                    "  )
-        
+        tr.input("                    [Press Enter to start]                    ",
+            alpha=False,
+        )
+
         tr.print()
 
-
-        
         # tr.print("Memory free: {G" + mem + "{x")
 
     def game_loop(self):
@@ -350,8 +350,6 @@ class Game:
         tr.resync_keyboard()
         show_prompt(tr, player, self.input_buf)
         do_look(tr, player, [], room_state, mob_instances)
-
-
 
         while True:
             result = tr.poll_char(_KEY_COMMANDS)

@@ -1,5 +1,4 @@
 from hpprime import dimgrob, eval as ppleval, keyboard, mouse, strblit2
-from cas import get_key
 from tml import tml
 
 _SB_UP = '\x10'   # shift+- : enter scrollback / scroll up further
@@ -99,6 +98,7 @@ class tml_prime(tml):
         if self._hist_size > 0 and self._hist_count > 0 and not self._in_scrollback:
             pt = mouse()[0]
             if pt and pt[0] >= 0:
+                # Finger is currently down
                 if self._touch_start_y is None:
                     self._touch_start_y = pt[1]
                 self._touch_last_y = pt[1]
@@ -107,9 +107,9 @@ class tml_prime(tml):
                     _t0 = int(ppleval("Ticks"))
                     forwarded = self._scrollback()
                     self._scrollback_ms += int(ppleval("Ticks")) - _t0
-                    self.resync_keyboard()
                     return (forwarded, None) if forwarded is not None else None
             elif self._touch_start_y is not None:
+                # Finger is currently lifted
                 self._touch_start_y = None  # sub-threshold lift = tap, no-op
 
         cur = keyboard()
@@ -122,7 +122,6 @@ class tml_prime(tml):
             if not (changed & mask):
                 continue
             if cur & mask:  # key pressed
-                get_key()
                 if bit == 36:  # Alpha
                     self.alpha_hold = True
                     if self.alpha_lock:
@@ -175,7 +174,6 @@ class tml_prime(tml):
                             _t0 = int(ppleval("Ticks"))
                             forwarded = self._scrollback()
                             self._scrollback_ms += int(ppleval("Ticks")) - _t0
-                            self.resync_keyboard()
                             return (forwarded, None) if forwarded is not None else None
                         if char == _SB_DN:
                             return None
@@ -187,22 +185,6 @@ class tml_prime(tml):
                 elif bit == 41:
                     self.shift_hold = False
                     self._refresh_indicators()
-        # -- touch entry into scrollback (game-loop path) --
-        if self._hist_size > 0 and self._hist_count > 0 and not self._in_scrollback:
-            pt = mouse()[0]
-            if pt and pt[0] >= 0:
-                if self._touch_start_y is None:
-                    self._touch_start_y = pt[1]
-                self._touch_last_y = pt[1]
-                if self._touch_last_y - self._touch_start_y > self._swipe_threshold:
-                    self._touch_start_y = None
-                    _t0 = int(ppleval("Ticks"))
-                    forwarded = self._scrollback()
-                    self._scrollback_ms += int(ppleval("Ticks")) - _t0
-                    self.resync_keyboard()
-                    return (forwarded, None) if forwarded is not None else None
-            elif self._touch_start_y is not None:
-                self._touch_start_y = None  # sub-threshold lift = tap, no-op
         return None
 
     def resync_keyboard(self):
@@ -221,11 +203,11 @@ class tml_prime(tml):
         depth = min(self._scroll_step, self._hist_count)
         self._render_scrollback(depth)
 
-        result   = None
-        t_start  = None
-        t_last_y = 0
-        t_base_y = 0
-        step_px  = self._touch_scroll_step * self.char_height
+        result       = None
+        t_finger_down = False
+        t_last_y     = 0
+        t_base_y     = 0
+        step_px      = self._touch_scroll_step * self.char_height
 
         self._in_scrollback = True
         try:
@@ -251,8 +233,9 @@ class tml_prime(tml):
                 # -- touch (repeat scroll while dragging) --
                 pt = mouse()[0]
                 if pt and pt[0] >= 0:
-                    if t_start is None:
-                        t_start  = pt[1]
+                    # Finger is down
+                    if not t_finger_down:
+                        t_finger_down = True
                         t_base_y = pt[1]
                     t_last_y = pt[1]
                     delta = t_last_y - t_base_y
@@ -264,11 +247,10 @@ class tml_prime(tml):
                         depth = max(depth - self._touch_scroll_step, 0)
                         t_base_y -= step_px
                         if depth == 0:
-                            t_start = None
                             break
                         self._render_scrollback(depth)
-                elif t_start is not None:
-                    t_start = None  # finger lifted; direction already handled by repeat scroll
+                elif t_finger_down:
+                    t_finger_down = False  # finger lifted; direction already handled by repeat scroll
         finally:
             self._in_scrollback = False
 

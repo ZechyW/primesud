@@ -212,17 +212,28 @@ Threshold check moved into the *held* branch of both `poll_char()` touch blocks.
 `_scrollback()` is now called as soon as `delta > _swipe_threshold` while the finger
 is still down. The lift branch now only resets state for a sub-threshold tap.
 
-### 3. Next keypress swallowed after swipe-exit from scrollback
+### 3. Next keypress swallowed after swipe-exit from scrollback ✓ FIXED
 
-**Current behaviour:** after swiping forward past depth 0 (exiting scrollback), the very
-next character typed is silently consumed and never delivered to the caller of
-`poll_char()`.
+**Root cause:** `poll_char()` called `get_key()` (from `cas`) after every keypress
+detected via `keyboard()`, to drain the HP Prime's software key event queue. After
+touch-based scrollback, that queue is empty — touch events don't populate it. When
+the user presses the first key after exiting, `keyboard()` reads the hardware state
+immediately (detecting the press), but `get_key()` blocks waiting for the software
+queue to be populated. This is a race condition: the firmware hasn't enqueued the
+event yet by the time `get_key()` is called. The next physical keypress unblocks
+`get_key()`, consuming that second event, while the character is computed from the
+stale `cur` snapshot of the first press. Net effect: the first post-scrollback
+keypress is silently dropped and every subsequent press is offset by one.
 
-**Root cause (hypothesis):** when `_scrollback()` exits, the keyboard state from the
-preceding swipe lift (or the first subsequent keypress) is left in a consumed or
-partially-advanced state inside `poll_char()`'s `changed` / `last_kb` tracking, so
-the first real keypress is seen as a no-change and discarded.
+This was likely the root cause of several other reported instances of swallowed
+keypresses following scrollback interaction.
 
-**Fix:** call `self.resync_keyboard()` immediately before returning from `_scrollback()`
-(in addition to the call already present on entry). This resets `last_kb` to the
-current hardware state so the next `poll_char()` poll starts clean.
+**Fix:** removed `get_key()` from `poll_char()` entirely, and dropped the `cas`
+import from `tml_prime.py`. All key detection in `tml_prime` uses `keyboard()`
+exclusively; draining the HP Prime event queue per-keypress serves no purpose here.
+
+**Note:** the base `tml.read_key()` still calls `get_key()` in the same side-effect-
+only pattern (return value discarded). This appears harmless in the blocking read path
+— the key is physically held while `read_key()` loops, so the firmware has time to
+populate the queue before `get_key()` is called. If similar timing issues surface in
+blocking input scenarios, the same fix applies there.
