@@ -51,6 +51,10 @@ SECTOR_SYMBOLS = {
 SCROLLBACK_SIZE = 250  # rows to keep in history (0 = disabled)
 SCROLL_STEP     = 7   # rows scrolled per Shift+- / Shift++ keypress
 
+# ── Touch input [PRIMESUD] ────────────────────────────────────────────────────────────
+SWIPE_THRESHOLD   = 20  # min Y-pixel delta on lift to enter scrollback
+TOUCH_SCROLL_STEP = 3   # rows scrolled per char_height of drag inside scrollback
+
 # ── Command history [PRIMESUD] ────────────────────────────────────────────────────────
 CMD_HISTORY_MAX = 50  # maximum number of submitted commands to remember
 

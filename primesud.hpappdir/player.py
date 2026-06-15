@@ -28,6 +28,18 @@ from world import (
 PLR_AUTOMAP = 1
 PLR_DEFAULTS = PLR_AUTOMAP
 
+# ── Save format version ────────────────────────────────────────────────────────
+# Increment SAVE_VERSION whenever a core mechanic changes in a way that makes
+# old saves load incorrectly: e.g. flag-bit layout changes, AC formula changes,
+# stat renaming, or any field whose semantics change rather than just new fields
+# being added.  Additive changes (new skills, new item slots, new flags that
+# default to 0) do NOT require a bump — missing keys are silently left at their
+# create_char() defaults, and unknown keys are silently ignored on load.
+#
+# Skill numeric IDs (GSN_*) are permanent once assigned: recycling an ID for a
+# different skill would cause old saves to corrupt the new skill's learned %.
+SAVE_VERSION = 1
+
 # ── Player model ──────────────────────────────────────────────────────────────
 
 
@@ -252,7 +264,7 @@ def reset_area():
     reset_mobs(mob_instances, room_state, RESETS)
     for entry in RESETS:
         if entry[0] == "O":
-            room_state[entry[2]]["items"].append(entry[1])
+            room_state[entry[2]]["items"].append(create_object(entry[1]))
     # Restore all door states to their reset-to values (cf. 1stMud reset_room door loop, db.c:1411)
     for vnum, doors in DOOR_RESET.items():
         exits = ROOMS[vnum]["exits"]
@@ -455,19 +467,51 @@ def is_name(fragment, namelist):
     return True
 
 
-def get_obj_list(fragment, vnum_list, templates):
-    """Find the Nth item in vnum_list whose keywords match fragment (cf. 1stMud get_obj_list in handler.c).
+def obj_vnum(item):
+    """Return the VNUM of an item instance dict or a plain VNUM int."""
+    return item["vnum"] if isinstance(item, dict) else item
+
+
+def create_object(vnum):
+    """Create an item instance from a template (cf. 1stMud create_object in db.c).
+
+    Args:
+        vnum (int): Item template VNUM.
+
+    Returns:
+        dict: Item instance dict with mutable fields copied from template.
+    """
+    return {"vnum": vnum, "cost": ITEM_TEMPLATES[vnum].get("value", 0)}
+
+
+def item_extra_flags(obj, tpl):
+    """Return extra_flags for obj, preferring instance override over template."""
+    if isinstance(obj, dict) and "extra_flags" in obj:
+        return obj["extra_flags"]
+    return tpl.get("extra_flags", {})
+
+
+def item_wear_flags(obj, tpl):
+    """Return wear_flags for obj, preferring instance override over template."""
+    if isinstance(obj, dict) and "wear_flags" in obj:
+        return obj["wear_flags"]
+    return tpl.get("wear_flags", {})
+
+
+def get_obj_list(fragment, item_list, templates):
+    """Find the Nth item in item_list whose keywords match fragment (cf. 1stMud get_obj_list in handler.c).
 
     Supports "2.sword" prefix syntax (cf. 1stMud number_argument in interp.c):
     the integer before '.' is the ordinal; without a prefix returns the first match.
+    Items may be plain VNUM ints (room/mob) or instance dicts (player inv/equip).
 
     Args:
         fragment (str): Player-typed name fragment, optionally prefixed "N.".
-        vnum_list (list): Ordered list of item vnums to search.
+        item_list (list): Ordered list of items (int or instance dict) to search.
         templates (dict): Item template dict mapping vnum → template.
 
     Returns:
-        int or None: Nth matching vnum, or None if not found.
+        Item from item_list (int or dict), or None if not found.
     """
     if '.' in fragment:
         prefix, rest = fragment.split('.', 1)
@@ -479,11 +523,12 @@ def get_obj_list(fragment, vnum_list, templates):
     else:
         nth = 1
     count = 0
-    for vnum in vnum_list:
+    for item in item_list:
+        vnum = obj_vnum(item)
         if is_name(fragment, templates[vnum].get("keywords", "")):
             count += 1
             if count == nth:
-                return vnum
+                return item
     return None
 
 
@@ -594,16 +639,18 @@ def save_char(player, room_state, mob_instances, area_states=None, macros=None):
     Returns:
         bool: True on success, False if the PPL write raised an exception.
     """
-    lines = []
+    lines = ["v={}".format(SAVE_VERSION)]
     for key in ("name", "level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
                 "hitroll", "damroll", "AC", "room",
                 "practice", "train", "flags", "played"):
         lines.append("p.{}={}".format(key, player[key]))
-    lines.append("p.inv={}".format("|".join(str(v) for v in player["inv"])))
-    for slot, vnum in player["equip"].items():
-        lines.append("p.eq.{}={}".format(slot, vnum if vnum is not None else ""))
+    lines.append("p.inv={}".format("|".join(
+        "{}:{}".format(o["vnum"], o["cost"]) for o in player["inv"])))
+    for slot, obj in player["equip"].items():
+        lines.append("p.eq.{}={}".format(
+            slot, "{}:{}".format(obj["vnum"], obj["cost"]) if obj is not None else ""))
     learned_parts = []
     for sk, pct in player["learned"].items():
         learned_parts.append("{}:{}".format(sk, pct))
@@ -634,13 +681,20 @@ def save_char(player, room_state, mob_instances, area_states=None, macros=None):
             continue
         lines.append("m.{}={}".format(tpl_vnum, "|".join(str(r) for r in rooms)))
     for rvnum, rs in room_state.items():
-        lines.append("r.{}.items={}".format(rvnum, "|".join(str(v) for v in rs["items"])))
+        lines.append("r.{}.items={}".format(rvnum, "|".join(
+            "{}:{}".format(o["vnum"], o["cost"]) for o in rs["items"])))
     try:
         payload = "~".join(lines)
         ppleval('HVars("' + SAVE_VAR + '"):="' + payload + '"')
         return True
     except Exception:
         return False
+
+
+def _parse_item(s):
+    """Parse a saved item token ('vnum:cost') into an instance dict."""
+    v, c = s.split(":", 1)
+    return {"vnum": int(v), "cost": int(c)}
 
 
 def load_char(player, room_state, mob_instances, area_states=None, macros=None):
@@ -666,6 +720,21 @@ def load_char(player, room_state, mob_instances, area_states=None, macros=None):
     except Exception:
         return False
 
+    # Reject saves from a different format version.  Additive changes (new
+    # fields, new skills) don't require a bump; only semantic/structural changes
+    # to existing core fields do.  See SAVE_VERSION comment above for the rule.
+    # Returns None (not False) so the caller can distinguish mismatch from
+    # "no save found" and prompt the user rather than silently starting fresh.
+    _ver_prefix = "v="
+    _first = data.split("~", 1)[0]
+    if not _first.startswith(_ver_prefix) or int(_first[len(_ver_prefix):]) != SAVE_VERSION:
+        try:
+            ppleval('HVars("' + SAVE_VAR + '_bak"):="' + data + '"')
+            _backup_ok = True
+        except Exception:
+            _backup_ok = False
+        return (None, _backup_ok)
+
     int_keys = {"level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
@@ -684,9 +753,9 @@ def load_char(player, room_state, mob_instances, area_states=None, macros=None):
         key, val = line.split("=", 1)
         if key.startswith("p.eq."):
             slot = key[5:]
-            player["equip"][slot] = int(val) if val else None
+            player["equip"][slot] = _parse_item(val) if val else None
         elif key == "p.inv":
-            player["inv"] = [int(v) for v in val.split("|") if v]
+            player["inv"] = [_parse_item(v) for v in val.split("|") if v]
         elif key == "p.learned":
             for entry in val.split("|"):
                 if ":" in entry:
@@ -703,7 +772,7 @@ def load_char(player, room_state, mob_instances, area_states=None, macros=None):
         elif key.startswith("r.") and key.endswith(".items"):
             rvnum = int(key.split(".")[1])
             if rvnum in room_state:
-                room_state[rvnum]["items"] = [int(v) for v in val.split("|") if v]
+                room_state[rvnum]["items"] = [_parse_item(v) for v in val.split("|") if v]
         elif key.startswith("a.") and key.endswith(".age"):
             tag = key[2:-4]
             if tag in _area_by_tag:

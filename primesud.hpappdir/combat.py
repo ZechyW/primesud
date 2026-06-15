@@ -7,7 +7,7 @@ from config import (PULSE_VIOLENCE,
                     ATTACK_TABLE, DAM_NONE, DAM_BASH)
 from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
                    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY)
-from player import get_hitroll, get_damroll, get_AC, get_curr_stat, show_prompt, save_char
+from player import get_hitroll, get_damroll, get_AC, get_curr_stat, show_prompt, save_char, create_object
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -90,9 +90,9 @@ def _weapon_skill(player):
     Returns:
         tuple: (sk_vnum (int), learned_pct (int), weapon_tpl (dict or None)).
     """
-    wvnum = player["equip"].get("wield")
-    if wvnum is not None:
-        return GSN_HAND_TO_HAND, player["learned"].get(GSN_HAND_TO_HAND, 20), ITEM_TEMPLATES[wvnum]
+    wobj = player["equip"].get("wield")
+    if wobj is not None:
+        return GSN_HAND_TO_HAND, player["learned"].get(GSN_HAND_TO_HAND, 20), ITEM_TEMPLATES[wobj["vnum"]]
     return GSN_HAND_TO_HAND, player["learned"].get(GSN_HAND_TO_HAND, 20), None
 
 
@@ -363,10 +363,10 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
     if slot == "weapon":
         sk_vnum, skill, wtpl = _weapon_skill(player)
     else:
-        wvnum = player["equip"].get(slot)
-        if wvnum is None:
+        wobj = player["equip"].get(slot)
+        if wobj is None:
             return 0
-        wtpl    = ITEM_TEMPLATES[wvnum]
+        wtpl    = ITEM_TEMPLATES[wobj["vnum"]]
         sk_vnum = GSN_HAND_TO_HAND
         skill   = player["learned"].get(GSN_HAND_TO_HAND, 20)
 
@@ -679,7 +679,7 @@ def multi_hit(tr, player, target_inst):
 
     # Offhand weapon
     offhand = player["equip"].get("offhand")
-    if offhand is not None and ITEM_TEMPLATES[offhand].get("type") == "weapon":
+    if offhand is not None and ITEM_TEMPLATES[offhand["vnum"]].get("type") == "weapon":
         one_hit(tr, player, target_inst, slot="offhand")
         if target_inst["hp"] == 0:
             return True
@@ -910,10 +910,10 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state, mob_instances):
     _floor = room_state[inst["room"]]["items"]
     for _slot_vnum in inst.get("equip", {}).values():
         if _slot_vnum is not None:
-            _floor.append(_slot_vnum)
+            _floor.append(create_object(_slot_vnum))
             tr.print("{} falls to the ground.".format(ITEM_TEMPLATES[_slot_vnum]["short_descr"]))
     for _inv_vnum in inst.get("inv", []):
-        _floor.append(_inv_vnum)
+        _floor.append(create_object(_inv_vnum))
         tr.print("{} falls to the ground.".format(ITEM_TEMPLATES[_inv_vnum]["short_descr"]))
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)

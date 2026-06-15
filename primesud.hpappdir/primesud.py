@@ -17,8 +17,10 @@ from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     TERMINAL_COLS, FONT, FONT_GROB, COLOR_GROB,
                     DEATH_MSG_DELAY,
                     SCROLLBACK_SIZE, SCROLL_STEP,
+                    SWIPE_THRESHOLD, TOUCH_SCROLL_STEP,
                     CMD_HISTORY_MAX,
-                    FNKEY_SENTINELS)
+                    FNKEY_SENTINELS,
+                    SAVE_VAR)
 from util import free_mem
 from world import R_STARTING_ROOM, ROOMS, AREA_DEFS
 from combat import violence_update
@@ -90,7 +92,8 @@ class Game:
 
     def __init__(self):
         self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font=FONT,
-                      scrollback_size=SCROLLBACK_SIZE, scroll_step=SCROLL_STEP)
+                      scrollback_size=SCROLLBACK_SIZE, scroll_step=SCROLL_STEP,
+                      touch_scroll_step=TOUCH_SCROLL_STEP, swipe_threshold=SWIPE_THRESHOLD)
         self._font_w = grobw(FONT_GROB)
         self._font_h = grobh(FONT_GROB)
         dimgrob(COLOR_GROB, self._font_w, self._font_h, 0)
@@ -253,8 +256,37 @@ class Game:
         self._area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
         result = _load_char(self.player, self.room_state, self.mob_instances,
                             self._area_states, _MACRO_SUBST)
+        if isinstance(result, tuple):   # (None, backup_ok) — version mismatch
+            _, self._backup_ok = result
+            return None
         self.player["_logon_ms"] = int(ppleval("Ticks"))
         return result
+
+    def handle_version_mismatch(self):
+        """Prompt the user after a save format version mismatch.
+
+        Returns:
+            bool: True if the user chose to start a new game; False if they
+                  chose to quit (caller should exit without saving).
+        """
+        tr = self.tr
+        tr.print("{RWARNING:{x Save format has changed.")
+        if self._backup_ok:
+            tr.print("Your old save has been backed up to: {C" + SAVE_VAR + "_bak{x")
+        else:
+            tr.print("{RWARNING:{x Backup to {C" + SAVE_VAR + "_bak{x FAILED.")
+            tr.print("Your old save is still in {C" + SAVE_VAR + "{x — do NOT start")
+            tr.print("a new game here or it will be overwritten.")
+        tr.print("")
+        tr.print("[N] Start a new game")
+        tr.print("[Q] Quit (restore or migrate the save manually)")
+        tr.print("")
+        while True:
+            choice = tr.input("Choice (N/Q): ").strip().lower()
+            if choice == "n":
+                return True
+            if choice == "q":
+                return False
 
     def save_game(self):
         now = int(ppleval("Ticks"))
@@ -462,7 +494,12 @@ class PrimeSud:
 
             game.show_greeting()
 
-            if not game.load_game():
+            result = game.load_game()
+            if result is None:          # version mismatch
+                if not game.handle_version_mismatch():
+                    return              # user chose quit — exit without saving
+                game.new_game()
+            elif not result:            # no save found
                 game.tr.print("No save found. Starting new game.")
                 game.tr.print("")
                 game.new_game()

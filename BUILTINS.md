@@ -90,4 +90,8 @@ Verified via smoke tests in `primesud.py` (June 2026).
 | `**kwargs` in function signatures | Works — `def f(**kw)` and `f(**kw)` call-site spreading both work |
 | Polymorphic dispatch from within base class | Works — `self.method()` inside a base-class method calls the subclass override when `self` is a subclass instance |
 
-<!-- Add sections for other builtins as verified: list, dict, int, etc. -->
+---
+
+## `__import__` (confirmed working)
+
+`__import__("module_name")` returns the module object, equivalent to `import module_name`. Verified June 2026 via dynamic area loading in `world.py`.

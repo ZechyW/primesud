@@ -4,7 +4,10 @@ from colors import color_len
 
 from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT, GSN_RECALL, R_RECALL
 from picker import pick_from
-from player import get_hitroll, get_damroll, get_AC, get_curr_stat, get_obj_list, get_char_room, save_char, is_name, affect_modify, PLR_AUTOMAP, PLR_DEFAULTS
+from player import (get_hitroll, get_damroll, get_AC, get_curr_stat, get_obj_list, get_char_room,
+                    save_char, is_name, affect_modify, PLR_AUTOMAP, PLR_DEFAULTS,
+                    obj_vnum, create_object, item_extra_flags, item_wear_flags)
+from area_school import (I_BANNER_WAR_MERC, I_VEST_SUB_MERC, I_SWORD_SUB_MERC, I_SHIELD_SUB_MERC)
 from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from config import (DEFAULT_MACROS, DEFAULT_FNKEY_MACROS, FNKEY_SENTINELS, FNKEY_NAMES,
@@ -88,13 +91,14 @@ def _look_item(tr, player, args, room_state):
     """Show an item's description from inventory, room, or equipped slots (cf. 1stMud do_look in act_info.c)."""
     target = " ".join(args)
     rs = room_state[player["room"]]
-    equipped = [v for v in player["equip"].values() if v is not None]
-    vnum = (get_obj_list(target, player["inv"], ITEM_TEMPLATES)
-            or get_obj_list(target, rs["items"], ITEM_TEMPLATES)
-            or get_obj_list(target, equipped, ITEM_TEMPLATES))
-    if vnum is None:
+    equipped = [obj for obj in player["equip"].values() if obj is not None]
+    result = (get_obj_list(target, player["inv"], ITEM_TEMPLATES)
+              or get_obj_list(target, rs["items"], ITEM_TEMPLATES)
+              or get_obj_list(target, equipped, ITEM_TEMPLATES))
+    if result is None:
         tr.print("You don't see that here.")
         return
+    vnum = obj_vnum(result)
     tpl = ITEM_TEMPLATES[vnum]
     for line in _wrap_paragraphs(tpl.get("description", tpl["short_descr"]), TERMINAL_COLS):
         tr.print(line)
@@ -146,26 +150,28 @@ def do_look(tr, player, args, room_state, mob_instances):
     exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
     tr.print("{g" + exit_string + "{x")
     live_mobs = rs["mobs"]
-    # Items: one per line, description field, stacked by identical text (cf. 1stMud show_list_to_char in act_info.c)
+    # Items: build a display string per instance (flags + desc), stack by exact string match
+    # (cf. 1stMud format_obj_to_char + show_list_to_char in act_info.c)
     seen = {}
     order = []
-    for vnum in rs["items"]:
-        tpl = ITEM_TEMPLATES[vnum]
-        desc = tpl.get("description") or tpl["short_descr"]
-        if desc in seen:
-            seen[desc] += 1
-        else:
-            seen[desc] = 1
-            order.append((desc, tpl.get("extra_flags", {})))
-    for desc, flags in order:
-        n = seen[desc]
-        stack_prefix = "(%2d) " % n if n > 1 else "     "
+    for obj in rs["items"]:
+        tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+        flags = item_extra_flags(obj, tpl)
         flag_str = ""
         if flags.get("invis"):  flag_str += "({cInvis{x) "
         if flags.get("glow"):   flag_str += "({YGlowing{x) "
         if flags.get("hum"):    flag_str += "({CHumming{x) "
         if flags.get("magic"):  flag_str += "({MMagical{x) "
-        tr.print("%s%s{Y%s{x" % (flag_str, stack_prefix, desc))
+        line = flag_str + "{Y" + (tpl.get("description") or tpl["short_descr"]) + "{x"
+        if line in seen:
+            seen[line] += 1
+        else:
+            seen[line] = 1
+            order.append(line)
+    for line in order:
+        n = seen[line]
+        stack_prefix = "(%2d) " % n if n > 1 else "     "
+        tr.print(stack_prefix + line)
     # Mobs: one per line, long_descr at idle or constructed position string (cf. 1stMud show_char_to_char_0 in act_info.c)
     for mob_id in live_mobs:
         inst = mob_instances[mob_id]
@@ -305,27 +311,27 @@ def do_get(tr, player, args, room_state, mob_instances):
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
         filter_kw = arg[4:] if arg.startswith("all.") else None
-        for vnum in list(rs["items"]):
-            tpl = ITEM_TEMPLATES[vnum]
+        for obj in list(rs["items"]):
+            tpl = ITEM_TEMPLATES[obj_vnum(obj)]
             if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
                 continue
-            if "take" not in tpl.get("wear_flags", {}):
+            if "take" not in item_wear_flags(obj, tpl):
                 tr.print("You can't take the {}.".format(tpl["short_descr"]))
                 continue
-            rs["items"].remove(vnum)
-            player["inv"].append(vnum)
+            rs["items"].remove(obj)
+            player["inv"].append(obj)
             tr.print("You take the {}.".format(tpl["short_descr"]))
         return
-    vnum = get_obj_list(arg, rs["items"], ITEM_TEMPLATES)
-    if vnum is None:
+    obj = get_obj_list(arg, rs["items"], ITEM_TEMPLATES)
+    if obj is None:
         tr.print("Nothing here called that.")
         return
-    tpl = ITEM_TEMPLATES[vnum]
-    if "take" not in tpl.get("wear_flags", {}):
+    tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+    if "take" not in item_wear_flags(obj, tpl):
         tr.print("You can't take that.")
         return
-    rs["items"].remove(vnum)
-    player["inv"].append(vnum)
+    rs["items"].remove(obj)
+    player["inv"].append(obj)
     tr.print("You take the {}.".format(tpl["short_descr"]))
 
 
@@ -336,21 +342,22 @@ def do_drop(tr, player, args, room_state, mob_instances):
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
         filter_kw = arg[4:] if arg.startswith("all.") else None
-        for vnum in list(player["inv"]):
-            tpl = ITEM_TEMPLATES[vnum]
+        for obj in list(player["inv"]):
+            tpl = ITEM_TEMPLATES[obj["vnum"]]
             if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
                 continue
-            player["inv"].remove(vnum)
-            room_state[player["room"]]["items"].append(vnum)
+            player["inv"].remove(obj)
+            room_state[player["room"]]["items"].append(obj)
             tr.print("You drop the {}.".format(tpl["short_descr"]))
         return
-    vnum = get_obj_list(arg, player["inv"], ITEM_TEMPLATES)
-    if vnum is None:
+    obj = get_obj_list(arg, player["inv"], ITEM_TEMPLATES)
+    if obj is None:
         tr.print("You're not carrying that.")
         return
-    player["inv"].remove(vnum)
-    room_state[player["room"]]["items"].append(vnum)
-    tr.print("You drop the {}.".format(ITEM_TEMPLATES[vnum]["short_descr"]))
+    tpl = ITEM_TEMPLATES[obj["vnum"]]
+    player["inv"].remove(obj)
+    room_state[player["room"]]["items"].append(obj)
+    tr.print("You drop the {}.".format(tpl["short_descr"]))
 
 
 def _obj_flags(tpl):
@@ -372,7 +379,8 @@ def do_inventory(tr, player, args, room_state, mob_instances):
     if not player["inv"]:
         return
     counts = {}
-    for v in player["inv"]:
+    for obj in player["inv"]:
+        v = obj["vnum"]
         counts[v] = counts.get(v, 0) + 1
     for v, n in counts.items():
         tpl = ITEM_TEMPLATES[v]
@@ -399,22 +407,22 @@ _WEAR_MSG = {
 }
 
 
-def _wear_one(tr, player, vnum, tpl, slot):
-    """Equip one item into slot, enforcing level and curse checks (cf. 1stMud wear_obj in act_obj.c)."""
+def _wear_one(tr, player, obj, tpl, slot):
+    """Equip one item instance into slot, enforcing level and curse checks (cf. 1stMud wear_obj in act_obj.c)."""
     if player["level"] < tpl.get("level", 1):
         tr.print("You are too weak to use the {}.".format(tpl["short_descr"]))
         return
     cur = player["equip"][slot]
     if cur is not None:
-        cur_tpl = ITEM_TEMPLATES[cur]
-        if cur_tpl.get("extra_flags", {}).get("noremove"):
+        cur_tpl = ITEM_TEMPLATES[cur["vnum"]]
+        if item_extra_flags(cur, cur_tpl).get("noremove"):
             tr.print("You can't remove the {}, it's cursed.".format(cur_tpl["short_descr"]))
             return
         for loc, mod in cur_tpl.get("stat_bonuses", {}).items():
             affect_modify(player, loc, mod, False)
         player["inv"].append(cur)
-    player["inv"].remove(vnum)
-    player["equip"][slot] = vnum
+    player["inv"].remove(obj)
+    player["equip"][slot] = obj
     for loc, mod in tpl.get("stat_bonuses", {}).items():
         affect_modify(player, loc, mod, True)
     tr.print(_WEAR_MSG[slot].format(tpl["short_descr"]))
@@ -434,35 +442,41 @@ def do_wear(tr, player, args, room_state, mob_instances):
         tr.print("Wear what?")
         return
     if args[0] == "all":
-        for vnum in list(player["inv"]):
-            tpl = ITEM_TEMPLATES[vnum]
-            slot = next((f for f in tpl.get("wear_flags", {}) if f != "take"), None)
+        for obj in list(player["inv"]):
+            tpl = ITEM_TEMPLATES[obj["vnum"]]
+            if tpl.get("type") == "light":
+                slot = "light"
+            else:
+                slot = next((f for f in item_wear_flags(obj, tpl) if f != "take"), None)
             if slot is None or slot not in player["equip"]:
                 continue
-            _wear_one(tr, player, vnum, tpl, slot)
+            _wear_one(tr, player, obj, tpl, slot)
         return
-    vnum = get_obj_list(" ".join(args), player["inv"], ITEM_TEMPLATES)
-    if vnum is None:
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_TEMPLATES)
+    if obj is None:
         tr.print("You're not carrying that.")
         return
-    tpl = ITEM_TEMPLATES[vnum]
-    slot = next((f for f in tpl.get("wear_flags", {}) if f != "take"), None)
+    tpl = ITEM_TEMPLATES[obj["vnum"]]
+    if tpl.get("type") == "light":
+        slot = "light"
+    else:
+        slot = next((f for f in item_wear_flags(obj, tpl) if f != "take"), None)
     if slot is None or slot not in player["equip"]:
         tr.print("You can't wear that.")
         return
-    _wear_one(tr, player, vnum, tpl, slot)
+    _wear_one(tr, player, obj, tpl, slot)
 
 
-def _remove_one(tr, player, slot, vnum):
-    """Unequip one item, checking for curse (cf. 1stMud remove_obj in act_obj.c)."""
-    tpl = ITEM_TEMPLATES[vnum]
-    if tpl.get("extra_flags", {}).get("noremove"):
+def _remove_one(tr, player, slot, obj):
+    """Unequip one item instance, checking for curse (cf. 1stMud remove_obj in act_obj.c)."""
+    tpl = ITEM_TEMPLATES[obj["vnum"]]
+    if item_extra_flags(obj, tpl).get("noremove"):
         tr.print("You can't remove the {}, it's cursed.".format(tpl["short_descr"]))
         return
     for loc, mod in tpl.get("stat_bonuses", {}).items():
         affect_modify(player, loc, mod, False)
     player["equip"][slot] = None
-    player["inv"].append(vnum)
+    player["inv"].append(obj)
     tr.print("You remove the {}.".format(tpl["short_descr"]))
 
 
@@ -480,14 +494,14 @@ def do_remove(tr, player, args, room_state, mob_instances):
         tr.print("Remove what?")
         return
     if args[0] == "all":
-        for slot, vnum in list(player["equip"].items()):
-            if vnum is not None:
-                _remove_one(tr, player, slot, vnum)
+        for slot, obj in list(player["equip"].items()):
+            if obj is not None:
+                _remove_one(tr, player, slot, obj)
         return
     target = " ".join(args)
-    for slot, vnum in player["equip"].items():
-        if vnum is not None and is_name(target, ITEM_TEMPLATES[vnum].get("keywords", "")):
-            _remove_one(tr, player, slot, vnum)
+    for slot, obj in player["equip"].items():
+        if obj is not None and is_name(target, ITEM_TEMPLATES[obj["vnum"]].get("keywords", "")):
+            _remove_one(tr, player, slot, obj)
             return
     tr.print("You aren't wearing that.")
 
@@ -522,9 +536,9 @@ def do_equipment(tr, player, args, room_state, mob_instances):
     """
     tr.print("You are wearing:")
     for slot, label in _WEAR_LABELS:
-        vnum = player["equip"].get(slot)
-        if vnum is not None:
-            tpl = ITEM_TEMPLATES[vnum]
+        obj = player["equip"].get(slot)
+        if obj is not None:
+            tpl = ITEM_TEMPLATES[obj["vnum"]]
             tr.print(label + _obj_flags(tpl) + "{Y" + tpl["short_descr"] + "{x")
         else:
             tr.print(label + "nothing")
@@ -534,20 +548,46 @@ def do_quaff(tr, player, args, room_state, mob_instances):
     if not args:
         tr.print("Use what?")
         return
-    vnum = get_obj_list(" ".join(args), player["inv"], ITEM_TEMPLATES)
-    if vnum is None:
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_TEMPLATES)
+    if obj is None:
         tr.print("You're not carrying that.")
         return
-    tpl = ITEM_TEMPLATES[vnum]
+    tpl = ITEM_TEMPLATES[obj["vnum"]]
     if tpl["type"] != "consumable":
         tr.print("You can't use that.")
         return
-    player["inv"].remove(vnum)
+    player["inv"].remove(obj)
     if "use_hp" in tpl:
         gained = min(tpl["use_hp"], player["hp_max"] - player["hp"])
         player["hp"] += gained
         tr.print("You drink the {}. +{} HP. ({}/{})".format(
             tpl["short_descr"], gained, player["hp"], player["hp_max"]))
+
+
+def do_outfit(tr, player, args, room_state, mob_instances):
+    """Equip a new character with basic school gear (cf. 1stMud do_outfit in act_wiz.c)."""
+    if player["level"] > 5:
+        tr.print("Find it yourself!")
+        return
+
+    def _equip(slot, vnum):
+        if player["equip"].get(slot) is not None:
+            return
+        obj = create_object(vnum)
+        obj["cost"] = 0   # cf. 1stMud do_outfit: obj->cost = 0
+        player["equip"][slot] = obj
+        for loc, mod in ITEM_TEMPLATES[vnum].get("stat_bonuses", {}).items():
+            affect_modify(player, loc, mod, True)
+
+    _equip("light",  I_BANNER_WAR_MERC)
+    _equip("body",   I_VEST_SUB_MERC)
+    # [PRIMESUD] No per-weapon skills; sword is 1stMud's default (sn=0 baseline).
+    _equip("wield",  I_SWORD_SUB_MERC)
+    wobj = player["equip"].get("wield")
+    if not (wobj and ITEM_TEMPLATES[wobj["vnum"]].get("weapon_flags", {}).get("two_hands")):
+        _equip("shield", I_SHIELD_SUB_MERC)
+
+    tr.print("You have been equipped by the gods.")
 
 
 _SCORE_INNER = TERMINAL_COLS - 2
@@ -1139,6 +1179,7 @@ _CMD_TABLE = [
     ("score",     do_score,     "dead",     False),   # #49
     ("skills",    do_skills,    "dead",     False),   # #50
     ("autolist",  do_autolist,  "dead",     False),   # #63
+    ("outfit",    do_outfit,    "resting",  False),   # #80
     ("close",     do_close,     "resting",  False),   # #113
     ("drop",      do_drop,      "resting",  False),   # #115
     ("open",      do_open,      "resting",  False),   # #124
