@@ -653,13 +653,10 @@ def do_skills(tr, player, args, world):
         sk = SKILLS.get(sk_vnum)
         if sk is None:
             continue
-        sk_type = sk.get("type", "")
-        if sk_type == "spell":
+        if sk.get("spell_fun", "spell_null") != "spell_null":
             tr.print("  cast {} {}% (MP:{})".format(
-                sk["name"], pct, sk.get("mana", 0)))
-        elif sk_type == "active":
-            tr.print("  {} {}%".format(sk["name"], pct))
-        elif sk_type in ("weapon", "passive"):
+                sk["name"], pct, sk.get("min_mana", 0)))
+        else:
             tr.print("  {} {}%".format(sk["name"], pct))
 
 
@@ -779,7 +776,7 @@ def do_cast(tr, player, args, world):
     spell_key = args[0]
     sk_vnum = None
     for vnum, sk in SKILL_TABLE:
-        if sk.get("type") != "spell":
+        if sk.get("spell_fun", "spell_null") == "spell_null":
             continue
         name = sk["name"]
         if name == spell_key or name.startswith(spell_key):
@@ -792,7 +789,7 @@ def do_cast(tr, player, args, world):
     if player.get("wait", 0) > 0:
         tr.print("You are still recovering.")
         return None
-    mana = sk.get("mana", 0)
+    mana = sk.get("min_mana", 0)
     if player["mp"] < mana:
         tr.print("You don't have enough mana.")
         return None

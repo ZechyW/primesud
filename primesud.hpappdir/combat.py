@@ -6,7 +6,8 @@ from config import (PULSE_VIOLENCE,
                     CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_MIN, THAC0_PLATEAU,
                     ATTACK_TABLE, DAM_NONE, DAM_BASH)
 from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
-                   GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY, GSN_SWORD,
+                   GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY,
+                   GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
                    WEAPON_GSN_MAP)
 from player import get_hitroll, get_damroll, get_AC, get_curr_stat, show_prompt, create_object, save_char
 
@@ -82,21 +83,47 @@ def _xp_for_kill(player_level, mob_level):
     return randint(base * 3 // 4, base * 5 // 4)
 
 
-def _weapon_skill(player):
-    """Return weapon skill info for the player's currently equipped weapon.
+def _get_weapon_sn(ch, slot="wield"):
+    """Return (sn, tpl_or_None) for the weapon in the given equip slot (cf. get_weapon_sn in handler.c).
 
     Args:
-        player (dict): Player state dict.
+        ch (dict): Player or mob instance dict.
+        slot (str): Equip slot key ('wield' or 'offhand').
 
     Returns:
-        tuple: (sk_vnum (int), learned_pct (int), weapon_tpl (dict or None)).
+        tuple: (sn (int), weapon_tpl (dict or None)).
+            sn=GSN_HAND_TO_HAND when unarmed; sn=-1 for unknown weapon type.
     """
-    wobj = player["equip"].get("wield")
-    if wobj is not None:
-        tpl = ITEM_TEMPLATES[wobj["vnum"]]
-        sn = WEAPON_GSN_MAP.get(tpl.get("weapon_type", ""), GSN_HAND_TO_HAND)
-        return sn, player["learned"].get(sn, 20), tpl
-    return GSN_HAND_TO_HAND, player["learned"].get(GSN_HAND_TO_HAND, 20), None
+    wobj = ch["equip"].get(slot)
+    if wobj is None:
+        return GSN_HAND_TO_HAND, None
+    tpl = ITEM_TEMPLATES[wobj["vnum"]]
+    sn = WEAPON_GSN_MAP.get(tpl.get("weapon_type", ""), -1)
+    return sn, tpl
+
+
+def _get_weapon_skill(ch, sn):
+    """Return weapon skill% for ch and sn (cf. get_weapon_skill in handler.c).
+
+    Args:
+        ch (dict): Player or mob instance dict.
+        sn (int): Skill GSN; -1 = unknown weapon type.
+
+    Returns:
+        int: Skill percentage (0–100), capped.
+            NPC: level-scaled formula. Player: learned dict lookup.
+    """
+    if ch.get("is_npc"):
+        if sn == -1:
+            skill = 3 * ch["level"]
+        elif sn == GSN_HAND_TO_HAND:
+            skill = 40 + 2 * ch["level"]
+        else:
+            skill = 40 + 5 * ch["level"] // 2
+        return min(skill, 100)
+    if sn == -1:
+        return min(3 * ch["level"], 100)
+    return ch["learned"].get(sn, 0)
 
 
 # ── Damage flavour ────────────────────────────────────────────────────────────
@@ -362,16 +389,15 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
     tpl     = MOB_TEMPLATES[target_inst["tpl"]]
     affects = target_inst["affects"]
 
-    # Weapon / skill
+    # Weapon / skill (cf. 1stMud one_hit: skill = 20 + get_weapon_skill, fight.c)
     if slot == "weapon":
-        sk_vnum, skill, wtpl = _weapon_skill(player)
+        sk_vnum, wtpl = _get_weapon_sn(player)
+        skill = 20 + _get_weapon_skill(player, sk_vnum)
     else:
-        wobj = player["equip"].get(slot)
-        if wobj is None:
+        if player["equip"].get(slot) is None:
             return 0
-        wtpl    = ITEM_TEMPLATES[wobj["vnum"]]
-        sk_vnum = GSN_HAND_TO_HAND
-        skill   = player["learned"].get(GSN_HAND_TO_HAND, 20)
+        sk_vnum, wtpl = _get_weapon_sn(player, slot)
+        skill = 20 + _get_weapon_skill(player, sk_vnum)
 
     # THAC0
     thac0 = _get_thac0(player["level"])
@@ -430,7 +456,8 @@ def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
     else:
         tr.print("{GYou %s {G%s%s {W[{R%d{W]{x" % (vs, tpl["short_descr"], punct, dam))
 
-    check_improve(tr, player, sk_vnum, True, 5)
+    if sk_vnum != -1:
+        check_improve(tr, player, sk_vnum, True, 5)
     return dam
 
 
@@ -448,9 +475,9 @@ def _mob_one_hit(tr, mob_inst, player):
     tpl     = MOB_TEMPLATES[mob_inst["tpl"]]
     affects = mob_inst["affects"]
 
-    # cf. 1stMud one_hit: skill = 20 + get_weapon_skill(ch, gsn_hand_to_hand)
-    # get_weapon_skill for NPC unarmed = Range(0, 40 + 2*level, 100); then +20 in one_hit
-    SKILL = 20 + min(100, 40 + 2 * mob_inst["level"])
+    # cf. 1stMud one_hit: skill = 20 + get_weapon_skill(ch, sn)
+    sn, _ = _get_weapon_sn(mob_inst)
+    SKILL = 20 + _get_weapon_skill(mob_inst, sn)
 
     mob_hitroll = get_hitroll(mob_inst) + affects.get("m_hitroll", 0)
     thac0 = _get_thac0(mob_inst["level"])
@@ -642,8 +669,8 @@ def _try_special_move(tr, player, target_inst):
     move = _SPECIAL_MOVES[randint(0, len(_SPECIAL_MOVES) - 1)]
     for line in move[:-1]:
         tr.print(line % name if "%s" in line else line)
-    # Damage: same unarmed formula as one_hit
-    skill = player["learned"].get(GSN_HAND_TO_HAND, 20)
+    # Damage: same unarmed formula as one_hit (cf. 1stMud: skill = 20 + get_weapon_skill)
+    skill = 20 + _get_weapon_skill(player, GSN_HAND_TO_HAND)
     lo  = max(1, 1 + 4 * skill // 100)
     hi  = max(lo, 2 * player["level"] * skill // 300)
     dam = max(1, randint(lo, hi))
@@ -672,16 +699,28 @@ def multi_hit(tr, player, target_inst):
     if target_inst["hp"] == 0:
         return True
 
-    # [PRIMESUD] Unarmed special move — no 1stMud equivalent
-    if player["equip"].get("wield") is None:
-        _try_special_move(tr, player, target_inst)
-        if target_inst["hp"] == 0:
-            return True
-
-    # Offhand weapon
+    # Offhand weapon (cf. 1stMud multi_hit WEAR_SECONDARY in fight.c)
     offhand = player["equip"].get("offhand")
     if offhand is not None and ITEM_TEMPLATES[offhand["vnum"]].get("type") == "weapon":
         one_hit(tr, player, target_inst, slot="offhand")
+        if target_inst["hp"] == 0:
+            return True
+
+    # Second attack (cf. 1stMud multi_hit in fight.c)
+    if player["learned"].get(GSN_SECOND_ATTACK, 0) > randint(1, 100):
+        one_hit(tr, player, target_inst)
+        if target_inst["hp"] == 0:
+            return True
+
+    # Third attack (cf. 1stMud multi_hit in fight.c)
+    if player["learned"].get(GSN_THIRD_ATTACK, 0) > randint(1, 100):
+        one_hit(tr, player, target_inst)
+        if target_inst["hp"] == 0:
+            return True
+
+    # [PRIMESUD] Unarmed special move — no 1stMud equivalent
+    if player["equip"].get("wield") is None:
+        _try_special_move(tr, player, target_inst)
         if target_inst["hp"] == 0:
             return True
 
@@ -965,6 +1004,6 @@ def advance_level(tr, player):
         add_mp,
         add_prac, "practice" if add_prac == 1 else "practices"))
     for _sn, data in SKILL_TABLE:
-        if data.get("min_level") == player["level"]:
-            kind = "spell" if data["type"] == "spell" else "skill"
+        if data.get("skill_level") == player["level"]:
+            kind = "spell" if data.get("spell_fun", "spell_null") != "spell_null" else "skill"
             tr.print("You can now use the {} {}.".format(data["name"], kind))

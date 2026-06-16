@@ -49,6 +49,62 @@ Render the closed-door connector but do not traverse through it:
 
 ---
 
+## offhand attack: non-weapon items in WEAR_SECONDARY cause runaway damage
+
+**Upstream:** `reference/1stMud4.5.3/src/act_obj.c`, `do_second()`, line 2994;
+`reference/1stMud4.5.3/src/fight.c`, `one_hit()`, lines 711–730.
+
+### The bug
+
+`do_second` (the command for equipping an offhand weapon) validates level, weight,
+and shield/hold conflicts, but never checks `obj->item_type == ITEM_WEAPON`.
+Any carried item that passes the weight limit can be placed in `WEAR_SECONDARY`.
+
+Inside `one_hit` (called with `secondary=true` for the offhand strike), the damage
+block checks only `if (wield != NULL)` before rolling dice:
+
+```c
+if (wield != NULL)
+{
+    dam = dice(wield->value[1], wield->value[2]) * skill / 100;
+    ...
+}
+```
+
+There is no `wield->item_type == ITEM_WEAPON` guard here.  `value[1]` and
+`value[2]` are read positionally from the `.are` file and their meaning is entirely
+item-type-specific:
+
+| Item type | `value[1]` | `value[2]` |
+|---|---|---|
+| Weapon | num dice | die size |
+| Armor | AC (pierce) | AC (slash) |
+| Container | max weight | flags |
+| Potion | spell sn | spell sn |
+
+A container with `value[1] = 100` and `value[2] = 50` would roll `dice(100, 50)`
+— up to 5000 raw damage — before the `* skill / 100` scaling is applied.
+
+Note: the weapon skill used to scale this damage (`skill = 20 + get_weapon_skill(ch, sn)`)
+is also unaffected — `get_weapon_sn` always reads `WEAR_WIELD` (primary slot), so
+it returns the primary weapon's sn regardless of what is in the secondary slot.
+The malformed dice values are the sole source of the damage spike.
+
+### PrimeSUD fix — implemented in `multi_hit` in `combat.py`
+
+The offhand strike is gated before `one_hit` is called:
+
+```python
+offhand = player["equip"].get("offhand")
+if offhand is not None and ITEM_TEMPLATES[offhand["vnum"]].get("type") == "weapon":
+    one_hit(tr, player, target_inst, slot="offhand")
+```
+
+Only a confirmed weapon item proceeds to the hit; non-weapons in the offhand slot
+are silently skipped rather than producing undefined dice behaviour inside `one_hit`.
+
+---
+
 ## look / automap: paragraph breaks preserved when condensing room descriptions
 
 **Upstream:** `reference/1stMud4.5.3/src/automap.c`, `erase_new_lines()`, lines 197–236;
