@@ -1,30 +1,41 @@
-import gc
+# PrimeSUD — single-user dungeon for the HP Prime
+# Port by ZechyW.  Not for commercial distribution.
+#
+# Based on 1stMud ROM Derivative (c) 2001-2003 Ryan Jennings
+# Based on ROM 2.4 beta (c) 1993-1996 Russ Taylor
+# Based on Merc 2.1 (c) 1992-1993 Chastain, Quan, Tse
+# Based on DikuMud (c) 1990-1991 Hammer, Seifert, Storfeldt, Madsen, Nyboe
 
-from tml import tml
+from tml_prime import tml_prime as tml, _HIST_UP, _HIST_DN
 from hpprime import dimgrob, eval as ppleval, getpix, pixon, grobw, grobh, strblit2
 
 from urandom import randint
 from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
-                    MS_PER_PULSE, PULSE_VIOLENCE, PULSE_TICK, PULSE_AREA,
-                    AUTOSAVE_TICKS, HP_REGEN_NUM, HP_REGEN_DENOM,
-                    MP_REGEN_NUM, MP_REGEN_DENOM,
+                    MS_PER_PULSE, PULSE_VIOLENCE, PULSE_MOBILE, PULSE_TICK, PULSE_AREA,
+                    AUTOSAVE_TICKS, TICK_SECS,
                     KEY_COMMANDS as _KEY_COMMANDS,
                     TERMINAL_COLS, FONT, FONT_GROB, COLOR_GROB,
-                    DEATH_MSG_DELAY)
-from world import R_STARTING_ROOM
+                    DEATH_MSG_DELAY,
+                    SCROLLBACK_SIZE, SCROLL_STEP,
+                    SWIPE_THRESHOLD, TOUCH_SCROLL_STEP,
+                    CMD_HISTORY_MAX,
+                    FNKEY_SENTINELS,
+                    SAVE_VAR)
+from util import free_mem
+from world import R_STARTING_ROOM, ROOMS, AREA_DEFS
 from combat import violence_update
 from player import (
     create_char,
     reset_area,
-    revive_dead_mobs,
+    reset_mobs,
+    mobile_update,
+    tick_update,
     show_prompt,
-    _poll_char,
-    _resync_keyboard,
-    save_char as _save_char,
-    load_char as _load_char,
+    save_char,
+    load_char,
 )
 from commands import interpret, do_look, _MACRO_SUBST
-from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap
+from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full
 
 
 # ── World tick / area update ──────────────────────────────────────────────────
@@ -36,17 +47,28 @@ _AREA_AGE_MIN   = 3   # skip reset below this age
 _AREA_AGE_RESET = 15  # reset threshold (player always present)
 
 
-def world_tick(player, room_state, mob_instances):
-    player["hp"] = min(player["hp_max"], player["hp"] + player["con"] * HP_REGEN_NUM // HP_REGEN_DENOM)
-    player["mp"] = min(player["mp_max"], player["mp"] + player["int"] * MP_REGEN_NUM // MP_REGEN_DENOM)
+_RESET_MSGS = (
+    "The area repopulates itself.",
+    "You notice a change in the area.",
+    "Time completes another cycle bringing life to the area.",
+    "You feel a sudden deja-vu bringing change to the area.",
+    "You hear noises off in the distance...",
+)
 
 
-def area_update(area_state, room_state, mob_instances):
-    """Increment area age and reset if threshold reached (cf. 1stMud area_update)."""
-    area_state["age"] += 1
-    if area_state["age"] >= _AREA_AGE_MIN and area_state["age"] >= _AREA_AGE_RESET:
-        revive_dead_mobs(room_state, mob_instances)
-        area_state["age"] = randint(0, 3)
+def area_update(tr, player, world):
+    """Increment each area's age and reset any that reach the threshold (cf. 1stMud area_update, db.c)."""
+    for area in world["areas"]:
+        area["age"] += 1
+        if area["age"] >= _AREA_AGE_MIN and area["age"] >= _AREA_AGE_RESET:
+            reset_mobs(world["mobs"], world["rooms"], area["resets"])
+            if area["tag"] == "mud_school":
+                area["age"] = 13  # resets every 2 ticks (cf. db.c:1330: age = 15-2)
+            else:
+                area["age"] = randint(0, 3)
+                # School area is intentionally silent (cf. db.c:1335 else-if excludes it).
+                if ROOMS[player["room"]].get("area") == area["tag"]:
+                    tr.print(_RESET_MSGS[randint(0, len(_RESET_MSGS) - 1)])
 
 
 def _wrap_plain(text, width):
@@ -69,7 +91,9 @@ class Game:
     """Holds game state and drives the main loop."""
 
     def __init__(self):
-        self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font=FONT)
+        self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font=FONT,
+                      scrollback_size=SCROLLBACK_SIZE, scroll_step=SCROLL_STEP,
+                      touch_scroll_step=TOUCH_SCROLL_STEP, swipe_threshold=SWIPE_THRESHOLD)
         self._font_w = grobw(FONT_GROB)
         self._font_h = grobh(FONT_GROB)
         dimgrob(COLOR_GROB, self._font_w, self._font_h, 0)
@@ -90,10 +114,21 @@ class Game:
         _CC = COLOR_CODE
         _ANSI = ANSI_COLORS
         _RST = _RESET_CODES
+        _pxy = self.tr.print_xy
+        _pch = self.tr._put_char
         def _wrapped_print(*args, sep=' ', end='\n'):
             text = sep.join(str(a) for a in args)
+            i = 0
+            while i + 1 < len(text) and text[i] == _CC:
+                i += 2
+            if i < len(text):
+                # Always capitalise first letter of output
+                text = text[:i] + text[i].upper() + text[i + 1:]
             if _CC not in text:
                 # Fast path: skip color_wrap and all colour-code scanning.
+                # Reset lazily here — a previous colored print may have left _current_fg set.
+                if self._current_fg is not None:
+                    self.reset_color()
                 lines = _wrap_plain(text, _cols)
                 n = len(lines)
                 for idx, line in enumerate(lines):
@@ -102,51 +137,86 @@ class Game:
                     if not auto_wrapped:
                         _orig_print('', end=end if idx == n - 1 else '\n')
                 return
-            lines = color_wrap(text, _cols)
-            n = len(lines)
-            for idx, line in enumerate(lines):
-                # has_vis: True once any printable text is flushed; guards
-                # against treating cursor_x==0 as an auto-wrap when the line
-                # contained only colour codes and nothing was actually printed.
-                i, llen, buf, colored, has_vis = 0, len(line), [], False, False
-                while i < llen:
-                    if line[i] == _CC and i + 1 < llen:
-                        code = line[i + 1]
-                        if buf:
-                            _orig_print(''.join(buf), end='')
-                            has_vis = True
-                            buf = []
-                        if code in _ANSI:
-                            self.set_color(_ANSI[code])
-                            colored = True
-                        elif code in _RST:
-                            self.reset_color()
-                            colored = False
-                        elif code == _CC:
-                            buf.append(_CC)
-                        i += 2
+            # Colour-first rendering: inline split+group in one pass, then render
+            # one set_color/reset_color per distinct colour.
+            # Fast check skips wrap scan when visible length clearly fits.
+            if len(text) - 2 * text.count(_CC) <= _cols and '{{' not in text:
+                pieces = (text,)
+            else:
+                pieces = color_wrap_full(text, _cols)
+            n = len(pieces)
+            for idx, piece in enumerate(pieces):
+                # Parse and group in one pass via C-level split.
+                # parts[0] = text before first code; each subsequent part =
+                # code_char + text (or empty for '{{' escape).
+                x = 0
+                current = None
+                colour_order = []
+                groups = {}
+                parts = piece.split(_CC)
+                seg = parts[0]
+                if seg:
+                    colour_order.append(None)
+                    groups[None] = [(0, seg)]
+                    x = len(seg)
+                skip = False
+                for part in parts[1:]:
+                    if not part:
+                        # '{{' escape: literal '{'.
+                        if current not in groups:
+                            colour_order.append(current)
+                            groups[current] = []
+                        groups[current].append((x, _CC))
+                        x += 1
+                        skip = True
+                        continue
+                    if skip:
+                        skip = False
+                        seg = part
                     else:
-                        buf.append(line[i])
-                        i += 1
-                if buf:
-                    _orig_print(''.join(buf), end='')
-                    has_vis = True
-                if colored:
-                    self.reset_color()
+                        code = part[0]
+                        seg = part[1:]
+                        if code in _ANSI:
+                            current = _ANSI[code]
+                        elif code in _RST:
+                            current = None
+                        else:
+                            seg = _CC + part
+                    if seg:
+                        if current not in groups:
+                            colour_order.append(current)
+                            groups[current] = []
+                        groups[current].append((x, seg))
+                        x += len(seg)
+                row = self.tr.cursor_y
+                for colour in colour_order:
+                    if colour is None:
+                        self.reset_color()
+                    else:
+                        self.set_color(colour)
+                    for x_pos, seg in groups[colour]:
+                        _pxy(x_pos, row, seg)
                 is_last = idx == n - 1
-                # If tml auto-wrapped (non-empty line landed in the last col),
-                # cursor_x resets to 0 — the explicit newline would double-advance.
-                auto_wrapped = has_vis and self.tr.cursor_x == 0
-                if not is_last and not auto_wrapped:
-                    _orig_print('', end='\n')
-                elif is_last and end and not auto_wrapped:
-                    _orig_print('', end=end)
+                if not is_last:
+                    _pch('\n')
+                elif end:
+                    for c in end:
+                        _pch(c)
         self.tr.print = _wrapped_print
+        _orig_set_status = self.tr.set_status
+        def _wrapped_set_status(text):
+            if self._current_fg is not None:
+                self.reset_color()
+            _orig_set_status(text)
+        self.tr.set_status = _wrapped_set_status
         self.input_buf = ""
+        self._cmd_history = []   # [PRIMESUD] submitted commands, oldest first
+        self._hist_pos    = None # None = not browsing; int = index into _cmd_history
+        self._hist_saved  = ""   # input_buf snapshot from when browsing started
         self.player = None
         self.room_state = None
         self.mob_instances = None
-        self._area_state = {"age": 0}
+        self.area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
 
     def set_color(self, color):
         """Recolour the font grob for subsequent glyph rendering.
@@ -177,60 +247,132 @@ class Game:
         self.player = create_char()
         self.player["name"] = name
         self.room_state, self.mob_instances = reset_area()
-        self._area_state = {"age": 0}
+        self.area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
+        self.player["_macros"] = _MACRO_SUBST
 
     def load_game(self):
         self.player = create_char()
         self.room_state, self.mob_instances = reset_area()
-        self._area_state = {"age": 0}
-        return _load_char(self.player, self.room_state, self.mob_instances,
-                          self._area_state, _MACRO_SUBST)
+        self.area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
+        self.player["_macros"] = _MACRO_SUBST
+        result = load_char(self.player, {"rooms": self.room_state,
+                                         "mobs": self.mob_instances,
+                                         "areas": self.area_states})
+        if isinstance(result, tuple):   # (None, backup_ok) — version mismatch
+            _, self._backup_ok = result
+            return None
+        return result
+
+    def handle_version_mismatch(self):
+        """Prompt the user after a save format version mismatch.
+
+        Returns:
+            bool: True if the user chose to start a new game; False if they
+                  chose to quit (caller should exit without saving).
+        """
+        tr = self.tr
+        tr.print("{RWARNING:{x Save format has changed.")
+        if self._backup_ok:
+            tr.print("Your old save has been backed up to: {C" + SAVE_VAR + "_bak{x")
+        else:
+            tr.print("{RWARNING:{x Backup to {C" + SAVE_VAR + "_bak{x FAILED.")
+            tr.print("Your old save is still in {C" + SAVE_VAR + "{x — do NOT start")
+            tr.print("a new game here or it will be overwritten.")
+        tr.print("")
+        tr.print("[N] Start a new game")
+        tr.print("[Q] Quit (restore or migrate the save manually)")
+        tr.print("")
+        while True:
+            choice = tr.input("Choice (N/Q): ", alpha=False).strip().lower()
+            if choice == "n":
+                return True
+            if choice == "q":
+                return False
 
     def save_game(self):
-        if not _save_char(self.player, self.room_state, self.mob_instances,
-                          self._area_state, _MACRO_SUBST):
-            self.tr.print("Save failed.")
-        else:
+        try:
+            save_char(self.player, {
+                "rooms": self.room_state,
+                "mobs": self.mob_instances,
+                "areas": self.area_states,
+            })
             self.tr.print("Saved.")
+        except Exception as e:
+            self.tr.print("Save failed: {}".format(e))
 
-    def run_title(self):
+    def show_greeting(self):
         tr = self.tr
         tr.clear()
-        tr.print("=== PRIME{RSUD{x ===")
-        tr.print("A single-user dungeon.")
 
-        def fmt_bytes(n):
-            for unit in ("B", "KB", "MB"):
-                if n < 1024:
-                    return "{} {}".format(n, unit)
-                n //= 1024
-            return "{} GB".format(n)
+        mem_part = "{{G(Mem. free: {})".format(free_mem())
+        pad = 64 - 23 - len(mem_part) - 1
+        _first = '{C 8888888b.          d8b' + ' ' * pad + mem_part + '{x'
+        tr.print(_first)
+        tr.print("{C 888   Y88b         Y8P                                       {x")
+        tr.print("{C 888    888                                                   {x")
+        tr.print("{C 888   d88P 888d888 888 88888b.d88b.   .d88b.                 {x")
+        tr.print('{C 8888888P"  888P"   888 888 "888 "88b d8P  Y8b                {x')
+        tr.print("{C 888        888     888 888  888  888 88888888                {x")
+        tr.print("{C 888        888     888 888  888  888 Y8b.                    {x")
+        tr.print('{C 888        888     888 888  888  888  "Y8888                 {x')
+        tr.print("{C                             .d8888b.  888     888 8888888b.  {x")
+        tr.print('{C                            d88P  Y88b 888     888 888  "Y88b {x')
+        tr.print("{C                            Y88b.      888     888 888    888 {x")
+        tr.print('{C                             "Y888b.   888     888 888    888 {x')
+        tr.print('{C                                "Y88b. 888     888 888    888 {x')
+        tr.print('{C                                  "888 888     888 888    888 {x')
+        tr.print("{C                            Y88b  d88P Y88b. .d88P 888  .d88P {x")
+        tr.print('{C                             "Y8888P"   "Y88888P"  8888888P"  {x')
+        tr.print("{c      Original DikuMUD by Hans Staerfeldt, Katja Nyboe,       {x")
+        tr.print("{c      Tom Madsen, Michael Seifert, and Sebastian Hammer       {x")
+        tr.print("{c      Based on MERC 2.1 code by Hatchet, Furey, and Kahn      {x")
+        tr.print("{c      ROM 2.4 copyright (c) 1993-1998 Russ Taylor.            {x")
+        tr.print("{c      1stMud Server copyright (c) 2001-2004, Markanth.        {x")
+        tr.input("                    [Press Enter to start]                    ",
+            alpha=False,
+        )
 
-        tr.print("Memory free: {}".format(fmt_bytes(gc.mem_free())))
-        tr.print("")
+        tr.print()
+
+        # tr.print("Memory free: {G" + mem + "{x")
 
     def game_loop(self):
         tr = self.tr
         player = self.player
-        room_state = self.room_state
-        mob_instances = self.mob_instances
-        area_state = self._area_state
+        world = {
+            "rooms": self.room_state,
+            "mobs": self.mob_instances,
+            "areas": self.area_states,
+        }
 
         pulse      = 0
         tick_count = 0
         now        = int(ppleval("Ticks"))
         next_pulse = now + MS_PER_PULSE
 
-        _resync_keyboard(tr)
+        tr.resync_keyboard()
         show_prompt(tr, player, self.input_buf)
-        do_look(tr, player, [], room_state, mob_instances)
+        do_look(tr, player, [], world)
 
         while True:
-            result = _poll_char(tr, _KEY_COMMANDS)
+            result = tr.poll_char(_KEY_COMMANDS)
+            if tr._scrollback_ms:  # [PRIMESUD] shift pulse clock forward by time spent in scrollback
+                next_pulse += tr._scrollback_ms
+                tr._scrollback_ms = 0
             if result is not None:
                 char, auto_submit = result
                 if char == "\n":
-                    if interpret(self.input_buf, tr, player, room_state, mob_instances) == "quit":
+                    if self.input_buf:  # [PRIMESUD] append to command history
+                        if not self._cmd_history or self._cmd_history[-1] != self.input_buf:
+                            self._cmd_history.append(self.input_buf)
+                            if len(self._cmd_history) > CMD_HISTORY_MAX:
+                                self._cmd_history.pop(0)
+                    self._hist_pos   = None
+                    self._hist_saved = ""
+                    _t0 = int(ppleval("Ticks"))
+                    _quit = interpret(self.input_buf, tr, player, world) == "quit"
+                    next_pulse += int(ppleval("Ticks")) - _t0  # [PRIMESUD] skip missed pulses during blocking input (e.g. picker)
+                    if _quit:
                         break
                     self.input_buf = ""
                     show_prompt(tr, player, self.input_buf)
@@ -239,19 +381,43 @@ class Game:
                     show_prompt(tr, player, self.input_buf)
                 elif char == "\e":
                     self.input_buf = ""
+                    self._hist_pos   = None  # [PRIMESUD] ESC commits to the empty buffer
+                    self._hist_saved = ""
                     show_prompt(tr, player, self.input_buf)
+                elif char == _HIST_UP:  # [PRIMESUD] recall older command
+                    if self._cmd_history:
+                        if self._hist_pos is None:
+                            self._hist_saved = self.input_buf
+                            self._hist_pos = len(self._cmd_history) - 1
+                        elif self._hist_pos > 0:
+                            self._hist_pos -= 1
+                        self.input_buf = self._cmd_history[self._hist_pos]
+                        show_prompt(tr, player, self.input_buf)
+                elif char == _HIST_DN:  # [PRIMESUD] recall newer command / restore saved
+                    if self._hist_pos is not None:
+                        if self._hist_pos < len(self._cmd_history) - 1:
+                            self._hist_pos += 1
+                            self.input_buf = self._cmd_history[self._hist_pos]
+                        else:
+                            self.input_buf = self._hist_saved
+                            self._hist_pos   = None
+                            self._hist_saved = ""
+                        show_prompt(tr, player, self.input_buf)
                 elif auto_submit is True:  # [PRIMESUD] hardware key — immediate submit
-                    if interpret(char, tr, player, room_state, mob_instances) == "quit":
+                    _t0 = int(ppleval("Ticks"))
+                    _quit = interpret(char, tr, player, world) == "quit"
+                    next_pulse += int(ppleval("Ticks")) - _t0  # [PRIMESUD] skip missed pulses during blocking input
+                    if _quit:
                         break
                     show_prompt(tr, player, self.input_buf)
                 elif auto_submit is False:  # [PRIMESUD] hardware key — load into buffer
                     self.input_buf = char
                     show_prompt(tr, player, self.input_buf)
-                elif char not in ("\L", "\R", "\SR"):
+                elif char is not None and char not in ("\L", "\R", "\SR"):
                     subst = _MACRO_SUBST.get(char)
                     if subst is not None and not self.input_buf:
                         self.input_buf = subst
-                    else:
+                    elif char not in FNKEY_SENTINELS:
                         self.input_buf += char
                     show_prompt(tr, player, self.input_buf)
 
@@ -261,8 +427,9 @@ class Game:
                 pulse += 1
 
                 if pulse % PULSE_VIOLENCE == 0:
-                    if violence_update(tr, player, mob_instances, room_state):
+                    if violence_update(tr, player, world):
                         # [PRIMESUD] Handle auto respawn on death
+                        tr.print("You have been KILLED!!")
                         tr.print("Your lifeforce ebbs away...")
                         ppleval("WAIT({})".format(DEATH_MSG_DELAY))
                         tr.print("A distant warmth draws you back.")
@@ -274,19 +441,23 @@ class Game:
                         player["daze"] = 0
                         tr.print("You come to your senses. Alive, but barely.")
                         tr.print("")
-                        do_look(tr, player, [], room_state, mob_instances)
+                        do_look(tr, player, [], world)
                     show_prompt(tr, player, self.input_buf)
 
                 if pulse % PULSE_TICK == 0:
-                    world_tick(player, room_state, mob_instances)
+                    player["played"] = player.get("played", 0) + TICK_SECS
+                    tick_update(tr, player, ROOMS[player["room"]])
                     show_prompt(tr, player, self.input_buf)
                     tick_count += 1
                     if tick_count >= AUTOSAVE_TICKS:
                         self.save_game()
                         tick_count = 0
 
+                if pulse % PULSE_MOBILE == 0:
+                    mobile_update(tr, player, world)
+
                 if pulse % PULSE_AREA == 0:
-                    area_update(area_state, room_state, mob_instances)
+                    area_update(tr, player, world)
 
                 if pulse >= 14400:  # wrap at 1 hour (3600 s × 4 pulses/s)
                     pulse = 0
@@ -322,9 +493,15 @@ class PrimeSud:
         """Entry point: run the game inside the environment context manager."""
         with self:
             game = self.game
-            game.run_title()
 
-            if not game.load_game():
+            game.show_greeting()
+
+            result = game.load_game()
+            if result is None:          # version mismatch
+                if not game.handle_version_mismatch():
+                    return              # user chose quit — exit without saving
+                game.new_game()
+            elif not result:            # no save found
                 game.tr.print("No save found. Starting new game.")
                 game.tr.print("")
                 game.new_game()
@@ -332,7 +509,9 @@ class PrimeSud:
             try:
                 game.game_loop()
             finally:
+                # ppleval('HVars("DBGSAVE_ENTER"):="1"')  # [PRIMESUD] debug: did finally run?
                 game.save_game()
+                # ppleval('HVars("DBGSAVE_DONE"):="2"')   # [PRIMESUD] debug: did save_game return?
 
 
 PrimeSud().run()

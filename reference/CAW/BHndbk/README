@@ -1,0 +1,21 @@
+The Curious Area Workshop
+   The C.A.W. Builders' Handbook is available as a single zipped file for
+download. If you wish to distribute this file, please let me know and
+do not remove or add any files to the archive without my prior consent.
+
+This tar file should contain the following eight files:
+
+README          - This file
+BhndBk-2.2      - The main document on building areas for DikuMUDs
+Appendix.1      - A reference set of all the charts used in BhndBk-2.2
+Handbook.mob    - An example .mob file
+Handbook.obj    - An example .obj file
+Handbook.shp    - An example .shp file
+Handbook.wld    - An example .wld file
+Handbook.zon    - An example .zon file
+
+Furry
+C.A.W.
+06/19/96
+fletchra@qsilver.queensu.ca
+

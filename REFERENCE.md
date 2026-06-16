@@ -3,6 +3,15 @@
 Snippets of implementation detail from the reference 1stMud 4.5.3 source
 (`reference/1stMud4.5.3/`).
 
+See also: **[COMMANDS.md](COMMANDS.md)** — full command table with load order,
+positions, levels, flags, and categories (source: `data/commands.dat`).
+
+See also: **[CMD_PLAN.md](CMD_PLAN.md)** — plan for porting the command dispatch
+infrastructure and extending the command set.
+
+See also: **[BUILTINS.md](BUILTINS.md)** — HP Prime Python built-in type method
+availability (verified via `dir()` on-device).
+
 ---
 
 ## Custom colour slots
@@ -158,6 +167,11 @@ editor which stat formula (0=default, 1=easy, 2=normal, 3=hard, 4=random) to
 use when the builder triggers the `autoset` command, which auto-generates AC,
 HP/mana/damage dice, and `hitroll` from the mob's level.
 
+**`group`** — faction tag for automatic mutual assist.  Any NPC will join
+combat on behalf of another NPC that shares the same non-zero `group` value,
+without requiring `ASSIST_ALL` or `ASSIST_RACE` flags (see `fight.c`).  `0`
+means no group (mob won't assist via this mechanism).
+
 **`hitroll` but no `damroll`** — mobs have no separate `damroll` field.  The
 `+B` bonus in the damage dice (`NdD+B`, line 8) serves that role — it is a flat
 damage bonus packed into the dice spec.  `hitroll` exists as its own field
@@ -170,7 +184,7 @@ character (the next `#` or section header):
 | ------ | ----------------------------- | -------------------------------------------------------------------------- |
 | `F`    | `field_name  flag`            | Remove bits from a field (`act` `aff` `off` `imm` `res` `vul` `for` `par`) |
 | `M`    | `trigger  prog_vnum  phrase~` | Attach a MobProg                                                           |
-| `S`    | `kills  deaths`               | Persistent kill/death counters                                             |
+| `S`    | `kills  deaths`               | Persistent kill/death counters: `kills` = kills scored by this mob prototype (players or other mobs killed); `deaths` = times this prototype has been killed.  Written back to the `.are` file on shutdown so stats survive server restarts.  Optional — absent if both are zero.  Source: `db2.c:load_mobiles`, `fight.c:update_death`. |
 
 #### Annotated example — #3702 monster
 
@@ -615,8 +629,12 @@ Flag values decoded:
 | 10  | `ROOM_SAFE`      | No combat                               |
 | 11  | `ROOM_SOLITARY`  | Max 1 occupant                          |
 | 12  | `ROOM_PET_SHOP`  | Pet shop                                |
-| 13  | `ROOM_NO_RECALL` | Cannot recall from here                 |
-| 18  | `ROOM_LAW`       | Law zone (auto-set for VNUMs 3000–3399) |
+| 13  | `ROOM_NO_RECALL`    | Cannot recall from here                 |
+| 14  | `ROOM_IMP_ONLY`     | Immortal (imp) access only              |
+| 15  | `ROOM_GODS_ONLY`    | God-level access only                   |
+| 16  | `ROOM_HEROES_ONLY`  | Hero-level access only                  |
+| 17  | `ROOM_NEWBIES_ONLY` | Newbie access only                      |
+| 18  | `ROOM_LAW`          | Law zone (auto-set for VNUMs 3000–3399) |
 | 19  | `ROOM_NOWHERE`   | Unreachable via normal exits            |
 | 20  | `ROOM_NOEXPLORE` | Not counted for explore tracking        |
 | 21  | `ROOM_NOAUTOMAP` | Hidden from automap                     |
@@ -677,4 +695,51 @@ comments.  The first integer after the command letter is always discarded
 | `D` | `0  room_vnum  exit_num  locks`              | Set door state: 0=open 1=closed 2=locked (deferred)              |
 | `F` | `0  room_vnum  exit_num  flags`              | Set exit flags directly (deferred)                               |
 
-PrimeSUD currently processes `M` and `O` only; see DESIGN.md § *Area file system*.
+PrimeSUD processes M/O/E/G at runtime; P/R are stored but deferred.  F/D are
+consumed at conversion time and baked into room exit dicts.
+
+#### `E` reset — wear location (`wloc_t` enum from `h/defines.h`)
+
+The `E` reset arg3 is a `wloc_t` integer, not a wear-flag bit position.  Converter
+maps it to a PrimeSUD slot name via `WLOC_SLOT`.
+
+| Value | `wloc_t` constant  | PrimeSUD slot   |
+| ----- | ------------------ | --------------- |
+| 0     | `WEAR_LIGHT`       | `"light"`       |
+| 1     | `WEAR_FINGER_L`    | `"finger_l"`    |
+| 2     | `WEAR_FINGER_R`    | `"finger_r"`    |
+| 3     | `WEAR_NECK_1`      | `"neck_1"`      |
+| 4     | `WEAR_NECK_2`      | `"neck_2"`      |
+| 5     | `WEAR_BODY`        | `"body"`        |
+| 6     | `WEAR_HEAD`        | `"head"`        |
+| 7     | `WEAR_LEGS`        | `"legs"`        |
+| 8     | `WEAR_FEET`        | `"feet"`        |
+| 9     | `WEAR_HANDS`       | `"hands"`       |
+| 10    | `WEAR_ARMS`        | `"arms"`        |
+| 11    | `WEAR_SHIELD`      | `"shield"`      |
+| 12    | `WEAR_ABOUT`       | `"about"`       |
+| 13    | `WEAR_WAIST`       | `"waist"`       |
+| 14    | `WEAR_WRIST_L`     | `"wrist_l"`     |
+| 15    | `WEAR_WRIST_R`     | `"wrist_r"`     |
+| 16    | `WEAR_WIELD`       | `"wield"`       |
+| 17    | `WEAR_HOLD`        | `"hold"`        |
+| 18    | `WEAR_FLOAT`       | `"float"`       |
+| 19    | `WEAR_SECONDARY`   | `"secondary"`   |
+
+---
+
+## Colour codes
+
+Same `{X` escape syntax as 1stMud — embed in strings passed to `tr.print()`, handled by `colors.py`.
+
+| Code | Colour | Code | Colour |
+|------|--------|------|--------|
+| `{d` | dark grey | `{D` | grey |
+| `{r` | red | `{R` | bright red |
+| `{g` | green | `{G` | bright green |
+| `{y` | yellow | `{Y` | bright yellow |
+| `{b` | blue | `{B` | bright blue |
+| `{m` | magenta | `{M` | bright magenta |
+| `{c` | cyan | `{C` | bright cyan |
+| `{w` | light grey | `{W` | white |
+| `{x` / `{X` | reset to default | | |
