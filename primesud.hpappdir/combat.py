@@ -7,7 +7,7 @@ from config import (PULSE_VIOLENCE,
                     ATTACK_TABLE, DAM_NONE, DAM_BASH)
 from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
                    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY)
-from player import get_hitroll, get_damroll, get_AC, get_curr_stat, show_prompt, save_char, create_object
+from player import get_hitroll, get_damroll, get_AC, get_curr_stat, show_prompt, create_object, save_char
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -494,15 +494,14 @@ def _mob_one_hit(tr, mob_inst, player):
     return dam
 
 
-def do_kick(tr, ch, args, room_state, mob_instances):
+def do_kick(tr, ch, args, world):
     """Kick for player or mob (cf. 1stMud do_kick in fight.c).
 
     Args:
         tr: Terminal for printing messages.
         ch (dict): Acting character (player or mob instance).
         args (list): Command arguments (unused).
-        room_state (dict): Room state mapping room ID → room state dict.
-        mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
+        world (dict): Game world state (keys: rooms, mobs, areas).
     """
     if ch["is_npc"]:
         target = ch["fighting"]   # player dict, set by set_fighting
@@ -519,7 +518,7 @@ def do_kick(tr, ch, args, room_state, mob_instances):
             tr.print("You are still recovering.")
             return None
         target_id = ch["fighting"]
-        target    = mob_instances[target_id]
+        target    = world["mobs"][target_id]
 
     if ch["is_npc"]:
         skill_pct = ch["level"] if ch["level"] <= 2 else ch["level"] // 2 + ch["level"] // 3
@@ -539,8 +538,8 @@ def do_kick(tr, ch, args, room_state, mob_instances):
             tr.print("{GYour kick %s {G%s%s {W[{R%d{W]{x" % (vp, tpl["short_descr"], punct, dam))
             check_improve(tr, ch, GSN_KICK, True, 1)
             if target["hp"] == 0:
-                raw_kill(tr, ch, target_id, target, tpl, room_state, mob_instances)
-                _advance_target(ch, mob_instances, room_state)
+                raw_kill(tr, ch, target_id, target, tpl, world)
+                _advance_target(ch, world["mobs"], world["rooms"])
     else:
         if ch["is_npc"]:
             tr.print("{R%s's kick misses {Ryou.{x" % MOB_TEMPLATES[ch["tpl"]]["short_descr"])
@@ -551,15 +550,14 @@ def do_kick(tr, ch, args, room_state, mob_instances):
     return None
 
 
-def mob_hit(tr, mob_inst, player, room_state, mob_instances):
+def mob_hit(tr, mob_inst, player, world):
     """Full attack sequence for one mob per combat round (cf. 1stMud mob_hit).
 
     Args:
         tr: Terminal for printing combat messages.
         mob_inst (dict): Attacking mob instance dict.
         player (dict): Player state dict.
-        room_state (dict): Room state mapping room ID → room state dict.
-        mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
+        world (dict): Game world state (keys: rooms, mobs, areas).
     """
     _mob_one_hit(tr, mob_inst, player)
     if player["hp"] == 0:
@@ -579,7 +577,7 @@ def mob_hit(tr, mob_inst, player, room_state, mob_instances):
 
     # Off-flag specials (cf. 1stMud mob_hit random switch)
     if mob_inst["off_flags"].get("kick") and randint(0, 8) == 3:
-        do_kick(tr, mob_inst, [], room_state, mob_instances)
+        do_kick(tr, mob_inst, [], world)
 
 
 # ── Special unarmed moves [PRIMESUD] (cf. 1stMud special_move for inspiration) ─
@@ -689,7 +687,7 @@ def multi_hit(tr, player, target_inst):
 
 # ── Combat state ──────────────────────────────────────────────────────────────
 
-def set_fighting(tr, player, mob_id, mob_instances, room_state):
+def set_fighting(tr, player, mob_id, mob_instances):
     """Enter combat: engage a single mob against the player (cf. 1stMud set_fighting in fight.c).
 
     Args:
@@ -697,7 +695,6 @@ def set_fighting(tr, player, mob_id, mob_instances, room_state):
         player (dict): Player state dict.
         mob_id (int): ID of the mob to engage.
         mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
-        room_state (dict): Room state mapping room ID → room state dict.
     """
     inst = mob_instances[mob_id]
     tpl  = MOB_TEMPLATES[inst["tpl"]]
@@ -786,14 +783,13 @@ def _advance_target(player, mob_instances, room_state):
 
 # ── Violence update (called every PULSE_VIOLENCE) ─────────────────────────────
 
-def violence_update(tr, player, mob_instances, room_state):
+def violence_update(tr, player, world):
     """One combat pulse: player attacks, then all aggro mobs counter-attack (cf. 1stMud violence_update in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
         player (dict): Player state dict.
-        mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
-        room_state (dict): Room state mapping room ID → room state dict.
+        world (dict): Game world state (keys: rooms, mobs, areas).
 
     Returns:
         bool or None: True if the player died this pulse (caller should show
@@ -803,18 +799,18 @@ def violence_update(tr, player, mob_instances, room_state):
     if target_id is None:
         return
 
-    target = mob_instances.get(target_id)
+    target = world["mobs"].get(target_id)
     if target is None:
-        stop_fighting(player, mob_instances)
+        stop_fighting(player, world["mobs"])
         return
 
     tpl = MOB_TEMPLATES[target["tpl"]]
 
     # Decrement wait/daze for player and all room mobs
     player["wait"] = max(0, player["wait"] - PULSE_VIOLENCE)
-    rs = room_state[player["room"]]
+    rs = world["rooms"][player["room"]]
     for mid in rs["mobs"]:
-        inst = mob_instances[mid]
+        inst = world["mobs"][mid]
         inst["wait"] = max(0, inst["wait"] - PULSE_VIOLENCE)
         inst["daze"] = max(0, inst["daze"] - PULSE_VIOLENCE)
 
@@ -822,14 +818,14 @@ def violence_update(tr, player, mob_instances, room_state):
     if player["wait"] <= 0:
         killed = multi_hit(tr, player, target)
         if killed:
-            raw_kill(tr, player, target_id, target, tpl, room_state, mob_instances)
-            _advance_target(player, mob_instances, room_state)
+            raw_kill(tr, player, target_id, target, tpl, world)
+            _advance_target(player, world["mobs"], world["rooms"])
         else:
-            check_assist(tr, player, target_id, mob_instances, room_state)
+            check_assist(tr, player, target_id, world["mobs"], world["rooms"])
 
     # Mob counter-attacks
     for mob_id in list(rs["mobs"]):
-        mob_inst = mob_instances[mob_id]
+        mob_inst = world["mobs"][mob_id]
         if mob_inst["state"] != "aggro":
             continue
         if mob_inst["wait"] > 0:
@@ -838,7 +834,7 @@ def violence_update(tr, player, mob_instances, room_state):
         if mob_tpl.get("passive"):
             continue
 
-        mob_hit(tr, mob_inst, player, room_state, mob_instances)
+        mob_hit(tr, mob_inst, player, world)
 
         # Tick debuff timers
         affects = mob_inst["affects"]
@@ -851,12 +847,12 @@ def violence_update(tr, player, mob_instances, room_state):
                     affects.pop(base, None)
 
         if player["hp"] == 0:
-            stop_fighting(player, mob_instances)
+            stop_fighting(player, world["mobs"])
             return True
 
     if player["fighting"] is not None:
         fid  = player["fighting"]
-        finst = mob_instances[fid]
+        finst = world["mobs"][fid]
         tr.print(_mob_condition(finst, MOB_TEMPLATES[finst["tpl"]]))
         tr.print("")
 
@@ -884,7 +880,7 @@ def _death_cry(tr, tpl):
     tr.print(_DEATH_CRIES[randint(0, len(_DEATH_CRIES) - 1)].format(tpl["short_descr"]))
 
 
-def raw_kill(tr, player, mob_id, inst, tpl, room_state, mob_instances):
+def raw_kill(tr, player, mob_id, inst, tpl, world):
     """Handle mob death: award XP, level-up if needed, drop loot, extract mob (cf. 1stMud raw_kill in fight.c).
 
     Args:
@@ -893,8 +889,7 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state, mob_instances):
         mob_id (int): ID of the killed mob instance.
         inst (dict): Mob instance dict.
         tpl (dict): Mob template dict.
-        room_state (dict): Room state mapping room ID → room state dict.
-        mob_instances (dict): Mob instance mapping mob ID → instance dict.
+        world (dict): Game world state (keys: rooms, mobs, areas).
     """
     xp = _xp_for_kill(player["level"], inst["level"])
     player["xp"] += xp
@@ -907,7 +902,7 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state, mob_instances):
     _death_cry(tr, tpl)
 
     # Drop equipped items and carried inventory to room floor (cf. 1stMud obj_to_room on death)
-    _floor = room_state[inst["room"]]["items"]
+    _floor = world["rooms"][inst["room"]]["items"]
     for _slot_vnum in inst.get("equip", {}).values():
         if _slot_vnum is not None:
             _floor.append(create_object(_slot_vnum))
@@ -917,10 +912,13 @@ def raw_kill(tr, player, mob_id, inst, tpl, room_state, mob_instances):
         tr.print("{} falls to the ground.".format(ITEM_TEMPLATES[_inv_vnum]["short_descr"]))
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
-    save_char(player, room_state, mob_instances)
+    try:
+        save_char(player, world)
+    except Exception as e:
+        tr.print("Save failed: {}".format(e))
 
-    room_state[inst["room"]]["mobs"].remove(mob_id)
-    del mob_instances[mob_id]
+    world["rooms"][inst["room"]]["mobs"].remove(mob_id)
+    del world["mobs"][mob_id]
     tr.print("")
 
 

@@ -68,7 +68,7 @@ _FLAG_TABLE = (
 )
 
 
-def do_automap(tr, player, args, room_state, mob_instances):
+def do_automap(tr, player, args, world):
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOMAP
     if player["flags"] & PLR_AUTOMAP:
         tr.print("You now see an automap in room descriptions.")
@@ -76,7 +76,7 @@ def do_automap(tr, player, args, room_state, mob_instances):
         tr.print("You no longer see automap room descriptions.")
 
 
-def do_autolist(tr, player, args, room_state, mob_instances):
+def do_autolist(tr, player, args, world):
     tr.print(" Command    Status  Description")
     tr.print(" " + "-" * (TERMINAL_COLS - 2))
     flags = player.get("flags", PLR_DEFAULTS)
@@ -87,10 +87,10 @@ def do_autolist(tr, player, args, room_state, mob_instances):
                  "{w " + desc + "{x")
 
 
-def _look_item(tr, player, args, room_state):
+def _look_item(tr, player, args, world):
     """Show an item's description from inventory, room, or equipped slots (cf. 1stMud do_look in act_info.c)."""
     target = " ".join(args)
-    rs = room_state[player["room"]]
+    rs = world["rooms"][player["room"]]
     equipped = [obj for obj in player["equip"].values() if obj is not None]
     result = (get_obj_list(target, player["inv"], ITEM_TEMPLATES)
               or get_obj_list(target, rs["items"], ITEM_TEMPLATES)
@@ -108,22 +108,21 @@ def _look_item(tr, player, args, room_state):
                 tr.print(line)
 
 
-def do_look(tr, player, args, room_state, mob_instances):
+def do_look(tr, player, args, world):
     """Display the current room or examine an item (cf. 1stMud do_look in act_info.c).
 
     Args:
         tr: Terminal renderer.
         player (dict): Player state dict.
         args (list): Parsed command arguments; non-empty triggers item look.
-        room_state (dict): Per-room mutable state.
-        mob_instances (dict): Live mob instance dicts keyed by mob ID.
+        world (dict): Game world state (keys: rooms, mobs, areas).
     """
     if args:
         # TODO: extend to room extra_descs, mob descriptions, and item extra_descs on other targets
-        _look_item(tr, player, args, room_state)
+        _look_item(tr, player, args, world)
         return
     room = ROOMS[player["room"]]
-    rs = room_state[player["room"]]
+    rs = world["rooms"][player["room"]]
     automap_on = player.get("flags", PLR_DEFAULTS) & PLR_AUTOMAP
     text_w = TERMINAL_COLS - COMPACT_W - 1 if automap_on else TERMINAL_COLS
 
@@ -174,7 +173,7 @@ def do_look(tr, player, args, room_state, mob_instances):
         tr.print(stack_prefix + line)
     # Mobs: one per line, long_descr at idle or constructed position string (cf. 1stMud show_char_to_char_0 in act_info.c)
     for mob_id in live_mobs:
-        inst = mob_instances[mob_id]
+        inst = world["mobs"][mob_id]
         tpl = MOB_TEMPLATES[inst["tpl"]]
         # Build AFF prefix string (cf. 1stMud show_char_to_char_0, act_info.c:191-214)
         # Source: tpl["aff_flags"] (baseline, like pIndexData->affected_by).
@@ -203,7 +202,7 @@ def do_look(tr, player, args, room_state, mob_instances):
         tr.print("%s{M%s{x" % (prefix, line))
 
 
-def do_move(tr, player, direction, room_state, mob_instances):
+def do_move(tr, player, direction, world):
     if player["fighting"] is not None:
         tr.print("No way! You are fighting!")
         return
@@ -220,10 +219,10 @@ def do_move(tr, player, direction, room_state, mob_instances):
         tr.print("That way is not yet open.")
         return
     player["room"] = dest
-    do_look(tr, player, [], room_state, mob_instances)
+    do_look(tr, player, [], world)
 
 
-def do_open(tr, player, args, room_state, mob_instances):
+def do_open(tr, player, args, world):
     """Open a door in a given direction (cf. 1stMud do_open in act_move.c)."""
     exits = ROOMS[player["room"]]["exits"]
     if args:
@@ -263,7 +262,7 @@ def do_open(tr, player, args, room_state, mob_instances):
             rev_exit["closed"] = False
 
 
-def do_close(tr, player, args, room_state, mob_instances):
+def do_close(tr, player, args, world):
     """Close a door in a given direction (cf. 1stMud do_close in act_move.c)."""
     exits = ROOMS[player["room"]]["exits"]
     if args:
@@ -303,11 +302,11 @@ def do_close(tr, player, args, room_state, mob_instances):
             rev_exit["closed"] = True
 
 
-def do_get(tr, player, args, room_state, mob_instances):
+def do_get(tr, player, args, world):
     if not args:
         tr.print("Get what?")
         return
-    rs = room_state[player["room"]]
+    rs = world["rooms"][player["room"]]
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
         filter_kw = arg[4:] if arg.startswith("all.") else None
@@ -335,7 +334,7 @@ def do_get(tr, player, args, room_state, mob_instances):
     tr.print("You take the {}.".format(tpl["short_descr"]))
 
 
-def do_drop(tr, player, args, room_state, mob_instances):
+def do_drop(tr, player, args, world):
     if not args:
         tr.print("Drop what?")
         return
@@ -347,7 +346,7 @@ def do_drop(tr, player, args, room_state, mob_instances):
             if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
                 continue
             player["inv"].remove(obj)
-            room_state[player["room"]]["items"].append(obj)
+            world["rooms"][player["room"]]["items"].append(obj)
             tr.print("You drop the {}.".format(tpl["short_descr"]))
         return
     obj = get_obj_list(arg, player["inv"], ITEM_TEMPLATES)
@@ -356,7 +355,7 @@ def do_drop(tr, player, args, room_state, mob_instances):
         return
     tpl = ITEM_TEMPLATES[obj["vnum"]]
     player["inv"].remove(obj)
-    room_state[player["room"]]["items"].append(obj)
+    world["rooms"][player["room"]]["items"].append(obj)
     tr.print("You drop the {}.".format(tpl["short_descr"]))
 
 
@@ -373,7 +372,7 @@ def _obj_flags(tpl):
     return "".join(parts)
 
 
-def do_inventory(tr, player, args, room_state, mob_instances):
+def do_inventory(tr, player, args, world):
     max_carry = min(37, 17 + player["level"])
     tr.print("{{YYou are carrying {{W{}/{}{{Y items:{{x".format(len(player["inv"]), max_carry))
     if not player["inv"]:
@@ -428,15 +427,14 @@ def _wear_one(tr, player, obj, tpl, slot):
     tr.print(_WEAR_MSG[slot].format(tpl["short_descr"]))
 
 
-def do_wear(tr, player, args, room_state, mob_instances):
+def do_wear(tr, player, args, world):
     """Equip an item from inventory, or wear all wearable items (cf. 1stMud do_wear in act_obj.c).
 
     Args:
         tr: Terminal renderer.
         player (dict): Player state dict.
         args (list): Parsed command arguments; first token may be "all".
-        room_state (dict): Per-room mutable state (unused).
-        mob_instances (dict): Live mob instances (unused).
+        world (dict): Game world state (keys: rooms, mobs, areas); unused.
     """
     if not args:
         tr.print("Wear what?")
@@ -480,15 +478,14 @@ def _remove_one(tr, player, slot, obj):
     tr.print("You remove the {}.".format(tpl["short_descr"]))
 
 
-def do_remove(tr, player, args, room_state, mob_instances):
+def do_remove(tr, player, args, world):
     """Remove a worn item by name and return it to inventory (cf. 1stMud do_remove in act_obj.c).
 
     Args:
         tr: Terminal renderer.
         player (dict): Player state dict.
         args (list): Parsed command arguments; first token may be "all".
-        room_state (dict): Per-room mutable state (unused).
-        mob_instances (dict): Live mob instances (unused).
+        world (dict): Game world state (keys: rooms, mobs, areas); unused.
     """
     if not args:
         tr.print("Remove what?")
@@ -524,15 +521,14 @@ _WEAR_LABELS = (
 )
 
 
-def do_equipment(tr, player, args, room_state, mob_instances):
+def do_equipment(tr, player, args, world):
     """List all equipment slots and what is worn in each (cf. 1stMud do_equipment in act_info.c).
 
     Args:
         tr: Terminal renderer.
         player (dict): Player state dict.
         args (list): Parsed command arguments (unused).
-        room_state (dict): Per-room mutable state (unused).
-        mob_instances (dict): Live mob instances (unused).
+        world (dict): Game world state (keys: rooms, mobs, areas); unused.
     """
     tr.print("You are wearing:")
     for slot, label in _WEAR_LABELS:
@@ -544,7 +540,7 @@ def do_equipment(tr, player, args, room_state, mob_instances):
             tr.print(label + "nothing")
 
 
-def do_quaff(tr, player, args, room_state, mob_instances):
+def do_quaff(tr, player, args, world):
     if not args:
         tr.print("Use what?")
         return
@@ -564,7 +560,7 @@ def do_quaff(tr, player, args, room_state, mob_instances):
             tpl["short_descr"], gained, player["hp"], player["hp_max"]))
 
 
-def do_outfit(tr, player, args, room_state, mob_instances):
+def do_outfit(tr, player, args, world):
     """Equip a new character with basic school gear (cf. 1stMud do_outfit in act_wiz.c)."""
     if player["level"] > 5:
         tr.print("Find it yourself!")
@@ -596,7 +592,7 @@ _SCORE_RIGHT = TERMINAL_COLS - 7 - _SCORE_LEFT
 _SCORE_SEP_OUTER = "{W+" + "-" * _SCORE_INNER + "+{x"
 _SCORE_SEP_INNER = "{W+" + "-" * (_SCORE_LEFT + 2) + "+" + "-" * (_SCORE_RIGHT + 2) + "+{x"
 
-def do_score(tr, player, args, room_state, mob_instances):
+def do_score(tr, player, args, world):
     """Display the character score sheet (cf. 1stMud dlm_score in act_info.c)."""
     # two-column box mirroring 1stMud dlm_score layout (see DESIGN.md)
     def _row(l, r):
@@ -622,8 +618,7 @@ def do_score(tr, player, args, room_state, mob_instances):
     name_col = "{c" + name_raw + "{x" + ' ' * (_SCORE_LEFT - len(name_raw))
     mem_col  = ' ' * (_SCORE_RIGHT - color_len(mem_str)) + mem_str
 
-    session_secs = (int(ppleval("Ticks")) - p.get('_logon_ms', 0)) // 1000
-    total_played = p.get('played', 0) + session_secs
+    total_played = p.get('played', 0)
     hours = total_played // 3600            # cf. 1stMud act_info.c: played/HOUR
     age   = 17 + total_played // 72000      # cf. 1stMud act_info.c: 17 + played/(20*HOUR)
 
@@ -653,7 +648,7 @@ def do_score(tr, player, args, room_state, mob_instances):
         tr.print(line)
 
 
-def do_skills(tr, player, args, room_state, mob_instances):
+def do_skills(tr, player, args, world):
     for sk_vnum, pct in sorted(player["learned"].items()):
         sk = SKILLS.get(sk_vnum)
         if sk is None:
@@ -668,36 +663,36 @@ def do_skills(tr, player, args, room_state, mob_instances):
             tr.print("  {} {}%".format(sk["name"], pct))
 
 
-def do_help(tr, player, args, room_state, mob_instances):
+def do_help(tr, player, args, world):
     tr.print("Move: 2/8=n/s  4/6=w/e  7/9=u/d (or n/s/e/w/u/d)")
     tr.print("5=look  i=inv  wear  remove  quaff  st=stats  sk=skills")
     tr.print("k/kill=fight  kick  cast <spell>  flee  save  credits  q=quit")
 
 
-def do_kill(tr, player, args, room_state, mob_instances):
+def do_kill(tr, player, args, world):
     if player["fighting"] is not None:
         tr.print("You are already fighting!")
         return
-    rs = room_state[player["room"]]
+    rs = world["rooms"][player["room"]]
     live = rs["mobs"]
     if not live:
         tr.print("Kill whom?")
         return
     if args:
-        mob_id = get_char_room(" ".join(args), live, mob_instances)
+        mob_id = get_char_room(" ".join(args), live, world["mobs"])
         if mob_id is None:
             tr.print("They aren't here.")
             return
     else:
-        names = [MOB_TEMPLATES[mob_instances[i]["tpl"]]["short_descr"] for i in live]
+        names = [MOB_TEMPLATES[world["mobs"][i]["tpl"]]["short_descr"] for i in live]
         idx = pick_from(tr, "Kill whom?", names)
         if idx < 0:
             return
         mob_id = live[idx]
-    set_fighting(tr, player, mob_id, mob_instances, room_state)
+    set_fighting(tr, player, mob_id, world["mobs"])
 
 
-def do_flee(tr, player, args, room_state, mob_instances):
+def do_flee(tr, player, args, world):
     if player["fighting"] is None:
         tr.print("You're not fighting anyone.")
         return
@@ -716,16 +711,16 @@ def do_flee(tr, player, args, room_state, mob_instances):
         if dest not in ROOMS:
             continue
         player["room"] = dest
-        stop_fighting(player, mob_instances)
+        stop_fighting(player, world["mobs"])
         tr.print("You flee {}!".format(direction))
         player["xp"] = max(0, player["xp"] - 10)
         tr.print("You lost 10 exp.")
-        do_look(tr, player, [], room_state, mob_instances)
+        do_look(tr, player, [], world)
         return
     tr.print("There is nowhere to run!")
 
 
-def do_map(tr, player, args, room_state, mob_instances):
+def do_map(tr, player, args, world):
     """Print a full-size automap of rooms reachable from the current room (cf. 1stMud do_map in automap.c).
 
     Args:
@@ -737,12 +732,15 @@ def do_map(tr, player, args, room_state, mob_instances):
         tr.print(line)
 
 
-def do_save(tr, player, args, room_state, mob_instances):
-    ok = save_char(player, room_state, mob_instances)
-    tr.print("Saved." if ok else "Save failed.")
+def do_save(tr, player, args, world):
+    try:
+        save_char(player, world)
+        tr.print("Saved.")
+    except Exception as e:
+        tr.print("Save failed: {}".format(e))
 
 
-def do_credits(tr, player, args, room_state, mob_instances):
+def do_credits(tr, player, args, world):
     tr.print("{WPrimeSUD{x -- a single-user dungeon for the HP Prime")
     tr.print("Port by ZechyW.  Not for commercial distribution.")
     tr.print("")
@@ -768,13 +766,13 @@ def do_credits(tr, player, args, room_state, mob_instances):
     tr.print("  DIKU, Computer Science Institute, Copenhagen University")
 
 
-def do_quit(tr, player, args, room_state, mob_instances):
+def do_quit(tr, player, args, world):
     return "quit"
 
 
 # ── Skill / spell dispatch ────────────────────────────────────────────────────
 
-def do_cast(tr, player, args, room_state, mob_instances):
+def do_cast(tr, player, args, world):
     if not args:
         tr.print("Cast which spell?")
         return None
@@ -888,7 +886,7 @@ def _macro_row(entries):
     return ["|{}|{}|{}|".format(cells[0][i], cells[1][i], cells[2][i])
             for i in range(height)]
 
-def do_macro(tr, player, args, room_state, mob_instances):  # [PRIMESUD]
+def do_macro(tr, player, args, world):  # [PRIMESUD]
     if not args:
         next_sep = _MACRO_SEP
         for row in _MACRO_TABLE:
@@ -940,7 +938,7 @@ _TRAIN_STATS = [
 ]
 
 
-def do_train(tr, player, args, room_state, mob_instances):
+def do_train(tr, player, args, world):
     """Permanently raise a stat or vital by spending a train point (cf. 1stMud do_train in act_move.c).
 
     Requires a mob with act_flags["train"] in the room.  Stats cap at TRAIN_STAT_CAP;
@@ -950,13 +948,12 @@ def do_train(tr, player, args, room_state, mob_instances):
         tr: Terminal instance.
         player (dict): Player state dict.
         args (list): Parsed command words; optional stat/vital name.
-        room_state (dict): Per-room mutable state.
-        mob_instances (dict): Live mob instance dicts.
+        world (dict): Game world state (keys: rooms, mobs, areas).
     """
-    rs = room_state[player["room"]]
+    rs = world["rooms"][player["room"]]
     trainer = None
     for mid in rs["mobs"]:
-        inst = mob_instances[mid]
+        inst = world["mobs"][mid]
         if MOB_TEMPLATES[inst["tpl"]].get("act_flags", {}).get("train"):
             trainer = mid
             break
@@ -1016,15 +1013,14 @@ def do_train(tr, player, args, room_state, mob_instances):
         tr.print("Your {} increases!".format(chosen_lng))
 
 
-def do_affects(tr, player, args, room_state, mob_instances):
+def do_affects(tr, player, args, world):
     """List all active player affects with name, location, modifier, duration (cf. 1stMud do_affects in act_info.c).
 
     Args:
         tr: Terminal instance.
         player (dict): Player state dict.
         args (list): Unused.
-        room_state (dict): Unused.
-        mob_instances (dict): Unused.
+        world (dict): Game world state (keys: rooms, mobs, areas); unused.
     """
     affects = player.get("affects", {})
     if not affects:
@@ -1044,7 +1040,7 @@ def do_affects(tr, player, args, room_state, mob_instances):
 _PRACTICE_CAP = 75  # matches 1stMud skill_adept for all classes
 
 
-def do_practice(tr, player, args, room_state, mob_instances):
+def do_practice(tr, player, args, world):
     """Improve a skill percentage using a practice point (cf. 1stMud do_practice in act_info.c).
 
     Without an argument and no teacher: lists skills + practice count (1stMud parity).
@@ -1055,20 +1051,19 @@ def do_practice(tr, player, args, room_state, mob_instances):
         tr: Terminal instance.
         player (dict): Player state dict.
         args (list): Parsed command words; optional skill name.
-        room_state (dict): Per-room mutable state.
-        mob_instances (dict): Live mob instance dicts.
+        world (dict): Game world state (keys: rooms, mobs, areas).
     """
-    rs = room_state[player["room"]]
+    rs = world["rooms"][player["room"]]
     teacher = None
     for mid in rs["mobs"]:
-        inst = mob_instances[mid]
+        inst = world["mobs"][mid]
         if MOB_TEMPLATES[inst["tpl"]].get("act_flags", {}).get("practice"):
             teacher = mid
             break
 
     if not args:
         if teacher is None:
-            do_skills(tr, player, [], room_state, mob_instances)
+            do_skills(tr, player, [], world)
             tr.print("You have {} practice session{}.".format(
                 player["practice"], "" if player["practice"] == 1 else "s"))
             return
@@ -1126,7 +1121,7 @@ def do_practice(tr, player, args, room_state, mob_instances):
         tr.print("You practice {}.".format(SKILLS[sk_vnum]["name"]))
 
 
-def do_recall(tr, player, args, room_state, mob_instances):
+def do_recall(tr, player, args, world):
     """Teleport to the area's recall room (cf. 1stMud perform_recall in act_move.c).
 
     Per-area recall VNUMs (area->recall in 1stMud) are not yet implemented;
@@ -1154,10 +1149,10 @@ def do_recall(tr, player, args, room_state, mob_instances):
         player["xp"] = max(0, player["xp"] - 25)
         check_improve(tr, player, GSN_RECALL, True, 4)
         tr.print("You recall from combat!  You lose 25 exps.")
-        stop_fighting(player, mob_instances)
+        stop_fighting(player, world["mobs"])
 
     player["room"] = location
-    do_look(tr, player, [], room_state, mob_instances)
+    do_look(tr, player, [], world)
 
 
 # ── Command table ─────────────────────────────────────────────────────────────
@@ -1202,7 +1197,7 @@ _CMD_TABLE = [
 
 # ── Interpreter ───────────────────────────────────────────────────────────────
 
-def interpret(raw, tr, player, room_state, mob_instances):
+def interpret(raw, tr, player, world):
     parts = raw.strip().lower().split()
     if not parts:
         return None
@@ -1212,7 +1207,7 @@ def interpret(raw, tr, player, room_state, mob_instances):
 
     direction = _DIRECTION_MAP.get(verb)
     if direction is not None:
-        do_move(tr, player, direction, room_state, mob_instances)
+        do_move(tr, player, direction, world)
         return None
 
     pos = player.get("pos", "standing")
@@ -1225,7 +1220,7 @@ def interpret(raw, tr, player, room_state, mob_instances):
         if _POS_ORDER[pos] < _POS_ORDER[min_pos]:
             tr.print(_POS_MSG.get(pos, ""))
             return None
-        return fn(tr, player, args, room_state, mob_instances)
+        return fn(tr, player, args, world)
 
     tr.print("Unknown command. ? for help.")
     return None

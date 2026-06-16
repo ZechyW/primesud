@@ -16,6 +16,7 @@ MS_PER_PULSE     = 1000 // PULSE_PER_SECOND   # 250 ms per pulse
 PULSE_VIOLENCE   = 2  * PULSE_PER_SECOND      # combat round
 PULSE_MOBILE     = 5  * PULSE_PER_SECOND      # mob wander
 PULSE_TICK       = 30 * PULSE_PER_SECOND      # world tick
+TICK_SECS        = PULSE_TICK // PULSE_PER_SECOND  # seconds elapsed per world tick
 # PULSE_AREA     = 120 * PULSE_PER_SECOND     # area reset
 PULSE_AREA       = 15 * PULSE_PER_SECOND      # Quicker age ticks for better UX
 POLL_MS          = 10                         # keyboard polling interval (ms)

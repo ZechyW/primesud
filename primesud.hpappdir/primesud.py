@@ -12,7 +12,7 @@ from hpprime import dimgrob, eval as ppleval, getpix, pixon, grobw, grobh, strbl
 from urandom import randint
 from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     MS_PER_PULSE, PULSE_VIOLENCE, PULSE_MOBILE, PULSE_TICK, PULSE_AREA,
-                    AUTOSAVE_TICKS,
+                    AUTOSAVE_TICKS, TICK_SECS,
                     KEY_COMMANDS as _KEY_COMMANDS,
                     TERMINAL_COLS, FONT, FONT_GROB, COLOR_GROB,
                     DEATH_MSG_DELAY,
@@ -31,8 +31,8 @@ from player import (
     mobile_update,
     tick_update,
     show_prompt,
-    save_char as _save_char,
-    load_char as _load_char,
+    save_char,
+    load_char,
 )
 from commands import interpret, do_look, _MACRO_SUBST
 from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full
@@ -56,18 +56,18 @@ _RESET_MSGS = (
 )
 
 
-def area_update(tr, player, area_states, room_state, mob_instances):
+def area_update(tr, player, world):
     """Increment each area's age and reset any that reach the threshold (cf. 1stMud area_update, db.c)."""
-    for area_state in area_states:
-        area_state["age"] += 1
-        if area_state["age"] >= _AREA_AGE_MIN and area_state["age"] >= _AREA_AGE_RESET:
-            reset_mobs(mob_instances, room_state, area_state["resets"])
-            if area_state["tag"] == "mud_school":
-                area_state["age"] = 13  # resets every 2 ticks (cf. db.c:1330: age = 15-2)
+    for area in world["areas"]:
+        area["age"] += 1
+        if area["age"] >= _AREA_AGE_MIN and area["age"] >= _AREA_AGE_RESET:
+            reset_mobs(world["mobs"], world["rooms"], area["resets"])
+            if area["tag"] == "mud_school":
+                area["age"] = 13  # resets every 2 ticks (cf. db.c:1330: age = 15-2)
             else:
-                area_state["age"] = randint(0, 3)
+                area["age"] = randint(0, 3)
                 # School area is intentionally silent (cf. db.c:1335 else-if excludes it).
-                if ROOMS[player["room"]].get("area") == area_state["tag"]:
+                if ROOMS[player["room"]].get("area") == area["tag"]:
                     tr.print(_RESET_MSGS[randint(0, len(_RESET_MSGS) - 1)])
 
 
@@ -216,7 +216,7 @@ class Game:
         self.player = None
         self.room_state = None
         self.mob_instances = None
-        self._area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
+        self.area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
 
     def set_color(self, color):
         """Recolour the font grob for subsequent glyph rendering.
@@ -246,20 +246,21 @@ class Game:
     def new_game(self, name="Hero"):
         self.player = create_char()
         self.player["name"] = name
-        self.player["_logon_ms"] = int(ppleval("Ticks"))
         self.room_state, self.mob_instances = reset_area()
-        self._area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
+        self.area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
+        self.player["_macros"] = _MACRO_SUBST
 
     def load_game(self):
         self.player = create_char()
         self.room_state, self.mob_instances = reset_area()
-        self._area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
-        result = _load_char(self.player, self.room_state, self.mob_instances,
-                            self._area_states, _MACRO_SUBST)
+        self.area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
+        self.player["_macros"] = _MACRO_SUBST
+        result = load_char(self.player, {"rooms": self.room_state,
+                                         "mobs": self.mob_instances,
+                                         "areas": self.area_states})
         if isinstance(result, tuple):   # (None, backup_ok) — version mismatch
             _, self._backup_ok = result
             return None
-        self.player["_logon_ms"] = int(ppleval("Ticks"))
         return result
 
     def handle_version_mismatch(self):
@@ -289,15 +290,15 @@ class Game:
                 return False
 
     def save_game(self):
-        now = int(ppleval("Ticks"))
-        elapsed = (now - self.player.get("_logon_ms", now)) // 1000
-        self.player["played"] = self.player.get("played", 0) + elapsed
-        self.player["_logon_ms"] = now
-        if not _save_char(self.player, self.room_state, self.mob_instances,
-                          self._area_states, _MACRO_SUBST):
-            self.tr.print("Save failed.")
-        else:
+        try:
+            save_char(self.player, {
+                "rooms": self.room_state,
+                "mobs": self.mob_instances,
+                "areas": self.area_states,
+            })
             self.tr.print("Saved.")
+        except Exception as e:
+            self.tr.print("Save failed: {}".format(e))
 
     def show_greeting(self):
         tr = self.tr
@@ -338,9 +339,11 @@ class Game:
     def game_loop(self):
         tr = self.tr
         player = self.player
-        room_state = self.room_state
-        mob_instances = self.mob_instances
-        area_states = self._area_states
+        world = {
+            "rooms": self.room_state,
+            "mobs": self.mob_instances,
+            "areas": self.area_states,
+        }
 
         pulse      = 0
         tick_count = 0
@@ -349,7 +352,7 @@ class Game:
 
         tr.resync_keyboard()
         show_prompt(tr, player, self.input_buf)
-        do_look(tr, player, [], room_state, mob_instances)
+        do_look(tr, player, [], world)
 
         while True:
             result = tr.poll_char(_KEY_COMMANDS)
@@ -367,7 +370,7 @@ class Game:
                     self._hist_pos   = None
                     self._hist_saved = ""
                     _t0 = int(ppleval("Ticks"))
-                    _quit = interpret(self.input_buf, tr, player, room_state, mob_instances) == "quit"
+                    _quit = interpret(self.input_buf, tr, player, world) == "quit"
                     next_pulse += int(ppleval("Ticks")) - _t0  # [PRIMESUD] skip missed pulses during blocking input (e.g. picker)
                     if _quit:
                         break
@@ -402,7 +405,7 @@ class Game:
                         show_prompt(tr, player, self.input_buf)
                 elif auto_submit is True:  # [PRIMESUD] hardware key — immediate submit
                     _t0 = int(ppleval("Ticks"))
-                    _quit = interpret(char, tr, player, room_state, mob_instances) == "quit"
+                    _quit = interpret(char, tr, player, world) == "quit"
                     next_pulse += int(ppleval("Ticks")) - _t0  # [PRIMESUD] skip missed pulses during blocking input
                     if _quit:
                         break
@@ -424,7 +427,7 @@ class Game:
                 pulse += 1
 
                 if pulse % PULSE_VIOLENCE == 0:
-                    if violence_update(tr, player, mob_instances, room_state):
+                    if violence_update(tr, player, world):
                         # [PRIMESUD] Handle auto respawn on death
                         tr.print("You have been KILLED!!")
                         tr.print("Your lifeforce ebbs away...")
@@ -438,10 +441,11 @@ class Game:
                         player["daze"] = 0
                         tr.print("You come to your senses. Alive, but barely.")
                         tr.print("")
-                        do_look(tr, player, [], room_state, mob_instances)
+                        do_look(tr, player, [], world)
                     show_prompt(tr, player, self.input_buf)
 
                 if pulse % PULSE_TICK == 0:
+                    player["played"] = player.get("played", 0) + TICK_SECS
                     tick_update(tr, player, ROOMS[player["room"]])
                     show_prompt(tr, player, self.input_buf)
                     tick_count += 1
@@ -450,10 +454,10 @@ class Game:
                         tick_count = 0
 
                 if pulse % PULSE_MOBILE == 0:
-                    mobile_update(tr, player, mob_instances, room_state)
+                    mobile_update(tr, player, world)
 
                 if pulse % PULSE_AREA == 0:
-                    area_update(tr, player, area_states, room_state, mob_instances)
+                    area_update(tr, player, world)
 
                 if pulse >= 14400:  # wrap at 1 hour (3600 s × 4 pulses/s)
                     pulse = 0
