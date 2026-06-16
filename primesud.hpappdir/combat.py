@@ -6,7 +6,8 @@ from config import (PULSE_VIOLENCE,
                     CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_MIN, THAC0_PLATEAU,
                     ATTACK_TABLE, DAM_NONE, DAM_BASH)
 from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
-                   GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY)
+                   GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY, GSN_SWORD,
+                   WEAPON_GSN_MAP)
 from player import get_hitroll, get_damroll, get_AC, get_curr_stat, show_prompt, create_object, save_char
 
 
@@ -92,7 +93,9 @@ def _weapon_skill(player):
     """
     wobj = player["equip"].get("wield")
     if wobj is not None:
-        return GSN_HAND_TO_HAND, player["learned"].get(GSN_HAND_TO_HAND, 20), ITEM_TEMPLATES[wobj["vnum"]]
+        tpl = ITEM_TEMPLATES[wobj["vnum"]]
+        sn = WEAPON_GSN_MAP.get(tpl.get("weapon_type", ""), GSN_HAND_TO_HAND)
+        return sn, player["learned"].get(sn, 20), tpl
     return GSN_HAND_TO_HAND, player["learned"].get(GSN_HAND_TO_HAND, 20), None
 
 

@@ -15,6 +15,7 @@ GSN_CURE_LIGHT   = 4002
 GSN_HAND_TO_HAND = 4010
 GSN_PARRY        = 4020
 GSN_RECALL       = 4030
+GSN_SWORD        = 4031
 # fmt: on
 
 # List of (module_name, area_tag) — add/remove areas here only.
@@ -56,32 +57,61 @@ for _vnum, _room in ROOMS.items():
             DOOR_RESET[_vnum][_d] = {"closed": bool(_ev.get("closed")), "locked": bool(_ev.get("locked"))}
 
 # ── Skills (cf. 1stMud skill_table; ordered list for prefix-match tiebreaking) ─
-# type:     "active"  — manually triggered physical skill; beats apply
-#           "spell"   — cast via 'cast <prefix>'; mana/beats/heal_dice apply
-#           "weapon"  — proficiency checked in one_hit
-#           "passive" — checked automatically each round
 # beats: skill lag in pulses (PULSE_VIOLENCE = 12 = one full combat round)
 #
 # Improvement tuning (cf. 1stMud check_improve in skills.c):
-#   rating — intrinsic difficulty of the skill (minimum non-zero class cost
+#   rating — intrinsic difficulty of the skill (average of per-class costs
 #             from skills.dat; higher = harder to improve)
 #   Gate formula: chance = 10*INT_learn / (multiplier * rating * 4) + level
 #   multiplier is passed per call site in check_improve(), not stored here.
 #   Roll 1..1000 — improvement only proceeds when roll <= chance.
 SKILL_TABLE = [
-    (GSN_KICK,         {"name": "kick",         "type": "active",  "min_level": 1,
-                        "beats": 12, "mana": 0, "rating": 3,
-                        "target": "char_offensive"}),
-    (GSN_CURE_LIGHT,   {"name": "cure light",   "type": "spell",   "min_level": 1,
-                        "beats": 12, "mana": 10, "rating": 1,
-                        "target": "char_defensive", "msg_off": "!Cure Light!",
-                        "effect": "heal", "heal_dice": (1, 8, 1), "level_div": 4}),
-    (GSN_HAND_TO_HAND, {"name": "hand to hand", "type": "weapon",  "min_level": 1,
-                        "rating": 4}),
-    (GSN_PARRY,        {"name": "parry",        "type": "passive", "min_level": 1,
-                        "rating": 4}),
-    (GSN_RECALL,       {"name": "recall",       "type": "active",  "min_level": 1,
-                        "beats": 0, "mana": 0, "rating": 4, "target": "none"}),
+    (
+        GSN_KICK,
+        {
+            "name": "kick",
+            "min_level": 1,
+            "beats": 12,
+            "mana": 0,
+            "rating": 3,
+            "target": "char_offensive",
+        },
+    ),
+    (
+        GSN_CURE_LIGHT,
+        {
+            "name": "cure light",
+            "min_level": 1,
+            "beats": 12,
+            "mana": 10,
+            "rating": 1,
+            "target": "char_defensive",
+            "msg_off": "!Cure Light!",
+            "effect": "heal",
+            "heal_dice": (1, 8, 1),
+            "level_div": 4,
+        },
+    ),
+    (GSN_HAND_TO_HAND, {"name": "hand to hand", "min_level": 1, "rating": 4}),
+    (GSN_PARRY, {"name": "parry", "min_level": 1, "rating": 4}),
+    (
+        GSN_RECALL,
+        {
+            "name": "recall",
+            "min_level": 1,
+            "beats": 0,
+            "mana": 0,
+            "rating": 4,
+            "target": "none",
+        },
+    ),
+    (GSN_SWORD, {"name": "sword", "min_level": 1, "rating": 4, "msg_off": "!sword!"}),
 ]
 
 SKILLS = {vnum: data for vnum, data in SKILL_TABLE}
+
+# Maps item weapon_type string → GSN (cf. 1stMud weapon_table in const.c).
+# Fallback for unknown/no weapon is GSN_HAND_TO_HAND (handled at call site).
+WEAPON_GSN_MAP = {
+    "sword": GSN_SWORD,
+}
