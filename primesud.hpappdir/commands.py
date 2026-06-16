@@ -2,16 +2,18 @@ from hpprime import eval as ppleval
 from util import free_mem
 from colors import color_len
 
-from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT, GSN_RECALL, R_RECALL
+from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT, GSN_RECALL, R_RECALL, WEAPON_GSN_MAP
 from picker import pick_from
 from player import (get_hitroll, get_damroll, get_AC, get_curr_stat, get_obj_list, get_char_room,
                     save_char, is_name, affect_modify, PLR_AUTOMAP, PLR_DEFAULTS,
-                    obj_vnum, create_object, item_extra_flags, item_wear_flags)
+                    obj_vnum, create_object, item_extra_flags, item_wear_flags,
+                    unequip_char, equip_char)
 from area_school import (I_BANNER_WAR_MERC, I_VEST_SUB_MERC, I_SWORD_SUB_MERC, I_SHIELD_SUB_MERC)
-from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick
+from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick, _get_weapon_skill
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from config import (DEFAULT_MACROS, DEFAULT_FNKEY_MACROS, FNKEY_SENTINELS, FNKEY_NAMES,
-                    TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES, INT_APP_LEARN, TRAIN_STAT_CAP, SECTOR_COLORS)
+                    TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES, INT_APP_LEARN, MAX_STATS, SECTOR_COLORS,
+                    STR_APP_WIELD)
 
 from urandom import randint
 
@@ -303,10 +305,23 @@ def do_close(tr, player, args, world):
 
 
 def do_get(tr, player, args, world):
-    if not args:
-        tr.print("Get what?")
-        return
     rs = world["rooms"][player["room"]]
+    if not args:
+        takeable = [obj for obj in reversed(rs["items"])
+                    if "take" in item_wear_flags(obj, ITEM_TEMPLATES[obj_vnum(obj)])]
+        if not takeable:
+            tr.print("There is nothing here to pick up.")
+            return
+        names = [ITEM_TEMPLATES[obj_vnum(obj)]["short_descr"] for obj in takeable]
+        idx = pick_from(tr, "Pick up what?", names)
+        if idx < 0:
+            return
+        obj = takeable[idx]
+        tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+        rs["items"].remove(obj)
+        player["inv"].append(obj)
+        tr.print("You take the {}.".format(tpl["short_descr"]))
+        return
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
         filter_kw = arg[4:] if arg.startswith("all.") else None
@@ -336,7 +351,18 @@ def do_get(tr, player, args, world):
 
 def do_drop(tr, player, args, world):
     if not args:
-        tr.print("Drop what?")
+        if not player["inv"]:
+            tr.print("You aren't carrying anything.")
+            return
+        names = [ITEM_TEMPLATES[obj["vnum"]]["short_descr"] for obj in player["inv"]]
+        idx = pick_from(tr, "Drop what?", names)
+        if idx < 0:
+            return
+        obj = player["inv"][idx]
+        tpl = ITEM_TEMPLATES[obj["vnum"]]
+        player["inv"].remove(obj)
+        world["rooms"][player["room"]]["items"].append(obj)
+        tr.print("You drop the {}.".format(tpl["short_descr"]))
         return
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
@@ -389,42 +415,137 @@ def do_inventory(tr, player, args, world):
 
 
 _WEAR_MSG = {
-    "light":  "You light {} and hold it.",
-    "wield":  "You wield {}.",
-    "hold":   "You hold {} in your hand.",
-    "body":   "You wear {} on your torso.",
-    "head":   "You wear {} on your head.",
-    "legs":   "You wear {} on your legs.",
-    "feet":   "You wear {} on your feet.",
-    "hands":  "You wear {} on your hands.",
-    "arms":   "You wear {} on your arms.",
-    "shield": "You wear {} as a shield.",
-    "about":  "You wear {} about your torso.",
-    "waist":  "You wear {} about your waist.",
-    "neck":   "You wear {} around your neck.",
-    "wrist":  "You wear {} around your wrist.",
+    "light":    "You light {} and hold it.",
+    "finger_l": "You wear {} on your left finger.",
+    "finger_r": "You wear {} on your right finger.",
+    "neck_1":   "You wear {} around your neck.",
+    "neck_2":   "You wear {} around your neck.",
+    "body":     "You wear {} on your torso.",
+    "head":     "You wear {} on your head.",
+    "legs":     "You wear {} on your legs.",
+    "feet":     "You wear {} on your feet.",
+    "hands":    "You wear {} on your hands.",
+    "arms":     "You wear {} on your arms.",
+    "shield":   "You wear {} as a shield.",
+    "about":    "You wear {} about your torso.",
+    "waist":    "You wear {} about your waist.",
+    "wrist_l":  "You wear {} around your left wrist.",
+    "wrist_r":  "You wear {} around your right wrist.",
+    "wield":    "You wield {}.",
+    "hold":     "You hold {} in your hand.",
+    "float":    "You release {} and it floats next to you.",
 }
 
+_DUAL_SLOTS = {
+    "finger": ("finger_l", "finger_r"),
+    "neck":   ("neck_1",   "neck_2"),
+    "wrist":  ("wrist_l",  "wrist_r"),
+}
 
-def _wear_one(tr, player, obj, tpl, slot):
-    """Equip one item instance into slot, enforcing level and curse checks (cf. 1stMud wear_obj in act_obj.c)."""
+_WIELD_SKILL_MSG = (
+    (100, "{} feels like a part of you!"),
+    ( 85, "You feel quite confident with {}."),
+    ( 70, "You are skilled with {}."),
+    ( 50, "Your skill with {} is adequate."),
+    ( 25, "{} feels a little clumsy in your hands."),
+    (  1, "You fumble and almost drop {}."),
+    (  0, "You don't even know which end is up on {}."),
+)
+
+
+def remove_obj(tr, player, slot, fReplace):
+    """Unequip slot if occupied, honouring curse and fReplace flag (cf. 1stMud remove_obj in act_obj.c).
+
+    Args:
+        tr: Terminal renderer.
+        player (dict): Player state dict.
+        slot (str): Equipment slot key.
+        fReplace (bool): If False, refuse silently when slot is occupied.
+
+    Returns:
+        bool: True if slot is free (or was successfully freed), False otherwise.
+    """
+    obj = player["equip"].get(slot)
+    if obj is None:
+        return True
+    if not fReplace:
+        return False
+    tpl = ITEM_TEMPLATES[obj["vnum"]]
+    if item_extra_flags(obj, tpl).get("noremove"):
+        tr.print("You can't remove {}.".format(tpl["short_descr"]))
+        return False
+    tr.print("You stop using {}.".format(tpl["short_descr"]))
+    unequip_char(player, slot)
+    return True
+
+
+def wear_obj(tr, player, obj, fReplace):
+    """Equip obj, selecting slot from wear flags (cf. 1stMud wear_obj in act_obj.c).
+
+    Args:
+        tr: Terminal renderer.
+        player (dict): Player state dict.
+        obj (dict): Item instance from inventory.
+        fReplace (bool): Auto-remove current occupant if True; skip silently if False.
+    """
+    tpl = ITEM_TEMPLATES[obj["vnum"]]
     if player["level"] < tpl.get("level", 1):
-        tr.print("You are too weak to use the {}.".format(tpl["short_descr"]))
+        tr.print("You must be level {} to use this object.".format(tpl.get("level", 1)))
         return
-    cur = player["equip"][slot]
-    if cur is not None:
-        cur_tpl = ITEM_TEMPLATES[cur["vnum"]]
-        if item_extra_flags(cur, cur_tpl).get("noremove"):
-            tr.print("You can't remove the {}, it's cursed.".format(cur_tpl["short_descr"]))
+
+    if tpl.get("type") == "light":
+        if not remove_obj(tr, player, "light", fReplace):
             return
-        for loc, mod in cur_tpl.get("stat_bonuses", {}).items():
-            affect_modify(player, loc, mod, False)
-        player["inv"].append(cur)
-    player["inv"].remove(obj)
-    player["equip"][slot] = obj
-    for loc, mod in tpl.get("stat_bonuses", {}).items():
-        affect_modify(player, loc, mod, True)
+        tr.print(_WEAR_MSG["light"].format(tpl["short_descr"]))
+        equip_char(player, obj, "light")
+        return
+
+    flag = next((f for f in item_wear_flags(obj, tpl) if f != "take"), None)
+    if flag is None:
+        if fReplace:
+            tr.print("You can't wear, wield, or hold that.")
+        return
+
+    if flag in _DUAL_SLOTS:
+        slot_a, slot_b = _DUAL_SLOTS[flag]
+        if (player["equip"].get(slot_a) is not None
+                and player["equip"].get(slot_b) is not None):
+            if not remove_obj(tr, player, slot_a, fReplace) \
+                    and not remove_obj(tr, player, slot_b, fReplace):
+                return
+        if player["equip"].get(slot_a) is None:
+            slot = slot_a
+        elif player["equip"].get(slot_b) is None:
+            slot = slot_b
+        else:
+            return
+    else:
+        slot = flag
+        if slot not in player["equip"]:
+            if fReplace:
+                tr.print("You can't wear, wield, or hold that.")
+            return
+        if not remove_obj(tr, player, slot, fReplace):
+            return
+
+    if slot == "wield":
+        wield_limit = STR_APP_WIELD[get_curr_stat(player, "str")]
+        if tpl.get("weight", 0) > wield_limit * 10:
+            tr.print("It is too heavy for you to wield.")
+            return
+
     tr.print(_WEAR_MSG[slot].format(tpl["short_descr"]))
+    equip_char(player, obj, slot)
+
+    if slot == "wield":
+        sn = WEAPON_GSN_MAP.get(tpl.get("weapon_type", ""), -1)
+        skill = _get_weapon_skill(player, sn)
+        msg = _WIELD_SKILL_MSG[-1][1]
+        for threshold, m in _WIELD_SKILL_MSG[:-1]:
+            if skill > threshold:
+                msg = m
+                break
+        tr.print(msg.format(tpl["short_descr"]))
 
 
 def do_wear(tr, player, args, world):
@@ -437,45 +558,32 @@ def do_wear(tr, player, args, world):
         world (dict): Game world state (keys: rooms, mobs, areas); unused.
     """
     if not args:
-        tr.print("Wear what?")
+        equippable = []
+        for obj in player["inv"]:
+            tpl = ITEM_TEMPLATES[obj["vnum"]]
+            slot = "light" if tpl.get("type") == "light" else next(
+                (f for f in item_wear_flags(obj, tpl) if f != "take"), None)
+            if slot is not None and (slot in player["equip"] or slot in _DUAL_SLOTS):
+                equippable.append((obj, tpl, slot))
+        if not equippable:
+            tr.print("You have nothing wearable.")
+            return
+        names = [tpl["short_descr"] for _, tpl, _ in equippable]
+        idx = pick_from(tr, "Wear what?", names)
+        if idx < 0:
+            return
+        obj, tpl, slot = equippable[idx]
+        wear_obj(tr, player, obj, True)
         return
     if args[0] == "all":
         for obj in list(player["inv"]):
-            tpl = ITEM_TEMPLATES[obj["vnum"]]
-            if tpl.get("type") == "light":
-                slot = "light"
-            else:
-                slot = next((f for f in item_wear_flags(obj, tpl) if f != "take"), None)
-            if slot is None or slot not in player["equip"]:
-                continue
-            _wear_one(tr, player, obj, tpl, slot)
+            wear_obj(tr, player, obj, False)
         return
     obj = get_obj_list(" ".join(args), player["inv"], ITEM_TEMPLATES)
     if obj is None:
-        tr.print("You're not carrying that.")
+        tr.print("You do not have that item.")
         return
-    tpl = ITEM_TEMPLATES[obj["vnum"]]
-    if tpl.get("type") == "light":
-        slot = "light"
-    else:
-        slot = next((f for f in item_wear_flags(obj, tpl) if f != "take"), None)
-    if slot is None or slot not in player["equip"]:
-        tr.print("You can't wear that.")
-        return
-    _wear_one(tr, player, obj, tpl, slot)
-
-
-def _remove_one(tr, player, slot, obj):
-    """Unequip one item instance, checking for curse (cf. 1stMud remove_obj in act_obj.c)."""
-    tpl = ITEM_TEMPLATES[obj["vnum"]]
-    if item_extra_flags(obj, tpl).get("noremove"):
-        tr.print("You can't remove the {}, it's cursed.".format(tpl["short_descr"]))
-        return
-    for loc, mod in tpl.get("stat_bonuses", {}).items():
-        affect_modify(player, loc, mod, False)
-    player["equip"][slot] = None
-    player["inv"].append(obj)
-    tr.print("You remove the {}.".format(tpl["short_descr"]))
+    wear_obj(tr, player, obj, True)
 
 
 def do_remove(tr, player, args, world):
@@ -488,36 +596,51 @@ def do_remove(tr, player, args, world):
         world (dict): Game world state (keys: rooms, mobs, areas); unused.
     """
     if not args:
-        tr.print("Remove what?")
+        worn = [(slot, obj) for slot, obj in player["equip"].items() if obj is not None]
+        if not worn:
+            tr.print("You aren't wearing anything.")
+            return
+        names = [ITEM_TEMPLATES[obj["vnum"]]["short_descr"] for _, obj in worn]
+        idx = pick_from(tr, "Remove what?", names)
+        if idx < 0:
+            return
+        slot, obj = worn[idx]
+        remove_obj(tr, player, slot, True)
         return
     if args[0] == "all":
         for slot, obj in list(player["equip"].items()):
             if obj is not None:
-                _remove_one(tr, player, slot, obj)
+                remove_obj(tr, player, slot, True)
         return
     target = " ".join(args)
     for slot, obj in player["equip"].items():
         if obj is not None and is_name(target, ITEM_TEMPLATES[obj["vnum"]].get("keywords", "")):
-            _remove_one(tr, player, slot, obj)
+            remove_obj(tr, player, slot, True)
             return
-    tr.print("You aren't wearing that.")
+    tr.print("You do not have that item.")
 
 
 _WEAR_LABELS = (
-    ("light",  "{g<{Wused as light{g>{x     "),
-    ("wield",  "{g<{Wwielded{g>{x           "),
-    ("hold",   "{g<{Wheld{g>{x              "),
-    ("body",   "{g<{Wworn on body{g>{x      "),
-    ("head",   "{g<{Wworn on head{g>{x      "),
-    ("legs",   "{g<{Wworn on legs{g>{x      "),
-    ("feet",   "{g<{Wworn on feet{g>{x      "),
-    ("hands",  "{g<{Wworn on hands{g>{x     "),
-    ("arms",   "{g<{Wworn on arms{g>{x      "),
-    ("shield", "{g<{Wworn as shield{g>{x    "),
-    ("about",  "{g<{Wworn about body{g>{x   "),
-    ("waist",  "{g<{Wworn about waist{g>{x  "),
-    ("neck",   "{g<{Wworn around neck{g>{x  "),
-    ("wrist",  "{g<{Wworn around wrist{g>{x "),
+    ("light",     "{g<{Wused as light{g>{x     "),
+    ("finger_l",  "{g<{Wworn on finger{g>{x    "),
+    ("finger_r",  "{g<{Wworn on finger{g>{x    "),
+    ("neck_1",    "{g<{Wworn around neck{g>{x  "),
+    ("neck_2",    "{g<{Wworn around neck{g>{x  "),
+    ("body",      "{g<{Wworn on torso{g>{x     "),
+    ("head",      "{g<{Wworn on head{g>{x      "),
+    ("legs",      "{g<{Wworn on legs{g>{x      "),
+    ("feet",      "{g<{Wworn on feet{g>{x      "),
+    ("hands",     "{g<{Wworn on hands{g>{x     "),
+    ("arms",      "{g<{Wworn on arms{g>{x      "),
+    ("shield",    "{g<{Wworn as shield{g>{x    "),
+    ("about",     "{g<{Wworn about body{g>{x   "),
+    ("waist",     "{g<{Wworn about waist{g>{x  "),
+    ("wrist_l",   "{g<{Wworn around wrist{g>{x "),
+    ("wrist_r",   "{g<{Wworn around wrist{g>{x "),
+    ("wield",     "{g<{Wwielded{g>{x           "),
+    ("hold",      "{g<{Wheld{g>{x              "),
+    ("float",     "{g<{Wfloating nearby{g>{x   "),
+    ("secondary", "{g<{Wsecondary weapon{g>{x  "),
 )
 
 
@@ -538,6 +661,40 @@ def do_equipment(tr, player, args, world):
             tr.print(label + _obj_flags(tpl) + "{Y" + tpl["short_descr"] + "{x")
         else:
             tr.print(label + "nothing")
+
+
+def do_second(tr, player, args, world):
+    """Wield a weapon in the off-hand (cf. 1stMud do_second in act_obj.c)."""
+    if not args:
+        tr.print("Wear which weapon in your off-hand?")
+        return
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_TEMPLATES)
+    if obj is None:
+        tr.print("You have no such thing in your backpack.")
+        return
+    if (player["equip"].get("shield") is not None
+            or player["equip"].get("hold") is not None):
+        tr.print("You cannot use a secondary weapon while using a shield or holding an item")
+        return
+    tpl = ITEM_TEMPLATES[obj["vnum"]]
+    if player["level"] < tpl.get("level", 1):
+        tr.print("You must be level {} to use this object.".format(tpl.get("level", 1)))
+        return
+    if player["equip"].get("wield") is None:
+        tr.print("You need to wield a primary weapon, before using a secondary one!")
+        return
+    wield_limit = STR_APP_WIELD[get_curr_stat(player, "str")]
+    if tpl.get("weight", 0) > wield_limit // 2:
+        tr.print("This weapon is too heavy to be used as a secondary weapon by you.")
+        return
+    primary_tpl = ITEM_TEMPLATES[player["equip"]["wield"]["vnum"]]
+    if tpl.get("weight", 0) * 2 > primary_tpl.get("weight", 0):
+        tr.print("Your secondary weapon has to be considerably lighter than the primary one.")
+        return
+    if not remove_obj(tr, player, "secondary", True):
+        return
+    tr.print("You wield {} in your off-hand.".format(tpl["short_descr"]))
+    equip_char(player, obj, "secondary")
 
 
 def do_quaff(tr, player, args, world):
@@ -771,20 +928,30 @@ def do_quit(tr, player, args, world):
 
 def do_cast(tr, player, args, world):
     if not args:
-        tr.print("Cast which spell?")
-        return None
-    spell_key = args[0]
-    sk_vnum = None
-    for vnum, sk in SKILL_TABLE:
-        if sk.get("spell_fun", "spell_null") == "spell_null":
-            continue
-        name = sk["name"]
-        if name == spell_key or name.startswith(spell_key):
-            sk_vnum = vnum
-            break
-    if sk_vnum is None or player["learned"].get(sk_vnum, 0) == 0:
-        tr.print("You don't know any spell called that.")
-        return None
+        known = [(vnum, sk) for vnum, sk in SKILL_TABLE
+                 if sk.get("spell_fun", "spell_null") != "spell_null"
+                 and player["learned"].get(vnum, 0) > 0]
+        if not known:
+            tr.print("You know no spells.")
+            return None
+        names = [sk["name"] for _, sk in known]
+        idx = pick_from(tr, "Cast which spell?", names)
+        if idx < 0:
+            return None
+        sk_vnum = known[idx][0]
+    else:
+        spell_key = args[0]
+        sk_vnum = None
+        for vnum, sk in SKILL_TABLE:
+            if sk.get("spell_fun", "spell_null") == "spell_null":
+                continue
+            name = sk["name"]
+            if name == spell_key or name.startswith(spell_key):
+                sk_vnum = vnum
+                break
+        if sk_vnum is None or player["learned"].get(sk_vnum, 0) == 0:
+            tr.print("You don't know any spell called that.")
+            return None
     sk = SKILLS[sk_vnum]
     if player.get("wait", 0) > 0:
         tr.print("You are still recovering.")
@@ -938,7 +1105,7 @@ _TRAIN_STATS = [
 def do_train(tr, player, args, world):
     """Permanently raise a stat or vital by spending a train point (cf. 1stMud do_train in act_move.c).
 
-    Requires a mob with act_flags["train"] in the room.  Stats cap at TRAIN_STAT_CAP;
+    Requires a mob with act_flags["train"] in the room.  Stats cap at MAX_STATS;
     hp and mana training raise hp_max/mp_max by 10 with no cap.
 
     Args:
@@ -962,7 +1129,7 @@ def do_train(tr, player, args, world):
         if player["train"] < 1:
             tr.print("You don't have any training sessions.")
             return
-        stat_opts = [(k, lng) for k, lng in _TRAIN_STATS if player[k] < TRAIN_STAT_CAP]
+        stat_opts = [(k, lng) for k, lng in _TRAIN_STATS if player[k] < MAX_STATS]
         vital_opts = [("hp_max", "hp"), ("mp_max", "mana")]
         all_opts = stat_opts + vital_opts
         tr.print("You have {} training session{}.".format(
@@ -972,7 +1139,7 @@ def do_train(tr, player, args, world):
             if k in ("hp_max", "mp_max"):
                 names.append("{} (max: {})".format(lng, player[k]))
             else:
-                names.append("{} ({}/{})".format(lng, player[k], TRAIN_STAT_CAP))
+                names.append("{} ({}/{})".format(lng, player[k], MAX_STATS))
         idx = pick_from(tr, "Train which?", names)
         if idx < 0:
             return
@@ -992,7 +1159,7 @@ def do_train(tr, player, args, world):
         if chosen_key is None:
             tr.print("Valid training: str, dex, int, wis, con, hp, mana.")
             return
-        if chosen_key not in ("hp_max", "mp_max") and player[chosen_key] >= TRAIN_STAT_CAP:
+        if chosen_key not in ("hp_max", "mp_max") and player[chosen_key] >= MAX_STATS:
             tr.print("Your {} is already at maximum.".format(chosen_lng))
             return
 
@@ -1108,7 +1275,7 @@ def do_practice(tr, player, args, world):
     if sk_rating == 0:
         tr.print("You can't practice that.")
         return
-    gain = INT_APP_LEARN[min(25, max(0, int_val))] // sk_rating
+    gain = INT_APP_LEARN[int_val] // sk_rating
     player["practice"] -= 1
     new_pct = min(_PRACTICE_CAP, player["learned"][sk_vnum] + gain)
     player["learned"][sk_vnum] = new_pct
@@ -1175,6 +1342,7 @@ _CMD_TABLE = [
     ("close",     do_close,     "resting",  False),   # #113
     ("drop",      do_drop,      "resting",  False),   # #115
     ("open",      do_open,      "resting",  False),   # #124
+    ("second",    do_second,    "resting",  False),   # #128
     ("quaff",     do_quaff,     "resting",  False),   # #129
     ("remove",    do_remove,    "resting",  False),   # #131
     ("take",      do_get,       "resting",  False),   # #133

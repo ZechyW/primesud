@@ -1,10 +1,10 @@
-# PrimeSUD -- CLAUDE.md
+﻿# PrimeSUD -- CLAUDE.md
 
 ## What this project is
 
-**PrimeSUD** is a text-based, single-user RPG for the HP Prime graphing calculator, primarily a port of a ROM 2.4-based MUD codebase, 1stmud. The name: **Prime** (calculator) + **SUD** (Single-User Dungeon).
+**PrimeSUD** = text-based single-user RPG for HP Prime graphing calculator. Port of ROM 2.4-based MUD codebase, 1stmud. Name: **Prime** (calculator) + **SUD** (Single-User Dungeon).
 
-The game runs entirely in a terminal-style text UI rendered directly on the calculator's 320x240 screen via a custom text layer (`tml.py`).
+Runs in terminal-style text UI on calculator's 320x240 screen via custom text layer (`tml.py`).
 
 ## Repository layout
 
@@ -35,53 +35,51 @@ reference/               # Reference game implementations (1stMud, JezzBall, Sta
 
 ## Tech stack
 
-- **Language:** Python -- but HP Prime's restricted MicroPython-like subset, not standard CPython
-- **Available modules:** `hpprime`, `uio`, `cas`, `math`, `utime` -- ask the user if unsure about others.
-- **No package manager.** There is no pip and no ability to bring in pypi external dependencies in general.
-- **Font:** `std5x10.font` -- a PNG-based bitmap font with a custom trailer byte encoding character dimensions
+- **Language:** Python -- HP Prime's restricted MicroPython-like subset, not standard CPython
+- **Available modules:** `hpprime`, `uio`, `cas`, `math`, `utime` -- ask user if unsure about others
+- **No package manager.** No pip, no pypi dependencies
+- **Font:** `std5x10.font` -- PNG-based bitmap font with custom trailer byte encoding character dimensions
 
 ## Architecture
 
 ### `PrimeSUD` (context manager)
-Handles environment setup/teardown: saves and restores calculator settings (`AAngle`, `AFormat`, `AComplex`, `Bits`, `HSeparator`) and clears graphic buffers on exit. Suppresses `KeyboardInterrupt` so the user can exit cleanly with the calculator's On key.
+Handles env setup/teardown: saves/restores calculator settings (`AAngle`, `AFormat`, `AComplex`, `Bits`, `HSeparator`), clears graphic buffers on exit. Suppresses `KeyboardInterrupt` for clean On-key exit.
 
 ### `Game`
-Contains game state and the main loop. Uses `ppleval("Ticks")` (milliseconds) for tick-based timing. Keyboard state is read via `hpprime.keyboard()` which returns a bitmask -- bit positions map to physical keys.
+Game state + main loop. Uses `ppleval("Ticks")` (milliseconds) for tick timing. Keyboard via `hpprime.keyboard()` bitmask -- bit positions map to physical keys.
 
 ### `tml` (Text Mode Layer)
-A reusable terminal abstraction written by Piotr Kowalewski (komame). Renders characters onto HP Prime graphic buffers using the bitmap font, handles scrolling, cursor, dark/light mode, tab stops, and keyboard state (alpha/shift lock). **Treat this as a stable library -- do not break its public API or add game-specific logic to it.**
+Reusable terminal abstraction by Piotr Kowalewski (komame). Renders chars onto HP Prime graphic buffers using bitmap font; handles scrolling, cursor, dark/light mode, tab stops, keyboard state. **Stable library -- don't break public API or add game logic to it.**
 
 ## Deployment and testing
 
-- **Emulator:** HP Prime Virtual Calculator (PC/Mac app) -- use for rapid iteration
+- **Emulator:** HP Prime Virtual Calculator (PC/Mac) -- use for rapid iteration
 - **Physical device:** Transfer via HP Connectivity Kit
-- Workflow: develop and test on emulator, validate on physical hardware before considering anything "done"
+- Workflow: develop/test on emulator, validate on hardware before "done"
 
 ## Constraints and pitfalls
 
-1. **HP Prime Python is not CPython.** Many standard library modules do not exist, and built-in types expose a reduced method set. See **[BUILTINS.md](BUILTINS.md)** for verified method availability (confirmed via `dir()` on-device).
+1. **HP Prime Python is not CPython.** Many stdlib modules missing, built-ins have reduced method sets. See **[BUILTINS.md](BUILTINS.md)** for verified availability (confirmed via `dir()` on-device).
 
-2. **Memory is very limited.** The HP Prime has a small heap. Avoid large data structures, deep call stacks, string concatenation in loops (build lists and `join`), or caching things that can be recomputed.
+2. **Memory very limited.** Small heap. Avoid large structures, deep call stacks, string concat in loops (use lists + `join`), or unnecessary caching.
 
-3. **No floats in tight loops if avoidable.** Integer arithmetic is faster and safer on this platform.
+3. **No floats in tight loops if avoidable.** Integer arithmetic faster and safer.
 
-4. **PPL interop via `ppleval`.** Calculator built-in functions (e.g., `Ticks`, `WAIT`, `HSeparator`, `AAngle`) are called by evaluating PPL expression strings through `hpprime.eval`. Keep these strings minimal and correct -- errors surface as silent failures or exceptions at runtime only.
+4. **PPL interop via `ppleval`.** Calculator built-ins (`Ticks`, `WAIT`, `HSeparator`, `AAngle`) called via PPL expression strings through `hpprime.eval`. Keep strings minimal and correct -- errors surface as silent failures or runtime exceptions.
 
-5. **Graphic buffers G1-G9.** The HP Prime has 9 graphic buffers (GROBs). G9 is used by `tml` for the font. G0 is the display. Avoid clobbering G9 or buffers `tml` relies on.
+5. **Graphic buffers G1-G9.** G9 used by `tml` for font. G0 is display. Don't clobber G9 or `tml`-owned buffers.
 
-6. **`KeyboardInterrupt` is the exit signal.** The calculator's On key raises it. The context manager in `PrimeSUD.__exit__` already handles this -- don't swallow it elsewhere.
+6. **`KeyboardInterrupt` is exit signal.** On key raises it. `PrimeSUD.__exit__` handles it -- don't swallow elsewhere.
 
 ## Colour codes
 
-Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` -- handled transparently by `colors.py`. When mixing with Python formatting, prefer `%` formatting (`"{G%s{x" % name`, `"hp: %d" % hp`) over `.format()` -- `%` uses no `{` delimiters so it composes cleanly with colour codes. Concatenation (`"{G" + name + "{x"`) also works but is more verbose. Full table in REFERENCE.md sec. Colour codes.
+Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` -- handled by `colors.py`. When mixing with Python formatting, prefer `%` (`"{G%s{x" % name`, `"hp: %d" % hp`) over `.format()` -- `%` uses no `{` delimiters, composes cleanly. Concatenation (`"{G" + name + "{x"`) works but verbose. Full table in REFERENCE.md sec. Colour codes.
 
-When porting 1stMud code that uses `CTAG(_CONSTANT)` (e.g. `CTAG(_MOBILES)`), the default colour for each constant is documented in REFERENCE.md sec. CTAG colour scheme. Use that table to pick the equivalent `{X` code.
+When porting 1stMud code using `CTAG(_CONSTANT)` (e.g. `CTAG(_MOBILES)`), default colour per constant documented in REFERENCE.md sec. CTAG colour scheme. Use that table to pick equivalent `{X` code.
 
 ## PrimeSUD-only extensions -- `[PRIMESUD]` tag
 
-Code with no 1stMud equivalent, or that intentionally diverges from 1stMud behaviour,
-is marked with a `# [PRIMESUD]` comment. When porting mechanics from 1stMud, do not
-overwrite tagged items without checking whether the Prime variant differs on purpose.
+Code with no 1stMud equivalent or intentional deviation marked `# [PRIMESUD]`. When porting from 1stMud, don't overwrite tagged items without checking if Prime variant differs on purpose.
 
 Find all tagged locations:
 
@@ -89,15 +87,14 @@ Find all tagged locations:
 
 ## Benchmarking
 
-HP Prime has no profiler. Add a block to `run()` in `primesud.py` (before `game.show_greeting()`): capture `int(ppleval("Ticks"))` before and after a loop of N repetitions, print the delta, then call `tr.input("")` to pause. Clean up any side-effects before the pause so the game starts in a consistent state.
+No profiler on HP Prime. Add block to `run()` in `primesud.py` (before `game.show_greeting()`): capture `int(ppleval("Ticks"))` before/after N-rep loop, print delta, call `tr.input("")` to pause. Clean side-effects before pause for consistent game start.
 
 ## Docstrings
 
-Google-style: one-line summary, then `Args:` / `Returns:` / `Raises:` as needed; omit empty sections. For ported functions append `(cf. 1stMud <symbol> in <file>)` to the summary line (exact name and source file, e.g. `fight.c`); omit for PrimeSUD-invented functions.
+Google-style: one-line summary, then `Args:` / `Returns:` / `Raises:` as needed; omit empty sections. For ported functions append `(cf. 1stMud <symbol> in <file>)` to summary (exact name + source file, e.g. `fight.c`); omit for PrimeSUD-invented functions.
 
 ## Working style
 
-- Write code first, then briefly explain key decisions -- especially anything non-obvious about HP Prime's constraints or PPL interop.
-- Keep changes minimal and targeted. Do not refactor surrounding code unless asked.
-- When in doubt about whether a Python feature is available on HP Prime, ask for a human check.
-
+- Code first, then brief explanation of key decisions -- especially HP Prime constraints or PPL interop.
+- Minimal targeted changes. No surrounding refactor unless asked.
+- Unsure if Python feature available on HP Prime? Ask for human check.

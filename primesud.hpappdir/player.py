@@ -4,6 +4,7 @@ from urandom import randint
 from config import (
     SAVE_VAR,
     TERMINAL_COLS,
+    MAX_STATS,
     STR_APP_TOHIT,
     STR_APP_TODAM,
     DEX_APP_DEF,
@@ -92,20 +93,26 @@ def create_char():
         "room": R_STARTING_ROOM,
         "inv": [],
         "equip": {
-            "light": None,
-            "wield": None,
-            "hold": None,
-            "body": None,
-            "head": None,
-            "legs": None,
-            "feet": None,
-            "hands": None,
-            "arms": None,
-            "shield": None,
-            "about": None,
-            "waist": None,
-            "neck": None,
-            "wrist": None,
+            "light":     None,
+            "finger_l":  None,
+            "finger_r":  None,
+            "neck_1":    None,
+            "neck_2":    None,
+            "body":      None,
+            "head":      None,
+            "legs":      None,
+            "feet":      None,
+            "hands":     None,
+            "arms":      None,
+            "shield":    None,
+            "about":     None,
+            "waist":     None,
+            "wrist_l":   None,
+            "wrist_r":   None,
+            "wield":     None,
+            "hold":      None,
+            "float":     None,
+            "secondary": None,
         },
         "learned": {
             GSN_HAND_TO_HAND: 40,
@@ -130,6 +137,7 @@ def _stat_from_level(level):
     Returns:
         int: Stat value in range [11, 25].
     """
+    # 25 cap intentional: 1stMud create_mobile also hardcodes 25 for mob perm_stat (db.c)
     return min(25, 11 + level // 4)
 
 
@@ -245,9 +253,12 @@ def reset_mobs(mob_instances, room_state, resets):
             last_spawned = True
             mob_id += 1
         elif cmd == "E" and last_spawned:
-            mob_instances[last_mob_id]["equip"][entry[2]] = entry[1]
+            mob = mob_instances[last_mob_id]
+            obj = create_object(entry[1])
+            mob["inv"].append(obj)
+            equip_char(mob, obj, entry[2])
         elif cmd == "G" and last_spawned:
-            mob_instances[last_mob_id]["inv"].append(entry[1])
+            mob_instances[last_mob_id]["inv"].append(create_object(entry[1]))
         elif cmd in ("O", "P"):
             last_spawned = False  # breaks mob context (cf. 1stMud last=false on O)
 
@@ -327,11 +338,6 @@ def mobile_update(tr, player, world):
 
 # ── Stat application helpers ──────────────────────────────────────────────────
 
-def _clamp_stat(v):
-    """Clamp a stat value to the valid range [0, 25]."""
-    return min(25, max(0, v))
-
-
 def get_curr_stat(char, stat):
     """Effective stat value: base + affect modifiers (cf. 1stMud get_curr_stat in handler.c).
 
@@ -340,9 +346,10 @@ def get_curr_stat(char, stat):
         stat (str): Stat name — one of "str", "dex", "int", "wis", "con".
 
     Returns:
-        int: Clamped stat value in [0, 25].
+        int: Clamped stat value in [3, MAX_STATS].
     """
-    return _clamp_stat(char.get(stat, 10) + char.get("mod_stat", {}).get(stat, 0))
+    v = char.get(stat, 10) + char.get("mod_stat", {}).get(stat, 0)
+    return max(3, min(MAX_STATS, v))
 
 
 def affect_modify(char, loc, modifier, add):
@@ -495,6 +502,25 @@ def item_wear_flags(obj, tpl):
     if isinstance(obj, dict) and "wear_flags" in obj:
         return obj["wear_flags"]
     return tpl.get("wear_flags", {})
+
+
+def unequip_char(char, slot):
+    """Remove obj from slot, reverse stat_bonuses, return to inventory (cf. 1stMud unequip_char in handler.c)."""
+    obj = char["equip"][slot]
+    tpl = ITEM_TEMPLATES[obj["vnum"]]
+    for loc, mod in tpl.get("stat_bonuses", {}).items():
+        affect_modify(char, loc, mod, False)
+    char["equip"][slot] = None
+    char["inv"].append(obj)
+
+
+def equip_char(char, obj, slot):
+    """Seat obj in slot and apply stat_bonuses (cf. 1stMud equip_char in handler.c)."""
+    tpl = ITEM_TEMPLATES[obj["vnum"]]
+    char["inv"].remove(obj)
+    char["equip"][slot] = obj
+    for loc, mod in tpl.get("stat_bonuses", {}).items():
+        affect_modify(char, loc, mod, True)
 
 
 def get_obj_list(fragment, item_list, templates):

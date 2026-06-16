@@ -109,18 +109,26 @@ FNKEY_SENTINELS      = frozenset(FNKEY_TABLE)
 FNKEY_NAMES          = {k: v[0] for k, v in FNKEY_TABLE.items()}
 DEFAULT_FNKEY_MACROS = {k: v[1] for k, v in FNKEY_TABLE.items()}
 
-# ── Stat application tables (1stMud ROM values, index by stat 0–25) ──────────────────────
-# str_app: tohit (hitroll bonus, positive = better to-hit), todam (damage roll bonus)
-STR_APP_TOHIT    = (-5,-5,-3,-3,-2,-2,-1,-1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6)
-STR_APP_TODAM    = (-4,-4,-2,-1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9)
+# ── Stat cap (cf. 1stMud #define MAX_STATS 30 in defines.h) ──────────────────────────────
+MAX_STATS = 30
+
+# ── Stat application tables (1stMud ROM values, index by stat 0–MAX_STATS) ───────────────
+# str_app: tohit (hitroll bonus, positive = better to-hit), todam (damage roll bonus),
+#          carry (max carry weight in lbs; cf. 1stMud str_app[].carry in const.c),
+#          wield (max weapon weight for wielding, in lbs; cf. 1stMud str_app[].wield in const.c)
+STR_APP_TOHIT    = (-5,-5,-3,-3,-2,-2,-1,-1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8)
+STR_APP_TODAM    = (-4,-4,-2,-1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 3, 3, 4, 5, 6, 6, 7, 8, 9,10,11,12,13,14)
+STR_APP_CARRY    = (  0, 3, 3,10,25,55,80,90,100,100,115,115,130,130,140,150,165,180,200,225,250,300,350,400,450,500,550,600,650,700,750)
+STR_APP_WIELD    = ( 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,22,25,30,35,40,45,50,55,60,65,70,75,80,85)
 # dex_app: defensive AC modifier added to ch->armor[] before /10 division in combat (negative = better)
-DEX_APP_DEF      = (60,50,50,40,30,20,10, 0, 0, 0, 0, 0, 0, 0, 0,-10,-15,-20,-30,-40,-50,-60,-75,-90,-105,-120)
-# con_app: bonus HP gained per level-up
-CON_APP_HITP     = (-4,-3,-2,-2,-1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3, 3, 4, 4, 5, 6, 7, 8)
+DEX_APP_DEF      = (60,50,50,40,30,20,10, 0, 0, 0, 0, 0, 0, 0, 0,-10,-15,-20,-30,-40,-50,-60,-75,-90,-105,-120,-130,-140,-155,-175,-190)
+# con_app: bonus HP gained per level-up; shock = resurrection survival % (cf. 1stMud con_app[].shock)
+CON_APP_HITP     = (-4,-3,-2,-2,-1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 3, 3, 4, 4, 5, 6, 7, 8, 9,10,11,12,13)
+CON_APP_SHOCK    = (20,25,30,35,40,45,50,55,60,65,70,75,80,85,88,90,95,97,99,99,99,99,99,99,99,99,100,102,104,107,110)
 # wis_app: bonus practices gained per level-up (1stMud wis_app[].practice)
-WIS_APP_PRACTICE = (0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,3,3,3,3,4,4,4,5)
+WIS_APP_PRACTICE = (0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,3,3,3,3,4,4,4,5,5,5,6,6,6)
 # int_app: skill improvement rate used in check_improve and do_practice (1stMud int_app[].learn)
-INT_APP_LEARN    = (3,5,7,8,9,10,11,12,13,15,17,19,22,25,28,31,34,37,40,44,49,55,60,70,80,85)
+INT_APP_LEARN    = (3,5,7,8,9,10,11,12,13,15,17,19,22,25,28,31,34,37,40,44,49,55,60,70,80,85,90,95,100,105,110)
 
 # ── Classless HP die (Cleric/Paladin range) ───────────────────────────────────────────
 CLASS_HP_MIN = 7
@@ -131,8 +139,7 @@ MAX_LEVEL = 50  # [PRIMESUD] 1stMud caps at 32
 
 # ── Stat training cap ─────────────────────────────────────────────────────────────────
 # Revisit when races are added: 1stMud uses race.max_stats[stat] + 2 (or +3 for human
-# prime stats) via get_max_train() in handler.c.
-TRAIN_STAT_CAP = 25
+# prime stats) via get_max_train() in handler.c; flat MAX_STATS until then.
 
 # ── THAC0 constants (classless, balanced midpoint) ────────────────────────────────────
 THAC0_PLATEAU = 32   # level at which natural THAC0 stops improving

@@ -61,12 +61,14 @@ for _vnum, _room in ROOMS.items():
 # ── Skills (cf. 1stMud skill_table; ordered list for prefix-match tiebreaking) ─
 # Flatten per-class tuples: skill_level → earliest any class learns it;
 # rating → best (lowest non-zero) rate; default=1 guards all-zero edge case.
-SKILL_TABLE = [
-    (sn, {**data,
-          "skill_level": min(data["skill_level"]),
-          "rating":      min((v for v in data["rating"] if v > 0), default=1)})
-    for sn, data in _ST_RAW
-]
+def _flatten_skill(sn, data):
+    d = {}
+    d.update(data)
+    d["skill_level"] = min(data["skill_level"])
+    d["rating"] = min((v for v in data["rating"] if v > 0), default=1)
+    return (sn, d)
+
+SKILL_TABLE = [_flatten_skill(sn, data) for sn, data in _ST_RAW]
 
 SKILLS = dict(SKILL_TABLE)
 

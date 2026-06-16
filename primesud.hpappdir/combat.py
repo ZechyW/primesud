@@ -88,7 +88,7 @@ def _get_weapon_sn(ch, slot="wield"):
 
     Args:
         ch (dict): Player or mob instance dict.
-        slot (str): Equip slot key ('wield' or 'offhand').
+        slot (str): Equip slot key ('wield' or 'secondary').
 
     Returns:
         tuple: (sn (int), weapon_tpl (dict or None)).
@@ -257,7 +257,7 @@ def _int_learn(int_stat):
     Returns:
         int: Improvement rate (e.g. 25 at INT 13, 40 at INT 18).
     """
-    return INT_APP_LEARN[min(25, max(0, int_stat))]
+    return INT_APP_LEARN[int_stat]
 
 
 def check_improve(tr, player, sk_vnum, success, multiplier):
@@ -378,13 +378,13 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
         ch (dict): Attacker (player or mob instance).
         victim (dict): Defender (player or mob instance).
         bonus_damroll (int): Extra damage roll bonus (e.g. from skills).
-        secondary (bool): True = offhand/secondary weapon (cf. 1stMud bool secondary).
+        secondary (bool): True = secondary weapon (cf. 1stMud bool secondary).
 
     Returns:
         int: Damage dealt (0 on miss).
     """
     # Weapon / skill (cf. 1stMud one_hit: skill = 20 + get_weapon_skill, fight.c)
-    slot = "offhand" if secondary else "wield"
+    slot = "secondary" if secondary else "wield"
     if secondary and ch["equip"].get(slot) is None:
         return 0
     sk_vnum, wtpl = _get_weapon_sn(ch, slot)
@@ -655,8 +655,8 @@ def multi_hit(tr, ch, victim, world=None):
         return True
 
     # Offhand weapon (cf. 1stMud multi_hit WEAR_SECONDARY in fight.c)
-    offhand = ch["equip"].get("offhand")
-    if offhand is not None and ITEM_TEMPLATES[offhand["vnum"]].get("type") == "weapon":
+    secondary_obj = ch["equip"].get("secondary")
+    if secondary_obj is not None and ITEM_TEMPLATES[secondary_obj["vnum"]].get("type") == "weapon":
         one_hit(tr, ch, victim, secondary=True)
         if victim["hp"] == 0:
             return True
@@ -930,9 +930,9 @@ def advance_level(tr, player):
     player["xp"]    -= player["xp_next"]
     # xp_next stays 1000 (flat cost per level — 1stMud exp_per_level with 40 pts, human)
 
-    con  = min(25, max(0, player["con"]))
-    wis  = min(25, max(0, player["wis"]))
-    int_ = min(25, max(0, player["int"]))
+    con  = get_curr_stat(player, "con")
+    wis  = get_curr_stat(player, "wis")
+    int_ = get_curr_stat(player, "int")
 
     # HP: (con_app.hitp + class_hp_roll) * 9/10, min 2  (cf. 1stMud advance_level in update.c)
     # Two-step roll mirrors 1stMud get_hp_gain: number_range(hp_min,hp_max) → number_range(result,result+1)
