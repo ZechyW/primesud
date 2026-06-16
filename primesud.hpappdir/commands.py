@@ -8,7 +8,10 @@ from player import (get_hitroll, get_damroll, get_AC, get_curr_stat, get_obj_lis
                     save_char, is_name, affect_modify, PLR_AUTOMAP, PLR_DEFAULTS,
                     obj_vnum, create_object, item_extra_flags, item_wear_flags,
                     unequip_char, equip_char)
-from area_school import (I_BANNER_WAR_MERC, I_VEST_SUB_MERC, I_SWORD_SUB_MERC, I_SHIELD_SUB_MERC)
+from area_school import (I_BANNER_WAR_MERC,
+                         I_MACE_SUB_MERC, I_DAGGER_SUB_MERC, I_SWORD_SUB_MERC,
+                         I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,
+                         I_SPEAR_SUB_MERC, I_AXE_SUB_MERC, I_FLAIL_SUB_MERC)
 from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick, _get_weapon_skill
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from config import (DEFAULT_MACROS, DEFAULT_FNKEY_MACROS, FNKEY_SENTINELS, FNKEY_NAMES,
@@ -320,25 +323,32 @@ def do_get(tr, player, args, world):
         tpl = ITEM_TEMPLATES[obj_vnum(obj)]
         rs["items"].remove(obj)
         player["inv"].append(obj)
-        tr.print("You take the {}.".format(tpl["short_descr"]))
+        tr.print("You get {}.".format(tpl["short_descr"]))
         return
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
         filter_kw = arg[4:] if arg.startswith("all.") else None
+        found = False
         for obj in list(rs["items"]):
             tpl = ITEM_TEMPLATES[obj_vnum(obj)]
             if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
                 continue
+            found = True
             if "take" not in item_wear_flags(obj, tpl):
-                tr.print("You can't take the {}.".format(tpl["short_descr"]))
+                tr.print("You can't take that.")
                 continue
             rs["items"].remove(obj)
             player["inv"].append(obj)
-            tr.print("You take the {}.".format(tpl["short_descr"]))
+            tr.print("You get {}.".format(tpl["short_descr"]))
+        if not found:
+            if filter_kw:
+                tr.print("I see no {} here.".format(filter_kw))
+            else:
+                tr.print("I see nothing here.")
         return
     obj = get_obj_list(arg, rs["items"], ITEM_TEMPLATES)
     if obj is None:
-        tr.print("Nothing here called that.")
+        tr.print("I see no {} here.".format(arg))
         return
     tpl = ITEM_TEMPLATES[obj_vnum(obj)]
     if "take" not in item_wear_flags(obj, tpl):
@@ -346,13 +356,13 @@ def do_get(tr, player, args, world):
         return
     rs["items"].remove(obj)
     player["inv"].append(obj)
-    tr.print("You take the {}.".format(tpl["short_descr"]))
+    tr.print("You get {}.".format(tpl["short_descr"]))
 
 
 def do_drop(tr, player, args, world):
     if not args:
         if not player["inv"]:
-            tr.print("You aren't carrying anything.")
+            tr.print("You are not carrying anything.")
             return
         names = [ITEM_TEMPLATES[obj["vnum"]]["short_descr"] for obj in player["inv"]]
         idx = pick_from(tr, "Drop what?", names)
@@ -362,27 +372,34 @@ def do_drop(tr, player, args, world):
         tpl = ITEM_TEMPLATES[obj["vnum"]]
         player["inv"].remove(obj)
         world["rooms"][player["room"]]["items"].append(obj)
-        tr.print("You drop the {}.".format(tpl["short_descr"]))
+        tr.print("You drop {}.".format(tpl["short_descr"]))
         return
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
         filter_kw = arg[4:] if arg.startswith("all.") else None
+        found = False
         for obj in list(player["inv"]):
             tpl = ITEM_TEMPLATES[obj["vnum"]]
             if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
                 continue
+            found = True
             player["inv"].remove(obj)
             world["rooms"][player["room"]]["items"].append(obj)
-            tr.print("You drop the {}.".format(tpl["short_descr"]))
+            tr.print("You drop {}.".format(tpl["short_descr"]))
+        if not found:
+            if filter_kw:
+                tr.print("You are not carrying any {}.".format(filter_kw))
+            else:
+                tr.print("You are not carrying anything.")
         return
     obj = get_obj_list(arg, player["inv"], ITEM_TEMPLATES)
     if obj is None:
-        tr.print("You're not carrying that.")
+        tr.print("You do not have that item.")
         return
     tpl = ITEM_TEMPLATES[obj["vnum"]]
     player["inv"].remove(obj)
     world["rooms"][player["room"]]["items"].append(obj)
-    tr.print("You drop the {}.".format(tpl["short_descr"]))
+    tr.print("You drop {}.".format(tpl["short_descr"]))
 
 
 def _obj_flags(tpl):
@@ -717,8 +734,35 @@ def do_quaff(tr, player, args, world):
             tpl["short_descr"], gained, player["hp"], player["hp_max"]))
 
 
+# Weapon choices for do_outfit; sword is the default/tie-winner (cf. 1stMud weapon_table in const.c).
+_WEAPON_OUTFIT_CHOICES = [
+    ("mace",   I_MACE_SUB_MERC),
+    ("dagger", I_DAGGER_SUB_MERC),
+    ("spear",  I_SPEAR_SUB_MERC),
+    ("axe",    I_AXE_SUB_MERC),
+    ("flail",  I_FLAIL_SUB_MERC),
+]
+
+
 def do_outfit(tr, player, args, world):
-    """Equip a new character with basic school gear (cf. 1stMud do_outfit in act_wiz.c)."""
+    """Equip a new character with Mud School starter gear (cf. 1stMud do_outfit in act_wiz.c).
+
+    Fills only empty slots; skips any slot already occupied.  Weapon type is
+    chosen by highest skill in player["learned"], defaulting to sword on ties
+    (mirrors 1stMud weapon_table loop).  Also called at character creation
+    (primesud.py new_game) with no level restriction concern since level=1.
+
+    Deviations from 1stMud:
+      - No NPC guard (no NPCs in PrimeSUD).
+      - obj->cost = 0 applied to weapon too (1stMud omits it for the weapon).
+      - equip_char skipped; direct slot assignment + affect_modify (same net state).
+
+    Args:
+        tr: Terminal renderer.
+        player (dict): Player instance dict.
+        args (str): Unused.
+        world: Unused.
+    """
     if player["level"] > 5:
         tr.print("Find it yourself!")
         return
@@ -732,10 +776,19 @@ def do_outfit(tr, player, args, world):
         for loc, mod in ITEM_TEMPLATES[vnum].get("stat_bonuses", {}).items():
             affect_modify(player, loc, mod, True)
 
-    _equip("light",  I_BANNER_WAR_MERC)
-    _equip("body",   I_VEST_SUB_MERC)
-    # [PRIMESUD] No per-weapon skills; sword is 1stMud's default (sn=0 baseline).
-    _equip("wield",  I_SWORD_SUB_MERC)
+    _equip("light", I_BANNER_WAR_MERC)
+    _equip("body",  I_VEST_SUB_MERC)
+
+    if player["equip"].get("wield") is None:
+        wield_vnum = I_SWORD_SUB_MERC
+        best_pct = player["learned"].get(WEAPON_GSN_MAP.get("sword", -1), 0)
+        for wtype, vnum in _WEAPON_OUTFIT_CHOICES:
+            pct = player["learned"].get(WEAPON_GSN_MAP.get(wtype, -1), 0)
+            if pct > best_pct:
+                best_pct = pct
+                wield_vnum = vnum
+        _equip("wield", wield_vnum)
+
     wobj = player["equip"].get("wield")
     if not (wobj and ITEM_TEMPLATES[wobj["vnum"]].get("weapon_flags", {}).get("two_hands")):
         _equip("shield", I_SHIELD_SUB_MERC)

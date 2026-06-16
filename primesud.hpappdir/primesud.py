@@ -34,7 +34,7 @@ from player import (
     save_char,
     load_char,
 )
-from commands import interpret, do_look, _MACRO_SUBST
+from commands import interpret, do_look, do_outfit, _MACRO_SUBST
 from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full
 
 
@@ -249,6 +249,7 @@ class Game:
         self.room_state, self.mob_instances = reset_area()
         self.area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
         self.player["_macros"] = _MACRO_SUBST
+        do_outfit(self.tr, self.player, "", None)  # cf. 1stMud do_outfit in nanny.c for new chars
 
     def load_game(self):
         self.player = create_char()

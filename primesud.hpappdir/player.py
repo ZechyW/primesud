@@ -15,13 +15,11 @@ from world import (
     ITEM_TEMPLATES,
     MOB_TEMPLATES,
     RESETS,
+    SKILL_TABLE,
     SKILLS,
     DOOR_RESET,
     R_STARTING_ROOM,
-    GSN_HAND_TO_HAND,
-    GSN_KICK,
-    GSN_CURE_LIGHT,
-    GSN_PARRY,
+    GSN_SWORD,
     GSN_RECALL,
 )
 
@@ -44,24 +42,8 @@ SAVE_VERSION = 1
 # ── Player model ──────────────────────────────────────────────────────────────
 
 
-def _roll_hp(hp_dice):
-    """Roll HP from an hp_dice tuple (cf. 1stMud create_mobile in db.c).
-
-    Args:
-        hp_dice (tuple): (num (int), size (int), bonus (int)).
-
-    Returns:
-        int: Total HP, minimum 1.
-    """
-    num, size, bonus = hp_dice
-    total = bonus
-    for _ in range(num):
-        total += randint(1, size)
-    return max(1, total)
-
-
 def create_char():
-    """Return a fresh player state dict with default starting values.
+    """Return a fresh player state dict with default starting values (cf. 1stMud new_char + new_pcdata in recycle.c).
 
     Returns:
         dict: Player state dict.
@@ -114,18 +96,19 @@ def create_char():
             "float":     None,
             "secondary": None,
         },
+        # All level-1 skills start at 1% (cf. 1stMud group_add sets learned=1).
+        # Sword=40 mirrors nanny.c weapon choice; recall=50 explicit in nanny.c.
         "learned": {
-            GSN_HAND_TO_HAND: 40,
-            GSN_KICK: 50,
-            GSN_CURE_LIGHT: 75,
-            GSN_PARRY: 10,
-            GSN_RECALL: 50,   # cf. 1stMud nanny.c: learned[gsn_recall] = 50
+            sn: (40 if sn == GSN_SWORD else 50 if sn == GSN_RECALL else 1)
+            for sn, data in SKILL_TABLE
+            if data["skill_level"] == 1
         },
         "fighting": None,
         "pos": "standing",
         "flags": PLR_DEFAULTS,
         "played": 0,  # cumulative playtime in seconds (cf. 1stMud pcdata->played)
     }
+
 
 
 def _stat_from_level(level):
@@ -157,7 +140,11 @@ def create_mobile(tpl_vnum):
         dict: Mob instance dict.
     """
     tpl = MOB_TEMPLATES[tpl_vnum]
-    hp  = _roll_hp(tpl["hp_dice"])
+    _n, _s, _b = tpl["hp_dice"]
+    hp = _b
+    for _ in range(_n):
+        hp += randint(1, _s)
+    hp = max(1, hp)
     base = _stat_from_level(tpl["level"])
     act  = tpl.get("act_flags", {})
     off  = tpl.get("off_flags", {})
@@ -189,7 +176,6 @@ def create_mobile(tpl_vnum):
         "wait":      0,
         "daze":      0,
         "fighting":  None,
-        "learned":   dict(tpl.get("skills", {})),
         "off_flags": dict(off),
         "inv":       [],
         "equip":     {},

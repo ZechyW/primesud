@@ -661,14 +661,18 @@ def multi_hit(tr, ch, victim, world=None):
         if victim["hp"] == 0:
             return True
 
-    # Second attack (cf. 1stMud multi_hit in fight.c)
-    if ch["learned"].get(GSN_SECOND_ATTACK, 0) > randint(1, 100):
+    # Second attack (cf. 1stMud multi_hit in fight.c; mobs use off_flags, PCs use learned)
+    if ch.get("is_npc"):
+        fires_second = ch.get("off_flags", {}).get("second_attack")
+        fires_third  = ch.get("off_flags", {}).get("third_attack")
+    else:
+        fires_second = ch["learned"].get(GSN_SECOND_ATTACK, 0) > randint(1, 100)
+        fires_third  = ch["learned"].get(GSN_THIRD_ATTACK, 0) > randint(1, 100)
+    if fires_second:
         one_hit(tr, ch, victim)
         if victim["hp"] == 0:
             return True
-
-    # Third attack (cf. 1stMud multi_hit in fight.c)
-    if ch["learned"].get(GSN_THIRD_ATTACK, 0) > randint(1, 100):
+    if fires_third:
         one_hit(tr, ch, victim)
         if victim["hp"] == 0:
             return True
