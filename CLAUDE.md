@@ -2,7 +2,7 @@
 
 ## What this project is
 
-**PrimeSUD** is a text-based, single-user RPG for the HP Prime graphing calculator, heavily inspired by MUDs (Multi-User Dungeons). The name: **Prime** (calculator) + **SUD** (Single-User Dungeon).
+**PrimeSUD** is a text-based, single-user RPG for the HP Prime graphing calculator, primarily a port of a ROM 2.4-based MUD codebase, 1stmud. The name: **Prime** (calculator) + **SUD** (Single-User Dungeon).
 
 The game runs entirely in a terminal-style text UI rendered directly on the calculator's 320×240 screen via a custom text layer (`tml.py`).
 
