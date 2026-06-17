@@ -1,5 +1,5 @@
 # fmt: off
-# ── Display ───────────────────────────────────────────────────────────────────────────
+# -- Display ---------------------------------------------------------------------------
 DARK_MODE     = True
 FONT          = "std5x10"
 BG_COLOR      = 0
@@ -10,7 +10,7 @@ TERMINAL_ROWS = 22   # character rows    (std5x10 font, 240 px high, excl. statu
 FONT_GROB     = 9    # grob tml blits font glyphs from (HP Prime default)
 COLOR_GROB    = 8    # unmodified font copy; restored into FONT_GROB on colour reset
 
-# ── Timing — pulse system (1stMud convention) ─────────────────────────────────────────
+# -- Timing -- pulse system (1stMud convention) -----------------------------------------
 PULSE_PER_SECOND = 4                          # base pulse rate
 MS_PER_PULSE     = 1000 // PULSE_PER_SECOND   # 250 ms per pulse
 PULSE_VIOLENCE   = 2  * PULSE_PER_SECOND      # combat round
@@ -23,7 +23,7 @@ POLL_MS          = 10                         # keyboard polling interval (ms)
 AUTOSAVE_TICKS   = 4                          # autosave every N world ticks
 DEATH_MSG_DELAY  = 1                          # seconds between death flavour lines
 
-# ── Automap ───────────────────────────────────────────────────────────────────────────
+# -- Automap ---------------------------------------------------------------------------
 MAP_HALF_W      = 5   # compact automap half-width  (full grid = 2*W+1 = 11 cols)
 MAP_HALF_H      = 6   # compact automap half-height (full grid = 2*H+1 = 13 rows)
 FULL_MAP_HALF_W = 9   # 'map' command half-width    (full grid = 2*W+1 = 11 cols)
@@ -31,7 +31,7 @@ FULL_MAP_HALF_H = 8   # 'map' command half-height   (full grid = 2*H+1 = 15 rows
 COMPACT_MAP_DEPTH = 2  # exit-tracing hops for compact map (cf. 1stMud fSmall: depth starts at 2)
 FULL_MAP_DEPTH    = 4  # exit-tracing hops for full map   (cf. 1stMud !fSmall: depth starts at 0)
 
-# Sector display (cf. 1stMud sector_color_table in automap.c; jungle has no entry → "")
+# Sector display (cf. 1stMud sector_color_table in automap.c; jungle has no entry -> "")
 # game code uses room.get("sector", "inside") so hand-authored rooms default to "inside"
 SECTOR_COLORS = {
     "inside":   "{w",  "city":     "{W",  "field":    "{G",  "forest": "{g",
@@ -48,21 +48,21 @@ SECTOR_SYMBOLS = {
     "none":     '?',
 }
 
-# ── Scrollback [PRIMESUD] ─────────────────────────────────────────────────────────────
+# -- Scrollback [PRIMESUD] -------------------------------------------------------------
 SCROLLBACK_SIZE = 250  # rows to keep in history (0 = disabled)
 SCROLL_STEP     = 7   # rows scrolled per Shift+- / Shift++ keypress
 
-# ── Touch input [PRIMESUD] ────────────────────────────────────────────────────────────
+# -- Touch input [PRIMESUD] ------------------------------------------------------------
 SWIPE_THRESHOLD   = 20  # min Y-pixel delta on lift to enter scrollback
 TOUCH_SCROLL_STEP = 3   # rows scrolled per char_height of drag inside scrollback
 
-# ── Command history [PRIMESUD] ────────────────────────────────────────────────────────
+# -- Command history [PRIMESUD] --------------------------------------------------------
 CMD_HISTORY_MAX = 50  # maximum number of submitted commands to remember
 
-# ── Persistence ───────────────────────────────────────────────────────────────────────
+# -- Persistence -----------------------------------------------------------------------
 SAVE_VAR = "primesud_save"
 
-# ── Directions ───────────────────────────────────────────────────────────────────────
+# -- Directions -----------------------------------------------------------------------
 _DIRS       = (("n","north","s"), ("e","east","w"), ("s","south","n"),
                ("w","west","e"),  ("u","up","d"),   ("d","down","u"))
 EXIT_ORDER  = tuple(d[0] for d in _DIRS)
@@ -70,21 +70,21 @@ EXIT_NAMES  = {d[0]: d[1] for d in _DIRS}
 REV_DIR     = {d[0]: d[2] for d in _DIRS}
 DIR_ALIASES = {k: d[0] for d in _DIRS for k in (d[0], d[1])}
 
-# ── Key command shortcuts [PRIMESUD] ──────────────────────────────────────────────────
-# Maps HP Prime physical key bit-index → (command, auto_submit).
+# -- Key command shortcuts [PRIMESUD] --------------------------------------------------
+# Maps HP Prime physical key bit-index -> (command, auto_submit).
 # auto_submit=True: execute immediately; False: load into input buffer.
 # Adjust indices here if they differ on a specific hardware revision.
 KEY_COMMANDS = {  # [PRIMESUD]
-    2:  ("n",  True),   # ↑ N    (d-pad Up)
-    6:  ("u",  True),   # up
-    7:  ("w",  True),   # ← W    (d-pad Left)
-    8:  ("e",  True),   # → E    (d-pad Right)
-    9:  ("d",  True),   # down
-    12: ("s",  True),   # ↓ S    (d-pad Down)
+    2:  ("n",  True),   # Nav-pad Up
+    6:  ("u",  True),   # Plot
+    7:  ("w",  True),   # Nav-pad Left
+    8:  ("e",  True),   # Nav-pad Right
+    9:  ("d",  True),   # View
+    12: ("s",  True),   # Nav-pad Down
 }
 
-# ── Default digit macros [PRIMESUD] ───────────────────────────────────────────────────
-# Maps digit key "0"-"9" → command string. Edit to taste.
+# -- Default digit macros [PRIMESUD] ---------------------------------------------------
+# Maps digit key "0"-"9" -> command string. Edit to taste.
 DEFAULT_MACROS = {  # [PRIMESUD]
     "7": "kill",
     "8": "flee",
@@ -97,24 +97,24 @@ DEFAULT_MACROS = {  # [PRIMESUD]
     "0": "macro"
 }
 
-# ── Function-row macro keys [PRIMESUD] ───────────────────────────────────────
-# Sentinels must match _FN_* in tml_prime.py. One row per key: sentinel → (display_name, default_command).
+# -- Function-row macro keys [PRIMESUD] ---------------------------------------
+# Sentinels must match _FN_* in tml_prime.py. One row per key: sentinel -> (display_name, default_command).
 # display_name is used as the save-file key (save_char/load_char in player.py); must not contain '~' (line
 # separator) or '=' (key/value separator) or save parsing will break.
 FNKEY_TABLE = {
-    '\x12': ('x2', 'inventory'),      # x² key — index 26
-    '\x13': ('pm', 'equip'),  # +/- key — index 27
-    '\x14': ('()', 'wear'),       # ()  key — index 28
-    '\x15': (',',  'remove'),     # ,   key — index 29
+    '\x12': ('x2', 'inventory'),      # x2 key -- index 26
+    '\x13': ('pm', 'equip'),  # +/- key -- index 27
+    '\x14': ('()', 'wear'),       # ()  key -- index 28
+    '\x15': (',',  'remove'),     # ,   key -- index 29
 }
 FNKEY_SENTINELS      = frozenset(FNKEY_TABLE)
 FNKEY_NAMES          = {k: v[0] for k, v in FNKEY_TABLE.items()}
 DEFAULT_FNKEY_MACROS = {k: v[1] for k, v in FNKEY_TABLE.items()}
 
-# ── Stat cap (cf. 1stMud #define MAX_STATS 30 in defines.h) ──────────────────────────────
+# -- Stat cap (cf. 1stMud #define MAX_STATS 30 in defines.h) ------------------------------
 MAX_STATS = 30
 
-# ── Stat application tables (1stMud ROM values, index by stat 0–MAX_STATS) ───────────────
+# -- Stat application tables (1stMud ROM values, index by stat 0-MAX_STATS) ---------------
 # str_app: tohit (hitroll bonus, positive = better to-hit), todam (damage roll bonus),
 #          carry (max carry weight in lbs; cf. 1stMud str_app[].carry in const.c),
 #          wield (max weapon weight for wielding, in lbs; cf. 1stMud str_app[].wield in const.c)
@@ -132,24 +132,24 @@ WIS_APP_PRACTICE = (0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,3,3,3,3,4,4,4,5,5,5,6,6,
 # int_app: skill improvement rate used in check_improve and do_practice (1stMud int_app[].learn)
 INT_APP_LEARN    = (3,5,7,8,9,10,11,12,13,15,17,19,22,25,28,31,34,37,40,44,49,55,60,70,80,85,90,95,100,105,110)
 
-# ── Classless HP die (Cleric/Paladin range) ───────────────────────────────────────────
+# -- Classless HP die (Cleric/Paladin range) -------------------------------------------
 CLASS_HP_MIN = 7
 CLASS_HP_MAX = 10
 
-# ── Level cap ─────────────────────────────────────────────────────────────────────────
+# -- Level cap -------------------------------------------------------------------------
 MAX_LEVEL = 50  # [PRIMESUD] 1stMud caps at 32
 
-# ── Stat training cap ─────────────────────────────────────────────────────────────────
+# -- Stat training cap -----------------------------------------------------------------
 # Revisit when races are added: 1stMud uses race.max_stats[stat] + 2 (or +3 for human
 # prime stats) via get_max_train() in handler.c; flat MAX_STATS until then.
 
-# ── THAC0 constants (classless, balanced midpoint) ────────────────────────────────────
+# -- THAC0 constants (classless, balanced midpoint) ------------------------------------
 THAC0_PLATEAU = 32   # level at which natural THAC0 stops improving
 THAC0_00      = 20   # THAC0 at level 1              (higher = worse to-hit)
 THAC0_MIN     = -2   # THAC0 at level THAC0_PLATEAU  (lower  = better to-hit)
 
-# ── Damage classes (cf. 1stMud dam_class enum in merc.h) ──────────────────────────────
-DAM_NONE      = -1   # "none" / TYPE_HIT bare attack — falls back to DAM_BASH
+# -- Damage classes (cf. 1stMud dam_class enum in merc.h) ------------------------------
+DAM_NONE      = -1   # "none" / TYPE_HIT bare attack -- falls back to DAM_BASH
 DAM_BASH      =  0
 DAM_PIERCE    =  1
 DAM_SLASH     =  2
@@ -163,8 +163,8 @@ DAM_HOLY      =  9
 DAM_ENERGY    = 10
 DAM_OTHER     = 11
 
-# ── Attack table (cf. 1stMud attack_table in const.c) ─────────────────────────────────
-# Maps dam_type area-file key → (display noun, dam_class).
+# -- Attack table (cf. 1stMud attack_table in const.c) ---------------------------------
+# Maps dam_type area-file key -> (display noun, dam_class).
 # Noun differs from key for: divine, peckb, shbite, flbite, frbite, acbite, drain.
 # dam_class used for AC-type selection (pierce/slash/bash/exotic) and future res/imm.
 ATTACK_TABLE = {

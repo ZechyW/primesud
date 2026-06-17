@@ -14,15 +14,15 @@ AREA = {
     "version":  4,
 }
 
-# ── Room VNUMs ─────────────────────────────────────────────────────────────────
+# -- Room VNUMs -----------------------------------------------------------------
 R_VOID                             = 1
 R_LIMBO                            = 2
 R_MORGUE                           = 3
 
-# ── Mob template VNUMs ─────────────────────────────────────────────────────────
+# -- Mob template VNUMs ---------------------------------------------------------
 M_DUMMY_MOB                        = 30
 
-# ── Item template VNUMs ────────────────────────────────────────────────────────
+# -- Item template VNUMs --------------------------------------------------------
 I_COIN_SILVER_GCASH                = 1
 I_COIN_GOLD_GCASH                  = 2
 I_COINS_GOLD_GCASH                 = 3
@@ -43,9 +43,9 @@ I_DISC_DISK_FLOATING_BLACK         = 23
 I_GATE_PORTAL                      = 25
 I_DUMMY_OBJECT                     = 30
 
-# ── Mob templates ──────────────────────────────────────────────────────────────
+# -- Mob templates --------------------------------------------------------------
 # hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
-# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies ×10
+# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies x10
 # hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)
 MOBILES = {
     M_DUMMY_MOB: {
@@ -68,7 +68,7 @@ MOBILES = {
     },
 }
 
-# ── Rooms ──────────────────────────────────────────────────────────────────────
+# -- Rooms ----------------------------------------------------------------------
 ROOMS = {
     R_VOID: {
         "name": 'The Void',
@@ -98,7 +98,7 @@ ROOMS = {
     },
 }
 
-# ── Item templates ─────────────────────────────────────────────────────────────
+# -- Item templates -------------------------------------------------------------
 OBJECTS = {
     I_COIN_SILVER_GCASH: {
         "keywords":    'coin silver gcash',
@@ -278,13 +278,13 @@ OBJECTS = {
     },
 }
 
-# ── Resets ─────────────────────────────────────────────────────────────────────
-# ("M", mob_vnum, global_limit, room_vnum, room_limit) — spawn mob up to limits
-# ("O", item_vnum, room_vnum)                          — place one item copy in room
-# ("E", item_vnum, slot_name)                          — equip item on last M mob
-# ("G", item_vnum)                                     — give item to last M mob inventory
-# ("P", item_vnum, limit, container_vnum, max)         — [PRIMESUD] deferred: no containers
-# ("R", room_vnum, num_dirs)                           — [PRIMESUD] deferred: unused in current areas
+# -- Resets ---------------------------------------------------------------------
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          -- place one item copy in room
+# ("E", item_vnum, slot_name)                          -- equip item on last M mob
+# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
+# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
 # F and D .are resets are baked into room exit flags at conversion time
 RESETS = (
     ("O", 3415, R_MORGUE),

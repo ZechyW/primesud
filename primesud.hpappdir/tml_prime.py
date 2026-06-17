@@ -4,13 +4,13 @@ from tml import tml
 _SB_UP = '\x10'   # shift+- : enter scrollback / scroll up further
 _SB_DN = '\x11'   # shift++ : scroll down (within scrollback)
 
-_HIST_UP = '\x16'   # symb key (index 1) — recall older command
-_HIST_DN = '\x17'   # help key (index 3) — recall newer command
+_HIST_UP = '\x16'   # symb key (index 1) -- recall older command
+_HIST_DN = '\x17'   # help key (index 3) -- recall newer command
 
-_FN_X2    = '\x12'  # x² key — index 26, row above numpad
-_FN_PM    = '\x13'  # +/- key — index 27
-_FN_PAREN = '\x14'  # ()  key — index 28
-_FN_COMMA = '\x15'  # ,   key — index 29
+_FN_X2    = '\x12'  # x2 key -- index 26, row above numpad
+_FN_PM    = '\x13'  # +/- key -- index 27
+_FN_PAREN = '\x14'  # ()  key -- index 28
+_FN_COMMA = '\x15'  # ,   key -- index 29
 
 
 class tml_prime(tml):
@@ -81,15 +81,15 @@ class tml_prime(tml):
             char = super().read_key(code=False)
             if char == _SB_UP and self._hist_count > 0:
                 result = self._scrollback()
-                # None  → depth reached 0 (auto-exit); loop for next key
-                # other → key forwarded from scrollback exit
+                # None  -> depth reached 0 (auto-exit); loop for next key
+                # other -> key forwarded from scrollback exit
                 if result is not None:
                     return result
             else:
                 return char
 
     # ------------------------------------------------------------------
-    # Non-blocking poll — replaces the standalone _poll_char function
+    # Non-blocking poll -- replaces the standalone _poll_char function
     # ------------------------------------------------------------------
 
     def poll_char(self, key_commands=None):
@@ -150,9 +150,9 @@ class tml_prime(tml):
                     else:
                         self.is_shift = True
                     self._refresh_indicators()
-                elif bit == 1:   # Symb — command history up
+                elif bit == 1:   # Symb -- command history up
                     return (_HIST_UP, None)
-                elif bit == 3:   # Help — command history down
+                elif bit == 3:   # Help -- command history down
                     return (_HIST_DN, None)
                 else:
                     if key_commands and bit in key_commands:
@@ -268,7 +268,7 @@ class tml_prime(tml):
             strblit2(0, 0, 0, self.width, display_rows * ch,
                      self._hist_grob, 0, slot_start * ch, self.width, display_rows * ch)
         else:
-            # Wraps around ring end — two blits
+            # Wraps around ring end -- two blits
             tail = self._hist_size - slot_start
             strblit2(0, 0, 0, self.width, tail * ch,
                      self._hist_grob, 0, slot_start * ch, self.width, tail * ch)

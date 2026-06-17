@@ -1,4 +1,4 @@
-# PrimeSUD — single-user dungeon for the HP Prime
+# PrimeSUD -- single-user dungeon for the HP Prime
 # Port by ZechyW.  Not for commercial distribution.
 #
 # Based on 1stMud ROM Derivative (c) 2001-2003 Ryan Jennings
@@ -22,7 +22,7 @@ from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     FNKEY_SENTINELS,
                     SAVE_VAR)
 from util import free_mem
-from world import R_STARTING_ROOM, ROOMS, AREA_DEFS
+from world import R_STARTING_ROOM, ROOMS, ROOM_AREAS, AREA_DEFS
 from combat import violence_update
 from player import (
     create_char,
@@ -38,7 +38,7 @@ from commands import interpret, do_look, do_outfit, _MACRO_SUBST
 from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full
 
 
-# ── World tick / area update ──────────────────────────────────────────────────
+# -- World tick / area update --------------------------------------------------
 
 # Area age thresholds (cf. 1stMud area_update: age < 3 skip; age >= 15 reset
 # when player present; age >= 31 hard cap).  Single-player simplification:
@@ -67,7 +67,7 @@ def area_update(tr, player, world):
             else:
                 area["age"] = randint(0, 3)
                 # School area is intentionally silent (cf. db.c:1335 else-if excludes it).
-                if ROOMS[player["room"]].get("area") == area["tag"]:
+                if ROOM_AREAS.get(player["room"]) == area["tag"]:
                     tr.print(_RESET_MSGS[randint(0, len(_RESET_MSGS) - 1)])
 
 
@@ -84,7 +84,7 @@ def _wrap_plain(text, width):
     return lines
 
 
-# ── Main classes ──────────────────────────────────────────────────────────────
+# -- Main classes --------------------------------------------------------------
 
 
 class Game:
@@ -101,7 +101,7 @@ class Game:
         _w_x = (ord('W') - 32) * self.tr.char_width + self.tr.char_width // 2
         self._font_fg = getpix(FONT_GROB, _w_x, self.tr.char_height // 2)
         _fg = self._font_fg
-        # Precomputed fg pixel coords — eliminates all getpix calls in set_color.
+        # Precomputed fg pixel coords -- eliminates all getpix calls in set_color.
         self._fg_rows = [
             [x for x in range(self._font_w) if getpix(FONT_GROB, x, y) == _fg]
             for y in range(self._font_h)
@@ -126,7 +126,7 @@ class Game:
                 text = text[:i] + text[i].upper() + text[i + 1:]
             if _CC not in text:
                 # Fast path: skip color_wrap and all colour-code scanning.
-                # Reset lazily here — a previous colored print may have left _current_fg set.
+                # Reset lazily here -- a previous colored print may have left _current_fg set.
                 if self._current_fg is not None:
                     self.reset_color()
                 lines = _wrap_plain(text, _cols)
@@ -223,9 +223,9 @@ class Game:
 
         Cache hit (same color): immediate return, ~0 ms.
         Cache miss: pixon-paints the ~1037 precomputed fg pixels (~3.6 ms vs
-        ~26 ms full-scan — ~7x speedup).  No strblit2 restore needed: bg pixels
+        ~26 ms full-scan -- ~7x speedup).  No strblit2 restore needed: bg pixels
         are never touched by colour operations, so painting all fg pixels is
-        sufficient for any color→color transition.  Local _po capture shaves a
+        sufficient for any color->color transition.  Local _po capture shaves a
         further ~2% vs global pixon lookup.
         """
         if color == self._current_fg:
@@ -260,7 +260,7 @@ class Game:
         result = load_char(self.player, {"rooms": self.room_state,
                                          "mobs": self.mob_instances,
                                          "areas": self.area_states})
-        if isinstance(result, tuple):   # (None, backup_ok) — version mismatch
+        if isinstance(result, tuple):   # (None, backup_ok) -- version mismatch
             _, self._backup_ok = result
             return None
         return result
@@ -278,7 +278,7 @@ class Game:
             tr.print("Your old save has been backed up to: {C" + SAVE_VAR + "_bak{x")
         else:
             tr.print("{RWARNING:{x Backup to {C" + SAVE_VAR + "_bak{x FAILED.")
-            tr.print("Your old save is still in {C" + SAVE_VAR + "{x — do NOT start")
+            tr.print("Your old save is still in {C" + SAVE_VAR + "{x -- do NOT start")
             tr.print("a new game here or it will be overwritten.")
         tr.print("")
         tr.print("[N] Start a new game")
@@ -406,14 +406,14 @@ class Game:
                             self._hist_pos   = None
                             self._hist_saved = ""
                         show_prompt(tr, player, self.input_buf)
-                elif auto_submit is True:  # [PRIMESUD] hardware key — immediate submit
+                elif auto_submit is True:  # [PRIMESUD] hardware key -- immediate submit
                     _t0 = int(ppleval("Ticks"))
                     _quit = interpret(char, tr, player, world) == "quit"
                     next_pulse += int(ppleval("Ticks")) - _t0  # [PRIMESUD] skip missed pulses during blocking input
                     if _quit:
                         break
                     show_prompt(tr, player, self.input_buf)
-                elif auto_submit is False:  # [PRIMESUD] hardware key — load into buffer
+                elif auto_submit is False:  # [PRIMESUD] hardware key -- load into buffer
                     self.input_buf = char
                     show_prompt(tr, player, self.input_buf)
                 elif char is not None and char not in ("\L", "\R", "\SR"):
@@ -462,7 +462,7 @@ class Game:
                 if pulse % PULSE_AREA == 0:
                     area_update(tr, player, world)
 
-                if pulse >= 14400:  # wrap at 1 hour (3600 s × 4 pulses/s)
+                if pulse >= 14400:  # wrap at 1 hour (3600 s x 4 pulses/s)
                     pulse = 0
 
             ppleval("WAIT({}/1e3)".format(POLL_MS))
@@ -502,7 +502,7 @@ class PrimeSud:
             result = game.load_game()
             if result is None:          # version mismatch
                 if not game.handle_version_mismatch():
-                    return              # user chose quit — exit without saving
+                    return              # user chose quit -- exit without saving
                 game.new_game()
             elif not result:            # no save found
                 game.tr.print("No save found. Starting new game.")

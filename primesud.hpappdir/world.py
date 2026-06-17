@@ -1,15 +1,15 @@
 ###################################
-## PrimeSud — World Loader       ##
+## PrimeSud -- World Loader       ##
 ## Merges all area data and      ##
 ## defines global skill table.   ##
 ###################################
 
 # fmt: off
-# ── Cross-area room VNUMs (cf. 1stMud gsn_* / room vnums in index.h) ──────────
+# -- Cross-area room VNUMs (cf. 1stMud gsn_* / room vnums in index.h) ----------
 R_STARTING_ROOM  = 3700   # player respawn/starting room (Mud School entrance)
 R_RECALL         = 3001   # default recall destination (cf. 1stMud ROOM_VNUM_TEMPLE)
 
-# ── Skills ────────────────────────────────────────────────────────────────────
+# -- Skills --------------------------------------------------------------------
 from skills_table import (
     SKILL_TABLE as _ST_RAW,
     GSN_KICK, GSN_HAND_TO_HAND, GSN_PARRY, GSN_RECALL,
@@ -17,31 +17,37 @@ from skills_table import (
     GSN_SPEAR, GSN_WHIP, GSN_SHIELD_BLOCK,
     GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
 )
+import area_limbo
+import area_school
+import area_midgaard
+import area_quest
+import area_chapel
+
 GSN_CURE_LIGHT = 27  # [PRIMESUD] no gsn_cure_light in 1stMud; sn 27 from skill_table
 # fmt: on
 
-# List of (module_name, area_tag) — add/remove areas here only.
+# List of (module_name, area_tag) -- add/remove areas here only.
 _AREA_LIST = [
-    ("area_limbo",    "limbo"),
-    ("area_school",   "mud_school"),
-    ("area_midgaard", "midgaard"),
-    ("area_quest",    "quest"),
-    ("area_chapel",   "chapel"),
+    (area_limbo, "limbo"),
+    (area_school, "mud_school"),
+    (area_midgaard, "midgaard"),
+    (area_quest, "quest"),
+    (area_chapel, "chapel"),
 ]
 
-# Tag every room with its area name (cf. room->area pointer in 1stMud db.c).
-# world.py is the authority — area modules carry no tag of their own.
+# Map each room to its area name (cf. room->area pointer in 1stMud db.c).
+# world.py is the authority -- area modules carry no tag of their own.
 ROOMS = {}
+ROOM_AREAS = {}
 MOB_TEMPLATES = {}
 ITEM_TEMPLATES = {}
 RESETS = ()
 AREA_DEFS = []
 
-for _mod_name, _tag in _AREA_LIST:
-    _mod = __import__(_mod_name)
+for _mod, _tag in _AREA_LIST:
     for _vnum, _room in _mod.ROOMS.items():
-        _room["area"] = _tag
         ROOMS[_vnum] = _room
+        ROOM_AREAS[_vnum] = _tag
     MOB_TEMPLATES.update(_mod.MOBILES)
     ITEM_TEMPLATES.update(_mod.OBJECTS)
     RESETS = RESETS + _mod.RESETS
@@ -58,9 +64,9 @@ for _vnum, _room in ROOMS.items():
                 DOOR_RESET[_vnum] = {}
             DOOR_RESET[_vnum][_d] = {"closed": bool(_ev.get("closed")), "locked": bool(_ev.get("locked"))}
 
-# ── Skills (cf. 1stMud skill_table; ordered list for prefix-match tiebreaking) ─
-# Flatten per-class tuples: skill_level → earliest any class learns it;
-# rating → best (lowest non-zero) rate; default=1 guards all-zero edge case.
+# -- Skills (cf. 1stMud skill_table; ordered list for prefix-match tiebreaking) -
+# Flatten per-class tuples: skill_level -> earliest any class learns it;
+# rating -> best (lowest non-zero) rate; default=1 guards all-zero edge case.
 def _flatten_skill(sn, data):
     d = {}
     d.update(data)
@@ -72,8 +78,8 @@ SKILL_TABLE = [_flatten_skill(sn, data) for sn, data in _ST_RAW]
 
 SKILLS = dict(SKILL_TABLE)
 
-# Maps item weapon_type string → GSN (cf. 1stMud weapon_table in const.c).
-# Unknown weapon type → -1 at call site (see _get_weapon_sn in combat.py).
+# Maps item weapon_type string -> GSN (cf. 1stMud weapon_table in const.c).
+# Unknown weapon type -> -1 at call site (see _get_weapon_sn in combat.py).
 WEAPON_GSN_MAP = {
     "sword":   GSN_SWORD,
     "axe":     GSN_AXE,

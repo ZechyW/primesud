@@ -1,12 +1,12 @@
 # fmt: off
-# Generated from 1stMud 4.5.3 skills.dat — do not edit manually.
+# Generated from 1stMud 4.5.3 skills.dat -- do not edit manually.
 # Re-generate: uv run python tools/skills_to_primesud.py reference/1stMud4.5.3/data/skills.dat
 
 # skill_level / rating indices:  0=Mage  1=Cleric  2=Thief  3=Warrior  4=Paladin  5=Ranger
 # skill_level 53 = ANGEL (not available to that class)  52 = LEVEL_IMMORTAL (immo-only)
 # rating 0 = class cannot learn this skill individually
 
-# ── GSN constants ──────────────────────────────────────────────────────────────
+# -- GSN constants --------------------------------------------------------------
 GSN_BLINDNESS                  = 5
 GSN_CHARM_PERSON               = 15
 GSN_CURSE                      = 30
@@ -56,7 +56,7 @@ GSN_STAVES                     = 134
 GSN_WANDS                      = 135
 GSN_RECALL                     = 136
 
-# ── SKILL_TABLE ────────────────────────────────────────────────────────────────
+# -- SKILL_TABLE ----------------------------------------------------------------
 SKILL_TABLE = [
     (  0, {  # sn 0
         "name":        'reserved',

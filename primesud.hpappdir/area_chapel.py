@@ -14,7 +14,7 @@ AREA = {
     "version":  4,
 }
 
-# ── Room VNUMs ─────────────────────────────────────────────────────────────────
+# -- Room VNUMs -----------------------------------------------------------------
 R_INSIDE_THE_CHAPEL                = 3405
 R_STAIRWELL_INTO_DARKNESS          = 3408
 R_ACOLYTE_S_BEDROOM                = 3409
@@ -83,7 +83,7 @@ R_SECRET_PASSAGEWAY_3471           = 3471
 R_SHORT_WAY_TO_HELL                = 3472
 R_INSIDE_THE_COFFIN                = 3475
 
-# ── Mob template VNUMs ─────────────────────────────────────────────────────────
+# -- Mob template VNUMs ---------------------------------------------------------
 M_OLDSTYLE_SKELETON_BONY           = 3400
 M_OLDSTYLE_UNDEAD_ZOMBIE           = 3401
 M_OLDSTYLE_UNDEAD_GHOUL            = 3402
@@ -102,7 +102,7 @@ M_OLDSTYLE_ETCHER                  = 3414
 M_OLDSTYLE_WIFE_GHOST_SPECTER      = 3415
 M_OLDSTYLE_BODY                    = 3416
 
-# ── Item template VNUMs ────────────────────────────────────────────────────────
+# -- Item template VNUMs --------------------------------------------------------
 I_CANDLESTICK                      = 3400
 I_TICKLER                          = 3402
 I_PLASMA_WEBBING                   = 3403
@@ -128,9 +128,9 @@ I_FLAMING_BLACK_SWORD_LONG_LONGSWORD = 3428
 I_BREAST_PLATE_DENTED_WORN         = 3429
 I_KEY_SILVER                       = 3430
 
-# ── Mob templates ──────────────────────────────────────────────────────────────
+# -- Mob templates --------------------------------------------------------------
 # hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
-# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies ×10
+# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies x10
 # hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)
 MOBILES = {
     M_OLDSTYLE_SKELETON_BONY: {
@@ -471,7 +471,7 @@ MOBILES = {
     },
 }
 
-# ── Rooms ──────────────────────────────────────────────────────────────────────
+# -- Rooms ----------------------------------------------------------------------
 ROOMS = {
     R_INSIDE_THE_CHAPEL: {
         "name": 'Inside the Chapel',
@@ -1147,7 +1147,7 @@ ROOMS = {
     },
 }
 
-# ── Item templates ─────────────────────────────────────────────────────────────
+# -- Item templates -------------------------------------------------------------
 OBJECTS = {
     I_CANDLESTICK: {
         "keywords":    'candlestick',
@@ -1415,13 +1415,13 @@ OBJECTS = {
     },
 }
 
-# ── Resets ─────────────────────────────────────────────────────────────────────
-# ("M", mob_vnum, global_limit, room_vnum, room_limit) — spawn mob up to limits
-# ("O", item_vnum, room_vnum)                          — place one item copy in room
-# ("E", item_vnum, slot_name)                          — equip item on last M mob
-# ("G", item_vnum)                                     — give item to last M mob inventory
-# ("P", item_vnum, limit, container_vnum, max)         — [PRIMESUD] deferred: no containers
-# ("R", room_vnum, num_dirs)                           — [PRIMESUD] deferred: unused in current areas
+# -- Resets ---------------------------------------------------------------------
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          -- place one item copy in room
+# ("E", item_vnum, slot_name)                          -- equip item on last M mob
+# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
+# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
 # F and D .are resets are baked into room exit flags at conversion time
 RESETS = (
     ("M", M_OLDSTYLE_PRIEST, 1, R_INSIDE_THE_CHAPEL, 1),

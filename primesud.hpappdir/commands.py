@@ -1,5 +1,4 @@
-from hpprime import eval as ppleval
-from util import free_mem
+from util import free_mem, gc_collect
 from colors import color_len
 
 from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT, GSN_RECALL, R_RECALL, WEAPON_GSN_MAP
@@ -66,7 +65,7 @@ _POS_MSG = {
     "fighting": "No way!  You are still fighting!",
 }
 
-# ── Commands (cf. 1stMud do_* in interp.c / fight.c) ─────────────────────────
+# -- Commands (cf. 1stMud do_* in interp.c / fight.c) -------------------------
 
 _FLAG_TABLE = (
     (PLR_AUTOMAP, "automap", "Map in room descriptions"),
@@ -810,7 +809,7 @@ def do_score(tr, player, args, world):
         rpad = ' ' * (_SCORE_RIGHT - color_len(r))
         return "{W|{x " + l + lpad + " {W|{x " + r + rpad + " {W|{x"
     def _stat(name, val):
-        # [perm/curr] — identical until affect system is added
+        # [perm/curr] -- identical until affect system is added
         return '{c' + '{:<13}'.format(name) + ': [{w' + '{:2d}/{:2d}'.format(val, val) + '{c]{x'
     def _val(name, v, bright=False):
         nc = '{C' if bright else '{c'
@@ -819,6 +818,8 @@ def do_score(tr, player, args, world):
         return nc + '{:<13}'.format(name) + ': [' + vc + '{:>11}'.format(v) + nc + ' ]{x'
 
     def _free_mem():
+        # Since memory is mentioned here, also use `score` as a point to do gc
+        gc_collect()
         return "{G(Mem. free: " + str(free_mem()) + "){x"
 
     p = player
@@ -934,14 +935,13 @@ def do_map(tr, player, args, world):
         tr: Terminal renderer.
         player (dict): Player state dict.
     """
-    # [TODO blind] 1stMud checks check_blind(ch) here and refuses if AFF_BLIND — add when blindness is implemented
+    # [TODO blind] 1stMud checks check_blind(ch) here and refuses if AFF_BLIND -- add when blindness is implemented
     for line in build_full_lines(player, ROOMS):
         tr.print(line)
 
 
 def do_save(tr, player, args, world):
     try:
-        world["_tr"] = tr
         save_char(player, world)
         tr.print("Saved.")
     except Exception as e:
@@ -978,7 +978,7 @@ def do_quit(tr, player, args, world):
     return "quit"
 
 
-# ── Skill / spell dispatch ────────────────────────────────────────────────────
+# -- Skill / spell dispatch ----------------------------------------------------
 
 def do_cast(tr, player, args, world):
     if not args:
@@ -1030,7 +1030,7 @@ def do_cast(tr, player, args, world):
     return None
 
 
-# ── Direction map ─────────────────────────────────────────────────────────────
+# -- Direction map -------------------------------------------------------------
 
 _DIRECTION_MAP = {
     "n": "n", "north":     "n",
@@ -1042,7 +1042,7 @@ _DIRECTION_MAP = {
     "d": "d", "down": "d",
 }
 
-_MACRO_SUBST = dict(DEFAULT_MACROS)   # [PRIMESUD] user-configurable macros — no 1stMud equivalent
+_MACRO_SUBST = dict(DEFAULT_MACROS)   # [PRIMESUD] user-configurable macros -- no 1stMud equivalent
 _MACRO_SUBST.update(DEFAULT_FNKEY_MACROS)
 
 _CELL_W         = (TERMINAL_COLS - 4) // 3  # width of each of the 3 display columns
@@ -1050,7 +1050,7 @@ _MACRO_SEP      = "+" + ("-" * _CELL_W + "+") * 3
 _MACRO_SEP_STRONG = "+" + ("=" * _CELL_W + "+") * 3
 
 _FNKEY_ORDER   = sorted(FNKEY_NAMES.keys())
-_FNKEY_BY_NAME = {v: k for k, v in FNKEY_NAMES.items()}  # 'x2' → '\x12' etc.
+_FNKEY_BY_NAME = {v: k for k, v in FNKEY_NAMES.items()}  # 'x2' -> '\x12' etc.
 
 _fns = [(s, FNKEY_NAMES[s]) for s in _FNKEY_ORDER]
 while len(_fns) % 3:
@@ -1066,7 +1066,7 @@ del _fns
 
 
 def _macro_cell(key, label=None):
-    """Return padded display lines for one cell; key=None → blank."""
+    """Return padded display lines for one cell; key=None -> blank."""
     def pad(s):
         return s + " " * (_CELL_W - len(s))
     if key is None:
@@ -1373,7 +1373,7 @@ def do_recall(tr, player, args, world):
     do_look(tr, player, [], world)
 
 
-# ── Command table ─────────────────────────────────────────────────────────────
+# -- Command table -------------------------------------------------------------
 # Entries in 1stMud load order (cf. COMMANDS.md); [PRIMESUD] shortcuts interleaved.
 # Schema: (name, fn, min_pos, noprefix)
 
@@ -1414,7 +1414,7 @@ _CMD_TABLE = [
 ]
 
 
-# ── Interpreter ───────────────────────────────────────────────────────────────
+# -- Interpreter ---------------------------------------------------------------
 
 def interpret(raw, tr, player, world):
     parts = raw.strip().lower().split()

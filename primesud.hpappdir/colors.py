@@ -1,6 +1,6 @@
 COLOR_CODE = '{'
 
-# {X color codes → RGB.  Lowercase = dim, uppercase = bright (1stMud convention).
+# {X color codes -> RGB.  Lowercase = dim, uppercase = bright (1stMud convention).
 # White is the default foreground
 ANSI_COLORS = {
     'd': 0x000000,   # black

@@ -24,7 +24,7 @@ def pick_from(tr, title, options):
 
     Args:
         tr: tml renderer instance.
-        title (str): Header line, plain text — colour wrapping applied internally.
+        title (str): Header line, plain text -- colour wrapping applied internally.
         options (list[str]): Display strings.
 
     Returns:
@@ -60,7 +60,7 @@ def pick_from(tr, title, options):
                     _render(tr, title, options, page, max_page)
                     break
             elif char.isdigit():
-                page_idx = (int(char) - 1) % 10  # '1'→0 … '9'→8, '0'→9
+                page_idx = (int(char) - 1) % 10  # '1'->0 ... '9'->8, '0'->9
                 tr.print(char, end="")
                 while True:  # CONFIRM
                     char2 = tr.read_key()

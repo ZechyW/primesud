@@ -1,6 +1,7 @@
 from hpprime import eval as ppleval
 from urandom import randint
 
+from util import gc_collect
 from config import (
     SAVE_VAR,
     TERMINAL_COLS,
@@ -13,6 +14,7 @@ from config import (
 )
 from world import (
     ROOMS,
+    ROOM_AREAS,
     ITEM_TEMPLATES,
     MOB_TEMPLATES,
     RESETS,
@@ -24,23 +26,29 @@ from world import (
     GSN_RECALL,
 )
 
-# ── Player flag bits (cf. 1stMud PLR_* in bits.h) ─────────────────────────────
+_EQUIP_SAVE_ORDER = (
+    "light", "finger_l", "finger_r", "neck_1", "neck_2", "body", "head",
+    "legs", "feet", "hands", "arms", "shield", "about", "waist", "wrist_l",
+    "wrist_r", "wield", "hold", "float", "secondary",
+)
+
+# -- Player flag bits (cf. 1stMud PLR_* in bits.h) -----------------------------
 PLR_AUTOMAP = 1
 PLR_DEFAULTS = PLR_AUTOMAP
 
-# ── Save format version ────────────────────────────────────────────────────────
+# -- Save format version --------------------------------------------------------
 # Increment SAVE_VERSION whenever a core mechanic changes in a way that makes
 # old saves load incorrectly: e.g. flag-bit layout changes, AC formula changes,
 # stat renaming, or any field whose semantics change rather than just new fields
 # being added.  Additive changes (new skills, new item slots, new flags that
-# default to 0) do NOT require a bump — missing keys are silently left at their
+# default to 0) do NOT require a bump -- missing keys are silently left at their
 # create_char() defaults, and unknown keys are silently ignored on load.
 #
 # Skill numeric IDs (GSN_*) are permanent once assigned: recycling an ID for a
 # different skill would cause old saves to corrupt the new skill's learned %.
 SAVE_VERSION = 1
 
-# ── Player model ──────────────────────────────────────────────────────────────
+# -- Player model --------------------------------------------------------------
 
 
 def create_char():
@@ -188,7 +196,7 @@ def create_mobile(tpl_vnum):
         "con":       s_con,
         "hitroll":   tpl["hitroll"],
         "damroll":   tpl["damage"][2],   # bonus = damroll (cf. 1stMud damage[DICE_BONUS])
-        "AC":        tpl["AC"] * 10,     # ×10 storage (cf. 1stMud load_mobiles read_number * 10)
+        "AC":        tpl["AC"] * 10,     # x10 storage (cf. 1stMud load_mobiles read_number * 10)
     }
 
 
@@ -214,8 +222,8 @@ def reset_mobs(mob_instances, room_state, resets):
     (full reset via reset_area).
 
     Args:
-        mob_instances (dict): Mob instance mapping mob ID → instance dict.
-        room_state (dict): Room state mapping room vnum → room state dict.
+        mob_instances (dict): Mob instance mapping mob ID -> instance dict.
+        room_state (dict): Room state mapping room vnum -> room state dict.
         resets (tuple): Area RESETS sequence.
     """
     mob_id = max(mob_instances, default=0) + 1
@@ -233,7 +241,7 @@ def reset_mobs(mob_instances, room_state, resets):
                 continue
             inst = create_mobile(tpl_vnum)
             inst["room"] = room_vnum
-            inst["home_area"] = ROOMS[room_vnum].get("area")
+            inst["home_area"] = ROOM_AREAS.get(room_vnum)
             mob_instances[mob_id] = inst
             room_state[room_vnum]["mobs"].append(mob_id)
             last_mob_id  = mob_id
@@ -274,7 +282,7 @@ def reset_area():
 def mobile_update(tr, player, world):
     """Wander mobs and despawn any that strayed out of their home area (cf. 1stMud mobile_update, char_update in update.c)."""
     for mob_id, inst in list(world["mobs"].items()):
-        if ROOMS[inst["room"]].get("area") != inst["home_area"] and randint(1, 100) <= 5:
+        if ROOM_AREAS.get(inst["room"]) != inst["home_area"] and randint(1, 100) <= 5:
             # 5% chance to despawn when outside home area (cf. char_update, update.c:541)
             if player["room"] == inst["room"]:
                 tpl = MOB_TEMPLATES[inst["tpl"]]
@@ -288,7 +296,7 @@ def mobile_update(tr, player, world):
         act = MOB_TEMPLATES[inst["tpl"]].get("act_flags", {})
         if act.get("sentinel"):
             continue
-        if randint(0, 7) != 0:  # 1/8 chance — matches number_bits(3)==0
+        if randint(0, 7) != 0:  # 1/8 chance -- matches number_bits(3)==0
             continue
         exits = ROOMS[inst["room"]].get("exits", {})
         if not exits:
@@ -304,7 +312,7 @@ def mobile_update(tr, player, world):
         dest_flags = ROOMS[dest_vnum].get("flags", {})
         if dest_flags.get("no_mob"):  # cf. ROOM_NO_MOB check, update.c:500
             continue
-        if act.get("stay_area") and ROOMS[dest_vnum].get("area") != ROOMS[inst["room"]].get("area"):
+        if act.get("stay_area") and ROOM_AREAS.get(dest_vnum) != ROOM_AREAS.get(inst["room"]):
             continue  # cf. ACT_STAY_AREA check, update.c:501
         if act.get("outdoors") and dest_flags.get("indoors"):
             continue
@@ -323,14 +331,14 @@ def mobile_update(tr, player, world):
             tr.print("{} has arrived.".format(name))
 
 
-# ── Stat application helpers ──────────────────────────────────────────────────
+# -- Stat application helpers --------------------------------------------------
 
 def get_curr_stat(char, stat):
     """Effective stat value: base + affect modifiers (cf. 1stMud get_curr_stat in handler.c).
 
     Args:
         char (dict): Character state dict (player or mob instance).
-        stat (str): Stat name — one of "str", "dex", "int", "wis", "con".
+        stat (str): Stat name -- one of "str", "dex", "int", "wis", "con".
 
     Returns:
         int: Clamped stat value in [3, MAX_STATS].
@@ -347,7 +355,7 @@ def affect_modify(char, loc, modifier, add):
 
     Args:
         char (dict): Character state dict (player or mob instance).
-        loc (str): Affect location — one of "str", "dex", "int", "wis", "con",
+        loc (str): Affect location -- one of "str", "dex", "int", "wis", "con",
             "hp", "mp", "AC", "hitroll", "damroll".
         modifier (int): Raw modifier value (positive = bonus).
         add (bool): True to apply, False to remove.
@@ -381,7 +389,7 @@ def affect_to_char(char, sn, loc, modifier, duration):
         sn (int): Skill/spell number identifying this affect.
         loc (str): Affect location (see affect_modify).
         modifier (int): Stat modifier value.
-        duration (int): Duration in ticks (≥ 1).
+        duration (int): Duration in ticks (>= 1).
     """
     existing = char["affects"].get(sn)
     if existing is not None:
@@ -520,7 +528,7 @@ def get_obj_list(fragment, item_list, templates):
     Args:
         fragment (str): Player-typed name fragment, optionally prefixed "N.".
         item_list (list): Ordered list of items (int or instance dict) to search.
-        templates (dict): Item template dict mapping vnum → template.
+        templates (dict): Item template dict mapping vnum -> template.
 
     Returns:
         Item from item_list (int or dict), or None if not found.
@@ -550,7 +558,7 @@ def get_char_room(fragment, inst_ids, mob_instances):
     Args:
         fragment (str): Player-typed name fragment.
         inst_ids (list): Ordered list of mob instance IDs to search.
-        mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
+        mob_instances (dict): Mob instance mapping mob ID -> mob instance dict.
 
     Returns:
         int or None: First matching mob instance ID, or None if not found.
@@ -561,12 +569,12 @@ def get_char_room(fragment, inst_ids, mob_instances):
     return None
 
 
-# ── Tick regen ───────────────────────────────────────────────────────────────
+# -- Tick regen ---------------------------------------------------------------
 
 def tick_update(tr, player, room):
     """Regenerate HP and MP once per world tick (cf. 1stMud hit_gain/mana_gain in update.c).
 
-    Position is always treated as resting — no position system [PRIMESUD].
+    Position is always treated as resting -- no position system [PRIMESUD].
     Hunger/thirst conditions omitted [PRIMESUD].
 
     Args:
@@ -581,15 +589,15 @@ def tick_update(tr, player, room):
 
     # HP (cf. 1stMud hit_gain in update.c)
     hp_gain = max(3, con - 3 + level // 2) + (player["hp_max"] - 10)
-    # TODO: fast_healing bonus — if roll < skill%, gain += roll * gain / 100
-    # Position: always resting [PRIMESUD] — sleeping=/1, resting=/2, standing=/4, fighting=/6
+    # TODO: fast_healing bonus -- if roll < skill%, gain += roll * gain / 100
+    # Position: always resting [PRIMESUD] -- sleeping=/1, resting=/2, standing=/4, fighting=/6
     hp_gain //= 2
     # Hunger/thirst omitted [PRIMESUD]
     hp_gain = hp_gain * room.get("heal_rate", 100) // 100
     # TODO: poison /4, plague /8, haste/slow /2
     hp_gain = max(1, hp_gain)
 
-    # MP (cf. 1stMud mana_gain in update.c) — base (WIS+INT+level)/2, resting /2
+    # MP (cf. 1stMud mana_gain in update.c) -- base (WIS+INT+level)/2, resting /2
     mp_gain = (int_ + wis + level) // 4
     mp_gain = mp_gain * room.get("mana_rate", 100) // 100
     # TODO: poison /4, plague /8, haste/slow /2
@@ -611,7 +619,7 @@ def tick_update(tr, player, room):
             affect_remove(player, sn)
 
 
-# ── Display ───────────────────────────────────────────────────────────────────
+# -- Display -------------------------------------------------------------------
 
 def show_prompt(tr, player, buf):
     """Update the terminal status bar with the current HP/MP/XP prompt.
@@ -630,7 +638,7 @@ def show_prompt(tr, player, buf):
     tr.set_status(prefix + buf[-avail:])
 
 
-# ── Persistence ───────────────────────────────────────────────────────────────
+# -- Persistence ---------------------------------------------------------------
 # Save data is stored in a PPL home variable (SAVE_VAR) via HVars so it
 # survives app reinstalls.  Serialisation constraints:
 #   - Lines are joined with '~'; no saved field value may contain '~'.
@@ -650,31 +658,39 @@ def save_char(player, world):
     Raises:
         Exception: If the PPL write fails or readback does not match the written payload.
     """
-    lines = ["v={}".format(SAVE_VERSION)]
+    lines = ["v=%s" % SAVE_VERSION]
     for key in ("name", "level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
                 "hitroll", "damroll", "AC", "room",
                 "practice", "train", "flags", "played"):
-        lines.append("p.{}={}".format(key, player[key]))
-    tr_dbg = world.get("_tr")
-    if tr_dbg: tr_dbg.print("[dbg] join1: inv")
-    lines.append("p.inv={}".format("|".join(
-        "{}:{}".format(o["vnum"], o["cost"]) for o in player["inv"])))
-    for slot, obj in player["equip"].items():
-        lines.append("p.eq.{}={}".format(
-            slot, "{}:{}".format(obj["vnum"], obj["cost"]) if obj is not None else ""))
+        lines.append("p.%s=%s" % (key, player[key]))
+    lines.append("p.inv=%s" % "|".join(
+        "%s:%s" % (o["vnum"], o["cost"]) for o in player["inv"]))
+    for slot in _EQUIP_SAVE_ORDER:
+        obj = player["equip"][slot]
+        lines.append("p.eq.%s=%s" % (
+            slot, "%s:%s" % (obj["vnum"], obj["cost"]) if obj is not None else ""))
     learned_parts = []
     for sk, pct in player["learned"].items():
-        learned_parts.append("{}:{}".format(sk, pct))
-    if tr_dbg: tr_dbg.print("[dbg] join2: learned (%d)" % len(learned_parts))
-    lines.append("p.learned={}".format("|".join(learned_parts)))
+        learned_parts.append("%s:%s" % (sk, pct))
+    lines.append("p.learned=%s" % "|".join(learned_parts))
     for k, v in player["_macros"].items():
-        lines.append("p.macro.{}={}".format(FNKEY_NAMES.get(k, k), v))
+        lines.append("p.macro.%s=%s" % (FNKEY_NAMES.get(k, k), v))
+    tr = world.get("_tr")
+    _area_n = 0
     for _as in world["areas"]:
-        lines.append("a.{}.age={}".format(_as["tag"], _as["age"]))
+        # if tr:
+        #     tr.print("area before %s" % _area_n)
+        #     tr.input("area...", alpha=False)
+        lines.append("a.%s.age=%s" % (_as["tag"], _as["age"]))
+        # if tr:
+        #     tr.print("area after %s" % _area_n)
+        #     tr.print(lines[-1])
+        #     tr.input("area line...", alpha=False)
+        _area_n += 1
     # Build reset-room map for single-instance mobs (gl=1): if the only live
-    # instance is already in its reset room, omit it — reset_area() will
+    # instance is already in its reset room, omit it -- reset_area() will
     # restore it there on load without any save entry needed.
     _single_reset_room = {}
     for entry in RESETS:
@@ -687,25 +703,51 @@ def save_char(player, world):
         if tpl not in tpl_rooms:
             tpl_rooms[tpl] = []
         tpl_rooms[tpl].append(inst["room"])
-    if tr_dbg: tr_dbg.print("[dbg] join3: mob rooms")
     for tpl_vnum, rooms in tpl_rooms.items():
         if (len(rooms) == 1
                 and _single_reset_room.get(tpl_vnum) == rooms[0]):
             continue
-        lines.append("m.{}={}".format(tpl_vnum, "|".join(str(r) for r in rooms)))
-    if tr_dbg: tr_dbg.print("[dbg] join4: room items")
+        lines.append("m.%s=%s" % (tpl_vnum, "|".join(str(r) for r in rooms)))
     for rvnum, rs in world["rooms"].items():
         if not rs["items"]:
             continue
-        lines.append("r.{}.items={}".format(rvnum, "|".join(
-            "{}:{}".format(o["vnum"], o["cost"]) for o in rs["items"])))
-    if tr_dbg: tr_dbg.print("[dbg] join5: payload (~) %d lines" % len(lines))
-    if tr_dbg:
-        for _i, _l in enumerate(lines):
-            if not isinstance(_l, str):
-                tr_dbg.print("[dbg] bad line %d: type=%s val=%s" % (_i, type(_l), repr(_l)))
+        lines.append("r.%s.items=%s" % (rvnum, "|".join(
+            "%s:%s" % (o["vnum"], o["cost"]) for o in rs["items"])))
+    # if tr:
+    #     start = 0
+    #     while start < len(lines):
+    #         end = min(start + 10, len(lines))
+    #         for i in range(start, end):
+    #             tr.print("%s: [%s]" % (i, lines[i]))
+    #         tr.input("join %s-%s..." % (start, end - 1), alpha=False)
+    #         "~".join(lines[start:end])
+    #         start = end
+    #     tr.input("join all...", alpha=False)
+    _gc_n = gc_collect()
+    if tr:
+        tr.print("gc_collect=%s" % _gc_n)
+        _probe = ['v=1', 'p.name=Hero', 'p.level=1', 'p.xp=0', 'p.xp_next=1000', 'p.str=13', 'p.dex=13', 'p.int=13', 'p.wis=13', 'p.con=13', 'p.hp=20', 'p.hp_max=20', 'p.mp=100', 'p.mp_max=100', 'p.hitroll=1', 'p.damroll=0', 'p.AC=99', 'p.room=3700', 'p.practice=5', 'p.train=3', 'p.flags=1', 'p.played=0', 'p.inv=', 'p.eq.light=3716:0', 'p.eq.finger_l=', 'p.eq.finger_r=', 'p.eq.neck_1=', 'p.eq.neck_2=', 'p.eq.body=3703:0', 'p.eq.head=', 'p.eq.legs=', 'p.eq.feet=', 'p.eq.hands=', 'p.eq.arms=', 'p.eq.shield=3704:0', 'p.eq.about=', 'p.eq.waist=', 'p.eq.wrist_l=', 'p.eq.wrist_r=', 'p.eq.wield=3702:0', 'p.eq.hold=', 'p.eq.float=', 'p.eq.secondary=', 'p.learned=11:1|27:1|67:1|89:1|99:1|100:1|101:1|102:1|103:1|104:1|105:1|106:40|107:1|108:1|109:1|113:1|114:1|118:1|119:1|120:1|124:1|125:1|128:1|133:1|134:1|135:1|136:50', 'p.macro.7=kill', 'p.macro.8=flee', 'p.macro.4=open', 'p.macro.5=get', 'p.macro.6=drop', 'p.macro.1=score', 'p.macro.2=practice', 'p.macro.3=train', 'p.macro.0=macro', 'p.macro.\x12=inventory', 'p.macro.\x13=equip', 'p.macro.\x14=wear', 'p.macro.\x15=remove', 'a.limbo.age=0', 'a.mud_school.age=0', 'a.midgaard.age=0', 'a.quest.age=0', 'a.chapel.age=0', 'm.3713=3724', 'm.3712=3726', 'm.3709=3734', 'm.3710=3742', 'm.3711=3746', 'm.3715=3751', 'm.3716=3754', 'm.3060=3109|3111|3111|3117|3120|3125|3004|3014|3017|3021|3027', 'm.3124=3113|3115', 'm.3005=3128|3027', 'm.3069=3138|3138|3138|3138', 'm.3141=3142|3142|3142|3142', 'm.3071=3255|3255', 'm.3061=3006', 'm.3064=3007', 'm.3062=3012|3016|3024|3025', 'm.3063=3026', 'm.3068=3040|3040', 'm.3067=3041|3041', 'm.3065=3044|3048', 'm.3012=3054', 'm.3070=3056', 'm.3401=3409|3409|3409|3414|3414|3414|3414', 'm.3402=3409|3437|3447|3454|3462', 'm.3400=3410|3419|3430|3441', 'm.3416=3411|3426|3442|3448', 'm.3413=3417|3418|3432|3441|3450', 'm.3409=3426|3426|3444|3444', 'm.3407=3452|3453|3457|3465', 'm.3406=3455|3463|3466', 'r.3.items=3415:0', 'r.3101.items=3134:0', 'r.3102.items=3134:0', 'r.3103.items=3134:0', 'r.3106.items=3200:0', 'r.3141.items=3135:0|3136:0', 'r.3142.items=3130:0|3131:0', 'r.3150.items=3200:0', 'r.3352.items=3200:0', 'r.3355.items=3200:0', 'r.3356.items=3200:0', 'r.3003.items=3200:0', 'r.3005.items=3135:0', 'r.3007.items=3200:0', 'r.3008.items=3139:0|3140:0', 'r.3018.items=3200:0', 'r.3022.items=3200:0', 'r.3028.items=3200:0', 'r.3054.items=3010:0', 'r.3405.items=3400:50', 'r.3424.items=3415:0', 'r.3448.items=3420:0']
+        tr.print("probe lines=%s" % len(_probe))
+        tr.input("probe join...", alpha=False)
+        _probe_payload = "~".join(_probe)
+        tr.print("probe len=%s" % len(_probe_payload))
+        tr.input("probe ok...", alpha=False)
+        tr.print("dyn lines=%s eq=%s" % (len(lines), lines == _probe))
+        _max = min(len(lines), len(_probe))
+        _diff = -1
+        for _i in range(_max):
+            if lines[_i] != _probe[_i]:
+                _diff = _i
+                break
+        if _diff < 0 and len(lines) != len(_probe):
+            _diff = _max
+        tr.print("diff=%s" % _diff)
+        if _diff >= 0 and _diff < len(lines) and _diff < len(_probe):
+            tr.print("dyn [%s]" % lines[_diff])
+            tr.print("lit [%s]" % _probe[_diff])
+        tr.input("compare ok...", alpha=False)
+        tr.input("build payload...", alpha=False)
     payload = "~".join(lines)
-    if tr_dbg: tr_dbg.print("[dbg] join5 ok, len=%d" % len(payload))
     ppleval('HVars("' + SAVE_VAR + '"):="' + payload + '"')
     saved = ppleval('HVars("' + SAVE_VAR + '")')
     if saved != payload:
@@ -763,7 +805,7 @@ def load_char(player, world):
         player["_macros"].clear()
 
     _area_by_tag = {s["tag"]: s for s in world["areas"]} if world["areas"] is not None else {}
-    mob_saves = {}  # tpl_vnum → [room, room, ...]
+    mob_saves = {}  # tpl_vnum -> [room, room, ...]
 
     _name_to_fn = {name: sentinel for sentinel, name in FNKEY_NAMES.items()}
     for line in data.split("~"):
@@ -801,7 +843,7 @@ def load_char(player, world):
             mob_saves[int(key[2:])] = [int(r) for r in val.split("|") if r]
 
     # Apply saved mob rooms: delete killed instances, patch wandered rooms.
-    # Same vnum appearing multiple times means multiple instances in one room — correct.
+    # Same vnum appearing multiple times means multiple instances in one room -- correct.
     for tpl_vnum, saved_rooms in mob_saves.items():
         inst_ids = sorted(i for i, inst in world["mobs"].items() if inst["tpl"] == tpl_vnum)
         for mid in inst_ids[len(saved_rooms):]:   # excess = killed since last save

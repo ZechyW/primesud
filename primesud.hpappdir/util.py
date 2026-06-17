@@ -14,3 +14,7 @@ def fmt_bytes(n, precision=1):
 def free_mem():
     """Return current free heap as a human-readable string."""
     return fmt_bytes(gc.mem_free())
+
+def gc_collect():
+    """Convenience function for gc within the game"""
+    return gc.collect()
