@@ -914,6 +914,7 @@ def raw_kill(tr, player, mob_id, inst, tpl, world):
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
     try:
+        world["_tr"] = tr
         save_char(player, world)
     except Exception as e:
         tr.print("Save failed: {}".format(e))

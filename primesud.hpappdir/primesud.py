@@ -296,6 +296,7 @@ class Game:
                 "rooms": self.room_state,
                 "mobs": self.mob_instances,
                 "areas": self.area_states,
+                "_tr": self.tr,
             })
             self.tr.print("Saved.")
         except Exception as e:

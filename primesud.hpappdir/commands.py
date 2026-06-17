@@ -941,6 +941,7 @@ def do_map(tr, player, args, world):
 
 def do_save(tr, player, args, world):
     try:
+        world["_tr"] = tr
         save_char(player, world)
         tr.print("Saved.")
     except Exception as e:

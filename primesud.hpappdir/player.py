@@ -656,14 +656,17 @@ def save_char(player, world):
                 "hitroll", "damroll", "AC", "room",
                 "practice", "train", "flags", "played"):
         lines.append("p.{}={}".format(key, player[key]))
+    tr_dbg = world.get("_tr")
+    if tr_dbg: tr_dbg.print("[dbg] join1: inv")
     lines.append("p.inv={}".format("|".join(
-        "{}:{}".format(o["vnum"], o["cost"]) for o in player["inv"])))
+        ["{}:{}".format(o["vnum"], o["cost"]) for o in player["inv"]])))
     for slot, obj in player["equip"].items():
         lines.append("p.eq.{}={}".format(
             slot, "{}:{}".format(obj["vnum"], obj["cost"]) if obj is not None else ""))
     learned_parts = []
     for sk, pct in player["learned"].items():
         learned_parts.append("{}:{}".format(sk, pct))
+    if tr_dbg: tr_dbg.print("[dbg] join2: learned (%d)" % len(learned_parts))
     lines.append("p.learned={}".format("|".join(learned_parts)))
     for k, v in player["_macros"].items():
         lines.append("p.macro.{}={}".format(k, v))
@@ -683,17 +686,25 @@ def save_char(player, world):
         if tpl not in tpl_rooms:
             tpl_rooms[tpl] = []
         tpl_rooms[tpl].append(inst["room"])
+    if tr_dbg: tr_dbg.print("[dbg] join3: mob rooms")
     for tpl_vnum, rooms in tpl_rooms.items():
         if (len(rooms) == 1
                 and _single_reset_room.get(tpl_vnum) == rooms[0]):
             continue
-        lines.append("m.{}={}".format(tpl_vnum, "|".join(str(r) for r in rooms)))
+        lines.append("m.{}={}".format(tpl_vnum, "|".join([str(r) for r in rooms])))
+    if tr_dbg: tr_dbg.print("[dbg] join4: room items")
     for rvnum, rs in world["rooms"].items():
         if not rs["items"]:
             continue
         lines.append("r.{}.items={}".format(rvnum, "|".join(
-            "{}:{}".format(o["vnum"], o["cost"]) for o in rs["items"])))
+            ["{}:{}".format(o["vnum"], o["cost"]) for o in rs["items"]])))
+    if tr_dbg: tr_dbg.print("[dbg] join5: payload (~) %d lines" % len(lines))
+    if tr_dbg:
+        for _i, _l in enumerate(lines):
+            if not isinstance(_l, str):
+                tr_dbg.print("[dbg] bad line %d: type=%s val=%s" % (_i, type(_l), repr(_l)))
     payload = "~".join(lines)
+    if tr_dbg: tr_dbg.print("[dbg] join5 ok, len=%d" % len(payload))
     ppleval('HVars("' + SAVE_VAR + '"):="' + payload + '"')
     saved = ppleval('HVars("' + SAVE_VAR + '")')
     if saved != payload:
