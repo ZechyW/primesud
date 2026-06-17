@@ -1,7 +1,6 @@
 from hpprime import eval as ppleval
 from urandom import randint
 
-from util import gc_collect
 from config import (
     SAVE_VAR,
     TERMINAL_COLS,
@@ -672,23 +671,14 @@ def save_char(player, world):
         lines.append("p.eq.%s=%s" % (
             slot, "%s:%s" % (obj["vnum"], obj["cost"]) if obj is not None else ""))
     learned_parts = []
-    for sk, pct in player["learned"].items():
-        learned_parts.append("%s:%s" % (sk, pct))
+    for sk in sorted(player["learned"]):
+        learned_parts.append("%s:%s" % (sk, player["learned"][sk]))
     lines.append("p.learned=%s" % "|".join(learned_parts))
-    for k, v in player["_macros"].items():
-        lines.append("p.macro.%s=%s" % (FNKEY_NAMES.get(k, k), v))
-    tr = world.get("_tr")
-    _area_n = 0
+    for k in sorted(player["_macros"]):
+        lines.append("p.macro.%s=%s" % (FNKEY_NAMES.get(k, k), player["_macros"][k]))
     for _as in world["areas"]:
-        # if tr:
-        #     tr.print("area before %s" % _area_n)
-        #     tr.input("area...", alpha=False)
-        lines.append("a.%s.age=%s" % (_as["tag"], _as["age"]))
-        # if tr:
-        #     tr.print("area after %s" % _area_n)
-        #     tr.print(lines[-1])
-        #     tr.input("area line...", alpha=False)
-        _area_n += 1
+        # HP Prime G1 can produce a non-str from "%s" formatting here.
+        lines.append("a." + str(_as["tag"]) + ".age=" + str(_as["age"]))
     # Build reset-room map for single-instance mobs (gl=1): if the only live
     # instance is already in its reset room, omit it -- reset_area() will
     # restore it there on load without any save entry needed.
@@ -698,55 +688,26 @@ def save_char(player, world):
             _single_reset_room[entry[1]] = entry[3]
 
     tpl_rooms = {}
-    for inst in world["mobs"].values():
+    tpl_order = []
+    for mob_id in sorted(world["mobs"]):
+        inst = world["mobs"][mob_id]
         tpl = inst["tpl"]
         if tpl not in tpl_rooms:
             tpl_rooms[tpl] = []
+            tpl_order.append(tpl)
         tpl_rooms[tpl].append(inst["room"])
-    for tpl_vnum, rooms in tpl_rooms.items():
+    for tpl_vnum in tpl_order:
+        rooms = tpl_rooms[tpl_vnum]
         if (len(rooms) == 1
                 and _single_reset_room.get(tpl_vnum) == rooms[0]):
             continue
         lines.append("m.%s=%s" % (tpl_vnum, "|".join(str(r) for r in rooms)))
-    for rvnum, rs in world["rooms"].items():
+    for rvnum in sorted(world["rooms"]):
+        rs = world["rooms"][rvnum]
         if not rs["items"]:
             continue
         lines.append("r.%s.items=%s" % (rvnum, "|".join(
             "%s:%s" % (o["vnum"], o["cost"]) for o in rs["items"])))
-    # if tr:
-    #     start = 0
-    #     while start < len(lines):
-    #         end = min(start + 10, len(lines))
-    #         for i in range(start, end):
-    #             tr.print("%s: [%s]" % (i, lines[i]))
-    #         tr.input("join %s-%s..." % (start, end - 1), alpha=False)
-    #         "~".join(lines[start:end])
-    #         start = end
-    #     tr.input("join all...", alpha=False)
-    _gc_n = gc_collect()
-    if tr:
-        tr.print("gc_collect=%s" % _gc_n)
-        _probe = ['v=1', 'p.name=Hero', 'p.level=1', 'p.xp=0', 'p.xp_next=1000', 'p.str=13', 'p.dex=13', 'p.int=13', 'p.wis=13', 'p.con=13', 'p.hp=20', 'p.hp_max=20', 'p.mp=100', 'p.mp_max=100', 'p.hitroll=1', 'p.damroll=0', 'p.AC=99', 'p.room=3700', 'p.practice=5', 'p.train=3', 'p.flags=1', 'p.played=0', 'p.inv=', 'p.eq.light=3716:0', 'p.eq.finger_l=', 'p.eq.finger_r=', 'p.eq.neck_1=', 'p.eq.neck_2=', 'p.eq.body=3703:0', 'p.eq.head=', 'p.eq.legs=', 'p.eq.feet=', 'p.eq.hands=', 'p.eq.arms=', 'p.eq.shield=3704:0', 'p.eq.about=', 'p.eq.waist=', 'p.eq.wrist_l=', 'p.eq.wrist_r=', 'p.eq.wield=3702:0', 'p.eq.hold=', 'p.eq.float=', 'p.eq.secondary=', 'p.learned=11:1|27:1|67:1|89:1|99:1|100:1|101:1|102:1|103:1|104:1|105:1|106:40|107:1|108:1|109:1|113:1|114:1|118:1|119:1|120:1|124:1|125:1|128:1|133:1|134:1|135:1|136:50', 'p.macro.7=kill', 'p.macro.8=flee', 'p.macro.4=open', 'p.macro.5=get', 'p.macro.6=drop', 'p.macro.1=score', 'p.macro.2=practice', 'p.macro.3=train', 'p.macro.0=macro', 'p.macro.\x12=inventory', 'p.macro.\x13=equip', 'p.macro.\x14=wear', 'p.macro.\x15=remove', 'a.limbo.age=0', 'a.mud_school.age=0', 'a.midgaard.age=0', 'a.quest.age=0', 'a.chapel.age=0', 'm.3713=3724', 'm.3712=3726', 'm.3709=3734', 'm.3710=3742', 'm.3711=3746', 'm.3715=3751', 'm.3716=3754', 'm.3060=3109|3111|3111|3117|3120|3125|3004|3014|3017|3021|3027', 'm.3124=3113|3115', 'm.3005=3128|3027', 'm.3069=3138|3138|3138|3138', 'm.3141=3142|3142|3142|3142', 'm.3071=3255|3255', 'm.3061=3006', 'm.3064=3007', 'm.3062=3012|3016|3024|3025', 'm.3063=3026', 'm.3068=3040|3040', 'm.3067=3041|3041', 'm.3065=3044|3048', 'm.3012=3054', 'm.3070=3056', 'm.3401=3409|3409|3409|3414|3414|3414|3414', 'm.3402=3409|3437|3447|3454|3462', 'm.3400=3410|3419|3430|3441', 'm.3416=3411|3426|3442|3448', 'm.3413=3417|3418|3432|3441|3450', 'm.3409=3426|3426|3444|3444', 'm.3407=3452|3453|3457|3465', 'm.3406=3455|3463|3466', 'r.3.items=3415:0', 'r.3101.items=3134:0', 'r.3102.items=3134:0', 'r.3103.items=3134:0', 'r.3106.items=3200:0', 'r.3141.items=3135:0|3136:0', 'r.3142.items=3130:0|3131:0', 'r.3150.items=3200:0', 'r.3352.items=3200:0', 'r.3355.items=3200:0', 'r.3356.items=3200:0', 'r.3003.items=3200:0', 'r.3005.items=3135:0', 'r.3007.items=3200:0', 'r.3008.items=3139:0|3140:0', 'r.3018.items=3200:0', 'r.3022.items=3200:0', 'r.3028.items=3200:0', 'r.3054.items=3010:0', 'r.3405.items=3400:50', 'r.3424.items=3415:0', 'r.3448.items=3420:0']
-        tr.print("probe lines=%s" % len(_probe))
-        tr.input("probe join...", alpha=False)
-        _probe_payload = "~".join(_probe)
-        tr.print("probe len=%s" % len(_probe_payload))
-        tr.input("probe ok...", alpha=False)
-        tr.print("dyn lines=%s eq=%s" % (len(lines), lines == _probe))
-        _max = min(len(lines), len(_probe))
-        _diff = -1
-        for _i in range(_max):
-            if lines[_i] != _probe[_i]:
-                _diff = _i
-                break
-        if _diff < 0 and len(lines) != len(_probe):
-            _diff = _max
-        tr.print("diff=%s" % _diff)
-        if _diff >= 0 and _diff < len(lines) and _diff < len(_probe):
-            tr.print("dyn [%s]" % lines[_diff])
-            tr.print("lit [%s]" % _probe[_diff])
-        tr.input("compare ok...", alpha=False)
-        tr.input("build payload...", alpha=False)
     payload = "~".join(lines)
     ppleval('HVars("' + SAVE_VAR + '"):="' + payload + '"')
     saved = ppleval('HVars("' + SAVE_VAR + '")')
