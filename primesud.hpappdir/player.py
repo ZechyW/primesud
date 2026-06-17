@@ -9,6 +9,7 @@ from config import (
     STR_APP_TODAM,
     DEX_APP_DEF,
     EXIT_NAMES,
+    FNKEY_NAMES,
 )
 from world import (
     ROOMS,
@@ -659,7 +660,7 @@ def save_char(player, world):
     tr_dbg = world.get("_tr")
     if tr_dbg: tr_dbg.print("[dbg] join1: inv")
     lines.append("p.inv={}".format("|".join(
-        ["{}:{}".format(o["vnum"], o["cost"]) for o in player["inv"]])))
+        "{}:{}".format(o["vnum"], o["cost"]) for o in player["inv"])))
     for slot, obj in player["equip"].items():
         lines.append("p.eq.{}={}".format(
             slot, "{}:{}".format(obj["vnum"], obj["cost"]) if obj is not None else ""))
@@ -669,7 +670,7 @@ def save_char(player, world):
     if tr_dbg: tr_dbg.print("[dbg] join2: learned (%d)" % len(learned_parts))
     lines.append("p.learned={}".format("|".join(learned_parts)))
     for k, v in player["_macros"].items():
-        lines.append("p.macro.{}={}".format(k, v))
+        lines.append("p.macro.{}={}".format(FNKEY_NAMES.get(k, k), v))
     for _as in world["areas"]:
         lines.append("a.{}.age={}".format(_as["tag"], _as["age"]))
     # Build reset-room map for single-instance mobs (gl=1): if the only live
@@ -691,13 +692,13 @@ def save_char(player, world):
         if (len(rooms) == 1
                 and _single_reset_room.get(tpl_vnum) == rooms[0]):
             continue
-        lines.append("m.{}={}".format(tpl_vnum, "|".join([str(r) for r in rooms])))
+        lines.append("m.{}={}".format(tpl_vnum, "|".join(str(r) for r in rooms)))
     if tr_dbg: tr_dbg.print("[dbg] join4: room items")
     for rvnum, rs in world["rooms"].items():
         if not rs["items"]:
             continue
         lines.append("r.{}.items={}".format(rvnum, "|".join(
-            ["{}:{}".format(o["vnum"], o["cost"]) for o in rs["items"]])))
+            "{}:{}".format(o["vnum"], o["cost"]) for o in rs["items"])))
     if tr_dbg: tr_dbg.print("[dbg] join5: payload (~) %d lines" % len(lines))
     if tr_dbg:
         for _i, _l in enumerate(lines):
@@ -764,6 +765,7 @@ def load_char(player, world):
     _area_by_tag = {s["tag"]: s for s in world["areas"]} if world["areas"] is not None else {}
     mob_saves = {}  # tpl_vnum → [room, room, ...]
 
+    _name_to_fn = {name: sentinel for sentinel, name in FNKEY_NAMES.items()}
     for line in data.split("~"):
         if "=" not in line:
             continue
@@ -782,7 +784,8 @@ def load_char(player, world):
                     except ValueError:
                         pass
         elif key.startswith("p.macro.") and player["_macros"] is not None:
-            player["_macros"][key[8:]] = val
+            raw = key[8:]
+            player["_macros"][_name_to_fn.get(raw, raw)] = val
         elif key.startswith("p."):
             pkey = key[2:]
             player[pkey] = int(val) if pkey in int_keys else val

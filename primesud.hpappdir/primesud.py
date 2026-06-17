@@ -250,6 +250,7 @@ class Game:
         self.area_states = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
         self.player["_macros"] = _MACRO_SUBST
         do_outfit(self.tr, self.player, "", None)  # cf. 1stMud do_outfit in nanny.c for new chars
+        self.save_game()
 
     def load_game(self):
         self.player = create_char()

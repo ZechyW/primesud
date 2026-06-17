@@ -99,6 +99,8 @@ DEFAULT_MACROS = {  # [PRIMESUD]
 
 # ── Function-row macro keys [PRIMESUD] ───────────────────────────────────────
 # Sentinels must match _FN_* in tml_prime.py. One row per key: sentinel → (display_name, default_command).
+# display_name is used as the save-file key (save_char/load_char in player.py); must not contain '~' (line
+# separator) or '=' (key/value separator) or save parsing will break.
 FNKEY_TABLE = {
     '\x12': ('x2', 'inventory'),      # x² key — index 26
     '\x13': ('pm', 'equip'),  # +/- key — index 27
