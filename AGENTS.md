@@ -36,7 +36,7 @@ reference/               # Reference game implementations (1stMud, JezzBall, Sta
 ## Tech stack
 
 - **Language:** Python -- HP Prime's restricted MicroPython-like subset, not standard CPython
-- **Available modules:** `hpprime`, `uio`, `cas`, `math`, `utime` -- ask user if unsure about others
+- **Available modules:** `hpprime`, `uio`, `cas`, `math`, `utime`, `urandom`, `gc` -- ask user if unsure about others
 - **No package manager.** No pip, no pypi dependencies
 - **Font:** `std5x10.font` -- PNG-based bitmap font with custom trailer byte encoding character dimensions
 
@@ -73,6 +73,12 @@ Reusable terminal abstraction by Piotr Kowalewski (komame). Renders chars onto H
 5. **Graphic buffers G1-G9.** G9 used by `tml` for font. G0 is display. Don't clobber G9 or `tml`-owned buffers.
 
 6. **`KeyboardInterrupt` is exit signal.** On key raises it. `PrimeSUD.__exit__` handles it -- don't swallow elsewhere.
+
+7. **Python source must be ASCII-only and BOM-free.** HP Prime's Python loader can misparse UTF-8 BOM or non-ASCII bytes, even in comments. Prefer `apply_patch` for `.py` edits; do not rewrite Python files with PowerShell `Set-Content`, `Out-File`, or redirection unless explicitly writing bytes / UTF-8 without BOM. After editing Python files, run:
+
+```
+python tools/check_ascii_py.py
+```
 
 ## Colour codes
 

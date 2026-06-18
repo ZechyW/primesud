@@ -302,7 +302,7 @@ def check_improve(tr, player, sk_vnum, success, multiplier):
             player["xp"] += 2 * sk_rating
 
     if player["learned"].get(sk_vnum) == 100:
-        tr.print("{{GYou have mastered {}!{{x".format(sk_name))
+        tr.print("{GYou have mastered %s!{x" % sk_name)
 
 
 # -- Skill lookup -------------------------------------------------------------

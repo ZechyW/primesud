@@ -2,15 +2,15 @@ _MAX_OPTS = 10
 
 
 def _render(tr, title, options, page, max_page):
-    shown = options[page * _MAX_OPTS: page * _MAX_OPTS + _MAX_OPTS]
+    shown = options[page * _MAX_OPTS : page * _MAX_OPTS + _MAX_OPTS]
     tr.print("{Y" + title + "{x")
     for i, opt in enumerate(shown):
         label = str(i + 1) if i < 9 else "0"
         suffix = " {C(default){x" if i == 0 else ""
         tr.print("  {y" + label + "){x " + opt + suffix)
     if max_page > 0:
-        tr.print("{wPage {}/{} [+] next  [-] prev  [Esc] cancel{x".format(
-            page + 1, max_page + 1))
+        tr.print("{wPage %d/%d [+] next  [-] prev  [Esc] cancel{x" %
+                 (page + 1, max_page + 1))
     else:
         tr.print("{w[Esc] cancel{x")
 

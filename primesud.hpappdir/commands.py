@@ -416,7 +416,7 @@ def _obj_flags(tpl):
 
 def do_inventory(tr, player, args, world):
     max_carry = min(37, 17 + player["level"])
-    tr.print("{{YYou are carrying {{W{}/{}{{Y items:{{x".format(len(player["inv"]), max_carry))
+    tr.print("{YYou are carrying {W%d/%d{Y items:{x" % (len(player["inv"]), max_carry))
     if not player["inv"]:
         return
     counts = {}

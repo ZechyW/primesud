@@ -1,6 +1,7 @@
 from hpprime import eval as ppleval
 from urandom import randint
 
+from util import gc_collect
 from config import (
     SAVE_VAR,
     TERMINAL_COLS,
@@ -644,6 +645,9 @@ def show_prompt(tr, player, buf):
 #   - No field value may contain '"' (would break the PPL string literal).
 #   - HVars returns the string "Error: Invalid input" when the variable does
 #     not exist yet (i.e. no save found); load_char treats this as no-save.
+# The same payload is also mirrored to SAVE_FILE for inspection/backup.
+# (Issue is that files are overwritten on app update/reinstall)
+SAVE_FILE = "primesud.sav"
 
 def save_char(player, world):
     """Serialise player and world state to a PPL HVars variable (cf. 1stMud save_char_obj in save.c).
@@ -655,8 +659,10 @@ def save_char(player, world):
         world (dict): Game world state (keys: rooms, mobs, areas).
 
     Raises:
-        Exception: If the PPL write fails or readback does not match the written payload.
+        Exception: If the PPL write fails, readback does not match the written
+            payload, or the save-file mirror cannot be written.
     """
+    gc_collect()
     lines = ["v=%s" % SAVE_VERSION]
     for key in ("name", "level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
@@ -708,11 +714,16 @@ def save_char(player, world):
             continue
         lines.append("r.%s.items=%s" % (rvnum, "|".join(
             "%s:%s" % (o["vnum"], o["cost"]) for o in rs["items"])))
+    for i in range(len(lines)):
+        if not isinstance(lines[i], str):
+            raise Exception("non-str save line %s" % i)
     payload = "~".join(lines)
     ppleval('HVars("' + SAVE_VAR + '"):="' + payload + '"')
     saved = ppleval('HVars("' + SAVE_VAR + '")')
     if saved != payload:
         raise Exception("save verification failed (readback mismatch)")
+    with open(SAVE_FILE, "w") as f:
+        f.write(payload)
 
 
 def _parse_item(s):

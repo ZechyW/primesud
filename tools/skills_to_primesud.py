@@ -5,22 +5,22 @@ Usage:
     uv run python skills_to_primesud.py skills.dat skills_table.py
 
 Output module exports:
-    GSN_*          — named integer constants for skills that have a gsn_* pgsn
-    SKILL_TABLE    — list of (sn, dict) in load order (sn 0 = "reserved")
+    GSN_*          -- named integer constants for skills that have a gsn_* pgsn
+    SKILL_TABLE    -- list of (sn, dict) in load order (sn 0 = "reserved")
 
 Fields emitted per entry (all faithful to source data):
-    name           — canonical skill/spell name
-    skill_level    — 6-tuple (Mage Cleric Thief Warrior Paladin Ranger); 53=unavailable
-    rating         — 6-tuple train cost / difficulty; 0=unavailable to that class
-    spell_fun      — spell function name string (spell_null → passive skill)
-    target         — target type string (ignore / char_offensive / char_defensive / …)
-    min_pos        — minimum position string (standing / fighting / resting / …)
-    pgsn           — gsn variable name (gsn_null → no named reference)
-    min_mana       — int; minimum mana cost floor for spells
-    beats          — int; lag in pulses after use (12 = one combat round)
-    noun_damage    — string; noun used in damage messages (empty for non-damaging skills)
-    msg_off        — string; message when affect expires (empty if none)
-    msg_obj        — string; room message when object affect expires (empty if none)
+    name           -- canonical skill/spell name
+    skill_level    -- 6-tuple (Mage Cleric Thief Warrior Paladin Ranger); 53=unavailable
+    rating         -- 6-tuple train cost / difficulty; 0=unavailable to that class
+    spell_fun      -- spell function name string (spell_null -> passive skill)
+    target         -- target type string (ignore / char_offensive / char_defensive / ...)
+    min_pos        -- minimum position string (standing / fighting / resting / ...)
+    pgsn           -- gsn variable name (gsn_null -> no named reference)
+    min_mana       -- int; minimum mana cost floor for spells
+    beats          -- int; lag in pulses after use (12 = one combat round)
+    noun_damage    -- string; noun used in damage messages (empty for non-damaging skills)
+    msg_off        -- string; message when affect expires (empty if none)
+    msg_obj        -- string; room message when object affect expires (empty if none)
 
 SKILL_TABLE indices map directly to the 1stMud sn values documented in SKILLS.md.
 """
@@ -29,25 +29,25 @@ import re
 import sys
 from pathlib import Path
 
-# ── GSN name → constant identifier ────────────────────────────────────────────
+# -- GSN name -> constant identifier -------------------------------------------
 
 def gsn_to_const(gsn_name):
-    """'gsn_shield_block' → 'GSN_SHIELD_BLOCK'."""
+    """'gsn_shield_block' -> 'GSN_SHIELD_BLOCK'."""
     if gsn_name == "gsn_null":
         return None
     return gsn_name.upper()
 
 
-# ── Parser ─────────────────────────────────────────────────────────────────────
+# -- Parser --------------------------------------------------------------------
 
 def parse_int_array(rest):
-    """'53 53 53 53 53 53 @' → (53, 53, 53, 53, 53, 53)."""
+    """'53 53 53 53 53 53 @' -> (53, 53, 53, 53, 53, 53)."""
     tokens = rest.split()
     return tuple(int(t) for t in tokens if t != "@")
 
 
 def parse_string(rest):
-    """'acid blast~' → 'acid blast'."""
+    """'acid blast~' -> 'acid blast'."""
     idx = rest.find("~")
     return rest[:idx].strip() if idx >= 0 else rest.strip()
 
@@ -90,7 +90,7 @@ def parse_skills(text):
                 entry["msg_off"] = parse_string(rest)
             elif key == "msg_obj":
                 entry["msg_obj"] = parse_string(rest)
-            # flags / sound: OLC-only / MSP — not present in reference data; skip
+            # flags / sound: OLC-only / MSP -- not present in reference data; skip
 
         if entry.get("name") is not None:
             skills.append(entry)
@@ -98,7 +98,7 @@ def parse_skills(text):
     return skills
 
 
-# ── Emitter ────────────────────────────────────────────────────────────────────
+# -- Emitter -------------------------------------------------------------------
 
 def emit(skills):
     out = []
@@ -107,7 +107,7 @@ def emit(skills):
         out.append(s)
 
     w("# fmt: off")
-    w("# Generated from 1stMud 4.5.3 skills.dat — do not edit manually.")
+    w("# Generated from 1stMud 4.5.3 skills.dat -- do not edit manually.")
     w("# Re-generate: uv run python tools/skills_to_primesud.py reference/1stMud4.5.3/data/skills.dat")
     w("")
     w("# skill_level / rating indices:  0=Mage  1=Cleric  2=Thief  3=Warrior  4=Paladin  5=Ranger")
@@ -115,21 +115,21 @@ def emit(skills):
     w("# rating 0 = class cannot learn this skill individually")
     w("")
 
-    BAR = "─"
+    BAR = "-"
 
-    # ── GSN constants ──
-    # gsn_str_to_const: 'gsn_sword' → 'GSN_SWORD' for use in pgsn field values
+    # -- GSN constants --
+    # gsn_str_to_const: 'gsn_sword' -> 'GSN_SWORD' for use in pgsn field values
     gsn_entries = [(sn, sk) for sn, sk in enumerate(skills) if sk.get("pgsn") != "gsn_null"]
     gsn_str_to_const = {sk["pgsn"]: gsn_to_const(sk["pgsn"]) for _, sk in gsn_entries}
-    w(f"# ── GSN constants {BAR * 62}")
+    w(f"# -- GSN constants {BAR * 62}")
     for sn, sk in gsn_entries:
         const = gsn_to_const(sk["pgsn"])
         if const:
             w(f"{const:<30} = {sn}")
     w("")
 
-    # ── SKILL_TABLE ──
-    w(f"# ── SKILL_TABLE {BAR * 64}")
+    # -- SKILL_TABLE --
+    w(f"# -- SKILL_TABLE {BAR * 64}")
     w("SKILL_TABLE = [")
     for sn, sk in enumerate(skills):
         gsn_const = gsn_to_const(sk.get("pgsn", "gsn_null"))
@@ -157,7 +157,7 @@ def emit(skills):
     return "\n".join(out)
 
 
-# ── Entry point ────────────────────────────────────────────────────────────────
+# -- Entry point ---------------------------------------------------------------
 
 def convert(dat_path, out_path=None):
     text = Path(dat_path).read_text(encoding="latin-1")

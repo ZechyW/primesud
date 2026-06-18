@@ -20,9 +20,10 @@ from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     SWIPE_THRESHOLD, TOUCH_SCROLL_STEP,
                     CMD_HISTORY_MAX,
                     FNKEY_SENTINELS,
+                    FNKEY_NAMES,
                     SAVE_VAR)
-from util import free_mem
-from world import R_STARTING_ROOM, ROOMS, ROOM_AREAS, AREA_DEFS
+from util import free_mem, gc_collect
+from world import R_STARTING_ROOM, ROOMS, ROOM_AREAS, AREA_DEFS, RESETS
 from combat import violence_update
 from player import (
     create_char,
@@ -33,6 +34,8 @@ from player import (
     show_prompt,
     save_char,
     load_char,
+    SAVE_VERSION,
+    _EQUIP_SAVE_ORDER,
 )
 from commands import interpret, do_look, do_outfit, _MACRO_SUBST
 from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full
@@ -293,12 +296,15 @@ class Game:
 
     def save_game(self):
         try:
+            # mem_before = free_mem()
             save_char(self.player, {
                 "rooms": self.room_state,
                 "mobs": self.mob_instances,
                 "areas": self.area_states,
             })
-            self.tr.print("Saved.")
+            # mem_after = free_mem()
+            # self.tr.print("Saved.")
+            # self.tr.print("Mem: %s -> %s" % (mem_before, mem_after))
         except Exception as e:
             self.tr.print("Save failed: {}".format(e))
 
@@ -306,7 +312,7 @@ class Game:
         tr = self.tr
         tr.clear()
 
-        mem_part = "{{G(Mem. free: {})".format(free_mem())
+        mem_part = "{G(Mem. free: %s)" % free_mem()
         pad = 64 - 23 - len(mem_part) - 1
         _first = '{C 8888888b.          d8b' + ' ' * pad + mem_part + '{x'
         tr.print(_first)
@@ -336,8 +342,6 @@ class Game:
 
         tr.print()
 
-        # tr.print("Memory free: {G" + mem + "{x")
-
     def game_loop(self):
         tr = self.tr
         player = self.player
@@ -351,6 +355,8 @@ class Game:
         tick_count = 0
         now        = int(ppleval("Ticks"))
         next_pulse = now + MS_PER_PULSE
+
+        gc_collect()
 
         tr.resync_keyboard()
         show_prompt(tr, player, self.input_buf)
@@ -467,6 +473,125 @@ class Game:
             ppleval("WAIT({}/1e3)".format(POLL_MS))
 
 
+def _save_format_probe(tr):
+    """Replay save-line formatting close to the observed G1 failure."""
+    def _try_join(name, lines):
+        bad = -1
+        for i in range(len(lines)):
+            if not isinstance(lines[i], str):
+                bad = i
+                break
+        ok = True
+        err = ""
+        if bad < 0:
+            try:
+                "~".join(lines)
+            except Exception as e:
+                ok = False
+                err = str(e)
+        tr.print(name + " n=" + str(len(lines)) +
+                 " bad=" + str(bad) + " join=" + str(ok))
+        if bad >= 0:
+            tr.print("bad line: " + str(lines[bad]))
+        if err:
+            tr.print(err)
+        return bad >= 0 or not ok
+
+    def _build(prefix, area_mode, areas, player, rooms, mobs):
+        lines = ["v=%s" % SAVE_VERSION]
+        for key in ("name", "level", "xp", "xp_next",
+                    "str", "dex", "int", "wis", "con",
+                    "hp", "hp_max", "mp", "mp_max",
+                    "hitroll", "damroll", "AC", "room",
+                    "practice", "train", "flags", "played"):
+            lines.append("p.%s=%s" % (key, player[key]))
+        lines.append("p.inv=%s" % "|".join(
+            "%s:%s" % (o["vnum"], o["cost"]) for o in player["inv"]))
+        for slot in _EQUIP_SAVE_ORDER:
+            obj = player["equip"][slot]
+            lines.append("p.eq.%s=%s" % (
+                slot, "%s:%s" % (obj["vnum"], obj["cost"]) if obj is not None else ""))
+        learned_parts = []
+        for sk in sorted(player["learned"]):
+            learned_parts.append("%s:%s" % (sk, player["learned"][sk]))
+        lines.append("p.learned=%s" % "|".join(learned_parts))
+        for k in sorted(player["_macros"]):
+            lines.append("p.macro.%s=%s" % (FNKEY_NAMES.get(k, k), player["_macros"][k]))
+
+        for _as in areas:
+            if area_mode == "percent":
+                lines.append("a.%s.age=%s" % (_as["tag"], _as["age"]))
+            elif area_mode == "percent_str":
+                lines.append("a.%s.age=%s" % (str(_as["tag"]), str(_as["age"])))
+            else:
+                lines.append("a." + str(_as["tag"]) + ".age=" + str(_as["age"]))
+
+        if prefix == "areas_only" or prefix == "through_areas":
+            return lines
+
+        _single_reset_room = {}
+        for entry in RESETS:
+            if entry[0] == "M" and entry[2] == 1:
+                _single_reset_room[entry[1]] = entry[3]
+
+        tpl_rooms = {}
+        tpl_order = []
+        for mob_id in sorted(mobs):
+            inst = mobs[mob_id]
+            tpl = inst["tpl"]
+            if tpl not in tpl_rooms:
+                tpl_rooms[tpl] = []
+                tpl_order.append(tpl)
+            tpl_rooms[tpl].append(inst["room"])
+        for tpl_vnum in tpl_order:
+            _rooms = tpl_rooms[tpl_vnum]
+            if (len(_rooms) == 1
+                    and _single_reset_room.get(tpl_vnum) == _rooms[0]):
+                continue
+            lines.append("m.%s=%s" % (tpl_vnum, "|".join(str(r) for r in _rooms)))
+        for rvnum in sorted(rooms):
+            rs = rooms[rvnum]
+            if not rs["items"]:
+                continue
+            lines.append("r.%s.items=%s" % (rvnum, "|".join(
+                "%s:%s" % (o["vnum"], o["cost"]) for o in rs["items"])))
+        return lines
+
+    tr.clear()
+    tr.print("save fmt replay")
+
+    player = create_char()
+    player["name"] = "Hero"
+    player["_macros"] = _MACRO_SUBST
+    rooms, mobs = reset_area()
+    areas = [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
+    do_outfit(tr, player, "", None)
+    tr.print("setup mobs=" + str(len(mobs)) + " rooms=" + str(len(rooms)))
+    tr.input("start replay", alpha=False)
+
+    modes = ("percent", "percent_str", "concat")
+    prefixes = ("areas_only", "through_areas", "full")
+    for mode in modes:
+        for prefix in prefixes:
+            gc_collect()
+            lines = _build(prefix, mode, areas, player, rooms, mobs)
+            failed = _try_join(mode + "/" + prefix, lines)
+            if failed:
+                tr.input("STOP " + mode + "/" + prefix, alpha=False)
+        tr.input("mode " + mode, alpha=False)
+
+    # Repeat exact old area-line path after full save-list allocation.
+    bad = 0
+    for i in range(30):
+        gc_collect()
+        lines = _build("full", "percent", areas, player, rooms, mobs)
+        if _try_join("rep" + str(i), lines):
+            bad += 1
+            tr.input("STOP rep" + str(i), alpha=False)
+    tr.print("repeat bad=" + str(bad))
+    tr.input("probe done", alpha=False)
+
+
 class PrimeSud:
     """
     Manages environment setup/teardown and top-level game flow.
@@ -496,6 +621,7 @@ class PrimeSud:
         with self:
             game = self.game
 
+            _save_format_probe(game.tr)
             game.show_greeting()
 
             result = game.load_game()
@@ -511,9 +637,7 @@ class PrimeSud:
             try:
                 game.game_loop()
             finally:
-                # ppleval('HVars("DBGSAVE_ENTER"):="1"')  # [PRIMESUD] debug: did finally run?
                 game.save_game()
-                # ppleval('HVars("DBGSAVE_DONE"):="2"')   # [PRIMESUD] debug: did save_game return?
 
 
 PrimeSud().run()
