@@ -35,7 +35,8 @@ from player import (
     SAVE_VERSION,
     _EQUIP_SAVE_ORDER,
 )
-from commands import interpret, do_look, do_outfit, _MACRO_SUBST
+from commands import interpret, do_look, do_outfit
+from macros import _MACRO_SUBST
 from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full
 
 
