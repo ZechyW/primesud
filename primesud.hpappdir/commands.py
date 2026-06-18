@@ -1,15 +1,16 @@
 from util import free_mem, gc_collect
 from colors import color_len
 
-from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT, WEAPON_GSN_MAP
+from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, WEAPON_GSN_MAP
 from picker import pick_from
 from actor import get_hitroll, get_damroll, get_AC, get_curr_stat, is_name
 from item import get_obj_list, get_char_room, obj_vnum, item_extra_flags
 from player import save_char, PLR_AUTOMAP, PLR_DEFAULTS
-from combat import set_fighting, stop_fighting, _get_thac0, WaitState, check_improve, do_kick
+from combat import set_fighting, stop_fighting, _get_thac0, do_kick
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_outfit)
 from movement import _exit_to, do_move, do_open, do_close, do_recall
+from magic import do_cast
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from config import (DEFAULT_MACROS, DEFAULT_FNKEY_MACROS, FNKEY_SENTINELS, FNKEY_NAMES,
                     TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, INT_APP_LEARN, MAX_STATS, SECTOR_COLORS)
@@ -378,58 +379,6 @@ def do_credits(tr, player, args, world):
 
 def do_quit(tr, player, args, world):
     return "quit"
-
-
-# -- Skill / spell dispatch ----------------------------------------------------
-
-def do_cast(tr, player, args, world):
-    if not args:
-        known = [(vnum, sk) for vnum, sk in SKILL_TABLE
-                 if sk.get("spell_fun", "spell_null") != "spell_null"
-                 and player["learned"].get(vnum, 0) > 0]
-        if not known:
-            tr.print("You know no spells.")
-            return None
-        names = [sk["name"] for _, sk in known]
-        idx = pick_from(tr, "Cast which spell?", names)
-        if idx < 0:
-            return None
-        sk_vnum = known[idx][0]
-    else:
-        spell_key = args[0]
-        sk_vnum = None
-        for vnum, sk in SKILL_TABLE:
-            if sk.get("spell_fun", "spell_null") == "spell_null":
-                continue
-            name = sk["name"]
-            if name == spell_key or name.startswith(spell_key):
-                sk_vnum = vnum
-                break
-        if sk_vnum is None or player["learned"].get(sk_vnum, 0) == 0:
-            tr.print("You don't know any spell called that.")
-            return None
-    sk = SKILLS[sk_vnum]
-    if player.get("wait", 0) > 0:
-        tr.print("You are still recovering.")
-        return None
-    mana = sk.get("min_mana", 0)
-    if player["mp"] < mana:
-        tr.print("You don't have enough mana.")
-        return None
-    player["mp"] -= mana
-    WaitState(player, sk.get("beats", 0))
-    effect = sk.get("effect", "")
-    if effect == "heal":
-        num, size, bonus = sk["heal_dice"]
-        roll = bonus + player["level"] // sk.get("level_div", 1)
-        for _ in range(num):
-            roll += randint(1, size)
-        gained = min(roll, player["hp_max"] - player["hp"])
-        player["hp"] += gained
-        tr.print("You feel better! +{} HP. ({}/{})".format(
-            gained, player["hp"], player["hp_max"]))
-    check_improve(tr, player, sk_vnum, True, 1)
-    return None
 
 
 # -- Direction map -------------------------------------------------------------
