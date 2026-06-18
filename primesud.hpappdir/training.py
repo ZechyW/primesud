@@ -4,6 +4,7 @@ from world import MOB_TEMPLATES, SKILLS
 from picker import pick_from
 from actor import get_curr_stat
 from config import INT_APP_LEARN, MAX_STATS
+from info import print_skills
 
 
 _TRAIN_STATS = [
@@ -15,18 +16,6 @@ _TRAIN_STATS = [
 ]
 
 _PRACTICE_CAP = 75  # matches 1stMud skill_adept for all classes
-
-
-def _print_skills(tr, player):
-    for sk_vnum, pct in sorted(player["learned"].items()):
-        sk = SKILLS.get(sk_vnum)
-        if sk is None:
-            continue
-        if sk.get("spell_fun", "spell_null") != "spell_null":
-            tr.print("  cast {} {}% (MP:{})".format(
-                sk["name"], pct, sk.get("min_mana", 0)))
-        else:
-            tr.print("  {} {}%".format(sk["name"], pct))
 
 
 def do_train(tr, player, args, world):
@@ -127,7 +116,7 @@ def do_practice(tr, player, args, world):
 
     if not args:
         if teacher is None:
-            _print_skills(tr, player)
+            print_skills(tr, player)
             tr.print("You have {} practice session{}.".format(
                 player["practice"], "" if player["practice"] == 1 else "s"))
             return

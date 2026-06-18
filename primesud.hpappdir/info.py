@@ -242,7 +242,7 @@ def do_score(tr, player, args, world):
         tr.print(line)
 
 
-def do_skills(tr, player, args, world):
+def print_skills(tr, player):
     for sk_vnum, pct in sorted(player["learned"].items()):
         sk = SKILLS.get(sk_vnum)
         if sk is None:
@@ -252,6 +252,10 @@ def do_skills(tr, player, args, world):
                 sk["name"], pct, sk.get("min_mana", 0)))
         else:
             tr.print("  {} {}%".format(sk["name"], pct))
+
+
+def do_skills(tr, player, args, world):
+    print_skills(tr, player)
 
 
 def do_help(tr, player, args, world):

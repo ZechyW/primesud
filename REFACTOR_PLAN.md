@@ -59,6 +59,14 @@ Current validation status:
 - CPython ASCII and compile checks pass.
 - Fake HP Prime import smoke checks passed during the split.
 - Emulator smoke passed after the main/platform/terminal/game-state splits.
+- Post-refactor discrepancy audit against checkpoint
+  `f8e52e72057c70031629db8b875217b9fa11c989` found command/user-facing
+  message text preserved. The only intentional runtime/output change noted was
+  disabling the old startup save-format probe and moving it to dormant
+  `save_probe.py`.
+- Final local checks after the skill-list SSOT cleanup:
+  `python tools/check_ascii_py.py` passes, and `ast.parse` passes for
+  `info.py`, `training.py`, and `commands.py`.
 - Hardware validation is still required before packaging/release.
 
 ## Phase 1: Stabilize Current Split
@@ -138,6 +146,8 @@ in `automap.py`; `info.py` should call it only.
 
 Status: done. The temporary `world["look_fn"]` callback used by movement during
 the split has been removed; `movement.py` imports `do_look` from `info.py`.
+Skill-list rendering has a single source of truth in `info.print_skills`;
+`do_skills` and `training.do_practice` both call that helper.
 
 ## Phase 6: Split Macros
 
@@ -196,6 +206,8 @@ Next:
 1. Run a broader hardware or long emulator play session before declaring Phase 8
    fully done.
 2. Rebuild/package `.hpapp` separately when requested.
+3. Keep reference runtime files and `.hpapp` binary out of refactor commits
+   unless doing an explicit packaging or reference-state capture commit.
 
 ## Validation Checklist
 
