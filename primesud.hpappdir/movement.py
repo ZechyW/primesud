@@ -1,6 +1,7 @@
 from world import ROOMS, GSN_RECALL, R_RECALL
 from picker import pick_from
 from combat import stop_fighting, WaitState, check_improve
+from info import do_look
 from config import EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES
 
 from urandom import randint
@@ -9,12 +10,6 @@ from urandom import randint
 def _exit_to(exit_val):
     """Return destination vnum from a plain-vnum or dict exit."""
     return exit_val["to"] if isinstance(exit_val, dict) else exit_val
-
-
-def _look_room(tr, player, world):
-    look_fn = world.get("look_fn")
-    if look_fn is not None:
-        look_fn(tr, player, [], world)
 
 
 def do_move(tr, player, direction, world):
@@ -34,7 +29,7 @@ def do_move(tr, player, direction, world):
         tr.print("That way is not yet open.")
         return
     player["room"] = dest
-    _look_room(tr, player, world)
+    do_look(tr, player, [], world)
 
 
 def do_open(tr, player, args, world):
@@ -148,4 +143,4 @@ def do_recall(tr, player, args, world):
         stop_fighting(player, world["mobs"])
 
     player["room"] = location
-    _look_room(tr, player, world)
+    do_look(tr, player, [], world)
