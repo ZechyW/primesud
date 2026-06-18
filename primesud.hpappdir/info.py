@@ -327,9 +327,9 @@ def print_practice_table(tr, player):
     for sn, sk in SKILL_TABLE:
         pct = learned.get(sn, 0)
         if can_use_skill_spell(player, sn) and pct > 0:
-            items.append("{:<18} {:3d}%".format(sk["name"], pct))
-    for i in range(0, len(items), 3):
-        tr.print(" ".join(items[i:i + 3]))
+            items.append("{:<18} {:3d}%".format(sk["name"][:18], pct))
+    for i in range(0, len(items), 2):
+        tr.print(" ".join(items[i:i + 2]))
 
 
 def do_skills(tr, player, args, world):
