@@ -1,6 +1,5 @@
-from hpprime import eval as ppleval
-
 from util import gc_collect
+from prime_platform import hvars_get, hvars_set
 from config import (
     SAVE_VAR,
     TERMINAL_COLS,
@@ -111,30 +110,7 @@ def create_char():
 
 
 
-# -- Shared runtime helpers -----------------------------------------------------
-# Kept imported here so older modules can still use `from player import ...` while
-# new code imports the owning module directly.
-from actor import (
-    get_curr_stat,
-    affect_modify,
-    affect_to_char,
-    affect_remove,
-    get_hitroll,
-    get_damroll,
-    get_AC,
-    is_name,
-    unequip_char,
-    equip_char,
-)
-from item import (
-    obj_vnum,
-    create_object,
-    item_extra_flags,
-    item_wear_flags,
-    get_obj_list,
-    get_char_room,
-)
-from mob import create_mobile, reset_mobs, reset_area, mobile_update
+from actor import get_curr_stat, affect_remove
 
 
 # -- Tick regen ---------------------------------------------------------------
@@ -238,8 +214,10 @@ def save_char(player, world):
                 "hitroll", "damroll", "AC", "room",
                 "practice", "train", "flags", "played"):
         lines.append("p.%s=%s" % (key, player[key]))
-    lines.append("p.inv=%s" % "|".join(
-        "%s:%s" % (o["vnum"], o["cost"]) for o in player["inv"]))
+    inv_parts = []
+    for o in player["inv"]:
+        inv_parts.append("%s:%s" % (o["vnum"], o["cost"]))
+    lines.append("p.inv=%s" % "|".join(inv_parts))
     for slot in _EQUIP_SAVE_ORDER:
         obj = player["equip"][slot]
         lines.append("p.eq.%s=%s" % (
@@ -275,19 +253,24 @@ def save_char(player, world):
         if (len(rooms) == 1
                 and _single_reset_room.get(tpl_vnum) == rooms[0]):
             continue
-        lines.append("m.%s=%s" % (tpl_vnum, "|".join(str(r) for r in rooms)))
+        room_parts = []
+        for r in rooms:
+            room_parts.append(str(r))
+        lines.append("m.%s=%s" % (tpl_vnum, "|".join(room_parts)))
     for rvnum in sorted(world["rooms"]):
         rs = world["rooms"][rvnum]
         if not rs["items"]:
             continue
-        lines.append("r.%s.items=%s" % (rvnum, "|".join(
-            "%s:%s" % (o["vnum"], o["cost"]) for o in rs["items"])))
+        item_parts = []
+        for o in rs["items"]:
+            item_parts.append("%s:%s" % (o["vnum"], o["cost"]))
+        lines.append("r.%s.items=%s" % (rvnum, "|".join(item_parts)))
     for i in range(len(lines)):
         if not isinstance(lines[i], str):
             raise Exception("non-str save line %s" % i)
     payload = "~".join(lines)
-    ppleval('HVars("' + SAVE_VAR + '"):="' + payload + '"')
-    saved = ppleval('HVars("' + SAVE_VAR + '")')
+    hvars_set(SAVE_VAR, payload)
+    saved = hvars_get(SAVE_VAR)
     if saved != payload:
         raise Exception("save verification failed (readback mismatch)")
     with open(SAVE_FILE, "w") as f:
@@ -314,7 +297,7 @@ def load_char(player, world):
         bool: True if a save was found and loaded, False if no save exists or on error.
     """
     try:
-        data = ppleval('HVars("' + SAVE_VAR + '")')
+        data = hvars_get(SAVE_VAR)
         if not data or not isinstance(data, str) or data.startswith("Error:"):
             return False
     except Exception:
@@ -329,7 +312,7 @@ def load_char(player, world):
     _first = data.split("~", 1)[0]
     if not _first.startswith(_ver_prefix) or int(_first[len(_ver_prefix):]) != SAVE_VERSION:
         try:
-            ppleval('HVars("' + SAVE_VAR + '_bak"):="' + data + '"')
+            hvars_set(SAVE_VAR + "_bak", data)
             _backup_ok = True
         except Exception:
             _backup_ok = False

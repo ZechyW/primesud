@@ -34,3 +34,13 @@ def restore_prime_settings(values):
         "AAngle:=%d;AFormat:=%d;AComplex:=%d;Bits:=%d;HSeparator:=%d;TOff:=TOff"
         % values
     )
+
+
+def hvars_get(name):
+    """Read a PPL home variable through HVars."""
+    return ppl_eval('HVars("' + name + '")')
+
+
+def hvars_set(name, value):
+    """Write a PPL home variable through HVars."""
+    ppl_eval('HVars("' + name + '"):="' + value + '"')
