@@ -1,3 +1,5 @@
+"""Item creation, lookup, flags, and room target helpers."""
+
 from world import ITEM_TEMPLATES, MOB_TEMPLATES
 from actor import is_name
 
@@ -82,5 +84,4 @@ def get_char_room(fragment, inst_ids, mob_instances):
         if is_name(fragment, MOB_TEMPLATES[mob_instances[mob_id]["tpl"]].get("keywords", "")):
             return mob_id
     return None
-
 

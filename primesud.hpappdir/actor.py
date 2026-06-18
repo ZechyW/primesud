@@ -1,3 +1,5 @@
+"""Shared actor stat, affect, equipment, and name-match helpers."""
+
 from config import MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF
 from world import ITEM_TEMPLATES
 
@@ -156,5 +158,4 @@ def equip_char(char, obj, slot):
     char["equip"][slot] = obj
     for loc, mod in tpl.get("stat_bonuses", {}).items():
         affect_modify(char, loc, mod, True)
-
 

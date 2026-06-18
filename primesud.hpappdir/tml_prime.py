@@ -1,3 +1,5 @@
+"""PrimeSUD extensions for text input history and scrollback."""
+
 from hpprime import dimgrob, eval as ppleval, keyboard, mouse, strblit2
 from tml import tml
 

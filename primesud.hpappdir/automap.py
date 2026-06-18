@@ -1,3 +1,5 @@
+"""Room-neighborhood automap rendering helpers."""
+
 from config import MAP_HALF_W, MAP_HALF_H, FULL_MAP_HALF_W, FULL_MAP_HALF_H, COMPACT_MAP_DEPTH, FULL_MAP_DEPTH, SECTOR_COLORS, SECTOR_SYMBOLS
 
 # Compact automap (shown side-by-side with room description)

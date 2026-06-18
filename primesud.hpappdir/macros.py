@@ -1,3 +1,5 @@
+"""Function-key macro defaults and macro command handling."""
+
 from config import (DEFAULT_MACROS, DEFAULT_FNKEY_MACROS, FNKEY_NAMES,
                     TERMINAL_COLS)
 

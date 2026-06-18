@@ -1,4 +1,5 @@
-from player import save_char
+"""Command dispatcher, command table, and position gates."""
+
 from combat import do_kill, do_kick
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_outfit)
@@ -8,6 +9,7 @@ from training import do_train, do_practice
 from info import (do_look, do_score, do_skills, do_help, do_affects,
                   do_credits, do_map, do_automap, do_autolist)
 from macros import do_macro
+from system_cmds import do_save, do_quit
 
 # Position system (cf. 1stMud position_t enum in defines.h; gaps 1-3 omitted [PRIMESUD])
 _POS_ORDER = {
@@ -22,18 +24,6 @@ _POS_MSG = {
     "sitting":  "Better stand up first.",
     "fighting": "No way!  You are still fighting!",
 }
-
-def do_save(tr, player, args, world):
-    try:
-        save_char(player, world)
-        tr.print("Saved.")
-    except Exception as e:
-        tr.print("Save failed: {}".format(e))
-
-
-def do_quit(tr, player, args, world):
-    return "quit"
-
 
 # -- Direction map -------------------------------------------------------------
 

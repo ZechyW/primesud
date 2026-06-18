@@ -1,3 +1,5 @@
+"""Movement, doors, recall, and flee command handlers."""
+
 from world import ROOMS, GSN_RECALL, R_RECALL
 from picker import pick_from
 from combat import stop_fighting, WaitState, check_improve

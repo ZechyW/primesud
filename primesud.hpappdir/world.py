@@ -1,3 +1,5 @@
+"""World catalogs loaded from area modules and global skill data."""
+
 ###################################
 ## PrimeSud -- World Loader       ##
 ## Merges all area data and      ##

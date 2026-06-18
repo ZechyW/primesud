@@ -1,9 +1,27 @@
+"""Mobile creation, reset handling, wandering, and area updates."""
+
 from urandom import randint
 
 from config import EXIT_NAMES
-from world import ROOMS, ROOM_AREAS, MOB_TEMPLATES, RESETS, DOOR_RESET
+from world import ROOMS, ROOM_AREAS, AREA_DEFS, MOB_TEMPLATES, RESETS, DOOR_RESET
 from actor import equip_char
 from item import create_object
+
+
+# Area age thresholds (cf. 1stMud area_update: age < 3 skip; age >= 15 reset
+# when player present; age >= 31 hard cap).  Single-player simplification:
+# player is always present, so the condition collapses to age >= 15.
+_AREA_AGE_MIN   = 3
+_AREA_AGE_RESET = 15
+
+
+_RESET_MSGS = (
+    "The area repopulates itself.",
+    "You notice a change in the area.",
+    "Time completes another cycle bringing life to the area.",
+    "You feel a sudden deja-vu bringing change to the area.",
+    "You hear noises off in the distance...",
+)
 
 
 def _stat_from_level(level):
@@ -165,6 +183,11 @@ def reset_area():
     return room_state, mob_instances
 
 
+def create_area_states():
+    """Create mutable area tick state from static area definitions."""
+    return [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
+
+
 def mobile_update(tr, player, world):
     """Wander mobs and despawn any that strayed out of their home area (cf. 1stMud mobile_update, char_update in update.c)."""
     for mob_id, inst in list(world["mobs"].items()):
@@ -217,3 +240,16 @@ def mobile_update(tr, player, world):
             tr.print("{} has arrived.".format(name))
 
 
+def area_update(tr, player, world):
+    """Increment area ages and reset areas at threshold (cf. 1stMud area_update in db.c)."""
+    for area in world["areas"]:
+        area["age"] += 1
+        if area["age"] >= _AREA_AGE_MIN and area["age"] >= _AREA_AGE_RESET:
+            reset_mobs(world["mobs"], world["rooms"], area["resets"])
+            if area["tag"] == "mud_school":
+                area["age"] = 13  # resets every 2 ticks (cf. db.c:1330: age = 15-2)
+            else:
+                area["age"] = randint(0, 3)
+                # School area is intentionally silent (cf. db.c:1335 else-if excludes it).
+                if ROOM_AREAS.get(player["room"]) == area["tag"]:
+                    tr.print(_RESET_MSGS[randint(0, len(_RESET_MSGS) - 1)])

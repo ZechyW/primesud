@@ -1,3 +1,5 @@
+"""Training and practice command handlers."""
+
 from world import MOB_TEMPLATES, SKILLS
 from picker import pick_from
 from actor import get_curr_stat

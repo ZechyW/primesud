@@ -1,4 +1,6 @@
 # fmt: off
+"""Global skill table data converted from 1stMud."""
+
 # Generated from 1stMud 4.5.3 skills.dat -- do not edit manually.
 # Re-generate: uv run python tools/skills_to_primesud.py reference/1stMud4.5.3/data/skills.dat
 

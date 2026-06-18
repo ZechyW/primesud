@@ -1,3 +1,5 @@
+"""Base text-mode terminal renderer for HP Prime graphic buffers."""
+
 ###################################
 ## Text Mode Layer (tml) v1.00   ##
 ## (c) Piotr Kowalewski (komame) ##

@@ -1,3 +1,5 @@
+"""Information and room-view command handlers."""
+
 from util import free_mem, gc_collect
 from colors import color_len
 

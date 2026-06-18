@@ -1,3 +1,5 @@
+"""Combat rounds, damage resolution, skills, and fight state."""
+
 from urandom import randint
 
 from config import (PULSE_VIOLENCE,

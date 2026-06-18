@@ -1,3 +1,5 @@
+"""Inventory, equipment, item-use, and starter-outfit commands."""
+
 from world import ITEM_TEMPLATES, WEAPON_GSN_MAP
 from picker import pick_from
 from actor import get_curr_stat, is_name, affect_modify, unequip_char, equip_char
@@ -498,5 +500,4 @@ def do_outfit(tr, player, args, world):
         _equip("shield", I_SHIELD_SUB_MERC)
 
     tr.print("You have been equipped by the gods.")
-
 

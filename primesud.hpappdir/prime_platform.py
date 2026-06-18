@@ -1,4 +1,6 @@
-from hpprime import eval as ppl_eval
+"""HP Prime platform wrappers and graphic primitive ownership."""
+
+from hpprime import dimgrob, eval as ppl_eval, getpix, grobh, grobw, pixon, strblit2
 
 
 def ticks():
@@ -34,6 +36,12 @@ def restore_prime_settings(values):
         "AAngle:=%d;AFormat:=%d;AComplex:=%d;Bits:=%d;HSeparator:=%d;TOff:=TOff"
         % values
     )
+
+
+def clear_graphics(first=1, last=8):
+    """Clear HP Prime graphic buffers in the inclusive range."""
+    for n in range(first, last + 1):
+        dimgrob(n, 0, 0, 0)
 
 
 def hvars_get(name):

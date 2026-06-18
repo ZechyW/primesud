@@ -1,3 +1,5 @@
+"""Player creation, progression, prompt, and save/load state."""
+
 from util import gc_collect
 from prime_platform import hvars_get, hvars_set
 from config import (

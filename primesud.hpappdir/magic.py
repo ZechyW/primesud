@@ -1,3 +1,5 @@
+"""Magic command handling and current spell effect helpers."""
+
 from world import SKILLS, SKILL_TABLE
 from picker import pick_from
 from combat import WaitState, check_improve

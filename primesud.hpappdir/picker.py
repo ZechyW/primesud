@@ -1,3 +1,5 @@
+"""Contextual picker UI for selecting mobs, items, and options."""
+
 _MAX_OPTS = 10
 
 

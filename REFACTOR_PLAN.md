@@ -33,24 +33,33 @@ Completed cuts:
 
 - `actor.py`: shared stat, affect, name-match, hit/dam/AC, equip helpers.
 - `item.py`: object creation, item flags, item lookup, room mob lookup.
-- `mob.py`: mob creation, mob resets, full area reset, mobile update.
+- `mob.py`: mob creation, mob resets, area state creation, full area reset,
+  mobile/area update.
 - `inventory.py`: get/drop/inventory/wear/remove/equipment/second/quaff/outfit.
 - `movement.py`: exit helper, move/open/close/recall/flee.
 - `magic.py`: cast command and current spell effect helpers.
 - `training.py`: train/practice and practice cap.
 - `info.py`: look/score/skills/help/affects/credits/map/autolist/automap.
 - `macros.py`: macro substitution table, macro rendering, macro command.
-- `prime_platform.py`: HP Prime `Ticks`, `WAIT`, settings, and `HVars` wrappers.
+- `game_state.py`: new/load/save game lifecycle and save-format migration UX.
+- `system_cmds.py`: save/quit commands.
+- `terminal.py`: PrimeSUD colour-code print/status wrapping and font recolour
+  cache around the stable `tml.py` terminal.
+- `prime_platform.py`: HP Prime `Ticks`, `WAIT`, settings, `HVars`, and direct
+  graphic primitive ownership for game code.
+- `save_probe.py`: dormant save-format replay/debug probe.
 - `player.py`: player creation, tick regen, prompt, save/load. Compatibility
   re-exports have been removed.
-- `commands.py`: position gates, direction dispatch, command table, `interpret`,
-  plus save/quit glue only.
+- `commands.py`: position gates, direction dispatch, command table, `interpret`.
+- `primesud.py`: owns `Game`, top-level terminal construction, and input loop.
+  It no longer imports `hpprime` directly.
 
 Current validation status:
 
 - CPython ASCII and compile checks pass.
 - Fake HP Prime import smoke checks passed during the split.
-- Emulator/hardware validation is still required before packaging.
+- Emulator smoke passed after the main/platform/terminal/game-state splits.
+- Hardware validation is still required before packaging/release.
 
 ## Phase 1: Stabilize Current Split
 
@@ -154,7 +163,7 @@ After Phases 2-6, `commands.py` should contain only:
 
 No command body should live there unless it is purely dispatcher glue.
 
-Status: done. Remaining local handlers are `do_save` and `do_quit`.
+Status: done. Save/quit handlers moved to `system_cmds.py`.
 
 ## Phase 8: Thin Main And Platform
 
@@ -172,18 +181,21 @@ Status: partial.
 
 - `prime_platform.py` owns `Ticks`, `WAIT`, settings save/restore, and `HVars`
   get/set wrappers.
+- `prime_platform.py` also owns HP Prime graphic primitive imports used by
+  higher-level modules, plus graphic buffer cleanup.
 - `player.py` save/load now uses `prime_platform.hvars_get/hvars_set`.
-- Main still owns `Game`, terminal setup, graphic buffer cleanup, input loop,
-  save format migration UX, and the save-format probe.
+- `terminal.py` owns colour-aware print/status wrapping and the font recolour
+  cache; `tml.py` remains untouched.
+- `game_state.py` owns new/load/save lifecycle and save-format migration UX.
+- Main still owns `Game`, top-level terminal construction, and input loop. The
+  dormant save-format replay helper lives in `save_probe.py`.
 - Leave `util.py` alone unless a broader platform cleanup is needed.
 
 Next:
 
-1. Run in HP Prime emulator and confirm startup, movement, look, inventory,
-   combat, recall/flee, save/load, macros, and score.
-2. If emulator passes, rebuild/package `.hpapp` separately.
-3. Consider a small `system_cmds.py` only if `do_save`/`do_quit` should leave
-   `commands.py`; current dispatcher glue is acceptable.
+1. Run a broader hardware or long emulator play session before declaring Phase 8
+   fully done.
+2. Rebuild/package `.hpapp` separately when requested.
 
 ## Validation Checklist
 

@@ -1,4 +1,6 @@
 # fmt: off
+"""Game configuration constants, key maps, and stat tables."""
+
 # -- Display ---------------------------------------------------------------------------
 DARK_MODE     = True
 FONT          = "std5x10"
