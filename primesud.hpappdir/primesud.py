@@ -25,11 +25,9 @@ from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
 from util import free_mem, gc_collect
 from world import R_STARTING_ROOM, ROOMS, ROOM_AREAS, AREA_DEFS, RESETS
 from combat import violence_update
+from mob import reset_area, reset_mobs, mobile_update
 from player import (
     create_char,
-    reset_area,
-    reset_mobs,
-    mobile_update,
     tick_update,
     show_prompt,
     save_char,
@@ -621,7 +619,7 @@ class PrimeSud:
         with self:
             game = self.game
 
-            _save_format_probe(game.tr)
+            # _save_format_probe(game.tr)
             game.show_greeting()
 
             result = game.load_game()

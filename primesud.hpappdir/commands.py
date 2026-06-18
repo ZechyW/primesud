@@ -3,10 +3,11 @@ from colors import color_len
 
 from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, SKILL_TABLE, GSN_CURE_LIGHT, GSN_RECALL, R_RECALL, WEAPON_GSN_MAP
 from picker import pick_from
-from player import (get_hitroll, get_damroll, get_AC, get_curr_stat, get_obj_list, get_char_room,
-                    save_char, is_name, affect_modify, PLR_AUTOMAP, PLR_DEFAULTS,
-                    obj_vnum, create_object, item_extra_flags, item_wear_flags,
-                    unequip_char, equip_char)
+from actor import (get_hitroll, get_damroll, get_AC, get_curr_stat,
+                   is_name, affect_modify, unequip_char, equip_char)
+from item import (get_obj_list, get_char_room, obj_vnum, create_object,
+                  item_extra_flags, item_wear_flags)
+from player import save_char, PLR_AUTOMAP, PLR_DEFAULTS
 from area_school import (I_BANNER_WAR_MERC,
                          I_MACE_SUB_MERC, I_DAGGER_SUB_MERC, I_SWORD_SUB_MERC,
                          I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,

@@ -9,7 +9,9 @@ from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
                    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY,
                    GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
                    WEAPON_GSN_MAP)
-from player import get_hitroll, get_damroll, get_AC, get_curr_stat, show_prompt, create_object, save_char
+from actor import get_hitroll, get_damroll, get_AC, get_curr_stat
+from item import create_object
+from player import save_char
 
 
 # -- Helpers -------------------------------------------------------------------
