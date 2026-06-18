@@ -246,7 +246,7 @@ def area_update(tr, player, world):
         area["age"] += 1
         if area["age"] >= _AREA_AGE_MIN and area["age"] >= _AREA_AGE_RESET:
             reset_mobs(world["mobs"], world["rooms"], area["resets"])
-            if area["tag"] == "mud_school":
+            if area["tag"] == "mudschool":
                 area["age"] = 13  # resets every 2 ticks (cf. db.c:1330: age = 15-2)
             else:
                 area["age"] = randint(0, 3)

@@ -240,8 +240,6 @@ class PrimeSud:
         with self:
             game = self.game
 
-            # from save_probe import save_format_probe
-            # save_format_probe(game.tr)
             game.show_greeting()
 
             result = load_game(game)

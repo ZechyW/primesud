@@ -47,7 +47,6 @@ Completed cuts:
   cache around the stable `tml.py` terminal.
 - `prime_platform.py`: HP Prime `Ticks`, `WAIT`, settings, `HVars`, and direct
   graphic primitive ownership for game code.
-- `save_probe.py`: dormant save-format replay/debug probe.
 - `player.py`: player creation, tick regen, prompt, save/load. Compatibility
   re-exports have been removed.
 - `commands.py`: position gates, direction dispatch, command table, `interpret`.
@@ -61,9 +60,7 @@ Current validation status:
 - Emulator smoke passed after the main/platform/terminal/game-state splits.
 - Post-refactor discrepancy audit against checkpoint
   `f8e52e72057c70031629db8b875217b9fa11c989` found command/user-facing
-  message text preserved. The only intentional runtime/output change noted was
-  disabling the old startup save-format probe and moving it to dormant
-  `save_probe.py`.
+  message text preserved. The old startup save-format probe has been removed.
 - Final local checks after the skill-list SSOT cleanup:
   `python tools/check_ascii_py.py` passes, and `ast.parse` passes for
   `info.py`, `training.py`, and `commands.py`.
@@ -197,8 +194,7 @@ Status: partial.
 - `terminal.py` owns colour-aware print/status wrapping and the font recolour
   cache; `tml.py` remains untouched.
 - `game_state.py` owns new/load/save lifecycle and save-format migration UX.
-- Main still owns `Game`, top-level terminal construction, and input loop. The
-  dormant save-format replay helper lives in `save_probe.py`.
+- Main still owns `Game`, top-level terminal construction, and input loop.
 - Leave `util.py` alone unless a broader platform cleanup is needed.
 
 Next:
