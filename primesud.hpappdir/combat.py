@@ -10,8 +10,9 @@ from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
                    GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
                    WEAPON_GSN_MAP)
 from actor import get_hitroll, get_damroll, get_AC, get_curr_stat
-from item import create_object
+from item import create_object, get_char_room
 from player import save_char
+from picker import pick_from
 
 
 # -- Helpers -------------------------------------------------------------------
@@ -530,6 +531,29 @@ def do_kick(tr, ch, args, world):
             tr.print("{GYour kick misses {G%s.{x" % tpl["short_descr"])
             check_improve(tr, ch, GSN_KICK, False, 1)
     return None
+
+
+def do_kill(tr, player, args, world):
+    if player["fighting"] is not None:
+        tr.print("You are already fighting!")
+        return
+    rs = world["rooms"][player["room"]]
+    live = rs["mobs"]
+    if not live:
+        tr.print("Kill whom?")
+        return
+    if args:
+        mob_id = get_char_room(" ".join(args), live, world["mobs"])
+        if mob_id is None:
+            tr.print("They aren't here.")
+            return
+    else:
+        names = [MOB_TEMPLATES[world["mobs"][i]["tpl"]]["short_descr"] for i in live]
+        idx = pick_from(tr, "Kill whom?", names)
+        if idx < 0:
+            return
+        mob_id = live[idx]
+    set_fighting(tr, player, mob_id, world["mobs"])
 
 
 def mob_hit(tr, ch, victim, world):

@@ -1,19 +1,13 @@
-from world import ROOMS, MOB_TEMPLATES
-from picker import pick_from
-from item import get_char_room
 from player import save_char
-from combat import set_fighting, stop_fighting, do_kick
+from combat import do_kill, do_kick
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_outfit)
-from movement import _exit_to, do_move, do_open, do_close, do_recall
+from movement import do_move, do_open, do_close, do_recall, do_flee
 from magic import do_cast
 from training import do_train, do_practice
 from info import (do_look, do_score, do_skills, do_help, do_affects,
                   do_credits, do_map, do_automap, do_autolist)
 from macros import do_macro
-
-from urandom import randint
-
 
 # Position system (cf. 1stMud position_t enum in defines.h; gaps 1-3 omitted [PRIMESUD])
 _POS_ORDER = {
@@ -28,57 +22,6 @@ _POS_MSG = {
     "sitting":  "Better stand up first.",
     "fighting": "No way!  You are still fighting!",
 }
-
-def do_kill(tr, player, args, world):
-    if player["fighting"] is not None:
-        tr.print("You are already fighting!")
-        return
-    rs = world["rooms"][player["room"]]
-    live = rs["mobs"]
-    if not live:
-        tr.print("Kill whom?")
-        return
-    if args:
-        mob_id = get_char_room(" ".join(args), live, world["mobs"])
-        if mob_id is None:
-            tr.print("They aren't here.")
-            return
-    else:
-        names = [MOB_TEMPLATES[world["mobs"][i]["tpl"]]["short_descr"] for i in live]
-        idx = pick_from(tr, "Kill whom?", names)
-        if idx < 0:
-            return
-        mob_id = live[idx]
-    set_fighting(tr, player, mob_id, world["mobs"])
-
-
-def do_flee(tr, player, args, world):
-    if player["fighting"] is None:
-        tr.print("You're not fighting anyone.")
-        return
-    exits = list(ROOMS[player["room"]]["exits"].items())
-    if not exits:
-        tr.print("There is nowhere to run!")
-        return
-    # Try exits in random order (up to 6 attempts, cf. 1stMud)
-    attempts = list(range(len(exits)))
-    for _ in range(min(6, len(exits))):
-        idx = randint(0, len(attempts) - 1)
-        direction, exit_val = exits[attempts.pop(idx)]
-        if isinstance(exit_val, dict) and exit_val.get("closed"):
-            continue
-        dest = _exit_to(exit_val)
-        if dest not in ROOMS:
-            continue
-        player["room"] = dest
-        stop_fighting(player, world["mobs"])
-        tr.print("You flee {}!".format(direction))
-        player["xp"] = max(0, player["xp"] - 10)
-        tr.print("You lost 10 exp.")
-        do_look(tr, player, [], world)
-        return
-    tr.print("There is nowhere to run!")
-
 
 def do_save(tr, player, args, world):
     try:
