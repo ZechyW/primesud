@@ -1,14 +1,10 @@
 """System command handlers for save and quit."""
 
-from player import save_char
+from player import save_state
 
 
 def do_save(tr, player, args, world):
-    try:
-        save_char(player, world)
-        tr.print("Saved.")
-    except Exception as e:
-        tr.print("Save failed: {}".format(e))
+    save_state(tr, player, world)
 
 
 def do_quit(tr, player, args, world):

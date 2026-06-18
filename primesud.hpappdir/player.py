@@ -279,6 +279,18 @@ def save_char(player, world):
         f.write(payload)
 
 
+def save_state(tr, player, world, quiet=False):
+    """Save player/world state and optionally print success."""
+    try:
+        save_char(player, world)
+        if not quiet:
+            tr.print("Saved.")
+        return True
+    except Exception as e:
+        tr.print("Save failed: %s" % e)
+        return False
+
+
 def _parse_item(s):
     """Parse a saved item token ('vnum:cost') into an instance dict."""
     v, c = s.split(":", 1)

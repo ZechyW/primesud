@@ -13,7 +13,7 @@ from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
                    WEAPON_GSN_MAP)
 from actor import get_hitroll, get_damroll, get_AC, get_curr_stat
 from item import create_object, get_char_room
-from player import save_char
+from player import save_state
 from picker import pick_from
 
 
@@ -941,10 +941,7 @@ def raw_kill(tr, player, mob_id, inst, tpl, world):
         tr.print("{} falls to the ground.".format(ITEM_TEMPLATES[_inv_vnum]["short_descr"]))
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
-    try:
-        save_char(player, world)
-    except Exception as e:
-        tr.print("Save failed: {}".format(e))
+    save_state(tr, player, world, quiet=True)
 
     world["rooms"][inst["room"]]["mobs"].remove(mob_id)
     del world["mobs"][mob_id]

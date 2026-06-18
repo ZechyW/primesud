@@ -1,7 +1,7 @@
 """Game lifecycle helpers for new, load, save, and migration UX."""
 
 from config import SAVE_VAR
-from player import create_char, save_char, load_char
+from player import create_char, save_state, load_char
 from mob import reset_area, create_area_states
 from inventory import do_outfit
 from macros import _MACRO_SUBST
@@ -23,7 +23,7 @@ def new_game(game, name="Hero"):
     game.area_states = create_area_states()
     game.player["_macros"] = _MACRO_SUBST
     do_outfit(game.tr, game.player, "", None)  # cf. 1stMud do_outfit in nanny.c for new chars
-    save_game(game)
+    save_game(game, quiet=True)
 
 
 def load_game(game):
@@ -62,12 +62,9 @@ def handle_version_mismatch(game):
             return False
 
 
-def save_game(game):
-    try:
-        save_char(game.player, {
-            "rooms": game.room_state,
-            "mobs": game.mob_instances,
-            "areas": game.area_states,
-        })
-    except Exception as e:
-        game.tr.print("Save failed: {}".format(e))
+def save_game(game, quiet=False):
+    return save_state(game.tr, game.player, {
+        "rooms": game.room_state,
+        "mobs": game.mob_instances,
+        "areas": game.area_states,
+    }, quiet)

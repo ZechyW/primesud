@@ -61,6 +61,8 @@ def pick_from(tr, title, options):
                     tr.print("")
                     _render(tr, title, options, page, max_page)
                     break
+            elif char is None:
+                pass
             elif char.isdigit():
                 page_idx = (int(char) - 1) % 10  # '1'->0 ... '9'->8, '0'->9
                 tr.print(char, end="")

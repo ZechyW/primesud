@@ -203,7 +203,7 @@ class Game:
                     show_prompt(tr, player, self.input_buf)
                     tick_count += 1
                     if tick_count >= AUTOSAVE_TICKS:
-                        save_game(self)
+                        save_game(self, quiet=False)
                         tick_count = 0
 
                 if pulse % PULSE_MOBILE == 0:
@@ -255,7 +255,7 @@ class PrimeSud:
             try:
                 game.game_loop()
             finally:
-                save_game(game)
+                save_game(game, quiet=True)
 
 
 PrimeSud().run()
