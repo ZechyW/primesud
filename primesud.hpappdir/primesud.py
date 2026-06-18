@@ -35,7 +35,9 @@ from player import (
     SAVE_VERSION,
     _EQUIP_SAVE_ORDER,
 )
-from commands import interpret, do_look, do_outfit
+from commands import interpret
+from info import do_look
+from inventory import do_outfit
 from macros import _MACRO_SUBST
 from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full
 from prime_platform import (ticks, wait, wait_ms,
