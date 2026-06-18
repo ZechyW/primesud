@@ -7,7 +7,7 @@
 # Based on DikuMud (c) 1990-1991 Hammer, Seifert, Storfeldt, Madsen, Nyboe
 
 from tml_prime import tml_prime as tml, _HIST_UP, _HIST_DN
-from hpprime import dimgrob, eval as ppleval, getpix, pixon, grobw, grobh, strblit2
+from hpprime import dimgrob, getpix, pixon, grobw, grobh, strblit2
 
 from urandom import randint
 from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
@@ -38,6 +38,8 @@ from player import (
 from commands import interpret, do_look, do_outfit
 from macros import _MACRO_SUBST
 from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full
+from prime_platform import (ticks, wait, wait_ms,
+                            save_prime_settings, configure_prime, restore_prime_settings)
 
 
 # -- World tick / area update --------------------------------------------------
@@ -352,7 +354,7 @@ class Game:
 
         pulse      = 0
         tick_count = 0
-        now        = int(ppleval("Ticks"))
+        now        = ticks()
         next_pulse = now + MS_PER_PULSE
 
         gc_collect()
@@ -376,9 +378,9 @@ class Game:
                                 self._cmd_history.pop(0)
                     self._hist_pos   = None
                     self._hist_saved = ""
-                    _t0 = int(ppleval("Ticks"))
+                    _t0 = ticks()
                     _quit = interpret(self.input_buf, tr, player, world) == "quit"
-                    next_pulse += int(ppleval("Ticks")) - _t0  # [PRIMESUD] skip missed pulses during blocking input (e.g. picker)
+                    next_pulse += ticks() - _t0  # [PRIMESUD] skip missed pulses during blocking input (e.g. picker)
                     if _quit:
                         break
                     self.input_buf = ""
@@ -411,9 +413,9 @@ class Game:
                             self._hist_saved = ""
                         show_prompt(tr, player, self.input_buf)
                 elif auto_submit is True:  # [PRIMESUD] hardware key -- immediate submit
-                    _t0 = int(ppleval("Ticks"))
+                    _t0 = ticks()
                     _quit = interpret(char, tr, player, world) == "quit"
-                    next_pulse += int(ppleval("Ticks")) - _t0  # [PRIMESUD] skip missed pulses during blocking input
+                    next_pulse += ticks() - _t0  # [PRIMESUD] skip missed pulses during blocking input
                     if _quit:
                         break
                     show_prompt(tr, player, self.input_buf)
@@ -428,7 +430,7 @@ class Game:
                         self.input_buf += char
                     show_prompt(tr, player, self.input_buf)
 
-            now = int(ppleval("Ticks"))
+            now = ticks()
             if now >= next_pulse:
                 next_pulse += MS_PER_PULSE
                 pulse += 1
@@ -438,9 +440,9 @@ class Game:
                         # [PRIMESUD] Handle auto respawn on death
                         tr.print("You have been KILLED!!")
                         tr.print("Your lifeforce ebbs away...")
-                        ppleval("WAIT({})".format(DEATH_MSG_DELAY))
+                        wait(DEATH_MSG_DELAY)
                         tr.print("A distant warmth draws you back.")
-                        ppleval("WAIT({})".format(DEATH_MSG_DELAY))
+                        wait(DEATH_MSG_DELAY)
                         player["room"] = R_STARTING_ROOM
                         player["hp"]   = 1
                         player["mp"]   = 1
@@ -469,7 +471,7 @@ class Game:
                 if pulse >= 14400:  # wrap at 1 hour (3600 s x 4 pulses/s)
                     pulse = 0
 
-            ppleval("WAIT({}/1e3)".format(POLL_MS))
+            wait_ms(POLL_MS)
 
 
 def _save_format_probe(tr):
@@ -599,20 +601,15 @@ class PrimeSud:
     """
 
     def __enter__(self):
-        sep = ppleval("HSeparator")
-        ppleval("HSeparator:=0")
-        self.vars = tuple(ppleval("{AAngle,AFormat,AComplex,Bits}")) + (sep,)
-        ppleval("AAngle:=1;AFormat:=1;AComplex:=0;Bits:=32")
+        self.vars = save_prime_settings()
+        configure_prime()
         self.game = Game()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         for n in range(1, 9):
             dimgrob(n, 0, 0, 0)
-        ppleval(
-            "AAngle:=%d;AFormat:=%d;AComplex:=%d;Bits:=%d;HSeparator:=%d;TOff:=TOff"
-            % self.vars
-        )
+        restore_prime_settings(self.vars)
         return exc_type is KeyboardInterrupt
 
     def run(self):

@@ -130,7 +130,8 @@ No command body should live there unless it is purely dispatcher glue.
 
 ## Phase 8: Thin Main And Platform
 
-Create `platform.py` only after command/system splits are stable:
+Create `prime_platform.py` only after command/system splits are stable
+(`platform.py` collides with CPython's stdlib during smoke tests):
 
 - HP Prime `ppleval` wrappers
 - save variable helpers if useful
