@@ -3,8 +3,9 @@
 from world import MOB_TEMPLATES, SKILLS
 from picker import pick_from
 from actor import get_curr_stat
-from config import INT_APP_LEARN, MAX_STATS
-from info import print_skills
+from config import INT_APP_LEARN, MAX_STATS, SKILL_ADEPT
+from info import print_practice_table
+from skill_utils import can_use_skill_spell, find_skill_spell, skill_rating
 
 
 _TRAIN_STATS = [
@@ -14,9 +15,6 @@ _TRAIN_STATS = [
     ("wis", "wisdom"),
     ("con", "constitution"),
 ]
-
-_PRACTICE_CAP = 75  # matches 1stMud skill_adept for all classes
-
 
 def do_train(tr, player, args, world):
     """Permanently raise a stat or vital by spending a train point (cf. 1stMud do_train in act_move.c).
@@ -96,8 +94,8 @@ def do_train(tr, player, args, world):
 def do_practice(tr, player, args, world):
     """Improve a skill percentage using a practice point (cf. 1stMud do_practice in act_info.c).
 
-    Without an argument and no teacher: lists skills + practice count (1stMud parity).
-    Without an argument and teacher present: picker of under-cap skills [PRIMESUD].
+    Without an argument: lists skills + practice count.  If a teacher is present,
+    also opens a picker of under-cap skills [PRIMESUD].
     With a skill name: requires a mob with act_flags["practice"] in the room.
 
     Args:
@@ -115,21 +113,16 @@ def do_practice(tr, player, args, world):
             break
 
     if not args:
-        if teacher is None:
-            print_skills(tr, player)
-            tr.print("You have {} practice session{}.".format(
-                player["practice"], "" if player["practice"] == 1 else "s"))
-            return
-        if player["practice"] < 1:
-            tr.print("You have no practice sessions left.")
+        print_practice_table(tr, player)
+        tr.print("You have {} practice sessions left.".format(player["practice"]))
+        if teacher is None or player["practice"] < 1:
             return
         practicable = [(vnum, pct) for vnum, pct in player["learned"].items()
-                       if 0 < pct < _PRACTICE_CAP and SKILLS.get(vnum)]
+                       if (0 < pct < SKILL_ADEPT and SKILLS.get(vnum)
+                           and can_use_skill_spell(player, vnum)
+                           and skill_rating(player, vnum) > 0)]
         if not practicable:
-            tr.print("You have nothing left to practice.")
             return
-        tr.print("You have {} practice session{}.".format(
-            player["practice"], "" if player["practice"] == 1 else "s"))
         names = ["{} ({}%)".format(SKILLS[vnum]["name"], pct) for vnum, pct in practicable]
         idx = pick_from(tr, "Practice which skill?", names)
         if idx < 0:
@@ -143,32 +136,26 @@ def do_practice(tr, player, args, world):
             tr.print("You have no practice sessions left.")
             return
         arg = " ".join(args)
-        sk_vnum = None
-        for vnum in player["learned"]:
-            sk = SKILLS.get(vnum)
-            if sk and sk["name"].startswith(arg):
-                sk_vnum = vnum
-                break
-        if sk_vnum is None:
-            tr.print("You don't know that skill.")
-            return
-        if player["learned"][sk_vnum] >= _PRACTICE_CAP:
-            tr.print("You are already learned at {}.".format(SKILLS[sk_vnum]["name"]))
-            return
-        if player["learned"][sk_vnum] < 1:
+        sk_vnum = find_skill_spell(player, arg)
+        if (sk_vnum is None or not can_use_skill_spell(player, sk_vnum)
+                or player["learned"].get(sk_vnum, 0) < 1
+                or skill_rating(player, sk_vnum) == 0):
             tr.print("You can't practice that.")
+            return
+        if player["learned"][sk_vnum] >= SKILL_ADEPT:
+            tr.print("You are already learned at {}.".format(SKILLS[sk_vnum]["name"]))
             return
 
     int_val = get_curr_stat(player, "int")
-    sk_rating = SKILLS[sk_vnum].get("rating", 1)
+    sk_rating = skill_rating(player, sk_vnum)
     if sk_rating == 0:
         tr.print("You can't practice that.")
         return
     gain = INT_APP_LEARN[int_val] // sk_rating
     player["practice"] -= 1
-    new_pct = min(_PRACTICE_CAP, player["learned"][sk_vnum] + gain)
+    new_pct = min(SKILL_ADEPT, player["learned"][sk_vnum] + gain)
     player["learned"][sk_vnum] = new_pct
-    if new_pct >= _PRACTICE_CAP:
+    if new_pct >= SKILL_ADEPT:
         tr.print("You are now learned at {}.".format(SKILLS[sk_vnum]["name"]))
     else:
         tr.print("You practice {}.".format(SKILLS[sk_vnum]["name"]))

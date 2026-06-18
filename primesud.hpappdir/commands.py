@@ -6,7 +6,7 @@ from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
 from movement import do_move, do_open, do_close, do_recall, do_flee
 from magic import do_cast
 from training import do_train, do_practice
-from info import (do_look, do_score, do_skills, do_help, do_affects,
+from info import (do_look, do_score, do_skills, do_spells, do_help, do_affects,
                   do_credits, do_map, do_automap, do_autolist)
 from macros import do_macro
 from system_cmds import do_save, do_quit
@@ -55,6 +55,7 @@ _CMD_TABLE = [
     ("help",      do_help,      "dead",     False),   # #44
     ("score",     do_score,     "dead",     False),   # #49
     ("skills",    do_skills,    "dead",     False),   # #50
+    ("spells",    do_spells,    "dead",     False),   # #53
     ("autolist",  do_autolist,  "dead",     False),   # #63
     ("outfit",    do_outfit,    "resting",  False),   # #80
     ("close",     do_close,     "resting",  False),   # #113

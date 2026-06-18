@@ -3,13 +3,14 @@
 from util import free_mem, gc_collect
 from colors import color_len
 
-from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS
+from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS
 from actor import get_hitroll, get_damroll, get_AC, get_curr_stat, is_name
 from item import get_obj_list, obj_vnum, item_extra_flags
 from player import PLR_AUTOMAP, PLR_DEFAULTS
 from combat import _get_thac0
 from automap import build_compact_lines, build_full_lines, COMPACT_W
-from config import TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS
+from config import TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS, MAX_MORTAL_LEVEL
+from skill_utils import can_use_skill_spell, is_spell, skill_level, spell_mana
 
 
 def _wrap(text, width):
@@ -242,20 +243,103 @@ def do_score(tr, player, args, world):
         tr.print(line)
 
 
-def print_skills(tr, player):
-    for sk_vnum, pct in sorted(player["learned"].items()):
-        sk = SKILLS.get(sk_vnum)
-        if sk is None:
+def _parse_skill_range(tr, args):
+    if not args:
+        return (False, 1, MAX_MORTAL_LEVEL, True)
+    f_all = True
+    if args[0].startswith("all"):
+        return (f_all, 1, MAX_MORTAL_LEVEL, True)
+    try:
+        max_lev = int(args[0])
+    except ValueError:
+        tr.print("Arguments must be numerical or all.")
+        return (False, 1, MAX_MORTAL_LEVEL, False)
+    if max_lev < 1 or max_lev > MAX_MORTAL_LEVEL:
+        tr.print("Levels must be between 1 and {}.".format(MAX_MORTAL_LEVEL))
+        return (False, 1, MAX_MORTAL_LEVEL, False)
+    min_lev = 1
+    if len(args) > 1:
+        try:
+            min_lev = max_lev
+            max_lev = int(args[1])
+        except ValueError:
+            tr.print("Arguments must be numerical or all.")
+            return (False, 1, MAX_MORTAL_LEVEL, False)
+        if max_lev < 1 or max_lev > MAX_MORTAL_LEVEL:
+            tr.print("Levels must be between 1 and {}.".format(MAX_MORTAL_LEVEL))
+            return (False, 1, MAX_MORTAL_LEVEL, False)
+        if min_lev > max_lev:
+            tr.print("That would be silly.")
+            return (False, 1, MAX_MORTAL_LEVEL, False)
+    return (f_all, min_lev, max_lev, True)
+
+
+def _pad_color(s, width):
+    return s + " " * max(0, width - color_len(s))
+
+
+def _print_level_lists(tr, player, args, want_spells):
+    f_all, min_lev, max_lev, ok = _parse_skill_range(tr, args)
+    if not ok:
+        return
+    rows = {}
+    found = False
+    learned = player.get("learned", {})
+    for sn, sk in SKILL_TABLE:
+        level = skill_level(player, sn)
+        if (level < MAX_MORTAL_LEVEL + 1
+                and (f_all or level <= player.get("level", 1))
+                and min_lev <= level <= max_lev
+                and is_spell(sn) == want_spells
+                and learned.get(sn, 0) > 0):
+            found = True
+            if want_spells:
+                if player.get("level", 1) < level:
+                    item = "{c" + _pad_color(sk["name"], 18) + " n/a      "
+                else:
+                    item = "{c" + _pad_color(sk["name"], 18) + " {W%3d mana  " % spell_mana(player, sn)
+            elif player.get("level", 1) < level:
+                item = "{c" + _pad_color(sk["name"], 18) + " n/a      "
+            else:
+                item = "{c" + _pad_color(sk["name"], 18) + " {W%3d%%      " % learned.get(sn, 0)
+            if level not in rows:
+                rows[level] = []
+            rows[level].append(item)
+    if not found:
+        tr.print("{cNo " + ("spells" if want_spells else "skills") + " found.{x")
+        return
+    for level in range(MAX_MORTAL_LEVEL + 1):
+        items = rows.get(level)
+        if not items:
             continue
-        if sk.get("spell_fun", "spell_null") != "spell_null":
-            tr.print("  cast {} {}% (MP:{})".format(
-                sk["name"], pct, sk.get("min_mana", 0)))
-        else:
-            tr.print("  {} {}%".format(sk["name"], pct))
+        for i in range(0, len(items), 2):
+            prefix = "{cLevel {W%2d{c: " % level if i == 0 else "{x          "
+            line = prefix + items[i]
+            if i + 1 < len(items):
+                line += items[i + 1]
+            tr.print(line + "{x")
+
+
+def print_practice_table(tr, player):
+    """Print learned practice percentages (cf. 1stMud do_practice in act_info.c)."""
+    items = []
+    learned = player.get("learned", {})
+    for sn, sk in SKILL_TABLE:
+        pct = learned.get(sn, 0)
+        if can_use_skill_spell(player, sn) and pct > 0:
+            items.append("{:<18} {:3d}%".format(sk["name"], pct))
+    for i in range(0, len(items), 3):
+        tr.print(" ".join(items[i:i + 3]))
 
 
 def do_skills(tr, player, args, world):
-    print_skills(tr, player)
+    """List known skills by level (cf. 1stMud do_skills in skills.c)."""
+    _print_level_lists(tr, player, args, False)
+
+
+def do_spells(tr, player, args, world):
+    """List known spells by level (cf. 1stMud do_spells in skills.c)."""
+    _print_level_lists(tr, player, args, True)
 
 
 def do_help(tr, player, args, world):
