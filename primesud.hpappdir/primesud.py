@@ -21,7 +21,7 @@ from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     CMD_HISTORY_MAX,
                     FNKEY_SENTINELS)
 from util import free_mem, gc_collect
-from world import R_STARTING_ROOM, ROOMS
+from world import R_STARTING_ROOM, ROOMS, init_world
 from combat import violence_update
 from mob import mobile_update, area_update
 from player import tick_update, show_prompt
@@ -237,6 +237,9 @@ class PrimeSud:
 
     def run(self):
         """Entry point: run the game inside the environment context manager."""
+        # Initialise world catalogs here so imports stay light but runtime users
+        # can treat world globals as ready.
+        init_world()
         with self:
             game = self.game
 

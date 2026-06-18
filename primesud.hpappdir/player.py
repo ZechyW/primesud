@@ -209,29 +209,29 @@ def save_char(player, world):
             payload, or the save-file mirror cannot be written.
     """
     gc_collect()
-    lines = ["v=%s" % SAVE_VERSION]
+    lines = ["v=" + str(SAVE_VERSION)]
     for key in ("name", "level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
                 "hitroll", "damroll", "AC", "room",
                 "practice", "train", "flags", "played"):
-        lines.append("p.%s=%s" % (key, player[key]))
+        lines.append("p." + key + "=" + str(player[key]))
     inv_parts = []
     for o in player["inv"]:
-        inv_parts.append("%s:%s" % (o["vnum"], o["cost"]))
-    lines.append("p.inv=%s" % "|".join(inv_parts))
+        inv_parts.append(str(o["vnum"]) + ":" + str(o["cost"]))
+    lines.append("p.inv=" + "|".join(inv_parts))
     for slot in _EQUIP_SAVE_ORDER:
         obj = player["equip"][slot]
-        lines.append("p.eq.%s=%s" % (
-            slot, "%s:%s" % (obj["vnum"], obj["cost"]) if obj is not None else ""))
+        val = str(obj["vnum"]) + ":" + str(obj["cost"]) if obj is not None else ""
+        lines.append("p.eq." + slot + "=" + val)
     learned_parts = []
     for sk in sorted(player["learned"]):
-        learned_parts.append("%s:%s" % (sk, player["learned"][sk]))
-    lines.append("p.learned=%s" % "|".join(learned_parts))
+        learned_parts.append(str(sk) + ":" + str(player["learned"][sk]))
+    lines.append("p.learned=" + "|".join(learned_parts))
     for k in sorted(player["_macros"]):
-        lines.append("p.macro.%s=%s" % (FNKEY_NAMES.get(k, k), player["_macros"][k]))
+        lines.append("p.macro." + str(FNKEY_NAMES.get(k, k)) + "=" + str(player["_macros"][k]))
     for _as in world["areas"]:
-        # HP Prime G1 can produce a non-str from "%s" formatting here.
+        # HP Prime G1 has unstable percent-format strings in save payloads.
         lines.append("a." + str(_as["tag"]) + ".age=" + str(_as["age"]))
     # Build reset-room map for single-instance mobs (gl=1): if the only live
     # instance is already in its reset room, omit it -- reset_area() will
@@ -258,15 +258,15 @@ def save_char(player, world):
         room_parts = []
         for r in rooms:
             room_parts.append(str(r))
-        lines.append("m.%s=%s" % (tpl_vnum, "|".join(room_parts)))
+        lines.append("m." + str(tpl_vnum) + "=" + "|".join(room_parts))
     for rvnum in sorted(world["rooms"]):
         rs = world["rooms"][rvnum]
         if not rs["items"]:
             continue
         item_parts = []
         for o in rs["items"]:
-            item_parts.append("%s:%s" % (o["vnum"], o["cost"]))
-        lines.append("r.%s.items=%s" % (rvnum, "|".join(item_parts)))
+            item_parts.append(str(o["vnum"]) + ":" + str(o["cost"]))
+        lines.append("r." + str(rvnum) + ".items=" + "|".join(item_parts))
     for i in range(len(lines)):
         if not isinstance(lines[i], str):
             raise Exception("non-str save line %s" % i)

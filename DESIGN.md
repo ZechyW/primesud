@@ -6,6 +6,18 @@ Reference this before porting a new mechanic to avoid re-litigating settled deci
 
 ---
 
+## HP Prime runtime constraints
+
+- HP Prime Python appears to load all `.py` files in the app before `primesud.py`
+  can run benchmark code. Startup-time measurements taken inside `primesud.py`
+  therefore miss some app-load cost, and lazy `import` patterns may not reduce
+  first-launch wait if the source file is still packaged in the app. Prefer lazy
+  runtime initialisation when the goal is heap stability: avoid duplicate merged
+  catalogs, bulk mutable state, and all-world resets until data is actually
+  needed.
+
+---
+
 ## Not ported
 
 | Feature | Decision | Reason |
