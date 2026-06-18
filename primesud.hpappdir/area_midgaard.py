@@ -14,7 +14,7 @@ AREA = {
     "version":  4,
 }
 
-# ── Room VNUMs ─────────────────────────────────────────────────────────────────
+# -- Room VNUMs -----------------------------------------------------------------
 R_NORTHWEST_END_OF_CONCOURSE       = 3100
 R_PROMENADE                        = 3101
 R_PROMENADE_3102                   = 3102
@@ -163,7 +163,7 @@ R_BY_THE_TEMPLE_ALTAR              = 3054
 R_FOUNTAIN_OF_YOUTH_APOTHECARY     = 3056
 R_IN_THE_AIR                       = 3057
 
-# ── Mob template VNUMs ─────────────────────────────────────────────────────────
+# -- Mob template VNUMs ---------------------------------------------------------
 M_WIZARD                           = 3000
 M_BAKER                            = 3001
 M_GROCER                           = 3002
@@ -230,7 +230,7 @@ M_LISTER_GREEN_TREE_SNAKE          = 3161
 M_OTHO_MONEY_CHANGER_MONEYCHANGER  = 3162
 M_THIEF_3163                       = 3163
 
-# ── Item template VNUMs ────────────────────────────────────────────────────────
+# -- Item template VNUMs --------------------------------------------------------
 I_BARREL_BEER                      = 3000
 I_BOTTLE_BEER                      = 3001
 I_BOTTLE_ALE                       = 3002
@@ -392,9 +392,9 @@ I_RUBY_GEM                         = 3376
 I_DIAMOND_GEM                      = 3377
 I_OPAL                             = 3378
 
-# ── Mob templates ──────────────────────────────────────────────────────────────
+# -- Mob templates --------------------------------------------------------------
 # hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
-# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies ×10
+# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies x10
 # hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)
 MOBILES = {
     M_WIZARD: {
@@ -1752,7 +1752,7 @@ MOBILES = {
     },
 }
 
-# ── Rooms ──────────────────────────────────────────────────────────────────────
+# -- Rooms ----------------------------------------------------------------------
 ROOMS = {
     R_NORTHWEST_END_OF_CONCOURSE: {
         "name": 'Northwest end of Concourse',
@@ -3271,7 +3271,7 @@ ROOMS = {
     },
 }
 
-# ── Item templates ─────────────────────────────────────────────────────────────
+# -- Item templates -------------------------------------------------------------
 OBJECTS = {
     I_BARREL_BEER: {
         "keywords":    'barrel beer',
@@ -4972,13 +4972,13 @@ OBJECTS = {
     },
 }
 
-# ── Resets ─────────────────────────────────────────────────────────────────────
-# ("M", mob_vnum, global_limit, room_vnum, room_limit) — spawn mob up to limits
-# ("O", item_vnum, room_vnum)                          — place one item copy in room
-# ("E", item_vnum, slot_name)                          — equip item on last M mob
-# ("G", item_vnum)                                     — give item to last M mob inventory
-# ("P", item_vnum, limit, container_vnum, max)         — [PRIMESUD] deferred: no containers
-# ("R", room_vnum, num_dirs)                           — [PRIMESUD] deferred: unused in current areas
+# -- Resets ---------------------------------------------------------------------
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          -- place one item copy in room
+# ("E", item_vnum, slot_name)                          -- equip item on last M mob
+# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
+# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
 # F and D .are resets are baked into room exit flags at conversion time
 RESETS = (
     ("O", I_BENCH, R_PROMENADE),

@@ -1,3 +1,5 @@
+"""Room-neighborhood automap rendering helpers."""
+
 from config import MAP_HALF_W, MAP_HALF_H, FULL_MAP_HALF_W, FULL_MAP_HALF_H, COMPACT_MAP_DEPTH, FULL_MAP_DEPTH, SECTOR_COLORS, SECTOR_SYMBOLS
 
 # Compact automap (shown side-by-side with room description)
@@ -17,7 +19,7 @@ _EXIT_CHAR        = {"n": "|", "s": "|", "e": "-", "w": "-"}
 _EXIT_CHAR_CLOSED = {"n": "I", "s": "I", "e": "=", "w": "="}  # cf. map_chars_closed in automap.c
 
 # cf. 1stMud show_map legend (automap.c); 16 entries for FULL_MAP_HALF_H=8 (GH_FULL=17)
-# Closed Doors omitted — PrimeSUD skips closed exits in map traversal
+# Closed Doors omitted -- PrimeSUD skips closed exits in map traversal
 _FULL_LEGEND = [
     "   X   You are here",          # y=0
     "",                             # y=1  blank (cf. 1stMud)
@@ -76,7 +78,7 @@ def _map_exits(rooms, start_vnum, grid, colors, start_gx, start_gy, max_depth):
         room = rooms.get(vnum)
         if room is None:
             continue
-        # [TODO dark] 1stMud checks can_see_room(ch, pRoom) here — add when room darkness is implemented
+        # [TODO dark] 1stMud checks can_see_room(ch, pRoom) here -- add when room darkness is implemented
         for direction, exit_val in room["exits"].items():
             is_closed = isinstance(exit_val, dict) and exit_val.get("closed")
             dest_vnum = exit_val["to"] if isinstance(exit_val, dict) else exit_val
@@ -89,7 +91,7 @@ def _map_exits(rooms, start_vnum, grid, colors, start_gx, start_gy, max_depth):
                 continue
             dest_room = rooms.get(dest_vnum)
             if is_closed:
-                # Render door symbol but do not traverse (fixes 1stMud dead-code bug — see FIXES.md)
+                # Render door symbol but do not traverse (fixes 1stMud dead-code bug -- see FIXES.md)
                 grid[ey][ex] = _EXIT_CHAR_CLOSED[direction]
                 colors[ey][ex] = _room_color(dest_room)
                 continue
@@ -119,7 +121,7 @@ def _colored_row(grid, colors, y, x0, x1, full=False):
     """Assemble one map row slice with per-cell sector colors (cf. 1stMud show_map in automap.c).
 
     Args:
-        full: True for the standalone map command — 2-wide cells with leading space and {D reset
+        full: True for the standalone map command -- 2-wide cells with leading space and {D reset
               (cf. 1stMud show_map fSmall=false); False for compact side-by-side (fSmall=true).
     """
     row = ""
@@ -134,7 +136,7 @@ def _colored_row(grid, colors, y, x0, x1, full=False):
 
 
 def build_compact_lines(player, rooms):
-    """Bordered compact map: (_CH+2) rows × COMPACT_W cols."""
+    """Bordered compact map: (_CH+2) rows x COMPACT_W cols."""
     grid, colors = _build_grid(player, rooms, MAP_HALF_W, MAP_HALF_H, COMPACT_MAP_DEPTH)
     cx, cy = MAP_HALF_W, MAP_HALF_H
     r_w = MAP_HALF_W
@@ -150,7 +152,7 @@ def build_compact_lines(player, rooms):
 def build_full_lines(player, rooms):
     """Bordered full map with legend (cf. 1stMud show_map fSmall=false in automap.c).
 
-    Grid: FULL_MAP_HALF_H*2+1 content rows × FULL_MAP_HALF_W*2+1 cells, 2 visible chars per cell.
+    Grid: FULL_MAP_HALF_H*2+1 content rows x FULL_MAP_HALF_W*2+1 cells, 2 visible chars per cell.
     Legend attaches to content rows y=0..GH_FULL-1 (skipping both border lines).
     """
     half_w = FULL_MAP_HALF_W

@@ -8,23 +8,23 @@ Sections handled:   #AREADATA  #ROOMS  #MOBILES  #OBJECTS  #RESETS
 Sections skipped:   #SHOPS  #SPECIALS  #MOBPROGS  #OBJPROGS  #ROOMPROGS
 
 RESETS handling:
-  M O E G  → emitted as runtime tuples in RESETS
-  P R      → emitted as deferred tuples (no runtime handler yet)
-  F D      → baked into room exit flags at conversion time; not in RESETS
+  M O E G  -> emitted as runtime tuples in RESETS
+  P R      -> emitted as deferred tuples (no runtime handler yet)
+  F D      -> baked into room exit flags at conversion time; not in RESETS
 
 Design choices:
   - perm_stat omitted: not in .are format
   - respawn omitted: 1stMud uses area-level timed resets, not per-mob timers
   - AC: integer average of the four pierce/bash/slash/exotic values divided by
-    10 (REFERENCE.md: "Values stored × 10, so 100 = AC 10").  Verify manually.
+    10 (REFERENCE.md: "Values stored x 10, so 100 = AC 10").  Verify manually.
   - hitroll: taken from level line field 4; no separate damroll in .are mobs
     (the +B bonus in damage dice IS the damroll analogue in 1stMud)
-  - act_flags, off_flags, imm/res/vuln_flags: decoded into name→True dicts
+  - act_flags, off_flags, imm/res/vuln_flags: decoded into name->True dicts
     using flag tables from REFERENCE.md; included even if PrimeSUD ignores them
   - Exits: plain vnum for open passages; dict {"to": vnum, "isdoor": True, ...}
-    for exits with any door flags — all EXIT_FLAGS encoded as name→True keys
+    for exits with any door flags -- all EXIT_FLAGS encoded as name->True keys
   - Constant names: generated from display text, deduplicated with _<vnum>
-  - sector_type: decoded to name string (e.g. 1 → "city", 0 → "inside")
+  - sector_type: decoded to name string (e.g. 1 -> "city", 0 -> "inside")
 """
 
 import re
@@ -32,7 +32,7 @@ import sys
 from pathlib import Path
 
 
-# ── Flag tables from REFERENCE.md ────────────────────────────────────────────
+# -- Flag tables from REFERENCE.md --------------------------------------------
 
 ACT_FLAGS = {
     0: "is_npc", 1: "sentinel", 2: "scavenger", 5: "aggressive",
@@ -84,7 +84,7 @@ SECTOR_NAMES = {                                        # sector_t enum values (
     12: "path",     13: "swamp",   14: "jungle",  15: "cave",
     16: "none",
 }
-EXTRA_FLAGS = {                                         # ITEM_* from bits.h (BIT_A=0 … BIT_a=26; BIT_X=23 unused)
+EXTRA_FLAGS = {                                         # ITEM_* from bits.h (BIT_A=0 ... BIT_a=26; BIT_X=23 unused)
     0: "glow",        1: "hum",          2: "dark",        3: "lock",
     4: "evil",        5: "invis",        6: "magic",       7: "nodrop",
     8: "bless",       9: "anti_good",   10: "anti_evil",  11: "anti_neutral",
@@ -115,10 +115,10 @@ WLOC_SLOT = {                                           # wloc_t enum from h/def
 }
 
 
-# ── Bit-string helpers ────────────────────────────────────────────────────────
+# -- Bit-string helpers --------------------------------------------------------
 
 def parse_bitstring(s):
-    """'+YnnYn...' → set of bit positions where Y appears."""
+    """'+YnnYn...' -> set of bit positions where Y appears."""
     bits = set()
     if not s.startswith("+"):
         return bits
@@ -131,7 +131,7 @@ def parse_bitstring(s):
 
 
 def decode_flags(bits, table, skip=None):
-    """Bit-position set + table → {name: True} dict; skip is a set of positions to omit."""
+    """Bit-position set + table -> {name: True} dict; skip is a set of positions to omit."""
     skip = skip or set()
     result = {}
     unknown = []
@@ -145,12 +145,12 @@ def decode_flags(bits, table, skip=None):
     return result
 
 
-# ── Dice and string helpers ───────────────────────────────────────────────────
+# -- Dice and string helpers ---------------------------------------------------
 
 def split_tokens(line):
     """Split a .are value line respecting single-quoted tokens (may contain spaces).
 
-    '15 'cure critical' '' '' ''  →  ['15', 'cure critical', '', '', '']
+    '15 'cure critical' '' '' ''  ->  ['15', 'cure critical', '', '', '']
     Falls back to str.split() for lines with no quotes.
     """
     tokens = []
@@ -173,7 +173,7 @@ def split_tokens(line):
 
 
 def parse_dice(s):
-    """'NdM+B' or 'NdM-B' → (N, M, B)."""
+    """'NdM+B' or 'NdM-B' -> (N, M, B)."""
     m = re.match(r"(\d+)d(\d+)([+-]\d+)?", s)
     if m:
         n, d, b = m.groups()
@@ -216,7 +216,7 @@ def make_const_map(prefix, items, name_fn):
     return result
 
 
-# ── Low-level .are reader ─────────────────────────────────────────────────────
+# -- Low-level .are reader -----------------------------------------------------
 
 def read_tilde_string(lines, i):
     """Read a ~-terminated string from lines[i:]. Returns (text, next_i)."""
@@ -253,7 +253,7 @@ def split_sections(text):
     return sections
 
 
-# ── Section parsers ───────────────────────────────────────────────────────────
+# -- Section parsers -----------------------------------------------------------
 
 def parse_areadata(lines):
     area = {}
@@ -566,8 +566,8 @@ def parse_resets(lines):
     Returns:
         tuple: (resets, foverrides, doverrides)
             resets:     list of (cmd, ...) tuples for M/O/E/G/P/R
-            foverrides: {(room_vnum, dir_name): exit_flags_dict} — F resets baked into exits
-            doverrides: {(room_vnum, dir_name): 0|1|2}           — D resets baked into exits
+            foverrides: {(room_vnum, dir_name): exit_flags_dict} -- F resets baked into exits
+            doverrides: {(room_vnum, dir_name): 0|1|2}           -- D resets baked into exits
     """
     resets = []
     foverrides = {}
@@ -599,7 +599,7 @@ def parse_resets(lines):
             # R  0  room_vnum  num_dirs
             resets.append(("R", int(parts[2]), int(parts[3])))
         elif cmd == "F" and len(parts) >= 6:
-            # F  0  room_vnum  exit_num  0  +flags  — baked into exits at conversion time
+            # F  0  room_vnum  exit_num  0  +flags  -- baked into exits at conversion time
             d = DIR_NAME.get(int(parts[3]))
             if d is not None:
                 foverrides[(int(parts[2]), d)] = decode_flags(parse_bitstring(parts[5]), EXIT_FLAGS)
@@ -611,7 +611,7 @@ def parse_resets(lines):
     return resets, foverrides, doverrides
 
 
-# ── Python emitter ────────────────────────────────────────────────────────────
+# -- Python emitter ------------------------------------------------------------
 
 def _repr_flags(d):
     """Compact repr for flag dicts: {name: True, ...}."""
@@ -619,8 +619,18 @@ def _repr_flags(d):
         return "{}"
     parts = [f'"{k}": True' for k in d if k != "_unknown_bits"]
     if "_unknown_bits" in d:
-        parts.append(f'"_unknown_bits": {d["_unknown_bits"]!r}')
+        parts.append(f'"_unknown_bits": {pyrepr(d["_unknown_bits"])}')
     return "{" + ", ".join(parts) + "}"
+
+
+def pyrepr(value):
+    """Return an ASCII-only Python literal."""
+    return ascii(value)
+
+
+def asciitext(value):
+    """Return ASCII-only plain text for generated comments."""
+    return str(value).encode("ascii", "backslashreplace").decode("ascii")
 
 
 def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, foverrides=None, doverrides=None):
@@ -641,52 +651,52 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, fover
     credits  = area_data.get("credits", "Unknown")
 
     w("# fmt: off")
-    w(f"# Area: {aname}")
-    w(f"# Builders: {builders}")
+    w(f"# Area: {asciitext(aname)}")
+    w(f"# Builders: {asciitext(builders)}")
     w(f"# VNUM ranges: Rooms {vnums[0]}-{vnums[1]}")
-    w(f"# Credits: {credits}")
+    w(f"# Credits: {asciitext(credits)}")
     w("")
     w("")
     w("AREA = {")
-    w(f'    "name":     {aname!r},')
-    w(f'    "builders": {builders!r},')
-    w(f'    "vnums":    {vnums!r},')
-    w(f'    "credits":  {credits!r},')
+    w(f'    "name":     {pyrepr(aname)},')
+    w(f'    "builders": {pyrepr(builders)},')
+    w(f'    "vnums":    {pyrepr(vnums)},')
+    w(f'    "credits":  {pyrepr(credits)},')
     w(f'    "levels":   ({min_lvl}, {max_lvl}),')
     if version is not None:
-        w(f'    "version":  {version!r},')
+        w(f'    "version":  {pyrepr(version)},')
     w("}")
     w("")
 
-    # ── Constants ──
-    BAR = "─"
-    w(f"# ── Room VNUMs {BAR * 65}")
+    # -- Constants --
+    BAR = "-"
+    w(f"# -- Room VNUMs {BAR * 65}")
     for vnum, _ in rooms:
         w(f"{room_map[vnum]:<34} = {vnum}")
     w("")
-    w(f"# ── Mob template VNUMs {BAR * 57}")
+    w(f"# -- Mob template VNUMs {BAR * 57}")
     for vnum, _ in mobs:
         w(f"{mob_map[vnum]:<34} = {vnum}")
     w("")
-    w(f"# ── Item template VNUMs {BAR * 56}")
+    w(f"# -- Item template VNUMs {BAR * 56}")
     for vnum, _ in objs:
         w(f"{obj_map[vnum]:<34} = {vnum}")
     w("")
 
-    # ── MOBILES ──
-    w(f"# ── Mob templates {BAR * 62}")
+    # -- MOBILES --
+    w(f"# -- Mob templates {BAR * 62}")
     w("# hp_dice / mana_dice / damage: (num_dice, die_size, bonus)")
-    w("# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies ×10")
+    w("# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies x10")
     w("# hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)")
     w("MOBILES = {")
     for vnum, mob in mobs:
         cname = mob_map[vnum]
         w(f"    {cname}: {{")
-        w(f'        "keywords":    {mob["keywords"]!r},')
-        w(f'        "short_descr": {mob["short_descr"]!r},')
-        w(f'        "long_descr":  {mob["long_descr"]!r},')
-        w(f'        "description": {mob["description"]!r},')
-        w(f'        "race":        {mob["race"]!r},')
+        w(f'        "keywords":    {pyrepr(mob["keywords"])},')
+        w(f'        "short_descr": {pyrepr(mob["short_descr"])},')
+        w(f'        "long_descr":  {pyrepr(mob["long_descr"])},')
+        w(f'        "description": {pyrepr(mob["description"])},')
+        w(f'        "race":        {pyrepr(mob["race"])},')
         for flag_key in ("act_flags", "aff_flags"):
             fd = mob[flag_key]
             if fd:
@@ -694,29 +704,29 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, fover
         w(f'        "alignment": {mob["alignment"]},')
         w(f'        "level":     {mob["level"]},')
         w(f'        "hitroll":   {mob["hitroll"]},')
-        w(f'        "hp_dice":   {mob["hp_dice"]!r},')
-        w(f'        "mana_dice": {mob["mana_dice"]!r},')
-        w(f'        "damage":    {mob["damage"]!r},  "dam_type": {mob["dam_type"]!r},')
+        w(f'        "hp_dice":   {pyrepr(mob["hp_dice"])},')
+        w(f'        "mana_dice": {pyrepr(mob["mana_dice"])},')
+        w(f'        "damage":    {pyrepr(mob["damage"])},  "dam_type": {pyrepr(mob["dam_type"])},')
         w(f'        "AC":        {mob["AC"]},')
         for flag_key in ("off_flags", "imm_flags", "res_flags", "vuln_flags"):
             fd = mob[flag_key]
             if fd:
                 w(f'        "{flag_key}": {_repr_flags(fd)},')
-        w(f'        "sex":  {mob["sex"]!r},')
+        w(f'        "sex":  {pyrepr(mob["sex"])},')
         w(f'        "gold": {mob["gold"]},')
-        w(f'        "size": {mob["size"]!r},')
+        w(f'        "size": {pyrepr(mob["size"])},')
         w("    },")
     w("}")
     w("")
 
-    # ── ROOMS ──
-    w(f"# ── Rooms {BAR * 70}")
+    # -- ROOMS --
+    w(f"# -- Rooms {BAR * 70}")
     w("ROOMS = {")
     for vnum, room in rooms:
         cname = room_map[vnum]
         w(f"    {cname}: {{")
-        w(f'        "name": {room["name"]!r},')
-        w(f'        "desc": {repr(room["desc"])},')
+        w(f'        "name": {pyrepr(room["name"])},')
+        w(f'        "desc": {pyrepr(room["desc"])},')
         w(f'        "exits": {{')
         for d in sorted(room["exits"], key=lambda x: "neswud".index(x)):
             to_vnum = room["exits"][d]
@@ -751,22 +761,22 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, fover
         if room["flags"]:
             w(f'        "flags": {_repr_flags(room["flags"])},')
         if room["sector"] is not None:
-            w(f'        "sector": {room["sector"]!r},')
+            w(f'        "sector": {pyrepr(room["sector"])},')
         w("    },")
     w("}")
     w("")
 
-    # ── OBJECTS ──
-    w(f"# ── Item templates {BAR * 61}")
+    # -- OBJECTS --
+    w(f"# -- Item templates {BAR * 61}")
     w("OBJECTS = {")
     for vnum, obj in objs:
         cname = obj_map[vnum]
         w(f"    {cname}: {{")
-        w(f'        "keywords":    {obj["keywords"]!r},')
-        w(f'        "short_descr": {obj["short_descr"]!r},')
-        w(f'        "description": {obj["description"]!r},')
-        w(f'        "material":    {obj["material"]!r},')
-        w(f'        "type": {obj["type"]!r},')
+        w(f'        "keywords":    {pyrepr(obj["keywords"])},')
+        w(f'        "short_descr": {pyrepr(obj["short_descr"])},')
+        w(f'        "description": {pyrepr(obj["description"])},')
+        w(f'        "material":    {pyrepr(obj["material"])},')
+        w(f'        "type": {pyrepr(obj["type"])},')
         w(f'        "wear_flags": {_repr_flags(obj["wear_flags"])},')
         if obj.get("extra_flags"):
             bits = decode_flags(obj["extra_flags"], EXTRA_FLAGS)
@@ -776,7 +786,7 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, fover
             wt = obj.get("weapon_type", "unknown")
             an = obj.get("dam_type", "hit")
             dc = obj.get("dice", (1, 1, 0))
-            w(f'        "weapon_type": {wt!r}, "dam_type": {an!r}, "dice": {dc!r},')
+            w(f'        "weapon_type": {pyrepr(wt)}, "dam_type": {pyrepr(an)}, "dice": {pyrepr(dc)},')
             wf = obj.get("weapon_flags", {})
             w(f'        "weapon_flags": {_repr_flags(wf)},')
         elif obj["type"] == "armor" and "AC" in obj:
@@ -785,24 +795,24 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, fover
             if "spell_level" in obj:
                 w(f'        "spell_level": {obj["spell_level"]},')
             if obj.get("spells"):
-                w(f'        "spells": {obj["spells"]!r},')
+                w(f'        "spells": {pyrepr(obj["spells"])},')
         if obj.get("stat_bonuses"):
-            w(f'        "stat_bonuses": {obj["stat_bonuses"]!r},')
+            w(f'        "stat_bonuses": {pyrepr(obj["stat_bonuses"])},')
         w(f'        "level": {obj["level"]}, "weight": {obj["weight"]}, "value": {obj["value"]},')
         if obj["extra_descs"]:
-            w(f'        "extra_descs": {obj["extra_descs"]!r},')
+            w(f'        "extra_descs": {pyrepr(obj["extra_descs"])},')
         w("    },")
     w("}")
     w("")
 
-    # ── RESETS ──
-    w(f"# ── Resets {BAR * 69}")
-    w('# ("M", mob_vnum, global_limit, room_vnum, room_limit) — spawn mob up to limits')
-    w('# ("O", item_vnum, room_vnum)                          — place one item copy in room')
-    w('# ("E", item_vnum, slot_name)                          — equip item on last M mob')
-    w('# ("G", item_vnum)                                     — give item to last M mob inventory')
-    w('# ("P", item_vnum, limit, container_vnum, max)         — [PRIMESUD] deferred: no containers')
-    w('# ("R", room_vnum, num_dirs)                           — [PRIMESUD] deferred: unused in current areas')
+    # -- RESETS --
+    w(f"# -- Resets {BAR * 69}")
+    w('# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits')
+    w('# ("O", item_vnum, room_vnum)                          -- place one item copy in room')
+    w('# ("E", item_vnum, slot_name)                          -- equip item on last M mob')
+    w('# ("G", item_vnum)                                     -- give item to last M mob inventory')
+    w('# ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers')
+    w('# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas')
     w('# F and D .are resets are baked into room exit flags at conversion time')
     w("RESETS = (")
     for reset in resets:
@@ -839,7 +849,7 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, fover
     return "\n".join(out)
 
 
-# ── Entry point ───────────────────────────────────────────────────────────────
+# -- Entry point ---------------------------------------------------------------
 
 def convert(are_path, out_path=None):
     text  = Path(are_path).read_text(encoding="utf-8", errors="replace")

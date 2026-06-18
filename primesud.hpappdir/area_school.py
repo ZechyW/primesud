@@ -14,7 +14,7 @@ AREA = {
     "version":  4,
 }
 
-# ── Room VNUMs ─────────────────────────────────────────────────────────────────
+# -- Room VNUMs -----------------------------------------------------------------
 R_ENTRANCE_TO_MUD_SCHOOL           = 3700
 R_ROOM_IN_MUD_SCHOOL               = 3701
 R_CENTER_ROOM                      = 3702
@@ -75,7 +75,7 @@ R_FUREY_S_TRAINING_ROOM            = 3758
 R_ZUMP_S_GUILD_ROOM                = 3759
 R_SAFE_ROOM                        = 3760
 
-# ── Mob template VNUMs ─────────────────────────────────────────────────────────
+# -- Mob template VNUMs ---------------------------------------------------------
 M_ACOLYTE_CLERIC                   = 3700
 M_BLOB                             = 3701
 M_MONSTER                          = 3702
@@ -98,7 +98,7 @@ M_ADEPT_CLERIC_3718                = 3718
 M_PRIEST_CLERIC                    = 3719
 M_DIPLOMA_BEAST                    = 3720
 
-# ── Item template VNUMs ────────────────────────────────────────────────────────
+# -- Item template VNUMs --------------------------------------------------------
 I_MACE_SUB_MERC                    = 3700
 I_DAGGER_SUB_MERC                  = 3701
 I_SWORD_SUB_MERC                   = 3702
@@ -123,9 +123,9 @@ I_FLAIL_SUB_MERC                   = 3720
 I_WHIP_SUB_MERC                    = 3721
 I_GLAIVE_SUB_MERC                  = 3722
 
-# ── Mob templates ──────────────────────────────────────────────────────────────
+# -- Mob templates --------------------------------------------------------------
 # hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
-# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies ×10
+# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies x10
 # hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)
 MOBILES = {
     M_ACOLYTE_CLERIC: {
@@ -565,7 +565,7 @@ MOBILES = {
     },
 }
 
-# ── Rooms ──────────────────────────────────────────────────────────────────────
+# -- Rooms ----------------------------------------------------------------------
 ROOMS = {
     R_ENTRANCE_TO_MUD_SCHOOL: {
         "name": 'Entrance to Mud School',
@@ -1219,7 +1219,7 @@ ROOMS = {
     },
 }
 
-# ── Item templates ─────────────────────────────────────────────────────────────
+# -- Item templates -------------------------------------------------------------
 OBJECTS = {
     I_MACE_SUB_MERC: {
         "keywords":    'mace sub merc',
@@ -1515,13 +1515,13 @@ OBJECTS = {
     },
 }
 
-# ── Resets ─────────────────────────────────────────────────────────────────────
-# ("M", mob_vnum, global_limit, room_vnum, room_limit) — spawn mob up to limits
-# ("O", item_vnum, room_vnum)                          — place one item copy in room
-# ("E", item_vnum, slot_name)                          — equip item on last M mob
-# ("G", item_vnum)                                     — give item to last M mob inventory
-# ("P", item_vnum, limit, container_vnum, max)         — [PRIMESUD] deferred: no containers
-# ("R", room_vnum, num_dirs)                           — [PRIMESUD] deferred: unused in current areas
+# -- Resets ---------------------------------------------------------------------
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          -- place one item copy in room
+# ("E", item_vnum, slot_name)                          -- equip item on last M mob
+# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
+# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
 # F and D .are resets are baked into room exit flags at conversion time
 RESETS = (
     ("M", M_ACOLYTE_CLERIC, 1, R_ROOM_IN_MUD_SCHOOL, 1),

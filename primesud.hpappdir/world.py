@@ -1,87 +1,110 @@
+"""World catalogs loaded from area modules and global skill data."""
+
 ###################################
-## PrimeSud — World Loader       ##
+## PrimeSud -- World Loader       ##
 ## Merges all area data and      ##
 ## defines global skill table.   ##
 ###################################
 
 # fmt: off
-# ── Cross-area room VNUMs (cf. 1stMud gsn_* / room vnums in index.h) ──────────
+# -- Cross-area room VNUMs (cf. 1stMud gsn_* / room vnums in index.h) ----------
 R_STARTING_ROOM  = 3700   # player respawn/starting room (Mud School entrance)
 R_RECALL         = 3001   # default recall destination (cf. 1stMud ROOM_VNUM_TEMPLE)
 
-# ── Skills ────────────────────────────────────────────────────────────────────
-GSN_KICK         = 4001
-GSN_CURE_LIGHT   = 4002
-GSN_HAND_TO_HAND = 4010
-GSN_PARRY        = 4020
-GSN_RECALL       = 4030
+# -- Skills --------------------------------------------------------------------
+from skills_table import (
+    SKILL_TABLE as _ST_RAW,
+    GSN_KICK, GSN_HAND_TO_HAND, GSN_PARRY, GSN_RECALL,
+    GSN_SWORD, GSN_AXE, GSN_DAGGER, GSN_FLAIL, GSN_MACE, GSN_POLEARM,
+    GSN_SPEAR, GSN_WHIP, GSN_SHIELD_BLOCK,
+    GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
+)
+import area_limbo
+import area_school
+import area_midgaard
+import area_quest
+import area_chapel
+
+GSN_CURE_LIGHT = 27  # [PRIMESUD] no gsn_cure_light in 1stMud; sn 27 from skill_table
 # fmt: on
 
-# List of (module_name, area_tag) — add/remove areas here only.
+# List of (module_name, area_tag) -- add/remove areas here only.
 _AREA_LIST = [
-    ("area_limbo",    "limbo"),
-    ("area_school",   "mud_school"),
-    ("area_midgaard", "midgaard"),
-    ("area_quest",    "quest"),
-    ("area_chapel",   "chapel"),
+    (area_limbo, "limbo"),
+    (area_school, "mudschool"),  # Avoid underscores; HP Prime string formatting may mis-handle them.
+    (area_midgaard, "midgaard"),
+    (area_quest, "quest"),
+    (area_chapel, "chapel"),
 ]
 
-# Tag every room with its area name (cf. room->area pointer in 1stMud db.c).
-# world.py is the authority — area modules carry no tag of their own.
+# Map each room to its area name (cf. room->area pointer in 1stMud db.c).
+# world.py is the authority -- area modules carry no tag of their own.
 ROOMS = {}
+ROOM_AREAS = {}
 MOB_TEMPLATES = {}
 ITEM_TEMPLATES = {}
-RESETS = ()
+RESETS = []
 AREA_DEFS = []
-
-for _mod_name, _tag in _AREA_LIST:
-    _mod = __import__(_mod_name)
-    for _vnum, _room in _mod.ROOMS.items():
-        _room["area"] = _tag
-        ROOMS[_vnum] = _room
-    MOB_TEMPLATES.update(_mod.MOBILES)
-    ITEM_TEMPLATES.update(_mod.OBJECTS)
-    RESETS = RESETS + _mod.RESETS
-    AREA_DEFS.append({"tag": _tag, "resets": _mod.RESETS})
-
-AREA_DEFS = tuple(AREA_DEFS)
-
-# Snapshot initial door closed/locked state for reset (cf. 1stMud reset_room door loop, db.c:1411)
 DOOR_RESET = {}
-for _vnum, _room in ROOMS.items():
-    for _d, _ev in _room.get("exits", {}).items():
-        if isinstance(_ev, dict) and _ev.get("isdoor"):
-            if _vnum not in DOOR_RESET:
-                DOOR_RESET[_vnum] = {}
-            DOOR_RESET[_vnum][_d] = {"closed": bool(_ev.get("closed")), "locked": bool(_ev.get("locked"))}
+_WORLD_READY = False
 
-# ── Skills (cf. 1stMud skill_table; ordered list for prefix-match tiebreaking) ─
-# type:     "active"  — manually triggered physical skill; beats apply
-#           "spell"   — cast via 'cast <prefix>'; mana/beats/heal_dice apply
-#           "weapon"  — proficiency checked in one_hit
-#           "passive" — checked automatically each round
-# beats: skill lag in pulses (PULSE_VIOLENCE = 12 = one full combat round)
-#
-# Improvement tuning (cf. 1stMud check_improve in skills.c):
-#   rating — intrinsic difficulty of the skill (minimum non-zero class cost
-#             from skills.dat; higher = harder to improve)
-#   Gate formula: chance = 10*INT_learn / (multiplier * rating * 4) + level
-#   multiplier is passed per call site in check_improve(), not stored here.
-#   Roll 1..1000 — improvement only proceeds when roll <= chance.
-SKILL_TABLE = [
-    (GSN_KICK,         {"name": "kick",         "type": "active",  "min_level": 1,
-                        "beats": 12, "mana": 0, "rating": 3,
-                        "target": "char_offensive"}),
-    (GSN_CURE_LIGHT,   {"name": "cure light",   "type": "spell",   "min_level": 1,
-                        "beats": 12, "mana": 10, "rating": 1,
-                        "target": "char_defensive", "msg_off": "!Cure Light!",
-                        "effect": "heal", "heal_dice": (1, 8, 1), "level_div": 4}),
-    (GSN_HAND_TO_HAND, {"name": "hand to hand", "type": "weapon",  "min_level": 1,
-                        "rating": 4}),
-    (GSN_PARRY,        {"name": "parry",        "type": "passive", "min_level": 1,
-                        "rating": 4}),
-    (GSN_RECALL,       {"name": "recall",       "type": "active",  "min_level": 1,
-                        "beats": 0, "mana": 0, "rating": 4, "target": "none"}),
-]
 
-SKILLS = {vnum: data for vnum, data in SKILL_TABLE}
+def init_world():
+    """Initialise merged world catalogs on first use."""
+    global _WORLD_READY
+    if _WORLD_READY:
+        return
+
+    ROOMS.clear()
+    ROOM_AREAS.clear()
+    MOB_TEMPLATES.clear()
+    ITEM_TEMPLATES.clear()
+    del RESETS[:]
+    del AREA_DEFS[:]
+    DOOR_RESET.clear()
+
+    for _mod, _tag in _AREA_LIST:
+        for _vnum, _room in _mod.ROOMS.items():
+            ROOMS[_vnum] = _room
+            ROOM_AREAS[_vnum] = _tag
+        MOB_TEMPLATES.update(_mod.MOBILES)
+        ITEM_TEMPLATES.update(_mod.OBJECTS)
+        RESETS.extend(_mod.RESETS)
+        AREA_DEFS.append({"tag": _tag, "resets": _mod.RESETS})
+
+    # Snapshot initial door closed/locked state for reset (cf. 1stMud reset_room door loop, db.c:1411)
+    for _vnum, _room in ROOMS.items():
+        for _d, _ev in _room.get("exits", {}).items():
+            if isinstance(_ev, dict) and _ev.get("isdoor"):
+                if _vnum not in DOOR_RESET:
+                    DOOR_RESET[_vnum] = {}
+                DOOR_RESET[_vnum][_d] = {"closed": bool(_ev.get("closed")), "locked": bool(_ev.get("locked"))}
+
+    _WORLD_READY = True
+
+# -- Skills (cf. 1stMud skill_table; ordered list for prefix-match tiebreaking) -
+# Flatten per-class tuples: skill_level -> earliest any class learns it;
+# rating -> best (lowest non-zero) rate; default=1 guards all-zero edge case.
+def _flatten_skill(sn, data):
+    d = {}
+    d.update(data)
+    d["skill_level"] = min(data["skill_level"])
+    d["rating"] = min((v for v in data["rating"] if v > 0), default=1)
+    return (sn, d)
+
+SKILL_TABLE = [_flatten_skill(sn, data) for sn, data in _ST_RAW]
+
+SKILLS = dict(SKILL_TABLE)
+
+# Maps item weapon_type string -> GSN (cf. 1stMud weapon_table in const.c).
+# Unknown weapon type -> -1 at call site (see _get_weapon_sn in combat.py).
+WEAPON_GSN_MAP = {
+    "sword":   GSN_SWORD,
+    "axe":     GSN_AXE,
+    "dagger":  GSN_DAGGER,
+    "flail":   GSN_FLAIL,
+    "mace":    GSN_MACE,
+    "polearm": GSN_POLEARM,
+    "spear":   GSN_SPEAR,
+    "whip":    GSN_WHIP,
+}

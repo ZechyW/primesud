@@ -1,3 +1,5 @@
+"""Combat rounds, damage resolution, skills, and fight state."""
+
 from urandom import randint
 
 from config import (PULSE_VIOLENCE,
@@ -6,11 +8,16 @@ from config import (PULSE_VIOLENCE,
                     CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_MIN, THAC0_PLATEAU,
                     ATTACK_TABLE, DAM_NONE, DAM_BASH)
 from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
-                   GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY)
-from player import get_hitroll, get_damroll, get_AC, get_curr_stat, show_prompt, create_object, save_char
+                   GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY,
+                   GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
+                   WEAPON_GSN_MAP)
+from actor import get_hitroll, get_damroll, get_AC, get_curr_stat
+from item import create_object, get_char_room
+from player import save_state
+from picker import pick_from
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 
 def _dice(num, size):
     """Roll num dice of size sides and return the sum.
@@ -32,7 +39,7 @@ def _get_thac0(level):
     """Base THAC0 for a given level (classless curve, before hitroll/skill adj).
 
     Natural THAC0 plateaus at THAC0_PLATEAU; above that only hitroll/AC move
-    the needle.  [PRIMESUD] Classless — 1stMud uses per-class curves; see DESIGN.md.
+    the needle.  [PRIMESUD] Classless -- 1stMud uses per-class curves; see DESIGN.md.
 
     Args:
         level (int): Character level.
@@ -65,7 +72,7 @@ def _xp_for_kill(player_level, mob_level):
         mob_level (int): Defeated mob's level.
 
     Returns:
-        int: XP gain, randomised ±25% around the base value.
+        int: XP gain, randomised +/-25% around the base value.
     """
     lr = mob_level - player_level
     if lr <= -10:
@@ -81,22 +88,50 @@ def _xp_for_kill(player_level, mob_level):
     return randint(base * 3 // 4, base * 5 // 4)
 
 
-def _weapon_skill(player):
-    """Return weapon skill info for the player's currently equipped weapon.
+def _get_weapon_sn(ch, slot="wield"):
+    """Return (sn, tpl_or_None) for the weapon in the given equip slot (cf. get_weapon_sn in handler.c).
 
     Args:
-        player (dict): Player state dict.
+        ch (dict): Player or mob instance dict.
+        slot (str): Equip slot key ('wield' or 'secondary').
 
     Returns:
-        tuple: (sk_vnum (int), learned_pct (int), weapon_tpl (dict or None)).
+        tuple: (sn (int), weapon_tpl (dict or None)).
+            sn=GSN_HAND_TO_HAND when unarmed; sn=-1 for unknown weapon type.
     """
-    wobj = player["equip"].get("wield")
-    if wobj is not None:
-        return GSN_HAND_TO_HAND, player["learned"].get(GSN_HAND_TO_HAND, 20), ITEM_TEMPLATES[wobj["vnum"]]
-    return GSN_HAND_TO_HAND, player["learned"].get(GSN_HAND_TO_HAND, 20), None
+    wobj = ch["equip"].get(slot)
+    if wobj is None:
+        return GSN_HAND_TO_HAND, None
+    tpl = ITEM_TEMPLATES[wobj["vnum"]]
+    sn = WEAPON_GSN_MAP.get(tpl.get("weapon_type", ""), -1)
+    return sn, tpl
 
 
-# ── Damage flavour ────────────────────────────────────────────────────────────
+def _get_weapon_skill(ch, sn):
+    """Return weapon skill% for ch and sn (cf. get_weapon_skill in handler.c).
+
+    Args:
+        ch (dict): Player or mob instance dict.
+        sn (int): Skill GSN; -1 = unknown weapon type.
+
+    Returns:
+        int: Skill percentage (0-100), capped.
+            NPC: level-scaled formula. Player: learned dict lookup.
+    """
+    if ch.get("is_npc"):
+        if sn == -1:
+            skill = 3 * ch["level"]
+        elif sn == GSN_HAND_TO_HAND:
+            skill = 40 + 2 * ch["level"]
+        else:
+            skill = 40 + 5 * ch["level"] // 2
+        return min(skill, 100)
+    if sn == -1:
+        return min(3 * ch["level"], 100)
+    return ch["learned"].get(sn, 0)
+
+
+# -- Damage flavour ------------------------------------------------------------
 
 def _damage_verb(dmg):
     """Return verb pair for a damage amount (cf. 1stMud dam_message in fight.c).
@@ -203,7 +238,7 @@ def _mob_condition(inst, tpl):
     return "{} is bleeding to death.".format(name)
 
 
-# ── Wait state ────────────────────────────────────────────────────────────────
+# -- Wait state ----------------------------------------------------------------
 
 def WaitState(ch, pulses):
     """Set skill lag: ch cannot act for `pulses` pulses (cf. 1stMud WaitState).
@@ -216,7 +251,7 @@ def WaitState(ch, pulses):
         ch["wait"] = pulses
 
 
-# ── Skill improvement ─────────────────────────────────────────────────────────
+# -- Skill improvement ---------------------------------------------------------
 
 def _int_learn(int_stat):
     """Skill improvement rate for an INT stat value (cf. 1stMud int_app[INT].learn).
@@ -227,7 +262,7 @@ def _int_learn(int_stat):
     Returns:
         int: Improvement rate (e.g. 25 at INT 13, 40 at INT 18).
     """
-    return INT_APP_LEARN[min(25, max(0, int_stat))]
+    return INT_APP_LEARN[int_stat]
 
 
 def check_improve(tr, player, sk_vnum, success, multiplier):
@@ -272,10 +307,10 @@ def check_improve(tr, player, sk_vnum, success, multiplier):
             player["xp"] += 2 * sk_rating
 
     if player["learned"].get(sk_vnum) == 100:
-        tr.print("{{GYou have mastered {}!{{x".format(sk_name))
+        tr.print("{GYou have mastered %s!{x" % sk_name)
 
 
-# ── Skill lookup ─────────────────────────────────────────────────────────────
+# -- Skill lookup -------------------------------------------------------------
 
 def get_skill(entity, sn, is_mob=False):
     """Effective skill score for a player or mob, with status penalties applied
@@ -301,197 +336,147 @@ def get_skill(entity, sn, is_mob=False):
     return max(0, min(100, skill))
 
 
-# ── Defensive checks ──────────────────────────────────────────────────────────
+# -- Defensive checks ----------------------------------------------------------
 
-def check_parry(tr, player, mob_inst, mob_is_attacker):
-    """Check if the defender parries the attacker's strike (cf. 1stMud check_parry in fight.c).
+def check_parry(tr, ch, victim):
+    """Check if victim parries ch's strike (cf. 1stMud check_parry in fight.c).
 
     Args:
         tr: Terminal for printing parry messages.
-        player (dict): Player state dict.
-        mob_inst (dict): Mob instance dict (attacker or defender depending on mob_is_attacker).
-        mob_is_attacker (bool): True = mob attacks player (player defends);
-                                False = player attacks mob (mob defends).
+        ch (dict): Attacker (player or mob instance).
+        victim (dict): Defender (player or mob instance).
 
     Returns:
         bool: True if the attack was parried.
     """
-    tpl = MOB_TEMPLATES[mob_inst["tpl"]]
-
-    if mob_is_attacker:
-        if player["equip"].get("wield") is None:
-            return False
-        skill    = get_skill(player, GSN_PARRY)
-        lv_delta = player["level"] - mob_inst["level"]
-    else:
-        skill = get_skill(mob_inst, GSN_PARRY, is_mob=True)
+    if victim["is_npc"]:
+        tpl   = MOB_TEMPLATES[victim["tpl"]]
+        skill = get_skill(victim, GSN_PARRY, is_mob=True)
         if tpl.get("dam_type", "none") == "none":
             skill //= 2
-        lv_delta = mob_inst["level"] - player["level"]
+        lv_delta = victim["level"] - ch["level"]
+    else:
+        if victim["equip"].get("wield") is None:
+            return False
+        skill    = get_skill(victim, GSN_PARRY)
+        lv_delta = victim["level"] - ch["level"]
 
     chance = skill // 2 + lv_delta
     if randint(1, 100) > chance:
         return False
 
-    if mob_is_attacker:
-        tr.print("You parry {}'s attack.".format(tpl["short_descr"]))
-        check_improve(tr, player, GSN_PARRY, True, 6)
+    if victim["is_npc"]:
+        tr.print("{} parries your attack.".format(MOB_TEMPLATES[victim["tpl"]]["short_descr"]))
     else:
-        tr.print("{} parries your attack.".format(tpl["short_descr"]))
+        tr.print("You parry {}'s attack.".format(MOB_TEMPLATES[ch["tpl"]]["short_descr"]))
+        check_improve(tr, victim, GSN_PARRY, True, 6)
     return True
 
 
-# ── Core attack: one_hit ──────────────────────────────────────────────────────
+# -- Core attack: one_hit ------------------------------------------------------
 
-def one_hit(tr, player, target_inst, bonus_damroll=0, slot="weapon"):
-    """One attack from player against target_inst (cf. 1stMud one_hit in fight.c).
+def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
+    """One attack from ch against victim (cf. 1stMud one_hit in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
-        player (dict): Player state dict.
-        target_inst (dict): Target mob instance dict.
+        ch (dict): Attacker (player or mob instance).
+        victim (dict): Defender (player or mob instance).
         bonus_damroll (int): Extra damage roll bonus (e.g. from skills).
-        slot (str): Equipment slot to attack with ('weapon' or 'offhand').
+        secondary (bool): True = secondary weapon (cf. 1stMud bool secondary).
 
     Returns:
         int: Damage dealt (0 on miss).
     """
-    tpl     = MOB_TEMPLATES[target_inst["tpl"]]
-    affects = target_inst["affects"]
+    # Weapon / skill (cf. 1stMud one_hit: skill = 20 + get_weapon_skill, fight.c)
+    slot = "secondary" if secondary else "wield"
+    if secondary and ch["equip"].get(slot) is None:
+        return 0
+    sk_vnum, wtpl = _get_weapon_sn(ch, slot)
+    skill = 20 + _get_weapon_skill(ch, sk_vnum)
 
-    # Weapon / skill
-    if slot == "weapon":
-        sk_vnum, skill, wtpl = _weapon_skill(player)
-    else:
-        wobj = player["equip"].get(slot)
-        if wobj is None:
-            return 0
-        wtpl    = ITEM_TEMPLATES[wobj["vnum"]]
-        sk_vnum = GSN_HAND_TO_HAND
-        skill   = player["learned"].get(GSN_HAND_TO_HAND, 20)
-
-    # THAC0
-    thac0 = _get_thac0(player["level"])
-    thac0 -= get_hitroll(player) * skill // 100
+    # THAC0 -- mob attackers add affect-based hitroll bonus
+    extra_hr = ch.get("affects", {}).get("m_hitroll", 0) if ch["is_npc"] else 0
+    thac0 = _get_thac0(ch["level"])
+    thac0 -= (get_hitroll(ch) + extra_hr) * skill // 100
     thac0 += 5 * (100 - skill) // 100
 
-    victim_ac = get_AC(target_inst) // 10
+    victim_ac = get_AC(victim) // 10
     if victim_ac < -15:  # soft cap (cf. 1stMud one_hit fight.c)
         victim_ac = -((-victim_ac - 15) // 5) - 15
 
-    # Resolve attack noun and damage class from the table
-    _dt_key = wtpl["dam_type"] if wtpl is not None else "none"
-    attack_noun, dam_class = _attack_info(_dt_key)
-    armed = _dt_key != "none"
+    # Attack noun and damage class
+    if ch["is_npc"]:
+        ch_tpl   = MOB_TEMPLATES[ch["tpl"]]
+        dam_type = ch_tpl.get("dam_type", "none")
+    else:
+        dam_type = wtpl["dam_type"] if wtpl is not None else "none"
+        ch_tpl   = None
+    attack_noun, dam_class = _attack_info(dam_type)
+    armed = dam_type != "none"
 
     # Hit check
     roll = randint(0, 19)
     if roll == 0 or (roll != 19 and roll < thac0 - victim_ac):
-        vs, vp = _damage_verb(0)
-        if armed:
-            tr.print("{GYour %s %s {G%s.{x" % (attack_noun, vp, tpl["short_descr"]))
+        if ch["is_npc"]:
+            tr.print("{R%s's %s misses {Ryou.{x" % (ch_tpl["short_descr"], attack_noun))
         else:
-            tr.print("{GYou %s {G%s.{x" % (vs, tpl["short_descr"]))
+            vs, vp = _damage_verb(0)
+            victim_name = MOB_TEMPLATES[victim["tpl"]]["short_descr"]
+            if armed:
+                tr.print("{GYour %s %s {G%s.{x" % (attack_noun, vp, victim_name))
+            else:
+                tr.print("{GYou %s {G%s.{x" % (vs, victim_name))
         return 0
 
-    # Mob parry check
-    if check_parry(tr, player, target_inst, mob_is_attacker=False):
+    # Parry check
+    if check_parry(tr, ch, victim):
         return 0
 
     # Damage
-    if wtpl is not None:
+    if ch["is_npc"]:
+        num, size, _ = ch_tpl["damage"]
+        dam = _dice(num, size)
+    elif wtpl is not None:
         num, size, bonus = wtpl.get("dice", (1, 4, 0))
         dam = (_dice(num, size) + bonus) * skill // 100
     else:
         # Unarmed formula (cf. 1stMud)
         lo = max(1, 1 + 4 * skill // 100)
-        hi = max(lo, 2 * player["level"] * skill // 300)
+        hi = max(lo, 2 * ch["level"] * skill // 300)
         dam = randint(lo, hi)
 
-    # Damroll (scaled by weapon skill)
-    dam += (get_damroll(player) + bonus_damroll) * min(100, skill) // 100
+    dam += (get_damroll(ch) + bonus_damroll) * min(100, skill) // 100
 
     # Soft damage caps (cf. 1stMud)
     if dam > 35:
         dam = (dam - 35) // 2 + 35
     if dam > 80:
         dam = (dam - 80) // 2 + 80
-
     dam = max(1, dam)
-    target_inst["hp"] = max(0, target_inst["hp"] - dam)
+
+    victim["hp"] = max(0, victim["hp"] - dam)
 
     vs, vp = _damage_verb(dam)
-    punct = _damage_punct(dam)
-    if armed:
-        tr.print("{GYour %s %s {G%s%s {W[{R%d{W]{x" % (attack_noun, vp, tpl["short_descr"], punct, dam))
+    punct  = _damage_punct(dam)
+
+    if ch["is_npc"]:
+        tr.print("{R%s's %s %s {Ryou%s {W[{R%d{W]{x" % (ch_tpl["short_descr"], attack_noun, vp, punct, dam))
+        if dam > victim["hp_max"] // 4:
+            tr.print("That really did HURT!")
+        if victim["hp"] < victim["hp_max"] // 4:
+            tr.print("You sure are BLEEDING!")
     else:
-        tr.print("{GYou %s {G%s%s {W[{R%d{W]{x" % (vs, tpl["short_descr"], punct, dam))
-
-    check_improve(tr, player, sk_vnum, True, 5)
-    return dam
-
-
-def _mob_one_hit(tr, mob_inst, player):
-    """One attack from mob against player (cf. 1stMud one_hit in fight.c, NPC side).
-
-    Args:
-        tr: Terminal for printing combat messages.
-        mob_inst (dict): Attacking mob instance dict.
-        player (dict): Player state dict.
-
-    Returns:
-        int: Damage dealt (0 on miss or parry).
-    """
-    tpl     = MOB_TEMPLATES[mob_inst["tpl"]]
-    affects = mob_inst["affects"]
-
-    # cf. 1stMud one_hit: skill = 20 + get_weapon_skill(ch, gsn_hand_to_hand)
-    # get_weapon_skill for NPC unarmed = Range(0, 40 + 2*level, 100); then +20 in one_hit
-    SKILL = 20 + min(100, 40 + 2 * mob_inst["level"])
-
-    mob_hitroll = get_hitroll(mob_inst) + affects.get("m_hitroll", 0)
-    thac0 = _get_thac0(mob_inst["level"])
-    thac0 -= mob_hitroll * SKILL // 100
-    thac0 += 5 * (100 - SKILL) // 100
-
-    player_ac = get_AC(player) // 10
-    if player_ac < -15:  # soft cap (cf. 1stMud one_hit fight.c)
-        player_ac = -((-player_ac - 15) // 5) - 15
-
-    attack_noun, dam_class = _attack_info(tpl.get("dam_type", "none"))
-
-    roll = randint(0, 19)
-    if roll == 0 or (roll != 19 and roll < thac0 - player_ac):
-        tr.print("{R%s's %s misses {Ryou.{x" % (tpl["short_descr"], attack_noun))
-        return 0
-
-    # Defensive checks (player skills)
-    if check_parry(tr, player, mob_inst, mob_is_attacker=True):
-        return 0
-
-    # Damage: dice only — DICE_BONUS is already in mob_inst["damroll"] via create_mobile
-    num, size, _ = tpl["damage"]
-    dam = _dice(num, size)
-    dam += get_damroll(mob_inst) * min(100, SKILL) // 100
-
-    if dam > 35:
-        dam = (dam - 35) // 2 + 35
-    if dam > 80:
-        dam = (dam - 80) // 2 + 80
-
-    dam = max(1, dam)
-    player["hp"] = max(0, player["hp"] - dam)
-
-    _, vp = _damage_verb(dam)
-    punct = _damage_punct(dam)
-    tr.print("{R%s's %s %s {Ryou%s {W[{R%d{W]{x" % (tpl["short_descr"], attack_noun, vp, punct, dam))
-
-    if dam > player["hp_max"] // 4:
-        tr.print("That really did HURT!")
-    if player["hp"] < player["hp_max"] // 4:
-        tr.print("You sure are BLEEDING!")
+        victim_name = MOB_TEMPLATES[victim["tpl"]]["short_descr"]
+        if armed:
+            tr.print("{GYour %s %s {G%s%s {W[{R%d{W]{x" % (attack_noun, vp, victim_name, punct, dam))
+        else:
+            tr.print("{GYou %s {G%s%s {W[{R%d{W]{x" % (vs, victim_name, punct, dam))
+        if sk_vnum != -1:
+            check_improve(tr, ch, sk_vnum, True, 5)
 
     return dam
+
 
 
 def do_kick(tr, ch, args, world):
@@ -550,37 +535,60 @@ def do_kick(tr, ch, args, world):
     return None
 
 
-def mob_hit(tr, mob_inst, player, world):
-    """Full attack sequence for one mob per combat round (cf. 1stMud mob_hit).
+def do_kill(tr, player, args, world):
+    if player["fighting"] is not None:
+        tr.print("You are already fighting!")
+        return
+    rs = world["rooms"][player["room"]]
+    live = rs["mobs"]
+    if not live:
+        tr.print("Kill whom?")
+        return
+    if args:
+        mob_id = get_char_room(" ".join(args), live, world["mobs"])
+        if mob_id is None:
+            tr.print("They aren't here.")
+            return
+    else:
+        names = [MOB_TEMPLATES[world["mobs"][i]["tpl"]]["short_descr"] for i in live]
+        idx = pick_from(tr, "Kill whom?", names)
+        if idx < 0:
+            return
+        mob_id = live[idx]
+    set_fighting(tr, player, mob_id, world["mobs"])
+
+
+def mob_hit(tr, ch, victim, world):
+    """Full attack sequence for one mob per combat round (cf. 1stMud mob_hit in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
-        mob_inst (dict): Attacking mob instance dict.
-        player (dict): Player state dict.
+        ch (dict): Attacking mob instance dict.
+        victim (dict): Player state dict.
         world (dict): Game world state (keys: rooms, mobs, areas).
     """
-    _mob_one_hit(tr, mob_inst, player)
-    if player["hp"] == 0:
+    one_hit(tr, ch, victim)
+    if victim["hp"] == 0:
         return
 
     # Second and third attacks: level-derived chance (cf. 1stMud gsn_second/third_attack)
-    skill = min(100, mob_inst["level"] * 12 + 20)
+    skill = min(100, ch["level"] * 12 + 20)
     if randint(1, 100) <= skill // 2:
-        _mob_one_hit(tr, mob_inst, player)
-        if player["hp"] == 0:
+        one_hit(tr, ch, victim)
+        if victim["hp"] == 0:
             return
 
     if randint(1, 100) <= skill // 4:
-        _mob_one_hit(tr, mob_inst, player)
-        if player["hp"] == 0:
+        one_hit(tr, ch, victim)
+        if victim["hp"] == 0:
             return
 
     # Off-flag specials (cf. 1stMud mob_hit random switch)
-    if mob_inst["off_flags"].get("kick") and randint(0, 8) == 3:
-        do_kick(tr, mob_inst, [], world)
+    if ch["off_flags"].get("kick") and randint(0, 8) == 3:
+        do_kick(tr, ch, [], world)
 
 
-# ── Special unarmed moves [PRIMESUD] (cf. 1stMud special_move for inspiration) ─
+# -- Special unarmed moves [PRIMESUD] (cf. 1stMud special_move for inspiration) -
 
 _SPECIAL_MOVES = [
     (
@@ -639,8 +647,8 @@ def _try_special_move(tr, player, target_inst):
     move = _SPECIAL_MOVES[randint(0, len(_SPECIAL_MOVES) - 1)]
     for line in move[:-1]:
         tr.print(line % name if "%s" in line else line)
-    # Damage: same unarmed formula as one_hit
-    skill = player["learned"].get(GSN_HAND_TO_HAND, 20)
+    # Damage: same unarmed formula as one_hit (cf. 1stMud: skill = 20 + get_weapon_skill)
+    skill = 20 + _get_weapon_skill(player, GSN_HAND_TO_HAND)
     lo  = max(1, 1 + 4 * skill // 100)
     hi  = max(lo, 2 * player["level"] * skill // 300)
     dam = max(1, randint(lo, hi))
@@ -651,41 +659,62 @@ def _try_special_move(tr, player, target_inst):
     return dam
 
 
-# ── Multi-hit (player's full attack sequence) ─────────────────────────────────
+# -- Multi-hit (player's full attack sequence) ---------------------------------
 
-def multi_hit(tr, player, target_inst):
+def multi_hit(tr, ch, victim, world=None):
     """Full attack sequence for one combat round (cf. 1stMud multi_hit in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
-        player (dict): Player state dict.
-        target_inst (dict): Target mob instance dict.
+        ch (dict): Attacker (player or mob instance).
+        victim (dict): Defender (player or mob instance).
+        world (dict or None): Game world state; required when ch is an NPC.
 
     Returns:
-        bool: True if the target was killed this round.
+        bool: True if the victim was killed this round.
     """
+    if ch["is_npc"]:
+        mob_hit(tr, ch, victim, world)
+        return victim["hp"] == 0
+
     # Primary
-    one_hit(tr, player, target_inst)
-    if target_inst["hp"] == 0:
+    one_hit(tr, ch, victim)
+    if victim["hp"] == 0:
         return True
 
-    # [PRIMESUD] Unarmed special move — no 1stMud equivalent
-    if player["equip"].get("wield") is None:
-        _try_special_move(tr, player, target_inst)
-        if target_inst["hp"] == 0:
+    # Offhand weapon (cf. 1stMud multi_hit WEAR_SECONDARY in fight.c)
+    secondary_obj = ch["equip"].get("secondary")
+    if secondary_obj is not None and ITEM_TEMPLATES[secondary_obj["vnum"]].get("type") == "weapon":
+        one_hit(tr, ch, victim, secondary=True)
+        if victim["hp"] == 0:
             return True
 
-    # Offhand weapon
-    offhand = player["equip"].get("offhand")
-    if offhand is not None and ITEM_TEMPLATES[offhand["vnum"]].get("type") == "weapon":
-        one_hit(tr, player, target_inst, slot="offhand")
-        if target_inst["hp"] == 0:
+    # Second attack (cf. 1stMud multi_hit in fight.c; mobs use off_flags, PCs use learned)
+    if ch.get("is_npc"):
+        fires_second = ch.get("off_flags", {}).get("second_attack")
+        fires_third  = ch.get("off_flags", {}).get("third_attack")
+    else:
+        fires_second = ch["learned"].get(GSN_SECOND_ATTACK, 0) > randint(1, 100)
+        fires_third  = ch["learned"].get(GSN_THIRD_ATTACK, 0) > randint(1, 100)
+    if fires_second:
+        one_hit(tr, ch, victim)
+        if victim["hp"] == 0:
+            return True
+    if fires_third:
+        one_hit(tr, ch, victim)
+        if victim["hp"] == 0:
+            return True
+
+    # [PRIMESUD] Unarmed special move -- no 1stMud equivalent
+    if ch["equip"].get("wield") is None:
+        _try_special_move(tr, ch, victim)
+        if victim["hp"] == 0:
             return True
 
     return False
 
 
-# ── Combat state ──────────────────────────────────────────────────────────────
+# -- Combat state --------------------------------------------------------------
 
 def set_fighting(tr, player, mob_id, mob_instances):
     """Enter combat: engage a single mob against the player (cf. 1stMud set_fighting in fight.c).
@@ -694,7 +723,7 @@ def set_fighting(tr, player, mob_id, mob_instances):
         tr: Terminal for printing combat messages.
         player (dict): Player state dict.
         mob_id (int): ID of the mob to engage.
-        mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
+        mob_instances (dict): Mob instance mapping mob ID -> mob instance dict.
     """
     inst = mob_instances[mob_id]
     tpl  = MOB_TEMPLATES[inst["tpl"]]
@@ -715,8 +744,8 @@ def check_assist(tr, player, attacked_id, mob_instances, room_state):
         tr: Terminal for printing combat messages.
         player (dict): Player state dict.
         attacked_id (int): ID of the mob the player is currently attacking.
-        mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
-        room_state (dict): Room state mapping room ID → room state dict.
+        mob_instances (dict): Mob instance mapping mob ID -> mob instance dict.
+        room_state (dict): Room state mapping room ID -> room state dict.
     """
     rs            = room_state[player["room"]]
     attacked_inst = mob_instances[attacked_id]
@@ -750,7 +779,7 @@ def stop_fighting(player, mob_instances):
 
     Args:
         player (dict): Player state dict.
-        mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
+        mob_instances (dict): Mob instance mapping mob ID -> mob instance dict.
     """
     for inst in mob_instances.values():
         if inst["state"] == "aggro":
@@ -766,8 +795,8 @@ def _advance_target(player, mob_instances, room_state):
 
     Args:
         player (dict): Player state dict.
-        mob_instances (dict): Mob instance mapping mob ID → mob instance dict.
-        room_state (dict): Room state mapping room ID → room state dict.
+        mob_instances (dict): Mob instance mapping mob ID -> mob instance dict.
+        room_state (dict): Room state mapping room ID -> room state dict.
     """
     rs      = room_state[player["room"]]
     next_id = None
@@ -781,7 +810,7 @@ def _advance_target(player, mob_instances, room_state):
         stop_fighting(player, mob_instances)
 
 
-# ── Violence update (called every PULSE_VIOLENCE) ─────────────────────────────
+# -- Violence update (called every PULSE_VIOLENCE) -----------------------------
 
 def violence_update(tr, player, world):
     """One combat pulse: player attacks, then all aggro mobs counter-attack (cf. 1stMud violence_update in fight.c).
@@ -834,7 +863,7 @@ def violence_update(tr, player, world):
         if mob_tpl.get("passive"):
             continue
 
-        mob_hit(tr, mob_inst, player, world)
+        multi_hit(tr, mob_inst, player, world)
 
         # Tick debuff timers
         affects = mob_inst["affects"]
@@ -858,7 +887,7 @@ def violence_update(tr, player, world):
 
 
 
-# ── Death / Victory ───────────────────────────────────────────────────────────
+# -- Death / Victory -----------------------------------------------------------
 
 # [PRIMESUD] uniform distribution over all variants; 1stMud uses number_bits(4)
 # with per-mob part flags, giving ~50% chance of the fallback "death cry" line.
@@ -912,10 +941,7 @@ def raw_kill(tr, player, mob_id, inst, tpl, world):
         tr.print("{} falls to the ground.".format(ITEM_TEMPLATES[_inv_vnum]["short_descr"]))
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
-    try:
-        save_char(player, world)
-    except Exception as e:
-        tr.print("Save failed: {}".format(e))
+    save_state(tr, player, world, quiet=True)
 
     world["rooms"][inst["room"]]["mobs"].remove(mob_id)
     del world["mobs"][mob_id]
@@ -931,14 +957,14 @@ def advance_level(tr, player):
     """
     player["level"] += 1
     player["xp"]    -= player["xp_next"]
-    # xp_next stays 1000 (flat cost per level — 1stMud exp_per_level with 40 pts, human)
+    # xp_next stays 1000 (flat cost per level -- 1stMud exp_per_level with 40 pts, human)
 
-    con  = min(25, max(0, player["con"]))
-    wis  = min(25, max(0, player["wis"]))
-    int_ = min(25, max(0, player["int"]))
+    con  = get_curr_stat(player, "con")
+    wis  = get_curr_stat(player, "wis")
+    int_ = get_curr_stat(player, "int")
 
     # HP: (con_app.hitp + class_hp_roll) * 9/10, min 2  (cf. 1stMud advance_level in update.c)
-    # Two-step roll mirrors 1stMud get_hp_gain: number_range(hp_min,hp_max) → number_range(result,result+1)
+    # Two-step roll mirrors 1stMud get_hp_gain: number_range(hp_min,hp_max) -> number_range(result,result+1)
     hp_roll = randint(CLASS_HP_MIN, CLASS_HP_MAX)
     hp_roll = randint(hp_roll, hp_roll + 1)
     add_hp  = max(2, (CON_APP_HITP[con] + hp_roll) * 9 // 10)
@@ -962,6 +988,6 @@ def advance_level(tr, player):
         add_mp,
         add_prac, "practice" if add_prac == 1 else "practices"))
     for _sn, data in SKILL_TABLE:
-        if data.get("min_level") == player["level"]:
-            kind = "spell" if data["type"] == "spell" else "skill"
+        if data.get("skill_level") == player["level"]:
+            kind = "spell" if data.get("spell_fun", "spell_null") != "spell_null" else "skill"
             tr.print("You can now use the {} {}.".format(data["name"], kind))

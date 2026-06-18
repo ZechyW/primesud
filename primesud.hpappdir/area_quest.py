@@ -14,17 +14,17 @@ AREA = {
     "version":  4,
 }
 
-# ── Room VNUMs ─────────────────────────────────────────────────────────────────
+# -- Room VNUMs -----------------------------------------------------------------
 R_QUESTORS_LOUNGE                  = 200
 R_REGISTAR_S_OFFICE                = 201
 R_TRIVIA_SHOP                      = 202
 
-# ── Mob template VNUMs ─────────────────────────────────────────────────────────
+# -- Mob template VNUMs ---------------------------------------------------------
 M_EDURIN_QUESTMASTER_QUESTOR       = 200
 M_TRIVIA_SHOPKEEPER                = 201
 M_200_REGISTRAR_GQUEST             = 202
 
-# ── Item template VNUMs ────────────────────────────────────────────────────────
+# -- Item template VNUMs --------------------------------------------------------
 I_TRIVIA_PILL                      = 200
 I_QUEST_AURA_SANCTUARY             = 201
 I_SWORD_QUEST_ANCIENT              = 203
@@ -42,9 +42,9 @@ I_EAGLE_CLAW                       = 215
 I_RABBIT_FOOT                      = 216
 I_WOLF_TOOTH                       = 217
 
-# ── Mob templates ──────────────────────────────────────────────────────────────
+# -- Mob templates --------------------------------------------------------------
 # hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
-# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies ×10
+# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies x10
 # hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)
 MOBILES = {
     M_EDURIN_QUESTMASTER_QUESTOR: {
@@ -115,7 +115,7 @@ MOBILES = {
     },
 }
 
-# ── Rooms ──────────────────────────────────────────────────────────────────────
+# -- Rooms ----------------------------------------------------------------------
 ROOMS = {
     R_QUESTORS_LOUNGE: {
         "name": 'The Questors Lounge',
@@ -143,7 +143,7 @@ ROOMS = {
     },
 }
 
-# ── Item templates ─────────────────────────────────────────────────────────────
+# -- Item templates -------------------------------------------------------------
 OBJECTS = {
     I_TRIVIA_PILL: {
         "keywords":    'trivia pill',
@@ -321,13 +321,13 @@ OBJECTS = {
     },
 }
 
-# ── Resets ─────────────────────────────────────────────────────────────────────
-# ("M", mob_vnum, global_limit, room_vnum, room_limit) — spawn mob up to limits
-# ("O", item_vnum, room_vnum)                          — place one item copy in room
-# ("E", item_vnum, slot_name)                          — equip item on last M mob
-# ("G", item_vnum)                                     — give item to last M mob inventory
-# ("P", item_vnum, limit, container_vnum, max)         — [PRIMESUD] deferred: no containers
-# ("R", room_vnum, num_dirs)                           — [PRIMESUD] deferred: unused in current areas
+# -- Resets ---------------------------------------------------------------------
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          -- place one item copy in room
+# ("E", item_vnum, slot_name)                          -- equip item on last M mob
+# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
+# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
 # F and D .are resets are baked into room exit flags at conversion time
 RESETS = (
     ("M", M_EDURIN_QUESTMASTER_QUESTOR, 1, R_QUESTORS_LOUNGE, 1),
