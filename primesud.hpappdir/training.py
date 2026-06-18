@@ -124,6 +124,7 @@ def do_practice(tr, player, args, world):
         if not practicable:
             return
         names = ["{} ({}%)".format(SKILLS[vnum]["name"], pct) for vnum, pct in practicable]
+        tr.print("")
         idx = pick_from(tr, "Practice which skill?", names)
         if idx < 0:
             return

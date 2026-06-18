@@ -323,13 +323,18 @@ def _print_level_lists(tr, player, args, want_spells):
 def print_practice_table(tr, player):
     """Print learned practice percentages (cf. 1stMud do_practice in act_info.c)."""
     items = []
+    half = TERMINAL_COLS // 2
+    name_w = 18
     learned = player.get("learned", {})
     for sn, sk in SKILL_TABLE:
         pct = learned.get(sn, 0)
         if can_use_skill_spell(player, sn) and pct > 0:
-            items.append("{:<18} {:3d}%".format(sk["name"][:18], pct))
+            items.append("{:<{}} {:3d}%".format(sk["name"][:name_w], name_w, pct))
     for i in range(0, len(items), 2):
-        tr.print(" ".join(items[i:i + 2]))
+        line = items[i]
+        if i + 1 < len(items):
+            line = line + " " * (half - len(line)) + items[i + 1]
+        tr.print(line)
 
 
 def do_skills(tr, player, args, world):
