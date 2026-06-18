@@ -115,7 +115,7 @@ def _tpl_room_count(mob_instances, room_vnum, tpl_vnum):
                if inst["tpl"] == tpl_vnum and inst["room"] == room_vnum)
 
 
-def reset_mobs(mob_instances, room_state, resets):
+def reset_mobs(mob_instances, room_state, resets, tr=None, debug=False):
     """Spawn mobs for each M entry up to global and room limits (cf. 1stMud reset_room 'M' case, db.c).
 
     E and G entries following a successful M equip or give items to the spawned mob,
@@ -129,6 +129,8 @@ def reset_mobs(mob_instances, room_state, resets):
         mob_instances (dict): Mob instance mapping mob ID -> instance dict.
         room_state (dict): Room state mapping room vnum -> room state dict.
         resets (tuple): Area RESETS sequence.
+        tr: Optional terminal for reset debug output.
+        debug (bool): True to print each spawned mob.
     """
     mob_id = max(mob_instances, default=0) + 1
     last_mob_id  = None   # cf. 1stMud LastMob in reset_room
@@ -148,6 +150,10 @@ def reset_mobs(mob_instances, room_state, resets):
             inst["home_area"] = ROOM_AREAS.get(room_vnum)
             mob_instances[mob_id] = inst
             room_state[room_vnum]["mobs"].append(mob_id)
+            if debug and tr is not None:
+                tr.print("{D[reset] spawned %s in %s{x" % (
+                    MOB_TEMPLATES[tpl_vnum]["short_descr"],
+                    ROOMS[room_vnum]["name"]))
             last_mob_id  = mob_id
             last_spawned = True
             mob_id += 1
