@@ -10,7 +10,7 @@ from player import PLR_AUTOMAP, PLR_DEFAULTS
 from combat import _get_thac0
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from config import TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS, MAX_MORTAL_LEVEL
-from skill_utils import can_use_skill_spell, is_spell, skill_level, spell_mana
+from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, spell_mana
 
 
 def _wrap(text, width):
@@ -291,6 +291,7 @@ def _print_level_lists(tr, player, args, want_spells):
                 and (f_all or level <= player.get("level", 1))
                 and min_lev <= level <= max_lev
                 and is_spell(sn) == want_spells
+                and (not want_spells or is_runtime_spell(sn))
                 and learned.get(sn, 0) > 0):
             found = True
             if want_spells:

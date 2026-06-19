@@ -10,6 +10,21 @@ def is_spell(sn):
     return sk is not None and sk.get("spell_fun", "spell_null") != "spell_null"
 
 
+def is_runtime_spell(sn):
+    """Return True if spell has a runtime implementation registered."""
+    sk = SKILLS.get(sn)
+    if sk is None:
+        return False
+    fun = sk.get("spell_fun", "spell_null")
+    if fun == "spell_null":
+        return False
+    try:
+        from magic import SPELL_FUNS
+        return fun in SPELL_FUNS
+    except ImportError:
+        return False
+
+
 def skill_level(player, sn):
     """Return level at which player can use skill/spell (cf. 1stMud skill_level in multiclass.c).
 
@@ -59,4 +74,6 @@ def spell_mana(player, sn):
     """Return current mana cost for spell display (cf. 1stMud do_spells in skills.c)."""
     sk = SKILLS[sn]
     level = skill_level(player, sn)
+    if player.get("level", 1) + 2 == level:
+        return 50
     return max(sk.get("min_mana", 0), 100 // (2 + player.get("level", 1) - level))
