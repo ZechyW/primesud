@@ -67,10 +67,12 @@ def create_char():
         "train": 3,
         "hitroll": 0,
         "damroll": 0,
+        "saving_throw": 0,
         "AC": 100,  # base unarmored (100 = poor; negative = better)
         "wait": 0,  # skill lag in pulses
         "daze": 0,  # stun in pulses
         "affects": {},
+        "affect_list": [],
         "mod_stat": {},
         "room": R_STARTING_ROOM,
         "inv": [],
@@ -152,17 +154,14 @@ def tick_update(tr, player, room):
     player["hp"] = min(player["hp_max"], player["hp"] + hp_gain)
     player["mp"] = min(player["mp_max"], player["mp"] + mp_gain)
 
-    for sn in list(player["affects"]):
-        aff = player["affects"].get(sn)
-        if aff is None:
-            continue
+    for aff in list(player.get("affect_list", [])):
         if aff["duration"] > 0:
             aff["duration"] -= 1
         elif aff["duration"] == 0:
-            msg = SKILLS.get(sn, {}).get("msg_off", "")
+            msg = SKILLS.get(aff.get("type"), {}).get("msg_off", "")
             if msg and not msg.startswith("!"):
                 tr.print(msg)
-            affect_remove(player, sn)
+            affect_remove(player, aff)
 
 
 # -- Display -------------------------------------------------------------------
@@ -213,7 +212,7 @@ def save_char(player, world):
     for key in ("name", "level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
-                "hitroll", "damroll", "AC", "room",
+                "hitroll", "damroll", "saving_throw", "AC", "room",
                 "practice", "train", "flags", "played"):
         lines.append("p." + key + "=" + str(player[key]))
     inv_parts = []
@@ -335,7 +334,7 @@ def load_char(player, world):
     int_keys = {"level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
-                "hitroll", "damroll", "AC", "room",
+                "hitroll", "damroll", "saving_throw", "AC", "room",
                 "practice", "train", "flags", "played"}
 
     if player["_macros"] is not None:

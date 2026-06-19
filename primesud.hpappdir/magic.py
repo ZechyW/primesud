@@ -5,7 +5,7 @@ from picker import pick_from
 from combat import (WaitState, check_improve, get_skill, set_fighting,
                     raw_kill, _advance_target, _damage_verb, _damage_punct)
 from item import get_char_room, get_obj_list
-from actor import is_name
+from actor import is_name, is_affected, affect_to_char
 from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
 
 from urandom import randint
@@ -117,16 +117,108 @@ def spell_magic_missile(tr, sn, level, ch, vo, target, world):
     return _damage_char(tr, ch, vo, _target_id(ch, vo, world), dam, sn, world)
 
 
+def _new_affect(sn, level, duration, location, modifier, bitvector=""):
+    return {
+        "where": "affects",
+        "type": sn,
+        "level": level,
+        "duration": duration,
+        "location": location,
+        "modifier": modifier,
+        "bitvector": bitvector,
+    }
+
+
+def spell_armor(tr, sn, level, ch, vo, target, world):
+    """Armor spell (cf. 1stMud spell_armor in magic.c)."""
+    if is_affected(vo, sn):
+        tr.print("You are already armored." if vo is ch else "They are already armored.")
+        return False
+    affect_to_char(vo, _new_affect(sn, level, 24, "AC", -20))
+    if vo is ch:
+        tr.print("You feel someone protecting you.")
+    else:
+        tr.print("They are protected by your magic.")
+    return True
+
+
+def spell_shield(tr, sn, level, ch, vo, target, world):
+    """Shield spell (cf. 1stMud spell_shield in magic.c)."""
+    if is_affected(vo, sn):
+        tr.print("You are already shielded from harm." if vo is ch else "They are already protected by a shield.")
+        return False
+    affect_to_char(vo, _new_affect(sn, level, 8 + level, "AC", -20))
+    if vo is ch:
+        tr.print("You are surrounded by a force shield.")
+    return True
+
+
+def spell_bless(tr, sn, level, ch, vo, target, world):
+    """Bless character path (cf. 1stMud spell_bless in magic.c)."""
+    if target == TARGET_OBJ:
+        tr.print("That spell does not work on objects yet.")
+        return False
+    if vo.get("pos") == "fighting" or is_affected(vo, sn):
+        tr.print("You are already blessed." if vo is ch else "They already have divine favor.")
+        return False
+    mod = level // 8
+    affect_to_char(vo, _new_affect(sn, level, 6 + level, "hitroll", mod))
+    affect_to_char(vo, _new_affect(sn, level, 6 + level, "saving_throw", -mod))
+    if vo is ch:
+        tr.print("You feel righteous.")
+    else:
+        tr.print("You grant them the favor of your god.")
+    return True
+
+
+def spell_giant_strength(tr, sn, level, ch, vo, target, world):
+    """Giant strength spell (cf. 1stMud spell_giant_strength in magic.c)."""
+    if is_affected(vo, sn):
+        tr.print("You are already as strong as you can get!" if vo is ch else "They can't get any stronger.")
+        return False
+    mod = 1 + (level >= 18) + (level >= 25) + (level >= 32)
+    affect_to_char(vo, _new_affect(sn, level, level, "str", mod))
+    if vo is ch:
+        tr.print("Your muscles surge with heightened power!")
+    return True
+
+
+def spell_weaken(tr, sn, level, ch, vo, target, world):
+    """Weaken spell, without saves until Phase 4 (cf. 1stMud spell_weaken in magic.c)."""
+    if is_affected(vo, sn):
+        return False
+    affect_to_char(vo, _new_affect(sn, level, level // 2, "str", -1 * (level // 5), "weaken"))
+    if vo is ch:
+        tr.print("You feel your strength slip away.")
+    return True
+
+
+def spell_faerie_fire(tr, sn, level, ch, vo, target, world):
+    """Faerie fire spell (cf. 1stMud spell_faerie_fire in magic.c)."""
+    if vo.get("aff_flags", {}).get("faerie_fire"):
+        return False
+    affect_to_char(vo, _new_affect(sn, level, level, "AC", 2 * level, "faerie_fire"))
+    if vo is ch:
+        tr.print("You are surrounded by a pink outline.")
+    return True
+
+
 SPELL_FUNS = {
+    "spell_armor": spell_armor,
+    "spell_bless": spell_bless,
     "spell_cause_critical": spell_cause_critical,
     "spell_cause_light": spell_cause_light,
     "spell_cause_serious": spell_cause_serious,
     "spell_cure_critical": spell_cure_critical,
     "spell_cure_light": spell_cure_light,
     "spell_cure_serious": spell_cure_serious,
+    "spell_faerie_fire": spell_faerie_fire,
+    "spell_giant_strength": spell_giant_strength,
     "spell_harm": spell_harm,
     "spell_heal": spell_heal,
     "spell_magic_missile": spell_magic_missile,
+    "spell_shield": spell_shield,
+    "spell_weaken": spell_weaken,
 }
 
 

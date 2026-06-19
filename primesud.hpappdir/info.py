@@ -375,19 +375,20 @@ def do_affects(tr, player, args, world):
         args (list): Unused.
         world (dict): Game world state (keys: rooms, mobs, areas); unused.
     """
-    affects = player.get("affects", {})
+    affects = player.get("affect_list", [])
     if not affects:
         tr.print("You are not affected by any spells.")
         return
     tr.print("You are affected by:")
-    for sn, aff in affects.items():
+    for aff in affects:
+        sn = aff.get("type")
         sk = SKILLS.get(sn)
         name = sk["name"] if sk else "unknown"
         mod = aff["modifier"]
         dur = aff["duration"]
         dur_str = "permanent" if dur < 0 else "{} tick{}".format(dur, "" if dur == 1 else "s")
         tr.print("  {}: modifies {} by {:+d} for {}".format(
-            name, aff["loc"], mod, dur_str))
+            name, aff["location"], mod, dur_str))
 
 
 def do_credits(tr, player, args, world):

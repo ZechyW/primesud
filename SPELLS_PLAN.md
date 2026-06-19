@@ -295,6 +295,8 @@ Acceptance:
 - stat/AC modifiers apply and unapply.
 - `msg_off` prints on expiry unless `!`.
 
+Status: complete pending review.
+
 ### Phase 4: Saves, Debuffs, and Cure/Dispel
 
 Before this phase, update `DESIGN.md` to reopen the saving-throws decision and document PrimeSUD's minimal `saving_throw = 0` baseline plus deferred immunity/resistance/vulnerability branches.

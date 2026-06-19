@@ -45,45 +45,67 @@ def affect_modify(char, loc, modifier, add):
         char["hitroll"] += modifier
     elif loc == "damroll":
         char["damroll"] += modifier
+    elif loc == "saving_throw":
+        char["saving_throw"] = char.get("saving_throw", 0) + modifier
     elif loc in ("str", "dex", "int", "wis", "con"):
         ms = char.setdefault("mod_stat", {})
         ms[loc] = ms.get(loc, 0) + modifier
 
 
-def affect_to_char(char, sn, loc, modifier, duration):
-    """Apply a timed affect to a character (cf. 1stMud affect_to_char in handler.c).
-
-    Stores the affect in char["affects"] keyed by sn (skill/spell number) and
-    immediately applies the modifier via affect_modify.  Overwrites any existing
-    affect with the same sn.
-
-    Args:
-        char (dict): Character state dict (player or mob instance).
-        sn (int): Skill/spell number identifying this affect.
-        loc (str): Affect location (see affect_modify).
-        modifier (int): Stat modifier value.
-        duration (int): Duration in ticks (>= 1).
-    """
-    existing = char["affects"].get(sn)
-    if existing is not None:
-        affect_modify(char, existing["loc"], existing["modifier"], False)
-    char["affects"][sn] = {"loc": loc, "modifier": modifier, "duration": duration}
-    affect_modify(char, loc, modifier, True)
+def is_affected(char, sn):
+    """Return True if char has a spell affect type (cf. 1stMud is_affected in handler.c)."""
+    return affect_find(char, sn) is not None
 
 
-def affect_remove(char, sn):
-    """Remove an active affect from a character (cf. 1stMud affect_remove in handler.c).
+def affect_find(char, sn):
+    """Return first affect of type sn, or None (cf. 1stMud affect_find in handler.c)."""
+    for af in char.get("affect_list", []):
+        if af.get("type") == sn:
+            return af
+    return None
 
-    Unapplies the modifier via affect_modify then deletes the entry from
-    char["affects"].  No-op if sn is not in the affects dict.
+
+def affect_to_char(char, af):
+    """Apply a 1stMud-style timed affect to a character (cf. 1stMud affect_to_char in handler.c).
 
     Args:
         char (dict): Character state dict (player or mob instance).
-        sn (int): Skill/spell number to remove.
+        af (dict): Affect with type, level, duration, location, modifier, bitvector.
     """
-    aff = char["affects"].pop(sn, None)
-    if aff is not None:
-        affect_modify(char, aff["loc"], aff["modifier"], False)
+    cur = dict(af)
+    char.setdefault("affect_list", []).append(cur)
+    affect_modify(char, cur.get("location", "none"), cur.get("modifier", 0), True)
+    bit = cur.get("bitvector", "")
+    if bit:
+        char.setdefault("aff_flags", {})[bit] = True
+
+
+def affect_remove(char, af):
+    """Remove one active affect from a character (cf. 1stMud affect_remove in handler.c)."""
+    affects = char.get("affect_list", [])
+    if af in affects:
+        affects.remove(af)
+    affect_modify(char, af.get("location", "none"), af.get("modifier", 0), False)
+    _rebuild_aff_flags(char)
+
+
+def affect_strip(char, sn):
+    """Remove all affects of type sn (cf. 1stMud affect_strip in handler.c)."""
+    for af in list(char.get("affect_list", [])):
+        if af.get("type") == sn:
+            affect_remove(char, af)
+
+
+def _rebuild_aff_flags(char):
+    flags = {}
+    for af in char.get("affect_list", []):
+        bit = af.get("bitvector", "")
+        if bit:
+            flags[bit] = True
+    if flags:
+        char["aff_flags"] = flags
+    elif "aff_flags" in char:
+        char["aff_flags"] = {}
 
 
 def get_hitroll(char):
