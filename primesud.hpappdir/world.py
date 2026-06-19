@@ -31,7 +31,7 @@ GSN_CURE_LIGHT = 27  # [PRIMESUD] no gsn_cure_light in 1stMud; sn 27 from skill_
 # List of (module_name, area_tag) -- add/remove areas here only.
 _AREA_LIST = [
     (area_limbo, "limbo"),
-    (area_school, "mudschool"),  # Avoid underscores; HP Prime string formatting may mis-handle them.
+    (area_school, "mud_school"),
     (area_midgaard, "midgaard"),
     (area_quest, "quest"),
     (area_chapel, "chapel"),

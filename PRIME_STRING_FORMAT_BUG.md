@@ -101,8 +101,6 @@ Avoid both `%` and `.format()` for:
 Transient UI-only strings built from simple literals (no dict lookup) may still
 use `%` when useful for `{X` colour-code compatibility.
 
-Area tags avoid underscores where possible. The Mud School tag is `mudschool`
-instead of `mud_school`.
 
 ## Status
 
