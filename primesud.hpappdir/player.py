@@ -16,6 +16,7 @@ from world import (
     GSN_SWORD,
     GSN_RECALL,
 )
+from item import serialize_item_token, parse_item_token
 
 _EQUIP_SAVE_ORDER = (
     "light", "finger_l", "finger_r", "neck_1", "neck_2", "body", "head",
@@ -37,7 +38,7 @@ PLR_DEFAULTS = PLR_AUTOMAP
 #
 # Skill numeric IDs (GSN_*) are permanent once assigned: recycling an ID for a
 # different skill would cause old saves to corrupt the new skill's learned %.
-SAVE_VERSION = 1
+SAVE_VERSION = 2
 
 # -- Player model --------------------------------------------------------------
 
@@ -217,11 +218,11 @@ def save_char(player, world):
         lines.append("p." + key + "=" + str(player[key]))
     inv_parts = []
     for o in player["inv"]:
-        inv_parts.append(str(o["vnum"]) + ":" + str(o["cost"]))
+        inv_parts.append(serialize_item_token(o))
     lines.append("p.inv=" + "|".join(inv_parts))
     for slot in _EQUIP_SAVE_ORDER:
         obj = player["equip"][slot]
-        val = str(obj["vnum"]) + ":" + str(obj["cost"]) if obj is not None else ""
+        val = serialize_item_token(obj) if obj is not None else ""
         lines.append("p.eq." + slot + "=" + val)
     learned_parts = []
     for sk in sorted(player["learned"]):
@@ -264,7 +265,7 @@ def save_char(player, world):
             continue
         item_parts = []
         for o in rs["items"]:
-            item_parts.append(str(o["vnum"]) + ":" + str(o["cost"]))
+            item_parts.append(serialize_item_token(o))
         lines.append("r." + str(rvnum) + ".items=" + "|".join(item_parts))
     for i in range(len(lines)):
         if not isinstance(lines[i], str):
@@ -288,12 +289,6 @@ def save_state(tr, player, world, quiet=False):
     except Exception as e:
         tr.print("Save failed: %s" % e)
         return False
-
-
-def _parse_item(s):
-    """Parse a saved item token ('vnum:cost') into an instance dict."""
-    v, c = s.split(":", 1)
-    return {"vnum": int(v), "cost": int(c)}
 
 
 def load_char(player, world):
@@ -350,9 +345,9 @@ def load_char(player, world):
         key, val = line.split("=", 1)
         if key.startswith("p.eq."):
             slot = key[5:]
-            player["equip"][slot] = _parse_item(val) if val else None
+            player["equip"][slot] = parse_item_token(val) if val else None
         elif key == "p.inv":
-            player["inv"] = [_parse_item(v) for v in val.split("|") if v]
+            player["inv"] = [parse_item_token(v) for v in val.split("|") if v]
         elif key == "p.learned":
             for entry in val.split("|"):
                 if ":" in entry:
@@ -370,7 +365,7 @@ def load_char(player, world):
         elif key.startswith("r.") and key.endswith(".items"):
             rvnum = int(key.split(".")[1])
             if rvnum in world["rooms"]:
-                world["rooms"][rvnum]["items"] = [_parse_item(v) for v in val.split("|") if v]
+                world["rooms"][rvnum]["items"] = [parse_item_token(v) for v in val.split("|") if v]
         elif key.startswith("a.") and key.endswith(".age"):
             tag = key[2:-4]
             if tag in _area_by_tag:

@@ -4,7 +4,8 @@ from world import SKILLS, SKILL_TABLE, ITEM_TEMPLATES, MOB_TEMPLATES
 from picker import pick_from
 from combat import (WaitState, check_improve, get_skill, set_fighting,
                     raw_kill, _advance_target, _damage_verb, _damage_punct)
-from item import get_char_room, get_obj_list
+from item import (get_char_room, get_obj_list, obj_vnum, item_spell_level,
+                  item_spells, item_spell_name)
 from actor import is_name, is_affected, affect_to_char, affect_strip
 from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
 
@@ -89,6 +90,18 @@ def _skill_lookup(name):
         if sk["name"] == name:
             return sn
     return None
+
+
+def _item_name(obj):
+    if obj is None:
+        return "item"
+    tpl = ITEM_TEMPLATES.get(obj_vnum(obj), {})
+    return tpl.get("short_descr", "item")
+
+
+def _dev_item_fail(tr, obj, message):
+    tr.print("[DEV] " + _item_name(obj) + ": " + message)
+    return False
 
 
 def saves_spell(level, victim, dam_type):
@@ -481,6 +494,61 @@ def _find_room_obj(player, world, target_name):
     return get_obj_list(target_name, rs["items"], ITEM_TEMPLATES)
 
 
+def _resolve_item_runtime_target(tr, ch, sn, victim, obj, world):
+    """Resolve magical item cast target from explicit victim/obj hints."""
+    sk = SKILLS[sn]
+    target_type = sk.get("target", "ignore")
+
+    if target_type == "ignore":
+        return (None, TARGET_NONE, None, True)
+    if target_type == "char_offensive":
+        if victim is not None:
+            return (victim, TARGET_CHAR, _target_id(ch, victim, world), True)
+        victim_id = ch.get("fighting")
+        if victim_id is None or victim_id not in world["mobs"]:
+            return (None, TARGET_NONE, None, False)
+        return (world["mobs"][victim_id], TARGET_CHAR, victim_id, True)
+    if target_type == "char_defensive":
+        if victim is None:
+            victim = ch
+        return (victim, TARGET_CHAR, None, True)
+    if target_type == "char_self":
+        return (ch, TARGET_CHAR, None, True)
+    if target_type == "obj_inventory":
+        if obj is None:
+            return (None, TARGET_NONE, None, False)
+        return (obj, TARGET_OBJ, None, True)
+    if target_type == "obj_char_offensive":
+        if victim is not None:
+            return (victim, TARGET_CHAR, _target_id(ch, victim, world), True)
+        if obj is not None:
+            return (obj, TARGET_OBJ, None, True)
+        victim_id = ch.get("fighting")
+        if victim_id is None or victim_id not in world["mobs"]:
+            return (None, TARGET_NONE, None, False)
+        return (world["mobs"][victim_id], TARGET_CHAR, victim_id, True)
+    if target_type == "obj_char_defensive":
+        if victim is not None:
+            return (victim, TARGET_CHAR, None, True)
+        if obj is not None:
+            return (obj, TARGET_OBJ, None, True)
+        return (ch, TARGET_CHAR, None, True)
+    return (None, TARGET_NONE, None, False)
+
+
+def _resolve_item_spell_sn(tr, spell_name, item_obj):
+    if not spell_name:
+        return None
+    sn = _skill_lookup(spell_name)
+    if sn is None:
+        _dev_item_fail(tr, item_obj, "unknown spell '" + spell_name + "'")
+        return None
+    if not _implemented_spell(sn):
+        _dev_item_fail(tr, item_obj, "unimplemented spell '" + spell_name + "'")
+        return None
+    return sn
+
+
 def _resolve_target(tr, player, sn, target_name, world):
     """Resolve spell target (cf. 1stMud do_cast target switch in magic.c)."""
     sk = SKILLS[sn]
@@ -564,6 +632,48 @@ def _resolve_target(tr, player, sn, target_name, world):
 def _spell_level(player, sn):
     """Return cast level for classless PrimeSUD (cf. 1stMud do_cast in magic.c)."""
     return player.get("level", 1)  # [PRIMESUD] no class system or has_spells() penalty.
+
+
+def obj_cast_spell(tr, spell_name, level, ch, victim, obj, world, item_obj=None):
+    """Cast spell payload from magical item (cf. 1stMud obj_cast_spell in magic.c)."""
+    sn = _resolve_item_spell_sn(tr, spell_name, item_obj)
+    if sn is None:
+        return False
+    vo, target, victim_id, ok = _resolve_item_runtime_target(tr, ch, sn, victim, obj, world)
+    if not ok:
+        return _dev_item_fail(tr, item_obj, "target resolution failed for '" + spell_name + "'")
+    fun = SPELL_FUNS.get(SKILLS[sn].get("spell_fun", "spell_null"), spell_null)
+    ret = fun(tr, sn, level, ch, vo, target, world)
+    if (ret and SKILLS[sn].get("target") in ("char_offensive", "obj_char_offensive")
+            and target == TARGET_CHAR and victim_id is not None
+            and victim_id in world["mobs"] and ch.get("fighting") is None):
+        set_fighting(tr, ch, victim_id, world["mobs"])
+    return ret
+
+
+def cast_item_spells(tr, ch, item_obj, victim, obj, world):
+    """Run normalized spell payload from magical item instance/template."""
+    tpl = ITEM_TEMPLATES[obj_vnum(item_obj)]
+    level = item_spell_level(item_obj, tpl)
+    if level is None:
+        return _dev_item_fail(tr, item_obj, "missing spell_level")
+    payload = []
+    if tpl.get("type") in ("wand", "staff"):
+        payload_name = item_spell_name(item_obj, tpl)
+        if payload_name:
+            payload.append(payload_name)
+    else:
+        payload = item_spells(item_obj, tpl)
+    if not payload:
+        return _dev_item_fail(tr, item_obj, "missing spell payload")
+    any_success = False
+    for spell_name in payload:
+        if _resolve_item_spell_sn(tr, spell_name, item_obj) is None:
+            return False
+    for spell_name in payload:
+        ret = obj_cast_spell(tr, spell_name, level, ch, victim, obj, world, item_obj)
+        any_success = any_success or ret
+    return any_success
 
 
 def do_cast(tr, player, args, world):
