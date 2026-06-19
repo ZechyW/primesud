@@ -2,6 +2,7 @@
 
 from config import MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF
 from world import ITEM_TEMPLATES
+from colors import cap_first
 
 
 # -- Stat application helpers --------------------------------------------------
@@ -189,4 +190,22 @@ def equip_char(char, obj, slot):
     char["inv"].remove(obj)
     char["equip"][slot] = obj
     _apply_item_modifiers(char, obj, tpl, True)
+
+
+def act(tr, msg):
+    """Send an action-narration message, capitalising the first visible character.
+
+    Reduced port of act_new/perform_act (cf. 1stMud comm.c). Full 1stMud act()
+    also handles multi-recipient routing (TO_CHAR/TO_VICT/TO_ROOM/etc.) and
+    visibility-aware $n/$N/$p token substitution via Pers(). Both are omitted:
+    PrimeSUD is single-player so there is only ever one recipient, and token
+    substitution is done inline with % / format(). The post-substitution
+    skipcol+toupper in perform_act is preserved: mob short_descr values are
+    stored lowercase and may appear at sentence start in narration strings.
+
+    Args:
+        tr: tml instance (print target).
+        msg (str): Fully assembled narration string, may contain {X colour codes.
+    """
+    tr.print(cap_first(msg))
 

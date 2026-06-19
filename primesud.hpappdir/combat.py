@@ -11,7 +11,7 @@ from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
                    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY,
                    GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
                    WEAPON_GSN_MAP)
-from actor import get_hitroll, get_damroll, get_AC, get_curr_stat
+from actor import get_hitroll, get_damroll, get_AC, get_curr_stat, act
 from item import create_object, get_char_room
 from player import save_state
 from picker import pick_from
@@ -405,9 +405,9 @@ def check_parry(tr, ch, victim):
         return False
 
     if victim["is_npc"]:
-        tr.print("{} parries your attack.".format(MOB_TEMPLATES[victim["tpl"]]["short_descr"]))
+        act(tr, "{} parries your attack.".format(MOB_TEMPLATES[victim["tpl"]]["short_descr"]))
     else:
-        tr.print("You parry {}'s attack.".format(MOB_TEMPLATES[ch["tpl"]]["short_descr"]))
+        act(tr, "You parry {}'s attack.".format(MOB_TEMPLATES[ch["tpl"]]["short_descr"]))
         check_improve(tr, victim, GSN_PARRY, True, 6)
     return True
 
@@ -458,7 +458,7 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
     roll = randint(0, 19)
     if roll == 0 or (roll != 19 and roll < thac0 - victim_ac):
         if ch["is_npc"]:
-            tr.print("{R%s's %s misses {Ryou.{x" % (ch_tpl["short_descr"], attack_noun))
+            act(tr, "{R%s's %s misses {Ryou.{x" % (ch_tpl["short_descr"], attack_noun))
         else:
             vs, vp = _damage_verb(0)
             victim_name = MOB_TEMPLATES[victim["tpl"]]["short_descr"]
@@ -498,7 +498,7 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
         victim["hp"] = max(0, victim["hp"] - dam)
         vs, vp = _damage_verb(dam)
         punct  = _damage_punct(dam)
-        tr.print("{R%s's %s %s {Ryou%s {W[{R%d{W]{x" % (ch_tpl["short_descr"], attack_noun, vp, punct, dam))
+        act(tr, "{R%s's %s %s {Ryou%s {W[{R%d{W]{x" % (ch_tpl["short_descr"], attack_noun, vp, punct, dam))
         if dam > victim["hp_max"] // 4:
             tr.print("That really did HURT!")
         if victim["hp"] < victim["hp_max"] // 4:
@@ -551,20 +551,20 @@ def do_kick(tr, ch, args, world):
         _, vp  = _damage_verb(dam)
         punct  = _damage_punct(dam)
         if ch["is_npc"]:
-            tr.print("{R%s kicks {Ryou%s {W[{R%d{W]{x" % (MOB_TEMPLATES[ch["tpl"]]["short_descr"], punct, dam))
+            act(tr, "{R%s kicks {Ryou%s {W[{R%d{W]{x" % (MOB_TEMPLATES[ch["tpl"]]["short_descr"], punct, dam))
         else:
             tpl = MOB_TEMPLATES[target["tpl"]]
-            tr.print("{GYour kick %s {G%s%s {W[{R%d{W]{x" % (vp, tpl["short_descr"], punct, dam))
+            act(tr, "{GYour kick %s {G%s%s {W[{R%d{W]{x" % (vp, tpl["short_descr"], punct, dam))
             check_improve(tr, ch, GSN_KICK, True, 1)
             if target["hp"] == 0:
                 raw_kill(tr, ch, target_id, target, tpl, world)
                 _advance_target(ch, world["mobs"], world["rooms"])
     else:
         if ch["is_npc"]:
-            tr.print("{R%s's kick misses {Ryou.{x" % MOB_TEMPLATES[ch["tpl"]]["short_descr"])
+            act(tr, "{R%s's kick misses {Ryou.{x" % MOB_TEMPLATES[ch["tpl"]]["short_descr"])
         else:
             tpl = MOB_TEMPLATES[target["tpl"]]
-            tr.print("{GYour kick misses {G%s.{x" % tpl["short_descr"])
+            act(tr, "{GYour kick misses {G%s.{x" % tpl["short_descr"])
             check_improve(tr, ch, GSN_KICK, False, 1)
     return None
 
@@ -940,7 +940,7 @@ _DEATH_CRIES = [
 
 def _death_cry(tr, tpl):
     """Random death flavour message (cf. 1stMud death_cry in fight.c)."""
-    tr.print(_DEATH_CRIES[randint(0, len(_DEATH_CRIES) - 1)].format(tpl["short_descr"]))
+    act(tr, _DEATH_CRIES[randint(0, len(_DEATH_CRIES) - 1)].format(tpl["short_descr"]))
 
 
 def raw_kill(tr, player, mob_id, inst, tpl, world):
@@ -969,10 +969,10 @@ def raw_kill(tr, player, mob_id, inst, tpl, world):
     for _slot_vnum in inst.get("equip", {}).values():
         if _slot_vnum is not None:
             _floor.append(create_object(_slot_vnum))
-            tr.print("{} falls to the ground.".format(ITEM_TEMPLATES[_slot_vnum]["short_descr"]))
+            act(tr, "{} falls to the ground.".format(ITEM_TEMPLATES[_slot_vnum]["short_descr"]))
     for _inv_vnum in inst.get("inv", []):
         _floor.append(create_object(_inv_vnum))
-        tr.print("{} falls to the ground.".format(ITEM_TEMPLATES[_inv_vnum]["short_descr"]))
+        act(tr, "{} falls to the ground.".format(ITEM_TEMPLATES[_inv_vnum]["short_descr"]))
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
     save_state(tr, player, world, quiet=True)

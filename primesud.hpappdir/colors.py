@@ -26,6 +26,69 @@ ANSI_COLORS = {
 _RESET_CODES = ('x', 'X')
 
 
+def skipcol(s):
+    """Index of first char past leading {X color codes (cf. skipcol in string.c)."""
+    i = 0
+    n = len(s)
+    while i + 1 < n and s[i] == COLOR_CODE:
+        i += 2
+    return i
+
+
+def cap_first(s):
+    """Uppercase first non-color char only; no lowercasing (cf. perform_act in comm.c)."""
+    i = skipcol(s)
+    if i < len(s):
+        return s[:i] + s[i].upper() + s[i + 1:]
+    return s
+
+
+def capitalize(s):
+    """Lowercase all alpha, then uppercase first non-color char (cf. capitalize in db.c).
+
+    Use for proper names.
+    """
+    s = strlower(s)
+    i = skipcol(s)
+    if i < len(s):
+        s = s[:i] + s[i].upper() + s[i + 1:]
+    return s
+
+
+def strlower(s):
+    """Lowercase all alpha, skipping {X color codes (cf. strlower in db.c)."""
+    out = []
+    i = 0
+    n = len(s)
+    while i < n:
+        if s[i] == COLOR_CODE and i + 1 < n:
+            out.append(s[i])
+            out.append(s[i + 1])
+            i += 2
+        else:
+            c = s[i]
+            out.append(c.lower() if c.isalpha() else c)
+            i += 1
+    return ''.join(out)
+
+
+def strupper(s):
+    """Uppercase all alpha, skipping {X color codes (cf. strupper in db.c)."""
+    out = []
+    i = 0
+    n = len(s)
+    while i < n:
+        if s[i] == COLOR_CODE and i + 1 < n:
+            out.append(s[i])
+            out.append(s[i + 1])
+            i += 2
+        else:
+            c = s[i]
+            out.append(c.upper() if c.isalpha() else c)
+            i += 1
+    return ''.join(out)
+
+
 def strip_colors(text):
     """Return text with all {X color codes removed."""
     if COLOR_CODE not in text:

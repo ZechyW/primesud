@@ -13,6 +13,7 @@ from actor import is_name, is_affected, affect_to_char, affect_strip
 from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
 from movement import perform_recall
 from config import DIR_ALIASES, EXIT_NAMES
+from colors import cap_first
 
 from urandom import randint
 
@@ -67,19 +68,13 @@ def _damage_char(tr, ch, victim, victim_id, dam, sn, world):
     return True
 
 
-def _cap_first(text):
-    if not text:
-        return text
-    return text[0].upper() + text[1:]
-
-
 def _char_name(ch, victim, world):
     if victim is ch:
         return "You"
     if victim.get("is_npc"):
         tpl = MOB_TEMPLATES.get(victim.get("tpl"), {})
-        return _cap_first(tpl.get("short_descr", "Someone"))
-    return _cap_first(victim.get("name", "Someone"))
+        return cap_first(tpl.get("short_descr", "Someone"))
+    return cap_first(victim.get("name", "Someone"))
 
 
 def _skill_lookup(name):

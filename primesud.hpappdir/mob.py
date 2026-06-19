@@ -6,6 +6,7 @@ from config import EXIT_NAMES
 from world import ROOMS, ROOM_AREAS, AREA_DEFS, MOB_TEMPLATES, RESETS, DOOR_RESET
 from actor import equip_char
 from item import create_object
+from actor import act
 
 
 # Area age thresholds (cf. 1stMud area_update: age < 3 skip; age >= 15 reset
@@ -215,7 +216,7 @@ def mobile_update(tr, player, world):
             if player["room"] == inst["room"]:
                 tpl = MOB_TEMPLATES[inst["tpl"]]
                 _sd = tpl["short_descr"]
-                tr.print("{} wanders on home.".format(_sd[0].upper() + _sd[1:]))
+                act(tr, "{} wanders on home.".format(_sd))
             world["rooms"][inst["room"]]["mobs"].remove(mob_id)
             del world["mobs"][mob_id]
             continue
@@ -249,14 +250,13 @@ def mobile_update(tr, player, world):
         old_room = inst["room"]
         tpl = MOB_TEMPLATES[inst["tpl"]]
         _sd = tpl["short_descr"]
-        name = _sd[0].upper() + _sd[1:]
         if player["room"] == old_room:
-            tr.print("{} leaves {}.".format(name, EXIT_NAMES.get(direction, direction)))
+            act(tr, "{} leaves {}.".format(_sd, EXIT_NAMES.get(direction, direction)))
         world["rooms"][old_room]["mobs"].remove(mob_id)
         inst["room"] = dest_vnum
         world["rooms"][dest_vnum]["mobs"].append(mob_id)
         if player["room"] == dest_vnum:
-            tr.print("{} has arrived.".format(name))
+            act(tr, "{} has arrived.".format(_sd))
 
 
 def area_update(tr, player, world):

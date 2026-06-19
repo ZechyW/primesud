@@ -58,12 +58,6 @@ def install_color_print(tr):
 
     def wrapped_print(*args, sep=' ', end='\n'):
         text = sep.join(str(a) for a in args)
-        i = 0
-        while i + 1 < len(text) and text[i] == _CC:
-            i += 2
-        if i < len(text):
-            # Always capitalise first letter of output.
-            text = text[:i] + text[i].upper() + text[i + 1:]
         if _CC not in text:
             # Fast path: skip color_wrap and all colour-code scanning.
             if current_fg[0] is not None:
