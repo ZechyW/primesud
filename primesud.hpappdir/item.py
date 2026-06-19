@@ -49,6 +49,53 @@ def item_affect_list(obj):
     return []
 
 
+def ensure_item_extra_flags(obj, tpl):
+    """Return mutable full extra_flags set for item instance."""
+    if "extra_flags" not in obj:
+        obj["extra_flags"] = dict(tpl.get("extra_flags", {}))
+    return obj["extra_flags"]
+
+
+def set_item_extra_flag(obj, tpl, flag, enabled):
+    """Set or clear one mutable extra flag on item instance."""
+    flags = ensure_item_extra_flags(obj, tpl)
+    if enabled:
+        flags[flag] = True
+    elif flag in flags:
+        del flags[flag]
+    return flags
+
+
+def item_affect_find(obj, sn):
+    """Return first object affect of type sn, or None."""
+    for af in item_affect_list(obj):
+        if af.get("type") == sn:
+            return af
+    return None
+
+
+def item_affect_remove(obj, af, tpl):
+    """Remove one object affect and clear its direct flag bit if present."""
+    affects = obj.get("affect_list", [])
+    if af in affects:
+        affects.remove(af)
+    if not affects and "affect_list" in obj:
+        del obj["affect_list"]
+    bit = af.get("bitvector", "")
+    if bit:
+        set_item_extra_flag(obj, tpl, bit, False)
+
+
+def item_affect_to_obj(obj, af, tpl):
+    """Apply one timed object affect to runtime item state."""
+    cur = dict(af)
+    obj.setdefault("affect_list", []).append(cur)
+    bit = cur.get("bitvector", "")
+    if bit:
+        set_item_extra_flag(obj, tpl, bit, True)
+    return cur
+
+
 def item_spell_level(obj, tpl):
     """Return spell level for magical item, preferring instance override."""
     if isinstance(obj, dict) and "spell_level" in obj:

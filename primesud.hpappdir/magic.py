@@ -5,7 +5,10 @@ from picker import pick_from
 from combat import (WaitState, check_improve, get_skill, set_fighting,
                     raw_kill, _advance_target, _damage_verb, _damage_punct)
 from item import (get_char_room, get_obj_list, obj_vnum, item_spell_level,
-                  item_spells, item_spell_name)
+                  item_spells, item_spell_name, item_extra_flags,
+                  item_current_charges, item_max_charges, item_affect_list,
+                  item_affect_find, item_affect_remove, item_affect_to_obj,
+                  set_item_extra_flag)
 from actor import is_name, is_affected, affect_to_char, affect_strip
 from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
 
@@ -97,6 +100,43 @@ def _item_name(obj):
         return "item"
     tpl = ITEM_TEMPLATES.get(obj_vnum(obj), {})
     return tpl.get("short_descr", "item")
+
+
+def _flag_names(flags):
+    names = sorted(flags)
+    if not names:
+        return "none"
+    return " ".join(names)
+
+
+def _obj_carried_by(ch, obj):
+    return obj in ch.get("inv", [])
+
+
+def _obj_equipped_by(ch, obj):
+    for eq in ch.get("equip", {}).values():
+        if eq is obj:
+            return True
+    return False
+
+
+def _item_bonus_sum(obj, tpl, location):
+    total = tpl.get("stat_bonuses", {}).get(location, 0)
+    for af in item_affect_list(obj):
+        if af.get("location") == location:
+            total += af.get("modifier", 0)
+    return total
+
+
+def _clear_item_runtime_affects(obj):
+    if "affect_list" in obj:
+        del obj["affect_list"]
+
+
+def _new_obj_affect(sn, level, duration, location, modifier, bitvector=""):
+    af = _new_affect(sn, level, duration, location, modifier, bitvector)
+    af["where"] = "obj"
+    return af
 
 
 def _dev_item_fail(tr, obj, message):
@@ -196,6 +236,210 @@ def spell_magic_missile(tr, sn, level, ch, vo, target, world):
     return _damage_char(tr, ch, vo, _target_id(ch, vo, world), dam, sn, world)
 
 
+def spell_trivia_pill(tr, sn, level, ch, vo, target, world):
+    """Grant one trivia point (cf. 1stMud spell_trivia_pill in magic.c)."""
+    victim = vo if vo is not None else ch
+    if victim.get("is_npc"):
+        return False
+    victim["trivia"] = victim.get("trivia", 0) + 1
+    if victim is ch:
+        tr.print("You've gained a Trivia Point!")
+    else:
+        tr.print("Ok.")
+    return True
+
+
+def spell_detect_poison(tr, sn, level, ch, vo, target, world):
+    """Detect poison on object target (cf. 1stMud spell_detect_poison in magic.c)."""
+    tpl = ITEM_TEMPLATES[obj_vnum(vo)]
+    poisoned = bool(vo.get("poisoned") or tpl.get("poisoned"))
+    if tpl.get("type") in ("food", "fountain"):
+        tr.print("You smell poisonous fumes." if poisoned else "It looks delicious.")
+    else:
+        tr.print("It doesn't look poisoned.")
+    return True
+
+
+def spell_identify(tr, sn, level, ch, vo, target, world):
+    """Identify object details (cf. 1stMud spell_identify in magic.c)."""
+    tpl = ITEM_TEMPLATES[obj_vnum(vo)]
+    flags = item_extra_flags(vo, tpl)
+    tr.print("Object '" + tpl.get("keywords", "") + "' is type " + tpl.get("type", "unknown")
+             + ", extra flags " + _flag_names(flags) + ".")
+    tr.print("Weight is " + str(tpl.get("weight", 0)) + ", value is "
+             + str(vo.get("cost", tpl.get("value", 0))) + ", level is " + str(tpl.get("level", 0)) + ".")
+    if tpl.get("type") in ("scroll", "potion", "pill"):
+        spells = item_spells(vo, tpl)
+        if spells:
+            tr.print("Level " + str(item_spell_level(vo, tpl)) + " spells of: '" + "' '".join(spells) + "'.")
+    elif tpl.get("type") in ("wand", "staff"):
+        line = "Has " + str(item_current_charges(vo, tpl)) + " charges of level " + str(item_spell_level(vo, tpl))
+        spell_name = item_spell_name(vo, tpl)
+        if spell_name:
+            line += " '" + spell_name + "'"
+        tr.print(line + ".")
+    for loc, mod in tpl.get("stat_bonuses", {}).items():
+        tr.print("Affects " + loc + " by " + str(mod) + ".")
+    for af in item_affect_list(vo):
+        loc = af.get("location", "none")
+        mod = af.get("modifier", 0)
+        line = "Affects " + loc + " by " + str(mod)
+        if af.get("duration", -1) > -1:
+            line += ", " + str(af["duration"]) + " hours."
+        else:
+            line += "."
+        tr.print(line)
+        bit = af.get("bitvector", "")
+        if af.get("where") == "obj" and bit:
+            tr.print("Adds " + bit + " object flag.")
+    return True
+
+
+def spell_fireproof(tr, sn, level, ch, vo, target, world):
+    """Fireproof object target (cf. 1stMud spell_fireproof in magic.c)."""
+    tpl = ITEM_TEMPLATES[obj_vnum(vo)]
+    flags = item_extra_flags(vo, tpl)
+    if flags.get("burn_proof"):
+        tr.print(_item_name(vo) + " is already protected from burning.")
+        return False
+    item_affect_to_obj(vo, _new_obj_affect(sn, level, max(1, level // 4), "none", 0, "burn_proof"), tpl)
+    tr.print("You protect " + _item_name(vo) + " from fire.")
+    return True
+
+
+def spell_enchant_armor(tr, sn, level, ch, vo, target, world):
+    """Enchant armor item (cf. 1stMud spell_enchant_armor in magic.c)."""
+    tpl = ITEM_TEMPLATES[obj_vnum(vo)]
+    if tpl.get("type") != "armor":
+        tr.print("That isn't an armor.")
+        return False
+    if not _obj_carried_by(ch, vo):
+        tr.print("The item must be carried to be enchanted.")
+        return False
+    if item_extra_flags(vo, tpl).get("quest"):
+        tr.print("You can't enchant quest items.")
+        return False
+    ac_bonus = _item_bonus_sum(vo, tpl, "AC")
+    fail = 25 + (5 * ac_bonus * ac_bonus if ac_bonus else 0) - level
+    flags = item_extra_flags(vo, tpl)
+    if flags.get("bless"):
+        fail -= 15
+    if flags.get("glow"):
+        fail -= 5
+    if fail < 5:
+        fail = 5
+    elif fail > 85:
+        fail = 85
+    result = randint(1, 100)
+    if result < fail // 5:
+        tr.print(_item_name(vo) + " flares blindingly... and evaporates!")
+        ch["inv"].remove(vo)
+        return False
+    if result < fail // 3:
+        tr.print(_item_name(vo) + " glows brightly, then fades...oops.")
+        vo["enchanted"] = True
+        _clear_item_runtime_affects(vo)
+        vo["extra_flags"] = {}
+        return False
+    if result <= fail:
+        tr.print("Nothing seemed to happen.")
+        return False
+    vo["enchanted"] = True
+    if result <= (90 - level // 5):
+        tr.print(_item_name(vo) + " shimmers with a gold aura.")
+        set_item_extra_flag(vo, tpl, "magic", True)
+        added = -1
+    else:
+        tr.print(_item_name(vo) + " glows a brillant gold!")
+        set_item_extra_flag(vo, tpl, "magic", True)
+        set_item_extra_flag(vo, tpl, "glow", True)
+        added = -2
+    vo["level"] = min(50, vo.get("level", tpl.get("level", 0)) + 1)
+    found = False
+    for af in item_affect_list(vo):
+        if af.get("location") == "AC":
+            af["type"] = sn
+            af["modifier"] = af.get("modifier", 0) + added
+            af["level"] = max(af.get("level", 0), level)
+            found = True
+    if not found:
+        item_affect_to_obj(vo, _new_obj_affect(sn, level, -1, "AC", added), tpl)
+    return True
+
+
+def spell_enchant_weapon(tr, sn, level, ch, vo, target, world):
+    """Enchant weapon item (cf. 1stMud spell_enchant_weapon in magic.c)."""
+    tpl = ITEM_TEMPLATES[obj_vnum(vo)]
+    if tpl.get("type") != "weapon":
+        tr.print("That isn't a weapon.")
+        return False
+    if not _obj_carried_by(ch, vo):
+        tr.print("The item must be carried to be enchanted.")
+        return False
+    if item_extra_flags(vo, tpl).get("quest"):
+        tr.print("You can't enchant quest items.")
+        return False
+    hit_bonus = _item_bonus_sum(vo, tpl, "hitroll")
+    dam_bonus = _item_bonus_sum(vo, tpl, "damroll")
+    fail = 25 + 2 * hit_bonus * hit_bonus + 2 * dam_bonus * dam_bonus - (3 * level // 2)
+    flags = item_extra_flags(vo, tpl)
+    if flags.get("bless"):
+        fail -= 15
+    if flags.get("glow"):
+        fail -= 5
+    if fail < 5:
+        fail = 5
+    elif fail > 95:
+        fail = 95
+    result = randint(1, 100)
+    if result < fail // 5:
+        tr.print(_item_name(vo) + " shivers violently and explodes!")
+        ch["inv"].remove(vo)
+        return False
+    if result < fail // 2:
+        tr.print(_item_name(vo) + " glows brightly, then fades...oops.")
+        vo["enchanted"] = True
+        _clear_item_runtime_affects(vo)
+        vo["extra_flags"] = {}
+        return False
+    if result <= fail:
+        tr.print("Nothing seemed to happen.")
+        return False
+    vo["enchanted"] = True
+    if result <= (100 - level // 5):
+        tr.print(_item_name(vo) + " glows blue.")
+        set_item_extra_flag(vo, tpl, "magic", True)
+        added = 1
+    else:
+        tr.print(_item_name(vo) + " glows a brillant blue!")
+        set_item_extra_flag(vo, tpl, "magic", True)
+        set_item_extra_flag(vo, tpl, "glow", True)
+        added = 2
+    vo["level"] = min(50, vo.get("level", tpl.get("level", 0)) + 1)
+    found_dam = False
+    found_hit = False
+    for af in item_affect_list(vo):
+        if af.get("location") == "damroll":
+            af["type"] = sn
+            af["modifier"] = af.get("modifier", 0) + added
+            af["level"] = max(af.get("level", 0), level)
+            if af["modifier"] > 4:
+                set_item_extra_flag(vo, tpl, "hum", True)
+            found_dam = True
+        elif af.get("location") == "hitroll":
+            af["type"] = sn
+            af["modifier"] = af.get("modifier", 0) + added
+            af["level"] = max(af.get("level", 0), level)
+            if af["modifier"] > 4:
+                set_item_extra_flag(vo, tpl, "hum", True)
+            found_hit = True
+    if not found_dam:
+        item_affect_to_obj(vo, _new_obj_affect(sn, level, -1, "damroll", added), tpl)
+    if not found_hit:
+        item_affect_to_obj(vo, _new_obj_affect(sn, level, -1, "hitroll", added), tpl)
+    return True
+
+
 def _new_affect(sn, level, duration, location, modifier, bitvector=""):
     return {
         "where": "affects",
@@ -237,8 +481,25 @@ def spell_shield(tr, sn, level, ch, vo, target, world):
 def spell_bless(tr, sn, level, ch, vo, target, world):
     """Bless character path (cf. 1stMud spell_bless in magic.c)."""
     if target == TARGET_OBJ:
-        tr.print("That spell does not work on objects yet.")
-        return False
+        tpl = ITEM_TEMPLATES[obj_vnum(vo)]
+        flags = item_extra_flags(vo, tpl)
+        if flags.get("bless"):
+            tr.print(_item_name(vo) + " is already blessed.")
+            return False
+        if flags.get("evil"):
+            paf = item_affect_find(vo, _skill_lookup("curse"))
+            if not saves_dispel(level, paf.get("level", tpl.get("level", 0)) if paf else tpl.get("level", 0), 0):
+                if paf is not None:
+                    item_affect_remove(vo, paf, tpl)
+                set_item_extra_flag(vo, tpl, "evil", False)
+                tr.print(_item_name(vo) + " glows a pale blue.")
+                return True
+            tr.print("The evil of " + _item_name(vo) + " is too powerful for you to overcome.")
+            return False
+        item_affect_to_obj(vo, _new_affect(sn, level, 6 + level, "saving_throw", -1, "bless"), tpl)
+        vo["affect_list"][-1]["where"] = "obj"
+        tr.print(_item_name(vo) + " glows with a holy aura.")
+        return True
     if vo.get("pos") == "fighting" or is_affected(vo, sn):
         tr.print("You are already blessed." if vo is ch else _char_name(ch, vo, world) + " already has divine favor.")
         return False
@@ -322,8 +583,25 @@ def spell_poison(tr, sn, level, ch, vo, target, world):
 def spell_curse(tr, sn, level, ch, vo, target, world):
     """Curse character path (cf. 1stMud spell_curse in magic.c)."""
     if target == TARGET_OBJ:
-        tr.print("That spell does not work on objects yet.")
-        return False
+        tpl = ITEM_TEMPLATES[obj_vnum(vo)]
+        flags = item_extra_flags(vo, tpl)
+        if flags.get("evil"):
+            tr.print(_item_name(vo) + " is already filled with evil.")
+            return False
+        if flags.get("bless"):
+            paf = item_affect_find(vo, _skill_lookup("bless"))
+            if not saves_dispel(level, paf.get("level", tpl.get("level", 0)) if paf else tpl.get("level", 0), 0):
+                if paf is not None:
+                    item_affect_remove(vo, paf, tpl)
+                set_item_extra_flag(vo, tpl, "bless", False)
+                tr.print(_item_name(vo) + " glows with a red aura.")
+                return True
+            tr.print("The holy aura of " + _item_name(vo) + " is too powerful for you to overcome.")
+            return False
+        item_affect_to_obj(vo, _new_affect(sn, level, 2 * level, "saving_throw", 1, "evil"), tpl)
+        vo["affect_list"][-1]["where"] = "obj"
+        tr.print(_item_name(vo) + " glows with a malevolent aura.")
+        return True
     if vo.get("aff_flags", {}).get("curse") or saves_spell(level, vo, "negative"):
         return False
     mod = level // 8
@@ -422,8 +700,13 @@ SPELL_FUNS = {
     "spell_cure_poison": spell_cure_poison,
     "spell_cure_serious": spell_cure_serious,
     "spell_curse": spell_curse,
+    "spell_detect_poison": spell_detect_poison,
     "spell_dispel_magic": spell_dispel_magic,
+    "spell_enchant_armor": spell_enchant_armor,
+    "spell_enchant_weapon": spell_enchant_weapon,
+    "spell_identify": spell_identify,
     "spell_faerie_fire": spell_faerie_fire,
+    "spell_fireproof": spell_fireproof,
     "spell_giant_strength": spell_giant_strength,
     "spell_harm": spell_harm,
     "spell_heal": spell_heal,
@@ -431,6 +714,7 @@ SPELL_FUNS = {
     "spell_plague": spell_plague,
     "spell_poison": spell_poison,
     "spell_shield": spell_shield,
+    "spell_trivia_pill": spell_trivia_pill,
     "spell_weaken": spell_weaken,
 }
 

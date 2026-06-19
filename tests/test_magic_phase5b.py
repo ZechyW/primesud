@@ -26,7 +26,7 @@ if "hpprime" not in sys.modules:
     sys.modules["hpprime"] = hpprime
 
 import inventory
-from inventory import do_quaff, do_recite, do_zap, do_brandish
+from inventory import do_eat, do_quaff, do_recite, do_zap, do_brandish
 from player import create_char
 from item import create_object
 from skills_table import GSN_SCROLLS, GSN_STAVES, GSN_WANDS
@@ -120,6 +120,43 @@ class MagicPhase5bTest(unittest.TestCase):
 
         self.assertEqual(["You quaff healing potion.", "You feel better!"], tr.lines)
         self.assertEqual([], player["inv"])
+
+    def test_eat_pill_casts_and_grants_trivia_point(self):
+        tr = FakeTerminal()
+        player = create_char()
+        world = world_stub(player["room"])
+        vnum = self.add_item_tpl(
+            keywords="trivia pill",
+            short_descr="trivia pill",
+            type="pill",
+            spell_level=100,
+            spells=["trivia pill"],
+        )
+        obj = create_object(vnum)
+        player["inv"].append(obj)
+
+        do_eat(tr, player, ["trivia"], world)
+
+        self.assertEqual(["You eat trivia pill.", "You've gained a Trivia Point!"], tr.lines)
+        self.assertEqual([], player["inv"])
+        self.assertEqual(1, player["trivia"])
+
+    def test_eat_rejects_non_edible_item(self):
+        tr = FakeTerminal()
+        player = create_char()
+        world = world_stub(player["room"])
+        vnum = self.add_item_tpl(
+            keywords="orb test",
+            short_descr="test orb",
+            type="treasure",
+        )
+        obj = create_object(vnum)
+        player["inv"].append(obj)
+
+        do_eat(tr, player, ["orb"], world)
+
+        self.assertEqual(["That's not edible."], tr.lines)
+        self.assertEqual(1, len(player["inv"]))
 
     def test_recite_defaults_to_self(self):
         tr = FakeTerminal()

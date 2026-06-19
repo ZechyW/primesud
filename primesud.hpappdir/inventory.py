@@ -447,6 +447,27 @@ def do_quaff(tr, player, args, world):
     player["inv"].remove(obj)
 
 
+def do_eat(tr, player, args, world):
+    """Eat food or pill (cf. 1stMud do_eat in act_obj.c)."""
+    if not args:
+        tr.print("Eat what?")
+        return
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_TEMPLATES)
+    if obj is None:
+        tr.print("You do not have that item.")
+        return
+    tpl = ITEM_TEMPLATES[obj["vnum"]]
+    if tpl["type"] not in ("food", "pill"):
+        tr.print("That's not edible.")
+        return
+    if tpl["type"] == "pill" and validate_item_spell_payload(tr, obj) is None:
+        return
+    tr.print("You eat {}.".format(tpl["short_descr"]))
+    if tpl["type"] == "pill":
+        cast_item_spells(tr, player, obj, player, None, world)
+    player["inv"].remove(obj)
+
+
 def _find_here_obj(player, world, target_name):
     obj = get_obj_list(target_name, player["inv"], ITEM_TEMPLATES)
     if obj is not None:

@@ -3,7 +3,7 @@
 from combat import do_kill, do_kick
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
-                       do_brandish, do_zap, do_outfit)
+                       do_brandish, do_zap, do_eat, do_outfit)
 from movement import do_move, do_open, do_close, do_recall, do_flee
 from magic import do_cast
 from training import do_train, do_practice
@@ -53,6 +53,7 @@ _CMD_TABLE = [
     ("affects",   do_affects,   "dead",     False),   # #33
     ("credits",   do_credits,   "dead",     False),   # #41
     ("equipment", do_equipment, "dead",     False),   # #42
+    ("eat",       do_eat,       "resting",  False),   # #43
     ("help",      do_help,      "dead",     False),   # #44
     ("score",     do_score,     "dead",     False),   # #49
     ("skills",    do_skills,    "dead",     False),   # #50

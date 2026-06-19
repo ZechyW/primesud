@@ -163,12 +163,22 @@ def is_name(fragment, namelist):
     return True
 
 
+def _apply_item_modifiers(char, obj, tpl, add):
+    """Apply template bonuses and runtime object affects for equipped item."""
+    for loc, mod in tpl.get("stat_bonuses", {}).items():
+        affect_modify(char, loc, mod, add)
+    for af in obj.get("affect_list", []):
+        loc = af.get("location", "none")
+        mod = af.get("modifier", 0)
+        if loc != "none" and mod != 0:
+            affect_modify(char, loc, mod, add)
+
+
 def unequip_char(char, slot):
     """Remove obj from slot, reverse stat_bonuses, return to inventory (cf. 1stMud unequip_char in handler.c)."""
     obj = char["equip"][slot]
     tpl = ITEM_TEMPLATES[obj["vnum"]]
-    for loc, mod in tpl.get("stat_bonuses", {}).items():
-        affect_modify(char, loc, mod, False)
+    _apply_item_modifiers(char, obj, tpl, False)
     char["equip"][slot] = None
     char["inv"].append(obj)
 
@@ -178,6 +188,5 @@ def equip_char(char, obj, slot):
     tpl = ITEM_TEMPLATES[obj["vnum"]]
     char["inv"].remove(obj)
     char["equip"][slot] = obj
-    for loc, mod in tpl.get("stat_bonuses", {}).items():
-        affect_modify(char, loc, mod, True)
+    _apply_item_modifiers(char, obj, tpl, True)
 

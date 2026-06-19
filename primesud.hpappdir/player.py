@@ -66,6 +66,7 @@ def create_char():
         "mp_max": 100,
         "practice": 5,
         "train": 3,
+        "trivia": 0,
         "hitroll": 0,
         "damroll": 0,
         "saving_throw": 0,
@@ -213,7 +214,7 @@ def save_char(player, world):
     for key in ("name", "level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
-                "hitroll", "damroll", "saving_throw", "AC", "room",
+                "hitroll", "damroll", "saving_throw", "AC", "room", "trivia",
                 "practice", "train", "flags", "played"):
         lines.append("p." + key + "=" + str(player[key]))
     inv_parts = []
@@ -326,7 +327,7 @@ def load_char(player, world):
             _backup_ok = False
         return (None, _backup_ok)
 
-    int_keys = {"level", "xp", "xp_next",
+    int_keys = {"level", "xp", "xp_next", "trivia",
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
                 "hitroll", "damroll", "saving_throw", "AC", "room",
