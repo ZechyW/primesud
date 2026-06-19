@@ -350,8 +350,9 @@ def do_spells(tr, player, args, world):
 
 def do_help(tr, player, args, world):
     tr.print("Move: 2/8=n/s  4/6=w/e  7/9=u/d (or n/s/e/w/u/d)")
-    tr.print("5=look  i=inv  wear  remove  quaff  st=stats  sk=skills")
-    tr.print("k/kill=fight  kick  cast <spell>  flee  save  credits  q=quit")
+    tr.print("5=look  i=inv  wear  remove  quaff  recite  zap  brandish")
+    tr.print("st=stats  sk=skills  k/kill=fight  kick  cast <spell>")
+    tr.print("flee  save  credits  q=quit")
 
 
 def do_map(tr, player, args, world):

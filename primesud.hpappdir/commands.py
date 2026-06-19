@@ -2,7 +2,8 @@
 
 from combat import do_kill, do_kick
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
-                       do_equipment, do_second, do_quaff, do_outfit)
+                       do_equipment, do_second, do_quaff, do_recite,
+                       do_brandish, do_zap, do_outfit)
 from movement import do_move, do_open, do_close, do_recall, do_flee
 from magic import do_cast
 from training import do_train, do_practice
@@ -63,9 +64,12 @@ _CMD_TABLE = [
     ("open",      do_open,      "resting",  False),   # #124
     ("second",    do_second,    "resting",  False),   # #128
     ("quaff",     do_quaff,     "resting",  False),   # #129
+    ("recite",    do_recite,    "resting",  False),   # #130
     ("remove",    do_remove,    "resting",  False),   # #131
     ("take",      do_get,       "resting",  False),   # #133
     ("wear",      do_wear,      "resting",  False),   # #138
+    ("zap",       do_zap,       "fighting", False),   # #139
+    ("brandish",  do_brandish,  "fighting", False),   # #140
     ("flee",      do_flee,      "fighting", False),   # #147
     ("kick",      do_kick,      "fighting", False),   # #148
     ("automap",   do_automap,   "sleeping", False),   # #154

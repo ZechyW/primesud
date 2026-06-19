@@ -352,18 +352,246 @@ Remaining gaps before/after Phase 5:
 
 ### Phase 5: Object Spells and Magical Items
 
+Phase 5 should stop at explicit review gates. Do not bundle runtime dispatch,
+item schema backfill, command wiring, and object-affect persistence into one
+sweep.
+
+### Phase 5a: Object-Cast Runtime and Item Spell Payload
+
 Port:
 
 - `obj_cast_spell`
-- potion/quaff integration
-- scroll recite integration
-- wand/staff use integration
-- object-target spell paths for `bless`, `curse`, `enchant_*`, `fireproof`, `detect_poison`, `identify`
+- shared target routing for item casts, reusing spell target constants and as
+  much command-path logic as practical without reopening player `cast`
+  behavior
+- item-spell payload normalization for PrimeSUD item templates and instances:
+  - `spell_level`
+  - `spells` list for potions/scrolls/pills
+  - `charges` and `max_charges` for wands/staves
+  - single-spell slot for wand/staff activation
+- minimal area-data backfill for shipped magical items that already exist in
+  PrimeSUD areas but do not yet carry enough metadata to cast
+- developer-visible failure path for bad item spell data; no silent consume,
+  no silent zero-effect activation
+
+Item save-format decision for Phase 5a:
+
+- bump `SAVE_VERSION` to `2`
+- replace legacy item token `vnum:cost`
+- keep outer save lines unchanged:
+  - `p.inv=...`
+  - `p.eq.<slot>=...`
+  - `r.<room>.items=...`
+- each item token becomes `;`-separated tagged fields
+- item lists stay `|`-separated
+
+Grammar:
+
+```text
+item-token := field (';' field)*
+field      := key ':' value
+```
+
+Reserved separators:
+
+- `~` line separator
+- `=` line key/value separator
+- `|` item-list separator
+- `;` item-field separator
+- `:` item key/value separator
+- `,` compact tuple separator inside one field
+
+Required item field:
+
+- `v:<vnum>`
+
+Core mutable-state fields:
+
+- `c:<cost>` item cost override
+- `ch:<n>` current charges
+- `mx:<n>` max charges
+- `en:1` enchanted flag
+
+Future-proof object-state fields:
+
+- `ef:<flag1>,<flag2>,...`
+  - full active extra-flag override set
+  - absent means "use template flags"
+- repeatable `af:<sn>,<level>,<duration>,<location>,<modifier>,<bitvector>,<where>`
+  - source of truth for object spell affects
+  - empty bitvector allowed, e.g. `...,1,,obj`
+  - compact wire format only; in-memory object affects should reuse the same
+    explicit dict keys already used for character affects:
+    `where`, `type`, `level`, `duration`, `location`, `modifier`,
+    `bitvector`
+
+Examples:
+
+```text
+v:3988;c:200
+v:3610;c:320;ch:7;mx:10
+v:5001;c:1200;en:1;ef:magic,bless;af:42,20,24,AC,-20,bless,obj
+p.inv=v:3610;c:320;ch:7;mx:10|v:3988;c:200
+p.eq.hold=v:3718;c:4700;ch:2;mx:3
+r.3001.items=v:5001;c:1200;en:1;ef:magic,bless;af:42,20,24,AC,-20,bless,obj
+```
+
+Deferred from initial v2 item schema:
+
+- no `sb:` stat-bonus field in v2; derive object stat effects from `af`,
+  matching 1stMud's object-affect-first model
+- no wear-flag persistence unless runtime starts mutating wear flags
+- no extra-description persistence
+- no nested container persistence redesign yet
+
+Implementation notes:
+
+- area/item templates keep 1stMud-style spell names
+- save payload stores only runtime mutable item state
+- item-token encode/decode helpers should live in `item.py`, not `player.py`,
+  so Phase 5b/5c item mutation code shares one schema authority
+- keep those `item.py` helpers data-only:
+  - no `player.py` import
+  - no `magic.py` import
+  - no spell-function lookup during save/load parsing
+  - `af` entries stay plain dicts until normal runtime code consumes them
+- reuse exact affect dict shape in memory for readability and helper sharing;
+  only the save wire format is compact/positional
+- parser requires `v`, collects repeated `af`, and treats absent optional
+  fields as template/default values
+- bad area spell names must fail loud and must not silently consume/expend the
+  item
+- `SAVE_VERSION = 2` intentionally invalidates legacy v1 saves
+- do not build a v1-to-v2 item-token migration path in Phase 5a
+- rely on existing version-mismatch flow:
+  - backup old payload to `SAVE_VAR + "_bak"`
+  - warn the player
+  - offer new game or quit
+- rationale: v1 item tokens only preserve `vnum:cost`, so there is no richer
+  mutable magical item state worth rescuing through a bespoke migration layer
+
+Validation checkpoint:
+
+- add focused CPython tests for `obj_cast_spell` target resolution:
+  - offensive default to current fighting target;
+  - defensive default to self;
+  - object-target spells reject missing object cleanly;
+  - offensive item casts still trigger aggro when target survives
+- run:
+  - `python -m unittest tests.test_magic_phase1`
+  - `python tools/check_ascii_py.py`
+
+Review gate:
+
+- before code, validate exact v2 item schema above
+- after parser/save draft, confirm `af` still covers all implemented object
+  stat overrides; only add a non-1stMud `sb` field later if a PrimeSUD-only
+  object mechanic truly cannot be expressed as affects
+
+- chosen direction: keep area templates readable with 1stMud-style spell
+  names, resolve through runtime lookup, and store only mutable charges on
+  instances
+- on missing/typoed spell names, fail loud during development and do not
+  silently consume or expend item use
+
+Status: not started.
+
+### Phase 5b: Player Commands for Magical Items
+
+Port:
+
+- replace current `do_quaff` placeholder with 1stMud potion flow
+- add `do_recite`
+- add `do_zap`
+- add `do_brandish`
+- add command-table entries in 1stMud order where practical
+- enforce visible prerequisites and failure text:
+  - potion/scroll item-type checks;
+  - held-item checks for wand/staff;
+  - level gating;
+  - wait state for wand/staff;
+  - scroll/wand/staff skill checks and `check_improve`
+- consume/exhaust items exactly enough for player-visible parity:
+  - potions/scrolls always consumed after attempted use;
+  - wand/staff charges decrement on each activation;
+  - empty wand/staff destruction text matches 1stMud where visible
+
+Validation checkpoint:
+
+- targeted tests for:
+  - `quaff` potion self-cast;
+  - `recite` self default and explicit object target;
+  - `zap` default fighting target;
+  - `brandish` defensive vs offensive room filtering;
+  - charge depletion and item removal
+- manual review of command text against `act_obj.c`
+
+Review gate:
+
+- once command flow passes, review whether PrimeSUD should support `pill`
+  casting in same phase. Default: no; keep pills deferred unless existing area
+  data already uses them.
+
+Status: not started.
+
+### Phase 5c: Object-Target Spell Functions
+
+Port in two slices.
+
+Slice 1: low-risk inspection and flag toggles
+
+- `spell_detect_poison`
+- `spell_identify` player-visible subset
+- object branches of `spell_bless`
+- object branches of `spell_curse`
+
+Slice 2: object mutation and persistence
+
+- `spell_fireproof`
+- `spell_enchant_armor`
+- `spell_enchant_weapon`
+- any helper needed for object affects / extra flags / enchanted-state
+  persistence
+
+Object-model work likely needed:
+
+- extend item instances beyond `{vnum, cost}` when mutable magic state starts
+  to matter
+- decide where object affects live:
+  - compact `affect_list` on item instances; or
+  - narrower per-item override fields for extra flags and stat mods
+- confirm save/load path preserves:
+  - charges
+  - enchanted flag/state
+  - object extra-flag mutations
+  - object stat modifiers from enchantment
+
+Validation checkpoint after Slice 1:
+
+- `identify` shows spell/charge fields for magical items when applicable
+- `detect poison` matches 1stMud visible text for food/drink vs other objects
+- bless/curse object paths update visible item state and messages correctly
+
+Validation checkpoint after Slice 2:
+
+- enchanted or fireproofed items survive save/load
+- equipped-item stat changes apply and unapply correctly after enchantment
+- no duplicated object modifiers after reload/equip cycles
+
+Review gate:
+
+- stop before Slice 2 implementation if persistence shape gets messy. Review
+  exact item-instance schema first; this is biggest Phase 5 risk.
 
 Acceptance:
 
-- area potions with `spell_level` and spell slots invoke same spell funcs.
-- object target messages match 1stMud where visible.
+- area potions with `spell_level` and spell slots invoke same spell funcs
+- scroll/wand/staff commands match 1stMud visible flow and failure text where
+  the player is recipient
+- object target messages match 1stMud where visible
+- magical item activation never silently no-ops
+
+Status: not started.
 
 ### Phase 6: Area/Element/Travel Spells
 
@@ -385,6 +613,14 @@ Acceptance:
 
 - no spell listed to player silently no-ops.
 - unsupported/deferred spells are hidden or explicitly unavailable until implemented.
+
+Review gates:
+
+- after damage-path unification, review before any room/object side-effect work
+- after first area spell (`earthquake` or `call_lightning`), validate message
+  fanout rules before porting travel/weather spells
+
+Status: not started.
 
 ## Test Plan
 
@@ -433,6 +669,17 @@ On HP Prime emulator:
 5. Hide unimplemented spells from `spells` and `cast` until their `spell_fun` exists in the runtime registry. Generated `skills_table.py` still keeps all 1stMud spell data.
 6. Implement cast dispatch, healing, and simple damage before rewriting the full affect model. Port affects when first buff/debuff spells land.
 7. Port magical item casting after character spell dispatch and affect model, but before exotic area/element/travel spells.
+8. Keep magical item spell data in `area_*.py` templates as 1stMud-style spell
+   names, not canonical `sn` ids. Resolve names at runtime; only mutable item
+   state belongs on instances. Bad spell names must fail loud and must not
+   silently consume the item.
+9. Keep object stat persistence affect-first like 1stMud. In save format v2,
+   do not add a separate `sb` stat-bonus field unless a later PrimeSUD-only
+   item mechanic cannot be represented by object affects plus flag/value state.
+10. `SAVE_VERSION = 2` is a hard format break for item persistence. Use the
+    existing save-version mismatch backup/prompt flow; do not add legacy item
+    token migration unless a later change introduces real player data worth
+    rescuing.
 
 ## Final Validation: Expected Remaining Gaps
 

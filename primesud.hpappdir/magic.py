@@ -549,6 +549,29 @@ def _resolve_item_spell_sn(tr, spell_name, item_obj):
     return sn
 
 
+def validate_item_spell_payload(tr, item_obj):
+    """Validate normalized magical item payload before consume/decrement."""
+    tpl = ITEM_TEMPLATES[obj_vnum(item_obj)]
+    level = item_spell_level(item_obj, tpl)
+    if level is None:
+        _dev_item_fail(tr, item_obj, "missing spell_level")
+        return None
+    payload = []
+    if tpl.get("type") in ("wand", "staff"):
+        spell_name = item_spell_name(item_obj, tpl)
+        if spell_name:
+            payload.append(spell_name)
+    else:
+        payload = item_spells(item_obj, tpl)
+    if not payload:
+        _dev_item_fail(tr, item_obj, "missing spell payload")
+        return None
+    for spell_name in payload:
+        if _resolve_item_spell_sn(tr, spell_name, item_obj) is None:
+            return None
+    return (level, payload)
+
+
 def _resolve_target(tr, player, sn, target_name, world):
     """Resolve spell target (cf. 1stMud do_cast target switch in magic.c)."""
     sk = SKILLS[sn]
@@ -653,23 +676,11 @@ def obj_cast_spell(tr, spell_name, level, ch, victim, obj, world, item_obj=None)
 
 def cast_item_spells(tr, ch, item_obj, victim, obj, world):
     """Run normalized spell payload from magical item instance/template."""
-    tpl = ITEM_TEMPLATES[obj_vnum(item_obj)]
-    level = item_spell_level(item_obj, tpl)
-    if level is None:
-        return _dev_item_fail(tr, item_obj, "missing spell_level")
-    payload = []
-    if tpl.get("type") in ("wand", "staff"):
-        payload_name = item_spell_name(item_obj, tpl)
-        if payload_name:
-            payload.append(payload_name)
-    else:
-        payload = item_spells(item_obj, tpl)
-    if not payload:
-        return _dev_item_fail(tr, item_obj, "missing spell payload")
+    parsed = validate_item_spell_payload(tr, item_obj)
+    if parsed is None:
+        return False
+    level, payload = parsed
     any_success = False
-    for spell_name in payload:
-        if _resolve_item_spell_sn(tr, spell_name, item_obj) is None:
-            return False
     for spell_name in payload:
         ret = obj_cast_spell(tr, spell_name, level, ch, victim, obj, world, item_obj)
         any_success = any_success or ret

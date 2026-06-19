@@ -1,12 +1,16 @@
 """Inventory, equipment, item-use, and starter-outfit commands."""
 
-from world import ITEM_TEMPLATES, WEAPON_GSN_MAP
+from urandom import randint
+
+from world import ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, WEAPON_GSN_MAP
 from picker import pick_from
-from actor import get_curr_stat, is_name, affect_modify, unequip_char, equip_char
+from actor import get_curr_stat, is_name, affect_modify, equip_char, unequip_char
 from item import (get_obj_list, obj_vnum, create_object, item_extra_flags,
                   item_wear_flags)
-from combat import _get_weapon_skill
-from config import STR_APP_WIELD
+from combat import _get_weapon_skill, WaitState, check_improve, get_skill
+from config import STR_APP_WIELD, PULSE_VIOLENCE
+from skills_table import GSN_SCROLLS, GSN_STAVES, GSN_WANDS
+from magic import cast_item_spells, validate_item_spell_payload
 from area_school import (I_BANNER_WAR_MERC,
                          I_MACE_SUB_MERC, I_DAGGER_SUB_MERC, I_SWORD_SUB_MERC,
                          I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,
@@ -421,23 +425,179 @@ def do_second(tr, player, args, world):
 
 
 def do_quaff(tr, player, args, world):
+    """Quaff a potion (cf. 1stMud do_quaff in act_obj.c)."""
     if not args:
-        tr.print("Use what?")
+        tr.print("Quaff what?")
         return
     obj = get_obj_list(" ".join(args), player["inv"], ITEM_TEMPLATES)
     if obj is None:
-        tr.print("You're not carrying that.")
+        tr.print("You do not have that potion.")
         return
     tpl = ITEM_TEMPLATES[obj["vnum"]]
-    if tpl["type"] != "consumable":
-        tr.print("You can't use that.")
+    if tpl["type"] != "potion":
+        tr.print("You can quaff only potions.")
         return
+    if player["level"] < tpl.get("level", 1):
+        tr.print("This liquid is too powerful for you to drink.")
+        return
+    if validate_item_spell_payload(tr, obj) is None:
+        return
+    tr.print("You quaff {}.".format(tpl["short_descr"]))
+    cast_item_spells(tr, player, obj, player, None, world)
     player["inv"].remove(obj)
-    if "use_hp" in tpl:
-        gained = min(tpl["use_hp"], player["hp_max"] - player["hp"])
-        player["hp"] += gained
-        tr.print("You drink the {}. +{} HP. ({}/{})".format(
-            tpl["short_descr"], gained, player["hp"], player["hp_max"]))
+
+
+def _find_here_obj(player, world, target_name):
+    obj = get_obj_list(target_name, player["inv"], ITEM_TEMPLATES)
+    if obj is not None:
+        return obj
+    obj = get_obj_list(target_name, world["rooms"][player["room"]]["items"], ITEM_TEMPLATES)
+    if obj is not None:
+        return obj
+    equipped = [it for it in player["equip"].values() if it is not None]
+    return get_obj_list(target_name, equipped, ITEM_TEMPLATES)
+
+
+def _find_here_char_or_obj(player, world, target_name):
+    for mob_id in world["rooms"][player["room"]]["mobs"]:
+        mob = world["mobs"][mob_id]
+        if is_name(target_name, MOB_TEMPLATES[mob["tpl"]].get("keywords", "")):
+            return (mob, None)
+    obj = _find_here_obj(player, world, target_name)
+    return (None, obj)
+
+
+def _destroy_equipped(player, slot):
+    if player["equip"].get(slot) is None:
+        return
+    unequip_char(player, slot)
+    player["inv"].pop()
+
+
+def do_recite(tr, player, args, world):
+    """Recite a scroll (cf. 1stMud do_recite in act_obj.c)."""
+    arg1 = args[0] if args else ""
+    arg2 = " ".join(args[1:]) if len(args) > 1 else ""
+    scroll = get_obj_list(arg1, player["inv"], ITEM_TEMPLATES)
+    if scroll is None:
+        tr.print("You do not have that scroll.")
+        return
+    tpl = ITEM_TEMPLATES[scroll["vnum"]]
+    if tpl["type"] != "scroll":
+        tr.print("You can recite only scrolls.")
+        return
+    if player["level"] < tpl.get("level", 1):
+        tr.print("This scroll is too complex for you to comprehend.")
+        return
+    parsed = validate_item_spell_payload(tr, scroll)
+    if parsed is None:
+        return
+    victim = player
+    obj = None
+    if arg2:
+        victim, obj = _find_here_char_or_obj(player, world, arg2)
+        if victim is None and obj is None:
+            tr.print("You can't find it.")
+            return
+    tr.print("You recite {}.".format(tpl["short_descr"]))
+    if randint(1, 100) >= 20 + get_skill(player, GSN_SCROLLS) * 4 // 5:
+        tr.print("You mispronounce a syllable.")
+        check_improve(tr, player, GSN_SCROLLS, False, 2)
+    else:
+        cast_item_spells(tr, player, scroll, victim, obj, world)
+        check_improve(tr, player, GSN_SCROLLS, True, 2)
+    player["inv"].remove(scroll)
+
+
+def do_brandish(tr, player, args, world):
+    """Brandish a held staff (cf. 1stMud do_brandish in act_obj.c)."""
+    staff = player["equip"].get("hold")
+    if staff is None:
+        tr.print("You hold nothing in your hand.")
+        return
+    tpl = ITEM_TEMPLATES[staff["vnum"]]
+    if tpl["type"] != "staff":
+        tr.print("You can brandish only with a staff.")
+        return
+    parsed = validate_item_spell_payload(tr, staff)
+    if parsed is None:
+        return
+    _level, payload = parsed
+    sn_target = None
+    if payload:
+        from magic import _skill_lookup
+        sn_target = _skill_lookup(payload[0])
+    WaitState(player, 2 * PULSE_VIOLENCE)
+    if staff.get("charges", tpl.get("charges", tpl.get("max_charges", 0))) > 0:
+        tr.print("You brandish {}.".format(tpl["short_descr"]))
+        if player["level"] < tpl.get("level", 1) or randint(1, 100) >= 20 + get_skill(player, GSN_STAVES) * 4 // 5:
+            tr.print("You fail to invoke {}.".format(tpl["short_descr"]))
+            check_improve(tr, player, GSN_STAVES, False, 2)
+        else:
+            target_type = None
+            if sn_target is not None:
+                target_type = SKILLS[sn_target].get("target")
+            if target_type in ("ignore", "char_self", "char_defensive", "obj_char_defensive"):
+                cast_item_spells(tr, player, staff, player, None, world)
+                check_improve(tr, player, GSN_STAVES, True, 2)
+            elif target_type in ("char_offensive", "obj_char_offensive"):
+                for mob_id in list(world["rooms"][player["room"]]["mobs"]):
+                    if mob_id in world["mobs"]:
+                        cast_item_spells(tr, player, staff, world["mobs"][mob_id], None, world)
+                        check_improve(tr, player, GSN_STAVES, True, 2)
+            else:
+                tr.print("[DEV] " + tpl["short_descr"] + ": unsupported staff target")
+                return
+    staff["charges"] = staff.get("charges", tpl.get("charges", tpl.get("max_charges", 0))) - 1
+    if staff["charges"] <= 0:
+        tr.print("Your {} blazes bright and is gone.".format(tpl["short_descr"]))
+        _destroy_equipped(player, "hold")
+
+
+def do_zap(tr, player, args, world):
+    """Zap with a held wand (cf. 1stMud do_zap in act_obj.c)."""
+    arg = " ".join(args)
+    if not arg and player.get("fighting") is None:
+        tr.print("Zap whom or what?")
+        return
+    wand = player["equip"].get("hold")
+    if wand is None:
+        tr.print("You hold nothing in your hand.")
+        return
+    tpl = ITEM_TEMPLATES[wand["vnum"]]
+    if tpl["type"] != "wand":
+        tr.print("You can zap only with a wand.")
+        return
+    if validate_item_spell_payload(tr, wand) is None:
+        return
+    victim = None
+    obj = None
+    if not arg:
+        victim = world["mobs"].get(player.get("fighting"))
+        if victim is None:
+            tr.print("Zap whom or what?")
+            return
+    else:
+        victim, obj = _find_here_char_or_obj(player, world, arg)
+        if victim is None and obj is None:
+            tr.print("You can't find it.")
+            return
+    WaitState(player, 2 * PULSE_VIOLENCE)
+    if wand.get("charges", tpl.get("charges", tpl.get("max_charges", 0))) > 0:
+        if victim is not None:
+            tr.print("You zap " + MOB_TEMPLATES[victim["tpl"]]["short_descr"] + " with " + tpl["short_descr"] + ".")
+        else:
+            tr.print("You zap " + ITEM_TEMPLATES[obj["vnum"]]["short_descr"] + " with " + tpl["short_descr"] + ".")
+        if player["level"] < tpl.get("level", 1) or randint(1, 100) >= 20 + get_skill(player, GSN_WANDS) * 4 // 5:
+            tr.print("Your efforts with {} produce only smoke and sparks.".format(tpl["short_descr"]))
+            check_improve(tr, player, GSN_WANDS, False, 2)
+        else:
+            cast_item_spells(tr, player, wand, victim, obj, world)
+            check_improve(tr, player, GSN_WANDS, True, 2)
+    wand["charges"] = wand.get("charges", tpl.get("charges", tpl.get("max_charges", 0))) - 1
+    if wand["charges"] <= 0:
+        tr.print("Your {} explodes into fragments.".format(tpl["short_descr"]))
+        _destroy_equipped(player, "hold")
 
 
 # Weapon choices for do_outfit; sword is the default/tie-winner (cf. 1stMud weapon_table in const.c).

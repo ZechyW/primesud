@@ -153,6 +153,8 @@ OBJECTS = {
         "type": 'pill',
         "wear_flags": {"take": True},
         "extra_flags": {"glow": True, "hum": True, "magic": True, "nonmetal": True, "nolocate": True, "burn_proof": True, "quest": True},
+        "spell_level": 100,
+        "spells": ['trivia pill'],
         "level": 0, "weight": 0, "value": 0,
     },
     I_QUEST_AURA_SANCTUARY: {

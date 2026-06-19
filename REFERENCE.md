@@ -448,6 +448,8 @@ Followed by optional trailer lines:
 | `container`                  | `capacity  cont_flags  key_vnum  max_weight  weight_mult`           |
 | `potion` / `pill` / `scroll` | `level  spell1  spell2  spell3  spell4`                             |
 | `wand` / `staff`             | `level  max_charges  cur_charges  spell  recharge`                  |
+
+**`recharge` (wand/staff value[4]) is a dead field** — loaded by `db2.c` but never read by `do_zap`, `do_brandish`, `spell_recharge`, or the `identify` spell display (confirmed in `act_obj.c`/`magic.c`). Always `0` in shipped `.are` files. Safe to ignore at conversion time.
 | `light`                      | `v0  v1  hours  v3  v4` (hours = 0 → permanent)                     |
 | `key` / `treasure` / other   | `v0  v1  v2  v3  v4` (generic values)                               |
 

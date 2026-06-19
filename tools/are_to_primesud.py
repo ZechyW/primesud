@@ -479,9 +479,15 @@ def parse_objects(lines):
                 obj["AC"] = int(val_line[0])
             except ValueError:
                 obj["AC"] = 0
-        elif item_type == "potion" and val_line:
-            obj["spell_level"] = int(val_line[0]) if val_line else 0
+        elif item_type in ("potion", "pill", "scroll") and val_line:
+            obj["spell_level"] = int(val_line[0])
             obj["spells"] = [s for s in val_line[1:] if s]
+        elif item_type in ("wand", "staff") and val_line:
+            obj["spell_level"] = int(val_line[0])
+            obj["max_charges"] = int(val_line[1]) if len(val_line) > 1 else 0
+            obj["charges"] = int(val_line[2]) if len(val_line) > 2 else 0
+            obj["spell"] = val_line[3] if len(val_line) > 3 and val_line[3] else ""
+            # value[4] (recharge) is a dead field in 1stMud 4.5.3 - skipped
 
         if applies:
             obj["stat_bonuses"] = applies
@@ -791,11 +797,18 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, fover
             w(f'        "weapon_flags": {_repr_flags(wf)},')
         elif obj["type"] == "armor" and "AC" in obj:
             w(f'        "AC": {obj["AC"]},')
-        elif obj["type"] == "potion":
+        elif obj["type"] in ("potion", "pill", "scroll"):
             if "spell_level" in obj:
                 w(f'        "spell_level": {obj["spell_level"]},')
             if obj.get("spells"):
                 w(f'        "spells": {pyrepr(obj["spells"])},')
+        elif obj["type"] in ("wand", "staff"):
+            if "spell_level" in obj:
+                w(f'        "spell_level": {obj["spell_level"]},')
+            if "max_charges" in obj:
+                w(f'        "max_charges": {obj["max_charges"]}, "charges": {obj["charges"]},')
+            if obj.get("spell"):
+                w(f'        "spell": {pyrepr(obj["spell"])},')
         if obj.get("stat_bonuses"):
             w(f'        "stat_bonuses": {pyrepr(obj["stat_bonuses"])},')
         w(f'        "level": {obj["level"]}, "weight": {obj["weight"]}, "value": {obj["value"]},')
