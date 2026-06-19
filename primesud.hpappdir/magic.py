@@ -36,8 +36,9 @@ def _dice(num, size):
 
 def _heal_char(tr, ch, victim, amount, msg):
     victim["hp"] = min(victim["hp_max"], victim["hp"] + amount)
-    tr.print(msg)
-    if victim is not ch:
+    if victim is ch:
+        tr.print(msg)
+    else:
         tr.print("Ok.")
     return True
 
@@ -66,6 +67,21 @@ def _damage_char(tr, ch, victim, victim_id, dam, sn, world):
         raw_kill(tr, ch, victim_id, victim, MOB_TEMPLATES[victim["tpl"]], world)
         _advance_target(ch, world["mobs"], world["rooms"])
     return True
+
+
+def _cap_first(text):
+    if not text:
+        return text
+    return text[0].upper() + text[1:]
+
+
+def _char_name(ch, victim, world):
+    if victim is ch:
+        return "You"
+    if victim.get("is_npc"):
+        tpl = MOB_TEMPLATES.get(victim.get("tpl"), {})
+        return _cap_first(tpl.get("short_descr", "Someone"))
+    return _cap_first(victim.get("name", "Someone"))
 
 
 def _skill_lookup(name):
@@ -97,7 +113,7 @@ def saves_dispel(dis_level, spell_level, duration):
     return randint(1, 100) < save
 
 
-def check_dispel(tr, dis_level, victim, sn):
+def check_dispel(tr, dis_level, victim, sn, ch=None):
     """Try to dispel one affect type (cf. 1stMud check_dispel in magic.c)."""
     if not is_affected(victim, sn):
         return False
@@ -107,7 +123,7 @@ def check_dispel(tr, dis_level, victim, sn):
         if not saves_dispel(dis_level, af.get("level", 0), af.get("duration", 0)):
             affect_strip(victim, sn)
             msg = SKILLS.get(sn, {}).get("msg_off", "")
-            if msg and not msg.startswith("!"):
+            if (ch is None or victim is ch) and msg and not msg.startswith("!"):
                 tr.print(msg)
             return True
         af["level"] = af.get("level", 0) - 1
@@ -182,24 +198,26 @@ def _new_affect(sn, level, duration, location, modifier, bitvector=""):
 def spell_armor(tr, sn, level, ch, vo, target, world):
     """Armor spell (cf. 1stMud spell_armor in magic.c)."""
     if is_affected(vo, sn):
-        tr.print("You are already armored." if vo is ch else "They are already armored.")
+        tr.print("You are already armored." if vo is ch else _char_name(ch, vo, world) + " is already armored.")
         return False
     affect_to_char(vo, _new_affect(sn, level, 24, "AC", -20))
     if vo is ch:
         tr.print("You feel someone protecting you.")
     else:
-        tr.print("They are protected by your magic.")
+        tr.print(_char_name(ch, vo, world) + " is protected by your magic.")
     return True
 
 
 def spell_shield(tr, sn, level, ch, vo, target, world):
     """Shield spell (cf. 1stMud spell_shield in magic.c)."""
     if is_affected(vo, sn):
-        tr.print("You are already shielded from harm." if vo is ch else "They are already protected by a shield.")
+        tr.print("You are already shielded from harm." if vo is ch else _char_name(ch, vo, world) + " is already protected by a shield.")
         return False
     affect_to_char(vo, _new_affect(sn, level, 8 + level, "AC", -20))
     if vo is ch:
         tr.print("You are surrounded by a force shield.")
+    else:
+        tr.print(_char_name(ch, vo, world) + " is surrounded by a force shield.")
     return True
 
 
@@ -209,7 +227,7 @@ def spell_bless(tr, sn, level, ch, vo, target, world):
         tr.print("That spell does not work on objects yet.")
         return False
     if vo.get("pos") == "fighting" or is_affected(vo, sn):
-        tr.print("You are already blessed." if vo is ch else "They already have divine favor.")
+        tr.print("You are already blessed." if vo is ch else _char_name(ch, vo, world) + " already has divine favor.")
         return False
     mod = level // 8
     affect_to_char(vo, _new_affect(sn, level, 6 + level, "hitroll", mod))
@@ -217,19 +235,21 @@ def spell_bless(tr, sn, level, ch, vo, target, world):
     if vo is ch:
         tr.print("You feel righteous.")
     else:
-        tr.print("You grant them the favor of your god.")
+        tr.print("You grant " + _char_name(ch, vo, world) + " the favor of your god.")
     return True
 
 
 def spell_giant_strength(tr, sn, level, ch, vo, target, world):
     """Giant strength spell (cf. 1stMud spell_giant_strength in magic.c)."""
     if is_affected(vo, sn):
-        tr.print("You are already as strong as you can get!" if vo is ch else "They can't get any stronger.")
+        tr.print("You are already as strong as you can get!" if vo is ch else _char_name(ch, vo, world) + " can't get any stronger.")
         return False
     mod = 1 + (level >= 18) + (level >= 25) + (level >= 32)
     affect_to_char(vo, _new_affect(sn, level, level, "str", mod))
     if vo is ch:
         tr.print("Your muscles surge with heightened power!")
+    else:
+        tr.print(_char_name(ch, vo, world) + "'s muscles surge with heightened power.")
     return True
 
 
@@ -240,6 +260,8 @@ def spell_weaken(tr, sn, level, ch, vo, target, world):
     affect_to_char(vo, _new_affect(sn, level, level // 2, "str", -1 * (level // 5), "weaken"))
     if vo is ch:
         tr.print("You feel your strength slip away.")
+    else:
+        tr.print(_char_name(ch, vo, world) + " looks tired and weak.")
     return True
 
 
@@ -250,6 +272,8 @@ def spell_faerie_fire(tr, sn, level, ch, vo, target, world):
     affect_to_char(vo, _new_affect(sn, level, level, "AC", 2 * level, "faerie_fire"))
     if vo is ch:
         tr.print("You are surrounded by a pink outline.")
+    else:
+        tr.print(_char_name(ch, vo, world) + " is surrounded by a pink outline.")
     return True
 
 
@@ -261,6 +285,8 @@ def spell_blindness(tr, sn, level, ch, vo, target, world):
     affect_to_char(vo, _new_affect(sn, level, 1 + level, "hitroll", -4, "blind"))
     if vo is ch:
         tr.print("You are blinded!")
+    else:
+        tr.print(_char_name(ch, vo, world) + " appears to be blinded.")
     return True
 
 
@@ -270,11 +296,13 @@ def spell_poison(tr, sn, level, ch, vo, target, world):
         tr.print("That spell does not work on objects yet.")
         return False
     if saves_spell(level, vo, "poison"):
-        tr.print("You feel momentarily ill, but it passes." if vo is ch else "They seem to be unaffected.")
+        tr.print("You feel momentarily ill, but it passes." if vo is ch else _char_name(ch, vo, world) + " turns slightly green, but it passes.")
         return False
     affect_to_char(vo, _new_affect(sn, level, level, "str", -2, "poison"))
     if vo is ch:
         tr.print("You feel very sick.")
+    else:
+        tr.print(_char_name(ch, vo, world) + " looks very ill.")
     return True
 
 
@@ -290,17 +318,21 @@ def spell_curse(tr, sn, level, ch, vo, target, world):
     affect_to_char(vo, _new_affect(sn, level, 2 * level, "saving_throw", mod))
     if vo is ch:
         tr.print("You feel unclean.")
+    else:
+        tr.print(_char_name(ch, vo, world) + " looks very uncomfortable.")
     return True
 
 
 def spell_plague(tr, sn, level, ch, vo, target, world):
     """Plague spell (cf. 1stMud spell_plague in magic.c)."""
     if saves_spell(level, vo, "disease"):
-        tr.print("You feel momentarily ill, but it passes." if vo is ch else "They seem to be unaffected.")
+        tr.print("You feel momentarily ill, but it passes." if vo is ch else _char_name(ch, vo, world) + " seems to be unaffected.")
         return False
     affect_to_char(vo, _new_affect(sn, level * 3 // 4, level, "str", -5, "plague"))
     if vo is ch:
         tr.print("You scream in agony as plague sores erupt from your skin.")
+    else:
+        tr.print(_char_name(ch, vo, world) + " screams in agony as plague sores erupt from their skin.")
     return True
 
 
@@ -308,10 +340,10 @@ def spell_cure_blindness(tr, sn, level, ch, vo, target, world):
     """Cure blindness (cf. 1stMud spell_cure_blindness in magic.c)."""
     blind_sn = _skill_lookup("blindness")
     if not is_affected(vo, blind_sn):
-        tr.print("You aren't blind." if vo is ch else "They don't appear to be blinded.")
+        tr.print("You aren't blind." if vo is ch else _char_name(ch, vo, world) + " doesn't appear to be blinded.")
         return False
-    if check_dispel(tr, level, vo, blind_sn):
-        tr.print("Your vision returns!" if vo is ch else "Ok.")
+    if check_dispel(tr, level, vo, blind_sn, ch):
+        tr.print("Your vision returns!" if vo is ch else _char_name(ch, vo, world) + " is no longer blinded.")
         return True
     tr.print("Spell failed.")
     return False
@@ -321,10 +353,10 @@ def spell_cure_poison(tr, sn, level, ch, vo, target, world):
     """Cure poison (cf. 1stMud spell_cure_poison in magic.c)."""
     poison_sn = _skill_lookup("poison")
     if not is_affected(vo, poison_sn):
-        tr.print("You aren't poisoned." if vo is ch else "They don't appear to be poisoned.")
+        tr.print("You aren't poisoned." if vo is ch else _char_name(ch, vo, world) + " doesn't appear to be poisoned.")
         return False
-    if check_dispel(tr, level, vo, poison_sn):
-        tr.print("A warm feeling runs through your body." if vo is ch else "Ok.")
+    if check_dispel(tr, level, vo, poison_sn, ch):
+        tr.print("A warm feeling runs through your body." if vo is ch else _char_name(ch, vo, world) + " looks much better.")
         return True
     tr.print("Spell failed.")
     return False
@@ -334,10 +366,10 @@ def spell_cure_disease(tr, sn, level, ch, vo, target, world):
     """Cure disease (cf. 1stMud spell_cure_disease in magic.c)."""
     plague_sn = _skill_lookup("plague")
     if not is_affected(vo, plague_sn):
-        tr.print("You aren't ill." if vo is ch else "They don't appear to be diseased.")
+        tr.print("You aren't ill." if vo is ch else _char_name(ch, vo, world) + " doesn't appear to be diseased.")
         return False
-    if check_dispel(tr, level, vo, plague_sn):
-        tr.print("Your sores vanish." if vo is ch else "Ok.")
+    if check_dispel(tr, level, vo, plague_sn, ch):
+        tr.print("Your sores vanish." if vo is ch else _char_name(ch, vo, world) + " looks relieved as their sores vanish.")
         return True
     tr.print("Spell failed.")
     return False
@@ -354,10 +386,10 @@ def spell_dispel_magic(tr, sn, level, ch, vo, target, world):
     for name in ("armor", "bless", "blindness", "curse", "faerie fire",
                  "giant strength", "plague", "poison", "shield", "weaken"):
         cur = _skill_lookup(name)
-        if cur is not None and check_dispel(tr, level, vo, cur):
+        if cur is not None and check_dispel(tr, level, vo, cur, ch):
             found = True
     if found:
-        tr.print("Your magic unravels." if vo is ch else "Ok.")
+        tr.print("Ok.")
         return True
     tr.print("Spell failed.")
     return False

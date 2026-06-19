@@ -177,6 +177,20 @@ class MagicPhase1Test(unittest.TestCase):
         self.assertEqual(["You feel better!"], tr.lines)
         self.assertGreater(player["hp"], 5)
 
+    def test_cure_light_other_target_prints_only_ok_to_caster(self):
+        tr = FakeTerminal()
+        player = create_char()
+        player["learned"][GSN_CURE_LIGHT] = 100
+        world = world_stub(player["room"])
+        _mob_id, inst = add_mob(world, player["room"], hp=40)
+        inst["hp"] = 10
+        name = MOB_TEMPLATES[inst["tpl"]]["keywords"].split()[0]
+
+        do_cast(tr, player, ["cure", name], world)
+
+        self.assertEqual(["Ok."], tr.lines)
+        self.assertGreater(inst["hp"], 10)
+
     def test_damage_spell_starts_combat(self):
         tr = FakeTerminal()
         player = create_char()
@@ -257,6 +271,24 @@ class MagicPhase1Test(unittest.TestCase):
         self.assertGreaterEqual(player["hitroll"], 0)
         self.assertLessEqual(player["saving_throw"], 0)
 
+    def test_shield_other_target_uses_target_name(self):
+        tr = FakeTerminal()
+        player = create_char()
+        sn = first_sn("shield")
+        player["level"] = SKILLS[sn]["skill_level"]
+        player["learned"][sn] = 100
+        world = world_stub(player["room"])
+        _mob_id, inst = add_mob(world, player["room"], hp=40)
+        name = MOB_TEMPLATES[inst["tpl"]]["keywords"].split()[0]
+        target_name = magic._char_name(player, inst, world)
+
+        do_cast(tr, player, ["shield", name], world)
+        player["wait"] = 0
+        do_cast(tr, player, ["shield", name], world)
+
+        self.assertEqual(target_name + " is surrounded by a force shield.", tr.lines[0])
+        self.assertEqual(target_name + " is already protected by a shield.", tr.lines[-1])
+
     def test_faerie_fire_applies_ac_penalty_to_mob(self):
         tr = FakeTerminal()
         player = create_char()
@@ -313,7 +345,7 @@ class MagicPhase1Test(unittest.TestCase):
             magic.randint = old_randint
 
         self.assertTrue(poisoned_before)
-        self.assertTrue(any(line == "Ok." for line in tr.lines))
+        self.assertTrue(any(line.endswith(" looks much better.") for line in tr.lines))
         self.assertFalse(inst.get("aff_flags", {}).get("poison"))
 
     def test_cure_blindness_without_blindness_exact_text(self):
@@ -349,7 +381,28 @@ class MagicPhase1Test(unittest.TestCase):
 
         self.assertEqual(100, inst["AC"])
         self.assertFalse(inst["affect_list"])
+        self.assertIn("Ok.", tr.lines)
+        self.assertNotIn("You feel less armored.", tr.lines)
+
+    def test_dispel_magic_self_success_prints_ok(self):
+        tr = FakeTerminal()
+        player = create_char()
+        armor_sn = first_sn("armor")
+        dispel_sn = first_sn("dispel magic")
+        player["level"] = max(SKILLS[armor_sn]["skill_level"], SKILLS[dispel_sn]["skill_level"])
+        player["learned"][armor_sn] = 100
+        player["learned"][dispel_sn] = 100
+        old_randint = magic.randint
+        magic.randint = lambda lo, hi: hi
+        try:
+            world = world_stub(player["room"])
+            magic.spell_armor(tr, armor_sn, player["level"], player, player, magic.TARGET_CHAR, world)
+            magic.spell_dispel_magic(tr, dispel_sn, player["level"], player, player, magic.TARGET_CHAR, world)
+        finally:
+            magic.randint = old_randint
+
         self.assertIn("You feel less armored.", tr.lines)
+        self.assertEqual("Ok.", tr.lines[-1])
 
 
 if __name__ == "__main__":

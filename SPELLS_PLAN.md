@@ -337,17 +337,18 @@ Validation at Phase 4 checkpoint:
 - `python -m unittest tests.test_magic_phase1`
 - `python tools/check_ascii_py.py`
 
-Next session should start with a player-facing output review before Phase 5. Current implemented cast flow is close, but known 1stMud text gaps remain:
+Mini-phase 4a completed the low-risk player-facing output pass before Phase 5:
+
+- non-self healing wound spells now show caster `Ok.` only;
+- non-self buff/debuff/save/cure messages now use target-name caster-visible text instead of generic `They...` wording;
+- cure condition and dispel paths suppress victim-only `msg_off` when the player terminal represents a different caster;
+- `spell_dispel_magic` success now prints caster `Ok.`, including direct self-cast.
+
+Remaining gaps before/after Phase 5:
 
 - object spell stubs still print PrimeSUD placeholder text and are deferred to Phase 5;
-- non-self defensive spell target messages use generic `They...` text where 1stMud uses target-name act text;
-- poison/plague save text for non-player targets uses generic `They...` text;
-- cure success against other targets currently favors caster `Ok.` and does not yet model all room/victim act messages;
-- `spell_dispel_magic` self success should likely be caster `Ok.` for exact 1stMud parity;
-- `check_dispel()` currently prints `msg_off` to the player even when dispelling another actor;
-- spell damage output uses PrimeSUD combat adapter text, not exact 1stMud `damage()` / `dam_message()` output.
-
-Open decision before Phase 5: either fix those visible message mismatches now, or document them as `[PRIMESUD]` deviations in `DESIGN.md`. Do not port object spell paths until this decision is made, because Phase 5 adds more player-visible object and target messages.
+- command-level `cast dispel magic self` still does not resolve because `dispel magic` is a `char_offensive` spell and current offensive routing only targets mobs; changing that may also expose self-target offensive damage crashes, so keep it separate from message parity;
+- spell damage output uses PrimeSUD combat adapter text, not exact 1stMud `damage()` / `dam_message()` output. Spell damage text is close enough for Phase 5 unless magical items expose damage spells; unify the separate spell damage path before Phase 6.
 
 ### Phase 5: Object Spells and Magical Items
 
@@ -365,6 +366,12 @@ Acceptance:
 - object target messages match 1stMud where visible.
 
 ### Phase 6: Area/Element/Travel Spells
+
+Before this phase, unify spell damage with the combat damage adapter. Current spell
+damage text is close to 1stMud `dam_message()` for caster-visible lines, but
+`magic._damage_char()` is a separate mini-damage path and will diverge once Phase
+6 adds area/element damage. Extract shared damage-message formatting first, then
+route spell damage through shared damage application when feasible.
 
 Port as content needs:
 
