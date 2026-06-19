@@ -323,6 +323,32 @@ Acceptance:
 
 Status: complete pending review.
 
+## New-Session Handoff After Phase 4
+
+Checkpoint commits:
+
+- `8c1****` Phase 1 cast infrastructure.
+- `8f3****` Phase 2 healing and simple damage.
+- `3dd****` Phase 3 affect buffs.
+- `8d6****` Phase 4 saves, debuffs, cures, and dispel.
+
+Validation at Phase 4 checkpoint:
+
+- `python -m unittest tests.test_magic_phase1`
+- `python tools/check_ascii_py.py`
+
+Next session should start with a player-facing output review before Phase 5. Current implemented cast flow is close, but known 1stMud text gaps remain:
+
+- object spell stubs still print PrimeSUD placeholder text and are deferred to Phase 5;
+- non-self defensive spell target messages use generic `They...` text where 1stMud uses target-name act text;
+- poison/plague save text for non-player targets uses generic `They...` text;
+- cure success against other targets currently favors caster `Ok.` and does not yet model all room/victim act messages;
+- `spell_dispel_magic` self success should likely be caster `Ok.` for exact 1stMud parity;
+- `check_dispel()` currently prints `msg_off` to the player even when dispelling another actor;
+- spell damage output uses PrimeSUD combat adapter text, not exact 1stMud `damage()` / `dam_message()` output.
+
+Open decision before Phase 5: either fix those visible message mismatches now, or document them as `[PRIMESUD]` deviations in `DESIGN.md`. Do not port object spell paths until this decision is made, because Phase 5 adds more player-visible object and target messages.
+
 ### Phase 5: Object Spells and Magical Items
 
 Port:
