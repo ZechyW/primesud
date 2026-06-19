@@ -114,7 +114,7 @@ def do_practice(tr, player, args, world):
 
     if not args:
         print_practice_table(tr, player)
-        tr.print("You have {} practice sessions left.".format(player["practice"]))
+        tr.print("You have " + str(player["practice"]) + " practice sessions left.")
         if teacher is None or player["practice"] < 1:
             return
         practicable = [(vnum, pct) for vnum, pct in player["learned"].items()
@@ -123,7 +123,7 @@ def do_practice(tr, player, args, world):
                            and skill_rating(player, vnum) > 0)]
         if not practicable:
             return
-        names = ["{} ({}%)".format(SKILLS[vnum]["name"], pct) for vnum, pct in practicable]
+        names = [str(SKILLS[vnum]["name"]) + " (" + str(pct) + "%)" for vnum, pct in practicable]
         tr.print("")
         idx = pick_from(tr, "Practice which skill?", names)
         if idx < 0:

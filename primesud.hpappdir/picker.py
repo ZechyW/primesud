@@ -37,7 +37,7 @@ def _render(tr, title, options, page, max_page):
         tr.print("  {y" + label + "){x " + opt + suffix)
     if max_page > 0:
         tr.print(
-            "{wPage %d/%d [+] next  [-] prev  [Esc] cancel{x" % (page + 1, max_page + 1)
+            "{wPage " + str(page + 1) + "/" + str(max_page + 1) + " [+] next  [-] prev  [Esc] cancel{x"
         )
     else:
         tr.print("{w[Esc] cancel{x")
