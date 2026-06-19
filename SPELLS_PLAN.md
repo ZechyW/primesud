@@ -323,19 +323,7 @@ Acceptance:
 
 Status: complete pending review.
 
-## New-Session Handoff After Phase 4
-
-Checkpoint commits:
-
-- `8c1****` Phase 1 cast infrastructure.
-- `8f3****` Phase 2 healing and simple damage.
-- `3dd****` Phase 3 affect buffs.
-- `8d6****` Phase 4 saves, debuffs, cures, and dispel.
-
-Validation at Phase 4 checkpoint:
-
-- `python -m unittest tests.test_magic_phase1`
-- `python tools/check_ascii_py.py`
+## Phase 4a: Check player-facing output
 
 Mini-phase 4a completed the low-risk player-facing output pass before Phase 5:
 
@@ -349,6 +337,8 @@ Remaining gaps before/after Phase 5:
 - object spell stubs still print PrimeSUD placeholder text and are deferred to Phase 5;
 - command-level `cast dispel magic self` still does not resolve because `dispel magic` is a `char_offensive` spell and current offensive routing only targets mobs; changing that may also expose self-target offensive damage crashes, so keep it separate from message parity;
 - spell damage output uses PrimeSUD combat adapter text, not exact 1stMud `damage()` / `dam_message()` output. Spell damage text is close enough for Phase 5 unless magical items expose damage spells; unify the separate spell damage path before Phase 6.
+
+Status: complete pending review.
 
 ### Phase 5: Object Spells and Magical Items
 
@@ -494,7 +484,7 @@ Review gate:
 - on missing/typoed spell names, fail loud during development and do not
   silently consume or expend item use
 
-Status: not started.
+Status: complete pending review.
 
 ### Phase 5b: Player Commands for Magical Items
 
@@ -532,7 +522,7 @@ Review gate:
   casting in same phase. Default: no; keep pills deferred unless existing area
   data already uses them.
 
-Status: not started.
+Status: complete pending review.
 
 ### Phase 5c: Object-Target Spell Functions
 
@@ -591,7 +581,7 @@ Acceptance:
 - object target messages match 1stMud where visible
 - magical item activation never silently no-ops
 
-Status: not started.
+Status: complete pending review.
 
 ### Phase 6: Area/Element/Travel Spells
 
@@ -601,7 +591,96 @@ damage text is close to 1stMud `dam_message()` for caster-visible lines, but
 6 adds area/element damage. Extract shared damage-message formatting first, then
 route spell damage through shared damage application when feasible.
 
-Port as content needs:
+### Phase 6a: Damage-path unification
+
+Completed:
+
+- extracted shared player-to-mob direct damage helper in `combat.py`
+- routed spell damage through shared combat damage text + kill plumbing
+- kept existing XP/death/target-advance behavior intact
+
+Validation:
+
+- `python -m unittest tests.test_magic_phase1 tests.test_magic_phase5a tests.test_magic_phase5b tests.test_magic_phase5c`
+- `python tools/check_ascii_py.py`
+
+Status: complete in current workspace, pending follow-on Phase 6 review gate.
+
+### Phase 6b: First area spell and fanout rules
+
+Port first:
+
+- `spell_earthquake`
+
+Scope for first slice:
+
+- caster-visible `TO_CHAR` text
+- same-room hostile mob damage / flying zero-damage behavior
+- survivor aggro hookup
+- no cross-room player-hidden fanout yet unless the PrimeSUD player would
+  directly receive it
+
+Validation checkpoint:
+
+- focused CPython tests for:
+  - earthquake damages all grounded room mobs;
+  - flying mobs take zero damage;
+  - surviving damaged mobs aggro the player;
+  - dead mobs route through normal kill flow
+- area weather model exists for `call lightning`, marked `[PRIMESUD]`
+  simplified interim until fuller 1stMud-style weather runtime lands
+
+Review gate:
+
+- after `earthquake`, validate message fanout rules before porting
+  `call_lightning`, `chain_lightning`, travel, or weather spells
+
+### Phase 6c: Low-risk runtime spells completed
+
+Completed in current workspace:
+
+- `spell_earthquake`
+- `spell_call_lightning`
+- `spell_chain_lightning`
+- `spell_word_of_recall`
+- `spell_teleport`
+- `spell_farsight`
+- `spell_locate_object`
+- `spell_control_weather`
+
+Supporting runtime work:
+
+- shared spell-tail storage for `target_name`-style ignore spells
+- simplified interim area weather persistence/update model `[PRIMESUD]`
+- shared `perform_recall(...)`
+
+Validation:
+
+- focused CPython coverage in `tests.test_magic_phase6`
+- full regression run:
+  `python -m unittest tests.test_magic_phase1 tests.test_magic_phase5a tests.test_magic_phase5b tests.test_magic_phase5c tests.test_magic_phase6`
+- ASCII check:
+  `python tools/check_ascii_py.py`
+
+Status: complete for low-risk Phase 6 slice.
+
+### Phase 6d: Remaining high-risk spells
+
+Still deferred because they need larger runtime/model work, not just isolated
+spell functions:
+
+- elemental room/object side effects from `effects.c`
+- breath spells
+- `summon`, `gate`, `portal`, `nexus`
+
+Main reasons:
+
+- no world-wide character search / visibility model yet
+- no object/room elemental-effect runtime
+- no private/solitary/closed-area destination filtering model matching 1stMud
+- no player-safe handling yet for self-hit / room-fanout parity on broader area
+  spells
+Port as content needs after review:
 
 - elemental effects from `effects.c`
 - breath spells

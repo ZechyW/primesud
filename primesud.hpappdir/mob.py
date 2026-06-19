@@ -191,7 +191,20 @@ def reset_area():
 
 def create_area_states():
     """Create mutable area tick state from static area definitions."""
-    return [{"tag": d["tag"], "age": 0, "resets": d["resets"]} for d in AREA_DEFS]
+    states = []
+    for d in AREA_DEFS:
+        # [PRIMESUD] Simplified interim weather model for spell gating. This
+        # keeps only precipitation and its drift, not full 1stMud weather.c.
+        states.append({
+            "tag": d["tag"],
+            "age": 0,
+            "resets": d["resets"],
+            "weather": {
+                "precip": randint(-2, 2),
+                "precip_vector": randint(-1, 1),
+            },
+        })
+    return states
 
 
 def mobile_update(tr, player, world):
@@ -249,6 +262,22 @@ def mobile_update(tr, player, world):
 def area_update(tr, player, world):
     """Increment area ages and reset areas at threshold (cf. 1stMud area_update in db.c)."""
     for area in world["areas"]:
+        weather = area.get("weather")
+        if weather is not None:
+            weather["precip"] += weather.get("precip_vector", 0)
+            if weather["precip"] < -3:
+                weather["precip"] = -3
+            elif weather["precip"] > 3:
+                weather["precip"] = 3
+            weather["precip_vector"] += randint(-1, 1)
+            if weather["precip"] <= -3 and weather["precip_vector"] < 0:
+                weather["precip_vector"] = 0
+            elif weather["precip"] >= 3 and weather["precip_vector"] > 0:
+                weather["precip_vector"] = 0
+            if weather["precip_vector"] < -1:
+                weather["precip_vector"] = -1
+            elif weather["precip_vector"] > 1:
+                weather["precip_vector"] = 1
         area["age"] += 1
         if area["age"] >= _AREA_AGE_MIN and area["age"] >= _AREA_AGE_RESET:
             reset_mobs(world["mobs"], world["rooms"], area["resets"])

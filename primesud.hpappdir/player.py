@@ -234,6 +234,10 @@ def save_char(player, world):
     for _as in world["areas"]:
         # HP Prime G1 has unstable percent-format strings in save payloads.
         lines.append("a." + str(_as["tag"]) + ".age=" + str(_as["age"]))
+        weather = _as.get("weather")
+        if weather is not None:
+            lines.append("a." + str(_as["tag"]) + ".precip=" + str(weather.get("precip", 0)))
+            lines.append("a." + str(_as["tag"]) + ".precipv=" + str(weather.get("precip_vector", 0)))
     # Build reset-room map for single-instance mobs (gl=1): if the only live
     # instance is already in its reset room, omit it -- reset_area() will
     # restore it there on load without any save entry needed.
@@ -371,6 +375,16 @@ def load_char(player, world):
             tag = key[2:-4]
             if tag in _area_by_tag:
                 _area_by_tag[tag]["age"] = int(val)
+        elif key.startswith("a.") and key.endswith(".precip"):
+            tag = key[2:-7]
+            if tag in _area_by_tag:
+                _area_by_tag[tag].setdefault("weather", {})
+                _area_by_tag[tag]["weather"]["precip"] = int(val)
+        elif key.startswith("a.") and key.endswith(".precipv"):
+            tag = key[2:-8]
+            if tag in _area_by_tag:
+                _area_by_tag[tag].setdefault("weather", {})
+                _area_by_tag[tag]["weather"]["precip_vector"] = int(val)
         elif key.startswith("m."):
             mob_saves[int(key[2:])] = [int(r) for r in val.split("|") if r]
 

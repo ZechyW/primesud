@@ -200,6 +200,45 @@ def _damage_punct(dmg):
     return "!!!!"
 
 
+def deal_player_mob_damage(tr, player, victim, dam, world=None, victim_id=None,
+                           attack_noun=None, kill_now=False):
+    """Apply direct player-caused damage to a mob (cf. 1stMud damage in fight.c).
+
+    Args:
+        tr: Terminal for printing damage text.
+        player (dict): Player state dict.
+        victim (dict): Mob instance dict.
+        dam (int): Damage amount before clamp.
+        world (dict or None): Game world state for death handling.
+        victim_id (int or None): Runtime mob id for death handling.
+        attack_noun (str or None): Attack noun. None = unarmed-style "You verb".
+        kill_now (bool): Resolve death immediately through raw_kill when True.
+
+    Returns:
+        bool: True if target reached 0 HP.
+    """
+    if dam < 0:
+        dam = 0
+
+    victim["hp"] = max(0, victim["hp"] - dam)
+
+    vs, vp = _damage_verb(dam)
+    punct = _damage_punct(dam)
+    victim_name = MOB_TEMPLATES[victim["tpl"]]["short_descr"]
+    if attack_noun:
+        tr.print("{GYour %s %s {G%s%s {W[{R%d{W]{x" % (
+            attack_noun, vp, victim_name, punct, dam))
+    else:
+        tr.print("{GYou %s {G%s%s {W[{R%d{W]{x" % (
+            vs, victim_name, punct, dam))
+
+    killed = victim["hp"] == 0
+    if kill_now and killed and victim_id is not None and world is not None:
+        raw_kill(tr, player, victim_id, victim, MOB_TEMPLATES[victim["tpl"]], world)
+        _advance_target(player, world["mobs"], world["rooms"])
+    return killed
+
+
 def _attack_info(dam_type):
     """Resolve display noun and damage class for a dam_type key (cf. 1stMud attack_table in const.c).
 
@@ -455,23 +494,18 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
         dam = (dam - 80) // 2 + 80
     dam = max(1, dam)
 
-    victim["hp"] = max(0, victim["hp"] - dam)
-
-    vs, vp = _damage_verb(dam)
-    punct  = _damage_punct(dam)
-
     if ch["is_npc"]:
+        victim["hp"] = max(0, victim["hp"] - dam)
+        vs, vp = _damage_verb(dam)
+        punct  = _damage_punct(dam)
         tr.print("{R%s's %s %s {Ryou%s {W[{R%d{W]{x" % (ch_tpl["short_descr"], attack_noun, vp, punct, dam))
         if dam > victim["hp_max"] // 4:
             tr.print("That really did HURT!")
         if victim["hp"] < victim["hp_max"] // 4:
             tr.print("You sure are BLEEDING!")
     else:
-        victim_name = MOB_TEMPLATES[victim["tpl"]]["short_descr"]
-        if armed:
-            tr.print("{GYour %s %s {G%s%s {W[{R%d{W]{x" % (attack_noun, vp, victim_name, punct, dam))
-        else:
-            tr.print("{GYou %s {G%s%s {W[{R%d{W]{x" % (vs, victim_name, punct, dam))
+        deal_player_mob_damage(
+            tr, ch, victim, dam, attack_noun=attack_noun if armed else None)
         if sk_vnum != -1:
             check_improve(tr, ch, sk_vnum, True, 5)
 

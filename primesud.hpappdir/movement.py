@@ -114,23 +114,21 @@ def do_close(tr, player, args, world):
             rev_exit["closed"] = True
 
 
-def do_recall(tr, player, args, world):
-    """Teleport to the area's recall room (cf. 1stMud perform_recall in act_move.c).
-
-    Per-area recall VNUMs (area->recall in 1stMud) are not yet implemented;
-    all areas fall back to R_RECALL (ROOM_VNUM_TEMPLE).  When a pet system is
-    added, pet teleport should mirror the player teleport here.
-    """
+def perform_recall(tr, player, location, world, what="recall"):
+    """Move player to recall destination (cf. 1stMud perform_recall in act_move.c)."""
     room = ROOMS[player["room"]]
 
     if room.get("flags", {}).get("no_recall") \
             or player.get("aff_flags", {}).get("curse"):
         tr.print("Your deity has forsaken you.")
-        return
+        return False
 
-    location = R_RECALL
+    if location is None:
+        tr.print("You are completely lost.")
+        return False
+
     if player["room"] == location:
-        return
+        return True
 
     if player["fighting"] is not None:
         skill = player["learned"].get(GSN_RECALL, 50)
@@ -138,14 +136,26 @@ def do_recall(tr, player, args, world):
             check_improve(tr, player, GSN_RECALL, False, 6)
             WaitState(player, 4)
             tr.print("You failed!.")
-            return
+            return False
         player["xp"] = max(0, player["xp"] - 25)
         check_improve(tr, player, GSN_RECALL, True, 4)
-        tr.print("You recall from combat!  You lose 25 exps.")
+        tr.print("You " + what + " from combat!  You lose 25 exps.")
         stop_fighting(player, world["mobs"])
 
     player["room"] = location
     do_look(tr, player, [], world)
+    return True
+
+
+def do_recall(tr, player, args, world):
+    """Teleport to the area's recall room (cf. 1stMud perform_recall in act_move.c).
+
+    Per-area recall VNUMs (area->recall in 1stMud) are not yet implemented;
+    all areas fall back to R_RECALL (ROOM_VNUM_TEMPLE).  When a pet system is
+    added, pet teleport should mirror the player teleport here.
+    """
+    location = R_RECALL
+    perform_recall(tr, player, location, world, "recall")
 
 
 def do_flee(tr, player, args, world):

@@ -1,9 +1,9 @@
 """Magic command handling and spell dispatch (cf. 1stMud magic.c)."""
 
-from world import SKILLS, SKILL_TABLE, ITEM_TEMPLATES, MOB_TEMPLATES
+from world import SKILLS, SKILL_TABLE, ITEM_TEMPLATES, MOB_TEMPLATES, R_RECALL, ROOMS, ROOM_AREAS
 from picker import pick_from
 from combat import (WaitState, check_improve, get_skill, set_fighting,
-                    raw_kill, _advance_target, _damage_verb, _damage_punct)
+                    deal_player_mob_damage)
 from item import (get_char_room, get_obj_list, obj_vnum, item_spell_level,
                   item_spells, item_spell_name, item_extra_flags,
                   item_current_charges, item_max_charges, item_affect_list,
@@ -11,6 +11,8 @@ from item import (get_char_room, get_obj_list, obj_vnum, item_spell_level,
                   set_item_extra_flag)
 from actor import is_name, is_affected, affect_to_char, affect_strip
 from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
+from movement import perform_recall
+from config import DIR_ALIASES, EXIT_NAMES
 
 from urandom import randint
 
@@ -57,19 +59,11 @@ def _target_id(ch, victim, world):
 
 
 def _damage_char(tr, ch, victim, victim_id, dam, sn, world):
-    """Apply spell damage to a mob and route death through combat kill flow."""
-    if dam < 0:
-        dam = 0
-    victim["hp"] = max(0, victim["hp"] - dam)
+    """Apply spell damage through shared combat adapter (cf. 1stMud damage in fight.c)."""
     sk = SKILLS[sn]
     noun = sk.get("noun_damage") or sk["name"]
-    _vs, vp = _damage_verb(dam)
-    punct = _damage_punct(dam)
-    name = MOB_TEMPLATES[victim["tpl"]]["short_descr"]
-    tr.print("{GYour %s %s {G%s%s {W[{R%d{W]{x" % (noun, vp, name, punct, dam))
-    if victim["hp"] == 0 and victim_id is not None and victim_id in world["mobs"]:
-        raw_kill(tr, ch, victim_id, victim, MOB_TEMPLATES[victim["tpl"]], world)
-        _advance_target(ch, world["mobs"], world["rooms"])
+    deal_player_mob_damage(
+        tr, ch, victim, dam, world, victim_id, attack_noun=noun, kill_now=True)
     return True
 
 
@@ -93,6 +87,20 @@ def _skill_lookup(name):
         if sk["name"] == name:
             return sn
     return None
+
+
+def _area_state_for_room(world, room_vnum):
+    tag = ROOM_AREAS.get(room_vnum)
+    if tag is None:
+        return None
+    for area in world.get("areas", []):
+        if area.get("tag") == tag:
+            return area
+    return None
+
+
+def _spell_tail(ch):
+    return ch.get("_spell_target_name", "")
 
 
 def _item_name(obj):
@@ -234,6 +242,284 @@ def spell_magic_missile(tr, sn, level, ch, vo, target, world):
     if saves_spell(level, vo, "energy"):
         dam //= 2
     return _damage_char(tr, ch, vo, _target_id(ch, vo, world), dam, sn, world)
+
+
+def spell_earthquake(tr, sn, level, ch, vo, target, world):
+    """Earthquake room spell (cf. 1stMud spell_earthquake in magic.c)."""
+    tr.print("The earth trembles beneath your feet!")
+    room = world["rooms"][ch["room"]]
+    first_target = None
+    for mob_id in list(room["mobs"]):
+        victim = world["mobs"].get(mob_id)
+        if victim is None or victim is ch:
+            continue
+        dam = 0 if victim.get("aff_flags", {}).get("flying") else level + _dice(2, 8)
+        _damage_char(tr, ch, victim, mob_id, dam, sn, world)
+        if mob_id in world["mobs"]:
+            victim = world["mobs"][mob_id]
+            victim["state"] = "aggro"
+            victim["fighting"] = ch
+            if first_target is None:
+                first_target = mob_id
+    if first_target is not None:
+        ch["fighting"] = first_target
+        ch["pos"] = "fighting"
+    return True
+
+
+def spell_call_lightning(tr, sn, level, ch, vo, target, world):
+    """Call lightning area spell (cf. 1stMud spell_call_lightning in magic.c)."""
+    room = ROOMS[ch["room"]]
+    if room.get("flags", {}).get("indoors"):
+        tr.print("You must be out of doors.")
+        return False
+    area = _area_state_for_room(world, ch["room"])
+    weather = area.get("weather") if area is not None else None
+    if weather is None or weather.get("precip", 0) <= 0:
+        tr.print("You need bad weather.")
+        return False
+
+    dam = _dice(max(1, level // 2), 8)
+    tr.print("Your lightning strikes your foes!")
+    first_target = None
+    room_state = world["rooms"][ch["room"]]
+    for mob_id in list(room_state["mobs"]):
+        victim = world["mobs"].get(mob_id)
+        if victim is None or victim is ch:
+            continue
+        cur_dam = dam
+        if saves_spell(level, victim, "lightning"):
+            cur_dam //= 2
+        _damage_char(tr, ch, victim, mob_id, cur_dam, sn, world)
+        if mob_id in world["mobs"]:
+            victim = world["mobs"][mob_id]
+            victim["state"] = "aggro"
+            victim["fighting"] = ch
+            if first_target is None:
+                first_target = mob_id
+    if first_target is not None:
+        ch["fighting"] = first_target
+        ch["pos"] = "fighting"
+    return True
+
+
+def spell_chain_lightning(tr, sn, level, ch, vo, target, world):
+    """Chain lightning room spell (cf. 1stMud spell_chain_lightning in magic.c)."""
+    victim = vo
+    if victim is None or victim.get("is_npc") is not True:
+        tr.print("You failed.")
+        return False
+    tr.print("A lightning bolt leaps from your hand and arcs to " +
+             MOB_TEMPLATES[victim["tpl"]]["short_descr"] + ".")
+
+    room_state = world["rooms"][ch["room"]]
+    victim_id = _target_id(ch, victim, world)
+    first_target = victim_id
+    any_hit = False
+
+    while level > 0 and victim is not None:
+        dam = _dice(level, 6)
+        if saves_spell(level, victim, "lightning"):
+            dam //= 3
+        _damage_char(tr, ch, victim, victim_id, dam, sn, world)
+        any_hit = True
+        if victim_id is not None and victim_id in world["mobs"]:
+            world["mobs"][victim_id]["state"] = "aggro"
+            world["mobs"][victim_id]["fighting"] = ch
+        level -= 4
+
+        next_id = None
+        for mob_id in room_state["mobs"]:
+            if mob_id != victim_id:
+                next_id = mob_id
+                break
+        if next_id is None:
+            victim = None
+            break
+        victim_id = next_id
+        victim = world["mobs"][victim_id]
+        tr.print("The bolt arcs to " + MOB_TEMPLATES[victim["tpl"]]["short_descr"] + "!")
+
+    if first_target is not None and first_target in world["mobs"]:
+        ch["fighting"] = first_target
+        ch["pos"] = "fighting"
+    if victim is None and any_hit and level > 0:
+        tr.print("The bolt seems to have fizzled out.")
+    return any_hit
+
+
+def _random_teleport_room(ch):
+    rooms = []
+    for room_vnum, room in ROOMS.items():
+        flags = room.get("flags", {})
+        if flags.get("private") or flags.get("solitary") or flags.get("safe") or flags.get("arena"):
+            continue
+        if not ch.get("is_npc") and flags.get("law"):
+            continue
+        rooms.append(room_vnum)
+    if not rooms:
+        return None
+    return rooms[randint(0, len(rooms) - 1)]
+
+
+def spell_teleport(tr, sn, level, ch, vo, target, world):
+    """Teleport target to random room (cf. 1stMud spell_teleport in magic.c)."""
+    victim = vo
+    room = ROOMS.get(victim.get("room"))
+    if (room is None
+            or room.get("flags", {}).get("no_recall")
+            or (victim is not ch and saves_spell(level - 5, victim, "other"))
+            or (ch.get("is_npc") is not True and victim.get("fighting") is not None)):
+        tr.print("You failed.")
+        return False
+    dest = _random_teleport_room(victim)
+    if dest is None:
+        tr.print("You failed.")
+        return False
+    old_room = victim["room"]
+    victim["room"] = dest
+    victim_id = _target_id(ch, victim, world)
+    if victim_id is not None:
+        if victim_id in world["rooms"].get(old_room, {}).get("mobs", []):
+            world["rooms"][old_room]["mobs"].remove(victim_id)
+        world["rooms"][dest]["mobs"].append(victim_id)
+    if victim is ch:
+        from info import do_look
+        do_look(tr, victim, [], world)
+    else:
+        tr.print("Ok.")
+    return True
+
+
+def _scan_room_lines(room_vnum, world, depth, door):
+    lines = []
+    room_state = world["rooms"].get(room_vnum)
+    if room_state is None:
+        return lines
+    if depth == 0:
+        suffix = "right here."
+    elif depth == 1:
+        suffix = "nearby to the " + EXIT_NAMES.get(door, door) + "."
+    elif depth == 2:
+        suffix = "not far " + EXIT_NAMES.get(door, door) + "."
+    else:
+        suffix = "off in the distance " + EXIT_NAMES.get(door, door) + "."
+    for mob_id in room_state.get("mobs", []):
+        mob = world["mobs"].get(mob_id)
+        if mob is None:
+            continue
+        lines.append(MOB_TEMPLATES[mob["tpl"]]["short_descr"] + ", " + suffix)
+    return lines
+
+
+def spell_farsight(tr, sn, level, ch, vo, target, world):
+    """Farsight spell (cf. 1stMud spell_farsight in magic2.c)."""
+    if ch.get("aff_flags", {}).get("blind"):
+        tr.print("Maybe it would help if you could see?")
+        return False
+    arg = _spell_tail(ch)
+    if not arg:
+        tr.print("Looking around you see:")
+        for line in _scan_room_lines(ch["room"], world, 0, ""):
+            tr.print(line)
+        for door, exit_val in ROOMS[ch["room"]].get("exits", {}).items():
+            dest = exit_val["to"] if isinstance(exit_val, dict) else exit_val
+            for line in _scan_room_lines(dest, world, 1, door):
+                tr.print(line)
+        return True
+    door = DIR_ALIASES.get(arg)
+    if door is None:
+        tr.print("Which way do you want to scan?")
+        return False
+    tr.print("Looking " + EXIT_NAMES.get(door, door) + " you see:")
+    room_vnum = ch["room"]
+    found = False
+    for depth in range(1, 4):
+        exit_val = ROOMS.get(room_vnum, {}).get("exits", {}).get(door)
+        if exit_val is None:
+            break
+        room_vnum = exit_val["to"] if isinstance(exit_val, dict) else exit_val
+        for line in _scan_room_lines(room_vnum, world, depth, door):
+            tr.print(line)
+            found = True
+    return found or True
+
+
+def _iter_world_objects(player, world):
+    for obj in player.get("inv", []):
+        yield (obj, "one is carried by you")
+    for obj in player.get("equip", {}).values():
+        if obj is not None:
+            yield (obj, "one is carried by you")
+    for room_vnum, room_state in world.get("rooms", {}).items():
+        for obj in room_state.get("items", []):
+            yield (obj, "one is in " + ROOMS.get(room_vnum, {}).get("name", "somewhere"))
+    for mob in world.get("mobs", {}).values():
+        mob_name = MOB_TEMPLATES[mob["tpl"]]["short_descr"]
+        for obj in mob.get("inv", []):
+            yield (obj, "one is carried by " + mob_name)
+        for obj in mob.get("equip", {}).values():
+            if obj is not None:
+                yield (obj, "one is carried by " + mob_name)
+
+
+def spell_locate_object(tr, sn, level, ch, vo, target, world):
+    """Locate object by name fragment (cf. 1stMud spell_locate_object in magic.c)."""
+    wanted = _spell_tail(ch)
+    if not wanted:
+        tr.print("Nothing like that in heaven or earth.")
+        return False
+    found = []
+    max_found = 2 * level
+    for obj, line in _iter_world_objects(ch, world):
+        tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+        if not is_name(wanted, tpl.get("keywords", "")):
+            continue
+        if item_extra_flags(obj, tpl).get("no_locate"):
+            continue
+        found.append(line)
+        if len(found) >= max_found:
+            break
+    if not found:
+        tr.print("Nothing like that in heaven or earth.")
+        return False
+    for line in found:
+        tr.print(line)
+    return True
+
+
+def spell_control_weather(tr, sn, level, ch, vo, target, world):
+    """Adjust simplified interim weather state (cf. 1stMud spell_control_weather in magic.c)."""
+    arg = _spell_tail(ch)
+    area = _area_state_for_room(world, ch["room"])
+    if area is None:
+        tr.print("The weather is altered by your magic.")
+        return True
+    weather = area.setdefault("weather", {"precip": 0, "precip_vector": 0})
+    change = randint(-1, 1) + max(1, (level * 3) // 20)
+    if arg == "wetter":
+        weather["precip_vector"] += change
+    elif arg == "drier":
+        weather["precip_vector"] -= change
+    elif arg in ("warmer", "colder", "windier", "calmer"):
+        pass  # [PRIMESUD] interim model stores only precipitation.
+    else:
+        tr.print("Do you want it to get warmer, colder, wetter, drier, windier, or calmer?")
+        return False
+    if weather["precip_vector"] < -3:
+        weather["precip_vector"] = -3
+    elif weather["precip_vector"] > 3:
+        weather["precip_vector"] = 3
+    tr.print("The weather is altered by your magic.")
+    return True
+
+
+def spell_word_of_recall(tr, sn, level, ch, vo, target, world):
+    """Word of recall spell (cf. 1stMud spell_word_of_recall in magic.c)."""
+    victim = vo if vo is not None else ch
+    if victim.get("is_npc"):
+        return False
+    return perform_recall(tr, victim, R_RECALL, world, "recall")
 
 
 def spell_trivia_pill(tr, sn, level, ch, vo, target, world):
@@ -690,9 +976,12 @@ SPELL_FUNS = {
     "spell_armor": spell_armor,
     "spell_bless": spell_bless,
     "spell_blindness": spell_blindness,
+    "spell_call_lightning": spell_call_lightning,
     "spell_cause_critical": spell_cause_critical,
     "spell_cause_light": spell_cause_light,
     "spell_cause_serious": spell_cause_serious,
+    "spell_chain_lightning": spell_chain_lightning,
+    "spell_control_weather": spell_control_weather,
     "spell_cure_critical": spell_cure_critical,
     "spell_cure_blindness": spell_cure_blindness,
     "spell_cure_disease": spell_cure_disease,
@@ -702,20 +991,25 @@ SPELL_FUNS = {
     "spell_curse": spell_curse,
     "spell_detect_poison": spell_detect_poison,
     "spell_dispel_magic": spell_dispel_magic,
+    "spell_earthquake": spell_earthquake,
     "spell_enchant_armor": spell_enchant_armor,
     "spell_enchant_weapon": spell_enchant_weapon,
     "spell_identify": spell_identify,
     "spell_faerie_fire": spell_faerie_fire,
+    "spell_farsight": spell_farsight,
     "spell_fireproof": spell_fireproof,
     "spell_giant_strength": spell_giant_strength,
     "spell_harm": spell_harm,
     "spell_heal": spell_heal,
     "spell_magic_missile": spell_magic_missile,
+    "spell_locate_object": spell_locate_object,
     "spell_plague": spell_plague,
     "spell_poison": spell_poison,
     "spell_shield": spell_shield,
+    "spell_teleport": spell_teleport,
     "spell_trivia_pill": spell_trivia_pill,
     "spell_weaken": spell_weaken,
+    "spell_word_of_recall": spell_word_of_recall,
 }
 
 
@@ -950,7 +1244,11 @@ def obj_cast_spell(tr, spell_name, level, ch, victim, obj, world, item_obj=None)
     if not ok:
         return _dev_item_fail(tr, item_obj, "target resolution failed for '" + spell_name + "'")
     fun = SPELL_FUNS.get(SKILLS[sn].get("spell_fun", "spell_null"), spell_null)
+    if spell_name:
+        ch["_spell_target_name"] = spell_name
     ret = fun(tr, sn, level, ch, vo, target, world)
+    if "_spell_target_name" in ch:
+        del ch["_spell_target_name"]
     if (ret and SKILLS[sn].get("target") in ("char_offensive", "obj_char_offensive")
             and target == TARGET_CHAR and victim_id is not None
             and victim_id in world["mobs"] and ch.get("fighting") is None):
@@ -1021,7 +1319,9 @@ def do_cast(tr, player, args, world):
 
     player["mp"] -= mana
     fun = SPELL_FUNS.get(sk.get("spell_fun", "spell_null"), spell_null)
+    player["_spell_target_name"] = target_name
     ret = fun(tr, sn, _spell_level(player, sn), player, vo, target, world)
+    del player["_spell_target_name"]
     check_improve(tr, player, sn, ret, 1)
 
     if (ret and sk.get("target") in ("char_offensive", "obj_char_offensive")
