@@ -1,8 +1,9 @@
 """Magic command handling and spell dispatch (cf. 1stMud magic.c)."""
 
-from world import SKILLS, SKILL_TABLE, ITEM_TEMPLATES
+from world import SKILLS, SKILL_TABLE, ITEM_TEMPLATES, MOB_TEMPLATES
 from picker import pick_from
-from combat import WaitState, check_improve, get_skill, set_fighting
+from combat import (WaitState, check_improve, get_skill, set_fighting,
+                    raw_kill, _advance_target, _damage_verb, _damage_punct)
 from item import get_char_room, get_obj_list
 from actor import is_name
 from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
@@ -26,19 +27,106 @@ def spell_null(tr, sn, level, ch, vo, target, world):
     return False
 
 
-def spell_cure_light(tr, sn, level, ch, vo, target, world):
-    """Cure light wounds (cf. 1stMud spell_cure_light in magic.c)."""
-    victim = vo if target == TARGET_CHAR else ch
-    heal = randint(1, 8) + level // 3
-    victim["hp"] = min(victim["hp_max"], victim["hp"] + heal)
-    tr.print("You feel better!")
+def _dice(num, size):
+    total = 0
+    for _ in range(num):
+        total += randint(1, size)
+    return total
+
+
+def _heal_char(tr, ch, victim, amount, msg):
+    victim["hp"] = min(victim["hp_max"], victim["hp"] + amount)
+    tr.print(msg)
     if victim is not ch:
         tr.print("Ok.")
     return True
 
 
+def _target_id(ch, victim, world):
+    if victim is None or victim is ch:
+        return None
+    for mob_id, inst in world["mobs"].items():
+        if inst is victim:
+            return mob_id
+    return None
+
+
+def _damage_char(tr, ch, victim, victim_id, dam, sn, world):
+    """Apply spell damage to a mob and route death through combat kill flow."""
+    if dam < 0:
+        dam = 0
+    victim["hp"] = max(0, victim["hp"] - dam)
+    sk = SKILLS[sn]
+    noun = sk.get("noun_damage") or sk["name"]
+    _vs, vp = _damage_verb(dam)
+    punct = _damage_punct(dam)
+    name = MOB_TEMPLATES[victim["tpl"]]["short_descr"]
+    tr.print("{GYour %s %s {G%s%s {W[{R%d{W]{x" % (noun, vp, name, punct, dam))
+    if victim["hp"] == 0 and victim_id is not None and victim_id in world["mobs"]:
+        raw_kill(tr, ch, victim_id, victim, MOB_TEMPLATES[victim["tpl"]], world)
+        _advance_target(ch, world["mobs"], world["rooms"])
+    return True
+
+
+def spell_cure_light(tr, sn, level, ch, vo, target, world):
+    """Cure light wounds (cf. 1stMud spell_cure_light in magic.c)."""
+    return _heal_char(tr, ch, vo, _dice(1, 8) + level // 3, "You feel better!")
+
+
+def spell_cure_serious(tr, sn, level, ch, vo, target, world):
+    """Cure serious wounds (cf. 1stMud spell_cure_serious in magic.c)."""
+    return _heal_char(tr, ch, vo, _dice(2, 8) + level // 2, "You feel better!")
+
+
+def spell_cure_critical(tr, sn, level, ch, vo, target, world):
+    """Cure critical wounds (cf. 1stMud spell_cure_critical in magic.c)."""
+    return _heal_char(tr, ch, vo, _dice(3, 8) + level - 6, "You feel better!")
+
+
+def spell_heal(tr, sn, level, ch, vo, target, world):
+    """Heal spell (cf. 1stMud spell_heal in magic.c)."""
+    return _heal_char(tr, ch, vo, 100, "A warm feeling fills your body.")
+
+
+def spell_cause_light(tr, sn, level, ch, vo, target, world):
+    """Cause light wounds (cf. 1stMud spell_cause_light in magic.c)."""
+    return _damage_char(tr, ch, vo, _target_id(ch, vo, world), _dice(1, 8) + level // 3, sn, world)
+
+
+def spell_cause_serious(tr, sn, level, ch, vo, target, world):
+    """Cause serious wounds (cf. 1stMud spell_cause_serious in magic.c)."""
+    return _damage_char(tr, ch, vo, _target_id(ch, vo, world), _dice(2, 8) + level // 2, sn, world)
+
+
+def spell_cause_critical(tr, sn, level, ch, vo, target, world):
+    """Cause critical wounds (cf. 1stMud spell_cause_critical in magic.c)."""
+    return _damage_char(tr, ch, vo, _target_id(ch, vo, world), _dice(3, 8) + level - 6, sn, world)
+
+
+def spell_harm(tr, sn, level, ch, vo, target, world):
+    """Harm spell, without saves until Phase 4 (cf. 1stMud spell_harm in magic.c)."""
+    dam = max(20, vo["hp"] - _dice(1, 4))
+    dam = min(100, dam)
+    return _damage_char(tr, ch, vo, _target_id(ch, vo, world), dam, sn, world)
+
+
+def spell_magic_missile(tr, sn, level, ch, vo, target, world):
+    """Magic missile, without saves until Phase 4 (cf. 1stMud spell_magic_missile in magic.c)."""
+    high = level | 50
+    dam = randint(high // 2, high * 2)
+    return _damage_char(tr, ch, vo, _target_id(ch, vo, world), dam, sn, world)
+
+
 SPELL_FUNS = {
+    "spell_cause_critical": spell_cause_critical,
+    "spell_cause_light": spell_cause_light,
+    "spell_cause_serious": spell_cause_serious,
+    "spell_cure_critical": spell_cure_critical,
     "spell_cure_light": spell_cure_light,
+    "spell_cure_serious": spell_cure_serious,
+    "spell_harm": spell_harm,
+    "spell_heal": spell_heal,
+    "spell_magic_missile": spell_magic_missile,
 }
 
 
@@ -56,6 +144,14 @@ def _known_runtime_spells(player):
         if _implemented_spell(sn) and learned.get(sn, 0) > 0 and can_use_skill_spell(player, sn):
             rows.append((sn, sk))
     return rows
+
+
+def _parse_spell_args(player, args):
+    for n in range(len(args), 0, -1):
+        sn = find_skill_spell(player, " ".join(args[:n]))
+        if sn is not None and _implemented_spell(sn):
+            return (sn, " ".join(args[n:]))
+    return (find_skill_spell(player, args[0]), " ".join(args[1:]))
 
 
 def _is_self_name(player, target_name):
@@ -196,8 +292,7 @@ def do_cast(tr, player, args, world):
         sn = known[idx][0]
         target_name = ""
     else:
-        sn = find_skill_spell(player, args[0])
-        target_name = " ".join(args[1:])
+        sn, target_name = _parse_spell_args(player, args)
 
     if (sn is None or not _implemented_spell(sn)
             or not can_use_skill_spell(player, sn)
@@ -234,6 +329,7 @@ def do_cast(tr, player, args, world):
 
     if (ret and sk.get("target") in ("char_offensive", "obj_char_offensive")
             and target == TARGET_CHAR and victim_id is not None
+            and victim_id in world["mobs"]
             and player.get("fighting") is None):
         set_fighting(tr, player, victim_id, world["mobs"])
     return None

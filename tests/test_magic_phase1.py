@@ -26,11 +26,14 @@ if "hpprime" not in sys.modules:
     sys.modules["hpprime"] = hpprime
 
 import magic
+import combat
 from magic import do_cast
 from player import create_char
-from world import GSN_CURE_LIGHT, SKILLS
+from world import GSN_CURE_LIGHT, SKILLS, MOB_TEMPLATES, init_world
 from info import do_spells
 from skill_utils import spell_mana
+
+init_world()
 
 
 class FakeTerminal:
@@ -43,6 +46,38 @@ class FakeTerminal:
 
 def world_stub(room=3700):
     return {"rooms": {room: {"mobs": [], "items": []}}, "mobs": {}}
+
+
+def first_sn(name):
+    for sn, sk in SKILLS.items():
+        if sk["name"] == name:
+            return sn
+    raise AssertionError(name)
+
+
+def add_mob(world, room, tpl_vnum=None, hp=30):
+    if tpl_vnum is None:
+        tpl_vnum = next(iter(MOB_TEMPLATES))
+    mob_id = 1
+    inst = {
+        "is_npc": True,
+        "tpl": tpl_vnum,
+        "room": room,
+        "level": 1,
+        "hp": hp,
+        "hp_max": hp,
+        "wait": 0,
+        "daze": 0,
+        "state": "idle",
+        "fighting": None,
+        "affects": {},
+        "equip": {},
+        "inv": [],
+        "off_flags": {},
+    }
+    world["mobs"][mob_id] = inst
+    world["rooms"][room]["mobs"].append(mob_id)
+    return mob_id, inst
 
 
 class MagicPhase1Test(unittest.TestCase):
@@ -60,11 +95,12 @@ class MagicPhase1Test(unittest.TestCase):
     def test_unimplemented_known_spell_is_hidden_and_spends_nothing(self):
         tr = FakeTerminal()
         player = create_char()
-        # cause light is level 1 and learned in the generated table, but Phase 1
-        # has no runtime spell implementation yet.
+        sn = first_sn("armor")
+        player["level"] = SKILLS[sn]["skill_level"]
+        player["learned"][sn] = 100
         mp = player["mp"]
 
-        do_cast(tr, player, ["cause"], world_stub(player["room"]))
+        do_cast(tr, player, ["armor"], world_stub(player["room"]))
 
         self.assertEqual(["You don't know any spells of that name."], tr.lines)
         self.assertEqual(mp, player["mp"])
@@ -93,7 +129,7 @@ class MagicPhase1Test(unittest.TestCase):
 
         text = "\n".join(tr.lines)
         self.assertIn("cure light", text)
-        self.assertNotIn("cause light", text)
+        self.assertNotIn("armor", text)
 
     def test_position_gate_uses_spell_minimum_position(self):
         tr = FakeTerminal()
@@ -122,6 +158,55 @@ class MagicPhase1Test(unittest.TestCase):
 
         self.assertEqual("You lost your concentration.", tr.lines[0])
         self.assertEqual(100 - cost // 2, player["mp"])
+
+    def test_cure_serious_is_registered_and_heals(self):
+        tr = FakeTerminal()
+        player = create_char()
+        sn = first_sn("cure serious")
+        player["level"] = SKILLS[sn]["skill_level"]
+        player["learned"][sn] = 100
+        player["hp"] = 5
+
+        do_cast(tr, player, ["cure", "serious"], world_stub(player["room"]))
+
+        self.assertEqual(["You feel better!"], tr.lines)
+        self.assertGreater(player["hp"], 5)
+
+    def test_damage_spell_starts_combat(self):
+        tr = FakeTerminal()
+        player = create_char()
+        sn = first_sn("cause light")
+        player["learned"][sn] = 100
+        world = world_stub(player["room"])
+        mob_id, inst = add_mob(world, player["room"], hp=40)
+        name = MOB_TEMPLATES[inst["tpl"]]["keywords"].split()[0]
+
+        do_cast(tr, player, ["cause", name], world)
+
+        self.assertLess(inst["hp"], 40)
+        self.assertEqual(mob_id, player["fighting"])
+        self.assertIs(inst["fighting"], player)
+
+    def test_damage_spell_can_kill_through_raw_kill(self):
+        tr = FakeTerminal()
+        player = create_char()
+        sn = first_sn("magic missile")
+        player["level"] = SKILLS[sn]["skill_level"]
+        player["learned"][sn] = 100
+        world = world_stub(player["room"])
+        mob_id, inst = add_mob(world, player["room"], hp=1)
+        name = MOB_TEMPLATES[inst["tpl"]]["keywords"].split()[0]
+        old_save_state = combat.save_state
+        combat.save_state = lambda tr, player, world, quiet=False: True
+
+        try:
+            do_cast(tr, player, ["magic", name], world)
+        finally:
+            combat.save_state = old_save_state
+
+        self.assertNotIn(mob_id, world["mobs"])
+        self.assertNotIn(mob_id, world["rooms"][player["room"]]["mobs"])
+        self.assertTrue(any(line.startswith("You receive ") for line in tr.lines))
 
 
 if __name__ == "__main__":

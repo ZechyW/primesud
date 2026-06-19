@@ -248,6 +248,8 @@ Acceptance:
 - `cast cure light` resolves self and spends dynamic mana.
 - unsupported spell does not silently spend mana.
 
+Status: complete in checkpoint `8c1****`.
+
 ### Phase 2: Healing and Simple Damage
 
 Port:
@@ -273,6 +275,8 @@ Acceptance:
 
 - Cure spells print exact target/caster messages.
 - Cause/damage spells can kill mobs and advance XP through existing combat kill path.
+
+Status: complete pending review.
 
 ### Phase 3: Buffs and Affect Expiry
 
