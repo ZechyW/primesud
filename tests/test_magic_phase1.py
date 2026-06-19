@@ -272,6 +272,85 @@ class MagicPhase1Test(unittest.TestCase):
         self.assertEqual(100 + 2 * player["level"], inst["AC"])
         self.assertTrue(inst["aff_flags"]["faerie_fire"])
 
+    def test_blindness_save_failure_prints_failed(self):
+        tr = FakeTerminal()
+        player = create_char()
+        sn = first_sn("blindness")
+        player["level"] = SKILLS[sn]["skill_level"]
+        player["learned"][sn] = 100
+        world = world_stub(player["room"])
+        _mob_id, inst = add_mob(world, player["room"], hp=40)
+        name = MOB_TEMPLATES[inst["tpl"]]["keywords"].split()[0]
+
+        do_cast(tr, player, ["blindness", name], world)
+
+        self.assertEqual("You failed.", tr.lines[0])
+        self.assertFalse(inst.get("aff_flags", {}).get("blind"))
+
+    def test_poison_applies_when_save_fails_then_cure_poison_strips(self):
+        tr = FakeTerminal()
+        player = create_char()
+        poison_sn = first_sn("poison")
+        cure_sn = first_sn("cure poison")
+        player["level"] = max(SKILLS[poison_sn]["skill_level"], SKILLS[cure_sn]["skill_level"])
+        player["learned"][poison_sn] = 100
+        player["learned"][cure_sn] = 100
+        old_randint = magic.randint
+        magic.randint = lambda lo, hi: hi
+        try:
+            world = world_stub(player["room"])
+            _mob_id, inst = add_mob(world, player["room"], hp=40)
+            name = MOB_TEMPLATES[inst["tpl"]]["keywords"].split()[0]
+            do_cast(tr, player, ["poison", name], world)
+            poisoned_before = bool(inst.get("aff_flags", {}).get("poison"))
+            player["wait"] = 0
+            player["fighting"] = None
+            player["pos"] = "standing"
+            inst["state"] = "idle"
+            inst["fighting"] = None
+            do_cast(tr, player, ["cure", "poison", name], world)
+        finally:
+            magic.randint = old_randint
+
+        self.assertTrue(poisoned_before)
+        self.assertTrue(any(line == "Ok." for line in tr.lines))
+        self.assertFalse(inst.get("aff_flags", {}).get("poison"))
+
+    def test_cure_blindness_without_blindness_exact_text(self):
+        tr = FakeTerminal()
+        player = create_char()
+        sn = first_sn("cure blindness")
+        player["level"] = SKILLS[sn]["skill_level"]
+        player["learned"][sn] = 100
+
+        do_cast(tr, player, ["cure", "blindness"], world_stub(player["room"]))
+
+        self.assertEqual(["You aren't blind."], tr.lines)
+
+    def test_dispel_magic_strips_armor(self):
+        tr = FakeTerminal()
+        player = create_char()
+        armor_sn = first_sn("armor")
+        dispel_sn = first_sn("dispel magic")
+        player["level"] = max(SKILLS[armor_sn]["skill_level"], SKILLS[dispel_sn]["skill_level"])
+        player["learned"][armor_sn] = 100
+        player["learned"][dispel_sn] = 100
+        old_randint = magic.randint
+        magic.randint = lambda lo, hi: hi
+        try:
+            world = world_stub(player["room"])
+            _mob_id, inst = add_mob(world, player["room"], hp=40)
+            name = MOB_TEMPLATES[inst["tpl"]]["keywords"].split()[0]
+            do_cast(tr, player, ["armor", name], world)
+            player["wait"] = 0
+            do_cast(tr, player, ["dispel", "magic", name], world)
+        finally:
+            magic.randint = old_randint
+
+        self.assertEqual(100, inst["AC"])
+        self.assertFalse(inst["affect_list"])
+        self.assertIn("You feel less armored.", tr.lines)
+
 
 if __name__ == "__main__":
     unittest.main()

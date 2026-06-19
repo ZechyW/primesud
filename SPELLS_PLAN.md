@@ -321,6 +321,8 @@ Acceptance:
 - cure spells fail with exact text when target lacks condition.
 - dispel strips effects and prints `msg_off`.
 
+Status: complete pending review.
+
 ### Phase 5: Object Spells and Magical Items
 
 Port:

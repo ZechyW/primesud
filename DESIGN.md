@@ -29,7 +29,7 @@ Reference this before porting a new mechanic to avoid re-litigating settled deci
 | Stat rolling | **Deferred** | Fixed 13 across the board; no chargen reroll screen |
 | AC types (Pierce/Bash/Slash/Exotic) | **Deferred** | 1stMud `one_hit` (`fight.c`) selects one of four `armor[]` buckets (pierce/bash/slash/exotic) based on `dam_class`; `GetArmor` then adds the DEX defensive bonus. PrimeSUD keeps a single `AC` field. `ATTACK_TABLE` already carries the correct `dam_class` per weapon — expand to per-bucket AC (and then to res/imm/vuln flag checks) when the content warrants it |
 | Mob THAC0 by act type | **Deferred** | 1stMud `one_hit` uses per-class curves for NPCs: warrior `thac0_32 = -10`, thief `-4`, cleric `+2`, mage `+6`, default `-4`. PrimeSUD uses the single classless plateau (`THAC0_MIN = -2`) for both players and mobs. Port when NPC class diversity is needed for balance |
-| Saving throws | **Not ported** | Not implemented; add alongside spell effects if/when needed |
+| Saving throws | **Minimal spell baseline** | Implemented for spell fidelity as `saving_throw = 0` on actors, with 1stMud-style `saves_spell`, `saves_dispel`, and `check_dispel`. Immunity/resistance/vulnerability, race/class modifiers, and equipment save bonuses remain deferred until those systems exist |
 | Alignment / deity | **Not ported** | Multiplayer/world-state concepts with no single-player hook |
 | Clan / rank / trivia | **Not ported** | Multiplayer concepts |
 | Hunger / thirst | **Not ported** | No meaningful single-player gameplay hook |
