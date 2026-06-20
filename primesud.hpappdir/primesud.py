@@ -115,16 +115,18 @@ class Game:
             if result is not None:
                 char, auto_submit = result
                 if char == "\n":
-                    if self.input_buf:  # [PRIMESUD] append to command history
-                        if not self._cmd_history or self._cmd_history[-1] != self.input_buf:
-                            self._cmd_history.append(self.input_buf)
-                            if len(self._cmd_history) > CMD_HISTORY_MAX:
-                                self._cmd_history.pop(0)
                     self._hist_pos   = None
                     self._hist_saved = ""
                     _t0 = ticks()
-                    _quit = interpret(self.input_buf, tr, player, world) == "quit"
+                    resolved = interpret(self.input_buf, tr, player, world)
                     next_pulse += ticks() - _t0  # [PRIMESUD] skip missed pulses during blocking input (e.g. picker)
+                    _quit = resolved == "quit"
+                    entry = resolved if (resolved and resolved != "quit") else self.input_buf
+                    if entry:  # [PRIMESUD] store picker-resolved form so replay works
+                        if not self._cmd_history or self._cmd_history[-1] != entry:
+                            self._cmd_history.append(entry)
+                            if len(self._cmd_history) > CMD_HISTORY_MAX:
+                                self._cmd_history.pop(0)
                     if _quit:
                         break
                     self.input_buf = ""

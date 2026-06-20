@@ -37,6 +37,7 @@ def do_move(tr, player, direction, world):
 def do_open(tr, player, args, world):
     """Open a door in a given direction (cf. 1stMud do_open in act_move.c)."""
     exits = ROOMS[player["room"]]["exits"]
+    _picked_dir = None
     if args:
         direction = DIR_ALIASES.get(args[0].lower())
         if direction is None:
@@ -54,6 +55,7 @@ def do_open(tr, player, args, world):
         if idx < 0:
             return
         direction = candidates[idx]
+        _picked_dir = direction
     exit_val = exits.get(direction)
     if not isinstance(exit_val, dict) or not exit_val.get("isdoor"):
         tr.print("You can't do that.")
@@ -72,11 +74,13 @@ def do_open(tr, player, args, world):
         rev_exit = ROOMS[dest]["exits"].get(rev)
         if isinstance(rev_exit, dict) and _exit_to(rev_exit) == player["room"]:
             rev_exit["closed"] = False
+    return ("open " + EXIT_NAMES[_picked_dir].lower()) if _picked_dir is not None else None
 
 
 def do_close(tr, player, args, world):
     """Close a door in a given direction (cf. 1stMud do_close in act_move.c)."""
     exits = ROOMS[player["room"]]["exits"]
+    _picked_dir = None
     if args:
         direction = DIR_ALIASES.get(args[0].lower())
         if direction is None:
@@ -94,6 +98,7 @@ def do_close(tr, player, args, world):
         if idx < 0:
             return
         direction = candidates[idx]
+        _picked_dir = direction
     exit_val = exits.get(direction)
     if not isinstance(exit_val, dict) or not exit_val.get("isdoor"):
         tr.print("You can't do that.")
@@ -112,6 +117,7 @@ def do_close(tr, player, args, world):
         rev_exit = ROOMS[dest]["exits"].get(rev)
         if isinstance(rev_exit, dict) and _exit_to(rev_exit) == player["room"]:
             rev_exit["closed"] = True
+    return ("close " + EXIT_NAMES[_picked_dir].lower()) if _picked_dir is not None else None
 
 
 def perform_recall(tr, player, location, world, what="recall"):

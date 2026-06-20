@@ -1324,4 +1324,4 @@ def do_cast(tr, player, args, world):
             and victim_id in world["mobs"]
             and player.get("fighting") is None):
         set_fighting(tr, player, victim_id, world["mobs"])
-    return None
+    return ("cast " + SKILLS[sn]["name"]) if not args else None

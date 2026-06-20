@@ -39,6 +39,7 @@ def do_train(tr, player, args, world):
         tr.print("You can't do that here.")
         return
 
+    _from_picker = False
     if not args:
         if player["train"] < 1:
             tr.print("You don't have any training sessions.")
@@ -57,6 +58,7 @@ def do_train(tr, player, args, world):
         if idx < 0:
             return
         chosen_key, chosen_lng = all_opts[idx]
+        _from_picker = True
     else:
         if player["train"] < 1:
             tr.print("You don't have any training sessions.")
@@ -88,6 +90,7 @@ def do_train(tr, player, args, world):
     else:
         player[chosen_key] += 1
         tr.print("Your " + chosen_lng + " increases!")
+    return ("train " + chosen_lng) if _from_picker else None
 
 
 def do_practice(tr, player, args, world):
@@ -111,6 +114,7 @@ def do_practice(tr, player, args, world):
             teacher = mid
             break
 
+    _from_picker = False
     if not args:
         print_practice_table(tr, player)
         tr.print("You have " + str(player["practice"]) + " practice sessions left.")
@@ -130,6 +134,7 @@ def do_practice(tr, player, args, world):
         if idx < 0:
             return
         sk_vnum, _ = practicable[idx]
+        _from_picker = True
     else:
         if teacher is None:
             tr.print("You can't do that here.")
@@ -161,3 +166,4 @@ def do_practice(tr, player, args, world):
         tr.print("You are now learned at {}.".format(SKILLS[sk_vnum]["name"]))
     else:
         tr.print("You practice {}.".format(SKILLS[sk_vnum]["name"]))
+    return ("practice " + SKILLS[sk_vnum]["name"]) if _from_picker else None

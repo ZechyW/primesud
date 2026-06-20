@@ -589,6 +589,8 @@ def do_kill(tr, player, args, world):
         if idx < 0:
             return
         mob_id = live[idx]
+        set_fighting(tr, player, mob_id, world["mobs"])
+        return "kill " + MOB_TEMPLATES[world["mobs"][mob_id]["tpl"]].get("keywords", "").split()[0]
     set_fighting(tr, player, mob_id, world["mobs"])
 
 

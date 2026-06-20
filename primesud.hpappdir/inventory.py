@@ -34,7 +34,7 @@ def do_get(tr, player, args, world):
         rs["items"].remove(obj)
         player["inv"].append(obj)
         tr.print("You get {}.".format(tpl["short_descr"]))
-        return
+        return "get " + tpl.get("keywords", tpl["short_descr"]).split()[0]
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
         filter_kw = arg[4:] if arg.startswith("all.") else None
@@ -83,7 +83,7 @@ def do_drop(tr, player, args, world):
         player["inv"].remove(obj)
         world["rooms"][player["room"]]["items"].append(obj)
         tr.print("You drop {}.".format(tpl["short_descr"]))
-        return
+        return "drop " + tpl.get("keywords", tpl["short_descr"]).split()[0]
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
         filter_kw = arg[4:] if arg.startswith("all.") else None
@@ -301,7 +301,7 @@ def do_wear(tr, player, args, world):
             return
         obj, tpl, slot = equippable[idx]
         wear_obj(tr, player, obj, True)
-        return
+        return "wear " + tpl.get("keywords", tpl["short_descr"]).split()[0]
     if args[0] == "all":
         for obj in list(player["inv"]):
             wear_obj(tr, player, obj, False)
@@ -333,7 +333,7 @@ def do_remove(tr, player, args, world):
             return
         slot, obj = worn[idx]
         remove_obj(tr, player, slot, True)
-        return
+        return "remove " + ITEM_TEMPLATES[obj["vnum"]].get("keywords", ITEM_TEMPLATES[obj["vnum"]]["short_descr"]).split()[0]
     if args[0] == "all":
         for slot, obj in list(player["equip"].items()):
             if obj is not None:
