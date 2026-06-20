@@ -156,7 +156,7 @@ Current keyed-by-`sn` dict is too small for 1stMud fidelity. Use compact list of
     "type": sn,
     "level": level,
     "duration": 24,
-    "location": "AC",
+    "location": "ac",
     "modifier": -20,
     "bitvector": "",
 }
@@ -186,9 +186,9 @@ Keep existing `affect_modify` for stat locations, but accept 1stMud-style `locat
 - `APPLY_INT` -> `int`
 - `APPLY_WIS` -> `wis`
 - `APPLY_CON` -> `con`
-- `APPLY_HIT` -> `hp`
+- `APPLY_HIT` -> `hit`
 - `APPLY_MANA` -> `mp`
-- `APPLY_AC` -> `AC`
+- `APPLY_AC` -> `ac`
 - `APPLY_HITROLL` -> `hitroll`
 - `APPLY_DAMROLL` -> `damroll`
 
@@ -420,10 +420,10 @@ Examples:
 ```text
 v:3988;c:200
 v:3610;c:320;ch:7;mx:10
-v:5001;c:1200;en:1;ef:magic,bless;af:42,20,24,AC,-20,bless,obj
+v:5001;c:1200;en:1;ef:magic,bless;af:42,20,24,ac,-20,bless,obj
 p.inv=v:3610;c:320;ch:7;mx:10|v:3988;c:200
 p.eq.hold=v:3718;c:4700;ch:2;mx:3
-r.3001.items=v:5001;c:1200;en:1;ef:magic,bless;af:42,20,24,AC,-20,bless,obj
+r.3001.items=v:5001;c:1200;en:1;ef:magic,bless;af:42,20,24,ac,-20,bless,obj
 ```
 
 Deferred from initial v2 item schema:

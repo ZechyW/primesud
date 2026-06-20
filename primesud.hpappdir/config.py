@@ -158,6 +158,12 @@ THAC0_PLATEAU = 32   # level at which natural THAC0 stops improving
 THAC0_00      = 20   # THAC0 at level 1              (higher = worse to-hit)
 THAC0_MIN     = -2   # THAC0 at level THAC0_PLATEAU  (lower  = better to-hit)
 
+# -- Armor class buckets (cf. 1stMud AC_* in merc.h) -----------------------------------
+AC_PIERCE = 0
+AC_BASH   = 1
+AC_SLASH  = 2
+AC_EXOTIC = 3
+
 # -- Damage classes (cf. 1stMud dam_class enum in merc.h) ------------------------------
 DAM_NONE      = -1   # "none" / TYPE_HIT bare attack -- falls back to DAM_BASH
 DAM_BASH      =  0

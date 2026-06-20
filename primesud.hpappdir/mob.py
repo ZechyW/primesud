@@ -101,7 +101,7 @@ def create_mobile(tpl_vnum):
         "con":       s_con,
         "hitroll":   tpl["hitroll"],
         "damroll":   tpl["damage"][2],   # bonus = damroll (cf. 1stMud damage[DICE_BONUS])
-        "AC":        tpl["AC"] * 10,     # x10 storage (cf. 1stMud load_mobiles read_number * 10)
+        "armor":     tuple(v * 10 for v in tpl["armor"]),  # raw .are values -> 1stMud x10 runtime scale
     }
 
 

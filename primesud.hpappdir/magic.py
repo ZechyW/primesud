@@ -22,6 +22,7 @@ TARGET_NONE = "none"
 TARGET_CHAR = "char"
 TARGET_OBJ = "obj"
 TARGET_ROOM = "room"
+_AC_LOCS = ("ac_pierce", "ac_bash", "ac_slash", "ac_exotic")
 
 _POS_ORDER = {
     "dead": 0, "sleeping": 4, "resting": 5,
@@ -129,6 +130,27 @@ def _item_bonus_sum(obj, tpl, location):
         if af.get("location") == location:
             total += af.get("modifier", 0)
     return total
+
+
+def _item_armor_bonus(obj, tpl):
+    total = 0
+    for loc in _AC_LOCS:
+        total += _item_bonus_sum(obj, tpl, loc)
+    return total // 4
+
+
+def _add_obj_ac_affect(obj, tpl, sn, level, modifier):
+    for loc in _AC_LOCS:
+        found = False
+        for af in item_affect_list(obj):
+            if af.get("location") == loc:
+                af["type"] = sn
+                af["modifier"] = af.get("modifier", 0) + modifier
+                af["level"] = max(af.get("level", 0), level)
+                found = True
+                break
+        if not found:
+            item_affect_to_obj(obj, _new_obj_affect(sn, level, -1, loc, modifier), tpl)
 
 
 def _clear_item_runtime_affects(obj):
@@ -585,7 +607,7 @@ def spell_enchant_armor(tr, sn, level, ch, vo, target, world):
     if item_extra_flags(vo, tpl).get("quest"):
         tr.print("You can't enchant quest items.")
         return False
-    ac_bonus = _item_bonus_sum(vo, tpl, "AC")
+    ac_bonus = _item_armor_bonus(vo, tpl)
     fail = 25 + (5 * ac_bonus * ac_bonus if ac_bonus else 0) - level
     flags = item_extra_flags(vo, tpl)
     if flags.get("bless"):
@@ -621,15 +643,7 @@ def spell_enchant_armor(tr, sn, level, ch, vo, target, world):
         set_item_extra_flag(vo, tpl, "glow", True)
         added = -2
     vo["level"] = min(50, vo.get("level", tpl.get("level", 0)) + 1)
-    found = False
-    for af in item_affect_list(vo):
-        if af.get("location") == "AC":
-            af["type"] = sn
-            af["modifier"] = af.get("modifier", 0) + added
-            af["level"] = max(af.get("level", 0), level)
-            found = True
-    if not found:
-        item_affect_to_obj(vo, _new_obj_affect(sn, level, -1, "AC", added), tpl)
+    _add_obj_ac_affect(vo, tpl, sn, level, added)
     return True
 
 
@@ -723,7 +737,7 @@ def spell_armor(tr, sn, level, ch, vo, target, world):
     if is_affected(vo, sn):
         tr.print("You are already armored." if vo is ch else _char_name(ch, vo, world) + " is already armored.")
         return False
-    affect_to_char(vo, _new_affect(sn, level, 24, "AC", -20))
+    affect_to_char(vo, _new_affect(sn, level, 24, "ac", -20))
     if vo is ch:
         tr.print("You feel someone protecting you.")
     else:
@@ -736,7 +750,7 @@ def spell_shield(tr, sn, level, ch, vo, target, world):
     if is_affected(vo, sn):
         tr.print("You are already shielded from harm." if vo is ch else _char_name(ch, vo, world) + " is already protected by a shield.")
         return False
-    affect_to_char(vo, _new_affect(sn, level, 8 + level, "AC", -20))
+    affect_to_char(vo, _new_affect(sn, level, 8 + level, "ac", -20))
     if vo is ch:
         tr.print("You are surrounded by a force shield.")
     else:
@@ -809,7 +823,7 @@ def spell_faerie_fire(tr, sn, level, ch, vo, target, world):
     """Faerie fire spell (cf. 1stMud spell_faerie_fire in magic.c)."""
     if vo.get("aff_flags", {}).get("faerie_fire"):
         return False
-    affect_to_char(vo, _new_affect(sn, level, level, "AC", 2 * level, "faerie_fire"))
+    affect_to_char(vo, _new_affect(sn, level, level, "ac", 2 * level, "faerie_fire"))
     if vo is ch:
         tr.print("You are surrounded by a pink outline.")
     else:

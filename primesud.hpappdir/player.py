@@ -38,7 +38,7 @@ PLR_DEFAULTS = PLR_AUTOMAP
 #
 # Skill numeric IDs (GSN_*) are permanent once assigned: recycling an ID for a
 # different skill would cause old saves to corrupt the new skill's learned %.
-SAVE_VERSION = 2
+SAVE_VERSION = 3
 
 # -- Player model --------------------------------------------------------------
 
@@ -70,7 +70,7 @@ def create_char():
         "hitroll": 0,
         "damroll": 0,
         "saving_throw": 0,
-        "AC": 100,  # base unarmored (100 = poor; negative = better)
+        "armor": (100, 100, 100, 100),  # base unarmored, 1stMud x10 scale
         "wait": 0,  # skill lag in pulses
         "daze": 0,  # stun in pulses
         "affects": {},
@@ -218,9 +218,11 @@ def save_char(player, world):
     for key in ("name", "level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
-                "hitroll", "damroll", "saving_throw", "AC", "room", "trivia",
+                "hitroll", "damroll", "saving_throw", "room", "trivia",
                 "practice", "train", "flags", "played"):
         lines.append("p." + key + "=" + str(player[key]))
+    armor = player["armor"]
+    lines.append("p.armor=" + str(armor[0]) + "|" + str(armor[1]) + "|" + str(armor[2]) + "|" + str(armor[3]))
     inv_parts = []
     for o in player["inv"]:
         inv_parts.append(serialize_item_token(o))
@@ -353,7 +355,7 @@ def load_char(player, world):
     int_keys = {"level", "xp", "xp_next", "trivia",
                 "str", "dex", "int", "wis", "con",
                 "hp", "hp_max", "mp", "mp_max",
-                "hitroll", "damroll", "saving_throw", "AC", "room",
+                "hitroll", "damroll", "saving_throw", "room",
                 "practice", "train", "flags", "played"}
 
     if player["_macros"] is not None:
@@ -380,6 +382,10 @@ def load_char(player, world):
                         player["learned"][int(sk_str)] = int(pct_str)
                     except ValueError:
                         pass
+        elif key == "p.armor":
+            parts = val.split("|")
+            if len(parts) == 4:
+                player["armor"] = (int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3]))
         elif key.startswith("p.macro.") and player["_macros"] is not None:
             raw = key[8:]
             player["_macros"][_name_to_fn.get(raw, raw)] = val

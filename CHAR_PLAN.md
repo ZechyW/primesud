@@ -24,9 +24,9 @@ a nested dict keyed by skill/spell number (`sn`):
     }
 
 `loc` choices match 1stMud's `apply_type` enum, restricted to the subset in use:
-`"str"`, `"dex"`, `"int"`, `"wis"`, `"con"`, `"hp"`, `"mp"`, `"AC"`, `"hitroll"`, `"damroll"`.
+`"str"`, `"dex"`, `"int"`, `"wis"`, `"con"`, `"hit"`, `"mp"`, `"ac"`, `"hitroll"`, `"damroll"`.
 
-`affect_modify` mutates `hp_max`/`mp_max`/`AC`/`hitroll`/`damroll` directly in the char dict
+`affect_modify` mutates `hp_max`/`mp_max`/all armor buckets/`hitroll`/`damroll` directly in the char dict
 (like 1stMud's `mod_stat` fields for those slots). `str`/`dex`/`int`/`wis`/`con` are never
 mutated — `get_curr_stat(char, stat)` folds affect modifiers in on the fly, keeping
 permanent stats clean. All combat reads (hitroll/damroll/AC lookups, regen formula,

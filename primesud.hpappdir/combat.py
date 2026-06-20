@@ -6,12 +6,13 @@ from config import (PULSE_VIOLENCE,
                     STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
                     INT_APP_LEARN,
                     CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_MIN, THAC0_PLATEAU,
-                    ATTACK_TABLE, DAM_NONE, DAM_BASH)
+                    ATTACK_TABLE, DAM_NONE, DAM_BASH, DAM_PIERCE, DAM_SLASH,
+                    AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC)
 from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
                    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY,
                    GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
                    WEAPON_GSN_MAP)
-from actor import get_hitroll, get_damroll, get_AC, get_curr_stat, act
+from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, act
 from item import get_char_room
 from player import save_state
 from picker import pick_from
@@ -254,6 +255,17 @@ def _attack_info(dam_type):
     return noun, dc
 
 
+def _ac_type_for_damage_class(dam_class):
+    """Map damage class to 1stMud armor bucket."""
+    if dam_class == DAM_PIERCE:
+        return AC_PIERCE
+    if dam_class == DAM_SLASH:
+        return AC_SLASH
+    if dam_class == DAM_BASH or dam_class == DAM_NONE:
+        return AC_BASH
+    return AC_EXOTIC
+
+
 def _mob_condition(inst, tpl):
     """Return a condition description string for a mob.
 
@@ -450,10 +462,6 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
     thac0 -= (get_hitroll(ch) + extra_hr) * skill // 100
     thac0 += 5 * (100 - skill) // 100
 
-    victim_ac = get_AC(victim) // 10
-    if victim_ac < -15:  # soft cap (cf. 1stMud one_hit fight.c)
-        victim_ac = -((-victim_ac - 15) // 5) - 15
-
     # Attack noun and damage class
     if ch["is_npc"]:
         ch_tpl   = MOB_TEMPLATES[ch["tpl"]]
@@ -462,6 +470,9 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
         dam_type = wtpl["dam_type"] if wtpl is not None else "none"
         ch_tpl   = None
     attack_noun, dam_class = _attack_info(dam_type)
+    victim_ac = get_armor(victim, _ac_type_for_damage_class(dam_class)) // 10
+    if victim_ac < -15:  # soft cap (cf. 1stMud one_hit fight.c)
+        victim_ac = -((-victim_ac - 15) // 5) - 15
     armed = dam_type != "none"
 
     # Hit check

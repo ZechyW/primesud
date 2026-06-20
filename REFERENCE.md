@@ -439,6 +439,9 @@ Followed by optional trailer lines:
 | 18  | `APPLY_HITROLL`             | Hit roll    |
 | 19  | `APPLY_DAMROLL`             | Damage roll |
 
+PrimeSUD affect-location names track 1stMud closely here: `APPLY_HIT` -> `hit`,
+`APPLY_AC` -> `ac`, `APPLY_HITROLL` -> `hitroll`, `APPLY_DAMROLL` -> `damroll`.
+
 #### Item-type-specific values (line 6)
 
 | `item_type`                  | Values format                                                       |

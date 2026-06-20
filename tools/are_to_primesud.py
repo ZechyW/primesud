@@ -15,8 +15,8 @@ RESETS handling:
 Design choices:
   - perm_stat omitted: not in .are format
   - respawn omitted: 1stMud uses area-level timed resets, not per-mob timers
-  - AC: integer average of the four pierce/bash/slash/exotic values divided by
-    10 (REFERENCE.md: "Values stored x 10, so 100 = AC 10").  Verify manually.
+  - Mob and armor-object AC values are preserved exactly as they appear in the
+    source .are file; PrimeSUD runtime applies 1stMud-equivalent scaling
   - hitroll: taken from level line field 4; no separate damroll in .are mobs
     (the +B bonus in damage dice IS the damroll analogue in 1stMud)
   - act_flags, off_flags, imm/res/vuln_flags: decoded into name->True dicts
@@ -100,7 +100,7 @@ WEAR_SLOT = {
 }
 APPLY_LOC = {
     1: "str", 2: "dex", 3: "int", 4: "wis", 5: "con",
-    12: "mana", 13: "hp", 17: "AC", 18: "hitroll", 19: "damroll",
+    12: "mana", 13: "hit", 17: "ac", 18: "hitroll", 19: "damroll",
 }
 DIR_NAME = {0: "n", 1: "e", 2: "s", 3: "w", 4: "u", 5: "d"}
 WLOC_SLOT = {                                           # wloc_t enum from h/defines.h (E reset arg3)
@@ -179,6 +179,19 @@ def parse_dice(s):
         n, d, b = m.groups()
         return (int(n), int(d), int(b) if b else 0)
     return (1, 1, 0)
+
+
+def parse_flagnum(s):
+    """Parse plain int or 1stMud bitstring-encoded numeric field."""
+    if s.startswith("+"):
+        total = 0
+        for i, ch in enumerate(s[1:]):
+            if ch == "Y":
+                total += 1 << i
+            elif ch != "n":
+                break
+        return total
+    return int(s)
 
 
 def strip_article(s):
@@ -321,10 +334,9 @@ def parse_mobiles(lines):
         # ac_pierce  ac_bash  ac_slash  ac_exotic
         parts = lines[i].split(); i += 1
         try:
-            ac_vals = [int(x) for x in parts[:4]]
-            ac = sum(ac_vals) // len(ac_vals)
-        except (ValueError, ZeroDivisionError):
-            ac = 10
+            armor = tuple(int(x) for x in parts[:4])
+        except (ValueError, TypeError):
+            armor = (10, 10, 10, 10)
 
         # off_flags  imm_flags  res_flags  vuln_flags
         parts = lines[i].split(); i += 1
@@ -367,7 +379,7 @@ def parse_mobiles(lines):
             "mana_dice":   mana_dice,
             "damage":      dam_dice,
             "dam_type":    dam_type,
-            "AC":          ac,
+            "armor":       armor,
             "off_flags":   decode_flags(off_bits, OFF_FLAGS),
             "imm_flags":   decode_flags(imm_bits, RESIST_FLAGS),
             "res_flags":   decode_flags(res_bits, RESIST_FLAGS),
@@ -476,9 +488,14 @@ def parse_objects(lines):
             })
         elif item_type == "armor" and val_line:
             try:
-                obj["AC"] = int(val_line[0])
+                obj["armor"] = (
+                    parse_flagnum(val_line[0]),
+                    parse_flagnum(val_line[1]) if len(val_line) > 1 else 0,
+                    parse_flagnum(val_line[2]) if len(val_line) > 2 else 0,
+                    parse_flagnum(val_line[3]) if len(val_line) > 3 else 0,
+                )
             except ValueError:
-                obj["AC"] = 0
+                obj["armor"] = (0, 0, 0, 0)
         elif item_type in ("potion", "pill", "scroll") and val_line:
             obj["spell_level"] = int(val_line[0])
             obj["spells"] = [s for s in val_line[1:] if s]
@@ -692,7 +709,7 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, fover
     # -- MOBILES --
     w(f"# -- Mob templates {BAR * 62}")
     w("# hp_dice / mana_dice / damage: (num_dice, die_size, bonus)")
-    w("# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies x10")
+    w("# armor: (pierce, bash, slash, exotic), raw .are units")
     w("# hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)")
     w("MOBILES = {")
     for vnum, mob in mobs:
@@ -713,7 +730,7 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, fover
         w(f'        "hp_dice":   {pyrepr(mob["hp_dice"])},')
         w(f'        "mana_dice": {pyrepr(mob["mana_dice"])},')
         w(f'        "damage":    {pyrepr(mob["damage"])},  "dam_type": {pyrepr(mob["dam_type"])},')
-        w(f'        "AC":        {mob["AC"]},')
+        w(f'        "armor":     {pyrepr(mob["armor"])},')
         for flag_key in ("off_flags", "imm_flags", "res_flags", "vuln_flags"):
             fd = mob[flag_key]
             if fd:
@@ -795,8 +812,8 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, fover
             w(f'        "weapon_type": {pyrepr(wt)}, "dam_type": {pyrepr(an)}, "dice": {pyrepr(dc)},')
             wf = obj.get("weapon_flags", {})
             w(f'        "weapon_flags": {_repr_flags(wf)},')
-        elif obj["type"] == "armor" and "AC" in obj:
-            w(f'        "AC": {obj["AC"]},')
+        elif obj["type"] == "armor" and "armor" in obj:
+            w(f'        "armor": {pyrepr(obj["armor"])},')
         elif obj["type"] in ("potion", "pill", "scroll"):
             if "spell_level" in obj:
                 w(f'        "spell_level": {obj["spell_level"]},')

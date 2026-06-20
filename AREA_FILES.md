@@ -162,7 +162,7 @@ MOBILES = {
         "level":     3,
         "hp_dice":   (3, 3, 10),   # max HP = 3d3 + 10
         "hitroll":   1,
-        "AC":        0,
+        "armor":     (0, 0, 0, 0),
         "damage":    (1, 4, 1),    # per hit: 1d4 + 1
         "gold":      15,
         "act_flags": {"aggressive": True, "stay_area": True},
@@ -183,7 +183,7 @@ MOBILES = {
 | `level`     | int   | yes      | Used to derive THAC0 and stat scaling |
 | `hp_dice`   | tuple | yes      | `(num_dice, die_size, bonus)` — max HP |
 | `hitroll`   | int   | yes      | Added to attack roll |
-| `AC`        | int   | yes      | Armour class; lower is better (negative = very hard to hit) |
+| `armor`     | tuple | yes      | `(pierce, bash, slash, exotic)` armor buckets from `.are`; lower is better |
 | `damage`    | tuple | yes      | `(num_dice, die_size, bonus)` per hit |
 | `dam_type`  | str   | yes      | Attack noun for combat messages (e.g. `'claw'`, `'bite'`, `'beating'`); also the damage category for future resistance checks |
 | `gold`      | int   | yes      | Gold carried (unused until economy is implemented) |
@@ -245,7 +245,7 @@ OBJECTS = {
         "slot":   "body",
         "weight": 40,
         "value":  100,
-        "AC":     1,                 # armor only: AC bonus
+        "armor":  (1, 1, 1, 0),      # armor only: per-bucket AC bonus
         "extra_flags": {},
     },
     ...
@@ -265,7 +265,7 @@ OBJECTS = {
 | `dam_type`    | str        | weapons     | Attack noun for combat messages, matching `attack_table` (e.g. `'slash'`, `'pierce'`, `'pound'`) |
 | `hitroll`     | int        | weapons     | Added to attack roll when wielded |
 | `damroll`     | int        | weapons     | Added to damage roll when wielded |
-| `AC`          | int        | armor       | AC bonus when worn |
+| `armor`       | tuple      | armor       | `(pierce, bash, slash, exotic)` AC bonus when worn |
 | `extra_flags` | dict       | no          | Item flags (see below) |
 
 ### Equipment slots

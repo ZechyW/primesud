@@ -1,8 +1,42 @@
 """Shared actor stat, affect, equipment, and name-match helpers."""
 
-from config import MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF
+from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
+                    AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC)
 from world import ITEM_TEMPLATES
 from colors import cap_first
+
+
+_AC_LOC_MAP = {
+    "ac_pierce": AC_PIERCE,
+    "ac_bash": AC_BASH,
+    "ac_slash": AC_SLASH,
+    "ac_exotic": AC_EXOTIC,
+}
+
+
+def _armor_list(char):
+    armor = char.get("armor")
+    if armor is None:
+        armor = (100, 100, 100, 100)
+    return [armor[0], armor[1], armor[2], armor[3]]
+
+
+def _set_armor(char, armor):
+    char["armor"] = (armor[0], armor[1], armor[2], armor[3])
+
+
+def _add_armor(char, armor_delta):
+    armor = _armor_list(char)
+    for i in range(4):
+        armor[i] += armor_delta[i]
+    _set_armor(char, armor)
+
+
+def _item_armor_runtime(tpl):
+    armor = tpl.get("armor")
+    if armor is None:
+        return None
+    return (armor[0] * 10, armor[1] * 10, armor[2] * 10, armor[3] * 10)
 
 
 # -- Stat application helpers --------------------------------------------------
@@ -24,24 +58,29 @@ def get_curr_stat(char, stat):
 def affect_modify(char, loc, modifier, add):
     """Apply or remove a stat modifier for one affect location (cf. 1stMud affect_modify in handler.c).
 
-    Mutates hp_max, mp_max, AC, hitroll, damroll directly; accumulates
+    Mutates hp_max, mp_max, armor, hitroll, damroll directly; accumulates
     str/dex/int/wis/con into char["mod_stat"] (cf. 1stMud mod_stat[] in handler.c).
 
     Args:
         char (dict): Character state dict (player or mob instance).
         loc (str): Affect location -- one of "str", "dex", "int", "wis", "con",
-            "hp", "mp", "AC", "hitroll", "damroll".
+            "hit", "mp", "mana", "ac_pierce", "ac_bash", "ac_slash",
+            "ac_exotic", "ac", "hitroll", "damroll".
         modifier (int): Raw modifier value (positive = bonus).
         add (bool): True to apply, False to remove.
     """
     if not add:
         modifier = -modifier
-    if loc == "hp":
+    if loc == "hit":
         char["hp_max"] = max(1, char["hp_max"] + modifier)
-    elif loc == "mp":
+    elif loc in ("mp", "mana"):
         char["mp_max"] = max(1, char["mp_max"] + modifier)
-    elif loc == "AC":
-        char["AC"] += modifier
+    elif loc == "ac":
+        _add_armor(char, (modifier, modifier, modifier, modifier))
+    elif loc in _AC_LOC_MAP:
+        armor = _armor_list(char)
+        armor[_AC_LOC_MAP[loc]] += modifier
+        _set_armor(char, armor)
     elif loc == "hitroll":
         char["hitroll"] += modifier
     elif loc == "damroll":
@@ -133,16 +172,33 @@ def get_damroll(char):
     return char.get("damroll", 0) + STR_APP_TODAM[get_curr_stat(char, "str")]
 
 
+def get_armor(char, ac_type):
+    """Effective bucket AC: base + DEX bonus + equipped armour bonus.
+
+    Args:
+        char (dict): Character state dict (player or mob instance).
+        ac_type (int): One of AC_PIERCE/AC_BASH/AC_SLASH/AC_EXOTIC.
+
+    Returns:
+        int: Total AC bucket value in 1stMud x10 scale.
+    """
+    armor = char.get("armor", (100, 100, 100, 100))
+    return armor[ac_type] + DEX_APP_DEF[get_curr_stat(char, "dex")]
+
+
 def get_AC(char):
-    """Effective AC: base + DEX bonus + equipped armour bonus.
+    """Average effective AC across all 1stMud armor buckets.
 
     Args:
         char (dict): Character state dict (player or mob instance).
 
     Returns:
-        int: Total AC (lower is better; negative is excellent).
+        int: Average total AC (lower is better; negative is excellent).
     """
-    return char.get("AC", 100) + DEX_APP_DEF[get_curr_stat(char, "dex")]
+    total = 0
+    for ac_type in (AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC):
+        total += get_armor(char, ac_type)
+    return total // 4
 
 
 def is_name(fragment, namelist):
@@ -166,6 +222,10 @@ def is_name(fragment, namelist):
 
 def _apply_item_modifiers(char, obj, tpl, add):
     """Apply template bonuses and runtime object affects for equipped item."""
+    armor = _item_armor_runtime(tpl)
+    if armor is not None:
+        delta = armor if add else (-armor[0], -armor[1], -armor[2], -armor[3])
+        _add_armor(char, delta)
     for loc, mod in tpl.get("stat_bonuses", {}).items():
         affect_modify(char, loc, mod, add)
     for af in obj.get("affect_list", []):

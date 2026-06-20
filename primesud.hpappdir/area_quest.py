@@ -44,7 +44,7 @@ I_WOLF_TOOTH                       = 217
 
 # -- Mob templates --------------------------------------------------------------
 # hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
-# AC: avg(pierce,bash,slash,exotic), raw .are units; create_mobile applies x10
+# armor: (pierce, bash, slash, exotic), raw .are units
 # hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)
 MOBILES = {
     M_EDURIN_QUESTMASTER_QUESTOR: {
@@ -61,7 +61,7 @@ MOBILES = {
         "hp_dice":   (396, 337, 17149),
         "mana_dice": (285, 13, 97),
         "damage":    (32, 14, 278),  "dam_type": 'smash',
-        "AC":        -358,
+        "armor":     (-365, -365, -365, -335),
         "imm_flags": {"summon": True, "magic": True, "weapon": True},
         "res_flags": {"charm": True},
         "vuln_flags": {"iron": True},
@@ -83,7 +83,7 @@ MOBILES = {
         "hp_dice":   (130, 114, 1899),
         "mana_dice": (96, 10, 95),
         "damage":    (11, 13, 94),  "dam_type": 'smash',
-        "AC":        -93,
+        "armor":     (-95, -95, -95, -85),
         "imm_flags": {"magic": True, "weapon": True},
         "res_flags": {"charm": True},
         "vuln_flags": {"iron": True},
@@ -105,7 +105,7 @@ MOBILES = {
         "hp_dice":   (396, 337, 17149),
         "mana_dice": (285, 13, 97),
         "damage":    (32, 14, 278),  "dam_type": 'smash',
-        "AC":        -358,
+        "armor":     (-365, -365, -365, -335),
         "imm_flags": {"summon": True, "magic": True, "weapon": True},
         "res_flags": {"charm": True},
         "vuln_flags": {"iron": True},
@@ -165,7 +165,7 @@ OBJECTS = {
         "type": 'jewelry',
         "wear_flags": {"take": True, "float": True},
         "extra_flags": {"glow": True, "hum": True, "magic": True, "nonmetal": True, "burn_proof": True, "quest": True},
-        "stat_bonuses": {'AC': -100, 'hitroll': 50, 'damroll': 50},
+        "stat_bonuses": {'ac': -100, 'hitroll': 50, 'damroll': 50},
         "level": 0, "weight": 1, "value": -1,
     },
     I_SWORD_QUEST_ANCIENT: {
@@ -188,7 +188,7 @@ OBJECTS = {
         "type": 'armor',
         "wear_flags": {"take": True, "body": True},
         "extra_flags": {"glow": True, "hum": True, "burn_proof": True, "quest": True},
-        "AC": 0,
+        "armor": (0, 1, 1, 0),
         "stat_bonuses": {'str': 1, 'dex': 1, 'wis': 1, 'int': 1},
         "level": 0, "weight": 20, "value": -1,
     },
@@ -200,7 +200,7 @@ OBJECTS = {
         "type": 'armor',
         "wear_flags": {"take": True, "feet": True},
         "extra_flags": {"magic": True, "burn_proof": True, "quest": True},
-        "AC": 0,
+        "armor": (0, 0, 0, 0),
         "stat_bonuses": {'dex': 2},
         "level": 0, "weight": 8, "value": -1,
     },
@@ -212,7 +212,7 @@ OBJECTS = {
         "type": 'armor',
         "wear_flags": {"take": True, "hands": True},
         "extra_flags": {"magic": True, "burn_proof": True, "quest": True},
-        "AC": 0,
+        "armor": (0, 0, 0, 0),
         "stat_bonuses": {'damroll': 50, 'hitroll': 50, 'con': 1, 'str': 1},
         "level": 0, "weight": 20, "value": -1,
     },
@@ -235,7 +235,7 @@ OBJECTS = {
         "type": 'armor',
         "wear_flags": {"take": True, "head": True},
         "extra_flags": {"glow": True, "hum": True, "magic": True, "burn_proof": True, "quest": True},
-        "AC": 0,
+        "armor": (50, 50, 50, 40),
         "level": 0, "weight": 10, "value": -1,
     },
     I_BAG_QUEST_ANCIENT: {
@@ -246,7 +246,7 @@ OBJECTS = {
         "type": 'container',
         "wear_flags": {"take": True},
         "extra_flags": {"glow": True, "magic": True, "nonmetal": True, "quest": True},
-        "stat_bonuses": {'AC': -100},
+        "stat_bonuses": {'ac': -100},
         "level": 0, "weight": 0, "value": -1,
     },
     I_SHIELD_QUEST_ANCIENT: {
@@ -257,8 +257,8 @@ OBJECTS = {
         "type": 'armor',
         "wear_flags": {"take": True, "shield": True},
         "extra_flags": {"magic": True, "burn_proof": True, "quest": True, "_unknown_bits": [27]},
-        "AC": 0,
-        "stat_bonuses": {'hp': 100},
+        "armor": (0, 0, 0, 0),
+        "stat_bonuses": {'hit': 100},
         "level": 0, "weight": 20, "value": -1,
     },
     I_QUEST_RING_REGENERATION: {
