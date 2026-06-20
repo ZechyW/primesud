@@ -1,6 +1,6 @@
 """Magic command handling and spell dispatch (cf. 1stMud magic.c)."""
 
-from world import SKILLS, SKILL_TABLE, ITEM_TEMPLATES, MOB_TEMPLATES, R_RECALL, ROOMS, ROOM_AREAS
+from world import SKILLS, SKILL_TABLE, ITEM_TEMPLATES, MOB_TEMPLATES, R_RECALL, ROOM_AREAS
 from picker import pick_from
 from combat import (WaitState, check_improve, get_skill, set_fighting,
                     deal_player_mob_damage)
@@ -12,8 +12,8 @@ from item import (get_char_room, get_obj_list, obj_vnum, item_spell_level,
 from actor import is_name, is_affected, affect_to_char, affect_strip
 from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
 from movement import perform_recall
-from config import DIR_ALIASES, EXIT_NAMES
 from colors import cap_first
+from scan import do_scan
 
 from urandom import randint
 
@@ -310,6 +310,8 @@ def spell_chain_lightning(tr, sn, level, ch, vo, target, world):
     room_state = world["rooms"][ch["room"]]
     victim_id = _target_id(ch, victim, world)
     first_target = victim_id
+    last_victim_id = victim_id
+    last_hit_ch = False
     any_hit = False
 
     while level > 0 and victim is not None:
@@ -322,24 +324,53 @@ def spell_chain_lightning(tr, sn, level, ch, vo, target, world):
             world["mobs"][victim_id]["state"] = "aggro"
             world["mobs"][victim_id]["fighting"] = ch
         level -= 4
+        last_victim_id = victim_id
+        last_hit_ch = False
+
+        if level <= 0:
+            break
 
         next_id = None
         for mob_id in room_state["mobs"]:
-            if mob_id != victim_id:
+            if mob_id != last_victim_id:
                 next_id = mob_id
                 break
+
+        if next_id is not None:
+            victim_id = next_id
+            victim = world["mobs"].get(victim_id)
+            if victim is not None:
+                tr.print("The bolt arcs to " + MOB_TEMPLATES[victim["tpl"]]["short_descr"] + "!")
+            continue
+
+        # No alternate mob target - arc back to caster (cf. 1stMud last_vict == ch path)
+        if last_hit_ch:
+            tr.print("The bolt grounds out through your body.")
+            break
+        tr.print("You are struck by your own lightning!")
+        dam2 = _dice(level, 6)
+        if saves_spell(level, ch, "lightning"):
+            dam2 //= 3
+        ch["hp"] = max(-1, ch["hp"] - dam2)
+        level -= 4
+        last_hit_ch = True
+        if level <= 0 or ch["hp"] <= 0:
+            break
+        next_id = None
+        for mob_id in room_state["mobs"]:
+            next_id = mob_id
+            break
         if next_id is None:
-            victim = None
+            tr.print("The bolt grounds out through your body.")
             break
         victim_id = next_id
-        victim = world["mobs"][victim_id]
-        tr.print("The bolt arcs to " + MOB_TEMPLATES[victim["tpl"]]["short_descr"] + "!")
+        victim = world["mobs"].get(victim_id)
+        if victim is not None:
+            tr.print("The bolt arcs to " + MOB_TEMPLATES[victim["tpl"]]["short_descr"] + "!")
 
     if first_target is not None and first_target in world["mobs"]:
         ch["fighting"] = first_target
         ch["pos"] = "fighting"
-    if victim is None and any_hit and level > 0:
-        tr.print("The bolt seems to have fizzled out.")
     return any_hit
 
 
@@ -382,29 +413,8 @@ def spell_teleport(tr, sn, level, ch, vo, target, world):
         from info import do_look
         do_look(tr, victim, [], world)
     else:
-        tr.print("Ok.")
+        tr.print(_char_name(ch, victim, world) + " vanishes!")
     return True
-
-
-def _scan_room_lines(room_vnum, world, depth, door):
-    lines = []
-    room_state = world["rooms"].get(room_vnum)
-    if room_state is None:
-        return lines
-    if depth == 0:
-        suffix = "right here."
-    elif depth == 1:
-        suffix = "nearby to the " + EXIT_NAMES.get(door, door) + "."
-    elif depth == 2:
-        suffix = "not far " + EXIT_NAMES.get(door, door) + "."
-    else:
-        suffix = "off in the distance " + EXIT_NAMES.get(door, door) + "."
-    for mob_id in room_state.get("mobs", []):
-        mob = world["mobs"].get(mob_id)
-        if mob is None:
-            continue
-        lines.append(MOB_TEMPLATES[mob["tpl"]]["short_descr"] + ", " + suffix)
-    return lines
 
 
 def spell_farsight(tr, sn, level, ch, vo, target, world):
@@ -412,32 +422,8 @@ def spell_farsight(tr, sn, level, ch, vo, target, world):
     if ch.get("aff_flags", {}).get("blind"):
         tr.print("Maybe it would help if you could see?")
         return False
-    arg = _spell_tail(ch)
-    if not arg:
-        tr.print("Looking around you see:")
-        for line in _scan_room_lines(ch["room"], world, 0, ""):
-            tr.print(line)
-        for door, exit_val in ROOMS[ch["room"]].get("exits", {}).items():
-            dest = exit_val["to"] if isinstance(exit_val, dict) else exit_val
-            for line in _scan_room_lines(dest, world, 1, door):
-                tr.print(line)
-        return True
-    door = DIR_ALIASES.get(arg)
-    if door is None:
-        tr.print("Which way do you want to scan?")
-        return False
-    tr.print("Looking " + EXIT_NAMES.get(door, door) + " you see:")
-    room_vnum = ch["room"]
-    found = False
-    for depth in range(1, 4):
-        exit_val = ROOMS.get(room_vnum, {}).get("exits", {}).get(door)
-        if exit_val is None:
-            break
-        room_vnum = exit_val["to"] if isinstance(exit_val, dict) else exit_val
-        for line in _scan_room_lines(room_vnum, world, depth, door):
-            tr.print(line)
-            found = True
-    return found or True
+    do_scan(tr, ch, _spell_tail(ch).split(), world)
+    return True
 
 
 def _iter_world_objects(player, world):
@@ -523,9 +509,8 @@ def spell_trivia_pill(tr, sn, level, ch, vo, target, world):
     if victim.get("is_npc"):
         return False
     victim["trivia"] = victim.get("trivia", 0) + 1
-    if victim is ch:
-        tr.print("You've gained a Trivia Point!")
-    else:
+    tr.print("You've gained a Trivia Point!")
+    if victim is not ch:
         tr.print("Ok.")
     return True
 

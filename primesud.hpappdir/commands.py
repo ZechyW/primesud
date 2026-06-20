@@ -6,6 +6,7 @@ from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_brandish, do_zap, do_eat, do_outfit)
 from movement import do_move, do_open, do_close, do_recall, do_flee
 from magic import do_cast
+from scan import do_scan
 from training import do_train, do_practice
 from info import (do_look, do_score, do_skills, do_spells, do_help, do_affects,
                   do_credits, do_map, do_automap, do_autolist)
@@ -79,6 +80,7 @@ _CMD_TABLE = [
     ("/",         do_recall,    "fighting", False),   # #164
     ("save",      do_save,      "dead",     False),   # #166
     ("train",     do_train,     "resting",  False),   # #171
+    ("scan",      do_scan,      "resting",  False),   # #253
     ("macro",     do_macro,     "dead",     False),   # [PRIMESUD]
     ("map",       do_map,       "resting",  False),   # #291
 ]
