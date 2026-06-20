@@ -71,8 +71,8 @@ Verified with `dir(str)` on-device.
 > Strings containing `{X` colour codes have `len() > visual_width`, so `"%-10s" % coloured_str`
 > will underpad. For coloured strings keep manual `s + ' ' * (width - color_len(s))` padding.
 
-> **Physical HP Prime `%` formatting caveat:** `%s` formatting has a confirmed
-> heap/timing-sensitive bug in narrow save-serialization cases. See
+> **Physical HP Prime string formatting caveat:** `%s` and `.format()` formatting have 
+> a confirmed heap/timing-sensitive bug in some cases. See
 > [PRIME_STRING_FORMAT_BUG.md](PRIME_STRING_FORMAT_BUG.md).
 
 ---

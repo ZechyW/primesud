@@ -1010,11 +1010,13 @@ def _known_runtime_spells(player):
 
 
 def _parse_spell_args(player, args):
-    for n in range(len(args), 0, -1):
-        sn = find_skill_spell(player, " ".join(args[:n]))
-        if sn is not None and _implemented_spell(sn):
-            return (sn, " ".join(args[n:]))
     return (find_skill_spell(player, args[0]), " ".join(args[1:]))
+
+
+def _quote_cast_spell_name(name):
+    if " " in name:
+        return "'" + name + "'"
+    return name
 
 
 def _is_self_name(player, target_name):
@@ -1050,6 +1052,87 @@ def _find_inv_obj(player, target_name):
 def _find_room_obj(player, world, target_name):
     rs = _room_state(player, world)
     return get_obj_list(target_name, rs["items"], ITEM_TEMPLATES)
+
+
+def _mob_pick_name(mob):
+    tpl = MOB_TEMPLATES[mob["tpl"]]
+    words = tpl.get("keywords", "").split()
+    if words:
+        return words[0]
+    words = tpl.get("short_descr", "").split()
+    if words:
+        return words[0]
+    return ""
+
+
+def _obj_pick_name(obj):
+    tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+    words = tpl.get("keywords", "").split()
+    if words:
+        return words[0]
+    words = tpl.get("short_descr", "").split()
+    if words:
+        return words[0]
+    return ""
+
+
+def _pick_cast_target_name(tr, player, sn, world):
+    """Pick missing spell target for PrimeSUD command UI."""
+    sk = SKILLS[sn]
+    target_type = sk.get("target", "ignore")
+    rs = _room_state(player, world)
+
+    if target_type == "char_offensive":
+        if player.get("fighting") is not None:
+            return ""
+        opts = []
+        names = []
+        for mob_id in rs["mobs"]:
+            mob = world["mobs"][mob_id]
+            opts.append(MOB_TEMPLATES[mob["tpl"]]["short_descr"])
+            names.append(_mob_pick_name(mob))
+        if not opts:
+            return ""
+        idx = pick_from(tr, "Cast the spell on whom?", opts)
+        if idx < 0:
+            return None
+        return names[idx]
+
+    if target_type == "obj_inventory":
+        opts = []
+        names = []
+        for obj in player["inv"]:
+            tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+            opts.append(tpl["short_descr"])
+            names.append(_obj_pick_name(obj))
+        if not opts:
+            return ""
+        idx = pick_from(tr, "Cast the spell on what?", opts)
+        if idx < 0:
+            return None
+        return names[idx]
+
+    if target_type == "obj_char_offensive":
+        if player.get("fighting") is not None:
+            return ""
+        opts = []
+        names = []
+        for mob_id in rs["mobs"]:
+            mob = world["mobs"][mob_id]
+            opts.append(MOB_TEMPLATES[mob["tpl"]]["short_descr"])
+            names.append(_mob_pick_name(mob))
+        for obj in rs["items"]:
+            tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+            opts.append(tpl["short_descr"])
+            names.append(_obj_pick_name(obj))
+        if not opts:
+            return ""
+        idx = pick_from(tr, "Cast the spell on whom or what?", opts)
+        if idx < 0:
+            return None
+        return names[idx]
+
+    return ""
 
 
 def _resolve_item_runtime_target(tr, ch, sn, victim, obj, world):
@@ -1280,6 +1363,11 @@ def do_cast(tr, player, args, world):
         tr.print("You can't concentrate enough.")
         return None
 
+    if not target_name:
+        target_name = _pick_cast_target_name(tr, player, sn, world)  # [PRIMESUD] calculator UX extension.
+        if target_name is None:
+            return None
+
     vo, target, victim_id, ok = _resolve_target(tr, player, sn, target_name, world)
     if not ok:
         return None
@@ -1309,4 +1397,9 @@ def do_cast(tr, player, args, world):
             and victim_id in world["mobs"]
             and player.get("fighting") is None):
         set_fighting(tr, player, victim_id, world["mobs"])
-    return ("cast " + SKILLS[sn]["name"]) if not args else None
+    if not args:
+        command = "cast " + _quote_cast_spell_name(SKILLS[sn]["name"])
+        if target_name:
+            command += " " + target_name
+        return command
+    return None

@@ -88,8 +88,36 @@ _CMD_TABLE = [
 
 # -- Interpreter ---------------------------------------------------------------
 
+def _split_args(raw):
+    """Split command input like 1stMud one_argument quoting."""
+    args = []
+    i = 0
+    raw = raw.strip().lower()
+    length = len(raw)
+    while i < length:
+        while i < length and raw[i].isspace():
+            i += 1
+        if i >= length:
+            break
+        end = " "
+        if raw[i] == "'" or raw[i] == '"':
+            end = raw[i]
+            i += 1
+        start = i
+        if end == " ":
+            while i < length and not raw[i].isspace():
+                i += 1
+        else:
+            while i < length and raw[i] != end:
+                i += 1
+        args.append(raw[start:i])
+        if i < length and raw[i] == end:
+            i += 1
+    return args
+
+
 def interpret(raw, tr, player, world):
-    parts = raw.strip().lower().split()
+    parts = _split_args(raw)
     if not parts:
         return None
     tr.print("")
