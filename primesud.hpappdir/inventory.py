@@ -14,7 +14,8 @@ from magic import cast_item_spells, validate_item_spell_payload
 from area_school import (I_BANNER_WAR_MERC,
                          I_MACE_SUB_MERC, I_DAGGER_SUB_MERC, I_SWORD_SUB_MERC,
                          I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,
-                         I_SPEAR_SUB_MERC, I_AXE_SUB_MERC, I_FLAIL_SUB_MERC)
+                         I_SPEAR_SUB_MERC, I_AXE_SUB_MERC, I_FLAIL_SUB_MERC,
+                         I_WHIP_SUB_MERC, I_GLAIVE_SUB_MERC)
 
 
 def do_get(tr, player, args, world):
@@ -621,13 +622,16 @@ def do_zap(tr, player, args, world):
         _destroy_equipped(player, "hold")
 
 
-# Weapon choices for do_outfit; sword is the default/tie-winner (cf. 1stMud weapon_table in const.c).
+# Weapon choices for do_outfit; order mirrors 1stMud weapon_table (const.c); sword is
+# default/tie-winner and handled separately as the seed value.
 _WEAPON_OUTFIT_CHOICES = [
-    ("mace",   I_MACE_SUB_MERC),
-    ("dagger", I_DAGGER_SUB_MERC),
-    ("spear",  I_SPEAR_SUB_MERC),
-    ("axe",    I_AXE_SUB_MERC),
-    ("flail",  I_FLAIL_SUB_MERC),
+    ("mace",    I_MACE_SUB_MERC),
+    ("dagger",  I_DAGGER_SUB_MERC),
+    ("spear",   I_SPEAR_SUB_MERC),
+    ("axe",     I_AXE_SUB_MERC),
+    ("flail",   I_FLAIL_SUB_MERC),
+    ("whip",    I_WHIP_SUB_MERC),
+    ("polearm", I_GLAIVE_SUB_MERC),
 ]
 
 
@@ -637,12 +641,11 @@ def do_outfit(tr, player, args, world):
     Fills only empty slots; skips any slot already occupied.  Weapon type is
     chosen by highest skill in player["learned"], defaulting to sword on ties
     (mirrors 1stMud weapon_table loop).  Also called at character creation
-    (primesud.py new_game) with no level restriction concern since level=1.
+    (game_state.py new_game) with no level restriction concern since level=1.
 
     Deviations from 1stMud:
       - No NPC guard (no NPCs in PrimeSUD).
       - obj->cost = 0 applied to weapon too (1stMud omits it for the weapon).
-      - equip_char skipped; direct slot assignment + affect_modify (same net state).
 
     Args:
         tr: Terminal renderer.
@@ -658,10 +661,9 @@ def do_outfit(tr, player, args, world):
         if player["equip"].get(slot) is not None:
             return
         obj = create_object(vnum)
-        obj["cost"] = 0   # cf. 1stMud do_outfit: obj->cost = 0
-        player["equip"][slot] = obj
-        for loc, mod in ITEM_TEMPLATES[vnum].get("stat_bonuses", {}).items():
-            affect_modify(player, loc, mod, True)
+        obj["cost"] = 0   # cf. 1stMud do_outfit: obj->cost = 0 (weapon excepted upstream)
+        player["inv"].append(obj)  # obj_to_char equivalent
+        equip_char(player, obj, slot)
 
     _equip("light", I_BANNER_WAR_MERC)
     _equip("body",  I_VEST_SUB_MERC)

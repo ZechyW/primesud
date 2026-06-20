@@ -36,19 +36,22 @@ reference/               # Reference game implementations (1stMud, JezzBall, Sta
 ## Tech stack
 
 - **Language:** Python -- HP Prime's restricted MicroPython-like subset, not standard CPython
-- **Available modules:** `hpprime`, `uio`, `cas`, `math`, `utime` -- ask user if unsure about others
+- **Available modules:** `hpprime`, `uio`, `cas`, `math`, `utime`, `urandom`, `gc` -- ask user if unsure about others
 - **No package manager.** No pip, no pypi dependencies
 - **Font:** `std5x10.font` -- PNG-based bitmap font with custom trailer byte encoding character dimensions
 
 ## Architecture
 
 ### `PrimeSUD` (context manager)
+
 Handles env setup/teardown: saves/restores calculator settings (`AAngle`, `AFormat`, `AComplex`, `Bits`, `HSeparator`), clears graphic buffers on exit. Suppresses `KeyboardInterrupt` for clean On-key exit.
 
 ### `Game`
+
 Game state + main loop. Uses `ppleval("Ticks")` (milliseconds) for tick timing. Keyboard via `hpprime.keyboard()` bitmask -- bit positions map to physical keys.
 
 ### `tml` (Text Mode Layer)
+
 Reusable terminal abstraction by Piotr Kowalewski (komame). Renders chars onto HP Prime graphic buffers using bitmap font; handles scrolling, cursor, dark/light mode, tab stops, keyboard state. **Stable library -- don't break public API or add game logic to it.**
 
 ## Deployment and testing
@@ -71,9 +74,23 @@ Reusable terminal abstraction by Piotr Kowalewski (komame). Renders chars onto H
 
 6. **`KeyboardInterrupt` is exit signal.** On key raises it. `PrimeSUD.__exit__` handles it -- don't swallow elsewhere.
 
+7. **Python source must be ASCII-only and BOM-free.** HP Prime's Python loader can misparse UTF-8 BOM or non-ASCII bytes, even in comments. Prefer `apply_patch` for `.py` edits; do not rewrite Python files with PowerShell `Set-Content`, `Out-File`, or redirection unless explicitly writing bytes / UTF-8 without BOM. After editing Python files, run:
+
+```
+python tools/check_ascii_py.py
+```
+
+8. **Avoid `%` formatting in persisted/serialized strings.** Physical HP Prime
+   Python has a confirmed heap-sensitive `%` string formatting bug. Values can
+   behave like strings at first, then fail later during list/string operations
+   such as `"~".join(lines)`. For save payloads, HVars/PPL strings, file formats,
+   area-data generated strings, or any string that will be joined/stored/parsing-
+   critical, use explicit `str()` plus concatenation. See
+   `PRIME_STRING_FORMAT_BUG.md`.
+
 ## Colour codes
 
-Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` -- handled by `colors.py`. When mixing with Python formatting, prefer `%` (`"{G%s{x" % name`, `"hp: %d" % hp`) over `.format()` -- `%` uses no `{` delimiters, composes cleanly. Concatenation (`"{G" + name + "{x"`) works but verbose. Full table in REFERENCE.md sec. Colour codes.
+Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` -- handled by `colors.py`. For transient UI-only strings, `%` (`"{G%s{x" % name`, `"hp: %d" % hp`) avoids `.format()` conflicts with `{X` colour delimiters. For persisted/serialized strings, do **not** use `%`; use explicit `str()` plus concatenation. Concatenation (`"{G" + name + "{x"`) works but verbose. Full table in REFERENCE.md sec. Colour codes.
 
 When porting 1stMud code using `CTAG(_CONSTANT)` (e.g. `CTAG(_MOBILES)`), default colour per constant documented in REFERENCE.md sec. CTAG colour scheme. Use that table to pick equivalent `{X` code.
 
@@ -95,6 +112,7 @@ Google-style: one-line summary, then `Args:` / `Returns:` / `Raises:` as needed;
 
 ## Working style
 
+- Read this file, `DESIGN.md`, and relevant reference docs before porting behavior from 1stMud.
 - Code first, then brief explanation of key decisions -- especially HP Prime constraints or PPL interop.
 - Minimal targeted changes. No surrounding refactor unless asked.
-- Unsure if Python feature available on HP Prime? Ask for human check.
+- Unsure if Python feature is available on HP Prime? Ask for human check.

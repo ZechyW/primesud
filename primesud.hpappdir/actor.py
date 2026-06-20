@@ -180,7 +180,10 @@ def get_armor(char, ac_type):
         ac_type (int): One of AC_PIERCE/AC_BASH/AC_SLASH/AC_EXOTIC.
 
     Returns:
-        int: Total AC bucket value in 1stMud x10 scale.
+        int: Total AC bucket value in PrimeSUD runtime units.
+
+    PrimeSUD stores actor armor in per-bucket combat units and later divides by
+    10 in hit resolution, matching the current combat pipeline.
     """
     armor = char.get("armor", (100, 100, 100, 100))
     return armor[ac_type] + DEX_APP_DEF[get_curr_stat(char, "dex")]

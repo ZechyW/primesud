@@ -70,7 +70,7 @@ def create_char():
         "hitroll": 0,
         "damroll": 0,
         "saving_throw": 0,
-        "armor": (100, 100, 100, 100),  # base unarmored, 1stMud x10 scale
+        "armor": (100, 100, 100, 100),  # base unarmored buckets in PrimeSUD runtime units
         "wait": 0,  # skill lag in pulses
         "daze": 0,  # stun in pulses
         "affects": {},

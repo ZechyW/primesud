@@ -39,7 +39,7 @@ skills, attack-count skills, and user-visible combat output.
 | ---- | --------------- | ------------------------- | --- |
 | Entry guards | `one_hit` rejects null/self/dead/different-room cases | Assumes valid pair | Add guard equivalent where useful |
 | Attack type | `dt` drives attack noun and damage class; `TYPE_UNDEFINED` resolves to weapon or mob `dam_type` | Uses weapon/mob `dam_type`; no `dt` convention | Add lightweight `dt`/attack-type convention when needed for backstab and specials |
-| AC | Selects `AC_PIERCE`, `AC_BASH`, `AC_SLASH`, or `AC_EXOTIC` from `dam_type` | Single `AC` value | Port AC buckets for all actors |
+| AC | Selects `AC_PIERCE`, `AC_BASH`, `AC_SLASH`, or `AC_EXOTIC` from `dam_type` | Bucket storage/helpers already exist; combat flow still only partially uses them | Finish wiring bucket AC through full combat path |
 | NPC THAC0 | NPC act flags pick `thac0_32`: warrior -10, thief -4, cleric +2, mage +6, default -4 | Classless curve for all | Port NPC act-type THAC0; keep PC classless |
 | Defense checks | `damage()` checks dodge, parry, shield block, force/static shield | `one_hit()` checks parry only | Move/centralize defense in `damage()` |
 | Dodge | `get_skill(dodge)/2`, visibility penalty, level delta | Missing | Add `check_dodge` |
@@ -199,7 +199,8 @@ For readability in conversion tools/docs, source fields may still be named
 
 Players and mobs both need four armor buckets.
 
-- Mob templates keep area-file AC values in 1stMud scale.
+- Mob templates keep area-file AC values as four raw bucket values; loader/runtime
+  conversion should be documented where it happens in code.
 - Player base armor defaults should match current behavior as closely as
   possible.
 - Save/load must include new player armor representation only if derived state
@@ -228,7 +229,8 @@ def get_armor(ch, ac_type):
 1. Start from actor base armor tuple.
 2. Add equipment armor tuple contributions.
 3. Add DEX defensive bonus through existing `DEX_APP_DEF`.
-4. Return integer in 1stMud scale.
+4. Return integer in PrimeSUD runtime bucket units, suitable for later `/ 10`
+   hit-check conversion.
 
 Keep `get_AC(ch)` temporarily as a compatibility wrapper. Remove or narrow it
 after combat callers use `get_armor`.
@@ -439,4 +441,3 @@ After Python edits:
 ```powershell
 python tools/check_ascii_py.py
 ```
-
