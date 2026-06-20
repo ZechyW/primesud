@@ -224,11 +224,11 @@ def is_name(fragment, namelist):
 
 
 def _apply_item_modifiers(char, obj, tpl, add):
-    """Apply template bonuses and runtime object affects for equipped item."""
-    armor = _item_armor_runtime(tpl)
-    if armor is not None:
-        delta = armor if add else (-armor[0], -armor[1], -armor[2], -armor[3])
-        _add_armor(char, delta)
+    """Apply stat bonuses and runtime object affects for equipped item.
+
+    Does NOT handle base armor values -- those are subtracted/added
+    directly in equip_char/unequip_char (cf. 1stMud handler.c).
+    """
     for loc, mod in tpl.get("stat_bonuses", {}).items():
         affect_modify(char, loc, mod, add)
     for af in obj.get("affect_list", []):
@@ -242,6 +242,9 @@ def unequip_char(char, slot):
     """Remove obj from slot, reverse stat_bonuses, return to inventory (cf. 1stMud unequip_char in handler.c)."""
     obj = char["equip"][slot]
     tpl = ITEM_TEMPLATES[obj["vnum"]]
+    armor = _item_armor_runtime(tpl)
+    if armor is not None:
+        _add_armor(char, armor)
     _apply_item_modifiers(char, obj, tpl, False)
     char["equip"][slot] = None
     char["inv"].append(obj)
@@ -252,6 +255,9 @@ def equip_char(char, obj, slot):
     tpl = ITEM_TEMPLATES[obj["vnum"]]
     char["inv"].remove(obj)
     char["equip"][slot] = obj
+    armor = _item_armor_runtime(tpl)
+    if armor is not None:
+        _add_armor(char, (-armor[0], -armor[1], -armor[2], -armor[3]))
     _apply_item_modifiers(char, obj, tpl, True)
 
 
