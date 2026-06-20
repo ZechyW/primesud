@@ -186,14 +186,18 @@ def show_prompt(tr, player, buf):
 
 
 # -- Persistence ---------------------------------------------------------------
-# Save data is stored in a PPL home variable (SAVE_VAR) via HVars so it
-# survives app reinstalls.  Serialisation constraints:
+# Dual-save strategy:
+#   - HVar (SAVE_VAR): survives app reinstall, but only flushed to disk on
+#     normal calculator shutdown -- a hard crash may leave HVar stale.
+#   - File (SAVE_FILE): written immediately on every save, so survives hard
+#     crashes, but is wiped on app update/reinstall.
+# Save writes both.  Load prefers file (better crash safety); falls back to
+# HVar when file is missing or unreadable (e.g. after reinstall).
+# Serialisation constraints:
 #   - Lines are joined with '~'; no saved field value may contain '~'.
 #   - No field value may contain '"' (would break the PPL string literal).
 #   - HVars returns the string "Error: Invalid input" when the variable does
 #     not exist yet (i.e. no save found); load_char treats this as no-save.
-# The same payload is also mirrored to SAVE_FILE for inspection/backup.
-# (Issue is that files are overwritten on app update/reinstall)
 SAVE_FILE = "primesud.sav"
 
 def save_char(player, world):
@@ -297,10 +301,11 @@ def save_state(tr, player, world, quiet=False):
 
 
 def load_char(player, world):
-    """Deserialise player and world state from the PPL HVars variable (cf. 1stMud load_char_obj in save.c).
+    """Deserialise player and world state from save file or HVar (cf. 1stMud load_char_obj in save.c).
 
-    Mutates player and world in-place.  Macros are read from player["_macros"]
-    (must be set by caller before calling).
+    Tries SAVE_FILE first (survives hard crashes); falls back to SAVE_VAR HVar
+    (survives reinstalls).  Mutates player and world in-place.  Macros are read
+    from player["_macros"] (must be set by caller before calling).
 
     Args:
         player (dict): Player state dict to populate.
@@ -309,12 +314,22 @@ def load_char(player, world):
     Returns:
         bool: True if a save was found and loaded, False if no save exists or on error.
     """
+    data = None
     try:
-        data = hvars_get(SAVE_VAR)
-        if not data or not isinstance(data, str) or data.startswith("Error:"):
-            return False
+        with open(SAVE_FILE, "r") as f:
+            data = f.read()
+        if not data or not isinstance(data, str):
+            data = None
     except Exception:
-        return False
+        data = None
+
+    if data is None:
+        try:
+            data = hvars_get(SAVE_VAR)
+            if not data or not isinstance(data, str) or data.startswith("Error:"):
+                return False
+        except Exception:
+            return False
 
     # Reject saves from a different format version.  Additive changes (new
     # fields, new skills) don't require a bump; only semantic/structural changes
