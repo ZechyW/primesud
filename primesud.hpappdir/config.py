@@ -90,6 +90,7 @@ KEY_COMMANDS = {  # [PRIMESUD]
 DEFAULT_MACROS = {  # [PRIMESUD]
     "7": "kill",
     "8": "flee",
+    "9": "cast",
     "4": "open",
     "5": "get",
     "6": "drop",

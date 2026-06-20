@@ -11,21 +11,29 @@ def _cancel(tr):
 
 
 def _read_key(tr):
-    poll_char = getattr(tr, "poll_char", None)
-    if poll_char is None:
-        return tr.read_key()
-
     while True:
-        result = poll_char()
+        result = tr.poll_char()
         if result is not None:
             char, _auto_submit = result
             # In picker we are already inside a blocking command; game_loop
             # accounts for elapsed time around interpret(), so don't also carry
             # scrollback time back to the main poll loop.
-            if getattr(tr, "_scrollback_ms", 0):
+            if tr._scrollback_ms:
                 tr._scrollback_ms = 0
             return char
         ppleval("WAIT(1/1e3)")
+
+
+def _force_numeric_keys(tr):
+    tr.resync_keyboard()
+    tr.alpha_lock = False
+    tr.shift_lock = False
+    tr.is_alpha = False
+    tr.is_shift = False
+    tr.alpha_hold = False
+    tr.shift_hold = False
+    tr.symb_hold = False
+    tr._refresh_indicators()
 
 
 def _render(tr, title, options, page, max_page):
@@ -61,6 +69,7 @@ def pick_from(tr, title, options):
     if not options:
         return -1
 
+    _force_numeric_keys(tr)
     max_page = (len(options) - 1) // _MAX_OPTS
     page = 0
     _render(tr, title, options, page, max_page)
