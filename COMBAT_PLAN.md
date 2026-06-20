@@ -13,7 +13,7 @@ PrimeSUD design decisions.  Primary references:
 This plan covers `one_hit`, `damage`, `multi_hit`, AC handling, defensive
 skills, attack-count skills, and user-visible combat output.
 
-**Status: proposed.**
+**Status: Phase 1 complete.**
 
 ---
 
@@ -363,11 +363,14 @@ Damage verb thresholds already mostly match 1stMud and should move behind
 
 ### Phase 1: AC buckets
 
-- Add AC constants.
-- Add `get_armor(ch, ac_type)`.
-- Migrate mob/player/item armor data.
-- Update `one_hit` to choose AC bucket by `dam_class`.
-- Keep `get_AC` compatibility wrapper during transition.
+- [x] Add AC constants (`AC_PIERCE`, `AC_BASH`, `AC_SLASH`, `AC_EXOTIC` in `config.py`).
+- [x] Add `get_armor(ch, ac_type)` in `actor.py` (base armor + DEX bonus).
+- [x] Migrate mob/player/item armor data to 4-bucket tuples.
+- [x] Update `one_hit` to choose AC bucket by `dam_class` via `_ac_type_for_damage_class`.
+- [x] Keep `get_AC` compatibility wrapper during transition.
+- [x] Fix item armor sign: `equip_char` subtracts armor (cf. 1stMud `handler.c`),
+  `unequip_char` adds it back.  `_apply_item_modifiers` no longer touches base
+  armor values.
 
 ### Phase 2: defense checks
 
