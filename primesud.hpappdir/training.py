@@ -1,6 +1,6 @@
 """Training and practice command handlers."""
 
-from world import MOB_TEMPLATES, SKILLS
+from world import MOB_TEMPLATES, SKILL_TABLE, SKILLS
 from picker import pick_from
 from actor import get_curr_stat
 from config import INT_APP_LEARN, MAX_STATS, SKILL_ADEPT
@@ -46,14 +46,13 @@ def do_train(tr, player, args, world):
         stat_opts = [(k, lng) for k, lng in _TRAIN_STATS if player[k] < MAX_STATS]
         vital_opts = [("hp_max", "hp"), ("mp_max", "mana")]
         all_opts = stat_opts + vital_opts
-        tr.print("You have {} training session{}.".format(
-            player["train"], "" if player["train"] == 1 else "s"))
+        tr.print("You have " + str(player["train"]) + " training session" + ("" if player["train"] == 1 else "s") + ".")
         names = []
         for k, lng in all_opts:
             if k in ("hp_max", "mp_max"):
-                names.append("{} (max: {})".format(lng, player[k]))
+                names.append(lng + " (max: " + str(player[k]) + ")")
             else:
-                names.append("{} ({}/{})".format(lng, player[k], MAX_STATS))
+                names.append(lng + " (" + str(player[k]) + "/" + str(MAX_STATS) + ")")
         idx = pick_from(tr, "Train which?", names)
         if idx < 0:
             return
@@ -74,7 +73,7 @@ def do_train(tr, player, args, world):
             tr.print("Valid training: str, dex, int, wis, con, hp, mana.")
             return
         if chosen_key not in ("hp_max", "mp_max") and player[chosen_key] >= MAX_STATS:
-            tr.print("Your {} is already at maximum.".format(chosen_lng))
+            tr.print("Your " + chosen_lng + " is already at maximum.")
             return
 
     player["train"] -= 1
@@ -88,7 +87,7 @@ def do_train(tr, player, args, world):
         tr.print("Your power increases!")
     else:
         player[chosen_key] += 1
-        tr.print("Your {} increases!".format(chosen_lng))
+        tr.print("Your " + chosen_lng + " increases!")
 
 
 def do_practice(tr, player, args, world):
@@ -117,10 +116,12 @@ def do_practice(tr, player, args, world):
         tr.print("You have " + str(player["practice"]) + " practice sessions left.")
         if teacher is None or player["practice"] < 1:
             return
-        practicable = [(vnum, pct) for vnum, pct in player["learned"].items()
-                       if (0 < pct < SKILL_ADEPT and SKILLS.get(vnum)
-                           and can_use_skill_spell(player, vnum)
-                           and skill_rating(player, vnum) > 0)]
+        learned = player["learned"]
+        practicable = [(sn, learned[sn]) for sn, sk in SKILL_TABLE
+                       if (sn in learned
+                           and 0 < learned[sn] < SKILL_ADEPT
+                           and can_use_skill_spell(player, sn)
+                           and skill_rating(player, sn) > 0)]
         if not practicable:
             return
         names = [str(SKILLS[vnum]["name"]) + " (" + str(pct) + "%)" for vnum, pct in practicable]
