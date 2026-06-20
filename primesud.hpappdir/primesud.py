@@ -256,6 +256,9 @@ class PrimeSud:
                 game.tr.print("No save found. Starting new game.")
                 game.tr.print("")
                 new_game(game)
+            else:                       # save loaded
+                game.tr.print("Loaded from: %s." % result)
+                game.tr.print("")
 
             try:
                 game.game_loop()

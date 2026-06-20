@@ -315,11 +315,14 @@ def load_char(player, world):
         bool: True if a save was found and loaded, False if no save exists or on error.
     """
     data = None
+    _source = None
     try:
         with open(SAVE_FILE, "r") as f:
             data = f.read()
         if not data or not isinstance(data, str):
             data = None
+        else:
+            _source = "file"
     except Exception:
         data = None
 
@@ -328,6 +331,7 @@ def load_char(player, world):
             data = hvars_get(SAVE_VAR)
             if not data or not isinstance(data, str) or data.startswith("Error:"):
                 return False
+            _source = "hvar"
         except Exception:
             return False
 
@@ -421,4 +425,4 @@ def load_char(player, world):
     for mob_id, inst in world["mobs"].items():
         world["rooms"][inst["room"]]["mobs"].append(mob_id)
 
-    return True
+    return _source
