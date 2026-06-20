@@ -12,7 +12,7 @@ from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
                    GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
                    WEAPON_GSN_MAP)
 from actor import get_hitroll, get_damroll, get_AC, get_curr_stat, act
-from item import create_object, get_char_room
+from item import get_char_room
 from player import save_state
 from picker import pick_from
 
@@ -288,6 +288,16 @@ def WaitState(ch, pulses):
     """
     if pulses > ch.get("wait", 0):
         ch["wait"] = pulses
+
+
+def update_wait_states(player, world):
+    """Decrement wait/daze timers on the violence pulse."""
+    player["wait"] = max(0, player.get("wait", 0) - PULSE_VIOLENCE)
+    rs = world["rooms"][player["room"]]
+    for mid in rs["mobs"]:
+        inst = world["mobs"][mid]
+        inst["wait"] = max(0, inst.get("wait", 0) - PULSE_VIOLENCE)
+        inst["daze"] = max(0, inst.get("daze", 0) - PULSE_VIOLENCE)
 
 
 # -- Skill improvement ---------------------------------------------------------
@@ -871,13 +881,7 @@ def violence_update(tr, player, world):
 
     tpl = MOB_TEMPLATES[target["tpl"]]
 
-    # Decrement wait/daze for player and all room mobs
-    player["wait"] = max(0, player["wait"] - PULSE_VIOLENCE)
     rs = world["rooms"][player["room"]]
-    for mid in rs["mobs"]:
-        inst = world["mobs"][mid]
-        inst["wait"] = max(0, inst["wait"] - PULSE_VIOLENCE)
-        inst["daze"] = max(0, inst["daze"] - PULSE_VIOLENCE)
 
     # Player's attack turn
     if player["wait"] <= 0:
@@ -966,15 +970,16 @@ def raw_kill(tr, player, mob_id, inst, tpl, world):
 
     _death_cry(tr, tpl)
 
-    # Drop equipped items and carried inventory to room floor (cf. 1stMud obj_to_room on death)
+    # [PRIMESUD] Drop loot directly: corpse containers/get-all-corpse are not ported yet.
+    # 1stMud raw_kill calls make_corpse(), which moves carried objects into a corpse.
     _floor = world["rooms"][inst["room"]]["items"]
-    for _slot_vnum in inst.get("equip", {}).values():
-        if _slot_vnum is not None:
-            _floor.append(create_object(_slot_vnum))
-            act(tr, "{} falls to the ground.".format(ITEM_TEMPLATES[_slot_vnum]["short_descr"]))
-    for _inv_vnum in inst.get("inv", []):
-        _floor.append(create_object(_inv_vnum))
-        act(tr, "{} falls to the ground.".format(ITEM_TEMPLATES[_inv_vnum]["short_descr"]))
+    for _slot_obj in inst.get("equip", {}).values():
+        if _slot_obj is not None:
+            _floor.append(_slot_obj)
+            act(tr, "{} falls to the ground.".format(ITEM_TEMPLATES[_slot_obj["vnum"]]["short_descr"]))
+    for _inv_obj in inst.get("inv", []):
+        _floor.append(_inv_obj)
+        act(tr, "{} falls to the ground.".format(ITEM_TEMPLATES[_inv_obj["vnum"]]["short_descr"]))
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
     save_state(tr, player, world, quiet=True)

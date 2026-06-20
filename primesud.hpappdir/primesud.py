@@ -22,7 +22,7 @@ from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
                     FNKEY_SENTINELS)
 from util import free_mem, gc_collect
 from world import R_STARTING_ROOM, ROOMS, init_world
-from combat import violence_update
+from combat import update_wait_states, violence_update
 from mob import mobile_update, area_update
 from player import tick_update, show_prompt
 from commands import interpret
@@ -182,6 +182,7 @@ class Game:
                 pulse += 1
 
                 if pulse % PULSE_VIOLENCE == 0:
+                    update_wait_states(player, world)
                     if violence_update(tr, player, world):
                         # [PRIMESUD] Handle auto respawn on death
                         tr.print("You have been KILLED!!")
