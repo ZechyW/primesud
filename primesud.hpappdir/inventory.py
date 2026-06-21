@@ -27,8 +27,16 @@ def do_get(tr, player, args, world):
             tr.print("There is nothing here to pick up.")
             return
         names = [ITEM_TEMPLATES[obj_vnum(obj)]["short_descr"] for obj in takeable]
+        if len(takeable) > 1:
+            names.append("All")
         idx = pick_from(tr, "Pick up what?", names)
         if idx < 0:
+            return
+        if idx == len(takeable):
+            for obj in list(takeable):
+                rs["items"].remove(obj)
+                player["inv"].append(obj)
+                tr.print("You get {}.".format(ITEM_TEMPLATES[obj_vnum(obj)]["short_descr"]))
             return
         obj = takeable[idx]
         tpl = ITEM_TEMPLATES[obj_vnum(obj)]
@@ -306,8 +314,14 @@ def do_wear(tr, player, args, world):
             tr.print("You have nothing wearable.")
             return
         names = [tpl["short_descr"] for _, tpl, _ in equippable]
+        if len(equippable) > 1:
+            names.append("All")
         idx = pick_from(tr, "Wear what?", names)
         if idx < 0:
+            return
+        if idx == len(equippable):
+            for obj, _, _ in list(equippable):
+                wear_obj(tr, player, obj, False)
             return
         obj, tpl, slot = equippable[idx]
         wear_obj(tr, player, obj, True)
@@ -338,8 +352,14 @@ def do_remove(tr, player, args, world):
             tr.print("You aren't wearing anything.")
             return
         names = [ITEM_TEMPLATES[obj["vnum"]]["short_descr"] for _, obj in worn]
+        if len(worn) > 1:
+            names.append("All")
         idx = pick_from(tr, "Remove what?", names)
         if idx < 0:
+            return
+        if idx == len(worn):
+            for slot, obj in list(worn):
+                remove_obj(tr, player, slot, True)
             return
         slot, obj = worn[idx]
         remove_obj(tr, player, slot, True)
