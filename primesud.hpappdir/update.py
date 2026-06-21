@@ -33,4 +33,6 @@ def obj_update(tr, player, world):
                     msg = short + " crumbles into dust."
                 if player["room"] == rvnum:
                     tr.print(msg)
+                if "contents" in obj:
+                    del obj["contents"]
                 room["items"].remove(obj)

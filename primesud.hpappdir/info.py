@@ -76,7 +76,8 @@ def _look_item(tr, player, args, world):
         return
     vnum = obj_vnum(result)
     tpl = ITEM_TEMPLATES[vnum]
-    for line in _wrap_paragraphs(tpl.get("description", tpl["short_descr"]), TERMINAL_COLS):
+    inst_desc = isinstance(result, dict) and result.get("description")
+    for line in _wrap_paragraphs(inst_desc or tpl.get("description", tpl["short_descr"]), TERMINAL_COLS):
         tr.print(line)
     for ed in tpl.get("extra_descs", []):
         if is_name(target, ed.get("keywords", "")):
@@ -137,7 +138,8 @@ def do_look(tr, player, args, world):
         if flags.get("glow"):   flag_str += "({YGlowing{x) "
         if flags.get("hum"):    flag_str += "({CHumming{x) "
         if flags.get("magic"):  flag_str += "({MMagical{x) "
-        line = flag_str + "{Y" + (tpl.get("description") or tpl["short_descr"]) + "{x"
+        inst_desc = isinstance(obj, dict) and obj.get("description")
+        line = flag_str + "{Y" + (inst_desc or tpl.get("description") or tpl["short_descr"]) + "{x"
         if line in seen:
             seen[line] += 1
         else:

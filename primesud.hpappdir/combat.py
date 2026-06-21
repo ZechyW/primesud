@@ -13,7 +13,9 @@ from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
                    GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
                    WEAPON_GSN_MAP)
 from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, act
-from item import get_char_room
+from area_limbo import I_CORPSE, I_COINS_GOLD_GCASH, I_COIN_GOLD_GCASH
+from item import (get_char_room, create_object, item_extra_flags,
+                  set_item_extra_flag)
 from player import save_state
 from picker import pick_from
 
@@ -960,6 +962,40 @@ def _death_cry(tr, tpl):
     act(tr, _DEATH_CRIES[randint(0, len(_DEATH_CRIES) - 1)].format(tpl["short_descr"]))
 
 
+def make_corpse(inst, tpl, world):
+    """Create an NPC corpse containing mob loot and place it in the room (cf. 1stMud make_corpse in fight.c)."""
+    corpse = create_object(I_CORPSE)
+    corpse["timer"] = randint(3, 6)
+    mob_short = tpl["short_descr"]
+    corpse["short_descr"] = "The corpse of " + mob_short
+    corpse["description"] = "The corpse of " + mob_short + " is lying here."
+    corpse["contents"] = []
+
+    gold = tpl.get("gold", 0)
+    if gold > 0:
+        gold_obj = create_object(I_COINS_GOLD_GCASH if gold > 1 else I_COIN_GOLD_GCASH)
+        if gold > 1:
+            gold_obj["short_descr"] = str(gold) + " gold coins"
+        gold_obj["cost"] = gold
+        corpse["contents"].append(gold_obj)
+
+    for obj in list(inst.get("equip", {}).values()) + list(inst.get("inv", [])):
+        if obj is None:
+            continue
+        obj_tpl = ITEM_TEMPLATES[obj["vnum"]]
+        flags = item_extra_flags(obj, obj_tpl)
+        if flags.get("inventory"):
+            continue
+        if flags.get("rot_death"):
+            obj["timer"] = randint(5, 10)
+            set_item_extra_flag(obj, obj_tpl, "rot_death", False)
+        if item_extra_flags(obj, obj_tpl).get("vis_death"):
+            set_item_extra_flag(obj, obj_tpl, "vis_death", False)
+        corpse["contents"].append(obj)
+
+    world["rooms"][inst["room"]]["items"].append(corpse)
+
+
 def raw_kill(tr, player, mob_id, inst, tpl, world):
     """Handle mob death: award XP, level-up if needed, drop loot, extract mob (cf. 1stMud raw_kill in fight.c).
 
@@ -981,16 +1017,7 @@ def raw_kill(tr, player, mob_id, inst, tpl, world):
 
     _death_cry(tr, tpl)
 
-    # [PRIMESUD] Drop loot directly: corpse containers/get-all-corpse are not ported yet.
-    # 1stMud raw_kill calls make_corpse(), which moves carried objects into a corpse.
-    _floor = world["rooms"][inst["room"]]["items"]
-    for _slot_obj in inst.get("equip", {}).values():
-        if _slot_obj is not None:
-            _floor.append(_slot_obj)
-            act(tr, "{} falls to the ground.".format(ITEM_TEMPLATES[_slot_obj["vnum"]]["short_descr"]))
-    for _inv_obj in inst.get("inv", []):
-        _floor.append(_inv_obj)
-        act(tr, "{} falls to the ground.".format(ITEM_TEMPLATES[_inv_obj["vnum"]]["short_descr"]))
+    make_corpse(inst, tpl, world)
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
     save_state(tr, player, world, quiet=True)

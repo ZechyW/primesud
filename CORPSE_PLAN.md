@@ -36,7 +36,7 @@ to find current locations.
 
 ---
 
-## Phase 1: Object Timer System
+## Phase 1: Object Timer System (completed: 55e****)
 
 **Goal:** Items can decay over time. Prerequisite for all other phases.
 
