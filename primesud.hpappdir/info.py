@@ -258,7 +258,7 @@ def _make_percent_bar(val, max_val, length):
 
 def do_score(tr, player, args, world):
     """Display the character score sheet (cf. 1stMud dlm_score in act_info.c)."""
-    # two-column box mirroring 1stMud dlm_score layout, with bright/normal colours 
+    # two-column box mirroring 1stMud dlm_score layout, with bright/normal colours
     # alternating between horizontal segments.
     def _row(l, r):
         lpad = ' ' * (_SCORE_LEFT  - color_len(l))
@@ -267,7 +267,12 @@ def do_score(tr, player, args, world):
     def _stat(name, val):
         # [perm/curr] -- identical until affect system is added
         return '{c' + '{:<13}'.format(name) + ': [{w' + '{:2d}/{:2d}'.format(val, val) + '{c]{x'
-    def _val(name, v, bright=False):
+    def _val_l(name, v, bright=False):
+        nc = '{C' if bright else '{c'
+        # values stay as dim white
+        vc = '{w'
+        return nc + '{:<13}'.format(name) + ': [' + vc + '{:>10}'.format(v) + nc + ' ]{x'
+    def _val_r(name, v, bright=False):
         nc = '{C' if bright else '{c'
         # values stay as dim white
         vc = '{w'
@@ -298,27 +303,64 @@ def do_score(tr, player, args, world):
         _SCORE_SEP_OUTER,
         "{W|{x " + name_col + "   " + mem_col + " {W|{x",
         _SCORE_SEP_INNER,
-        _row(_stat('Strength',     get_curr_stat(p, 'str')), _val('Level',     p['level'])),
-        _row(_stat('Intelligence', get_curr_stat(p, 'int')), _val('Thac0',     thac0)),
-        _row(_stat('Wisdom',       get_curr_stat(p, 'wis')), _val('Practices', p.get('practice', 0))),
-        _row(_stat('Dexterity',    get_curr_stat(p, 'dex')), _val('Trains',    p.get('train', 0))),
-        _row(_stat('Constitution', get_curr_stat(p, 'con')), ''),
+        _row(
+            _stat("Strength", get_curr_stat(p, "str")),
+            _val_r("Level", p["level"])
+        ),
+        _row(
+            _stat("Intelligence", get_curr_stat(p, "int")),
+            _val_r("Thac0", thac0)
+        ),
+        _row(
+            _stat("Wisdom", get_curr_stat(p, "wis")),
+            _val_r("Practices", p.get("practice", 0)),
+        ),
+        _row(
+            _stat("Dexterity", get_curr_stat(p, "dex")),
+            _val_r("Trains", p.get("train", 0)),
+        ),
+        _row(
+            _stat("Constitution", get_curr_stat(p, "con")),
+            ""
+        ),
         _SCORE_SEP_INNER,
-        _row('{CHit      : [{R' + '{:5d}'.format(p['hp'])     + '{C/{R' + '{:5d}'.format(p['hp_max']) + '{C]{x',
-             _val('Hitroll', get_hitroll(p),  bright=True)),
-        _row('{CMana     : [{M' + '{:5d}'.format(p['mp'])     + '{C/{M' + '{:5d}'.format(p['mp_max']) + '{C]{x',
-             _val('Damroll', get_damroll(p), bright=True)),
-        _row('{CExp      : [{w' + '{:>10}'.format(p['xp'])    + '{C ]{x',
-             _val('Hours',   hours,          bright=True)),
-        _row('{CTo Lvl   : [{w' + '{:>10}'.format(p['xp_next'] - p['xp']) + '{C ]{x',
-             _val('Age',      age,                  bright=True)),
-        _row('{CPosition : [{w' + '{:>10}'.format(p['pos'])    + '{C ]{x',
-             ''),
+        _row(
+            "{CHit          : [{R"
+            + "{:5d}".format(p["hp"])
+            + "{C/{R"
+            + "{:5d}".format(p["hp_max"])
+            + "{C]{x",
+            _val_r("Hitroll", get_hitroll(p), bright=True),
+        ),
+        _row(
+            "{CMana         : [{M"
+            + "{:5d}".format(p["mp"])
+            + "{C/{M"
+            + "{:5d}".format(p["mp_max"])
+            + "{C]{x",
+            _val_r("Damroll", get_damroll(p), bright=True),
+        ),
+        _row(
+            _val_l("Exp", p["xp"], bright=True),
+            _val_r("Age", age, bright=True)
+        ),
+        _row(
+            _val_l("To Lvl", p["xp_next"] - p["xp"], bright=True),
+            _val_r("Hours", hours, bright=True),
+        ),
+        _row(
+            _val_l("Silver", p["silver"], bright=True),
+            _val_r("Position", p["pos"], bright=True),
+        ),
+        _row(
+            _val_l("Gold", p["gold"], bright=True),
+            ""
+        ),
         _SCORE_SEP_OUTER,
-        _ac_row('Pierce', get_armor(p, AC_PIERCE)),
-        _ac_row('Bash',   get_armor(p, AC_BASH)),
-        _ac_row('Slash',  get_armor(p, AC_SLASH)),
-        _ac_row('Exotic', get_armor(p, AC_EXOTIC)),
+        _ac_row("Pierce", get_armor(p, AC_PIERCE)),
+        _ac_row("Bash", get_armor(p, AC_BASH)),
+        _ac_row("Slash", get_armor(p, AC_SLASH)),
+        _ac_row("Exotic", get_armor(p, AC_EXOTIC)),
         _SCORE_SEP_OUTER,
     ]
     for line in lines:
