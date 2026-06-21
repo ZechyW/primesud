@@ -134,7 +134,7 @@ After this phase, corpses appear in room item lists. Verify that `do_look` room 
 
 ---
 
-## Phase 3: Container Interaction [completed: TBD]
+## Phase 3: Container Interaction [completed: 7c6****]
 
 **Goal:** Player can loot corpses (`get sword corpse`) and interact with containers.
 
@@ -177,6 +177,8 @@ Verify corpses show their stamped `description` in room look output. Standard it
 
 ## Phase 4: Body Parts via `death_cry`
 
+**CRITICAL: PENDING PREREQS.** Do not implement until race data is properly ported.
+
 **Goal:** Death messages conditionally drop body-part objects, matching 1stMud probability distribution and part-checking logic.
 
 **Read before implementing:**
@@ -188,7 +190,7 @@ Verify corpses show their stamped `description` in room look output. Standard it
 
 ### Mob template `"parts"` field
 
-Add to mob templates in area data files:
+Add to mob templates in are_to_primesud.py and run regen_areas.sh:
 ```python
 "parts": {"head": True, "arms": True, "legs": True,
           "heart": True, "guts": True, "brains": True}
