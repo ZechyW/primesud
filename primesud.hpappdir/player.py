@@ -235,7 +235,9 @@ def save_char(player, world):
     for sk in sorted(player["learned"]):
         learned_parts.append(str(sk) + ":" + str(player["learned"][sk]))
     lines.append("p.learned=" + "|".join(learned_parts))
-    for k in sorted(player["_macros"]):
+    _mk_int = sorted(k for k in player["_macros"] if isinstance(k, int))
+    _mk_str = sorted(k for k in player["_macros"] if isinstance(k, str))
+    for k in _mk_int + _mk_str:
         lines.append("p.macro." + str(FNKEY_NAMES.get(k, k)) + "=" + str(player["_macros"][k]))
     for _as in world["areas"]:
         # HP Prime G1 has unstable percent-format strings in save payloads.

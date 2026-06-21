@@ -85,6 +85,7 @@ Features not supported by HP Prime's MicroPython (confirmed via `SyntaxError` at
 |:--------|:-----------|
 | `{**a, **b}` dict unpacking in literals | `d = {}; d.update(a); d.update(b)` |
 | `f"..."` f-strings | `"... %s ..." % x` — prefer `%` over `.format()` when colour codes are present, as `%` uses no `{` delimiters |
+| `next(iter, default)` 2-arg form | `try: v = next(iter)` / `except StopIteration: v = default` |
 
 ---
 

@@ -228,7 +228,10 @@ def wear_obj(tr, player, obj, fReplace):
         equip_char(player, obj, "light")
         return
 
-    flag = next((f for f in item_wear_flags(obj, tpl) if f != "take"), None)
+    try:
+        flag = next(f for f in item_wear_flags(obj, tpl) if f != "take")
+    except StopIteration:
+        flag = None
     if flag is None:
         if fReplace:
             tr.print("You can't wear, wield, or hold that.")
@@ -289,8 +292,14 @@ def do_wear(tr, player, args, world):
         equippable = []
         for obj in player["inv"]:
             tpl = ITEM_TEMPLATES[obj["vnum"]]
-            slot = "light" if tpl.get("type") == "light" else next(
-                (f for f in item_wear_flags(obj, tpl) if f != "take"), None)
+            if tpl.get("type") == "light":
+                slot = "light"
+            else:
+                try:
+                    slot = next(f for f in item_wear_flags(obj, tpl)
+                                if f != "take")
+                except StopIteration:
+                    slot = None
             if slot is not None and (slot in player["equip"] or slot in _DUAL_SLOTS):
                 equippable.append((obj, tpl, slot))
         if not equippable:

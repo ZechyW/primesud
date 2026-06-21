@@ -12,7 +12,7 @@ _MACRO_SEP      = "+" + ("-" * _CELL_W + "+") * 3
 _MACRO_SEP_STRONG = "+" + ("=" * _CELL_W + "+") * 3
 
 _FNKEY_ORDER   = sorted(FNKEY_NAMES.keys())
-_FNKEY_BY_NAME = {v: k for k, v in FNKEY_NAMES.items()}  # 'x2' -> '\x12' etc.
+_FNKEY_BY_NAME = {v: k for k, v in FNKEY_NAMES.items()}  # 'x2' -> 14 etc.
 
 _fns = [(s, FNKEY_NAMES[s]) for s in _FNKEY_ORDER]
 while len(_fns) % 3:

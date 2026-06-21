@@ -36,7 +36,7 @@ def _item_armor_runtime(tpl):
     armor = tpl.get("armor")
     if armor is None:
         return None
-    return (armor[0] * 10, armor[1] * 10, armor[2] * 10, armor[3] * 10)
+    return armor
 
 
 # -- Stat application helpers --------------------------------------------------
