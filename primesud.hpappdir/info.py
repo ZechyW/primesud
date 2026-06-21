@@ -63,6 +63,37 @@ def do_autolist(tr, player, args, world):
                  "{w " + desc + "{x")
 
 
+_CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
+
+
+def _look_in(tr, player, args, world):
+    """Show contents of a container in room or inventory (cf. 1stMud do_look 'in' case in act_info.c)."""
+    if not args:
+        tr.print("Look in what?")
+        return
+    keyword = " ".join(args)
+    rs = world["rooms"][player["room"]]
+    obj = get_obj_list(keyword, rs["items"], ITEM_TEMPLATES)
+    if obj is None:
+        obj = get_obj_list(keyword, player["inv"], ITEM_TEMPLATES)
+    if obj is None:
+        tr.print("You do not see that here.")
+        return
+    tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+    if tpl.get("type") not in _CONTAINER_TYPES:
+        tr.print("That is not a container.")
+        return
+    obj_name = (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]
+    tr.print("{} holds:".format(obj_name))
+    contents = isinstance(obj, dict) and obj.get("contents", [])
+    if not contents:
+        tr.print("  Nothing.")
+        return
+    for cobj in contents:
+        ctpl = ITEM_TEMPLATES[obj_vnum(cobj)]
+        tr.print("  " + (cobj.get("short_descr") or ctpl["short_descr"]))
+
+
 def _look_item(tr, player, args, world):
     """Show an item's description from inventory, room, or equipped slots (cf. 1stMud do_look in act_info.c)."""
     target = " ".join(args)
@@ -95,6 +126,9 @@ def do_look(tr, player, args, world):
         world (dict): Game world state (keys: rooms, mobs, areas).
     """
     if args:
+        if args[0] in ("in", "i"):
+            _look_in(tr, player, args[1:], world)
+            return
         # TODO: extend to room extra_descs, mob descriptions, and item extra_descs on other targets
         _look_item(tr, player, args, world)
         return

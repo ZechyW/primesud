@@ -3,7 +3,7 @@
 from combat import do_kill, do_kick
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
-                       do_brandish, do_zap, do_eat, do_outfit)
+                       do_brandish, do_zap, do_eat, do_outfit, do_put)
 from movement import do_move, do_open, do_close, do_recall, do_flee
 from magic import do_cast
 from scan import do_scan
@@ -64,6 +64,7 @@ _CMD_TABLE = [
     ("close",     do_close,     "resting",  False),   # #113
     ("drop",      do_drop,      "resting",  False),   # #115
     ("open",      do_open,      "resting",  False),   # #124
+    ("put",       do_put,       "resting",  False),   # #127
     ("second",    do_second,    "resting",  False),   # #128
     ("quaff",     do_quaff,     "resting",  False),   # #129
     ("recite",    do_recite,    "resting",  False),   # #130

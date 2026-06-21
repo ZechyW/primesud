@@ -36,7 +36,7 @@ to find current locations.
 
 ---
 
-## Phase 1: Object Timer System (completed: 55e****)
+## Phase 1: Object Timer System [completed: 55e****]
 
 **Goal:** Items can decay over time. Prerequisite for all other phases.
 
@@ -84,7 +84,7 @@ In `primesud.py` `Game.run()`, inside the `if pulse % PULSE_TICK == 0:` block, a
 
 ---
 
-## Phase 2: Corpse Creation (`make_corpse`)
+## Phase 2: Corpse Creation (`make_corpse`) [completed: 2cb****]
 
 **Goal:** Dead mobs produce corpse container objects with loot inside, replacing current direct-drop.
 
@@ -134,7 +134,7 @@ After this phase, corpses appear in room item lists. Verify that `do_look` room 
 
 ---
 
-## Phase 3: Container Interaction
+## Phase 3: Container Interaction [completed: TBD]
 
 **Goal:** Player can loot corpses (`get sword corpse`) and interact with containers.
 

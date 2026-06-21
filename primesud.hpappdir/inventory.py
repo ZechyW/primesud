@@ -18,38 +18,90 @@ from area_school import (I_BANNER_WAR_MERC,
                          I_WHIP_SUB_MERC, I_GLAIVE_SUB_MERC)
 
 
+_CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
+
+
+def _loot_container_picker(tr, player, container):
+    contents = container.get("contents", [])
+    if not contents:
+        tr.print("It is empty.")
+        return
+    names = []
+    for cobj in contents:
+        ctpl = ITEM_TEMPLATES[obj_vnum(cobj)]
+        names.append(cobj.get("short_descr") or ctpl["short_descr"])
+    if len(contents) > 1:
+        names.append("All")
+    cidx = pick_from(tr, "Take what?", names)
+    if cidx < 0:
+        return
+    if cidx == len(contents):
+        for cobj in list(contents):
+            ctpl = ITEM_TEMPLATES[obj_vnum(cobj)]
+            container["contents"].remove(cobj)
+            player["inv"].append(cobj)
+            tr.print("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+        return
+    cobj = contents[cidx]
+    ctpl = ITEM_TEMPLATES[obj_vnum(cobj)]
+    container["contents"].remove(cobj)
+    player["inv"].append(cobj)
+    tr.print("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+
+
 def do_get(tr, player, args, world):
     rs = world["rooms"][player["room"]]
     if not args:
-        takeable = [obj for obj in reversed(rs["items"])
-                    if "take" in item_wear_flags(obj, ITEM_TEMPLATES[obj_vnum(obj)])]
-        if not takeable:
+        loose = [obj for obj in reversed(rs["items"])
+                 if ITEM_TEMPLATES[obj_vnum(obj)].get("type") not in _CONTAINER_TYPES
+                 and "take" in item_wear_flags(obj, ITEM_TEMPLATES[obj_vnum(obj)])]
+        conts = [obj for obj in rs["items"]
+                 if ITEM_TEMPLATES[obj_vnum(obj)].get("type") in _CONTAINER_TYPES]
+        if not loose and not conts:
             tr.print("There is nothing here to pick up.")
             return
-        names = [ITEM_TEMPLATES[obj_vnum(obj)]["short_descr"] for obj in takeable]
-        if len(takeable) > 1:
+        names = []
+        for obj in loose:
+            tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+            names.append((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"])
+        has_all = len(loose) > 1
+        if has_all:
             names.append("All")
+        cont_start = len(names)
+        for obj in conts:
+            tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+            names.append(
+                ((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"])
+                + " {W[loot]{x")
         idx = pick_from(tr, "Pick up what?", names)
         if idx < 0:
             return
-        if idx == len(takeable):
-            for obj in list(takeable):
+        if idx < len(loose):
+            obj = loose[idx]
+            tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+            rs["items"].remove(obj)
+            player["inv"].append(obj)
+            tr.print("You get {}.".format(
+                (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
+            return "get " + tpl.get("keywords", tpl["short_descr"]).split()[0]
+        if has_all and idx == len(loose):
+            for obj in list(loose):
+                tpl = ITEM_TEMPLATES[obj_vnum(obj)]
                 rs["items"].remove(obj)
                 player["inv"].append(obj)
-                tr.print("You get {}.".format(ITEM_TEMPLATES[obj_vnum(obj)]["short_descr"]))
+                tr.print("You get {}.".format(
+                    (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
             return
-        obj = takeable[idx]
-        tpl = ITEM_TEMPLATES[obj_vnum(obj)]
-        rs["items"].remove(obj)
-        player["inv"].append(obj)
-        tr.print("You get {}.".format(tpl["short_descr"]))
-        return "get " + tpl.get("keywords", tpl["short_descr"]).split()[0]
+        _loot_container_picker(tr, player, conts[idx - cont_start])
+        return
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
         filter_kw = arg[4:] if arg.startswith("all.") else None
         found = False
         for obj in list(rs["items"]):
             tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+            if tpl.get("type") in _CONTAINER_TYPES:  # [PRIMESUD] skip containers; use "get all <container>"
+                continue
             if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
                 continue
             found = True
@@ -65,6 +117,36 @@ def do_get(tr, player, args, world):
             else:
                 tr.print("I see nothing here.")
         return
+    if len(args) >= 2:
+        cont_arg = " ".join(args[1:])
+        cont_obj = get_obj_list(cont_arg, rs["items"], ITEM_TEMPLATES)
+        if cont_obj is None:
+            cont_obj = get_obj_list(cont_arg, player["inv"], ITEM_TEMPLATES)
+        if (cont_obj is not None and isinstance(cont_obj, dict)
+                and ITEM_TEMPLATES[obj_vnum(cont_obj)].get("type") in _CONTAINER_TYPES):
+            item_arg = args[0]
+            cont_tpl = ITEM_TEMPLATES[obj_vnum(cont_obj)]
+            contents = cont_obj.get("contents", [])
+            if item_arg == "all":
+                if not contents:
+                    tr.print("It is empty.")
+                else:
+                    for cobj in list(contents):
+                        ctpl = ITEM_TEMPLATES[obj_vnum(cobj)]
+                        cont_obj["contents"].remove(cobj)
+                        player["inv"].append(cobj)
+                        tr.print("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+                return
+            cobj = get_obj_list(item_arg, contents, ITEM_TEMPLATES)
+            if cobj is None:
+                tr.print("I see nothing like that in the {}.".format(
+                    cont_obj.get("short_descr") or cont_tpl["short_descr"]))
+                return
+            ctpl = ITEM_TEMPLATES[obj_vnum(cobj)]
+            cont_obj["contents"].remove(cobj)
+            player["inv"].append(cobj)
+            tr.print("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+            return
     obj = get_obj_list(arg, rs["items"], ITEM_TEMPLATES)
     if obj is None:
         tr.print("I see no {} here.".format(arg))
@@ -75,7 +157,7 @@ def do_get(tr, player, args, world):
         return
     rs["items"].remove(obj)
     player["inv"].append(obj)
-    tr.print("You get {}.".format(tpl["short_descr"]))
+    tr.print("You get {}.".format((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
 
 
 def do_drop(tr, player, args, world):
@@ -119,6 +201,51 @@ def do_drop(tr, player, args, world):
     player["inv"].remove(obj)
     world["rooms"][player["room"]]["items"].append(obj)
     tr.print("You drop {}.".format(tpl["short_descr"]))
+
+
+def do_put(tr, player, args, world):
+    """Put an item from inventory into a container (cf. 1stMud do_put in act_obj.c).
+
+    Args:
+        tr: Terminal renderer.
+        player (dict): Player state dict.
+        args (list): Parsed command arguments; first is item, rest is container (skips "in"/"on").
+        world (dict): Game world state.
+    """
+    if len(args) < 2:
+        tr.print("Put what in what?")
+        return
+    item_arg = args[0]
+    rest = args[1:]
+    if rest and rest[0] in ("in", "on"):
+        rest = rest[1:]
+    if not rest:
+        tr.print("Put what in what?")
+        return
+    cont_arg = " ".join(rest)
+    rs = world["rooms"][player["room"]]
+    cont_obj = get_obj_list(cont_arg, rs["items"], ITEM_TEMPLATES)
+    if cont_obj is None:
+        cont_obj = get_obj_list(cont_arg, player["inv"], ITEM_TEMPLATES)
+    if cont_obj is None:
+        tr.print("I see no {} here.".format(cont_arg))
+        return
+    cont_tpl = ITEM_TEMPLATES[obj_vnum(cont_obj)]
+    if cont_tpl.get("type") not in _CONTAINER_TYPES:
+        tr.print("That's not a container.")
+        return
+    obj = get_obj_list(item_arg, player["inv"], ITEM_TEMPLATES)
+    if obj is None:
+        tr.print("You do not have that item.")
+        return
+    if obj is cont_obj:
+        tr.print("You can't fold it into itself.")
+        return
+    tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+    player["inv"].remove(obj)
+    cont_obj.setdefault("contents", []).append(obj)
+    cont_name = (isinstance(cont_obj, dict) and cont_obj.get("short_descr")) or cont_tpl["short_descr"]
+    tr.print("You put {} in {}.".format(tpl["short_descr"], cont_name))
 
 
 def _obj_flags(tpl):
