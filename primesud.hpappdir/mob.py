@@ -60,19 +60,19 @@ def create_mobile(tpl_vnum):
         hp += randint(1, _s)
     hp = max(1, hp)
     base = _stat_from_level(tpl["level"])
-    act  = tpl.get("act_flags", {})
+    act_flags = tpl.get("act_flags", {})
     off  = tpl.get("off_flags", {})
 
     # Per-stat values start uniform then receive class/off/size bonuses
     # (cf. 1stMud create_mobile perm_stat loop + ACT_WARRIOR/THIEF/CLERIC/MAGE blocks)
     s_str = s_dex = s_int = s_wis = s_con = base
-    if act.get("warrior"):
+    if act_flags.get("warrior"):
         s_str += 3; s_int -= 1; s_con += 2
-    if act.get("thief"):
+    if act_flags.get("thief"):
         s_dex += 3; s_int += 1; s_wis -= 1
-    if act.get("cleric"):
+    if act_flags.get("cleric"):
         s_wis += 3; s_dex -= 1; s_str += 1
-    if act.get("mage"):
+    if act_flags.get("mage"):
         s_int += 3; s_str -= 1; s_dex += 1
     if off.get("fast"):
         s_dex += 2
@@ -222,8 +222,8 @@ def mobile_update(tr, player, world):
             continue
         if inst["fighting"] is not None:
             continue
-        act = MOB_TEMPLATES[inst["tpl"]].get("act_flags", {})
-        if act.get("sentinel"):
+        act_flags = MOB_TEMPLATES[inst["tpl"]].get("act_flags", {})
+        if act_flags.get("sentinel"):
             continue
         if randint(0, 7) != 0:  # 1/8 chance -- matches number_bits(3)==0
             continue
@@ -241,11 +241,11 @@ def mobile_update(tr, player, world):
         dest_flags = ROOMS[dest_vnum].get("flags", {})
         if dest_flags.get("no_mob"):  # cf. ROOM_NO_MOB check, update.c:500
             continue
-        if act.get("stay_area") and ROOM_AREAS.get(dest_vnum) != ROOM_AREAS.get(inst["room"]):
+        if act_flags.get("stay_area") and ROOM_AREAS.get(dest_vnum) != ROOM_AREAS.get(inst["room"]):
             continue  # cf. ACT_STAY_AREA check, update.c:501
-        if act.get("outdoors") and dest_flags.get("indoors"):
+        if act_flags.get("outdoors") and dest_flags.get("indoors"):
             continue
-        if act.get("indoors") and not dest_flags.get("indoors"):
+        if act_flags.get("indoors") and not dest_flags.get("indoors"):
             continue
         old_room = inst["room"]
         tpl = MOB_TEMPLATES[inst["tpl"]]

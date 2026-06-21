@@ -10,16 +10,28 @@
 
 from tml_prime import tml_prime as tml, _HIST_UP, _HIST_DN
 
-from config import (DARK_MODE, BG_COLOR, TAB_SIZE, POLL_MS,
-                    MS_PER_PULSE, PULSE_VIOLENCE, PULSE_MOBILE, PULSE_TICK, PULSE_AREA,
-                    AUTOSAVE_TICKS, TICK_SECS,
-                    KEY_COMMANDS as _KEY_COMMANDS,
-                    FONT,
-                    DEATH_MSG_DELAY,
-                    SCROLLBACK_SIZE, SCROLL_STEP,
-                    SWIPE_THRESHOLD, TOUCH_SCROLL_STEP,
-                    CMD_HISTORY_MAX,
-                    FNKEY_SENTINELS)
+from config import (
+    DARK_MODE,
+    BG_COLOR,
+    TAB_SIZE,
+    POLL_MS,
+    MS_PER_PULSE,
+    PULSE_VIOLENCE,
+    PULSE_MOBILE,
+    PULSE_TICK,
+    PULSE_AREA,
+    AUTOSAVE_TICKS,
+    TICK_SECS,
+    KEY_COMMANDS as _KEY_COMMANDS,
+    FONT,
+    DEATH_MSG_DELAY,
+    SCROLLBACK_SIZE,
+    SCROLL_STEP,
+    SWIPE_THRESHOLD,
+    TOUCH_SCROLL_STEP,
+    CMD_HISTORY_MAX,
+    FNKEY_SENTINELS,
+)
 from util import free_mem, gc_collect
 from world import R_STARTING_ROOM, ROOMS, init_world
 from combat import update_wait_states, violence_update
@@ -29,12 +41,14 @@ from commands import interpret
 from info import do_look
 from macros import _MACRO_SUBST
 from terminal import install_color_print
-from game_state import (init_game_state, new_game, load_game,
-                        handle_version_mismatch, save_game)
-from prime_platform import (ticks, wait, wait_ms,
-                            save_prime_settings, configure_prime, restore_prime_settings,
-                            clear_graphics)
-
+from game_state import (
+    init_game_state,
+    new_game,
+    load_game,
+    handle_version_mismatch,
+    save_game,
+)
+from prime_platform import ticks, wait, wait_ms, clear_graphics
 
 # -- Main classes --------------------------------------------------------------
 
@@ -228,14 +242,11 @@ class PrimeSud:
     """
 
     def __enter__(self):
-        self.vars = save_prime_settings()
-        configure_prime()
         self.game = Game()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         clear_graphics()
-        restore_prime_settings(self.vars)
         return exc_type is KeyboardInterrupt
 
     def run(self):

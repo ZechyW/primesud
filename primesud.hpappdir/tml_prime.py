@@ -34,13 +34,48 @@ class tml_prime(tml):
     def __init__(self, scrollback_size=250, scroll_step=5,
                  touch_scroll_step=3, swipe_threshold=20,
                  hist_grob=7, save_grob=6, **kwargs):
-        super().__init__(**kwargs)
-        self.key_map[26][0] = _FN_X2
-        self.key_map[27][0] = _FN_PM
-        self.key_map[28][0] = _FN_PAREN
-        self.key_map[29][0] = _FN_COMMA
-        self.key_map[45][2] = _SB_UP
-        self.key_map[50][2] = _SB_DN
+        tml.__init__(self, **kwargs)
+        # [PRIMESUD] Rebuild key_map: G2 Prime's MicroPython corrupts
+        # inherited dicts from super()/tml.__init__() -- missing keys.
+        self.key_map = {
+            4: ['\e','\e','\e','\e'],
+            7: ['\L','\L','\L','\L'],
+            8: ['\R','\R','\R','\R'],
+            14: [None,'a',None,'A'],
+            15: [None,'b',None,'B'],
+            16: [None,'c',None,'C'],
+            17: [None,'d',None,'D'],
+            18: [None,'e',None,'E'],
+            19: ['\b','\b','\b','\b'],
+            20: ['^','f',None,'F'],
+            21: [None,'g',None,'G'],
+            22: [None,'h',None,'H'],
+            23: [None,'i',None,'I'],
+            24: [None,'j',None,'J'],
+            25: [None,'k',None,'K'],
+            26: [_FN_X2,'l',None,'L'],
+            27: [_FN_PM,'m','|','M'],
+            28: [_FN_PAREN,'n',"'",'N'],
+            29: [_FN_COMMA,'o',None,'O'],
+            30: ['\n','\n','\n','\n'],
+            31: [None,'p',None,'P'],
+            32: ['7','q','&','Q'],
+            33: ['8','r','{}','R'],
+            34: ['9','s','!','S'],
+            35: ['/','t','%','T'],
+            37: ['4','u','$','U'],
+            38: ['5','v','[]','V'],
+            39: ['6','w','^','W'],
+            40: ['*','x','','X'],
+            42: ['1','y','~','Y'],
+            43: ['2','z','@','Z'],
+            44: ['3','#','?','#'],
+            45: ['-',':',_SB_UP,':'],
+            47: ['0','"','`','"'],
+            48: ['.','.','=','.'],
+            49: [' ',' ','_','_'],
+            50: ['+',';',_SB_DN,'|']
+        }
         self._hist_size = scrollback_size
         self._hist_write = 0
         self._hist_count = 0
