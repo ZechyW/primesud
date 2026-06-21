@@ -37,6 +37,7 @@ from world import R_STARTING_ROOM, ROOMS, init_world
 from combat import update_wait_states, violence_update
 from mob import mobile_update, area_update
 from player import tick_update, show_prompt
+from update import obj_update
 from commands import interpret
 from info import do_look
 from macros import _MACRO_SUBST
@@ -217,6 +218,7 @@ class Game:
                 if pulse % PULSE_TICK == 0:
                     player["played"] = player.get("played", 0) + TICK_SECS
                     tick_update(tr, player, ROOMS[player["room"]])
+                    obj_update(tr, player, world)
                     show_prompt(tr, player, self.input_buf)
                     tick_count += 1
                     if tick_count >= AUTOSAVE_TICKS:
