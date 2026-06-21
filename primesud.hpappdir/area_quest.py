@@ -65,9 +65,9 @@ MOBILES = {
         "imm_flags": {"summon": True, "magic": True, "weapon": True},
         "res_flags": {"charm": True},
         "vuln_flags": {"iron": True},
-        "sex":  'male',
-        "gold": 422,
-        "size": 'medium',
+        "sex":    'male',
+        "wealth": 422,
+        "size":   'medium',
     },
     M_TRIVIA_SHOPKEEPER: {
         "keywords":    'trivia shopkeeper',
@@ -87,9 +87,9 @@ MOBILES = {
         "imm_flags": {"magic": True, "weapon": True},
         "res_flags": {"charm": True},
         "vuln_flags": {"iron": True},
-        "sex":  'male',
-        "gold": 122,
-        "size": 'medium',
+        "sex":    'male',
+        "wealth": 122,
+        "size":   'medium',
     },
     M_200_REGISTRAR_GQUEST: {
         "keywords":    '#200\n\n\nRegistrar gquest',
@@ -109,9 +109,9 @@ MOBILES = {
         "imm_flags": {"summon": True, "magic": True, "weapon": True},
         "res_flags": {"charm": True},
         "vuln_flags": {"iron": True},
-        "sex":  'male',
-        "gold": 422,
-        "size": 'medium',
+        "sex":    'male',
+        "wealth": 422,
+        "size":   'medium',
     },
 }
 

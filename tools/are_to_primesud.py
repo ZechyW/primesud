@@ -347,8 +347,8 @@ def parse_mobiles(lines):
 
         # start_pos  default_pos  sex  wealth
         parts = lines[i].split(); i += 1
-        sex  = parts[2] if len(parts) > 2 else "neutral"
-        gold = int(parts[3]) if len(parts) > 3 else 0
+        sex    = parts[2] if len(parts) > 2 else "neutral"
+        wealth = int(parts[3]) if len(parts) > 3 else 0
 
         # form_flags  part_flags  size  material
         parts = lines[i].split(); i += 1
@@ -385,7 +385,7 @@ def parse_mobiles(lines):
             "res_flags":   decode_flags(res_bits, RESIST_FLAGS),
             "vuln_flags":  decode_flags(vuln_bits, RESIST_FLAGS),
             "sex":         sex,
-            "gold":        gold,
+            "wealth":      wealth,
             "size":        size,
         }))
     return mobs
@@ -735,9 +735,9 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, fover
             fd = mob[flag_key]
             if fd:
                 w(f'        "{flag_key}": {_repr_flags(fd)},')
-        w(f'        "sex":  {pyrepr(mob["sex"])},')
-        w(f'        "gold": {mob["gold"]},')
-        w(f'        "size": {pyrepr(mob["size"])},')
+        w(f'        "sex":    {pyrepr(mob["sex"])},')
+        w(f'        "wealth": {mob["wealth"]},')
+        w(f'        "size":   {pyrepr(mob["size"])},')
         w("    },")
     w("}")
     w("")

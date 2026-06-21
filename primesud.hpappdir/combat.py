@@ -13,7 +13,10 @@ from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
                    GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
                    WEAPON_GSN_MAP)
 from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, act
-from area_limbo import I_CORPSE, I_COINS_GOLD_GCASH, I_COIN_GOLD_GCASH
+from area_limbo import (I_CORPSE,
+                        I_COIN_SILVER_GCASH, I_COIN_GOLD_GCASH,
+                        I_COINS_SILVER_GCASH, I_COINS_GOLD_GCASH,
+                        I_COINS_SILVER_GOLD_GCASH)
 from item import (get_char_room, create_object, item_extra_flags,
                   set_item_extra_flag)
 from player import save_state
@@ -962,6 +965,54 @@ def _death_cry(tr, tpl):
     act(tr, _DEATH_CRIES[randint(0, len(_DEATH_CRIES) - 1)].format(tpl["short_descr"]))
 
 
+def create_money(gold, silver):
+    """Create a coin item for the given gold/silver amounts (cf. 1stMud create_money in handler.c).
+
+    Args:
+        gold (int): Gold coin count.
+        silver (int): Silver coin count.
+
+    Returns:
+        dict: Coin item instance, or None if both are zero.
+    """
+    if gold <= 0 and silver <= 0:
+        return None
+    gold = max(0, gold)
+    silver = max(0, silver)
+    if gold == 0 and silver == 1:
+        obj = create_object(I_COIN_SILVER_GCASH)
+        obj["silver"] = 1
+        obj["gold"] = 0
+        obj["cost"] = 1
+        return obj
+    if gold == 1 and silver == 0:
+        obj = create_object(I_COIN_GOLD_GCASH)
+        obj["silver"] = 0
+        obj["gold"] = 1
+        obj["cost"] = 100
+        return obj
+    if silver == 0:
+        obj = create_object(I_COINS_GOLD_GCASH)
+        obj["short_descr"] = str(gold) + " gold coins"
+        obj["silver"] = 0
+        obj["gold"] = gold
+        obj["cost"] = gold * 100
+        return obj
+    if gold == 0:
+        obj = create_object(I_COINS_SILVER_GCASH)
+        obj["short_descr"] = str(silver) + " silver coins"
+        obj["silver"] = silver
+        obj["gold"] = 0
+        obj["cost"] = silver
+        return obj
+    obj = create_object(I_COINS_SILVER_GOLD_GCASH)
+    obj["short_descr"] = str(silver) + " silver coins and " + str(gold) + " gold coins"
+    obj["silver"] = silver
+    obj["gold"] = gold
+    obj["cost"] = gold * 100 + silver
+    return obj
+
+
 def make_corpse(inst, tpl, world):
     """Create an NPC corpse containing mob loot and place it in the room (cf. 1stMud make_corpse in fight.c)."""
     corpse = create_object(I_CORPSE)
@@ -971,13 +1022,9 @@ def make_corpse(inst, tpl, world):
     corpse["description"] = "The corpse of " + mob_short + " is lying here."
     corpse["contents"] = []
 
-    gold = tpl.get("gold", 0)
-    if gold > 0:
-        gold_obj = create_object(I_COINS_GOLD_GCASH if gold > 1 else I_COIN_GOLD_GCASH)
-        if gold > 1:
-            gold_obj["short_descr"] = str(gold) + " gold coins"
-        gold_obj["cost"] = gold
-        corpse["contents"].append(gold_obj)
+    coin = create_money(inst.get("gold", 0), inst.get("silver", 0))
+    if coin is not None:
+        corpse["contents"].append(coin)
 
     for obj in list(inst.get("equip", {}).values()) + list(inst.get("inv", [])):
         if obj is None:

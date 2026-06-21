@@ -21,6 +21,33 @@ from area_school import (I_BANNER_WAR_MERC,
 _CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
 
 
+def _apply_money_pickup(tr, player, obj, tpl):
+    """Credit player with coin value; return True so caller skips inv append (cf. 1stMud get_obj).
+
+    Args:
+        tr: Terminal renderer.
+        player (dict): Player state.
+        obj (dict): Coin item instance.
+        tpl (dict): Item template.
+
+    Returns:
+        bool: True if item was money and was consumed.
+    """
+    if tpl.get("type") != "money":
+        return False
+    s = obj.get("silver", 0)
+    g = obj.get("gold", 0)
+    player["silver"] += s
+    player["gold"] += g
+    if s > 0 and g > 0:
+        tr.print("You pocket " + str(s) + " silver and " + str(g) + " gold coins.")
+    elif g > 0:
+        tr.print("You pocket " + str(g) + " gold coin" + ("s." if g != 1 else "."))
+    else:
+        tr.print("You pocket " + str(s) + " silver coin" + ("s." if s != 1 else "."))
+    return True
+
+
 def _loot_container_picker(tr, player, container):
     contents = container.get("contents", [])
     if not contents:
@@ -39,14 +66,16 @@ def _loot_container_picker(tr, player, container):
         for cobj in list(contents):
             ctpl = ITEM_TEMPLATES[obj_vnum(cobj)]
             container["contents"].remove(cobj)
-            player["inv"].append(cobj)
-            tr.print("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+            if not _apply_money_pickup(tr, player, cobj, ctpl):
+                player["inv"].append(cobj)
+                tr.print("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
         return
     cobj = contents[cidx]
     ctpl = ITEM_TEMPLATES[obj_vnum(cobj)]
     container["contents"].remove(cobj)
-    player["inv"].append(cobj)
-    tr.print("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+    if not _apply_money_pickup(tr, player, cobj, ctpl):
+        player["inv"].append(cobj)
+        tr.print("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
 
 
 def do_get(tr, player, args, world):
@@ -80,6 +109,8 @@ def do_get(tr, player, args, world):
             obj = loose[idx]
             tpl = ITEM_TEMPLATES[obj_vnum(obj)]
             rs["items"].remove(obj)
+            if _apply_money_pickup(tr, player, obj, tpl):
+                return
             player["inv"].append(obj)
             tr.print("You get {}.".format(
                 (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
@@ -88,9 +119,10 @@ def do_get(tr, player, args, world):
             for obj in list(loose):
                 tpl = ITEM_TEMPLATES[obj_vnum(obj)]
                 rs["items"].remove(obj)
-                player["inv"].append(obj)
-                tr.print("You get {}.".format(
-                    (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
+                if not _apply_money_pickup(tr, player, obj, tpl):
+                    player["inv"].append(obj)
+                    tr.print("You get {}.".format(
+                        (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
             return
         _loot_container_picker(tr, player, conts[idx - cont_start])
         return
@@ -109,8 +141,9 @@ def do_get(tr, player, args, world):
                 tr.print("You can't take that.")
                 continue
             rs["items"].remove(obj)
-            player["inv"].append(obj)
-            tr.print("You get {}.".format(tpl["short_descr"]))
+            if not _apply_money_pickup(tr, player, obj, tpl):
+                player["inv"].append(obj)
+                tr.print("You get {}.".format(tpl["short_descr"]))
         if not found:
             if filter_kw:
                 tr.print("I see no {} here.".format(filter_kw))
@@ -134,8 +167,9 @@ def do_get(tr, player, args, world):
                     for cobj in list(contents):
                         ctpl = ITEM_TEMPLATES[obj_vnum(cobj)]
                         cont_obj["contents"].remove(cobj)
-                        player["inv"].append(cobj)
-                        tr.print("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+                        if not _apply_money_pickup(tr, player, cobj, ctpl):
+                            player["inv"].append(cobj)
+                            tr.print("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
                 return
             cobj = get_obj_list(item_arg, contents, ITEM_TEMPLATES)
             if cobj is None:
@@ -144,8 +178,9 @@ def do_get(tr, player, args, world):
                 return
             ctpl = ITEM_TEMPLATES[obj_vnum(cobj)]
             cont_obj["contents"].remove(cobj)
-            player["inv"].append(cobj)
-            tr.print("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+            if not _apply_money_pickup(tr, player, cobj, ctpl):
+                player["inv"].append(cobj)
+                tr.print("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
             return
     obj = get_obj_list(arg, rs["items"], ITEM_TEMPLATES)
     if obj is None:
@@ -156,8 +191,9 @@ def do_get(tr, player, args, world):
         tr.print("You can't take that.")
         return
     rs["items"].remove(obj)
-    player["inv"].append(obj)
-    tr.print("You get {}.".format((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
+    if not _apply_money_pickup(tr, player, obj, tpl):
+        player["inv"].append(obj)
+        tr.print("You get {}.".format((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
 
 
 def do_drop(tr, player, args, world):
@@ -174,6 +210,10 @@ def do_drop(tr, player, args, world):
         player["inv"].remove(obj)
         world["rooms"][player["room"]]["items"].append(obj)
         tr.print("You drop {}.".format(tpl["short_descr"]))
+        if item_extra_flags(obj, tpl).get("melt_drop"):
+            world["rooms"][player["room"]]["items"].remove(obj)
+            tr.print("{} dissolves into smoke.".format(tpl["short_descr"]))
+            return
         return "drop " + tpl.get("keywords", tpl["short_descr"]).split()[0]
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
@@ -187,6 +227,9 @@ def do_drop(tr, player, args, world):
             player["inv"].remove(obj)
             world["rooms"][player["room"]]["items"].append(obj)
             tr.print("You drop {}.".format(tpl["short_descr"]))
+            if item_extra_flags(obj, tpl).get("melt_drop"):
+                world["rooms"][player["room"]]["items"].remove(obj)
+                tr.print("{} dissolves into smoke.".format(tpl["short_descr"]))
         if not found:
             if filter_kw:
                 tr.print("You are not carrying any {}.".format(filter_kw))
@@ -201,6 +244,9 @@ def do_drop(tr, player, args, world):
     player["inv"].remove(obj)
     world["rooms"][player["room"]]["items"].append(obj)
     tr.print("You drop {}.".format(tpl["short_descr"]))
+    if item_extra_flags(obj, tpl).get("melt_drop"):
+        world["rooms"][player["room"]]["items"].remove(obj)
+        tr.print("{} dissolves into smoke.".format(tpl["short_descr"]))
 
 
 def do_put(tr, player, args, world):

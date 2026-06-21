@@ -80,6 +80,15 @@ def create_mobile(tpl_vnum):
     s_str += size_delta
     s_con += size_delta // 2
 
+    wealth = tpl.get("wealth", 0)
+    if wealth > 0:
+        w = randint(wealth // 2, 3 * wealth // 2)
+        mob_gold = randint(w // 200, w // 100) if w >= 200 else 0
+        mob_silver = w - mob_gold * 100
+    else:
+        mob_gold = 0
+        mob_silver = 0
+
     return {
         "tpl":       tpl_vnum,
         "is_npc":    True,
@@ -102,6 +111,8 @@ def create_mobile(tpl_vnum):
         "hitroll":   tpl["hitroll"],
         "damroll":   tpl["damage"][2],   # bonus = damroll (cf. 1stMud damage[DICE_BONUS])
         "armor":     tuple(v * 10 for v in tpl["armor"]),  # area-template buckets -> PrimeSUD runtime units
+        "gold":      mob_gold,
+        "silver":    mob_silver,
     }
 
 

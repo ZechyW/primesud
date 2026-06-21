@@ -62,9 +62,9 @@ MOBILES = {
         "mana_dice": (62, 8, 61),
         "damage":    (7, 12, 48),  "dam_type": 'none',
         "armor":     (-47, -47, -47, -41),
-        "sex":  'either',
-        "gold": 0,
-        "size": 'medium',
+        "sex":    'either',
+        "wealth": 0,
+        "size":   'medium',
     },
 }
 
