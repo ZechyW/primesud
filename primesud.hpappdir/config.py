@@ -105,10 +105,10 @@ DEFAULT_MACROS = {  # [PRIMESUD]
 # display_name is used as the save-file key (save_char/load_char in player.py); must not contain '~' (line
 # separator) or '=' (key/value separator) or save parsing will break.
 FNKEY_TABLE = {
-    '\x12': ('x2', 'inventory'),      # x2 key -- index 26
-    '\x13': ('pm', 'equip'),  # +/- key -- index 27
-    '\x14': ('()', 'wear'),       # ()  key -- index 28
-    '\x15': (',',  'remove'),     # ,   key -- index 29
+    14: ('x2', 'inventory'),      # x2 key -- index 26
+    15: ('pm', 'equip'),  # +/- key -- index 27
+    16: ('()', 'wear'),       # ()  key -- index 28
+    17: (',',  'remove'),     # ,   key -- index 29
 }
 FNKEY_SENTINELS      = frozenset(FNKEY_TABLE)
 FNKEY_NAMES          = {k: v[0] for k, v in FNKEY_TABLE.items()}
