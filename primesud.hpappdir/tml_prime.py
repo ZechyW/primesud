@@ -3,16 +3,17 @@
 from hpprime import dimgrob, eval as ppleval, keyboard, mouse, strblit2
 from tml import tml
 
-_SB_UP = '\x10'   # shift+- : enter scrollback / scroll up further
-_SB_DN = '\x11'   # shift++ : scroll down (within scrollback)
+# Int sentinels -- not chars, so no \x escape issues on Prime hardware
+_SB_UP = 10   # shift+- : enter scrollback / scroll up further
+_SB_DN = 11   # shift++ : scroll down (within scrollback)
 
-_HIST_UP = '\x16'   # symb key (index 1) -- recall older command
-_HIST_DN = '\x17'   # help key (index 3) -- recall newer command
+_HIST_UP = 12   # symb key (index 1) -- recall older command
+_HIST_DN = 13   # help key (index 3) -- recall newer command
 
-_FN_X2    = '\x12'  # x2 key -- index 26, row above numpad
-_FN_PM    = '\x13'  # +/- key -- index 27
-_FN_PAREN = '\x14'  # ()  key -- index 28
-_FN_COMMA = '\x15'  # ,   key -- index 29
+_FN_X2    = 14  # x2 key -- index 26, row above numpad
+_FN_PM    = 15  # +/- key -- index 27
+_FN_PAREN = 16  # ()  key -- index 28
+_FN_COMMA = 17  # ,   key -- index 29
 
 
 class tml_prime(tml):
