@@ -16,6 +16,6 @@ def do_debug(tr, player, args, world):  # [PRIMESUD]
     from item import create_object
     from area_school import I_DIPLOMA
     obj = create_object(I_DIPLOMA)
-    obj["affect_list"] = [{"location": "ac", "modifier": -500}]
+    obj["affect_list"] = [{"location": "ac", "modifier": -1100}]
     player["inv"].append(obj)
-    tr.print("Debug: diploma (ac -500) added to inventory.")
+    tr.print("Debug: diploma (ac -1100) added to inventory.")

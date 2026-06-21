@@ -111,6 +111,8 @@ def create_char():
         "pos": "standing",
         "flags": PLR_DEFAULTS,
         "played": 0,  # cumulative playtime in seconds (cf. 1stMud pcdata->played)
+        "silver": 0,
+        "gold": 0,
     }
 
 

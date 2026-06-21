@@ -840,3 +840,71 @@ def do_outfit(tr, player, args, world):
 
     tr.print("You have been equipped by the gods.")
 
+
+def _sacrifice_one(tr, player, obj, rs):
+    """Sacrifice a single room item for silver (inner helper for do_sacrifice).
+
+    Args:
+        tr: Terminal renderer.
+        player (dict): Player state dict.
+        obj: Item instance dict from rs["items"].
+        rs (dict): Current room state dict.
+    """
+    tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+
+    if tpl.get("type") == "pc_corpse" and obj.get("contents"):
+        tr.print("Your deity wouldn't like that.")
+        return
+
+    wear = item_wear_flags(obj, tpl)
+    extra = item_extra_flags(obj, tpl)
+    if "take" not in wear or extra.get("no_sac"):
+        short = obj.get("short_descr") or tpl["short_descr"]
+        tr.print(short + " is not an acceptable sacrifice.")
+        return
+
+    silver = max(1, tpl.get("level", 0) * 3)
+    if tpl.get("type") not in ("npc_corpse", "pc_corpse"):
+        silver = min(silver, obj.get("cost", 0))
+    silver = max(1, silver)
+
+    if silver == 1:
+        tr.print("Your deity gives you one silver coin for your sacrifice.")
+    else:
+        tr.print("Your deity gives you " + str(silver) + " silver coins for your sacrifice.")
+
+    player["silver"] = player.get("silver", 0) + silver
+
+    short = obj.get("short_descr") or tpl["short_descr"]
+    tr.print("You sacrifice " + short + " to your deity.")
+    rs["items"].remove(obj)
+
+
+def do_sacrifice(tr, player, args, world):
+    """Sacrifice a room item to the deity for silver (cf. 1stMud do_sacrifice in act_obj.c).
+
+    Args:
+        tr: Terminal renderer.
+        player (dict): Player state dict.
+        args (list): Parsed command arguments.
+        world (dict): Game world state.
+    """
+    rs = world["rooms"][player["room"]]
+
+    if not args or " ".join(args) == player.get("name", "").lower():
+        tr.print("Your deity appreciates your offer and may accept it later.")
+        return
+
+    arg = " ".join(args)
+
+    if arg == "all":
+        for obj in list(rs["items"]):
+            _sacrifice_one(tr, player, obj, rs)
+        return
+
+    obj = get_obj_list(arg, rs["items"], ITEM_TEMPLATES)
+    if obj is None:
+        tr.print("You can't find it.")
+        return
+
+    _sacrifice_one(tr, player, obj, rs)
