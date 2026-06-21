@@ -189,20 +189,6 @@ def get_armor(char, ac_type):
     return armor[ac_type] + DEX_APP_DEF[get_curr_stat(char, "dex")]
 
 
-def get_AC(char):
-    """Average effective AC across all 1stMud armor buckets.
-
-    Args:
-        char (dict): Character state dict (player or mob instance).
-
-    Returns:
-        int: Average total AC (lower is better; negative is excellent).
-    """
-    total = 0
-    for ac_type in (AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC):
-        total += get_armor(char, ac_type)
-    return total // 4
-
 
 def is_name(fragment, namelist):
     """True if every word in fragment prefix-matches a word in namelist (cf. 1stMud is_name).

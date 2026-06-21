@@ -4,12 +4,13 @@ from util import free_mem, gc_collect
 from colors import color_len, cap_first
 
 from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS
-from actor import get_hitroll, get_damroll, get_AC, get_curr_stat, is_name
+from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, is_name
 from item import get_obj_list, obj_vnum, item_extra_flags
 from player import PLR_AUTOMAP, PLR_DEFAULTS
 from combat import _get_thac0
 from automap import build_compact_lines, build_full_lines, COMPACT_W
-from config import TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS, MAX_MORTAL_LEVEL
+from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS, MAX_MORTAL_LEVEL,
+                    AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC)
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, spell_mana
 
 
@@ -219,11 +220,45 @@ _SCORE_LEFT  = (TERMINAL_COLS - 7) // 2
 _SCORE_RIGHT = TERMINAL_COLS - 7 - _SCORE_LEFT
 _SCORE_SEP_OUTER = "{W+" + "-" * _SCORE_INNER + "+{x"
 _SCORE_SEP_INNER = "{W+" + "-" * (_SCORE_LEFT + 2) + "+" + "-" * (_SCORE_RIGHT + 2) + "+{x"
+# full-width AC bar: (_SCORE_INNER-2) content chars minus 6(label)+2(': ')+5(val)+2(' [')+1(']')
+_AC_BAR_W = _SCORE_INNER - 18
+_PERCENT_BAR_COLORS = ('r', 'R', 'y', 'Y', 'g', 'G', 'W')
+
+
+def _make_percent_bar(val, max_val, length):
+    """Colour-gradient fill bar of | chars (cf. 1stMud make_percent_bar in act_info.c).
+
+    Args:
+        val (int): Filled amount (0..max_val). Values <= 0 render empty bar.
+        max_val (int): Scale maximum.
+        length (int): Bar width in visible characters.
+
+    Returns:
+        str: String of exactly `length` visible chars with embedded {X color codes.
+    """
+    cm = len(_PERCENT_BAR_COLORS) - 1
+    mod = max_val // length
+    count = 0
+    cp = 0
+    parts = []
+    for i in range(length):
+        if i % cm == 0:
+            parts.append('{' + _PERCENT_BAR_COLORS[cp])
+            cp += 1
+            if cp > cm:
+                cp = 0
+        if val > count:
+            parts.append('|')
+        else:
+            parts.append(' ')
+        count += mod
+    return ''.join(parts)
 
 
 def do_score(tr, player, args, world):
     """Display the character score sheet (cf. 1stMud dlm_score in act_info.c)."""
-    # two-column box mirroring 1stMud dlm_score layout (see DESIGN.md)
+    # two-column box mirroring 1stMud dlm_score layout, with bright/normal colours 
+    # alternating between horizontal segments.
     def _row(l, r):
         lpad = ' ' * (_SCORE_LEFT  - color_len(l))
         rpad = ' ' * (_SCORE_RIGHT - color_len(r))
@@ -236,6 +271,11 @@ def do_score(tr, player, args, world):
         # values stay as dim white
         vc = '{w'
         return nc + '{:<13}'.format(name) + ': [' + vc + '{:>11}'.format(v) + nc + ' ]{x'
+
+    def _ac_row(label, val):
+        bar = _make_percent_bar(-val, 1000, _AC_BAR_W)
+        content = '{c' + '{:<6}'.format(label) + '{W: {w' + '{:5d}'.format(val) + ' {c[' + bar + '{c]'
+        return '{W|{x ' + content + ' {W|{x'
 
     def _free_mem():
         # Since memory is mentioned here, also use `score` as a point to do gc
@@ -268,11 +308,16 @@ def do_score(tr, player, args, world):
         _row('{CMana     : [{M' + '{:5d}'.format(p['mp'])     + '{C/{M' + '{:5d}'.format(p['mp_max']) + '{C]{x',
              _val('Damroll', get_damroll(p), bright=True)),
         _row('{CExp      : [{w' + '{:>10}'.format(p['xp'])    + '{C ]{x',
-             _val('AC',      get_AC(p),      bright=True)),
-        _row('{CTo Lvl   : [{w' + '{:>10}'.format(p['xp_next'] - p['xp']) + '{C ]{x',
              _val('Hours',   hours,          bright=True)),
-        _row('{CPosition : [{w' + '{:>10}'.format(p['pos'])    + '{C ]{x',
+        _row('{CTo Lvl   : [{w' + '{:>10}'.format(p['xp_next'] - p['xp']) + '{C ]{x',
              _val('Age',      age,                  bright=True)),
+        _row('{CPosition : [{w' + '{:>10}'.format(p['pos'])    + '{C ]{x',
+             ''),
+        _SCORE_SEP_OUTER,
+        _ac_row('Pierce', get_armor(p, AC_PIERCE)),
+        _ac_row('Bash',   get_armor(p, AC_BASH)),
+        _ac_row('Slash',  get_armor(p, AC_SLASH)),
+        _ac_row('Exotic', get_armor(p, AC_EXOTIC)),
         _SCORE_SEP_OUTER,
     ]
     for line in lines:

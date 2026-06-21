@@ -11,7 +11,7 @@ from training import do_train, do_practice
 from info import (do_look, do_score, do_skills, do_spells, do_help, do_affects,
                   do_credits, do_map, do_automap, do_autolist)
 from macros import do_macro
-from system_cmds import do_save, do_quit
+from system_cmds import do_save, do_quit, do_debug
 
 # Position system (cf. 1stMud position_t enum in defines.h; gaps 1-3 omitted [PRIMESUD])
 _POS_ORDER = {
@@ -84,6 +84,7 @@ _CMD_TABLE = [
     ("scan",      do_scan,      "resting",  False),   # #253
     ("macro",     do_macro,     "dead",     False),   # [PRIMESUD]
     ("map",       do_map,       "resting",  False),   # #291
+    ("debug",     do_debug,     "dead",     False),   # [PRIMESUD] #349
 ]
 
 
