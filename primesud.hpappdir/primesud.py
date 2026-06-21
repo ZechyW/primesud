@@ -145,6 +145,8 @@ class Game:
                     if _quit:
                         break
                     self.input_buf = ""
+                    tr.alpha_lock = tr.is_alpha = False
+                    tr._refresh_indicators()
                     show_prompt(tr, player, self.input_buf)
                 elif char == "\b":
                     self.input_buf = self.input_buf[:-1]

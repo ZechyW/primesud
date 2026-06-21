@@ -221,7 +221,8 @@ _SCORE_RIGHT = TERMINAL_COLS - 7 - _SCORE_LEFT
 _SCORE_SEP_OUTER = "{W+" + "-" * _SCORE_INNER + "+{x"
 _SCORE_SEP_INNER = "{W+" + "-" * (_SCORE_LEFT + 2) + "+" + "-" * (_SCORE_RIGHT + 2) + "+{x"
 # full-width AC bar: (_SCORE_INNER-2) content chars minus 6(label)+2(': ')+5(val)+2(' [')+1(']')
-_AC_BAR_W = _SCORE_INNER - 18
+# Minus 2 chars for precise colour segment lengths
+_AC_BAR_W = _SCORE_INNER - 18 - 2
 _PERCENT_BAR_COLORS = ('r', 'R', 'y', 'Y', 'g', 'G', 'W')
 
 
@@ -274,7 +275,7 @@ def do_score(tr, player, args, world):
 
     def _ac_row(label, val):
         bar = _make_percent_bar(-val, 1000, _AC_BAR_W)
-        content = '{c' + '{:<6}'.format(label) + '{W: {w' + '{:5d}'.format(val) + ' {c[' + bar + '{c]'
+        content = '{c' + '{:<6}'.format(label) + ' {W:  {w' + '{:5d}'.format(val) + ' {c[' + bar + '{c]'
         return '{W|{x ' + content + ' {W|{x'
 
     def _free_mem():
