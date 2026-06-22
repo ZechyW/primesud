@@ -684,7 +684,7 @@ def _find_here_obj(player, world, target_name):
 
 def _find_here_char_or_obj(player, world, target_name):
     for mob_id in world["rooms"][player["room"]]["mobs"]:
-        mob = world["mobs"][mob_id]
+        mob = world["chars"][mob_id]
         if is_name(target_name, MOB_TEMPLATES[mob["tpl"]].get("keywords", "")):
             return (mob, None)
     obj = _find_here_obj(player, world, target_name)
@@ -766,8 +766,8 @@ def do_brandish(tr, player, args, world):
                 check_improve(tr, player, GSN_STAVES, True, 2)
             elif target_type in ("char_offensive", "obj_char_offensive"):
                 for mob_id in list(world["rooms"][player["room"]]["mobs"]):
-                    if mob_id in world["mobs"]:
-                        cast_item_spells(tr, player, staff, world["mobs"][mob_id], None, world)
+                    if mob_id in world["chars"]:
+                        cast_item_spells(tr, player, staff, world["chars"][mob_id], None, world)
                         check_improve(tr, player, GSN_STAVES, True, 2)
             else:
                 tr.print("[DEV] " + tpl["short_descr"] + ": unsupported staff target")
@@ -797,7 +797,7 @@ def do_zap(tr, player, args, world):
     victim = None
     obj = None
     if not arg:
-        victim = world["mobs"].get(player.get("fighting"))
+        victim = world["chars"].get(player.get("fighting"))
         if victim is None:
             tr.print("Zap whom or what?")
             return

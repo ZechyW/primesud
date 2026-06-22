@@ -4,6 +4,24 @@ from world import ITEM_TEMPLATES
 from item import obj_vnum
 
 
+def affect_update(player, world):
+    """Tick timed affects down on all characters (cf. 1stMud affect_update in update.c).
+
+    Args:
+        player (dict): Player state dict.
+        world (dict): Game world state.
+    """
+    for inst in world["chars"].values():
+        affects = inst["affects"]
+        for key in list(affects.keys()):
+            if key.endswith("_t"):
+                affects[key] -= 1
+                if affects[key] <= 0:
+                    base = key[:-2]
+                    affects.pop(key, None)
+                    affects.pop(base, None)
+
+
 def obj_update(tr, player, world):
     """Tick down item timers and remove decayed items from all rooms (cf. 1stMud obj_update in update.c).
 

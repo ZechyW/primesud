@@ -28,7 +28,7 @@ def scan_list(tr, room_vnum, ch, world, depth, door):
     if room_state is None:
         return
     for mob_id in room_state.get("mobs", []):
-        mob = world["mobs"].get(mob_id)
+        mob = world["chars"].get(mob_id)
         if mob is not None:
             tr.print(_scan_char_line(mob, depth, door))
 

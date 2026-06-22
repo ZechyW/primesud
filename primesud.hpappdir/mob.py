@@ -94,7 +94,6 @@ def create_mobile(tpl_vnum):
         "is_npc":    True,
         "hp":        hp,
         "hp_max":    hp,
-        "state":     "idle",
         "affects":   {},
         "wait":      0,
         "daze":      0,
@@ -118,13 +117,13 @@ def create_mobile(tpl_vnum):
 
 def _tpl_live_count(mob_instances, tpl_vnum):
     """Count live instances of a template across all rooms (cf. pMobIndex->count in db.c)."""
-    return sum(1 for inst in mob_instances.values() if inst["tpl"] == tpl_vnum)
+    return sum(1 for inst in mob_instances.values() if inst.get("is_npc") and inst["tpl"] == tpl_vnum)
 
 
 def _tpl_room_count(mob_instances, room_vnum, tpl_vnum):
     """Count live instances of a template in a specific room (cf. per-room scan in reset_room, db.c)."""
     return sum(1 for inst in mob_instances.values()
-               if inst["tpl"] == tpl_vnum and inst["room"] == room_vnum)
+               if inst.get("is_npc") and inst["tpl"] == tpl_vnum and inst["room"] == room_vnum)
 
 
 def reset_mobs(mob_instances, room_state, resets, tr=None, debug=False):
@@ -144,7 +143,7 @@ def reset_mobs(mob_instances, room_state, resets, tr=None, debug=False):
         tr: Optional terminal for reset debug output.
         debug (bool): True to print each spawned mob.
     """
-    mob_id = max(mob_instances, default=0) + 1
+    mob_id = max(mob_instances, default=1) + 1
     last_mob_id  = None   # cf. 1stMud LastMob in reset_room
     last_spawned = False  # cf. 1stMud `last` flag in reset_room
     for entry in resets:
@@ -221,7 +220,9 @@ def create_area_states():
 
 def mobile_update(tr, player, world):
     """Wander mobs and despawn any that strayed out of their home area (cf. 1stMud mobile_update, char_update in update.c)."""
-    for mob_id, inst in list(world["mobs"].items()):
+    for mob_id, inst in list(world["chars"].items()):
+        if not inst.get("is_npc"):
+            continue
         if ROOM_AREAS.get(inst["room"]) != inst["home_area"] and randint(1, 100) <= 5:
             # 5% chance to despawn when outside home area (cf. char_update, update.c:541)
             if player["room"] == inst["room"]:
@@ -229,7 +230,7 @@ def mobile_update(tr, player, world):
                 _sd = tpl["short_descr"]
                 act(tr, "{} wanders on home.".format(_sd))
             world["rooms"][inst["room"]]["mobs"].remove(mob_id)
-            del world["mobs"][mob_id]
+            del world["chars"][mob_id]
             continue
         if inst["fighting"] is not None:
             continue
@@ -291,7 +292,7 @@ def area_update(tr, player, world):
                 weather["precip_vector"] = 1
         area["age"] += 1
         if area["age"] >= _AREA_AGE_MIN and area["age"] >= _AREA_AGE_RESET:
-            reset_mobs(world["mobs"], world["rooms"], area["resets"])
+            reset_mobs(world["chars"], world["rooms"], area["resets"])
             if area["tag"] == "mud_school":
                 area["age"] = 13  # resets every 2 ticks (cf. db.c:1330: age = 15-2)
             else:

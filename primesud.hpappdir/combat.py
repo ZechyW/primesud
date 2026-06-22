@@ -9,7 +9,7 @@ from config import (PULSE_VIOLENCE,
                     ATTACK_TABLE, DAM_NONE, DAM_BASH, DAM_PIERCE, DAM_SLASH,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC)
 from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
-                   GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY,
+                   GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY, GSN_DODGE,
                    GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
                    WEAPON_GSN_MAP)
 from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, act
@@ -19,7 +19,7 @@ from area_limbo import (I_CORPSE,
                         I_COINS_SILVER_GOLD_GCASH)
 from item import (get_char_room, create_object, item_extra_flags,
                   set_item_extra_flag)
-from player import save_state
+from player import save_world
 from picker import pick_from
 
 
@@ -241,7 +241,7 @@ def deal_player_mob_damage(tr, player, victim, dam, world=None, victim_id=None,
     killed = victim["hp"] == 0
     if kill_now and killed and victim_id is not None and world is not None:
         raw_kill(tr, player, victim_id, victim, MOB_TEMPLATES[victim["tpl"]], world)
-        _advance_target(player, world["mobs"], world["rooms"])
+        _advance_target(player, world["chars"], world["rooms"])
     return killed
 
 
@@ -271,7 +271,7 @@ def _ac_type_for_damage_class(dam_class):
     return AC_EXOTIC
 
 
-def _mob_condition(inst, tpl):
+def mob_condition(inst, tpl):
     """Return a condition description string for a mob.
 
     Args:
@@ -312,7 +312,7 @@ def update_wait_states(player, world):
     player["wait"] = max(0, player.get("wait", 0) - PULSE_VIOLENCE)
     rs = world["rooms"][player["room"]]
     for mid in rs["mobs"]:
-        inst = world["mobs"][mid]
+        inst = world["chars"][mid]
         inst["wait"] = max(0, inst.get("wait", 0) - PULSE_VIOLENCE)
         inst["daze"] = max(0, inst.get("daze", 0) - PULSE_VIOLENCE)
 
@@ -416,19 +416,20 @@ def check_parry(tr, ch, victim):
         bool: True if the attack was parried.
     """
     if victim["is_npc"]:
-        tpl   = MOB_TEMPLATES[victim["tpl"]]
         skill = get_skill(victim, GSN_PARRY, is_mob=True)
-        if tpl.get("dam_type", "none") == "none":
-            skill //= 2
+        skill //= 2
+        # Mob has no wield slot -- halve again (cf. 1stMud check_parry: !WEAR_WIELD && IsNPC -> chance/=2)
+        skill //= 2
         lv_delta = victim["level"] - ch["level"]
     else:
         if victim["equip"].get("wield") is None:
             return False
         skill    = get_skill(victim, GSN_PARRY)
+        skill //= 2
         lv_delta = victim["level"] - ch["level"]
 
-    chance = skill // 2 + lv_delta
-    if randint(1, 100) > chance:
+    chance = skill + lv_delta
+    if randint(1, 100) >= chance:
         return False
 
     if victim["is_npc"]:
@@ -436,6 +437,34 @@ def check_parry(tr, ch, victim):
     else:
         act(tr, "You parry {}'s attack.".format(MOB_TEMPLATES[ch["tpl"]]["short_descr"]))
         check_improve(tr, victim, GSN_PARRY, True, 6)
+    return True
+
+
+def check_dodge(tr, ch, victim):
+    """Check if victim dodges ch's strike (cf. 1stMud check_dodge in fight.c).
+
+    Args:
+        tr: Terminal for printing dodge messages.
+        ch (dict): Attacker (player or mob instance).
+        victim (dict): Defender (player or mob instance).
+
+    Returns:
+        bool: True if the attack was dodged.
+    """
+    if victim["is_npc"]:
+        skill = get_skill(victim, GSN_DODGE, is_mob=True)
+    else:
+        skill = get_skill(victim, GSN_DODGE)
+
+    chance = skill // 2 + victim["level"] - ch["level"]
+    if randint(1, 100) >= chance:
+        return False
+
+    if victim["is_npc"]:
+        act(tr, "{} dodges your attack.".format(MOB_TEMPLATES[victim["tpl"]]["short_descr"]))
+    else:
+        act(tr, "You dodge {}'s attack.".format(MOB_TEMPLATES[ch["tpl"]]["short_descr"]))
+        check_improve(tr, victim, GSN_DODGE, True, 6)
     return True
 
 
@@ -494,7 +523,9 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
                 tr.print("{GYou %s {G%s.{x" % (vs, victim_name))
         return 0
 
-    # Parry check
+    # Dodge then parry (cf. 1stMud one_hit: check_dodge before check_parry)
+    if check_dodge(tr, ch, victim):
+        return 0
     if check_parry(tr, ch, victim):
         return 0
 
@@ -563,7 +594,7 @@ def do_kick(tr, ch, args, world):
             tr.print("You are still recovering.")
             return None
         target_id = ch["fighting"]
-        target    = world["mobs"][target_id]
+        target    = world["chars"][target_id]
 
     if ch["is_npc"]:
         skill_pct = ch["level"] if ch["level"] <= 2 else ch["level"] // 2 + ch["level"] // 3
@@ -584,7 +615,7 @@ def do_kick(tr, ch, args, world):
             check_improve(tr, ch, GSN_KICK, True, 1)
             if target["hp"] == 0:
                 raw_kill(tr, ch, target_id, target, tpl, world)
-                _advance_target(ch, world["mobs"], world["rooms"])
+                _advance_target(ch, world["chars"], world["rooms"])
     else:
         if ch["is_npc"]:
             act(tr, "{R%s's kick misses {Ryou.{x" % MOB_TEMPLATES[ch["tpl"]]["short_descr"])
@@ -605,19 +636,19 @@ def do_kill(tr, player, args, world):
         tr.print("Kill whom?")
         return
     if args:
-        mob_id = get_char_room(" ".join(args), live, world["mobs"])
+        mob_id = get_char_room(" ".join(args), live, world["chars"])
         if mob_id is None:
             tr.print("They aren't here.")
             return
     else:
-        names = [MOB_TEMPLATES[world["mobs"][i]["tpl"]]["short_descr"] for i in live]
+        names = [MOB_TEMPLATES[world["chars"][i]["tpl"]]["short_descr"] for i in live]
         idx = pick_from(tr, "Kill whom?", names)
         if idx < 0:
             return
         mob_id = live[idx]
-        set_fighting(tr, player, mob_id, world["mobs"])
-        return "kill " + MOB_TEMPLATES[world["mobs"][mob_id]["tpl"]].get("keywords", "").split()[0]
-    set_fighting(tr, player, mob_id, world["mobs"])
+        set_fighting(tr, player, mob_id, world["chars"])
+        return "kill " + MOB_TEMPLATES[world["chars"][mob_id]["tpl"]].get("keywords", "").split()[0]
+    set_fighting(tr, player, mob_id, world["chars"])
 
 
 def mob_hit(tr, ch, victim, world):
@@ -633,14 +664,16 @@ def mob_hit(tr, ch, victim, world):
     if victim["hp"] == 0:
         return
 
-    # Second and third attacks: level-derived chance (cf. 1stMud gsn_second/third_attack)
-    skill = min(100, ch["level"] * 12 + 20)
-    if randint(1, 100) <= skill // 2:
+    # Second and third attacks (cf. 1stMud get_skill NPC branch in handler.c + multi_hit in fight.c)
+    # NPC get_skill: level>2 -> level//2 + level//3, else -> level; chance = skill//2; fires if roll < chance
+    lvl = ch["level"]
+    npc_skill = (lvl // 2 + lvl // 3) if lvl > 2 else lvl
+    if randint(1, 100) < npc_skill // 2:
         one_hit(tr, ch, victim)
         if victim["hp"] == 0:
             return
 
-    if randint(1, 100) <= skill // 4:
+    if randint(1, 100) < npc_skill // 4:
         one_hit(tr, ch, victim)
         if victim["hp"] == 0:
             return
@@ -745,25 +778,22 @@ def multi_hit(tr, ch, victim, world=None):
         return True
 
     # Offhand weapon (cf. 1stMud multi_hit WEAR_SECONDARY in fight.c)
+    # Specifically, ensures that secondary item is a weapon before allowing hit
     secondary_obj = ch["equip"].get("secondary")
     if secondary_obj is not None and ITEM_TEMPLATES[secondary_obj["vnum"]].get("type") == "weapon":
         one_hit(tr, ch, victim, secondary=True)
         if victim["hp"] == 0:
             return True
 
-    # Second attack (cf. 1stMud multi_hit in fight.c; mobs use off_flags, PCs use learned)
-    if ch.get("is_npc"):
-        fires_second = ch.get("off_flags", {}).get("second_attack")
-        fires_third  = ch.get("off_flags", {}).get("third_attack")
-    else:
-        fires_second = ch["learned"].get(GSN_SECOND_ATTACK, 0) > randint(1, 100)
-        fires_third  = ch["learned"].get(GSN_THIRD_ATTACK, 0) > randint(1, 100)
-    if fires_second:
+    # Second attack: skill/2 chance; third: skill/4 chance (cf. 1stMud multi_hit in fight.c)
+    if randint(1, 100) < ch["learned"].get(GSN_SECOND_ATTACK, 0) // 2:
         one_hit(tr, ch, victim)
+        check_improve(tr, ch, GSN_SECOND_ATTACK, True, 5)
         if victim["hp"] == 0:
             return True
-    if fires_third:
+    if randint(1, 100) < ch["learned"].get(GSN_THIRD_ATTACK, 0) // 4:
         one_hit(tr, ch, victim)
+        check_improve(tr, ch, GSN_THIRD_ATTACK, True, 6)
         if victim["hp"] == 0:
             return True
 
@@ -789,7 +819,6 @@ def set_fighting(tr, player, mob_id, mob_instances):
     """
     inst = mob_instances[mob_id]
     tpl  = MOB_TEMPLATES[inst["tpl"]]
-    inst["state"]    = "aggro"
     inst["fighting"] = player
     player["fighting"] = mob_id
     player["pos"]      = "fighting"
@@ -817,7 +846,7 @@ def check_assist(tr, player, attacked_id, mob_instances, room_state):
         if mid == attacked_id:
             continue
         inst = mob_instances[mid]
-        if inst["state"] == "aggro":
+        if inst["fighting"] is not None:
             continue
         tpl = MOB_TEMPLATES[inst["tpl"]]
         if tpl.get("passive"):
@@ -830,7 +859,6 @@ def check_assist(tr, player, attacked_id, mob_instances, room_state):
                 or (off.get("assist_race")
                     and tpl.get("race") == attacked_tpl.get("race"))
                 or (grp and grp == attacked_tpl.get("group"))):
-            inst["state"]    = "aggro"
             inst["fighting"] = player
             tr.print("{} screams and attacks!".format(
                 tpl["short_descr"]))
@@ -844,8 +872,7 @@ def stop_fighting(player, mob_instances):
         mob_instances (dict): Mob instance mapping mob ID -> mob instance dict.
     """
     for inst in mob_instances.values():
-        if inst["state"] == "aggro":
-            inst["state"]    = "idle"
+        if inst["fighting"] is not None:
             inst["fighting"] = None
             inst["affects"]  = {}
     player["fighting"] = None
@@ -863,7 +890,7 @@ def _advance_target(player, mob_instances, room_state):
     rs      = room_state[player["room"]]
     next_id = None
     for mid in rs["mobs"]:
-        if mob_instances[mid]["state"] == "aggro":
+        if mob_instances[mid]["fighting"] is not None:
             next_id = mid
             break
     if next_id is not None:
@@ -875,7 +902,7 @@ def _advance_target(player, mob_instances, room_state):
 # -- Violence update (called every PULSE_VIOLENCE) -----------------------------
 
 def violence_update(tr, player, world):
-    """One combat pulse: player attacks, then all aggro mobs counter-attack (cf. 1stMud violence_update in fight.c).
+    """One combat pulse: all chars with a fight target attack (cf. 1stMud violence_update in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
@@ -883,63 +910,71 @@ def violence_update(tr, player, world):
         world (dict): Game world state (keys: rooms, mobs, areas).
 
     Returns:
-        bool or None: True if the player died this pulse (caller should show
-            the respawn room); None otherwise.
+        bool or None: True if player died this pulse; None otherwise.
     """
-    target_id = player["fighting"]
-    if target_id is None:
-        return
+    mobs  = world["chars"]
+    rooms = world["rooms"]
 
-    target = world["mobs"].get(target_id)
-    if target is None:
-        stop_fighting(player, world["mobs"])
-        return
+    for ch_id, ch in [(None, player)] + list(mobs.items()):
+        is_npc = ch["is_npc"]
 
-    tpl = MOB_TEMPLATES[target["tpl"]]
+        # TODO: hunt_victim for hunting mobs with no fight target
+        if is_npc and ch["fighting"] is None:
+            continue
 
-    rs = world["rooms"][player["room"]]
+        if ch["fighting"] is None:
+            continue
 
-    # Player's attack turn
-    if player["wait"] <= 0:
-        killed = multi_hit(tr, player, target)
-        if killed:
-            raw_kill(tr, player, target_id, target, tpl, world)
-            _advance_target(player, world["mobs"], world["rooms"])
+        # Resolve victim
+        if is_npc:
+            victim    = player
+            victim_id = None
         else:
-            check_assist(tr, player, target_id, world["mobs"], world["rooms"])
+            victim_id = ch["fighting"]
+            victim    = mobs.get(victim_id)
+            if victim is None:
+                stop_fighting(player, mobs)
+                continue
 
-    # Mob counter-attacks
-    for mob_id in list(rs["mobs"]):
-        mob_inst = world["mobs"][mob_id]
-        if mob_inst["state"] != "aggro":
-            continue
-        if mob_inst["wait"] > 0:
-            continue
-        mob_tpl = MOB_TEMPLATES[mob_inst["tpl"]]
-        if mob_tpl.get("passive"):
+        # Same-room check
+        player_room_mobs = rooms[player["room"]]["mobs"]
+        if is_npc:
+            same_room = ch_id in player_room_mobs
+        else:
+            same_room = victim_id in player_room_mobs
+
+        if not same_room:
+            if is_npc:
+                ch["fighting"] = None
+            else:
+                stop_fighting(player, mobs)
             continue
 
-        multi_hit(tr, mob_inst, player, world)
+        # Wait check
+        if ch.get("wait", 0) > 0:
+            continue
 
-        # Tick debuff timers
-        affects = mob_inst["affects"]
-        for key in list(affects.keys()):
-            if key.endswith("_t"):
-                affects[key] -= 1
-                if affects[key] <= 0:
-                    base = key[:-2]
-                    affects.pop(key, None)
-                    affects.pop(base, None)
+        if is_npc and MOB_TEMPLATES[ch["tpl"]].get("passive"):
+            continue
+
+        # Attack
+        if is_npc:
+            multi_hit(tr, ch, player, world)
+        else:
+            killed = multi_hit(tr, player, victim)
+            if killed:
+                raw_kill(tr, player, victim_id, victim,
+                         MOB_TEMPLATES[victim["tpl"]], world)
+                _advance_target(player, mobs, rooms)
+                victim = None
+            if victim is not None and player["fighting"] is not None:
+                check_assist(tr, player, victim_id, mobs, rooms)
 
         if player["hp"] == 0:
-            stop_fighting(player, world["mobs"])
+            stop_fighting(player, mobs)
             return True
 
-    if player["fighting"] is not None:
-        fid  = player["fighting"]
-        finst = world["mobs"][fid]
-        tr.print(_mob_condition(finst, MOB_TEMPLATES[finst["tpl"]]))
-        tr.print("")
+    return None
 
 
 
@@ -1067,10 +1102,10 @@ def raw_kill(tr, player, mob_id, inst, tpl, world):
     make_corpse(inst, tpl, world)
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
-    save_state(tr, player, world, quiet=True)
+    save_world(tr, world, quiet=True)
 
     world["rooms"][inst["room"]]["mobs"].remove(mob_id)
-    del world["mobs"][mob_id]
+    del world["chars"][mob_id]
     tr.print("")
 
 

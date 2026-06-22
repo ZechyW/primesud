@@ -202,19 +202,17 @@ def show_prompt(tr, player, buf):
 #     not exist yet (i.e. no save found); load_char treats this as no-save.
 SAVE_FILE = "primesud.sav"
 
-def save_char(player, world):
-    """Serialise player and world state to a PPL HVars variable (cf. 1stMud save_char_obj in save.c).
-
-    Reads macros from player["_macros"].
+def _serialize_world(world):
+    """Serialise world state to a PPL HVars variable (cf. 1stMud save_char_obj in save.c).
 
     Args:
-        player (dict): Player state dict.
-        world (dict): Game world state (keys: rooms, mobs, areas).
+        world (dict): Game world state (keys: rooms, chars, areas).
 
     Raises:
         Exception: If the PPL write fails, readback does not match the written
             payload, or the save-file mirror cannot be written.
     """
+    player = world["chars"][1]
     gc_collect()
     lines = ["v=" + str(SAVE_VERSION)]
     for key in ("name", "level", "xp", "xp_next",
@@ -258,8 +256,10 @@ def save_char(player, world):
 
     tpl_rooms = {}
     tpl_order = []
-    for mob_id in sorted(world["mobs"]):
-        inst = world["mobs"][mob_id]
+    for mob_id in sorted(world["chars"]):
+        inst = world["chars"][mob_id]
+        if not inst.get("is_npc"):
+            continue
         tpl = inst["tpl"]
         if tpl not in tpl_rooms:
             tpl_rooms[tpl] = []
@@ -294,10 +294,10 @@ def save_char(player, world):
         f.write(payload)
 
 
-def save_state(tr, player, world, quiet=False):
-    """Save player/world state and optionally print success."""
+def save_world(tr, world, quiet=False):
+    """Save world state and optionally print success."""
     try:
-        save_char(player, world)
+        _serialize_world(world)
         if not quiet:
             tr.print("Saved.")
         return True
@@ -306,20 +306,20 @@ def save_state(tr, player, world, quiet=False):
         return False
 
 
-def load_char(player, world):
-    """Deserialise player and world state from save file or HVar (cf. 1stMud load_char_obj in save.c).
+def load_world(world):
+    """Deserialise world state from save file or HVar (cf. 1stMud load_char_obj in save.c).
 
     Tries SAVE_FILE first (survives hard crashes); falls back to SAVE_VAR HVar
-    (survives reinstalls).  Mutates player and world in-place.  Macros are read
-    from player["_macros"] (must be set by caller before calling).
+    (survives reinstalls).  Mutates world["chars"][1] and world in-place.  Macros are read
+    from world["chars"][1]["_macros"] (must be set by caller before calling).
 
     Args:
-        player (dict): Player state dict to populate.
-        world (dict): Game world state (keys: rooms, mobs, areas).
+        world (dict): Game world state (keys: rooms, chars, areas).
 
     Returns:
         bool: True if a save was found and loaded, False if no save exists or on error.
     """
+    player = world["chars"][1]
     data = None
     _source = None
     try:
@@ -420,19 +420,20 @@ def load_char(player, world):
     # Apply saved mob rooms: delete killed instances, patch wandered rooms.
     # Same vnum appearing multiple times means multiple instances in one room -- correct.
     for tpl_vnum, saved_rooms in mob_saves.items():
-        inst_ids = sorted(i for i, inst in world["mobs"].items() if inst["tpl"] == tpl_vnum)
+        inst_ids = sorted(i for i, inst in world["chars"].items() if inst.get("is_npc") and inst["tpl"] == tpl_vnum)
         for mid in inst_ids[len(saved_rooms):]:   # excess = killed since last save
-            del world["mobs"][mid]
+            del world["chars"][mid]
         for mid, room_vnum in zip(inst_ids, saved_rooms):
             if room_vnum in ROOMS:
-                world["mobs"][mid]["room"] = room_vnum
+                world["chars"][mid]["room"] = room_vnum
 
     if player["room"] not in world["rooms"]:
         player["room"] = R_STARTING_ROOM
 
     for rs in world["rooms"].values():
         rs["mobs"] = []
-    for mob_id, inst in world["mobs"].items():
-        world["rooms"][inst["room"]]["mobs"].append(mob_id)
+    for mob_id, inst in world["chars"].items():
+        if inst.get("is_npc"):
+            world["rooms"][inst["room"]]["mobs"].append(mob_id)
 
     return _source

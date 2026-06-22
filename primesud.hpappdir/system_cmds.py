@@ -1,10 +1,10 @@
 """System command handlers for save and quit."""
 
-from player import save_state
+from player import save_world
 
 
 def do_save(tr, player, args, world):
-    save_state(tr, player, world)
+    save_world(tr, world)
 
 
 def do_quit(tr, player, args, world):

@@ -54,7 +54,7 @@ def _heal_char(tr, ch, victim, amount, msg):
 def _target_id(ch, victim, world):
     if victim is None or victim is ch:
         return None
-    for mob_id, inst in world["mobs"].items():
+    for mob_id, inst in world["chars"].items():
         if inst is victim:
             return mob_id
     return None
@@ -267,14 +267,13 @@ def spell_earthquake(tr, sn, level, ch, vo, target, world):
     room = world["rooms"][ch["room"]]
     first_target = None
     for mob_id in list(room["mobs"]):
-        victim = world["mobs"].get(mob_id)
+        victim = world["chars"].get(mob_id)
         if victim is None or victim is ch:
             continue
         dam = 0 if victim.get("aff_flags", {}).get("flying") else level + _dice(2, 8)
         _damage_char(tr, ch, victim, mob_id, dam, sn, world)
-        if mob_id in world["mobs"]:
-            victim = world["mobs"][mob_id]
-            victim["state"] = "aggro"
+        if mob_id in world["chars"]:
+            victim = world["chars"][mob_id]
             victim["fighting"] = ch
             if first_target is None:
                 first_target = mob_id
@@ -301,16 +300,15 @@ def spell_call_lightning(tr, sn, level, ch, vo, target, world):
     first_target = None
     room_state = world["rooms"][ch["room"]]
     for mob_id in list(room_state["mobs"]):
-        victim = world["mobs"].get(mob_id)
+        victim = world["chars"].get(mob_id)
         if victim is None or victim is ch:
             continue
         cur_dam = dam
         if saves_spell(level, victim, "lightning"):
             cur_dam //= 2
         _damage_char(tr, ch, victim, mob_id, cur_dam, sn, world)
-        if mob_id in world["mobs"]:
-            victim = world["mobs"][mob_id]
-            victim["state"] = "aggro"
+        if mob_id in world["chars"]:
+            victim = world["chars"][mob_id]
             victim["fighting"] = ch
             if first_target is None:
                 first_target = mob_id
@@ -342,9 +340,8 @@ def spell_chain_lightning(tr, sn, level, ch, vo, target, world):
             dam //= 3
         _damage_char(tr, ch, victim, victim_id, dam, sn, world)
         any_hit = True
-        if victim_id is not None and victim_id in world["mobs"]:
-            world["mobs"][victim_id]["state"] = "aggro"
-            world["mobs"][victim_id]["fighting"] = ch
+        if victim_id is not None and victim_id in world["chars"]:
+            world["chars"][victim_id]["fighting"] = ch
         level -= 4
         last_victim_id = victim_id
         last_hit_ch = False
@@ -360,7 +357,7 @@ def spell_chain_lightning(tr, sn, level, ch, vo, target, world):
 
         if next_id is not None:
             victim_id = next_id
-            victim = world["mobs"].get(victim_id)
+            victim = world["chars"].get(victim_id)
             if victim is not None:
                 tr.print("The bolt arcs to " + MOB_TEMPLATES[victim["tpl"]]["short_descr"] + "!")
             continue
@@ -386,11 +383,11 @@ def spell_chain_lightning(tr, sn, level, ch, vo, target, world):
             tr.print("The bolt grounds out through your body.")
             break
         victim_id = next_id
-        victim = world["mobs"].get(victim_id)
+        victim = world["chars"].get(victim_id)
         if victim is not None:
             tr.print("The bolt arcs to " + MOB_TEMPLATES[victim["tpl"]]["short_descr"] + "!")
 
-    if first_target is not None and first_target in world["mobs"]:
+    if first_target is not None and first_target in world["chars"]:
         ch["fighting"] = first_target
         ch["pos"] = "fighting"
     return any_hit
@@ -1048,15 +1045,15 @@ def _find_room_char(player, world, target_name):
     if _is_self_name(player, target_name):
         return player
     rs = _room_state(player, world)
-    mob_id = get_char_room(target_name, rs["mobs"], world["mobs"])
+    mob_id = get_char_room(target_name, rs["mobs"], world["chars"])
     if mob_id is None:
         return None
-    return world["mobs"][mob_id]
+    return world["chars"][mob_id]
 
 
 def _find_room_char_id(player, world, target_name):
     rs = _room_state(player, world)
-    return get_char_room(target_name, rs["mobs"], world["mobs"])
+    return get_char_room(target_name, rs["mobs"], world["chars"])
 
 
 def _find_inv_obj(player, target_name):
@@ -1102,7 +1099,7 @@ def _pick_cast_target_name(tr, player, sn, world):
         opts = []
         names = []
         for mob_id in rs["mobs"]:
-            mob = world["mobs"][mob_id]
+            mob = world["chars"][mob_id]
             opts.append(MOB_TEMPLATES[mob["tpl"]]["short_descr"])
             names.append(_mob_pick_name(mob))
         if not opts:
@@ -1132,7 +1129,7 @@ def _pick_cast_target_name(tr, player, sn, world):
         opts = []
         names = []
         for mob_id in rs["mobs"]:
-            mob = world["mobs"][mob_id]
+            mob = world["chars"][mob_id]
             opts.append(MOB_TEMPLATES[mob["tpl"]]["short_descr"])
             names.append(_mob_pick_name(mob))
         for obj in rs["items"]:
@@ -1160,9 +1157,9 @@ def _resolve_item_runtime_target(tr, ch, sn, victim, obj, world):
         if victim is not None:
             return (victim, TARGET_CHAR, _target_id(ch, victim, world), True)
         victim_id = ch.get("fighting")
-        if victim_id is None or victim_id not in world["mobs"]:
+        if victim_id is None or victim_id not in world["chars"]:
             return (None, TARGET_NONE, None, False)
-        return (world["mobs"][victim_id], TARGET_CHAR, victim_id, True)
+        return (world["chars"][victim_id], TARGET_CHAR, victim_id, True)
     if target_type == "char_defensive":
         if victim is None:
             victim = ch
@@ -1179,9 +1176,9 @@ def _resolve_item_runtime_target(tr, ch, sn, victim, obj, world):
         if obj is not None:
             return (obj, TARGET_OBJ, None, True)
         victim_id = ch.get("fighting")
-        if victim_id is None or victim_id not in world["mobs"]:
+        if victim_id is None or victim_id not in world["chars"]:
             return (None, TARGET_NONE, None, False)
-        return (world["mobs"][victim_id], TARGET_CHAR, victim_id, True)
+        return (world["chars"][victim_id], TARGET_CHAR, victim_id, True)
     if target_type == "obj_char_defensive":
         if victim is not None:
             return (victim, TARGET_CHAR, None, True)
@@ -1248,7 +1245,7 @@ def _resolve_target(tr, player, sn, target_name, world):
             if victim_id is None:
                 tr.print("They aren't here.")
                 return (None, TARGET_NONE, None, False)
-        return (world["mobs"][victim_id], TARGET_CHAR, victim_id, True)
+        return (world["chars"][victim_id], TARGET_CHAR, victim_id, True)
 
     if target_type == "char_defensive":
         if not arg2:
@@ -1282,10 +1279,10 @@ def _resolve_target(tr, player, sn, target_name, world):
             if victim_id is None:
                 tr.print("Cast the spell on whom or what?")
                 return (None, TARGET_NONE, None, False)
-            return (world["mobs"][victim_id], TARGET_CHAR, victim_id, True)
+            return (world["chars"][victim_id], TARGET_CHAR, victim_id, True)
         victim_id = _find_room_char_id(player, world, target_name)
         if victim_id is not None:
-            return (world["mobs"][victim_id], TARGET_CHAR, victim_id, True)
+            return (world["chars"][victim_id], TARGET_CHAR, victim_id, True)
         obj = _find_room_obj(player, world, target_name)
         if obj is not None:
             return (obj, TARGET_OBJ, None, True)
@@ -1328,8 +1325,8 @@ def obj_cast_spell(tr, spell_name, level, ch, victim, obj, world, item_obj=None)
         del ch["_spell_target_name"]
     if (ret and SKILLS[sn].get("target") in ("char_offensive", "obj_char_offensive")
             and target == TARGET_CHAR and victim_id is not None
-            and victim_id in world["mobs"] and ch.get("fighting") is None):
-        set_fighting(tr, ch, victim_id, world["mobs"])
+            and victim_id in world["chars"] and ch.get("fighting") is None):
+        set_fighting(tr, ch, victim_id, world["chars"])
     return ret
 
 
@@ -1408,9 +1405,9 @@ def do_cast(tr, player, args, world):
 
     if (ret and sk.get("target") in ("char_offensive", "obj_char_offensive")
             and target == TARGET_CHAR and victim_id is not None
-            and victim_id in world["mobs"]
+            and victim_id in world["chars"]
             and player.get("fighting") is None):
-        set_fighting(tr, player, victim_id, world["mobs"])
+        set_fighting(tr, player, victim_id, world["chars"])
     if not args:
         command = "cast " + _quote_cast_spell_name(SKILLS[sn]["name"])
         if target_name:

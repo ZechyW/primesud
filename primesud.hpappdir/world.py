@@ -14,7 +14,7 @@ R_RECALL         = 3001   # default recall destination (cf. 1stMud ROOM_VNUM_TEM
 # -- Skills --------------------------------------------------------------------
 from skills_table import (
     SKILL_TABLE as _ST_RAW,
-    GSN_KICK, GSN_HAND_TO_HAND, GSN_PARRY, GSN_RECALL,
+    GSN_KICK, GSN_HAND_TO_HAND, GSN_PARRY, GSN_DODGE, GSN_RECALL,
     GSN_SWORD, GSN_AXE, GSN_DAGGER, GSN_FLAIL, GSN_MACE, GSN_POLEARM,
     GSN_SPEAR, GSN_WHIP, GSN_SHIELD_BLOCK,
     GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,

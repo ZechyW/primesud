@@ -31,7 +31,7 @@ def do_train(tr, player, args, world):
     rs = world["rooms"][player["room"]]
     trainer = None
     for mid in rs["mobs"]:
-        inst = world["mobs"][mid]
+        inst = world["chars"][mid]
         if MOB_TEMPLATES[inst["tpl"]].get("act_flags", {}).get("train"):
             trainer = mid
             break
@@ -109,7 +109,7 @@ def do_practice(tr, player, args, world):
     rs = world["rooms"][player["room"]]
     teacher = None
     for mid in rs["mobs"]:
-        inst = world["mobs"][mid]
+        inst = world["chars"][mid]
         if MOB_TEMPLATES[inst["tpl"]].get("act_flags", {}).get("practice"):
             teacher = mid
             break

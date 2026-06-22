@@ -186,7 +186,7 @@ def do_look(tr, player, args, world):
         tr.print(stack_prefix + line)
     # Mobs: one per line, long_descr at idle or constructed position string (cf. 1stMud show_char_to_char_0 in act_info.c)
     for mob_id in live_mobs:
-        inst = world["mobs"][mob_id]
+        inst = world["chars"][mob_id]
         tpl = MOB_TEMPLATES[inst["tpl"]]
         # Build AFF prefix string (cf. 1stMud show_char_to_char_0, act_info.c:191-214)
         # Source: tpl["aff_flags"] (baseline, like pIndexData->affected_by).
@@ -203,7 +203,7 @@ def do_look(tr, player, args, world):
         if mob_align <= -350 and p_aff.get("detect_evil"):  prefix += "({RRed Aura{x) "
         if mob_align >= 350 and p_aff.get("detect_good"):   prefix += "({YGolden Aura{x) "
         if aff.get("sanctuary"):    prefix += "({WWhite Aura{x) "
-        if inst["state"] == "idle":
+        if inst["fighting"] is None:
             line = tpl.get("long_descr") or tpl["short_descr"]
         else:
             name = tpl["short_descr"]

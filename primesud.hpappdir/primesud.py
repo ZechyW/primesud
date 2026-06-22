@@ -34,10 +34,10 @@ from config import (
 )
 from util import free_mem, gc_collect
 from world import R_STARTING_ROOM, ROOMS, init_world
-from combat import update_wait_states, violence_update
+from combat import update_wait_states, violence_update, mob_condition, MOB_TEMPLATES
 from mob import mobile_update, area_update
 from player import tick_update, show_prompt
-from update import obj_update
+from update import obj_update, affect_update
 from commands import interpret
 from info import do_look
 from macros import _MACRO_SUBST
@@ -104,12 +104,8 @@ class Game:
 
     def game_loop(self):
         tr = self.tr
-        player = self.player
-        world = {
-            "rooms": self.room_state,
-            "mobs": self.mob_instances,
-            "areas": self.area_states,
-        }
+        world = self.world
+        player = world["chars"][1]
 
         pulse      = 0
         tick_count = 0
@@ -200,6 +196,7 @@ class Game:
 
                 if pulse % PULSE_VIOLENCE == 0:
                     update_wait_states(player, world)
+                    affect_update(player, world)
                     if violence_update(tr, player, world):
                         # [PRIMESUD] Handle auto respawn on death
                         tr.print("You have been KILLED!!")
@@ -215,6 +212,12 @@ class Game:
                         tr.print("You come to your senses. Alive, but barely.")
                         tr.print("")
                         do_look(tr, player, [], world)
+                    else:
+                        if player["fighting"] is not None:
+                            fid = player["fighting"]
+                            finst = world["chars"][fid]
+                            tr.print(mob_condition(finst, MOB_TEMPLATES[finst["tpl"]]))
+                            tr.print("")
                     show_prompt(tr, player, self.input_buf)
 
                 if pulse % PULSE_TICK == 0:
