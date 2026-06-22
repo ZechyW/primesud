@@ -154,7 +154,6 @@ def check_assist(tr, ch, victim, world):
         if not ch["is_npc"]:
             # Case 1: mob with assist_players aids player against victim
             if off.get("assist_players") and rch["level"] + 6 > victim["level"]:
-                rch["fighting"] = victim["id"]
                 tr.print("{} screams and attacks!".format(rch_tpl["short_descr"]))
                 multi_hit(tr, rch, victim, world)
             # Case 2: autoassist / charm -- not implemented; skip mob
@@ -179,7 +178,6 @@ def check_assist(tr, ch, victim, world):
 
         # Pick random target from victim's group (cf. 1stMud target selection loop).
         # [PRIMESUD] Single-player: victim's group = victim only; target is always victim.
-        rch["fighting"] = victim["id"]
         tr.print("{} screams and attacks!".format(rch_tpl["short_descr"]))
         multi_hit(tr, rch, victim, world)
 
@@ -847,7 +845,7 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, world, attack_noun=None):
         #             if (victim->timer <= 4) victim->position = POS_FIGHTING; }
         if POS_ORDER.get(victim.get("pos", "standing"), 8) > POS_ORDER["stunned"]:
             if victim["fighting"] is None:
-                victim["fighting"] = ch["id"]
+                set_fighting(victim, ch)
                 # 1stMud: if (IsNPC(victim) && HasTriggerMob(victim,TRIG_KILL)) p_percent_trigger(...)
                 # [PRIMESUD] skip TRIG_KILL (not ported)
             # 1stMud: if (victim->timer <= 4) victim->position = POS_FIGHTING;
@@ -859,7 +857,7 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, world, attack_noun=None):
         #             if (ch->fighting == NULL) set_fighting(ch, victim); }
         if POS_ORDER.get(victim.get("pos", "standing"), 8) > POS_ORDER["stunned"]:
             if ch["fighting"] is None:
-                ch["fighting"] = victim["id"]
+                set_fighting(ch, victim)
 
         # 1stMud: if (victim->master == ch) stop_follower(victim);
         # [PRIMESUD] skip stop_follower (no charm/follower system ported)
@@ -1202,9 +1200,9 @@ def do_kill(tr, player, args, world):
         if idx < 0:
             return
         mob_id = live[idx]
-        set_fighting(tr, player, mob_id, world["chars"])
+    multi_hit(tr, player, world["chars"][mob_id], world)
+    if not args:
         return "kill " + MOB_TEMPLATES[world["chars"][mob_id]["tpl"]].get("keywords", "").split()[0]
-    set_fighting(tr, player, mob_id, world["chars"])
 
 
 def mob_hit(tr, ch, victim, world):
@@ -1374,20 +1372,10 @@ def multi_hit(tr, ch, victim, world=None):
 
 # -- Combat state --------------------------------------------------------------
 
-def set_fighting(tr, player, mob_id, mob_instances):
-    """Enter combat: engage a single mob against the player (cf. 1stMud set_fighting in fight.c).
-
-    Args:
-        tr: Terminal for printing combat messages.
-        player (dict): Player state dict.
-        mob_id (int): ID of the mob to engage.
-        mob_instances (dict): Mob instance mapping mob ID -> mob instance dict.
-    """
-    inst = mob_instances[mob_id]
-    tpl  = MOB_TEMPLATES[inst["tpl"]]
-    inst["fighting"] = player["id"]
-    player["fighting"] = mob_id
-    player["pos"]      = "fighting"
+def set_fighting(ch, victim):
+    """Engage ch in combat against victim (cf. 1stMud set_fighting in fight.c)."""
+    ch["fighting"] = victim["id"]
+    ch["pos"] = "fighting"
 
 
 def stop_fighting(ch, chars, both=False):

@@ -261,21 +261,12 @@ def spell_earthquake(tr, sn, level, ch, vo, target, world):
     """Earthquake room spell (cf. 1stMud spell_earthquake in magic.c)."""
     tr.print("The earth trembles beneath your feet!")
     room = world["rooms"][ch["room"]]
-    first_target = None
     for mob_id in list(room["mobs"]):
         victim = world["chars"].get(mob_id)
         if victim is None or victim is ch:
             continue
         dam = 0 if victim.get("aff_flags", {}).get("flying") else level + _dice(2, 8)
         _damage_char(tr, ch, victim, mob_id, dam, sn, world)
-        if mob_id in world["chars"]:
-            victim = world["chars"][mob_id]
-            victim["fighting"] = ch["id"]
-            if first_target is None:
-                first_target = mob_id
-    if first_target is not None:
-        ch["fighting"] = first_target
-        ch["pos"] = "fighting"
     return True
 
 
@@ -293,7 +284,6 @@ def spell_call_lightning(tr, sn, level, ch, vo, target, world):
 
     dam = _dice(max(1, level // 2), 8)
     tr.print("Your lightning strikes your foes!")
-    first_target = None
     room_state = world["rooms"][ch["room"]]
     for mob_id in list(room_state["mobs"]):
         victim = world["chars"].get(mob_id)
@@ -303,14 +293,6 @@ def spell_call_lightning(tr, sn, level, ch, vo, target, world):
         if saves_spell(level, victim, "lightning"):
             cur_dam //= 2
         _damage_char(tr, ch, victim, mob_id, cur_dam, sn, world)
-        if mob_id in world["chars"]:
-            victim = world["chars"][mob_id]
-            victim["fighting"] = ch["id"]
-            if first_target is None:
-                first_target = mob_id
-    if first_target is not None:
-        ch["fighting"] = first_target
-        ch["pos"] = "fighting"
     return True
 
 
@@ -325,7 +307,6 @@ def spell_chain_lightning(tr, sn, level, ch, vo, target, world):
 
     room_state = world["rooms"][ch["room"]]
     victim_id = _target_id(ch, victim, world)
-    first_target = victim_id
     last_victim_id = victim_id
     last_hit_ch = False
     any_hit = False
@@ -336,8 +317,6 @@ def spell_chain_lightning(tr, sn, level, ch, vo, target, world):
             dam //= 3
         _damage_char(tr, ch, victim, victim_id, dam, sn, world)
         any_hit = True
-        if victim_id is not None and victim_id in world["chars"]:
-            world["chars"][victim_id]["fighting"] = ch["id"]
         level -= 4
         last_victim_id = victim_id
         last_hit_ch = False
@@ -383,9 +362,6 @@ def spell_chain_lightning(tr, sn, level, ch, vo, target, world):
         if victim is not None:
             tr.print("The bolt arcs to " + MOB_TEMPLATES[victim["tpl"]]["short_descr"] + "!")
 
-    if first_target is not None and first_target in world["chars"]:
-        ch["fighting"] = first_target
-        ch["pos"] = "fighting"
     return any_hit
 
 
@@ -1322,7 +1298,7 @@ def obj_cast_spell(tr, spell_name, level, ch, victim, obj, world, item_obj=None)
     if (ret and SKILLS[sn].get("target") in ("char_offensive", "obj_char_offensive")
             and target == TARGET_CHAR and victim_id is not None
             and victim_id in world["chars"] and ch.get("fighting") is None):
-        set_fighting(tr, ch, victim_id, world["chars"])
+        set_fighting(ch, world["chars"][victim_id])
     return ret
 
 
@@ -1403,7 +1379,7 @@ def do_cast(tr, player, args, world):
             and target == TARGET_CHAR and victim_id is not None
             and victim_id in world["chars"]
             and player.get("fighting") is None):
-        set_fighting(tr, player, victim_id, world["chars"])
+        set_fighting(player, world["chars"][victim_id])
     if not args:
         command = "cast " + _quote_cast_spell_name(SKILLS[sn]["name"])
         if target_name:
