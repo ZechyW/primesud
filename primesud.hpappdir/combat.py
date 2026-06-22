@@ -569,7 +569,6 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
     return dam
 
 
-
 def do_kick(tr, ch, args, world):
     """Kick for player or mob (cf. 1stMud do_kick in fight.c).
 
@@ -864,19 +863,26 @@ def check_assist(tr, player, attacked_id, mob_instances, room_state):
                 tpl["short_descr"]))
 
 
-def stop_fighting(player, mob_instances):
-    """End combat: reset aggro mobs to idle, clear player target (cf. 1stMud stop_fighting in fight.c).
+def stop_fighting(ch, chars, both=False):
+    """
+    Given character stops fighting its target.
+    Optionally make all other characters stop fighting it.
+    (cf. 1stMud stop_fighting in fight.c).
+    [Verified against 1stmud: 22/06/2026]
 
     Args:
-        player (dict): Player state dict.
-        mob_instances (dict): Mob instance mapping mob ID -> mob instance dict.
+        ch (dict): Character that stops fighting its target.
+        chars (dict): Pass through current world chars state.
+        both (bool): If true, all other characters stop fighting `ch`.
     """
-    for inst in mob_instances.values():
-        if inst["fighting"] is not None:
-            inst["fighting"] = None
-            inst["affects"]  = {}
-    player["fighting"] = None
-    player["pos"]      = "standing"
+    for char in chars.values():
+        if char == ch or (both and char["fighting"] == ch):
+            char["fighting"] = None
+            # [PRIMESUD] original .are files allow for mobs to have default positions
+            # specified, but we haven't ported this yet.
+            char["pos"] = "standing"
+            # TODO: update_pos is called here, setting stunned/mortal/incap/dead.
+            # TODO: Stance is reset here.
 
 
 def _advance_target(player, mob_instances, room_state):
@@ -915,17 +921,22 @@ def violence_update(tr, player, world):
     mobs  = world["chars"]
     rooms = world["rooms"]
 
-    for ch_id, ch in [(None, player)] + list(mobs.items()):
+    for ch_id, ch in list(mobs.items()):
         is_npc = ch["is_npc"]
 
-        # TODO: hunt_victim for hunting mobs with no fight target
-        if is_npc and ch["fighting"] is None:
+        # 1stMud: IsNPC(ch) && ch->fighting == NULL && IsAwake(ch) && ch->hunting != NULL
+        # [PRIMESUD] IsAwake always true -- no position system ported yet
+        if is_npc and ch["fighting"] is None and ch.get("hunting") is not None:
+            # TODO: hunt_victim not ported
             continue
 
+        # 1stMud: victim = ch->fighting; if victim == NULL || ch->in_room == NULL: continue
+        # [PRIMESUD] ch->in_room == NULL cannot occur
         if ch["fighting"] is None:
             continue
 
         # Resolve victim
+        # [PRIMESUD] single player; NPC victim is always player, player victim is mob by ID
         if is_npc:
             victim    = player
             victim_id = None
@@ -936,7 +947,8 @@ def violence_update(tr, player, world):
                 stop_fighting(player, mobs)
                 continue
 
-        # Same-room check
+        # 1stMud: if IsAwake(ch) && ch->in_room == victim->in_room: multi_hit else stop_fighting
+        # [PRIMESUD] IsAwake always true; same-room via room["mobs"] membership
         player_room_mobs = rooms[player["room"]]["mobs"]
         if is_npc:
             same_room = ch_id in player_room_mobs
@@ -944,38 +956,46 @@ def violence_update(tr, player, world):
             same_room = victim_id in player_room_mobs
 
         if not same_room:
-            if is_npc:
-                ch["fighting"] = None
-            else:
-                stop_fighting(player, mobs)
+            stop_fighting(ch, mobs)
             continue
 
-        # Wait check
+        # [PRIMESUD] wait/passive not in 1stMud violence_update
         if ch.get("wait", 0) > 0:
             continue
-
         if is_npc and MOB_TEMPLATES[ch["tpl"]].get("passive"):
             continue
 
-        # Attack
+        # 1stMud: multi_hit(ch, victim, TYPE_UNDEFINED)
         if is_npc:
             multi_hit(tr, ch, player, world)
         else:
+            # [PRIMESUD] raw_kill/_advance_target called here; 1stMud handles inside damage()
             killed = multi_hit(tr, player, victim)
             if killed:
                 raw_kill(tr, player, victim_id, victim,
                          MOB_TEMPLATES[victim["tpl"]], world)
                 _advance_target(player, mobs, rooms)
                 victim = None
-            if victim is not None and player["fighting"] is not None:
-                check_assist(tr, player, victim_id, mobs, rooms)
 
-        if player["hp"] == 0:
+        # [PRIMESUD] player death check; 1stMud handles death inside damage()
+        if player["hp"] <= 0:
             stop_fighting(player, mobs)
             return True
 
-    return None
+        # 1stMud: victim = ch->fighting; if victim == NULL: continue; check_assist(ch, victim)
+        # [PRIMESUD] check_assist is player-centric; pass ch_id as the "attacked" mob for NPC case
+        if is_npc:
+            if ch["fighting"] is not None:
+                check_assist(tr, player, ch_id, mobs, rooms)
+        else:
+            if victim is not None and player["fighting"] is not None:
+                check_assist(tr, player, victim_id, mobs, rooms)
 
+        # TODO: mob TRIG_FIGHT / TRIG_HPCNT triggers not ported
+        # TODO: obj worn-item TRIG_FIGHT triggers not ported
+        # TODO: room TRIG_FIGHT trigger not ported
+
+    return None
 
 
 # -- Death / Victory -----------------------------------------------------------

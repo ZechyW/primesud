@@ -98,13 +98,9 @@ When porting 1stMud code using `CTAG(_CONSTANT)` (e.g. `CTAG(_MOBILES)`), defaul
 
 Code with no 1stMud equivalent or intentional deviation marked `# [PRIMESUD]`. When porting from 1stMud, don't overwrite tagged items without checking if Prime variant differs on purpose.
 
-Find all tagged locations:
+## Verified port
 
-    grep -r "\[PRIMESUD\]" primesud.hpappdir/
-
-## Benchmarking
-
-No profiler on HP Prime. Add block to `run()` in `primesud.py` (before `game.show_greeting()`): capture `int(ppleval("Ticks"))` before/after N-rep loop, print delta, call `tr.input("")` to pause. Clean side-effects before pause for consistent game start.
+If a given function is marked as being verified against 1stmud in its docstring, NEVER edit it without asking for explicit permission first.
 
 ## Docstrings
 
@@ -113,6 +109,6 @@ Google-style: one-line summary, then `Args:` / `Returns:` / `Raises:` as needed;
 ## Working style
 
 - Read this file, `DESIGN.md`, and relevant reference docs before porting behavior from 1stMud.
-- Code first, then brief explanation of key decisions -- especially HP Prime constraints or PPL interop.
+- Provide sanity check and brief explanation of key decisions -- especially HP Prime constraints or PPL interop -- before complex coding.
 - Minimal targeted changes. No surrounding refactor unless asked.
 - Unsure if Python feature is available on HP Prime? Ask for human check.
