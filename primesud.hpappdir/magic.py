@@ -3,13 +3,14 @@
 from world import SKILLS, SKILL_TABLE, ITEM_TEMPLATES, MOB_TEMPLATES, R_RECALL, ROOM_AREAS
 from picker import pick_from
 from combat import (WaitState, check_improve, get_skill, set_fighting,
-                    deal_player_mob_damage)
+                    damage)
 from item import (get_char_room, get_obj_list, obj_vnum, item_spell_level,
                   item_spells, item_spell_name, item_extra_flags,
                   item_current_charges, item_max_charges, item_affect_list,
                   item_affect_find, item_affect_remove, item_affect_to_obj,
                   set_item_extra_flag)
-from actor import is_name, is_affected, affect_to_char, affect_strip
+from actor import is_name, is_affected, affect_to_char, affect_strip, is_awake
+from config import POS_ORDER, DAM_NONE, TYPE_HIT
 from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
 from movement import perform_recall
 from colors import cap_first
@@ -23,12 +24,6 @@ TARGET_CHAR = "char"
 TARGET_OBJ = "obj"
 TARGET_ROOM = "room"
 _AC_LOCS = ("ac_pierce", "ac_bash", "ac_slash", "ac_exotic")
-
-_POS_ORDER = {
-    "dead": 0, "sleeping": 4, "resting": 5,
-    "sitting": 6, "fighting": 7, "standing": 8,
-}
-
 
 def spell_null(tr, sn, level, ch, vo, target, world):
     """Do nothing spell placeholder (cf. 1stMud spell_null in magic.c)."""
@@ -61,11 +56,12 @@ def _target_id(ch, victim, world):
 
 
 def _damage_char(tr, ch, victim, victim_id, dam, sn, world):
-    """Apply spell damage through shared combat adapter (cf. 1stMud damage in fight.c)."""
+    """Apply spell damage (cf. 1stMud damage in fight.c). victim_id unused; damage() uses victim["id"]."""
     sk = SKILLS[sn]
-    noun = sk.get("noun_damage") or sk["name"]
-    deal_player_mob_damage(
-        tr, ch, victim, dam, world, victim_id, attack_noun=noun, kill_now=True)
+    dam_type = sk.get("dam_type", DAM_NONE)
+    # 1stMud: damage(ch, victim, dam, sn, dam_type, true) -- sn < TYPE_HIT, no dodge/parry
+    damage(tr, ch, victim, dam, sn, dam_type, show=True, world=world,
+           attack_noun=sk.get("noun_damage") or sk["name"])
     return True
 
 
@@ -274,7 +270,7 @@ def spell_earthquake(tr, sn, level, ch, vo, target, world):
         _damage_char(tr, ch, victim, mob_id, dam, sn, world)
         if mob_id in world["chars"]:
             victim = world["chars"][mob_id]
-            victim["fighting"] = ch
+            victim["fighting"] = ch["id"]
             if first_target is None:
                 first_target = mob_id
     if first_target is not None:
@@ -309,7 +305,7 @@ def spell_call_lightning(tr, sn, level, ch, vo, target, world):
         _damage_char(tr, ch, victim, mob_id, cur_dam, sn, world)
         if mob_id in world["chars"]:
             victim = world["chars"][mob_id]
-            victim["fighting"] = ch
+            victim["fighting"] = ch["id"]
             if first_target is None:
                 first_target = mob_id
     if first_target is not None:
@@ -341,7 +337,7 @@ def spell_chain_lightning(tr, sn, level, ch, vo, target, world):
         _damage_char(tr, ch, victim, victim_id, dam, sn, world)
         any_hit = True
         if victim_id is not None and victim_id in world["chars"]:
-            world["chars"][victim_id]["fighting"] = ch
+            world["chars"][victim_id]["fighting"] = ch["id"]
         level -= 4
         last_victim_id = victim_id
         last_hit_ch = False
@@ -1370,7 +1366,7 @@ def do_cast(tr, player, args, world):
         return None
 
     sk = SKILLS[sn]
-    if _POS_ORDER.get(player.get("pos", "standing"), 8) < _POS_ORDER.get(sk.get("min_pos", "standing"), 8):
+    if POS_ORDER.get(player.get("pos", "standing"), 8) < POS_ORDER.get(sk.get("min_pos", "standing"), 8):
         tr.print("You can't concentrate enough.")
         return None
 

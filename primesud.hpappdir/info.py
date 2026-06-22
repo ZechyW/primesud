@@ -208,7 +208,7 @@ def do_look(tr, player, args, world):
         else:
             name = tpl["short_descr"]
             name = cap_first(name) if name else name
-            if inst["fighting"] is player:
+            if inst["fighting"] == player["id"]:
                 line = "%s is here, fighting YOU!" % name
             else:
                 line = "%s is here, fighting someone." % name

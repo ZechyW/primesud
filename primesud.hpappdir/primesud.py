@@ -207,6 +207,7 @@ class Game:
                         player["room"] = R_STARTING_ROOM
                         player["hp"]   = 1
                         player["mp"]   = 1
+                        player["pos"]  = "standing"
                         player["wait"] = 0
                         player["daze"] = 0
                         tr.print("You come to your senses. Alive, but barely.")

@@ -146,7 +146,7 @@ def perform_recall(tr, player, location, world, what="recall"):
         player["xp"] = max(0, player["xp"] - 25)
         check_improve(tr, player, GSN_RECALL, True, 4)
         tr.print("You " + what + " from combat!  You lose 25 exps.")
-        stop_fighting(player, world["chars"])
+        stop_fighting(player, world["chars"], both=False)
 
     player["room"] = location
     do_look(tr, player, [], world)
@@ -183,7 +183,7 @@ def do_flee(tr, player, args, world):
         if dest not in ROOMS:
             continue
         player["room"] = dest
-        stop_fighting(player, world["chars"])
+        stop_fighting(player, world["chars"], both=False)
         tr.print("You flee {}!".format(direction))
         player["xp"] = max(0, player["xp"] - 10)
         tr.print("You lost 10 exp.")

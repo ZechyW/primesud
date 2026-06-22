@@ -13,15 +13,13 @@ from info import (do_look, do_score, do_skills, do_spells, do_help, do_affects,
                   do_credits, do_map, do_automap, do_autolist)
 from macros import do_macro
 from system_cmds import do_save, do_quit, do_debug
-
-# Position system (cf. 1stMud position_t enum in defines.h; gaps 1-3 omitted [PRIMESUD])
-_POS_ORDER = {
-    "dead": 0, "sleeping": 4, "resting": 5,
-    "sitting": 6, "fighting": 7, "standing": 8,
-}
+from config import POS_ORDER
 
 _POS_MSG = {
     "dead":     "Lie still; you are DEAD.",
+    "mortal":   "You are hurt far too bad for that.",
+    "incap":    "You are hurt far too bad for that.",
+    "stunned":  "You are too stunned to do that.",
     "sleeping": "In your dreams, or what?",
     "resting":  "Nah... You feel too relaxed...",
     "sitting":  "Better stand up first.",
@@ -142,7 +140,7 @@ def interpret(raw, tr, player, world):
                 continue
         elif not name.startswith(verb):
             continue
-        if _POS_ORDER[pos] < _POS_ORDER[min_pos]:
+        if POS_ORDER[pos] < POS_ORDER[min_pos]:
             tr.print(_POS_MSG.get(pos, ""))
             return None
         return fn(tr, player, args, world)

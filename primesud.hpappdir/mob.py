@@ -186,6 +186,7 @@ def reset_mobs(mob_instances, room_state, resets, tr=None, debug=False):
             inst = create_mobile(tpl_vnum)
             inst["room"] = room_vnum
             inst["home_area"] = ROOM_AREAS.get(room_vnum)
+            inst["id"] = mob_id
             mob_instances[mob_id] = inst
             room_state[room_vnum]["mobs"].append(mob_id)
             if debug and tr is not None:

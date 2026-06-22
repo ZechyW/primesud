@@ -158,6 +158,16 @@ THAC0_PLATEAU = 32   # level at which natural THAC0 stops improving
 THAC0_00      = 20   # THAC0 at level 1              (higher = worse to-hit)
 THAC0_MIN     = -2   # THAC0 at level THAC0_PLATEAU  (lower  = better to-hit)
 
+# -- Position order (cf. 1stMud position_t enum in defines.h) -------------------------
+POS_ORDER = {
+    "dead": 0, "mortal": 1, "incap": 2, "stunned": 3,
+    "sleeping": 4, "resting": 5, "sitting": 6, "fighting": 7, "standing": 8,
+}
+
+# -- damage() dt threshold (cf. 1stMud TYPE_HIT in merc.h) ----------------------------
+# dt >= TYPE_HIT = physical weapon attack (dodge/parry apply); dt < TYPE_HIT = skill/spell.
+TYPE_HIT = 1000
+
 # -- Armor class buckets (cf. 1stMud AC_* in merc.h) -----------------------------------
 AC_PIERCE = 0
 AC_BASH   = 1

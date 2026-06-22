@@ -1,7 +1,7 @@
 """Shared actor stat, affect, equipment, and name-match helpers."""
 
 from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
-                    AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC)
+                    AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC, POS_ORDER)
 from world import ITEM_TEMPLATES
 from colors import cap_first
 
@@ -144,6 +144,11 @@ def _rebuild_aff_flags(char):
         if bit:
             flags[bit] = True
     char["aff_flags"] = flags
+
+
+def is_awake(ch):
+    """True if ch can act: position > sleeping (cf. 1stMud IsAwake macro in macro.h)."""
+    return POS_ORDER.get(ch.get("pos", "standing"), 8) > POS_ORDER["sleeping"]
 
 
 def get_hitroll(char):

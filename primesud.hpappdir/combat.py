@@ -2,31 +2,211 @@
 
 from urandom import randint
 
-from config import (PULSE_VIOLENCE,
-                    STR_APP_TODAM, DEX_APP_DEF, CON_APP_HITP, WIS_APP_PRACTICE,
-                    INT_APP_LEARN,
-                    CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_MIN, THAC0_PLATEAU,
-                    ATTACK_TABLE, DAM_NONE, DAM_BASH, DAM_PIERCE, DAM_SLASH,
-                    DAM_FIRE, DAM_COLD, DAM_LIGHTNING, DAM_ACID, DAM_POISON,
-                    DAM_NEGATIVE, DAM_HOLY, DAM_ENERGY, DAM_MENTAL, DAM_DISEASE,
-                    DAM_DROWNING, DAM_LIGHT, DAM_SOUND, DAM_CHARM,
-                    AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC)
-from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
-                   GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY, GSN_DODGE,
-                   GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
-                   WEAPON_GSN_MAP)
-from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, act
-from area_limbo import (I_CORPSE,
-                        I_COIN_SILVER_GCASH, I_COIN_GOLD_GCASH,
-                        I_COINS_SILVER_GCASH, I_COINS_GOLD_GCASH,
-                        I_COINS_SILVER_GOLD_GCASH)
-from item import (get_char_room, create_object, item_extra_flags,
-                  set_item_extra_flag)
+from config import (
+    PULSE_VIOLENCE,
+    POS_ORDER,
+    CON_APP_HITP,
+    WIS_APP_PRACTICE,
+    INT_APP_LEARN,
+    CLASS_HP_MIN,
+    CLASS_HP_MAX,
+    THAC0_00,
+    THAC0_MIN,
+    THAC0_PLATEAU,
+    ATTACK_TABLE,
+    TYPE_HIT,
+    DAM_NONE,
+    DAM_BASH,
+    DAM_PIERCE,
+    DAM_SLASH,
+    DAM_FIRE,
+    DAM_COLD,
+    DAM_LIGHTNING,
+    DAM_ACID,
+    DAM_POISON,
+    DAM_NEGATIVE,
+    DAM_HOLY,
+    DAM_ENERGY,
+    DAM_MENTAL,
+    DAM_DISEASE,
+    DAM_DROWNING,
+    DAM_LIGHT,
+    DAM_SOUND,
+    DAM_CHARM,
+    AC_PIERCE,
+    AC_BASH,
+    AC_SLASH,
+    AC_EXOTIC,
+)
+from world import (
+    ITEM_TEMPLATES,
+    MOB_TEMPLATES,
+    SKILL_TABLE,
+    SKILLS,
+    GSN_HAND_TO_HAND,
+    GSN_KICK,
+    GSN_PARRY,
+    GSN_DODGE,
+    GSN_SECOND_ATTACK,
+    GSN_THIRD_ATTACK,
+    WEAPON_GSN_MAP,
+)
+from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, act, is_awake
+from area_limbo import (
+    I_CORPSE,
+    I_COIN_SILVER_GCASH,
+    I_COIN_GOLD_GCASH,
+    I_COINS_SILVER_GCASH,
+    I_COINS_GOLD_GCASH,
+    I_COINS_SILVER_GOLD_GCASH,
+)
+from item import get_char_room, create_object, item_extra_flags, set_item_extra_flag
 from player import save_world
 from picker import pick_from
 
+# -- Violence update (called every PULSE_VIOLENCE) -----------------------------
+
+def violence_update(tr, player, world):
+    """One combat pulse: all chars with a fight target attack (cf. 1stMud violence_update in fight.c).
+
+    Args:
+        tr: Terminal for printing combat messages.
+        player (dict): Player state dict.
+        world (dict): Game world state (keys: rooms, mobs, areas).
+
+    Returns:
+        bool or None: True if player died this pulse; None otherwise.
+    """
+    chars = world["chars"]
+    rooms = world["rooms"]
+
+    for ch_id, ch in list(chars.items()):
+        # 1stMud: IsNPC(ch) && ch->fighting == NULL && IsAwake(ch) && ch->hunting != NULL
+        if ch["is_npc"] and ch["fighting"] is None and is_awake(ch) and ch.get("hunting") is not None:
+            # TODO: hunt_victim not ported
+            continue
+
+        # 1stMud: victim = ch->fighting; if victim == NULL || ch->in_room == NULL: continue
+        # [PRIMESUD] ch->in_room == NULL cannot occur; all chars store fighting as char ID
+        if ch["fighting"] is None:
+            continue
+        victim = chars.get(ch["fighting"])
+        if victim is None:
+            # [PRIMESUD] 1stMud nulls stale fighting refs in extract_char; we have no
+            # equivalent sweep, so detect and clean up lazily here.
+            stop_fighting(ch, chars, both=False)
+            continue
+
+        # 1stMud: if IsAwake(ch) && ch->in_room == victim->in_room: multi_hit else stop_fighting
+        if is_awake(ch) and ch["room"] == victim["room"]:
+            multi_hit(tr, ch, victim, world)
+        else:
+            stop_fighting(ch, chars, both=False)
+            continue
+
+        # 1stMud: victim = ch->fighting; if victim == NULL: continue
+        if ch["fighting"] is None:
+            continue
+
+        # [PRIMESUD] player death check; 1stMud handles inside damage()
+        if is_dead(player):
+            return True
+
+        # 1stMud: check_assist(ch, victim)
+        check_assist(tr, ch, victim, world)
+
+        # TODO: mob TRIG_FIGHT / TRIG_HPCNT triggers not ported
+        # TODO: obj worn-item TRIG_FIGHT triggers not ported
+        # TODO: room TRIG_FIGHT trigger not ported
+
+    return None
+
+
+def check_assist(tr, ch, victim, world):
+    """Let idle room chars join combat (cf. 1stMud check_assist in fight.c).
+
+    Three cases mirror 1stMud exactly:
+    - ch is player, rch is mob with assist_players: rch jumps in against victim.
+    - ch is player, rch is player: autoassist / charm (no-op in single-player).
+    - ch is mob (not charmed), rch is mob: assist_all / group / race / align / vnum;
+      50% trigger chance; target picked from victim's group (single-player: victim).
+
+    Args:
+        tr: Terminal for printing combat messages.
+        ch (dict): Attacker (player or mob).
+        victim (dict): Ch's current fight target.
+        world (dict): Game world state (keys: rooms, chars, areas).
+    """
+    chars = world["chars"]
+    rs    = world["rooms"][ch["room"]]
+    if ch["is_npc"]:
+        ch_tpl = MOB_TEMPLATES[ch["tpl"]]
+
+    for mob_id in list(rs["mobs"]):
+        rch = chars.get(mob_id)
+        if rch is None or not is_awake(rch) or rch["fighting"] is not None:
+            continue
+
+        rch_tpl = MOB_TEMPLATES[rch["tpl"]]
+        off = rch.get("off_flags", {})
+
+        # Case 1 & 2: ch is player
+        if not ch["is_npc"]:
+            # Case 1: mob with assist_players aids player against victim
+            if off.get("assist_players") and rch["level"] + 6 > victim["level"]:
+                rch["fighting"] = victim["id"]
+                tr.print("{} screams and attacks!".format(rch_tpl["short_descr"]))
+                multi_hit(tr, rch, victim, world)
+            # Case 2: autoassist / charm -- not implemented; skip mob
+            continue
+
+        # Case 3: ch is mob (not charmed)
+        ch_grp  = ch_tpl.get("group")
+        rch_grp = rch_tpl.get("group")
+        qualifies = (
+            off.get("assist_all")
+            or (rch_grp and rch_grp == ch_grp)
+            or (off.get("assist_race") and rch_tpl.get("race") == ch_tpl.get("race"))
+            or (off.get("assist_align") and _same_align(rch_tpl, ch_tpl))
+            or (off.get("assist_vnum") and rch["tpl"] == ch["tpl"])
+        )
+        if not qualifies:
+            continue
+
+        # 50% chance to skip (cf. 1stMud number_bits(1) == 0)
+        if randint(0, 1) == 0:
+            continue
+
+        # Pick random target from victim's group (cf. 1stMud target selection loop).
+        # [PRIMESUD] Single-player: victim's group = victim only; target is always victim.
+        rch["fighting"] = victim["id"]
+        tr.print("{} screams and attacks!".format(rch_tpl["short_descr"]))
+        multi_hit(tr, rch, victim, world)
+
 
 # -- Helpers -------------------------------------------------------------------
+
+def _same_align(tpl_a, tpl_b):
+    """True if both templates share the same alignment band (good/neutral/evil).
+
+    Args:
+        tpl_a (dict): First mob template.
+        tpl_b (dict): Second mob template.
+
+    Returns:
+        bool: True if both are in the same alignment band.
+    """
+    # cf. 1stMud IsGood/IsEvil/IsNeutral (>= 350, <= -350, between) in merc.h
+    a = tpl_a.get("alignment", 0)
+    b = tpl_b.get("alignment", 0)
+    if a >= 350 and b >= 350:
+        return True
+    if a <= -350 and b <= -350:
+        return True
+    if -350 < a < 350 and -350 < b < 350:
+        return True
+    return False
+
 
 def _dice(num, size):
     """Roll num dice of size sides and return the sum.
@@ -207,45 +387,6 @@ def _damage_punct(dmg):
     if dmg <= 3000: return "!!"
     if dmg <= 5000: return "!!!"
     return "!!!!"
-
-
-def deal_player_mob_damage(tr, player, victim, dam, world=None, victim_id=None,
-                           attack_noun=None, kill_now=False):
-    """Apply direct player-caused damage to a mob (cf. 1stMud damage in fight.c).
-
-    Args:
-        tr: Terminal for printing damage text.
-        player (dict): Player state dict.
-        victim (dict): Mob instance dict.
-        dam (int): Damage amount before clamp.
-        world (dict or None): Game world state for death handling.
-        victim_id (int or None): Runtime mob id for death handling.
-        attack_noun (str or None): Attack noun. None = unarmed-style "You verb".
-        kill_now (bool): Resolve death immediately through raw_kill when True.
-
-    Returns:
-        bool: True if target reached 0 HP.
-    """
-    if dam < 0:
-        dam = 0
-
-    victim["hp"] = max(0, victim["hp"] - dam)
-
-    vs, vp = _damage_verb(dam)
-    punct = _damage_punct(dam)
-    victim_name = MOB_TEMPLATES[victim["tpl"]]["short_descr"]
-    if attack_noun:
-        tr.print("{GYour %s %s {G%s%s {W[{R%d{W]{x" % (
-            attack_noun, vp, victim_name, punct, dam))
-    else:
-        tr.print("{GYou %s {G%s%s {W[{R%d{W]{x" % (
-            vs, victim_name, punct, dam))
-
-    killed = victim["hp"] == 0
-    if kill_now and killed and victim_id is not None and world is not None:
-        raw_kill(tr, player, victim_id, victim, MOB_TEMPLATES[victim["tpl"]], world)
-        _advance_target(player, world["chars"], world["rooms"])
-    return killed
 
 
 def _attack_info(dam_type):
@@ -565,9 +706,352 @@ def check_dodge(tr, ch, victim):
     return True
 
 
+# -- Core damage resolution ----------------------------------------------------
+
+def is_dead(ch):
+    """True if ch is in POS_DEAD (cf. 1stMud POS_DEAD check in fight.c)."""
+    return ch.get("pos") == "dead"
+
+
+def update_pos(ch):
+    """Set ch's position from current HP (cf. 1stMud update_pos in handler.c).
+
+    1stMud update_pos (handler.c):
+        if (ch->hit > 0) { if (pos <= POS_STUNNED) pos = POS_STANDING; return; }
+        if (hp <= -11) pos = POS_DEAD
+        elif (hp <= -6) pos = POS_MORTAL
+        elif (hp <= -3) pos = POS_INCAP
+        else            pos = POS_STUNNED   (covers 0 and -1 to -2)
+
+    Args:
+        ch (dict): Character state dict.
+    """
+    hp = ch["hp"]
+    # 1stMud: if (ch->hit > 0) { if (ch->position <= POS_STUNNED) ch->position = POS_STANDING; return; }
+    if hp > 0:
+        if POS_ORDER.get(ch.get("pos", "standing"), 8) <= POS_ORDER["stunned"]:
+            ch["pos"] = "standing"
+        return
+    # 1stMud: if (hp <= -11) DEAD; elif (hp <= -6) MORTAL; elif (hp <= -3) INCAP; else STUNNED
+    if hp <= -11:
+        ch["pos"] = "dead"
+    elif hp <= -6:
+        ch["pos"] = "mortal"
+    elif hp <= -3:
+        ch["pos"] = "incap"
+    else:
+        ch["pos"] = "stunned"
+
+
+def dam_message(tr, ch, victim, dam, dt, immune, attack_noun=None):
+    """Print damage message from ch's attack on victim (cf. 1stMud dam_message in fight.c).
+
+    Single-player: only the player sees messages, as attacker (ch=player) or victim (ch=mob).
+
+    Args:
+        tr: Terminal for printing messages.
+        ch (dict): Attacker (player or mob instance).
+        victim (dict): Defender (player or mob instance).
+        dam (int): Final damage dealt (0 = miss).
+        dt (int): Damage type; dt >= TYPE_HIT means physical attack.
+        immune (bool): True if victim was fully immune (dam forced to 0 by immunity).
+        attack_noun (str or None): Attack display noun (e.g. "slash", "kick"); None = unarmed.
+    """
+    vs, vp = _damage_verb(dam)
+    punct  = _damage_punct(dam)
+
+    if not ch["is_npc"]:
+        # 1stMud dam_message: ch is player; message goes to ch (TO_CHAR perspective)
+        victim_name = MOB_TEMPLATES[victim["tpl"]]["short_descr"]
+        if immune:
+            # 1stMud: "... but $N is unaffected." (immune suffix)
+            if attack_noun:
+                tr.print("{GYour %s doesn't affect {G%s.{x" % (attack_noun, victim_name))
+            else:
+                tr.print("{GYour attack doesn't affect {G%s.{x" % victim_name)
+        elif dam == 0:
+            # 1stMud: miss message without damage bracket
+            if attack_noun:
+                tr.print("{GYour %s misses {G%s.{x" % (attack_noun, victim_name))
+            else:
+                tr.print("{GYou miss {G%s.{x" % victim_name)
+        elif attack_noun:
+            tr.print("{GYour %s %s {G%s%s {W[{R%d{W]{x" % (attack_noun, vp, victim_name, punct, dam))
+        else:
+            tr.print("{GYou %s {G%s%s {W[{R%d{W]{x" % (vs, victim_name, punct, dam))
+    else:
+        # 1stMud dam_message: ch is mob; message goes to victim (TO_VICT) when victim is player
+        ch_name = MOB_TEMPLATES[ch["tpl"]]["short_descr"]
+        if immune:
+            tr.print("{RYour body is unaffected by %s's attack.{x" % ch_name)
+        elif dam == 0:
+            # 1stMud: miss message without damage bracket
+            if attack_noun:
+                tr.print("{R%s's %s misses {Ryou.{x" % (ch_name, attack_noun))
+            else:
+                tr.print("{R%s misses {Ryou.{x" % ch_name)
+        elif attack_noun:
+            tr.print("{R%s's %s %s {Ryou%s {W[{R%d{W]{x" % (ch_name, attack_noun, vp, punct, dam))
+        else:
+            tr.print("{R%s %s {Ryou%s {W[{R%d{W]{x" % (ch_name, vp, punct, dam))
+
+
+def damage(tr, ch, victim, dam, dt, dam_type, show, world, attack_noun=None):
+    """Apply damage to victim from ch; handle combat state, immunity, and death
+    (cf. 1stMud damage in fight.c).
+
+    dt >= TYPE_HIT = physical attack (dodge/parry checks apply).
+    dt < TYPE_HIT  = skill/spell (no defensive checks).
+
+    Args:
+        tr: Terminal for printing messages.
+        ch (dict): Attacker (player or mob instance).
+        victim (dict): Defender (player or mob instance).
+        dam (int): Raw damage before soft-caps and modifiers.
+        dt (int): Damage type ID; TYPE_HIT for weapon, skill sn for spells/skills.
+        dam_type (int): DAM_* class for immunity checks.
+        show (bool): Print dam_message if True (position messages always shown).
+        world (dict or None): Game world state; required for death resolution.
+        attack_noun (str or None): Attack display noun for dam_message.
+
+    Returns:
+        bool: True if damage applied (including kill); False on miss/dodge/parry/immune/dead.
+    """
+    # 1stMud: if (victim->position == POS_DEAD) return false;
+    if is_dead(victim):
+        return False
+
+    # 1stMud: if (dam > 10000 && dt >= TYPE_HIT) { bugf...; dam = 10000; ... cheat removal ... }
+    if dam > 10000 and dt >= TYPE_HIT:
+        dam = 10000
+
+    # 1stMud: if (dam > 35) dam = (dam-35)/2 + 35; if (dam > 80) dam = (dam-80)/2 + 80;
+    if dam > 35:
+        dam = (dam - 35) // 2 + 35
+    if dam > 80:
+        dam = (dam - 80) // 2 + 80
+
+    # 1stMud: if (!IsNPC(ch)) { if (IsNPC(victim)) dam *= mud_info.pcdam/100; }
+    #         else dam *= mud_info.mobdam/100;
+    # [PRIMESUD] skip pcdam/mobdam multipliers (mud_info not ported)
+
+    if victim is not ch:
+        # 1stMud: if (is_safe(ch, victim)) return false;
+        # [PRIMESUD] skip is_safe (not ported)
+
+        # 1stMud: check_killer(ch, victim);
+        # [PRIMESUD] skip check_killer (not ported)
+
+        # 1stMud: if (victim->position > POS_STUNNED) {
+        #             if (victim->fighting == NULL) { set_fighting(victim,ch); TRIG_KILL; }
+        #             if (victim->timer <= 4) victim->position = POS_FIGHTING; }
+        if POS_ORDER.get(victim.get("pos", "standing"), 8) > POS_ORDER["stunned"]:
+            if victim["fighting"] is None:
+                victim["fighting"] = ch["id"]
+                # 1stMud: if (IsNPC(victim) && HasTriggerMob(victim,TRIG_KILL)) p_percent_trigger(...)
+                # [PRIMESUD] skip TRIG_KILL (not ported)
+            # 1stMud: if (victim->timer <= 4) victim->position = POS_FIGHTING;
+            # [PRIMESUD] use wait as closest analogue to 1stMud timer
+            if victim.get("wait", 0) <= 4:
+                victim["pos"] = "fighting"
+
+        # 1stMud: if (victim->position > POS_STUNNED) {
+        #             if (ch->fighting == NULL) set_fighting(ch, victim); }
+        if POS_ORDER.get(victim.get("pos", "standing"), 8) > POS_ORDER["stunned"]:
+            if ch["fighting"] is None:
+                ch["fighting"] = victim["id"]
+
+        # 1stMud: if (victim->master == ch) stop_follower(victim);
+        # [PRIMESUD] skip stop_follower (no charm/follower system ported)
+
+    # 1stMud: if (IsAffected(ch, AFF_INVISIBLE)) { affect_strip(ch, gsn_invis); ... act("$n fades in"); }
+    # [PRIMESUD] skip invis strip (not ported)
+
+    # 1stMud: if (dam > 1 && !IsNPC(victim) && victim->pcdata->condition[COND_DRUNK] > 10)
+    #             dam = 9 * dam / 10;
+    # [PRIMESUD] skip drunk damage reduction (condition system not ported)
+
+    # 1stMud: if (dam > 1 && IsAffected(victim, AFF_SANCTUARY)) dam /= 2;
+    if dam > 1 and victim.get("affected_by", {}).get("sanctuary"):
+        dam //= 2
+
+    # 1stMud: if (dam > 1 && ((IsAffected(victim, AFF_PROTECT_EVIL) && IsEvil(ch)) || ...))
+    #             dam -= dam / 4;
+    # [PRIMESUD] skip protect_evil/good (affects not ported)
+
+    # 1stMud: if (mud_info.bonus.status == BONUS_DAM) dam *= mud_info.bonus.mod;
+    # [PRIMESUD] skip bonus damage event (not ported)
+
+    # 1stMud: if (dt >= TYPE_HIT && ch != victim) { check_dodge; check_parry; check_shield_block; ... }
+    immune = False
+    if dt >= TYPE_HIT and ch is not victim:
+        # 1stMud: if (check_dodge(ch, victim)) return false;
+        if check_dodge(tr, ch, victim):
+            return False
+        # 1stMud: if (check_parry(ch, victim)) return false;
+        if check_parry(tr, ch, victim):
+            return False
+        # 1stMud: if (check_shield_block(ch, victim)) return false;
+        # [PRIMESUD] skip shield_block (not ported)
+        # 1stMud: if (IsAffected(victim,AFF_FORCE_SHIELD) && check_force_shield(...)) return false;
+        # 1stMud: if (IsAffected(victim,AFF_STATIC_SHIELD) && check_static_shield(...)) return false;
+        # [PRIMESUD] skip force/static shields (not ported)
+
+    # 1stMud: if (IsAffected(victim, AFF_FLAME_SHIELD) && dam_type <= 3) check_flame_shield(ch, victim);
+    # [PRIMESUD] skip flame_shield (not ported)
+
+    # 1stMud: switch (check_immune(victim, dam_type)) {
+    #             case IS_IMMUNE:    immune=true; dam=0; break;
+    #             case IS_RESISTANT: dam -= dam/3; break;
+    #             case IS_VULNERABLE: dam += dam/2; break; }
+    imm_result = check_immune(victim, dam_type)
+    if imm_result == IS_IMMUNE:
+        immune = True
+        dam = 0
+    elif imm_result == IS_RESISTANT:
+        dam -= dam // 3
+    elif imm_result == IS_VULNERABLE:
+        dam += dam // 2
+
+    # 1stMud: randomize_damage(ch, dam, dice(1,100));
+    # [PRIMESUD] skip randomize_damage (minor variance; not ported)
+
+    # 1stMud: if (show) dam_message(ch, victim, dam, dt, immune);
+    if show:
+        dam_message(tr, ch, victim, dam, dt, immune, attack_noun)
+
+    # 1stMud: if (dam == 0) return false;
+    if dam == 0:
+        return False
+
+    # 1stMud: victim->hit -= dam;
+    victim["hp"] -= dam
+
+    # 1stMud: if (!IsNPC(victim) && victim->level >= LEVEL_IMMORTAL && victim->hit < 1)
+    #             victim->hit = 1;
+    # [PRIMESUD] skip immortal HP floor (no immortal players)
+
+    # 1stMud: update_pos(victim);
+    update_pos(victim)
+
+    # 1stMud: switch (victim->position) { case POS_MORTAL: ... case POS_DEAD: ... default: ... }
+    # pos captured before stop_fighting (called below) can reset it to "standing".
+    pos = victim.get("pos", "standing")
+    victim_name = MOB_TEMPLATES[victim["tpl"]]["short_descr"] if victim["is_npc"] else None
+
+    if pos == "mortal":
+        # 1stMud: act("$n is mortally wounded, and will die soon, if not aided.", victim, TO_ROOM)
+        #         chprintln(victim, "You are mortally wounded, and will die soon, if not aided.")
+        if victim["is_npc"]:
+            act(tr, "{} is mortally wounded, and will die soon, if not aided.".format(victim_name))
+        else:
+            tr.print("You are mortally wounded, and will die soon, if not aided.")
+    elif pos == "incap":
+        # 1stMud: act("$n is incapacitated and will slowly die, if not aided.", victim, TO_ROOM)
+        #         chprintln(victim, "You are incapacitated and will slowly die, if not aided.")
+        if victim["is_npc"]:
+            act(tr, "{} is incapacitated and will slowly die, if not aided.".format(victim_name))
+        else:
+            tr.print("You are incapacitated and will slowly die, if not aided.")
+    elif pos == "stunned":
+        # 1stMud: act("$n is stunned, but will probably recover.", victim, TO_ROOM)
+        #         chprintln(victim, "You are stunned, but will probably recover.")
+        if victim["is_npc"]:
+            act(tr, "{} is stunned, but will probably recover.".format(victim_name))
+        else:
+            tr.print("You are stunned, but will probably recover.")
+    elif pos == "dead":
+        # 1stMud: act("$n is DEAD!!", victim, 0, 0, TO_ROOM)
+        if victim["is_npc"]:
+            act(tr, "{} is DEAD!!".format(victim_name))
+        # 1stMud: chprintln(victim, "You have been KILLED!!")
+        # [PRIMESUD] player death message printed by game loop (primesud.py) to avoid duplicate
+    else:
+        # 1stMud: default:
+        #   if (dam > victim->max_hit/4) chprintln(victim, "That really did HURT!")
+        #   if (victim->hit < victim->max_hit/4) chprintln(victim, "You sure are BLEEDING!")
+        if not victim["is_npc"]:
+            hp_max = victim.get("hp_max", 1)
+            if dam > hp_max // 4:
+                tr.print("That really did HURT!")
+            if victim["hp"] < hp_max // 4:
+                tr.print("You sure are BLEEDING!")
+
+    # 1stMud: if (!IsAwake(victim)) stop_fighting(victim, false);
+    if not is_awake(victim):
+        if world is not None:
+            stop_fighting(victim, world["chars"], both=False)
+        # stop_fighting resets pos to "standing"; re-correct from HP
+        update_pos(victim)
+
+    # 1stMud: if (victim->position == POS_DEAD) { ... raw_kill(victim, ch) ... }
+    if pos == "dead":
+        # 1stMud: if (IS_IN_ARENA...) check_arena; if (InWar...) check_war;
+        # [PRIMESUD] skip arena and war (not ported)
+
+        # 1stMud: group_gain(ch, victim)
+        # [PRIMESUD] skip group_gain (single-player; XP handled in raw_kill via _xp_for_kill)
+
+        # 1stMud: if (!IsNPC(victim)) { logf(...); if (!IsQuester...) gain_exp(loss); }
+        # [PRIMESUD] skip player death exp loss (not ported)
+
+        # 1stMud: new_wiznet / announce
+        # [PRIMESUD] skip wiznet/announce (not ported)
+
+        # 1stMud: if (IsNPC(victim) && HasTriggerMob(victim, TRIG_DEATH)) p_percent_trigger(...)
+        # [PRIMESUD] skip TRIG_DEATH (not ported)
+
+        # 1stMud: update_death(victim, ch)
+        # [PRIMESUD] skip update_death (not ported)
+
+        # 1stMud: raw_kill(victim, ch)
+        if victim["is_npc"] and world is not None:
+            raw_kill(tr, ch, victim["id"], victim, MOB_TEMPLATES[victim["tpl"]], world)
+            _advance_target(ch, world["chars"], world["rooms"])
+        # [PRIMESUD] player death: game loop in primesud.py handles death message and respawn
+
+        # 1stMud: if (ch != victim && !IsNPC(ch) && ...) outlaw flag removal
+        # [PRIMESUD] skip outlaw flag removal (not ported)
+
+        # 1stMud: if (!IsNPC(ch) && (corpse = get_obj_list...) ... autoloot/autogold/autosac
+        # [PRIMESUD] TODO: autoloot/autogold/autosac not ported
+
+        return True
+
+    # 1stMud: if (victim == ch) return true;
+    if victim is ch:
+        return True
+
+    # 1stMud: if (!IsNPC(victim) && victim->desc == NULL) { ... perform_recall ... }
+    # [PRIMESUD] skip linkdead recall (no multiplayer)
+
+    # 1stMud: if (IsNPC(victim) && dam > 0 && victim->wait < PULSE_VIOLENCE/2) {
+    #             if (ACT_WIMPY && number_bits(2)==0 && hit < max_hit/5) do_flee;
+    #             elif (AFF_CHARM && master && master->in_room != victim->in_room) do_flee; }
+    if victim["is_npc"] and dam > 0 and victim.get("wait", 0) < PULSE_VIOLENCE // 2:
+        off = victim.get("off_flags", {})
+        if (off.get("wimpy") and randint(0, 3) == 0
+                and victim["hp"] < victim.get("hp_max", 1) // 5):
+            # TODO: mob flee not ported (do_flee in movement.py is player-only)
+            pass
+        elif (victim.get("affected_by", {}).get("charm")
+              and victim.get("master") is not None):
+            # TODO: charmed mob flee not ported
+            pass
+
+    # 1stMud: if (!IsNPC(victim) && victim->hit > 0 && victim->hit <= victim->wimpy
+    #             && victim->wait < PULSE_VIOLENCE/2) do_function(victim, &do_flee, "");
+    # TODO: player wimpy flee not ported (wimpy threshold not in player dict)
+
+    # 1stMud: tail_chain();
+    # [PRIMESUD] skip tail_chain (event queue not ported)
+
+    return True
+
+
 # -- Core attack: one_hit ------------------------------------------------------
 
-def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
+def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False, world=None):
     """One attack from ch against victim (cf. 1stMud one_hit in fight.c).
 
     Args:
@@ -576,14 +1060,15 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
         victim (dict): Defender (player or mob instance).
         bonus_damroll (int): Extra damage roll bonus (e.g. from skills).
         secondary (bool): True = secondary weapon (cf. 1stMud bool secondary).
+        world (dict or None): Game world state; passed through to damage().
 
     Returns:
-        int: Damage dealt (0 on miss).
+        bool: True if damage was applied.
     """
     # Weapon / skill (cf. 1stMud one_hit: skill = 20 + get_weapon_skill, fight.c)
     slot = "secondary" if secondary else "wield"
     if secondary and ch["equip"].get(slot) is None:
-        return 0
+        return False
     sk_vnum, wtpl = _get_weapon_sn(ch, slot)
     skill = 20 + _get_weapon_skill(ch, sk_vnum)
 
@@ -601,32 +1086,20 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
         dam_type = wtpl["dam_type"] if wtpl is not None else "none"
         ch_tpl   = None
     attack_noun, dam_class = _attack_info(dam_type)
+    # None = unarmed (no noun in dam_message); mirrors 1stMud !armed display branch
+    noun = None if dam_type == "none" else attack_noun
     victim_ac = get_armor(victim, _ac_type_for_damage_class(dam_class)) // 10
     if victim_ac < -15:  # soft cap (cf. 1stMud one_hit fight.c)
         victim_ac = -((-victim_ac - 15) // 5) - 15
-    armed = dam_type != "none"
 
-    # Hit check
+    # 1stMud: if (number_range(0,19) < thac0 - victim_ac)
+    #             return damage(ch, victim, 0, dt, DAM_NONE, true);
     roll = randint(0, 19)
     if roll == 0 or (roll != 19 and roll < thac0 - victim_ac):
-        if ch["is_npc"]:
-            act(tr, "{R%s's %s misses {Ryou.{x" % (ch_tpl["short_descr"], attack_noun))
-        else:
-            vs, vp = _damage_verb(0)
-            victim_name = MOB_TEMPLATES[victim["tpl"]]["short_descr"]
-            if armed:
-                tr.print("{GYour %s %s {G%s.{x" % (attack_noun, vp, victim_name))
-            else:
-                tr.print("{GYou %s {G%s.{x" % (vs, victim_name))
-        return 0
+        damage(tr, ch, victim, 0, TYPE_HIT, DAM_NONE, show=True, world=world, attack_noun=noun)
+        return False
 
-    # Dodge then parry (cf. 1stMud one_hit: check_dodge before check_parry)
-    if check_dodge(tr, ch, victim):
-        return 0
-    if check_parry(tr, ch, victim):
-        return 0
-
-    # Damage
+    # Damage calculation (cf. 1stMud one_hit)
     if ch["is_npc"]:
         num, size, _ = ch_tpl["damage"]
         dam = _dice(num, size)
@@ -640,39 +1113,24 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
         dam = randint(lo, hi)
 
     dam += (get_damroll(ch) + bonus_damroll) * min(100, skill) // 100
-
-    # Soft damage caps (cf. 1stMud)
-    if dam > 35:
-        dam = (dam - 35) // 2 + 35
-    if dam > 80:
-        dam = (dam - 80) // 2 + 80
     dam = max(1, dam)
 
-    # Immunity / resistance / vulnerability modifier (cf. 1stMud damage() in fight.c)
-    immune = check_immune(victim, dam_class)
-    if immune == IS_IMMUNE:
-        dam = 0
-    elif immune == IS_RESISTANT:
-        dam -= dam // 3
-    elif immune == IS_VULNERABLE:
-        dam += dam // 3
+    # Position bonus: sleeping victim takes double, non-fighting victim takes 1.5x (cf. 1stMud one_hit in fight.c)
+    vpos = POS_ORDER.get(victim.get("pos", "standing"), 8)
+    if not is_awake(victim):
+        dam *= 2
+    elif vpos < POS_ORDER["fighting"]:
+        dam = dam * 3 // 2
 
-    if ch["is_npc"]:
-        victim["hp"] = max(0, victim["hp"] - dam)
-        vs, vp = _damage_verb(dam)
-        punct  = _damage_punct(dam)
-        act(tr, "{R%s's %s %s {Ryou%s {W[{R%d{W]{x" % (ch_tpl["short_descr"], attack_noun, vp, punct, dam))
-        if dam > victim["hp_max"] // 4:
-            tr.print("That really did HURT!")
-        if victim["hp"] < victim["hp_max"] // 4:
-            tr.print("You sure are BLEEDING!")
-    else:
-        deal_player_mob_damage(
-            tr, ch, victim, dam, attack_noun=attack_noun if armed else None)
-        if sk_vnum != -1:
-            check_improve(tr, ch, sk_vnum, True, 5)
+    # 1stMud: return damage(ch, victim, dam, dt, dam_type, true);
+    # Soft caps, immunity, dodge/parry all handled inside damage().
+    hit = damage(tr, ch, victim, dam, TYPE_HIT, dam_class, show=True, world=world,
+                 attack_noun=noun)
 
-    return dam
+    if hit and not ch["is_npc"] and sk_vnum != -1:
+        check_improve(tr, ch, sk_vnum, True, 5)
+
+    return hit
 
 
 def do_kick(tr, ch, args, world):
@@ -685,9 +1143,10 @@ def do_kick(tr, ch, args, world):
         world (dict): Game world state (keys: rooms, mobs, areas).
     """
     if ch["is_npc"]:
-        target = ch["fighting"]   # player dict, set by set_fighting
-        if target is None:
+        target_id = ch["fighting"]
+        if target_id is None:
             return None
+        target = world["chars"][target_id]
     else:
         if GSN_KICK not in ch["learned"]:
             tr.print("You better leave the martial arts to fighters.")
@@ -709,24 +1168,16 @@ def do_kick(tr, ch, args, world):
 
     if skill_pct > randint(1, 100):
         dam = randint(1, max(1, ch["level"]))
-        target["hp"] = max(0, target["hp"] - dam)
-        _, vp  = _damage_verb(dam)
-        punct  = _damage_punct(dam)
-        if ch["is_npc"]:
-            act(tr, "{R%s kicks {Ryou%s {W[{R%d{W]{x" % (MOB_TEMPLATES[ch["tpl"]]["short_descr"], punct, dam))
-        else:
-            tpl = MOB_TEMPLATES[target["tpl"]]
-            act(tr, "{GYour kick %s {G%s%s {W[{R%d{W]{x" % (vp, tpl["short_descr"], punct, dam))
+        # 1stMud: damage(ch, victim, dam, gsn_kick, DAM_BASH, true)
+        damage(tr, ch, target, dam, GSN_KICK, DAM_BASH, show=True, world=world,
+               attack_noun="kick")
+        if not ch["is_npc"]:
             check_improve(tr, ch, GSN_KICK, True, 1)
-            if target["hp"] == 0:
-                raw_kill(tr, ch, target_id, target, tpl, world)
-                _advance_target(ch, world["chars"], world["rooms"])
     else:
-        if ch["is_npc"]:
-            act(tr, "{R%s's kick misses {Ryou.{x" % MOB_TEMPLATES[ch["tpl"]]["short_descr"])
-        else:
-            tpl = MOB_TEMPLATES[target["tpl"]]
-            act(tr, "{GYour kick misses {G%s.{x" % tpl["short_descr"])
+        # 1stMud: damage(ch, victim, 0, gsn_kick, DAM_BASH, true)
+        damage(tr, ch, target, 0, GSN_KICK, DAM_BASH, show=True, world=world,
+               attack_noun="kick")
+        if not ch["is_npc"]:
             check_improve(tr, ch, GSN_KICK, False, 1)
     return None
 
@@ -765,8 +1216,8 @@ def mob_hit(tr, ch, victim, world):
         victim (dict): Player state dict.
         world (dict): Game world state (keys: rooms, mobs, areas).
     """
-    one_hit(tr, ch, victim)
-    if victim["hp"] == 0:
+    one_hit(tr, ch, victim, world=world)
+    if is_dead(victim):
         return
 
     # Second and third attacks (cf. 1stMud get_skill NPC branch in handler.c + multi_hit in fight.c)
@@ -774,14 +1225,18 @@ def mob_hit(tr, ch, victim, world):
     lvl = ch["level"]
     npc_skill = (lvl // 2 + lvl // 3) if lvl > 2 else lvl
     if randint(1, 100) < npc_skill // 2:
-        one_hit(tr, ch, victim)
-        if victim["hp"] == 0:
+        one_hit(tr, ch, victim, world=world)
+        if is_dead(victim):
             return
 
     if randint(1, 100) < npc_skill // 4:
-        one_hit(tr, ch, victim)
-        if victim["hp"] == 0:
+        one_hit(tr, ch, victim, world=world)
+        if is_dead(victim):
             return
+
+    # 1stMud: if (ch->wait > 0) return; -- blocks mob specials
+    if ch.get("wait", 0) > 0:
+        return
 
     # Off-flag specials (cf. 1stMud mob_hit random switch)
     if ch["off_flags"].get("kick") and randint(0, 8) == 3:
@@ -826,13 +1281,14 @@ _SPECIAL_MOVES = [
 ]
 
 
-def _try_special_move(tr, player, target_inst):
+def _try_special_move(tr, player, target_inst, world):
     """Unarmed-only bonus attack with flavour (cf. 1stMud special_move).
 
     Args:
         tr: Terminal for printing combat messages.
         player (dict): Player state dict.
         target_inst (dict): Target mob instance dict.
+        world (dict): Game world state.
 
     Returns:
         int: Damage dealt (0 if not triggered or player has a weapon).
@@ -852,10 +1308,11 @@ def _try_special_move(tr, player, target_inst):
     lo  = max(1, 1 + 4 * skill // 100)
     hi  = max(lo, 2 * player["level"] * skill // 300)
     dam = max(1, randint(lo, hi))
-    target_inst["hp"] = max(0, target_inst["hp"] - dam)
     last = move[-1] % name if "%s" in move[-1] else move[-1]
     tr.print("%s {W[{R%d{W]{x" % (last, dam))
     check_improve(tr, player, GSN_HAND_TO_HAND, True, 5)
+    # show=False: flavor text above already shows dam count; damage() still handles death/state
+    damage(tr, player, target_inst, dam, GSN_HAND_TO_HAND, DAM_BASH, show=False, world=world)
     return dam
 
 
@@ -875,37 +1332,41 @@ def multi_hit(tr, ch, victim, world=None):
     """
     if ch["is_npc"]:
         mob_hit(tr, ch, victim, world)
-        return victim["hp"] == 0
+        return is_dead(victim)
 
     # Primary
-    one_hit(tr, ch, victim)
-    if victim["hp"] == 0:
+    one_hit(tr, ch, victim, world=world)
+    if is_dead(victim):
         return True
 
     # Offhand weapon (cf. 1stMud multi_hit WEAR_SECONDARY in fight.c)
     # Specifically, ensures that secondary item is a weapon before allowing hit
     secondary_obj = ch["equip"].get("secondary")
     if secondary_obj is not None and ITEM_TEMPLATES[secondary_obj["vnum"]].get("type") == "weapon":
-        one_hit(tr, ch, victim, secondary=True)
-        if victim["hp"] == 0:
+        one_hit(tr, ch, victim, secondary=True, world=world)
+        if is_dead(victim):
             return True
 
     # Second attack: skill/2 chance; third: skill/4 chance (cf. 1stMud multi_hit in fight.c)
     if randint(1, 100) < ch["learned"].get(GSN_SECOND_ATTACK, 0) // 2:
-        one_hit(tr, ch, victim)
+        one_hit(tr, ch, victim, world=world)
         check_improve(tr, ch, GSN_SECOND_ATTACK, True, 5)
-        if victim["hp"] == 0:
+        if is_dead(victim):
             return True
     if randint(1, 100) < ch["learned"].get(GSN_THIRD_ATTACK, 0) // 4:
-        one_hit(tr, ch, victim)
+        one_hit(tr, ch, victim, world=world)
         check_improve(tr, ch, GSN_THIRD_ATTACK, True, 6)
-        if victim["hp"] == 0:
+        if is_dead(victim):
             return True
+
+    # 1stMud: if (ch->wait > 0) return; -- blocks specials for players too
+    if ch.get("wait", 0) > 0:
+        return False
 
     # [PRIMESUD] Unarmed special move -- no 1stMud equivalent
     if ch["equip"].get("wield") is None:
-        _try_special_move(tr, ch, victim)
-        if victim["hp"] == 0:
+        _try_special_move(tr, ch, victim, world)
+        if is_dead(victim):
             return True
 
     return False
@@ -924,49 +1385,9 @@ def set_fighting(tr, player, mob_id, mob_instances):
     """
     inst = mob_instances[mob_id]
     tpl  = MOB_TEMPLATES[inst["tpl"]]
-    inst["fighting"] = player
+    inst["fighting"] = player["id"]
     player["fighting"] = mob_id
     player["pos"]      = "fighting"
-
-
-def check_assist(tr, player, attacked_id, mob_instances, room_state):
-    """Let idle room mobs join combat against the player (cf. 1stMud check_assist in fight.c).
-
-    Checks every idle mob in the room; those whose off_flags qualify jump in.
-    Triggers: assist_all (always), assist_vnum (same template), assist_race
-    (same race field), or matching non-zero group value.
-
-    Args:
-        tr: Terminal for printing combat messages.
-        player (dict): Player state dict.
-        attacked_id (int): ID of the mob the player is currently attacking.
-        mob_instances (dict): Mob instance mapping mob ID -> mob instance dict.
-        room_state (dict): Room state mapping room ID -> room state dict.
-    """
-    rs            = room_state[player["room"]]
-    attacked_inst = mob_instances[attacked_id]
-    attacked_tpl  = MOB_TEMPLATES[attacked_inst["tpl"]]
-
-    for mid in rs["mobs"]:
-        if mid == attacked_id:
-            continue
-        inst = mob_instances[mid]
-        if inst["fighting"] is not None:
-            continue
-        tpl = MOB_TEMPLATES[inst["tpl"]]
-        if tpl.get("passive"):
-            continue
-
-        off = inst.get("off_flags", {})
-        grp = tpl.get("group")
-        if (off.get("assist_all")
-                or (off.get("assist_vnum") and inst["tpl"] == attacked_inst["tpl"])
-                or (off.get("assist_race")
-                    and tpl.get("race") == attacked_tpl.get("race"))
-                or (grp and grp == attacked_tpl.get("group"))):
-            inst["fighting"] = player
-            tr.print("{} screams and attacks!".format(
-                tpl["short_descr"]))
 
 
 def stop_fighting(ch, chars, both=False):
@@ -982,12 +1403,13 @@ def stop_fighting(ch, chars, both=False):
         both (bool): If true, all other characters stop fighting `ch`.
     """
     for char in chars.values():
-        if char == ch or (both and char["fighting"] == ch):
+        if char == ch or (both and char["fighting"] == ch["id"]):
             char["fighting"] = None
             # [PRIMESUD] original .are files allow for mobs to have default positions
             # specified, but we haven't ported this yet.
             char["pos"] = "standing"
-            # TODO: update_pos is called here, setting stunned/mortal/incap/dead.
+            # TODO: update_pos is called here in 1stMud, correcting dead/stunned pos.
+            #       damage() calls update_pos after stop_fighting to compensate.
             # TODO: Stance is reset here.
 
 
@@ -1008,100 +1430,7 @@ def _advance_target(player, mob_instances, room_state):
     if next_id is not None:
         player["fighting"] = next_id
     else:
-        stop_fighting(player, mob_instances)
-
-
-# -- Violence update (called every PULSE_VIOLENCE) -----------------------------
-
-def violence_update(tr, player, world):
-    """One combat pulse: all chars with a fight target attack (cf. 1stMud violence_update in fight.c).
-
-    Args:
-        tr: Terminal for printing combat messages.
-        player (dict): Player state dict.
-        world (dict): Game world state (keys: rooms, mobs, areas).
-
-    Returns:
-        bool or None: True if player died this pulse; None otherwise.
-    """
-    mobs  = world["chars"]
-    rooms = world["rooms"]
-
-    for ch_id, ch in list(mobs.items()):
-        is_npc = ch["is_npc"]
-
-        # 1stMud: IsNPC(ch) && ch->fighting == NULL && IsAwake(ch) && ch->hunting != NULL
-        # [PRIMESUD] IsAwake always true -- no position system ported yet
-        if is_npc and ch["fighting"] is None and ch.get("hunting") is not None:
-            # TODO: hunt_victim not ported
-            continue
-
-        # 1stMud: victim = ch->fighting; if victim == NULL || ch->in_room == NULL: continue
-        # [PRIMESUD] ch->in_room == NULL cannot occur
-        if ch["fighting"] is None:
-            continue
-
-        # Resolve victim
-        # [PRIMESUD] single player; NPC victim is always player, player victim is mob by ID
-        if is_npc:
-            victim    = player
-            victim_id = None
-        else:
-            victim_id = ch["fighting"]
-            victim    = mobs.get(victim_id)
-            if victim is None:
-                stop_fighting(player, mobs)
-                continue
-
-        # 1stMud: if IsAwake(ch) && ch->in_room == victim->in_room: multi_hit else stop_fighting
-        # [PRIMESUD] IsAwake always true; same-room via room["mobs"] membership
-        player_room_mobs = rooms[player["room"]]["mobs"]
-        if is_npc:
-            same_room = ch_id in player_room_mobs
-        else:
-            same_room = victim_id in player_room_mobs
-
-        if not same_room:
-            stop_fighting(ch, mobs)
-            continue
-
-        # [PRIMESUD] wait/passive not in 1stMud violence_update
-        if ch.get("wait", 0) > 0:
-            continue
-        if is_npc and MOB_TEMPLATES[ch["tpl"]].get("passive"):
-            continue
-
-        # 1stMud: multi_hit(ch, victim, TYPE_UNDEFINED)
-        if is_npc:
-            multi_hit(tr, ch, player, world)
-        else:
-            # [PRIMESUD] raw_kill/_advance_target called here; 1stMud handles inside damage()
-            killed = multi_hit(tr, player, victim)
-            if killed:
-                raw_kill(tr, player, victim_id, victim,
-                         MOB_TEMPLATES[victim["tpl"]], world)
-                _advance_target(player, mobs, rooms)
-                victim = None
-
-        # [PRIMESUD] player death check; 1stMud handles death inside damage()
-        if player["hp"] <= 0:
-            stop_fighting(player, mobs)
-            return True
-
-        # 1stMud: victim = ch->fighting; if victim == NULL: continue; check_assist(ch, victim)
-        # [PRIMESUD] check_assist is player-centric; pass ch_id as the "attacked" mob for NPC case
-        if is_npc:
-            if ch["fighting"] is not None:
-                check_assist(tr, player, ch_id, mobs, rooms)
-        else:
-            if victim is not None and player["fighting"] is not None:
-                check_assist(tr, player, victim_id, mobs, rooms)
-
-        # TODO: mob TRIG_FIGHT / TRIG_HPCNT triggers not ported
-        # TODO: obj worn-item TRIG_FIGHT triggers not ported
-        # TODO: room TRIG_FIGHT trigger not ported
-
-    return None
+        stop_fighting(player, mob_instances, both=False)
 
 
 # -- Death / Victory -----------------------------------------------------------

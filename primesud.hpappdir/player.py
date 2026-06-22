@@ -107,6 +107,7 @@ def create_char():
             for sn, data in SKILL_TABLE
             if data["skill_level"] == 1
         },
+        "id": 1,
         "fighting": None,
         "pos": "standing",
         "flags": PLR_DEFAULTS,
