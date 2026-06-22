@@ -17,7 +17,7 @@ HP Prime Python appears to load all `.py` files in the app before `primesud.py` 
 | Feature | Reason |
 |---|---|
 | Move / MV | No solo gameplay hook identified; omitted entirely |
-| Race system | Human baseline (13 flat, max 18); add when content justifies |
+| Race system | Ported: RACE_TABLE in races.py, race defaults merged at mob creation, check_immune in combat. PC chargen race selection not ported (single-player, no chargen) |
 | Class system | Classless; THAC0 uses balanced midpoint. Add when skill trees justify |
 | Stat rolling | Fixed 13 across the board; no chargen reroll |
 | AC types (Pierce/Bash/Slash/Exotic) | Bucket AC stored and selected in `one_hit`; broader combat fidelity (res/imm/vuln, damage flow) incomplete |

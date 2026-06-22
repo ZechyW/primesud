@@ -4,6 +4,7 @@ from urandom import randint
 
 from config import EXIT_NAMES
 from world import ROOMS, ROOM_AREAS, AREA_DEFS, MOB_TEMPLATES, RESETS, DOOR_RESET
+from races import RACE_TABLE
 from actor import equip_char
 from item import create_object
 from actor import act
@@ -60,8 +61,27 @@ def create_mobile(tpl_vnum):
         hp += randint(1, _s)
     hp = max(1, hp)
     base = _stat_from_level(tpl["level"])
-    act_flags = tpl.get("act_flags", {})
-    off  = tpl.get("off_flags", {})
+
+    # Merge race defaults into template flags (cf. 1stMud db2.c:88-136,
+    # where race->act/aff/off/imm/res/vuln/form/parts are OR'd into mob index).
+    race = RACE_TABLE.get(tpl.get("race", "Human"))
+    if race is None:
+        race = RACE_TABLE["Human"]
+
+    def _merge(tpl_key, race_key):
+        merged = dict(race.get(race_key, {}))
+        merged.update(tpl.get(tpl_key, {}))
+        return merged
+
+    act_flags = _merge("act_flags", "act")
+    off       = _merge("off_flags", "off")
+    aff_flags = _merge("aff_flags", "aff")
+    imm_flags = _merge("imm_flags", "imm")
+    res_flags = _merge("res_flags", "res")
+    vuln_flags = _merge("vuln_flags", "vuln")
+    # [not ported] form and parts merged but not yet used in gameplay
+    form_flags = _merge("form_flags", "form")
+    part_flags = _merge("part_flags", "parts")
 
     # Per-stat values start uniform then receive class/off/size bonuses
     # (cf. 1stMud create_mobile perm_stat loop + ACT_WARRIOR/THIEF/CLERIC/MAGE blocks)
@@ -90,28 +110,35 @@ def create_mobile(tpl_vnum):
         mob_silver = 0
 
     return {
-        "tpl":       tpl_vnum,
-        "is_npc":    True,
-        "hp":        hp,
-        "hp_max":    hp,
-        "affects":   {},
-        "wait":      0,
-        "daze":      0,
-        "fighting":  None,
-        "off_flags": dict(off),
-        "inv":       [],
-        "equip":     {},
-        "level":     tpl["level"],
-        "str":       s_str,
-        "dex":       s_dex,
-        "int":       s_int,
-        "wis":       s_wis,
-        "con":       s_con,
-        "hitroll":   tpl["hitroll"],
-        "damroll":   tpl["damage"][2],   # bonus = damroll (cf. 1stMud damage[DICE_BONUS])
-        "armor":     tuple(v * 10 for v in tpl["armor"]),  # area-template buckets -> PrimeSUD runtime units
-        "gold":      mob_gold,
-        "silver":    mob_silver,
+        "tpl":        tpl_vnum,
+        "is_npc":     True,
+        "hp":         hp,
+        "hp_max":     hp,
+        "affects":    {},
+        "aff_flags":  dict(aff_flags),
+        "_base_aff":  aff_flags,  # race+template baseline for _rebuild_aff_flags
+        "wait":       0,
+        "daze":       0,
+        "fighting":   None,
+        "off_flags":  off,
+        "imm_flags":  imm_flags,
+        "res_flags":  res_flags,
+        "vuln_flags": vuln_flags,
+        "form_flags": form_flags,
+        "part_flags": part_flags,
+        "inv":        [],
+        "equip":      {},
+        "level":      tpl["level"],
+        "str":        s_str,
+        "dex":        s_dex,
+        "int":        s_int,
+        "wis":        s_wis,
+        "con":        s_con,
+        "hitroll":    tpl["hitroll"],
+        "damroll":    tpl["damage"][2],   # bonus = damroll (cf. 1stMud damage[DICE_BONUS])
+        "armor":      tuple(v * 10 for v in tpl["armor"]),  # area-template buckets -> PrimeSUD runtime units
+        "gold":       mob_gold,
+        "silver":     mob_silver,
     }
 
 

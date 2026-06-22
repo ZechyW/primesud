@@ -137,15 +137,13 @@ def affect_strip(char, sn):
 
 
 def _rebuild_aff_flags(char):
-    flags = {}
+    # Start from race+template baseline (cf. 1stMud: victim->affected_by = victim->race->aff)
+    flags = dict(char.get("_base_aff", {}))
     for af in char.get("affect_list", []):
         bit = af.get("bitvector", "")
         if bit:
             flags[bit] = True
-    if flags:
-        char["aff_flags"] = flags
-    elif "aff_flags" in char:
-        char["aff_flags"] = {}
+    char["aff_flags"] = flags
 
 
 def get_hitroll(char):

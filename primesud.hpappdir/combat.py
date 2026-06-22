@@ -7,6 +7,9 @@ from config import (PULSE_VIOLENCE,
                     INT_APP_LEARN,
                     CLASS_HP_MIN, CLASS_HP_MAX, THAC0_00, THAC0_MIN, THAC0_PLATEAU,
                     ATTACK_TABLE, DAM_NONE, DAM_BASH, DAM_PIERCE, DAM_SLASH,
+                    DAM_FIRE, DAM_COLD, DAM_LIGHTNING, DAM_ACID, DAM_POISON,
+                    DAM_NEGATIVE, DAM_HOLY, DAM_ENERGY, DAM_MENTAL, DAM_DISEASE,
+                    DAM_DROWNING, DAM_LIGHT, DAM_SOUND, DAM_CHARM,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC)
 from world import (ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS, ROOMS,
                    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY, GSN_DODGE,
@@ -269,6 +272,100 @@ def _ac_type_for_damage_class(dam_class):
     if dam_class == DAM_BASH or dam_class == DAM_NONE:
         return AC_BASH
     return AC_EXOTIC
+
+
+# -- Immunity check (cf. 1stMud check_immune in handler.c) ---------------------
+
+IS_NORMAL     = 0
+IS_IMMUNE     = 1
+IS_RESISTANT  = 2
+IS_VULNERABLE = 3
+IMMUNE_NONE   = -1
+
+# Maps dam_class -> flag name for specific-type immunity lookup.
+# DAM_BASH/PIERCE/SLASH use "weapon" as the broad category; everything else
+# uses "magic".  The specific flag name (e.g. "fire") overrides the broad one.
+_DAM_TO_FLAG = {
+    DAM_BASH:      "bash",
+    DAM_PIERCE:    "pierce",
+    DAM_SLASH:     "slash",
+    DAM_FIRE:      "fire",
+    DAM_COLD:      "cold",
+    DAM_LIGHTNING: "lightning",
+    DAM_ACID:      "acid",
+    DAM_POISON:    "poison",
+    DAM_NEGATIVE:  "negative",
+    DAM_HOLY:      "holy",
+    DAM_ENERGY:    "energy",
+    DAM_MENTAL:    "mental",
+    DAM_DISEASE:   "disease",
+    DAM_DROWNING:  "drowning",
+    DAM_LIGHT:     "light",
+    DAM_CHARM:     "charm",
+    DAM_SOUND:     "sound",
+}
+
+
+def check_immune(ch, dam_type):
+    """Determine immunity/resistance/vulnerability of ch to a damage class
+    (cf. 1stMud check_immune in handler.c).
+
+    Two-pass check: first determine broad-category default (weapon or magic),
+    then override with specific damage-type flag if present.
+
+    Args:
+        ch (dict): Victim (mob instance or player dict).
+        dam_type (int): DAM_* damage class constant.
+
+    Returns:
+        int: One of IS_NORMAL, IS_IMMUNE, IS_RESISTANT, IS_VULNERABLE.
+    """
+    if dam_type == DAM_NONE:
+        return IMMUNE_NONE
+
+    # [not ported] 1stMud reads ch->imm_flags etc. directly; PrimeSUD stores
+    # merged flags on mob instances (race defaults OR'd in at create_mobile).
+    # Player imm/res/vuln flags will come from equipment affects when ported.
+    imm  = ch.get("imm_flags", {})
+    res  = ch.get("res_flags", {})
+    vuln = ch.get("vuln_flags", {})
+
+    # -- Pass 1: broad category default (cf. 1stMud check_immune first switch)
+    if dam_type in (DAM_BASH, DAM_PIERCE, DAM_SLASH):
+        broad = "weapon"
+    else:
+        broad = "magic"
+
+    if imm.get(broad):
+        default = IS_IMMUNE
+    elif res.get(broad):
+        default = IS_RESISTANT
+    elif vuln.get(broad):
+        default = IS_VULNERABLE
+    else:
+        default = IS_NORMAL
+
+    # -- Pass 2: specific damage-type flag (cf. 1stMud check_immune second switch)
+    flag = _DAM_TO_FLAG.get(dam_type)
+    if flag is None:
+        return default
+
+    immune = IMMUNE_NONE
+    if imm.get(flag):
+        immune = IS_IMMUNE
+    elif res.get(flag) and immune != IS_IMMUNE:
+        immune = IS_RESISTANT
+    elif vuln.get(flag):
+        if immune == IS_IMMUNE:
+            immune = IS_RESISTANT
+        elif immune == IS_RESISTANT:
+            immune = IS_NORMAL
+        else:
+            immune = IS_VULNERABLE
+
+    if immune == IMMUNE_NONE:
+        return default
+    return immune
 
 
 def mob_condition(inst, tpl):
@@ -550,6 +647,15 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
     if dam > 80:
         dam = (dam - 80) // 2 + 80
     dam = max(1, dam)
+
+    # Immunity / resistance / vulnerability modifier (cf. 1stMud damage() in fight.c)
+    immune = check_immune(victim, dam_class)
+    if immune == IS_IMMUNE:
+        dam = 0
+    elif immune == IS_RESISTANT:
+        dam -= dam // 3
+    elif immune == IS_VULNERABLE:
+        dam += dam // 3
 
     if ch["is_npc"]:
         victim["hp"] = max(0, victim["hp"] - dam)
@@ -851,7 +957,7 @@ def check_assist(tr, player, attacked_id, mob_instances, room_state):
         if tpl.get("passive"):
             continue
 
-        off = tpl.get("off_flags", {})
+        off = inst.get("off_flags", {})
         grp = tpl.get("group")
         if (off.get("assist_all")
                 or (off.get("assist_vnum") and inst["tpl"] == attacked_inst["tpl"])

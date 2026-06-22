@@ -189,9 +189,9 @@ def do_look(tr, player, args, world):
         inst = world["chars"][mob_id]
         tpl = MOB_TEMPLATES[inst["tpl"]]
         # Build AFF prefix string (cf. 1stMud show_char_to_char_0, act_info.c:191-214)
-        # Source: tpl["aff_flags"] (baseline, like pIndexData->affected_by).
-        # Dynamic spell AFF bits from inst["affects"] are not yet tracked here.
-        aff = tpl.get("aff_flags", {})
+        # Race defaults merged into inst at create_mobile; dynamic spell AFF bits
+        # from inst["affects"] are not yet tracked here.
+        aff = inst.get("aff_flags", {})
         prefix = ""
         if aff.get("invisible"):    prefix += "({cInvis{x) "
         if aff.get("hide"):         prefix += "({DHide{x) "

@@ -177,7 +177,14 @@ DAM_POISON    =  7
 DAM_NEGATIVE  =  8
 DAM_HOLY      =  9
 DAM_ENERGY    = 10
-DAM_OTHER     = 11
+DAM_MENTAL    = 11
+DAM_DISEASE   = 12
+DAM_DROWNING  = 13
+DAM_LIGHT     = 14
+DAM_SOUND     = 15
+DAM_OTHER     = 16
+DAM_HARM      = 17
+DAM_CHARM     = 18
 
 # -- Attack table (cf. 1stMud attack_table in const.c) ---------------------------------
 # Maps dam_type area-file key -> (display noun, dam_class).
