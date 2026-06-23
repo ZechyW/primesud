@@ -1,4 +1,5 @@
 /.vscode
+/.idea
 
 # Python
 __pycache__/
@@ -21,3 +22,12 @@ build/
 # 1stmud reference
 /reference/1stmud4.5.3/src/o
 /reference/1stmud4.5.3/log
+
+# 1stmud game state
+/reference/1stmud4.5.3/area/
+/reference/1stmud4.5.3/player/
+/reference/1stmud4.5.3/data/
+
+# PC shim state
+/primesud.hpappdir/primesud.sav
+/primesud.hpappdir/hvars.json
