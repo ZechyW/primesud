@@ -33,7 +33,7 @@ PLR_DEFAULTS = PLR_AUTOMAP
 #
 # Skill numeric IDs (GSN_*) are permanent once assigned: recycling an ID for a
 # different skill would cause old saves to corrupt the new skill's learned %.
-SAVE_VERSION = 3
+SAVE_VERSION = 4
 
 # -- Player model --------------------------------------------------------------
 

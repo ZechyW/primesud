@@ -26,7 +26,7 @@ Goal: verify that `primesud.hpappdir/area_school.py` is a faithful port of
   - [x] Read school.are MOBILES (lines 14–349)
   - [x] Read area_school.py MOBILES dicts (lines 783–1078)
   - [x] Verify act_flags for each mob (parse bit strings vs py dicts)
-  - [x] Verify aff_flags, off_flags, imm/res/vuln_flags
+  - [x] Verify affected_by, off_flags, imm/res/vuln_flags
   - [x] Verify level, hp_dice, hitroll, AC, damage, gold
 - [x] **OBJECTS** — field-by-field comparison of all 23 items — **no discrepancies**
   - [x] Read school.are OBJECTS (lines 350–675)
@@ -54,7 +54,7 @@ Goal: verify that `primesud.hpappdir/area_school.py` is a faithful port of
 24=indoors  26=healer  27=gain  28=update_always  29=changer
 ```
 
-### AFF_FLAGS
+### AFFECTED_BY
 ```
 0=blind  1=invisible  2=detect_evil  3=detect_invis  4=detect_magic
 5=detect_hidden  6=detect_good  7=sanctuary  8=faerie_fire  9=infrared

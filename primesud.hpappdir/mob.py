@@ -75,7 +75,7 @@ def create_mobile(tpl_vnum):
 
     act_flags = _merge("act_flags", "act")
     off       = _merge("off_flags", "off")
-    aff_flags = _merge("aff_flags", "aff")
+    affected_by = _merge("affected_by", "aff")
     imm_flags = _merge("imm_flags", "imm")
     res_flags = _merge("res_flags", "res")
     vuln_flags = _merge("vuln_flags", "vuln")
@@ -133,8 +133,7 @@ def create_mobile(tpl_vnum):
         # -- Flags (race+template merged; cf. 1stMud create_mobile db2.c:88-136)
         "act_flags":  dict(act_flags),
         "off_flags":  off,
-        "aff_flags":  dict(aff_flags),
-        "_base_aff":  aff_flags,  # [PRIMESUD] race+template baseline for _rebuild_aff_flags
+        "affected_by":  dict(affected_by),
         "imm_flags":  imm_flags,
         "res_flags":  res_flags,
         "vuln_flags": vuln_flags,
@@ -344,11 +343,11 @@ def aggr_update(tr, player):
         act_flags = ch.get("act_flags", {})
         if not act_flags.get("aggressive"):
             continue
-        if ch.get("aff_flags", {}).get("calm"):          # cf. IsAffected(ch, AFF_CALM)
+        if ch.get("affected_by", {}).get("calm"):          # cf. IsAffected(ch, AFF_CALM)
             continue
         if ch["fighting"] is not None:
             continue
-        if ch.get("aff_flags", {}).get("charm"):          # cf. IsAffected(ch, AFF_CHARM)
+        if ch.get("affected_by", {}).get("charm"):          # cf. IsAffected(ch, AFF_CHARM)
             continue
         if not is_awake(ch):
             continue

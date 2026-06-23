@@ -128,7 +128,7 @@ def perform_recall(tr, player, location, what="recall"):
     room = ROOM_DEFS[player["room"]]
 
     if room.get("flags", {}).get("no_recall") \
-            or player.get("aff_flags", {}).get("curse"):
+            or player.get("affected_by", {}).get("curse"):
         tr.print("Your deity has forsaken you.")
         return False
 

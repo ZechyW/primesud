@@ -192,7 +192,7 @@ def do_look(tr, player, args):
         # Build AFF prefix string (cf. 1stMud show_char_to_char_0, act_info.c:191-214)
         # Race defaults merged into inst at create_mobile; dynamic spell AFF bits
         # from inst["affects"] are not yet tracked here.
-        aff = inst.get("aff_flags", {})
+        aff = inst.get("affected_by", {})
         prefix = ""
         if aff.get("invisible"):    prefix += "({cInvis{x) "
         if aff.get("hide"):         prefix += "({DHide{x) "
@@ -200,7 +200,7 @@ def do_look(tr, player, args):
         if aff.get("pass_door"):    prefix += "({cTranslucent{x) "
         if aff.get("faerie_fire"):  prefix += "({MPink Aura{x) "
         mob_align = tpl.get("alignment", 0)
-        p_aff = player.get("aff_flags", {})
+        p_aff = player.get("affected_by", {})
         if mob_align <= -350 and p_aff.get("detect_evil"):  prefix += "({RRed Aura{x) "
         if mob_align >= 350 and p_aff.get("detect_good"):   prefix += "({YGolden Aura{x) "
         if aff.get("sanctuary"):    prefix += "({WWhite Aura{x) "

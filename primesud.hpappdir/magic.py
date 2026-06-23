@@ -159,7 +159,7 @@ def _clear_item_runtime_affects(obj):
 
 def _new_obj_affect(sn, level, duration, location, modifier, bitvector=""):
     af = _new_affect(sn, level, duration, location, modifier, bitvector)
-    af["where"] = "obj"
+    af["where"] = "to_object"
     return af
 
 
@@ -268,7 +268,7 @@ def spell_earthquake(tr, sn, level, ch, vo, target):
         victim = world.chars.get(mob_id)
         if victim is None or victim is ch:
             continue
-        dam = 0 if victim.get("aff_flags", {}).get("flying") else level + _dice(2, 8)
+        dam = 0 if victim.get("affected_by", {}).get("flying") else level + _dice(2, 8)
         _damage_char(tr, ch, victim, mob_id, dam, sn)
     return True
 
@@ -413,7 +413,7 @@ def spell_teleport(tr, sn, level, ch, vo, target):
 
 def spell_farsight(tr, sn, level, ch, vo, target):
     """Farsight spell (cf. 1stMud spell_farsight in magic2.c)."""
-    if ch.get("aff_flags", {}).get("blind"):
+    if ch.get("affected_by", {}).get("blind"):
         tr.print("Maybe it would help if you could see?")
         return False
     do_scan(tr, ch, _spell_tail(ch).split())
@@ -552,7 +552,7 @@ def spell_identify(tr, sn, level, ch, vo, target):
             line += "."
         tr.print(line)
         bit = af.get("bitvector", "")
-        if af.get("where") == "obj" and bit:
+        if af.get("where") == "to_object" and bit:
             tr.print("Adds " + bit + " object flag.")
     return True
 
@@ -696,7 +696,7 @@ def spell_enchant_weapon(tr, sn, level, ch, vo, target):
 
 def _new_affect(sn, level, duration, location, modifier, bitvector=""):
     return {
-        "where": "affects",
+        "where": "to_affects",
         "type": sn,
         "level": level,
         "duration": duration,
@@ -751,7 +751,7 @@ def spell_bless(tr, sn, level, ch, vo, target):
             tr.print("The evil of " + _item_name(vo) + " is too powerful for you to overcome.")
             return False
         item_affect_to_obj(vo, _new_affect(sn, level, 6 + level, "saving_throw", -1, "bless"), tpl)
-        vo["affect_list"][-1]["where"] = "obj"
+        vo["affect_list"][-1]["where"] = "to_object"
         tr.print(_item_name(vo) + " glows with a holy aura.")
         return True
     if vo.get("pos") == "fighting" or is_affected(vo, sn):
@@ -795,7 +795,7 @@ def spell_weaken(tr, sn, level, ch, vo, target):
 
 def spell_faerie_fire(tr, sn, level, ch, vo, target):
     """Faerie fire spell (cf. 1stMud spell_faerie_fire in magic.c)."""
-    if vo.get("aff_flags", {}).get("faerie_fire"):
+    if vo.get("affected_by", {}).get("faerie_fire"):
         return False
     affect_to_char(vo, _new_affect(sn, level, level, "ac", 2 * level, "faerie_fire"))
     if vo is ch:
@@ -807,7 +807,7 @@ def spell_faerie_fire(tr, sn, level, ch, vo, target):
 
 def spell_blindness(tr, sn, level, ch, vo, target):
     """Blindness spell (cf. 1stMud spell_blindness in magic.c)."""
-    if vo.get("aff_flags", {}).get("blind") or saves_spell(level, vo, "other"):
+    if vo.get("affected_by", {}).get("blind") or saves_spell(level, vo, "other"):
         tr.print("You failed.")
         return False
     affect_to_char(vo, _new_affect(sn, level, 1 + level, "hitroll", -4, "blind"))
@@ -853,10 +853,10 @@ def spell_curse(tr, sn, level, ch, vo, target):
             tr.print("The holy aura of " + _item_name(vo) + " is too powerful for you to overcome.")
             return False
         item_affect_to_obj(vo, _new_affect(sn, level, 2 * level, "saving_throw", 1, "evil"), tpl)
-        vo["affect_list"][-1]["where"] = "obj"
+        vo["affect_list"][-1]["where"] = "to_object"
         tr.print(_item_name(vo) + " glows with a malevolent aura.")
         return True
-    if vo.get("aff_flags", {}).get("curse") or saves_spell(level, vo, "negative"):
+    if vo.get("affected_by", {}).get("curse") or saves_spell(level, vo, "negative"):
         return False
     mod = level // 8
     affect_to_char(vo, _new_affect(sn, level, 2 * level, "hitroll", -mod, "curse"))

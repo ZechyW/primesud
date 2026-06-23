@@ -150,7 +150,7 @@ string.
 | 3    | `long_descr~`                                 | Shown on walk-in; multi-line                 |
 | 4    | `description~`                                | Shown on `look mob`; multi-line              |
 | 5    | `race~`                                       | Race name string                             |
-| 6    | `act_flags  aff_flags  alignment  group`      | Two flag fields + two integers               |
+| 6    | `act_flags  affected_by  alignment  group`      | Two flag fields + two integers               |
 | 7    | `level  random  autoset  hitroll`             | `random`/`autoset` only in version ≥ 4       |
 | 8    | `NdD+B  NdD+B  NdD+B  'dam_type'`             | HP dice, mana dice, damage dice, attack name |
 | 9    | `ac_pierce  ac_bash  ac_slash  ac_exotic`     | Values stored × 10 (so 100 = AC 10)          |
@@ -189,7 +189,7 @@ character (the next `#` or section header):
 #### Annotated example — #3702 monster
 
 | `.are` content                                                    | Field                                          | Notes                              |
-| ----------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------- |
+|-------------------------------------------------------------------|------------------------------------------------|------------------------------------|
 | `#3702`                                                           | VNUM                                           |                                    |
 | `monster~`                                                        | keywords                                       | space-separated lookup names       |
 | `the monster~`                                                    | short_descr                                    | shown in room                      |
@@ -199,7 +199,7 @@ character (the next `#` or section header):
 | `+YYnnnnnnnnnnnnnnnnnnY +n 0 0`                                   | act · aff · alignment · group                  |                                    |
 | `1 0 0 0`                                                         | level · random · autoset · hitroll             | random/autoset only in version ≥ 4 |
 | `1d1+7 1d1+99 1d3+0 'claw'`                                       | hit_dice · mana_dice · dam_dice · dam_type     |                                    |
-| `10 10 10 10`                                                     | ac[pierce] · ac[bash] · ac[slash] · ac[exotic] | stored ×10                         |
+| `10 10 10 10`                                                     | ac[pierce] · ac[bash] · ac[slash] · ac[exotic] |                                    |
 | `+n +YY +n +nnY`                                                  | off · imm · res · vuln                         |                                    |
 | `standing standing either 10`                                     | start_pos · default_pos · sex · wealth         |                                    |
 | `+nnnnnnYnnnnnYnnnnnnnnY +YnYYYYnYnYYnnnnnYnnnY medium 'unknown'` | form · parts · size · material                 |                                    |
@@ -216,7 +216,7 @@ Flag values decoded:
 #### act flags
 
 | Pos | Constant            | Notes                                    |
-| --- | ------------------- | ---------------------------------------- |
+|-----|---------------------|------------------------------------------|
 | 0   | `ACT_IS_NPC`        | Always set; added automatically at load  |
 | 1   | `ACT_SENTINEL`      | Does not wander                          |
 | 2   | `ACT_SCAVENGER`     | Picks up items from floor                |
@@ -243,7 +243,7 @@ Flag values decoded:
 #### affected_by flags (AFF_*)
 
 | Pos | Constant            | Effect                    |
-| --- | ------------------- | ------------------------- |
+|-----|---------------------|---------------------------|
 | 0   | `AFF_BLIND`         | Blinded                   |
 | 1   | `AFF_INVISIBLE`     | Invisible                 |
 | 2   | `AFF_DETECT_EVIL`   | Detects evil              |
@@ -430,7 +430,7 @@ Followed by optional trailer lines:
 **apply_loc values (for `A` lines):**
 
 | #   | Constant                    | Stat        |
-| --- | --------------------------- | ----------- |
+|-----|-----------------------------|-------------|
 | 0   | `APPLY_NONE`                | —           |
 | 1–5 | `APPLY_STR/DEX/INT/WIS/CON` | Stats       |
 | 12  | `APPLY_MANA`                | Max mana    |
@@ -484,7 +484,7 @@ PrimeSUD affect-location names track 1stMud closely here: `APPLY_HIT` -> `hit`,
 #### Annotated example — #3717 spear (ITEM_WEAPON)
 
 | `.are` content                                           | Field                                                        | Notes                 |
-| -------------------------------------------------------- | ------------------------------------------------------------ | --------------------- |
+|----------------------------------------------------------|--------------------------------------------------------------|-----------------------|
 | `#3717`                                                  | VNUM                                                         |                       |
 | `spear sub merc~`                                        | keywords                                                     |                       |
 | `A sub issue spear~`                                     | short_descr                                                  |                       |

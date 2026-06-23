@@ -6,7 +6,7 @@ import world
 from skills_table import SKILLS, WEAPON_GSN_MAP
 from world import ITEM_DEFS, MOB_DEFS
 from picker import pick_from
-from actor import get_curr_stat, is_name, affect_modify, equip_char, unequip_char
+from actor import get_curr_stat, is_name, equip_char, unequip_char
 from item import (get_obj_list, obj_vnum, create_object, item_extra_flags,
                   item_wear_flags)
 from combat import _get_weapon_skill, WaitState, check_improve, get_skill

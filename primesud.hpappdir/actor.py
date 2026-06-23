@@ -19,7 +19,7 @@ def _char_base():
 
     Both create_char (player.py) and create_mobile (mob.py) start from this base.
     Player-only fields (pcdata: xp_next, practice, learned, flags, played) and
-    mob-only fields (tpl, _base_aff) are overlaid by their respective constructors.
+    mob-only fields (tpl) are overlaid by their respective constructors.
 
     [DEVIATION] act_flags holds ACT_* bits; PLR_* player flags live in player-only
     "flags" key.  1stMud uses a single act bitfield for both.
@@ -66,7 +66,7 @@ def _char_base():
         "imm_flags":   {},
         "res_flags":   {},
         "vuln_flags":  {},
-        "aff_flags":   {},
+        "affected_by":   {},
         "off_flags":   {},
         "form_flags":  {},
         "part_flags":  {},
@@ -125,41 +125,60 @@ def get_curr_stat(char, stat):
     return max(3, min(MAX_STATS, v))
 
 
-def affect_modify(char, loc, modifier, add):
-    """Apply or remove a stat modifier for one affect location (cf. 1stMud affect_modify in handler.c).
+def affect_modify(char, af, add):
+    """Apply or remove an affect's bitvector and stat modifier (cf. 1stMud affect_modify in handler.c).
 
-    Mutates hp_max, mp_max, armor, hitroll, damroll directly; accumulates
-    str/dex/int/wis/con into char["mod_stat"] (cf. 1stMud mod_stat[] in handler.c).
+    Handles bitvector set/clear based on af["where"] (to_affects, to_immune,
+    to_resist, to_vuln) and stat mod based on af["location"].
 
     Args:
         char (dict): Character state dict (player or mob instance).
-        loc (str): Affect location -- one of "str", "dex", "int", "wis", "con",
-            "hit", "mp", "mana", "ac_pierce", "ac_bash", "ac_slash",
-            "ac_exotic", "ac", "hitroll", "damroll".
-        modifier (int): Raw modifier value (positive = bonus).
+        af (dict): Affect dict with where, location, modifier, bitvector.
         add (bool): True to apply, False to remove.
     """
+    # -- Bitvector set/clear (cf. 1stMud affect_modify lines 910-948)
+    bit = af.get("bitvector", "")
+    if bit:
+        where = af.get("where", "to_affects")
+        _WHERE_TO_KEY = {
+            "to_affects": "affected_by",
+            "to_immune":  "imm_flags",
+            "to_resist":  "res_flags",
+            "to_vuln":    "vuln_flags",
+        }
+        key = _WHERE_TO_KEY.get(where)
+        if key:
+            if add:
+                char.setdefault(key, {})[bit] = True
+            else:
+                char.get(key, {}).pop(bit, None)
+
+    # -- Stat modifier (cf. 1stMud affect_modify lines 952-1028)
+    mod = af.get("modifier", 0)
+    if not mod:
+        return
     if not add:
-        modifier = -modifier
+        mod = -mod
+    loc = af.get("location", "none")
     if loc == "hit":
-        char["hp_max"] = max(1, char["hp_max"] + modifier)
+        char["hp_max"] = max(1, char["hp_max"] + mod)
     elif loc in ("mp", "mana"):
-        char["mp_max"] = max(1, char["mp_max"] + modifier)
+        char["mp_max"] = max(1, char["mp_max"] + mod)
     elif loc == "ac":
-        _add_armor(char, (modifier, modifier, modifier, modifier))
+        _add_armor(char, (mod, mod, mod, mod))
     elif loc in _AC_LOC_MAP:
         armor = _armor_list(char)
-        armor[_AC_LOC_MAP[loc]] += modifier
+        armor[_AC_LOC_MAP[loc]] += mod
         _set_armor(char, armor)
     elif loc == "hitroll":
-        char["hitroll"] += modifier
+        char["hitroll"] += mod
     elif loc == "damroll":
-        char["damroll"] += modifier
+        char["damroll"] += mod
     elif loc == "saving_throw":
-        char["saving_throw"] = char.get("saving_throw", 0) + modifier
+        char["saving_throw"] = char.get("saving_throw", 0) + mod
     elif loc in ("str", "dex", "int", "wis", "con"):
         ms = char.setdefault("mod_stat", {})
-        ms[loc] = ms.get(loc, 0) + modifier
+        ms[loc] = ms.get(loc, 0) + mod
 
 
 def is_affected(char, sn):
@@ -176,27 +195,66 @@ def affect_find(char, sn):
 
 
 def affect_to_char(char, af):
-    """Apply a 1stMud-style timed affect to a character (cf. 1stMud affect_to_char in handler.c).
+    """Copy affect and apply to character (cf. 1stMud affect_to_char in handler.c).
 
     Args:
         char (dict): Character state dict (player or mob instance).
-        af (dict): Affect with type, level, duration, location, modifier, bitvector.
+        af (dict): Affect with type, level, duration, location, modifier, bitvector, where.
     """
     cur = dict(af)
     char.setdefault("affect_list", []).append(cur)
-    affect_modify(char, cur.get("location", "none"), cur.get("modifier", 0), True)
-    bit = cur.get("bitvector", "")
-    if bit:
-        char.setdefault("aff_flags", {})[bit] = True
+    affect_modify(char, cur, True)
 
 
 def affect_remove(char, af):
     """Remove one active affect from a character (cf. 1stMud affect_remove in handler.c)."""
     affects = char.get("affect_list", [])
-    if af in affects:
-        affects.remove(af)
-    affect_modify(char, af.get("location", "none"), af.get("modifier", 0), False)
-    _rebuild_aff_flags(char)
+    if af not in affects:
+        return
+    affect_modify(char, af, False)
+    where = af.get("where", "to_affects")
+    vector = af.get("bitvector", "")
+    affects.remove(af)
+    affect_check(char, where, vector)
+
+
+def affect_check(char, where, vector):
+    """Re-set a bitvector if any remaining affect still provides it (cf. 1stMud affect_check in handler.c).
+
+    Called after affect_remove clears a bit. Scans char affect_list and
+    equipped item affects; if any still carry the same where+bitvector,
+    re-sets the flag.
+
+    Args:
+        char (dict): Character state dict.
+        where (str): Affect target -- "to_affects", "to_immune", "to_resist", "to_vuln".
+        vector (str): Bitvector name (e.g. "sanctuary", "haste").
+    """
+    if where == "to_object" or where == "to_weapon" or not vector:
+        return
+
+    _WHERE_TO_KEY = {
+        "to_affects": "affected_by",
+        "to_immune":  "imm_flags",
+        "to_resist":  "res_flags",
+        "to_vuln":    "vuln_flags",
+    }
+    key = _WHERE_TO_KEY.get(where)
+    if not key:
+        return
+
+    # Check char affects (cf. 1stMud: scan ch->affect_first)
+    for paf in char.get("affect_list", []):
+        if paf.get("where", "to_affects") == where and paf.get("bitvector") == vector:
+            char.setdefault(key, {})[vector] = True
+            return
+
+    # Check equipped item affects (cf. 1stMud: scan ch->carrying_first where wear_loc != -1)
+    for obj in char.get("equip", {}).values():
+        for paf in obj.get("affect_list", []):
+            if paf.get("where", "to_affects") == where and paf.get("bitvector") == vector:
+                char.setdefault(key, {})[vector] = True
+                return
 
 
 def affect_strip(char, sn):
@@ -204,16 +262,6 @@ def affect_strip(char, sn):
     for af in list(char.get("affect_list", [])):
         if af.get("type") == sn:
             affect_remove(char, af)
-
-
-def _rebuild_aff_flags(char):
-    # Start from race+template baseline (cf. 1stMud: victim->affected_by = victim->race->aff)
-    flags = dict(char.get("_base_aff", {}))
-    for af in char.get("affect_list", []):
-        bit = af.get("bitvector", "")
-        if bit:
-            flags[bit] = True
-    char["aff_flags"] = flags
 
 
 def is_awake(ch):
@@ -285,16 +333,17 @@ def is_name(fragment, namelist):
 def _apply_item_modifiers(char, obj, tpl, add):
     """Apply stat bonuses and runtime object affects for equipped item.
 
+    stat_bonuses maps to 1stMud .are "A" lines (TO_OBJECT, location+modifier only).
     Does NOT handle base armor values -- those are subtracted/added
     directly in equip_char/unequip_char (cf. 1stMud handler.c).
     """
+    # Template stat bonuses (cf. 1stMud pIndexData->affect_first, "A" lines)
     for loc, mod in tpl.get("stat_bonuses", {}).items():
-        affect_modify(char, loc, mod, add)
+        affect_modify(char, {"where": "to_object", "location": loc,
+                             "modifier": mod, "bitvector": ""}, add)
+    # Runtime object affects (cf. 1stMud obj->affect_first)
     for af in obj.get("affect_list", []):
-        loc = af.get("location", "none")
-        mod = af.get("modifier", 0)
-        if loc != "none" and mod != 0:
-            affect_modify(char, loc, mod, add)
+        affect_modify(char, af, add)
 
 
 def unequip_char(char, slot):

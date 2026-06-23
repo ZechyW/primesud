@@ -41,7 +41,7 @@ ACT_FLAGS = {
     20: "noalign", 21: "nopurge", 22: "outdoors", 24: "indoors",
     26: "healer", 27: "gain", 28: "update_always", 29: "changer",
 }
-AFF_FLAGS = {
+AFFECTED_BY = {
     0: "blind", 1: "invisible", 2: "detect_evil", 3: "detect_invis",
     4: "detect_magic", 5: "detect_hidden", 6: "detect_good", 7: "sanctuary",
     8: "faerie_fire", 9: "infrared", 10: "curse", 12: "poison",
@@ -313,7 +313,7 @@ def parse_mobiles(lines):
         description, i = read_tilde_string(lines, i)
         race,        i = read_tilde_string(lines, i)
 
-        # act_flags  aff_flags  alignment  group
+        # act_flags  affected_by  alignment  group
         parts = lines[i].split(); i += 1
         act_bits = parse_bitstring(parts[0]) if parts else set()
         aff_bits = parse_bitstring(parts[1]) if len(parts) > 1 else set()
@@ -371,7 +371,7 @@ def parse_mobiles(lines):
             "description": description,
             "race":        race,
             "act_flags":   decode_flags(act_bits, ACT_FLAGS, skip={0}),  # omit IS_NPC
-            "aff_flags":   decode_flags(aff_bits, AFF_FLAGS),
+            "affected_by":   decode_flags(aff_bits, AFFECTED_BY),
             "alignment":   alignment,
             "level":       level,
             "hitroll":     hitroll,
@@ -720,7 +720,7 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, fover
         w(f'        "long_descr":  {pyrepr(mob["long_descr"])},')
         w(f'        "description": {pyrepr(mob["description"])},')
         w(f'        "race":        {pyrepr(mob["race"])},')
-        for flag_key in ("act_flags", "aff_flags"):
+        for flag_key in ("act_flags", "affected_by"):
             fd = mob[flag_key]
             if fd:
                 w(f'        "{flag_key}": {_repr_flags(fd)},')

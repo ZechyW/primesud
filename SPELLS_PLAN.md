@@ -67,7 +67,7 @@ No `skills_table.py` entry currently defines `effect` or `heal_dice`, so most sp
 | Dispel | None. | `saves_dispel()` and `check_dispel()`, strips affects and prints `msg_off`. | Missing. |
 | Affects | `char["affects"]` keyed by `sn`, one `loc/modifier/duration`. | Linked `AffectData`: `where/type/level/duration/location/modifier/bitvector`; multiple affects possible. | Need expanded model. |
 | Affect expiry | Player ticks decrement and print `msg_off` unless it starts with `!`. | `update.c` prints `skill_table[paf->type].msg_off`; object affects use `msg_obj`. | Char side partial. Object side missing. |
-| Affect flags | Static mob `aff_flags`; dynamic spell flags not tracked for player display. | Bitvectors like `AFF_BLIND`, `AFF_SANCTUARY`, `AFF_POISON`. | Need dynamic flags or compact flag set per actor. |
+| Affect flags | Static mob `affected_by`; dynamic spell flags not tracked for player display. | Bitvectors like `AFF_BLIND`, `AFF_SANCTUARY`, `AFF_POISON`. | Need dynamic flags or compact flag set per actor. |
 | Object spell casts | Not present. | `obj_cast_spell()` handles pills, potions, scrolls, wands, staves. | Needed for magical items already present in areas. |
 | Element effects | Not present. | `acid_effect`, `cold_effect`, `fire_effect`, `poison_effect`, `shock_effect` affect chars, rooms, objects. | Later phase. |
 | Display: `spells` | Level list uses dynamic mana. | `do_spells` same structure. | Mostly aligned; update `spell_mana()` exact formula. |

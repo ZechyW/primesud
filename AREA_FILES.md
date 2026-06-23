@@ -166,7 +166,7 @@ MOBILES = {
         "damage":    (1, 4, 1),    # per hit: 1d4 + 1
         "gold":      15,
         "act_flags": {"aggressive": True, "stay_area": True},
-        "aff_flags": {"infrared": True},
+        "affected_by": {"infrared": True},
         "off_flags": {"dodge": True, "trip": True},
         "imm_flags": {"charm": True},
         "res_flags": {"poison": True},
@@ -188,7 +188,7 @@ MOBILES = {
 | `dam_type`  | str   | yes      | Attack noun for combat messages (e.g. `'claw'`, `'bite'`, `'beating'`); also the damage category for future resistance checks |
 | `gold`      | int   | yes      | Gold carried (unused until economy is implemented) |
 | `act_flags` | dict  | no       | Behaviour flags (see below) |
-| `aff_flags` | dict  | no       | Permanent affect flags |
+| `affected_by` | dict  | no       | Permanent affect flags |
 | `off_flags` | dict  | no       | Combat offence flags |
 | `imm_flags` | dict  | no       | Damage immunities |
 | `res_flags` | dict  | no       | Damage resistances (half damage) |
@@ -215,7 +215,7 @@ MOBILES = {
 Common values: `area_attack`, `bash`, `berserk`, `crush`, `disarm`, `dodge`, `fast`,
 `kick`, `kick_dirt`, `parry`, `tail`, `trip`, `assist_race`.
 
-### `aff_flags` (affects)
+### `affected_by` (affects)
 
 Common values: `detect_evil`, `infrared`, `dark_vision`, `sanctuary`.
 
