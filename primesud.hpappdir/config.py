@@ -168,9 +168,10 @@ POS_ORDER = {
     "sleeping": 4, "resting": 5, "sitting": 6, "fighting": 7, "standing": 8,
 }
 
-# -- damage() dt threshold (cf. 1stMud TYPE_HIT in merc.h) ----------------------------
+# -- damage() dt threshold (cf. 1stMud TYPE_HIT / TYPE_UNDEFINED in defines.h) ----------
 # dt >= TYPE_HIT = physical weapon attack (dodge/parry apply); dt < TYPE_HIT = skill/spell.
-TYPE_HIT = 1000
+TYPE_HIT       = 1000
+TYPE_UNDEFINED = -1
 
 # -- Armor class buckets (cf. 1stMud AC_* in merc.h) -----------------------------------
 AC_PIERCE = 0

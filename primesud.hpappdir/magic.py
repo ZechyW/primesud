@@ -1322,10 +1322,6 @@ def cast_item_spells(tr, ch, item_obj, victim, obj):
 
 def do_cast(tr, player, args):
     """Cast a spell through 1stMud-style command flow (cf. 1stMud do_cast in magic.c)."""
-    if player.get("wait", 0) > 0:
-        tr.print("You are still recovering.")
-        return None
-
     if not args:
         known = _known_runtime_spells(player)
         if not known:

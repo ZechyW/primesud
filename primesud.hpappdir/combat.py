@@ -1,6 +1,6 @@
 """Combat rounds, damage resolution, skills, and fight state."""
 
-from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, act, is_awake
+from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, act, is_awake, can_see
 from colors import upper
 from area_limbo import (
     I_CORPSE,
@@ -23,6 +23,7 @@ from config import (
     THAC0_PLATEAU,
     ATTACK_TABLE,
     TYPE_HIT,
+    TYPE_UNDEFINED,
     DAM_NONE,
     DAM_BASH,
     DAM_PIERCE,
@@ -52,8 +53,8 @@ from player import save_world
 from urandom import randint
 from skills_table import (
     SKILL_TABLE, SKILLS, WEAPON_GSN_MAP,
-    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY, GSN_DODGE,
-    GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
+    GSN_BACKSTAB, GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY, GSN_DODGE,
+    GSN_SHIELD_BLOCK, GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
 )
 import world
 from world import ITEM_DEFS, MOB_DEFS
@@ -668,6 +669,10 @@ def check_parry(tr, ch, victim):
         skill //= 2
         lv_delta = victim["level"] - ch["level"]
 
+    # 1stMud: if (!can_see(ch, victim)) chance /= 2;
+    if not can_see(ch, victim):
+        skill //= 2
+
     chance = skill + lv_delta
     if randint(1, 100) >= chance:
         return False
@@ -677,6 +682,39 @@ def check_parry(tr, ch, victim):
     else:
         act(tr, "You parry {}'s attack.".format(MOB_DEFS[ch["tpl"]]["short_descr"]))
         check_improve(tr, victim, GSN_PARRY, True, 6)
+    return True
+
+
+def check_shield_block(tr, ch, victim):
+    """Check if victim blocks ch's strike with shield (cf. 1stMud check_shield_block in fight.c).
+
+    Args:
+        tr: Terminal for printing block messages.
+        ch (dict): Attacker (player or mob instance).
+        victim (dict): Defender (player or mob instance).
+
+    Returns:
+        bool: True if the attack was blocked.
+    """
+    # 1stMud: chance = get_skill(victim, gsn_shield_block) / 5 + 3;
+    if victim["is_npc"]:
+        chance = get_skill(victim, GSN_SHIELD_BLOCK, is_mob=True) // 5 + 3
+    else:
+        chance = get_skill(victim, GSN_SHIELD_BLOCK) // 5 + 3
+
+    # 1stMud: if (get_eq_char(victim, WEAR_SHIELD) == NULL) return false;
+    if victim["equip"].get("shield") is None:
+        return False
+
+    # 1stMud: if (number_percent() >= chance + victim->level - ch->level) return false;
+    if randint(1, 100) >= chance + victim["level"] - ch["level"]:
+        return False
+
+    if victim["is_npc"]:
+        act(tr, "{} blocks your attack with a shield.".format(MOB_DEFS[victim["tpl"]]["short_descr"]))
+    else:
+        act(tr, "You block {}'s attack with your shield.".format(MOB_DEFS[ch["tpl"]]["short_descr"]))
+        check_improve(tr, victim, GSN_SHIELD_BLOCK, True, 6)
     return True
 
 
@@ -696,8 +734,13 @@ def check_dodge(tr, ch, victim):
     else:
         skill = get_skill(victim, GSN_DODGE)
 
-    chance = skill // 2 + victim["level"] - ch["level"]
-    if randint(1, 100) >= chance:
+    chance = skill // 2
+
+    # 1stMud: if (!can_see(victim, ch)) chance /= 2;
+    if not can_see(victim, ch):
+        chance //= 2
+
+    if randint(1, 100) >= chance + victim["level"] - ch["level"]:
         return False
 
     if victim["is_npc"]:
@@ -881,7 +924,8 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, attack_noun=None):
         if check_parry(tr, ch, victim):
             return False
         # 1stMud: if (check_shield_block(ch, victim)) return false;
-        # [PRIMESUD] skip shield_block (not ported)
+        if check_shield_block(tr, ch, victim):
+            return False
         # 1stMud: if (IsAffected(victim,AFF_FORCE_SHIELD) && check_force_shield(...)) return false;
         # 1stMud: if (IsAffected(victim,AFF_STATIC_SHIELD) && check_static_shield(...)) return false;
         # [PRIMESUD] skip force/static shields (not ported)
@@ -1039,13 +1083,15 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, attack_noun=None):
 
 # -- Core attack: one_hit ------------------------------------------------------
 
-def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
+def one_hit(tr, ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False):
     """One attack from ch against victim (cf. 1stMud one_hit in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
         ch (dict): Attacker (player or mob instance).
         victim (dict): Defender (player or mob instance).
+        dt (int): Damage type; TYPE_UNDEFINED = resolve from weapon/mob,
+            skill GSN (e.g. GSN_BACKSTAB) = skill-driven attack.
         bonus_damroll (int): Extra damage roll bonus (e.g. from skills).
         secondary (bool): True = secondary weapon (cf. 1stMud bool secondary).
 
@@ -1065,6 +1111,10 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
     thac0 -= (get_hitroll(ch) + extra_hr) * skill // 100
     thac0 += 5 * (100 - skill) // 100
 
+    # Backstab THAC0 bonus (cf. 1stMud one_hit fight.c:654-655)
+    if dt == GSN_BACKSTAB:
+        thac0 -= 10 * (100 - get_skill(ch, GSN_BACKSTAB, ch["is_npc"]))
+
     # Attack noun and damage class
     if ch["is_npc"]:
         ch_tpl   = MOB_DEFS[ch["tpl"]]
@@ -1073,17 +1123,23 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
         dam_type = wtpl["dam_type"] if wtpl is not None else "none"
         ch_tpl   = None
     attack_noun, dam_class = _attack_info(dam_type)
-    # None = unarmed (no noun in dam_message); mirrors 1stMud !armed display branch
-    noun = None if dam_type == "none" else attack_noun
+    # Skill-driven attack: override noun from skill table (cf. 1stMud dt < TYPE_HIT branch)
+    if dt != TYPE_UNDEFINED and dt < TYPE_HIT:
+        noun = SKILLS[dt]["noun_damage"]
+    else:
+        # None = unarmed (no noun in dam_message); mirrors 1stMud !armed display branch
+        noun = None if dam_type == "none" else attack_noun
     victim_ac = get_armor(victim, _ac_type_for_damage_class(dam_class)) // 10
     if victim_ac < -15:  # soft cap (cf. 1stMud one_hit fight.c)
         victim_ac = -((-victim_ac - 15) // 5) - 15
 
     # 1stMud: if (number_range(0,19) < thac0 - victim_ac)
     #             return damage(ch, victim, 0, dt, DAM_NONE, true);
+    # Resolve dt for damage() calls: skill GSN stays as-is, otherwise TYPE_HIT
+    effective_dt = dt if (dt != TYPE_UNDEFINED and dt < TYPE_HIT) else TYPE_HIT
     roll = randint(0, 19)
     if roll == 0 or (roll != 19 and roll < thac0 - victim_ac):
-        damage(tr, ch, victim, 0, TYPE_HIT, DAM_NONE, show=True, attack_noun=noun)
+        damage(tr, ch, victim, 0, effective_dt, DAM_NONE, show=True, attack_noun=noun)
         return False
 
     # Damage calculation (cf. 1stMud one_hit)
@@ -1099,9 +1155,6 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
         hi = max(lo, 2 * ch["level"] * skill // 300)
         dam = randint(lo, hi)
 
-    dam += (get_damroll(ch) + bonus_damroll) * min(100, skill) // 100
-    dam = max(1, dam)
-
     # Position bonus: sleeping victim takes double, non-fighting victim takes 1.5x (cf. 1stMud one_hit in fight.c)
     vpos = POS_ORDER[victim["pos"]]
     if not is_awake(victim):
@@ -1109,9 +1162,19 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
     elif vpos < POS_ORDER["fighting"]:
         dam = dam * 3 // 2
 
+    # Backstab damage multiplier (cf. 1stMud one_hit fight.c:762-768)
+    if dt == GSN_BACKSTAB and wtpl is not None:
+        if wtpl.get("weapon_type") != "dagger":
+            dam *= 2 + ch["level"] // 10
+        else:
+            dam *= 2 + ch["level"] // 8
+
+    dam += (get_damroll(ch) + bonus_damroll) * min(100, skill) // 100
+    dam = max(1, dam)
+
     # 1stMud: return damage(ch, victim, dam, dt, dam_type, true);
     # Soft caps, immunity, dodge/parry all handled inside damage().
-    hit = damage(tr, ch, victim, dam, TYPE_HIT, dam_class, show=True,
+    hit = damage(tr, ch, victim, dam, effective_dt, dam_class, show=True,
                  attack_noun=noun)
 
     if hit and not ch["is_npc"] and sk_vnum != -1:
@@ -1140,9 +1203,6 @@ def do_kick(tr, ch, args):
         if ch["fighting"] is None:
             tr.print("You aren't fighting anyone.")
             return None
-        if ch.get("wait", 0) > 0:
-            tr.print("You are still recovering.")
-            return None
         target_id = ch["fighting"]
         target    = world.chars[target_id]
 
@@ -1165,6 +1225,62 @@ def do_kick(tr, ch, args):
                attack_noun="kick")
         if not ch["is_npc"]:
             check_improve(tr, ch, GSN_KICK, False, 1)
+    return None
+
+
+def do_backstab(tr, ch, args):
+    """Backstab a target from behind (cf. 1stMud do_backstab in fight.c).
+
+    Args:
+        tr: Terminal for printing messages.
+        ch (dict): Acting character (player or mob instance).
+        args (list): Command arguments -- target keyword.
+    """
+    # [PRIMESUD] explicit gate; 1stMud lets it through but get_skill returns 0 -> guaranteed miss + lag
+    if not ch["is_npc"] and GSN_BACKSTAB not in ch["learned"]:
+        tr.print("You don't know how to backstab.")
+        return None
+
+    if not args:
+        tr.print("Backstab whom?")
+        return None
+
+    if ch["fighting"] is not None:
+        tr.print("You're facing the wrong end.")
+        return None
+
+    rs = world.rooms[ch["room"]]
+    target_id = get_char_room(" ".join(args), rs["mobs"], world.chars)
+    if target_id is None:
+        tr.print("They aren't here.")
+        return None
+
+    victim = world.chars[target_id]
+    if victim is ch:
+        tr.print("How can you sneak up on yourself?")
+        return None
+
+    # [PRIMESUD] is_safe not ported
+    # [PRIMESUD] kill-stealing check not ported (single-player)
+
+    if ch["equip"].get("wield") is None:
+        tr.print("You need to wield a weapon to backstab.")
+        return None
+
+    if victim["hp"] < victim["max_hp"] // 3:
+        act(tr, "%s is hurt and suspicious ... you can't sneak up." % upper(MOB_DEFS[victim["tpl"]]["short_descr"]))
+        return None
+
+    # [PRIMESUD] check_killer not ported
+    WaitState(ch, SKILLS[GSN_BACKSTAB]["beats"])
+    skill_pct = get_skill(ch, GSN_BACKSTAB, ch["is_npc"])
+    if randint(1, 100) <= skill_pct or (skill_pct >= 2 and not is_awake(victim)):
+        check_improve(tr, ch, GSN_BACKSTAB, True, 1)
+        multi_hit(tr, ch, victim, dt=GSN_BACKSTAB)
+    else:
+        check_improve(tr, ch, GSN_BACKSTAB, False, 1)
+        damage(tr, ch, victim, 0, GSN_BACKSTAB, DAM_NONE, show=True,
+               attack_noun="backstab")
     return None
 
 
@@ -1193,16 +1309,23 @@ def do_kill(tr, player, args):
         return "kill " + MOB_DEFS[world.chars[mob_id]["tpl"]].get("keywords", "").split()[0]
 
 
-def mob_hit(tr, ch, victim):
+def mob_hit(tr, ch, victim, dt=TYPE_UNDEFINED):
     """Full attack sequence for one mob per combat round (cf. 1stMud mob_hit in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
         ch (dict): Attacking mob instance dict.
         victim (dict): Player state dict.
+        dt (int): Damage type passed from multi_hit (e.g. GSN_BACKSTAB).
     """
-    one_hit(tr, ch, victim)
+    one_hit(tr, ch, victim, dt=dt)
     if victim.get("pos") == "dead":
+        return
+
+    # [PRIMESUD] haste/OFF_FAST extra hit not yet ported
+
+    # Backstab = single hit only (cf. 1stMud mob_hit fight.c:475)
+    if dt == GSN_BACKSTAB:
         return
 
     # Second and third attacks (cf. 1stMud get_skill NPC branch in handler.c + multi_hit in fight.c)
@@ -1218,6 +1341,8 @@ def mob_hit(tr, ch, victim):
         one_hit(tr, ch, victim)
         if victim.get("pos") == "dead":
             return
+
+    # [PRIMESUD] OFF_BACKSTAB mob special not yet ported
 
     # 1stMud: if (ch->wait > 0) return; -- blocks mob specials
     if ch.get("wait", 0) > 0:
@@ -1302,23 +1427,25 @@ def _try_special_move(tr, player, target_inst):
 
 # -- Multi-hit (player's full attack sequence) ---------------------------------
 
-def multi_hit(tr, ch, victim):
+def multi_hit(tr, ch, victim, dt=TYPE_UNDEFINED):
     """Full attack sequence for one combat round (cf. 1stMud multi_hit in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
         ch (dict): Attacker (player or mob instance).
         victim (dict): Defender (player or mob instance).
+        dt (int): Damage type; TYPE_UNDEFINED for normal round,
+            skill GSN (e.g. GSN_BACKSTAB) for skill-initiated attacks.
 
     Returns:
         bool: True if the victim was killed this round.
     """
     if ch["is_npc"]:
-        mob_hit(tr, ch, victim)
+        mob_hit(tr, ch, victim, dt=dt)
         return victim.get("pos") == "dead"
 
     # Primary
-    one_hit(tr, ch, victim)
+    one_hit(tr, ch, victim, dt=dt)
     if victim.get("pos") == "dead":
         return True
 
@@ -1326,9 +1453,15 @@ def multi_hit(tr, ch, victim):
     # Specifically, ensures that secondary item is a weapon before allowing hit
     secondary_obj = ch["equip"].get("secondary")
     if secondary_obj is not None and ITEM_DEFS[secondary_obj["vnum"]].get("type") == "weapon":
-        one_hit(tr, ch, victim, secondary=True)
+        one_hit(tr, ch, victim, dt=dt, secondary=True)
         if victim.get("pos") == "dead":
             return True
+
+    # [PRIMESUD] haste extra hit not yet ported (cf. 1stMud fight.c:387-388)
+
+    # Backstab = single hit only (cf. 1stMud multi_hit fight.c:390)
+    if dt == GSN_BACKSTAB:
+        return False
 
     # Second attack: skill/2 chance; third: skill/4 chance (cf. 1stMud multi_hit in fight.c)
     if randint(1, 100) < ch["learned"].get(GSN_SECOND_ATTACK, 0) // 2:

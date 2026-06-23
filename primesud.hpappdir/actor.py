@@ -337,3 +337,23 @@ def act(tr, msg):
     """
     tr.print(upper(msg))
 
+
+def can_see(ch, victim):
+    """Check if ch can see victim (cf. 1stMud can_see in handler.c).
+
+    Stub -- always returns True. Real checks (AFF_BLIND, room_is_dark,
+    AFF_INVISIBLE, AFF_SNEAK, AFF_HIDE) to be added when those systems
+    are ported.
+
+    Args:
+        ch (dict): Observer (player or mob instance).
+        victim (dict): Target (player or mob instance).
+
+    Returns:
+        bool: True if ch can see victim.
+    """
+    # [PRIMESUD] stub: fill in when AFF_BLIND/INVISIBLE/SNEAK/HIDE/dark rooms ported
+    if ch is victim:
+        return True
+    return True
+

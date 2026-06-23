@@ -1,6 +1,6 @@
 """Command dispatcher, command table, and position gates."""
 
-from combat import do_kill, do_kick
+from combat import do_kill, do_kick, do_backstab
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
@@ -76,6 +76,7 @@ _CMD_TABLE = [
     ("zap",       do_zap,       "fighting", False),   # #139
     ("brandish",  do_brandish,  "fighting", False),   # #140
     ("flee",      do_flee,      "fighting", False),   # #147
+    ("backstab",  do_backstab,  "standing", False),   # #141
     ("kick",      do_kick,      "fighting", False),   # #148
     ("automap",   do_automap,   "sleeping", False),   # #154
     ("quit",      do_quit,      "dead",     True),    # #162 noprefix
