@@ -1,26 +1,24 @@
 """Magic command handling and spell dispatch (cf. 1stMud magic.c)."""
 
-from config import R_RECALL
-from skills_table import SKILLS, SKILL_TABLE
 import world
-from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
-from picker import pick_from
+from actor import is_name, is_affected, affect_to_char, affect_strip
+from colors import upper
 from combat import (WaitState, check_improve, get_skill, set_fighting,
                     damage)
+from config import POS_ORDER, DAM_NONE
+from config import R_RECALL
 from item import (get_char_room, get_obj_list, obj_vnum, item_spell_level,
                   item_spells, item_spell_name, item_extra_flags,
-                  item_current_charges, item_max_charges, item_affect_list,
+                  item_current_charges, item_affect_list,
                   item_affect_find, item_affect_remove, item_affect_to_obj,
                   set_item_extra_flag)
-from actor import is_name, is_affected, affect_to_char, affect_strip, is_awake
-from config import POS_ORDER, DAM_NONE, TYPE_HIT
-from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
 from movement import perform_recall
-from colors import upper
+from picker import pick_from
 from scan import do_scan
-
+from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
+from skills_table import SKILLS, SKILL_TABLE
 from urandom import randint
-
+from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 
 TARGET_NONE = "none"
 TARGET_CHAR = "char"

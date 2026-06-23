@@ -5,6 +5,12 @@ from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
 from world import ITEM_DEFS
 from colors import upper
 
+AFF_TO_WHERE = {
+    "to_affects": "affected_by",
+    "to_immune": "imm_flags",
+    "to_resist": "res_flags",
+    "to_vuln": "vuln_flags",
+}
 
 _AC_LOC_MAP = {
     "ac_pierce": AC_PIERCE,
@@ -140,13 +146,7 @@ def affect_modify(char, af, add):
     bit = af.get("bitvector", "")
     if bit:
         where = af.get("where", "to_affects")
-        _WHERE_TO_KEY = {
-            "to_affects": "affected_by",
-            "to_immune":  "imm_flags",
-            "to_resist":  "res_flags",
-            "to_vuln":    "vuln_flags",
-        }
-        key = _WHERE_TO_KEY.get(where)
+        key = AFF_TO_WHERE.get(where)
         if key:
             if add:
                 char.setdefault(key, {})[bit] = True
@@ -233,13 +233,7 @@ def affect_check(char, where, vector):
     if where == "to_object" or where == "to_weapon" or not vector:
         return
 
-    _WHERE_TO_KEY = {
-        "to_affects": "affected_by",
-        "to_immune":  "imm_flags",
-        "to_resist":  "res_flags",
-        "to_vuln":    "vuln_flags",
-    }
-    key = _WHERE_TO_KEY.get(where)
+    key = AFF_TO_WHERE.get(where)
     if not key:
         return
 
@@ -294,7 +288,7 @@ def get_damroll(char):
 
 
 def get_armor(char, ac_type):
-    """Effective bucket AC: base + DEX bonus + equipped armour bonus.
+    """Effective bucket AC: base + DEX bonus + equipped armor bonus.
 
     Args:
         char (dict): Character state dict (player or mob instance).

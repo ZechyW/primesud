@@ -1,6 +1,6 @@
 """HP Prime platform wrappers and graphic primitive ownership."""
 
-from hpprime import dimgrob, eval as ppl_eval, getpix, grobh, grobw, pixon, strblit2
+from hpprime import dimgrob, eval as ppl_eval
 
 
 def ticks():

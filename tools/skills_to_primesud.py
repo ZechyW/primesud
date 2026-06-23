@@ -28,7 +28,6 @@ Fields emitted per raw entry (faithful to source data):
 _SKILL_TABLE_RAW indices map directly to the 1stMud sn values documented in SKILLS.md.
 """
 
-import re
 import sys
 from pathlib import Path
 

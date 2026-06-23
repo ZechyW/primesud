@@ -1,6 +1,5 @@
 """System command handlers for save and quit."""
 
-import world
 from player import save_world
 
 
