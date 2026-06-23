@@ -89,6 +89,44 @@ def strupper(s):
     return ''.join(out)
 
 
+def draw_line(fill=None, length=0):
+    """Return a separator line of `length` visible chars using `fill` pattern (cf. 1stMud draw_line in string.c).
+
+    Args:
+        fill: Fill string, may contain {X color codes. Defaults to "-".
+        length: Visible width. Defaults to TERMINAL_COLS.
+
+    Returns:
+        str: Separator string with {x reset appended.
+    """
+    from config import TERMINAL_COLS
+    if not fill:
+        fill = "-"
+    if length <= 0:
+        length = TERMINAL_COLS
+    vis_len = color_len(fill)
+    if vis_len == 0:
+        return "{x"
+    full, rem = divmod(length, vis_len)
+    parts = [fill] * full
+    if rem:
+        # partial repeat: emit chars from fill, skipping color codes, until rem visible chars
+        count = 0
+        i = 0
+        n = len(fill)
+        while i < n and count < rem:
+            if fill[i] == COLOR_CODE and i + 1 < n:
+                parts.append(fill[i])
+                parts.append(fill[i + 1])
+                i += 2
+            else:
+                parts.append(fill[i])
+                count += 1
+                i += 1
+    parts.append("{x")
+    return "".join(parts)
+
+
 def strip_colors(text):
     """Return text with all {X color codes removed."""
     if COLOR_CODE not in text:

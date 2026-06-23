@@ -1,6 +1,7 @@
 """Player creation, progression, prompt, and save/load state."""
 
 from util import gc_collect
+from terminal import tprint
 from prime_platform import hvars_get, hvars_set
 from config import (
     SAVE_VAR,
@@ -258,15 +259,15 @@ def _serialize_world():
         f.write(payload)
 
 
-def save_world(tr, quiet=False):
+def save_world(quiet=False):
     """Save world state and optionally print success."""
     try:
         _serialize_world()
         if not quiet:
-            tr.print("Saved.")
+            tprint("Saved.")
         return True
     except Exception as e:
-        tr.print("Save failed: %s" % e)
+        tprint("Save failed: %s" % e)
         return False
 
 

@@ -1,10 +1,11 @@
 """System command handlers for save and quit."""
 
+from terminal import tprint
 from player import save_world
 
 
 def do_save(tr, player, args):
-    save_world(tr)
+    save_world()
 
 
 def do_quit(tr, player, args):
@@ -18,4 +19,4 @@ def do_debug(tr, player, args):  # [PRIMESUD]
     obj = create_object(I_DIPLOMA)
     obj["affect_list"] = [{"location": "ac", "modifier": -1100}]
     player["inv"].append(obj)
-    tr.print("Debug: diploma (ac -1100) added to inventory.")
+    tprint("Debug: diploma (ac -1100) added to inventory.")

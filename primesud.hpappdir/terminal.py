@@ -4,6 +4,21 @@ from config import TERMINAL_COLS, FONT_GROB, COLOR_GROB
 from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full
 from prime_platform import dimgrob, getpix, pixon, grobh, grobw, strblit2
 
+# Module-level terminal instance, set once by init().
+tr = None
+
+
+def init(instance):
+    """Set module-level tr and install colour print wrappers."""
+    global tr
+    tr = instance
+    install_color_print(instance)
+
+
+def tprint(*args, **kwargs):
+    """Module-level print -- delegates to tr.print (colour-aware)."""
+    tr.print(*args, **kwargs)
+
 
 def _wrap_plain(text, width):
     """Plain-text word-wrap with no colour-code scanning."""

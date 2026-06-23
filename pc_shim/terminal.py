@@ -2,6 +2,21 @@
 import sys
 from colors import COLOR_CODE, _RESET_CODES
 
+# Module-level terminal instance, set once by init().
+tr = None
+
+
+def init(instance):
+    """Set module-level tr and install colour print wrappers."""
+    global tr
+    tr = instance
+    install_color_print(instance)
+
+
+def tprint(*args, **kwargs):
+    """Module-level print — delegates to tr.print (colour-aware)."""
+    tr.print(*args, **kwargs)
+
 _ANSI = {
     'd': '\033[30m', 'r': '\033[31m', 'g': '\033[32m', 'y': '\033[33m',
     'b': '\033[34m', 'm': '\033[35m', 'c': '\033[36m', 'w': '\033[37m',
@@ -47,7 +62,7 @@ def install_color_print(tr):
     tr.print = wrapped_print
 
     def wrapped_set_status(text):
-        sys.stdout.write('\r' + _to_ansi(text) + _RST)
+        sys.stdout.write('\r' + _to_ansi(text) + _RST + '\033[K')
         sys.stdout.flush()
         tr._at_prompt = True
 

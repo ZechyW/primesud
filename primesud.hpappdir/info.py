@@ -1,7 +1,7 @@
 """Information and room-view command handlers."""
 
 from util import free_mem, gc_collect
-from colors import color_len, upper
+from colors import color_len, upper, draw_line
 
 from skills_table import SKILL_TABLE, SKILLS
 import world
@@ -44,6 +44,22 @@ def _wrap_paragraphs(text, width):
 
 _FLAG_TABLE = (
     (PLR_AUTOMAP, "automap", "Map in room descriptions"),
+    # TODO: PLR_AUTODAMAGE "autodamage" - damage amounts in combat
+    # TODO: PLR_AUTOASSIST "autoassist" - auto-assist group members
+    # TODO: PLR_AUTOEXIT "autoexit" - exits in room descriptions
+    # TODO: PLR_AUTOGOLD "autogold" - auto-loot gold from corpses
+    # TODO: PLR_AUTOLOOT "autoloot" - auto-loot objects from corpses
+    # TODO: PLR_AUTOSAC "autosac" - auto-sacrifice corpses
+    # TODO: PLR_AUTOSPLIT "autosplit" - auto-split gold in group
+    # TODO: PLR_AUTOPROMPT "autoprompt" - selective prompt display
+    # TODO: COMM_COMPACT "compact" - compact output (comm flags)
+    # TODO: COMM_PROMPT "prompt" - prompt display (comm flags)
+    # TODO: COMM_GPROMPT "gprompt" - group prompt (comm flags)
+    # TODO: COMM_COMBINE "combine" - combine duplicate objects (comm flags)
+    # TODO: PLR_CANLOOT "noloot" - prevent corpse looting (inverted flag)
+    # TODO: PLR_NOSUMMON "nosummon" - block summoning
+    # TODO: PLR_NOFOLLOW "nofollow" - block following
+    # TODO: COMM_NOPRETITLE "nopretitles" - hide pretitles (comm flags)
 )
 
 
@@ -56,14 +72,14 @@ def do_automap(tr, player, args):
 
 
 def do_autolist(tr, player, args):
-    tr.print(" Command    Status  Description")
-    tr.print(" " + "-" * (TERMINAL_COLS - 2))
+    """Display toggle settings (cf. 1stMud do_autolist in act_info.c)."""
+    tr.print(" %-9s %-6s{w %s" % ("Command", "Status", "Description"))
+    tr.print(draw_line())
     flags = player.get("flags", PLR_DEFAULTS)
     for bit, name, desc in _FLAG_TABLE:
         status = "ON" if flags & bit else "OFF"
-        tr.print(" {G" + name + " " * (10 - len(name)) +
-                 " {W" + status + " " * (6 - len(status)) +
-                 "{w " + desc + "{x")
+        tr.print("{G%-11s {W%-6s{w %s{x" % (name, status, desc))
+    tr.print(draw_line())
 
 
 _CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")

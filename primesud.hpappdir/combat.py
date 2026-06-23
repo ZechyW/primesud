@@ -75,7 +75,7 @@ def violence_update(tr, player):
     chars = world.chars
 
     # Need to copy to list first as chars could get modified during iteration (on deaths)
-    for ch in list(chars.values()):
+    for ch in [chars[k] for k in sorted(chars)]:
         # 1stMud: IsNPC(ch) && ch->fighting == NULL && IsAwake(ch) && ch->hunting != NULL
         if ch["is_npc"] and ch["fighting"] is None and is_awake(ch) and ch.get("hunting") is not None:
             # TODO: hunt_victim not ported
@@ -1662,7 +1662,7 @@ def raw_kill(tr, player, mob_id, inst, tpl):
     make_corpse(inst, tpl)
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
-    save_world(tr, quiet=True)
+    save_world(quiet=True)
 
     world.rooms[inst["room"]]["mobs"].remove(mob_id)
     del world.chars[mob_id]

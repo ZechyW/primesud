@@ -13,14 +13,14 @@ FONT_GROB     = 9    # grob tml blits font glyphs from (HP Prime default)
 COLOR_GROB    = 8    # unmodified font copy; restored into FONT_GROB on colour reset
 
 # -- Timing -- pulse system (1stMud convention) -----------------------------------------
-PULSE_PER_SECOND = 3                          # base pulse rate
+PULSE_PER_SECOND = 4                          # base pulse rate
 MS_PER_PULSE     = 1000 // PULSE_PER_SECOND   # 250 ms per pulse
 PULSE_VIOLENCE   = 2  * PULSE_PER_SECOND      # combat round
 PULSE_MOBILE     = 5  * PULSE_PER_SECOND      # mob wander
 PULSE_TICK       = 30 * PULSE_PER_SECOND      # world tick
 TICK_SECS        = PULSE_TICK // PULSE_PER_SECOND  # seconds elapsed per world tick
 # PULSE_AREA     = 120 * PULSE_PER_SECOND     # area reset
-PULSE_AREA       = 5 * PULSE_PER_SECOND       # Quicker age ticks for better UX
+PULSE_AREA       = 30 * PULSE_PER_SECOND      # Quicker age ticks for better UX
 POLL_MS          = 50                         # keyboard polling interval (ms)
 AUTOSAVE_TICKS   = 4                          # autosave every N world ticks
 DEATH_MSG_DELAY  = 1                          # seconds between death flavour lines

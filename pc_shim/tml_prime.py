@@ -25,6 +25,8 @@ def _start_reader():
                     continue
                 if c == '\r':
                     c = '\n'
+                elif c == '\x1b':
+                    c = '\\e'
                 _q.put(c)
     else:
         import termios, tty
@@ -36,6 +38,8 @@ def _start_reader():
                 c = sys.stdin.read(1)
                 if c == '\r':
                     c = '\n'
+                elif c == '\x1b':
+                    c = '\\e'
                 _q.put(c)
 
     threading.Thread(target=_reader, daemon=True).start()

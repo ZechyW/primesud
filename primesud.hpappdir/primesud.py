@@ -43,15 +43,38 @@ from update import obj_update, affect_update
 from commands import interpret
 from info import do_look
 from macros import _MACRO_SUBST
-from terminal import install_color_print
+import terminal
+from config import SAVE_VAR
 from game_state import (
     init_game_state,
     new_game,
     load_game,
-    handle_version_mismatch,
     save_game,
 )
 from prime_platform import ticks, wait, wait_ms, clear_graphics
+
+
+def _handle_version_mismatch(game):
+    """Prompt the user after a save format version mismatch."""
+    tr = game.tr
+    tr.print("{RWARNING:{x Save format has changed.")
+    if game._backup_ok:
+        tr.print("Your old save has been backed up to: {C" + SAVE_VAR + "_bak{x")
+    else:
+        tr.print("{RWARNING:{x Backup to {C" + SAVE_VAR + "_bak{x FAILED.")
+        tr.print("Your old save is still in {C" + SAVE_VAR + "{x -- do NOT start")
+        tr.print("a new game here or it will be overwritten.")
+    tr.print("")
+    tr.print("[N] Start a new game")
+    tr.print("[Q] Quit (restore or migrate the save manually)")
+    tr.print("")
+    while True:
+        choice = tr.input("Choice (N/Q): ", alpha=False).strip().lower()
+        if choice == "n":
+            return True
+        if choice == "q":
+            return False
+
 
 # -- Main classes --------------------------------------------------------------
 
@@ -63,7 +86,7 @@ class Game:
         self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font=FONT,
                       scrollback_size=SCROLLBACK_SIZE, scroll_step=SCROLL_STEP,
                       touch_scroll_step=TOUCH_SCROLL_STEP, swipe_threshold=SWIPE_THRESHOLD)
-        install_color_print(self.tr)
+        terminal.init(self.tr)
         self.input_buf = ""
         self._cmd_history = []   # [PRIMESUD] submitted commands, oldest first
         self._hist_pos    = None # None = not browsing; int = index into _cmd_history
@@ -310,7 +333,7 @@ class PrimeSud:
 
             result = load_game(game)
             if result is None:          # version mismatch
-                if not handle_version_mismatch(game):
+                if not _handle_version_mismatch(game):
                     return              # user chose quit -- exit without saving
                 new_game(game)
             elif not result:            # no save found

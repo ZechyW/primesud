@@ -53,15 +53,16 @@ _CMD_TABLE = [
     ("affects",   do_affects,   "dead",     False),   # #33
     ("credits",   do_credits,   "dead",     False),   # #41
     ("equipment", do_equipment, "dead",     False),   # #42
-    ("eat",       do_eat,       "resting",  False),   # #43
     ("help",      do_help,      "dead",     False),   # #44
     ("score",     do_score,     "dead",     False),   # #49
     ("skills",    do_skills,    "dead",     False),   # #50
     ("spells",    do_spells,    "dead",     False),   # #53
     ("autolist",  do_autolist,  "dead",     False),   # #63
     ("outfit",    do_outfit,    "resting",  False),   # #80
+    ("brandish",  do_brandish,  "fighting", False),   # #112
     ("close",     do_close,     "resting",  False),   # #113
     ("drop",      do_drop,      "resting",  False),   # #115
+    ("eat",       do_eat,       "resting",  False),   # #116
     ("open",      do_open,      "resting",  False),   # #124
     ("put",       do_put,       "resting",  False),   # #127
     ("second",    do_second,    "resting",  False),   # #128
@@ -74,9 +75,8 @@ _CMD_TABLE = [
     ("tap",        do_sacrifice,  "resting",  False),   # #136
     ("wear",      do_wear,      "resting",  False),   # #138
     ("zap",       do_zap,       "fighting", False),   # #139
-    ("brandish",  do_brandish,  "fighting", False),   # #140
+    ("backstab",  do_backstab,  "fighting", False),   # #141
     ("flee",      do_flee,      "fighting", False),   # #147
-    ("backstab",  do_backstab,  "standing", False),   # #141
     ("kick",      do_kick,      "fighting", False),   # #148
     ("automap",   do_automap,   "sleeping", False),   # #154
     ("quit",      do_quit,      "dead",     True),    # #162 noprefix
@@ -85,9 +85,9 @@ _CMD_TABLE = [
     ("save",      do_save,      "dead",     False),   # #166
     ("train",     do_train,     "resting",  False),   # #171
     ("scan",      do_scan,      "resting",  False),   # #253
-    ("macro",     do_macro,     "dead",     False),   # [PRIMESUD]
     ("map",       do_map,       "resting",  False),   # #291
-    ("debug",     do_debug,     "dead",     False),   # [PRIMESUD] #349
+    ("macro",     do_macro,     "dead",     False),   # [PRIMESUD] #349
+    ("debug",     do_debug,     "dead",     False),   # [PRIMESUD] #350
 ]
 
 
