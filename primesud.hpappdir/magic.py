@@ -28,7 +28,7 @@ TARGET_OBJ = "obj"
 TARGET_ROOM = "room"
 _AC_LOCS = ("ac_pierce", "ac_bash", "ac_slash", "ac_exotic")
 
-def spell_null(tr, sn, level, ch, vo, target, world):
+def spell_null(tr, sn, level, ch, vo, target):
     """Do nothing spell placeholder (cf. 1stMud spell_null in magic.c)."""
     return False
 
@@ -49,7 +49,7 @@ def _heal_char(tr, ch, victim, amount, msg):
     return True
 
 
-def _target_id(ch, victim, world):
+def _target_id(ch, victim):
     if victim is None or victim is ch:
         return None
     for mob_id, inst in world.chars.items():
@@ -58,17 +58,17 @@ def _target_id(ch, victim, world):
     return None
 
 
-def _damage_char(tr, ch, victim, victim_id, dam, sn, world):
+def _damage_char(tr, ch, victim, victim_id, dam, sn):
     """Apply spell damage (cf. 1stMud damage in fight.c). victim_id unused; damage() uses victim["id"]."""
     sk = SKILLS[sn]
     dam_type = sk.get("dam_type", DAM_NONE)
     # 1stMud: damage(ch, victim, dam, sn, dam_type, true) -- sn < TYPE_HIT, no dodge/parry
-    damage(tr, ch, victim, dam, sn, dam_type, show=True, world=world,
+    damage(tr, ch, victim, dam, sn, dam_type, show=True,
            attack_noun=sk.get("noun_damage") or sk["name"])
     return True
 
 
-def _char_name(ch, victim, world):
+def _char_name(ch, victim):
     if victim is ch:
         return "You"
     if victim.get("is_npc"):
@@ -84,7 +84,7 @@ def _skill_lookup(name):
     return None
 
 
-def _area_state_for_room(world, room_vnum):
+def _area_state_for_room(room_vnum):
     tag = ROOM_DEFS.get(room_vnum, {}).get("area")
     if tag is None:
         return None
@@ -207,60 +207,60 @@ def check_dispel(tr, dis_level, victim, sn, ch=None):
     return False
 
 
-def spell_cure_light(tr, sn, level, ch, vo, target, world):
+def spell_cure_light(tr, sn, level, ch, vo, target):
     """Cure light wounds (cf. 1stMud spell_cure_light in magic.c)."""
     return _heal_char(tr, ch, vo, _dice(1, 8) + level // 3, "You feel better!")
 
 
-def spell_cure_serious(tr, sn, level, ch, vo, target, world):
+def spell_cure_serious(tr, sn, level, ch, vo, target):
     """Cure serious wounds (cf. 1stMud spell_cure_serious in magic.c)."""
     return _heal_char(tr, ch, vo, _dice(2, 8) + level // 2, "You feel better!")
 
 
-def spell_cure_critical(tr, sn, level, ch, vo, target, world):
+def spell_cure_critical(tr, sn, level, ch, vo, target):
     """Cure critical wounds (cf. 1stMud spell_cure_critical in magic.c)."""
     return _heal_char(tr, ch, vo, _dice(3, 8) + level - 6, "You feel better!")
 
 
-def spell_heal(tr, sn, level, ch, vo, target, world):
+def spell_heal(tr, sn, level, ch, vo, target):
     """Heal spell (cf. 1stMud spell_heal in magic.c)."""
     return _heal_char(tr, ch, vo, 100, "A warm feeling fills your body.")
 
 
-def spell_cause_light(tr, sn, level, ch, vo, target, world):
+def spell_cause_light(tr, sn, level, ch, vo, target):
     """Cause light wounds (cf. 1stMud spell_cause_light in magic.c)."""
-    return _damage_char(tr, ch, vo, _target_id(ch, vo, world), _dice(1, 8) + level // 3, sn, world)
+    return _damage_char(tr, ch, vo, _target_id(ch, vo), _dice(1, 8) + level // 3, sn)
 
 
-def spell_cause_serious(tr, sn, level, ch, vo, target, world):
+def spell_cause_serious(tr, sn, level, ch, vo, target):
     """Cause serious wounds (cf. 1stMud spell_cause_serious in magic.c)."""
-    return _damage_char(tr, ch, vo, _target_id(ch, vo, world), _dice(2, 8) + level // 2, sn, world)
+    return _damage_char(tr, ch, vo, _target_id(ch, vo), _dice(2, 8) + level // 2, sn)
 
 
-def spell_cause_critical(tr, sn, level, ch, vo, target, world):
+def spell_cause_critical(tr, sn, level, ch, vo, target):
     """Cause critical wounds (cf. 1stMud spell_cause_critical in magic.c)."""
-    return _damage_char(tr, ch, vo, _target_id(ch, vo, world), _dice(3, 8) + level - 6, sn, world)
+    return _damage_char(tr, ch, vo, _target_id(ch, vo), _dice(3, 8) + level - 6, sn)
 
 
-def spell_harm(tr, sn, level, ch, vo, target, world):
+def spell_harm(tr, sn, level, ch, vo, target):
     """Harm spell (cf. 1stMud spell_harm in magic.c)."""
     dam = max(20, vo["hp"] - _dice(1, 4))
     if saves_spell(level, vo, "harm"):
         dam = min(50, dam // 2)
     dam = min(100, dam)
-    return _damage_char(tr, ch, vo, _target_id(ch, vo, world), dam, sn, world)
+    return _damage_char(tr, ch, vo, _target_id(ch, vo), dam, sn)
 
 
-def spell_magic_missile(tr, sn, level, ch, vo, target, world):
+def spell_magic_missile(tr, sn, level, ch, vo, target):
     """Magic missile (cf. 1stMud spell_magic_missile in magic.c)."""
     high = level | 50
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, "energy"):
         dam //= 2
-    return _damage_char(tr, ch, vo, _target_id(ch, vo, world), dam, sn, world)
+    return _damage_char(tr, ch, vo, _target_id(ch, vo), dam, sn)
 
 
-def spell_earthquake(tr, sn, level, ch, vo, target, world):
+def spell_earthquake(tr, sn, level, ch, vo, target):
     """Earthquake room spell (cf. 1stMud spell_earthquake in magic.c)."""
     tr.print("The earth trembles beneath your feet!")
     room = world.rooms[ch["room"]]
@@ -269,17 +269,17 @@ def spell_earthquake(tr, sn, level, ch, vo, target, world):
         if victim is None or victim is ch:
             continue
         dam = 0 if victim.get("aff_flags", {}).get("flying") else level + _dice(2, 8)
-        _damage_char(tr, ch, victim, mob_id, dam, sn, world)
+        _damage_char(tr, ch, victim, mob_id, dam, sn)
     return True
 
 
-def spell_call_lightning(tr, sn, level, ch, vo, target, world):
+def spell_call_lightning(tr, sn, level, ch, vo, target):
     """Call lightning area spell (cf. 1stMud spell_call_lightning in magic.c)."""
     room = ROOM_DEFS[ch["room"]]
     if room.get("flags", {}).get("indoors"):
         tr.print("You must be out of doors.")
         return False
-    area = _area_state_for_room(world, ch["room"])
+    area = _area_state_for_room(ch["room"])
     weather = area.get("weather") if area is not None else None
     if weather is None or weather.get("precip", 0) <= 0:
         tr.print("You need bad weather.")
@@ -295,11 +295,11 @@ def spell_call_lightning(tr, sn, level, ch, vo, target, world):
         cur_dam = dam
         if saves_spell(level, victim, "lightning"):
             cur_dam //= 2
-        _damage_char(tr, ch, victim, mob_id, cur_dam, sn, world)
+        _damage_char(tr, ch, victim, mob_id, cur_dam, sn)
     return True
 
 
-def spell_chain_lightning(tr, sn, level, ch, vo, target, world):
+def spell_chain_lightning(tr, sn, level, ch, vo, target):
     """Chain lightning room spell (cf. 1stMud spell_chain_lightning in magic.c)."""
     victim = vo
     if victim is None or victim.get("is_npc") is not True:
@@ -309,7 +309,7 @@ def spell_chain_lightning(tr, sn, level, ch, vo, target, world):
              MOB_DEFS[victim["tpl"]]["short_descr"] + ".")
 
     room_state = world.rooms[ch["room"]]
-    victim_id = _target_id(ch, victim, world)
+    victim_id = _target_id(ch, victim)
     last_victim_id = victim_id
     last_hit_ch = False
     any_hit = False
@@ -318,7 +318,7 @@ def spell_chain_lightning(tr, sn, level, ch, vo, target, world):
         dam = _dice(level, 6)
         if saves_spell(level, victim, "lightning"):
             dam //= 3
-        _damage_char(tr, ch, victim, victim_id, dam, sn, world)
+        _damage_char(tr, ch, victim, victim_id, dam, sn)
         any_hit = True
         level -= 4
         last_victim_id = victim_id
@@ -382,7 +382,7 @@ def _random_teleport_room(ch):
     return rooms[randint(0, len(rooms) - 1)]
 
 
-def spell_teleport(tr, sn, level, ch, vo, target, world):
+def spell_teleport(tr, sn, level, ch, vo, target):
     """Teleport target to random room (cf. 1stMud spell_teleport in magic.c)."""
     victim = vo
     room = ROOM_DEFS.get(victim.get("room"))
@@ -398,29 +398,29 @@ def spell_teleport(tr, sn, level, ch, vo, target, world):
         return False
     old_room = victim["room"]
     victim["room"] = dest
-    victim_id = _target_id(ch, victim, world)
+    victim_id = _target_id(ch, victim)
     if victim_id is not None:
         if victim_id in world.rooms.get(old_room, {}).get("mobs", []):
             world.rooms[old_room]["mobs"].remove(victim_id)
         world.rooms[dest]["mobs"].append(victim_id)
     if victim is ch:
         from info import do_look
-        do_look(tr, victim, [], world)
+        do_look(tr, victim, [])
     else:
-        tr.print(_char_name(ch, victim, world) + " vanishes!")
+        tr.print(_char_name(ch, victim) + " vanishes!")
     return True
 
 
-def spell_farsight(tr, sn, level, ch, vo, target, world):
+def spell_farsight(tr, sn, level, ch, vo, target):
     """Farsight spell (cf. 1stMud spell_farsight in magic2.c)."""
     if ch.get("aff_flags", {}).get("blind"):
         tr.print("Maybe it would help if you could see?")
         return False
-    do_scan(tr, ch, _spell_tail(ch).split(), world)
+    do_scan(tr, ch, _spell_tail(ch).split())
     return True
 
 
-def _iter_world_objects(player, world):
+def _iter_world_objects(player):
     for obj in player.get("inv", []):
         yield (obj, "one is carried by you")
     for obj in player.get("equip", {}).values():
@@ -440,7 +440,7 @@ def _iter_world_objects(player, world):
                 yield (obj, "one is carried by " + mob_name)
 
 
-def spell_locate_object(tr, sn, level, ch, vo, target, world):
+def spell_locate_object(tr, sn, level, ch, vo, target):
     """Locate object by name fragment (cf. 1stMud spell_locate_object in magic.c)."""
     wanted = _spell_tail(ch)
     if not wanted:
@@ -448,7 +448,7 @@ def spell_locate_object(tr, sn, level, ch, vo, target, world):
         return False
     found = []
     max_found = 2 * level
-    for obj, line in _iter_world_objects(ch, world):
+    for obj, line in _iter_world_objects(ch):
         tpl = ITEM_DEFS[obj_vnum(obj)]
         if not is_name(wanted, tpl.get("keywords", "")):
             continue
@@ -465,10 +465,10 @@ def spell_locate_object(tr, sn, level, ch, vo, target, world):
     return True
 
 
-def spell_control_weather(tr, sn, level, ch, vo, target, world):
+def spell_control_weather(tr, sn, level, ch, vo, target):
     """Adjust simplified interim weather state (cf. 1stMud spell_control_weather in magic.c)."""
     arg = _spell_tail(ch)
-    area = _area_state_for_room(world, ch["room"])
+    area = _area_state_for_room(ch["room"])
     if area is None:
         tr.print("The weather is altered by your magic.")
         return True
@@ -491,15 +491,15 @@ def spell_control_weather(tr, sn, level, ch, vo, target, world):
     return True
 
 
-def spell_word_of_recall(tr, sn, level, ch, vo, target, world):
+def spell_word_of_recall(tr, sn, level, ch, vo, target):
     """Word of recall spell (cf. 1stMud spell_word_of_recall in magic.c)."""
     victim = vo if vo is not None else ch
     if victim.get("is_npc"):
         return False
-    return perform_recall(tr, victim, R_RECALL, world, "recall")
+    return perform_recall(tr, victim, R_RECALL, "recall")
 
 
-def spell_trivia_pill(tr, sn, level, ch, vo, target, world):
+def spell_trivia_pill(tr, sn, level, ch, vo, target):
     """Grant one trivia point (cf. 1stMud spell_trivia_pill in magic.c)."""
     victim = vo if vo is not None else ch
     if victim.get("is_npc"):
@@ -511,7 +511,7 @@ def spell_trivia_pill(tr, sn, level, ch, vo, target, world):
     return True
 
 
-def spell_detect_poison(tr, sn, level, ch, vo, target, world):
+def spell_detect_poison(tr, sn, level, ch, vo, target):
     """Detect poison on object target (cf. 1stMud spell_detect_poison in magic.c)."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     poisoned = bool(vo.get("poisoned") or tpl.get("poisoned"))
@@ -522,7 +522,7 @@ def spell_detect_poison(tr, sn, level, ch, vo, target, world):
     return True
 
 
-def spell_identify(tr, sn, level, ch, vo, target, world):
+def spell_identify(tr, sn, level, ch, vo, target):
     """Identify object details (cf. 1stMud spell_identify in magic.c)."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     flags = item_extra_flags(vo, tpl)
@@ -557,7 +557,7 @@ def spell_identify(tr, sn, level, ch, vo, target, world):
     return True
 
 
-def spell_fireproof(tr, sn, level, ch, vo, target, world):
+def spell_fireproof(tr, sn, level, ch, vo, target):
     """Fireproof object target (cf. 1stMud spell_fireproof in magic.c)."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     flags = item_extra_flags(vo, tpl)
@@ -569,7 +569,7 @@ def spell_fireproof(tr, sn, level, ch, vo, target, world):
     return True
 
 
-def spell_enchant_armor(tr, sn, level, ch, vo, target, world):
+def spell_enchant_armor(tr, sn, level, ch, vo, target):
     """Enchant armor item (cf. 1stMud spell_enchant_armor in magic.c)."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     if tpl.get("type") != "armor":
@@ -621,7 +621,7 @@ def spell_enchant_armor(tr, sn, level, ch, vo, target, world):
     return True
 
 
-def spell_enchant_weapon(tr, sn, level, ch, vo, target, world):
+def spell_enchant_weapon(tr, sn, level, ch, vo, target):
     """Enchant weapon item (cf. 1stMud spell_enchant_weapon in magic.c)."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     if tpl.get("type") != "weapon":
@@ -706,33 +706,33 @@ def _new_affect(sn, level, duration, location, modifier, bitvector=""):
     }
 
 
-def spell_armor(tr, sn, level, ch, vo, target, world):
+def spell_armor(tr, sn, level, ch, vo, target):
     """Armor spell (cf. 1stMud spell_armor in magic.c)."""
     if is_affected(vo, sn):
-        tr.print("You are already armored." if vo is ch else _char_name(ch, vo, world) + " is already armored.")
+        tr.print("You are already armored." if vo is ch else _char_name(ch, vo) + " is already armored.")
         return False
     affect_to_char(vo, _new_affect(sn, level, 24, "ac", -20))
     if vo is ch:
         tr.print("You feel someone protecting you.")
     else:
-        tr.print(_char_name(ch, vo, world) + " is protected by your magic.")
+        tr.print(_char_name(ch, vo) + " is protected by your magic.")
     return True
 
 
-def spell_shield(tr, sn, level, ch, vo, target, world):
+def spell_shield(tr, sn, level, ch, vo, target):
     """Shield spell (cf. 1stMud spell_shield in magic.c)."""
     if is_affected(vo, sn):
-        tr.print("You are already shielded from harm." if vo is ch else _char_name(ch, vo, world) + " is already protected by a shield.")
+        tr.print("You are already shielded from harm." if vo is ch else _char_name(ch, vo) + " is already protected by a shield.")
         return False
     affect_to_char(vo, _new_affect(sn, level, 8 + level, "ac", -20))
     if vo is ch:
         tr.print("You are surrounded by a force shield.")
     else:
-        tr.print(_char_name(ch, vo, world) + " is surrounded by a force shield.")
+        tr.print(_char_name(ch, vo) + " is surrounded by a force shield.")
     return True
 
 
-def spell_bless(tr, sn, level, ch, vo, target, world):
+def spell_bless(tr, sn, level, ch, vo, target):
     """Bless character path (cf. 1stMud spell_bless in magic.c)."""
     if target == TARGET_OBJ:
         tpl = ITEM_DEFS[obj_vnum(vo)]
@@ -755,7 +755,7 @@ def spell_bless(tr, sn, level, ch, vo, target, world):
         tr.print(_item_name(vo) + " glows with a holy aura.")
         return True
     if vo.get("pos") == "fighting" or is_affected(vo, sn):
-        tr.print("You are already blessed." if vo is ch else _char_name(ch, vo, world) + " already has divine favor.")
+        tr.print("You are already blessed." if vo is ch else _char_name(ch, vo) + " already has divine favor.")
         return False
     mod = level // 8
     affect_to_char(vo, _new_affect(sn, level, 6 + level, "hitroll", mod))
@@ -763,25 +763,25 @@ def spell_bless(tr, sn, level, ch, vo, target, world):
     if vo is ch:
         tr.print("You feel righteous.")
     else:
-        tr.print("You grant " + _char_name(ch, vo, world) + " the favor of your god.")
+        tr.print("You grant " + _char_name(ch, vo) + " the favor of your god.")
     return True
 
 
-def spell_giant_strength(tr, sn, level, ch, vo, target, world):
+def spell_giant_strength(tr, sn, level, ch, vo, target):
     """Giant strength spell (cf. 1stMud spell_giant_strength in magic.c)."""
     if is_affected(vo, sn):
-        tr.print("You are already as strong as you can get!" if vo is ch else _char_name(ch, vo, world) + " can't get any stronger.")
+        tr.print("You are already as strong as you can get!" if vo is ch else _char_name(ch, vo) + " can't get any stronger.")
         return False
     mod = 1 + (level >= 18) + (level >= 25) + (level >= 32)
     affect_to_char(vo, _new_affect(sn, level, level, "str", mod))
     if vo is ch:
         tr.print("Your muscles surge with heightened power!")
     else:
-        tr.print(_char_name(ch, vo, world) + "'s muscles surge with heightened power.")
+        tr.print(_char_name(ch, vo) + "'s muscles surge with heightened power.")
     return True
 
 
-def spell_weaken(tr, sn, level, ch, vo, target, world):
+def spell_weaken(tr, sn, level, ch, vo, target):
     """Weaken spell (cf. 1stMud spell_weaken in magic.c)."""
     if is_affected(vo, sn) or saves_spell(level, vo, "other"):
         return False
@@ -789,11 +789,11 @@ def spell_weaken(tr, sn, level, ch, vo, target, world):
     if vo is ch:
         tr.print("You feel your strength slip away.")
     else:
-        tr.print(_char_name(ch, vo, world) + " looks tired and weak.")
+        tr.print(_char_name(ch, vo) + " looks tired and weak.")
     return True
 
 
-def spell_faerie_fire(tr, sn, level, ch, vo, target, world):
+def spell_faerie_fire(tr, sn, level, ch, vo, target):
     """Faerie fire spell (cf. 1stMud spell_faerie_fire in magic.c)."""
     if vo.get("aff_flags", {}).get("faerie_fire"):
         return False
@@ -801,11 +801,11 @@ def spell_faerie_fire(tr, sn, level, ch, vo, target, world):
     if vo is ch:
         tr.print("You are surrounded by a pink outline.")
     else:
-        tr.print(_char_name(ch, vo, world) + " is surrounded by a pink outline.")
+        tr.print(_char_name(ch, vo) + " is surrounded by a pink outline.")
     return True
 
 
-def spell_blindness(tr, sn, level, ch, vo, target, world):
+def spell_blindness(tr, sn, level, ch, vo, target):
     """Blindness spell (cf. 1stMud spell_blindness in magic.c)."""
     if vo.get("aff_flags", {}).get("blind") or saves_spell(level, vo, "other"):
         tr.print("You failed.")
@@ -814,27 +814,27 @@ def spell_blindness(tr, sn, level, ch, vo, target, world):
     if vo is ch:
         tr.print("You are blinded!")
     else:
-        tr.print(_char_name(ch, vo, world) + " appears to be blinded.")
+        tr.print(_char_name(ch, vo) + " appears to be blinded.")
     return True
 
 
-def spell_poison(tr, sn, level, ch, vo, target, world):
+def spell_poison(tr, sn, level, ch, vo, target):
     """Poison character path (cf. 1stMud spell_poison in magic.c)."""
     if target == TARGET_OBJ:
         tr.print("That spell does not work on objects yet.")
         return False
     if saves_spell(level, vo, "poison"):
-        tr.print("You feel momentarily ill, but it passes." if vo is ch else _char_name(ch, vo, world) + " turns slightly green, but it passes.")
+        tr.print("You feel momentarily ill, but it passes." if vo is ch else _char_name(ch, vo) + " turns slightly green, but it passes.")
         return False
     affect_to_char(vo, _new_affect(sn, level, level, "str", -2, "poison"))
     if vo is ch:
         tr.print("You feel very sick.")
     else:
-        tr.print(_char_name(ch, vo, world) + " looks very ill.")
+        tr.print(_char_name(ch, vo) + " looks very ill.")
     return True
 
 
-def spell_curse(tr, sn, level, ch, vo, target, world):
+def spell_curse(tr, sn, level, ch, vo, target):
     """Curse character path (cf. 1stMud spell_curse in magic.c)."""
     if target == TARGET_OBJ:
         tpl = ITEM_DEFS[obj_vnum(vo)]
@@ -864,63 +864,63 @@ def spell_curse(tr, sn, level, ch, vo, target, world):
     if vo is ch:
         tr.print("You feel unclean.")
     else:
-        tr.print(_char_name(ch, vo, world) + " looks very uncomfortable.")
+        tr.print(_char_name(ch, vo) + " looks very uncomfortable.")
     return True
 
 
-def spell_plague(tr, sn, level, ch, vo, target, world):
+def spell_plague(tr, sn, level, ch, vo, target):
     """Plague spell (cf. 1stMud spell_plague in magic.c)."""
     if saves_spell(level, vo, "disease"):
-        tr.print("You feel momentarily ill, but it passes." if vo is ch else _char_name(ch, vo, world) + " seems to be unaffected.")
+        tr.print("You feel momentarily ill, but it passes." if vo is ch else _char_name(ch, vo) + " seems to be unaffected.")
         return False
     affect_to_char(vo, _new_affect(sn, level * 3 // 4, level, "str", -5, "plague"))
     if vo is ch:
         tr.print("You scream in agony as plague sores erupt from your skin.")
     else:
-        tr.print(_char_name(ch, vo, world) + " screams in agony as plague sores erupt from their skin.")
+        tr.print(_char_name(ch, vo) + " screams in agony as plague sores erupt from their skin.")
     return True
 
 
-def spell_cure_blindness(tr, sn, level, ch, vo, target, world):
+def spell_cure_blindness(tr, sn, level, ch, vo, target):
     """Cure blindness (cf. 1stMud spell_cure_blindness in magic.c)."""
     blind_sn = _skill_lookup("blindness")
     if not is_affected(vo, blind_sn):
-        tr.print("You aren't blind." if vo is ch else _char_name(ch, vo, world) + " doesn't appear to be blinded.")
+        tr.print("You aren't blind." if vo is ch else _char_name(ch, vo) + " doesn't appear to be blinded.")
         return False
     if check_dispel(tr, level, vo, blind_sn, ch):
-        tr.print("Your vision returns!" if vo is ch else _char_name(ch, vo, world) + " is no longer blinded.")
+        tr.print("Your vision returns!" if vo is ch else _char_name(ch, vo) + " is no longer blinded.")
         return True
     tr.print("Spell failed.")
     return False
 
 
-def spell_cure_poison(tr, sn, level, ch, vo, target, world):
+def spell_cure_poison(tr, sn, level, ch, vo, target):
     """Cure poison (cf. 1stMud spell_cure_poison in magic.c)."""
     poison_sn = _skill_lookup("poison")
     if not is_affected(vo, poison_sn):
-        tr.print("You aren't poisoned." if vo is ch else _char_name(ch, vo, world) + " doesn't appear to be poisoned.")
+        tr.print("You aren't poisoned." if vo is ch else _char_name(ch, vo) + " doesn't appear to be poisoned.")
         return False
     if check_dispel(tr, level, vo, poison_sn, ch):
-        tr.print("A warm feeling runs through your body." if vo is ch else _char_name(ch, vo, world) + " looks much better.")
+        tr.print("A warm feeling runs through your body." if vo is ch else _char_name(ch, vo) + " looks much better.")
         return True
     tr.print("Spell failed.")
     return False
 
 
-def spell_cure_disease(tr, sn, level, ch, vo, target, world):
+def spell_cure_disease(tr, sn, level, ch, vo, target):
     """Cure disease (cf. 1stMud spell_cure_disease in magic.c)."""
     plague_sn = _skill_lookup("plague")
     if not is_affected(vo, plague_sn):
-        tr.print("You aren't ill." if vo is ch else _char_name(ch, vo, world) + " doesn't appear to be diseased.")
+        tr.print("You aren't ill." if vo is ch else _char_name(ch, vo) + " doesn't appear to be diseased.")
         return False
     if check_dispel(tr, level, vo, plague_sn, ch):
-        tr.print("Your sores vanish." if vo is ch else _char_name(ch, vo, world) + " looks relieved as their sores vanish.")
+        tr.print("Your sores vanish." if vo is ch else _char_name(ch, vo) + " looks relieved as their sores vanish.")
         return True
     tr.print("Spell failed.")
     return False
 
 
-def spell_dispel_magic(tr, sn, level, ch, vo, target, world):
+def spell_dispel_magic(tr, sn, level, ch, vo, target):
     """Dispel magic over implemented affects (cf. 1stMud spell_dispel_magic in magic.c)."""
     if saves_spell(level, vo, "other"):
         if vo is ch:
@@ -1014,22 +1014,22 @@ def _is_self_name(player, target_name):
     return target_name == "self" or (pname and is_name(target_name, pname))
 
 
-def _room_state(player, world):
+def _room_state(player):
     return world.rooms[player["room"]]
 
 
-def _find_room_char(player, world, target_name):
+def _find_room_char(player, target_name):
     if _is_self_name(player, target_name):
         return player
-    rs = _room_state(player, world)
+    rs = _room_state(player)
     mob_id = get_char_room(target_name, rs["mobs"], world.chars)
     if mob_id is None:
         return None
     return world.chars[mob_id]
 
 
-def _find_room_char_id(player, world, target_name):
-    rs = _room_state(player, world)
+def _find_room_char_id(player, target_name):
+    rs = _room_state(player)
     return get_char_room(target_name, rs["mobs"], world.chars)
 
 
@@ -1037,8 +1037,8 @@ def _find_inv_obj(player, target_name):
     return get_obj_list(target_name, player["inv"], ITEM_DEFS)
 
 
-def _find_room_obj(player, world, target_name):
-    rs = _room_state(player, world)
+def _find_room_obj(player, target_name):
+    rs = _room_state(player)
     return get_obj_list(target_name, rs["items"], ITEM_DEFS)
 
 
@@ -1064,11 +1064,11 @@ def _obj_pick_name(obj):
     return ""
 
 
-def _pick_cast_target_name(tr, player, sn, world):
+def _pick_cast_target_name(tr, player, sn):
     """Pick missing spell target for PrimeSUD command UI."""
     sk = SKILLS[sn]
     target_type = sk.get("target", "ignore")
-    rs = _room_state(player, world)
+    rs = _room_state(player)
 
     if target_type == "char_offensive":
         if player.get("fighting") is not None:
@@ -1123,7 +1123,7 @@ def _pick_cast_target_name(tr, player, sn, world):
     return ""
 
 
-def _resolve_item_runtime_target(tr, ch, sn, victim, obj, world):
+def _resolve_item_runtime_target(tr, ch, sn, victim, obj):
     """Resolve magical item cast target from explicit victim/obj hints."""
     sk = SKILLS[sn]
     target_type = sk.get("target", "ignore")
@@ -1132,7 +1132,7 @@ def _resolve_item_runtime_target(tr, ch, sn, victim, obj, world):
         return (None, TARGET_NONE, None, True)
     if target_type == "char_offensive":
         if victim is not None:
-            return (victim, TARGET_CHAR, _target_id(ch, victim, world), True)
+            return (victim, TARGET_CHAR, _target_id(ch, victim), True)
         victim_id = ch.get("fighting")
         if victim_id is None or victim_id not in world.chars:
             return (None, TARGET_NONE, None, False)
@@ -1149,7 +1149,7 @@ def _resolve_item_runtime_target(tr, ch, sn, victim, obj, world):
         return (obj, TARGET_OBJ, None, True)
     if target_type == "obj_char_offensive":
         if victim is not None:
-            return (victim, TARGET_CHAR, _target_id(ch, victim, world), True)
+            return (victim, TARGET_CHAR, _target_id(ch, victim), True)
         if obj is not None:
             return (obj, TARGET_OBJ, None, True)
         victim_id = ch.get("fighting")
@@ -1201,7 +1201,7 @@ def validate_item_spell_payload(tr, item_obj):
     return (level, payload)
 
 
-def _resolve_target(tr, player, sn, target_name, world):
+def _resolve_target(tr, player, sn, target_name):
     """Resolve spell target (cf. 1stMud do_cast target switch in magic.c)."""
     sk = SKILLS[sn]
     target_type = sk.get("target", "ignore")
@@ -1218,7 +1218,7 @@ def _resolve_target(tr, player, sn, target_name, world):
                 tr.print("Cast the spell on whom?")
                 return (None, TARGET_NONE, None, False)
         else:
-            victim_id = _find_room_char_id(player, world, target_name)
+            victim_id = _find_room_char_id(player, target_name)
             if victim_id is None:
                 tr.print("They aren't here.")
                 return (None, TARGET_NONE, None, False)
@@ -1227,7 +1227,7 @@ def _resolve_target(tr, player, sn, target_name, world):
     if target_type == "char_defensive":
         if not arg2:
             return (player, TARGET_CHAR, None, True)
-        victim = _find_room_char(player, world, target_name)
+        victim = _find_room_char(player, target_name)
         if victim is None:
             tr.print("They aren't here.")
             return (None, TARGET_NONE, None, False)
@@ -1257,10 +1257,10 @@ def _resolve_target(tr, player, sn, target_name, world):
                 tr.print("Cast the spell on whom or what?")
                 return (None, TARGET_NONE, None, False)
             return (world.chars[victim_id], TARGET_CHAR, victim_id, True)
-        victim_id = _find_room_char_id(player, world, target_name)
+        victim_id = _find_room_char_id(player, target_name)
         if victim_id is not None:
             return (world.chars[victim_id], TARGET_CHAR, victim_id, True)
-        obj = _find_room_obj(player, world, target_name)
+        obj = _find_room_obj(player, target_name)
         if obj is not None:
             return (obj, TARGET_OBJ, None, True)
         tr.print("You don't see that here.")
@@ -1269,7 +1269,7 @@ def _resolve_target(tr, player, sn, target_name, world):
     if target_type == "obj_char_defensive":
         if not arg2:
             return (player, TARGET_CHAR, None, True)
-        victim = _find_room_char(player, world, target_name)
+        victim = _find_room_char(player, target_name)
         if victim is not None:
             return (victim, TARGET_CHAR, None, True)
         obj = _find_inv_obj(player, target_name)
@@ -1286,18 +1286,18 @@ def _spell_level(player, sn):
     return player.get("level", 1)  # [PRIMESUD] no class system or has_spells() penalty.
 
 
-def obj_cast_spell(tr, spell_name, level, ch, victim, obj, world, item_obj=None):
+def obj_cast_spell(tr, spell_name, level, ch, victim, obj, item_obj=None):
     """Cast spell payload from magical item (cf. 1stMud obj_cast_spell in magic.c)."""
     sn = _resolve_item_spell_sn(tr, spell_name, item_obj)
     if sn is None:
         return False
-    vo, target, victim_id, ok = _resolve_item_runtime_target(tr, ch, sn, victim, obj, world)
+    vo, target, victim_id, ok = _resolve_item_runtime_target(tr, ch, sn, victim, obj)
     if not ok:
         return _dev_item_fail(tr, item_obj, "target resolution failed for '" + spell_name + "'")
     fun = SPELL_FUNS.get(SKILLS[sn].get("spell_fun", "spell_null"), spell_null)
     if spell_name:
         ch["_spell_target_name"] = spell_name
-    ret = fun(tr, sn, level, ch, vo, target, world)
+    ret = fun(tr, sn, level, ch, vo, target)
     if "_spell_target_name" in ch:
         del ch["_spell_target_name"]
     if (ret and SKILLS[sn].get("target") in ("char_offensive", "obj_char_offensive")
@@ -1307,7 +1307,7 @@ def obj_cast_spell(tr, spell_name, level, ch, victim, obj, world, item_obj=None)
     return ret
 
 
-def cast_item_spells(tr, ch, item_obj, victim, obj, world):
+def cast_item_spells(tr, ch, item_obj, victim, obj):
     """Run normalized spell payload from magical item instance/template."""
     parsed = validate_item_spell_payload(tr, item_obj)
     if parsed is None:
@@ -1315,12 +1315,12 @@ def cast_item_spells(tr, ch, item_obj, victim, obj, world):
     level, payload = parsed
     any_success = False
     for spell_name in payload:
-        ret = obj_cast_spell(tr, spell_name, level, ch, victim, obj, world, item_obj)
+        ret = obj_cast_spell(tr, spell_name, level, ch, victim, obj, item_obj)
         any_success = any_success or ret
     return any_success
 
 
-def do_cast(tr, player, args, world):
+def do_cast(tr, player, args):
     """Cast a spell through 1stMud-style command flow (cf. 1stMud do_cast in magic.c)."""
     if player.get("wait", 0) > 0:
         tr.print("You are still recovering.")
@@ -1352,11 +1352,11 @@ def do_cast(tr, player, args, world):
         return None
 
     if not target_name:
-        target_name = _pick_cast_target_name(tr, player, sn, world)  # [PRIMESUD] calculator UX extension.
+        target_name = _pick_cast_target_name(tr, player, sn)  # [PRIMESUD] calculator UX extension.
         if target_name is None:
             return None
 
-    vo, target, victim_id, ok = _resolve_target(tr, player, sn, target_name, world)
+    vo, target, victim_id, ok = _resolve_target(tr, player, sn, target_name)
     if not ok:
         return None
 
@@ -1376,7 +1376,7 @@ def do_cast(tr, player, args, world):
     player["mp"] -= mana
     fun = SPELL_FUNS.get(sk.get("spell_fun", "spell_null"), spell_null)
     player["_spell_target_name"] = target_name
-    ret = fun(tr, sn, _spell_level(player, sn), player, vo, target, world)
+    ret = fun(tr, sn, _spell_level(player, sn), player, vo, target)
     del player["_spell_target_name"]
     check_improve(tr, player, sn, ret, 1)
 

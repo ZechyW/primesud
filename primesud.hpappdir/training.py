@@ -18,7 +18,7 @@ _TRAIN_STATS = [
     ("con", "constitution"),
 ]
 
-def do_train(tr, player, args, world):
+def do_train(tr, player, args):
     """Permanently raise a stat or vital by spending a train point (cf. 1stMud do_train in act_move.c).
 
     Requires a mob with act_flags["train"] in the room.  Stats cap at MAX_STATS;
@@ -28,7 +28,6 @@ def do_train(tr, player, args, world):
         tr: Terminal instance.
         player (dict): Player state dict.
         args (list): Parsed command words; optional stat/vital name.
-        world (dict): Game world state (keys: rooms, mobs, areas).
     """
     rs = world.rooms[player["room"]]
     trainer = None
@@ -95,7 +94,7 @@ def do_train(tr, player, args, world):
     return ("train " + chosen_lng) if _from_picker else None
 
 
-def do_practice(tr, player, args, world):
+def do_practice(tr, player, args):
     """Improve a skill percentage using a practice point (cf. 1stMud do_practice in act_info.c).
 
     Without an argument: lists skills + practice count.  If a teacher is present,
@@ -106,7 +105,6 @@ def do_practice(tr, player, args, world):
         tr: Terminal instance.
         player (dict): Player state dict.
         args (list): Parsed command words; optional skill name.
-        world (dict): Game world state (keys: rooms, mobs, areas).
     """
     rs = world.rooms[player["room"]]
     teacher = None

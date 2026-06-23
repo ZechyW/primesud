@@ -781,7 +781,7 @@ def dam_message(tr, ch, victim, dam, dt, immune, attack_noun=None):
             act(tr, "{R%s %s {Ryou%s {W[{R%d{W]{x" % (ch_name, vp, punct, dam))
 
 
-def damage(tr, ch, victim, dam, dt, dam_type, show, attack_noun=None, world=None):
+def damage(tr, ch, victim, dam, dt, dam_type, show, attack_noun=None):
     """Apply damage to victim from ch; handle combat state, immunity, and death
     (cf. 1stMud damage in fight.c).
 
@@ -1109,14 +1109,13 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
     return hit
 
 
-def do_kick(tr, ch, args, world):
+def do_kick(tr, ch, args):
     """Kick for player or mob (cf. 1stMud do_kick in fight.c).
 
     Args:
         tr: Terminal for printing messages.
         ch (dict): Acting character (player or mob instance).
         args (list): Command arguments (unused).
-        world (dict): Game world state (keys: rooms, mobs, areas).
     """
     if ch["is_npc"]:
         target_id = ch["fighting"]
@@ -1158,7 +1157,7 @@ def do_kick(tr, ch, args, world):
     return None
 
 
-def do_kill(tr, player, args, world):
+def do_kill(tr, player, args):
     if player["fighting"] is not None:
         tr.print("You are already fighting!")
         return
@@ -1215,7 +1214,7 @@ def mob_hit(tr, ch, victim):
 
     # Off-flag specials (cf. 1stMud mob_hit random switch)
     if ch["off_flags"].get("kick") and randint(0, 8) == 3:
-        do_kick(tr, ch, [], None)
+        do_kick(tr, ch, [])
 
 
 # -- Special unarmed moves [PRIMESUD] (cf. 1stMud special_move for inspiration) -

@@ -67,7 +67,7 @@ def _macro_row(entries):
             for i in range(height)]
 
 
-def do_macro(tr, player, args, world):  # [PRIMESUD]
+def do_macro(tr, player, args):  # [PRIMESUD]
     if not args:
         next_sep = _MACRO_SEP
         for row in _MACRO_TABLE:

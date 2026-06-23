@@ -4,6 +4,7 @@ from util import free_mem, gc_collect
 from colors import color_len, upper
 
 from skills_table import SKILL_TABLE, SKILLS
+import world
 from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
 from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, is_name
 from item import get_obj_list, obj_vnum, item_extra_flags
@@ -46,7 +47,7 @@ _FLAG_TABLE = (
 )
 
 
-def do_automap(tr, player, args, world):
+def do_automap(tr, player, args):
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOMAP
     if player["flags"] & PLR_AUTOMAP:
         tr.print("You now see an automap in room descriptions.")
@@ -54,7 +55,7 @@ def do_automap(tr, player, args, world):
         tr.print("You no longer see automap room descriptions.")
 
 
-def do_autolist(tr, player, args, world):
+def do_autolist(tr, player, args):
     tr.print(" Command    Status  Description")
     tr.print(" " + "-" * (TERMINAL_COLS - 2))
     flags = player.get("flags", PLR_DEFAULTS)
@@ -68,7 +69,7 @@ def do_autolist(tr, player, args, world):
 _CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
 
 
-def _look_in(tr, player, args, world):
+def _look_in(tr, player, args):
     """Show contents of a container in room or inventory (cf. 1stMud do_look 'in' case in act_info.c)."""
     if not args:
         tr.print("Look in what?")
@@ -96,7 +97,7 @@ def _look_in(tr, player, args, world):
         tr.print("  " + (cobj.get("short_descr") or ctpl["short_descr"]))
 
 
-def _look_item(tr, player, args, world):
+def _look_item(tr, player, args):
     """Show an item's description from inventory, room, or equipped slots (cf. 1stMud do_look in act_info.c)."""
     target = " ".join(args)
     rs = world.rooms[player["room"]]
@@ -118,21 +119,20 @@ def _look_item(tr, player, args, world):
                 tr.print(line)
 
 
-def do_look(tr, player, args, world):
+def do_look(tr, player, args):
     """Display the current room or examine an item (cf. 1stMud do_look in act_info.c).
 
     Args:
         tr: Terminal renderer.
         player (dict): Player state dict.
         args (list): Parsed command arguments; non-empty triggers item look.
-        world (dict): Game world state (keys: rooms, mobs, areas).
     """
     if args:
         if args[0] in ("in", "i"):
-            _look_in(tr, player, args[1:], world)
+            _look_in(tr, player, args[1:])
             return
         # TODO: extend to room extra_descs, mob descriptions, and item extra_descs on other targets
-        _look_item(tr, player, args, world)
+        _look_item(tr, player, args)
         return
     room = ROOM_DEFS[player["room"]]
     rs = world.rooms[player["room"]]
@@ -257,7 +257,7 @@ def _make_percent_bar(val, max_val, length):
     return ''.join(parts)
 
 
-def do_score(tr, player, args, world):
+def do_score(tr, player, args):
     """Display the character score sheet (cf. 1stMud dlm_score in act_info.c)."""
     # two-column box mirroring 1stMud dlm_score layout, with bright/normal colours
     # alternating between horizontal segments.
@@ -463,24 +463,24 @@ def print_practice_table(tr, player):
         tr.print(line)
 
 
-def do_skills(tr, player, args, world):
+def do_skills(tr, player, args):
     """List known skills by level (cf. 1stMud do_skills in skills.c)."""
     _print_level_lists(tr, player, args, False)
 
 
-def do_spells(tr, player, args, world):
+def do_spells(tr, player, args):
     """List known spells by level (cf. 1stMud do_spells in skills.c)."""
     _print_level_lists(tr, player, args, True)
 
 
-def do_help(tr, player, args, world):
+def do_help(tr, player, args):
     tr.print("Move: 2/8=n/s  4/6=w/e  7/9=u/d (or n/s/e/w/u/d)")
     tr.print("5=look  i=inv  wear  remove  eat  quaff  recite  zap")
     tr.print("brandish  st=stats  sk=skills  k/kill=fight  kick")
     tr.print("cast <spell>  flee  save  credits  q=quit")
 
 
-def do_map(tr, player, args, world):
+def do_map(tr, player, args):
     """Print a full-size automap of rooms reachable from the current room (cf. 1stMud do_map in automap.c).
 
     Args:
@@ -492,14 +492,13 @@ def do_map(tr, player, args, world):
         tr.print(line)
 
 
-def do_affects(tr, player, args, world):
+def do_affects(tr, player, args):
     """List all active player affects with name, location, modifier, duration (cf. 1stMud do_affects in act_info.c).
 
     Args:
         tr: Terminal instance.
         player (dict): Player state dict.
         args (list): Unused.
-        world (dict): Game world state (keys: rooms, mobs, areas); unused.
     """
     affects = player.get("affect_list", [])
     if not affects:
@@ -517,7 +516,7 @@ def do_affects(tr, player, args, world):
             name, aff["location"], mod, dur_str))
 
 
-def do_credits(tr, player, args, world):
+def do_credits(tr, player, args):
     tr.print("{WPrimeSUD{x -- a single-user dungeon for the HP Prime")
     tr.print("Port by ZechyW.  Not for commercial distribution.")
     tr.print("")

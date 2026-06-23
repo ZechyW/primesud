@@ -117,7 +117,7 @@ class Game:
 
         tr.resync_keyboard()
         show_prompt(tr, player, self.input_buf)
-        do_look(tr, player, [], world)
+        do_look(tr, player, [])
 
         while True:
             result = tr.poll_char(_KEY_COMMANDS)
@@ -130,7 +130,7 @@ class Game:
                     self._hist_pos   = None
                     self._hist_saved = ""
                     _t0 = ticks()
-                    resolved = interpret(self.input_buf, tr, player, world)
+                    resolved = interpret(self.input_buf, tr, player)
                     next_pulse += ticks() - _t0  # [PRIMESUD] skip missed pulses during blocking input (e.g. picker)
                     _quit = resolved == "quit"
                     entry = resolved if (resolved and resolved != "quit") else self.input_buf
@@ -174,7 +174,7 @@ class Game:
                         show_prompt(tr, player, self.input_buf)
                 elif auto_submit is True:  # [PRIMESUD] hardware key -- immediate submit
                     _t0 = ticks()
-                    _quit = interpret(char, tr, player, world) == "quit"
+                    _quit = interpret(char, tr, player) == "quit"
                     next_pulse += ticks() - _t0  # [PRIMESUD] skip missed pulses during blocking input
                     if _quit:
                         break
@@ -196,9 +196,9 @@ class Game:
                 pulse += 1
 
                 if pulse % PULSE_VIOLENCE == 0:
-                    update_wait_states(player, world)
-                    affect_update(player, world)
-                    if violence_update(tr, player, world):
+                    update_wait_states(player)
+                    affect_update(player)
+                    if violence_update(tr, player):
                         # [PRIMESUD] Handle auto respawn on death
                         tr.print("You have been KILLED!!")
                         tr.print("Your lifeforce ebbs away...")
@@ -213,23 +213,23 @@ class Game:
                         player["daze"] = 0
                         tr.print("You come to your senses. Alive, but barely.")
                         tr.print("")
-                        do_look(tr, player, [], world)
+                        do_look(tr, player, [])
                     else:
                         if player["fighting"] is not None:
                             fid = player["fighting"]
                             finst = world.chars[fid]
-                            tr.print(mob_condition(finst, MOB_TEMPLATES[finst["tpl"]]))
+                            tr.print(mob_condition(finst, MOB_DEFS[finst["tpl"]]))
                             tr.print("")
                     # cf. 1stMud aggr_update runs every pulse; gated to
                     # PULSE_VIOLENCE here for HP Prime performance.
                     if player["fighting"] is None:
-                        aggr_update(tr, player, world)
+                        aggr_update(tr, player)
                     show_prompt(tr, player, self.input_buf)
 
                 if pulse % PULSE_TICK == 0:
                     player["played"] = player.get("played", 0) + TICK_SECS
-                    tick_update(tr, player, ROOMS[player["room"]])
-                    obj_update(tr, player, world)
+                    tick_update(tr, player, ROOM_DEFS[player["room"]])
+                    obj_update(tr, player)
                     show_prompt(tr, player, self.input_buf)
                     tick_count += 1
                     if tick_count >= AUTOSAVE_TICKS:
@@ -237,10 +237,10 @@ class Game:
                         tick_count = 0
 
                 if pulse % PULSE_MOBILE == 0:
-                    mobile_update(tr, player, world)
+                    mobile_update(tr, player)
 
                 if pulse % PULSE_AREA == 0:
-                    area_update(tr, player, world)
+                    area_update(tr, player)
 
                 if pulse >= 14400:  # wrap at 1 hour (3600 s x 4 pulses/s)
                     pulse = 0

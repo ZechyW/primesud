@@ -5,12 +5,11 @@ from world import ITEM_DEFS
 from item import obj_vnum
 
 
-def affect_update(player, world):
+def affect_update(player):
     """Tick timed affects down on all characters (cf. 1stMud affect_update in update.c).
 
     Args:
         player (dict): Player state dict.
-        world (dict): Game world state.
     """
     for inst in world.chars.values():
         affects = inst["affects"]
@@ -23,13 +22,12 @@ def affect_update(player, world):
                     affects.pop(base, None)
 
 
-def obj_update(tr, player, world):
+def obj_update(tr, player):
     """Tick down item timers and remove decayed items from all rooms (cf. 1stMud obj_update in update.c).
 
     Args:
         tr: Terminal for decay messages.
         player (dict): Player state (used to check if player is in affected room).
-        world (dict): World state with "rooms" mapping.
     """
     for rvnum, room in world.rooms.items():
         for obj in list(room.get("items", [])):

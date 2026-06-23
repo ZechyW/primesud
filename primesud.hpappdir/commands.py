@@ -120,7 +120,7 @@ def _split_args(raw):
     return args
 
 
-def interpret(raw, tr, player, world):
+def interpret(raw, tr, player):
     parts = _split_args(raw)
     if not parts:
         return None
@@ -130,7 +130,7 @@ def interpret(raw, tr, player, world):
 
     direction = _DIRECTION_MAP.get(verb)
     if direction is not None:
-        do_move(tr, player, direction, world)
+        do_move(tr, player, direction)
         return None
 
     pos = player.get("pos", "standing")
@@ -143,7 +143,7 @@ def interpret(raw, tr, player, world):
         if POS_ORDER[pos] < POS_ORDER[min_pos]:
             tr.print(_POS_MSG.get(pos, ""))
             return None
-        return fn(tr, player, args, world)
+        return fn(tr, player, args)
 
     tr.print("Unknown command. ? for help.")
     return None

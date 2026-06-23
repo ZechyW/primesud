@@ -2,6 +2,7 @@
 
 from urandom import randint
 
+import world
 from skills_table import SKILLS, WEAPON_GSN_MAP
 from world import ITEM_DEFS, MOB_DEFS
 from picker import pick_from
@@ -79,7 +80,7 @@ def _loot_container_picker(tr, player, container):
         tr.print("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
 
 
-def do_get(tr, player, args, world):
+def do_get(tr, player, args):
     rs = world.rooms[player["room"]]
     if not args:
         loose = [obj for obj in reversed(rs["items"])
@@ -197,7 +198,7 @@ def do_get(tr, player, args, world):
         tr.print("You get {}.".format((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
 
 
-def do_drop(tr, player, args, world):
+def do_drop(tr, player, args):
     if not args:
         if not player["inv"]:
             tr.print("You are not carrying anything.")
@@ -250,14 +251,13 @@ def do_drop(tr, player, args, world):
         tr.print("{} dissolves into smoke.".format(tpl["short_descr"]))
 
 
-def do_put(tr, player, args, world):
+def do_put(tr, player, args):
     """Put an item from inventory into a container (cf. 1stMud do_put in act_obj.c).
 
     Args:
         tr: Terminal renderer.
         player (dict): Player state dict.
         args (list): Parsed command arguments; first is item, rest is container (skips "in"/"on").
-        world (dict): Game world state.
     """
     if len(args) < 2:
         tr.print("Put what in what?")
@@ -308,7 +308,7 @@ def _obj_flags(tpl):
     return "".join(parts)
 
 
-def do_inventory(tr, player, args, world):
+def do_inventory(tr, player, args):
     max_carry = min(37, 17 + player["level"])
     tr.print("{YYou are carrying {W%d/%d{Y items:{x" % (len(player["inv"]), max_carry))
     if not player["inv"]:
@@ -461,14 +461,13 @@ def wear_obj(tr, player, obj, fReplace):
         tr.print(msg.format(tpl["short_descr"]))
 
 
-def do_wear(tr, player, args, world):
+def do_wear(tr, player, args):
     """Equip an item from inventory, or wear all wearable items (cf. 1stMud do_wear in act_obj.c).
 
     Args:
         tr: Terminal renderer.
         player (dict): Player state dict.
         args (list): Parsed command arguments; first token may be "all".
-        world (dict): Game world state (keys: rooms, mobs, areas); unused.
     """
     if not args:
         equippable = []
@@ -511,14 +510,13 @@ def do_wear(tr, player, args, world):
     wear_obj(tr, player, obj, True)
 
 
-def do_remove(tr, player, args, world):
+def do_remove(tr, player, args):
     """Remove a worn item by name and return it to inventory (cf. 1stMud do_remove in act_obj.c).
 
     Args:
         tr: Terminal renderer.
         player (dict): Player state dict.
         args (list): Parsed command arguments; first token may be "all".
-        world (dict): Game world state (keys: rooms, mobs, areas); unused.
     """
     if not args:
         worn = [(slot, obj) for slot, obj in player["equip"].items() if obj is not None]
@@ -575,14 +573,13 @@ _WEAR_LABELS = (
 )
 
 
-def do_equipment(tr, player, args, world):
+def do_equipment(tr, player, args):
     """List all equipment slots and what is worn in each (cf. 1stMud do_equipment in act_info.c).
 
     Args:
         tr: Terminal renderer.
         player (dict): Player state dict.
         args (list): Parsed command arguments (unused).
-        world (dict): Game world state (keys: rooms, mobs, areas); unused.
     """
     tr.print("You are wearing:")
     for slot, label in _WEAR_LABELS:
@@ -594,7 +591,7 @@ def do_equipment(tr, player, args, world):
             tr.print(label + "nothing")
 
 
-def do_second(tr, player, args, world):
+def do_second(tr, player, args):
     """Wield a weapon in the off-hand (cf. 1stMud do_second in act_obj.c)."""
     if not args:
         tr.print("Wear which weapon in your off-hand?")
@@ -628,7 +625,7 @@ def do_second(tr, player, args, world):
     equip_char(player, obj, "secondary")
 
 
-def do_quaff(tr, player, args, world):
+def do_quaff(tr, player, args):
     """Quaff a potion (cf. 1stMud do_quaff in act_obj.c)."""
     if not args:
         tr.print("Quaff what?")
@@ -647,11 +644,11 @@ def do_quaff(tr, player, args, world):
     if validate_item_spell_payload(tr, obj) is None:
         return
     tr.print("You quaff {}.".format(tpl["short_descr"]))
-    cast_item_spells(tr, player, obj, player, None, world)
+    cast_item_spells(tr, player, obj, player, None)
     player["inv"].remove(obj)
 
 
-def do_eat(tr, player, args, world):
+def do_eat(tr, player, args):
     """Eat food or pill (cf. 1stMud do_eat in act_obj.c)."""
     if not args:
         tr.print("Eat what?")
@@ -668,11 +665,11 @@ def do_eat(tr, player, args, world):
         return
     tr.print("You eat {}.".format(tpl["short_descr"]))
     if tpl["type"] == "pill":
-        cast_item_spells(tr, player, obj, player, None, world)
+        cast_item_spells(tr, player, obj, player, None)
     player["inv"].remove(obj)
 
 
-def _find_here_obj(player, world, target_name):
+def _find_here_obj(player, target_name):
     obj = get_obj_list(target_name, player["inv"], ITEM_DEFS)
     if obj is not None:
         return obj
@@ -683,12 +680,12 @@ def _find_here_obj(player, world, target_name):
     return get_obj_list(target_name, equipped, ITEM_DEFS)
 
 
-def _find_here_char_or_obj(player, world, target_name):
+def _find_here_char_or_obj(player, target_name):
     for mob_id in world.rooms[player["room"]]["mobs"]:
         mob = world.chars[mob_id]
         if is_name(target_name, MOB_DEFS[mob["tpl"]].get("keywords", "")):
             return (mob, None)
-    obj = _find_here_obj(player, world, target_name)
+    obj = _find_here_obj(player, target_name)
     return (None, obj)
 
 
@@ -699,7 +696,7 @@ def _destroy_equipped(player, slot):
     player["inv"].pop()
 
 
-def do_recite(tr, player, args, world):
+def do_recite(tr, player, args):
     """Recite a scroll (cf. 1stMud do_recite in act_obj.c)."""
     arg1 = args[0] if args else ""
     arg2 = " ".join(args[1:]) if len(args) > 1 else ""
@@ -720,7 +717,7 @@ def do_recite(tr, player, args, world):
     victim = player
     obj = None
     if arg2:
-        victim, obj = _find_here_char_or_obj(player, world, arg2)
+        victim, obj = _find_here_char_or_obj(player, arg2)
         if victim is None and obj is None:
             tr.print("You can't find it.")
             return
@@ -729,12 +726,12 @@ def do_recite(tr, player, args, world):
         tr.print("You mispronounce a syllable.")
         check_improve(tr, player, GSN_SCROLLS, False, 2)
     else:
-        cast_item_spells(tr, player, scroll, victim, obj, world)
+        cast_item_spells(tr, player, scroll, victim, obj)
         check_improve(tr, player, GSN_SCROLLS, True, 2)
     player["inv"].remove(scroll)
 
 
-def do_brandish(tr, player, args, world):
+def do_brandish(tr, player, args):
     """Brandish a held staff (cf. 1stMud do_brandish in act_obj.c)."""
     staff = player["equip"].get("hold")
     if staff is None:
@@ -763,12 +760,12 @@ def do_brandish(tr, player, args, world):
             if sn_target is not None:
                 target_type = SKILLS[sn_target].get("target")
             if target_type in ("ignore", "char_self", "char_defensive", "obj_char_defensive"):
-                cast_item_spells(tr, player, staff, player, None, world)
+                cast_item_spells(tr, player, staff, player, None)
                 check_improve(tr, player, GSN_STAVES, True, 2)
             elif target_type in ("char_offensive", "obj_char_offensive"):
                 for mob_id in list(world.rooms[player["room"]]["mobs"]):
                     if mob_id in world.chars:
-                        cast_item_spells(tr, player, staff, world.chars[mob_id], None, world)
+                        cast_item_spells(tr, player, staff, world.chars[mob_id], None)
                         check_improve(tr, player, GSN_STAVES, True, 2)
             else:
                 tr.print("[DEV] " + tpl["short_descr"] + ": unsupported staff target")
@@ -779,7 +776,7 @@ def do_brandish(tr, player, args, world):
         _destroy_equipped(player, "hold")
 
 
-def do_zap(tr, player, args, world):
+def do_zap(tr, player, args):
     """Zap with a held wand (cf. 1stMud do_zap in act_obj.c)."""
     arg = " ".join(args)
     if not arg and player.get("fighting") is None:
@@ -803,7 +800,7 @@ def do_zap(tr, player, args, world):
             tr.print("Zap whom or what?")
             return
     else:
-        victim, obj = _find_here_char_or_obj(player, world, arg)
+        victim, obj = _find_here_char_or_obj(player, arg)
         if victim is None and obj is None:
             tr.print("You can't find it.")
             return
@@ -817,7 +814,7 @@ def do_zap(tr, player, args, world):
             tr.print("Your efforts with {} produce only smoke and sparks.".format(tpl["short_descr"]))
             check_improve(tr, player, GSN_WANDS, False, 2)
         else:
-            cast_item_spells(tr, player, wand, victim, obj, world)
+            cast_item_spells(tr, player, wand, victim, obj)
             check_improve(tr, player, GSN_WANDS, True, 2)
     wand["charges"] = wand.get("charges", tpl.get("charges", tpl.get("max_charges", 0))) - 1
     if wand["charges"] <= 0:
@@ -838,7 +835,7 @@ _WEAPON_OUTFIT_CHOICES = [
 ]
 
 
-def do_outfit(tr, player, args, world):
+def do_outfit(tr, player, args):
     """Equip a new character with Mud School starter gear (cf. 1stMud do_outfit in act_wiz.c).
 
     Fills only empty slots; skips any slot already occupied.  Weapon type is
@@ -854,7 +851,6 @@ def do_outfit(tr, player, args, world):
         tr: Terminal renderer.
         player (dict): Player instance dict.
         args (str): Unused.
-        world: Unused.
     """
     if player["level"] > 5:
         tr.print("Find it yourself!")
@@ -927,14 +923,13 @@ def _sacrifice_one(tr, player, obj, rs):
     rs["items"].remove(obj)
 
 
-def do_sacrifice(tr, player, args, world):
+def do_sacrifice(tr, player, args):
     """Sacrifice a room item to the deity for silver (cf. 1stMud do_sacrifice in act_obj.c).
 
     Args:
         tr: Terminal renderer.
         player (dict): Player state dict.
         args (list): Parsed command arguments.
-        world (dict): Game world state.
     """
     rs = world.rooms[player["room"]]
 

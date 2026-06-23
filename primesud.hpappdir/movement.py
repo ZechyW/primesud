@@ -17,7 +17,7 @@ def _exit_to(exit_val):
     return exit_val["to"] if isinstance(exit_val, dict) else exit_val
 
 
-def do_move(tr, player, direction, world):
+def do_move(tr, player, direction):
     if player["fighting"] is not None:
         tr.print("No way! You are fighting!")
         return
@@ -34,10 +34,10 @@ def do_move(tr, player, direction, world):
         tr.print("That way is not yet open.")
         return
     player["room"] = dest
-    do_look(tr, player, [], world)
+    do_look(tr, player, [])
 
 
-def do_open(tr, player, args, world):
+def do_open(tr, player, args):
     """Open a door in a given direction (cf. 1stMud do_open in act_move.c)."""
     exits = ROOM_DEFS[player["room"]]["exits"]
     _picked_dir = None
@@ -80,7 +80,7 @@ def do_open(tr, player, args, world):
     return ("open " + EXIT_NAMES[_picked_dir].lower()) if _picked_dir is not None else None
 
 
-def do_close(tr, player, args, world):
+def do_close(tr, player, args):
     """Close a door in a given direction (cf. 1stMud do_close in act_move.c)."""
     exits = ROOM_DEFS[player["room"]]["exits"]
     _picked_dir = None
@@ -123,7 +123,7 @@ def do_close(tr, player, args, world):
     return ("close " + EXIT_NAMES[_picked_dir].lower()) if _picked_dir is not None else None
 
 
-def perform_recall(tr, player, location, world, what="recall"):
+def perform_recall(tr, player, location, what="recall"):
     """Move player to recall destination (cf. 1stMud perform_recall in act_move.c)."""
     room = ROOM_DEFS[player["room"]]
 
@@ -152,11 +152,11 @@ def perform_recall(tr, player, location, world, what="recall"):
         stop_fighting(player, world.chars, both=False)
 
     player["room"] = location
-    do_look(tr, player, [], world)
+    do_look(tr, player, [])
     return True
 
 
-def do_recall(tr, player, args, world):
+def do_recall(tr, player, args):
     """Teleport to the area's recall room (cf. 1stMud perform_recall in act_move.c).
 
     Per-area recall VNUMs (area->recall in 1stMud) are not yet implemented;
@@ -164,10 +164,10 @@ def do_recall(tr, player, args, world):
     added, pet teleport should mirror the player teleport here.
     """
     location = R_RECALL
-    perform_recall(tr, player, location, world, "recall")
+    perform_recall(tr, player, location, "recall")
 
 
-def do_flee(tr, player, args, world):
+def do_flee(tr, player, args):
     if player["fighting"] is None:
         tr.print("You're not fighting anyone.")
         return
@@ -190,6 +190,6 @@ def do_flee(tr, player, args, world):
         tr.print("You flee {}!".format(direction))
         player["xp"] = max(0, player["xp"] - 10)
         tr.print("You lost 10 exp.")
-        do_look(tr, player, [], world)
+        do_look(tr, player, [])
         return
     tr.print("There is nowhere to run!")

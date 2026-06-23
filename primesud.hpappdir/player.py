@@ -97,6 +97,8 @@ def tick_update(tr, player, room):
         tr: Terminal for affect wear-off messages.
         player (dict): Player state dict.
         room (dict): Current room (supplies heal_rate/mana_rate).
+
+    Uses imported world module for player stat lookups.
     """
     con  = get_curr_stat(player, "con")
     int_ = get_curr_stat(player, "int")

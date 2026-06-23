@@ -212,7 +212,7 @@ def reset_mobs(mob_instances, room_state, resets, tr=None, debug=False):
 def reset_area():
     """Reset all room state and mob instances in-place (cf. 1stMud reset_area).
 
-    Clears and repopulates world.rooms and world.chars.
+    Clears and repopulates world.rooms and world.chars via imported world module.
     """
     world.rooms.clear()
     world.chars.clear()
@@ -250,7 +250,12 @@ def create_area_states():
 
 
 def mobile_update(tr, player):
-    """Wander mobs and despawn any that strayed out of their home area (cf. 1stMud mobile_update, char_update in update.c)."""
+    """Wander mobs and despawn any that strayed out of their home area (cf. 1stMud mobile_update, char_update in update.c).
+
+    Args:
+        tr: Terminal instance.
+        player (dict): Player state dict.
+    """
     for mob_id, inst in list(world.chars.items()):
         if not inst.get("is_npc"):
             continue
@@ -310,6 +315,8 @@ def aggr_update(tr, player):
     scan the player's room directly and skip the random-victim selection
     (victim is always the player).
 
+    Uses imported world module for mob/room data access.
+
     (cf. 1stMud aggr_update in update.c).
     [Verified against 1stmud: 23/06/2026]
 
@@ -362,7 +369,12 @@ def aggr_update(tr, player):
 
 
 def area_update(tr, player):
-    """Increment area ages and reset areas at threshold (cf. 1stMud area_update in db.c)."""
+    """Increment area ages and reset areas at threshold (cf. 1stMud area_update in db.c).
+
+    Args:
+        tr: Terminal for reset messages.
+        player (dict): Player state dict.
+    """
     for area in world.areas:
         weather = area.get("weather")
         if weather is not None:

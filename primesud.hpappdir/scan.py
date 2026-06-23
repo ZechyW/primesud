@@ -23,7 +23,7 @@ def _scan_char_line(victim, depth, door):
     return tpl["short_descr"] + ", " + suffix
 
 
-def scan_list(tr, room_vnum, ch, world, depth, door):
+def scan_list(tr, room_vnum, ch, depth, door):
     """Print visible characters in one room (cf. 1stMud scan_list in scan.c)."""
     room_state = world.rooms.get(room_vnum)
     if room_state is None:
@@ -34,15 +34,15 @@ def scan_list(tr, room_vnum, ch, world, depth, door):
             tr.print(_scan_char_line(mob, depth, door))
 
 
-def do_scan(tr, player, args, world):
+def do_scan(tr, player, args):
     """Scan nearby rooms for creatures (cf. 1stMud do_scan in scan.c)."""
     arg = args[0] if args else ""
     if not arg:
         tr.print("Looking around you see:")
-        scan_list(tr, player["room"], player, world, 0, "")
+        scan_list(tr, player["room"], player, 0, "")
         for door, exit_val in ROOM_DEFS[player["room"]].get("exits", {}).items():
             dest = exit_val["to"] if isinstance(exit_val, dict) else exit_val
-            scan_list(tr, dest, player, world, 1, door)
+            scan_list(tr, dest, player, 1, door)
         return
 
     door = DIR_ALIASES.get(arg)
@@ -57,4 +57,4 @@ def do_scan(tr, player, args, world):
         if exit_val is None:
             break
         room_vnum = exit_val["to"] if isinstance(exit_val, dict) else exit_val
-        scan_list(tr, room_vnum, player, world, depth, door)
+        scan_list(tr, room_vnum, player, depth, door)
