@@ -69,10 +69,10 @@ _CMD_TABLE = [
     ("quaff",     do_quaff,     "resting",  False),   # #129
     ("recite",    do_recite,    "resting",  False),   # #130
     ("remove",    do_remove,    "resting",  False),   # #131
-    ("take",       do_get,        "resting",  False),   # #133
-    ("sacrifice",  do_sacrifice,  "resting",  False),   # #134
-    ("junk",       do_sacrifice,  "resting",  False),   # #135
-    ("tap",        do_sacrifice,  "resting",  False),   # #136
+    ("take",      do_get,       "resting",  False),   # #133
+    ("sacrifice", do_sacrifice, "resting",  False),   # #134
+    ("junk",      do_sacrifice, "resting",  False),   # #135
+    ("tap",       do_sacrifice, "resting",  False),   # #136
     ("wear",      do_wear,      "resting",  False),   # #138
     ("zap",       do_zap,       "fighting", False),   # #139
     ("backstab",  do_backstab,  "fighting", False),   # #141

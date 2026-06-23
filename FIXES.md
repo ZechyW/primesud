@@ -105,6 +105,37 @@ are silently skipped rather than producing undefined dice behaviour inside `one_
 
 ---
 
+## randomize_damage: return value discarded — damage variance never applied
+
+**Upstream:** `reference/1stMud4.5.3/src/fight.c`, `randomize_damage()`, line 864;
+called at line 1016 inside `damage()`.
+
+### The bug
+
+`randomize_damage` computes `dam = (dam * (am + 50)) / 100` and returns the result,
+but the call site in `damage()` discards the return value:
+
+```c
+randomize_damage(ch, dam, dice(1, 100));   // line 1016 — return value unused
+```
+
+C passes `dam` by value, so the local `dam` inside `damage()` is never modified.
+The intended +/-50% damage variance is silently lost; all damage rolls hit at their
+exact pre-variance value.
+
+### PrimeSUD fix — implemented in `damage` in `combat.py`
+
+The return value is captured:
+
+```python
+dam = _randomize_damage(dam, randint(1, 100))
+```
+
+This applies the intended variance: `roll` ranges 1–100, so `(roll + 50)` ranges
+51–150, yielding 51%–150% of the original damage (roughly +/-50%).
+
+---
+
 ## look / automap: paragraph breaks preserved when condensing room descriptions
 
 **Upstream:** `reference/1stMud4.5.3/src/automap.c`, `erase_new_lines()`, lines 197–236;

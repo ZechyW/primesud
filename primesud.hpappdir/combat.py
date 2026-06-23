@@ -89,14 +89,14 @@ def violence_update(tr, player):
         if victim is None:
             # [PRIMESUD] 1stMud nulls stale fighting refs in extract_char; we have no
             # equivalent sweep, so detect and clean up lazily here.
-            stop_fighting(ch, chars, both=False)
+            stop_fighting(ch, both=False)
             continue
 
         # 1stMud: if IsAwake(ch) && ch->in_room == victim->in_room: multi_hit else stop_fighting
         if is_awake(ch) and ch["room"] == victim["room"]:
             multi_hit(tr, ch, victim)
         else:
-            stop_fighting(ch, chars, both=False)
+            stop_fighting(ch, both=False)
 
         # 1stMud: victim = ch->fighting; if victim == NULL: continue
         if ch["fighting"] is None:
@@ -782,10 +782,27 @@ def update_pos(ch):
         ch["pos"] = "stunned"
 
 
+def _randomize_damage(dam, roll):
+    """Apply +/-50% variance to damage (cf. 1stMud randomize_damage in fight.c).
+
+    Args:
+        dam (int): Pre-variance damage.
+        roll (int): Random 1-100 value.
+
+    Returns:
+        int: Adjusted damage.
+    """
+    return dam * (roll + 50) // 100
+
+
 def dam_message(tr, ch, victim, dam, dt, immune, attack_noun=None):
     """Print damage message from ch's attack on victim (cf. 1stMud dam_message in fight.c).
 
     Single-player: only the player sees messages, as attacker (ch=player) or victim (ch=mob).
+
+    # [PRIMESUD] attack_noun passed explicitly; 1stMud resolves it internally via
+    # attack_table[dt - TYPE_HIT].noun, but PrimeSUD uses string-keyed dam_type
+    # (from area files) rather than integer offsets, so dt alone is insufficient.
 
     Args:
         tr: Terminal for printing messages.
@@ -947,7 +964,8 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, attack_noun=None):
         dam += dam // 2
 
     # 1stMud: randomize_damage(ch, dam, dice(1,100));
-    # [PRIMESUD] skip randomize_damage (minor variance; not ported)
+    # [PRIMESUD] 1stMud discards return value (bug); we apply it. See FIXES.md.
+    dam = _randomize_damage(dam, randint(1, 100))
 
     # 1stMud: if (show) dam_message(ch, victim, dam, dt, immune);
     if show:
@@ -1012,9 +1030,7 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, attack_noun=None):
 
     # 1stMud: if (!IsAwake(victim)) stop_fighting(victim, false);
     if not is_awake(victim):
-        stop_fighting(victim, world.chars, both=False)
-        # stop_fighting resets pos to "standing"; re-correct from HP
-        update_pos(victim)
+        stop_fighting(victim, both=False)
 
     # 1stMud: if (victim->position == POS_DEAD) { ... raw_kill(victim, ch) ... }
     if pos == "dead":
@@ -1496,26 +1512,23 @@ def set_fighting(ch, victim):
     ch["pos"] = "fighting"
 
 
-def stop_fighting(ch, chars, both=False):
+def stop_fighting(ch, both=False):
     """
     Given character stops fighting its target.
     Optionally make all other characters stop fighting it.
     (cf. 1stMud stop_fighting in fight.c).
-    [Verified: 22/06/2026]
 
     Args:
         ch (dict): Character that stops fighting its target.
-        chars (dict): Pass through current world chars state.
         both (bool): If true, all other characters stop fighting `ch`.
     """
-    for char in chars.values():
+    for char in world.chars.values():
         if char == ch or (both and char["fighting"] == ch["id"]):
             char["fighting"] = None
             # [PRIMESUD] original .are files allow for mobs to have default positions
             # specified, but we haven't ported this yet.
             char["pos"] = "standing"
-            # TODO: update_pos is called here in 1stMud, correcting dead/stunned pos.
-            #       damage() calls update_pos after stop_fighting to compensate.
+            update_pos(char)
             # TODO: Stance is reset here.
 
 
@@ -1536,7 +1549,7 @@ def _advance_target(player, mob_instances, room_state):
     if next_id is not None:
         player["fighting"] = next_id
     else:
-        stop_fighting(player, mob_instances, both=False)
+        stop_fighting(player, both=False)
 
 
 # -- Death / Victory -----------------------------------------------------------

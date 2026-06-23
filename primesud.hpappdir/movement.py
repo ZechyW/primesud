@@ -2,7 +2,6 @@
 
 from config import R_RECALL, PULSE_PER_SECOND
 from skills_table import GSN_RECALL
-import world
 from world import ROOM_DEFS
 from picker import pick_from
 from combat import stop_fighting, WaitState, check_improve
@@ -149,7 +148,7 @@ def perform_recall(tr, player, location, what="recall"):
         player["xp"] = max(0, player["xp"] - 25)
         check_improve(tr, player, GSN_RECALL, True, 4)
         tr.print("You " + what + " from combat!  You lose 25 exps.")
-        stop_fighting(player, world.chars, both=False)
+        stop_fighting(player, both=False)
 
     player["room"] = location
     do_look(tr, player, [])
@@ -186,7 +185,7 @@ def do_flee(tr, player, args):
         if dest not in ROOM_DEFS:
             continue
         player["room"] = dest
-        stop_fighting(player, world.chars, both=False)
+        stop_fighting(player, both=False)
         tr.print("You flee {}!".format(direction))
         player["xp"] = max(0, player["xp"] - 10)
         tr.print("You lost 10 exp.")
