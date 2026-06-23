@@ -2,7 +2,7 @@
 
 from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC, POS_ORDER)
-from world import ITEM_TEMPLATES
+from world import ITEM_DEFS
 from colors import upper
 
 
@@ -300,7 +300,7 @@ def _apply_item_modifiers(char, obj, tpl, add):
 def unequip_char(char, slot):
     """Remove obj from slot, reverse stat_bonuses, return to inventory (cf. 1stMud unequip_char in handler.c)."""
     obj = char["equip"][slot]
-    tpl = ITEM_TEMPLATES[obj["vnum"]]
+    tpl = ITEM_DEFS[obj["vnum"]]
     armor = _item_armor_runtime(tpl)
     if armor is not None:
         _add_armor(char, armor)
@@ -311,7 +311,7 @@ def unequip_char(char, slot):
 
 def equip_char(char, obj, slot):
     """Seat obj in slot and apply stat_bonuses (cf. 1stMud equip_char in handler.c)."""
-    tpl = ITEM_TEMPLATES[obj["vnum"]]
+    tpl = ITEM_DEFS[obj["vnum"]]
     char["inv"].remove(obj)
     char["equip"][slot] = obj
     armor = _item_armor_runtime(tpl)

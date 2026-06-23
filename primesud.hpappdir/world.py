@@ -15,16 +15,18 @@ _AREA_LIST = [
     (area_chapel, "chapel"),
 ]
 
-# Map each room to its area name (cf. room->area pointer in 1stMud db.c).
-# world.py is the authority -- area modules carry no tag of their own.
-ROOMS = {}
-ROOM_AREAS = {}
-MOB_TEMPLATES = {}
-ITEM_TEMPLATES = {}
-RESETS = []
+# -- Static definitions (populated by init_world, constant after) -----------
+ROOM_DEFS = {}
+MOB_DEFS = {}
+ITEM_DEFS = {}
 AREA_DEFS = []
-DOOR_RESET = {}
+DOOR_DEFS = {}
 _WORLD_READY = False
+
+# -- Mutable runtime state (mutated by reset_area / game functions) ---------
+rooms = {}
+chars = {}
+areas = []
 
 
 def init_world():
@@ -33,29 +35,26 @@ def init_world():
     if _WORLD_READY:
         return
 
-    ROOMS.clear()
-    ROOM_AREAS.clear()
-    MOB_TEMPLATES.clear()
-    ITEM_TEMPLATES.clear()
-    del RESETS[:]
+    ROOM_DEFS.clear()
+    MOB_DEFS.clear()
+    ITEM_DEFS.clear()
     del AREA_DEFS[:]
-    DOOR_RESET.clear()
+    DOOR_DEFS.clear()
 
     for _mod, _tag in _AREA_LIST:
         for _vnum, _room in _mod.ROOMS.items():
-            ROOMS[_vnum] = _room
-            ROOM_AREAS[_vnum] = _tag
-        MOB_TEMPLATES.update(_mod.MOBILES)
-        ITEM_TEMPLATES.update(_mod.OBJECTS)
-        RESETS.extend(_mod.RESETS)
+            _room["area"] = _tag
+            ROOM_DEFS[_vnum] = _room
+        MOB_DEFS.update(_mod.MOBILES)
+        ITEM_DEFS.update(_mod.OBJECTS)
         AREA_DEFS.append({"tag": _tag, "resets": _mod.RESETS})
 
     # Snapshot initial door closed/locked state for reset (cf. 1stMud reset_room door loop, db.c:1411)
-    for _vnum, _room in ROOMS.items():
+    for _vnum, _room in ROOM_DEFS.items():
         for _d, _ev in _room.get("exits", {}).items():
             if isinstance(_ev, dict) and _ev.get("isdoor"):
-                if _vnum not in DOOR_RESET:
-                    DOOR_RESET[_vnum] = {}
-                DOOR_RESET[_vnum][_d] = {"closed": bool(_ev.get("closed")), "locked": bool(_ev.get("locked"))}
+                if _vnum not in DOOR_DEFS:
+                    DOOR_DEFS[_vnum] = {}
+                DOOR_DEFS[_vnum][_d] = {"closed": bool(_ev.get("closed")), "locked": bool(_ev.get("locked"))}
 
     _WORLD_READY = True

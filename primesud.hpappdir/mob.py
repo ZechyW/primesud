@@ -3,7 +3,8 @@
 from urandom import randint
 
 from config import EXIT_NAMES
-from world import ROOMS, ROOM_AREAS, AREA_DEFS, MOB_TEMPLATES, RESETS, DOOR_RESET
+import world
+from world import ROOM_DEFS, MOB_DEFS, AREA_DEFS, DOOR_DEFS
 from races import RACE_TABLE
 from actor import equip_char, act, _char_base, is_awake
 from item import create_object
@@ -53,7 +54,7 @@ def create_mobile(tpl_vnum):
     Returns:
         dict: Mob instance dict.
     """
-    tpl = MOB_TEMPLATES[tpl_vnum]
+    tpl = MOB_DEFS[tpl_vnum]
     _n, _s, _b = tpl["hp_dice"]
     hp = _b
     for _ in range(_n):
@@ -186,14 +187,14 @@ def reset_mobs(mob_instances, room_state, resets, tr=None, debug=False):
                 continue
             inst = create_mobile(tpl_vnum)
             inst["room"] = room_vnum
-            inst["home_area"] = ROOM_AREAS.get(room_vnum)
+            inst["home_area"] = ROOM_DEFS[room_vnum].get("area")
             inst["id"] = mob_id
             mob_instances[mob_id] = inst
             room_state[room_vnum]["mobs"].append(mob_id)
             if debug and tr is not None:
                 tr.print("{D[reset] spawned %s in %s{x" % (
-                    MOB_TEMPLATES[tpl_vnum]["short_descr"],
-                    ROOMS[room_vnum]["name"]))
+                    MOB_DEFS[tpl_vnum]["short_descr"],
+                    ROOM_DEFS[room_vnum]["name"]))
             last_mob_id  = mob_id
             last_spawned = True
             mob_id += 1
@@ -209,24 +210,25 @@ def reset_mobs(mob_instances, room_state, resets, tr=None, debug=False):
 
 
 def reset_area():
-    """Create fresh room state and mob instances (cf. 1stMud reset_area).
+    """Reset all room state and mob instances in-place (cf. 1stMud reset_area).
 
-    Returns:
-        tuple: (room_state (dict), mob_instances (dict)).
+    Clears and repopulates world.rooms and world.chars.
     """
-    room_state = {vnum: {"items": [], "mobs": []} for vnum in ROOMS}
-    mob_instances = {}
-    reset_mobs(mob_instances, room_state, RESETS)
-    for entry in RESETS:
-        if entry[0] == "O":
-            room_state[entry[2]]["items"].append(create_object(entry[1]))
+    world.rooms.clear()
+    world.chars.clear()
+    for vnum in ROOM_DEFS:
+        world.rooms[vnum] = {"items": [], "mobs": []}
+    for area in AREA_DEFS:
+        reset_mobs(world.chars, world.rooms, area["resets"])
+        for entry in area["resets"]:
+            if entry[0] == "O":
+                world.rooms[entry[2]]["items"].append(create_object(entry[1]))
     # Restore all door states to their reset-to values (cf. 1stMud reset_room door loop, db.c:1411)
-    for vnum, doors in DOOR_RESET.items():
-        exits = ROOMS[vnum]["exits"]
+    for vnum, doors in DOOR_DEFS.items():
+        exits = ROOM_DEFS[vnum]["exits"]
         for d, state in doors.items():
             exits[d]["closed"] = state["closed"]
             exits[d]["locked"] = state["locked"]
-    return room_state, mob_instances
 
 
 def create_area_states():
@@ -247,28 +249,28 @@ def create_area_states():
     return states
 
 
-def mobile_update(tr, player, world):
+def mobile_update(tr, player):
     """Wander mobs and despawn any that strayed out of their home area (cf. 1stMud mobile_update, char_update in update.c)."""
-    for mob_id, inst in list(world["chars"].items()):
+    for mob_id, inst in list(world.chars.items()):
         if not inst.get("is_npc"):
             continue
-        if ROOM_AREAS.get(inst["room"]) != inst["home_area"] and randint(1, 100) <= 5:
+        if ROOM_DEFS[inst["room"]].get("area") != inst["home_area"] and randint(1, 100) <= 5:
             # 5% chance to despawn when outside home area (cf. char_update, update.c:541)
             if player["room"] == inst["room"]:
-                tpl = MOB_TEMPLATES[inst["tpl"]]
+                tpl = MOB_DEFS[inst["tpl"]]
                 _sd = tpl["short_descr"]
                 act(tr, "{} wanders on home.".format(_sd))
-            world["rooms"][inst["room"]]["mobs"].remove(mob_id)
-            del world["chars"][mob_id]
+            world.rooms[inst["room"]]["mobs"].remove(mob_id)
+            del world.chars[mob_id]
             continue
         if inst["fighting"] is not None:
             continue
-        act_flags = MOB_TEMPLATES[inst["tpl"]].get("act_flags", {})
+        act_flags = MOB_DEFS[inst["tpl"]].get("act_flags", {})
         if act_flags.get("sentinel"):
             continue
         if randint(0, 7) != 0:  # 1/8 chance -- matches number_bits(3)==0
             continue
-        exits = ROOMS[inst["room"]].get("exits", {})
+        exits = ROOM_DEFS[inst["room"]].get("exits", {})
         if not exits:
             continue
         dirs = list(exits.keys())
@@ -277,30 +279,30 @@ def mobile_update(tr, player, world):
         if isinstance(exit_val, dict) and exit_val.get("closed"):  # cf. EX_CLOSED check, update.c:499
             continue
         dest_vnum = exit_val["to"] if isinstance(exit_val, dict) else exit_val
-        if dest_vnum not in ROOMS:
+        if dest_vnum not in ROOM_DEFS:
             continue
-        dest_flags = ROOMS[dest_vnum].get("flags", {})
+        dest_flags = ROOM_DEFS[dest_vnum].get("flags", {})
         if dest_flags.get("no_mob"):  # cf. ROOM_NO_MOB check, update.c:500
             continue
-        if act_flags.get("stay_area") and ROOM_AREAS.get(dest_vnum) != ROOM_AREAS.get(inst["room"]):
+        if act_flags.get("stay_area") and ROOM_DEFS.get(dest_vnum, {}).get("area") != ROOM_DEFS[inst["room"]].get("area"):
             continue  # cf. ACT_STAY_AREA check, update.c:501
         if act_flags.get("outdoors") and dest_flags.get("indoors"):
             continue
         if act_flags.get("indoors") and not dest_flags.get("indoors"):
             continue
         old_room = inst["room"]
-        tpl = MOB_TEMPLATES[inst["tpl"]]
+        tpl = MOB_DEFS[inst["tpl"]]
         _sd = tpl["short_descr"]
         if player["room"] == old_room:
             act(tr, "{} leaves {}.".format(_sd, EXIT_NAMES.get(direction, direction)))
-        world["rooms"][old_room]["mobs"].remove(mob_id)
+        world.rooms[old_room]["mobs"].remove(mob_id)
         inst["room"] = dest_vnum
-        world["rooms"][dest_vnum]["mobs"].append(mob_id)
+        world.rooms[dest_vnum]["mobs"].append(mob_id)
         if player["room"] == dest_vnum:
             act(tr, "{} has arrived.".format(_sd))
 
 
-def aggr_update(tr, player, world):
+def aggr_update(tr, player):
     """Aggressive mobs attack the player.
 
     Single-player simplification: 1stMud iterates player_first then scans
@@ -314,19 +316,18 @@ def aggr_update(tr, player, world):
     Args:
         tr: Terminal for printing combat messages.
         player (dict): Player state dict.
-        world (dict): Game world state.
     """
     from combat import multi_hit
 
     # cf. update.c:951 -- immortal / empty area / ROOM_SAFE early-outs
     room_vnum = player["room"]
-    room = ROOMS[room_vnum]
+    room = ROOM_DEFS[room_vnum]
     if room.get("flags", {}).get("safe"):
         return
 
-    mob_ids = list(world["rooms"][room_vnum].get("mobs", []))
+    mob_ids = list(world.rooms[room_vnum].get("mobs", []))
     for mob_id in mob_ids:
-        ch = world["chars"].get(mob_id)
+        ch = world.chars.get(mob_id)
         if ch is None:
             continue
 
@@ -357,12 +358,12 @@ def aggr_update(tr, player, world):
             continue
 
         # cf. update.c:990 -- multi_hit(ch, victim, TYPE_UNDEFINED)
-        multi_hit(tr, ch, player, world=world)
+        multi_hit(tr, ch, player)
 
 
-def area_update(tr, player, world):
+def area_update(tr, player):
     """Increment area ages and reset areas at threshold (cf. 1stMud area_update in db.c)."""
-    for area in world["areas"]:
+    for area in world.areas:
         weather = area.get("weather")
         if weather is not None:
             weather["precip"] += weather.get("precip_vector", 0)
@@ -381,11 +382,11 @@ def area_update(tr, player, world):
                 weather["precip_vector"] = 1
         area["age"] += 1
         if area["age"] >= _AREA_AGE_MIN and area["age"] >= _AREA_AGE_RESET:
-            reset_mobs(world["chars"], world["rooms"], area["resets"])
+            reset_mobs(world.chars, world.rooms, area["resets"])
             if area["tag"] == "mud_school":
                 area["age"] = 13  # resets every 2 ticks (cf. db.c:1330: age = 15-2)
             else:
                 area["age"] = randint(0, 3)
                 # School area is intentionally silent (cf. db.c:1335 else-if excludes it).
-                if ROOM_AREAS.get(player["room"]) == area["tag"]:
+                if ROOM_DEFS[player["room"]].get("area") == area["tag"]:
                     tr.print(_RESET_MSGS[randint(0, len(_RESET_MSGS) - 1)])

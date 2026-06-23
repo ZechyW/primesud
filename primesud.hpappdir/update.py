@@ -1,6 +1,7 @@
 """World-state update loops (cf. 1stMud update.c)."""
 
-from world import ITEM_TEMPLATES
+import world
+from world import ITEM_DEFS
 from item import obj_vnum
 
 
@@ -11,7 +12,7 @@ def affect_update(player, world):
         player (dict): Player state dict.
         world (dict): Game world state.
     """
-    for inst in world["chars"].values():
+    for inst in world.chars.values():
         affects = inst["affects"]
         for key in list(affects.keys()):
             if key.endswith("_t"):
@@ -30,7 +31,7 @@ def obj_update(tr, player, world):
         player (dict): Player state (used to check if player is in affected room).
         world (dict): World state with "rooms" mapping.
     """
-    for rvnum, room in world["rooms"].items():
+    for rvnum, room in world.rooms.items():
         for obj in list(room.get("items", [])):
             timer = obj.get("timer", -1)
             if timer <= 0:
@@ -38,7 +39,7 @@ def obj_update(tr, player, world):
             timer -= 1
             obj["timer"] = timer
             if timer == 0:
-                tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+                tpl = ITEM_DEFS[obj_vnum(obj)]
                 itype = tpl.get("type", "")
                 short = obj.get("short_descr", tpl.get("short_descr", "something"))
                 if itype in ("npc_corpse", "pc_corpse"):

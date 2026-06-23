@@ -9,7 +9,8 @@ from config import (
 )
 from config import R_STARTING_ROOM
 from skills_table import SKILL_TABLE, SKILLS, GSN_SWORD, GSN_RECALL
-from world import ROOMS, RESETS
+import world
+from world import ROOM_DEFS, AREA_DEFS
 from item import serialize_item_token, parse_item_token
 
 _EQUIP_SAVE_ORDER = (
@@ -165,17 +166,14 @@ def show_prompt(tr, player, buf):
 #     not exist yet (i.e. no save found); load_char treats this as no-save.
 SAVE_FILE = "primesud.sav"
 
-def _serialize_world(world):
+def _serialize_world():
     """Serialise world state to a PPL HVars variable (cf. 1stMud save_char_obj in save.c).
-
-    Args:
-        world (dict): Game world state (keys: rooms, chars, areas).
 
     Raises:
         Exception: If the PPL write fails, readback does not match the written
             payload, or the save-file mirror cannot be written.
     """
-    player = world["chars"][1]
+    player = world.chars[1]
     gc_collect()
     lines = ["v=" + str(SAVE_VERSION)]
     for key in ("name", "level", "xp", "xp_next",
@@ -202,7 +200,7 @@ def _serialize_world(world):
     _mk_str = sorted(k for k in player["_macros"] if isinstance(k, str))
     for k in _mk_int + _mk_str:
         lines.append("p.macro." + str(FNKEY_NAMES.get(k, k)) + "=" + str(player["_macros"][k]))
-    for _as in world["areas"]:
+    for _as in world.areas:
         # HP Prime G1 has unstable percent-format strings in save payloads.
         lines.append("a." + str(_as["tag"]) + ".age=" + str(_as["age"]))
         weather = _as.get("weather")
@@ -213,14 +211,15 @@ def _serialize_world(world):
     # instance is already in its reset room, omit it -- reset_area() will
     # restore it there on load without any save entry needed.
     _single_reset_room = {}
-    for entry in RESETS:
-        if entry[0] == "M" and entry[2] == 1:
-            _single_reset_room[entry[1]] = entry[3]
+    for _adef in AREA_DEFS:
+        for entry in _adef["resets"]:
+            if entry[0] == "M" and entry[2] == 1:
+                _single_reset_room[entry[1]] = entry[3]
 
     tpl_rooms = {}
     tpl_order = []
-    for mob_id in sorted(world["chars"]):
-        inst = world["chars"][mob_id]
+    for mob_id in sorted(world.chars):
+        inst = world.chars[mob_id]
         if not inst.get("is_npc"):
             continue
         tpl = inst["tpl"]
@@ -237,8 +236,8 @@ def _serialize_world(world):
         for r in rooms:
             room_parts.append(str(r))
         lines.append("m." + str(tpl_vnum) + "=" + "|".join(room_parts))
-    for rvnum in sorted(world["rooms"]):
-        rs = world["rooms"][rvnum]
+    for rvnum in sorted(world.rooms):
+        rs = world.rooms[rvnum]
         if not rs["items"]:
             continue
         item_parts = []
@@ -257,10 +256,10 @@ def _serialize_world(world):
         f.write(payload)
 
 
-def save_world(tr, world, quiet=False):
+def save_world(tr, quiet=False):
     """Save world state and optionally print success."""
     try:
-        _serialize_world(world)
+        _serialize_world()
         if not quiet:
             tr.print("Saved.")
         return True
@@ -269,20 +268,17 @@ def save_world(tr, world, quiet=False):
         return False
 
 
-def load_world(world):
+def load_world():
     """Deserialise world state from save file or HVar (cf. 1stMud load_char_obj in save.c).
 
     Tries SAVE_FILE first (survives hard crashes); falls back to SAVE_VAR HVar
-    (survives reinstalls).  Mutates world["chars"][1] and world in-place.  Macros are read
-    from world["chars"][1]["_macros"] (must be set by caller before calling).
-
-    Args:
-        world (dict): Game world state (keys: rooms, chars, areas).
+    (survives reinstalls).  Mutates world.chars[1] and world state in-place.  Macros are read
+    from world.chars[1]["_macros"] (must be set by caller before calling).
 
     Returns:
         bool: True if a save was found and loaded, False if no save exists or on error.
     """
-    player = world["chars"][1]
+    player = world.chars[1]
     data = None
     _source = None
     try:
@@ -328,7 +324,7 @@ def load_world(world):
     if player["_macros"] is not None:
         player["_macros"].clear()
 
-    _area_by_tag = {s["tag"]: s for s in world["areas"]} if world["areas"] is not None else {}
+    _area_by_tag = {s["tag"]: s for s in world.areas} if world.areas is not None else {}
     mob_saves = {}  # tpl_vnum -> [room, room, ...]
 
     _name_to_fn = {name: sentinel for sentinel, name in FNKEY_NAMES.items()}
@@ -361,8 +357,8 @@ def load_world(world):
             player[pkey] = int(val) if pkey in int_keys else val
         elif key.startswith("r.") and key.endswith(".items"):
             rvnum = int(key.split(".")[1])
-            if rvnum in world["rooms"]:
-                world["rooms"][rvnum]["items"] = [parse_item_token(v) for v in val.split("|") if v]
+            if rvnum in world.rooms:
+                world.rooms[rvnum]["items"] = [parse_item_token(v) for v in val.split("|") if v]
         elif key.startswith("a.") and key.endswith(".age"):
             tag = key[2:-4]
             if tag in _area_by_tag:
@@ -383,20 +379,20 @@ def load_world(world):
     # Apply saved mob rooms: delete killed instances, patch wandered rooms.
     # Same vnum appearing multiple times means multiple instances in one room -- correct.
     for tpl_vnum, saved_rooms in mob_saves.items():
-        inst_ids = sorted(i for i, inst in world["chars"].items() if inst.get("is_npc") and inst["tpl"] == tpl_vnum)
+        inst_ids = sorted(i for i, inst in world.chars.items() if inst.get("is_npc") and inst["tpl"] == tpl_vnum)
         for mid in inst_ids[len(saved_rooms):]:   # excess = killed since last save
-            del world["chars"][mid]
+            del world.chars[mid]
         for mid, room_vnum in zip(inst_ids, saved_rooms):
-            if room_vnum in ROOMS:
-                world["chars"][mid]["room"] = room_vnum
+            if room_vnum in ROOM_DEFS:
+                world.chars[mid]["room"] = room_vnum
 
-    if player["room"] not in world["rooms"]:
+    if player["room"] not in world.rooms:
         player["room"] = R_STARTING_ROOM
 
-    for rs in world["rooms"].values():
+    for rs in world.rooms.values():
         rs["mobs"] = []
-    for mob_id, inst in world["chars"].items():
+    for mob_id, inst in world.chars.items():
         if inst.get("is_npc"):
-            world["rooms"][inst["room"]]["mobs"].append(mob_id)
+            world.rooms[inst["room"]]["mobs"].append(mob_id)
 
     return _source

@@ -142,7 +142,7 @@ All commands follow the same guard:
 from picker import pick_from
 
 def do_kill(tr, player, args, world):
-    rs = world["rooms"][player["room"]]
+    rs = world.rooms[player["room"]]
     live = [i for i in rs["mobs"] if world["mobs"][i]["state"] != "dead"]
 
     if not live:

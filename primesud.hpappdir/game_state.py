@@ -1,5 +1,6 @@
 """Game lifecycle helpers for new, load, save, and migration UX."""
 
+import world
 from config import SAVE_VAR
 from player import create_char, save_world, load_world
 from mob import reset_area, create_area_states
@@ -9,30 +10,27 @@ from macros import _MACRO_SUBST
 
 def init_game_state(game):
     """Initialise mutable game state fields."""
-    game.world = {"rooms": None, "chars": None, "areas": create_area_states()}
     game._backup_ok = False
 
 
 def new_game(game, name="Hero"):
-    world = game.world
-    world["rooms"], world["chars"] = reset_area()
-    world["areas"] = create_area_states()
+    reset_area()
+    world.areas = create_area_states()
     player = create_char()
     player["name"] = name
     player["_macros"] = _MACRO_SUBST
-    world["chars"][1] = player
+    world.chars[1] = player
     do_outfit(game.tr, player, "", None)  # cf. 1stMud do_outfit in nanny.c for new chars
     save_game(game, quiet=True)
 
 
 def load_game(game):
-    world = game.world
-    world["rooms"], world["chars"] = reset_area()
-    world["areas"] = create_area_states()
+    reset_area()
+    world.areas = create_area_states()
     player = create_char()
     player["_macros"] = _MACRO_SUBST
-    world["chars"][1] = player
-    result = load_world(world)
+    world.chars[1] = player
+    result = load_world()
     if isinstance(result, tuple):   # (None, backup_ok) -- version mismatch
         _, game._backup_ok = result
         return None
@@ -62,5 +60,4 @@ def handle_version_mismatch(game):
 
 
 def save_game(game, quiet=False):
-    world = game.world
-    return save_world(game.tr, world, quiet)
+    return save_world(game.tr, quiet)

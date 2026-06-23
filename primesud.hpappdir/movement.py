@@ -2,7 +2,8 @@
 
 from config import R_RECALL
 from skills_table import GSN_RECALL
-from world import ROOMS
+import world
+from world import ROOM_DEFS
 from picker import pick_from
 from combat import stop_fighting, WaitState, check_improve
 from info import do_look
@@ -20,7 +21,7 @@ def do_move(tr, player, direction, world):
     if player["fighting"] is not None:
         tr.print("No way! You are fighting!")
         return
-    exits = ROOMS[player["room"]]["exits"]
+    exits = ROOM_DEFS[player["room"]]["exits"]
     if direction not in exits:
         tr.print("Alas, you cannot go that way.")
         return
@@ -29,7 +30,7 @@ def do_move(tr, player, direction, world):
         tr.print("The door is closed.")
         return
     dest = _exit_to(exit_val)
-    if dest not in ROOMS:
+    if dest not in ROOM_DEFS:
         tr.print("That way is not yet open.")
         return
     player["room"] = dest
@@ -38,7 +39,7 @@ def do_move(tr, player, direction, world):
 
 def do_open(tr, player, args, world):
     """Open a door in a given direction (cf. 1stMud do_open in act_move.c)."""
-    exits = ROOMS[player["room"]]["exits"]
+    exits = ROOM_DEFS[player["room"]]["exits"]
     _picked_dir = None
     if args:
         direction = DIR_ALIASES.get(args[0].lower())
@@ -72,8 +73,8 @@ def do_open(tr, player, args, world):
     tr.print("Ok.")
     dest = exit_val["to"]
     rev = REV_DIR.get(direction)
-    if rev and dest in ROOMS:
-        rev_exit = ROOMS[dest]["exits"].get(rev)
+    if rev and dest in ROOM_DEFS:
+        rev_exit = ROOM_DEFS[dest]["exits"].get(rev)
         if isinstance(rev_exit, dict) and _exit_to(rev_exit) == player["room"]:
             rev_exit["closed"] = False
     return ("open " + EXIT_NAMES[_picked_dir].lower()) if _picked_dir is not None else None
@@ -81,7 +82,7 @@ def do_open(tr, player, args, world):
 
 def do_close(tr, player, args, world):
     """Close a door in a given direction (cf. 1stMud do_close in act_move.c)."""
-    exits = ROOMS[player["room"]]["exits"]
+    exits = ROOM_DEFS[player["room"]]["exits"]
     _picked_dir = None
     if args:
         direction = DIR_ALIASES.get(args[0].lower())
@@ -115,8 +116,8 @@ def do_close(tr, player, args, world):
     tr.print("Ok.")
     dest = exit_val["to"]
     rev = REV_DIR.get(direction)
-    if rev and dest in ROOMS:
-        rev_exit = ROOMS[dest]["exits"].get(rev)
+    if rev and dest in ROOM_DEFS:
+        rev_exit = ROOM_DEFS[dest]["exits"].get(rev)
         if isinstance(rev_exit, dict) and _exit_to(rev_exit) == player["room"]:
             rev_exit["closed"] = True
     return ("close " + EXIT_NAMES[_picked_dir].lower()) if _picked_dir is not None else None
@@ -124,7 +125,7 @@ def do_close(tr, player, args, world):
 
 def perform_recall(tr, player, location, world, what="recall"):
     """Move player to recall destination (cf. 1stMud perform_recall in act_move.c)."""
-    room = ROOMS[player["room"]]
+    room = ROOM_DEFS[player["room"]]
 
     if room.get("flags", {}).get("no_recall") \
             or player.get("aff_flags", {}).get("curse"):
@@ -148,7 +149,7 @@ def perform_recall(tr, player, location, world, what="recall"):
         player["xp"] = max(0, player["xp"] - 25)
         check_improve(tr, player, GSN_RECALL, True, 4)
         tr.print("You " + what + " from combat!  You lose 25 exps.")
-        stop_fighting(player, world["chars"], both=False)
+        stop_fighting(player, world.chars, both=False)
 
     player["room"] = location
     do_look(tr, player, [], world)
@@ -170,7 +171,7 @@ def do_flee(tr, player, args, world):
     if player["fighting"] is None:
         tr.print("You're not fighting anyone.")
         return
-    exits = list(ROOMS[player["room"]]["exits"].items())
+    exits = list(ROOM_DEFS[player["room"]]["exits"].items())
     if not exits:
         tr.print("There is nowhere to run!")
         return
@@ -182,10 +183,10 @@ def do_flee(tr, player, args, world):
         if isinstance(exit_val, dict) and exit_val.get("closed"):
             continue
         dest = _exit_to(exit_val)
-        if dest not in ROOMS:
+        if dest not in ROOM_DEFS:
             continue
         player["room"] = dest
-        stop_fighting(player, world["chars"], both=False)
+        stop_fighting(player, world.chars, both=False)
         tr.print("You flee {}!".format(direction))
         player["xp"] = max(0, player["xp"] - 10)
         tr.print("You lost 10 exp.")

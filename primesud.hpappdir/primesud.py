@@ -34,8 +34,9 @@ from config import (
 )
 from util import free_mem, gc_collect
 from config import R_STARTING_ROOM
-from world import ROOMS, init_world
-from combat import update_wait_states, violence_update, mob_condition, MOB_TEMPLATES
+import world
+from world import ROOM_DEFS, MOB_DEFS, init_world
+from combat import update_wait_states, violence_update, mob_condition
 from mob import mobile_update, aggr_update, area_update
 from player import tick_update, show_prompt
 from update import obj_update, affect_update
@@ -105,8 +106,7 @@ class Game:
 
     def game_loop(self):
         tr = self.tr
-        world = self.world
-        player = world["chars"][1]
+        player = world.chars[1]
 
         pulse      = 0
         tick_count = 0
@@ -217,7 +217,7 @@ class Game:
                     else:
                         if player["fighting"] is not None:
                             fid = player["fighting"]
-                            finst = world["chars"][fid]
+                            finst = world.chars[fid]
                             tr.print(mob_condition(finst, MOB_TEMPLATES[finst["tpl"]]))
                             tr.print("")
                     # cf. 1stMud aggr_update runs every pulse; gated to

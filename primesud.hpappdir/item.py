@@ -1,6 +1,6 @@
 """Item creation, lookup, flags, spell payloads, and save tokens."""
 
-from world import ITEM_TEMPLATES, MOB_TEMPLATES
+from world import ITEM_DEFS, MOB_DEFS
 from actor import is_name
 
 
@@ -18,7 +18,7 @@ def create_object(vnum):
     Returns:
         dict: Item instance dict with mutable fields copied from template.
     """
-    tpl = ITEM_TEMPLATES[vnum]
+    tpl = ITEM_DEFS[vnum]
     obj = {"vnum": vnum, "cost": tpl.get("value", 0)}
     if "max_charges" in tpl:
         obj["max_charges"] = tpl["max_charges"]
@@ -330,7 +330,7 @@ def get_char_room(fragment, inst_ids, mob_instances):
         int or None: First matching mob instance ID, or None if not found.
     """
     for mob_id in inst_ids:
-        if is_name(fragment, MOB_TEMPLATES[mob_instances[mob_id]["tpl"]].get("keywords", "")):
+        if is_name(fragment, MOB_DEFS[mob_instances[mob_id]["tpl"]].get("keywords", "")):
             return mob_id
     return None
 

@@ -63,7 +63,7 @@ Called once per world tick from `Game.run()`, same cadence as `tick_update()`.
 Signature: `obj_update(tr, player, world)` — needs `tr` for messaging, `player` to check if player is in room, `world` for room iteration.
 
 Logic (mirrors 1stMud `obj_update` in `update.c`):
-1. Iterate `world["rooms"]`. For each room, iterate `room["items"]` list (copy list before iterating — items may be removed mid-loop).
+1. Iterate `world.rooms`. For each room, iterate `room["items"]` list (copy list before iterating — items may be removed mid-loop).
 2. For each item with `"timer"` present and `> 0`: decrement by 1.
 3. When `timer` reaches 0:
    - Look up item type from `ITEM_TEMPLATES[obj_vnum(item)]`.
@@ -114,7 +114,7 @@ Steps (cf. 1stMud `make_corpse` in `fight.c`):
      - `rot_death` flag set → set `obj["timer"]` = `randint(5, 10)`, clear flag on instance.
      - `vis_death` flag set → clear flag on instance.
    - All other items → append to `corpse["contents"]`.
-7. Place corpse in `world["rooms"][inst["room"]]["items"]`.
+7. Place corpse in `world.rooms[inst["room"]]["items"]`.
 
 ### Update `raw_kill()`
 

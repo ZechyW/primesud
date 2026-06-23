@@ -55,23 +55,23 @@ from skills_table import (
     GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY, GSN_DODGE,
     GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
 )
-from world import ITEM_TEMPLATES, MOB_TEMPLATES
+import world
+from world import ITEM_DEFS, MOB_DEFS
 
 
 # -- Violence update (called every PULSE_VIOLENCE) -----------------------------
 
-def violence_update(tr, player, world):
+def violence_update(tr, player):
     """One combat pulse: all chars with a fight target attack (cf. 1stMud violence_update in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
         player (dict): Player state dict.
-        world (dict): Game world state (keys: rooms, mobs, areas).
 
     Returns:
         bool or None: True if player died this pulse; None otherwise.
     """
-    chars = world["chars"]
+    chars = world.chars
 
     # Need to copy to list first as chars could get modified during iteration (on deaths)
     for ch in list(chars.values()):
@@ -93,7 +93,7 @@ def violence_update(tr, player, world):
 
         # 1stMud: if IsAwake(ch) && ch->in_room == victim->in_room: multi_hit else stop_fighting
         if is_awake(ch) and ch["room"] == victim["room"]:
-            multi_hit(tr, ch, victim, world)
+            multi_hit(tr, ch, victim)
         else:
             stop_fighting(ch, chars, both=False)
 
@@ -106,7 +106,7 @@ def violence_update(tr, player, world):
             return True
 
         # 1stMud: check_assist(ch, victim)
-        check_assist(tr, ch, victim, world)
+        check_assist(tr, ch, victim)
 
         # TODO: mob TRIG_FIGHT / TRIG_HPCNT triggers not ported
         # TODO: obj worn-item TRIG_FIGHT triggers not ported
@@ -115,7 +115,7 @@ def violence_update(tr, player, world):
     return None
 
 
-def check_assist(tr, ch, victim, world):
+def check_assist(tr, ch, victim):
     """Let idle room chars join combat (cf. 1stMud check_assist in fight.c).
 
     Three cases mirror 1stMud exactly:
@@ -128,19 +128,18 @@ def check_assist(tr, ch, victim, world):
         tr: Terminal for printing combat messages.
         ch (dict): Attacker (player or mob).
         victim (dict): Ch's current fight target.
-        world (dict): Game world state (keys: rooms, chars, areas).
     """
-    chars = world["chars"]
-    rs    = world["rooms"][ch["room"]]
+    chars = world.chars
+    rs    = world.rooms[ch["room"]]
     if ch["is_npc"]:
-        ch_tpl = MOB_TEMPLATES[ch["tpl"]]
+        ch_tpl = MOB_DEFS[ch["tpl"]]
 
     for mob_id in list(rs["mobs"]):
         rch = chars.get(mob_id)
         if rch is None or not is_awake(rch) or rch["fighting"] is not None:
             continue
 
-        rch_tpl = MOB_TEMPLATES[rch["tpl"]]
+        rch_tpl = MOB_DEFS[rch["tpl"]]
         off = rch.get("off_flags", {})
 
         # Case 1 & 2: ch is player
@@ -148,7 +147,7 @@ def check_assist(tr, ch, victim, world):
             # Case 1: mob with assist_players aids player against victim
             if off.get("assist_players") and rch["level"] + 6 > victim["level"]:
                 tr.print("{} screams and attacks!".format(rch_tpl["short_descr"]))
-                multi_hit(tr, rch, victim, world)
+                multi_hit(tr, rch, victim)
             # Case 2: autoassist / charm -- not implemented; skip mob
             continue
 
@@ -172,7 +171,7 @@ def check_assist(tr, ch, victim, world):
         # Pick random target from victim's group (cf. 1stMud target selection loop).
         # [PRIMESUD] Single-player: victim's group = victim only; target is always victim.
         tr.print("{} screams and attacks!".format(rch_tpl["short_descr"]))
-        multi_hit(tr, rch, victim, world)
+        multi_hit(tr, rch, victim)
 
 
 # -- Helpers -------------------------------------------------------------------
@@ -282,7 +281,7 @@ def _get_weapon_sn(ch, slot="wield"):
     wobj = ch["equip"].get(slot)
     if wobj is None:
         return GSN_HAND_TO_HAND, None
-    tpl = ITEM_TEMPLATES[wobj["vnum"]]
+    tpl = ITEM_DEFS[wobj["vnum"]]
     sn = WEAPON_GSN_MAP.get(tpl.get("weapon_type", ""), -1)
     return sn, tpl
 
@@ -537,12 +536,12 @@ def WaitState(ch, pulses):
         ch["wait"] = pulses
 
 
-def update_wait_states(player, world):
+def update_wait_states(player):
     """Decrement wait/daze timers on the violence pulse."""
     player["wait"] = max(0, player.get("wait", 0) - PULSE_VIOLENCE)
-    rs = world["rooms"][player["room"]]
+    rs = world.rooms[player["room"]]
     for mid in rs["mobs"]:
-        inst = world["chars"][mid]
+        inst = world.chars[mid]
         inst["wait"] = max(0, inst.get("wait", 0) - PULSE_VIOLENCE)
         inst["daze"] = max(0, inst.get("daze", 0) - PULSE_VIOLENCE)
 
@@ -663,9 +662,9 @@ def check_parry(tr, ch, victim):
         return False
 
     if victim["is_npc"]:
-        act(tr, "{} parries your attack.".format(MOB_TEMPLATES[victim["tpl"]]["short_descr"]))
+        act(tr, "{} parries your attack.".format(MOB_DEFS[victim["tpl"]]["short_descr"]))
     else:
-        act(tr, "You parry {}'s attack.".format(MOB_TEMPLATES[ch["tpl"]]["short_descr"]))
+        act(tr, "You parry {}'s attack.".format(MOB_DEFS[ch["tpl"]]["short_descr"]))
         check_improve(tr, victim, GSN_PARRY, True, 6)
     return True
 
@@ -691,9 +690,9 @@ def check_dodge(tr, ch, victim):
         return False
 
     if victim["is_npc"]:
-        act(tr, "{} dodges your attack.".format(MOB_TEMPLATES[victim["tpl"]]["short_descr"]))
+        act(tr, "{} dodges your attack.".format(MOB_DEFS[victim["tpl"]]["short_descr"]))
     else:
-        act(tr, "You dodge {}'s attack.".format(MOB_TEMPLATES[ch["tpl"]]["short_descr"]))
+        act(tr, "You dodge {}'s attack.".format(MOB_DEFS[ch["tpl"]]["short_descr"]))
         check_improve(tr, victim, GSN_DODGE, True, 6)
     return True
 
@@ -748,7 +747,7 @@ def dam_message(tr, ch, victim, dam, dt, immune, attack_noun=None):
 
     if not ch["is_npc"]:
         # 1stMud dam_message: ch is player; message goes to ch (TO_CHAR perspective)
-        victim_name = MOB_TEMPLATES[victim["tpl"]]["short_descr"]
+        victim_name = MOB_DEFS[victim["tpl"]]["short_descr"]
         if immune:
             # 1stMud: "... but $N is unaffected." (immune suffix)
             if attack_noun:
@@ -767,7 +766,7 @@ def dam_message(tr, ch, victim, dam, dt, immune, attack_noun=None):
             act(tr, "{GYou %s {G%s%s {W[{R%d{W]{x" % (vs, victim_name, punct, dam))
     else:
         # 1stMud dam_message: ch is mob; message goes to victim (TO_VICT) when victim is player
-        ch_name = MOB_TEMPLATES[ch["tpl"]]["short_descr"]
+        ch_name = MOB_DEFS[ch["tpl"]]["short_descr"]
         if immune:
             act(tr, "{RYour body is unaffected by %s's attack.{x" % ch_name)
         elif dam == 0:
@@ -782,7 +781,7 @@ def dam_message(tr, ch, victim, dam, dt, immune, attack_noun=None):
             act(tr, "{R%s %s {Ryou%s {W[{R%d{W]{x" % (ch_name, vp, punct, dam))
 
 
-def damage(tr, ch, victim, dam, dt, dam_type, show, world, attack_noun=None):
+def damage(tr, ch, victim, dam, dt, dam_type, show, attack_noun=None, world=None):
     """Apply damage to victim from ch; handle combat state, immunity, and death
     (cf. 1stMud damage in fight.c).
 
@@ -797,7 +796,6 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, world, attack_noun=None):
         dt (int): Damage type ID; TYPE_HIT for weapon, skill sn for spells/skills.
         dam_type (int): DAM_* class for immunity checks.
         show (bool): Print dam_message if True (position messages always shown).
-        world (dict or None): Game world state; required for death resolution.
         attack_noun (str or None): Attack display noun for dam_message.
 
     Returns:
@@ -917,7 +915,7 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, world, attack_noun=None):
     # 1stMud: switch (victim->position) { case POS_MORTAL: ... case POS_DEAD: ... default: ... }
     # pos captured before stop_fighting (called below) can reset it to "standing".
     pos = victim.get("pos", "standing")
-    victim_name = MOB_TEMPLATES[victim["tpl"]]["short_descr"] if victim["is_npc"] else None
+    victim_name = MOB_DEFS[victim["tpl"]]["short_descr"] if victim["is_npc"] else None
 
     if pos == "mortal":
         # 1stMud: act("$n is mortally wounded, and will die soon, if not aided.", victim, TO_ROOM)
@@ -959,8 +957,7 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, world, attack_noun=None):
 
     # 1stMud: if (!IsAwake(victim)) stop_fighting(victim, false);
     if not is_awake(victim):
-        if world is not None:
-            stop_fighting(victim, world["chars"], both=False)
+        stop_fighting(victim, world.chars, both=False)
         # stop_fighting resets pos to "standing"; re-correct from HP
         update_pos(victim)
 
@@ -985,9 +982,9 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, world, attack_noun=None):
         # [PRIMESUD] skip update_death (not ported)
 
         # 1stMud: raw_kill(victim, ch)
-        if victim["is_npc"] and world is not None:
-            raw_kill(tr, ch, victim["id"], victim, MOB_TEMPLATES[victim["tpl"]], world)
-            _advance_target(ch, world["chars"], world["rooms"])
+        if victim["is_npc"]:
+            raw_kill(tr, ch, victim["id"], victim, MOB_DEFS[victim["tpl"]])
+            _advance_target(ch, world.chars, world.rooms)
         # [PRIMESUD] player death: game loop in primesud.py handles death message and respawn
 
         # 1stMud: if (ch != victim && !IsNPC(ch) && ...) outlaw flag removal
@@ -1031,7 +1028,7 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, world, attack_noun=None):
 
 # -- Core attack: one_hit ------------------------------------------------------
 
-def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False, world=None):
+def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False):
     """One attack from ch against victim (cf. 1stMud one_hit in fight.c).
 
     Args:
@@ -1040,7 +1037,6 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False, world=None):
         victim (dict): Defender (player or mob instance).
         bonus_damroll (int): Extra damage roll bonus (e.g. from skills).
         secondary (bool): True = secondary weapon (cf. 1stMud bool secondary).
-        world (dict or None): Game world state; passed through to damage().
 
     Returns:
         bool: True if damage was applied.
@@ -1060,7 +1056,7 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False, world=None):
 
     # Attack noun and damage class
     if ch["is_npc"]:
-        ch_tpl   = MOB_TEMPLATES[ch["tpl"]]
+        ch_tpl   = MOB_DEFS[ch["tpl"]]
         dam_type = ch_tpl.get("dam_type", "none")
     else:
         dam_type = wtpl["dam_type"] if wtpl is not None else "none"
@@ -1076,7 +1072,7 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False, world=None):
     #             return damage(ch, victim, 0, dt, DAM_NONE, true);
     roll = randint(0, 19)
     if roll == 0 or (roll != 19 and roll < thac0 - victim_ac):
-        damage(tr, ch, victim, 0, TYPE_HIT, DAM_NONE, show=True, world=world, attack_noun=noun)
+        damage(tr, ch, victim, 0, TYPE_HIT, DAM_NONE, show=True, attack_noun=noun)
         return False
 
     # Damage calculation (cf. 1stMud one_hit)
@@ -1104,7 +1100,7 @@ def one_hit(tr, ch, victim, bonus_damroll=0, secondary=False, world=None):
 
     # 1stMud: return damage(ch, victim, dam, dt, dam_type, true);
     # Soft caps, immunity, dodge/parry all handled inside damage().
-    hit = damage(tr, ch, victim, dam, TYPE_HIT, dam_class, show=True, world=world,
+    hit = damage(tr, ch, victim, dam, TYPE_HIT, dam_class, show=True,
                  attack_noun=noun)
 
     if hit and not ch["is_npc"] and sk_vnum != -1:
@@ -1126,7 +1122,7 @@ def do_kick(tr, ch, args, world):
         target_id = ch["fighting"]
         if target_id is None:
             return None
-        target = world["chars"][target_id]
+        target = world.chars[target_id]
     else:
         if GSN_KICK not in ch["learned"]:
             tr.print("You better leave the martial arts to fighters.")
@@ -1138,7 +1134,7 @@ def do_kick(tr, ch, args, world):
             tr.print("You are still recovering.")
             return None
         target_id = ch["fighting"]
-        target    = world["chars"][target_id]
+        target    = world.chars[target_id]
 
     if ch["is_npc"]:
         skill_pct = ch["level"] if ch["level"] <= 2 else ch["level"] // 2 + ch["level"] // 3
@@ -1149,13 +1145,13 @@ def do_kick(tr, ch, args, world):
     if skill_pct > randint(1, 100):
         dam = randint(1, max(1, ch["level"]))
         # 1stMud: damage(ch, victim, dam, gsn_kick, DAM_BASH, true)
-        damage(tr, ch, target, dam, GSN_KICK, DAM_BASH, show=True, world=world,
+        damage(tr, ch, target, dam, GSN_KICK, DAM_BASH, show=True,
                attack_noun="kick")
         if not ch["is_npc"]:
             check_improve(tr, ch, GSN_KICK, True, 1)
     else:
         # 1stMud: damage(ch, victim, 0, gsn_kick, DAM_BASH, true)
-        damage(tr, ch, target, 0, GSN_KICK, DAM_BASH, show=True, world=world,
+        damage(tr, ch, target, 0, GSN_KICK, DAM_BASH, show=True,
                attack_noun="kick")
         if not ch["is_npc"]:
             check_improve(tr, ch, GSN_KICK, False, 1)
@@ -1166,37 +1162,36 @@ def do_kill(tr, player, args, world):
     if player["fighting"] is not None:
         tr.print("You are already fighting!")
         return
-    rs = world["rooms"][player["room"]]
+    rs = world.rooms[player["room"]]
     live = rs["mobs"]
     if not live:
         tr.print("Kill whom?")
         return
     if args:
-        mob_id = get_char_room(" ".join(args), live, world["chars"])
+        mob_id = get_char_room(" ".join(args), live, world.chars)
         if mob_id is None:
             tr.print("They aren't here.")
             return
     else:
-        names = [MOB_TEMPLATES[world["chars"][i]["tpl"]]["short_descr"] for i in live]
+        names = [MOB_DEFS[world.chars[i]["tpl"]]["short_descr"] for i in live]
         idx = pick_from(tr, "Kill whom?", names)
         if idx < 0:
             return
         mob_id = live[idx]
-    multi_hit(tr, player, world["chars"][mob_id], world)
+    multi_hit(tr, player, world.chars[mob_id])
     if not args:
-        return "kill " + MOB_TEMPLATES[world["chars"][mob_id]["tpl"]].get("keywords", "").split()[0]
+        return "kill " + MOB_DEFS[world.chars[mob_id]["tpl"]].get("keywords", "").split()[0]
 
 
-def mob_hit(tr, ch, victim, world):
+def mob_hit(tr, ch, victim):
     """Full attack sequence for one mob per combat round (cf. 1stMud mob_hit in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
         ch (dict): Attacking mob instance dict.
         victim (dict): Player state dict.
-        world (dict): Game world state (keys: rooms, mobs, areas).
     """
-    one_hit(tr, ch, victim, world=world)
+    one_hit(tr, ch, victim)
     if victim.get("pos") == "dead":
         return
 
@@ -1205,12 +1200,12 @@ def mob_hit(tr, ch, victim, world):
     lvl = ch["level"]
     npc_skill = (lvl // 2 + lvl // 3) if lvl > 2 else lvl
     if randint(1, 100) < npc_skill // 2:
-        one_hit(tr, ch, victim, world=world)
+        one_hit(tr, ch, victim)
         if victim.get("pos") == "dead":
             return
 
     if randint(1, 100) < npc_skill // 4:
-        one_hit(tr, ch, victim, world=world)
+        one_hit(tr, ch, victim)
         if victim.get("pos") == "dead":
             return
 
@@ -1220,7 +1215,7 @@ def mob_hit(tr, ch, victim, world):
 
     # Off-flag specials (cf. 1stMud mob_hit random switch)
     if ch["off_flags"].get("kick") and randint(0, 8) == 3:
-        do_kick(tr, ch, [], world)
+        do_kick(tr, ch, [], None)
 
 
 # -- Special unarmed moves [PRIMESUD] (cf. 1stMud special_move for inspiration) -
@@ -1261,14 +1256,13 @@ _SPECIAL_MOVES = [
 ]
 
 
-def _try_special_move(tr, player, target_inst, world):
+def _try_special_move(tr, player, target_inst):
     """Unarmed-only bonus attack with flavour (cf. 1stMud special_move).
 
     Args:
         tr: Terminal for printing combat messages.
         player (dict): Player state dict.
         target_inst (dict): Target mob instance dict.
-        world (dict): Game world state.
 
     Returns:
         int: Damage dealt (0 if not triggered or player has a weapon).
@@ -1278,7 +1272,7 @@ def _try_special_move(tr, player, target_inst, world):
     chance = 20 + (player["dex"] - 10) * 3
     if randint(1, 100) > chance:
         return 0
-    tpl  = MOB_TEMPLATES[target_inst["tpl"]]
+    tpl  = MOB_DEFS[target_inst["tpl"]]
     name = tpl["short_descr"]
     move = _SPECIAL_MOVES[randint(0, len(_SPECIAL_MOVES) - 1)]
     for line in move[:-1]:
@@ -1292,49 +1286,48 @@ def _try_special_move(tr, player, target_inst, world):
     tr.print("%s {W[{R%d{W]{x" % (last, dam))
     check_improve(tr, player, GSN_HAND_TO_HAND, True, 5)
     # show=False: flavor text above already shows dam count; damage() still handles death/state
-    damage(tr, player, target_inst, dam, GSN_HAND_TO_HAND, DAM_BASH, show=False, world=world)
+    damage(tr, player, target_inst, dam, GSN_HAND_TO_HAND, DAM_BASH, show=False)
     return dam
 
 
 # -- Multi-hit (player's full attack sequence) ---------------------------------
 
-def multi_hit(tr, ch, victim, world=None):
+def multi_hit(tr, ch, victim):
     """Full attack sequence for one combat round (cf. 1stMud multi_hit in fight.c).
 
     Args:
         tr: Terminal for printing combat messages.
         ch (dict): Attacker (player or mob instance).
         victim (dict): Defender (player or mob instance).
-        world (dict or None): Game world state; required when ch is an NPC.
 
     Returns:
         bool: True if the victim was killed this round.
     """
     if ch["is_npc"]:
-        mob_hit(tr, ch, victim, world)
+        mob_hit(tr, ch, victim)
         return victim.get("pos") == "dead"
 
     # Primary
-    one_hit(tr, ch, victim, world=world)
+    one_hit(tr, ch, victim)
     if victim.get("pos") == "dead":
         return True
 
     # Offhand weapon (cf. 1stMud multi_hit WEAR_SECONDARY in fight.c)
     # Specifically, ensures that secondary item is a weapon before allowing hit
     secondary_obj = ch["equip"].get("secondary")
-    if secondary_obj is not None and ITEM_TEMPLATES[secondary_obj["vnum"]].get("type") == "weapon":
-        one_hit(tr, ch, victim, secondary=True, world=world)
+    if secondary_obj is not None and ITEM_DEFS[secondary_obj["vnum"]].get("type") == "weapon":
+        one_hit(tr, ch, victim, secondary=True)
         if victim.get("pos") == "dead":
             return True
 
     # Second attack: skill/2 chance; third: skill/4 chance (cf. 1stMud multi_hit in fight.c)
     if randint(1, 100) < ch["learned"].get(GSN_SECOND_ATTACK, 0) // 2:
-        one_hit(tr, ch, victim, world=world)
+        one_hit(tr, ch, victim)
         check_improve(tr, ch, GSN_SECOND_ATTACK, True, 5)
         if victim.get("pos") == "dead":
             return True
     if randint(1, 100) < ch["learned"].get(GSN_THIRD_ATTACK, 0) // 4:
-        one_hit(tr, ch, victim, world=world)
+        one_hit(tr, ch, victim)
         check_improve(tr, ch, GSN_THIRD_ATTACK, True, 6)
         if victim.get("pos") == "dead":
             return True
@@ -1345,7 +1338,7 @@ def multi_hit(tr, ch, victim, world=None):
 
     # [PRIMESUD] Unarmed special move -- no 1stMud equivalent
     if ch["equip"].get("wield") is None:
-        _try_special_move(tr, ch, victim, world)
+        _try_special_move(tr, ch, victim)
         if victim.get("pos") == "dead":
             return True
 
@@ -1473,7 +1466,7 @@ def create_money(gold, silver):
     return obj
 
 
-def make_corpse(inst, tpl, world):
+def make_corpse(inst, tpl):
     """Create an NPC corpse containing mob loot and place it in the room (cf. 1stMud make_corpse in fight.c)."""
     corpse = create_object(I_CORPSE)
     corpse["timer"] = randint(3, 6)
@@ -1489,7 +1482,7 @@ def make_corpse(inst, tpl, world):
     for obj in list(inst.get("equip", {}).values()) + list(inst.get("inv", [])):
         if obj is None:
             continue
-        obj_tpl = ITEM_TEMPLATES[obj["vnum"]]
+        obj_tpl = ITEM_DEFS[obj["vnum"]]
         flags = item_extra_flags(obj, obj_tpl)
         if flags.get("inventory"):
             continue
@@ -1500,10 +1493,10 @@ def make_corpse(inst, tpl, world):
             set_item_extra_flag(obj, obj_tpl, "vis_death", False)
         corpse["contents"].append(obj)
 
-    world["rooms"][inst["room"]]["items"].append(corpse)
+    world.rooms[inst["room"]]["items"].append(corpse)
 
 
-def raw_kill(tr, player, mob_id, inst, tpl, world):
+def raw_kill(tr, player, mob_id, inst, tpl):
     """Handle mob death: award XP, level-up if needed, drop loot, extract mob (cf. 1stMud raw_kill in fight.c).
 
     Args:
@@ -1512,7 +1505,6 @@ def raw_kill(tr, player, mob_id, inst, tpl, world):
         mob_id (int): ID of the killed mob instance.
         inst (dict): Mob instance dict.
         tpl (dict): Mob template dict.
-        world (dict): Game world state (keys: rooms, mobs, areas).
     """
     xp = _xp_for_kill(player["level"], inst["level"])
     player["xp"] += xp
@@ -1524,13 +1516,13 @@ def raw_kill(tr, player, mob_id, inst, tpl, world):
 
     _death_cry(tr, tpl)
 
-    make_corpse(inst, tpl, world)
+    make_corpse(inst, tpl)
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
-    save_world(tr, world, quiet=True)
+    save_world(tr, quiet=True)
 
-    world["rooms"][inst["room"]]["mobs"].remove(mob_id)
-    del world["chars"][mob_id]
+    world.rooms[inst["room"]]["mobs"].remove(mob_id)
+    del world.chars[mob_id]
     tr.print("")
 
 

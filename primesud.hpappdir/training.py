@@ -1,7 +1,8 @@
 """Training and practice command handlers."""
 
 from skills_table import SKILL_TABLE, SKILLS
-from world import MOB_TEMPLATES
+import world
+from world import MOB_DEFS
 from picker import pick_from
 from actor import get_curr_stat
 from config import INT_APP_LEARN, MAX_STATS, SKILL_ADEPT
@@ -29,11 +30,11 @@ def do_train(tr, player, args, world):
         args (list): Parsed command words; optional stat/vital name.
         world (dict): Game world state (keys: rooms, mobs, areas).
     """
-    rs = world["rooms"][player["room"]]
+    rs = world.rooms[player["room"]]
     trainer = None
     for mid in rs["mobs"]:
-        inst = world["chars"][mid]
-        if MOB_TEMPLATES[inst["tpl"]].get("act_flags", {}).get("train"):
+        inst = world.chars[mid]
+        if MOB_DEFS[inst["tpl"]].get("act_flags", {}).get("train"):
             trainer = mid
             break
     if trainer is None:
@@ -107,11 +108,11 @@ def do_practice(tr, player, args, world):
         args (list): Parsed command words; optional skill name.
         world (dict): Game world state (keys: rooms, mobs, areas).
     """
-    rs = world["rooms"][player["room"]]
+    rs = world.rooms[player["room"]]
     teacher = None
     for mid in rs["mobs"]:
-        inst = world["chars"][mid]
-        if MOB_TEMPLATES[inst["tpl"]].get("act_flags", {}).get("practice"):
+        inst = world.chars[mid]
+        if MOB_DEFS[inst["tpl"]].get("act_flags", {}).get("practice"):
             teacher = mid
             break
 

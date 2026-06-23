@@ -4,7 +4,7 @@ from util import free_mem, gc_collect
 from colors import color_len, upper
 
 from skills_table import SKILL_TABLE, SKILLS
-from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES
+from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
 from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, is_name
 from item import get_obj_list, obj_vnum, item_extra_flags
 from player import PLR_AUTOMAP, PLR_DEFAULTS
@@ -74,14 +74,14 @@ def _look_in(tr, player, args, world):
         tr.print("Look in what?")
         return
     keyword = " ".join(args)
-    rs = world["rooms"][player["room"]]
-    obj = get_obj_list(keyword, rs["items"], ITEM_TEMPLATES)
+    rs = world.rooms[player["room"]]
+    obj = get_obj_list(keyword, rs["items"], ITEM_DEFS)
     if obj is None:
-        obj = get_obj_list(keyword, player["inv"], ITEM_TEMPLATES)
+        obj = get_obj_list(keyword, player["inv"], ITEM_DEFS)
     if obj is None:
         tr.print("You do not see that here.")
         return
-    tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+    tpl = ITEM_DEFS[obj_vnum(obj)]
     if tpl.get("type") not in _CONTAINER_TYPES:
         tr.print("That is not a container.")
         return
@@ -92,23 +92,23 @@ def _look_in(tr, player, args, world):
         tr.print("  Nothing.")
         return
     for cobj in contents:
-        ctpl = ITEM_TEMPLATES[obj_vnum(cobj)]
+        ctpl = ITEM_DEFS[obj_vnum(cobj)]
         tr.print("  " + (cobj.get("short_descr") or ctpl["short_descr"]))
 
 
 def _look_item(tr, player, args, world):
     """Show an item's description from inventory, room, or equipped slots (cf. 1stMud do_look in act_info.c)."""
     target = " ".join(args)
-    rs = world["rooms"][player["room"]]
+    rs = world.rooms[player["room"]]
     equipped = [obj for obj in player["equip"].values() if obj is not None]
-    result = (get_obj_list(target, player["inv"], ITEM_TEMPLATES)
-              or get_obj_list(target, rs["items"], ITEM_TEMPLATES)
-              or get_obj_list(target, equipped, ITEM_TEMPLATES))
+    result = (get_obj_list(target, player["inv"], ITEM_DEFS)
+              or get_obj_list(target, rs["items"], ITEM_DEFS)
+              or get_obj_list(target, equipped, ITEM_DEFS))
     if result is None:
         tr.print("You don't see that here.")
         return
     vnum = obj_vnum(result)
-    tpl = ITEM_TEMPLATES[vnum]
+    tpl = ITEM_DEFS[vnum]
     inst_desc = isinstance(result, dict) and result.get("description")
     for line in _wrap_paragraphs(inst_desc or tpl.get("description", tpl["short_descr"]), TERMINAL_COLS):
         tr.print(line)
@@ -134,8 +134,8 @@ def do_look(tr, player, args, world):
         # TODO: extend to room extra_descs, mob descriptions, and item extra_descs on other targets
         _look_item(tr, player, args, world)
         return
-    room = ROOMS[player["room"]]
-    rs = world["rooms"][player["room"]]
+    room = ROOM_DEFS[player["room"]]
+    rs = world.rooms[player["room"]]
     automap_on = player.get("flags", PLR_DEFAULTS) & PLR_AUTOMAP
     text_w = TERMINAL_COLS - COMPACT_W - 1 if automap_on else TERMINAL_COLS
 
@@ -145,7 +145,7 @@ def do_look(tr, player, args, world):
     desc_lines = _wrap_paragraphs(room["desc"], text_w)
 
     if automap_on:
-        map_lines = build_compact_lines(player, ROOMS)
+        map_lines = build_compact_lines(player, ROOM_DEFS)
         n = max(len(map_lines), len(desc_lines))
         for i in range(n):
             ml = map_lines[i] if i < len(map_lines) else ' ' * COMPACT_W
@@ -167,7 +167,7 @@ def do_look(tr, player, args, world):
     seen = {}
     order = []
     for obj in rs["items"]:
-        tpl = ITEM_TEMPLATES[obj_vnum(obj)]
+        tpl = ITEM_DEFS[obj_vnum(obj)]
         flags = item_extra_flags(obj, tpl)
         flag_str = ""
         if flags.get("invis"):  flag_str += "({cInvis{x) "
@@ -187,8 +187,8 @@ def do_look(tr, player, args, world):
         tr.print(stack_prefix + line)
     # Mobs: one per line, long_descr at idle or constructed position string (cf. 1stMud show_char_to_char_0 in act_info.c)
     for mob_id in live_mobs:
-        inst = world["chars"][mob_id]
-        tpl = MOB_TEMPLATES[inst["tpl"]]
+        inst = world.chars[mob_id]
+        tpl = MOB_DEFS[inst["tpl"]]
         # Build AFF prefix string (cf. 1stMud show_char_to_char_0, act_info.c:191-214)
         # Race defaults merged into inst at create_mobile; dynamic spell AFF bits
         # from inst["affects"] are not yet tracked here.
@@ -488,7 +488,7 @@ def do_map(tr, player, args, world):
         player (dict): Player state dict.
     """
     # [TODO blind] 1stMud checks check_blind(ch) here and refuses if AFF_BLIND -- add when blindness is implemented
-    for line in build_full_lines(player, ROOMS):
+    for line in build_full_lines(player, ROOM_DEFS):
         tr.print(line)
 
 
