@@ -317,7 +317,7 @@ def aggr_update(tr, player):
     Uses imported world module for mob/room data access.
 
     (cf. 1stMud aggr_update in update.c).
-    [Verified against 1stmud: 23/06/2026]
+    [Verified: 23/06/2026]
 
     Args:
         tr: Terminal for printing combat messages.

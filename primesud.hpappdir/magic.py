@@ -748,7 +748,7 @@ def spell_bless(tr, sn, level, ch, vo, target):
                 return True
             tr.print("The evil of " + _item_name(vo) + " is too powerful for you to overcome.")
             return False
-        item_affect_to_obj(vo, _new_affect(sn, level, 6 + level, "saving_throw", -1, "bless"), tpl)
+        item_affect_to_obj(vo, _new_affect(sn, level, 6 + level, "saves", -1, "bless"), tpl)
         vo["affect_list"][-1]["where"] = "to_object"
         tr.print(_item_name(vo) + " glows with a holy aura.")
         return True
@@ -757,7 +757,7 @@ def spell_bless(tr, sn, level, ch, vo, target):
         return False
     mod = level // 8
     affect_to_char(vo, _new_affect(sn, level, 6 + level, "hitroll", mod))
-    affect_to_char(vo, _new_affect(sn, level, 6 + level, "saving_throw", -mod))
+    affect_to_char(vo, _new_affect(sn, level, 6 + level, "saves", -mod))
     if vo is ch:
         tr.print("You feel righteous.")
     else:
@@ -850,7 +850,7 @@ def spell_curse(tr, sn, level, ch, vo, target):
                 return True
             tr.print("The holy aura of " + _item_name(vo) + " is too powerful for you to overcome.")
             return False
-        item_affect_to_obj(vo, _new_affect(sn, level, 2 * level, "saving_throw", 1, "evil"), tpl)
+        item_affect_to_obj(vo, _new_affect(sn, level, 2 * level, "saves", 1, "evil"), tpl)
         vo["affect_list"][-1]["where"] = "to_object"
         tr.print(_item_name(vo) + " glows with a malevolent aura.")
         return True
@@ -858,7 +858,7 @@ def spell_curse(tr, sn, level, ch, vo, target):
         return False
     mod = level // 8
     affect_to_char(vo, _new_affect(sn, level, 2 * level, "hitroll", -mod, "curse"))
-    affect_to_char(vo, _new_affect(sn, level, 2 * level, "saving_throw", mod))
+    affect_to_char(vo, _new_affect(sn, level, 2 * level, "saves", mod))
     if vo is ch:
         tr.print("You feel unclean.")
     else:

@@ -173,6 +173,9 @@ POS_ORDER = {
 TYPE_HIT       = 1000
 TYPE_UNDEFINED = -1
 
+# -- Sex (cf. 1stMud sex_t enum in defines.h: SEX_NEUTRAL=0, SEX_MALE=1, SEX_FEMALE=2) -
+SEX_VALUES = ("neutral", "male", "female")
+
 # -- Armor class buckets (cf. 1stMud AC_* in merc.h) -----------------------------------
 AC_PIERCE = 0
 AC_BASH   = 1

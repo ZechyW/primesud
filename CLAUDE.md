@@ -50,7 +50,7 @@ When porting features from 1stmud, aim for full fidelity. Prefer line-by-line po
 
 ## Verified port
 
-If a given function is marked as being verified against 1stmud in its docstring, NEVER edit it without asking for explicit permission first.
+If a given function is marked as being verified against 1stmud in its docstring (`[Verified: <date>]`), NEVER edit it without asking for explicit permission first.
 
 ## PrimeSUD-only extensions -- `[PRIMESUD]` tag
 

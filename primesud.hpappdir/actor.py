@@ -1,7 +1,8 @@
 """Shared actor stat, affect, equipment, and name-match helpers."""
 
 from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
-                    AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC, POS_ORDER)
+                    AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC, POS_ORDER,
+                    SEX_VALUES)
 from world import ITEM_DEFS
 from colors import upper
 
@@ -10,13 +11,6 @@ AFF_TO_WHERE = {
     "to_immune": "imm_flags",
     "to_resist": "res_flags",
     "to_vuln": "vuln_flags",
-}
-
-_AC_LOC_MAP = {
-    "ac_pierce": AC_PIERCE,
-    "ac_bash": AC_BASH,
-    "ac_slash": AC_SLASH,
-    "ac_exotic": AC_EXOTIC,
 }
 
 
@@ -72,7 +66,7 @@ def _char_base():
         "imm_flags":   {},
         "res_flags":   {},
         "vuln_flags":  {},
-        "affected_by":   {},
+        "affected_by": {},
         "off_flags":   {},
         "form_flags":  {},
         "part_flags":  {},
@@ -89,23 +83,6 @@ def _char_base():
     # deity, material, dam_type, start_pos, default_pos, info_settings, color_prefix
     # timer: connection idle counter (ticks since last input) -- no-op in single-player
 
-
-def _armor_list(char):
-    armor = char.get("armor")
-    if armor is None:
-        armor = (100, 100, 100, 100)
-    return [armor[0], armor[1], armor[2], armor[3]]
-
-
-def _set_armor(char, armor):
-    char["armor"] = (armor[0], armor[1], armor[2], armor[3])
-
-
-def _add_armor(char, armor_delta):
-    armor = _armor_list(char)
-    for i in range(4):
-        armor[i] += armor_delta[i]
-    _set_armor(char, armor)
 
 
 def _item_armor_runtime(tpl):
@@ -132,10 +109,13 @@ def get_curr_stat(char, stat):
 
 
 def affect_modify(char, af, add):
-    """Apply or remove an affect's bitvector and stat modifier (cf. 1stMud affect_modify in handler.c).
+    """Apply or remove an affect's bitvector and stat modifier
 
     Handles bitvector set/clear based on af["where"] (to_affects, to_immune,
     to_resist, to_vuln) and stat mod based on af["location"].
+
+    (cf. 1stMud affect_modify in handler.c).
+    [Verified: 23/06/2026]
 
     Args:
         char (dict): Character state dict (player or mob instance).
@@ -160,34 +140,46 @@ def affect_modify(char, af, add):
     if not add:
         mod = -mod
     loc = af.get("location", "none")
-    if loc == "hit":
-        char["hp_max"] = max(1, char["hp_max"] + mod)
-    elif loc in ("mp", "mana"):
+    if loc in ("str", "dex", "int", "wis", "con"):
+        ms = char.setdefault("mod_stat", {})
+        ms[loc] = ms.get(loc, 0) + mod
+    elif loc == "sex":
+        cur = SEX_VALUES.index(char["sex"]) if char.get("sex") in SEX_VALUES else 0
+        char["sex"] = SEX_VALUES[max(0, min(2, cur + mod))]
+    elif loc == "mana":
         char["mp_max"] = max(1, char["mp_max"] + mod)
+    # [PRIMESUD] APPLY_MOVE intentionally not ported -- no max_move stat
+    elif loc == "hit":
+        char["hp_max"] = max(1, char["hp_max"] + mod)
     elif loc == "ac":
-        _add_armor(char, (mod, mod, mod, mod))
-    elif loc in _AC_LOC_MAP:
-        armor = _armor_list(char)
-        armor[_AC_LOC_MAP[loc]] += mod
-        _set_armor(char, armor)
+        a = char.get("armor") or (100, 100, 100, 100)
+        char["armor"] = (a[0]+mod, a[1]+mod, a[2]+mod, a[3]+mod)
     elif loc == "hitroll":
         char["hitroll"] += mod
     elif loc == "damroll":
         char["damroll"] += mod
-    elif loc == "saving_throw":
+    elif loc in ("saves", "saving_rod", "saving_petri", "saving_breath", "saving_spell"):
         char["saving_throw"] = char.get("saving_throw", 0) + mod
-    elif loc in ("str", "dex", "int", "wis", "con"):
-        ms = char.setdefault("mod_stat", {})
-        ms[loc] = ms.get(loc, 0) + mod
+    # TODO: port wield-drop check (cf. 1stMud affect_modify lines 1030-1045):
+    # after any stat change, if STR too low for wielded weapon, drop it to room.
+    # Needs obj_from_char/obj_to_room. Skip until room/item plumbing is ready.
 
 
 def is_affected(char, sn):
-    """Return True if char has a spell affect type (cf. 1stMud is_affected in handler.c)."""
+    """Return True if char has a spell affect type.
+
+    (cf. 1stMud is_affected in handler.c)
+    [Verified: 23/06/2026]
+    """
     return affect_find(char, sn) is not None
 
 
 def affect_find(char, sn):
-    """Return first affect of type sn, or None (cf. 1stMud affect_find in handler.c)."""
+    """Return first affect of type sn, or None.
+
+    (cf. 1stMud affect_find in handler.c)
+    [Verified: 23/06/2026]
+    """
     for af in char.get("affect_list", []):
         if af.get("type") == sn:
             return af
@@ -346,7 +338,8 @@ def unequip_char(char, slot):
     tpl = ITEM_DEFS[obj["vnum"]]
     armor = _item_armor_runtime(tpl)
     if armor is not None:
-        _add_armor(char, armor)
+        a = char.get("armor") or (100, 100, 100, 100)
+        char["armor"] = (a[0]+armor[0], a[1]+armor[1], a[2]+armor[2], a[3]+armor[3])
     _apply_item_modifiers(char, obj, tpl, False)
     char["equip"][slot] = None
     char["inv"].append(obj)
@@ -359,7 +352,8 @@ def equip_char(char, obj, slot):
     char["equip"][slot] = obj
     armor = _item_armor_runtime(tpl)
     if armor is not None:
-        _add_armor(char, (-armor[0], -armor[1], -armor[2], -armor[3]))
+        a = char.get("armor") or (100, 100, 100, 100)
+        char["armor"] = (a[0]-armor[0], a[1]-armor[1], a[2]-armor[2], a[3]-armor[3])
     _apply_item_modifiers(char, obj, tpl, True)
 
 

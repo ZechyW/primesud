@@ -756,7 +756,7 @@ def check_dodge(tr, ch, victim):
 def update_pos(ch):
     """Set ch's position from current HP
     (cf. 1stMud update_pos in fight.c).
-    [Verified against 1stmud: 23/06/2026]
+    [Verified: 23/06/2026]
 
     Args:
         ch (dict): Character state dict.
@@ -1501,7 +1501,7 @@ def stop_fighting(ch, chars, both=False):
     Given character stops fighting its target.
     Optionally make all other characters stop fighting it.
     (cf. 1stMud stop_fighting in fight.c).
-    [Verified against 1stmud: 22/06/2026]
+    [Verified: 22/06/2026]
 
     Args:
         ch (dict): Character that stops fighting its target.
