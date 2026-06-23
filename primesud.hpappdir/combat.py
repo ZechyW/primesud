@@ -536,10 +536,20 @@ def WaitState(ch, pulses):
         ch["wait"] = pulses
 
 
-def update_wait_states(player):
-    """Decrement wait/daze timers on the violence pulse."""
-    player["wait"] = max(0, player.get("wait", 0) - PULSE_VIOLENCE)
-    rs = world.rooms[player["room"]]
+def DazeState(ch, pulses):
+    """Set daze: skill checks penalised for `pulses` pulses (cf. 1stMud DazeState).
+
+    Args:
+        ch (dict): Character state dict (player or mob instance).
+        pulses (int): Daze duration in raw pulses.
+    """
+    if pulses > ch.get("daze", 0):
+        ch["daze"] = pulses
+
+
+def update_mob_timers():
+    """Bulk-decrement wait/daze for NPCs in current room (cf. 1stMud multi_hit NPC path)."""
+    rs = world.rooms[world.chars[1]["room"]]
     for mid in rs["mobs"]:
         inst = world.chars[mid]
         inst["wait"] = max(0, inst.get("wait", 0) - PULSE_VIOLENCE)
@@ -626,7 +636,8 @@ def get_skill(entity, sn, is_mob=False):
         skill = entity["learned"].get(sn, 0) if sn != -1 else entity["level"] * 5 // 2
 
     if entity.get("daze", 0) > 0:
-        skill = skill * 2 // 3
+        is_spell = sn >= 0 and SKILLS.get(sn, {}).get("spell_fun", "spell_null") != "spell_null"
+        skill = skill // 2 if is_spell else skill * 2 // 3
 
     return max(0, min(100, skill))
 

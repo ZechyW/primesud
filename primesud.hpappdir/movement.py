@@ -1,6 +1,6 @@
 """Movement, doors, recall, and flee command handlers."""
 
-from config import R_RECALL
+from config import R_RECALL, PULSE_PER_SECOND
 from skills_table import GSN_RECALL
 import world
 from world import ROOM_DEFS
@@ -143,7 +143,7 @@ def perform_recall(tr, player, location, what="recall"):
         skill = player["learned"].get(GSN_RECALL, 50)
         if randint(1, 100) < 80 * skill // 100:
             check_improve(tr, player, GSN_RECALL, False, 6)
-            WaitState(player, 4)
+            WaitState(player, PULSE_PER_SECOND)
             tr.print("You failed!.")
             return False
         player["xp"] = max(0, player["xp"] - 25)
