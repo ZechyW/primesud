@@ -1,7 +1,7 @@
 """Information and room-view command handlers."""
 
 from util import free_mem, gc_collect
-from colors import color_len, cap_first
+from colors import color_len, upper
 
 from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS
 from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, is_name
@@ -207,7 +207,7 @@ def do_look(tr, player, args, world):
             line = tpl.get("long_descr") or tpl["short_descr"]
         else:
             name = tpl["short_descr"]
-            name = cap_first(name) if name else name
+            name = upper(name) if name else name
             if inst["fighting"] == player["id"]:
                 line = "%s is here, fighting YOU!" % name
             else:

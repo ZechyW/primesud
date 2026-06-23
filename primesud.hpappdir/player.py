@@ -44,62 +44,27 @@ SAVE_VERSION = 3
 
 
 def create_char():
-    """Return a fresh player state dict with default starting values (cf. 1stMud new_char + new_pcdata in recycle.c).
+    """Return fresh player state dict with default starting values.
+
+    Overlays player-only (pcdata) fields onto _char_base()
+    (cf. 1stMud new_char + new_pcdata in recycle.c; char_data in structs.h:560).
 
     Returns:
         dict: Player state dict.
     """
-    return {
-        "name": "",
-        "is_npc": False,
-        "level": 1,
-        "xp": 0,
-        "xp_next": 1000,
-        "str": 13,
-        "dex": 13,
-        "int": 13,
-        "wis": 13,
-        "con": 13,
-        "hp": 20,
-        "hp_max": 20,
-        "mp": 100,
-        "mp_max": 100,
+    ch = _char_base()
+    ch.update({
+        "hp":       20,   "hp_max":  20,
+        "mp":       100,  "mp_max":  100,
+        "room":     R_STARTING_ROOM,
+        "id":       1,
+        # pcdata fields (cf. 1stMud PcData in structs.h):
+        "xp_next":  1000,
         "practice": 5,
-        "train": 3,
-        "trivia": 0,
-        "hitroll": 0,
-        "damroll": 0,
-        "saving_throw": 0,
-        "armor": (100, 100, 100, 100),  # base unarmored buckets in PrimeSUD runtime units
-        "wait": 0,  # skill lag in pulses
-        "daze": 0,  # stun in pulses
-        "affects": {},
-        "affect_list": [],
-        "mod_stat": {},
-        "room": R_STARTING_ROOM,
-        "inv": [],
-        "equip": {
-            "light":     None,
-            "finger_l":  None,
-            "finger_r":  None,
-            "neck_1":    None,
-            "neck_2":    None,
-            "body":      None,
-            "head":      None,
-            "legs":      None,
-            "feet":      None,
-            "hands":     None,
-            "arms":      None,
-            "shield":    None,
-            "about":     None,
-            "waist":     None,
-            "wrist_l":   None,
-            "wrist_r":   None,
-            "wield":     None,
-            "hold":      None,
-            "float":     None,
-            "secondary": None,
-        },
+        "train":    3,
+        "trivia":   0,
+        "flags":    PLR_DEFAULTS,  # PLR_* bits; [DEVIATION] separate from act_flags
+        "played":   0,
         # All level-1 skills start at 1% (cf. 1stMud group_add sets learned=1).
         # Sword=40 mirrors nanny.c weapon choice; recall=50 explicit in nanny.c.
         "learned": {
@@ -107,19 +72,22 @@ def create_char():
             for sn, data in SKILL_TABLE
             if data["skill_level"] == 1
         },
-        "id": 1,
-        "fighting": None,
-        "pos": "standing",
-        "flags": PLR_DEFAULTS,
-        "played": 0,  # cumulative playtime in seconds (cf. 1stMud pcdata->played)
-        "silver": 0,
-        "gold": 0,
-    }
+        "equip": {
+            "light":     None, "finger_l":  None, "finger_r":  None,
+            "neck_1":    None, "neck_2":    None, "body":      None,
+            "head":      None, "legs":      None, "feet":      None,
+            "hands":     None, "arms":      None, "shield":    None,
+            "about":     None, "waist":     None, "wrist_l":   None,
+            "wrist_r":   None, "wield":     None, "hold":      None,
+            "float":     None, "secondary": None,
+        },
+    })
+    return ch
 
 
 
 
-from actor import get_curr_stat, affect_remove
+from actor import get_curr_stat, affect_remove, _char_base
 
 
 # -- Tick regen ---------------------------------------------------------------

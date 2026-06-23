@@ -13,7 +13,7 @@ from actor import is_name, is_affected, affect_to_char, affect_strip, is_awake
 from config import POS_ORDER, DAM_NONE, TYPE_HIT
 from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
 from movement import perform_recall
-from colors import cap_first
+from colors import upper
 from scan import do_scan
 
 from urandom import randint
@@ -70,8 +70,8 @@ def _char_name(ch, victim, world):
         return "You"
     if victim.get("is_npc"):
         tpl = MOB_TEMPLATES.get(victim.get("tpl"), {})
-        return cap_first(tpl.get("short_descr", "Someone"))
-    return cap_first(victim.get("name", "Someone"))
+        return upper(tpl.get("short_descr", "Someone"))
+    return upper(victim.get("name", "Someone"))
 
 
 def _skill_lookup(name):
@@ -1342,7 +1342,7 @@ def do_cast(tr, player, args, world):
         return None
 
     sk = SKILLS[sn]
-    if POS_ORDER.get(player.get("pos", "standing"), 8) < POS_ORDER.get(sk.get("min_pos", "standing"), 8):
+    if POS_ORDER[player["pos"]] < POS_ORDER[sk["min_pos"]]:
         tr.print("You can't concentrate enough.")
         return None
 

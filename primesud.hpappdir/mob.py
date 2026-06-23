@@ -5,9 +5,8 @@ from urandom import randint
 from config import EXIT_NAMES
 from world import ROOMS, ROOM_AREAS, AREA_DEFS, MOB_TEMPLATES, RESETS, DOOR_RESET
 from races import RACE_TABLE
-from actor import equip_char
+from actor import equip_char, act, _char_base
 from item import create_object
-from actor import act
 
 
 # Area age thresholds (cf. 1stMud area_update: age < 3 skip; age >= 15 reset
@@ -109,37 +108,39 @@ def create_mobile(tpl_vnum):
         mob_gold = 0
         mob_silver = 0
 
-    return {
-        "tpl":        tpl_vnum,
+    ch = _char_base()
+    ch.update({
+        # -- Mob identity
+        "tpl":        tpl_vnum,    # cf. 1stMud pIndexData ptr
         "is_npc":     True,
-        "hp":         hp,
-        "hp_max":     hp,
-        "affects":    {},
-        "aff_flags":  dict(aff_flags),
-        "_base_aff":  aff_flags,  # race+template baseline for _rebuild_aff_flags
-        "wait":       0,
-        "daze":       0,
-        "fighting":   None,
+        "name":       tpl["short_descr"],
+        "level":      tpl["level"],
+        "sex":        tpl.get("sex", "neutral"),
+        "race":       tpl.get("race", "Human"),
+        "alignment":  tpl.get("alignment", 0),
+        "size":       tpl.get("size", "medium"),
+        # -- Resources
+        "hp":         hp,  "hp_max":  hp,
+        "gold":       mob_gold,
+        "silver":     mob_silver,
+        # -- Combat stats
+        "hitroll":    tpl["hitroll"],
+        "damroll":    tpl["damage"][2],  # bonus = damroll (cf. 1stMud damage[DICE_BONUS])
+        "armor":      tuple(v * 10 for v in tpl["armor"]),  # area units -> PrimeSUD runtime units
+        "str":        s_str,  "dex": s_dex,  "int": s_int,
+        "wis":        s_wis,  "con": s_con,
+        # -- Flags (race+template merged; cf. 1stMud create_mobile db2.c:88-136)
+        "act_flags":  dict(act_flags),
         "off_flags":  off,
+        "aff_flags":  dict(aff_flags),
+        "_base_aff":  aff_flags,  # [PRIMESUD] race+template baseline for _rebuild_aff_flags
         "imm_flags":  imm_flags,
         "res_flags":  res_flags,
         "vuln_flags": vuln_flags,
         "form_flags": form_flags,
         "part_flags": part_flags,
-        "inv":        [],
-        "equip":      {},
-        "level":      tpl["level"],
-        "str":        s_str,
-        "dex":        s_dex,
-        "int":        s_int,
-        "wis":        s_wis,
-        "con":        s_con,
-        "hitroll":    tpl["hitroll"],
-        "damroll":    tpl["damage"][2],   # bonus = damroll (cf. 1stMud damage[DICE_BONUS])
-        "armor":      tuple(v * 10 for v in tpl["armor"]),  # area-template buckets -> PrimeSUD runtime units
-        "gold":       mob_gold,
-        "silver":     mob_silver,
-    }
+    })
+    return ch
 
 
 def _tpl_live_count(mob_instances, tpl_vnum):

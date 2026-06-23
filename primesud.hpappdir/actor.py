@@ -3,7 +3,7 @@
 from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC, POS_ORDER)
 from world import ITEM_TEMPLATES
-from colors import cap_first
+from colors import upper
 
 
 _AC_LOC_MAP = {
@@ -12,6 +12,75 @@ _AC_LOC_MAP = {
     "ac_slash": AC_SLASH,
     "ac_exotic": AC_EXOTIC,
 }
+
+
+def _char_base():
+    """Return a fresh shared char state dict (cf. 1stMud char_data in structs.h:560).
+
+    Both create_char (player.py) and create_mobile (mob.py) start from this base.
+    Player-only fields (pcdata: xp_next, practice, learned, flags, played) and
+    mob-only fields (tpl, _base_aff) are overlaid by their respective constructors.
+
+    [DEVIATION] act_flags holds ACT_* bits; PLR_* player flags live in player-only
+    "flags" key.  1stMud uses a single act bitfield for both.
+    [DEVIATION] move/max_move not ported -- no stamina system yet.
+    [DEVIATION] is_npc bool replaces NULL pcdata pointer check.
+    [DEVIATION] room/fighting stored as vnum/id, not pointers.
+    [DEVIATION] affect_list (list) + affects (dict) replace affect linked list;
+    affects dict is a [PRIMESUD] O(1) shortcut derived from affect_list.
+    """
+    return {
+        # -- Identity (cf. .name, .id, .level, .sex, .race, .alignment, .size)
+        "name":        "",
+        "id":          0,
+        "is_npc":      False,
+        "level":       1,
+        "sex":         "neutral",
+        "race":        "Human",
+        "alignment":   0,
+        "size":        "medium",
+        # -- Position / timing (cf. .position, .wait, .daze, .fighting, .wimpy)
+        "room":        None,
+        "pos":         "standing",
+        "wait":        0,
+        "daze":        0,
+        "fighting":    None,
+        "wimpy":       0,
+        # -- Resources (cf. .hit/.max_hit, .mana/.max_mana, .gold, .silver, .exp)
+        "hp":          20,  "hp_max":  20,
+        "mp":          0,   "mp_max":  0,
+        "gold":        0,
+        "silver":      0,
+        "xp":          0,
+        # -- Combat (cf. .saving_throw, .hitroll, .damroll, .armor[], .perm_stat[], .mod_stat[])
+        "saving_throw": 0,
+        "hitroll":     0,
+        "damroll":     0,
+        "armor":       (100, 100, 100, 100),
+        "str":         13,  "dex": 13,  "int": 13,
+        "wis":         13,  "con": 13,
+        "mod_stat":    {},
+        # -- Flags (cf. .act, .imm_flags, .res_flags, .vuln_flags, .affected_by,
+        #           .off_flags, .form, .parts)
+        "act_flags":   {},
+        "imm_flags":   {},
+        "res_flags":   {},
+        "vuln_flags":  {},
+        "aff_flags":   {},
+        "off_flags":   {},
+        "form_flags":  {},
+        "part_flags":  {},
+        # -- Affects (cf. .affect linked list)
+        "affect_list": [],
+        "affects":     {},
+        # -- Inventory / equipment (cf. .carrying, worn slots)
+        "inv":         [],
+        "equip":       {},
+    }
+    # Not ported: move/max_move, comm, wiznet, stance[], war, gquest, mprog_*,
+    # master/leader/pet/reply, desc, was_in_room, gen_data, hunting, trust,
+    # invis/incog_level, timer, logon, prompt/gprompt, group, rank, Class[],
+    # deity, material, dam_type, start_pos, default_pos, info_settings, color_prefix
 
 
 def _armor_list(char):
@@ -148,7 +217,7 @@ def _rebuild_aff_flags(char):
 
 def is_awake(ch):
     """True if ch can act: position > sleeping (cf. 1stMud IsAwake macro in macro.h)."""
-    return POS_ORDER.get(ch.get("pos", "standing"), 8) > POS_ORDER["sleeping"]
+    return POS_ORDER[ch["pos"]] > POS_ORDER["sleeping"]
 
 
 def get_hitroll(char):
@@ -265,5 +334,5 @@ def act(tr, msg):
         tr: tml instance (print target).
         msg (str): Fully assembled narration string, may contain {X colour codes.
     """
-    tr.print(cap_first(msg))
+    tr.print(upper(msg))
 

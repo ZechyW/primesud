@@ -131,6 +131,62 @@ def item_spell_name(obj, tpl):
     return tpl.get("spell")
 
 
+def _str_escape(s):
+    """Escape string for embedding in item token field value.
+
+    Escapes backslash, semicolon (field sep), and square brackets (contents
+    scope delimiters). ponytail: only these 4 chars; MUD text never uses them.
+    """
+    s = s.replace("\\", "\\\\")
+    s = s.replace(";", "\\;")
+    s = s.replace("[", "\\[")
+    s = s.replace("]", "\\]")
+    return s
+
+
+def _str_unescape(s):
+    """Unescape a string field value from an item token."""
+    out = []
+    i = 0
+    while i < len(s):
+        if s[i] == "\\" and i + 1 < len(s):
+            out.append(s[i + 1])
+            i += 2
+        else:
+            out.append(s[i])
+            i += 1
+    return "".join(out)
+
+
+def _split_token_fields(token):
+    """Split token into fields on ';', respecting backslash escapes and '[...]' brackets."""
+    fields = []
+    depth = 0
+    buf = []
+    escaped = False
+    for ch in token:
+        if escaped:
+            buf.append(ch)
+            escaped = False
+            continue
+        if ch == "\\":
+            escaped = True
+            buf.append(ch)
+            continue
+        if ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+        if ch == ";" and depth == 0:
+            fields.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+    if buf:
+        fields.append("".join(buf))
+    return fields
+
+
 def serialize_item_token(obj):
     """Serialize item instance to v2 save token."""
     fields = ["v:" + str(obj["vnum"])]
@@ -156,13 +212,26 @@ def serialize_item_token(obj):
             str(af.get("where", "")),
         ]
         fields.append("af:" + ",".join(parts))
+    if "timer" in obj:
+        fields.append("ti:" + str(obj["timer"]))
+    if "short_descr" in obj:
+        fields.append("sd:" + _str_escape(str(obj["short_descr"])))
+    if "description" in obj:
+        fields.append("de:" + _str_escape(str(obj["description"])))
+    if "gold" in obj:
+        fields.append("go:" + str(obj["gold"]))
+    if "silver" in obj:
+        fields.append("si:" + str(obj["silver"]))
+    if obj.get("contents"):
+        inner = "^".join(serialize_item_token(o) for o in obj["contents"])
+        fields.append("co:[" + inner + "]")
     return ";".join(fields)
 
 
 def parse_item_token(token):
     """Parse v2 save token into runtime item instance dict."""
     obj = {"affect_list": []}
-    for field in token.split(";"):
+    for field in _split_token_fields(token):
         if not field or ":" not in field:
             continue
         key, value = field.split(":", 1)
@@ -195,6 +264,19 @@ def parse_item_token(token):
                 "bitvector": parts[5],
                 "where": parts[6],
             })
+        elif key == "ti":
+            obj["timer"] = int(value)
+        elif key == "sd":
+            obj["short_descr"] = _str_unescape(value)
+        elif key == "de":
+            obj["description"] = _str_unescape(value)
+        elif key == "go":
+            obj["gold"] = int(value)
+        elif key == "si":
+            obj["silver"] = int(value)
+        elif key == "co":
+            inner = value[1:-1] if (value.startswith("[") and value.endswith("]")) else value
+            obj["contents"] = [parse_item_token(t) for t in inner.split("^") if t]
     if "vnum" not in obj:
         raise ValueError("item token missing v")
     if not obj["affect_list"]:

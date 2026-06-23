@@ -35,8 +35,8 @@ def skipcol(s):
     return i
 
 
-def cap_first(s):
-    """Uppercase first non-color char only; no lowercasing (cf. perform_act in comm.c)."""
+def upper(s):
+    """Uppercase first non-color char only; no lowercasing (cf. Upper in db.c)."""
     i = skipcol(s)
     if i < len(s):
         return s[:i] + s[i].upper() + s[i + 1:]
