@@ -47,8 +47,8 @@ def _char_base():
         "fighting":    None,
         "wimpy":       0,
         # -- Resources (cf. .hit/.max_hit, .mana/.max_mana, .gold, .silver, .exp)
-        "hp":          20,  "hp_max":  20,
-        "mp":          0,   "mp_max":  0,
+        "hit":         20,  "max_hit":  20,
+        "mana":        0,   "max_mana":  0,
         "gold":        0,
         "silver":      0,
         "xp":          0,
@@ -147,10 +147,10 @@ def affect_modify(char, af, add):
         cur = SEX_VALUES.index(char["sex"]) if char.get("sex") in SEX_VALUES else 0
         char["sex"] = SEX_VALUES[max(0, min(2, cur + mod))]
     elif loc == "mana":
-        char["mp_max"] = max(1, char["mp_max"] + mod)
+        char["max_mana"] = max(1, char["max_mana"] + mod)
     # [PRIMESUD] APPLY_MOVE intentionally not ported -- no max_move stat
     elif loc == "hit":
-        char["hp_max"] = max(1, char["hp_max"] + mod)
+        char["max_hit"] = max(1, char["max_hit"] + mod)
     elif loc == "ac":
         a = char.get("armor") or (100, 100, 100, 100)
         char["armor"] = (a[0]+mod, a[1]+mod, a[2]+mod, a[3]+mod)

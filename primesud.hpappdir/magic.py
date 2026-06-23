@@ -39,7 +39,7 @@ def _dice(num, size):
 
 
 def _heal_char(tr, ch, victim, amount, msg):
-    victim["hp"] = min(victim["hp_max"], victim["hp"] + amount)
+    victim["hit"] = min(victim["max_hit"], victim["hit"] + amount)
     if victim is ch:
         tr.print(msg)
     else:
@@ -242,7 +242,7 @@ def spell_cause_critical(tr, sn, level, ch, vo, target):
 
 def spell_harm(tr, sn, level, ch, vo, target):
     """Harm spell (cf. 1stMud spell_harm in magic.c)."""
-    dam = max(20, vo["hp"] - _dice(1, 4))
+    dam = max(20, vo["hit"] - _dice(1, 4))
     if saves_spell(level, vo, "harm"):
         dam = min(50, dam // 2)
     dam = min(100, dam)
@@ -346,10 +346,10 @@ def spell_chain_lightning(tr, sn, level, ch, vo, target):
         dam2 = _dice(level, 6)
         if saves_spell(level, ch, "lightning"):
             dam2 //= 3
-        ch["hp"] = max(-1, ch["hp"] - dam2)
+        ch["hit"] = max(-1, ch["hit"] - dam2)
         level -= 4
         last_hit_ch = True
-        if level <= 0 or ch["hp"] <= 0:
+        if level <= 0 or ch["hit"] <= 0:
             break
         next_id = None
         for mob_id in room_state["mobs"]:
@@ -1355,7 +1355,7 @@ def do_cast(tr, player, args):
         return None
 
     mana = spell_mana(player, sn)
-    if player["mp"] < mana:
+    if player["mana"] < mana:
         tr.print("You don't have enough mana.")
         return None
 
@@ -1364,10 +1364,10 @@ def do_cast(tr, player, args):
     if randint(1, 100) > get_skill(player, sn):
         tr.print("You lost your concentration.")
         check_improve(tr, player, sn, False, 1)
-        player["mp"] -= mana // 2
+        player["mana"] -= mana // 2
         return None
 
-    player["mp"] -= mana
+    player["mana"] -= mana
     fun = SPELL_FUNS.get(sk.get("spell_fun", "spell_null"), spell_null)
     player["_spell_target_name"] = target_name
     ret = fun(tr, sn, _spell_level(player, sn), player, vo, target)

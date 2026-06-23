@@ -510,8 +510,8 @@ def mob_condition(inst, tpl):
     Returns:
         str: Human-readable condition sentence.
     """
-    _hm = inst.get("hp_max", 1)
-    pct = inst["hp"] * 100 // _hm if _hm > 0 else -1
+    _hm = inst.get("max_hit", 1)
+    pct = inst["hit"] * 100 // _hm if _hm > 0 else -1
     name = tpl["short_descr"]
     if pct >= 100: wound = name + " is in excellent condition."
     elif pct >= 90:  wound = name + " has a few scratches."
@@ -761,7 +761,7 @@ def update_pos(ch):
     Args:
         ch (dict): Character state dict.
     """
-    hp = ch["hp"]
+    hp = ch["hit"]
 
     if hp > 0:
         if POS_ORDER[ch["pos"]] <= POS_ORDER["stunned"]:
@@ -976,7 +976,7 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, attack_noun=None):
         return False
 
     # 1stMud: victim->hit -= dam;
-    victim["hp"] -= dam
+    victim["hit"] -= dam
 
     # 1stMud: if (!IsNPC(victim) && victim->level >= LEVEL_IMMORTAL && victim->hit < 1)
     #             victim->hit = 1;
@@ -1022,10 +1022,10 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, attack_noun=None):
         #   if (dam > victim->max_hit/4) chprintln(victim, "That really did HURT!")
         #   if (victim->hit < victim->max_hit/4) chprintln(victim, "You sure are BLEEDING!")
         if not victim["is_npc"]:
-            hp_max = victim.get("hp_max", 1)
-            if dam > hp_max // 4:
+            max_hit = victim.get("max_hit", 1)
+            if dam > max_hit // 4:
                 tr.print("That really did HURT!")
-            if victim["hp"] < hp_max // 4:
+            if victim["hit"] < max_hit // 4:
                 tr.print("You sure are BLEEDING!")
 
     # 1stMud: if (!IsAwake(victim)) stop_fighting(victim, false);
@@ -1079,7 +1079,7 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, attack_noun=None):
     if victim["is_npc"] and dam > 0 and victim.get("wait", 0) < PULSE_VIOLENCE // 2:
         off = victim.get("off_flags", {})
         if (off.get("wimpy") and randint(0, 3) == 0
-                and victim["hp"] < victim.get("hp_max", 1) // 5):
+                and victim["hit"] < victim.get("max_hit", 1) // 5):
             # TODO: mob flee not ported (do_flee in movement.py is player-only)
             pass
         elif (victim.get("affected_by", {}).get("charm")
@@ -1283,7 +1283,7 @@ def do_backstab(tr, ch, args):
         tr.print("You need to wield a weapon to backstab.")
         return None
 
-    if victim["hp"] < victim["max_hp"] // 3:
+    if victim["hit"] < victim["max_hit"] // 3:
         act(tr, "%s is hurt and suspicious ... you can't sneak up." % upper(MOB_DEFS[victim["tpl"]]["short_descr"]))
         return None
 
@@ -1709,10 +1709,10 @@ def advance_level(tr, player):
 
     add_prac = WIS_APP_PRACTICE[wis]
 
-    player["hp_max"]   += add_hp
-    player["mp_max"]   += add_mp
-    player["hp"]        = player["hp_max"]  # [PRIMESUD] 1stMud only adds to max; full heal for UX
-    player["mp"]        = player["mp_max"]
+    player["max_hit"]   += add_hp
+    player["max_mana"]   += add_mp
+    player["hit"]        = player["max_hit"]  # [PRIMESUD] 1stMud only adds to max; full heal for UX
+    player["mana"]        = player["max_mana"]
     player["practice"] += add_prac
     player["train"]    += 1
 

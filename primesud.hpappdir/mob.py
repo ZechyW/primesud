@@ -121,7 +121,7 @@ def create_mobile(tpl_vnum):
         "alignment":  tpl.get("alignment", 0),
         "size":       tpl.get("size", "medium"),
         # -- Resources
-        "hp":         hp,  "hp_max":  hp,
+        "hit":        hp,  "max_hit":  hp,
         "gold":       mob_gold,
         "silver":     mob_silver,
         # -- Combat stats

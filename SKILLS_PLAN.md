@@ -96,32 +96,32 @@ attack skill check.  New order mirrors 1stMud (primary → offhand → extra att
 ```python
 # Primary (unchanged)
 one_hit(tr, player, target_inst)
-if target_inst["hp"] == 0:
+if target_inst["hit"] == 0:
     return True
 
 # Offhand weapon (1stmud uses WEAR_SECONDARY)
 offhand = player["equip"].get("offhand")
 if offhand is not None and ITEM_TEMPLATES[offhand["vnum"]].get("type") == "weapon":
    one_hit(tr, player, target_inst, slot="offhand")
-   if target_inst["hp"] == 0:
+   if target_inst["hit"] == 0:
       return True
 
 # Second attack (cf. 1stMud multi_hit fight.c)
 if player["learned"].get(GSN_SECOND_ATTACK, 0) > randint(1, 100):
     one_hit(tr, player, target_inst)
-    if target_inst["hp"] == 0:
+    if target_inst["hit"] == 0:
         return True
 
 # Third attack (cf. 1stMud multi_hit fight.c)
 if player["learned"].get(GSN_THIRD_ATTACK, 0) > randint(1, 100):
     one_hit(tr, player, target_inst)
-    if target_inst["hp"] == 0:
+    if target_inst["hit"] == 0:
         return True
 
 # [PRIMESUD] Unarmed special move — unchanged, keep before extra attacks
 if player["equip"].get("wield") is None:
     _try_special_move(tr, player, target_inst)
-    if target_inst["hp"] == 0:
+    if target_inst["hit"] == 0:
         return True
 
 ```

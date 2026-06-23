@@ -264,8 +264,8 @@ class Game:
                         tr.print("A distant warmth draws you back.")
                         wait(DEATH_MSG_DELAY)
                         player["room"] = R_STARTING_ROOM
-                        player["hp"]   = 1
-                        player["mp"]   = 1
+                        player["hit"]   = 1
+                        player["mana"]   = 1
                         player["pos"]  = "standing"
                         player["wait"] = 0
                         player["daze"] = 0

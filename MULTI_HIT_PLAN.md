@@ -36,7 +36,7 @@ Mirror 1stMud's combat flow: generic `multi_hit(ch, victim)` dispatches to `mob_
 **`multi_hit(tr, ch, victim, world=None)`**
 - If `ch["is_npc"]`: `mob_hit(tr, ch, victim, world); return False`
 - Else: existing player sequence, each `one_hit` call uses unified sig
-- Returns `True` if victim killed (player side only; mob death detected via `victim["hp"] == 0`)
+- Returns `True` if victim killed (player side only; mob death detected via `victim["hit"] == 0`)
 
 **`violence_update`** call-site updates:
 ```python
@@ -45,7 +45,7 @@ multi_hit(tr, player, target, world)
 # each mob's round
 multi_hit(tr, mob_inst, player, world)
 ```
-Player death check (`player["hp"] == 0`) stays in `violence_update`.
+Player death check (`player["hit"] == 0`) stays in `violence_update`.
 
 ## Out of scope
 

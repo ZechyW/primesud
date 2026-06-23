@@ -343,17 +343,17 @@ def do_score(tr, player, args):
         _SCORE_SEP_INNER,
         _row(
             "{CHit          : [{R"
-            + "{:5d}".format(p["hp"])
+            + "{:5d}".format(p["hit"])
             + "{C/{R"
-            + "{:5d}".format(p["hp_max"])
+            + "{:5d}".format(p["max_hit"])
             + "{C]{x",
             _val_r("Hitroll", get_hitroll(p), bright=True),
         ),
         _row(
             "{CMana         : [{M"
-            + "{:5d}".format(p["mp"])
+            + "{:5d}".format(p["mana"])
             + "{C/{M"
-            + "{:5d}".format(p["mp_max"])
+            + "{:5d}".format(p["max_mana"])
             + "{C]{x",
             _val_r("Damroll", get_damroll(p), bright=True),
         ),

@@ -50,8 +50,8 @@ def create_char():
     """
     ch = _char_base()
     ch.update({
-        "hp":       20,   "hp_max":  20,
-        "mp":       100,  "mp_max":  100,
+        "hit":      20,   "max_hit":  20,
+        "mana":     100,  "max_mana": 100,
         "room":     R_STARTING_ROOM,
         "id":       1,
         # pcdata fields (cf. 1stMud PcData in structs.h):
@@ -107,7 +107,7 @@ def tick_update(tr, player, room):
     level = player.get("level", 1)
 
     # HP (cf. 1stMud hit_gain in update.c)
-    hp_gain = max(3, con - 3 + level // 2) + (player["hp_max"] - 10)
+    hp_gain = max(3, con - 3 + level // 2) + (player["max_hit"] - 10)
     # TODO: fast_healing bonus -- if roll < skill%, gain += roll * gain / 100
     # Position: always resting [PRIMESUD] -- sleeping=/1, resting=/2, standing=/4, fighting=/6
     hp_gain //= 2
@@ -122,8 +122,8 @@ def tick_update(tr, player, room):
     # TODO: poison /4, plague /8, haste/slow /2
     mp_gain = max(1, mp_gain)
 
-    player["hp"] = min(player["hp_max"], player["hp"] + hp_gain)
-    player["mp"] = min(player["mp_max"], player["mp"] + mp_gain)
+    player["hit"] = min(player["max_hit"], player["hit"] + hp_gain)
+    player["mana"] = min(player["max_mana"], player["mana"] + mp_gain)
 
     for aff in list(player.get("affect_list", [])):
         if aff["duration"] > 0:
@@ -146,8 +146,8 @@ def show_prompt(tr, player, buf):
         buf (str): Current input buffer shown on the right of the prompt.
     """
     prefix = "HP:{}/{} MP:{}/{} {}tnl>".format(
-        player["hp"], player["hp_max"],
-        player["mp"], player["mp_max"],
+        player["hit"], player["max_hit"],
+        player["mana"], player["max_mana"],
         player["xp_next"] - player["xp"],
     )
     avail = max(1, TERMINAL_COLS - 6 - len(prefix))
@@ -181,7 +181,7 @@ def _serialize_world():
     lines = ["v=" + str(SAVE_VERSION)]
     for key in ("name", "level", "xp", "xp_next",
                 "str", "dex", "int", "wis", "con",
-                "hp", "hp_max", "mp", "mp_max",
+                "hit", "max_hit", "mana", "max_mana",
                 "hitroll", "damroll", "saving_throw", "room", "trivia",
                 "practice", "train", "flags", "played"):
         lines.append("p." + key + "=" + str(player[key]))
@@ -320,7 +320,7 @@ def load_world():
 
     int_keys = {"level", "xp", "xp_next", "trivia",
                 "str", "dex", "int", "wis", "con",
-                "hp", "hp_max", "mp", "mp_max",
+                "hit", "max_hit", "mana", "max_mana",
                 "hitroll", "damroll", "saving_throw", "room",
                 "practice", "train", "flags", "played"}
 

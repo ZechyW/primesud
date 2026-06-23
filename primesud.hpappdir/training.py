@@ -22,7 +22,7 @@ def do_train(tr, player, args):
     """Permanently raise a stat or vital by spending a train point (cf. 1stMud do_train in act_move.c).
 
     Requires a mob with act_flags["train"] in the room.  Stats cap at MAX_STATS;
-    hp and mana training raise hp_max/mp_max by 10 with no cap.
+    hp and mana training raise max_hit/max_mana by 10 with no cap.
 
     Args:
         tr: Terminal instance.
@@ -46,12 +46,12 @@ def do_train(tr, player, args):
             tr.print("You don't have any training sessions.")
             return
         stat_opts = [(k, lng) for k, lng in _TRAIN_STATS if player[k] < MAX_STATS]
-        vital_opts = [("hp_max", "hp"), ("mp_max", "mana")]
+        vital_opts = [("max_hit", "hp"), ("max_mana", "mana")]
         all_opts = stat_opts + vital_opts
         tr.print("You have " + str(player["train"]) + " training session" + ("" if player["train"] == 1 else "s") + ".")
         names = []
         for k, lng in all_opts:
-            if k in ("hp_max", "mp_max"):
+            if k in ("max_hit", "max_mana"):
                 names.append(lng + " (max: " + str(player[k]) + ")")
             else:
                 names.append(lng + " (" + str(player[k]) + "/" + str(MAX_STATS) + ")")
@@ -67,7 +67,7 @@ def do_train(tr, player, args):
         arg = args[0]
         chosen_key = None
         chosen_lng = None
-        for k, lng in _TRAIN_STATS + [("hp_max", "hp"), ("mp_max", "mana")]:
+        for k, lng in _TRAIN_STATS + [("max_hit", "hp"), ("max_mana", "mana")]:
             if lng.startswith(arg):
                 chosen_key = k
                 chosen_lng = lng
@@ -75,18 +75,18 @@ def do_train(tr, player, args):
         if chosen_key is None:
             tr.print("Valid training: str, dex, int, wis, con, hp, mana.")
             return
-        if chosen_key not in ("hp_max", "mp_max") and player[chosen_key] >= MAX_STATS:
+        if chosen_key not in ("max_hit", "max_mana") and player[chosen_key] >= MAX_STATS:
             tr.print("Your " + chosen_lng + " is already at maximum.")
             return
 
     player["train"] -= 1
-    if chosen_key == "hp_max":
-        player["hp_max"] += 10
-        player["hp"] = min(player["hp_max"], player["hp"] + 10)
+    if chosen_key == "max_hit":
+        player["max_hit"] += 10
+        player["hit"] = min(player["max_hit"], player["hit"] + 10)
         tr.print("Your durability increases!")
-    elif chosen_key == "mp_max":
-        player["mp_max"] += 10
-        player["mp"] = min(player["mp_max"], player["mp"] + 10)
+    elif chosen_key == "max_mana":
+        player["max_mana"] += 10
+        player["mana"] = min(player["max_mana"], player["mana"] + 10)
         tr.print("Your power increases!")
     else:
         player[chosen_key] += 1
