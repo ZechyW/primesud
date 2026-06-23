@@ -5,7 +5,7 @@ from urandom import randint
 from config import EXIT_NAMES
 from world import ROOMS, ROOM_AREAS, AREA_DEFS, MOB_TEMPLATES, RESETS, DOOR_RESET
 from races import RACE_TABLE
-from actor import equip_char, act, _char_base
+from actor import equip_char, act, _char_base, is_awake
 from item import create_object
 
 
@@ -298,6 +298,66 @@ def mobile_update(tr, player, world):
         world["rooms"][dest_vnum]["mobs"].append(mob_id)
         if player["room"] == dest_vnum:
             act(tr, "{} has arrived.".format(_sd))
+
+
+def aggr_update(tr, player, world):
+    """Aggressive mobs attack the player.
+
+    Single-player simplification: 1stMud iterates player_first then scans
+    each player's room for aggressive NPCs.  We only have one player, so we
+    scan the player's room directly and skip the random-victim selection
+    (victim is always the player).
+
+    (cf. 1stMud aggr_update in update.c).
+    [Verified against 1stmud: 23/06/2026]
+
+    Args:
+        tr: Terminal for printing combat messages.
+        player (dict): Player state dict.
+        world (dict): Game world state.
+    """
+    from combat import multi_hit
+
+    # cf. update.c:951 -- immortal / empty area / ROOM_SAFE early-outs
+    room_vnum = player["room"]
+    room = ROOMS[room_vnum]
+    if room.get("flags", {}).get("safe"):
+        return
+
+    mob_ids = list(world["rooms"][room_vnum].get("mobs", []))
+    for mob_id in mob_ids:
+        ch = world["chars"].get(mob_id)
+        if ch is None:
+            continue
+
+        # cf. update.c:962-966 -- gate conditions on the aggressive mob
+        if not ch.get("is_npc"):
+            continue
+        act_flags = ch.get("act_flags", {})
+        if not act_flags.get("aggressive"):
+            continue
+        if ch.get("aff_flags", {}).get("calm"):          # cf. IsAffected(ch, AFF_CALM)
+            continue
+        if ch["fighting"] is not None:
+            continue
+        if ch.get("aff_flags", {}).get("charm"):          # cf. IsAffected(ch, AFF_CHARM)
+            continue
+        if not is_awake(ch):
+            continue
+        # cf. update.c:965 -- wimpy mob won't attack awake player
+        if act_flags.get("wimpy") and is_awake(player):
+            continue
+        # [PRIMESUD] can_see not ported -- skip visibility check
+        if randint(0, 1) == 0:                            # cf. number_bits(1) == 0
+            continue
+
+        # cf. update.c:976-978 -- level check: mob must be within 5 levels of victim
+        # [PRIMESUD] no LEVEL_IMMORTAL check (single-player, no imm levels)
+        if ch["level"] < player["level"] - 5:
+            continue
+
+        # cf. update.c:990 -- multi_hit(ch, victim, TYPE_UNDEFINED)
+        multi_hit(tr, ch, player, world=world)
 
 
 def area_update(tr, player, world):

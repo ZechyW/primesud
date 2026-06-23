@@ -2,7 +2,8 @@
 
 from urandom import randint
 
-from world import ITEM_TEMPLATES, MOB_TEMPLATES, SKILLS, WEAPON_GSN_MAP
+from skills_table import SKILLS, WEAPON_GSN_MAP
+from world import ITEM_TEMPLATES, MOB_TEMPLATES
 from picker import pick_from
 from actor import get_curr_stat, is_name, affect_modify, equip_char, unequip_char
 from item import (get_obj_list, obj_vnum, create_object, item_extra_flags,

@@ -1,6 +1,8 @@
 """Magic command handling and spell dispatch (cf. 1stMud magic.c)."""
 
-from world import SKILLS, SKILL_TABLE, ITEM_TEMPLATES, MOB_TEMPLATES, R_RECALL, ROOM_AREAS
+from config import R_RECALL
+from skills_table import SKILLS, SKILL_TABLE
+from world import ITEM_TEMPLATES, MOB_TEMPLATES, ROOM_AREAS
 from picker import pick_from
 from combat import (WaitState, check_improve, get_skill, set_fighting,
                     damage)

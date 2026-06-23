@@ -7,15 +7,9 @@ from config import (
     TERMINAL_COLS,
     FNKEY_NAMES,
 )
-from world import (
-    ROOMS,
-    RESETS,
-    SKILL_TABLE,
-    SKILLS,
-    R_STARTING_ROOM,
-    GSN_SWORD,
-    GSN_RECALL,
-)
+from config import R_STARTING_ROOM
+from skills_table import SKILL_TABLE, SKILLS, GSN_SWORD, GSN_RECALL
+from world import ROOMS, RESETS
 from item import serialize_item_token, parse_item_token
 
 _EQUIP_SAVE_ORDER = (

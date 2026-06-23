@@ -5,10 +5,13 @@ Usage:
     uv run python skills_to_primesud.py skills.dat skills_table.py
 
 Output module exports:
-    GSN_*          -- named integer constants for skills that have a gsn_* pgsn
-    SKILL_TABLE    -- list of (sn, dict) in load order (sn 0 = "reserved")
+    GSN_*              -- named integer constants for skills that have a gsn_* pgsn
+    _SKILL_TABLE_RAW   -- list of (sn, dict) in load order; raw per-class tuples
+    SKILL_TABLE        -- flattened: skill_level/rating are scalars (min across classes)
+    SKILLS             -- dict keyed by sn (same data as SKILL_TABLE)
+    WEAPON_GSN_MAP     -- maps weapon_type string -> GSN constant
 
-Fields emitted per entry (all faithful to source data):
+Fields emitted per raw entry (faithful to source data):
     name           -- canonical skill/spell name
     skill_level    -- 6-tuple (Mage Cleric Thief Warrior Paladin Ranger); 53=unavailable
     rating         -- 6-tuple train cost / difficulty; 0=unavailable to that class
@@ -22,7 +25,7 @@ Fields emitted per entry (all faithful to source data):
     msg_off        -- string; message when affect expires (empty if none)
     msg_obj        -- string; room message when object affect expires (empty if none)
 
-SKILL_TABLE indices map directly to the 1stMud sn values documented in SKILLS.md.
+_SKILL_TABLE_RAW indices map directly to the 1stMud sn values documented in SKILLS.md.
 """
 
 import re
@@ -107,6 +110,8 @@ def emit(skills):
         out.append(s)
 
     w("# fmt: off")
+    w('"""Global skill table data converted from 1stMud."""')
+    w("")
     w("# Generated from 1stMud 4.5.3 skills.dat -- do not edit manually.")
     w("# Re-generate: uv run python tools/skills_to_primesud.py reference/1stMud4.5.3/data/skills.dat")
     w("")
@@ -128,9 +133,9 @@ def emit(skills):
             w(f"{const:<30} = {sn}")
     w("")
 
-    # -- SKILL_TABLE --
-    w(f"# -- SKILL_TABLE {BAR * 64}")
-    w("SKILL_TABLE = [")
+    # -- _SKILL_TABLE_RAW --
+    w(f"# -- _SKILL_TABLE_RAW {BAR * 59}")
+    w("_SKILL_TABLE_RAW = [")
     for sn, sk in enumerate(skills):
         gsn_const = gsn_to_const(sk.get("pgsn", "gsn_null"))
         sn_comment = f"  # sn {sn}"
@@ -152,6 +157,39 @@ def emit(skills):
         w(f'        "msg_obj":     {sk["msg_obj"]!r},')
         w("    }),")
     w("]")
+    w("")
+
+    # -- Derived lookups (cf. 1stMud skill_table flatten + weapon_table in const.c) --
+    w(f"# -- Derived lookups {BAR * 59}")
+    w("# Flatten per-class tuples: skill_level -> earliest any class learns it;")
+    w("# rating -> best (lowest non-zero) rate; default=1 guards all-zero edge case.")
+    w("def _flatten_skill(sn, data):")
+    w("    d = {}")
+    w("    d.update(data)")
+    w('    d["skill_level"] = min(data["skill_level"])')
+    w('    d["rating"] = min((v for v in data["rating"] if v > 0), default=1)')
+    w("    return (sn, d)")
+    w("")
+    w("SKILL_TABLE = [_flatten_skill(sn, data) for sn, data in _SKILL_TABLE_RAW]")
+    w("")
+    w("SKILLS = dict(SKILL_TABLE)")
+    w("")
+    # Weapon GSN map -- uses GSN constants emitted above
+    weapon_types = [
+        ("sword",   "GSN_SWORD"),
+        ("axe",     "GSN_AXE"),
+        ("dagger",  "GSN_DAGGER"),
+        ("flail",   "GSN_FLAIL"),
+        ("mace",    "GSN_MACE"),
+        ("polearm", "GSN_POLEARM"),
+        ("spear",   "GSN_SPEAR"),
+        ("whip",    "GSN_WHIP"),
+    ]
+    w("# Maps item weapon_type string -> GSN (cf. 1stMud weapon_table in const.c).")
+    w("WEAPON_GSN_MAP = {")
+    for wtype, gsn in weapon_types:
+        w(f'    {wtype!r:10s}: {gsn},')
+    w("}")
     w("")
 
     return "\n".join(out)

@@ -58,8 +58,8 @@ GSN_STAVES                     = 134
 GSN_WANDS                      = 135
 GSN_RECALL                     = 136
 
-# -- SKILL_TABLE ----------------------------------------------------------------
-SKILL_TABLE = [
+# -- _SKILL_TABLE_RAW -----------------------------------------------------------
+_SKILL_TABLE_RAW = [
     (  0, {  # sn 0
         "name":        'reserved',
         "skill_level": (53, 53, 53, 53, 53, 53),
@@ -2147,3 +2147,29 @@ SKILL_TABLE = [
         "msg_obj":     '',
     }),
 ]
+
+# -- Derived lookups -----------------------------------------------------------
+# Flatten per-class tuples: skill_level -> earliest any class learns it;
+# rating -> best (lowest non-zero) rate; default=1 guards all-zero edge case.
+def _flatten_skill(sn, data):
+    d = {}
+    d.update(data)
+    d["skill_level"] = min(data["skill_level"])
+    d["rating"] = min((v for v in data["rating"] if v > 0), default=1)
+    return (sn, d)
+
+SKILL_TABLE = [_flatten_skill(sn, data) for sn, data in _SKILL_TABLE_RAW]
+
+SKILLS = dict(SKILL_TABLE)
+
+# Maps item weapon_type string -> GSN (cf. 1stMud weapon_table in const.c).
+WEAPON_GSN_MAP = {
+    'sword'   : GSN_SWORD,
+    'axe'     : GSN_AXE,
+    'dagger'  : GSN_DAGGER,
+    'flail'   : GSN_FLAIL,
+    'mace'    : GSN_MACE,
+    'polearm' : GSN_POLEARM,
+    'spear'   : GSN_SPEAR,
+    'whip'    : GSN_WHIP,
+}

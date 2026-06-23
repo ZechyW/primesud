@@ -3,7 +3,8 @@
 from util import free_mem, gc_collect
 from colors import color_len, upper
 
-from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES, SKILL_TABLE, SKILLS
+from skills_table import SKILL_TABLE, SKILLS
+from world import ROOMS, ITEM_TEMPLATES, MOB_TEMPLATES
 from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, is_name
 from item import get_obj_list, obj_vnum, item_extra_flags
 from player import PLR_AUTOMAP, PLR_DEFAULTS

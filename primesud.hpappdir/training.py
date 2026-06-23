@@ -1,6 +1,7 @@
 """Training and practice command handlers."""
 
-from world import MOB_TEMPLATES, SKILL_TABLE, SKILLS
+from skills_table import SKILL_TABLE, SKILLS
+from world import MOB_TEMPLATES
 from picker import pick_from
 from actor import get_curr_stat
 from config import INT_APP_LEARN, MAX_STATS, SKILL_ADEPT

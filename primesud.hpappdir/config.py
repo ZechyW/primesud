@@ -114,6 +114,10 @@ FNKEY_SENTINELS      = frozenset(FNKEY_TABLE)
 FNKEY_NAMES          = {k: v[0] for k, v in FNKEY_TABLE.items()}
 DEFAULT_FNKEY_MACROS = {k: v[1] for k, v in FNKEY_TABLE.items()}
 
+# -- Cross-area room VNUMs (cf. 1stMud room vnums in index.h) -------------------------
+R_STARTING_ROOM  = 3700   # player respawn/starting room (Mud School entrance)
+R_RECALL         = 3001   # default recall destination (cf. 1stMud ROOM_VNUM_TEMPLE)
+
 # -- Stat cap (cf. 1stMud #define MAX_STATS 30 in defines.h) ------------------------------
 MAX_STATS = 30
 

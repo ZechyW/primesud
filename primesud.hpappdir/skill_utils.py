@@ -1,6 +1,6 @@
 """Skill/spell helper functions (cf. 1stMud multiclass.c and magic.c)."""
 
-from world import SKILL_TABLE, SKILLS
+from skills_table import SKILL_TABLE, SKILLS
 from config import MAX_MORTAL_LEVEL
 
 

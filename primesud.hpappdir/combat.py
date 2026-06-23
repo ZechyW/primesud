@@ -50,19 +50,12 @@ from item import get_char_room, create_object, item_extra_flags, set_item_extra_
 from picker import pick_from
 from player import save_world
 from urandom import randint
-from world import (
-    ITEM_TEMPLATES,
-    MOB_TEMPLATES,
-    SKILL_TABLE,
-    SKILLS,
-    GSN_HAND_TO_HAND,
-    GSN_KICK,
-    GSN_PARRY,
-    GSN_DODGE,
-    GSN_SECOND_ATTACK,
-    GSN_THIRD_ATTACK,
-    WEAPON_GSN_MAP,
+from skills_table import (
+    SKILL_TABLE, SKILLS, WEAPON_GSN_MAP,
+    GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY, GSN_DODGE,
+    GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
 )
+from world import ITEM_TEMPLATES, MOB_TEMPLATES
 
 
 # -- Violence update (called every PULSE_VIOLENCE) -----------------------------
@@ -823,29 +816,24 @@ def damage(tr, ch, victim, dam, dt, dam_type, show, world, attack_noun=None):
     if dam > 80:
         dam = (dam - 80) // 2 + 80
 
-    # 1stMud: if (!IsNPC(ch)) { if (IsNPC(victim)) dam *= mud_info.pcdam/100; }
-    #         else dam *= mud_info.mobdam/100;
+    # Global damage multipliers
     # [PRIMESUD] skip pcdam/mobdam multipliers (mud_info not ported)
 
     if victim is not ch:
         # 1stMud: if (is_safe(ch, victim)) return false;
-        # [PRIMESUD] skip is_safe (not ported)
+        # [PRIMESUD] skip is_safe (not ported) - safe rooms, service mobs, pet/charm, quest target
 
         # 1stMud: check_killer(ch, victim);
-        # [PRIMESUD] skip check_killer (not ported)
+        # [PRIMESUD] skip check_killer (not ported) - pvp
 
-        # 1stMud: if (victim->position > POS_STUNNED) {
-        #             if (victim->fighting == NULL) { set_fighting(victim,ch); TRIG_KILL; }
-        #             if (victim->timer <= 4) victim->position = POS_FIGHTING; }
         if POS_ORDER[victim["pos"]] > POS_ORDER["stunned"]:
             if victim["fighting"] is None:
                 set_fighting(victim, ch)
                 # 1stMud: if (IsNPC(victim) && HasTriggerMob(victim,TRIG_KILL)) p_percent_trigger(...)
-                # [PRIMESUD] skip TRIG_KILL (not ported)
+                # [PRIMESUD] skip TRIG_KILL (not ported) - mobprogs
             # 1stMud: if (victim->timer <= 4) victim->position = POS_FIGHTING;
-            # [PRIMESUD] use wait as closest analogue to 1stMud timer
-            if victim.get("wait", 0) <= 4:
-                victim["pos"] = "fighting"
+            # [PRIMESUD] timer is connection idle counter -- always 0 in single-player, so always true
+            victim["pos"] = "fighting"
 
         # 1stMud: if (victim->position > POS_STUNNED) {
         #             if (ch->fighting == NULL) set_fighting(ch, victim); }

@@ -79,8 +79,9 @@ def _char_base():
     }
     # Not ported: move/max_move, comm, wiznet, stance[], war, gquest, mprog_*,
     # master/leader/pet/reply, desc, was_in_room, gen_data, hunting, trust,
-    # invis/incog_level, timer, logon, prompt/gprompt, group, rank, Class[],
+    # invis/incog_level, logon, prompt/gprompt, group, rank, Class[],
     # deity, material, dam_type, start_pos, default_pos, info_settings, color_prefix
+    # timer: connection idle counter (ticks since last input) -- no-op in single-player
 
 
 def _armor_list(char):
