@@ -4,9 +4,7 @@
       "Bash(python tools/check_ascii_py.py *)",
       "Bash(git status *)",
       "Bash(git add *)",
-      "Bash(python -c \"import py_compile; py_compile.compile\\('G:/Git/primesud/primesud.hpappdir/combat.py', doraise=True\\)\")",
-      "Bash(python -c \"import py_compile; py_compile.compile\\('G:/Git/primesud/primesud.hpappdir/commands.py', doraise=True\\)\")",
-      "Bash(python -c \"import py_compile; py_compile.compile\\('G:/Git/primesud/primesud.hpappdir/combat.py', doraise=True\\); py_compile.compile\\('G:/Git/primesud/primesud.hpappdir/commands.py', doraise=True\\); print\\('OK'\\)\")"
+      "Bash(python *)"
     ]
   }
 }
