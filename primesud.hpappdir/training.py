@@ -55,7 +55,7 @@ def do_train(tr, player, args):
                 names.append(lng + " (max: " + str(player[k]) + ")")
             else:
                 names.append(lng + " (" + str(player[k]) + "/" + str(MAX_STATS) + ")")
-        idx = pick_from(tr, "Train which?", names)
+        idx = pick_from("Train which?", names)
         if idx < 0:
             return
         chosen_key, chosen_lng = all_opts[idx]
@@ -116,7 +116,7 @@ def do_practice(tr, player, args):
 
     _from_picker = False
     if not args:
-        print_practice_table(tr, player)
+        print_practice_table(player)
         tr.print("You have " + str(player["practice"]) + " practice sessions left.")
         if teacher is None or player["practice"] < 1:
             return
@@ -130,7 +130,7 @@ def do_practice(tr, player, args):
             return
         names = [str(SKILLS[vnum]["name"]) + " (" + str(pct) + "%)" for vnum, pct in practicable]
         tr.print("")
-        idx = pick_from(tr, "Practice which skill?", names)
+        idx = pick_from("Practice which skill?", names)
         if idx < 0:
             return
         sk_vnum, _ = practicable[idx]

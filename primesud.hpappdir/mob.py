@@ -260,7 +260,7 @@ def mobile_update(tr, player):
             if player["room"] == inst["room"]:
                 tpl = MOB_DEFS[inst["tpl"]]
                 _sd = tpl["short_descr"]
-                act(tr, "{} wanders on home.".format(_sd))
+                act("{} wanders on home.".format(_sd))
             world.rooms[inst["room"]]["mobs"].remove(mob_id)
             del world.chars[mob_id]
             continue
@@ -295,12 +295,12 @@ def mobile_update(tr, player):
         tpl = MOB_DEFS[inst["tpl"]]
         _sd = tpl["short_descr"]
         if player["room"] == old_room:
-            act(tr, "{} leaves {}.".format(_sd, EXIT_NAMES.get(direction, direction)))
+            act("{} leaves {}.".format(_sd, EXIT_NAMES.get(direction, direction)))
         world.rooms[old_room]["mobs"].remove(mob_id)
         inst["room"] = dest_vnum
         world.rooms[dest_vnum]["mobs"].append(mob_id)
         if player["room"] == dest_vnum:
-            act(tr, "{} has arrived.".format(_sd))
+            act("{} has arrived.".format(_sd))
 
 
 def aggr_update(tr, player):
@@ -361,7 +361,7 @@ def aggr_update(tr, player):
             continue
 
         # cf. update.c:990 -- multi_hit(ch, victim, TYPE_UNDEFINED)
-        multi_hit(tr, ch, player)
+        multi_hit(ch, player)
 
 
 def area_update(tr, player):

@@ -1,16 +1,17 @@
 """Contextual picker UI for selecting mobs, items, and options."""
 
 from hpprime import eval as ppleval
+from terminal import tr
 
 _MAX_OPTS = 10
 
 
-def _cancel(tr):
+def _cancel():
     tr.print("Cancelled.")
     return -1
 
 
-def _read_key(tr):
+def _read_key():
     while True:
         result = tr.poll_char()
         if result is not None:
@@ -24,7 +25,7 @@ def _read_key(tr):
         ppleval("WAIT(1/1e3)")
 
 
-def _force_numeric_keys(tr):
+def _force_numeric_keys():
     tr.resync_keyboard()
     tr.alpha_lock = False
     tr.shift_lock = False
@@ -36,7 +37,7 @@ def _force_numeric_keys(tr):
     tr._refresh_indicators()
 
 
-def _render(tr, title, options, page, max_page):
+def _render(title, options, page, max_page):
     shown = options[page * _MAX_OPTS : page * _MAX_OPTS + _MAX_OPTS]
     tr.print("{Y" + title + "{x")
     for i, opt in enumerate(shown):
@@ -51,7 +52,7 @@ def _render(tr, title, options, page, max_page):
         tr.print("{w[Esc] cancel{x")
 
 
-def pick_from(tr, title, options):
+def pick_from(title, options):
     """Display a numbered list and read digit+Enter to select, or Esc to cancel.
 
     Prints title, then up to 10 options labelled 1-9 then 0 per page.
@@ -59,7 +60,6 @@ def pick_from(tr, title, options):
     digit selection requires Enter to confirm. Bare Enter selects item 1.
 
     Args:
-        tr: tml renderer instance.
         title (str): Header line, plain text -- colour wrapping applied internally.
         options (list[str]): Display strings.
 
@@ -69,10 +69,10 @@ def pick_from(tr, title, options):
     if not options:
         return -1
 
-    _force_numeric_keys(tr)
+    _force_numeric_keys()
     max_page = (len(options) - 1) // _MAX_OPTS
     page = 0
-    _render(tr, title, options, page, max_page)
+    _render(title, options, page, max_page)
 
     while True:
         tr.print("> ", end="")
@@ -87,13 +87,13 @@ def pick_from(tr, title, options):
                 if page < max_page:
                     page += 1
                     tr.print("")
-                    _render(tr, title, options, page, max_page)
+                    _render(title, options, page, max_page)
                     break
             elif char == "-":
                 if page > 0:
                     page -= 1
                     tr.print("")
-                    _render(tr, title, options, page, max_page)
+                    _render(title, options, page, max_page)
                     break
             elif char is None:
                 pass
@@ -101,7 +101,7 @@ def pick_from(tr, title, options):
                 page_idx = (int(char) - 1) % 10  # '1'->0 ... '9'->8, '0'->9
                 tr.print(char, end="")
                 while True:  # CONFIRM
-                    char2 = _read_key(tr)
+                    char2 = _read_key()
                     if char2 == "\n":
                         absolute_idx = page * _MAX_OPTS + page_idx
                         if absolute_idx < len(options):
@@ -121,5 +121,5 @@ def pick_from(tr, title, options):
                         tr.print("")
                         break
                     elif char2 == "\e":
-                        return _cancel(tr)
+                        return _cancel()
                 break

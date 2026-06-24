@@ -1,18 +1,13 @@
 """PrimeSUD colour-aware terminal print/status wrappers."""
 
-from config import TERMINAL_COLS, FONT_GROB, COLOR_GROB
+from tml_prime import tml_prime as tml
+from config import (
+    TERMINAL_COLS, FONT_GROB, COLOR_GROB,
+    DARK_MODE, BG_COLOR, TAB_SIZE, FONT,
+    SCROLLBACK_SIZE, SCROLL_STEP, SWIPE_THRESHOLD, TOUCH_SCROLL_STEP,
+)
 from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full
-from prime_platform import dimgrob, getpix, pixon, grobh, grobw, strblit2
-
-# Module-level terminal instance, set once by init().
-tr = None
-
-
-def init(instance):
-    """Set module-level tr and install colour print wrappers."""
-    global tr
-    tr = instance
-    install_color_print(instance)
+from hpprime import dimgrob, getpix, grobh, grobw, pixon, strblit2
 
 
 def tprint(*args, **kwargs):
@@ -156,3 +151,11 @@ def install_color_print(tr):
         orig_set_status(text)
 
     tr.set_status = wrapped_set_status
+
+
+tr = tml(
+    dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font=FONT,
+    scrollback_size=SCROLLBACK_SIZE, scroll_step=SCROLL_STEP,
+    touch_scroll_step=TOUCH_SCROLL_STEP, swipe_threshold=SWIPE_THRESHOLD,
+)
+install_color_print(tr)

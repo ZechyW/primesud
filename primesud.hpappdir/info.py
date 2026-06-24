@@ -1,19 +1,21 @@
 """Information and room-view command handlers."""
 
-from util import free_mem, gc_collect
-from colors import color_len, upper, draw_line
-
-from skills_table import SKILL_TABLE, SKILLS
 import world
-from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
 from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, is_name
+from automap import build_compact_lines, build_full_lines, COMPACT_W
+from colors import color_len, upper, draw_line
+from combat import _get_thac0
+from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS,
+                    MAX_MORTAL_LEVEL,
+                    AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC)
 from item import get_obj_list, obj_vnum, item_extra_flags
 from player import PLR_AUTOMAP, PLR_DEFAULTS
-from combat import _get_thac0
-from automap import build_compact_lines, build_full_lines, COMPACT_W
-from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS, MAX_MORTAL_LEVEL,
-                    AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC)
-from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, spell_mana
+from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
+    spell_mana
+from skills_table import SKILL_TABLE, SKILLS
+from terminal import tprint
+from util import free_mem, gc_collect
+from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
 
 
 def _wrap(text, width):
@@ -63,32 +65,32 @@ _FLAG_TABLE = (
 )
 
 
-def do_automap(tr, player, args):
+def do_automap(player, args):
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOMAP
     if player["flags"] & PLR_AUTOMAP:
-        tr.print("You now see an automap in room descriptions.")
+        tprint("You now see an automap in room descriptions.")
     else:
-        tr.print("You no longer see automap room descriptions.")
+        tprint("You no longer see automap room descriptions.")
 
 
-def do_autolist(tr, player, args):
+def do_autolist(player, args):
     """Display toggle settings (cf. 1stMud do_autolist in act_info.c)."""
-    tr.print(" %-9s %-6s{w %s" % ("Command", "Status", "Description"))
-    tr.print(draw_line())
+    tprint(" %-9s %-6s{w %s" % ("Command", "Status", "Description"))
+    tprint(draw_line())
     flags = player.get("flags", PLR_DEFAULTS)
     for bit, name, desc in _FLAG_TABLE:
         status = "ON" if flags & bit else "OFF"
-        tr.print("{G%-11s {W%-6s{w %s{x" % (name, status, desc))
-    tr.print(draw_line())
+        tprint("{G%-11s {W%-6s{w %s{x" % (name, status, desc))
+    tprint(draw_line())
 
 
 _CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
 
 
-def _look_in(tr, player, args):
+def _look_in(player, args):
     """Show contents of a container in room or inventory (cf. 1stMud do_look 'in' case in act_info.c)."""
     if not args:
-        tr.print("Look in what?")
+        tprint("Look in what?")
         return
     keyword = " ".join(args)
     rs = world.rooms[player["room"]]
@@ -96,24 +98,24 @@ def _look_in(tr, player, args):
     if obj is None:
         obj = get_obj_list(keyword, player["inv"], ITEM_DEFS)
     if obj is None:
-        tr.print("You do not see that here.")
+        tprint("You do not see that here.")
         return
     tpl = ITEM_DEFS[obj_vnum(obj)]
     if tpl.get("type") not in _CONTAINER_TYPES:
-        tr.print("That is not a container.")
+        tprint("That is not a container.")
         return
     obj_name = (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]
-    tr.print("{} holds:".format(obj_name))
+    tprint("{} holds:".format(obj_name))
     contents = isinstance(obj, dict) and obj.get("contents", [])
     if not contents:
-        tr.print("  Nothing.")
+        tprint("  Nothing.")
         return
     for cobj in contents:
         ctpl = ITEM_DEFS[obj_vnum(cobj)]
-        tr.print("  " + (cobj.get("short_descr") or ctpl["short_descr"]))
+        tprint("  " + (cobj.get("short_descr") or ctpl["short_descr"]))
 
 
-def _look_item(tr, player, args):
+def _look_item(player, args):
     """Show an item's description from inventory, room, or equipped slots (cf. 1stMud do_look in act_info.c)."""
     target = " ".join(args)
     rs = world.rooms[player["room"]]
@@ -122,40 +124,39 @@ def _look_item(tr, player, args):
               or get_obj_list(target, rs["items"], ITEM_DEFS)
               or get_obj_list(target, equipped, ITEM_DEFS))
     if result is None:
-        tr.print("You don't see that here.")
+        tprint("You don't see that here.")
         return
     vnum = obj_vnum(result)
     tpl = ITEM_DEFS[vnum]
     inst_desc = isinstance(result, dict) and result.get("description")
     for line in _wrap_paragraphs(inst_desc or tpl.get("description", tpl["short_descr"]), TERMINAL_COLS):
-        tr.print(line)
+        tprint(line)
     for ed in tpl.get("extra_descs", []):
         if is_name(target, ed.get("keywords", "")):
             for line in _wrap_paragraphs(ed.get("desc", ""), TERMINAL_COLS):
-                tr.print(line)
+                tprint(line)
 
 
-def do_look(tr, player, args):
+def do_look(player, args):
     """Display the current room or examine an item (cf. 1stMud do_look in act_info.c).
 
     Args:
-        tr: Terminal renderer.
         player (dict): Player state dict.
         args (list): Parsed command arguments; non-empty triggers item look.
     """
     if args:
         if args[0] in ("in", "i"):
-            _look_in(tr, player, args[1:])
+            _look_in(player, args[1:])
             return
         # TODO: extend to room extra_descs, mob descriptions, and item extra_descs on other targets
-        _look_item(tr, player, args)
+        _look_item(player, args)
         return
     room = ROOM_DEFS[player["room"]]
     rs = world.rooms[player["room"]]
     automap_on = player.get("flags", PLR_DEFAULTS) & PLR_AUTOMAP
     text_w = TERMINAL_COLS - COMPACT_W - 1 if automap_on else TERMINAL_COLS
 
-    tr.print("{Y" + room["name"] + "{x")
+    tprint("{Y" + room["name"] + "{x")
 
     color = SECTOR_COLORS.get(room.get("sector", "inside"), "")
     desc_lines = _wrap_paragraphs(room["desc"], text_w)
@@ -166,17 +167,17 @@ def do_look(tr, player, args):
         for i in range(n):
             ml = map_lines[i] if i < len(map_lines) else ' ' * COMPACT_W
             tl = desc_lines[i] if i < len(desc_lines) else ''
-            tr.print(ml + ' ' + color + tl)
+            tprint(ml + ' ' + color + tl)
     else:
         for tl in desc_lines:
-            tr.print(color + tl)
+            tprint(color + tl)
 
     exits = " ".join(
         EXIT_NAMES.get(d, d) for d in EXIT_ORDER
         if d in room["exits"] and not (isinstance(room["exits"][d], dict) and room["exits"][d].get("closed"))
     )
     exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
-    tr.print("{g" + exit_string + "{x")
+    tprint("{g" + exit_string + "{x")
     live_mobs = rs["mobs"]
     # Items: build a display string per instance (flags + desc), stack by exact string match
     # (cf. 1stMud format_obj_to_char + show_list_to_char in act_info.c)
@@ -200,7 +201,7 @@ def do_look(tr, player, args):
     for line in order:
         n = seen[line]
         stack_prefix = "(%2d) " % n if n > 1 else "     "
-        tr.print(stack_prefix + line)
+        tprint(stack_prefix + line)
     # Mobs: one per line, long_descr at idle or constructed position string (cf. 1stMud show_char_to_char_0 in act_info.c)
     for mob_id in live_mobs:
         inst = world.chars[mob_id]
@@ -229,7 +230,7 @@ def do_look(tr, player, args):
                 line = "%s is here, fighting YOU!" % name
             else:
                 line = "%s is here, fighting someone." % name
-        tr.print("%s{M%s{x" % (prefix, line))
+        tprint("%s{M%s{x" % (prefix, line))
 
 
 _SCORE_INNER = TERMINAL_COLS - 2
@@ -273,7 +274,7 @@ def _make_percent_bar(val, max_val, length):
     return ''.join(parts)
 
 
-def do_score(tr, player, args):
+def do_score(player, args):
     """Display the character score sheet (cf. 1stMud dlm_score in act_info.c)."""
     # two-column box mirroring 1stMud dlm_score layout, with bright/normal colours
     # alternating between horizontal segments.
@@ -381,10 +382,10 @@ def do_score(tr, player, args):
         _SCORE_SEP_OUTER,
     ]
     for line in lines:
-        tr.print(line)
+        tprint(line)
 
 
-def _parse_skill_range(tr, args):
+def _parse_skill_range(args):
     if not args:
         return (False, 1, MAX_MORTAL_LEVEL, True)
     f_all = True
@@ -393,10 +394,10 @@ def _parse_skill_range(tr, args):
     try:
         max_lev = int(args[0])
     except ValueError:
-        tr.print("Arguments must be numerical or all.")
+        tprint("Arguments must be numerical or all.")
         return (False, 1, MAX_MORTAL_LEVEL, False)
     if max_lev < 1 or max_lev > MAX_MORTAL_LEVEL:
-        tr.print("Levels must be between 1 and {}.".format(MAX_MORTAL_LEVEL))
+        tprint("Levels must be between 1 and {}.".format(MAX_MORTAL_LEVEL))
         return (False, 1, MAX_MORTAL_LEVEL, False)
     min_lev = 1
     if len(args) > 1:
@@ -404,13 +405,13 @@ def _parse_skill_range(tr, args):
             min_lev = max_lev
             max_lev = int(args[1])
         except ValueError:
-            tr.print("Arguments must be numerical or all.")
+            tprint("Arguments must be numerical or all.")
             return (False, 1, MAX_MORTAL_LEVEL, False)
         if max_lev < 1 or max_lev > MAX_MORTAL_LEVEL:
-            tr.print("Levels must be between 1 and {}.".format(MAX_MORTAL_LEVEL))
+            tprint("Levels must be between 1 and {}.".format(MAX_MORTAL_LEVEL))
             return (False, 1, MAX_MORTAL_LEVEL, False)
         if min_lev > max_lev:
-            tr.print("That would be silly.")
+            tprint("That would be silly.")
             return (False, 1, MAX_MORTAL_LEVEL, False)
     return (f_all, min_lev, max_lev, True)
 
@@ -419,8 +420,8 @@ def _pad_color(s, width):
     return s + " " * max(0, width - color_len(s))
 
 
-def _print_level_lists(tr, player, args, want_spells):
-    f_all, min_lev, max_lev, ok = _parse_skill_range(tr, args)
+def _print_level_lists(player, args, want_spells):
+    f_all, min_lev, max_lev, ok = _parse_skill_range(args)
     if not ok:
         return
     rows = {}
@@ -448,7 +449,7 @@ def _print_level_lists(tr, player, args, want_spells):
                 rows[level] = []
             rows[level].append(item)
     if not found:
-        tr.print("{cNo " + ("spells" if want_spells else "skills") + " found.{x")
+        tprint("{cNo " + ("spells" if want_spells else "skills") + " found.{x")
         return
     for level in range(MAX_MORTAL_LEVEL + 1):
         items = rows.get(level)
@@ -459,10 +460,10 @@ def _print_level_lists(tr, player, args, want_spells):
             line = prefix + items[i]
             if i + 1 < len(items):
                 line += items[i + 1]
-            tr.print(line + "{x")
+            tprint(line + "{x")
 
 
-def print_practice_table(tr, player):
+def print_practice_table(player):
     """Print learned practice percentages (cf. 1stMud do_practice in act_info.c)."""
     items = []
     half = TERMINAL_COLS // 2
@@ -476,51 +477,49 @@ def print_practice_table(tr, player):
         line = items[i]
         if i + 1 < len(items):
             line = line + " " * (half - len(line)) + items[i + 1]
-        tr.print(line)
+        tprint(line)
 
 
-def do_skills(tr, player, args):
+def do_skills(player, args):
     """List known skills by level (cf. 1stMud do_skills in skills.c)."""
-    _print_level_lists(tr, player, args, False)
+    _print_level_lists(player, args, False)
 
 
-def do_spells(tr, player, args):
+def do_spells(player, args):
     """List known spells by level (cf. 1stMud do_spells in skills.c)."""
-    _print_level_lists(tr, player, args, True)
+    _print_level_lists(player, args, True)
 
 
-def do_help(tr, player, args):
-    tr.print("Move: 2/8=n/s  4/6=w/e  7/9=u/d (or n/s/e/w/u/d)")
-    tr.print("5=look  i=inv  wear  remove  eat  quaff  recite  zap")
-    tr.print("brandish  st=stats  sk=skills  k/kill=fight  kick")
-    tr.print("cast <spell>  flee  save  credits  q=quit")
+def do_help(player, args):
+    tprint("Move: 2/8=n/s  4/6=w/e  7/9=u/d (or n/s/e/w/u/d)")
+    tprint("5=look  i=inv  wear  remove  eat  quaff  recite  zap")
+    tprint("brandish  st=stats  sk=skills  k/kill=fight  kick")
+    tprint("cast <spell>  flee  save  credits  q=quit")
 
 
-def do_map(tr, player, args):
+def do_map(player, args):
     """Print a full-size automap of rooms reachable from the current room (cf. 1stMud do_map in automap.c).
 
     Args:
-        tr: Terminal renderer.
         player (dict): Player state dict.
     """
     # [TODO blind] 1stMud checks check_blind(ch) here and refuses if AFF_BLIND -- add when blindness is implemented
     for line in build_full_lines(player, ROOM_DEFS):
-        tr.print(line)
+        tprint(line)
 
 
-def do_affects(tr, player, args):
+def do_affects(player, args):
     """List all active player affects with name, location, modifier, duration (cf. 1stMud do_affects in act_info.c).
 
     Args:
-        tr: Terminal instance.
         player (dict): Player state dict.
         args (list): Unused.
     """
     affects = player.get("affect_list", [])
     if not affects:
-        tr.print("You are not affected by any spells.")
+        tprint("You are not affected by any spells.")
         return
-    tr.print("You are affected by:")
+    tprint("You are affected by:")
     for aff in affects:
         sn = aff.get("type")
         sk = SKILLS.get(sn)
@@ -528,31 +527,31 @@ def do_affects(tr, player, args):
         mod = aff["modifier"]
         dur = aff["duration"]
         dur_str = "permanent" if dur < 0 else "{} tick{}".format(dur, "" if dur == 1 else "s")
-        tr.print("  {}: modifies {} by {:+d} for {}".format(
+        tprint("  {}: modifies {} by {:+d} for {}".format(
             name, aff["location"], mod, dur_str))
 
 
-def do_credits(tr, player, args):
-    tr.print("{WPrimeSUD{x -- a single-user dungeon for the HP Prime")
-    tr.print("Port by ZechyW.  Not for commercial distribution.")
-    tr.print("")
-    tr.print("{W1stMud ROM Derivative{x")
-    tr.print("  {c(c) 2001-2003 Ryan Jennings (Markanth){x")
-    tr.print("  markanth@firstmud.com")
-    tr.print("")
-    tr.print("{WROM 2.4 beta{x")
-    tr.print("  {c(c) 1993-1998 Russ Taylor{x")
-    tr.print("  rtaylor@hypercube.org")
-    tr.print("")
-    tr.print("{WMerc 2.1{x")
-    tr.print("  {c(c) 1992-1993 Michael Chastain  mec@shell.portal.com{x")
-    tr.print("            Michael Quan       michael@uclink.berkeley.edu")
-    tr.print("            Mitchell Tse       hatchet@uclink.berkeley.edu")
-    tr.print("")
-    tr.print("{WDikuMud{x -- creators of the original game")
-    tr.print("  {c(c) 1990-1991 Sebastian Hammer       quinn@freja.diku.dk{x")
-    tr.print("            Michael Seifert        seifert@freja.diku.dk")
-    tr.print("            Hans Henrik Staerfeldt bombman@freja.diku.dk")
-    tr.print("            Tom Madsen             noop@freja.diku.dk")
-    tr.print("            Katja Nyboe            katz@freja.diku.dk")
-    tr.print("  DIKU, Computer Science Institute, Copenhagen University")
+def do_credits(player, args):
+    tprint("{WPrimeSUD{x -- a single-user dungeon for the HP Prime")
+    tprint("Port by ZechyW.  Not for commercial distribution.")
+    tprint("")
+    tprint("{W1stMud ROM Derivative{x")
+    tprint("  {c(c) 2001-2003 Ryan Jennings (Markanth){x")
+    tprint("  markanth@firstmud.com")
+    tprint("")
+    tprint("{WROM 2.4 beta{x")
+    tprint("  {c(c) 1993-1998 Russ Taylor{x")
+    tprint("  rtaylor@hypercube.org")
+    tprint("")
+    tprint("{WMerc 2.1{x")
+    tprint("  {c(c) 1992-1993 Michael Chastain  mec@shell.portal.com{x")
+    tprint("            Michael Quan       michael@uclink.berkeley.edu")
+    tprint("            Mitchell Tse       hatchet@uclink.berkeley.edu")
+    tprint("")
+    tprint("{WDikuMud{x -- creators of the original game")
+    tprint("  {c(c) 1990-1991 Sebastian Hammer       quinn@freja.diku.dk{x")
+    tprint("            Michael Seifert        seifert@freja.diku.dk")
+    tprint("            Hans Henrik Staerfeldt bombman@freja.diku.dk")
+    tprint("            Tom Madsen             noop@freja.diku.dk")
+    tprint("            Katja Nyboe            katz@freja.diku.dk")
+    tprint("  DIKU, Computer Science Institute, Copenhagen University")

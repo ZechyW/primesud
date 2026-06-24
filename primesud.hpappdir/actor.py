@@ -1,10 +1,11 @@
 """Shared actor stat, affect, equipment, and name-match helpers."""
 
-from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
-                    AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC, POS_ORDER,
-                    SEX_VALUES)
-from world import ITEM_DEFS
 from colors import upper
+from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
+                    POS_ORDER,
+                    SEX_VALUES)
+from terminal import tprint
+from world import ITEM_DEFS
 
 AFF_TO_WHERE = {
     "to_affects": "affected_by",
@@ -357,7 +358,7 @@ def equip_char(char, obj, slot):
     _apply_item_modifiers(char, obj, tpl, True)
 
 
-def act(tr, msg):
+def act(msg):
     """Send an action-narration message, capitalising the first visible character.
 
     Reduced port of act_new/perform_act (cf. 1stMud comm.c). Full 1stMud act()
@@ -369,10 +370,9 @@ def act(tr, msg):
     stored lowercase and may appear at sentence start in narration strings.
 
     Args:
-        tr: tml instance (print target).
         msg (str): Fully assembled narration string, may contain {X colour codes.
     """
-    tr.print(upper(msg))
+    tprint(upper(msg))
 
 
 def can_see(ch, victim):

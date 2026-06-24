@@ -8,12 +8,9 @@
 
 """PrimeSUD application entry point and main game loop."""
 
-from tml_prime import tml_prime as tml, _HIST_UP, _HIST_DN
+from tml_prime import _HIST_UP, _HIST_DN
 
 from config import (
-    DARK_MODE,
-    BG_COLOR,
-    TAB_SIZE,
     POLL_MS,
     MS_PER_PULSE,
     PULSE_VIOLENCE,
@@ -23,12 +20,7 @@ from config import (
     AUTOSAVE_TICKS,
     TICK_SECS,
     KEY_COMMANDS as _KEY_COMMANDS,
-    FONT,
     DEATH_MSG_DELAY,
-    SCROLLBACK_SIZE,
-    SCROLL_STEP,
-    SWIPE_THRESHOLD,
-    TOUCH_SCROLL_STEP,
     CMD_HISTORY_MAX,
     FNKEY_SENTINELS,
 )
@@ -83,10 +75,7 @@ class Game:
     """Holds game state and drives the main loop."""
 
     def __init__(self):
-        self.tr = tml(dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font=FONT,
-                      scrollback_size=SCROLLBACK_SIZE, scroll_step=SCROLL_STEP,
-                      touch_scroll_step=TOUCH_SCROLL_STEP, swipe_threshold=SWIPE_THRESHOLD)
-        terminal.init(self.tr)
+        self.tr = terminal.tr
         self.input_buf = ""
         self._cmd_history = []   # [PRIMESUD] submitted commands, oldest first
         self._hist_pos    = None # None = not browsing; int = index into _cmd_history
@@ -141,7 +130,7 @@ class Game:
 
         tr.resync_keyboard()
         show_prompt(tr, player, self.input_buf)
-        do_look(tr, player, [])
+        do_look(player, [])
 
         while True:
             result = tr.poll_char(_KEY_COMMANDS)
@@ -256,7 +245,7 @@ class Game:
                 if pulse % PULSE_VIOLENCE == 0:
                     update_mob_timers()
                     affect_update(player)
-                    if violence_update(tr, player):
+                    if violence_update(player):
                         # [PRIMESUD] Handle auto respawn on death
                         tr.print("You have been KILLED!!")
                         tr.print("Your lifeforce ebbs away...")
@@ -272,7 +261,7 @@ class Game:
                         self._pending_cmd = None
                         tr.print("You come to your senses. Alive, but barely.")
                         tr.print("")
-                        do_look(tr, player, [])
+                        do_look(player, [])
                     else:
                         if player["fighting"] is not None:
                             fid = player["fighting"]

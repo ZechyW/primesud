@@ -148,7 +148,7 @@ def interpret(raw, tr, player):
 
     direction = _DIRECTION_MAP.get(verb)
     if direction is not None:
-        do_move(tr, player, direction)
+        do_move(player, direction)
         return None
 
     pos = player.get("pos", "standing")
