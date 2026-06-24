@@ -1,7 +1,8 @@
 """Magic command handling and spell dispatch (cf. 1stMud magic.c)."""
 
 import world
-from actor import is_name, is_affected, affect_to_char, affect_strip, is_awake
+from actor import (is_name, is_affected, affect_to_char, affect_strip, is_awake,
+                   can_see_room)
 from area_limbo import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
                         I_DISC_DISK_FLOATING_BLACK)
 from colors import upper
@@ -319,70 +320,43 @@ def spell_call_lightning(sn, level, ch, vo, target):
 def spell_chain_lightning(sn, level, ch, vo, target):
     """Chain lightning room spell (cf. 1stMud spell_chain_lightning in magic.c)."""
     victim = vo
-    if victim is None or victim.get("is_npc") is not True:
-        tprint("You failed.")
-        return False
     tprint("A lightning bolt leaps from your hand and arcs to " +
-             MOB_DEFS[victim["tpl"]]["short_descr"] + ".")
-
+           _char_name(ch, victim) + ".")
+    dam = _dice(level, 6)
+    if saves_spell(level, victim, "lightning"):
+        dam //= 3
+    damage(ch, victim, dam, sn, DAM_LIGHTNING, True)
+    last_vict = victim
+    level -= 4
     room_state = world.rooms[ch["room"]]
-    victim_id = _target_id(ch, victim)
-    last_victim_id = victim_id
-    last_hit_ch = False
-    any_hit = False
-
-    while level > 0 and victim is not None:
-        dam = _dice(level, 6)
-        if saves_spell(level, victim, "lightning"):
-            dam //= 3
-        damage(ch, victim, dam, sn, DAM_LIGHTNING, True)
-        any_hit = True
-        level -= 4
-        last_victim_id = victim_id
-        last_hit_ch = False
-
-        if level <= 0:
+    while level > 0:
+        found = False
+        for mob_id in list(room_state["mobs"]):
+            tmp = world.chars.get(mob_id)
+            if tmp is None or tmp is last_vict:
+                continue
+            # [PRIMESUD] is_safe_spell not ported
+            found = True
+            last_vict = tmp
+            tprint("The bolt arcs to " + _char_name(ch, tmp) + "!")
+            dam = _dice(level, 6)
+            if saves_spell(level, tmp, "lightning"):
+                dam //= 3
+            damage(ch, tmp, dam, sn, DAM_LIGHTNING, True)
+            level -= 4
             break
-
-        next_id = None
-        for mob_id in room_state["mobs"]:
-            if mob_id != last_victim_id:
-                next_id = mob_id
-                break
-
-        if next_id is not None:
-            victim_id = next_id
-            victim = world.chars.get(victim_id)
-            if victim is not None:
-                tprint("The bolt arcs to " + MOB_DEFS[victim["tpl"]]["short_descr"] + "!")
-            continue
-
-        # No alternate mob target - arc back to caster (cf. 1stMud last_vict == ch path)
-        if last_hit_ch:
-            tprint("The bolt grounds out through your body.")
-            break
-        tprint("You are struck by your own lightning!")
-        dam2 = _dice(level, 6)
-        if saves_spell(level, ch, "lightning"):
-            dam2 //= 3
-        ch["hit"] = max(-1, ch["hit"] - dam2)
-        level -= 4
-        last_hit_ch = True
-        if level <= 0 or ch["hit"] <= 0:
-            break
-        next_id = None
-        for mob_id in room_state["mobs"]:
-            next_id = mob_id
-            break
-        if next_id is None:
-            tprint("The bolt grounds out through your body.")
-            break
-        victim_id = next_id
-        victim = world.chars.get(victim_id)
-        if victim is not None:
-            tprint("The bolt arcs to " + MOB_DEFS[victim["tpl"]]["short_descr"] + "!")
-
-    return any_hit
+        if not found:
+            if last_vict is ch:
+                tprint("The bolt grounds out through your body.")
+                return False
+            last_vict = ch
+            tprint("You are struck by your own lightning!")
+            dam = _dice(level, 6)
+            if saves_spell(level, ch, "lightning"):
+                dam //= 3
+            damage(ch, ch, dam, sn, DAM_LIGHTNING, True)
+            level -= 4
+    return found
 
 
 def _random_teleport_room(ch):
@@ -470,6 +444,10 @@ def spell_locate_object(sn, level, ch, vo, target):
         if not is_name(wanted, tpl.get("keywords", "")):
             continue
         if item_extra_flags(obj, tpl).get("no_locate"):
+            continue
+        if randint(1, 100) > 2 * level:
+            continue
+        if ch.get("level", 1) < tpl.get("level", 0):
             continue
         found.append(line)
         if len(found) >= max_found:
@@ -598,8 +576,19 @@ def spell_enchant_armor(sn, level, ch, vo, target):
     if item_extra_flags(vo, tpl).get("quest"):
         tprint("You can't enchant quest items.")
         return False
-    ac_bonus = _item_armor_bonus(vo, tpl)
-    fail = 25 + (5 * ac_bonus * ac_bonus if ac_bonus else 0) - level
+    fail = 25
+    if not vo.get("enchanted"):
+        for loc, val in tpl.get("stat_bonuses", {}).items():
+            if loc in _AC_LOCS:
+                fail += 5 * (val * val)
+            else:
+                fail += 20
+    for af in item_affect_list(vo):
+        if af.get("location") in _AC_LOCS:
+            fail += 5 * (af.get("modifier", 0) ** 2)
+        else:
+            fail += 20
+    fail -= level
     flags = item_extra_flags(vo, tpl)
     if flags.get("bless"):
         fail -= 15
@@ -650,9 +639,30 @@ def spell_enchant_weapon(sn, level, ch, vo, target):
     if item_extra_flags(vo, tpl).get("quest"):
         tprint("You can't enchant quest items.")
         return False
-    hit_bonus = _item_bonus_sum(vo, tpl, "hitroll")
-    dam_bonus = _item_bonus_sum(vo, tpl, "damroll")
-    fail = 25 + 2 * hit_bonus * hit_bonus + 2 * dam_bonus * dam_bonus - (3 * level // 2)
+    fail = 25
+    hit_found = False
+    dam_found = False
+    if not vo.get("enchanted"):
+        for loc, val in tpl.get("stat_bonuses", {}).items():
+            if loc == "hitroll":
+                hit_found = True
+                fail += 2 * (val * val)
+            elif loc == "damroll":
+                dam_found = True
+                fail += 2 * (val * val)
+            else:
+                fail += 25
+    for af in item_affect_list(vo):
+        loc = af.get("location")
+        if loc == "hitroll":
+            hit_found = True
+            fail += 2 * (af.get("modifier", 0) ** 2)
+        elif loc == "damroll":
+            dam_found = True
+            fail += 2 * (af.get("modifier", 0) ** 2)
+        else:
+            fail += 25
+    fail -= 3 * level // 2
     flags = item_extra_flags(vo, tpl)
     if flags.get("bless"):
         fail -= 15
@@ -687,26 +697,25 @@ def spell_enchant_weapon(sn, level, ch, vo, target):
         set_item_extra_flag(vo, tpl, "glow", True)
         added = 2
     vo["level"] = min(50, vo.get("level", tpl.get("level", 0)) + 1)
-    found_dam = False
-    found_hit = False
-    for af in item_affect_list(vo):
-        if af.get("location") == "damroll":
-            af["type"] = sn
-            af["modifier"] = af.get("modifier", 0) + added
-            af["level"] = max(af.get("level", 0), level)
-            if af["modifier"] > 4:
-                set_item_extra_flag(vo, tpl, "hum", True)
-            found_dam = True
-        elif af.get("location") == "hitroll":
-            af["type"] = sn
-            af["modifier"] = af.get("modifier", 0) + added
-            af["level"] = max(af.get("level", 0), level)
-            if af["modifier"] > 4:
-                set_item_extra_flag(vo, tpl, "hum", True)
-            found_hit = True
-    if not found_dam:
+    if dam_found:
+        for af in item_affect_list(vo):
+            if af.get("location") == "damroll":
+                af["type"] = sn
+                af["modifier"] = af.get("modifier", 0) + added
+                af["level"] = max(af.get("level", 0), level)
+                if af["modifier"] > 4:
+                    set_item_extra_flag(vo, tpl, "hum", True)
+    else:
         item_affect_to_obj(vo, _new_obj_affect(sn, level, -1, "damroll", added), tpl)
-    if not found_hit:
+    if hit_found:
+        for af in item_affect_list(vo):
+            if af.get("location") == "hitroll":
+                af["type"] = sn
+                af["modifier"] = af.get("modifier", 0) + added
+                af["level"] = max(af.get("level", 0), level)
+                if af["modifier"] > 4:
+                    set_item_extra_flag(vo, tpl, "hum", True)
+    else:
         item_affect_to_obj(vo, _new_obj_affect(sn, level, -1, "hitroll", added), tpl)
     return True
 
@@ -887,7 +896,8 @@ def spell_curse(sn, level, ch, vo, target):
 
 def spell_plague(sn, level, ch, vo, target):
     """Plague spell (cf. 1stMud spell_plague in magic.c)."""
-    if saves_spell(level, vo, "disease"):
+    if saves_spell(level, vo, "disease") or (
+            vo.get("is_npc") and MOB_DEFS.get(vo.get("tpl"), {}).get("act_flags", {}).get("undead")):
         tprint("You feel momentarily ill, but it passes." if vo is ch else _char_name(ch, vo) + " seems to be unaffected.")
         return False
     affect_to_char(vo, _new_affect(sn, level * 3 // 4, level, "str", -5, "plague"))
@@ -957,6 +967,12 @@ def spell_dispel_magic(sn, level, ch, vo, target):
         cur = _skill_lookup(name)
         if cur is not None and check_dispel(level, vo, cur, ch):
             found = True
+    sanc_sn = _skill_lookup("sanctuary")
+    if (vo.get("affected_by", {}).get("sanctuary")
+            and not saves_dispel(level, vo.get("level", 1), -1)
+            and not is_affected(vo, sanc_sn)):
+        vo.get("affected_by", {}).pop("sanctuary", None)
+        found = True
     if found:
         tprint("Ok.")
         return True
@@ -1011,24 +1027,33 @@ def spell_calm(sn, level, ch, vo, target):
     if randint(0, chance) < mlevel:
         return False
     found = False
+    bail = False
     all_ids = list(room["mobs"])
     for mob_id in all_ids:
         mob = world.chars.get(mob_id)
         if mob is None:
             continue
-        if mob.get("imm_flags", {}).get("magic"):
-            continue
+        if mob.get("is_npc"):
+            tpl = MOB_DEFS.get(mob.get("tpl"), {})
+            if mob.get("imm_flags", tpl.get("imm_flags", {})).get("magic"):
+                bail = True
+                break
+            if tpl.get("act_flags", {}).get("undead"):
+                bail = True
+                break
         if mob.get("affected_by", {}).get("calm") or mob.get("affected_by", {}).get("berserk"):
-            continue
+            bail = True
+            break
         if is_affected(mob, _skill_lookup("frenzy")):
-            continue
+            bail = True
+            break
         found = True
         if mob.get("fighting") is not None or mob.get("pos") == "fighting":
             stop_fighting(mob, False)
         mod = -2 if mob.get("is_npc") else -5
         affect_to_char(mob, _new_affect(sn, level, level // 4, "hitroll", mod, "calm"))
         affect_to_char(mob, _new_affect(sn, level, level // 4, "damroll", mod, "calm"))
-    if not ch.get("is_npc"):
+    if not bail and not ch.get("is_npc"):
         if not (ch.get("affected_by", {}).get("calm") or ch.get("affected_by", {}).get("berserk")
                 or is_affected(ch, _skill_lookup("frenzy"))):
             found = True
@@ -1044,7 +1069,9 @@ def spell_cancellation(sn, level, ch, vo, target):
     """Cancellation -- dispel for self/allies (cf. 1stMud spell_cancellation in magic.c)."""
     victim = vo
     level += 2
-    if not ch.get("is_npc") and victim.get("is_npc") and victim is not ch:
+    if ((not ch.get("is_npc") and victim.get("is_npc")
+            and not (ch.get("affected_by", {}).get("charm") and ch.get("master") is victim))
+            or (ch.get("is_npc") and not victim.get("is_npc"))):
         tprint("You failed, try dispel magic.")
         return False
     found = False
@@ -1455,7 +1482,8 @@ def spell_gate(sn, level, ch, vo, target):
     src_flags = ROOM_DEFS.get(ch.get("room"), {}).get("flags", {})
     dst_flags = ROOM_DEFS.get(victim_vnum, {}).get("flags", {})
 
-    if (dst_flags.get("safe")
+    if (not can_see_room(ch, victim_vnum)
+            or dst_flags.get("safe")
             # TODO [PRIMESUD] arena flag not yet implemented
             or src_flags.get("no_recall")
             or dst_flags.get("no_recall")
@@ -1490,8 +1518,7 @@ def spell_haste(sn, level, ch, vo, target):
         if slow_sn is not None and not check_dispel(level, vo, slow_sn, ch):
             if vo is not ch:
                 tprint("Spell failed.")
-            else:
-                tprint("You feel momentarily faster.")
+            tprint("You feel momentarily faster.")
             return False
         return False
     dur = level // 2 if vo is ch else level // 4
@@ -1540,13 +1567,20 @@ def spell_holy_word(sn, level, ch, vo, target):
             if bless_sn is not None:
                 spell_bless(bless_sn, level, ch, mob, TARGET_CHAR)
         elif (_is_good(ch) and _is_evil(mob)) or (_is_evil(ch) and _is_good(mob)):
+            # [PRIMESUD] is_safe_spell not ported
             if curse_sn is not None:
                 spell_curse(curse_sn, level, ch, mob, TARGET_CHAR)
+            # 1stmud: chprintln(vch, ...) — message to victim only
+            # if _is_pc(mob):
+            #     tprint("You are struck down!")
             dam = _dice(level, 6)
             damage(ch, mob, dam, sn, DAM_ENERGY, True)
         elif _is_neutral(ch):
+            # [PRIMESUD] is_safe_spell not ported
             if curse_sn is not None:
                 spell_curse(curse_sn, level // 2, ch, mob, TARGET_CHAR)
+            # if _is_pc(mob):
+            #     tprint("You are struck down!")
             dam = _dice(level, 4)
             damage(ch, mob, dam, sn, DAM_ENERGY, True)
     tprint("You feel drained.")
@@ -2074,7 +2108,7 @@ def spell_investiture(sn, level, ch, vo, target):
     """
     heal = ch.get("move", 0)
     vo["mana"] = min(vo.get("mana", 0) + heal, vo.get("max_mana", 100))
-    ch["move"] = 0
+    vo["move"] = 0
     update_pos(vo)
     tprint("{cThe forces of the earth fill you with energy!{x")
     # 1stMud: act("$n draws magic from the very earth!", ..., TO_ROOM)
@@ -2091,7 +2125,8 @@ def spell_powerstorm(sn, level, ch, vo, target):
         vch = world.chars.get(mob_id)
         if vch is None or vch is ch:
             continue
-        dam = level * 2 // 3 + _dice(20, 20)
+        # [PRIMESUD] is_safe_spell not ported
+        dam = level // 3 * 2 + _dice(20, 20)
         damage(ch, vch, dam, sn, DAM_FIRE, True)
         found = True
     return found

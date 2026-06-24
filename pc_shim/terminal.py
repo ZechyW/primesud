@@ -1,20 +1,11 @@
 """ANSI colour install_color_print for PC -- replaces HP Prime pixel-font version."""
 import sys
 from colors import COLOR_CODE, _RESET_CODES
-
-# Module-level terminal instance, set once by init().
-tr = None
-
-
-def init(instance):
-    """Set module-level tr and install colour print wrappers."""
-    global tr
-    tr = instance
-    install_color_print(instance)
+from tml_prime import tml_prime as tml
 
 
 def tprint(*args, **kwargs):
-    """Module-level print — delegates to tr.print (colour-aware)."""
+    """Module-level print -- delegates to tr.print (colour-aware)."""
     tr.print(*args, **kwargs)
 
 _ANSI = {
@@ -67,3 +58,7 @@ def install_color_print(tr):
         tr._at_prompt = True
 
     tr.set_status = wrapped_set_status
+
+
+tr = tml()
+install_color_print(tr)

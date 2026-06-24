@@ -375,6 +375,22 @@ def act(msg):
     tprint(upper(msg))
 
 
+def can_see_room(ch, room_vnum):
+    """Room visibility check (cf. 1stMud can_see_room in handler.c).
+
+    [PRIMESUD] Stub -- always True. 1stMud checks:
+    - ROOM_ARENA: always visible
+    - ROOM_IMP_ONLY: trust < MAX_LEVEL blocked
+    - ROOM_GODS_ONLY: non-immortal blocked
+    - ROOM_HEROES_ONLY: non-immortal blocked
+    - ROOM_NEWBIES_ONLY: level > 5 and non-immortal blocked
+    - area->clan: non-matching clan blocked
+    - is_home_owner: always visible
+    None of these systems exist in PrimeSUD yet.
+    """
+    return True
+
+
 def can_see(ch, victim):
     """Check if ch can see victim (cf. 1stMud can_see in handler.c).
 
