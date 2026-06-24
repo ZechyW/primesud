@@ -1,4 +1,4 @@
-"""Movement, doors, recall, and flee command handlers."""
+"""Movement, doors, and recall command handlers."""
 
 from config import R_RECALL, PULSE_PER_SECOND
 from skills_table import GSN_RECALL
@@ -143,12 +143,12 @@ def perform_recall(tr, player, location, what="recall"):
         if randint(1, 100) < 80 * skill // 100:
             check_improve(tr, player, GSN_RECALL, False, 6)
             WaitState(player, PULSE_PER_SECOND)
-            tr.print("You failed!.")
+            tr.print("You failed!")
             return False
         player["xp"] = max(0, player["xp"] - 25)
         check_improve(tr, player, GSN_RECALL, True, 4)
         tr.print("You " + what + " from combat!  You lose 25 exps.")
-        stop_fighting(player, both=False)
+        stop_fighting(player, both=True)
 
     player["room"] = location
     do_look(tr, player, [])
@@ -166,29 +166,3 @@ def do_recall(tr, player, args):
     perform_recall(tr, player, location, "recall")
 
 
-def do_flee(tr, player, args):
-    if player["fighting"] is None:
-        tr.print("You're not fighting anyone.")
-        return
-    exits = list(ROOM_DEFS[player["room"]]["exits"].items())
-    if not exits:
-        tr.print("There is nowhere to run!")
-        return
-    # Try exits in random order (up to 6 attempts, cf. 1stMud)
-    attempts = list(range(len(exits)))
-    for _ in range(min(6, len(exits))):
-        idx = randint(0, len(attempts) - 1)
-        direction, exit_val = exits[attempts.pop(idx)]
-        if isinstance(exit_val, dict) and exit_val.get("closed"):
-            continue
-        dest = _exit_to(exit_val)
-        if dest not in ROOM_DEFS:
-            continue
-        player["room"] = dest
-        stop_fighting(player, both=False)
-        tr.print("You flee {}!".format(direction))
-        player["xp"] = max(0, player["xp"] - 10)
-        tr.print("You lost 10 exp.")
-        do_look(tr, player, [])
-        return
-    tr.print("There is nowhere to run!")

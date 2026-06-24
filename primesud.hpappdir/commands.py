@@ -1,11 +1,14 @@
 """Command dispatcher, command table, and position gates."""
 
-from combat import do_kill, do_kick, do_backstab
+from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
+                    do_berserk, do_bash, do_dirt, do_trip, do_flee,
+                    do_rescue, do_disarm, do_surrender, do_slay,
+                    do_sskill, do_stance, do_autostance)
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
                        do_sacrifice)
-from movement import do_move, do_open, do_close, do_recall, do_flee
+from movement import do_move, do_open, do_close, do_recall
 from magic import do_cast
 from scan import do_scan
 from training import do_train, do_practice
@@ -76,16 +79,30 @@ _CMD_TABLE = [
     ("wear",      do_wear,      "resting",  False),   # #138
     ("zap",       do_zap,       "fighting", False),   # #139
     ("backstab",  do_backstab,  "fighting", False),   # #141
+    ("bash",      do_bash,      "fighting", False),   # #142
+    ("bs",        do_backstab,  "fighting", False),   # #143
+    ("berserk",   do_berserk,   "fighting", False),   # #144
+    ("dirt",      do_dirt,      "fighting", False),   # #145
+    ("disarm",    do_disarm,    "fighting", False),   # #146
     ("flee",      do_flee,      "fighting", False),   # #147
     ("kick",      do_kick,      "fighting", False),   # #148
+    ("murder",    do_murder,    "fighting", True),     # #149 noprefix
+    ("rescue",    do_rescue,    "fighting", False),   # #150
+    ("surrender", do_surrender, "fighting", False),   # #151
+    ("trip",      do_trip,      "fighting", False),   # #152
     ("automap",   do_automap,   "sleeping", False),   # #154
     ("quit",      do_quit,      "dead",     True),    # #162 noprefix
     ("recall",    do_recall,    "fighting", False),   # #163
     ("/",         do_recall,    "fighting", False),   # #164
     ("save",      do_save,      "dead",     False),   # #166
     ("train",     do_train,     "resting",  False),   # #171
+    ("slay",      do_slay,      "dead",     True),     # #209 noprefix (imm cmd)
     ("scan",      do_scan,      "resting",  False),   # #253
     ("map",       do_map,       "resting",  False),   # #291
+    ("sskill",    do_sskill,    "sleeping", False),   # #304
+    ("stance",    do_stance,    "standing", False),   # #305
+    ("autostance", do_autostance, "sleeping", False), # #306
+    ("suicide",   do_suicide,   "resting",  True),     # #344 noprefix
     ("macro",     do_macro,     "dead",     False),   # [PRIMESUD] #349
     ("debug",     do_debug,     "dead",     False),   # [PRIMESUD] #350
 ]
