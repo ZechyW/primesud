@@ -47,6 +47,14 @@ from config import (
     AC_BASH,
     AC_SLASH,
     AC_EXOTIC,
+    IS_NORMAL,
+    IS_IMMUNE,
+    IS_RESISTANT,
+    IS_VULNERABLE,
+    IMMUNE_NONE,
+    DAM_TO_FLAG,
+    XP_BASE,
+    SIZE_RANK,
 )
 from item import get_char_room, create_object, item_extra_flags, set_item_extra_flag
 from picker import pick_from
@@ -242,12 +250,6 @@ def _get_thac0(level):
     return t
 
 
-_XP_BASE = {
-    -9: 1, -8: 2, -7: 5, -6: 9, -5: 11, -4: 22, -3: 33, -2: 50,
-    -1: 66, 0: 83, 1: 99, 2: 121, 3: 143, 4: 165,
-}
-
-
 def _xp_for_kill(player_level, mob_level):
     """XP awarded for killing a mob, based on level difference (cf. 1stMud xp_compute in fight.c).
 
@@ -264,7 +266,7 @@ def _xp_for_kill(player_level, mob_level):
     elif lr > 4:
         base = 160 + 20 * (lr - 4)
     else:
-        base = _XP_BASE[lr]
+        base = XP_BASE[lr]
     if player_level < 6:
         base = 10 * base // (player_level + 4)
     if base <= 0:
@@ -412,36 +414,6 @@ def _ac_type_for_damage_class(dam_class):
 
 # -- Immunity check (cf. 1stMud check_immune in handler.c) ---------------------
 
-IS_NORMAL     = 0
-IS_IMMUNE     = 1
-IS_RESISTANT  = 2
-IS_VULNERABLE = 3
-IMMUNE_NONE   = -1
-
-# Maps dam_class -> flag name for specific-type immunity lookup.
-# DAM_BASH/PIERCE/SLASH use "weapon" as the broad category; everything else
-# uses "magic".  The specific flag name (e.g. "fire") overrides the broad one.
-_DAM_TO_FLAG = {
-    DAM_BASH:      "bash",
-    DAM_PIERCE:    "pierce",
-    DAM_SLASH:     "slash",
-    DAM_FIRE:      "fire",
-    DAM_COLD:      "cold",
-    DAM_LIGHTNING: "lightning",
-    DAM_ACID:      "acid",
-    DAM_POISON:    "poison",
-    DAM_NEGATIVE:  "negative",
-    DAM_HOLY:      "holy",
-    DAM_ENERGY:    "energy",
-    DAM_MENTAL:    "mental",
-    DAM_DISEASE:   "disease",
-    DAM_DROWNING:  "drowning",
-    DAM_LIGHT:     "light",
-    DAM_CHARM:     "charm",
-    DAM_SOUND:     "sound",
-}
-
-
 def check_immune(ch, dam_type):
     """Determine immunity/resistance/vulnerability of ch to a damage class
     (cf. 1stMud check_immune in handler.c).
@@ -482,7 +454,7 @@ def check_immune(ch, dam_type):
         default = IS_NORMAL
 
     # -- Pass 2: specific damage-type flag (cf. 1stMud check_immune second switch)
-    flag = _DAM_TO_FLAG.get(dam_type)
+    flag = DAM_TO_FLAG.get(dam_type)
     if flag is None:
         return default
 
@@ -1750,16 +1722,11 @@ def advance_level(tr, player):
             tprint("You can now use the {} {}.".format(data["name"], kind))
 
 
-# -- Size rank (cf. 1stMud SIZE_* in merc.h) ----------------------------------
-
-_SIZE_RANK = {"tiny": 0, "small": 1, "medium": 2, "large": 3, "huge": 4, "giant": 5}
-
-
 def _get_size(ch):
     """Return numeric size rank for ch (cf. 1stMud ch->size)."""
     if ch["is_npc"]:
-        return _SIZE_RANK.get(MOB_DEFS[ch["tpl"]].get("size", "medium"), 2)
-    return _SIZE_RANK.get(ch.get("size", "medium"), 2)
+        return SIZE_RANK.get(MOB_DEFS[ch["tpl"]].get("size", "medium"), 2)
+    return SIZE_RANK.get(ch.get("size", "medium"), 2)
 
 
 def _number_fuzzy(n):

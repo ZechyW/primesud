@@ -2,7 +2,7 @@
 
 from urandom import randint
 
-from config import EXIT_NAMES
+from config import EXIT_NAMES, SIZE_RANK
 import world
 from world import ROOM_DEFS, MOB_DEFS, AREA_DEFS, DOOR_DEFS
 from races import RACE_TABLE
@@ -37,9 +37,6 @@ def _stat_from_level(level):
     """
     # 25 cap intentional: 1stMud create_mobile also hardcodes 25 for mob perm_stat (db.c)
     return min(25, 11 + level // 4)
-
-
-_SIZE_RANK = {"tiny": 0, "small": 1, "medium": 2, "large": 3, "huge": 4, "giant": 5}
 
 
 def create_mobile(tpl_vnum):
@@ -96,7 +93,7 @@ def create_mobile(tpl_vnum):
         s_int += 3; s_str -= 1; s_dex += 1
     if off.get("fast"):
         s_dex += 2
-    size_delta = _SIZE_RANK.get(tpl.get("size", "medium"), 2) - 2   # 2 = SIZE_MEDIUM
+    size_delta = SIZE_RANK.get(tpl.get("size", "medium"), 2) - 2   # 2 = SIZE_MEDIUM
     s_str += size_delta
     s_con += size_delta // 2
 

@@ -252,3 +252,42 @@ ATTACK_TABLE = {
     "code":      ("code",          DAM_OTHER),
     "radiation": ("radiation",     DAM_POISON),
 }
+
+# -- Immunity constants (cf. 1stMud check_immune in handler.c) -------------------------
+IS_NORMAL     = 0
+IS_IMMUNE     = 1
+IS_RESISTANT  = 2
+IS_VULNERABLE = 3
+IMMUNE_NONE   = -1
+
+# -- Damage-class to immunity flag mapping (cf. 1stMud check_immune in handler.c) ------
+# DAM_BASH/PIERCE/SLASH use "weapon" as the broad category; everything else uses "magic".
+# The specific flag name (e.g. "fire") overrides the broad one.
+DAM_TO_FLAG = {
+    DAM_BASH:      "bash",
+    DAM_PIERCE:    "pierce",
+    DAM_SLASH:     "slash",
+    DAM_FIRE:      "fire",
+    DAM_COLD:      "cold",
+    DAM_LIGHTNING: "lightning",
+    DAM_ACID:      "acid",
+    DAM_POISON:    "poison",
+    DAM_NEGATIVE:  "negative",
+    DAM_HOLY:      "holy",
+    DAM_ENERGY:    "energy",
+    DAM_MENTAL:    "mental",
+    DAM_DISEASE:   "disease",
+    DAM_DROWNING:  "drowning",
+    DAM_LIGHT:     "light",
+    DAM_CHARM:     "charm",
+    DAM_SOUND:     "sound",
+}
+
+# -- XP base table by level difference (cf. 1stMud xp_compute in fight.c) -------------
+XP_BASE = {
+    -9: 1, -8: 2, -7: 5, -6: 9, -5: 11, -4: 22, -3: 33, -2: 50,
+    -1: 66, 0: 83, 1: 99, 2: 121, 3: 143, 4: 165,
+}
+
+# -- Size rank (cf. 1stMud SIZE_* in merc.h) -------------------------------------------
+SIZE_RANK = {"tiny": 0, "small": 1, "medium": 2, "large": 3, "huge": 4, "giant": 5}

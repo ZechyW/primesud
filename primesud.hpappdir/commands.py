@@ -62,7 +62,7 @@ _CMD_TABLE = [
     ("spells",    do_spells,    "dead",     False),   # #53
     ("autolist",  do_autolist,  "dead",     False),   # #63
     ("outfit",    do_outfit,    "resting",  False),   # #80
-    ("brandish",  do_brandish,  "fighting", False),   # #112
+    ("brandish",  do_brandish,  "resting",  False),   # #112
     ("close",     do_close,     "resting",  False),   # #113
     ("drop",      do_drop,      "resting",  False),   # #115
     ("eat",       do_eat,       "resting",  False),   # #116
@@ -77,7 +77,7 @@ _CMD_TABLE = [
     ("junk",      do_sacrifice, "resting",  False),   # #135
     ("tap",       do_sacrifice, "resting",  False),   # #136
     ("wear",      do_wear,      "resting",  False),   # #138
-    ("zap",       do_zap,       "fighting", False),   # #139
+    ("zap",       do_zap,       "resting",  False),   # #139
     ("backstab",  do_backstab,  "fighting", False),   # #141
     ("bash",      do_bash,      "fighting", False),   # #142
     ("bs",        do_backstab,  "fighting", False),   # #143
