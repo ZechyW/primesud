@@ -1,8 +1,8 @@
 """Combat rounds, damage resolution, skills, and fight state."""
 
+import world
 from actor import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
                    is_awake, can_see, affect_to_char)
-from colors import upper
 from area_limbo import (
     I_CORPSE,
     I_COIN_SILVER_GCASH,
@@ -11,6 +11,7 @@ from area_limbo import (
     I_COINS_GOLD_GCASH,
     I_COINS_SILVER_GOLD_GCASH,
 )
+from colors import upper
 from config import (
     PULSE_VIOLENCE,
     POS_ORDER,
@@ -29,20 +30,6 @@ from config import (
     DAM_BASH,
     DAM_PIERCE,
     DAM_SLASH,
-    DAM_FIRE,
-    DAM_COLD,
-    DAM_LIGHTNING,
-    DAM_ACID,
-    DAM_POISON,
-    DAM_NEGATIVE,
-    DAM_HOLY,
-    DAM_ENERGY,
-    DAM_MENTAL,
-    DAM_DISEASE,
-    DAM_DROWNING,
-    DAM_LIGHT,
-    DAM_SOUND,
-    DAM_CHARM,
     AC_PIERCE,
     AC_BASH,
     AC_SLASH,
@@ -59,8 +46,6 @@ from config import (
 from item import get_char_room, create_object, item_extra_flags, set_item_extra_flag
 from picker import pick_from
 from player import save_world
-from terminal import tprint
-from urandom import randint
 from skills_table import (
     SKILL_TABLE, SKILLS, WEAPON_GSN_MAP,
     GSN_BACKSTAB, GSN_BASH, GSN_BERSERK, GSN_DIRT, GSN_DISARM,
@@ -68,7 +53,8 @@ from skills_table import (
     GSN_RESCUE, GSN_SHIELD_BLOCK, GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
     GSN_TRIP,
 )
-import world
+from terminal import tprint
+from urandom import randint
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 
 
@@ -839,7 +825,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         dt (int): Damage type ID; TYPE_HIT for weapon, skill sn for spells/skills.
         dam_type (int): DAM_* class for immunity checks.
         show (bool): Print dam_message if True (position messages always shown).
-        attack_noun (str or None): Attack display noun for dam_message.
+        attack_noun (str or None): [PRIMESUD] Attack display noun for dam_message.
 
     Returns:
         bool: True if damage applied (including kill); False on miss/dodge/parry/immune/dead.
@@ -1055,8 +1041,8 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
     #             if (ACT_WIMPY && number_bits(2)==0 && hit < max_hit/5) do_flee;
     #             elif (AFF_CHARM && master && master->in_room != victim->in_room) do_flee; }
     if victim["is_npc"] and dam > 0 and victim.get("wait", 0) < PULSE_VIOLENCE // 2:
-        act = victim.get("act_flags", {})
-        if (act.get("wimpy") and randint(0, 3) == 0
+        act_flags = victim.get("act_flags", {})
+        if (act_flags.get("wimpy") and randint(0, 3) == 0
                 and victim["hit"] < victim.get("max_hit", 1) // 5):
             do_flee([])
         # [PRIMESUD] charmed mob flee requires master tracking (not yet ported)

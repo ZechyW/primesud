@@ -3,11 +3,14 @@
 import world
 from actor import is_name, is_affected, affect_to_char, affect_strip, is_awake
 from area_limbo import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
-                        I_DISC_DISK_FLOATING_BLACK, I_GATE_PORTAL)
+                        I_DISC_DISK_FLOATING_BLACK)
 from colors import upper
 from combat import (WaitState, check_improve, get_skill, set_fighting,
                     damage, stop_fighting, update_pos)
-from config import POS_ORDER, DAM_NONE
+from config import (POS_ORDER, DAM_ACID, DAM_BASH, DAM_COLD,
+                    DAM_DISEASE, DAM_DROWNING, DAM_ENERGY, DAM_FIRE,
+                    DAM_HARM, DAM_HOLY, DAM_LIGHT, DAM_LIGHTNING,
+                    DAM_NEGATIVE, DAM_PIERCE, DAM_POISON, DAM_SLASH)
 from config import R_RECALL, MAX_MORTAL_LEVEL
 from item import (get_char_room, get_obj_list, obj_vnum, item_spell_level,
                   item_spells, item_spell_name, item_extra_flags,
@@ -243,17 +246,17 @@ def spell_heal(sn, level, ch, vo, target):
 
 def spell_cause_light(sn, level, ch, vo, target):
     """Cause light wounds (cf. 1stMud spell_cause_light in magic.c)."""
-    return _damage_char(ch, vo, _target_id(ch, vo), _dice(1, 8) + level // 3, sn)
+    return damage(ch, vo, _dice(1, 8) + level // 3, sn, DAM_HARM, True)
 
 
 def spell_cause_serious(sn, level, ch, vo, target):
     """Cause serious wounds (cf. 1stMud spell_cause_serious in magic.c)."""
-    return _damage_char(ch, vo, _target_id(ch, vo), _dice(2, 8) + level // 2, sn)
+    return damage(ch, vo, _dice(2, 8) + level // 2, sn, DAM_HARM, True)
 
 
 def spell_cause_critical(sn, level, ch, vo, target):
     """Cause critical wounds (cf. 1stMud spell_cause_critical in magic.c)."""
-    return _damage_char(ch, vo, _target_id(ch, vo), _dice(3, 8) + level - 6, sn)
+    return damage(ch, vo, _dice(3, 8) + level - 6, sn, DAM_HARM, True)
 
 
 def spell_harm(sn, level, ch, vo, target):
@@ -262,7 +265,7 @@ def spell_harm(sn, level, ch, vo, target):
     if saves_spell(level, vo, "harm"):
         dam = min(50, dam // 2)
     dam = min(100, dam)
-    return _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+    return damage(ch, vo, dam, sn, DAM_HARM, True)
 
 
 def spell_magic_missile(sn, level, ch, vo, target):
@@ -271,7 +274,7 @@ def spell_magic_missile(sn, level, ch, vo, target):
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, "energy"):
         dam //= 2
-    return _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+    return damage(ch, vo, dam, sn, DAM_ENERGY, True)
 
 
 def spell_earthquake(sn, level, ch, vo, target):
@@ -283,7 +286,7 @@ def spell_earthquake(sn, level, ch, vo, target):
         if victim is None or victim is ch:
             continue
         dam = 0 if victim.get("affected_by", {}).get("flying") else level + _dice(2, 8)
-        _damage_char(ch, victim, mob_id, dam, sn)
+        damage(ch, victim, dam, sn, DAM_BASH, True)
     return True
 
 
@@ -309,7 +312,7 @@ def spell_call_lightning(sn, level, ch, vo, target):
         cur_dam = dam
         if saves_spell(level, victim, "lightning"):
             cur_dam //= 2
-        _damage_char(ch, victim, mob_id, cur_dam, sn)
+        damage(ch, victim, cur_dam, sn, DAM_LIGHTNING, True)
     return True
 
 
@@ -332,7 +335,7 @@ def spell_chain_lightning(sn, level, ch, vo, target):
         dam = _dice(level, 6)
         if saves_spell(level, victim, "lightning"):
             dam //= 3
-        _damage_char(ch, victim, victim_id, dam, sn)
+        damage(ch, victim, dam, sn, DAM_LIGHTNING, True)
         any_hit = True
         level -= 4
         last_victim_id = victim_id
@@ -971,7 +974,7 @@ def spell_acid_blast(sn, level, ch, vo, target):
     dam = _dice(level, 12)
     if saves_spell(level, vo, "acid"):
         dam //= 2
-    return _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+    return damage(ch, vo, dam, sn, DAM_ACID, True)
 
 
 def spell_burning_hands(sn, level, ch, vo, target):
@@ -980,7 +983,7 @@ def spell_burning_hands(sn, level, ch, vo, target):
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, "fire"):
         dam //= 2
-    return _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+    return damage(ch, vo, dam, sn, DAM_FIRE, True)
 
 
 def spell_calm(sn, level, ch, vo, target):
@@ -1115,7 +1118,7 @@ def spell_chill_touch(sn, level, ch, vo, target):
         affect_to_char(vo, _new_affect(sn, level, 6, "str", -1))
     else:
         dam //= 2
-    return _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+    return damage(ch, vo, dam, sn, DAM_COLD, True)
 
 
 def spell_color_spray(sn, level, ch, vo, target):
@@ -1128,7 +1131,7 @@ def spell_color_spray(sn, level, ch, vo, target):
         blind_sn = _skill_lookup("blindness")
         if blind_sn is not None:
             spell_blindness(blind_sn, level // 2, ch, vo, TARGET_CHAR)
-    return _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+    return damage(ch, vo, dam, sn, DAM_LIGHT, True)
 
 
 def spell_continual_light(sn, level, ch, vo, target):
@@ -1213,7 +1216,7 @@ def spell_demonfire(sn, level, ch, vo, target):
     curse_sn = _skill_lookup("curse")
     if curse_sn is not None:
         spell_curse(curse_sn, 3 * level // 4, ch, victim, TARGET_CHAR)
-    return _damage_char(ch, victim, _target_id(ch, victim), dam, sn)
+    return damage(ch, victim, dam, sn, DAM_NEGATIVE, True)
 
 
 def spell_detect_evil(sn, level, ch, vo, target):
@@ -1283,7 +1286,7 @@ def spell_dispel_evil(sn, level, ch, vo, target):
         dam = max(victim.get("hit", 0), _dice(level, 4))
     if saves_spell(level, victim, "holy"):
         dam //= 2
-    return _damage_char(ch, victim, _target_id(ch, victim), dam, sn)
+    return damage(ch, victim, dam, sn, DAM_HOLY, True)
 
 
 def spell_dispel_good(sn, level, ch, vo, target):
@@ -1303,7 +1306,7 @@ def spell_dispel_good(sn, level, ch, vo, target):
         dam = max(victim.get("hit", 0), _dice(level, 4))
     if saves_spell(level, victim, "negative"):
         dam //= 2
-    return _damage_char(ch, victim, _target_id(ch, victim), dam, sn)
+    return damage(ch, victim, dam, sn, DAM_NEGATIVE, True)
 
 
 def spell_energy_drain(sn, level, ch, vo, target):
@@ -1323,7 +1326,7 @@ def spell_energy_drain(sn, level, ch, vo, target):
         dam = _dice(1, level)
         ch["hit"] = ch.get("hit", 0) + dam
     tprint("You feel your life slipping away!" if victim is ch else "Wow....what a rush!")
-    _damage_char(ch, victim, _target_id(ch, victim), dam, sn)
+    damage(ch, victim, dam, sn, DAM_NEGATIVE, True)
     return True
 
 
@@ -1333,7 +1336,7 @@ def spell_fireball(sn, level, ch, vo, target):
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, "fire"):
         dam //= 2
-    return _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+    return damage(ch, vo, dam, sn, DAM_FIRE, True)
 
 
 def spell_flamestrike(sn, level, ch, vo, target):
@@ -1341,7 +1344,7 @@ def spell_flamestrike(sn, level, ch, vo, target):
     dam = _dice(6 + level // 2, 8)
     if saves_spell(level, vo, "fire"):
         dam //= 2
-    return _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+    return damage(ch, vo, dam, sn, DAM_FIRE, True)
 
 
 def spell_faerie_fog(sn, level, ch, vo, target):
@@ -1515,7 +1518,7 @@ def spell_heat_metal(sn, level, ch, vo, target):
         dam = 2 * dam // 3
     tprint("You sear " + _char_name(ch, victim) + " with heat!")
     # TODO [PRIMESUD] full equipment iteration and drop/sear mechanic
-    return _damage_char(ch, victim, _target_id(ch, victim), dam, sn)
+    return damage(ch, victim, dam, sn, DAM_FIRE, True)
 
 
 def spell_holy_word(sn, level, ch, vo, target):
@@ -1540,12 +1543,12 @@ def spell_holy_word(sn, level, ch, vo, target):
             if curse_sn is not None:
                 spell_curse(curse_sn, level, ch, mob, TARGET_CHAR)
             dam = _dice(level, 6)
-            _damage_char(ch, mob, mob_id, dam, sn)
+            damage(ch, mob, dam, sn, DAM_ENERGY, True)
         elif _is_neutral(ch):
             if curse_sn is not None:
                 spell_curse(curse_sn, level // 2, ch, mob, TARGET_CHAR)
             dam = _dice(level, 4)
-            _damage_char(ch, mob, mob_id, dam, sn)
+            damage(ch, mob, dam, sn, DAM_ENERGY, True)
     tprint("You feel drained.")
     ch["move"] = 0
     ch["hit"] = ch.get("hit", 1) // 2
@@ -1607,7 +1610,7 @@ def spell_lightning_bolt(sn, level, ch, vo, target):
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, "lightning"):
         dam //= 2
-    return _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+    return damage(ch, vo, dam, sn, DAM_LIGHTNING, True)
 
 
 def spell_mass_healing(sn, level, ch, vo, target):
@@ -1682,7 +1685,7 @@ def spell_ray_of_truth(sn, level, ch, vo, target):
     if align < -1000:
         align = -1000 + (align + 1000) // 3
     dam = (dam * align * align) // 1000000
-    _damage_char(ch, victim, _target_id(ch, victim), dam, sn)
+    damage(ch, victim, dam, sn, DAM_HOLY, True)
     blind_sn = _skill_lookup("blindness")
     if blind_sn is not None:
         spell_blindness(blind_sn, 3 * level // 4, ch, victim, TARGET_CHAR)
@@ -1790,7 +1793,7 @@ def spell_shocking_grasp(sn, level, ch, vo, target):
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, "lightning"):
         dam //= 2
-    return _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+    return damage(ch, vo, dam, sn, DAM_LIGHTNING, True)
 
 
 def spell_sleep(sn, level, ch, vo, target):
@@ -1894,7 +1897,7 @@ def spell_acid_breath(sn, level, ch, vo, target):
         # TODO [PRIMESUD] acid_effect(victim, level/2, dam/4, TARGET_CHAR)
         dam //= 2
     # else: TODO acid_effect(victim, level, dam, TARGET_CHAR)
-    return _damage_char(ch, victim, _target_id(ch, victim), dam, sn)
+    return damage(ch, victim, dam, sn, DAM_ACID, True)
 
 
 def spell_fire_breath(sn, level, ch, vo, target):
@@ -1917,7 +1920,7 @@ def spell_fire_breath(sn, level, ch, vo, target):
             cur_dam = dam // 2 if saves_spell(level, vch, "fire") else dam
         else:
             cur_dam = dam // 4 if saves_spell(level - 2, vch, "fire") else dam // 2
-        _damage_char(ch, vch, mob_id, cur_dam, sn)
+        damage(ch, vch, cur_dam, sn, DAM_FIRE, True)
     return found
 
 
@@ -1941,7 +1944,7 @@ def spell_frost_breath(sn, level, ch, vo, target):
             cur_dam = dam // 2 if saves_spell(level, vch, "cold") else dam
         else:
             cur_dam = dam // 4 if saves_spell(level - 2, vch, "cold") else dam // 2
-        _damage_char(ch, vch, mob_id, cur_dam, sn)
+        damage(ch, vch, cur_dam, sn, DAM_COLD, True)
     return found
 
 
@@ -1964,7 +1967,7 @@ def spell_gas_breath(sn, level, ch, vo, target):
             cur_dam = dam // 2
         else:
             cur_dam = dam
-        _damage_char(ch, vch, mob_id, cur_dam, sn)
+        damage(ch, vch, cur_dam, sn, DAM_POISON, True)
     return found
 
 
@@ -1980,7 +1983,7 @@ def spell_lightning_breath(sn, level, ch, vo, target):
         # TODO [PRIMESUD] shock_effect(victim, level/2, dam/4, TARGET_CHAR)
         dam //= 2
     # else: TODO shock_effect(victim, level, dam, TARGET_CHAR)
-    return _damage_char(ch, victim, _target_id(ch, victim), dam, sn)
+    return damage(ch, victim, dam, sn, DAM_LIGHTNING, True)
 
 
 def spell_general_purpose(sn, level, ch, vo, target):
@@ -1988,7 +1991,7 @@ def spell_general_purpose(sn, level, ch, vo, target):
     dam = randint(25, 100)
     if saves_spell(level, vo, "pierce"):
         dam //= 2
-    return _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+    return damage(ch, vo, dam, sn, DAM_PIERCE, True)
 
 
 def spell_high_explosive(sn, level, ch, vo, target):
@@ -1996,7 +1999,7 @@ def spell_high_explosive(sn, level, ch, vo, target):
     dam = randint(30, 120)
     if saves_spell(level, vo, "pierce"):
         dam //= 2
-    return _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+    return damage(ch, vo, dam, sn, DAM_PIERCE, True)
 
 
 # -- magic2.c spells --
@@ -2089,7 +2092,7 @@ def spell_powerstorm(sn, level, ch, vo, target):
         if vch is None or vch is ch:
             continue
         dam = level * 2 // 3 + _dice(20, 20)
-        _damage_char(ch, vch, mob_id, dam, sn)
+        damage(ch, vch, dam, sn, DAM_FIRE, True)
         found = True
     return found
 
@@ -2100,7 +2103,7 @@ def spell_mana_burn(sn, level, ch, vo, target):
     if saves_spell(level, vo, "fire"):
         dam //= 2
     # TODO [PRIMESUD] fire_effect(victim, level/2, dam/10, TARGET_CHAR)
-    return _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+    return damage(ch, vo, dam, sn, DAM_FIRE, True)
 
 
 def spell_bark_skin(sn, level, ch, vo, target):
@@ -2181,66 +2184,63 @@ def spell_wild_magic(sn, level, ch, vo, target):
 
     Structure mirrors 1stMud exactly: each branch saves, halves dam, deals
     damage, then applies elemental effect, then early-returns.
-    TODO [PRIMESUD] _damage_char uses a fixed dam_type from the skill table;
-    1stMud passes a per-branch DAM_* constant to damage(). Add per-branch
-    dam_type when vulnerability/resistance system is fully ported.
     """
     dam = _dice(level * 3 // 2, 14)
     numba = randint(1, 100)
     if numba <= 10:
         if saves_spell(level, vo, "acid"):
             dam //= 2
-        _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+        damage(ch, vo, dam, sn, DAM_ACID, True)
         # TODO [PRIMESUD] acid_effect(vo, level, dam, TARGET_CHAR)
         return True
     if numba <= 20:
         if saves_spell(level, vo, "fire"):
             dam //= 2
-        _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+        damage(ch, vo, dam, sn, DAM_FIRE, True)
         # TODO [PRIMESUD] fire_effect(vo, level, dam, TARGET_CHAR)
         return True
     if numba <= 30:
         if saves_spell(level, vo, "lightning"):
             dam //= 2
-        _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+        damage(ch, vo, dam, sn, DAM_LIGHTNING, True)
         # TODO [PRIMESUD] shock_effect(vo, level, dam, TARGET_CHAR)
         return True
     if numba <= 40:
         if saves_spell(level, vo, "cold"):
             dam //= 2
-        _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+        damage(ch, vo, dam, sn, DAM_COLD, True)
         # TODO [PRIMESUD] cold_effect(vo, level, dam, TARGET_CHAR)
         return True
     if numba <= 50:
         if saves_spell(level, vo, "holy"):
             dam //= 2
-        _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+        damage(ch, vo, dam, sn, DAM_HOLY, True)
         return True
     if numba <= 60:
         if saves_spell(level, vo, "light"):
             dam //= 2
-        _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+        damage(ch, vo, dam, sn, DAM_LIGHT, True)
         return True
     if numba <= 70:
         if saves_spell(level, vo, "drowning"):
             dam //= 2
-        _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+        damage(ch, vo, dam, sn, DAM_DROWNING, True)
         return True
     if numba <= 80:
         if saves_spell(level, vo, "disease"):
             dam //= 2
-        _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+        damage(ch, vo, dam, sn, DAM_DISEASE, True)
         return True
     if numba <= 90:
         if saves_spell(level, vo, "slash"):
             dam //= 2
-        _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+        damage(ch, vo, dam, sn, DAM_SLASH, True)
         return True
     # numba <= 100: negative -- saves halves FIRST, then /5, then all four effects
     if saves_spell(level, vo, "negative"):
         dam //= 2
     dam //= 5
-    _damage_char(ch, vo, _target_id(ch, vo), dam, sn)
+    damage(ch, vo, dam, sn, DAM_NEGATIVE, True)
     # TODO [PRIMESUD] acid_effect(vo, level, dam, TARGET_CHAR)
     # TODO [PRIMESUD] fire_effect(vo, level, dam, TARGET_CHAR)
     # TODO [PRIMESUD] cold_effect(vo, level, dam, TARGET_CHAR)
