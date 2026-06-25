@@ -28,7 +28,7 @@ from util import free_mem, gc_collect
 from config import R_STARTING_ROOM
 import world
 from world import ROOM_DEFS, MOB_DEFS, init_world
-from combat import update_mob_timers, violence_update, mob_condition
+from combat import update_mob_timers, violence_update, mob_condition, make_corpse
 from mob import mobile_update, aggr_update, area_update
 from player import tick_update, show_prompt
 from update import obj_update, affect_update
@@ -248,6 +248,8 @@ class Game:
                     if violence_update(player):
                         # [PRIMESUD] Handle auto respawn on death
                         tr.print("You have been KILLED!!")
+                        # [PRIMESUD] Drop empty PC corpse in death room for effect
+                        make_corpse(player)
                         tr.print("Your lifeforce ebbs away...")
                         wait(DEATH_MSG_DELAY)
                         tr.print("A distant warmth draws you back.")

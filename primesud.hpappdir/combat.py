@@ -5,7 +5,7 @@ from actor import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
                    is_awake, can_see, affect_to_char, chprintln, TO_CHAR,
                    TO_NOTVICT, TO_ROOM, TO_VICT)
 from area_limbo import (
-    I_CORPSE,
+    I_CORPSE, I_CORPSE_11,
     I_COIN_SILVER_GCASH,
     I_COIN_GOLD_GCASH,
     I_COINS_SILVER_GCASH,
@@ -1684,34 +1684,75 @@ def create_money(gold, silver):
     return obj
 
 
-def make_corpse(inst, tpl):
-    """Create an NPC corpse containing mob loot and place it in the room (cf. 1stMud make_corpse in fight.c)."""
-    corpse = create_object(I_CORPSE)
-    corpse["timer"] = randint(3, 6)
-    mob_short = tpl["short_descr"]
-    corpse["short_descr"] = "The corpse of " + mob_short
-    corpse["description"] = "The corpse of " + mob_short + " is lying here."
-    corpse["contents"] = []
+def make_corpse(ch):
+    """Create corpse for ch and place in room (cf. 1stMud make_corpse in fight.c).
 
-    coin = create_money(inst.get("gold", 0), inst.get("silver", 0))
-    if coin is not None:
-        corpse["contents"].append(coin)
+    NPC: corpse contains mob loot (gold + equipment).
+    PC: [PRIMESUD] empty corpse for dramatic effect; player keeps items on respawn.
 
-    for obj in list(inst.get("equip", {}).values()) + list(inst.get("inv", [])):
-        if obj is None:
-            continue
-        obj_tpl = ITEM_DEFS[obj["vnum"]]
-        flags = item_extra_flags(obj, obj_tpl)
-        if flags.get("inventory"):
-            continue
-        if flags.get("rot_death"):
-            obj["timer"] = randint(5, 10)
-            set_item_extra_flag(obj, obj_tpl, "rot_death", False)
-        if item_extra_flags(obj, obj_tpl).get("vis_death"):
-            set_item_extra_flag(obj, obj_tpl, "vis_death", False)
-        corpse["contents"].append(obj)
+    Args:
+        ch (dict): Dying character (player or mob instance).
+    """
+    # 1stMud: if (IsSet(ch->in_room->room_flags, ROOM_ARENA)) return;
+    # [PRIMESUD] skip arena check (not ported)
 
-    world.rooms[inst["room"]]["items"].append(corpse)
+    if ch.get("is_npc"):
+        # 1stMud: name = ch->short_descr;
+        name = MOB_DEFS[ch["tpl"]]["short_descr"]
+        # 1stMud: corpse = create_object(get_obj_index(OBJ_VNUM_CORPSE_NPC), 0);
+        corpse = create_object(I_CORPSE)
+        # 1stMud: corpse->timer = number_range(3, 6);
+        corpse["timer"] = randint(3, 6)
+        corpse["contents"] = []
+        # 1stMud: if (ch->gold > 0) { obj_to_obj(create_money(...), corpse); ... }
+        coin = create_money(ch.get("gold", 0), ch.get("silver", 0))
+        if coin is not None:
+            corpse["contents"].append(coin)
+        # 1stMud: corpse->cost = 0;  (default in PrimeSUD)
+
+        # 1stMud: for (obj = ch->carrying_first ...) obj_to_obj(obj, corpse)
+        for obj in list(ch.get("equip", {}).values()) + list(ch.get("inv", [])):
+            if obj is None:
+                continue
+            obj_tpl = ITEM_DEFS[obj["vnum"]]
+            flags = item_extra_flags(obj, obj_tpl)
+            # 1stMud: if (IsSet(obj->extra_flags, ITEM_INVENTORY)) extract_obj(obj)
+            if flags.get("inventory"):
+                continue
+            # 1stMud: if (IsSet(obj->extra_flags, ITEM_ROT_DEATH) && !floating)
+            if flags.get("rot_death"):
+                obj["timer"] = randint(5, 10)
+                set_item_extra_flag(obj, obj_tpl, "rot_death", False)
+            # 1stMud: RemBit(obj->extra_flags, ITEM_VIS_DEATH)
+            if item_extra_flags(obj, obj_tpl).get("vis_death"):
+                set_item_extra_flag(obj, obj_tpl, "vis_death", False)
+            # 1stMud: floating item handling (WEAR_FLOAT scatter/evaporate)
+            # [PRIMESUD] skip floating items (not ported)
+            corpse["contents"].append(obj)
+    else:
+        # 1stMud: name = ch->name;
+        name = ch.get("name", "someone")
+        # 1stMud: corpse = create_object(get_obj_index(OBJ_VNUM_CORPSE_PC), 0);
+        corpse = create_object(I_CORPSE_11)
+        # 1stMud: corpse->timer = number_range(25, 40);
+        corpse["timer"] = randint(25, 40)
+        # 1stMud: corpse->owner = str_dup(ch->name);
+        corpse["owner"] = ch.get("name", "someone")
+        # 1stMud: RemBit(ch->act, PLR_CANLOOT);
+        # [PRIMESUD] skip PLR_CANLOOT (not ported)
+        # 1stMud: if (is_clan(ch)) { gold/2 into corpse; }
+        # [PRIMESUD] skip clan gold split (no clans)
+        # 1stMud: item transfer loop (obj_to_obj for all carrying)
+        # [PRIMESUD] skip -- player keeps all items on respawn
+
+    # 1stMud: corpse->level = ch->level;
+    corpse["level"] = ch.get("level", 1)
+    # 1stMud: sprintf(buf, corpse->short_descr, name);
+    corpse["short_descr"] = "The corpse of " + name
+    # 1stMud: sprintf(buf, corpse->description, name);
+    corpse["description"] = "The corpse of " + name + " is lying here."
+    # 1stMud: obj_to_room(corpse, ch->in_room);
+    world.rooms[ch["room"]]["items"].append(corpse)
 
 
 def raw_kill(player, mob_id, inst, tpl):
@@ -1733,7 +1774,7 @@ def raw_kill(player, mob_id, inst, tpl):
 
     _death_cry(tpl)
 
-    make_corpse(inst, tpl)
+    make_corpse(inst)
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
     save_world(quiet=True)

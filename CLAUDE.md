@@ -46,7 +46,7 @@ When porting 1stMud code using `CTAG(_CONSTANT)` (e.g. `CTAG(_MOBILES)`), defaul
 
 ## Porting from 1stmud
 
-When porting features from 1stmud, aim for full fidelity. Prefer line-by-line port, matching 1stmud's data and naming conventions wherever possible. Add inline comments for features that aren't available yet or that are PRIMESUD specific, so that these are easy to find/validate/address later.
+When porting features from 1stmud, aim for full fidelity. In particular, match 1stmud's function signatures, logic flow, and output messages. Match data and naming conventions wherever possible. Add inline comments for features that aren't available yet or that are PRIMESUD specific, so that these are easy to find/validate/address later.
 
 ## Verified port
 
