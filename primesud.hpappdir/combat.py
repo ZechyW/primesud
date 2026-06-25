@@ -728,10 +728,9 @@ def check_parry(ch, victim):
     if randint(1, 100) >= chance:
         return False
 
-    if victim["is_npc"]:
-        act("{} parries your attack.".format(MOB_DEFS[victim["tpl"]]["short_descr"]))
-    else:
-        act("You parry {}'s attack.".format(MOB_DEFS[ch["tpl"]]["short_descr"]))
+    act("$N parries your attack.", ch, None, victim, TO_CHAR)
+    act("You parry $n's attack.", ch, None, victim, TO_VICT)
+    if not victim["is_npc"]:
         check_improve(victim, GSN_PARRY, True, 6)
     return True
 
@@ -760,12 +759,9 @@ def check_shield_block(ch, victim):
     if randint(1, 100) >= chance + victim["level"] - ch["level"]:
         return False
 
-    if victim["is_npc"]:
-        act("{} blocks your attack with a shield.".format(
-            MOB_DEFS[victim["tpl"]]["short_descr"]))
-    else:
-        act("You block {}'s attack with your shield.".format(
-            MOB_DEFS[ch["tpl"]]["short_descr"]))
+    act("$N blocks your attack with a shield.", ch, None, victim, TO_CHAR)
+    act("You block $n's attack with your shield.", ch, None, victim, TO_VICT)
+    if not victim["is_npc"]:
         check_improve(victim, GSN_SHIELD_BLOCK, True, 6)
     return True
 
@@ -794,10 +790,9 @@ def check_dodge(ch, victim):
     if randint(1, 100) >= chance + victim["level"] - ch["level"]:
         return False
 
-    if victim["is_npc"]:
-        act("{} dodges your attack.".format(MOB_DEFS[victim["tpl"]]["short_descr"]))
-    else:
-        act("You dodge {}'s attack.".format(MOB_DEFS[ch["tpl"]]["short_descr"]))
+    act("$N dodges your attack.", ch, None, victim, TO_CHAR)
+    act("You dodge $n's attack.", ch, None, victim, TO_VICT)
+    if not victim["is_npc"]:
         check_improve(victim, GSN_DODGE, True, 6)
     return True
 
@@ -954,42 +949,28 @@ def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
     vs, vp = _damage_verb(dam)
     punct  = _damage_punct(dam)
 
-    if not ch["is_npc"]:
-        # 1stMud dam_message: ch is player; message goes to ch (TO_CHAR perspective)
-        victim_name = MOB_DEFS[victim["tpl"]]["short_descr"]
-        if immune:
-            # 1stMud: "... but $N is unaffected." (immune suffix)
-            if attack_noun:
-                act("{GYour %s doesn't affect {G%s.{x" % (attack_noun, victim_name))
-            else:
-                act("{GYour attack doesn't affect {G%s.{x" % victim_name)
-        elif dam == 0:
-            # 1stMud: miss message without damage bracket
-            if attack_noun:
-                act("{GYour %s misses {G%s.{x" % (attack_noun, victim_name))
-            else:
-                act("{GYou miss {G%s.{x" % victim_name)
-        elif attack_noun:
-            act("{GYour %s %s {G%s%s {W[{R%d{W]{x" % (attack_noun, vp, victim_name,
-                                                      punct, dam))
+    # 1stMud dam_message: TO_CHAR goes to attacker, TO_VICT goes to defender
+    # (cf. fight.c:2610-2693). Routing replaces is_npc branching.
+    if immune:
+        if attack_noun:
+            act("{GYour %s doesn't affect {G$N.{x" % attack_noun, ch, None, victim, TO_CHAR)
+            act("{R$n's %s is powerless against you.{x" % attack_noun, ch, None, victim, TO_VICT)
         else:
-            act("{GYou %s {G%s%s {W[{R%d{W]{x" % (vs, victim_name, punct, dam))
+            act("{GYour attack doesn't affect {G$N.{x", ch, None, victim, TO_CHAR)
+            act("{RYour body is unaffected by $n's attack.{x", ch, None, victim, TO_VICT)
+    elif dam == 0:
+        if attack_noun:
+            act("{GYour %s misses {G$N.{x" % attack_noun, ch, None, victim, TO_CHAR)
+            act("{R$n's %s misses {Ryou.{x" % attack_noun, ch, None, victim, TO_VICT)
+        else:
+            act("{GYou miss {G$N.{x", ch, None, victim, TO_CHAR)
+            act("{R$n misses {Ryou.{x", ch, None, victim, TO_VICT)
+    elif attack_noun:
+        act("{GYour %s %s {G$N%s {W[{R%d{W]{x" % (attack_noun, vp, punct, dam), ch, None, victim, TO_CHAR)
+        act("{R$n's %s %s {Ryou%s {W[{R%d{W]{x" % (attack_noun, vp, punct, dam), ch, None, victim, TO_VICT)
     else:
-        # 1stMud dam_message: ch is mob; message goes to victim (TO_VICT) when victim is player
-        ch_name = MOB_DEFS[ch["tpl"]]["short_descr"]
-        if immune:
-            act("{RYour body is unaffected by %s's attack.{x" % ch_name)
-        elif dam == 0:
-            # 1stMud: miss message without damage bracket
-            if attack_noun:
-                act("{R%s's %s misses {Ryou.{x" % (ch_name, attack_noun))
-            else:
-                act("{R%s misses {Ryou.{x" % ch_name)
-        elif attack_noun:
-            act("{R%s's %s %s {Ryou%s {W[{R%d{W]{x" % (ch_name, attack_noun, vp, punct,
-                                                       dam))
-        else:
-            act("{R%s %s {Ryou%s {W[{R%d{W]{x" % (ch_name, vp, punct, dam))
+        act("{GYou %s {G$N%s {W[{R%d{W]{x" % (vs, punct, dam), ch, None, victim, TO_CHAR)
+        act("{R$n %s {Ryou%s {W[{R%d{W]{x" % (vp, punct, dam), ch, None, victim, TO_VICT)
 
 
 def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
@@ -1131,34 +1112,21 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
     # 1stMud: switch (victim->position) { case POS_MORTAL: ... case POS_DEAD: ... default: ... }
     # pos captured before stop_fighting (called below) can reset it to "standing".
     pos = victim.get("pos", "standing")
-    victim_name = MOB_DEFS[victim["tpl"]]["short_descr"] if victim["is_npc"] else None
 
     if pos == "mortal":
-        # 1stMud: act("$n is mortally wounded, and will die soon, if not aided.", victim, TO_ROOM)
-        #         chprintln(victim, "You are mortally wounded, and will die soon, if not aided.")
-        if victim["is_npc"]:
-            act("{} is mortally wounded, and will die soon, if not aided.".format(victim_name))
-        else:
+        act("$n is mortally wounded, and will die soon, if not aided.", victim, type=TO_ROOM)
+        if not victim["is_npc"]:
             tprint("You are mortally wounded, and will die soon, if not aided.")
     elif pos == "incap":
-        # 1stMud: act("$n is incapacitated and will slowly die, if not aided.", victim, TO_ROOM)
-        #         chprintln(victim, "You are incapacitated and will slowly die, if not aided.")
-        if victim["is_npc"]:
-            act("{} is incapacitated and will slowly die, if not aided.".format(victim_name))
-        else:
+        act("$n is incapacitated and will slowly die, if not aided.", victim, type=TO_ROOM)
+        if not victim["is_npc"]:
             tprint("You are incapacitated and will slowly die, if not aided.")
     elif pos == "stunned":
-        # 1stMud: act("$n is stunned, but will probably recover.", victim, TO_ROOM)
-        #         chprintln(victim, "You are stunned, but will probably recover.")
-        if victim["is_npc"]:
-            act("{} is stunned, but will probably recover.".format(victim_name))
-        else:
+        act("$n is stunned, but will probably recover.", victim, type=TO_ROOM)
+        if not victim["is_npc"]:
             tprint("You are stunned, but will probably recover.")
     elif pos == "dead":
-        # 1stMud: act("$n is DEAD!!", victim, 0, 0, TO_ROOM)
-        if victim["is_npc"]:
-            act("{} is DEAD!!".format(victim_name))
-        # 1stMud: chprintln(victim, "You have been KILLED!!")
+        act("$n is DEAD!!", victim, type=TO_ROOM)
         # [PRIMESUD] player death message printed by game loop (primesud.py) to avoid duplicate
     else:
         # 1stMud: default:
@@ -1420,8 +1388,7 @@ def do_backstab(ch, args):
         return None
 
     if victim["hit"] < victim["max_hit"] // 3:
-        act("%s is hurt and suspicious ... you can't sneak up." % upper(
-            MOB_DEFS[victim["tpl"]]["short_descr"]))
+        act("$N is hurt and suspicious ... you can't sneak up.", ch, None, victim, TO_CHAR)
         return None
 
     # [PRIMESUD] check_killer not ported
@@ -1711,15 +1678,15 @@ def _advance_target(player, mob_instances, room_state):
 # [PRIMESUD] uniform distribution over all variants; 1stMud uses number_bits(4)
 # with per-mob part flags, giving ~50% chance of the fallback "death cry" line.
 _DEATH_CRIES = [
-    "{} hits the ground ... DEAD.",
-    "{} splatters blood on your armor.",
-    "{} spills its guts all over the floor.",
-    "{}'s heart is torn from its chest.",
-    "{}'s severed head plops on the ground.",
-    "{}'s arm is sliced from its dead body.",
-    "{}'s leg is sliced from its dead body.",
-    "{}'s head is shattered, and its brains splash all over you.",
-    "You hear {}'s death cry.",
+    "$n hits the ground ... DEAD.",
+    "$n splatters blood on your armor.",
+    "$n spills $s guts all over the floor.",
+    "$n's heart is torn from $s chest.",
+    "$n's severed head plops on the ground.",
+    "$n's arm is sliced from $s dead body.",
+    "$n's leg is sliced from $s dead body.",
+    "$n's head is shattered, and $s brains splash all over you.",
+    "You hear $n's death cry.",
 ]
 
 
@@ -1729,11 +1696,7 @@ def _death_cry(ch):
     Args:
         ch (dict): Dying character (player or mob instance).
     """
-    if ch.get("is_npc"):
-        name = MOB_DEFS[ch["tpl"]]["short_descr"]
-    else:
-        name = ch.get("name", "someone")
-    act(_DEATH_CRIES[randint(0, len(_DEATH_CRIES) - 1)].format(name))
+    act(_DEATH_CRIES[randint(0, len(_DEATH_CRIES) - 1)], ch, type=TO_ROOM)
 
 
 def create_money(gold, silver):
@@ -2180,7 +2143,8 @@ def do_suicide(ch, args):
         tprint("If you REALLY want to commit suicide, type 'suicide' again. :(")
         ch["confirm_suicide"] = True
     else:
-        act("You use a small knife to slit your own throat!")
+        act("$n uses a small knife to slit $s own throat!", ch, type=TO_ROOM)
+        act("You use a small knife to slit your own throat!", ch, type=TO_CHAR)
         ch["confirm_suicide"] = False
         raw_kill(ch, None)
     return None
@@ -2516,12 +2480,8 @@ def do_trip(ch, args):
     chance += (ch["level"] - victim["level"]) * 2
 
     if randint(1, 100) < chance:
-        victim_name = MOB_DEFS[victim["tpl"]]["short_descr"] if victim["is_npc"] else "you"
-        if victim["is_npc"]:
-            act("You trip {} and they go down!".format(victim_name))
-        else:
-            tprint("{} trips you and you go down!".format(
-                MOB_DEFS[ch["tpl"]]["short_descr"] if ch["is_npc"] else ch.get("name", "Someone")))
+        act("You trip $N and $E goes down!", ch, None, victim, TO_CHAR)
+        act("$n trips you and you go down!", ch, None, victim, TO_VICT)
         check_improve(ch, GSN_TRIP, True, 1)
 
         DazeState(victim, 2 * PULSE_VIOLENCE)
@@ -2661,8 +2621,8 @@ def do_rescue(ch, args):
         check_improve(ch, GSN_RESCUE, False, 1)
         return None
 
-    victim_name = MOB_DEFS[victim["tpl"]]["short_descr"] if victim["is_npc"] else victim.get("name", "someone")
-    act("You rescue {}!".format(victim_name))
+    act("You rescue $N!", ch, None, victim, TO_CHAR)
+    act("$n rescues you!", ch, None, victim, TO_VICT)
     check_improve(ch, GSN_RESCUE, True, 1)
 
     stop_fighting(fch, both=False)
@@ -2688,14 +2648,12 @@ def disarm(ch, victim):
     obj_tpl = ITEM_DEFS[wobj["vnum"]]
     flags = item_extra_flags(wobj, obj_tpl)
     if flags.get("noremove"):
-        act("Their weapon won't budge!")
+        act("$S weapon won't budge!", ch, None, victim, TO_CHAR)
+        act("$n tries to disarm you, but your weapon won't budge!", ch, None, victim, TO_VICT)
         return
 
-    if victim["is_npc"]:
-        act("You disarm {}!".format(MOB_DEFS[victim["tpl"]]["short_descr"]))
-    else:
-        tprint("{} DISARMS you and sends your weapon flying!".format(
-            MOB_DEFS[ch["tpl"]]["short_descr"] if ch["is_npc"] else ch.get("name", "Someone")))
+    act("You disarm $N!", ch, None, victim, TO_CHAR)
+    act("$n DISARMS you and sends your weapon flying!", ch, None, victim, TO_VICT)
 
     del victim["equip"]["wield"]
 
@@ -2788,15 +2746,14 @@ def do_surrender(ch, args):
         tprint("But you're not fighting!")
         return None
 
-    mob_name = MOB_DEFS[mob["tpl"]]["short_descr"] if mob["is_npc"] else mob.get("name", "someone")
-    act("You surrender to {}!".format(mob_name))
+    act("You surrender to $N!", ch, None, mob, TO_CHAR)
 
     stop_fighting(ch, both=True)
 
     # 1stMud: if (!IsNPC(ch) && IsNPC(mob) && no TRIG_SURR) mob resumes attack
     if not ch["is_npc"] and mob["is_npc"]:
         # [PRIMESUD] TRIG_SURR not ported; mob always ignores surrender
-        act("{} seems to ignore your cowardly act!".format(upper(mob_name)))
+        act("$N seems to ignore your cowardly act!", ch, None, mob, TO_CHAR)
         multi_hit(mob, ch)
     return None
 
@@ -2827,9 +2784,7 @@ def do_slay(ch, args):
         return None
 
     # 1stMud: trust-level check; [PRIMESUD] no trust system
-    act("You slay {} in cold blood!".format(
-        MOB_DEFS[victim["tpl"]]["short_descr"] if victim["is_npc"] else victim.get(
-            "name", "them")))
+    act("You slay $M in cold blood!", ch, None, victim, TO_CHAR)
     raw_kill(victim, ch)
     return None
 

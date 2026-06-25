@@ -7,11 +7,15 @@ from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
 from terminal import tprint
 from world import ITEM_DEFS
 
-TO_CHAR = "char"
-TO_VICT = "vict"
-TO_ROOM = "room"
-TO_NOTVICT = "notvict"
-TO_ALL = "all"
+# -- act() type bitmask (cf. 1stMud TO_* in bits.h) ---------------------------------
+TO_ROOM    = 1    # BIT_A
+TO_NOTVICT = 2    # BIT_B
+TO_VICT    = 4    # BIT_C
+TO_CHAR    = 8    # BIT_D
+TO_ALL     = 16   # BIT_E
+TO_DAMAGE  = 32   # BIT_F
+TO_ZONE    = 64   # BIT_G
+TO_SOCIALS = 128  # BIT_H
 
 AFF_TO_WHERE = {
     "to_affects": "affected_by",
@@ -370,14 +374,6 @@ def _player_char():
     return world.chars.get(1)
 
 
-def _event_room(ch, victim):
-    """Return the room where an action occurs."""
-    if ch is not None:
-        return ch.get("room")
-    if victim is not None:
-        return victim.get("room")
-    return None
-
 
 def _send_player_text(ch, txt):
     """Deliver direct output only when ch is the local player.
@@ -459,11 +455,14 @@ def _char_name(ch):
 
 
 def _pers(ch, looker):
-    """Return 1stMud-style visible character name for one recipient."""
+    """Return visible character name (cf. 1stMud Pers macro in macro.h).
+
+    1stMud: can_see(looker, ch) ? GetName(ch) : IsImmortal(ch) ? "an Immortal" : "someone"
+    [PRIMESUD] Immortal branch not ported -- always "someone" when not visible.
+    [PRIMESUD] Pretitle not ported.
+    """
     if ch is None:
         return "someone"
-    if looker is not None and ch is looker:
-        return "you"
     if looker is not None and not can_see(looker, ch):
         return "someone"
     return _char_name(ch) or "someone"
@@ -489,14 +488,22 @@ def _obj_short(obj):
     return "something"
 
 
-def _act_code(code, ch, arg1, arg2, to):
+def _act_code(code, ch, arg1, arg2, to, type):
+    """Resolve one $-code (cf. 1stMud perform_act switch in comm.c)."""
     victim = arg2 if isinstance(arg2, dict) and "room" in arg2 else None
     obj1 = arg1 if isinstance(arg1, dict) and "vnum" in arg1 else None
     obj2 = arg2 if isinstance(arg2, dict) and "vnum" in arg2 else None
     if code == "$":
         return "$"
     if code == "t":
-        return arg1 if isinstance(arg1, str) else "<@@@>"
+        if not isinstance(arg1, str):
+            return "<@@@>"
+        # 1stMud: TO_DAMAGE suppresses $t for NPC viewers / players without PLR_AUTODAMAGE
+        if type & TO_DAMAGE:
+            if to is not None and to.get("is_npc"):
+                return ""
+            # [PRIMESUD] PLR_AUTODAMAGE not ported -- player always sees damage text
+        return arg1
     if code == "T":
         return arg2 if isinstance(arg2, str) else "<@@@>"
     if code == "n":
@@ -515,21 +522,67 @@ def _act_code(code, ch, arg1, arg2, to):
         return _HIS_HER.get((ch or {}).get("sex", "neutral"), "its")
     if code == "S":
         return _HIS_HER.get((victim or {}).get("sex", "neutral"), "its")
+    if code == "g":
+        # [PRIMESUD] deity not ported -- ch->deity->name
+        if type == TO_CHAR:
+            return "your deity"
+        return _HIS_HER.get((ch or {}).get("sex", "neutral"), "its") + " deity"
+    if code == "G":
+        # [PRIMESUD] deity not ported -- vch->deity->name
+        return _HIS_HER.get((victim or {}).get("sex", "neutral"), "its") + " deity"
+    if code == "c":
+        # [PRIMESUD] clan not ported -- CharClan(ch)->name
+        if type == TO_CHAR:
+            return "your clan"
+        return _HIS_HER.get((ch or {}).get("sex", "neutral"), "its") + " clan"
+    if code == "C":
+        # [PRIMESUD] clan not ported -- CharClan(vch)->name
+        return _HIS_HER.get((victim or {}).get("sex", "neutral"), "its") + " clan"
     if code == "o":
-        return _first_word(_obj_keywords(obj1)) or "something"
+        if to is not None and obj1 is not None:
+            if can_see_obj(to, obj1):
+                return _first_word(_obj_keywords(obj1)) or "something"
+        return "something"
     if code == "O":
-        return _first_word(_obj_keywords(obj2)) or "something"
+        if to is not None and obj2 is not None:
+            if can_see_obj(to, obj2):
+                return _first_word(_obj_keywords(obj2)) or "something"
+        return "something"
     if code == "p":
-        return _obj_short(obj1)
+        if to is not None and obj1 is not None:
+            if can_see_obj(to, obj1):
+                return _obj_short(obj1)
+        return "something"
     if code == "P":
-        return _obj_short(obj2)
+        if to is not None and obj2 is not None:
+            if can_see_obj(to, obj2):
+                return _obj_short(obj2)
+        return "something"
     if code == "d":
-        return _first_word(arg2) if isinstance(arg2, str) and arg2 else "door"
+        if arg2 is None or (isinstance(arg2, str) and not arg2):
+            return "door"
+        if isinstance(arg2, str):
+            return _first_word(arg2)
+        return "door"
     return "<@@@>"
 
 
-def _perform_act_string(format, ch, arg1, arg2, to):
+def _perform_act(format, ch, arg1, arg2, type, to):
+    """Format and deliver one act message (cf. 1stMud perform_act in comm.c).
+
+    Substitutes $-codes, appends {x color reset, capitalizes first visible
+    char (skipping color codes), then sends to the terminal.
+
+    Args:
+        format (str): Act format string with $-codes.
+        ch (dict): Subject character.
+        arg1: Object argument (object dict or string).
+        arg2: Target argument (victim dict, object dict, or string).
+        type (int): Bitmask of TO_* flags.
+        to (dict): Recipient character (always the player in PrimeSUD).
+    """
     out = []
+    # [PRIMESUD] TO_SOCIALS color prefix not ported -- needs CTAG(_SOCIALS)
     i = 0
     while i < len(format):
         if format[i] != "$":
@@ -540,61 +593,117 @@ def _perform_act_string(format, ch, arg1, arg2, to):
         if i >= len(format):
             out.append("<@@@>")
             break
-        out.append(_act_code(format[i], ch, arg1, arg2, to))
+        code = format[i]
+        if arg2 is None and code.isupper() and code != "$":
+            out.append(" <@@@> ")
+        else:
+            out.append(_act_code(code, ch, arg1, arg2, to, type))
         i += 1
-    return upper("".join(out))
+    out.append("{x")
+    tprint(upper("".join(out)))
 
 
-def _sendok(ch):
-    return isinstance(ch, dict) and POS_ORDER[ch.get("pos", "standing")] >= POS_ORDER["resting"]
+def _sendok(ch, min_pos="resting"):
+    """True if ch is awake enough to receive act messages (cf. 1stMud SENDOK in comm.c).
+
+    1stMud also checks IsNPC || (desc && connected == CON_PLAYING); in
+    single-player PrimeSUD the player is always connected and NPCs are
+    never message recipients, so only the position check matters.
+    """
+    return isinstance(ch, dict) and POS_ORDER.get(ch.get("pos", "standing"), 0) >= POS_ORDER.get(min_pos, 0)
 
 
-def _player_sees_type(player, ch, arg1, arg2, type):
-    room = _event_room(ch, arg2 if isinstance(arg2, dict) and "room" in arg2 else None)
-    same_room = room is not None and player.get("room") == room
-    if type == TO_CHAR:
-        return _sendok(ch) and ch is player
-    if type == TO_VICT:
-        return _sendok(arg2) and arg2 is player and arg2 is not ch
-    if type == TO_ROOM:
-        return same_room and _sendok(player) and player is not ch
-    if type == TO_NOTVICT:
-        return same_room and _sendok(player) and player is not ch and player is not arg2
-    if type == TO_ALL:
-        return _sendok(player)
-    return False
+def _act_room(ch, arg1, arg2):
+    """Derive event room from ch, falling back to arg1/arg2 (cf. 1stMud act_new room logic in comm.c)."""
+    if isinstance(ch, dict) and ch.get("room") is not None:
+        return ch["room"]
+    if isinstance(arg1, dict) and arg1.get("room") is not None:
+        return arg1["room"]
+    if isinstance(arg2, dict) and arg2.get("room") is not None:
+        return arg2["room"]
+    return None
 
 
-def act(format, ch=None, arg1=None, arg2=None, type=TO_CHAR, **kwargs):
-    """Route a 1stMud-style act message to the solo player when applicable.
+def act_new(format, ch, arg1, arg2, type, min_pos):
+    """Route act message to the solo player (cf. 1stMud act_new in comm.c).
 
-    This keeps the 1stMud `act(format, ch, arg1, arg2, type)` call shape while
-    only delivering the message the local player would actually see.
+    Full bitmask routing adapted for single-player: checks each TO_* bit
+    independently and delivers via _perform_act if the player qualifies.
 
     Args:
-        format (str): 1stMud act string with optional `$` tokens.
-        ch (dict): Acting character.
-        arg1: First substitution argument, usually object or string.
-        arg2: Second substitution argument, usually victim or string.
-        type (str): One of TO_CHAR/TO_VICT/TO_ROOM/TO_NOTVICT/TO_ALL.
+        format (str): Act format string with $-codes.
+        ch (dict): Subject character.
+        arg1: Object argument (object dict or string).
+        arg2: Target argument (victim dict, object dict, or string).
+        type (int): Bitmask of TO_* flags.
+        min_pos (str): Minimum position to receive message (default "resting").
     """
-    # [PRIMESUD] Backward-compatible aliases so existing call sites can port
-    # lazily to the 1stMud argument names.
-    if arg1 is None and "obj" in kwargs:
-        arg1 = kwargs["obj"]
-    if arg2 is None and "victim" in kwargs:
-        arg2 = kwargs["victim"]
-    if type == TO_CHAR and "to" in kwargs:
-        type = kwargs["to"]
+    if not format:
+        return
 
     player = _player_char()
     if player is None:
         return
 
-    if not _player_sees_type(player, ch, arg1, arg2, type):
-        return
+    # TO_CHAR: send to ch (cf. 1stMud: if ch && SENDOK -> perform_act to ch)
+    if type & TO_CHAR:
+        if ch is player and _sendok(ch, min_pos):
+            _perform_act(format, ch, arg1, arg2, type, ch)
+            return
 
-    tprint(_perform_act_string(format, ch, arg1, arg2, player))
+    # TO_VICT: send to arg2 if arg2 != ch (cf. 1stMud: if to && SENDOK && to != ch)
+    if type & TO_VICT:
+        vict = arg2 if isinstance(arg2, dict) and "room" in arg2 else None
+        if vict is player and vict is not ch and _sendok(vict, min_pos):
+            _perform_act(format, ch, arg1, arg2, type, vict)
+            return
+
+    # TO_ALL / TO_ZONE: iterate all descriptors; player != ch
+    # (cf. 1stMud: for each desc, vch != ch, TO_ALL or same area)
+    if type & (TO_ALL | TO_ZONE):
+        if player is not ch and _sendok(player, min_pos):
+            if type & TO_ALL:
+                _perform_act(format, ch, arg1, arg2, type, player)
+                return
+            # TO_ZONE: same area check
+            if isinstance(ch, dict) and ch.get("room") is not None:
+                from world import ROOM_DEFS
+                ch_area = ROOM_DEFS.get(ch["room"], {}).get("area")
+                pl_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
+                if ch_area is not None and ch_area == pl_area:
+                    _perform_act(format, ch, arg1, arg2, type, player)
+                    return
+
+    # TO_ROOM / TO_NOTVICT: same room, player != ch (and != arg2 for NOTVICT)
+    # (cf. 1stMud: find room from ch/obj1/obj2, iterate room->person_first)
+    if type & (TO_ROOM | TO_NOTVICT):
+        room = _act_room(ch, arg1, arg2)
+        if room is not None and player.get("room") == room:
+            if _sendok(player, min_pos) and player is not ch:
+                if type & TO_ROOM:
+                    _perform_act(format, ch, arg1, arg2, type, player)
+                    return
+                if player is not arg2:
+                    _perform_act(format, ch, arg1, arg2, type, player)
+                    return
+
+
+def act(format, ch, arg1=None, arg2=None, type=TO_CHAR):
+    """1stMud act() entry point (cf. act macro in macro.h).
+
+    Wraps act_new with min_pos=POS_RESTING, matching
+    `#define act(format,ch,arg1,arg2,type) act_new((format),(ch),(arg1),(arg2),(type),POS_RESTING)`
+
+    Args:
+        format (str): Act format string with $-codes.
+        ch (dict): Subject character (required, as in 1stMud).
+        arg1: Object argument (object dict or string).
+        arg2: Target argument (victim dict, object dict, or string).
+        type (int): Bitmask of TO_* flags.
+    """
+    if not format:
+        return
+    act_new(format, ch, arg1, arg2, type, "resting")
 
 
 def can_see_room(ch, room_vnum):
@@ -630,5 +739,23 @@ def can_see(ch, victim):
     # [PRIMESUD] stub: fill in when AFF_BLIND/INVISIBLE/SNEAK/HIDE/dark rooms ported
     if ch is victim:
         return True
+    return True
+
+
+def can_see_obj(ch, obj):
+    """Check if ch can see obj (cf. 1stMud can_see_obj in handler.c).
+
+    [PRIMESUD] Stub -- always returns True. Real checks (AFF_BLIND,
+    ITEM_VIS_DEATH, ITEM_INVIS, ITEM_GLOW/room_is_dark) to be added
+    when those systems are ported.
+
+    Args:
+        ch (dict): Observer (player or mob instance).
+        obj (dict): Target object instance.
+
+    Returns:
+        bool: True if ch can see obj.
+    """
+    # [PRIMESUD] stub: fill in when item visibility flags ported
     return True
 

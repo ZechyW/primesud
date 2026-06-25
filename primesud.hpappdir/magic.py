@@ -35,6 +35,7 @@ _AC_LOCS = ("ac_pierce", "ac_bash", "ac_slash", "ac_exotic")
 
 def spell_null(sn, level, ch, vo, target):
     """Do nothing spell placeholder (cf. 1stMud spell_null in magic.c)."""
+    chprintln(ch, "That's not a spell!")
     return False
 
 
@@ -226,7 +227,8 @@ def spell_magic_missile(sn, level, ch, vo, target):
 
 def spell_earthquake(sn, level, ch, vo, target):
     """Earthquake room spell (cf. 1stMud spell_earthquake in magic.c)."""
-    tprint("The earth trembles beneath your feet!")
+    chprintln(ch, "The earth trembles beneath your feet!")
+    act("$n makes the earth tremble and shiver.", ch, None, None, TO_ROOM)
     room = world.rooms[ch["room"]]
     for mob_id in list(room["mobs"]):
         victim = world.chars.get(mob_id)
@@ -241,16 +243,17 @@ def spell_call_lightning(sn, level, ch, vo, target):
     """Call lightning area spell (cf. 1stMud spell_call_lightning in magic.c)."""
     room = ROOM_DEFS[ch["room"]]
     if room.get("flags", {}).get("indoors"):
-        tprint("You must be out of doors.")
+        chprintln(ch, "You must be out of doors.")
         return False
     area = _area_state_for_room(ch["room"])
     weather = area.get("weather") if area is not None else None
     if weather is None or weather.get("precip", 0) <= 0:
-        tprint("You need bad weather.")
+        chprintln(ch, "You need bad weather.")
         return False
 
     dam = _dice(max(1, level // 2), 8)
-    tprint("Your lightning strikes your foes!")
+    act("$g's lightning strikes your foes!", ch, None, None, TO_CHAR)
+    act("$n calls $g's lightning to strike $s foes!", ch, None, None, TO_ROOM)
     room_state = world.rooms[ch["room"]]
     for mob_id in list(room_state["mobs"]):
         victim = world.chars.get(mob_id)
@@ -266,8 +269,9 @@ def spell_call_lightning(sn, level, ch, vo, target):
 def spell_chain_lightning(sn, level, ch, vo, target):
     """Chain lightning room spell (cf. 1stMud spell_chain_lightning in magic.c)."""
     victim = vo
-    tprint("A lightning bolt leaps from your hand and arcs to " +
-           _char_name(ch, victim) + ".")
+    act("A lightning bolt leaps from $n's hand and arcs to $N.", ch, None, victim, TO_ROOM)
+    act("A lightning bolt leaps from your hand and arcs to $N.", ch, None, victim, TO_CHAR)
+    act("A lightning bolt leaps from $n's hand and hits you!", ch, None, victim, TO_VICT)
     dam = _dice(level, 6)
     if saves_spell(level, victim, "lightning"):
         dam //= 3
@@ -285,7 +289,8 @@ def spell_chain_lightning(sn, level, ch, vo, target):
                 continue
             found = True
             last_vict = tmp
-            tprint("The bolt arcs to " + _char_name(ch, tmp) + "!")
+            act("The bolt arcs to $n!", tmp, None, None, TO_ROOM)
+            act("The bolt hits you!", tmp, None, None, TO_CHAR)
             dam = _dice(level, 6)
             if saves_spell(level, tmp, "lightning"):
                 dam //= 3
@@ -294,10 +299,12 @@ def spell_chain_lightning(sn, level, ch, vo, target):
             break
         if not found:
             if last_vict is ch:
-                tprint("The bolt grounds out through your body.")
+                act("The bolt seems to have fizzled out.", ch, None, None, TO_ROOM)
+                act("The bolt grounds out through your body.", ch, None, None, TO_CHAR)
                 return False
             last_vict = ch
-            tprint("You are struck by your own lightning!")
+            act("The bolt arcs to $n...whoops!", ch, None, None, TO_ROOM)
+            chprintln(ch, "You are struck by your own lightning!")
             dam = _dice(level, 6)
             if saves_spell(level, ch, "lightning"):
                 dam //= 3
@@ -314,7 +321,7 @@ def spell_teleport(sn, level, ch, vo, target):
             or room.get("flags", {}).get("no_recall")
             or (victim is not ch and saves_spell(level - 5, victim, "other"))
             or (ch.get("is_npc") is not True and victim.get("fighting") is not None)):
-        tprint("You failed.")
+        chprintln(ch, "You failed.")
         return False
     candidates = []
     for rv, rd in ROOM_DEFS.items():
@@ -357,7 +364,7 @@ def spell_teleport(sn, level, ch, vo, target):
 def spell_farsight(sn, level, ch, vo, target):
     """Farsight spell (cf. 1stMud spell_farsight in magic2.c)."""
     if ch.get("affected_by", {}).get("blind"):
-        tprint("Maybe it would help if you could see?")
+        chprintln(ch, "Maybe it would help if you could see?")
         return False
     do_scan(ch, _spell_tail(ch).split())
     return True
@@ -367,7 +374,7 @@ def spell_locate_object(sn, level, ch, vo, target):
     """Locate object by name fragment (cf. 1stMud spell_locate_object in magic.c)."""
     wanted = _spell_tail(ch)
     if not wanted:
-        tprint("Nothing like that in heaven or earth.")
+        chprintln(ch, "Nothing like that in heaven or earth.")
         return False
     found = []
     max_found = 2 * level
@@ -403,10 +410,10 @@ def spell_locate_object(sn, level, ch, vo, target):
         if len(found) >= max_found:
             break
     if not found:
-        tprint("Nothing like that in heaven or earth.")
+        chprintln(ch, "Nothing like that in heaven or earth.")
         return False
     for line in found:
-        tprint(line)
+        chprintln(ch, line)
     return True
 
 
@@ -415,7 +422,7 @@ def spell_control_weather(sn, level, ch, vo, target):
     arg = _spell_tail(ch)
     area = _area_state_for_room(ch["room"])
     if area is None:
-        tprint("The weather is altered by your magic.")
+        chprintln(ch, "The weather is altered by your magic.")
         return True
     weather = area.setdefault("weather", {"precip": 0, "precip_vector": 0})
     change = randint(-1, 1) + max(1, (level * 3) // 20)
@@ -426,13 +433,13 @@ def spell_control_weather(sn, level, ch, vo, target):
     elif arg in ("warmer", "colder", "windier", "calmer"):
         pass  # [PRIMESUD] interim model stores only precipitation.
     else:
-        tprint("Do you want it to get warmer, colder, wetter, drier, windier, or calmer?")
+        chprintln(ch, "Do you want it to get warmer, colder, wetter, drier, windier, or calmer?")
         return False
     if weather["precip_vector"] < -3:
         weather["precip_vector"] = -3
     elif weather["precip_vector"] > 3:
         weather["precip_vector"] = 3
-    tprint("The weather is altered by your magic.")
+    chprintln(ch, "The weather is altered by your magic.")
     return True
 
 
@@ -450,9 +457,9 @@ def spell_trivia_pill(sn, level, ch, vo, target):
     if victim.get("is_npc"):
         return False
     victim["trivia"] = victim.get("trivia", 0) + 1
-    tprint("You've gained a Trivia Point!")
-    if victim is not ch:
-        tprint("Ok.")
+    chprintln(victim, "You've gained a Trivia Point!")
+    if ch is not victim:
+        chprintln(ch, "Ok.")
     return True
 
 
@@ -461,9 +468,9 @@ def spell_detect_poison(sn, level, ch, vo, target):
     tpl = ITEM_DEFS[obj_vnum(vo)]
     poisoned = bool(vo.get("poisoned") or tpl.get("poisoned"))
     if tpl.get("type") in ("food", "fountain"):
-        tprint("You smell poisonous fumes." if poisoned else "It looks delicious.")
+        chprintln(ch, "You smell poisonous fumes." if poisoned else "It looks delicious.")
     else:
-        tprint("It doesn't look poisoned.")
+        chprintln(ch, "It doesn't look poisoned.")
     return True
 
 

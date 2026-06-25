@@ -21,28 +21,29 @@ def main():
         other = {"id": 3, "room": 100, "name": "Victim", "pos": "standing"}
         world.chars = {1: player, 2: mob, 3: other}
 
+        # _perform_act appends {x color reset; upper() capitalizes first visible char
         actor.act("you hit it", ch=player, arg2=mob, type=actor.TO_CHAR)
-        assert seen == ["You hit it"]
+        assert seen == ["You hit it{x"], "TO_CHAR: got %r" % seen
 
         seen[:] = []
         actor.act("$n hits you", mob, None, player, actor.TO_VICT)
-        assert seen == ["A goblin hits you"]
+        assert seen == ["A goblin hits you{x"], "TO_VICT: got %r" % seen
 
         seen[:] = []
         actor.act("$n snarls", mob, None, other, actor.TO_ROOM)
-        assert seen == ["A goblin snarls"]
+        assert seen == ["A goblin snarls{x"], "TO_ROOM: got %r" % seen
 
         seen[:] = []
         actor.act("$n bites $N", mob, None, player, actor.TO_NOTVICT)
-        assert seen == []
+        assert seen == [], "TO_NOTVICT: got %r" % seen
 
         seen[:] = []
         actor.act("You rescue $N.", player, None, other, actor.TO_CHAR)
-        assert seen == ["You rescue Victim."]
+        assert seen == ["You rescue Victim.{x"], "TO_CHAR $N: got %r" % seen
 
         seen[:] = []
         actor.act("$n kicks dirt in your eyes!", other, None, player, actor.TO_VICT)
-        assert seen == ["Victim kicks dirt in your eyes!"]
+        assert seen == ["Victim kicks dirt in your eyes!{x"], "TO_VICT $n: got %r" % seen
 
         seen[:] = []
         assert actor.chprint(player, "direct-noformat") == 1

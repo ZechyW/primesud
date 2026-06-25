@@ -258,10 +258,7 @@ def mobile_update(tr, player):
             continue
         if ROOM_DEFS[inst["room"]].get("area") != inst["home_area"] and randint(1, 100) <= 5:
             # 5% chance to despawn when outside home area (cf. char_update, update.c:541)
-            if player["room"] == inst["room"]:
-                tpl = MOB_DEFS[inst["tpl"]]
-                _sd = tpl["short_descr"]
-                act("{} wanders on home.".format(_sd))
+            act("$n wanders on home.", inst, type=TO_ROOM)
             world.rooms[inst["room"]]["mobs"].remove(mob_id)
             del world.chars[mob_id]
             continue
@@ -300,14 +297,11 @@ def mobile_update(tr, player):
         if act_flags.get("indoors") and not dest_flags.get("indoors"):
             continue
         old_room = inst["room"]
-        _sd = tpl["short_descr"]
-        if player["room"] == old_room:
-            act("{} leaves {}.".format(_sd, EXIT_NAMES.get(direction, direction)))
+        act("$n leaves $T.", inst, None, EXIT_NAMES.get(direction, direction), TO_ROOM)
         world.rooms[old_room]["mobs"].remove(mob_id)
         inst["room"] = dest_vnum
         world.rooms[dest_vnum]["mobs"].append(mob_id)
-        if player["room"] == dest_vnum:
-            act("{} has arrived.".format(_sd))
+        act("$n has arrived.", inst, type=TO_ROOM)
 
 
 def aggr_update(tr, player):
