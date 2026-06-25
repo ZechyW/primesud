@@ -2,7 +2,8 @@
 
 import world
 from actor import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
-                   is_awake, can_see, affect_to_char)
+                   is_awake, can_see, affect_to_char, chprintln, TO_CHAR,
+                   TO_NOTVICT, TO_ROOM, TO_VICT)
 from area_limbo import (
     I_CORPSE,
     I_COIN_SILVER_GCASH,
@@ -1892,16 +1893,17 @@ def do_bash(ch, args):
         rs = world.rooms[ch["room"]]
         victim_id = get_char_room(" ".join(args), rs["mobs"], world.chars)
         if victim_id is None:
-            tprint("They aren't here.")
+            chprintln(ch, "They aren't here.")
             return None
         victim = world.chars[victim_id]
 
     if POS_ORDER[victim.get("pos", "standing")] < POS_ORDER["fighting"]:
-        tprint("You'll have to let them get back up first.")
+        act("You'll have to let $M get back up first.", ch, None, victim,
+            TO_CHAR)
         return None
 
     if victim is ch:
-        tprint("You try to bash your brains out, but fail.")
+        chprintln(ch, "You try to bash your brains out, but fail.")
         return None
 
     # [PRIMESUD] is_safe not ported
@@ -1934,12 +1936,12 @@ def do_bash(ch, args):
             chance -= 3 * (dodge_sk - chance)
 
     if randint(1, 100) < chance:
-        victim_name = MOB_DEFS[victim["tpl"]]["short_descr"] if victim["is_npc"] else "you"
-        if victim["is_npc"]:
-            act("You slam into {}, and send them flying!".format(victim_name))
-        else:
-            tprint("{} sends you sprawling with a powerful bash!".format(
-                MOB_DEFS[ch["tpl"]]["short_descr"] if ch["is_npc"] else ch.get("name", "Someone")))
+        act("$n sends you sprawling with a powerful bash!", ch, None, victim,
+            TO_VICT)
+        act("You slam into $N, and send $M flying!", ch, None, victim,
+            TO_CHAR)
+        act("$n sends $N sprawling with a powerful bash.", ch, None, victim,
+            TO_NOTVICT)
         check_improve(ch, GSN_BASH, True, 1)
 
         DazeState(victim, 3 * PULSE_VIOLENCE)
@@ -1949,7 +1951,10 @@ def do_bash(ch, args):
         damage(ch, victim, dam, GSN_BASH, DAM_BASH, show=False)
     else:
         damage(ch, victim, 0, GSN_BASH, DAM_BASH, show=False)
-        tprint("You fall flat on your face!")
+        act("You fall flat on your face!", ch, None, victim, TO_CHAR)
+        act("$n falls flat on $s face.", ch, None, victim, TO_NOTVICT)
+        act("You evade $n's bash, causing $m to fall flat on $s face.", ch,
+            None, victim, TO_VICT)
         check_improve(ch, GSN_BASH, False, 1)
         ch["pos"] = "resting"
         WaitState(ch, SKILLS[GSN_BASH]["beats"] * 3 // 2)
@@ -1985,11 +1990,11 @@ def do_dirt(ch, args):
         victim = world.chars[victim_id]
 
     if victim.get("affected_by", {}).get("blind"):
-        tprint("They're already been blinded.")
+        act("$E's already been blinded.", ch, None, victim, TO_CHAR)
         return None
 
     if victim is ch:
-        tprint("Very funny.")
+        chprintln(ch, "Very funny.")
         return None
 
     # [PRIMESUD] is_safe not ported
@@ -2030,18 +2035,11 @@ def do_dirt(ch, args):
         return None
 
     if randint(1, 100) < chance:
-        victim_name = MOB_DEFS[victim["tpl"]]["short_descr"] if victim["is_npc"] else "you"
-        if victim["is_npc"]:
-            act("{} is blinded by the dirt in their eyes!".format(
-                upper(MOB_DEFS[victim["tpl"]]["short_descr"])))
-        else:
-            tprint("{} kicks dirt in your eyes!".format(
-                MOB_DEFS[ch["tpl"]]["short_descr"] if ch["is_npc"] else ch.get("name", "Someone")))
+        act("$n is blinded by the dirt in $s eyes!", victim, None, None,
+            TO_ROOM)
+        act("$n kicks dirt in your eyes!", ch, None, victim, TO_VICT)
         damage(ch, victim, randint(2, 5), GSN_DIRT, DAM_NONE, show=False)
-        if victim["is_npc"]:
-            pass  # mob blindness message not shown to player
-        else:
-            tprint("You can't see a thing!")
+        chprintln(victim, "You can't see a thing!")
         check_improve(ch, GSN_DIRT, True, 2)
         WaitState(ch, SKILLS[GSN_DIRT]["beats"])
 

@@ -7,6 +7,12 @@ from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
 from terminal import tprint
 from world import ITEM_DEFS
 
+TO_CHAR = "char"
+TO_VICT = "vict"
+TO_ROOM = "room"
+TO_NOTVICT = "notvict"
+TO_ALL = "all"
+
 AFF_TO_WHERE = {
     "to_affects": "affected_by",
     "to_immune": "imm_flags",
@@ -358,21 +364,237 @@ def equip_char(char, obj, slot):
     _apply_item_modifiers(char, obj, tpl, True)
 
 
-def act(msg):
-    """Send an action-narration message, capitalising the first visible character.
+def _player_char():
+    """Return the runtime player character, if present."""
+    import world
+    return world.chars.get(1)
 
-    Reduced port of act_new/perform_act (cf. 1stMud comm.c). Full 1stMud act()
-    also handles multi-recipient routing (TO_CHAR/TO_VICT/TO_ROOM/etc.) and
-    visibility-aware $n/$N/$p token substitution via Pers(). Both are omitted:
-    PrimeSUD is single-player so there is only ever one recipient, and token
-    substitution is done inline with % / format(). The post-substitution
-    skipcol+toupper in perform_act is preserved: mob short_descr values are
-    stored lowercase and may appear at sentence start in narration strings.
+
+def _event_room(ch, victim):
+    """Return the room where an action occurs."""
+    if ch is not None:
+        return ch.get("room")
+    if victim is not None:
+        return victim.get("room")
+    return None
+
+
+def _send_player_text(ch, txt):
+    """Deliver direct output only when ch is the local player.
+
+    Returns:
+        int: 1 if output was sent, else 0.
+    """
+    player = _player_char()
+    if player is not None and ch is player:
+        tprint(txt)
+        return 1
+    return 0
+
+
+def chprint(ch, txt):
+    """Direct-send text without formatting (cf. 1stMud chprint in character.h)."""
+    if txt is None:
+        return 0
+    return _send_player_text(ch, txt)
+
+
+def chprintln(ch, txt):
+    """Direct-send one line (cf. 1stMud chprintln in character.h)."""
+    if txt is None:
+        txt = ""
+    return _send_player_text(ch, txt)
+
+
+def chprintf(ch, fmt, *args):
+    """Printf-style direct-send without forced line break (cf. 1stMud chprintf in character.h)."""
+    if not fmt:
+        return 0
+    if args:
+        fmt = fmt % args
+    return _send_player_text(ch, fmt)
+
+
+def chprintlnf(ch, fmt, *args):
+    """Printf-style direct-send with line semantics (cf. 1stMud chprintlnf in character.h)."""
+    if not fmt:
+        return _send_player_text(ch, "")
+    if args:
+        fmt = fmt % args
+    return _send_player_text(ch, fmt)
+
+
+_HE_SHE = {
+    "male": "he",
+    "female": "she",
+    "either": "it",
+    "neutral": "it",
+}
+
+_HIM_HER = {
+    "male": "him",
+    "female": "her",
+    "either": "it",
+    "neutral": "it",
+}
+
+_HIS_HER = {
+    "male": "his",
+    "female": "her",
+    "either": "its",
+    "neutral": "its",
+}
+
+
+def _first_word(text):
+    if not text:
+        return ""
+    return text.split()[0]
+
+
+def _char_name(ch):
+    if ch is None:
+        return ""
+    return ch.get("name", "")
+
+
+def _pers(ch, looker):
+    """Return 1stMud-style visible character name for one recipient."""
+    if ch is None:
+        return "someone"
+    if looker is not None and ch is looker:
+        return "you"
+    if looker is not None and not can_see(looker, ch):
+        return "someone"
+    return _char_name(ch) or "someone"
+
+
+def _obj_keywords(obj):
+    if not isinstance(obj, dict):
+        return ""
+    if "keywords" in obj:
+        return obj["keywords"]
+    if "vnum" in obj and obj["vnum"] in ITEM_DEFS:
+        return ITEM_DEFS[obj["vnum"]].get("keywords", "")
+    return ""
+
+
+def _obj_short(obj):
+    if not isinstance(obj, dict):
+        return "something"
+    if "short_descr" in obj:
+        return obj["short_descr"]
+    if "vnum" in obj and obj["vnum"] in ITEM_DEFS:
+        return ITEM_DEFS[obj["vnum"]].get("short_descr", "something")
+    return "something"
+
+
+def _act_code(code, ch, arg1, arg2, to):
+    victim = arg2 if isinstance(arg2, dict) and "room" in arg2 else None
+    obj1 = arg1 if isinstance(arg1, dict) and "vnum" in arg1 else None
+    obj2 = arg2 if isinstance(arg2, dict) and "vnum" in arg2 else None
+    if code == "$":
+        return "$"
+    if code == "t":
+        return arg1 if isinstance(arg1, str) else "<@@@>"
+    if code == "T":
+        return arg2 if isinstance(arg2, str) else "<@@@>"
+    if code == "n":
+        return _pers(ch, to)
+    if code == "N":
+        return _pers(victim, to)
+    if code == "e":
+        return _HE_SHE.get((ch or {}).get("sex", "neutral"), "it")
+    if code == "E":
+        return _HE_SHE.get((victim or {}).get("sex", "neutral"), "it")
+    if code == "m":
+        return _HIM_HER.get((ch or {}).get("sex", "neutral"), "it")
+    if code == "M":
+        return _HIM_HER.get((victim or {}).get("sex", "neutral"), "it")
+    if code == "s":
+        return _HIS_HER.get((ch or {}).get("sex", "neutral"), "its")
+    if code == "S":
+        return _HIS_HER.get((victim or {}).get("sex", "neutral"), "its")
+    if code == "o":
+        return _first_word(_obj_keywords(obj1)) or "something"
+    if code == "O":
+        return _first_word(_obj_keywords(obj2)) or "something"
+    if code == "p":
+        return _obj_short(obj1)
+    if code == "P":
+        return _obj_short(obj2)
+    if code == "d":
+        return _first_word(arg2) if isinstance(arg2, str) and arg2 else "door"
+    return "<@@@>"
+
+
+def _perform_act_string(format, ch, arg1, arg2, to):
+    out = []
+    i = 0
+    while i < len(format):
+        if format[i] != "$":
+            out.append(format[i])
+            i += 1
+            continue
+        i += 1
+        if i >= len(format):
+            out.append("<@@@>")
+            break
+        out.append(_act_code(format[i], ch, arg1, arg2, to))
+        i += 1
+    return upper("".join(out))
+
+
+def _sendok(ch):
+    return isinstance(ch, dict) and POS_ORDER[ch.get("pos", "standing")] >= POS_ORDER["resting"]
+
+
+def _player_sees_type(player, ch, arg1, arg2, type):
+    room = _event_room(ch, arg2 if isinstance(arg2, dict) and "room" in arg2 else None)
+    same_room = room is not None and player.get("room") == room
+    if type == TO_CHAR:
+        return _sendok(ch) and ch is player
+    if type == TO_VICT:
+        return _sendok(arg2) and arg2 is player and arg2 is not ch
+    if type == TO_ROOM:
+        return same_room and _sendok(player) and player is not ch
+    if type == TO_NOTVICT:
+        return same_room and _sendok(player) and player is not ch and player is not arg2
+    if type == TO_ALL:
+        return _sendok(player)
+    return False
+
+
+def act(format, ch=None, arg1=None, arg2=None, type=TO_CHAR, **kwargs):
+    """Route a 1stMud-style act message to the solo player when applicable.
+
+    This keeps the 1stMud `act(format, ch, arg1, arg2, type)` call shape while
+    only delivering the message the local player would actually see.
 
     Args:
-        msg (str): Fully assembled narration string, may contain {X colour codes.
+        format (str): 1stMud act string with optional `$` tokens.
+        ch (dict): Acting character.
+        arg1: First substitution argument, usually object or string.
+        arg2: Second substitution argument, usually victim or string.
+        type (str): One of TO_CHAR/TO_VICT/TO_ROOM/TO_NOTVICT/TO_ALL.
     """
-    tprint(upper(msg))
+    # [PRIMESUD] Backward-compatible aliases so existing call sites can port
+    # lazily to the 1stMud argument names.
+    if arg1 is None and "obj" in kwargs:
+        arg1 = kwargs["obj"]
+    if arg2 is None and "victim" in kwargs:
+        arg2 = kwargs["victim"]
+    if type == TO_CHAR and "to" in kwargs:
+        type = kwargs["to"]
+
+    player = _player_char()
+    if player is None:
+        return
+
+    if not _player_sees_type(player, ch, arg1, arg2, type):
+        return
+
+    tprint(_perform_act_string(format, ch, arg1, arg2, player))
 
 
 def can_see_room(ch, room_vnum):

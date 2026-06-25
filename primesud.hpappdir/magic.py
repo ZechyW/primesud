@@ -2,7 +2,7 @@
 
 import world
 from actor import (is_name, is_affected, affect_to_char, affect_strip, is_awake,
-                   can_see_room)
+                   can_see_room, act, chprintln, TO_CHAR, TO_ROOM, TO_VICT)
 from area_limbo import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
                         I_DISC_DISK_FLOATING_BLACK)
 from colors import upper
@@ -385,7 +385,7 @@ def spell_teleport(sn, level, ch, vo, target):
         return False
     dest = _random_teleport_room(victim)
     if dest is None:
-        tprint("You failed.")
+        chprintln(ch, "You failed.")
         return False
     old_room = victim["room"]
     victim["room"] = dest
@@ -394,11 +394,14 @@ def spell_teleport(sn, level, ch, vo, target):
         if victim_id in world.rooms.get(old_room, {}).get("mobs", []):
             world.rooms[old_room]["mobs"].remove(victim_id)
         world.rooms[dest]["mobs"].append(victim_id)
+    if victim is not ch:
+        chprintln(victim, "You have been teleported!")
+    act("$n vanishes!", victim, None, None, TO_ROOM)
     if victim is ch:
         from info import do_look
+    act("$n slowly fades into existence.", victim, None, None, TO_ROOM)
+    if victim is ch:
         do_look(victim, [])
-    else:
-        tprint(_char_name(ch, victim) + " vanishes!")
     return True
 
 
@@ -834,13 +837,11 @@ def spell_faerie_fire(sn, level, ch, vo, target):
 def spell_blindness(sn, level, ch, vo, target):
     """Blindness spell (cf. 1stMud spell_blindness in magic.c)."""
     if vo.get("affected_by", {}).get("blind") or saves_spell(level, vo, "other"):
-        tprint("You failed.")
+        chprintln(ch, "You failed.")
         return False
     affect_to_char(vo, _new_affect(sn, level, 1 + level, "hitroll", -4, "blind"))
-    if vo is ch:
-        tprint("You are blinded!")
-    else:
-        tprint(_char_name(ch, vo) + " appears to be blinded.")
+    chprintln(vo, "You are blinded!")
+    act("$n appears to be blinded.", vo, None, None, TO_ROOM)
     return True
 
 
