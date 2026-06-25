@@ -49,10 +49,9 @@ def _dice(num, size):
 
 def _heal_char(ch, victim, amount, msg):
     victim["hit"] = min(victim["max_hit"], victim["hit"] + amount)
-    if victim is ch:
-        tprint(msg)
-    else:
-        tprint("Ok.")
+    chprintln(victim, msg)
+    if victim is not ch:
+        chprintln(ch, "Ok.")
     return True
 
 
@@ -157,8 +156,8 @@ def check_dispel(dis_level, victim, sn, ch=None):
         if not saves_dispel(dis_level, af.get("level", 0), af.get("duration", 0)):
             affect_strip(victim, sn)
             msg = SKILLS.get(sn, {}).get("msg_off", "")
-            if (ch is None or victim is ch) and msg and not msg.startswith("!"):
-                tprint(msg)
+            if msg and not msg.startswith("!"):
+                chprintln(victim, msg)
             return True
         af["level"] = af.get("level", 0) - 1
     return False
@@ -1595,6 +1594,7 @@ def spell_holy_word(sn, level, ch, vo, target):
         if ((_is_good(ch) and _is_good(mob))
                 or (_is_evil(ch) and _is_evil(mob))
                 or (_is_neutral(ch) and _is_neutral(mob))):
+            chprintln(mob, "You feel full more powerful.")
             if frenzy_sn is not None:
                 spell_frenzy(frenzy_sn, level, ch, mob, TARGET_CHAR)
             if bless_sn is not None:
@@ -1604,9 +1604,7 @@ def spell_holy_word(sn, level, ch, vo, target):
                 continue
             if curse_sn is not None:
                 spell_curse(curse_sn, level, ch, mob, TARGET_CHAR)
-            # 1stmud: chprintln(vch, ...) -- message to victim only
-            # if _is_pc(mob):
-            #     tprint("You are struck down!")
+            chprintln(mob, "You are struck down!")
             dam = _dice(level, 6)
             damage(ch, mob, dam, sn, DAM_ENERGY, True)
         elif _is_neutral(ch):
@@ -1614,8 +1612,7 @@ def spell_holy_word(sn, level, ch, vo, target):
                 continue
             if curse_sn is not None:
                 spell_curse(curse_sn, level // 2, ch, mob, TARGET_CHAR)
-            # if _is_pc(mob):
-            #     tprint("You are struck down!")
+            chprintln(mob, "You are struck down!")
             dam = _dice(level, 4)
             damage(ch, mob, dam, sn, DAM_ENERGY, True)
     chprintln(ch, "You feel drained.")
@@ -2713,12 +2710,12 @@ def _resolve_target(player, sn, target_name):
         if not arg2:
             victim_id = player.get("fighting")
             if victim_id is None:
-                tprint("Cast the spell on whom?")
+                chprintln(player, "Cast the spell on whom?")
                 return (None, TARGET_NONE, None, False)
         else:
             victim_id = _find_room_char_id(player, target_name)
             if victim_id is None:
-                tprint("They aren't here.")
+                chprintln(player, "They aren't here.")
                 return (None, TARGET_NONE, None, False)
         return (world.chars[victim_id], TARGET_CHAR, victim_id, True)
 
@@ -2727,23 +2724,23 @@ def _resolve_target(player, sn, target_name):
             return (player, TARGET_CHAR, None, True)
         victim = _find_room_char(player, target_name)
         if victim is None:
-            tprint("They aren't here.")
+            chprintln(player, "They aren't here.")
             return (None, TARGET_NONE, None, False)
         return (victim, TARGET_CHAR, None, True)
 
     if target_type == "char_self":
         if arg2 and not _is_self_name(player, target_name):
-            tprint("You cannot cast this spell on another.")
+            chprintln(player, "You cannot cast this spell on another.")
             return (None, TARGET_NONE, None, False)
         return (player, TARGET_CHAR, None, True)
 
     if target_type == "obj_inventory":
         if not arg2:
-            tprint("What should the spell be cast upon?")
+            chprintln(player, "What should the spell be cast upon?")
             return (None, TARGET_NONE, None, False)
         obj = get_obj_list(target_name, player["inv"], ITEM_DEFS)
         if obj is None:
-            tprint("You are not carrying that.")
+            chprintln(player, "You are not carrying that.")
             return (None, TARGET_NONE, None, False)
         return (obj, TARGET_OBJ, None, True)
 
@@ -2752,7 +2749,7 @@ def _resolve_target(player, sn, target_name):
         if not arg2:
             victim_id = player.get("fighting")
             if victim_id is None:
-                tprint("Cast the spell on whom or what?")
+                chprintln(player, "Cast the spell on whom or what?")
                 return (None, TARGET_NONE, None, False)
             return (world.chars[victim_id], TARGET_CHAR, victim_id, True)
         victim_id = _find_room_char_id(player, target_name)
@@ -2762,7 +2759,7 @@ def _resolve_target(player, sn, target_name):
         obj = get_obj_list(target_name, rs["items"], ITEM_DEFS)
         if obj is not None:
             return (obj, TARGET_OBJ, None, True)
-        tprint("You don't see that here.")
+        chprintln(player, "You don't see that here.")
         return (None, TARGET_NONE, None, False)
 
     if target_type == "obj_char_defensive":
@@ -2774,7 +2771,7 @@ def _resolve_target(player, sn, target_name):
         obj = get_obj_list(target_name, player["inv"], ITEM_DEFS)
         if obj is not None:
             return (obj, TARGET_OBJ, None, True)
-        tprint("You don't see that here.")
+        chprintln(player, "You don't see that here.")
         return (None, TARGET_NONE, None, False)
 
     return (None, TARGET_NONE, None, False)
@@ -2800,10 +2797,10 @@ def obj_cast_spell(spell_name, level, ch, victim, obj, item_obj=None):
             if victim_id is not None and victim_id in world.chars:
                 victim = world.chars[victim_id]
         if victim is None:
-            tprint("You can't do that.")
+            chprintln(ch, "You can't do that.")
             return False
         if is_safe(ch, victim) and victim is not ch:
-            tprint("Something isn't right...")
+            chprintln(ch, "Something isn't right...")
             return False
         vo = victim
         target = TARGET_CHAR
@@ -2814,7 +2811,7 @@ def obj_cast_spell(spell_name, level, ch, victim, obj, item_obj=None):
         target = TARGET_CHAR
     elif tgt_type == "obj_inventory":
         if obj is None:
-            tprint("You can't do that.")
+            chprintln(ch, "You can't do that.")
             return False
         vo = obj
         target = TARGET_OBJ
@@ -2824,11 +2821,11 @@ def obj_cast_spell(spell_name, level, ch, victim, obj, item_obj=None):
             if victim_id is not None and victim_id in world.chars:
                 victim = world.chars[victim_id]
             else:
-                tprint("You can't do that.")
+                chprintln(ch, "You can't do that.")
                 return False
         if victim is not None:
             if is_safe_spell(ch, victim, False) and victim is not ch:
-                tprint("Something isn't right...")
+                chprintln(ch, "Something isn't right...")
                 return False
             vo = victim
             target = TARGET_CHAR
@@ -2882,7 +2879,7 @@ def do_cast(player, args):
     if not args:
         known = _known_runtime_spells(player)
         if not known:
-            tprint("You know no spells.")
+            chprintln(player, "You know no spells.")
             return None
         names = [sk["name"] for _, sk in known]
         idx = pick_from("Cast which spell?",
@@ -2897,12 +2894,12 @@ def do_cast(player, args):
     if (sn is None or not _implemented_spell(sn)
             or not can_use_skill_spell(player, sn)
             or player.get("learned", {}).get(sn, 0) == 0):
-        tprint("You don't know any spells of that name.")
+        chprintln(player, "You don't know any spells of that name.")
         return None
 
     sk = SKILLS[sn]
     if POS_ORDER[player["pos"]] < POS_ORDER[sk["min_pos"]]:
-        tprint("You can't concentrate enough.")
+        chprintln(player, "You can't concentrate enough.")
         return None
 
     if not target_name:
@@ -2919,39 +2916,44 @@ def do_cast(player, args):
     if target == TARGET_CHAR and vo is not player:
         tgt_type = sk.get("target")
         if tgt_type == "char_offensive" and is_safe(player, vo):
-            tprint("Not on that target.")
+            chprintln(player, "Not on that target.")
             return None
         if tgt_type == "obj_char_offensive" and is_safe_spell(player, vo, False):
-            tprint("Not on that target.")
+            chprintln(player, "Not on that target.")
             return None
+        # 1stmud: AFF_CHARM && master == victim -> "You can't do that on your
+        # own follower." -- master/follower field not yet ported
 
     mana = spell_mana(player, sn)
     if player["mana"] < mana:
-        tprint("You don't have enough mana.")
+        chprintln(player, "You don't have enough mana.")
         return None
+
+    # 1stmud: say_spell(ch, sn) shows garbled incantation to room --
+    # single-player, no observers to display to
 
     WaitState(player, sk.get("beats", 0))
 
     if randint(1, 100) > get_skill(player, sn):
-        tprint("You lost your concentration.")
+        chprintln(player, "You lost your concentration.")
         check_improve(player, sn, False, 1)
         player["mana"] -= mana // 2
-        return None
+    else:
+        player["mana"] -= mana
+        fun = SPELL_FUNS.get(sk.get("spell_fun", "spell_null"), spell_null)
+        player["_spell_target_name"] = target_name
+        ret = fun(sn, player.get("level", 1), player, vo, target)  # [PRIMESUD] classless
+        del player["_spell_target_name"]
+        check_improve(player, sn, ret, 1)
 
-    player["mana"] -= mana
-    fun = SPELL_FUNS.get(sk.get("spell_fun", "spell_null"), spell_null)
-    player["_spell_target_name"] = target_name
-    ret = fun(sn, player.get("level", 1), player, vo, target)  # [PRIMESUD] classless
-    del player["_spell_target_name"]
-    check_improve(player, sn, ret, 1)
-
-    # 1stmud: victim retaliates after offensive cast
+    # 1stmud: victim retaliates after offensive cast (even on fizzle)
     # (skipping victim->master != ch guard -- master field not yet ported)
-    if (ret and sk.get("target") in ("char_offensive", "obj_char_offensive")
+    if (sk.get("target") in ("char_offensive", "obj_char_offensive")
             and target == TARGET_CHAR and vo is not player
             and victim_id is not None and victim_id in world.chars
             and vo.get("fighting") is None):
         multi_hit(vo, player)
+    # [PRIMESUD] return full command string for calculator command history
     if not args:
         spell_name = SKILLS[sn]["name"]
         command = "cast " + ("'" + spell_name + "'" if " " in spell_name else spell_name)
