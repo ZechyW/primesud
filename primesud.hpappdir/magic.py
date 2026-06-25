@@ -2,7 +2,8 @@
 
 import world
 from actor import (is_name, is_affected, affect_to_char, affect_strip, is_awake,
-                   can_see_room, act, chprintln, TO_CHAR, TO_ROOM, TO_VICT)
+                   can_see_room, act, chprintln, TO_CHAR, TO_ROOM, TO_VICT,
+                   TO_NOTVICT, TO_ALL)
 from area_limbo import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
                         I_DISC_DISK_FLOATING_BLACK)
 from colors import upper
@@ -55,15 +56,6 @@ def _heal_char(ch, victim, amount, msg):
     return True
 
 
-
-
-def _char_name(ch, victim):
-    if victim is ch:
-        return "You"
-    if victim.get("is_npc"):
-        tpl = MOB_DEFS.get(victim.get("tpl"), {})
-        return upper(tpl.get("short_descr", "Someone"))
-    return upper(victim.get("name", "Someone"))
 
 
 def _skill_lookup(name):
@@ -478,22 +470,22 @@ def spell_identify(sn, level, ch, vo, target):
     """Identify object details (cf. 1stMud spell_identify in magic.c)."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     flags = item_extra_flags(vo, tpl)
-    tprint("Object '" + tpl.get("keywords", "") + "' is type " + tpl.get("type", "unknown")
+    chprintln(ch, "Object '" + tpl.get("keywords", "") + "' is type " + tpl.get("type", "unknown")
              + ", extra flags " + (" ".join(sorted(flags)) or "none") + ".")
-    tprint("Weight is " + str(tpl.get("weight", 0)) + ", value is "
+    chprintln(ch, "Weight is " + str(tpl.get("weight", 0)) + ", value is "
              + str(vo.get("cost", tpl.get("value", 0))) + ", level is " + str(tpl.get("level", 0)) + ".")
     if tpl.get("type") in ("scroll", "potion", "pill"):
         spells = item_spells(vo, tpl)
         if spells:
-            tprint("Level " + str(item_spell_level(vo, tpl)) + " spells of: '" + "' '".join(spells) + "'.")
+            chprintln(ch, "Level " + str(item_spell_level(vo, tpl)) + " spells of: '" + "' '".join(spells) + "'.")
     elif tpl.get("type") in ("wand", "staff"):
         line = "Has " + str(item_current_charges(vo, tpl)) + " charges of level " + str(item_spell_level(vo, tpl))
         spell_name = item_spell_name(vo, tpl)
         if spell_name:
             line += " '" + spell_name + "'"
-        tprint(line + ".")
+        chprintln(ch, line + ".")
     for loc, mod in tpl.get("stat_bonuses", {}).items():
-        tprint("Affects " + loc + " by " + str(mod) + ".")
+        chprintln(ch, "Affects " + loc + " by " + str(mod) + ".")
     for af in item_affect_list(vo):
         loc = af.get("location", "none")
         mod = af.get("modifier", 0)
@@ -502,10 +494,10 @@ def spell_identify(sn, level, ch, vo, target):
             line += ", " + str(af["duration"]) + " hours."
         else:
             line += "."
-        tprint(line)
+        chprintln(ch, line)
         bit = af.get("bitvector", "")
         if af.get("where") == "to_object" and bit:
-            tprint("Adds " + bit + " object flag.")
+            chprintln(ch, "Adds " + bit + " object flag.")
     return True
 
 
@@ -514,10 +506,10 @@ def spell_fireproof(sn, level, ch, vo, target):
     tpl = ITEM_DEFS[obj_vnum(vo)]
     flags = item_extra_flags(vo, tpl)
     if flags.get("burn_proof"):
-        tprint(_item_name(vo) + " is already protected from burning.")
+        chprintln(ch, _item_name(vo) + " is already protected from burning.")
         return False
     item_affect_to_obj(vo, _new_obj_affect(sn, level, max(1, level // 4), "none", 0, "burn_proof"), tpl)
-    tprint("You protect " + _item_name(vo) + " from fire.")
+    chprintln(ch, "You protect " + _item_name(vo) + " from fire.")
     return True
 
 
@@ -525,13 +517,13 @@ def spell_enchant_armor(sn, level, ch, vo, target):
     """Enchant armor item (cf. 1stMud spell_enchant_armor in magic.c)."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     if tpl.get("type") != "armor":
-        tprint("That isn't an armor.")
+        chprintln(ch, "That isn't an armor.")
         return False
     if vo not in ch.get("inv", []):
-        tprint("The item must be carried to be enchanted.")
+        chprintln(ch, "The item must be carried to be enchanted.")
         return False
     if item_extra_flags(vo, tpl).get("quest"):
-        tprint("You can't enchant quest items.")
+        chprintln(ch, "You can't enchant quest items.")
         return False
     fail = 25
     if not vo.get("enchanted"):
@@ -557,26 +549,26 @@ def spell_enchant_armor(sn, level, ch, vo, target):
         fail = 85
     result = randint(1, 100)
     if result < fail // 5:
-        tprint(_item_name(vo) + " flares blindingly... and evaporates!")
+        chprintln(ch, _item_name(vo) + " flares blindingly... and evaporates!")
         ch["inv"].remove(vo)
         return False
     if result < fail // 3:
-        tprint(_item_name(vo) + " glows brightly, then fades...oops.")
+        chprintln(ch, _item_name(vo) + " glows brightly, then fades...oops.")
         vo["enchanted"] = True
         if "affect_list" in vo:
             del vo["affect_list"]
         vo["extra_flags"] = {}
         return False
     if result <= fail:
-        tprint("Nothing seemed to happen.")
+        chprintln(ch, "Nothing seemed to happen.")
         return False
     vo["enchanted"] = True
     if result <= (90 - level // 5):
-        tprint(_item_name(vo) + " shimmers with a gold aura.")
+        chprintln(ch, _item_name(vo) + " shimmers with a gold aura.")
         set_item_extra_flag(vo, tpl, "magic", True)
         added = -1
     else:
-        tprint(_item_name(vo) + " glows a brillant gold!")
+        chprintln(ch, _item_name(vo) + " glows a brillant gold!")
         set_item_extra_flag(vo, tpl, "magic", True)
         set_item_extra_flag(vo, tpl, "glow", True)
         added = -2
@@ -599,13 +591,13 @@ def spell_enchant_weapon(sn, level, ch, vo, target):
     """Enchant weapon item (cf. 1stMud spell_enchant_weapon in magic.c)."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     if tpl.get("type") != "weapon":
-        tprint("That isn't a weapon.")
+        chprintln(ch, "That isn't a weapon.")
         return False
     if vo not in ch.get("inv", []):
-        tprint("The item must be carried to be enchanted.")
+        chprintln(ch, "The item must be carried to be enchanted.")
         return False
     if item_extra_flags(vo, tpl).get("quest"):
-        tprint("You can't enchant quest items.")
+        chprintln(ch, "You can't enchant quest items.")
         return False
     fail = 25
     hit_found = False
@@ -642,26 +634,26 @@ def spell_enchant_weapon(sn, level, ch, vo, target):
         fail = 95
     result = randint(1, 100)
     if result < fail // 5:
-        tprint(_item_name(vo) + " shivers violently and explodes!")
+        chprintln(ch, _item_name(vo) + " shivers violently and explodes!")
         ch["inv"].remove(vo)
         return False
     if result < fail // 2:
-        tprint(_item_name(vo) + " glows brightly, then fades...oops.")
+        chprintln(ch, _item_name(vo) + " glows brightly, then fades...oops.")
         vo["enchanted"] = True
         if "affect_list" in vo:
             del vo["affect_list"]
         vo["extra_flags"] = {}
         return False
     if result <= fail:
-        tprint("Nothing seemed to happen.")
+        chprintln(ch, "Nothing seemed to happen.")
         return False
     vo["enchanted"] = True
     if result <= (100 - level // 5):
-        tprint(_item_name(vo) + " glows blue.")
+        chprintln(ch, _item_name(vo) + " glows blue.")
         set_item_extra_flag(vo, tpl, "magic", True)
         added = 1
     else:
-        tprint(_item_name(vo) + " glows a brillant blue!")
+        chprintln(ch, _item_name(vo) + " glows a brillant blue!")
         set_item_extra_flag(vo, tpl, "magic", True)
         set_item_extra_flag(vo, tpl, "glow", True)
         added = 2
@@ -704,26 +696,29 @@ def _new_affect(sn, level, duration, location, modifier, bitvector=""):
 def spell_armor(sn, level, ch, vo, target):
     """Armor spell (cf. 1stMud spell_armor in magic.c)."""
     if is_affected(vo, sn):
-        tprint("You are already armored." if vo is ch else _char_name(ch, vo) + " is already armored.")
+        if vo is ch:
+            chprintln(ch, "You are already armored.")
+        else:
+            act("$N is already armored.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, 24, "ac", -20))
-    if vo is ch:
-        tprint("You feel someone protecting you.")
-    else:
-        tprint(_char_name(ch, vo) + " is protected by your magic.")
+    chprintln(vo, "You feel someone protecting you.")
+    if ch is not vo:
+        act("$N is protected by your magic.", ch, None, vo, TO_CHAR)
     return True
 
 
 def spell_shield(sn, level, ch, vo, target):
     """Shield spell (cf. 1stMud spell_shield in magic.c)."""
     if is_affected(vo, sn):
-        tprint("You are already shielded from harm." if vo is ch else _char_name(ch, vo) + " is already protected by a shield.")
+        if vo is ch:
+            chprintln(ch, "You are already shielded from harm.")
+        else:
+            act("$N is already protected by a shield.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, 8 + level, "ac", -20))
-    if vo is ch:
-        tprint("You are surrounded by a force shield.")
-    else:
-        tprint(_char_name(ch, vo) + " is surrounded by a force shield.")
+    act("$n is surrounded by a force shield.", vo, None, None, TO_ROOM)
+    chprintln(vo, "You are surrounded by a force shield.")
     return True
 
 
@@ -733,7 +728,7 @@ def spell_bless(sn, level, ch, vo, target):
         tpl = ITEM_DEFS[obj_vnum(vo)]
         flags = item_extra_flags(vo, tpl)
         if flags.get("bless"):
-            tprint(_item_name(vo) + " is already blessed.")
+            chprintln(ch, _item_name(vo) + " is already blessed.")
             return False
         if flags.get("evil"):
             paf = item_affect_find(vo, _skill_lookup("curse"))
@@ -741,38 +736,41 @@ def spell_bless(sn, level, ch, vo, target):
                 if paf is not None:
                     item_affect_remove(vo, paf, tpl)
                 set_item_extra_flag(vo, tpl, "evil", False)
-                tprint(_item_name(vo) + " glows a pale blue.")
+                chprintln(ch, _item_name(vo) + " glows a pale blue.")
                 return True
-            tprint("The evil of " + _item_name(vo) + " is too powerful for you to overcome.")
+            chprintln(ch, "The evil of " + _item_name(vo) + " is too powerful for you to overcome.")
             return False
         item_affect_to_obj(vo, _new_obj_affect(sn, level, 6 + level, "saves", -1, "bless"), tpl)
-        tprint(_item_name(vo) + " glows with a holy aura.")
+        chprintln(ch, _item_name(vo) + " glows with a holy aura.")
         # TODO [PRIMESUD] saving_throw adjust for worn blessed items
         return True
     if vo.get("pos") == "fighting" or is_affected(vo, sn):
-        tprint("You are already blessed." if vo is ch else _char_name(ch, vo) + " already has divine favor.")
+        if vo is ch:
+            chprintln(ch, "You are already blessed.")
+        else:
+            act("$N already has divine favor.", ch, None, vo, TO_CHAR)
         return False
     mod = level // 8
     affect_to_char(vo, _new_affect(sn, level, 6 + level, "hitroll", mod))
     affect_to_char(vo, _new_affect(sn, level, 6 + level, "saves", -mod))
-    if vo is ch:
-        tprint("You feel righteous.")
-    else:
-        tprint("You grant " + _char_name(ch, vo) + " the favor of your god.")
+    chprintln(vo, "You feel righteous.")
+    if ch is not vo:
+        act("You grant $N the favor of your god.", ch, None, vo, TO_CHAR)
     return True
 
 
 def spell_giant_strength(sn, level, ch, vo, target):
     """Giant strength spell (cf. 1stMud spell_giant_strength in magic.c)."""
     if is_affected(vo, sn):
-        tprint("You are already as strong as you can get!" if vo is ch else _char_name(ch, vo) + " can't get any stronger.")
+        if vo is ch:
+            chprintln(ch, "You are already as strong as you can get!")
+        else:
+            act("$N can't get any stronger.", ch, None, vo, TO_CHAR)
         return False
     mod = 1 + (level >= 18) + (level >= 25) + (level >= 32)
     affect_to_char(vo, _new_affect(sn, level, level, "str", mod))
-    if vo is ch:
-        tprint("Your muscles surge with heightened power!")
-    else:
-        tprint(_char_name(ch, vo) + "'s muscles surge with heightened power.")
+    chprintln(vo, "Your muscles surge with heightened power!")
+    act("$n's muscles surge with heightened power.", vo, None, None, TO_ROOM)
     return True
 
 
@@ -781,10 +779,8 @@ def spell_weaken(sn, level, ch, vo, target):
     if is_affected(vo, sn) or saves_spell(level, vo, "other"):
         return False
     affect_to_char(vo, _new_affect(sn, level, level // 2, "str", -1 * (level // 5), "weaken"))
-    if vo is ch:
-        tprint("You feel your strength slip away.")
-    else:
-        tprint(_char_name(ch, vo) + " looks tired and weak.")
+    chprintln(vo, "You feel your strength slip away.")
+    act("$n looks tired and weak.", vo, None, None, TO_ROOM)
     return True
 
 
@@ -793,10 +789,8 @@ def spell_faerie_fire(sn, level, ch, vo, target):
     if vo.get("affected_by", {}).get("faerie_fire"):
         return False
     affect_to_char(vo, _new_affect(sn, level, level, "ac", 2 * level, "faerie_fire"))
-    if vo is ch:
-        tprint("You are surrounded by a pink outline.")
-    else:
-        tprint(_char_name(ch, vo) + " is surrounded by a pink outline.")
+    chprintln(vo, "You are surrounded by a pink outline.")
+    act("$n is surrounded by a pink outline.", vo, None, None, TO_ROOM)
     return True
 
 
@@ -814,16 +808,15 @@ def spell_blindness(sn, level, ch, vo, target):
 def spell_poison(sn, level, ch, vo, target):
     """Poison character path (cf. 1stMud spell_poison in magic.c)."""
     if target == TARGET_OBJ:
-        tprint("That spell does not work on objects yet.")
+        chprintln(ch, "That spell does not work on objects yet.")
         return False
     if saves_spell(level, vo, "poison"):
-        tprint("You feel momentarily ill, but it passes." if vo is ch else _char_name(ch, vo) + " turns slightly green, but it passes.")
+        act("$n turns slightly green, but it passes.", vo, None, None, TO_ROOM)
+        chprintln(vo, "You feel momentarily ill, but it passes.")
         return False
     affect_to_char(vo, _new_affect(sn, level, level, "str", -2, "poison"))
-    if vo is ch:
-        tprint("You feel very sick.")
-    else:
-        tprint(_char_name(ch, vo) + " looks very ill.")
+    chprintln(vo, "You feel very sick.")
+    act("$n looks very ill.", vo, None, None, TO_ROOM)
     return True
 
 
@@ -833,7 +826,7 @@ def spell_curse(sn, level, ch, vo, target):
         tpl = ITEM_DEFS[obj_vnum(vo)]
         flags = item_extra_flags(vo, tpl)
         if flags.get("evil"):
-            tprint(_item_name(vo) + " is already filled with evil.")
+            chprintln(ch, _item_name(vo) + " is already filled with evil.")
             return False
         if flags.get("bless"):
             paf = item_affect_find(vo, _skill_lookup("bless"))
@@ -841,12 +834,12 @@ def spell_curse(sn, level, ch, vo, target):
                 if paf is not None:
                     item_affect_remove(vo, paf, tpl)
                 set_item_extra_flag(vo, tpl, "bless", False)
-                tprint(_item_name(vo) + " glows with a red aura.")
+                chprintln(ch, _item_name(vo) + " glows with a red aura.")
                 return True
-            tprint("The holy aura of " + _item_name(vo) + " is too powerful for you to overcome.")
+            chprintln(ch, "The holy aura of " + _item_name(vo) + " is too powerful for you to overcome.")
             return False
         item_affect_to_obj(vo, _new_obj_affect(sn, level, 2 * level, "saves", 1, "evil"), tpl)
-        tprint(_item_name(vo) + " glows with a malevolent aura.")
+        chprintln(ch, _item_name(vo) + " glows with a malevolent aura.")
         # TODO [PRIMESUD] saving_throw adjust for worn cursed items
         return True
     if vo.get("affected_by", {}).get("curse") or saves_spell(level, vo, "negative"):
@@ -854,10 +847,9 @@ def spell_curse(sn, level, ch, vo, target):
     mod = level // 8
     affect_to_char(vo, _new_affect(sn, level, 2 * level, "hitroll", -mod, "curse"))
     affect_to_char(vo, _new_affect(sn, level, 2 * level, "saves", mod))
-    if vo is ch:
-        tprint("You feel unclean.")
-    else:
-        tprint(_char_name(ch, vo) + " looks very uncomfortable.")
+    chprintln(vo, "You feel unclean.")
+    if ch is not vo:
+        act("$N looks very uncomfortable.", ch, None, vo, TO_CHAR)
     return True
 
 
@@ -865,13 +857,14 @@ def spell_plague(sn, level, ch, vo, target):
     """Plague spell (cf. 1stMud spell_plague in magic.c)."""
     if saves_spell(level, vo, "disease") or (
             vo.get("is_npc") and MOB_DEFS.get(vo.get("tpl"), {}).get("act_flags", {}).get("undead")):
-        tprint("You feel momentarily ill, but it passes." if vo is ch else _char_name(ch, vo) + " seems to be unaffected.")
+        if vo is ch:
+            chprintln(ch, "You feel momentarily ill, but it passes.")
+        else:
+            act("$N seems to be unaffected.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level * 3 // 4, level, "str", -5, "plague"))
-    if vo is ch:
-        tprint("You scream in agony as plague sores erupt from your skin.")
-    else:
-        tprint(_char_name(ch, vo) + " screams in agony as plague sores erupt from their skin.")
+    chprintln(vo, "You scream in agony as plague sores erupt from your skin.")
+    act("$n screams in agony as plague sores erupt from $s skin.", vo, None, None, TO_ROOM)
     return True
 
 
@@ -879,12 +872,16 @@ def spell_cure_blindness(sn, level, ch, vo, target):
     """Cure blindness (cf. 1stMud spell_cure_blindness in magic.c)."""
     blind_sn = _skill_lookup("blindness")
     if not is_affected(vo, blind_sn):
-        tprint("You aren't blind." if vo is ch else _char_name(ch, vo) + " doesn't appear to be blinded.")
+        if vo is ch:
+            chprintln(ch, "You aren't blind.")
+        else:
+            act("$N doesn't appear to be blinded.", ch, None, vo, TO_CHAR)
         return False
     if check_dispel(level, vo, blind_sn, ch):
-        tprint("Your vision returns!" if vo is ch else _char_name(ch, vo) + " is no longer blinded.")
+        chprintln(vo, "Your vision returns!")
+        act("$n is no longer blinded.", vo, None, None, TO_ROOM)
         return True
-    tprint("Spell failed.")
+    chprintln(ch, "Spell failed.")
     return False
 
 
@@ -892,12 +889,16 @@ def spell_cure_poison(sn, level, ch, vo, target):
     """Cure poison (cf. 1stMud spell_cure_poison in magic.c)."""
     poison_sn = _skill_lookup("poison")
     if not is_affected(vo, poison_sn):
-        tprint("You aren't poisoned." if vo is ch else _char_name(ch, vo) + " doesn't appear to be poisoned.")
+        if vo is ch:
+            chprintln(ch, "You aren't poisoned.")
+        else:
+            act("$N doesn't appear to be poisoned.", ch, None, vo, TO_CHAR)
         return False
     if check_dispel(level, vo, poison_sn, ch):
-        tprint("A warm feeling runs through your body." if vo is ch else _char_name(ch, vo) + " looks much better.")
+        chprintln(vo, "A warm feeling runs through your body.")
+        act("$n looks much better.", vo, None, None, TO_ROOM)
         return True
-    tprint("Spell failed.")
+    chprintln(ch, "Spell failed.")
     return False
 
 
@@ -905,21 +906,24 @@ def spell_cure_disease(sn, level, ch, vo, target):
     """Cure disease (cf. 1stMud spell_cure_disease in magic.c)."""
     plague_sn = _skill_lookup("plague")
     if not is_affected(vo, plague_sn):
-        tprint("You aren't ill." if vo is ch else _char_name(ch, vo) + " doesn't appear to be diseased.")
+        if vo is ch:
+            chprintln(ch, "You aren't ill.")
+        else:
+            act("$N doesn't appear to be diseased.", ch, None, vo, TO_CHAR)
         return False
     if check_dispel(level, vo, plague_sn, ch):
-        tprint("Your sores vanish." if vo is ch else _char_name(ch, vo) + " looks relieved as their sores vanish.")
+        chprintln(vo, "Your sores vanish.")
+        act("$n looks relieved as $s sores vanish.", vo, None, None, TO_ROOM)
         return True
-    tprint("Spell failed.")
+    chprintln(ch, "Spell failed.")
     return False
 
 
 def spell_dispel_magic(sn, level, ch, vo, target):
     """Dispel magic (cf. 1stMud spell_dispel_magic in magic.c)."""
     if saves_spell(level, vo, "other"):
-        if vo is ch:
-            tprint("You feel a brief tingling sensation.")
-        tprint("You failed.")
+        chprintln(vo, "You feel a brief tingling sensation.")
+        chprintln(ch, "You failed.")
         return False
     found = False
     for name in ("armor", "bless", "blindness", "calm", "change sex",
@@ -941,9 +945,9 @@ def spell_dispel_magic(sn, level, ch, vo, target):
         vo.get("affected_by", {}).pop("sanctuary", None)
         found = True
     if found:
-        tprint("Ok.")
+        chprintln(ch, "Ok.")
         return True
-    tprint("Spell failed.")
+    chprintln(ch, "Spell failed.")
     return False
 
 
@@ -1024,7 +1028,7 @@ def spell_calm(sn, level, ch, vo, target):
         if not (ch.get("affected_by", {}).get("calm") or ch.get("affected_by", {}).get("berserk")
                 or is_affected(ch, _skill_lookup("frenzy"))):
             found = True
-            tprint("A wave of calm passes over you.")
+            chprintln(ch, "A wave of calm passes over you.")
             if ch.get("fighting") is not None or ch.get("pos") == "fighting":
                 stop_fighting(ch, False)
             affect_to_char(ch, _new_affect(sn, level, level // 4, "hitroll", -5, "calm"))
@@ -1039,7 +1043,7 @@ def spell_cancellation(sn, level, ch, vo, target):
     if ((not ch.get("is_npc") and victim.get("is_npc")
             and not (ch.get("affected_by", {}).get("charm") and ch.get("master") is victim))
             or (ch.get("is_npc") and not victim.get("is_npc"))):
-        tprint("You failed, try dispel magic.")
+        chprintln(ch, "You failed, try dispel magic.")
         return False
     found = False
     for name in ("armor", "bless", "blindness", "calm", "change sex",
@@ -1055,16 +1059,19 @@ def spell_cancellation(sn, level, ch, vo, target):
         if cur is not None and check_dispel(level, victim, cur, ch):
             found = True
     if found:
-        tprint("Ok.")
+        chprintln(ch, "Ok.")
     else:
-        tprint("Spell failed.")
+        chprintln(ch, "Spell failed.")
     return found
 
 
 def spell_change_sex(sn, level, ch, vo, target):
     """Change sex (cf. 1stMud spell_change_sex in magic.c)."""
     if is_affected(vo, sn):
-        tprint("You've already been changed." if vo is ch else _char_name(ch, vo) + " has already had their sex changed.")
+        if vo is ch:
+            chprintln(ch, "You've already been changed.")
+        else:
+            act("$N has already had $s(?) sex changed.", ch, None, vo, TO_CHAR)
         return False
     if saves_spell(level, vo, "other"):
         return False
@@ -1073,7 +1080,8 @@ def spell_change_sex(sn, level, ch, vo, target):
     while mod == 0:
         mod = randint(0, 2) - cur_sex
     affect_to_char(vo, _new_affect(sn, level, 2 * level, "sex", mod))
-    tprint("You feel different." if vo is ch else _char_name(ch, vo) + " doesn't look like themselves anymore.")
+    chprintln(vo, "You feel different.")
+    act("$n doesn't look like $mself anymore...", vo, None, None, TO_ROOM)
     return True
 
 
@@ -1087,7 +1095,7 @@ def spell_charm_person(sn, level, ch, vo, target):
     if is_safe(ch, victim):
         return False
     if victim is ch:
-        tprint("You like yourself even better!")
+        chprintln(ch, "You like yourself even better!")
         return False
     if (victim.get("affected_by", {}).get("charm")
             or ch.get("affected_by", {}).get("charm")
@@ -1097,11 +1105,12 @@ def spell_charm_person(sn, level, ch, vo, target):
         return False
     room = ROOM_DEFS.get(ch.get("room"))
     if room and room.get("flags", {}).get("law"):
-        tprint("The mayor does not allow charming in the city limits.")
+        chprintln(ch, "The mayor does not allow charming in the city limits.")
         return False
     # TODO [PRIMESUD] follower system: stop_follower(victim); add_follower(victim, ch); victim.leader = ch
     affect_to_char(victim, _new_affect(sn, level, _number_fuzzy(level // 4), "none", 0, "charm"))
-    tprint(_char_name(ch, victim) + " looks at you with adoring eyes.")
+    act("Isn't $n just so nice?", ch, None, victim, TO_VICT)
+    act("$N looks at you with adoring eyes.", ch, None, victim, TO_CHAR)
     return True
 
 
@@ -1136,20 +1145,21 @@ def spell_continual_light(sn, level, ch, vo, target):
     if tail:
         obj = get_obj_list(tail, ch["inv"], ITEM_DEFS)
         if obj is None:
-            tprint("You don't see that here.")
+            chprintln(ch, "You don't see that here.")
             return False
         tpl = ITEM_DEFS[obj_vnum(obj)]
         flags = item_extra_flags(obj, tpl)
         if flags.get("glow"):
-            tprint(_item_name(obj) + " is already glowing.")
+            act("$p is already glowing.", ch, obj, None, TO_CHAR)
             return False
         set_item_extra_flag(obj, tpl, "glow", True)
-        tprint(_item_name(obj) + " glows with a white light.")
+        act("$p glows with a white light.", ch, obj, None, TO_ALL)
         return True
     light = create_object(I_BALL_LIGHT)
     rs = world.rooms[ch["room"]]
     rs.setdefault("items", []).append(light)
-    tprint("You twiddle your thumbs and a ball of light appears.")
+    act("$n twiddles $s thumbs and $p appears.", ch, light, None, TO_ROOM)
+    act("You twiddle your thumbs and $p appears.", ch, light, None, TO_CHAR)
     return True
 
 
@@ -1161,7 +1171,8 @@ def spell_create_food(sn, level, ch, vo, target):
     mushroom["timer"] = 24
     rs = world.rooms[ch["room"]]
     rs.setdefault("items", []).append(mushroom)
-    tprint("A magic mushroom suddenly appears.")
+    act("$p suddenly appears.", ch, mushroom, None, TO_ROOM)
+    act("$p suddenly appears.", ch, mushroom, None, TO_CHAR)
     return True
 
 
@@ -1171,7 +1182,8 @@ def spell_create_rose(sn, level, ch, vo, target):
     TODO: OBJ_VNUM_ROSE template not yet defined in area data.
     """
     # TODO [PRIMESUD] need rose item template
-    tprint("A beautiful red rose appears in your hands.")
+    act("$n has created a beautiful red rose.", ch, None, None, TO_ROOM)
+    chprintln(ch, "You create a beautiful red rose.")
     return True
 
 
@@ -1181,7 +1193,8 @@ def spell_create_spring(sn, level, ch, vo, target):
     spring["timer"] = level
     rs = world.rooms[ch["room"]]
     rs.setdefault("items", []).append(spring)
-    tprint("A magical spring flows from the ground.")
+    act("$p flows from the ground.", ch, spring, None, TO_ROOM)
+    act("$p flows from the ground.", ch, spring, None, TO_CHAR)
     return True
 
 
@@ -1192,10 +1205,10 @@ def spell_create_water(sn, level, ch, vo, target):
     """
     tpl = ITEM_DEFS[obj_vnum(vo)]
     if tpl.get("type") != "drink_con":
-        tprint("It is unable to hold water.")
+        chprintln(ch, "It is unable to hold water.")
         return False
     # TODO [PRIMESUD] liquid type / fill level not yet modeled
-    tprint("The container fills with water.")
+    act("$p is filled.", ch, vo, None, TO_CHAR)
     return True
 
 
@@ -1204,8 +1217,12 @@ def spell_demonfire(sn, level, ch, vo, target):
     victim = vo
     if not ch.get("is_npc") and not _is_evil(ch):
         victim = ch
-        tprint("The demons turn upon you!")
+        chprintln(ch, "The demons turn upon you!")
     ch["alignment"] = max(-1000, ch.get("alignment", 0) - 50)
+    if victim is not ch:
+        act("$n calls forth the demons of Hell upon $N!", ch, None, victim, TO_ROOM)
+        act("$n has assailed you with the demons of Hell!", ch, None, victim, TO_VICT)
+        chprintln(ch, "You conjure forth the demons of hell!")
     dam = _dice(level, 10)
     if saves_spell(level, victim, "negative"):
         dam //= 2
@@ -1218,50 +1235,75 @@ def spell_demonfire(sn, level, ch, vo, target):
 def spell_detect_evil(sn, level, ch, vo, target):
     """Detect evil (cf. 1stMud spell_detect_evil in magic.c)."""
     if vo.get("affected_by", {}).get("detect_evil"):
-        tprint("You can already sense evil." if vo is ch else _char_name(ch, vo) + " can already detect evil.")
+        if vo is ch:
+            chprintln(ch, "You can already sense evil.")
+        else:
+            act("$N can already detect evil.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, level, "none", 0, "detect_evil"))
-    tprint("Your eyes tingle." if vo is ch else "Ok.")
+    chprintln(vo, "Your eyes tingle.")
+    if ch is not vo:
+        chprintln(ch, "Ok.")
     return True
 
 
 def spell_detect_good(sn, level, ch, vo, target):
     """Detect good (cf. 1stMud spell_detect_good in magic.c)."""
     if vo.get("affected_by", {}).get("detect_good"):
-        tprint("You can already sense good." if vo is ch else _char_name(ch, vo) + " can already detect good.")
+        if vo is ch:
+            chprintln(ch, "You can already sense good.")
+        else:
+            act("$N can already detect good.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, level, "none", 0, "detect_good"))
-    tprint("Your eyes tingle." if vo is ch else "Ok.")
+    chprintln(vo, "Your eyes tingle.")
+    if ch is not vo:
+        chprintln(ch, "Ok.")
     return True
 
 
 def spell_detect_hidden(sn, level, ch, vo, target):
     """Detect hidden (cf. 1stMud spell_detect_hidden in magic.c)."""
     if vo.get("affected_by", {}).get("detect_hidden"):
-        tprint("You are already as alert as you can be." if vo is ch else _char_name(ch, vo) + " can already sense hidden lifeforms.")
+        if vo is ch:
+            chprintln(ch, "You are already as alert as you can be.")
+        else:
+            act("$N can already sense hidden lifeforms.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, level, "none", 0, "detect_hidden"))
-    tprint("Your awareness improves." if vo is ch else "Ok.")
+    chprintln(vo, "Your awareness improves.")
+    if ch is not vo:
+        chprintln(ch, "Ok.")
     return True
 
 
 def spell_detect_invis(sn, level, ch, vo, target):
     """Detect invis (cf. 1stMud spell_detect_invis in magic.c)."""
     if vo.get("affected_by", {}).get("detect_invis"):
-        tprint("You can already see invisible." if vo is ch else _char_name(ch, vo) + " can already see invisible things.")
+        if vo is ch:
+            chprintln(ch, "You can already see invisible.")
+        else:
+            act("$N can already see invisible things.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, level, "none", 0, "detect_invis"))
-    tprint("Your eyes tingle." if vo is ch else "Ok.")
+    chprintln(vo, "Your eyes tingle.")
+    if ch is not vo:
+        chprintln(ch, "Ok.")
     return True
 
 
 def spell_detect_magic(sn, level, ch, vo, target):
     """Detect magic (cf. 1stMud spell_detect_magic in magic.c)."""
     if vo.get("affected_by", {}).get("detect_magic"):
-        tprint("You can already sense magical auras." if vo is ch else _char_name(ch, vo) + " can already detect magic.")
+        if vo is ch:
+            chprintln(ch, "You can already sense magical auras.")
+        else:
+            act("$N can already detect magic.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, level, "none", 0, "detect_magic"))
-    tprint("Your eyes tingle." if vo is ch else "Ok.")
+    chprintln(vo, "Your eyes tingle.")
+    if ch is not vo:
+        chprintln(ch, "Ok.")
     return True
 
 
@@ -1271,10 +1313,10 @@ def spell_dispel_evil(sn, level, ch, vo, target):
     if not ch.get("is_npc") and _is_evil(ch):
         victim = ch
     if _is_good(victim):
-        tprint(_char_name(ch, victim) + " is protected.")
+        act("$G protects $N.", ch, None, victim, TO_ROOM)
         return False
     if _is_neutral(victim):
-        tprint(_char_name(ch, victim) + " does not seem to be affected.")
+        act("$N does not seem to be affected.", ch, None, victim, TO_CHAR)
         return False
     if victim.get("hit", 0) > ch.get("level", 1) * 4:
         dam = _dice(level, 4)
@@ -1291,10 +1333,10 @@ def spell_dispel_good(sn, level, ch, vo, target):
     if not ch.get("is_npc") and _is_good(ch):
         victim = ch
     if _is_evil(victim):
-        tprint(_char_name(ch, victim) + " is protected by their evil.")
+        act("$N is protected by $S evil.", ch, None, victim, TO_ROOM)
         return False
     if _is_neutral(victim):
-        tprint(_char_name(ch, victim) + " does not seem to be affected.")
+        act("$N does not seem to be affected.", ch, None, victim, TO_CHAR)
         return False
     if victim.get("hit", 0) > ch.get("level", 1) * 4:
         dam = _dice(level, 4)
@@ -1311,7 +1353,7 @@ def spell_energy_drain(sn, level, ch, vo, target):
     if victim is not ch:
         ch["alignment"] = max(-1000, ch.get("alignment", 0) - 50)
     if saves_spell(level, victim, "negative"):
-        tprint("You feel a momentary chill." if victim is ch else "")
+        chprintln(victim, "You feel a momentary chill.")
         return False
     if victim.get("level", 1) <= 2:
         dam = ch.get("hit", 1) + 1
@@ -1321,7 +1363,8 @@ def spell_energy_drain(sn, level, ch, vo, target):
         victim["move"] = victim.get("move", 0) // 2
         dam = _dice(1, level)
         ch["hit"] = ch.get("hit", 0) + dam
-    tprint("You feel your life slipping away!" if victim is ch else "Wow....what a rush!")
+    chprintln(victim, "You feel your life slipping away!")
+    chprintln(ch, "Wow....what a rush!")
     damage(ch, victim, dam, sn, DAM_NEGATIVE, True)
     return True
 
@@ -1345,7 +1388,8 @@ def spell_flamestrike(sn, level, ch, vo, target):
 
 def spell_faerie_fog(sn, level, ch, vo, target):
     """Faerie fog -- reveal hidden/invisible in room (cf. 1stMud spell_faerie_fog in magic.c)."""
-    tprint("You conjure a cloud of purple smoke.")
+    act("$n conjures a cloud of purple smoke.", ch, None, None, TO_ROOM)
+    chprintln(ch, "You conjure a cloud of purple smoke.")
     room = world.rooms[ch["room"]]
     found = False
     for mob_id in list(room["mobs"]):
@@ -1367,7 +1411,8 @@ def spell_faerie_fog(sn, level, ch, vo, target):
         aff.pop("hide", None)
         aff.pop("invisible", None)
         aff.pop("sneak", None)
-        tprint(_char_name(ch, mob) + " is revealed!")
+        act("$n is revealed!", mob, None, None, TO_ROOM)
+        chprintln(mob, "You are revealed!")
         found = True
     return found
 
@@ -1380,7 +1425,8 @@ def spell_floating_disc(sn, level, ch, vo, target):
     disc = create_object(I_DISC_DISK_FLOATING_BLACK)
     disc["timer"] = ch.get("level", 1) * 2 - randint(0, level // 2)
     ch.setdefault("inv", []).append(disc)
-    tprint("You create a floating disc.")
+    act("$n has created a floating black disc.", ch, None, None, TO_ROOM)
+    chprintln(ch, "You create a floating disc.")
     # TODO [PRIMESUD] auto-equip to float slot: wear_obj(ch, disc, True)
     return True
 
@@ -1388,32 +1434,43 @@ def spell_floating_disc(sn, level, ch, vo, target):
 def spell_fly(sn, level, ch, vo, target):
     """Fly spell (cf. 1stMud spell_fly in magic.c)."""
     if vo.get("affected_by", {}).get("flying"):
-        tprint("You are already airborne." if vo is ch else _char_name(ch, vo) + " doesn't need your help to fly.")
+        if vo is ch:
+            chprintln(ch, "You are already airborne.")
+        else:
+            act("$N doesn't need your help to fly.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, level + 3, "none", 0, "flying"))
-    tprint("Your feet rise off the ground." if vo is ch else _char_name(ch, vo) + "'s feet rise off the ground.")
+    chprintln(vo, "Your feet rise off the ground.")
+    act("$n's feet rise off the ground.", vo, None, None, TO_ROOM)
     return True
 
 
 def spell_frenzy(sn, level, ch, vo, target):
     """Frenzy spell (cf. 1stMud spell_frenzy in magic.c)."""
     if is_affected(vo, sn) or vo.get("affected_by", {}).get("berserk"):
-        tprint("You are already in a frenzy." if vo is ch else _char_name(ch, vo) + " is already in a frenzy.")
+        if vo is ch:
+            chprintln(ch, "You are already in a frenzy.")
+        else:
+            act("$N is already in a frenzy.", ch, None, vo, TO_CHAR)
         return False
     calm_sn = _skill_lookup("calm")
     if calm_sn is not None and is_affected(vo, calm_sn):
-        tprint("Why don't you just relax for a while?" if vo is ch else _char_name(ch, vo) + " doesn't look like they want to fight anymore.")
+        if vo is ch:
+            chprintln(ch, "Why don't you just relax for a while?")
+        else:
+            act("$N doesn't look like $e wants to fight anymore.", ch, None, vo, TO_CHAR)
         return False
     if ((_is_good(ch) and not _is_good(vo))
             or (_is_neutral(ch) and not _is_neutral(vo))
             or (_is_evil(ch) and not _is_evil(vo))):
-        tprint("Your god doesn't seem to like " + _char_name(ch, vo) + ".")
+        act("Your god doesn't seem to like $N", ch, None, vo, TO_CHAR)
         return False
     mod = level // 6
     affect_to_char(vo, _new_affect(sn, level, level // 3, "hitroll", mod))
     affect_to_char(vo, _new_affect(sn, level, level // 3, "damroll", mod))
     affect_to_char(vo, _new_affect(sn, level, level // 3, "ac", 10 * (level // 12)))
-    tprint("You are filled with holy wrath!" if vo is ch else _char_name(ch, vo) + " gets a wild look in their eyes!")
+    chprintln(vo, "You are filled with holy wrath!")
+    act("$n gets a wild look in $s eyes!", vo, None, None, TO_ROOM)
     return True
 
 
@@ -1421,7 +1478,7 @@ def spell_gate(sn, level, ch, vo, target):
     """Gate to another character's location (cf. 1stMud spell_gate in magic.c)."""
     tail = _spell_tail(ch)
     if not tail:
-        tprint("You failed.")
+        chprintln(ch, "You failed.")
         return False
 
     # get_char_world: search all loaded chars by name.
@@ -1440,12 +1497,12 @@ def spell_gate(sn, level, ch, vo, target):
                     break
 
     if victim is None or victim is ch:
-        tprint("You failed.")
+        chprintln(ch, "You failed.")
         return False
 
     victim_vnum = victim.get("room")
     if victim_vnum is None:
-        tprint("You failed.")
+        chprintln(ch, "You failed.")
         return False
 
     src_flags = ROOM_DEFS.get(ch.get("room"), {}).get("flags", {})
@@ -1465,11 +1522,12 @@ def spell_gate(sn, level, ch, vo, target):
             or (not victim.get("is_npc") and victim.get("level", 0) >= MAX_MORTAL_LEVEL)
             or (victim.get("is_npc") and victim.get("imm_flags", {}).get("summon"))
             or (victim.get("is_npc") and saves_spell(level, victim, "other"))):
-        tprint("You failed.")
+        chprintln(ch, "You failed.")
         return False
 
     # TODO [PRIMESUD] pet teleport not yet implemented
-    tprint("You step through a gate and vanish.")
+    act("$n steps through a gate and vanishes.", ch, None, None, TO_ROOM)
+    chprintln(ch, "You step through a gate and vanish.")
     ch["room"] = victim_vnum
     # act("$n has arrived through a gate.", ..., TO_ROOM) omitted -- single-player
     from info import do_look
@@ -1480,22 +1538,26 @@ def spell_gate(sn, level, ch, vo, target):
 def spell_haste(sn, level, ch, vo, target):
     """Haste spell (cf. 1stMud spell_haste in magic.c)."""
     if is_affected(vo, sn) or vo.get("affected_by", {}).get("haste") or vo.get("off_flags", {}).get("fast"):
-        tprint("You can't move any faster!" if vo is ch else _char_name(ch, vo) + " is already moving as fast as they can.")
+        if vo is ch:
+            chprintln(ch, "You can't move any faster!")
+        else:
+            act("$N is already moving as fast as $E can.", ch, None, vo, TO_CHAR)
         return False
     if vo.get("affected_by", {}).get("slow"):
         slow_sn = _skill_lookup("slow")
         if slow_sn is not None and not check_dispel(level, vo, slow_sn, ch):
             if vo is not ch:
-                tprint("Spell failed.")
-            tprint("You feel momentarily faster.")
+                chprintln(ch, "Spell failed.")
+            chprintln(vo, "You feel momentarily faster.")
             return False
         return False
     dur = level // 2 if vo is ch else level // 4
     mod = 1 + (level >= 18) + (level >= 25) + (level >= 32)
     affect_to_char(vo, _new_affect(sn, level, dur, "dex", mod, "haste"))
-    tprint("You feel yourself moving more quickly." if vo is ch else _char_name(ch, vo) + " is moving more quickly.")
+    chprintln(vo, "You feel yourself moving more quickly.")
+    act("$n is moving more quickly.", vo, None, None, TO_ROOM)
     if ch is not vo:
-        tprint("Ok.")
+        chprintln(ch, "Ok.")
     return True
 
 
@@ -1507,19 +1569,21 @@ def spell_heat_metal(sn, level, ch, vo, target):
     """
     victim = vo
     if saves_spell(level + 2, victim, "fire") or victim.get("imm_flags", {}).get("fire"):
-        tprint("Your spell had no effect.")
+        chprintln(ch, "Your spell had no effect.")
+        chprintln(victim, "You feel momentarily warmer.")
         return False
     dam = _dice(level // 2, 8)
     if saves_spell(level, victim, "fire"):
         dam = 2 * dam // 3
-    tprint("You sear " + _char_name(ch, victim) + " with heat!")
+    act("You sear $N with heat!", ch, None, victim, TO_CHAR)  # [PRIMESUD] simplified stub
     # TODO [PRIMESUD] full equipment iteration and drop/sear mechanic
     return damage(ch, victim, dam, sn, DAM_FIRE, True)
 
 
 def spell_holy_word(sn, level, ch, vo, target):
     """Holy word (cf. 1stMud spell_holy_word in magic.c)."""
-    tprint("You utter a word of divine power.")
+    act("$n utters a word of divine power!", ch, None, None, TO_ROOM)
+    chprintln(ch, "You utter a word of divine power.")
     bless_sn = _skill_lookup("bless")
     curse_sn = _skill_lookup("curse")
     frenzy_sn = _skill_lookup("frenzy")
@@ -1554,7 +1618,7 @@ def spell_holy_word(sn, level, ch, vo, target):
             #     tprint("You are struck down!")
             dam = _dice(level, 4)
             damage(ch, mob, dam, sn, DAM_ENERGY, True)
-    tprint("You feel drained.")
+    chprintln(ch, "You feel drained.")
     ch["move"] = 0
     ch["hit"] = ch.get("hit", 1) // 2
     return True
@@ -1563,10 +1627,14 @@ def spell_holy_word(sn, level, ch, vo, target):
 def spell_infravision(sn, level, ch, vo, target):
     """Infravision (cf. 1stMud spell_infravision in magic.c)."""
     if vo.get("affected_by", {}).get("infrared"):
-        tprint("You can already see in the dark." if vo is ch else _char_name(ch, vo) + " already has infravision.")
+        if vo is ch:
+            chprintln(ch, "You can already see in the dark.")
+        else:
+            act("$N already has infravision.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, 2 * level, "none", 0, "infrared"))
-    tprint("Your eyes glow red.")
+    act("$n's eyes glow red.", ch, None, None, TO_ROOM)
+    chprintln(vo, "Your eyes glow red.")
     return True
 
 
@@ -1576,15 +1644,16 @@ def spell_invis(sn, level, ch, vo, target):
         tpl = ITEM_DEFS[obj_vnum(vo)]
         flags = item_extra_flags(vo, tpl)
         if flags.get("invis"):
-            tprint(_item_name(vo) + " is already invisible.")
+            act("$p is already invisible.", ch, vo, None, TO_CHAR)
             return False
         item_affect_to_obj(vo, _new_obj_affect(sn, level, level + 12, "none", 0, "invis"), tpl)
-        tprint(_item_name(vo) + " fades out of sight.")
+        act("$p fades out of sight.", ch, vo, None, TO_ALL)
         return True
     if vo.get("affected_by", {}).get("invisible"):
         return False
+    act("$n fades out of existence.", vo, None, None, TO_ROOM)
     affect_to_char(vo, _new_affect(sn, level, level + 12, "none", 0, "invisible"))
-    tprint("You fade out of existence." if vo is ch else _char_name(ch, vo) + " fades out of existence.")
+    chprintln(vo, "You fade out of existence.")
     return True
 
 
@@ -1592,20 +1661,20 @@ def spell_know_alignment(sn, level, ch, vo, target):
     """Know alignment (cf. 1stMud spell_know_alignment in magic.c)."""
     ap = vo.get("alignment", 0)
     if ap > 700:
-        msg = "has a pure and good aura."
+        msg = "$N has a pure and good aura."
     elif ap > 350:
-        msg = "is of excellent moral character."
+        msg = "$N is of excellent moral character."
     elif ap > 100:
-        msg = "is often kind and thoughtful."
+        msg = "$N is often kind and thoughtful."
     elif ap > -100:
-        msg = "doesn't have a firm moral commitment."
+        msg = "$N doesn't have a firm moral commitment."
     elif ap > -350:
-        msg = "lies to their friends."
+        msg = "$N lies to $S friends."
     elif ap > -700:
-        msg = "is a black-hearted murderer."
+        msg = "$N is a black-hearted murderer."
     else:
-        msg = "is the embodiment of pure evil!"
-    tprint(_char_name(ch, vo) + " " + msg)
+        msg = "$N is the embodiment of pure evil!."
+    act(msg, ch, None, vo, TO_CHAR)
     return True
 
 
@@ -1636,41 +1705,56 @@ def spell_mass_invis(sn, level, ch, vo, target):
     TODO: group system not ported. Applies invis to caster only.
     """
     if ch.get("affected_by", {}).get("invisible"):
-        tprint("You are already invisible.")
+        chprintln(ch, "You are already invisible.")
         return True
-    tprint("You slowly fade out of existence.")
+    act("$n slowly fades out of existence.", ch, None, None, TO_ROOM)
+    chprintln(ch, "You slowly fade out of existence.")
     affect_to_char(ch, _new_affect(sn, level // 2, 24, "none", 0, "invisible"))
-    tprint("Ok.")
+    chprintln(ch, "Ok.")
     return True
 
 
 def spell_pass_door(sn, level, ch, vo, target):
     """Pass door (cf. 1stMud spell_pass_door in magic.c)."""
     if vo.get("affected_by", {}).get("pass_door"):
-        tprint("You are already out of phase." if vo is ch else _char_name(ch, vo) + " is already shifted out of phase.")
+        if vo is ch:
+            chprintln(ch, "You are already out of phase.")
+        else:
+            act("$N is already shifted out of phase.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, _number_fuzzy(level // 4), "none", 0, "pass_door"))
-    tprint("You turn translucent." if vo is ch else _char_name(ch, vo) + " turns translucent.")
+    act("$n turns translucent.", vo, None, None, TO_ROOM)
+    chprintln(vo, "You turn translucent.")
     return True
 
 
 def spell_protection_evil(sn, level, ch, vo, target):
     """Protection from evil (cf. 1stMud spell_protection_evil in magic.c)."""
     if vo.get("affected_by", {}).get("protect_evil") or vo.get("affected_by", {}).get("protect_good"):
-        tprint("You are already protected." if vo is ch else _char_name(ch, vo) + " is already protected.")
+        if vo is ch:
+            chprintln(ch, "You are already protected.")
+        else:
+            act("$N is already protected.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, 24, "saves", -1, "protect_evil"))
-    tprint("You feel holy and pure." if vo is ch else _char_name(ch, vo) + " is protected from evil.")
+    chprintln(vo, "You feel holy and pure.")
+    if ch is not vo:
+        act("$N is protected from evil.", ch, None, vo, TO_CHAR)
     return True
 
 
 def spell_protection_good(sn, level, ch, vo, target):
     """Protection from good (cf. 1stMud spell_protection_good in magic.c)."""
     if vo.get("affected_by", {}).get("protect_good") or vo.get("affected_by", {}).get("protect_evil"):
-        tprint("You are already protected." if vo is ch else _char_name(ch, vo) + " is already protected.")
+        if vo is ch:
+            chprintln(ch, "You are already protected.")
+        else:
+            act("$N is already protected.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, 24, "saves", -1, "protect_good"))
-    tprint("You feel aligned with darkness." if vo is ch else _char_name(ch, vo) + " is protected from good.")
+    chprintln(vo, "You feel aligned with darkness.")
+    if ch is not vo:
+        act("$N is protected from good.", ch, None, vo, TO_CHAR)
     return True
 
 
@@ -1679,9 +1763,10 @@ def spell_ray_of_truth(sn, level, ch, vo, target):
     victim = vo
     if _is_evil(ch):
         victim = ch
-        tprint("The energy explodes inside you!")
+        chprintln(ch, "The energy explodes inside you!")
     if _is_good(victim):
-        tprint("The light seems powerless to affect " + _char_name(ch, victim) + ".")
+        act("$n seems unharmed by the light.", victim, None, victim, TO_ROOM)
+        chprintln(victim, "The light seems powerless to affect you.")
         return False
     dam = _dice(level, 10)
     if saves_spell(level, victim, "holy"):
@@ -1701,16 +1786,16 @@ def spell_recharge(sn, level, ch, vo, target):
     """Recharge wand/staff (cf. 1stMud spell_recharge in magic.c)."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     if tpl.get("type") not in ("wand", "staff"):
-        tprint("That item does not carry charges.")
+        chprintln(ch, "That item does not carry charges.")
         return False
     spell_lvl = tpl.get("spell_level", 0)
     if spell_lvl >= 3 * level // 2:
-        tprint("Your skills are not great enough for that.")
+        chprintln(ch, "Your skills are not great enough for that.")
         return False
     max_ch = vo.get("max_charges", tpl.get("max_charges", 0))
     cur_ch = vo.get("charges", tpl.get("charges", 0))
     if max_ch == 0:
-        tprint("That item has already been recharged once.")
+        chprintln(ch, "That item has already been recharged once.")
         return False
     chance = 40 + 2 * level - spell_lvl
     used = max_ch - cur_ch
@@ -1718,22 +1803,25 @@ def spell_recharge(sn, level, ch, vo, target):
     chance = max(level // 2, chance)
     pct = randint(1, 100)
     if pct < chance // 2:
-        tprint(_item_name(vo) + " glows softly.")
+        act("$p glows softly.", ch, vo, None, TO_CHAR)
+        act("$p glows softly.", ch, vo, None, TO_ROOM)
         vo["charges"] = max(max_ch, cur_ch)
         vo["max_charges"] = 0
         return True
     if pct <= chance:
-        tprint(_item_name(vo) + " glows softly.")
+        act("$p glows softly.", ch, vo, None, TO_CHAR)
+        act("$p glows softly.", ch, vo, None, TO_ROOM)
         chargeback = max(1, used * pct // 100) if used > 0 else 0
         vo["charges"] = cur_ch + chargeback
         vo["max_charges"] = 0
         return True
     if pct <= min(95, 3 * chance // 2):
-        tprint("Nothing seems to happen.")
+        chprintln(ch, "Nothing seems to happen.")
         if max_ch > 1:
             vo["max_charges"] = max_ch - 1
         return False
-    tprint(_item_name(vo) + " glows brightly and explodes!")
+    act("$p glows brightly and explodes!", ch, vo, None, TO_CHAR)
+    act("$p glows brightly and explodes!", ch, vo, None, TO_ROOM)
     if vo in ch.get("inv", []):
         ch["inv"].remove(vo)
     return False
@@ -1743,9 +1831,11 @@ def spell_refresh(sn, level, ch, vo, target):
     """Refresh movement (cf. 1stMud spell_refresh in magic.c)."""
     vo["move"] = min(vo.get("move", 0) + level, vo.get("max_move", 100))
     if vo.get("max_move", 100) == vo.get("move", 0):
-        tprint("You feel fully refreshed!" if vo is ch else "Ok.")
+        chprintln(vo, "You feel fully refreshed!")
     else:
-        tprint("You feel less tired." if vo is ch else "Ok.")
+        chprintln(vo, "You feel less tired.")
+    if ch is not vo:
+        chprintln(ch, "Ok.")
     return True
 
 
@@ -1758,16 +1848,17 @@ def spell_remove_curse(sn, level, ch, vo, target):
             if not flags.get("nouncurse") and not saves_dispel(level + 2, tpl.get("level", 0), 0):
                 set_item_extra_flag(vo, tpl, "nodrop", False)
                 set_item_extra_flag(vo, tpl, "noremove", False)
-                tprint(_item_name(vo) + " glows blue.")
+                act("$p glows blue.", ch, vo, None, TO_ALL)
                 return True
-            tprint("The curse on " + _item_name(vo) + " is beyond your power.")
+            act("The curse on $p is beyond your power.", ch, vo, None, TO_CHAR)
             return False
-        tprint("There doesn't seem to be a curse on " + _item_name(vo) + ".")
+        act("There doesn't seem to be a curse on $p.", ch, vo, None, TO_CHAR)
         return False
     curse_sn = _skill_lookup("curse")
     found = False
     if curse_sn is not None and check_dispel(level, vo, curse_sn, ch):
-        tprint("You feel better." if vo is ch else _char_name(ch, vo) + " looks more relaxed.")
+        chprintln(vo, "You feel better.")
+        act("$n looks more relaxed.", vo, None, None, TO_ROOM)
         found = True
     for obj in list(vo.get("inv", [])):
         tpl = ITEM_DEFS[obj_vnum(obj)]
@@ -1776,7 +1867,8 @@ def spell_remove_curse(sn, level, ch, vo, target):
             if not saves_dispel(level, tpl.get("level", 0), 0):
                 set_item_extra_flag(obj, tpl, "nodrop", False)
                 set_item_extra_flag(obj, tpl, "noremove", False)
-                tprint("Your " + _item_name(obj) + " glows blue.")
+                act("Your $p glows blue.", vo, obj, None, TO_CHAR)
+                act("$n's $p glows blue.", vo, obj, None, TO_ROOM)
                 found = True
                 break
     return found
@@ -1785,10 +1877,14 @@ def spell_remove_curse(sn, level, ch, vo, target):
 def spell_sanctuary(sn, level, ch, vo, target):
     """Sanctuary (cf. 1stMud spell_sanctuary in magic.c)."""
     if vo.get("affected_by", {}).get("sanctuary"):
-        tprint("You are already in sanctuary." if vo is ch else _char_name(ch, vo) + " is already in sanctuary.")
+        if vo is ch:
+            chprintln(ch, "You are already in sanctuary.")
+        else:
+            act("$N is already in sanctuary.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, level // 6, "none", 0, "sanctuary"))
-    tprint("You are surrounded by a white aura." if vo is ch else _char_name(ch, vo) + " is surrounded by a white aura.")
+    act("$n is surrounded by a white aura.", vo, None, None, TO_ROOM)
+    chprintln(vo, "You are surrounded by a white aura.")
     return True
 
 
@@ -1810,7 +1906,8 @@ def spell_sleep(sn, level, ch, vo, target):
     # 1stMud uses affect_join; affect_to_char used [PRIMESUD]
     affect_to_char(vo, _new_affect(sn, level, 4 + level, "none", 0, "sleep"))
     if is_awake(vo):
-        tprint("You feel very sleepy ..... zzzzzz." if vo is ch else _char_name(ch, vo) + " goes to sleep.")
+        chprintln(vo, "You feel very sleepy ..... zzzzzz.")
+        act("$n goes to sleep.", vo, None, None, TO_ROOM)
         vo["pos"] = "sleeping"
     return True
 
@@ -1818,34 +1915,43 @@ def spell_sleep(sn, level, ch, vo, target):
 def spell_slow(sn, level, ch, vo, target):
     """Slow spell (cf. 1stMud spell_slow in magic.c)."""
     if is_affected(vo, sn) or vo.get("affected_by", {}).get("slow"):
-        tprint("You can't move any slower!" if vo is ch else _char_name(ch, vo) + " can't get any slower than that.")
+        if vo is ch:
+            chprintln(ch, "You can't move any slower!")
+        else:
+            act("$N can't get any slower than that.", ch, None, vo, TO_CHAR)
         return False
     if saves_spell(level, vo, "other") or vo.get("imm_flags", {}).get("magic"):
         if vo is not ch:
-            tprint("Nothing seemed to happen.")
-        tprint("You feel momentarily lethargic." if vo is ch else "")
+            chprintln(ch, "Nothing seemed to happen.")
+        chprintln(vo, "You feel momentarily lethargic.")
         return False
     if vo.get("affected_by", {}).get("haste"):
         haste_sn = _skill_lookup("haste")
         if haste_sn is not None and not check_dispel(level, vo, haste_sn, ch):
             if vo is not ch:
-                tprint("Spell failed.")
-            tprint("You feel momentarily slower." if vo is ch else "")
+                chprintln(ch, "Spell failed.")
+            chprintln(vo, "You feel momentarily slower.")
             return False
+        act("$n is moving less quickly.", vo, None, None, TO_ROOM)
         return True
     mod = -1 - (level >= 18) - (level >= 25) - (level >= 32)
     affect_to_char(vo, _new_affect(sn, level, level // 2, "dex", mod, "slow"))
-    tprint("You feel yourself slowing d o w n..." if vo is ch else _char_name(ch, vo) + " starts to move in slow motion.")
+    chprintln(vo, "You feel yourself slowing d o w n...")
+    act("$n starts to move in slow motion.", vo, None, None, TO_ROOM)
     return True
 
 
 def spell_stone_skin(sn, level, ch, vo, target):
     """Stone skin (cf. 1stMud spell_stone_skin in magic.c)."""
     if is_affected(ch, sn):
-        tprint("Your skin is already as hard as a rock." if vo is ch else _char_name(ch, vo) + " is already as hard as can be.")
+        if vo is ch:
+            chprintln(ch, "Your skin is already as hard as a rock.")
+        else:
+            act("$N is already as hard as can be.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, level, "ac", -40))
-    tprint("Your skin turns to stone." if vo is ch else _char_name(ch, vo) + "'s skin turns to stone.")
+    act("$n's skin turns to stone.", vo, None, None, TO_ROOM)
+    chprintln(vo, "Your skin turns to stone.")
     return True
 
 
@@ -1855,7 +1961,7 @@ def spell_summon(sn, level, ch, vo, target):
     TODO: world-wide char search not ported. PrimeSUD is single-player.
     """
     # TODO [PRIMESUD] get_char_world for cross-room summoning
-    tprint("You failed.")
+    chprintln(ch, "You failed.")
     return False
 
 
@@ -1864,7 +1970,7 @@ def spell_ventriloquate(sn, level, ch, vo, target):
     tail = _spell_tail(ch)
     parts = tail.split(None, 1)
     if len(parts) < 2:
-        tprint("What do you want to make who say?")
+        chprintln(ch, "What do you want to make who say?")
         return False
     speaker = parts[0]
     message = parts[1]
@@ -1877,9 +1983,9 @@ def spell_ventriloquate(sn, level, ch, vo, target):
         tpl = MOB_DEFS.get(mob.get("tpl"), {})
         if is_name(speaker, tpl.get("keywords", "")) and is_awake(mob):
             if saves_spell(level, mob, "other"):
-                tprint("Someone makes " + speaker + " say '" + message + "'.")
+                chprintln(mob, "Someone makes " + speaker + " say '" + message + "'.")
             else:
-                tprint(upper(speaker) + " says '" + message + "'.")
+                chprintln(mob, upper(speaker) + " says '" + message + "'.")
             found = True
     return found
 
@@ -1893,7 +1999,9 @@ def spell_ventriloquate(sn, level, ch, vo, target):
 def spell_acid_breath(sn, level, ch, vo, target):
     """Acid breath (cf. 1stMud spell_acid_breath in magic.c)."""
     victim = vo
-    tprint("You spit acid at " + _char_name(ch, victim) + ".")
+    act("$n spits acid at $N.", ch, None, victim, TO_NOTVICT)
+    act("$n spits a stream of corrosive acid at you.", ch, None, victim, TO_VICT)
+    act("You spit acid at $N.", ch, None, victim, TO_CHAR)
     hpch = max(12, ch.get("hit", 12))
     hp_dam = randint(hpch // 11 + 1, hpch // 6)
     dice_dam = _dice(level, 16)
@@ -1908,7 +2016,9 @@ def spell_acid_breath(sn, level, ch, vo, target):
 def spell_fire_breath(sn, level, ch, vo, target):
     """Fire breath -- area effect (cf. 1stMud spell_fire_breath in magic.c)."""
     victim = vo
-    tprint("You breathe forth a cone of fire.")
+    act("$n breathes forth a cone of fire.", ch, None, victim, TO_NOTVICT)
+    act("$n breathes a cone of hot fire over you!", ch, None, victim, TO_VICT)
+    act("You breath forth a cone of fire.", ch, None, None, TO_CHAR)
     hpch = max(10, ch.get("hit", 10))
     hp_dam = randint(hpch // 9 + 1, hpch // 5)
     dice_dam = _dice(level, 20)
@@ -1932,7 +2042,9 @@ def spell_fire_breath(sn, level, ch, vo, target):
 def spell_frost_breath(sn, level, ch, vo, target):
     """Frost breath -- area effect (cf. 1stMud spell_frost_breath in magic.c)."""
     victim = vo
-    tprint("You breathe out a cone of frost.")
+    act("$n breathes out a freezing cone of frost!", ch, None, victim, TO_NOTVICT)
+    act("$n breathes a freezing cone of frost over you!", ch, None, victim, TO_VICT)
+    act("You breath out a cone of frost.", ch, None, None, TO_CHAR)
     hpch = max(12, ch.get("hit", 12))
     hp_dam = randint(hpch // 11 + 1, hpch // 6)
     dice_dam = _dice(level, 16)
@@ -1955,7 +2067,8 @@ def spell_frost_breath(sn, level, ch, vo, target):
 
 def spell_gas_breath(sn, level, ch, vo, target):
     """Gas breath -- area poison (cf. 1stMud spell_gas_breath in magic.c)."""
-    tprint("You breathe out a cloud of poisonous gas.")
+    act("$n breathes out a cloud of poisonous gas!", ch, None, None, TO_ROOM)
+    act("You breath out a cloud of poisonous gas.", ch, None, None, TO_CHAR)
     hpch = max(16, ch.get("hit", 16))
     hp_dam = randint(hpch // 15 + 1, 8)
     dice_dam = _dice(level, 12)
@@ -1979,7 +2092,8 @@ def spell_gas_breath(sn, level, ch, vo, target):
 def spell_lightning_breath(sn, level, ch, vo, target):
     """Lightning breath (cf. 1stMud spell_lightning_breath in magic.c)."""
     victim = vo
-    tprint("You breathe a bolt of lightning at " + _char_name(ch, victim) + ".")
+    act("You breathe a bolt of lightning at $N.", ch, None, victim, TO_CHAR)
+    act("$n breathes a bolt of lightning at you!", ch, None, victim, TO_VICT)
     hpch = max(10, ch.get("hit", 10))
     hp_dam = randint(hpch // 9 + 1, hpch // 5)
     dice_dam = _dice(level, 20)
@@ -2016,7 +2130,7 @@ def spell_portal(sn, level, ch, vo, target):
     TODO: world-wide char search and portal object placement not fully ported.
     """
     # TODO [PRIMESUD] get_char_world, warp stone component, portal creation
-    tprint("You failed.")
+    chprintln(ch, "You failed.")
     return False
 
 
@@ -2026,48 +2140,61 @@ def spell_nexus(sn, level, ch, vo, target):
     TODO: world-wide char search and portal object placement not fully ported.
     """
     # TODO [PRIMESUD] similar to portal but creates portals in both rooms
-    tprint("You failed.")
+    chprintln(ch, "You failed.")
     return False
 
 
 def spell_forceshield(sn, level, ch, vo, target):
     """Force shield (cf. 1stMud spell_forceshield in magic2.c)."""
     if is_affected(vo, sn):
-        tprint("You are already force-shielded." if vo is ch else _char_name(ch, vo) + " is already force-shielded.")
+        if vo is ch:
+            chprintln(ch, "You are already force-shielded.")
+        else:
+            act("$N is already force-shielded.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, level // 4, "ac", (level // 5) * -1, "force_shield"))
-    tprint("You are encircled by a sparkling force-shield." if vo is ch else "A sparkling force-shield encircles " + _char_name(ch, vo) + ".")
+    act("A sparkling force-shield encircles $n.", vo, None, None, TO_ROOM)
+    chprintln(vo, "You are encircled by a sparkling force-shield.")
     return True
 
 
 def spell_staticshield(sn, level, ch, vo, target):
     """Static shield (cf. 1stMud spell_staticshield in magic2.c)."""
     if is_affected(vo, sn):
-        tprint("You are surrounded by static charge." if vo is ch else _char_name(ch, vo) + " is already surrounded by static charge.")
+        if vo is ch:
+            chprintln(ch, "You are surrounded by static charge.")
+        else:
+            act("$N is already surrounded by static charge.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, level // 3, "ac", (level // 4) * -1, "static_shield"))
-    tprint("You are surrounded by a pulse of static charge." if vo is ch else _char_name(ch, vo) + " is surrounded by a pulse of static charge.")
+    act("$n is surrounded by a pulse of static charge.", vo, None, None, TO_ROOM)
+    chprintln(vo, "You are surrounded by a pulse of static charge.")
     return True
 
 
 def spell_flameshield(sn, level, ch, vo, target):
     """Flame shield (cf. 1stMud spell_flameshield in magic2.c)."""
     if is_affected(vo, sn):
-        tprint("You are already protected by fire." if vo is ch else _char_name(ch, vo) + " is already protected by fire.")
+        if vo is ch:
+            chprintln(ch, "You are already protected by fire.")
+        else:
+            act("$N is already protected by fire.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, level // 10, "ac", (level // 2) * -1, "flame_shield"))
-    tprint("You are shielded by red walls of flame." if vo is ch else _char_name(ch, vo) + " is shielded by red walls of flame.")
+    act("$n is shielded by red walls of flame.", vo, None, None, TO_ROOM)
+    chprintln(vo, "You are shielded by red walls of flame.")
     return True
 
 
 def spell_channel(sn, level, ch, vo, target):
     """Channel mana to another (cf. 1stMud spell_channel in magic2.c)."""
     if vo is ch:
-        tprint("You cannot channel energy into yourself.")
+        chprintln(ch, "You cannot channel energy into yourself.")
         return False
     heal = _dice(3, 3) + (level // 3) * 2
     vo["mana"] = min(vo.get("mana", 0) + heal, vo.get("max_mana", 100))
-    tprint("A swirling cloud of energy slips from your fingertips.")
+    chprintln(vo, "A swirling cloud of energy engulfs you!")
+    chprintln(ch, "A swirling cloud of energy slips from your fingertips.")
     return True
 
 
@@ -2081,15 +2208,15 @@ def spell_investiture(sn, level, ch, vo, target):
     vo["mana"] = min(vo.get("mana", 0) + heal, vo.get("max_mana", 100))
     vo["move"] = 0
     update_pos(vo)
-    tprint("{cThe forces of the earth fill you with energy!{x")
-    # 1stMud: act("$n draws magic from the very earth!", ..., TO_ROOM)
+    chprintln(vo, "{cThe forces of the earth fill you with energy!{x")
+    # 1stMud: act("$n draws magic from the very earth!", ch, NULL, NULL, TO_ROOM)
     # [PRIMESUD] single-user, no room audience
     return True
 
 
 def spell_powerstorm(sn, level, ch, vo, target):
     """Powerstorm area damage (cf. 1stMud spell_powerstorm in magic2.c)."""
-    tprint("A fiery blaze of magic engulfs the room!")
+    act("$n makes a firey blaze of magic engulf the room!", ch, None, None, TO_ROOM)
     room = world.rooms[ch["room"]]
     found = False
     for mob_id in list(room["mobs"]):
@@ -2116,73 +2243,113 @@ def spell_mana_burn(sn, level, ch, vo, target):
 def spell_bark_skin(sn, level, ch, vo, target):
     """Bark skin (cf. 1stMud spell_bark_skin in magic2.c)."""
     if is_affected(vo, sn):
-        tprint("Your skin is already covered in bark." if vo is ch else _char_name(ch, vo) + "'s skin is already bark.")
+        if vo is ch:
+            chprintln(ch, "Your skin is already covered in bark.")
+        else:
+            act("$N's skin is already bark.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, level // 3, "ac", -30 - level // 5))
-    tprint("Your skin becomes as tough as bark." if vo is ch else _char_name(ch, vo) + "'s skin becomes as tough as bark.")
+    chprintln(vo, "Your skin becomes as tough as bark.")
+    if ch is not vo:
+        act("$N's skin becomes as tough as bark.", ch, None, vo, TO_CHAR)
     return True
 
 
 def spell_spell_mantle(sn, level, ch, vo, target):
     """Spell mantle (cf. 1stMud spell_spell_mantle in magic2.c)."""
     if is_affected(vo, sn):
-        tprint("You are already protected against magic." if vo is ch else _char_name(ch, vo) + " is already protected.")
+        if vo is ch:
+            chprintln(ch, "You are already protected against magic.")
+        else:
+            act("$N is already protected.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, level // 3, "saves", 1 - level // 6))
-    tprint("You are surrounded by a glowing spell mantle." if vo is ch else _char_name(ch, vo) + " is surrounded by a glowing spell mantle.")
+    chprintln(vo, "You are surrounded by a glowing spell mantle.")
+    if ch is not vo:
+        act("$N is surrounded by a glowing spell mantle.", ch, None, vo, TO_CHAR)
     return True
 
 
 def spell_animal_instinct(sn, level, ch, vo, target):
     """Animal instinct (cf. 1stMud spell_animal_instinct in magic2.c)."""
     if is_affected(vo, sn):
-        tprint("You are already animalistic." if vo is ch else _char_name(ch, vo) + " is already animalistic.")
+        if vo is ch:
+            chprintln(ch, "You are already animalistic.")
+        else:
+            act("$N is already animalistic.", ch, None, vo, TO_CHAR)
         return False
     affect_to_char(vo, _new_affect(sn, level, level // 2, "str", level // 25))
     affect_to_char(vo, _new_affect(sn, level, level // 2, "damroll", level // 20))
-    tprint("You suddenly look like a wild beast!" if vo is ch else _char_name(ch, vo) + " suddenly grows fangs and claws!")
+    chprintln(vo, "You suddenly look like a wild beast!")
+    if ch is not vo:
+        act("$N suddenly grows fangs and claws!", ch, None, vo, TO_CHAR)
     return True
 
 
 def spell_chaos_flare(sn, level, ch, vo, target):
     """Chaos flare -- random buff/debuff (cf. 1stMud spell_chaos_flare in magic2.c)."""
     if is_affected(vo, sn):
-        tprint("You are already touched by chaos." if vo is ch else _char_name(ch, vo) + " is already touched by chaos.")
+        if vo is ch:
+            chprintln(ch, "You are already touched by chaos.")
+        else:
+            act("$N's skin is already touched by chaos.", ch, None, vo, TO_CHAR)
         return False
     rnum = randint(1, 100)
     if rnum <= 5:
         affect_to_char(vo, _new_affect(sn, level, level // 3, "ac", -30 - level // 5))
-        tprint("Glinting scales form over your skin!")
+        chprintln(vo, "Glinting scales form over your skin!")
+        if ch is not vo:
+            act("$N's skin is suddenly covered with metallic scales.", ch, None, vo, TO_CHAR)
     elif rnum <= 15:
         affect_to_char(vo, _new_affect(sn, level, level // 3, "damroll", level // 20))
-        tprint("Sharp spikes jut out of your skin!")
+        chprintln(vo, "Sharp spikes jut out of your skin!")
+        if ch is not vo:
+            act("$N's skin is suddenly covered with jagged spikes.", ch, None, vo, TO_CHAR)
     elif rnum <= 25:
         affect_to_char(vo, _new_affect(sn, level, level // 3, "hitroll", level // 20))
-        tprint("Your eyes gleam.")
+        chprintln(vo, "Your eyes gleam.")
+        if ch is not vo:
+            act("$N's eyes gleam.", ch, None, vo, TO_CHAR)
     elif rnum <= 35:
         affect_to_char(vo, _new_affect(sn, level, level // 3, "move", level * 2))
-        tprint("You suddenly grow an extra set of legs!")
+        chprintln(vo, "You suddenly grow an extra set of legs!")
+        if ch is not vo:
+            act("$N suddenly grows an extra set of legs! Yipes!", ch, None, vo, TO_CHAR)
     elif rnum <= 45:
         affect_to_char(vo, _new_affect(sn, level, level // 3, "con", level // 20))
-        tprint("You grow much tougher!")
+        chprintln(vo, "You grow much tougher!")
+        if ch is not vo:
+            act("$N seems much tougher all of a sudden.", ch, None, vo, TO_CHAR)
     elif rnum <= 50:
         affect_to_char(vo, _new_affect(sn, level, level // 3, "damroll", level // 4))
-        tprint("{YA blaze of light surrounds you!{x")
+        chprintln(vo, "{YA blaze of light surrounds you!{x")
+        if ch is not vo:
+            act("{YA blazing halo surrounds $N!{x", ch, None, vo, TO_CHAR)
     elif rnum <= 65:
         affect_to_char(vo, _new_affect(sn, level, level // 3, "dex", 1 - level // 20))
-        tprint("One of your arms suddenly turns into a flipper.")
+        chprintln(vo, "One of your arms suddenly turns into a flipper.")
+        if ch is not vo:
+            act("One of $N's arms turns into a.. dolphin flipper.", ch, None, vo, TO_CHAR)
     elif rnum <= 75:
         affect_to_char(vo, _new_affect(sn, level, level // 3, "int", 1 - level // 20))
-        tprint("Me say wah? You suddenly feel very stoopid.")
+        chprintln(vo, "Me say wah? You suddenly feel very stoopid.")
+        if ch is not vo:
+            act("$N is suddenly looking very stupid.", ch, None, vo, TO_CHAR)
     elif rnum <= 85:
         affect_to_char(vo, _new_affect(sn, level, level // 3, "hit", level * 3))
-        tprint("You grow two sizes bigger!")
+        chprintln(vo, "You grow two sizes bigger!")
+        if ch is not vo:
+            act("$N suddenly gets bigger.. and bigger.. and bigger.", ch, None, vo, TO_CHAR)
     elif rnum <= 95:
         affect_to_char(vo, _new_affect(sn, level, level // 3, "ac", 1 + level * 2))
-        tprint("You suddenly feel quite vulnerable. They're all out to get you!")
+        chprintln(vo, "You suddenly feel quite vulnerable. They're all out to get you!")
+        if ch is not vo:
+            act("$N looks might paranoid all of a sudden.", ch, None, vo, TO_CHAR)
     else:
         affect_to_char(vo, _new_affect(sn, level, level // 3, "damroll", 1 - level))
-        tprint("{cAck! You turn into an oozing gelatinous blob!")
+        chprintln(vo, "{cAck! You turn into an oozing gelatinous blob!")
+        if ch is not vo:
+            act("{c$N's been turned into a green oozing blob!{c", ch, None, vo, TO_ROOM)
     return True
 
 
