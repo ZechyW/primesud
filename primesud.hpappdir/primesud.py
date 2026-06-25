@@ -13,25 +13,17 @@ from tml_prime import _HIST_UP, _HIST_DN
 from config import (
     POLL_MS,
     MS_PER_PULSE,
-    PULSE_VIOLENCE,
-    PULSE_MOBILE,
-    PULSE_TICK,
-    PULSE_AREA,
     AUTOSAVE_TICKS,
-    TICK_SECS,
     KEY_COMMANDS as _KEY_COMMANDS,
-    DEATH_MSG_DELAY,
     CMD_HISTORY_MAX,
     FNKEY_SENTINELS,
 )
 from util import free_mem, gc_collect
-from config import R_STARTING_ROOM
 import world
-from world import ROOM_DEFS, MOB_DEFS, init_world
-from combat import update_mob_timers, violence_update, mob_condition, make_corpse
-from mob import mobile_update, aggr_update, area_update
-from player import tick_update, show_prompt
-from update import obj_update, affect_update
+from world import MOB_DEFS, init_world
+from combat import mob_condition
+from player import show_prompt
+from update import update_handler, UPD_VIOLENCE, UPD_TICK
 from commands import interpret
 from info import do_look
 from macros import _MACRO_SUBST
@@ -43,7 +35,7 @@ from game_state import (
     load_game,
     save_game,
 )
-from prime_platform import ticks, wait, wait_ms, clear_graphics
+from prime_platform import ticks, wait_ms, clear_graphics
 
 
 def _handle_version_mismatch(game):
@@ -121,7 +113,6 @@ class Game:
         tr = self.tr
         player = world.chars[1]
 
-        pulse      = 0
         tick_count = 0
         now        = ticks()
         next_pulse = now + MS_PER_PULSE
@@ -218,7 +209,6 @@ class Game:
             now = ticks()
             if now >= next_pulse:
                 next_pulse += MS_PER_PULSE
-                pulse += 1
 
                 # Per-pulse player timer decrement (cf. 1stMud comm.c:865-870)
                 if player.get("wait", 0) > 0:
@@ -242,58 +232,23 @@ class Game:
                 if player.get("daze", 0) > 0:
                     player["daze"] -= 1
 
-                if pulse % PULSE_VIOLENCE == 0:
-                    update_mob_timers()
-                    affect_update(player)
-                    if violence_update(player):
-                        # [PRIMESUD] Handle auto respawn on death
-                        tr.print("You have been KILLED!!")
-                        # [PRIMESUD] Drop empty PC corpse in death room for effect
-                        make_corpse(player)
-                        tr.print("Your lifeforce ebbs away...")
-                        wait(DEATH_MSG_DELAY)
-                        tr.print("A distant warmth draws you back.")
-                        wait(DEATH_MSG_DELAY)
-                        player["room"] = R_STARTING_ROOM
-                        player["hit"]   = 1
-                        player["mana"]   = 1
-                        player["pos"]  = "standing"
-                        player["wait"] = 0
-                        player["daze"] = 0
-                        self._pending_cmd = None
-                        tr.print("You come to your senses. Alive, but barely.")
+                fired = update_handler()
+
+                # [PRIMESUD] display follows -- not part of 1stMud update_handler
+                if fired & UPD_VIOLENCE:
+                    if player["fighting"] is not None:
+                        fid = player["fighting"]
+                        finst = world.chars[fid]
+                        tr.print(mob_condition(finst, MOB_DEFS[finst["tpl"]]))
                         tr.print("")
-                        do_look(player, [])
-                    else:
-                        if player["fighting"] is not None:
-                            fid = player["fighting"]
-                            finst = world.chars[fid]
-                            tr.print(mob_condition(finst, MOB_DEFS[finst["tpl"]]))
-                            tr.print("")
-                    # cf. 1stMud aggr_update runs every pulse; gated to
-                    # PULSE_VIOLENCE here for HP Prime performance.
-                    if player["fighting"] is None:
-                        aggr_update(tr, player)
                     show_prompt(tr, player, self.input_buf)
 
-                if pulse % PULSE_TICK == 0:
-                    player["played"] = player.get("played", 0) + TICK_SECS
-                    tick_update(tr, player, ROOM_DEFS[player["room"]])
-                    obj_update(tr, player)
+                if fired & UPD_TICK:
                     show_prompt(tr, player, self.input_buf)
                     tick_count += 1
                     if tick_count >= AUTOSAVE_TICKS:
                         save_game(self, quiet=False)
                         tick_count = 0
-
-                if pulse % PULSE_MOBILE == 0:
-                    mobile_update(tr, player)
-
-                if pulse % PULSE_AREA == 0:
-                    area_update(tr, player)
-
-                if pulse >= 14400:  # wrap at 1 hour (3600 s x 4 pulses/s)
-                    pulse = 0
 
             wait_ms(POLL_MS)
 

@@ -8,11 +8,6 @@ def ticks():
     return int(ppl_eval("Ticks"))
 
 
-def wait(seconds):
-    """Wait for seconds via PPL WAIT."""
-    ppl_eval("WAIT({})".format(seconds))
-
-
 def wait_ms(ms):
     """Wait for milliseconds via PPL WAIT."""
     ppl_eval("WAIT({}/1e3)".format(ms))

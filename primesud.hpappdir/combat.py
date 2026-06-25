@@ -2,8 +2,8 @@
 
 import world
 from actor import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
-                   is_awake, can_see, affect_to_char, chprintln, TO_CHAR,
-                   TO_NOTVICT, TO_ROOM, TO_VICT)
+                   is_awake, can_see, affect_to_char, affect_remove,
+                   chprintln, TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT)
 from area_limbo import (
     I_CORPSE, I_CORPSE_11,
     I_COIN_SILVER_GCASH,
@@ -16,6 +16,8 @@ from colors import upper
 from config import (
     PULSE_VIOLENCE,
     POS_ORDER,
+    R_STARTING_ROOM,
+    DEATH_MSG_DELAY,
     CON_APP_HITP,
     WIS_APP_PRACTICE,
     INT_APP_LEARN,
@@ -54,8 +56,10 @@ from skills_table import (
     GSN_RESCUE, GSN_SHIELD_BLOCK, GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
     GSN_TRIP,
 )
+from races import RACE_TABLE
 from terminal import tprint
 from urandom import randint
+from util import wait
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 
 
@@ -66,9 +70,6 @@ def violence_update(player):
 
     Args:
         player (dict): Player state dict.
-
-    Returns:
-        bool or None: True if player died this pulse; None otherwise.
     """
     chars = world.chars
 
@@ -100,18 +101,12 @@ def violence_update(player):
         if ch["fighting"] is None:
             continue
 
-        # [PRIMESUD] player death check; 1stMud handles inside damage()
-        if player.get("pos") == "dead":
-            return True
-
         # 1stMud: check_assist(ch, victim)
         check_assist(ch, victim)
 
         # TODO: mob TRIG_FIGHT / TRIG_HPCNT triggers not ported
         # TODO: obj worn-item TRIG_FIGHT triggers not ported
         # TODO: room TRIG_FIGHT trigger not ported
-
-    return None
 
 
 def check_assist(ch, victim):
@@ -235,28 +230,125 @@ def _get_thac0(level):
     return t
 
 
-def _xp_for_kill(player_level, mob_level):
-    """XP awarded for killing a mob, based on level difference (cf. 1stMud xp_compute in fight.c).
+def xp_compute(gch, victim, total_levels):
+    """Compute XP for gch from killing victim in a group of total_levels
+    (cf. 1stMud xp_compute in fight.c).
+
+    Includes alignment-based XP modifiers and alignment drift on the killer.
 
     Args:
-        player_level (int): Player's current level.
-        mob_level (int): Defeated mob's level.
+        gch (dict): Group member receiving XP (player).
+        victim (dict): Defeated mob instance.
+        total_levels (int): Sum of effective levels in the group
+            (PCs at full level, NPCs at level/2).
 
     Returns:
-        int: XP gain, randomised +/-25% around the base value.
+        int: XP gain for this group member.
     """
-    lr = mob_level - player_level
-    if lr <= -10:
-        base = 0
-    elif lr > 4:
-        base = 160 + 20 * (lr - 4)
+    level_range = victim["level"] - gch["level"]
+
+    # -- Base XP from level difference (cf. 1stMud xp_compute switch)
+    if level_range <= -10:
+        base_exp = 0
+    elif level_range > 4:
+        base_exp = 160 + 20 * (level_range - 4)
     else:
-        base = XP_BASE[lr]
-    if player_level < 6:
-        base = 10 * base // (player_level + 4)
-    if base <= 0:
-        return 0
-    return randint(base * 3 // 4, base * 5 // 4)
+        base_exp = XP_BASE[level_range]
+
+    # -- Alignment drift (cf. 1stMud xp_compute alignment section)
+    victim_align = victim.get("alignment", 0)
+    gch_align = gch.get("alignment", 0)
+    victim_act = victim.get("act_flags", {})
+
+    align = victim_align - gch_align
+
+    if not victim_act.get("noalign"):
+        if align > 500:
+            change = (align - 500) * base_exp // 500 * gch["level"] // total_levels
+            change = max(1, change)
+            gch["alignment"] = max(-1000, gch_align - change)
+        elif align < -500:
+            change = (-align - 500) * base_exp // 500 * gch["level"] // total_levels
+            change = max(1, change)
+            gch["alignment"] = min(1000, gch_align + change)
+        else:
+            change = gch_align * base_exp // 500 * gch["level"] // total_levels
+            gch["alignment"] -= change
+
+    # -- Alignment XP modifiers (cf. 1stMud xp_compute alignment XP section)
+    gch_align = gch.get("alignment", 0)
+    if victim_act.get("noalign"):
+        xp = base_exp
+    elif gch_align > 500:
+        if victim_align < -750:
+            xp = base_exp * 4 // 3
+        elif victim_align < -500:
+            xp = base_exp * 5 // 4
+        elif victim_align > 750:
+            xp = base_exp // 4
+        elif victim_align > 500:
+            xp = base_exp // 2
+        elif victim_align > 250:
+            xp = base_exp * 3 // 4
+        else:
+            xp = base_exp
+    elif gch_align < -500:
+        if victim_align > 750:
+            xp = base_exp * 5 // 4
+        elif victim_align > 500:
+            xp = base_exp * 11 // 10
+        elif victim_align < -750:
+            xp = base_exp // 2
+        elif victim_align < -500:
+            xp = base_exp * 3 // 4
+        elif victim_align < -250:
+            xp = base_exp * 9 // 10
+        else:
+            xp = base_exp
+    elif gch_align > 200:
+        if victim_align < -500:
+            xp = base_exp * 6 // 5
+        elif victim_align > 750:
+            xp = base_exp // 2
+        elif victim_align > 0:
+            xp = base_exp * 3 // 4
+        else:
+            xp = base_exp
+    elif gch_align < -200:
+        if victim_align > 500:
+            xp = base_exp * 6 // 5
+        elif victim_align < -750:
+            xp = base_exp // 2
+        elif victim_align < 0:
+            xp = base_exp * 3 // 4
+        else:
+            xp = base_exp
+    else:
+        if victim_align > 500 or victim_align < -500:
+            xp = base_exp * 4 // 3
+        elif -200 < victim_align < 200:
+            xp = base_exp // 2
+        else:
+            xp = base_exp
+
+    # -- Low-level scaling (cf. 1stMud xp_compute)
+    if gch["level"] < 6:
+        xp = 10 * xp // (gch["level"] + 4)
+
+    # -- High-level scaling (cf. 1stMud xp_compute)
+    if gch["level"] > 35:
+        xp = 15 * xp // (gch["level"] - 25)
+
+    # -- Time-per-level penalty
+    # [PRIMESUD] skip time_per_level (no play-time tracking ported)
+
+    # -- Randomize +/-25% (cf. 1stMud xp_compute: number_range(xp*3/4, xp*5/4))
+    xp = randint(xp * 3 // 4, xp * 5 // 4)
+
+    # -- Group scaling (cf. 1stMud xp_compute: xp * gch->level / total_levels)
+    xp = xp * gch["level"] // max(1, total_levels - 1)
+
+    return xp
 
 
 def _get_weapon_sn(ch, slot="wield"):
@@ -1089,7 +1181,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         # [PRIMESUD] skip arena and war (not ported)
 
         # 1stMud: group_gain(ch, victim)
-        # [PRIMESUD] skip group_gain (single-player; XP handled in raw_kill via _xp_for_kill)
+        group_gain(ch, victim)
 
         # 1stMud: if (!IsNPC(victim)) { logf(...); if (!IsQuester...) gain_exp(loss); }
         # [PRIMESUD] skip player death exp loss (not ported)
@@ -1104,10 +1196,10 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         # [PRIMESUD] skip update_death (not ported)
 
         # 1stMud: raw_kill(victim, ch)
-        if victim["is_npc"]:
-            raw_kill(ch, victim["id"], victim, MOB_DEFS[victim["tpl"]])
+        raw_kill(victim, ch)
+
+        if victim.get("is_npc"):
             _advance_target(ch, world.chars, world.rooms)
-        # [PRIMESUD] player death: game loop in primesud.py handles death message and respawn
 
         # 1stMud: if (ch != victim && !IsNPC(ch) && ...) outlaw flag removal
         # [PRIMESUD] skip outlaw flag removal (not ported)
@@ -1631,9 +1723,17 @@ _DEATH_CRIES = [
 ]
 
 
-def _death_cry(tpl):
-    """Random death flavour message (cf. 1stMud death_cry in fight.c)."""
-    act(_DEATH_CRIES[randint(0, len(_DEATH_CRIES) - 1)].format(tpl["short_descr"]))
+def _death_cry(ch):
+    """Random death flavour message (cf. 1stMud death_cry in fight.c).
+
+    Args:
+        ch (dict): Dying character (player or mob instance).
+    """
+    if ch.get("is_npc"):
+        name = MOB_DEFS[ch["tpl"]]["short_descr"]
+    else:
+        name = ch.get("name", "someone")
+    act(_DEATH_CRIES[randint(0, len(_DEATH_CRIES) - 1)].format(name))
 
 
 def create_money(gold, silver):
@@ -1755,33 +1855,79 @@ def make_corpse(ch):
     world.rooms[ch["room"]]["items"].append(corpse)
 
 
-def raw_kill(player, mob_id, inst, tpl):
-    """Handle mob death: award XP, level-up if needed, drop loot, extract mob (cf. 1stMud raw_kill in fight.c).
+def raw_kill(victim, killer):
+    """Kill victim: stop fight, death cry, corpse, extract/respawn (cf. 1stMud raw_kill in fight.c).
 
     Args:
-        player (dict): Player state dict.
-        mob_id (int): ID of the killed mob instance.
-        inst (dict): Mob instance dict.
-        tpl (dict): Mob template dict.
+        victim (dict): Dying character (player or mob instance).
+        killer (dict or None): Character that landed the killing blow, or None.
     """
-    xp = _xp_for_kill(player["level"], inst["level"])
-    player["xp"] += xp
-    tprint("You receive {} experience {}.".format(
-        xp, "point" if xp == 1 else "points"))
+    stop_fighting(victim, both=True)
+    _death_cry(victim)
+    make_corpse(victim)
 
-    while player["xp"] >= player["xp_next"]:
-        advance_level(player)
+    if victim.get("is_npc"):
+        # 1stMud: extract_char(victim, true) -- remove NPC from world
+        _extract_char(victim, pull=True)
+        # [PRIMESUD] save after every kill (1stmud only saves on level up)
+        save_world(quiet=True)
+        return
 
-    _death_cry(tpl)
+    # 1stMud: extract_char(victim, false) -- teleport PC to altar
+    _extract_char(victim, pull=False)
+    # 1stMud: strip all affects
+    for af in list(victim.get("affect_list", [])):
+        affect_remove(victim, af)
+    # 1stMud: victim->affected_by = victim->race->aff
+    race_data = RACE_TABLE.get(victim.get("race", "Human"), {})
+    victim["affected_by"] = dict(race_data.get("aff", {}))
+    # 1stMud: for (i = 0; i < MAX_AC; i++) victim->armor[i] = 100
+    victim["armor"] = (100, 100, 100, 100)
+    # 1stMud: victim->position = POS_RESTING
+    victim["pos"] = "resting"
+    # 1stMud: victim->hit = Max(1, victim->hit) (etc.)
+    victim["hit"] = max(1, victim["hit"])
+    victim["mana"] = max(1, victim["mana"])
+    # [PRIMESUD] move/max_move not ported
 
-    make_corpse(inst)
+    # [PRIMESUD] respawn flavour text (1stmud has no equivalent)
+    tprint("You have been KILLED!!")
+    tprint("Your lifeforce ebbs away...")
+    wait(DEATH_MSG_DELAY)
+    tprint("A distant warmth draws you back.")
+    wait(DEATH_MSG_DELAY)
+    tprint("You come to your senses. Alive, but barely.")
+    tprint("")
+    from info import do_look  # lazy import to avoid circular dependency
+    do_look(victim, [])
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
     save_world(quiet=True)
 
-    world.rooms[inst["room"]]["mobs"].remove(mob_id)
-    del world.chars[mob_id]
-    tprint("")
+
+def _extract_char(ch, pull=True):
+    """Remove character from room/world (cf. 1stMud extract_char in handler.c).
+
+    Args:
+        ch (dict): Character to extract.
+        pull (bool): True = fully remove (NPC death), False = teleport to altar (PC death).
+    """
+    # 1stMud: nuke_pets, die_follower, etc.
+    # [PRIMESUD] skip pets/followers (not ported)
+
+    # 1stMud: stop_fighting(ch, true) -- redundant with raw_kill but harmless
+    stop_fighting(ch, both=True)
+
+    if pull:
+        # NPC: remove from room and world
+        room_mobs = world.rooms[ch["room"]]["mobs"]
+        if ch["id"] in room_mobs:
+            room_mobs.remove(ch["id"])
+        del world.chars[ch["id"]]
+    else:
+        # PC: teleport to altar (R_STARTING_ROOM)
+        # 1stMud: char_from_room(ch); char_to_room(ch, ROOM_VNUM_ALTAR)
+        ch["room"] = R_STARTING_ROOM
 
 
 def advance_level(player):
@@ -1826,6 +1972,123 @@ def advance_level(player):
         if data.get("skill_level") == player["level"]:
             kind = "spell" if data.get("spell_fun", "spell_null") != "spell_null" else "skill"
             tprint("You can now use the {} {}.".format(data["name"], kind))
+
+
+def gain_exp(ch, gain):
+    """Add XP to ch and level up as needed (cf. 1stMud gain_exp in update.c).
+
+    Args:
+        ch (dict): Player state dict.
+        gain (int): XP to add (may be negative for death penalty).
+    """
+    if ch.get("is_npc"):
+        return
+    # 1stMud: ch->exp = Max(exp_per_level(...), ch->exp + gain)
+    # [PRIMESUD] floor at 0 (no creation-point system)
+    ch["xp"] = max(0, ch["xp"] + gain)
+    while ch["xp"] >= ch["xp_next"]:
+        advance_level(ch)
+
+
+def is_same_group(ach, bch):
+    """True if ach and bch share a group leader (cf. 1stMud is_same_group in act_comm.c).
+
+    Resolves leader pointers: if a char has a leader, use the leader for
+    comparison.  Without followers/pets ported, every char is its own leader,
+    so this returns True only when ach is bch.
+
+    Args:
+        ach (dict): First character.
+        bch (dict): Second character.
+
+    Returns:
+        bool: True if both share the same (resolved) leader.
+    """
+    if ach is None or bch is None:
+        return False
+    # 1stMud: if (ach->leader != NULL) ach = ach->leader;
+    a_leader = ach.get("leader")
+    if a_leader is not None:
+        ach = world.chars.get(a_leader, ach)
+    b_leader = bch.get("leader")
+    if b_leader is not None:
+        bch = world.chars.get(b_leader, bch)
+    return ach is bch
+
+
+# -- Group level limit (cf. 1stMud mud_info.group_lvl_limit, default 20) -------
+GROUP_LVL_LIMIT = 20
+
+
+def group_gain(ch, victim):
+    """Award XP to ch's group for killing victim (cf. 1stMud group_gain in fight.c).
+
+    Iterates all characters in the same room that share ch's group.  NPCs
+    (pets) contribute to the group level pool (at half level) but do not
+    receive XP.  Each PC member receives XP proportional to their share of
+    the total group levels.
+
+    Args:
+        ch (dict): Killer (player or mob).
+        victim (dict): Defeated character.
+    """
+    if victim is ch:
+        return
+
+    chars = world.chars
+    rs = world.rooms[ch["room"]]
+
+    # -- Count members and group levels (cf. 1stMud group_gain pass 1)
+    members = 0
+    group_levels = 0
+    # Collect group chars from room: player + room mobs
+    room_chars = []
+    player = chars.get(1)
+    if player is not None and player["room"] == ch["room"]:
+        room_chars.append(player)
+    for mid in rs["mobs"]:
+        mob = chars.get(mid)
+        if mob is not None:
+            room_chars.append(mob)
+
+    for gch in room_chars:
+        if is_same_group(gch, ch):
+            members += 1
+            group_levels += gch["level"] // 2 if gch["is_npc"] else gch["level"]
+
+    if members == 0:
+        members = 1
+        group_levels = ch["level"]
+
+    # -- Find highest level in group (cf. 1stMud group_gain pass 2)
+    highest_level = 0
+    for gch in room_chars:
+        if is_same_group(gch, ch) and gch["level"] > highest_level:
+            highest_level = gch["level"]
+
+    # -- Award XP to each PC group member (cf. 1stMud group_gain pass 3)
+    for gch in room_chars:
+        if not is_same_group(gch, ch) or gch["is_npc"]:
+            continue
+
+        # 1stMud: level range check (group_lvl_limit)
+        if (highest_level - gch["level"] >= GROUP_LVL_LIMIT
+                or highest_level - gch["level"] <= -GROUP_LVL_LIMIT):
+            tprint("Your powers are useless to such an advanced group of adventurers.")
+            # 1stMud: if IsNPC(gch) && gch->master: act to master
+            # [PRIMESUD] skip (gch is always a PC here)
+            continue
+
+        xp = xp_compute(gch, victim, group_levels)
+
+        # 1stMud: if (mud_info.bonus.status == BONUS_XP) ...
+        # [PRIMESUD] skip bonus XP event (not ported)
+        tprint("You receive %s experience %s." % (
+            str(xp), "point" if xp == 1 else "points"))
+        gain_exp(gch, xp)
+
+        # 1stMud: quest mob check (IsQuester && quest.mob == victim)
+        # [PRIMESUD] quest completion handled separately in quest system
 
 
 def _get_size(ch):
@@ -1919,9 +2182,7 @@ def do_suicide(ch, args):
     else:
         act("You use a small knife to slit your own throat!")
         ch["confirm_suicide"] = False
-        # [PRIMESUD] player death: set pos to dead, game loop handles respawn
-        ch["hit"] = -11
-        update_pos(ch)
+        raw_kill(ch, None)
     return None
 
 
@@ -2569,13 +2830,7 @@ def do_slay(ch, args):
     act("You slay {} in cold blood!".format(
         MOB_DEFS[victim["tpl"]]["short_descr"] if victim["is_npc"] else victim.get(
             "name", "them")))
-
-    if victim["is_npc"]:
-        raw_kill(ch, mob_id, victim, MOB_DEFS[victim["tpl"]])
-    else:
-        # [PRIMESUD] player death: set pos to dead
-        victim["hit"] = -11
-        update_pos(victim)
+    raw_kill(victim, ch)
     return None
 
 

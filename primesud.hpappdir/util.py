@@ -1,6 +1,12 @@
-"""Small runtime utility wrappers for memory and garbage collection."""
+"""Small runtime utility wrappers."""
 
 import gc
+from hpprime import eval as ppl_eval
+
+
+def wait(seconds):
+    """Wait for seconds via PPL WAIT."""
+    ppl_eval("WAIT({})".format(seconds))
 
 
 def fmt_bytes(n, precision=1):

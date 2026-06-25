@@ -183,7 +183,7 @@ def _serialize_world():
                 "str", "dex", "int", "wis", "con",
                 "hit", "max_hit", "mana", "max_mana",
                 "hitroll", "damroll", "saving_throw", "room", "trivia",
-                "practice", "train", "flags", "played"):
+                "practice", "train", "flags", "played", "alignment"):
         lines.append("p." + key + "=" + str(player[key]))
     armor = player["armor"]
     lines.append("p.armor=" + str(armor[0]) + "|" + str(armor[1]) + "|" + str(armor[2]) + "|" + str(armor[3]))
@@ -321,7 +321,7 @@ def load_world():
     int_keys = {"level", "xp", "xp_next", "trivia",
                 "str", "dex", "int", "wis", "con",
                 "hit", "max_hit", "mana", "max_mana",
-                "hitroll", "damroll", "saving_throw", "room",
+                "hitroll", "damroll", "saving_throw", "room", "alignment",
                 "practice", "train", "flags", "played"}
 
     if player["_macros"] is not None:
