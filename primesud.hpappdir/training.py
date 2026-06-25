@@ -45,7 +45,7 @@ def do_train(tr, player, args):
         if player["train"] < 1:
             tr.print("You don't have any training sessions.")
             return
-        stat_opts = [(k, lng) for k, lng in _TRAIN_STATS if player[k] < MAX_STATS]
+        stat_opts = [(k, lng) for k, lng in _TRAIN_STATS if player["perm_stat"][k] < MAX_STATS]
         vital_opts = [("max_hit", "hp"), ("max_mana", "mana")]
         all_opts = stat_opts + vital_opts
         tr.print("You have " + str(player["train"]) + " training session" + ("" if player["train"] == 1 else "s") + ".")
@@ -54,7 +54,7 @@ def do_train(tr, player, args):
             if k in ("max_hit", "max_mana"):
                 names.append(lng + " (max: " + str(player[k]) + ")")
             else:
-                names.append(lng + " (" + str(player[k]) + "/" + str(MAX_STATS) + ")")
+                names.append(lng + " (" + str(player["perm_stat"][k]) + "/" + str(MAX_STATS) + ")")
         idx = pick_from("Train which?", names)
         if idx < 0:
             return
@@ -75,7 +75,7 @@ def do_train(tr, player, args):
         if chosen_key is None:
             tr.print("Valid training: str, dex, int, wis, con, hp, mana.")
             return
-        if chosen_key not in ("max_hit", "max_mana") and player[chosen_key] >= MAX_STATS:
+        if chosen_key not in ("max_hit", "max_mana") and player["perm_stat"][chosen_key] >= MAX_STATS:
             tr.print("Your " + chosen_lng + " is already at maximum.")
             return
 
@@ -89,7 +89,7 @@ def do_train(tr, player, args):
         player["mana"] = min(player["max_mana"], player["mana"] + 10)
         tr.print("Your power increases!")
     else:
-        player[chosen_key] += 1
+        player["perm_stat"][chosen_key] += 1
         tr.print("Your " + chosen_lng + " increases!")
     return ("train " + chosen_lng) if _from_picker else None
 

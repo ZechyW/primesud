@@ -68,8 +68,7 @@ def _char_base():
         "hitroll":     0,
         "damroll":     0,
         "armor":       (100, 100, 100, 100),
-        "str":         13,  "dex": 13,  "int": 13,
-        "wis":         13,  "con": 13,
+        "perm_stat":   {"str": 13, "dex": 13, "int": 13, "wis": 13, "con": 13},
         "mod_stat":    {},
         # -- Flags (cf. .act, .imm_flags, .res_flags, .vuln_flags, .affected_by,
         #           .off_flags, .form, .parts)
@@ -115,7 +114,7 @@ def get_curr_stat(char, stat):
     Returns:
         int: Clamped stat value in [3, MAX_STATS].
     """
-    v = char.get(stat, 10) + char.get("mod_stat", {}).get(stat, 0)
+    v = char.get("perm_stat", {}).get(stat, 10) + char.get("mod_stat", {}).get(stat, 0)
     return max(3, min(MAX_STATS, v))
 
 

@@ -1542,7 +1542,7 @@ def _try_special_move(player, target_inst):
     """
     if player["equip"].get("wield") is not None:
         return 0
-    chance = 20 + (player["dex"] - 10) * 3
+    chance = 20 + (get_curr_stat(player, "dex") - 10) * 3
     if randint(1, 100) > chance:
         return 0
     tpl  = MOB_DEFS[target_inst["tpl"]]

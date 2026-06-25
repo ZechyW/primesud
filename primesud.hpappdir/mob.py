@@ -126,8 +126,8 @@ def create_mobile(tpl_vnum):
         "hitroll":    tpl["hitroll"],
         "damroll":    tpl["damage"][2],  # bonus = damroll (cf. 1stMud damage[DICE_BONUS])
         "armor":      tuple(v * 10 for v in tpl["armor"]),  # area units -> PrimeSUD runtime units
-        "str":        s_str,  "dex": s_dex,  "int": s_int,
-        "wis":        s_wis,  "con": s_con,
+        "perm_stat":  {"str": s_str, "dex": s_dex, "int": s_int,
+                       "wis": s_wis, "con": s_con},
         # -- Flags (race+template merged; cf. 1stMud create_mobile db2.c:88-136)
         "act_flags":  dict(act_flags),
         "off_flags":  off,

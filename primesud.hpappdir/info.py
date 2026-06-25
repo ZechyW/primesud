@@ -282,9 +282,8 @@ def do_score(player, args):
         lpad = ' ' * (_SCORE_LEFT  - color_len(l))
         rpad = ' ' * (_SCORE_RIGHT - color_len(r))
         return "{W|{x " + l + lpad + " {W|{x " + r + rpad + " {W|{x"
-    def _stat(name, val):
-        # [perm/curr] -- identical until affect system is added
-        return '{c' + '{:<13}'.format(name) + ': [{w' + '{:2d}/{:2d}'.format(val, val) + '{c]{x'
+    def _stat(name, perm, curr):
+        return '{c' + '{:<13}'.format(name) + ': [{w' + '{:2d}/{:2d}'.format(perm, curr) + '{c]{x'
     def _val_l(name, v, bright=False):
         nc = '{C' if bright else '{c'
         # values stay as dim white
@@ -307,6 +306,7 @@ def do_score(player, args):
         return "{G(Mem. free: " + str(free_mem()) + "){x"
 
     p = player
+    ps = p["perm_stat"]
     thac0 = _get_thac0(p['level'])
     mem_str = _free_mem()
     name_raw = p.get('name', '???')
@@ -322,23 +322,23 @@ def do_score(player, args):
         "{W|{x " + name_col + "   " + mem_col + " {W|{x",
         _SCORE_SEP_INNER,
         _row(
-            _stat("Strength", get_curr_stat(p, "str")),
+            _stat("Strength", ps["str"], get_curr_stat(p, "str")),
             _val_r("Level", p["level"])
         ),
         _row(
-            _stat("Intelligence", get_curr_stat(p, "int")),
+            _stat("Intelligence", ps["int"], get_curr_stat(p, "int")),
             _val_r("Thac0", thac0)
         ),
         _row(
-            _stat("Wisdom", get_curr_stat(p, "wis")),
+            _stat("Wisdom", ps["wis"], get_curr_stat(p, "wis")),
             _val_r("Practices", p.get("practice", 0)),
         ),
         _row(
-            _stat("Dexterity", get_curr_stat(p, "dex")),
+            _stat("Dexterity", ps["dex"], get_curr_stat(p, "dex")),
             _val_r("Trains", p.get("train", 0)),
         ),
         _row(
-            _stat("Constitution", get_curr_stat(p, "con")),
+            _stat("Constitution", ps["con"], get_curr_stat(p, "con")),
             ""
         ),
         _SCORE_SEP_INNER,

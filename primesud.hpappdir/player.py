@@ -180,11 +180,12 @@ def _serialize_world():
     gc_collect()
     lines = ["v=" + str(SAVE_VERSION)]
     for key in ("name", "level", "xp", "xp_next",
-                "str", "dex", "int", "wis", "con",
                 "hit", "max_hit", "mana", "max_mana",
                 "hitroll", "damroll", "saving_throw", "room", "trivia",
                 "practice", "train", "flags", "played", "alignment"):
         lines.append("p." + key + "=" + str(player[key]))
+    for stat in ("str", "dex", "int", "wis", "con"):
+        lines.append("p." + stat + "=" + str(player["perm_stat"][stat]))
     armor = player["armor"]
     lines.append("p.armor=" + str(armor[0]) + "|" + str(armor[1]) + "|" + str(armor[2]) + "|" + str(armor[3]))
     inv_parts = []
@@ -318,6 +319,7 @@ def load_world():
             _backup_ok = False
         return (None, _backup_ok)
 
+    _STAT_KEYS = {"str", "dex", "int", "wis", "con"}
     int_keys = {"level", "xp", "xp_next", "trivia",
                 "str", "dex", "int", "wis", "con",
                 "hit", "max_hit", "mana", "max_mana",
@@ -357,7 +359,10 @@ def load_world():
             player["_macros"][_name_to_fn.get(raw, raw)] = val
         elif key.startswith("p."):
             pkey = key[2:]
-            player[pkey] = int(val) if pkey in int_keys else val
+            if pkey in _STAT_KEYS:
+                player["perm_stat"][pkey] = int(val)
+            else:
+                player[pkey] = int(val) if pkey in int_keys else val
         elif key.startswith("r.") and key.endswith(".items"):
             rvnum = int(key.split(".")[1])
             if rvnum in world.rooms:
