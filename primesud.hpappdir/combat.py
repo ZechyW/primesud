@@ -754,6 +754,94 @@ def _randomize_damage(dam, roll):
     return dam * (roll + 50) // 100
 
 
+def is_safe(ch, victim):
+    """Check if ch is prevented from attacking victim (cf. 1stMud is_safe in fight.c).
+
+    Returns True (and prints a message) if the attack should be blocked.
+    Unlike is_safe_spell, this prints feedback explaining why.
+
+    Args:
+        ch (dict): Attacker (player or mob instance).
+        victim (dict): Potential target.
+
+    Returns:
+        bool: True means target is protected -- abort the attack.
+    """
+    if victim.get("fighting") == ch.get("id") or victim is ch:
+        return False
+
+    # [PRIMESUD] immortal check skipped -- single-player, no immortals
+
+    if victim["is_npc"]:
+        # [PRIMESUD] ROOM_SAFE not ported -- room_flags not on rooms yet
+        # if room has "safe" flag: chprintln(ch, "Not in this room."); return True
+
+        # [PRIMESUD] shop check not ported -- no shop_data on mobs yet
+        # if victim has shop: chprintln(ch, "The shopkeeper wouldn't like that."); return True
+
+        act_f = victim.get("act_flags", {})
+        if (act_f.get("train") or act_f.get("practice")
+                or act_f.get("healer") or act_f.get("changer")):
+            # 1stmud: "I don't think $g would approve." -- $g = deity, not ported
+            chprintln(ch, "I don't think the gods would approve.")
+            return True
+
+        if not ch["is_npc"]:
+            # [PRIMESUD] ACT_PET not ported -- no pet flag on mobs yet
+            # if act_f.get("pet"):
+            #     act("But $N looks so cute and cuddly...", ch, arg2=victim)
+            #     return True
+
+            if (victim.get("affected_by", {}).get("charm")
+                    and ch.get("id") != victim.get("master")):
+                chprintln(ch, "You don't own that monster.")
+                return True
+
+            # [PRIMESUD] quest deliver/findmob target check not ported
+    # [PRIMESUD] PvP checks skipped -- single-player
+    return False
+
+
+def is_safe_spell(ch, victim, area):
+    """Silent safety check for spell targeting (cf. 1stMud is_safe_spell in fight.c).
+
+    Returns True if victim should NOT be hit. Unlike is_safe, prints no
+    messages.
+
+    Args:
+        ch (dict): Caster.
+        victim (dict): Potential target.
+        area (bool): True for area-effect spells.
+
+    Returns:
+        bool: True means target is protected.
+    """
+    if victim is ch and area:
+        return True
+    if victim.get("fighting") == ch.get("id") or victim is ch:
+        return False
+    if victim["is_npc"]:
+        # [PRIMESUD] ROOM_SAFE not ported -- room_flags not on rooms yet
+        # [PRIMESUD] shop check not ported -- no shop_data on mobs yet
+        act = victim.get("act_flags", {})
+        if (act.get("train") or act.get("practice")
+                or act.get("healer") or act.get("changer")):
+            return True
+        if not ch["is_npc"]:
+            # [PRIMESUD] ACT_PET not ported
+            if (victim.get("affected_by", {}).get("charm")
+                    and (area or ch.get("id") != victim.get("master"))):
+                return True
+            # 1stmud: victim fighting someone not in ch's group -> safe
+            # [PRIMESUD] is_same_group not ported
+        else:
+            # NPC caster, area: skip if victim not grouped with ch's target
+            # [PRIMESUD] is_same_group not ported
+            pass
+    # [PRIMESUD] PvP checks skipped -- single-player
+    return False
+
+
 def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
     """Print damage message from ch's attack on victim (cf. 1stMud dam_message in fight.c).
 
@@ -848,11 +936,9 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
     # [PRIMESUD] skip pcdam/mobdam multipliers (mud_info not ported)
 
     if victim is not ch:
-        # 1stMud: if (is_safe(ch, victim)) return false;
-        # [PRIMESUD] skip is_safe (not ported) - safe rooms, service mobs, pet/charm, quest target
-
-        # 1stMud: check_killer(ch, victim);
-        # [PRIMESUD] skip check_killer (not ported) - pvp
+        if is_safe(ch, victim):
+            return False
+        # [PRIMESUD] check_killer not ported -- pvp
 
         if POS_ORDER[victim["pos"]] > POS_ORDER["stunned"]:
             if victim["fighting"] is None:
@@ -1233,7 +1319,8 @@ def do_backstab(ch, args):
         tprint("How can you sneak up on yourself?")
         return None
 
-    # [PRIMESUD] is_safe not ported
+    if is_safe(ch, victim):
+        return None
     # [PRIMESUD] kill-stealing check not ported (single-player)
 
     if ch["equip"].get("wield") is None:
@@ -1287,7 +1374,8 @@ def do_kill(player, args):
     # 1stMud: if (victim == ch) { "You hit yourself. Ouch!"; multi_hit(ch,ch,...); return; }
     # [PRIMESUD] player can't target self (mob_id lookup is mob-only)
 
-    # [PRIMESUD] is_safe not ported
+    if is_safe(player, victim):
+        return
     # [PRIMESUD] kill-stealing check not ported (single-player)
     # [PRIMESUD] charm master check not ported
 
@@ -1748,7 +1836,8 @@ def do_murder(ch, args):
         tprint("Suicide is a mortal sin.")
         return None
 
-    # [PRIMESUD] is_safe not ported
+    if is_safe(ch, victim):
+        return None
     # [PRIMESUD] kill-stealing check not ported (single-player)
     # [PRIMESUD] charm master check not ported
 
@@ -1906,7 +1995,8 @@ def do_bash(ch, args):
         chprintln(ch, "You try to bash your brains out, but fail.")
         return None
 
-    # [PRIMESUD] is_safe not ported
+    if is_safe(ch, victim):
+        return None
     # [PRIMESUD] kill-stealing check not ported (single-player)
     # [PRIMESUD] charm master check not ported
 
@@ -1997,7 +2087,8 @@ def do_dirt(ch, args):
         chprintln(ch, "Very funny.")
         return None
 
-    # [PRIMESUD] is_safe not ported
+    if is_safe(ch, victim):
+        return None
     # [PRIMESUD] kill-stealing check not ported (single-player)
     # [PRIMESUD] charm master check not ported
 
@@ -2088,7 +2179,8 @@ def do_trip(ch, args):
             return None
         victim = world.chars[victim_id]
 
-    # [PRIMESUD] is_safe not ported
+    if is_safe(ch, victim):
+        return None
     # [PRIMESUD] kill-stealing check not ported (single-player)
 
     if victim.get("affected_by", {}).get("flying"):

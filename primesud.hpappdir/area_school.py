@@ -565,6 +565,14 @@ MOBILES = {
     },
 }
 
+# -- Specials -------------------------------------------------------------------
+# ("M", mob_vnum, spec_fun_name) -- assign special function to mob template
+SPECIALS = (
+    ("M", M_ADEPT_CLERIC, 'spec_cast_adept'),
+    ("M", M_ADEPT, 'spec_cast_adept'),
+    ("M", M_BEAST, 'spec_fido'),
+)
+
 # -- Rooms ----------------------------------------------------------------------
 ROOMS = {
     R_ENTRANCE_TO_MUD_SCHOOL: {

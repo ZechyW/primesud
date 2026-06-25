@@ -4,8 +4,8 @@
 Usage:
     python are_to_primesud.py school.are area_school.py
 
-Sections handled:   #AREADATA  #ROOMS  #MOBILES  #OBJECTS  #RESETS
-Sections skipped:   #SHOPS  #SPECIALS  #MOBPROGS  #OBJPROGS  #ROOMPROGS
+Sections handled:   #AREADATA  #ROOMS  #MOBILES  #OBJECTS  #RESETS  #SPECIALS
+Sections skipped:   #SHOPS  #MOBPROGS  #OBJPROGS  #ROOMPROGS
 
 RESETS handling:
   M O E G  -> emitted as runtime tuples in RESETS
@@ -634,6 +634,21 @@ def parse_resets(lines):
     return resets, foverrides, doverrides
 
 
+def parse_specials(lines):
+    """Parse #SPECIALS section into (cmd, mob_vnum, spec_fun_name) tuples."""
+    specials = []
+    for line in lines:
+        parts = line.split()
+        if not parts or parts[0] == "*":
+            continue
+        cmd = parts[0]
+        if cmd == "S":
+            break
+        if cmd == "M" and len(parts) >= 3:
+            specials.append(("M", int(parts[1]), parts[2]))
+    return specials
+
+
 # -- Python emitter ------------------------------------------------------------
 
 def _repr_flags(d):
@@ -656,7 +671,8 @@ def asciitext(value):
     return str(value).encode("ascii", "backslashreplace").decode("ascii")
 
 
-def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, foverrides=None, doverrides=None):
+def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_map,
+         foverrides=None, doverrides=None):
     out = []
 
     def w(s=""):
@@ -740,6 +756,18 @@ def emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, fover
         w(f'        "size":   {pyrepr(mob["size"])},')
         w("    },")
     w("}")
+    w("")
+
+    # -- SPECIALS --
+    w(f"# -- Specials {BAR * 67}")
+    w('# ("M", mob_vnum, spec_fun_name) -- assign special function to mob template')
+    w("SPECIALS = (")
+    for special in specials:
+        if special[0] == "M":
+            _, mv, spec_name = special
+            mc = r(mv, mob_map)
+            w(f'    ("M", {mc}, {pyrepr(spec_name)}),')
+    w(")")
     w("")
 
     # -- ROOMS --
@@ -890,12 +918,14 @@ def convert(are_path, out_path=None):
     mobs      = parse_mobiles(sects.get("MOBILES", []))
     objs      = parse_objects(sects.get("OBJECTS", []))
     resets, foverrides, doverrides = parse_resets(sects.get("RESETS", []))
+    specials = parse_specials(sects.get("SPECIALS", []))
 
     room_map = make_const_map("R", rooms, lambda d: d["name"])
     mob_map  = make_const_map("M", mobs,  lambda d: d["keywords"])
     obj_map  = make_const_map("I", objs,  lambda d: d["keywords"])
 
-    code = emit(area_data, rooms, mobs, objs, resets, room_map, mob_map, obj_map, foverrides, doverrides)
+    code = emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_map,
+                foverrides, doverrides)
 
     if out_path:
         Path(out_path).write_text(code, encoding="utf-8")

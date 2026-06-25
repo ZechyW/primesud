@@ -6,8 +6,8 @@ from actor import (is_name, is_affected, affect_to_char, affect_strip, is_awake,
 from area_limbo import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
                         I_DISC_DISK_FLOATING_BLACK)
 from colors import upper
-from combat import (WaitState, check_improve, get_skill, set_fighting,
-                    damage, stop_fighting, update_pos)
+from combat import (WaitState, check_improve, get_skill, is_safe, is_safe_spell,
+                    multi_hit, damage, stop_fighting, update_pos)
 from config import (POS_ORDER, DAM_ACID, DAM_BASH, DAM_COLD,
                     DAM_DISEASE, DAM_DROWNING, DAM_ENERGY, DAM_FIRE,
                     DAM_HARM, DAM_HOLY, DAM_LIGHT, DAM_LIGHTNING,
@@ -54,14 +54,6 @@ def _heal_char(ch, victim, amount, msg):
     return True
 
 
-def _target_id(ch, victim):
-    if victim is None or victim is ch:
-        return None
-    for mob_id, inst in world.chars.items():
-        if inst is victim:
-            return mob_id
-    return None
-
 
 
 def _char_name(ch, victim):
@@ -101,12 +93,6 @@ def _item_name(obj):
     return tpl.get("short_descr", "item")
 
 
-def _flag_names(flags):
-    names = sorted(flags)
-    if not names:
-        return "none"
-    return " ".join(names)
-
 
 def _number_fuzzy(n):
     r = randint(0, 3)
@@ -130,49 +116,9 @@ def _is_neutral(ch):
     return a >= -350 and a <= 350
 
 
-def _obj_carried_by(ch, obj):
-    return obj in ch.get("inv", [])
 
 
-def _obj_equipped_by(ch, obj):
-    for eq in ch.get("equip", {}).values():
-        if eq is obj:
-            return True
-    return False
 
-
-def _item_bonus_sum(obj, tpl, location):
-    total = tpl.get("stat_bonuses", {}).get(location, 0)
-    for af in item_affect_list(obj):
-        if af.get("location") == location:
-            total += af.get("modifier", 0)
-    return total
-
-
-def _item_armor_bonus(obj, tpl):
-    total = 0
-    for loc in _AC_LOCS:
-        total += _item_bonus_sum(obj, tpl, loc)
-    return total // 4
-
-
-def _add_obj_ac_affect(obj, tpl, sn, level, modifier):
-    for loc in _AC_LOCS:
-        found = False
-        for af in item_affect_list(obj):
-            if af.get("location") == loc:
-                af["type"] = sn
-                af["modifier"] = af.get("modifier", 0) + modifier
-                af["level"] = max(af.get("level", 0), level)
-                found = True
-                break
-        if not found:
-            item_affect_to_obj(obj, _new_obj_affect(sn, level, -1, loc, modifier), tpl)
-
-
-def _clear_item_runtime_affects(obj):
-    if "affect_list" in obj:
-        del obj["affect_list"]
 
 
 def _new_obj_affect(sn, level, duration, location, modifier, bitvector=""):
@@ -335,7 +281,8 @@ def spell_chain_lightning(sn, level, ch, vo, target):
             tmp = world.chars.get(mob_id)
             if tmp is None or tmp is last_vict:
                 continue
-            # [PRIMESUD] is_safe_spell not ported
+            if is_safe_spell(ch, tmp, True):
+                continue
             found = True
             last_vict = tmp
             tprint("The bolt arcs to " + _char_name(ch, tmp) + "!")
@@ -359,20 +306,6 @@ def spell_chain_lightning(sn, level, ch, vo, target):
     return found
 
 
-def _random_teleport_room(ch):
-    rooms = []
-    for room_vnum, room in ROOM_DEFS.items():
-        flags = room.get("flags", {})
-        if flags.get("private") or flags.get("solitary") or flags.get("safe") or flags.get("arena"):
-            continue
-        if not ch.get("is_npc") and flags.get("law"):
-            continue
-        rooms.append(room_vnum)
-    if not rooms:
-        return None
-    return rooms[randint(0, len(rooms) - 1)]
-
-
 def spell_teleport(sn, level, ch, vo, target):
     """Teleport target to random room (cf. 1stMud spell_teleport in magic.c)."""
     victim = vo
@@ -383,13 +316,29 @@ def spell_teleport(sn, level, ch, vo, target):
             or (ch.get("is_npc") is not True and victim.get("fighting") is not None)):
         tprint("You failed.")
         return False
-    dest = _random_teleport_room(victim)
+    candidates = []
+    for rv, rd in ROOM_DEFS.items():
+        flags = rd.get("flags", {})
+        if flags.get("private") or flags.get("solitary") or flags.get("safe") or flags.get("arena"):
+            continue
+        if not victim.get("is_npc") and flags.get("law"):
+            continue
+        candidates.append(rv)
+    if not candidates:
+        dest = None
+    else:
+        dest = candidates[randint(0, len(candidates) - 1)]
     if dest is None:
         chprintln(ch, "You failed.")
         return False
     old_room = victim["room"]
     victim["room"] = dest
-    victim_id = _target_id(ch, victim)
+    victim_id = None
+    if victim is not None and victim is not ch:
+        for mid, inst in world.chars.items():
+            if inst is victim:
+                victim_id = mid
+                break
     if victim_id is not None:
         if victim_id in world.rooms.get(old_room, {}).get("mobs", []):
             world.rooms[old_room]["mobs"].remove(victim_id)
@@ -414,26 +363,6 @@ def spell_farsight(sn, level, ch, vo, target):
     return True
 
 
-def _iter_world_objects(player):
-    for obj in player.get("inv", []):
-        yield (obj, "one is carried by you")
-    for obj in player.get("equip", {}).values():
-        if obj is not None:
-            yield (obj, "one is carried by you")
-    for room_vnum, room_state in world.rooms.items():
-        for obj in room_state.get("items", []):
-            yield (obj, "one is in " + ROOM_DEFS.get(room_vnum, {}).get("name", "somewhere"))
-    for cid, mob in world.chars.items():
-        if not mob.get("is_npc"):
-            continue
-        mob_name = MOB_DEFS[mob["tpl"]]["short_descr"]
-        for obj in mob.get("inv", []):
-            yield (obj, "one is carried by " + mob_name)
-        for obj in mob.get("equip", {}).values():
-            if obj is not None:
-                yield (obj, "one is carried by " + mob_name)
-
-
 def spell_locate_object(sn, level, ch, vo, target):
     """Locate object by name fragment (cf. 1stMud spell_locate_object in magic.c)."""
     wanted = _spell_tail(ch)
@@ -442,7 +371,25 @@ def spell_locate_object(sn, level, ch, vo, target):
         return False
     found = []
     max_found = 2 * level
-    for obj, line in _iter_world_objects(ch):
+    world_objs = []
+    for obj in ch.get("inv", []):
+        world_objs.append((obj, "one is carried by you"))
+    for obj in ch.get("equip", {}).values():
+        if obj is not None:
+            world_objs.append((obj, "one is carried by you"))
+    for room_vnum, room_state in world.rooms.items():
+        for obj in room_state.get("items", []):
+            world_objs.append((obj, "one is in " + ROOM_DEFS.get(room_vnum, {}).get("name", "somewhere")))
+    for cid, mob in world.chars.items():
+        if not mob.get("is_npc"):
+            continue
+        mob_name = MOB_DEFS[mob["tpl"]]["short_descr"]
+        for obj in mob.get("inv", []):
+            world_objs.append((obj, "one is carried by " + mob_name))
+        for obj in mob.get("equip", {}).values():
+            if obj is not None:
+                world_objs.append((obj, "one is carried by " + mob_name))
+    for obj, line in world_objs:
         tpl = ITEM_DEFS[obj_vnum(obj)]
         if not is_name(wanted, tpl.get("keywords", "")):
             continue
@@ -525,7 +472,7 @@ def spell_identify(sn, level, ch, vo, target):
     tpl = ITEM_DEFS[obj_vnum(vo)]
     flags = item_extra_flags(vo, tpl)
     tprint("Object '" + tpl.get("keywords", "") + "' is type " + tpl.get("type", "unknown")
-             + ", extra flags " + _flag_names(flags) + ".")
+             + ", extra flags " + (" ".join(sorted(flags)) or "none") + ".")
     tprint("Weight is " + str(tpl.get("weight", 0)) + ", value is "
              + str(vo.get("cost", tpl.get("value", 0))) + ", level is " + str(tpl.get("level", 0)) + ".")
     if tpl.get("type") in ("scroll", "potion", "pill"):
@@ -573,7 +520,7 @@ def spell_enchant_armor(sn, level, ch, vo, target):
     if tpl.get("type") != "armor":
         tprint("That isn't an armor.")
         return False
-    if not _obj_carried_by(ch, vo):
+    if vo not in ch.get("inv", []):
         tprint("The item must be carried to be enchanted.")
         return False
     if item_extra_flags(vo, tpl).get("quest"):
@@ -609,7 +556,8 @@ def spell_enchant_armor(sn, level, ch, vo, target):
     if result < fail // 3:
         tprint(_item_name(vo) + " glows brightly, then fades...oops.")
         vo["enchanted"] = True
-        _clear_item_runtime_affects(vo)
+        if "affect_list" in vo:
+            del vo["affect_list"]
         vo["extra_flags"] = {}
         return False
     if result <= fail:
@@ -626,7 +574,17 @@ def spell_enchant_armor(sn, level, ch, vo, target):
         set_item_extra_flag(vo, tpl, "glow", True)
         added = -2
     vo["level"] = min(50, vo.get("level", tpl.get("level", 0)) + 1)
-    _add_obj_ac_affect(vo, tpl, sn, level, added)
+    for loc in _AC_LOCS:
+        found = False
+        for af in item_affect_list(vo):
+            if af.get("location") == loc:
+                af["type"] = sn
+                af["modifier"] = af.get("modifier", 0) + added
+                af["level"] = max(af.get("level", 0), level)
+                found = True
+                break
+        if not found:
+            item_affect_to_obj(vo, _new_obj_affect(sn, level, -1, loc, added), tpl)
     return True
 
 
@@ -636,7 +594,7 @@ def spell_enchant_weapon(sn, level, ch, vo, target):
     if tpl.get("type") != "weapon":
         tprint("That isn't a weapon.")
         return False
-    if not _obj_carried_by(ch, vo):
+    if vo not in ch.get("inv", []):
         tprint("The item must be carried to be enchanted.")
         return False
     if item_extra_flags(vo, tpl).get("quest"):
@@ -683,7 +641,8 @@ def spell_enchant_weapon(sn, level, ch, vo, target):
     if result < fail // 2:
         tprint(_item_name(vo) + " glows brightly, then fades...oops.")
         vo["enchanted"] = True
-        _clear_item_runtime_affects(vo)
+        if "affect_list" in vo:
+            del vo["affect_list"]
         vo["extra_flags"] = {}
         return False
     if result <= fail:
@@ -1118,6 +1077,8 @@ def spell_charm_person(sn, level, ch, vo, target):
     Charm affect applied but follower linkage stubbed.
     """
     victim = vo
+    if is_safe(ch, victim):
+        return False
     if victim is ch:
         tprint("You like yourself even better!")
         return False
@@ -1166,7 +1127,7 @@ def spell_continual_light(sn, level, ch, vo, target):
     """Create light ball or make carried item glow (cf. 1stMud spell_continual_light in magic.c)."""
     tail = _spell_tail(ch)
     if tail:
-        obj = _find_inv_obj(ch, tail)
+        obj = get_obj_list(tail, ch["inv"], ITEM_DEFS)
         if obj is None:
             tprint("You don't see that here.")
             return False
@@ -1568,16 +1529,18 @@ def spell_holy_word(sn, level, ch, vo, target):
             if bless_sn is not None:
                 spell_bless(bless_sn, level, ch, mob, TARGET_CHAR)
         elif (_is_good(ch) and _is_evil(mob)) or (_is_evil(ch) and _is_good(mob)):
-            # [PRIMESUD] is_safe_spell not ported
+            if is_safe_spell(ch, mob, True):
+                continue
             if curse_sn is not None:
                 spell_curse(curse_sn, level, ch, mob, TARGET_CHAR)
-            # 1stmud: chprintln(vch, ...) — message to victim only
+            # 1stmud: chprintln(vch, ...) -- message to victim only
             # if _is_pc(mob):
             #     tprint("You are struck down!")
             dam = _dice(level, 6)
             damage(ch, mob, dam, sn, DAM_ENERGY, True)
         elif _is_neutral(ch):
-            # [PRIMESUD] is_safe_spell not ported
+            if is_safe_spell(ch, mob, True):
+                continue
             if curse_sn is not None:
                 spell_curse(curse_sn, level // 2, ch, mob, TARGET_CHAR)
             # if _is_pc(mob):
@@ -2126,7 +2089,8 @@ def spell_powerstorm(sn, level, ch, vo, target):
         vch = world.chars.get(mob_id)
         if vch is None or vch is ch:
             continue
-        # [PRIMESUD] is_safe_spell not ported
+        if is_safe_spell(ch, vch, True):
+            continue
         dam = level // 3 * 2 + _dice(20, 20)
         damage(ch, vch, dam, sn, DAM_FIRE, True)
         found = True
@@ -2414,15 +2378,6 @@ def _known_runtime_spells(player):
     return rows
 
 
-def _parse_spell_args(player, args):
-    return (find_skill_spell(player, args[0]), " ".join(args[1:]))
-
-
-def _quote_cast_spell_name(name):
-    if " " in name:
-        return "'" + name + "'"
-    return name
-
 
 def _is_self_name(player, target_name):
     if not target_name:
@@ -2450,13 +2405,6 @@ def _find_room_char_id(player, target_name):
     return get_char_room(target_name, rs["mobs"], world.chars)
 
 
-def _find_inv_obj(player, target_name):
-    return get_obj_list(target_name, player["inv"], ITEM_DEFS)
-
-
-def _find_room_obj(player, target_name):
-    rs = _room_state(player)
-    return get_obj_list(target_name, rs["items"], ITEM_DEFS)
 
 
 def _mob_pick_name(mob):
@@ -2540,47 +2488,6 @@ def _pick_cast_target_name(player, sn):
     return ""
 
 
-def _resolve_item_runtime_target(ch, sn, victim, obj):
-    """Resolve magical item cast target from explicit victim/obj hints."""
-    sk = SKILLS[sn]
-    target_type = sk.get("target", "ignore")
-
-    if target_type == "ignore":
-        return (None, TARGET_NONE, None, True)
-    if target_type == "char_offensive":
-        if victim is not None:
-            return (victim, TARGET_CHAR, _target_id(ch, victim), True)
-        victim_id = ch.get("fighting")
-        if victim_id is None or victim_id not in world.chars:
-            return (None, TARGET_NONE, None, False)
-        return (world.chars[victim_id], TARGET_CHAR, victim_id, True)
-    if target_type == "char_defensive":
-        if victim is None:
-            victim = ch
-        return (victim, TARGET_CHAR, None, True)
-    if target_type == "char_self":
-        return (ch, TARGET_CHAR, None, True)
-    if target_type == "obj_inventory":
-        if obj is None:
-            return (None, TARGET_NONE, None, False)
-        return (obj, TARGET_OBJ, None, True)
-    if target_type == "obj_char_offensive":
-        if victim is not None:
-            return (victim, TARGET_CHAR, _target_id(ch, victim), True)
-        if obj is not None:
-            return (obj, TARGET_OBJ, None, True)
-        victim_id = ch.get("fighting")
-        if victim_id is None or victim_id not in world.chars:
-            return (None, TARGET_NONE, None, False)
-        return (world.chars[victim_id], TARGET_CHAR, victim_id, True)
-    if target_type == "obj_char_defensive":
-        if victim is not None:
-            return (victim, TARGET_CHAR, None, True)
-        if obj is not None:
-            return (obj, TARGET_OBJ, None, True)
-        return (ch, TARGET_CHAR, None, True)
-    return (None, TARGET_NONE, None, False)
-
 
 def _resolve_item_spell_sn(spell_name, item_obj):
     if not spell_name:
@@ -2660,7 +2567,7 @@ def _resolve_target(player, sn, target_name):
         if not arg2:
             tprint("What should the spell be cast upon?")
             return (None, TARGET_NONE, None, False)
-        obj = _find_inv_obj(player, target_name)
+        obj = get_obj_list(target_name, player["inv"], ITEM_DEFS)
         if obj is None:
             tprint("You are not carrying that.")
             return (None, TARGET_NONE, None, False)
@@ -2677,7 +2584,8 @@ def _resolve_target(player, sn, target_name):
         victim_id = _find_room_char_id(player, target_name)
         if victim_id is not None:
             return (world.chars[victim_id], TARGET_CHAR, victim_id, True)
-        obj = _find_room_obj(player, target_name)
+        rs = _room_state(player)
+        obj = get_obj_list(target_name, rs["items"], ITEM_DEFS)
         if obj is not None:
             return (obj, TARGET_OBJ, None, True)
         tprint("You don't see that here.")
@@ -2689,7 +2597,7 @@ def _resolve_target(player, sn, target_name):
         victim = _find_room_char(player, target_name)
         if victim is not None:
             return (victim, TARGET_CHAR, None, True)
-        obj = _find_inv_obj(player, target_name)
+        obj = get_obj_list(target_name, player["inv"], ITEM_DEFS)
         if obj is not None:
             return (obj, TARGET_OBJ, None, True)
         tprint("You don't see that here.")
@@ -2698,29 +2606,87 @@ def _resolve_target(player, sn, target_name):
     return (None, TARGET_NONE, None, False)
 
 
-def _spell_level(player, sn):
-    """Return cast level for classless PrimeSUD (cf. 1stMud do_cast in magic.c)."""
-    return player.get("level", 1)  # [PRIMESUD] no class system or has_spells() penalty.
-
 
 def obj_cast_spell(spell_name, level, ch, victim, obj, item_obj=None):
     """Cast spell payload from magical item (cf. 1stMud obj_cast_spell in magic.c)."""
     sn = _resolve_item_spell_sn(spell_name, item_obj)
     if sn is None:
         return False
-    vo, target, victim_id, ok = _resolve_item_runtime_target(ch, sn, victim, obj)
-    if not ok:
-        return _dev_item_fail(item_obj, "target resolution failed for '" + spell_name + "'")
-    fun = SPELL_FUNS.get(SKILLS[sn].get("spell_fun", "spell_null"), spell_null)
+
+    sk = SKILLS[sn]
+    tgt_type = sk.get("target", "ignore")
+    vo = None
+    target = TARGET_NONE
+
+    if tgt_type == "ignore":
+        vo = None
+    elif tgt_type == "char_offensive":
+        if victim is None:
+            victim_id = ch.get("fighting")
+            if victim_id is not None and victim_id in world.chars:
+                victim = world.chars[victim_id]
+        if victim is None:
+            tprint("You can't do that.")
+            return False
+        if is_safe(ch, victim) and victim is not ch:
+            tprint("Something isn't right...")
+            return False
+        vo = victim
+        target = TARGET_CHAR
+    elif tgt_type in ("char_defensive", "char_self"):
+        if victim is None:
+            victim = ch
+        vo = victim
+        target = TARGET_CHAR
+    elif tgt_type == "obj_inventory":
+        if obj is None:
+            tprint("You can't do that.")
+            return False
+        vo = obj
+        target = TARGET_OBJ
+    elif tgt_type == "obj_char_offensive":
+        if victim is None and obj is None:
+            victim_id = ch.get("fighting")
+            if victim_id is not None and victim_id in world.chars:
+                victim = world.chars[victim_id]
+            else:
+                tprint("You can't do that.")
+                return False
+        if victim is not None:
+            if is_safe_spell(ch, victim, False) and victim is not ch:
+                tprint("Something isn't right...")
+                return False
+            vo = victim
+            target = TARGET_CHAR
+        else:
+            vo = obj
+            target = TARGET_OBJ
+    elif tgt_type == "obj_char_defensive":
+        if victim is None and obj is None:
+            vo = ch
+            target = TARGET_CHAR
+        elif victim is not None:
+            vo = victim
+            target = TARGET_CHAR
+        else:
+            vo = obj
+            target = TARGET_OBJ
+    else:
+        _dev_item_fail(item_obj, "bad target for '" + spell_name + "'")
+        return False
+
+    fun = SPELL_FUNS.get(sk.get("spell_fun", "spell_null"), spell_null)
     if spell_name:
-        ch["_spell_target_name"] = spell_name
+        ch["_spell_target_name"] = spell_name  # [PRIMESUD] item spell display name
     ret = fun(sn, level, ch, vo, target)
     if "_spell_target_name" in ch:
         del ch["_spell_target_name"]
-    if (ret and SKILLS[sn].get("target") in ("char_offensive", "obj_char_offensive")
-            and target == TARGET_CHAR and victim_id is not None
-            and victim_id in world.chars and ch.get("fighting") is None):
-        set_fighting(ch, world.chars[victim_id])
+    # 1stmud: victim retaliates after offensive item spell
+    # (skipping victim->master != ch guard -- master field not yet ported)
+    if (ret and tgt_type in ("char_offensive", "obj_char_offensive")
+            and target == TARGET_CHAR and vo is not ch
+            and vo.get("fighting") is None):
+        multi_hit(vo, ch)
     return ret
 
 
@@ -2752,7 +2718,7 @@ def do_cast(player, args):
         sn = known[idx][0]
         target_name = ""
     else:
-        sn, target_name = _parse_spell_args(player, args)
+        sn, target_name = find_skill_spell(player, args[0]), " ".join(args[1:])
 
     if (sn is None or not _implemented_spell(sn)
             or not can_use_skill_spell(player, sn)
@@ -2774,6 +2740,17 @@ def do_cast(player, args):
     if not ok:
         return None
 
+    # 1stmud: safety guard on offensive char targets
+    # (cf. do_cast TAR_CHAR_OFFENSIVE / TAR_OBJ_CHAR_OFF in magic.c)
+    if target == TARGET_CHAR and vo is not player:
+        tgt_type = sk.get("target")
+        if tgt_type == "char_offensive" and is_safe(player, vo):
+            tprint("Not on that target.")
+            return None
+        if tgt_type == "obj_char_offensive" and is_safe_spell(player, vo, False):
+            tprint("Not on that target.")
+            return None
+
     mana = spell_mana(player, sn)
     if player["mana"] < mana:
         tprint("You don't have enough mana.")
@@ -2790,17 +2767,20 @@ def do_cast(player, args):
     player["mana"] -= mana
     fun = SPELL_FUNS.get(sk.get("spell_fun", "spell_null"), spell_null)
     player["_spell_target_name"] = target_name
-    ret = fun(sn, _spell_level(player, sn), player, vo, target)
+    ret = fun(sn, player.get("level", 1), player, vo, target)  # [PRIMESUD] classless
     del player["_spell_target_name"]
     check_improve(player, sn, ret, 1)
 
+    # 1stmud: victim retaliates after offensive cast
+    # (skipping victim->master != ch guard -- master field not yet ported)
     if (ret and sk.get("target") in ("char_offensive", "obj_char_offensive")
-            and target == TARGET_CHAR and victim_id is not None
-            and victim_id in world.chars
-            and player.get("fighting") is None):
-        set_fighting(player, world.chars[victim_id])
+            and target == TARGET_CHAR and vo is not player
+            and victim_id is not None and victim_id in world.chars
+            and vo.get("fighting") is None):
+        multi_hit(vo, player)
     if not args:
-        command = "cast " + _quote_cast_spell_name(SKILLS[sn]["name"])
+        spell_name = SKILLS[sn]["name"]
+        command = "cast " + ("'" + spell_name + "'" if " " in spell_name else spell_name)
         if target_name:
             command += " " + target_name
         return command

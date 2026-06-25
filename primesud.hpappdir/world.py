@@ -46,6 +46,9 @@ def init_world():
             _room["area"] = _tag
             ROOM_DEFS[_vnum] = _room
         MOB_DEFS.update(_mod.MOBILES)
+        for _entry in getattr(_mod, "SPECIALS", ()):
+            if _entry[0] == "M" and _entry[1] in MOB_DEFS:
+                MOB_DEFS[_entry[1]]["spec_fun"] = _entry[2]
         ITEM_DEFS.update(_mod.OBJECTS)
         AREA_DEFS.append({"tag": _tag, "resets": _mod.RESETS})
 

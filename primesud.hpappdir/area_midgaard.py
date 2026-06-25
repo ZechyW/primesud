@@ -1752,6 +1752,30 @@ MOBILES = {
     },
 }
 
+# -- Specials -------------------------------------------------------------------
+# ("M", mob_vnum, spec_fun_name) -- assign special function to mob template
+SPECIALS = (
+    ("M", M_MAID, 'spec_cast_cleric'),
+    ("M", M_SEXTON, 'spec_cast_cleric'),
+    ("M", M_MAYOR, 'spec_mayor'),
+    ("M", M_THIEF_3163, 'spec_nasty'),
+    ("M", M_WIZARD, 'spec_cast_mage'),
+    ("M", M_THIEF, 'spec_thief'),
+    ("M", M_HASSAN, 'spec_executioner'),
+    ("M", M_HEALER, 'spec_cast_adept'),
+    ("M", M_GUILDMASTER_MASTER, 'spec_cast_mage'),
+    ("M", M_GUILDMASTER_MASTER_3021, 'spec_cast_cleric'),
+    ("M", M_SORCERER, 'spec_cast_mage'),
+    ("M", M_WAITER_3042, 'spec_cast_mage'),
+    ("M", M_WAITER_3043, 'spec_cast_cleric'),
+    ("M", M_CITYGUARD_GUARD, 'spec_guard'),
+    ("M", M_JANITOR, 'spec_janitor'),
+    ("M", M_FIDO_DOG, 'spec_fido'),
+    ("M", M_CITYGUARD_GUARD_3067, 'spec_guard'),
+    ("M", M_CITYGUARD_GUARD_3068, 'spec_guard'),
+    ("M", M_CITYGUARD_GUARD_3069, 'spec_guard'),
+)
+
 # -- Rooms ----------------------------------------------------------------------
 ROOMS = {
     R_NORTHWEST_END_OF_CONCOURSE: {

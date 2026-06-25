@@ -471,6 +471,25 @@ MOBILES = {
     },
 }
 
+# -- Specials -------------------------------------------------------------------
+# ("M", mob_vnum, spec_fun_name) -- assign special function to mob template
+SPECIALS = (
+    ("M", M_OLDSTYLE_SKELETON_BONY, 'spec_cast_undead'),
+    ("M", M_OLDSTYLE_UNDEAD_ZOMBIE, 'spec_cast_undead'),
+    ("M", M_OLDSTYLE_UNDEAD_GHOUL, 'spec_cast_undead'),
+    ("M", M_OLDSTYLE_UNDEAD_WRAITH, 'spec_cast_undead'),
+    ("M", M_OLDSTYLE_UNDEAD_GUARDIAN_VAMPIRE, 'spec_cast_undead'),
+    ("M", M_OLDSTYLE_PRIEST, 'spec_cast_cleric'),
+    ("M", M_OLDSTYLE_NIGHTGAUNT, 'spec_cast_undead'),
+    ("M", M_OLDSTYLE_HUNTING_HORROR, 'spec_cast_undead'),
+    ("M", M_OLDSTYLE_SNAPPER_JOE, 'spec_cast_undead'),
+    ("M", M_OLDSTYLE_X_IST_EATER, 'spec_cast_undead'),
+    ("M", M_OLDSTYLE_SPIRIT_GHOST_KING_CROTUS, 'spec_cast_mage'),
+    ("M", M_OLDSTYLE_ETCHER, 'spec_cast_mage'),
+    ("M", M_OLDSTYLE_WIFE_GHOST_SPECTER, 'spec_cast_undead'),
+    ("M", M_OLDSTYLE_BODY, 'spec_cast_undead'),
+)
+
 # -- Rooms ----------------------------------------------------------------------
 ROOMS = {
     R_INSIDE_THE_CHAPEL: {

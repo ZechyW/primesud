@@ -68,6 +68,11 @@ MOBILES = {
     },
 }
 
+# -- Specials -------------------------------------------------------------------
+# ("M", mob_vnum, spec_fun_name) -- assign special function to mob template
+SPECIALS = (
+)
+
 # -- Rooms ----------------------------------------------------------------------
 ROOMS = {
     R_VOID: {

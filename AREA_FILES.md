@@ -48,6 +48,9 @@ ROOMS = { ... }
 # ── Mob templates ──
 MOBILES = { ... }
 
+# ── Specials ──
+SPECIALS = ( ... )
+
 # ── Item templates ──
 OBJECTS = { ... }
 
@@ -218,6 +221,26 @@ Common values: `area_attack`, `bash`, `berserk`, `crush`, `disarm`, `dodge`, `fa
 ### `affected_by` (affects)
 
 Common values: `detect_evil`, `infrared`, `dark_vision`, `sanctuary`.
+
+---
+
+## `SPECIALS`
+
+```python
+SPECIALS = (
+    ("M", M_ADEPT, "spec_cast_adept"),
+    ("M", M_FIDO,  "spec_fido"),
+)
+```
+
+`SPECIALS` preserves the `.are` `#SPECIALS` section as a one-shot review list.
+`world.init_world()` applies each entry to `MOB_DEFS[mob_vnum]["spec_fun"]` when
+the area modules are loaded. PrimeSUD may ignore a `spec_fun` until the matching
+runtime behavior is ported.
+
+| Command | Format                      | Meaning |
+|---------|-----------------------------|---------|
+| `"M"`   | `("M", mob_vnum, spec_fun)` | Assign named special function to a mob template |
 
 ---
 

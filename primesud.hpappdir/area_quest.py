@@ -115,6 +115,14 @@ MOBILES = {
     },
 }
 
+# -- Specials -------------------------------------------------------------------
+# ("M", mob_vnum, spec_fun_name) -- assign special function to mob template
+SPECIALS = (
+    ("M", M_EDURIN_QUESTMASTER_QUESTOR, 'spec_questmaster'),
+    ("M", M_TRIVIA_SHOPKEEPER, 'spec_triviamob'),
+    ("M", M_200_REGISTRAR_GQUEST, 'spec_registar'),
+)
+
 # -- Rooms ----------------------------------------------------------------------
 ROOMS = {
     R_QUESTORS_LOUNGE: {

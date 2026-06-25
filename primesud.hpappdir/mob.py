@@ -6,8 +6,9 @@ from config import EXIT_NAMES, SIZE_RANK
 import world
 from world import ROOM_DEFS, MOB_DEFS, AREA_DEFS, DOOR_DEFS
 from races import RACE_TABLE
-from actor import equip_char, act, _char_base, is_awake
+from actor import equip_char, act, _char_base, is_awake, TO_ROOM, can_see
 from item import create_object
+from special import SPEC_TABLE
 
 
 # Area age thresholds (cf. 1stMud area_update: age < 3 skip; age >= 15 reset
@@ -264,9 +265,16 @@ def mobile_update(tr, player):
             world.rooms[inst["room"]]["mobs"].remove(mob_id)
             del world.chars[mob_id]
             continue
+        # Special function dispatch (cf. 1stMud update.c:429-433)
+        tpl = MOB_DEFS[inst["tpl"]]
+        spec_name = tpl.get("spec_fun")
+        if spec_name is not None:
+            spec = SPEC_TABLE.get(spec_name)
+            if spec is not None and spec(inst):
+                continue
         if inst["fighting"] is not None:
             continue
-        act_flags = MOB_DEFS[inst["tpl"]].get("act_flags", {})
+        act_flags = tpl.get("act_flags", {})
         if act_flags.get("sentinel"):
             continue
         if randint(0, 7) != 0:  # 1/8 chance -- matches number_bits(3)==0
@@ -292,7 +300,6 @@ def mobile_update(tr, player):
         if act_flags.get("indoors") and not dest_flags.get("indoors"):
             continue
         old_room = inst["room"]
-        tpl = MOB_DEFS[inst["tpl"]]
         _sd = tpl["short_descr"]
         if player["room"] == old_room:
             act("{} leaves {}.".format(_sd, EXIT_NAMES.get(direction, direction)))
