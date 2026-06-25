@@ -2,7 +2,7 @@
 
 from config import (DEFAULT_MACROS, DEFAULT_FNKEY_MACROS, FNKEY_NAMES,
                     TERMINAL_COLS)
-
+from terminal import tprint
 
 _MACRO_SUBST = dict(DEFAULT_MACROS)   # [PRIMESUD] user-configurable macros -- no 1stMud equivalent
 _MACRO_SUBST.update(DEFAULT_FNKEY_MACROS)
@@ -67,24 +67,24 @@ def _macro_row(entries):
             for i in range(height)]
 
 
-def do_macro(tr, player, args):  # [PRIMESUD]
+def do_macro(player, args):  # [PRIMESUD]
     if not args:
         next_sep = _MACRO_SEP
         for row in _MACRO_TABLE:
             if row is None:
                 next_sep = _MACRO_SEP_STRONG
             else:
-                tr.print(next_sep)
+                tprint(next_sep)
                 for line in _macro_row(row):
-                    tr.print(line)
+                    tprint(line)
                 next_sep = _MACRO_SEP
-        tr.print(next_sep)
+        tprint(next_sep)
         return None
     if args[0] == "default":
         _MACRO_SUBST.clear()
         _MACRO_SUBST.update(DEFAULT_MACROS)
         _MACRO_SUBST.update(DEFAULT_FNKEY_MACROS)
-        tr.print("Macros reset to defaults.")
+        tprint("Macros reset to defaults.")
         return None
     key = args[0].lower()
     sentinel = _FNKEY_BY_NAME.get(key)
@@ -95,17 +95,17 @@ def do_macro(tr, player, args):  # [PRIMESUD]
         target = key
         label = key
     else:
-        tr.print("Key must be a digit 0-9 or one of: {}.".format(
+        tprint("Key must be a digit 0-9 or one of: {}.".format(
             " ".join(sorted(_FNKEY_BY_NAME))))
         return None
     if len(args) == 1:
         if target in _MACRO_SUBST:
             del _MACRO_SUBST[target]
-            tr.print("Macro {} cleared.".format(label))
+            tprint("Macro {} cleared.".format(label))
         else:
-            tr.print("No macro on {}.".format(label))
+            tprint("No macro on {}.".format(label))
     else:
         cmd = " ".join(args[1:])
         _MACRO_SUBST[target] = cmd
-        tr.print("{R%s{x mapped to '%s'." % (label, cmd))
+        tprint("{R%s{x mapped to '%s'." % (label, cmd))
     return None

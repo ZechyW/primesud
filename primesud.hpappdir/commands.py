@@ -4,19 +4,21 @@ from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
                     do_berserk, do_bash, do_dirt, do_trip, do_flee,
                     do_rescue, do_disarm, do_surrender, do_slay,
                     do_sskill, do_stance, do_autostance)
+from config import POS_ORDER
+from info import (do_look, do_score, do_skills, do_spells, do_help, do_affects,
+                  do_credits, do_map, do_automap, do_autolist,
+                  do_autoloot, do_autogold, do_autosac, do_autosplit)
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
                        do_sacrifice)
-from movement import do_move, do_open, do_close, do_recall
-from magic import do_cast
-from scan import do_scan
-from training import do_train, do_practice
-from info import (do_look, do_score, do_skills, do_spells, do_help, do_affects,
-                  do_credits, do_map, do_automap, do_autolist)
 from macros import do_macro
+from magic import do_cast
+from movement import do_move, do_open, do_close, do_recall
+from scan import do_scan
 from system_cmds import do_save, do_quit, do_debug
-from config import POS_ORDER
+from terminal import tprint
+from training import do_train, do_practice
 
 _POS_MSG = {
     "dead":     "Lie still; you are DEAD.",
@@ -61,6 +63,10 @@ _CMD_TABLE = [
     ("skills",    do_skills,    "dead",     False),   # #50
     ("spells",    do_spells,    "dead",     False),   # #53
     ("autolist",  do_autolist,  "dead",     False),   # #63
+    ("autogold",  do_autogold,  "dead",     False),   # #66
+    ("autoloot",  do_autoloot,  "dead",     False),   # #67
+    ("autosac",   do_autosac,   "dead",     False),   # #68
+    ("autosplit", do_autosplit, "dead",     False),   # #69
     ("outfit",    do_outfit,    "resting",  False),   # #80
     ("brandish",  do_brandish,  "resting",  False),   # #112
     ("close",     do_close,     "resting",  False),   # #113
@@ -138,11 +144,11 @@ def _split_args(raw):
     return args
 
 
-def interpret(raw, tr, player):
+def interpret(raw, player):
     parts = _split_args(raw)
     if not parts:
         return None
-    tr.print("")
+    tprint("")
     verb = parts[0]
     args = parts[1:]
 
@@ -159,9 +165,9 @@ def interpret(raw, tr, player):
         elif not name.startswith(verb):
             continue
         if POS_ORDER[pos] < POS_ORDER[min_pos]:
-            tr.print(_POS_MSG.get(pos, ""))
+            tprint(_POS_MSG.get(pos, ""))
             return None
-        return fn(tr, player, args)
+        return fn(player, args)
 
-    tr.print("Unknown command. ? for help.")
+    tprint("Unknown command. ? for help.")
     return None

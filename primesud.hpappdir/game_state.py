@@ -19,7 +19,7 @@ def new_game(game, name="Hero"):
     player["name"] = name
     player["_macros"] = _MACRO_SUBST
     world.chars[1] = player
-    do_outfit(game.tr, player, "")  # cf. 1stMud do_outfit in nanny.c for new chars
+    do_outfit(player, "")  # cf. 1stMud do_outfit in nanny.c for new chars
     save_game(game, quiet=True)
 
 

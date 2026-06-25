@@ -3,7 +3,7 @@
 import world
 from actor import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
                    is_awake, can_see, affect_to_char, affect_remove,
-                   chprintln, TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT)
+                   chprintln, chprintlnf, TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT)
 from area_limbo import (
     I_CORPSE, I_CORPSE_11,
     I_COIN_SILVER_GCASH,
@@ -14,6 +14,7 @@ from area_limbo import (
 )
 from colors import upper
 from config import (
+    MAX_MORTAL_LEVEL,
     PULSE_VIOLENCE,
     POS_ORDER,
     R_STARTING_ROOM,
@@ -46,9 +47,12 @@ from config import (
     XP_BASE,
     SIZE_RANK,
 )
-from item import get_char_room, create_object, item_extra_flags, set_item_extra_flag
+from item import (get_char_room, create_object, item_extra_flags,
+                  set_item_extra_flag, get_obj_list, obj_vnum,
+                  apply_money_pickup)
 from picker import pick_from
-from player import save_world
+from player import (save_world, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
+                    PLR_DEFAULTS)
 from skills_table import (
     SKILL_TABLE, SKILLS, WEAPON_GSN_MAP,
     GSN_BACKSTAB, GSN_BASH, GSN_BERSERK, GSN_DIRT, GSN_DISARM,
@@ -1173,7 +1177,47 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         # [PRIMESUD] skip outlaw flag removal (not ported)
 
         # 1stMud: if (!IsNPC(ch) && (corpse = get_obj_list...) ... autoloot/autogold/autosac
-        # [PRIMESUD] TODO: autoloot/autogold/autosac not ported
+        if not ch.get("is_npc"):
+            flags = ch.get("flags", PLR_DEFAULTS)
+            rs = world.rooms[ch["room"]]
+            corpse = get_obj_list("corpse", rs["items"], ITEM_DEFS)
+            if (corpse is not None and isinstance(corpse, dict)
+                    and ITEM_DEFS[obj_vnum(corpse)].get("type") == "npc_corpse"):
+                contents = corpse.get("contents", [])
+
+                # 1stMud: if (PLR_AUTOLOOT && corpse->content_first) do_get("all corpse")
+                if flags & PLR_AUTOLOOT and contents:
+                    for cobj in list(contents):
+                        ctpl = ITEM_DEFS[obj_vnum(cobj)]
+                        corpse["contents"].remove(cobj)
+                        tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+                        if not apply_money_pickup(ch, cobj, ctpl):
+                            ch["inv"].append(cobj)
+
+                # 1stMud: if (PLR_AUTOGOLD && content_first && !PLR_AUTOLOOT) get gold only
+                if (flags & PLR_AUTOGOLD and corpse.get("contents")
+                        and not (flags & PLR_AUTOLOOT)):
+                    for cobj in list(corpse["contents"]):
+                        ctpl = ITEM_DEFS[obj_vnum(cobj)]
+                        if ctpl.get("type") == "money":
+                            corpse["contents"].remove(cobj)
+                            tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+                            apply_money_pickup(ch, cobj, ctpl)
+
+                # 1stMud: if (PLR_AUTOSAC) { if (autoloot && still has contents) skip; else sacrifice }
+                if flags & PLR_AUTOSAC:
+                    if flags & PLR_AUTOLOOT and corpse.get("contents"):
+                        pass
+                    else:
+                        silver = max(1, corpse.get("level", 0) * 3)
+                        if silver == 1:
+                            tprint("Your deity gives you one silver coin for your sacrifice.")
+                        else:
+                            tprint("Your deity gives you " + str(silver) + " silver coins for your sacrifice.")
+                        ch["silver"] = ch.get("silver", 0) + silver
+                        short = corpse.get("short_descr", "a corpse")
+                        tprint("You sacrifice " + short + " to your deity.")
+                        rs["items"].remove(corpse)
 
         return True
 
@@ -1894,14 +1938,14 @@ def _extract_char(ch, pull=True):
 
 
 def advance_level(player):
-    """Advance player one level: roll HP/MP gains, grant practice and train.
+    """Roll HP/MP gains, grant practice and train (cf. 1stMud advance_level in update.c).
+
+    Level increment and XP deduction happen in gain_exp before this is called,
+    matching 1stMud's flow.
 
     Args:
         player (dict): Player state dict.
     """
-    player["level"] += 1
-    player["xp"]    -= player["xp_next"]
-    # xp_next stays 1000 (flat cost per level -- 1stMud exp_per_level with 40 pts, human)
 
     con  = get_curr_stat(player, "con")
     wis  = get_curr_stat(player, "wis")
@@ -1926,15 +1970,18 @@ def advance_level(player):
     player["practice"] += add_prac
     player["train"]    += 1
 
-    tprint("You raise a level!!")
-    tprint("You gain {} hit {}, {} mana, and {} {}.".format(
+    chprintlnf(player, "You gain %d hit %s, %d mana, and %d %s.",
         add_hp,  "point" if add_hp  == 1 else "points",
         add_mp,
-        add_prac, "practice" if add_prac == 1 else "practices"))
+        add_prac, "practice" if add_prac == 1 else "practices")
+    learned = player.get("learned", {})
     for _sn, data in SKILL_TABLE:
         if data.get("skill_level") == player["level"]:
             kind = "spell" if data.get("spell_fun", "spell_null") != "spell_null" else "skill"
-            tprint("You can now use the {} {}.".format(data["name"], kind))
+            # 1stMud: learned==1 -> "learn" (go practice it), >1 -> "use" (already practiced)
+            verb = "learn" if learned.get(_sn, 0) <= 1 else "use"
+            chprintlnf(player, "{MYou can now %s the {W%s{M %s.{x",
+                verb, data["name"], kind)
 
 
 def gain_exp(ch, gain):
@@ -1944,12 +1991,16 @@ def gain_exp(ch, gain):
         ch (dict): Player state dict.
         gain (int): XP to add (may be negative for death penalty).
     """
-    if ch.get("is_npc"):
+    if ch.get("is_npc") or ch.get("level", 1) >= MAX_MORTAL_LEVEL:
         return
     # 1stMud: ch->exp = Max(exp_per_level(...), ch->exp + gain)
     # [PRIMESUD] floor at 0 (no creation-point system)
     ch["xp"] = max(0, ch["xp"] + gain)
-    while ch["xp"] >= ch["xp_next"]:
+    while (ch.get("level", 1) < MAX_MORTAL_LEVEL
+           and ch["xp"] >= ch["xp_next"]):
+        chprintln(ch, "You raise a level!!")
+        ch["level"] += 1
+        ch["xp"]    -= ch["xp_next"]
         advance_level(ch)
 
 

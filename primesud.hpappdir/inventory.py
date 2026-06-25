@@ -10,7 +10,7 @@ from area_school import (I_BANNER_WAR_MERC,
 from combat import _get_weapon_skill, WaitState, check_improve, get_skill
 from config import STR_APP_WIELD, PULSE_VIOLENCE
 from item import (get_obj_list, obj_vnum, create_object, item_extra_flags,
-                  item_wear_flags)
+                  item_wear_flags, apply_money_pickup)
 from magic import cast_item_spells, validate_item_spell_payload
 from picker import pick_from
 from skills_table import GSN_SCROLLS, GSN_STAVES, GSN_WANDS
@@ -22,30 +22,6 @@ from world import ITEM_DEFS, MOB_DEFS
 _CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
 
 
-def _apply_money_pickup(player, obj, tpl):
-    """Credit player with coin value; return True so caller skips inv append (cf. 1stMud get_obj).
-
-    Args:
-        player (dict): Player state.
-        obj (dict): Coin item instance.
-        tpl (dict): Item template.
-
-    Returns:
-        bool: True if item was money and was consumed.
-    """
-    if tpl.get("type") != "money":
-        return False
-    s = obj.get("silver", 0)
-    g = obj.get("gold", 0)
-    player["silver"] += s
-    player["gold"] += g
-    if s > 0 and g > 0:
-        tprint("You pocket " + str(s) + " silver and " + str(g) + " gold coins.")
-    elif g > 0:
-        tprint("You pocket " + str(g) + " gold coin" + ("s." if g != 1 else "."))
-    else:
-        tprint("You pocket " + str(s) + " silver coin" + ("s." if s != 1 else "."))
-    return True
 
 
 def _loot_container_picker(player, container):
@@ -66,16 +42,16 @@ def _loot_container_picker(player, container):
         for cobj in list(contents):
             ctpl = ITEM_DEFS[obj_vnum(cobj)]
             container["contents"].remove(cobj)
-            if not _apply_money_pickup(player, cobj, ctpl):
+            tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+            if not apply_money_pickup(player, cobj, ctpl):
                 player["inv"].append(cobj)
-                tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
         return
     cobj = contents[cidx]
     ctpl = ITEM_DEFS[obj_vnum(cobj)]
     container["contents"].remove(cobj)
-    if not _apply_money_pickup(player, cobj, ctpl):
+    tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+    if not apply_money_pickup(player, cobj, ctpl):
         player["inv"].append(cobj)
-        tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
 
 
 def do_get(player, args):
@@ -109,20 +85,20 @@ def do_get(player, args):
             obj = loose[idx]
             tpl = ITEM_DEFS[obj_vnum(obj)]
             rs["items"].remove(obj)
-            if _apply_money_pickup(player, obj, tpl):
-                return
-            player["inv"].append(obj)
             tprint("You get {}.".format(
                 (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
+            if apply_money_pickup(player, obj, tpl):
+                return
+            player["inv"].append(obj)
             return "get " + tpl.get("keywords", tpl["short_descr"]).split()[0]
         if has_all and idx == len(loose):
             for obj in list(loose):
                 tpl = ITEM_DEFS[obj_vnum(obj)]
                 rs["items"].remove(obj)
-                if not _apply_money_pickup(player, obj, tpl):
+                tprint("You get {}.".format(
+                    (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
+                if not apply_money_pickup(player, obj, tpl):
                     player["inv"].append(obj)
-                    tprint("You get {}.".format(
-                        (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
             return
         _loot_container_picker(player, conts[idx - cont_start])
         return
@@ -141,9 +117,9 @@ def do_get(player, args):
                 tprint("You can't take that.")
                 continue
             rs["items"].remove(obj)
-            if not _apply_money_pickup(player, obj, tpl):
+            tprint("You get {}.".format(tpl["short_descr"]))
+            if not apply_money_pickup(player, obj, tpl):
                 player["inv"].append(obj)
-                tprint("You get {}.".format(tpl["short_descr"]))
         if not found:
             if filter_kw:
                 tprint("I see no {} here.".format(filter_kw))
@@ -167,9 +143,9 @@ def do_get(player, args):
                     for cobj in list(contents):
                         ctpl = ITEM_DEFS[obj_vnum(cobj)]
                         cont_obj["contents"].remove(cobj)
-                        if not _apply_money_pickup(player, cobj, ctpl):
+                        tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+                        if not apply_money_pickup(player, cobj, ctpl):
                             player["inv"].append(cobj)
-                            tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
                 return
             cobj = get_obj_list(item_arg, contents, ITEM_DEFS)
             if cobj is None:
@@ -178,9 +154,9 @@ def do_get(player, args):
                 return
             ctpl = ITEM_DEFS[obj_vnum(cobj)]
             cont_obj["contents"].remove(cobj)
-            if not _apply_money_pickup(player, cobj, ctpl):
+            tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+            if not apply_money_pickup(player, cobj, ctpl):
                 player["inv"].append(cobj)
-                tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
             return
     obj = get_obj_list(arg, rs["items"], ITEM_DEFS)
     if obj is None:
@@ -191,9 +167,9 @@ def do_get(player, args):
         tprint("You can't take that.")
         return
     rs["items"].remove(obj)
-    if not _apply_money_pickup(player, obj, tpl):
+    tprint("You get {}.".format((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
+    if not apply_money_pickup(player, obj, tpl):
         player["inv"].append(obj)
-        tprint("You get {}.".format((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
 
 
 def do_drop(player, args):
@@ -617,7 +593,7 @@ def do_second(player, args):
     equip_char(player, obj, "secondary")
 
 
-def do_quaff(tr, player, args):
+def do_quaff(player, args):
     """Quaff a potion (cf. 1stMud do_quaff in act_obj.c)."""
     if not args:
         tprint("Quaff what?")
@@ -640,7 +616,7 @@ def do_quaff(tr, player, args):
     player["inv"].remove(obj)
 
 
-def do_eat(tr, player, args):
+def do_eat(player, args):
     """Eat food or pill (cf. 1stMud do_eat in act_obj.c)."""
     if not args:
         tprint("Eat what?")
@@ -688,7 +664,7 @@ def _destroy_equipped(player, slot):
     player["inv"].pop()
 
 
-def do_recite(tr, player, args):
+def do_recite(player, args):
     """Recite a scroll (cf. 1stMud do_recite in act_obj.c)."""
     arg1 = args[0] if args else ""
     arg2 = " ".join(args[1:]) if len(args) > 1 else ""
@@ -723,7 +699,7 @@ def do_recite(tr, player, args):
     player["inv"].remove(scroll)
 
 
-def do_brandish(tr, player, args):
+def do_brandish(player, args):
     """Brandish a held staff (cf. 1stMud do_brandish in act_obj.c)."""
     staff = player["equip"].get("hold")
     if staff is None:
@@ -768,7 +744,7 @@ def do_brandish(tr, player, args):
         _destroy_equipped(player, "hold")
 
 
-def do_zap(tr, player, args):
+def do_zap(player, args):
     """Zap with a held wand (cf. 1stMud do_zap in act_obj.c)."""
     arg = " ".join(args)
     if not arg and player.get("fighting") is None:
@@ -827,7 +803,7 @@ _WEAPON_OUTFIT_CHOICES = [
 ]
 
 
-def do_outfit(tr, player, args):
+def do_outfit(player, args):
     """Equip a new character with Mud School starter gear (cf. 1stMud do_outfit in act_wiz.c).
 
     Fills only empty slots; skips any slot already occupied.  Weapon type is
@@ -840,7 +816,6 @@ def do_outfit(tr, player, args):
       - obj->cost = 0 applied to weapon too (1stMud omits it for the weapon).
 
     Args:
-        tr: Terminal renderer.
         player (dict): Player instance dict.
         args (str): Unused.
     """
@@ -876,11 +851,10 @@ def do_outfit(tr, player, args):
     tprint("You have been equipped by the gods.")
 
 
-def _sacrifice_one(tr, player, obj, rs):
+def _sacrifice_one(player, obj, rs):
     """Sacrifice a single room item for silver (inner helper for do_sacrifice).
 
     Args:
-        tr: Terminal renderer.
         player (dict): Player state dict.
         obj: Item instance dict from rs["items"].
         rs (dict): Current room state dict.
@@ -915,11 +889,10 @@ def _sacrifice_one(tr, player, obj, rs):
     rs["items"].remove(obj)
 
 
-def do_sacrifice(tr, player, args):
+def do_sacrifice(player, args):
     """Sacrifice a room item to the deity for silver (cf. 1stMud do_sacrifice in act_obj.c).
 
     Args:
-        tr: Terminal renderer.
         player (dict): Player state dict.
         args (list): Parsed command arguments.
     """
@@ -933,7 +906,7 @@ def do_sacrifice(tr, player, args):
 
     if arg == "all":
         for obj in list(rs["items"]):
-            _sacrifice_one(tr, player, obj, rs)
+            _sacrifice_one(player, obj, rs)
         return
 
     obj = get_obj_list(arg, rs["items"], ITEM_DEFS)
@@ -941,4 +914,4 @@ def do_sacrifice(tr, player, args):
         tprint("You can't find it.")
         return
 
-    _sacrifice_one(tr, player, obj, rs)
+    _sacrifice_one(player, obj, rs)

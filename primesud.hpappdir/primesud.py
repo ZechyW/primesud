@@ -142,7 +142,7 @@ class Game:
                         show_prompt(tr, player, self.input_buf)
                     else:
                         _t0 = ticks()
-                        resolved = interpret(self.input_buf, tr, player)
+                        resolved = interpret(self.input_buf, player)
                         next_pulse += ticks() - _t0  # [PRIMESUD] skip missed pulses during blocking input (e.g. picker)
                         _quit = resolved == "quit"
                         entry = resolved if (resolved and resolved != "quit") else self.input_buf
@@ -190,7 +190,7 @@ class Game:
                         tr.print("{D[Recovering... command queued]{x")  # [PRIMESUD]
                     else:
                         _t0 = ticks()
-                        _quit = interpret(char, tr, player) == "quit"
+                        _quit = interpret(char, player) == "quit"
                         next_pulse += ticks() - _t0  # [PRIMESUD] skip missed pulses during blocking input
                         if _quit:
                             break
@@ -217,7 +217,7 @@ class Game:
                         _t0 = ticks()
                         _cmd = self._pending_cmd
                         self._pending_cmd = None
-                        resolved = interpret(_cmd, tr, player)
+                        resolved = interpret(_cmd, player)
                         next_pulse += ticks() - _t0
                         _quit = resolved == "quit"
                         entry = resolved if (resolved and resolved != "quit") else _cmd

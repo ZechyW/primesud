@@ -55,7 +55,6 @@ def update_handler():
     if _pulse_violence <= 0:
         _pulse_violence = PULSE_VIOLENCE
         update_mob_timers()
-        affect_update()
         violence_update(player)
         fired |= UPD_VIOLENCE
 
@@ -76,21 +75,6 @@ def update_handler():
         aggr_update(tr, player)
 
     return fired
-
-
-def affect_update():
-    """Tick timed affects down on all characters (cf. 1stMud affect_update in update.c).
-
-    """
-    for inst in world.chars.values():
-        affects = inst["affects"]
-        for key in list(affects.keys()):
-            if key.endswith("_t"):
-                affects[key] -= 1
-                if affects[key] <= 0:
-                    base = key[:-2]
-                    affects.pop(key, None)
-                    affects.pop(base, None)
 
 
 def obj_update(tr, player):

@@ -9,7 +9,8 @@ from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS,
                     MAX_MORTAL_LEVEL,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC)
 from item import get_obj_list, obj_vnum, item_extra_flags
-from player import PLR_AUTOMAP, PLR_DEFAULTS
+from player import (PLR_AUTOMAP, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
+                    PLR_AUTOSPLIT, PLR_DEFAULTS)
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
     spell_mana
 from skills_table import SKILL_TABLE, SKILLS
@@ -49,10 +50,10 @@ _FLAG_TABLE = (
     # TODO: PLR_AUTODAMAGE "autodamage" - damage amounts in combat
     # TODO: PLR_AUTOASSIST "autoassist" - auto-assist group members
     # TODO: PLR_AUTOEXIT "autoexit" - exits in room descriptions
-    # TODO: PLR_AUTOGOLD "autogold" - auto-loot gold from corpses
-    # TODO: PLR_AUTOLOOT "autoloot" - auto-loot objects from corpses
-    # TODO: PLR_AUTOSAC "autosac" - auto-sacrifice corpses
-    # TODO: PLR_AUTOSPLIT "autosplit" - auto-split gold in group
+    (PLR_AUTOGOLD, "autogold", "Automatically loots gold from corpses."),
+    (PLR_AUTOLOOT, "autoloot", "Automatically loots objects from corpses."),
+    (PLR_AUTOSAC, "autosac", "Automatically sacrifices corpses."),
+    (PLR_AUTOSPLIT, "autosplit", "Automatically splits gold with group members."),
     # TODO: PLR_AUTOPROMPT "autoprompt" - selective prompt display
     # TODO: COMM_COMPACT "compact" - compact output (comm flags)
     # TODO: COMM_PROMPT "prompt" - prompt display (comm flags)
@@ -71,6 +72,42 @@ def do_automap(player, args):
         tprint("You now see an automap in room descriptions.")
     else:
         tprint("You no longer see automap room descriptions.")
+
+
+def do_autoloot(player, args):
+    """Toggle autoloot (cf. 1stMud do_autoloot in act_info.c)."""
+    player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOLOOT
+    if player["flags"] & PLR_AUTOLOOT:
+        tprint("You now loot objects from corpses automatically.")
+    else:
+        tprint("You no longer loot objects from corpses automatically.")
+
+
+def do_autogold(player, args):
+    """Toggle autogold (cf. 1stMud do_autogold in act_info.c)."""
+    player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOGOLD
+    if player["flags"] & PLR_AUTOGOLD:
+        tprint("You now loot gold from corpses automatically.")
+    else:
+        tprint("You no longer loot gold from corpses automatically.")
+
+
+def do_autosac(player, args):
+    """Toggle autosac (cf. 1stMud do_autosac in act_info.c)."""
+    player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOSAC
+    if player["flags"] & PLR_AUTOSAC:
+        tprint("You now sacrifice corpses automatically.")
+    else:
+        tprint("You no longer automatically sacrifice corpses.")
+
+
+def do_autosplit(player, args):
+    """Toggle autosplit (cf. 1stMud do_autosplit in act_info.c)."""
+    player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOSPLIT
+    if player["flags"] & PLR_AUTOSPLIT:
+        tprint("You now split gold with group members.")
+    else:
+        tprint("You no longer split gold with group members.")
 
 
 def do_autolist(player, args):

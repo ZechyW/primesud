@@ -318,6 +318,27 @@ def get_obj_list(fragment, item_list, templates):
     return None
 
 
+def apply_money_pickup(player, obj, tpl):
+    """Credit player with coin value silently (cf. 1stMud get_obj in act_obj.c).
+
+    1stMud prints the "You get $p." message in the caller, not here;
+    money is just credited and the obj consumed.
+
+    Args:
+        player (dict): Player state.
+        obj (dict): Coin item instance.
+        tpl (dict): Item template.
+
+    Returns:
+        bool: True if item was money and was consumed.
+    """
+    if tpl.get("type") != "money":
+        return False
+    player["silver"] += obj.get("silver", 0)
+    player["gold"] += obj.get("gold", 0)
+    return True
+
+
 def get_char_room(fragment, inst_ids, mob_instances):
     """Find the first mob in inst_ids whose keywords match fragment (cf. 1stMud get_char_room in handler.c).
 

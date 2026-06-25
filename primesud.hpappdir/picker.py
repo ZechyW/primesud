@@ -77,9 +77,9 @@ def pick_from(title, options):
     while True:
         tr.print("> ", end="")
         while True:  # FIRST_KEY: loop until action taken
-            char = _read_key(tr)
+            char = _read_key()
             if char == "\e":
-                return _cancel(tr)
+                return _cancel()
             elif char == "\n":
                 tr.print("")
                 return page * _MAX_OPTS

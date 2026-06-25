@@ -8,7 +8,7 @@ from config import (
     TERMINAL_COLS,
     FNKEY_NAMES,
 )
-from config import R_STARTING_ROOM
+from config import R_STARTING_ROOM, MAX_MORTAL_LEVEL
 from skills_table import SKILL_TABLE, SKILLS, GSN_SWORD, GSN_RECALL
 import world
 from world import ROOM_DEFS, AREA_DEFS
@@ -22,7 +22,11 @@ _EQUIP_SAVE_ORDER = (
 
 # -- Player flag bits (cf. 1stMud PLR_* in bits.h) -----------------------------
 PLR_AUTOMAP = 1
-PLR_DEFAULTS = PLR_AUTOMAP
+PLR_AUTOLOOT = 16    # BIT_E
+PLR_AUTOSAC = 32     # BIT_F
+PLR_AUTOGOLD = 64    # BIT_G
+PLR_AUTOSPLIT = 128  # BIT_H
+PLR_DEFAULTS = PLR_AUTOMAP | PLR_AUTOLOOT | PLR_AUTOSAC | PLR_AUTOGOLD | PLR_AUTOSPLIT
 
 # -- Save format version --------------------------------------------------------
 # Increment SAVE_VERSION whenever a core mechanic changes in a way that makes
@@ -61,12 +65,13 @@ def create_char():
         "trivia":   0,
         "flags":    PLR_DEFAULTS,  # PLR_* bits; [DEVIATION] separate from act_flags
         "played":   0,
-        # All level-1 skills start at 1% (cf. 1stMud group_add sets learned=1).
+        # [PRIMESUD] Classless: grant all learnable skills at 1% from creation.
+        # Level-gated via can_use_skill_spell; practice list filters by level.
         # Sword=40 mirrors nanny.c weapon choice; recall=50 explicit in nanny.c.
         "learned": {
             sn: (40 if sn == GSN_SWORD else 50 if sn == GSN_RECALL else 1)
             for sn, data in SKILL_TABLE
-            if data["skill_level"] == 1
+            if data["skill_level"] <= MAX_MORTAL_LEVEL
         },
         "equip": {
             "light":     None, "finger_l":  None, "finger_r":  None,
