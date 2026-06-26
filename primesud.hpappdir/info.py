@@ -4,11 +4,12 @@ import world
 from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, is_name
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from colors import color_len, upper, draw_line
-from combat import _get_thac0
+from combat import _get_thac0, mob_condition
 from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS,
-                    MAX_MORTAL_LEVEL,
+                    MAX_MORTAL_LEVEL, DIR_ALIASES,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC)
-from item import get_obj_list, obj_vnum, item_extra_flags
+from inventory import _WEAR_LABELS
+from item import get_obj_list, get_char_room, obj_vnum, item_extra_flags
 from player import (PLR_AUTOMAP, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
                     PLR_AUTOSPLIT, PLR_DEFAULTS)
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
@@ -121,6 +122,48 @@ def do_autolist(player, args):
     tprint(draw_line())
 
 
+def _number_argument(arg):
+    """Parse '2.sword' into (2, 'sword'); plain 'sword' returns (1, 'sword') (cf. 1stMud number_argument in interp.c)."""
+    dot = arg.find('.')
+    if dot < 0:
+        return 1, arg
+    try:
+        return int(arg[:dot]), arg[dot + 1:]
+    except ValueError:
+        return 0, arg
+
+
+def _get_ed(name, extra_descs):
+    """Find first extra description matching name (cf. 1stMud get_ed in db.c)."""
+    for keywords, desc in extra_descs:
+        if is_name(name, keywords):
+            return desc
+    return None
+
+
+def _show_char_to_char_1(player, mob_id):
+    """Show mob description, health condition, and equipment (cf. 1stMud show_char_to_char_1 in act_info.c)."""
+    inst = world.chars[mob_id]
+    tpl = MOB_DEFS[inst["tpl"]]
+    desc = tpl.get("description")
+    if desc:
+        for line in _wrap_paragraphs(desc, TERMINAL_COLS):
+            tprint(line)
+    else:
+        tprint("You see nothing special about them.")
+    tprint(mob_condition(inst, tpl))
+    found = False
+    for slot, label in _WEAR_LABELS:
+        obj = inst["equip"].get(slot)
+        if obj is not None:
+            if not found:
+                tprint("")
+                tprint(upper(tpl["short_descr"]) + " is using:")
+                found = True
+            ctpl = ITEM_DEFS[obj_vnum(obj)]
+            tprint(label + ctpl["short_descr"])
+
+
 _CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
 
 
@@ -131,9 +174,9 @@ def _look_in(player, args):
         return
     keyword = " ".join(args)
     rs = world.rooms[player["room"]]
-    obj = get_obj_list(keyword, rs["items"], ITEM_DEFS)
+    obj = get_obj_list(keyword, player["inv"], ITEM_DEFS)
     if obj is None:
-        obj = get_obj_list(keyword, player["inv"], ITEM_DEFS)
+        obj = get_obj_list(keyword, rs["items"], ITEM_DEFS)
     if obj is None:
         tprint("You do not see that here.")
         return
@@ -152,41 +195,110 @@ def _look_in(player, args):
         tprint("  " + (cobj.get("short_descr") or ctpl["short_descr"]))
 
 
-def _look_item(player, args):
-    """Show an item's description from inventory, room, or equipped slots (cf. 1stMud do_look in act_info.c)."""
-    target = " ".join(args)
-    rs = world.rooms[player["room"]]
-    equipped = [obj for obj in player["equip"].values() if obj is not None]
-    result = (get_obj_list(target, player["inv"], ITEM_DEFS)
-              or get_obj_list(target, rs["items"], ITEM_DEFS)
-              or get_obj_list(target, equipped, ITEM_DEFS))
-    if result is None:
-        tprint("You don't see that here.")
-        return
-    vnum = obj_vnum(result)
-    tpl = ITEM_DEFS[vnum]
-    inst_desc = isinstance(result, dict) and result.get("description")
-    for line in _wrap_paragraphs(inst_desc or tpl.get("description", tpl["short_descr"]), TERMINAL_COLS):
-        tprint(line)
-    for ed in tpl.get("extra_descs", []):
-        if is_name(target, ed.get("keywords", "")):
-            for line in _wrap_paragraphs(ed.get("desc", ""), TERMINAL_COLS):
-                tprint(line)
+def _look_scan_items(target, number, count, items):
+    """Scan an item list for extra_desc or name match (cf. 1stMud do_look item scan in act_info.c).
+
+    Returns:
+        tuple: (found, count) where found is True if the Nth match was displayed.
+    """
+    for obj in items:
+        vnum = obj_vnum(obj)
+        tpl = ITEM_DEFS[vnum]
+        pdesc = _get_ed(target, tpl.get("extra_descs", []))
+        if pdesc is not None:
+            count += 1
+            if count == number:
+                for line in _wrap_paragraphs(pdesc, TERMINAL_COLS):
+                    tprint(line)
+                return True, count
+            continue
+        if is_name(target, tpl.get("keywords", "")):
+            count += 1
+            if count == number:
+                inst_desc = isinstance(obj, dict) and obj.get("description")
+                for line in _wrap_paragraphs(
+                        inst_desc or tpl.get("description", tpl["short_descr"]),
+                        TERMINAL_COLS):
+                    tprint(line)
+                return True, count
+    return False, count
 
 
 def do_look(player, args):
-    """Display the current room or examine an item (cf. 1stMud do_look in act_info.c).
+    """Display the current room, examine a target, or look in a direction (cf. 1stMud do_look in act_info.c).
 
     Args:
         player (dict): Player state dict.
-        args (list): Parsed command arguments; non-empty triggers item look.
+        args (list): Parsed command arguments; non-empty triggers targeted look.
     """
     if args:
-        if args[0] in ("in", "i"):
+        if args[0] in ("in", "i", "on"):
             _look_in(player, args[1:])
             return
-        # TODO: extend to room extra_descs, mob descriptions, and item extra_descs on other targets
-        _look_item(player, args)
+
+        arg1 = args[0]
+        number, target = _number_argument(arg1)
+        rs = world.rooms[player["room"]]
+
+        mob_id = get_char_room(arg1, rs["mobs"], world.chars)
+        if mob_id is not None:
+            _show_char_to_char_1(player, mob_id)
+            return
+
+        count = 0
+        # Inventory + equipped (cf. 1stMud carrying_first which includes worn)
+        equipped = [o for o in player["equip"].values() if o is not None]
+        found, count = _look_scan_items(target, number, count,
+                                        player["inv"] + equipped)
+        if found:
+            return
+        # Room items
+        found, count = _look_scan_items(target, number, count, rs["items"])
+        if found:
+            return
+
+        # Room extra_descs (cf. 1stMud do_look line 1309)
+        room = ROOM_DEFS[player["room"]]
+        pdesc = _get_ed(target, room.get("extra_descs", []))
+        if pdesc is not None:
+            count += 1
+            if count == number:
+                for line in _wrap_paragraphs(pdesc, TERMINAL_COLS):
+                    tprint(line)
+                return
+
+        if count > 0 and count != number:
+            if count == 1:
+                tprint("You only see one %s here." % target)
+            else:
+                tprint("You only see %d of those here." % count)
+            return
+
+        # Direction look (cf. 1stMud do_look lines 1330-1362)
+        door = DIR_ALIASES.get(arg1)
+        if door is None:
+            tprint("You do not see that here.")
+            return
+        exits = room["exits"]
+        if door not in exits:
+            tprint("Nothing special there.")
+            return
+        ex = exits[door]
+        if isinstance(ex, dict):
+            ex_desc = ex.get("desc")
+            if ex_desc:
+                for line in _wrap_paragraphs(ex_desc, TERMINAL_COLS):
+                    tprint(line)
+            else:
+                tprint("Nothing special there.")
+            kw = ex.get("keyword", "")
+            if kw and kw[0] != ' ':
+                if ex.get("closed"):
+                    tprint("The %s is closed." % kw)
+                elif ex.get("isdoor"):
+                    tprint("The %s is open." % kw)
+        else:
+            tprint("Nothing special there.")
         return
     room = ROOM_DEFS[player["room"]]
     rs = world.rooms[player["room"]]

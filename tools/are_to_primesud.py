@@ -540,6 +540,8 @@ def parse_rooms(lines):
 
         exits      = {}
         exit_notes = {}
+        exit_descs = {}
+        extra_descs = []
         room_flags = decode_flags(room_bits, ROOM_FLAGS)
 
         while i < len(lines):
@@ -552,8 +554,8 @@ def parse_rooms(lines):
             if re.match(r"^D\d+$", tline):
                 direction = int(tline[1:])
                 i += 1
-                _ex_desc, i = read_tilde_string(lines, i)
-                _keyword,  i = read_tilde_string(lines, i)
+                ex_desc, i = read_tilde_string(lines, i)
+                ex_keyword, i = read_tilde_string(lines, i)
                 ex_parts = lines[i].split(); i += 1
                 ex_bits  = parse_bitstring(ex_parts[0]) if ex_parts else set()
                 to_room  = int(ex_parts[2]) if len(ex_parts) > 2 else -1
@@ -563,10 +565,15 @@ def parse_rooms(lines):
                     ex_flags = decode_flags(ex_bits, EXIT_FLAGS)
                     if ex_flags:
                         exit_notes[d] = ex_flags
+                    if ex_desc:
+                        exit_descs[d] = ex_desc
+                    if ex_keyword:
+                        exit_notes.setdefault(d, {})["keyword"] = ex_keyword
             elif tline == "E":
                 i += 1
-                _, i = read_tilde_string(lines, i)
-                _, i = read_tilde_string(lines, i)
+                ekw, i = read_tilde_string(lines, i)
+                edesc, i = read_tilde_string(lines, i)
+                extra_descs.append((ekw, edesc))
             elif tline == "" or tline[0] in "HMG":
                 i += 1
             else:
@@ -577,6 +584,8 @@ def parse_rooms(lines):
             "desc":       description,
             "exits":      exits,
             "exit_notes": exit_notes,
+            "exit_descs": exit_descs,
+            "extra_descs": extra_descs,
             "flags":      room_flags,
             "sector":     sector,
         }))
@@ -799,8 +808,13 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
                 else:
                     note["closed"] = True
                     note["locked"] = True
-            if note:
+            ex_desc = room.get("exit_descs", {}).get(d, "")
+            if note or ex_desc:
                 eparts = [f'"to": {to_c}']
+                if ex_desc:
+                    eparts.append(f'"desc": {pyrepr(ex_desc)}')
+                if note.get("keyword"):
+                    eparts.append(f'"keyword": {pyrepr(note["keyword"])}')
                 for flag in ("isdoor", "closed", "locked", "pickproof", "nopass",
                              "doorbell", "easy", "hard", "infuriating", "noclose", "nolock"):
                     if note.get(flag):
@@ -813,6 +827,8 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
             w(f'        "flags": {_repr_flags(room["flags"])},')
         if room["sector"] is not None:
             w(f'        "sector": {pyrepr(room["sector"])},')
+        if room.get("extra_descs"):
+            w(f'        "extra_descs": {pyrepr(room["extra_descs"])},')
         w("    },")
     w("}")
     w("")
