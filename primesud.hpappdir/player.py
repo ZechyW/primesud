@@ -90,21 +90,26 @@ def create_char():
 
 
 
-from actor import (get_curr_stat, affect_remove, _char_base,
+from actor import (get_curr_stat, affect_remove, affect_modify, _char_base,
                    _apply_item_modifiers, _item_armor_runtime)
 from world import ITEM_DEFS
 
 
 def reset_char(player):
-    """Strip and reapply all equipment bonuses from scratch (cf. 1stMud reset_char in handler.c).
+    """Strip and reapply all equipment and spell affect bonuses (cf. 1stMud reset_char in handler.c).
 
-    Sets max_hit/mana/move back to perm_* baselines, clears combat modifiers,
-    then re-applies every equipped item's armor and stat bonuses.
+    Zeroes mod_stat, resets max_hit/mana/move to perm baselines, clears
+    armor/hitroll/damroll/saving_throw, then re-applies equipment (with
+    enchanted check via _apply_item_modifiers) and character spell affects.
+
+    [PRIMESUD] Omits perm-recovery block (no legacy saves to migrate).
+    [PRIMESUD] Omits last_level (XP penalty not ported).
+    [PRIMESUD] Omits sex handling (hardcoded neutral until character customisation ported).
 
     Args:
         player (dict): Player state dict.
     """
-    player["sex"] = player.get("true_sex", "neutral")
+    # -- Reset to baselines (cf. 1stMud handler.c lines 512-528)
     for k in player.get("mod_stat", {}):
         player["mod_stat"][k] = 0
     player["max_hit"] = player["perm_hit"]
@@ -114,6 +119,8 @@ def reset_char(player):
     player["hitroll"] = 0
     player["damroll"] = 0
     player["saving_throw"] = 0
+
+    # -- Re-apply equipment (cf. 1stMud handler.c lines 530-668)
     for slot in _EQUIP_SAVE_ORDER:
         obj = player["equip"].get(slot)
         if obj is None:
@@ -126,6 +133,10 @@ def reset_char(player):
             a = player["armor"]
             player["armor"] = (a[0]-armor[0], a[1]-armor[1], a[2]-armor[2], a[3]-armor[3])
         _apply_item_modifiers(player, obj, tpl, True)
+
+    # -- Re-apply character spell affects (cf. 1stMud handler.c lines 671-734)
+    for af in player.get("affect_list", []):
+        affect_modify(player, af, True)
 
 
 # -- Tick regen ---------------------------------------------------------------

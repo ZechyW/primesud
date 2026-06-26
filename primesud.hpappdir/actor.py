@@ -340,16 +340,22 @@ def is_name(fragment, namelist):
 
 
 def _apply_item_modifiers(char, obj, tpl, add):
-    """Apply stat bonuses and runtime object affects for equipped item.
+    """Apply stat bonuses and runtime object affects for equipped item (cf. 1stMud equip_char/unequip_char in handler.c).
 
     stat_bonuses maps to 1stMud .are "A" lines (TO_OBJECT, location+modifier only).
+    Skips template affects for enchanted items (cf. 1stMud handler.c enchanted check).
     Does NOT handle base armor values -- those are subtracted/added
     directly in equip_char/unequip_char (cf. 1stMud handler.c).
+
+    [PRIMESUD] Does not handle APPLY_SPELL_AFFECT (1stMud equip_char calls
+    affect_to_char for those; unequip_char has matching removal). Port when
+    area data includes spell-affect-on-equip items.
     """
-    # Template stat bonuses (cf. 1stMud pIndexData->affect_first, "A" lines)
-    for loc, mod in tpl.get("stat_bonuses", {}).items():
-        affect_modify(char, {"where": "to_object", "location": loc,
-                             "modifier": mod, "bitvector": ""}, add)
+    # Template stat bonuses -- non-enchanted only (cf. 1stMud pIndexData->affect_first)
+    if not obj.get("enchanted"):
+        for loc, mod in tpl.get("stat_bonuses", {}).items():
+            affect_modify(char, {"where": "to_object", "location": loc,
+                                 "modifier": mod, "bitvector": ""}, add)
     # Runtime object affects (cf. 1stMud obj->affect_first)
     for af in obj.get("affect_list", []):
         affect_modify(char, af, add)
