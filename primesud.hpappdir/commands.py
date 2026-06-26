@@ -1,4 +1,4 @@
-"""Command dispatcher, command table, and position gates."""
+"""Command dispatcher, command table, and position gates (cf. 1stMud interpret in interp.c)."""
 
 from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
                     do_berserk, do_bash, do_dirt, do_trip, do_flee,
@@ -21,6 +21,7 @@ from scan import do_scan
 from system_cmds import do_save, do_quit, do_debug
 from terminal import tprint
 from training import do_train, do_practice
+from urandom import randint
 
 _POS_MSG = {
     "dead":     "Lie still; you are DEAD.",
@@ -115,53 +116,119 @@ _CMD_TABLE = [
 
 # -- Interpreter ---------------------------------------------------------------
 
-def _split_args(raw):
-    """Split command input like 1stMud one_argument quoting."""
-    args = []
+# {? = random colour in 1stMud; we use {R as fallback until random colour ported
+_HUH_MESSAGES = [
+    "{RHuh?{x",
+    "{RPardon?{x",
+    "{RWhat is command '%s'?{x",
+    "{RInput error.{x",
+    "{RTry again.{x",
+    "{RI do not understand.{x",
+    "{RType commands for a list of commands.{x",
+]
+
+
+def one_argument(argument):
+    """Extract one argument from *argument*, returning (word, rest) (cf. 1stMud one_argument in interp.c).
+
+    Handles single/double-quote grouping.  Both the extracted word and the
+    remainder are lowercased to match 1stMud's ``tolower`` inside
+    ``one_argument``.
+    """
     i = 0
-    raw = raw.strip().lower()
-    length = len(raw)
-    while i < length:
-        while i < length and raw[i].isspace():
+    argument = argument.strip().lower()
+    length = len(argument)
+    while i < length and argument[i].isspace():
+        i += 1
+    if i >= length:
+        return ("", "")
+    end = " "
+    if argument[i] == "'" or argument[i] == '"':
+        end = argument[i]
+        i += 1
+    start = i
+    if end == " ":
+        while i < length and not argument[i].isspace():
             i += 1
-        if i >= length:
-            break
-        end = " "
-        if raw[i] == "'" or raw[i] == '"':
-            end = raw[i]
+    else:
+        while i < length and argument[i] != end:
             i += 1
-        start = i
-        if end == " ":
-            while i < length and not raw[i].isspace():
-                i += 1
-        else:
-            while i < length and raw[i] != end:
-                i += 1
-        args.append(raw[start:i])
-        if i < length and raw[i] == end:
-            i += 1
+    word = argument[start:i]
+    if i < length and argument[i] == end:
+        i += 1
+    rest = argument[i:].strip()
+    return (word, rest)
+
+
+def split_args(argument):
+    """Split *argument* into a list via repeated one_argument calls (cf. 1stMud)."""
+    args = []
+    while argument:
+        word, argument = one_argument(argument)
+        if word:
+            args.append(word)
     return args
 
 
 def interpret(raw, player):
-    parts = _split_args(raw)
-    if not parts:
+    """Main command interpreter (cf. 1stMud interpret in interp.c).
+
+    Flow mirrors 1stMud: strip input, remove AFF_HIDE, extract command word
+    (handling non-alpha first chars), look up command, check position, execute.
+    """
+    argument = raw.strip()
+    if not argument:
         return None
     tprint("")
-    verb = parts[0]
-    args = parts[1:]
 
-    pos = player.get("pos", "standing")
-    for name, fn, min_pos, noprefix in _CMD_TABLE:
+    # RemBit(ch->affected_by, AFF_HIDE)
+    aff = player.get("affected_by")
+    if aff:
+        aff.pop("hide", None)
+
+    # -- PLR_FREEZE: not applicable in single-player
+
+    # Non-alpha/digit first char is a single-char command (e.g. '/')
+    ch0 = argument[0]
+    if not ch0.isalpha() and not ch0.isdigit():
+        command = ch0.lower()
+        argument = argument[1:].strip().lower()
+    else:
+        command, argument = one_argument(argument)
+
+    # -- Look up command in table (cf. command_hash scan)
+    cmd = None
+    for entry in _CMD_TABLE:
+        name, fn, min_pos, noprefix = entry
         if noprefix:
-            if verb != name:
+            if command != name:
                 continue
-        elif not name.startswith(verb):
-            continue
-        if POS_ORDER[pos] < POS_ORDER[min_pos]:
-            tprint(_POS_MSG.get(pos, ""))
-            return None
-        return fn(player, args)
+        else:
+            if not name.startswith(command):
+                continue
+            # cmd_level_ok: not applicable in single-player
+        cmd = entry
+        break
 
-    tprint("Unknown command. ? for help.")
-    return None
+    # -- No match: check_social fallback, then huh message
+    if not cmd:
+        # check_social: not yet ported
+        msg = _HUH_MESSAGES[randint(0, len(_HUH_MESSAGES) - 1)]
+        if "%s" in msg:
+            tprint(msg % command)
+        else:
+            tprint(msg)
+        return None
+
+    # -- check_disabled: not yet ported
+
+    name, fn, min_pos, noprefix = cmd
+
+    # -- Position gate (cf. switch on ch->position)
+    pos = player.get("pos", "standing")
+    if POS_ORDER[pos] < POS_ORDER[min_pos]:
+        tprint(_POS_MSG.get(pos, ""))
+        return None
+
+    args = split_args(argument)
+    return fn(player, args)
