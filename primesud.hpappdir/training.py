@@ -92,11 +92,13 @@ def do_train(player, args):
         return
     player["train"] -= 1
     if chosen_key == "max_hit":
+        player["perm_hit"] += 10
         player["max_hit"] += 10
         player["hit"] = min(player["max_hit"], player["hit"] + 10)
         act("Your durability increases!", player, None, None, TO_CHAR)
         act("$n's durability increases!", player, None, None, TO_ROOM)
     elif chosen_key == "max_mana":
+        player["perm_mana"] += 10
         player["max_mana"] += 10
         player["mana"] = min(player["max_mana"], player["mana"] + 10)
         act("Your power increases!", player, None, None, TO_CHAR)

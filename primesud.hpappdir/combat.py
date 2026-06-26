@@ -1962,6 +1962,9 @@ def advance_level(player):
 
     add_prac = WIS_APP_PRACTICE[wis]
 
+    player["perm_hit"]  += add_hp
+    player["perm_mana"] += add_mp
+    player["perm_move"] += add_mv
     player["max_hit"]   += add_hp
     player["max_mana"]  += add_mp
     player["max_move"]  += add_mv

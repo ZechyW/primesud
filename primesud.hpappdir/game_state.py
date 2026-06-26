@@ -4,7 +4,7 @@ import world
 from inventory import do_outfit
 from macros import _MACRO_SUBST
 from mob import reset_area, create_area_states
-from player import create_char, save_world, load_world
+from player import create_char, save_world, load_world, reset_char
 
 
 def init_game_state(game):
@@ -33,6 +33,7 @@ def load_game(game):
     if isinstance(result, tuple):   # (None, backup_ok) -- version mismatch
         _, game._backup_ok = result
         return None
+    reset_char(player)
     return result
 
 

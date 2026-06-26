@@ -1,7 +1,8 @@
 """Player creation, progression, prompt, and save/load state."""
 
 from util import gc_collect
-from terminal import tprint
+from colors import color_len
+from terminal import tprint, tr
 from prime_platform import hvars_get, hvars_set
 from config import (
     SAVE_VAR,
@@ -38,7 +39,7 @@ PLR_DEFAULTS = PLR_AUTOMAP | PLR_AUTOLOOT | PLR_AUTOSAC | PLR_AUTOGOLD | PLR_AUT
 #
 # Skill numeric IDs (GSN_*) are permanent once assigned: recycling an ID for a
 # different skill would cause old saves to corrupt the new skill's learned %.
-SAVE_VERSION = 4
+SAVE_VERSION = 5
 
 # -- Player model --------------------------------------------------------------
 
@@ -54,9 +55,9 @@ def create_char():
     """
     ch = _char_base()
     ch.update({
-        "hit":      20,   "max_hit":  20,
-        "mana":     100,  "max_mana": 100,
-        "move":     100,  "max_move": 100,
+        "hit":      20,   "max_hit":  20,   "perm_hit":  20,
+        "mana":     100,  "max_mana": 100,  "perm_mana": 100,
+        "move":     100,  "max_move": 100,  "perm_move": 100,
         "room":     R_STARTING_ROOM,
         "id":       1,
         # pcdata fields (cf. 1stMud PcData in structs.h):
@@ -89,7 +90,42 @@ def create_char():
 
 
 
-from actor import get_curr_stat, affect_remove, _char_base
+from actor import (get_curr_stat, affect_remove, _char_base,
+                   _apply_item_modifiers, _item_armor_runtime)
+from world import ITEM_DEFS
+
+
+def reset_char(player):
+    """Strip and reapply all equipment bonuses from scratch (cf. 1stMud reset_char in handler.c).
+
+    Sets max_hit/mana/move back to perm_* baselines, clears combat modifiers,
+    then re-applies every equipped item's armor and stat bonuses.
+
+    Args:
+        player (dict): Player state dict.
+    """
+    player["sex"] = player.get("true_sex", "neutral")
+    for k in player.get("mod_stat", {}):
+        player["mod_stat"][k] = 0
+    player["max_hit"] = player["perm_hit"]
+    player["max_mana"] = player["perm_mana"]
+    player["max_move"] = player["perm_move"]
+    player["armor"] = (100, 100, 100, 100)
+    player["hitroll"] = 0
+    player["damroll"] = 0
+    player["saving_throw"] = 0
+    for slot in _EQUIP_SAVE_ORDER:
+        obj = player["equip"].get(slot)
+        if obj is None:
+            continue
+        tpl = ITEM_DEFS.get(obj["vnum"])
+        if tpl is None:
+            continue
+        armor = _item_armor_runtime(tpl)
+        if armor is not None:
+            a = player["armor"]
+            player["armor"] = (a[0]-armor[0], a[1]-armor[1], a[2]-armor[2], a[3]-armor[3])
+        _apply_item_modifiers(player, obj, tpl, True)
 
 
 # -- Tick regen ---------------------------------------------------------------
@@ -151,21 +187,20 @@ def tick_update(tr, player, room):
 
 # -- Display -------------------------------------------------------------------
 
-def show_prompt(tr, player, buf):
+def show_prompt(player, buf):
     """Update the terminal status bar with the current HP/MP/XP prompt.
 
     Args:
-        tr: Terminal instance.
         player (dict): Player state dict.
         buf (str): Current input buffer shown on the right of the prompt.
     """
-    prefix = "HP:{}/{} MP:{}/{} MV:{}/{} {}tnl>".format(
+    prefix = "{R%d/%dhp {M%d/%dmn {B%d/%dmv{x %dtnl>" % (
         player["hit"], player["max_hit"],
         player["mana"], player["max_mana"],
         player["move"], player["max_move"],
         player["xp_next"] - player["xp"],
     )
-    avail = max(1, TERMINAL_COLS - 6 - len(prefix))
+    avail = max(1, TERMINAL_COLS - 6 - color_len(prefix))
     tr.set_status(prefix + buf[-avail:])
 
 
@@ -195,9 +230,11 @@ def _serialize_world():
     gc_collect()
     lines = ["v=" + str(SAVE_VERSION)]
     for key in ("name", "level", "xp", "xp_next",
-                "hit", "max_hit", "mana", "max_mana", "move", "max_move",
-                "hitroll", "damroll", "saving_throw", "room", "trivia",
-                "practice", "train", "flags", "played", "alignment"):
+                "hit", "mana", "move",
+                "perm_hit", "perm_mana", "perm_move",
+                "room", "trivia",
+                "practice", "train", "flags", "played", "alignment",
+                "gold", "silver"):
         lines.append("p." + key + "=" + str(player[key]))
     for stat in ("str", "dex", "int", "wis", "con"):
         lines.append("p." + stat + "=" + str(player["perm_stat"][stat]))
@@ -337,9 +374,11 @@ def load_world():
     _STAT_KEYS = {"str", "dex", "int", "wis", "con"}
     int_keys = {"level", "xp", "xp_next", "trivia",
                 "str", "dex", "int", "wis", "con",
-                "hit", "max_hit", "mana", "max_mana", "move", "max_move",
-                "hitroll", "damroll", "saving_throw", "room", "alignment",
-                "practice", "train", "flags", "played"}
+                "hit", "mana", "move",
+                "perm_hit", "perm_mana", "perm_move",
+                "room", "alignment",
+                "practice", "train", "flags", "played",
+                "gold", "silver"}
 
     if player["_macros"] is not None:
         player["_macros"].clear()
