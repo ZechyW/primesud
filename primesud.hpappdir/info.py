@@ -8,8 +8,8 @@ from colors import color_len, upper, draw_line
 from combat import _get_thac0, mob_condition
 from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS,
                     MAX_MORTAL_LEVEL, DIR_ALIASES,
-                    AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC)
-from inventory import _WEAR_LABELS
+                    AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC,
+                    WEAR_LABELS)
 from item import get_obj_list, get_obj_here, get_char_room, obj_vnum, item_extra_flags
 from player import (PLR_AUTOMAP, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
                     PLR_AUTOSPLIT, PLR_DEFAULTS)
@@ -154,7 +154,7 @@ def _show_char_to_char_1(player, mob_id):
         tprint("You see nothing special about them.")
     tprint(mob_condition(inst, tpl))
     found = False
-    for slot, label in _WEAR_LABELS:
+    for slot, label in WEAR_LABELS:
         obj = inst["equip"].get(slot)
         if obj is not None:
             if not found:

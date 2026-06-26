@@ -73,6 +73,7 @@ class Game:
         self._hist_pos    = None # None = not browsing; int = index into _cmd_history
         self._hist_saved  = ""   # input_buf snapshot from when browsing started
         self._pending_cmd = None # command queued while wait > 0 (cf. 1stMud comm.c input buffer)
+        self._backup_ok = False  # set by load_game on version mismatch
         init_game_state(self)
 
     def show_greeting(self):
@@ -120,7 +121,7 @@ class Game:
         gc_collect()
 
         tr.resync_keyboard()
-        show_prompt(tr, player, self.input_buf)
+        show_prompt(player, self.input_buf)
         do_look(player, [])
 
         while True:
@@ -139,7 +140,7 @@ class Game:
                             self._pending_cmd = self.input_buf
                             tr.print("{D[Recovering... command queued]{x")  # [PRIMESUD]
                         self.input_buf = ""
-                        show_prompt(tr, player, self.input_buf)
+                        show_prompt(player, self.input_buf)
                     else:
                         _t0 = ticks()
                         resolved = interpret(self.input_buf, player)
@@ -156,15 +157,15 @@ class Game:
                         self.input_buf = ""
                         tr.alpha_lock = tr.is_alpha = False
                         tr._refresh_indicators()
-                        show_prompt(tr, player, self.input_buf)
+                        show_prompt(player, self.input_buf)
                 elif char == "\b":
                     self.input_buf = self.input_buf[:-1]
-                    show_prompt(tr, player, self.input_buf)
+                    show_prompt(player, self.input_buf)
                 elif char == "\\e":
                     self.input_buf = ""
                     self._hist_pos   = None  # [PRIMESUD] ESC commits to the empty buffer
                     self._hist_saved = ""
-                    show_prompt(tr, player, self.input_buf)
+                    show_prompt(player, self.input_buf)
                 elif char == _HIST_UP:  # [PRIMESUD] recall older command
                     if self._cmd_history:
                         if self._hist_pos is None:
@@ -173,7 +174,7 @@ class Game:
                         elif self._hist_pos > 0:
                             self._hist_pos -= 1
                         self.input_buf = self._cmd_history[self._hist_pos]
-                        show_prompt(tr, player, self.input_buf)
+                        show_prompt(player, self.input_buf)
                 elif char == _HIST_DN:  # [PRIMESUD] recall newer command / restore saved
                     if self._hist_pos is not None:
                         if self._hist_pos < len(self._cmd_history) - 1:
@@ -183,7 +184,7 @@ class Game:
                             self.input_buf = self._hist_saved
                             self._hist_pos   = None
                             self._hist_saved = ""
-                        show_prompt(tr, player, self.input_buf)
+                        show_prompt(player, self.input_buf)
                 elif auto_submit is True:  # [PRIMESUD] hardware key -- immediate submit
                     if player.get("wait", 0) > 0:
                         self._pending_cmd = char
@@ -194,17 +195,17 @@ class Game:
                         next_pulse += ticks() - _t0  # [PRIMESUD] skip missed pulses during blocking input
                         if _quit:
                             break
-                        show_prompt(tr, player, self.input_buf)
+                        show_prompt(player, self.input_buf)
                 elif auto_submit is False:  # [PRIMESUD] hardware key -- load into buffer
                     self.input_buf = char
-                    show_prompt(tr, player, self.input_buf)
+                    show_prompt(player, self.input_buf)
                 elif char is not None and char not in ("\\L", "\\R", "\\SR"):
                     subst = _MACRO_SUBST.get(char)
                     if subst is not None and not self.input_buf:
                         self.input_buf = subst
                     elif char not in FNKEY_SENTINELS:
                         self.input_buf += char
-                    show_prompt(tr, player, self.input_buf)
+                    show_prompt(player, self.input_buf)
 
             now = ticks()
             if now >= next_pulse:
@@ -228,7 +229,7 @@ class Game:
                                     self._cmd_history.pop(0)
                         if _quit:
                             break
-                        show_prompt(tr, player, self.input_buf)
+                        show_prompt(player, self.input_buf)
                 if player.get("daze", 0) > 0:
                     player["daze"] -= 1
 
@@ -241,10 +242,10 @@ class Game:
                         finst = world.chars[fid]
                         tr.print(mob_condition(finst, MOB_DEFS[finst["tpl"]]))
                         tr.print("")
-                    show_prompt(tr, player, self.input_buf)
+                    show_prompt(player, self.input_buf)
 
                 if fired & UPD_TICK:
-                    show_prompt(tr, player, self.input_buf)
+                    show_prompt(player, self.input_buf)
                     tick_count += 1
                     if tick_count >= AUTOSAVE_TICKS:
                         save_game(self, quiet=False)

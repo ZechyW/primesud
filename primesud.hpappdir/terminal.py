@@ -6,7 +6,8 @@ from config import (
     DARK_MODE, BG_COLOR, TAB_SIZE, FONT,
     SCROLLBACK_SIZE, SCROLL_STEP, SWIPE_THRESHOLD, TOUCH_SCROLL_STEP,
 )
-from colors import COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full
+from colors import (COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full,
+                    color_parse_runs, strip_colors)
 from hpprime import dimgrob, getpix, grobh, grobw, pixon, strblit2
 
 
@@ -144,11 +145,46 @@ def install_color_print(tr):
 
     tr.print = wrapped_print
     orig_set_status = tr.set_status
+    _cpr = color_parse_runs
+    _sc = strip_colors
 
     def wrapped_set_status(text):
-        if current_fg[0] is not None:
+        length = tr.columns - 6
+        if _CC not in text:
+            if current_fg[0] is not None:
+                reset_color()
+            orig_set_status(text)
+            return
+        # Colour-aware: truncate to visible width, then render runs.
+        plain = _sc(text)
+        if len(plain) > length:
+            # Truncate colour text to `length` visible chars.
+            vis = 0
+            trunc_i = 0
+            n = len(text)
+            while trunc_i < n and vis < length:
+                if text[trunc_i] == _CC and trunc_i + 1 < n:
+                    trunc_i += 2
+                else:
+                    vis += 1
+                    trunc_i += 1
+            text = text[:trunc_i]
+            plain = plain[:length]
+        row = tr.rows + 1
+        runs = _cpr(text)
+        x = 0
+        for colour, seg in runs:
+            if colour is None:
+                reset_color()
+            else:
+                set_color(colour)
+            _pxy(x, row, seg)
+            x += len(seg)
+        # Pad remaining with spaces in default colour.
+        if x < length:
             reset_color()
-        orig_set_status(text)
+            _pxy(x, row, ' ' * (length - x))
+        tr.status_text = "%-*s" % (length, plain)
 
     tr.set_status = wrapped_set_status
 

@@ -8,7 +8,7 @@ from area_school import (I_BANNER_WAR_MERC,
                          I_SPEAR_SUB_MERC, I_AXE_SUB_MERC, I_FLAIL_SUB_MERC,
                          I_WHIP_SUB_MERC, I_GLAIVE_SUB_MERC)
 from combat import _get_weapon_skill, WaitState, check_improve, get_skill
-from config import STR_APP_WIELD, PULSE_VIOLENCE
+from config import STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS
 from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   item_extra_flags, item_wear_flags, apply_money_pickup)
 from magic import cast_item_spells, validate_item_spell_payload
@@ -518,30 +518,6 @@ def do_remove(player, args):
     tprint("You do not have that item.")
 
 
-_WEAR_LABELS = (
-    ("light",     "{g<{Wused as light{g>{x     "),
-    ("finger_l",  "{g<{Wworn on finger{g>{x    "),
-    ("finger_r",  "{g<{Wworn on finger{g>{x    "),
-    ("neck_1",    "{g<{Wworn around neck{g>{x  "),
-    ("neck_2",    "{g<{Wworn around neck{g>{x  "),
-    ("body",      "{g<{Wworn on torso{g>{x     "),
-    ("head",      "{g<{Wworn on head{g>{x      "),
-    ("legs",      "{g<{Wworn on legs{g>{x      "),
-    ("feet",      "{g<{Wworn on feet{g>{x      "),
-    ("hands",     "{g<{Wworn on hands{g>{x     "),
-    ("arms",      "{g<{Wworn on arms{g>{x      "),
-    ("shield",    "{g<{Wworn as shield{g>{x    "),
-    ("about",     "{g<{Wworn about body{g>{x   "),
-    ("waist",     "{g<{Wworn about waist{g>{x  "),
-    ("wrist_l",   "{g<{Wworn around wrist{g>{x "),
-    ("wrist_r",   "{g<{Wworn around wrist{g>{x "),
-    ("wield",     "{g<{Wwielded{g>{x           "),
-    ("hold",      "{g<{Wheld{g>{x              "),
-    ("float",     "{g<{Wfloating nearby{g>{x   "),
-    ("secondary", "{g<{Wsecondary weapon{g>{x  "),
-)
-
-
 def do_equipment(player, args):
     """List all equipment slots and what is worn in each (cf. 1stMud do_equipment in act_info.c).
 
@@ -550,7 +526,7 @@ def do_equipment(player, args):
         args (list): Parsed command arguments (unused).
     """
     tprint("You are wearing:")
-    for slot, label in _WEAR_LABELS:
+    for slot, label in WEAR_LABELS:
         obj = player["equip"].get(slot)
         if obj is not None:
             tpl = ITEM_DEFS[obj["vnum"]]

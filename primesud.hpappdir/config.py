@@ -315,3 +315,27 @@ XP_BASE = {
 
 # -- Size rank (cf. 1stMud SIZE_* in merc.h) -------------------------------------------
 SIZE_RANK = {"tiny": 0, "small": 1, "medium": 2, "large": 3, "huge": 4, "giant": 5}
+
+# -- Wear-slot display labels (cf. 1stMud wear_loc_names in act_info.c) ----------------
+WEAR_LABELS = (
+    ("light",     "{g<{Wused as light{g>{x     "),
+    ("finger_l",  "{g<{Wworn on finger{g>{x    "),
+    ("finger_r",  "{g<{Wworn on finger{g>{x    "),
+    ("neck_1",    "{g<{Wworn around neck{g>{x  "),
+    ("neck_2",    "{g<{Wworn around neck{g>{x  "),
+    ("body",      "{g<{Wworn on torso{g>{x     "),
+    ("head",      "{g<{Wworn on head{g>{x      "),
+    ("legs",      "{g<{Wworn on legs{g>{x      "),
+    ("feet",      "{g<{Wworn on feet{g>{x      "),
+    ("hands",     "{g<{Wworn on hands{g>{x     "),
+    ("arms",      "{g<{Wworn on arms{g>{x      "),
+    ("shield",    "{g<{Wworn as shield{g>{x    "),
+    ("about",     "{g<{Wworn about body{g>{x   "),
+    ("waist",     "{g<{Wworn about waist{g>{x  "),
+    ("wrist_l",   "{g<{Wworn around wrist{g>{x "),
+    ("wrist_r",   "{g<{Wworn around wrist{g>{x "),
+    ("wield",     "{g<{Wwielded{g>{x           "),
+    ("hold",      "{g<{Wheld{g>{x              "),
+    ("float",     "{g<{Wfloating nearby{g>{x   "),
+    ("secondary", "{g<{Wsecondary weapon{g>{x  "),
+)
