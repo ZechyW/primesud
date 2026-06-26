@@ -15,7 +15,8 @@ from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_sacrifice)
 from macros import do_macro
 from magic import do_cast
-from movement import do_move, do_open, do_close, do_recall
+from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
+                      do_open, do_close, do_recall)
 from scan import do_scan
 from system_cmds import do_save, do_quit, do_debug
 from terminal import tprint
@@ -32,25 +33,20 @@ _POS_MSG = {
     "fighting": "No way!  You are still fighting!",
 }
 
-# -- Direction map -------------------------------------------------------------
-
-_DIRECTION_MAP = {
-    "n": "n", "north":     "n",
-    "s": "s", "south":     "s",
-    "e": "e", "east":      "e",
-    "w": "w", "west":      "w",
-
-    "u": "u", "up":   "u",
-    "d": "d", "down": "d",
-}
-
 # -- Command table -------------------------------------------------------------
 # Entries in 1stMud load order (cf. COMMANDS.md); [PRIMESUD] shortcuts interleaved.
 # Schema: (name, fn, min_pos, noprefix)
 
 _CMD_TABLE = [
+    ("north",     do_north,     "standing", False),    # #1
+    ("east",      do_east,      "standing", False),    # #2
+    ("south",     do_south,     "standing", False),    # #3
+    ("west",      do_west,      "standing", False),    # #4
+    ("up",        do_up,        "standing", False),    # #5
+    ("down",      do_down,      "standing", False),    # #6
     ("cast",      do_cast,      "fighting", False),   # #8
     ("get",       do_get,       "resting",  False),   # #13
+    ("hit",       do_kill,      "fighting", False),   # #17
     ("inventory", do_inventory, "dead",     False),   # #18
     ("kill",      do_kill,      "fighting", False),   # #19
     ("look",      do_look,      "resting",  False),   # #20
@@ -154,11 +150,6 @@ def interpret(raw, player):
     tprint("")
     verb = parts[0]
     args = parts[1:]
-
-    direction = _DIRECTION_MAP.get(verb)
-    if direction is not None:
-        do_move(player, direction)
-        return None
 
     pos = player.get("pos", "standing")
     for name, fn, min_pos, noprefix in _CMD_TABLE:

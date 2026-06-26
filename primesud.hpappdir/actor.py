@@ -7,6 +7,18 @@ from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
 from terminal import tprint
 from world import ITEM_DEFS
 
+# -- Alignment helpers (cf. 1stMud IsGood/IsEvil/IsNeutral in macro.h) ----------------
+
+def is_good(ch):
+    return ch.get("alignment", 0) >= 350
+
+def is_evil(ch):
+    return ch.get("alignment", 0) <= -350
+
+def is_neutral(ch):
+    return not is_good(ch) and not is_evil(ch)
+
+
 # -- act() type bitmask (cf. 1stMud TO_* in bits.h) ---------------------------------
 TO_ROOM    = 1    # BIT_A
 TO_NOTVICT = 2    # BIT_B
@@ -34,7 +46,6 @@ def _char_base():
 
     [DEVIATION] act_flags holds ACT_* bits; PLR_* player flags live in player-only
     "flags" key.  1stMud uses a single act bitfield for both.
-    [DEVIATION] move/max_move not ported -- no stamina system yet.
     [DEVIATION] is_npc bool replaces NULL pcdata pointer check.
     [DEVIATION] room/fighting stored as vnum/id, not pointers.
     [DEVIATION] affect_list (list) + affects (dict) replace affect linked list;
@@ -57,9 +68,10 @@ def _char_base():
         "daze":        0,
         "fighting":    None,
         "wimpy":       0,
-        # -- Resources (cf. .hit/.max_hit, .mana/.max_mana, .gold, .silver, .exp)
+        # -- Resources (cf. .hit/.max_hit, .mana/.max_mana, .move/.max_move, .gold, .silver, .exp)
         "hit":         20,  "max_hit":  20,
         "mana":        0,   "max_mana":  0,
+        "move":        100, "max_move": 100,
         "gold":        0,
         "silver":      0,
         "xp":          0,
@@ -87,7 +99,7 @@ def _char_base():
         "inv":         [],
         "equip":       {},
     }
-    # Not ported: move/max_move, comm, wiznet, stance[], war, gquest, mprog_*,
+    # Not ported: comm, wiznet, stance[], war, gquest, mprog_*,
     # master/leader/pet/reply, desc, was_in_room, gen_data, hunting, trust,
     # invis/incog_level, logon, prompt/gprompt, group, rank, Class[],
     # deity, material, dam_type, start_pos, default_pos, info_settings, color_prefix
@@ -158,7 +170,8 @@ def affect_modify(char, af, add):
         char["sex"] = SEX_VALUES[max(0, min(2, cur + mod))]
     elif loc == "mana":
         char["max_mana"] = max(1, char["max_mana"] + mod)
-    # [PRIMESUD] APPLY_MOVE intentionally not ported -- no max_move stat
+    elif loc == "move":
+        char["max_move"] = max(1, char["max_move"] + mod)
     elif loc == "hit":
         char["max_hit"] = max(1, char["max_hit"] + mod)
     elif loc == "ac":

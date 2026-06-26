@@ -1,7 +1,8 @@
 """Information and room-view command handlers."""
 
 import world
-from actor import get_hitroll, get_damroll, get_armor, get_curr_stat, is_name
+from actor import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
+                   is_good, is_evil)
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from colors import color_len, upper, draw_line
 from combat import _get_thac0, mob_condition
@@ -365,10 +366,9 @@ def do_look(player, args):
         if aff.get("charm"):        prefix += "({MCharmed{x) "
         if aff.get("pass_door"):    prefix += "({cTranslucent{x) "
         if aff.get("faerie_fire"):  prefix += "({MPink Aura{x) "
-        mob_align = tpl.get("alignment", 0)
         p_aff = player.get("affected_by", {})
-        if mob_align <= -350 and p_aff.get("detect_evil"):  prefix += "({RRed Aura{x) "
-        if mob_align >= 350 and p_aff.get("detect_good"):   prefix += "({YGolden Aura{x) "
+        if is_evil(inst) and p_aff.get("detect_evil"):   prefix += "({RRed Aura{x) "
+        if is_good(inst) and p_aff.get("detect_good"):   prefix += "({YGolden Aura{x) "
         if aff.get("sanctuary"):    prefix += "({WWhite Aura{x) "
         if inst["fighting"] is None:
             line = tpl.get("long_descr") or tpl["short_descr"]
@@ -506,6 +506,14 @@ def do_score(player, args):
             + "{:5d}".format(p["max_mana"])
             + "{C]{x",
             _val_r("Damroll", get_damroll(p), bright=True),
+        ),
+        _row(
+            "{CMovement     : [{G"
+            + "{:5d}".format(p.get("move", 100))
+            + "{C/{G"
+            + "{:5d}".format(p.get("max_move", 100))
+            + "{C]{x",
+            "",
         ),
         _row(
             _val_l("Exp", p["xp"], bright=True),

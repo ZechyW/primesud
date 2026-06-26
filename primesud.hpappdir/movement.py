@@ -1,8 +1,11 @@
 """Movement, doors, and recall command handlers."""
 
+from actor import can_see_room, chprintln
 from combat import stop_fighting, WaitState, check_improve
-from config import EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES
-from config import R_RECALL, PULSE_PER_SECOND
+from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
+                    MOVEMENT_LOSS,
+                    SECT_AIR, SECT_WATER_NOSWIM,
+                    R_RECALL, PULSE_PER_SECOND)
 from info import do_look
 from picker import pick_from
 from skills_table import GSN_RECALL
@@ -16,24 +19,147 @@ def _exit_to(exit_val):
     return exit_val["to"] if isinstance(exit_val, dict) else exit_val
 
 
-def do_move(player, direction):
-    if player["fighting"] is not None:
-        tprint("No way! You are fighting!")
-        return
-    exits = ROOM_DEFS[player["room"]]["exits"]
+def _has_boat(ch):
+    """Return True if ch carries a boat item (cf. 1stMud ITEM_BOAT check in move_char)."""
+    from world import ITEM_DEFS
+    for obj in ch.get("inv", []):
+        vnum = obj.get("vnum") if isinstance(obj, dict) else obj
+        if ITEM_DEFS.get(vnum, {}).get("type") == "boat":
+            return True
+    for obj in ch.get("equip", {}).values():
+        if obj is not None:
+            vnum = obj.get("vnum") if isinstance(obj, dict) else obj
+            if ITEM_DEFS.get(vnum, {}).get("type") == "boat":
+                return True
+    return False
+
+
+def move_char(player, direction):
+    """Move player through an exit (cf. 1stMud move_char in act_move.c).
+
+    Checks: exit existence, visibility, closed doors (with pass_door /
+    nopass), charm anchor, sector restrictions (air, water),
+    movement-point cost, and haste/slow modifiers.
+
+    Position gate handled by command table (do_north etc. have
+    min_pos = "standing").
+    """
+    # -- p_exit_trigger (mob/obj/room progs) not ported --
+
+    in_room = ROOM_DEFS[player["room"]]
+    exits = in_room.get("exits", {})
+
     if direction not in exits:
-        tprint("Alas, you cannot go that way.")
+        chprintln(player, "Alas, you cannot go that way.")
         return
+
     exit_val = exits[direction]
-    if isinstance(exit_val, dict) and exit_val.get("closed"):
-        tprint("The door is closed.")
-        return
     dest = _exit_to(exit_val)
     if dest not in ROOM_DEFS:
-        tprint("That way is not yet open.")
+        chprintln(player, "Alas, you cannot go that way.")
         return
+    to_room = ROOM_DEFS[dest]
+
+    if not can_see_room(player, dest):
+        chprintln(player, "Alas, you cannot go that way.")
+        return
+
+    aff = player.get("affected_by", {})
+
+    # -- Closed door (with pass_door / nopass) --
+    is_exit_dict = isinstance(exit_val, dict)
+    if is_exit_dict and exit_val.get("closed"):
+        if not aff.get("pass_door") or exit_val.get("nopass"):
+            keyword = exit_val.get("keyword", EXIT_NAMES.get(direction, "door"))
+            chprintln(player, "The " + keyword + " is closed.")
+            return
+
+    # -- Charm anchor (cf. 1stMud AFF_CHARM && master in same room) --
+    if aff.get("charm") and player.get("master") is not None:
+        # master/follower system not ported; stub for fidelity
+        chprintln(player, "What?  And leave your beloved master?")
+        return
+
+    # -- Private room / area closed / guild room checks not ported --
+
+    if not player.get("is_npc", False):
+        # -- Sector: air --
+        in_sect = in_room.get("sector", "inside")
+        to_sect = to_room.get("sector", "inside")
+        if in_sect == SECT_AIR or to_sect == SECT_AIR:
+            if not aff.get("flying"):
+                chprintln(player, "You can't fly.")
+                return
+
+        # -- Sector: deep water (need boat or flying) --
+        if (in_sect == SECT_WATER_NOSWIM or to_sect == SECT_WATER_NOSWIM) \
+                and not aff.get("flying"):
+            found = _has_boat(player)
+            if not found:
+                chprintln(player, "You need a boat to go there.")
+                return
+
+        # -- Movement point cost --
+        move_cost = (MOVEMENT_LOSS.get(in_sect, 1)
+                     + MOVEMENT_LOSS.get(to_sect, 1)) // 2
+        if aff.get("flying") or aff.get("haste"):
+            move_cost //= 2
+        if aff.get("slow"):
+            move_cost *= 2
+        if player.get("move", 0) < move_cost:
+            chprintln(player, "You are too exhausted.")
+            return
+
+        WaitState(player, 1)
+        player["move"] = player.get("move", 0) - move_cost
+
+    # -- Stance reset (stance system not ported) --
+    # if ValidStance(GetStance(ch, STANCE_CURRENT)): do_stance(ch, "")
+
+    # -- Leave message (1stMud: act("$n leaves $T.", ch, NULL, dir_name[door], TO_ROOM))
+    # Single-player: no other chars in room to notify; skip.
+
     player["room"] = dest
+
+    # -- Arrive message (single-player: skip) --
+
+    # 1stMud: do_function(ch, &do_look, "auto") -- "auto" triggers brief mode;
+    # PrimeSUD has no brief mode, so empty args shows full room.
     do_look(player, [])
+
+
+# -- Direction command handlers (cf. 1stMud do_north..do_down in act_move.c) --
+# Each registered in command table with min_pos = "standing".
+# 1stMud also tracks was_room for run-buffer; not applicable to PrimeSUD.
+
+def do_north(player, args):
+    """Walk north (cf. 1stMud do_north in act_move.c)."""
+    move_char(player, "n")
+
+
+def do_east(player, args):
+    """Walk east (cf. 1stMud do_east in act_move.c)."""
+    move_char(player, "e")
+
+
+def do_south(player, args):
+    """Walk south (cf. 1stMud do_south in act_move.c)."""
+    move_char(player, "s")
+
+
+def do_west(player, args):
+    """Walk west (cf. 1stMud do_west in act_move.c)."""
+    move_char(player, "w")
+
+
+def do_up(player, args):
+    """Walk up (cf. 1stMud do_up in act_move.c)."""
+    move_char(player, "u")
+
+
+def do_down(player, args):
+    """Walk down (cf. 1stMud do_down in act_move.c)."""
+    move_char(player, "d")
 
 
 def do_open(player, args):
@@ -148,6 +274,7 @@ def perform_recall(player, location, what="recall"):
         tprint("You " + what + " from combat!  You lose 25 exps.")
         stop_fighting(player, both=True)
 
+    player["move"] = player.get("move", 0) // 2
     player["room"] = location
     do_look(player, [])
     return True

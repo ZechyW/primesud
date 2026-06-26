@@ -3,7 +3,8 @@
 import world
 from actor import (is_name, is_affected, affect_to_char, affect_strip, is_awake,
                    can_see_room, act, chprintln, TO_CHAR, TO_ROOM, TO_VICT,
-                   TO_NOTVICT, TO_ALL)
+                   TO_NOTVICT, TO_ALL,
+                   is_good, is_evil, is_neutral)
 from area_limbo import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
                         I_DISC_DISK_FLOATING_BLACK)
 from colors import upper
@@ -94,18 +95,6 @@ def _number_fuzzy(n):
         n += 1
     return max(1, n)
 
-
-def _is_good(ch):
-    return ch.get("alignment", 0) > 350
-
-
-def _is_evil(ch):
-    return ch.get("alignment", 0) < -350
-
-
-def _is_neutral(ch):
-    a = ch.get("alignment", 0)
-    return a >= -350 and a <= 350
 
 
 
@@ -1214,7 +1203,7 @@ def spell_create_water(sn, level, ch, vo, target):
 def spell_demonfire(sn, level, ch, vo, target):
     """Demonfire (cf. 1stMud spell_demonfire in magic.c)."""
     victim = vo
-    if not ch.get("is_npc") and not _is_evil(ch):
+    if not ch.get("is_npc") and not is_evil(ch):
         victim = ch
         chprintln(ch, "The demons turn upon you!")
     ch["alignment"] = max(-1000, ch.get("alignment", 0) - 50)
@@ -1309,12 +1298,12 @@ def spell_detect_magic(sn, level, ch, vo, target):
 def spell_dispel_evil(sn, level, ch, vo, target):
     """Dispel evil (cf. 1stMud spell_dispel_evil in magic.c)."""
     victim = vo
-    if not ch.get("is_npc") and _is_evil(ch):
+    if not ch.get("is_npc") and is_evil(ch):
         victim = ch
-    if _is_good(victim):
+    if is_good(victim):
         act("$G protects $N.", ch, None, victim, TO_ROOM)
         return False
-    if _is_neutral(victim):
+    if is_neutral(victim):
         act("$N does not seem to be affected.", ch, None, victim, TO_CHAR)
         return False
     if victim.get("hit", 0) > ch.get("level", 1) * 4:
@@ -1329,12 +1318,12 @@ def spell_dispel_evil(sn, level, ch, vo, target):
 def spell_dispel_good(sn, level, ch, vo, target):
     """Dispel good (cf. 1stMud spell_dispel_good in magic.c)."""
     victim = vo
-    if not ch.get("is_npc") and _is_good(ch):
+    if not ch.get("is_npc") and is_good(ch):
         victim = ch
-    if _is_evil(victim):
+    if is_evil(victim):
         act("$N is protected by $S evil.", ch, None, victim, TO_ROOM)
         return False
-    if _is_neutral(victim):
+    if is_neutral(victim):
         act("$N does not seem to be affected.", ch, None, victim, TO_CHAR)
         return False
     if victim.get("hit", 0) > ch.get("level", 1) * 4:
@@ -1459,9 +1448,9 @@ def spell_frenzy(sn, level, ch, vo, target):
         else:
             act("$N doesn't look like $e wants to fight anymore.", ch, None, vo, TO_CHAR)
         return False
-    if ((_is_good(ch) and not _is_good(vo))
-            or (_is_neutral(ch) and not _is_neutral(vo))
-            or (_is_evil(ch) and not _is_evil(vo))):
+    if ((is_good(ch) and not is_good(vo))
+            or (is_neutral(ch) and not is_neutral(vo))
+            or (is_evil(ch) and not is_evil(vo))):
         act("Your god doesn't seem to like $N", ch, None, vo, TO_CHAR)
         return False
     mod = level // 6
@@ -1591,15 +1580,15 @@ def spell_holy_word(sn, level, ch, vo, target):
         mob = world.chars.get(mob_id)
         if mob is None:
             continue
-        if ((_is_good(ch) and _is_good(mob))
-                or (_is_evil(ch) and _is_evil(mob))
-                or (_is_neutral(ch) and _is_neutral(mob))):
+        if ((is_good(ch) and is_good(mob))
+                or (is_evil(ch) and is_evil(mob))
+                or (is_neutral(ch) and is_neutral(mob))):
             chprintln(mob, "You feel full more powerful.")
             if frenzy_sn is not None:
                 spell_frenzy(frenzy_sn, level, ch, mob, TARGET_CHAR)
             if bless_sn is not None:
                 spell_bless(bless_sn, level, ch, mob, TARGET_CHAR)
-        elif (_is_good(ch) and _is_evil(mob)) or (_is_evil(ch) and _is_good(mob)):
+        elif (is_good(ch) and is_evil(mob)) or (is_evil(ch) and is_good(mob)):
             if is_safe_spell(ch, mob, True):
                 continue
             if curse_sn is not None:
@@ -1607,7 +1596,7 @@ def spell_holy_word(sn, level, ch, vo, target):
             chprintln(mob, "You are struck down!")
             dam = _dice(level, 6)
             damage(ch, mob, dam, sn, DAM_ENERGY, True)
-        elif _is_neutral(ch):
+        elif is_neutral(ch):
             if is_safe_spell(ch, mob, True):
                 continue
             if curse_sn is not None:
@@ -1758,10 +1747,10 @@ def spell_protection_good(sn, level, ch, vo, target):
 def spell_ray_of_truth(sn, level, ch, vo, target):
     """Ray of truth (cf. 1stMud spell_ray_of_truth in magic.c)."""
     victim = vo
-    if _is_evil(ch):
+    if is_evil(ch):
         victim = ch
         chprintln(ch, "The energy explodes inside you!")
-    if _is_good(victim):
+    if is_good(victim):
         act("$n seems unharmed by the light.", victim, None, victim, TO_ROOM)
         chprintln(victim, "The light seems powerless to affect you.")
         return False
@@ -2196,11 +2185,7 @@ def spell_channel(sn, level, ch, vo, target):
 
 
 def spell_investiture(sn, level, ch, vo, target):
-    """Convert movement to mana (cf. 1stMud spell_investiture in magic2.c).
-
-    [PRIMESUD] Skipped -- move/max_move not ported. Function kept for
-    reference; not wired into spell dispatch table.
-    """
+    """Convert movement to mana (cf. 1stMud spell_investiture in magic2.c)."""
     heal = ch.get("move", 0)
     vo["mana"] = min(vo.get("mana", 0) + heal, vo.get("max_mana", 100))
     vo["move"] = 0
@@ -2493,7 +2478,7 @@ SPELL_FUNS = {
     "spell_holy_word": spell_holy_word,
     "spell_identify": spell_identify,
     "spell_infravision": spell_infravision,
-    # "spell_investiture": spell_investiture,  # [PRIMESUD] move not ported
+    "spell_investiture": spell_investiture,
     "spell_invis": spell_invis,
     "spell_know_alignment": spell_know_alignment,
     "spell_lightning_bolt": spell_lightning_bolt,

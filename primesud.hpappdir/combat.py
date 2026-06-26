@@ -3,7 +3,8 @@
 import world
 from actor import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
                    is_awake, can_see, affect_to_char, affect_remove,
-                   chprintln, chprintlnf, TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT)
+                   chprintln, chprintlnf, TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT,
+                   is_good, is_evil, is_neutral)
 from area_limbo import (
     I_CORPSE, I_CORPSE_11,
     I_COIN_SILVER_GCASH,
@@ -183,16 +184,9 @@ def _same_align(tpl_a, tpl_b):
     Returns:
         bool: True if both are in the same alignment band.
     """
-    # cf. 1stMud IsGood/IsEvil/IsNeutral (>= 350, <= -350, between) in merc.h
-    a = tpl_a.get("alignment", 0)
-    b = tpl_b.get("alignment", 0)
-    if a >= 350 and b >= 350:
-        return True
-    if a <= -350 and b <= -350:
-        return True
-    if -350 < a < 350 and -350 < b < 350:
-        return True
-    return False
+    return ((is_good(tpl_a) and is_good(tpl_b))
+            or (is_evil(tpl_a) and is_evil(tpl_b))
+            or (is_neutral(tpl_a) and is_neutral(tpl_b)))
 
 
 def _dice(num, size):
@@ -1895,7 +1889,7 @@ def raw_kill(victim, killer):
     # 1stMud: victim->hit = Max(1, victim->hit) (etc.)
     victim["hit"] = max(1, victim["hit"])
     victim["mana"] = max(1, victim["mana"])
-    # [PRIMESUD] move/max_move not ported
+    victim["move"] = max(1, victim.get("move", 100))
 
     # [PRIMESUD] respawn flavour text (1stmud has no equivalent)
     tprint("You have been KILLED!!")
@@ -1961,18 +1955,26 @@ def advance_level(player):
     mp_hi  = max(2, (2 * int_ + wis) // 5)
     add_mp = max(2, randint(2, mp_hi) * 9 // 10)
 
+    # MV: number_range(1, (CON+DEX)//6) * 9/10, min 6  (cf. 1stMud advance_level in update.c)
+    dex = get_curr_stat(player, "dex")
+    mv_hi = max(1, (con + dex) // 6)
+    add_mv = max(6, randint(1, mv_hi) * 9 // 10)
+
     add_prac = WIS_APP_PRACTICE[wis]
 
     player["max_hit"]   += add_hp
-    player["max_mana"]   += add_mp
+    player["max_mana"]  += add_mp
+    player["max_move"]  += add_mv
     player["hit"]        = player["max_hit"]  # [PRIMESUD] 1stMud only adds to max; full heal for UX
-    player["mana"]        = player["max_mana"]
+    player["mana"]       = player["max_mana"]
+    player["move"]       = player["max_move"]  # [PRIMESUD] full restore for UX
     player["practice"] += add_prac
     player["train"]    += 1
 
-    chprintlnf(player, "You gain %d hit %s, %d mana, and %d %s.",
+    chprintlnf(player, "You gain %d hit %s, %d mana, %d move, and %d %s.",
         add_hp,  "point" if add_hp  == 1 else "points",
         add_mp,
+        add_mv,
         add_prac, "practice" if add_prac == 1 else "practices")
     learned = player.get("learned", {})
     for _sn, data in SKILL_TABLE:
@@ -2236,7 +2238,7 @@ def do_berserk(ch, args):
     if randint(1, 100) < chance:
         WaitState(ch, PULSE_VIOLENCE)
         ch["mana"] -= 50
-        # 1stMud: ch->move /= 2;  [PRIMESUD] move not ported
+        ch["move"] = ch.get("move", 0) // 2
 
         ch["hit"] += ch["level"] * 2
         ch["hit"] = min(ch["hit"], ch.get("max_hit", ch["hit"]))
@@ -2272,6 +2274,7 @@ def do_berserk(ch, args):
     else:
         WaitState(ch, 3 * PULSE_VIOLENCE)
         ch["mana"] -= 25
+        ch["move"] = ch.get("move", 0) // 2
         tprint("Your pulse speeds up, but nothing happens.")
         check_improve(ch, GSN_BERSERK, False, 2)
     return None

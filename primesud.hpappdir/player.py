@@ -56,6 +56,7 @@ def create_char():
     ch.update({
         "hit":      20,   "max_hit":  20,
         "mana":     100,  "max_mana": 100,
+        "move":     100,  "max_move": 100,
         "room":     R_STARTING_ROOM,
         "id":       1,
         # pcdata fields (cf. 1stMud PcData in structs.h):
@@ -127,8 +128,16 @@ def tick_update(tr, player, room):
     # TODO: poison /4, plague /8, haste/slow /2
     mp_gain = max(1, mp_gain)
 
+    # MV (cf. 1stMud move_gain in update.c) -- base max(15, level), resting +DEX/2
+    dex = get_curr_stat(player, "dex")
+    mv_gain = max(15, level) + dex // 2
+    mv_gain = mv_gain * room.get("heal_rate", 100) // 100
+    # TODO: poison /4, plague /8, haste/slow /2
+    mv_gain = max(1, mv_gain)
+
     player["hit"] = min(player["max_hit"], player["hit"] + hp_gain)
     player["mana"] = min(player["max_mana"], player["mana"] + mp_gain)
+    player["move"] = min(player["max_move"], player["move"] + mv_gain)
 
     for aff in list(player.get("affect_list", [])):
         if aff["duration"] > 0:
@@ -150,9 +159,10 @@ def show_prompt(tr, player, buf):
         player (dict): Player state dict.
         buf (str): Current input buffer shown on the right of the prompt.
     """
-    prefix = "HP:{}/{} MP:{}/{} {}tnl>".format(
+    prefix = "HP:{}/{} MP:{}/{} MV:{}/{} {}tnl>".format(
         player["hit"], player["max_hit"],
         player["mana"], player["max_mana"],
+        player["move"], player["max_move"],
         player["xp_next"] - player["xp"],
     )
     avail = max(1, TERMINAL_COLS - 6 - len(prefix))
@@ -185,7 +195,7 @@ def _serialize_world():
     gc_collect()
     lines = ["v=" + str(SAVE_VERSION)]
     for key in ("name", "level", "xp", "xp_next",
-                "hit", "max_hit", "mana", "max_mana",
+                "hit", "max_hit", "mana", "max_mana", "move", "max_move",
                 "hitroll", "damroll", "saving_throw", "room", "trivia",
                 "practice", "train", "flags", "played", "alignment"):
         lines.append("p." + key + "=" + str(player[key]))
@@ -327,7 +337,7 @@ def load_world():
     _STAT_KEYS = {"str", "dex", "int", "wis", "con"}
     int_keys = {"level", "xp", "xp_next", "trivia",
                 "str", "dex", "int", "wis", "con",
-                "hit", "max_hit", "mana", "max_mana",
+                "hit", "max_hit", "mana", "max_mana", "move", "max_move",
                 "hitroll", "damroll", "saving_throw", "room", "alignment",
                 "practice", "train", "flags", "played"}
 

@@ -37,14 +37,14 @@ FULL_MAP_DEPTH    = 4  # exit-tracing hops for full map   (cf. 1stMud !fSmall: d
 # game code uses room.get("sector", "inside") so hand-authored rooms default to "inside"
 SECTOR_COLORS = {
     "inside":   "{w",  "city":     "{W",  "field":    "{G",  "forest": "{g",
-    "hills":    "{y",  "mountain": "{w",  "swim":     "{B",  "noswim": "{b",
+    "hills":    "{y",  "mountain": "{w",  "water_swim": "{B",  "water_noswim": "{b",
     "ice":      "{C",  "air":      "{C",  "desert":   "{y",  "road":   "{m",
     "path":     "{M",  "swamp":    "{G",  "jungle":   "",    "cave":   "{w",
     "none":     "{w",
 }
 SECTOR_SYMBOLS = {
     "inside":   'o',   "city":     'o',   "field":    '*',   "forest": '*',
-    "hills":    '!',   "mountain": '@',   "swim":     '=',   "noswim": '=',
+    "hills":    '!',   "mountain": '@',   "water_swim": '=',   "water_noswim": '=',
     "ice":      'O',   "air":      '~',   "desert":   '+',   "road":   ':',
     "path":     ':',   "swamp":    '&',   "jungle":   '?',   "cave":   '#',
     "none":     '?',
@@ -113,6 +113,30 @@ FNKEY_TABLE = {
 FNKEY_SENTINELS      = frozenset(FNKEY_TABLE)
 FNKEY_NAMES          = {k: v[0] for k, v in FNKEY_TABLE.items()}
 DEFAULT_FNKEY_MACROS = {k: v[1] for k, v in FNKEY_TABLE.items()}
+
+# -- Sector types (cf. 1stMud sector_t enum in defines.h) -----------------------------
+SECT_INSIDE       = 'inside'
+SECT_CITY         = 'city'
+SECT_FIELD        = 'field'
+SECT_FOREST       = 'forest'
+SECT_HILLS        = 'hills'
+SECT_MOUNTAIN     = 'mountain'
+SECT_WATER_SWIM   = 'water_swim'
+SECT_WATER_NOSWIM = 'water_noswim'
+SECT_ICE          = 'ice'
+SECT_AIR          = 'air'
+SECT_DESERT       = 'desert'
+SECT_ROAD         = 'road'
+SECT_PATH         = 'path'
+SECT_SWAMP        = 'swamp'
+SECT_JUNGLE       = 'jungle'
+
+# movement_loss[sector] -- movement point cost per sector (cf. 1stMud const.c)
+MOVEMENT_LOSS = {
+    'inside': 1, 'city': 2, 'field': 2, 'forest': 3, 'hills': 4,
+    'mountain': 6, 'water_swim': 4, 'water_noswim': 1, 'ice': 6,
+    'air': 10, 'desert': 6, 'road': 1, 'path': 1, 'swamp': 6, 'jungle': 4,
+}
 
 # -- Cross-area room VNUMs (cf. 1stMud room vnums in index.h) -------------------------
 R_STARTING_ROOM  = 3700   # player respawn/starting room (Mud School entrance)

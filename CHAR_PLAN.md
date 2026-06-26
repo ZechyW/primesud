@@ -63,6 +63,6 @@ Requires `act_flags["practice"]` mob. Per-skill only (no group system). 75% cap 
 | Alignment | `handler.c`, `act_obj.c` | No items/mobs use it yet |
 | Skill group system (`do_gain`, `gn_add`) | `skills.c` | Too complex; per-skill practice is sufficient |
 | Stat rolling at character creation | `nanny.c` | Fixed starting stats; name entry already in `primesud.py` |
-| Move points / `move_gain` | `update.c` | No movement cost system planned |
+| ~~Move points / `move_gain`~~ | `update.c` | Ported: `move_char`, `tick_update`, `advance_level`, berserk, recall, investiture |
 | Age tracking | `handler.c` | Cosmetic, no gameplay impact |
 | `mobile_update` (wandering, patrol, aggro on enter) | `update.c` | Not yet designed — own phase |
