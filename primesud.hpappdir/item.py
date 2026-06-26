@@ -1,5 +1,6 @@
 """Item creation, lookup, flags, spell payloads, and save tokens."""
 
+import world
 from world import ITEM_DEFS, MOB_DEFS
 from actor import is_name
 
@@ -316,6 +317,27 @@ def get_obj_list(fragment, item_list, templates):
             if count == nth:
                 return item
     return None
+
+
+def get_obj_here(player, arg):
+    """Find obj in room, inventory, or equipped (cf. 1stMud get_obj_here in handler.c).
+
+    Args:
+        player (dict): Player state dict.
+        arg (str): Player-typed name fragment.
+
+    Returns:
+        Item (int or dict), or None if not found.
+    """
+    rs = world.rooms[player["room"]]
+    obj = get_obj_list(arg, rs["items"], ITEM_DEFS)
+    if obj is not None:
+        return obj
+    obj = get_obj_list(arg, player["inv"], ITEM_DEFS)
+    if obj is not None:
+        return obj
+    equipped = [it for it in player["equip"].values() if it is not None]
+    return get_obj_list(arg, equipped, ITEM_DEFS)
 
 
 def apply_money_pickup(player, obj, tpl):

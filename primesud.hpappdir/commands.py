@@ -5,9 +5,10 @@ from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
                     do_rescue, do_disarm, do_surrender, do_slay,
                     do_sskill, do_stance, do_autostance)
 from config import POS_ORDER
-from info import (do_look, do_score, do_skills, do_spells, do_help, do_affects,
-                  do_credits, do_map, do_automap, do_autolist,
-                  do_autoloot, do_autogold, do_autosac, do_autosplit)
+from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
+                  do_help, do_affects, do_credits, do_map, do_automap,
+                  do_autolist, do_autoloot, do_autogold, do_autosac,
+                  do_autosplit)
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
@@ -58,7 +59,9 @@ _CMD_TABLE = [
     ("affects",   do_affects,   "dead",     False),   # #33
     ("credits",   do_credits,   "dead",     False),   # #41
     ("equipment", do_equipment, "dead",     False),   # #42
+    ("examine",   do_examine,   "resting",  False),   # #43
     ("help",      do_help,      "dead",     False),   # #44
+    ("read",      do_read,      "resting",  False),   # #46
     ("score",     do_score,     "dead",     False),   # #49
     ("skills",    do_skills,    "dead",     False),   # #50
     ("spells",    do_spells,    "dead",     False),   # #53

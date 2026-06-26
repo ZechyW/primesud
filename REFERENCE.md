@@ -26,7 +26,7 @@ expands to the byte sequence `\x11 <slot-number> \x12`.  At render time
 converted to an ANSI escape.
 
 | Slot | Constant     | In-game name | Default colour   | ANSI code   |
-| ---- | ------------ | ------------ | ---------------- | ----------- |
+|------|--------------|--------------|------------------|-------------|
 | 0    | `_DEFAULT`   | clear        | reset            | `ESC[0m`    |
 | 1    | `_GOSSIP`    | gossip       | bright + magenta | `ESC[1;35m` |
 | 2    | `_MUSIC`     | music        | bright + red     | `ESC[1;31m` |
@@ -123,7 +123,7 @@ starts with its own `+`.
 Key-value block terminated by `End`.  All keys optional.
 
 | Key                     | Value         | Notes                                          |
-| ----------------------- | ------------- | ---------------------------------------------- |
+|-------------------------|---------------|------------------------------------------------|
 | `Name`                  | string~       | Display name                                   |
 | `Builders`              | string~       | Builder credits                                |
 | `VNUMs`                 | `min max`     | VNUM range owned by this area                  |
@@ -144,13 +144,13 @@ string.
 #### Field sequence
 
 | Line | Content                                       | Notes                                        |
-| ---- | --------------------------------------------- | -------------------------------------------- |
+|------|-----------------------------------------------|----------------------------------------------|
 | 1    | `keywords~`                                   | Space-separated lookup names                 |
 | 2    | `short_descr~`                                | Shown in room ("A rat is here.")             |
 | 3    | `long_descr~`                                 | Shown on walk-in; multi-line                 |
 | 4    | `description~`                                | Shown on `look mob`; multi-line              |
 | 5    | `race~`                                       | Race name string                             |
-| 6    | `act_flags  affected_by  alignment  group`      | Two flag fields + two integers               |
+| 6    | `act_flags  affected_by  alignment  group`    | Two flag fields + two integers               |
 | 7    | `level  random  autoset  hitroll`             | `random`/`autoset` only in version ≥ 4       |
 | 8    | `NdD+B  NdD+B  NdD+B  'dam_type'`             | HP dice, mana dice, damage dice, attack name |
 | 9    | `ac_pierce  ac_bash  ac_slash  ac_exotic`     | Values stored × 10 (so 100 = AC 10)          |
@@ -180,10 +180,10 @@ because there is no dice analogue for a to-hit bonus.
 Followed by zero or more optional trailer lines, terminated by any non-trailer
 character (the next `#` or section header):
 
-| Letter | Arguments                     | Meaning                                                                    |
-| ------ | ----------------------------- | -------------------------------------------------------------------------- |
-| `F`    | `field_name  flag`            | Remove bits from a field (`act` `aff` `off` `imm` `res` `vul` `for` `par`) |
-| `M`    | `trigger  prog_vnum  phrase~` | Attach a MobProg                                                           |
+| Letter | Arguments                     | Meaning                                                                                                                                                                                                                                                                                                                                  |
+|--------|-------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `F`    | `field_name  flag`            | Remove bits from a field (`act` `aff` `off` `imm` `res` `vul` `for` `par`)                                                                                                                                                                                                                                                               |
+| `M`    | `trigger  prog_vnum  phrase~` | Attach a MobProg                                                                                                                                                                                                                                                                                                                         |
 | `S`    | `kills  deaths`               | Persistent kill/death counters: `kills` = kills scored by this mob prototype (players or other mobs killed); `deaths` = times this prototype has been killed.  Written back to the `.are` file on shutdown so stats survive server restarts.  Optional — absent if both are zero.  Source: `db2.c:load_mobiles`, `fight.c:update_death`. |
 
 #### Annotated example — #3702 monster

@@ -9,8 +9,8 @@ from area_school import (I_BANNER_WAR_MERC,
                          I_WHIP_SUB_MERC, I_GLAIVE_SUB_MERC)
 from combat import _get_weapon_skill, WaitState, check_improve, get_skill
 from config import STR_APP_WIELD, PULSE_VIOLENCE
-from item import (get_obj_list, obj_vnum, create_object, item_extra_flags,
-                  item_wear_flags, apply_money_pickup)
+from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
+                  item_extra_flags, item_wear_flags, apply_money_pickup)
 from magic import cast_item_spells, validate_item_spell_payload
 from picker import pick_from
 from skills_table import GSN_SCROLLS, GSN_STAVES, GSN_WANDS
@@ -637,23 +637,12 @@ def do_eat(player, args):
     player["inv"].remove(obj)
 
 
-def _find_here_obj(player, target_name):
-    obj = get_obj_list(target_name, player["inv"], ITEM_DEFS)
-    if obj is not None:
-        return obj
-    obj = get_obj_list(target_name, world.rooms[player["room"]]["items"], ITEM_DEFS)
-    if obj is not None:
-        return obj
-    equipped = [it for it in player["equip"].values() if it is not None]
-    return get_obj_list(target_name, equipped, ITEM_DEFS)
-
-
 def _find_here_char_or_obj(player, target_name):
     for mob_id in world.rooms[player["room"]]["mobs"]:
         mob = world.chars[mob_id]
         if is_name(target_name, MOB_DEFS[mob["tpl"]].get("keywords", "")):
             return (mob, None)
-    obj = _find_here_obj(player, target_name)
+    obj = get_obj_here(player, target_name)
     return (None, obj)
 
 

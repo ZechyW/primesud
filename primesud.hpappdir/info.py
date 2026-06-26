@@ -9,7 +9,7 @@ from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS,
                     MAX_MORTAL_LEVEL, DIR_ALIASES,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC)
 from inventory import _WEAR_LABELS
-from item import get_obj_list, get_char_room, obj_vnum, item_extra_flags
+from item import get_obj_list, get_obj_here, get_char_room, obj_vnum, item_extra_flags
 from player import (PLR_AUTOMAP, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
                     PLR_AUTOSPLIT, PLR_DEFAULTS)
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
@@ -704,3 +704,46 @@ def do_credits(player, args):
     tprint("            Tom Madsen             noop@freja.diku.dk")
     tprint("            Katja Nyboe            katz@freja.diku.dk")
     tprint("  DIKU, Computer Science Institute, Copenhagen University")
+
+
+def do_read(player, args):
+    """Alias for do_look (cf. 1stMud do_read in act_info.c)."""
+    do_look(player, args)
+
+
+def do_examine(player, args):
+    """Examine an object: look at it, then show contents or coin count (cf. 1stMud do_examine in act_info.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Parsed command arguments.
+    """
+    if not args:
+        tprint("Examine what?")
+        return
+    arg = args[0]
+    do_look(player, [arg])
+    obj = get_obj_here(player, arg)
+    if obj is not None:
+        tpl = ITEM_DEFS[obj_vnum(obj)]
+        obj_type = tpl.get("type")
+        if obj_type == "money":
+            silver = obj.get("silver", 0)
+            gold = obj.get("gold", 0)
+            if silver == 0:
+                if gold == 0:
+                    tprint("Odd...there's no coins in the pile.")
+                elif gold == 1:
+                    tprint("Wow. One gold coin.")
+                else:
+                    tprint("There are " + str(gold) + " gold coins in the pile.")
+            elif gold == 0:
+                if silver == 1:
+                    tprint("Wow. One silver coin.")
+                else:
+                    tprint("There are " + str(silver) + " silver coins in the pile.")
+            else:
+                tprint("There are " + str(gold) + " gold and " + str(silver) + " silver coins in the pile.")
+        elif obj_type in _CONTAINER_TYPES:
+            do_look(player, ["in", arg])
+        # 1stMud: ITEM_JUKEBOX -> do_play "list" -- not yet ported
