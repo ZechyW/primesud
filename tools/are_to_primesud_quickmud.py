@@ -19,7 +19,7 @@ QuickMUD uses standard ROM 2.4 area format which differs from 1stMud:
 Output format matches are_to_primesud.py exactly.
 
 Sections handled:   #AREA  #ROOMS  #MOBILES  #OBJECTS  #RESETS  #SPECIALS
-Sections skipped:   #SHOPS  #HELPS  #SOCIALS  #MOBPROGS
+                    #SHOPS  #HELPS  #SOCIALS  #MOBPROGS
 """
 
 import re
@@ -95,9 +95,42 @@ WEAR_SLOT = {
 }
 APPLY_LOC = {
     1: "str", 2: "dex", 3: "int", 4: "wis", 5: "con",
-    12: "mana", 13: "hit", 17: "ac", 18: "hitroll", 19: "damroll",
+    12: "mana", 13: "hit", 14: "move", 17: "ac", 18: "hitroll", 19: "damroll",
+    20: "saves",
+}
+FORM_FLAGS = {
+    0: "edible", 1: "poison", 2: "magical", 3: "instant_decay", 4: "other",
+    6: "animal", 7: "sentient", 8: "undead", 9: "construct", 10: "mist",
+    11: "intangible", 12: "biped", 13: "centaur", 14: "insect", 15: "spider",
+    16: "crustacean", 17: "worm", 18: "blob", 21: "mammal", 22: "bird",
+    23: "reptile", 24: "snake", 25: "dragon", 26: "amphibian", 27: "fish",
+    28: "cold_blood",
+}
+PART_FLAGS = {
+    0: "head", 1: "arms", 2: "legs", 3: "heart", 4: "brains", 5: "guts",
+    6: "hands", 7: "feet", 8: "fingers", 9: "ear", 10: "eye",
+    11: "long_tongue", 12: "eyestalks", 13: "tentacles", 14: "fins",
+    15: "wings", 16: "tail", 20: "claws", 21: "fangs", 22: "horns",
+    23: "scales", 24: "tusks",
+}
+CONTAINER_FLAGS = {
+    0: "closeable", 1: "pickproof", 2: "closed", 3: "locked", 4: "put_on",
 }
 DIR_NAME = {0: "n", 1: "e", 2: "s", 3: "w", 4: "u", 5: "d"}
+ITEM_TYPE_NUM = {
+    1: "light", 2: "scroll", 3: "wand", 4: "staff", 5: "weapon",
+    8: "treasure", 9: "armor", 10: "potion", 11: "clothing",
+    12: "furniture", 13: "trash", 15: "container", 17: "drink",
+    18: "key", 19: "food", 20: "money", 22: "boat",
+    25: "fountain", 26: "pill", 28: "map", 29: "portal",
+    32: "gem", 33: "jewelry", 34: "jukebox",
+}
+TRIG_NAMES = {
+    "ACT": "act", "BRIBE": "bribe", "DEATH": "death", "ENTRY": "entry",
+    "FIGHT": "fight", "GIVE": "give", "GREET": "greet", "GRALL": "grall",
+    "KILL": "kill", "HPCNT": "hpcnt", "RANDOM": "random", "SPEECH": "speech",
+    "EXIT": "exit", "EXALL": "exall", "DELAY": "delay", "SURRENDER": "surrender",
+}
 WLOC_SLOT = {
     0:  "light",
     1:  "finger_l", 2:  "finger_r",
@@ -312,7 +345,7 @@ def parse_area_old(lines):
             area["max_level"] = int(m.group(2))
         elif "All" in credits:
             area["min_level"] = 1
-            area["max_level"] = 60
+            area["max_level"] = 50
     if i < len(lines):
         vn = lines[i].split()
         if len(vn) >= 2:
@@ -351,6 +384,7 @@ def parse_mobiles(lines):
         act_int = parse_rom_flag(parts[0]) if parts else 0
         aff_int = parse_rom_flag(parts[1]) if len(parts) > 1 else 0
         alignment = int(parts[2]) if len(parts) > 2 else 0
+        group = int(parts[3]) if len(parts) > 3 else 0
 
         # level  hitroll  hp_dice  mana_dice  dam_dice  dam_type  (all one line in ROM)
         parts = lines[i].split(); i += 1
@@ -378,22 +412,72 @@ def parse_mobiles(lines):
 
         # start_pos  default_pos  sex  wealth
         parts = lines[i].split(); i += 1
+        start_pos   = parts[0] if parts else "standing"
+        default_pos = parts[1] if len(parts) > 1 else "standing"
         sex    = parts[2] if len(parts) > 2 else "neutral"
         wealth = int(parts[3]) if len(parts) > 3 else 0
 
         # form_flags  part_flags  size  material
         parts = lines[i].split(); i += 1
-        size = parts[2] if len(parts) > 2 else "medium"
+        form_int = parse_rom_flag(parts[0]) if parts else 0
+        part_int = parse_rom_flag(parts[1]) if len(parts) > 1 else 0
+        size     = parts[2] if len(parts) > 2 else "medium"
+        material = parts[3] if len(parts) > 3 else ""
 
-        # optional trailer lines: F (flag remove) or M (mobprog)
+        # optional trailer lines: F (flag remove) or M (mobprog trigger)
+        # F lines REMOVE bits inherited from race table (cf. db2.c:307-335)
+        f_removes = []
+        mob_triggers = []
         while i < len(lines):
             tline = lines[i].strip()
             if tline.startswith("#") or tline == "":
                 break
-            if tline and tline[0] in "FM":
+            if tline and tline[0] == "F":
+                fparts = tline.split()
+                if len(fparts) >= 3:
+                    f_field = fparts[1]
+                    f_vector = parse_rom_flag(fparts[2])
+                    f_removes.append((f_field, f_vector))
+                i += 1
+            elif tline and tline[0] == "M":
+                # M <trig_type> <mprog_vnum> <trig_phrase>~
+                rest = tline[1:].strip()
+                tilde = rest.find("~")
+                if tilde >= 0:
+                    rest = rest[:tilde]
+                mparts = rest.split(None, 2)
+                trig_type = mparts[0] if mparts else "RANDOM"
+                mprog_vnum = int(mparts[1]) if len(mparts) > 1 else 0
+                trig_phrase = mparts[2] if len(mparts) > 2 else ""
+                mob_triggers.append((trig_type.lower(), mprog_vnum, trig_phrase))
                 i += 1
             else:
                 break
+
+        # Apply F-line flag removals (cf. db2.c REMOVE_BIT)
+        F_MAP = {
+            "act": (act_int,  ACT_FLAGS),
+            "aff": (aff_int,  AFFECTED_BY),
+            "off": (off_int,  OFF_FLAGS),
+            "imm": (imm_int,  RESIST_FLAGS),
+            "res": (res_int,  RESIST_FLAGS),
+            "vul": (vuln_int, RESIST_FLAGS),
+            "for": (form_int, FORM_FLAGS),
+            "par": (part_int, PART_FLAGS),
+        }
+        for f_field, f_vector in f_removes:
+            for prefix, (cur_val, _) in F_MAP.items():
+                if f_field.startswith(prefix):
+                    # Mutate the int - need to reassign
+                    if prefix == "act":  act_int  &= ~f_vector
+                    elif prefix == "aff": aff_int &= ~f_vector
+                    elif prefix == "off": off_int &= ~f_vector
+                    elif prefix == "imm": imm_int &= ~f_vector
+                    elif prefix == "res": res_int &= ~f_vector
+                    elif prefix == "vul": vuln_int &= ~f_vector
+                    elif prefix == "for": form_int &= ~f_vector
+                    elif prefix == "par": part_int &= ~f_vector
+                    break
 
         mobs.append((vnum, {
             "keywords":    keywords,
@@ -404,6 +488,7 @@ def parse_mobiles(lines):
             "act_flags":   decode_flags(flag_bits(act_int), ACT_FLAGS, skip={0}),
             "affected_by": decode_flags(flag_bits(aff_int), AFFECTED_BY),
             "alignment":   alignment,
+            "group":       group,
             "level":       level,
             "hitroll":     hitroll,
             "hp_dice":     hp_dice,
@@ -415,9 +500,15 @@ def parse_mobiles(lines):
             "imm_flags":   decode_flags(flag_bits(imm_int), RESIST_FLAGS),
             "res_flags":   decode_flags(flag_bits(res_int), RESIST_FLAGS),
             "vuln_flags":  decode_flags(flag_bits(vuln_int), RESIST_FLAGS),
+            "start_pos":   start_pos,
+            "default_pos": default_pos,
+            "form_flags":  decode_flags(flag_bits(form_int), FORM_FLAGS),
+            "part_flags":  decode_flags(flag_bits(part_int), PART_FLAGS),
+            "material":    material,
             "sex":         sex,
             "wealth":      wealth,
             "size":        size,
+            "mob_triggers": mob_triggers,
         }))
     return mobs
 
@@ -476,7 +567,21 @@ def parse_objects(lines):
                 ekw,  i = read_tilde_string(lines, i)
                 edesc, i = read_tilde_string(lines, i)
                 extra_descs.append((ekw, edesc))
-            elif tline == "" or (tline and tline[0] == "F"):
+            elif tline and tline[0] == "F":
+                # F lines on objects add flag-setting affects (cf. db2.c:536-569)
+                # Format: F <where_letter> <apply_loc> <modifier> <bitvector>
+                fparts = tline.split()
+                if len(fparts) >= 4:
+                    where_map = {"A": "affects", "I": "immune", "R": "resist", "V": "vuln"}
+                    where = where_map.get(fparts[1], fparts[1])
+                    loc = int(fparts[2])
+                    mod = int(fparts[3])
+                    bv = parse_rom_flag(fparts[4]) if len(fparts) > 4 else 0
+                    loc_name = APPLY_LOC.get(loc, str(loc))
+                    if mod != 0 and loc_name != "0":
+                        applies[loc_name] = applies.get(loc_name, 0) + mod
+                i += 1
+            elif tline == "":
                 i += 1
             else:
                 break
@@ -587,6 +692,8 @@ def parse_rooms(lines):
         exit_notes = {}
         exit_descs = {}
         extra_descs = []
+        heal_rate  = None
+        mana_rate  = None
         room_flags = decode_flags(flag_bits(room_int), ROOM_FLAGS)
 
         while i < len(lines):
@@ -634,8 +741,19 @@ def parse_rooms(lines):
                 ekw, i = read_tilde_string(lines, i)
                 edesc, i = read_tilde_string(lines, i)
                 extra_descs.append((ekw, edesc))
-            elif tline == "" or (tline and tline[0] in "HMCO"):
-                # H=heal_rate, M=mana_rate, C=clan, O=owner -- skip
+            elif tline[0:2] in ("H ", "M "):
+                parts = tline.split()
+                j = 0
+                while j < len(parts):
+                    if parts[j] == "H" and j + 1 < len(parts):
+                        heal_rate = int(parts[j + 1]); j += 2
+                    elif parts[j] == "M" and j + 1 < len(parts):
+                        mana_rate = int(parts[j + 1]); j += 2
+                    else:
+                        j += 1
+                i += 1
+            elif tline == "" or (tline and tline[0] in "CO"):
+                # C=clan, O=owner -- skip
                 i += 1
             else:
                 i += 1
@@ -649,6 +767,8 @@ def parse_rooms(lines):
             "extra_descs": extra_descs,
             "flags":      room_flags,
             "sector":     sector,
+            "heal_rate":  heal_rate,
+            "mana_rate":  mana_rate,
         }))
     return rooms
 
@@ -711,6 +831,163 @@ def parse_specials(lines):
     return specials
 
 
+def parse_shops(lines):
+    """Parse #SHOPS section.
+
+    Each line: keeper_vnum  buy_type[0..4]  profit_buy  profit_sell  open_hour  close_hour
+    Terminated by keeper_vnum == 0.
+    (cf. QuickMUD load_shops in db.c)
+    """
+    shops = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped[0] == '*':
+            continue
+        parts = stripped.split()
+        if not parts:
+            continue
+        keeper = int(parts[0])
+        if keeper == 0:
+            break
+        buy_types = []
+        for j in range(1, 6):
+            bt = int(parts[j]) if len(parts) > j else 0
+            if bt != 0:
+                buy_types.append(ITEM_TYPE_NUM.get(bt, str(bt)))
+        profit_buy  = int(parts[6]) if len(parts) > 6 else 100
+        profit_sell = int(parts[7]) if len(parts) > 7 else 100
+        open_hour   = int(parts[8]) if len(parts) > 8 else 0
+        close_hour  = int(parts[9]) if len(parts) > 9 else 23
+        shops.append({
+            "keeper":      keeper,
+            "buy_types":   buy_types,
+            "profit_buy":  profit_buy,
+            "profit_sell": profit_sell,
+            "open_hour":   open_hour,
+            "close_hour":  close_hour,
+        })
+    return shops
+
+
+def parse_helps(lines):
+    """Parse #HELPS section.
+
+    Each entry: level  keyword~  text~
+    Terminated by keyword starting with '$'.
+    (cf. QuickMUD load_helps in db.c)
+    """
+    helps = []
+    i = 0
+    while i < len(lines):
+        stripped = lines[i].strip()
+        if not stripped:
+            i += 1
+            continue
+        parts = stripped.split(None, 1)
+        if not parts:
+            i += 1
+            continue
+        try:
+            level = int(parts[0])
+        except ValueError:
+            i += 1
+            continue
+        rest = parts[1] if len(parts) > 1 else ""
+        tilde = rest.find("~")
+        if tilde >= 0:
+            keyword = rest[:tilde].strip()
+            i += 1
+        else:
+            keyword_parts = [rest]
+            i += 1
+            while i < len(lines):
+                idx = lines[i].find("~")
+                if idx >= 0:
+                    keyword_parts.append(lines[i][:idx])
+                    i += 1
+                    break
+                keyword_parts.append(lines[i])
+                i += 1
+            keyword = " ".join(keyword_parts).strip()
+
+        if keyword.startswith("$"):
+            break
+
+        text, i = read_tilde_string(lines, i)
+        helps.append({
+            "level":   level,
+            "keyword": keyword,
+            "text":    text,
+        })
+    return helps
+
+
+def parse_socials(lines):
+    """Parse #SOCIALS section.
+
+    Each social: name [min_pos char_pos]
+    Then up to 8 message lines (fread_string_eol each):
+      char_no_arg, others_no_arg, char_found, others_found,
+      vict_found, char_not_found, char_auto, others_auto
+    '$' = NULL for that field, '#' = end-of-social (remaining fields NULL).
+    Terminated by '#0'.
+    (cf. QuickMUD load_socials in db2.c)
+    """
+    socials = []
+    i = 0
+    fields = ("char_no_arg", "others_no_arg", "char_found", "others_found",
+              "vict_found", "char_not_found", "char_auto", "others_auto")
+    while i < len(lines):
+        stripped = lines[i].strip()
+        if not stripped:
+            i += 1
+            continue
+        if stripped == "#0":
+            break
+        name_parts = stripped.split()
+        name = name_parts[0]
+        i += 1
+
+        social = {"name": name}
+        for field in fields:
+            if i >= len(lines):
+                break
+            val = lines[i].strip()
+            i += 1
+            if val == "$":
+                social[field] = None
+            elif val == "#":
+                break
+            else:
+                social[field] = val
+
+        socials.append(social)
+    return socials
+
+
+def parse_mobprogs(lines):
+    """Parse #MOBPROGS section.
+
+    Each entry: #vnum  code~
+    Terminated by #0.
+    (cf. QuickMUD load_mobprogs in db.c)
+    """
+    progs = []
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        if not (line.startswith("#") and line[1:].isdigit()):
+            i += 1
+            continue
+        vnum = int(line[1:])
+        if vnum == 0:
+            break
+        i += 1
+        code, i = read_tilde_string(lines, i)
+        progs.append((vnum, code))
+    return progs
+
+
 # -- Python emitter (matches are_to_primesud.py output exactly) ----------------
 
 def _repr_flags(d):
@@ -730,8 +1007,8 @@ def asciitext(value):
     return str(value).encode("ascii", "backslashreplace").decode("ascii")
 
 
-def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_map,
-         doverrides=None):
+def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
+         mobprogs, room_map, mob_map, obj_map, doverrides=None):
     out = []
 
     def w(s=""):
@@ -795,6 +1072,8 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
             if fd:
                 w(f'        "{flag_key}": {_repr_flags(fd)},')
         w(f'        "alignment": {mob["alignment"]},')
+        if mob["group"] != 0:
+            w(f'        "group":     {mob["group"]},')
         w(f'        "level":     {mob["level"]},')
         w(f'        "hitroll":   {mob["hitroll"]},')
         w(f'        "hp_dice":   {pyrepr(mob["hp_dice"])},')
@@ -805,9 +1084,22 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
             fd = mob[flag_key]
             if fd:
                 w(f'        "{flag_key}": {_repr_flags(fd)},')
+        w(f'        "start_pos":   {pyrepr(mob["start_pos"])},')
+        w(f'        "default_pos": {pyrepr(mob["default_pos"])},')
+
+        for flag_key in ("form_flags", "part_flags"):
+            fd = mob[flag_key]
+            if fd:
+                w(f'        "{flag_key}": {_repr_flags(fd)},')
+        w(f'        "material": {pyrepr(mob["material"])},')
         w(f'        "sex":    {pyrepr(mob["sex"])},')
         w(f'        "wealth": {mob["wealth"]},')
         w(f'        "size":   {pyrepr(mob["size"])},')
+        if mob.get("mob_triggers"):
+            w(f'        "mob_triggers": (')
+            for trig_type, mpv, phrase in mob["mob_triggers"]:
+                w(f'            ({pyrepr(trig_type)}, {mpv}, {pyrepr(phrase)}),')
+            w(f'        ),')
         w("    },")
     w("}")
     w("")
@@ -871,6 +1163,10 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
             w(f'        "flags": {_repr_flags(room["flags"])},')
         if room["sector"] is not None:
             w(f'        "sector": {pyrepr(room["sector"])},')
+        if room["heal_rate"] is not None:
+            w(f'        "heal_rate": {room["heal_rate"]},')
+        if room["mana_rate"] is not None:
+            w(f'        "mana_rate": {room["mana_rate"]},')
         if room.get("extra_descs"):
             w(f'        "extra_descs": {pyrepr(room["extra_descs"])},')
         w("    },")
@@ -912,8 +1208,26 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
                 w(f'        "spell_level": {obj["spell_level"]},')
             if "max_charges" in obj:
                 w(f'        "max_charges": {obj["max_charges"]}, "charges": {obj["charges"]},')
-            if obj.get("spell"):
+            if "spell" in obj:
                 w(f'        "spell": {pyrepr(obj["spell"])},')
+        elif obj["type"] == "container":
+            if "container_max_weight" in obj:
+                w(f'        "container_max_weight": {obj["container_max_weight"]},')
+            if "container_flags" in obj:
+                cf = decode_flags(flag_bits(obj["container_flags"]), CONTAINER_FLAGS)
+                w(f'        "container_flags": {_repr_flags(cf)},')
+            if obj.get("container_key", 0) > 0:
+                w(f'        "container_key": {obj["container_key"]},')
+        elif obj["type"] in ("drink", "fountain"):
+            if "liquid_total" in obj:
+                w(f'        "liquid_total": {obj["liquid_total"]}, "liquid_left": {obj["liquid_left"]},')
+                w(f'        "liquid_type": {pyrepr(obj.get("liquid_type", "water"))},')
+        elif obj["type"] == "food":
+            if "food_hours" in obj:
+                w(f'        "food_hours": {obj["food_hours"]}, "food_hunger": {obj["food_hunger"]},')
+        elif obj["type"] == "money":
+            if "silver" in obj:
+                w(f'        "silver": {obj["silver"]}, "gold": {obj["gold"]},')
         if obj.get("stat_bonuses"):
             w(f'        "stat_bonuses": {pyrepr(obj["stat_bonuses"])},')
         w(f'        "level": {obj["level"]}, "weight": {obj["weight"]}, "value": {obj["value"]},')
@@ -964,6 +1278,53 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
     w(")")
     w("")
 
+    # -- SHOPS --
+    w(f"# -- Shops {BAR * 69}")
+    w('# keeper_vnum: mob that runs the shop')
+    w('# buy_types: item type names the shop will purchase')
+    w('# profit_buy/profit_sell: percentage markup/markdown')
+    w("SHOPS = (")
+    for shop in shops:
+        mc = r(shop["keeper"], mob_map)
+        bt = pyrepr(shop["buy_types"]) if shop["buy_types"] else "[]"
+        w(f'    {{"keeper": {mc}, "buy_types": {bt},'
+          f' "profit_buy": {shop["profit_buy"]}, "profit_sell": {shop["profit_sell"]},'
+          f' "open_hour": {shop["open_hour"]}, "close_hour": {shop["close_hour"]}}},')
+    w(")")
+    w("")
+
+    # -- HELPS --
+    w(f"# -- Helps {BAR * 69}")
+    w("HELPS = (")
+    for h in helps:
+        w(f'    {{"level": {h["level"]}, "keyword": {pyrepr(h["keyword"])},')
+        w(f'     "text": {pyrepr(h["text"])}}},')
+    w(")")
+    w("")
+
+    # -- SOCIALS --
+    w(f"# -- Socials {BAR * 67}")
+    w("SOCIALS = (")
+    for soc in socials:
+        parts = [f'"name": {pyrepr(soc["name"])}']
+        for field in ("char_no_arg", "others_no_arg", "char_found", "others_found",
+                      "vict_found", "char_not_found", "char_auto", "others_auto"):
+            val = soc.get(field)
+            if val is not None:
+                parts.append(f'"{field}": {pyrepr(val)}')
+        w(f'    {{{", ".join(parts)}}},')
+    w(")")
+    w("")
+
+    # -- MOBPROGS --
+    w(f"# -- MobProgs {BAR * 66}")
+    w('# (vnum, code) -- mob program code blocks, referenced by mob triggers')
+    w("MOBPROGS = {")
+    for mpv, code in mobprogs:
+        w(f'    {mpv}: {pyrepr(code)},')
+    w("}")
+    w("")
+
     return "\n".join(out)
 
 
@@ -979,13 +1340,17 @@ def convert(are_path, out_path=None):
     objs      = parse_objects(sects.get("OBJECTS", []))
     resets, doverrides = parse_resets(sects.get("RESETS", []))
     specials  = parse_specials(sects.get("SPECIALS", []))
+    shops     = parse_shops(sects.get("SHOPS", []))
+    helps     = parse_helps(sects.get("HELPS", []))
+    socials   = parse_socials(sects.get("SOCIALS", []))
+    mobprogs  = parse_mobprogs(sects.get("MOBPROGS", []))
 
     room_map = make_const_map("R", rooms, lambda d: d["name"])
     mob_map  = make_const_map("M", mobs,  lambda d: d["keywords"])
     obj_map  = make_const_map("I", objs,  lambda d: d["keywords"])
 
-    code = emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_map,
-                doverrides)
+    code = emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
+                mobprogs, room_map, mob_map, obj_map, doverrides)
 
     if out_path:
         Path(out_path).write_text(code, encoding="utf-8")

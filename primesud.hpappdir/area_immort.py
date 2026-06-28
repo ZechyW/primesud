@@ -1,0 +1,347 @@
+# fmt: off
+# Area: Valhalla
+# Source: QuickMUD/ROM 2.4
+# VNUM ranges: 1200-1299
+# Credits: {51 60} ROM     Immortal Zone
+
+
+AREA = {
+    "name":     'Valhalla',
+    "builders": '{51 60} ROM     Immortal Zone',
+    "vnums":    (1200, 1299),
+    "credits":  '{51 60} ROM     Immortal Zone',
+    "levels":   (51, 60),
+}
+
+# -- Room VNUMs -----------------------------------------------------------------
+R_CHAT_ROOM                        = 1200
+R_MOSES_HANGOUT                    = 1201
+R_CENTER_OF_THE_UNIVERSE           = 1202
+R_VALHALLA                         = 1203
+R_PRISCILLA_S_PLEASURE_PALACE      = 1204
+R_EYE_OF_THE_HURRICANE             = 1205
+R_WALKING_ON_THE_MOON              = 1206
+R_SATIN_MEMORIAL_READING_ROOM      = 1207
+R_SEA_CAVE                         = 1208
+R_ARCHMAGE_S_WORKROOM              = 1209
+R_OFFICE                           = 1210
+R_ARENA_OF_JUDGEMENT               = 1211
+R_REALM_OF_THE_DEAD                = 1212
+R_ASGARD                           = 1213
+R_ROOM_OF_LOST_SOULS               = 1214
+R_HEAD_OF_THE_RAINBOW_BRIDGE       = 1215
+R_ENTRANCE_OF_VALHALLA             = 1216
+R_VALHALLA_1217                    = 1217
+R_VALHALLA_1218                    = 1218
+R_VALHALLA_1219                    = 1219
+R_ON_THE_RAINBOW_BRIDGE            = 1220
+R_END_OF_THE_RAINBOW_BRIDGE        = 1221
+
+# -- Mob template VNUMs ---------------------------------------------------------
+M_HEIMDALL                         = 1200
+
+# -- Item template VNUMs --------------------------------------------------------
+
+# -- Mob templates --------------------------------------------------------------
+# hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
+# armor: (pierce, bash, slash, exotic), raw .are units
+# hitroll: from mob level line
+MOBILES = {
+    M_HEIMDALL: {
+        "keywords":    'Heimdall',
+        "short_descr": 'Heimdall',
+        "long_descr":  'Heimdall, guardian of Bifrost, stands guard over the Rainbow Bridge.',
+        "description": 'Standing over 7 feet tall and muscled as only a god can be, Heimdall keeps\nhis unsleeping gaze over the Rainbow bridge.  His trusty Gjallor-horn never\nleaves his side, and shall remain unwinded until the dread ship Naglfar sails\ntowards Valhalla on the dawn of Ragnarok.',
+        "race":        'human',
+        "act_flags": {"sentinel": True, "warrior": True, "nopurge": True},
+        "affected_by": {"detect_evil": True, "detect_invis": True, "detect_hidden": True, "infrared": True, "dark_vision": True},
+        "alignment": 1000,
+        "level":     57,
+        "hitroll":   30,
+        "hp_dice":   (1, 1, 19999),
+        "mana_dice": (1, 1, 499),
+        "damage":    (5, 4, 40),  "dam_type": 'crush',
+        "armor":     (-20, -20, -20, -10),
+        "off_flags": {"area_attack": True, "bash": True, "berserk": True, "disarm": True, "dodge": True, "fast": True, "kick": True, "parry": True, "rescue": True, "trip": True, "crush": True, "assist_guard": True},
+        "imm_flags": {"summon": True, "charm": True, "mental": True},
+        "res_flags": {"magic": True, "weapon": True},
+        "start_pos":   'stand',
+        "default_pos": 'stand',
+        "material": '0',
+        "sex":    'male',
+        "wealth": 0,
+        "size":   'large',
+    },
+}
+
+# -- Specials -------------------------------------------------------------------
+# ("M", mob_vnum, spec_fun_name) -- assign special function to mob template
+SPECIALS = (
+)
+
+# -- Rooms ----------------------------------------------------------------------
+ROOMS = {
+    R_CHAT_ROOM: {
+        "name": 'The Chat Room',
+        "desc": 'You are lounging in a quiet cosy parlour, warmed by a gentle magical fire\nwhich twinkles happily in a warm fireplace.  This is one of the many rooms\nwhere the heroes and gods come to socialize.  It is by far one of the most\ncomfortable!',
+        "exits": {
+            "s": {"to": R_ASGARD, "desc": 'Asgard lies to the south.'},
+        },
+        "flags": {"indoors": True, "private": True, "heroes_only": True},
+        "sector": 'inside',
+    },
+    R_MOSES_HANGOUT: {
+        "name": "Moses' Hangout",
+        "desc": "You see here a cozy little room with a fireplace.  You can tell it is Moses'\nroom by the two stone tablets and a bible on a small ledge near the fireplace.\nThis room was designed for total relaxation.  You can watch television, listen\nto the stereo, even soak in a hot tub.\nThere is a bell here for the butler.",
+        "exits": {
+            "n": {"to": R_ASGARD, "desc": 'Asgard lies to the north.'},
+        },
+        "flags": {"indoors": True, "heroes_only": True},
+        "sector": 'inside',
+    },
+    R_CENTER_OF_THE_UNIVERSE: {
+        "name": 'The Center of the Universe',
+        "desc": 'You are at the centre of the universe, everything is filled with bright\nlight in all colors. You feel time and space no longer exist here.\nExits fill the room in all 42 dimensions, leading everywhere.',
+        "exits": {
+            "e": {"to": R_ASGARD, "desc": 'Asgard lies to the east.'},
+        },
+        "flags": {"indoors": True, "private": True, "heroes_only": True},
+        "sector": 'inside',
+    },
+    R_VALHALLA: {
+        "name": 'Valhalla',
+        "desc": 'This is the huge Hall of Valhalla, where the Gods rule supreme.  The\ncavernous building stretches infinitely in all directions.  Valhalla\ncontinues to the east, and the gods make their homes north and south of\nthe halls.  The golden gates are to the west.  You know not what lies\nupward...',
+        "exits": {
+            "n": {"to": R_ARCHMAGE_S_WORKROOM, "desc": "Alander's workroom is to the north.", "keyword": 'door', "isdoor": True, "closed": True},
+            "e": {"to": R_VALHALLA_1217, "desc": 'Valhalla continues east.'},
+            "s": {"to": R_SEA_CAVE, "desc": 'A sea cave is south of here.', "keyword": 'door', "isdoor": True, "closed": True},
+            "w": {"to": R_ENTRANCE_OF_VALHALLA, "desc": 'The entrance to Valhalla is to the west.'},
+            "u": {"to": 1, "desc": 'If you want to know what is up there, you shall have to go look...'},
+        },
+        "flags": {"indoors": True, "gods_only": True},
+        "sector": 'inside',
+    },
+    R_PRISCILLA_S_PLEASURE_PALACE: {
+        "name": "Priscilla's Pleasure Palace",
+        "desc": 'As you look around you, you see the largest collection of erotic toys\nin the world!!!  On a table in the middle of the room lies a book titled :\n"All You Ever Wanted to Know About Sex..But Were Afraid to Ask"\nThere are things here that you never even imagined in your wildest dreams!',
+        "exits": {
+            "n": {"to": R_VALHALLA_1218, "desc": 'Valhalla is to the north.', "keyword": 'door', "isdoor": True, "closed": True},
+        },
+        "flags": {"indoors": True, "private": True, "gods_only": True},
+        "sector": 'inside',
+    },
+    R_EYE_OF_THE_HURRICANE: {
+        "name": 'The Eye of the Hurricane',
+        "desc": 'The shrieking winds of a monstrous storm surround you, spinning you around\nin an endless web of fury. But then, in the middle of turmoil, you find a\nstrange calm. You find yourself hovering in the calm eye of a hurricane. All\naround you you can see the desruction caused by the powerful storm. White\nhot flashes of lightning flicker from the depths of the hurricane.  But\neverything is strangely peaceful in here, with the sun shining in from above\nand a flock of birds winging across the sky.  You stretch out and relax, this\nstorm is going to be here a while.',
+        "exits": {
+        },
+        "flags": {"no_mob": True, "indoors": True, "private": True, "no_recall": True, "imp_only": True},
+        "sector": 'air',
+    },
+    R_WALKING_ON_THE_MOON: {
+        "name": 'Walking on the Moon',
+        "desc": 'The proud and lonely silence of Mare Imbrium surrounds you, as you gaze upon\nthe sterile splendor of the moon.  All around is the velvet curtain of night,\nstudded with a thousand gleaming jewels.  Below you hangs the beautiful\nfields of Earth, looking fragile and far away, but full of hope.  A sense of\nwistful regret touches you, as you think about what might have been, and what\nwill be.',
+        "exits": {
+        },
+        "flags": {"no_mob": True, "private": True, "no_recall": True, "imp_only": True},
+        "sector": 'inside',
+        "extra_descs": [('crater mare imbrium', 'A small shipping tag is pinned to the ground with a worn hunting knife.\nUpon it is a dedication to Robert Anson Heinlein, the father of the future.')],
+    },
+    R_SATIN_MEMORIAL_READING_ROOM: {
+        "name": 'The Satin Memorial Reading Room',
+        "desc": 'Half read books lie everywhere: Yeats, Tennyson, Chandler, Barrie;\na battered paperback de Laclos; a dusty leather-bound Donne.  A\ndamp novel perches precariously on the edge of a large bathtub.\nAs your eyes travel beyond the steam rising to the air toward the\nrose-brambled balcony railing, you notice a well-creased printout\nof a poem sitting on a the velvet cushions of a rosewood chair\nthat has been set so as to see the stark black mountains\nfrom one angle, or the wine-dark sea from another.',
+        "exits": {
+            "s": {"to": R_VALHALLA_1217, "desc": 'Valhalla is to the south.', "keyword": 'door', "isdoor": True, "closed": True},
+        },
+        "flags": {"indoors": True, "private": True, "no_recall": True, "gods_only": True},
+        "sector": 'hills',
+        "extra_descs": [('rose rose-brambled balcony railing', "Climbing white roses have swarmed over the original marble to obscure\nit almost completely.  The air is sweet not with roses, though,\nbut with Satin's sandalwood perfume."), ('rosewood chair', 'It looks comfortable, and the cushions are ivory velvet.'), ('stark black mountains wine wine-dark dark sea', 'The ocean is constantly smashing up against the cliffs and rending\nhuge slabs from it.  The beach is scarcely a beach at all, more a\ncollection of rough flakes varying in size from a small car to a\nsmall fist.  As the water comes up over the rocks and ebbs back\ndown, it filters through the spaces and makes an unnerving rattling\nsound.'), ('print out print-out creased well poem', "This page has been read over so many times that you can barely discern\nthe words, and in fact with much poring only the following becomes\nclear:\n        'I know that I am studly - Heck, I'm sexy, cute and cuddly\n         And I know that I'm extremely modest too.'"), ('yeats', 'The page it is flipped open to reads:\n\nA sudden blow: the great wings beating still\nAbove the staggering girl, her thighs carressed\nBy the dark webs, her nape caught in his bill,\nhe holds her helpless breast upon his breast.\nHow can those terrified vague fingers push\nThe feathered glory from her loosening thighs?\nAnd how can body, laid in that white rush,\nBut feel that strange heart beating where it lies?\nA shudder in the loins engenders there\nThe broken wall, the burning roof and tower\nAnd Agammemnon dead.  Being so caught up,\nSo mastered by this brute blood of the air,\nDid she put on his knowledge with his power\nBefore his indifferent beak could let her drop?'), ('chandler', 'She has just started the Lady in the Lake:\n\nGillerain Regal, the Champagne of Perfumes.  It was definitely\nthe stuff to get.  One drop of that in the hollow of your\nthroat and the matched pink pearls started falling off you like\nsummer rain.'), ('barrie', 'A copy of Peter Pan is opened near the end:\n\nWhat sort of form was Hook showing?  Misguided man though he\nwas, we may be glad, without sympathising with him, that in\nthe end he stayed true to the traditions of his race.  The\nother boys were flying about him now, flouting, scornful; and\nas he staggered about the deck striking at them impotently, his\nmind was no longer with them; it was slouching in the playing\nfields of long ago, or being sent up for good, or watching\nthe wall-game from a famous wall.  And his shoes were right,\nand his waistcoat was right, and his tie was right, and his\nsocks were right.\n\nJames Hook, thou not wholly unheroic figure, farewell.'), ('tennyson', '.       "My mariners\n         Souls that have toiled, and wrought, and thought with me -\n         The ever with a frolic welcome took\n         The thunder and the sunshine, and opposed\n         Free hearts, free foreheads - you and I are old;\n         Old age hath yet his honour and the toil\n         Death closes all; but something ere the end,\n         Some work of noble note, may yet be done,\n         Not unbecoming of men that strove with the gods.\n         The lights begin to twinkle from the rocks;\n         The long day wanes; the slow moon climbs; the deep\n         Moans round with many voices."'), ('battered paperback de Laclos', ".       'One is very soon bored of everything, my angel; it is a law\n        of nature.  It is not my fault.\n        If, that is to say, that I am bored with an adventure that has\n        claimed my attentions for four mortal months, it is not my fault.\n        If, that is to say, my love is equal to your virtue - and that\n        is certainly saying a great deal - it is not surprising that\n        one should come to the end at the same time as the other.  It\n        is not my fault.\n        A woman that I love madly now insists that I give you up for\n        her.  It is not my fault.\n        I quite realize that this is the perfect opportunity to accuse\n        me of perjury: but if, where nature has gifted men with no\n        more than constancy, she has given women obstinacy, it is\n        not my fault.\n        Believe this, you should take another lover, even as I take\n        another mistress.  This is good, very good advice: if you\n        find it bad, it is not my fault.\n        Good-bye, my angel.  I took you with pleasure, I leave you\n        without regret.  I shall come back perhaps.  Such is life.\n        It is not my fault."), ('dusty leather bound leather-bound Donne', ".       `Cruel and sudden, hast thou since\n        Purpled thy nail in blood of innocence?\n        Wherein could this flea guilty be,\n        Except in the drop it sucked from thee?\n        Yet thou trimph'st and say'st that thou\n        Find'st not thyself, nor me the weaker now;\n          'Tis true, then learn how false fears be:\n          Just so much honour when thou yield'st to me\n          Will waste as this flea's death took life from thee.'")],
+    },
+    R_SEA_CAVE: {
+        "name": 'A Sea Cave',
+        "desc": 'You are in a small cave in a cliff next to a deep green sea.  Fine\ngold and pink sand blanket the floor.  Shells are scattered and strewn\nabout.  A blow hole in the roof of the cave allows beams of light to stream\nin and illuminate the cave.  The wind blows outside the entrance, but\nyou are protected from the weather in your cozy cave.  The foamy surf\nnever seems to quite reach your feet.  Several boulders here have been\nworn by time into a shape similar to a comfortable chair.',
+        "exits": {
+            "n": {"to": R_VALHALLA, "desc": 'Valhalla lies to the north.', "keyword": 'door', "isdoor": True, "closed": True},
+        },
+        "flags": {"indoors": True, "private": True, "gods_only": True},
+        "sector": 'inside',
+    },
+    R_ARCHMAGE_S_WORKROOM: {
+        "name": "The Archmage's Workroom",
+        "desc": "This well-lit room is absolutely filled with clutter -- enchanting gear,\nreagents, spell components, ancient tomes, scrolls, braziers, exotic incense\nand countless other tools of the magical trade, all jumbled together with\nseemingly no attention paid to organization.  You have no doubts that Alander\ncan find whatever he needs without delay, however.  A heavy oak door stands\nbarred to the south, to discourage idle visitors, and Alander's quarters\nare east.",
+        "exits": {
+            "s": {"to": R_VALHALLA, "desc": 'Valhalla is to the south.', "keyword": 'door', "isdoor": True, "closed": True},
+        },
+        "flags": {"indoors": True, "safe": True},
+        "sector": 'inside',
+        "extra_descs": [('tools scrolls braziers components', "It's all worth a fortune, but you'd better not touch it.  Alander keeps\ninventory and holds grudges."), ('clutter mess', "You notice Jimmy Hoffa's ring.")],
+    },
+    R_OFFICE: {
+        "name": 'Office',
+        "desc": 'The first thing you notice about this office is the floor; it\nis a black & white checkerboard pattern, with 8 squares to a side.  The\nsouth wall is a HUGE picture window that produces a magnificent view of\nthe land.  In front of the window is a large desk.  Completely covering\nthe east wall is a bookshelf, that is crammed full.  In the northwest\ncorner, you notice a statue.',
+        "exits": {
+            "n": {"to": R_VALHALLA_1217, "desc": 'Valhalla is to the north', "keyword": 'door', "isdoor": True, "closed": True},
+        },
+        "flags": {"indoors": True, "private": True, "gods_only": True},
+        "sector": 'inside',
+        "extra_descs": [('desk', 'This desk is much larger than anyone could possibly need.  At one end you\nnotice a large, disorderly mass of papers; it must be all his immortal\npaperwork.  At the other end is a magnificent wooden inlaid board with\nhandcrafted ebony and hardwood pieces.'), ('statue', 'You recognize this as a statue of Robert James Fischer, one of the most\ncreative, if not eccentric, players of all time.  The inscription on the\nbase reads, "I like the moment when I crush a man\'s ego."'), ('bookshelf', "This is the most amazing collection of chess books you have ever seen.\nEverything from Damiano's manuscripts, to a complete collection of the\nEncyclopedia of Chess Openings, to the latest Imformants are all here.")],
+    },
+    R_ARENA_OF_JUDGEMENT: {
+        "name": 'Arena of Judgement',
+        "desc": 'The scene lain before you is one that gives you the feeling of being placed\nunder a higher authority.  The jury is out.  A statue of Pontius Pilate is\nin the aft of the Arena.  Staring balefully, the statue faces a distant\nhillside where many aged crosses still stand.  The Arena is set in a wide\npit-like field of trampled bloodstained grass, and is guarded by high walls\nof veinous marble.  A bloodstone seat awaits the true paragon of Romanity.',
+        "exits": {
+            "s": {"to": R_VALHALLA_1218, "desc": 'Valhalla is to the south.', "keyword": 'door', "isdoor": True, "closed": True},
+        },
+        "flags": {"indoors": True, "private": True, "gods_only": True},
+        "sector": 'inside',
+        "extra_descs": [('statue', "A statue of Pontius Pilate is here.  On it's face is the expression of some\nage old contemplation.  Standing at the statues bronzy feet is a Blood red\nshield that glimmers like a pool of blood.")],
+    },
+    R_REALM_OF_THE_DEAD: {
+        "name": 'The Realm of the Dead',
+        "desc": 'You are standing on an immense, grey stone floor that stretches as far as you\ncan see in all directions.  Rough winds plunging from the dark, starless sky\ntear savagely at your fragile body.',
+        "exits": {
+            "n": {"to": R_REALM_OF_THE_DEAD, "desc": 'The hard floor seems to go on forever.'},
+            "e": {"to": R_REALM_OF_THE_DEAD, "desc": 'The hard floor seems to go on forever.'},
+            "s": {"to": R_REALM_OF_THE_DEAD, "desc": 'The hard floor seems to go on forever.'},
+            "w": {"to": R_REALM_OF_THE_DEAD, "desc": 'The hard floor seems to go on forever.'},
+        },
+        "flags": {"indoors": True, "no_recall": True},
+        "sector": 'inside',
+        "extra_descs": [('sky wind winds', 'Cold winds plunge ceaselessly at you from the dark, cloudless sky.'), ('floor', 'The stone floor is the same shade of grey as the sky and is completely plain\nand unscratched.  It is probably too hard for anything to leave as much as a\nscratch on it.')],
+    },
+    R_ASGARD: {
+        "name": 'Asgard',
+        "desc": 'You stand on a huge expanse of glass.  Below you are clouds and the\npains of mortality.  As you stand in Asgard, home of the bravest of the\nbrave, you are frozen in awe of the power held within these walls.  A\nhuge mansion lies to the east beyond a set of magnificent golden doors.',
+        "exits": {
+            "n": {"to": R_CHAT_ROOM, "desc": 'The chat room is to the north.'},
+            "e": {"to": R_ENTRANCE_OF_VALHALLA, "desc": 'The golden doors of Valhalla are to the east'},
+            "s": {"to": R_MOSES_HANGOUT, "desc": "Moses' hangout is to the south."},
+            "w": {"to": R_CENTER_OF_THE_UNIVERSE, "desc": 'The center of the universe is to the west.'},
+            "d": {"to": R_HEAD_OF_THE_RAINBOW_BRIDGE, "desc": 'The Rainbow Bridge is below you.  You can barely see it through the clouds.'},
+        },
+        "sector": 'inside',
+    },
+    R_ROOM_OF_LOST_SOULS: {
+        "name": 'The Room of Lost Souls',
+        "desc": 'This is the room full of souls that never made it to Asgard.  They are\ntrapped here eternally, left to wander about in misery.  They were infidels\nand cowards.  Their cries of misery send a shiver down your spine.',
+        "exits": {
+            "d": R_VALHALLA_1219,
+        },
+        "flags": {"indoors": True},
+        "sector": 'inside',
+    },
+    R_HEAD_OF_THE_RAINBOW_BRIDGE: {
+        "name": 'Head of the Rainbow Bridge',
+        "desc": 'Standing on the mortal end of the Rainbow Bridge, the bridge arches up\nbefore you and seems to disappear into the clouds.  You wonder if it is\nwise to venture upward into the realm of the gods.  But it seems so calm\nand peaceful here that it would be a shame to leave...',
+        "exits": {
+            "u": {"to": R_ON_THE_RAINBOW_BRIDGE, "desc": 'The Rainbow Bridge stretches ahead before you.'},
+            "d": {"to": 3054, "desc": 'The altar of Midgaard is below you.'},
+        },
+        "sector": 'city',
+    },
+    R_ENTRANCE_OF_VALHALLA: {
+        "name": 'The Entrance of Valhalla',
+        "desc": 'The huge ornate entrance of Valhalla is before you.  It seems as though\natleast eight-hundred soldiers could walk abreast of one another through\nthese doors. You stare in awe at the sparkling mansion before you.  You\nwonder what secrets are held behind these doors and long to hear the stories\nof bravery and glory that you know are kept within the walls of Valhalla.',
+        "exits": {
+            "e": {"to": R_VALHALLA, "desc": 'Valhalla lies to the east.'},
+            "w": {"to": R_ASGARD, "desc": 'Asgard lies to the west.'},
+        },
+        "flags": {"gods_only": True},
+        "sector": 'city',
+    },
+    R_VALHALLA_1217: {
+        "name": 'Valhalla',
+        "desc": 'You are standing in the halls of Valhalla.  Pictures of Odin, Thor, Tyr,\nLoki, Freyr, Feyja, and Balder line the walls.  The cavernous hall extends\nto the east and west.  Rooms belonging to the gods lie to the north and\nsouth.  There appears to be an exit above you, but you do not know what is\nup there...',
+        "exits": {
+            "n": {"to": R_SATIN_MEMORIAL_READING_ROOM, "desc": 'The Satin Memorial Reading Room is north of here.', "keyword": 'door', "isdoor": True, "closed": True},
+            "e": {"to": R_VALHALLA_1218, "desc": 'Valhalla continues east.'},
+            "s": {"to": R_OFFICE, "desc": "Bigfoots' room is south of here.", "keyword": 'door', "isdoor": True, "closed": True},
+            "w": {"to": R_VALHALLA, "desc": 'Valhalla continues west.'},
+            "u": {"to": R_REALM_OF_THE_DEAD, "desc": 'If you want to know what is up there you shall have to go and look...'},
+        },
+        "flags": {"gods_only": True},
+        "sector": 'inside',
+    },
+    R_VALHALLA_1218: {
+        "name": 'Valhalla',
+        "desc": 'You are standing in the halls of Valhalla.  Tapestries of the gods line\nthe walls.  A statue of Odin is here.  The halls continue to the east and\nwest, and there are doors to the north and south of you.  There is some\nsort of exit above you, but you do not know where it leads...',
+        "exits": {
+            "n": {"to": R_ARENA_OF_JUDGEMENT, "desc": "Pontius' room is north of here.", "keyword": 'door', "isdoor": True, "closed": True},
+            "e": {"to": R_VALHALLA_1219, "desc": 'Valhalla continues east.'},
+            "s": {"to": R_PRISCILLA_S_PLEASURE_PALACE, "desc": "Priscilla's Pleasure Palace is south of here.", "keyword": 'door', "isdoor": True, "closed": True},
+            "w": {"to": R_VALHALLA_1217, "desc": 'Valhalla continues west.'},
+            "u": {"to": 2, "desc": 'If you want to know what is up there you shall have to go up and see...'},
+        },
+        "flags": {"gods_only": True},
+        "sector": 'inside',
+        "extra_descs": [('statue odin', 'The statue of Odin has been exquisitely crafted.  It is of white marble\nwith black and gold veins.  It looks to be of magical origin.')],
+    },
+    R_VALHALLA_1219: {
+        "name": 'Valhalla',
+        "desc": 'You have reached the end of the halls of Valhalla.  There are heavy doors\non 3 walls.  They lead into the rooms of the gods.  The hall goes back to\nthe west, and there is some sort of an exit above you.  Torches sputter\nsoftly and the scent of incense is strong here.',
+        "exits": {
+            "n": {"to": 3161, "desc": "Melancholys' room is north of here."},
+            "e": {"to": 3150, "desc": "Kates' room is east of here."},
+            "s": {"to": 3170, "desc": 'The Temple of Stupid is south of here.'},
+            "w": {"to": R_VALHALLA_1218, "desc": 'Valhalla goes back to the west.'},
+            "u": {"to": R_ROOM_OF_LOST_SOULS, "desc": 'If you want to know what is up from here, you shall have to go up and see...'},
+        },
+        "flags": {"gods_only": True},
+        "sector": 'inside',
+    },
+    R_ON_THE_RAINBOW_BRIDGE: {
+        "name": 'On the Rainbow Bridge',
+        "desc": 'You have reached the center of the Rainbow Bridge.  Clouds and mist swirl\naround your feet.  The view from here is incredible.  It is little wonder\nthat the heavens were saved for the gods personal pleasures.',
+        "exits": {
+            "u": {"to": R_END_OF_THE_RAINBOW_BRIDGE, "desc": 'The Rainbow Bridge continues upwards into the heavens.'},
+            "d": {"to": R_HEAD_OF_THE_RAINBOW_BRIDGE, "desc": 'The Rainbow Bridge disappears down into the clouds.'},
+        },
+        "sector": 'city',
+        "extra_descs": [('clouds', 'The clouds are beautiful.  There are shades of gray, pink and purple swirled\ninto the blue sky.')],
+    },
+    R_END_OF_THE_RAINBOW_BRIDGE: {
+        "name": 'The End of the Rainbow Bridge',
+        "desc": 'You have reached the end of the Rainbow Bridge.  Asgard stretches out above\nyou.  Looking around, you search for the legendary guardian of Asgard.  The\nclouds are far below you and a sense of beauty and peacefulness surrounds you.',
+        "exits": {
+            "u": {"to": R_ASGARD, "desc": 'Asgard is above you, spread out in all its glory.'},
+            "d": {"to": R_ON_THE_RAINBOW_BRIDGE, "desc": 'Bifrost, the Rainbow Bridge leads down to the Temple of Midgaard.'},
+        },
+        "sector": '-1',
+    },
+}
+
+# -- Item templates -------------------------------------------------------------
+OBJECTS = {
+}
+
+# -- Resets ---------------------------------------------------------------------
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          -- place one item copy in room
+# ("E", item_vnum, slot_name)                          -- equip item on last M mob
+# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
+# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
+# D resets are baked into room exit flags at conversion time
+RESETS = (
+    ("M", M_HEIMDALL, 1, R_END_OF_THE_RAINBOW_BRIDGE, 1),
+)
+
+# -- Shops ---------------------------------------------------------------------
+# keeper_vnum: mob that runs the shop
+# buy_types: item type names the shop will purchase
+# profit_buy/profit_sell: percentage markup/markdown
+SHOPS = (
+)
+
+# -- Helps ---------------------------------------------------------------------
+HELPS = (
+)
+
+# -- Socials -------------------------------------------------------------------
+SOCIALS = (
+)
+
+# -- MobProgs ------------------------------------------------------------------
+# (vnum, code) -- mob program code blocks, referenced by mob triggers
+MOBPROGS = {
+}

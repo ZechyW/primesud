@@ -734,8 +734,11 @@ def can_see_room(ch, room_vnum):
     - ROOM_HEROES_ONLY: non-immortal blocked
     - ROOM_NEWBIES_ONLY: level > 5 and non-immortal blocked
     - area->clan: non-matching clan blocked
+    - room->owner: non-owner blocked (room also treated as private)
     - is_home_owner: always visible
-    None of these systems exist in PrimeSUD yet.
+    Clan/owner not ported: PrimeSUD is single-player, so multi-player
+    access restrictions serve no purpose. Room flags (IMP_ONLY etc.)
+    not ported yet either.
     """
     return True
 

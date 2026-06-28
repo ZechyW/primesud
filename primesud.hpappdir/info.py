@@ -7,7 +7,7 @@ from automap import build_compact_lines, build_full_lines, COMPACT_W
 from colors import color_len, upper, draw_line
 from combat import _get_thac0, mob_condition
 from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS,
-                    MAX_MORTAL_LEVEL, DIR_ALIASES,
+                    MAX_MORTAL_LEVEL, MAX_LEVEL, DIR_ALIASES,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC,
                     WEAR_LABELS)
 from item import get_obj_list, get_obj_here, get_char_room, obj_vnum, item_extra_flags
@@ -712,6 +712,174 @@ def do_credits(player, args):
     tprint("            Tom Madsen             noop@freja.diku.dk")
     tprint("            Katja Nyboe            katz@freja.diku.dk")
     tprint("  DIKU, Computer Science Institute, Copenhagen University")
+
+
+def _convert_level(arg):
+    """Parse level string to int (cf. 1stMud convert_level in db.c)."""
+    if not arg:
+        return 0
+    if arg.isdigit():
+        return int(arg)
+    if arg == "imm":
+        return MAX_LEVEL
+    if arg in ("hero", "hro"):
+        return MAX_MORTAL_LEVEL
+    return 0
+
+
+def _print_area_levels(levels):
+    """Format area level range for display (cf. 1stMud print_area_levels in db.c)."""
+    lo, hi = levels
+    if lo >= MAX_MORTAL_LEVEL and hi >= MAX_MORTAL_LEVEL:
+        return " HERO+ "
+    lo_s = "HRO" if lo >= MAX_MORTAL_LEVEL else "%03d" % lo
+    hi_s = "HRO" if hi >= MAX_MORTAL_LEVEL else "%03d" % hi
+    return lo_s + " " + hi_s
+
+
+def _extract_builder(credits):
+    """Extract builder name from area credits line (cf. 1stMud convert_area_credits in db2.c)."""
+    idx = credits.find("} ")
+    if idx >= 0:
+        parts = credits[idx + 2:].split()
+        if parts:
+            return parts[0]
+    return credits[:7] if credits else ""
+
+
+def _compress_path(parent, source, target):
+    """Trace BFS parent chain and compress directions (cf. 1stMud path_to_area in act_enter.c)."""
+    path = []
+    v = target
+    while v != source:
+        pv, d = parent[v]
+        path.append(d)
+        v = pv
+    path.reverse()
+    if not path:
+        return ""
+    parts = []
+    count = 1
+    for i in range(1, len(path)):
+        if path[i] == path[i - 1]:
+            count += 1
+        else:
+            if count > 1:
+                parts.append(str(count))
+            parts.append(path[i - 1])
+            count = 1
+    if count > 1:
+        parts.append(str(count))
+    parts.append(path[-1])
+    return "".join(parts)
+
+
+def _find_area_paths(ch):
+    """Single BFS from player room to all areas (cf. 1stMud path_to_area in act_enter.c).
+
+    Returns:
+        dict: Mapping of area_tag -> compressed direction string.
+    """
+    source = ch.get("room")
+    if source is None:
+        return {}
+    source_room = ROOM_DEFS.get(source)
+    if source_room is None:
+        return {}
+    source_area = source_room.get("area")
+    found = {}
+    dist = {source: 0}
+    parent = {}
+    queue = [source]
+    qi = 0
+    while qi < len(queue):
+        cur = queue[qi]
+        qi += 1
+        room = ROOM_DEFS.get(cur)
+        if room is None:
+            continue
+        for d in EXIT_ORDER:
+            ev = room.get("exits", {}).get(d)
+            if ev is None:
+                continue
+            to_vnum = ev.get("to") if isinstance(ev, dict) else ev
+            if to_vnum is None or to_vnum in dist:
+                continue
+            to_room = ROOM_DEFS.get(to_vnum)
+            if to_room is None:
+                continue
+            dist[to_vnum] = dist[cur] + 1
+            parent[to_vnum] = (cur, d)
+            tag = to_room.get("area")
+            if tag and tag != source_area and tag not in found:
+                found[tag] = _compress_path(parent, source, to_vnum)
+            queue.append(to_vnum)
+    return found
+
+
+def _center_fill(text, width=0):
+    """Center text with oO fill pattern (cf. 1stMud stringf Center with oO in do_areas)."""
+    if width <= 0:
+        width = TERMINAL_COLS
+    vis = color_len(text)
+    pad = width - vis
+    if pad <= 0:
+        return text
+    pl = pad // 2
+    pr = pad - pl
+    lf = ("oO" * (pl // 2 + 1))[:pl]
+    rf = ("oO" * (pr // 2 + 1))[:pr]
+    return lf + text + rf
+
+
+def do_areas(player, args):
+    """List areas with level ranges, authors, and directions (cf. 1stMud do_areas in db.c)."""
+    lo_lv = 0
+    hi_lv = 0
+    if args:
+        lo_lv = _convert_level(args[0])
+        if len(args) >= 2:
+            hi_lv = _convert_level(args[1])
+    if lo_lv > 0:
+        lo_lv = max(1, min(lo_lv, MAX_LEVEL))
+    else:
+        lo_lv = 0
+    if hi_lv > 0:
+        hi_lv = max(1, min(hi_lv, MAX_LEVEL))
+    else:
+        hi_lv = MAX_LEVEL
+
+    tprint("")
+    tprint("{W" + _center_fill("[ {RAREAS ON PRIMESUD{W ]") + "{x")
+
+    paths = _find_area_paths(player)
+    source_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
+
+    sorted_areas = sorted(world.AREA_DEFS, key=lambda a: a.get("name", "").lower())
+
+    count = 0
+    for area in sorted_areas:
+        levels = area.get("levels", (1, MAX_LEVEL))
+        lo = max(1, min(levels[0], MAX_LEVEL))
+        hi = max(1, min(levels[1], MAX_LEVEL))
+        if lo >= lo_lv and hi <= hi_lv:
+            lvl_str = _print_area_levels((lo, hi))
+            builder = _extract_builder(area.get("credits", ""))
+            name = area.get("name", area["tag"])
+            tag = area["tag"]
+            if tag == source_area:
+                dirs = "You are here."
+            else:
+                dirs = paths.get(tag, "Not accessible.")
+            tprint(" {W[{B%-7s{W] {r%-7s {C%-23s {W({M%s{W){x"
+                   % (lvl_str, builder, name, dirs))
+            count += 1
+
+    if count == 0:
+        tprint("{W" + _center_fill("[ {RNo areas meeting those criteria.{W ]") + "{x")
+    else:
+        tprint("{W" + _center_fill("[ {R" + str(count) + " areas found{W ]") + "{x")
+        tprint("All directions are from your current position.")
 
 
 def do_read(player, args):

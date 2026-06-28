@@ -6,7 +6,8 @@ memory-intensive and slow on the HP Prime. The structure mirrors 1stMud's sectio
 uses plain Python dicts and tuples.
 
 > **Do not edit area files directly.** They are generated from `.are` source files by
-> `tools/are_to_primesud.py`. Edit the converter and regenerate instead.
+> `tools/are_to_primesud.py` (1stMud format) or `tools/are_to_primesud_quickmud.py`
+> (QuickMUD/ROM 2.4 format). Edit the converter and regenerate instead.
 
 `world.py` loads every area module and merges `ROOMS`, `MOBILES`, `OBJECTS`, and
 `RESETS` into the game-wide tables. `SKILL_TABLE` and `SKILLS` live in `world.py`
@@ -56,6 +57,18 @@ OBJECTS = { ... }
 
 # ── Resets ──
 RESETS = ( ... )
+
+# ── Shops ──
+SHOPS = ( ... )
+
+# ── Helps ──
+HELPS = ( ... )
+
+# ── Socials ──
+SOCIALS = ( ... )
+
+# ── MobProgs ──
+MOBPROGS = { ... }
 ```
 
 ---
@@ -342,6 +355,138 @@ tick, `reset_mobs` is called on the live `mob_instances` dict; missing mobs are
 filled up to their limits one per reset cycle, matching 1stMud's `reset_room` 'M'
 behaviour. `reset_area()` (game start / full wipe only) creates a fresh empty
 `mob_instances` and calls `reset_mobs` to populate it.
+
+---
+
+## `SHOPS`
+
+```python
+SHOPS = (
+    {"keeper": M_WEAPONSMITH, "buy_types": ["weapon"],
+     "profit_buy": 120, "profit_sell": 40, "open_hour": 0, "close_hour": 23},
+    ...
+)
+```
+
+| Key           | Type    | Notes |
+|---------------|---------|-------|
+| `keeper`      | int     | Mob VNUM that runs the shop |
+| `buy_types`   | list    | Item type names the shop will purchase (e.g. `"weapon"`, `"armor"`, `"scroll"`). Empty list = sell-only |
+| `profit_buy`  | int     | Percentage of item value the player pays when buying (100 = no markup) |
+| `profit_sell` | int     | Percentage of item value the player receives when selling |
+| `open_hour`   | int     | Game hour the shop opens (0–23) |
+| `close_hour`  | int     | Game hour the shop closes (0–23) |
+
+`world.init_world()` applies each shop entry to `MOB_DEFS[keeper]["shop"]`.
+[PRIMESUD] deferred: buy/sell commands not yet implemented.
+
+---
+
+## `HELPS`
+
+```python
+HELPS = (
+    {"level": 0, "keyword": "COLOUR COLOR ANSI",
+     "text": "Syntax: colour    Toggles colour mode on/off\n..."},
+    ...
+)
+```
+
+| Key       | Type | Notes |
+|-----------|------|-------|
+| `level`   | int  | Minimum player level to see this help entry (0 = all) |
+| `keyword` | str  | Space-separated keywords that match the `help` command argument |
+| `text`    | str  | Full help text body |
+
+[PRIMESUD] deferred: `help` command not yet implemented.
+
+---
+
+## `SOCIALS`
+
+```python
+SOCIALS = (
+    {"name": "smile",
+     "char_no_arg": "You smile happily.",
+     "others_no_arg": "$n smiles happily.",
+     "char_found": "You smile at $M.",
+     "others_found": "$n beams a smile at $N.",
+     "vict_found": "$n smiles at you.",
+     "char_not_found": "There's no one by that name around.",
+     "char_auto": "You smile at yourself.",
+     "others_auto": "$n smiles at $mself."},
+    ...
+)
+```
+
+| Key              | Type     | Notes |
+|------------------|----------|-------|
+| `name`           | str      | Social command name (e.g. `smile`, `bow`) |
+| `char_no_arg`    | str\|None | Message to actor when used without a target |
+| `others_no_arg`  | str\|None | Message to room when used without a target |
+| `char_found`     | str\|None | Message to actor when target is found |
+| `others_found`   | str\|None | Message to room when target is found |
+| `vict_found`     | str\|None | Message to the target |
+| `char_not_found` | str\|None | Message to actor when target is not found |
+| `char_auto`      | str\|None | Message to actor when targeting self |
+| `others_auto`    | str\|None | Message to room when actor targets self |
+
+Message strings use ROM substitution tokens: `$n` = actor, `$N` = target, `$m`/`$M` =
+him/her/it, `$s`/`$S` = his/her/its. `None` = no message for that case.
+
+Socials are global (not per-area) in ROM. The converter preserves them per-file;
+`world.py` merges all `SOCIALS` tuples into one table at load time.
+
+[PRIMESUD] deferred: social commands not yet implemented.
+
+---
+
+## `MOBPROGS`
+
+```python
+MOBPROGS = {
+    1234: "if rand(50)\n  say Hello!\nendif\n",
+    ...
+}
+```
+
+| Key  | Type | Notes |
+|------|------|-------|
+| vnum | int  | Mob program VNUM (dict key) |
+| code | str  | Program source code (ROM mob_prog language) |
+
+Mob templates reference programs via `mob_triggers` in their `MOBILES` entry:
+
+```python
+M_GUARD: {
+    ...
+    "mob_triggers": (
+        ("greet", 1234, "100"),   # (trig_type, mprog_vnum, trig_phrase)
+        ("speech", 1235, "help"),
+    ),
+},
+```
+
+| Trigger type | Fires when |
+|--------------|------------|
+| `act`        | An act() message matches the trigger phrase |
+| `bribe`      | Player gives gold >= trigger phrase amount |
+| `death`      | Mob dies |
+| `entry`      | Mob enters a room |
+| `fight`      | Each combat round |
+| `give`       | Player gives an item to mob |
+| `greet`      | Player enters mob's room (mob can see them) |
+| `grall`      | Player enters mob's room (any visibility) |
+| `hpcnt`      | Mob HP% drops below trigger phrase value |
+| `kill`       | Player initiates combat with mob |
+| `random`     | Random chance each tick (trigger phrase = percentage) |
+| `speech`     | Player says text matching trigger phrase |
+| `exit`       | Player leaves mob's room (specific direction) |
+| `exall`      | Player leaves mob's room (any direction) |
+| `delay`      | After a programmed delay |
+| `surrender`  | Mob surrenders |
+
+[PRIMESUD] deferred: mob_prog interpreter not yet implemented.
 
 ---
 

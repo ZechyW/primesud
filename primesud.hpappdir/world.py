@@ -1,18 +1,32 @@
 """Mutable world catalog and state loaded from area modules."""
 
-import area_limbo
-import area_school
-import area_midgaard
-import area_quest
 import area_chapel
+import area_grave
+import area_haon
+import area_immort
+import area_limbo
+import area_midgaard
+import area_mobfact
+import area_ofcol2
+import area_plains
+import area_quest
+import area_school
+import area_shire
 
 # List of (module_name, area_tag) -- add/remove areas here only.
 _AREA_LIST = [
-    (area_limbo, "limbo"),
-    (area_school, "mud_school"),
-    (area_midgaard, "midgaard"),
-    (area_quest, "quest"),
     (area_chapel, "chapel"),
+    (area_grave, "grave"),
+    (area_haon, "haon"),
+    (area_immort, "immort"),
+    (area_limbo, "limbo"),
+    (area_midgaard, "midgaard"),
+    (area_mobfact, "mobfact"),
+    (area_ofcol2, "ofcol2"),
+    (area_plains, "plains"),
+    (area_quest, "quest"),
+    (area_school, "mud_school"),
+    (area_shire, "shire"),
 ]
 
 # -- Static definitions (populated by init_world, constant after) -----------
@@ -50,7 +64,9 @@ def init_world():
             if _entry[0] == "M" and _entry[1] in MOB_DEFS:
                 MOB_DEFS[_entry[1]]["spec_fun"] = _entry[2]
         ITEM_DEFS.update(_mod.OBJECTS)
-        AREA_DEFS.append({"tag": _tag, "resets": _mod.RESETS})
+        _adef = {"tag": _tag, "resets": _mod.RESETS}
+        _adef.update(_mod.AREA)
+        AREA_DEFS.append(_adef)
 
     # Snapshot initial door closed/locked state for reset (cf. 1stMud reset_room door loop, db.c:1411)
     for _vnum, _room in ROOM_DEFS.items():
@@ -58,6 +74,9 @@ def init_world():
             if isinstance(_ev, dict) and _ev.get("isdoor"):
                 if _vnum not in DOOR_DEFS:
                     DOOR_DEFS[_vnum] = {}
-                DOOR_DEFS[_vnum][_d] = {"closed": bool(_ev.get("closed")), "locked": bool(_ev.get("locked"))}
+                DOOR_DEFS[_vnum][_d] = {
+                    "closed": bool(_ev.get("closed")),
+                    "locked": bool(_ev.get("locked")),
+                }
 
     _WORLD_READY = True

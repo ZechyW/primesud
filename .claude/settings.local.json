@@ -1,11 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python tools/check_ascii_py.py *)",
       "Bash(git status *)",
       "Bash(git add *)",
       "Bash(python *)",
-      "PowerShell(python tools/check_ascii_py.py)"
+      "PowerShell(python *)",
+      "Bash(awk *)",
+      "Bash(grep *)"
     ]
   }
 }
