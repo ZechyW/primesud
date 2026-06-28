@@ -201,7 +201,10 @@ def reset_mobs(mob_instances, room_state, resets, tr=None, debug=False):
             mob["inv"].append(obj)
             equip_char(mob, obj, entry[2])
         elif cmd == "G" and last_spawned:
-            mob_instances[last_mob_id]["inv"].append(create_object(entry[1]))
+            obj = create_object(entry[1])
+            if MOB_DEFS[mob_instances[last_mob_id]["tpl"]].get("shop"):
+                obj.setdefault("extra_flags", {})["inventory"] = True
+            mob_instances[last_mob_id]["inv"].append(obj)
         elif cmd in ("O", "P"):
             last_spawned = False  # breaks mob context (cf. 1stMud last=false on O)
 

@@ -18,6 +18,7 @@ from magic import do_cast
 from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
                       do_open, do_close, do_recall)
 from scan import do_scan
+from shop import do_buy, do_sell, do_list, do_value
 from system_cmds import do_save, do_quit, do_debug
 from terminal import tprint
 from training import do_train, do_practice
@@ -50,7 +51,7 @@ _CMD_TABLE = [
     # ("at",        do_at,         "dead",     False),  # #7 imm lvl 54
     ("cast",       do_cast,       "fighting", False),  # #8
     # ("auction",   do_auction,    "sleeping", False),  # #9
-    # ("buy",       do_buy,        "resting",  False),  # #10
+    ("buy",        do_buy,        "resting",  False),  # #10
     # ("channels",  do_channels,   "dead",     False),  # #11
     # ("exits",     do_exits,      "resting",  False),  # #12
     ("get",        do_get,        "resting",  False),  # #13
@@ -162,7 +163,7 @@ _CMD_TABLE = [
     # ("give",      do_give,       "resting",  False),  # #119
     # ("heal",      do_heal,       "resting",  False),  # #120
     # ("hold",      do_wear,       "resting",  False),  # #121
-    # ("list",      do_list,       "resting",  False),  # #122
+    ("list",       do_list,       "resting",  False),  # #122
     # ("lock",      do_lock,       "resting",  False),  # #123
     ("open",       do_open,       "resting",  False),  # #124
     # ("pick",      do_pick,       "resting",  False),  # #125
@@ -172,12 +173,12 @@ _CMD_TABLE = [
     ("quaff",      do_quaff,      "resting",  False),  # #129
     ("recite",     do_recite,     "resting",  False),  # #130
     ("remove",     do_remove,     "resting",  False),  # #131
-    # ("sell",      do_sell,       "resting",  False),  # #132
+    ("sell",       do_sell,       "resting",  False),  # #132
     ("take",       do_get,        "resting",  False),  # #133
     ("sacrifice",  do_sacrifice,  "resting",  False),  # #134
     ("junk",       do_sacrifice,  "resting",  False),  # #135
     ("tap",        do_sacrifice,  "resting",  False),  # #136
-    # ("value",     do_value,      "resting",  False),  # #137
+    ("value",      do_value,      "resting",  False),  # #137
     ("wear",       do_wear,       "resting",  False),  # #138
     ("zap",        do_zap,        "resting",  False),  # #139
     # ("war",       do_war,        "dead",     False),  # #140

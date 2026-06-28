@@ -64,6 +64,10 @@ def init_world():
             if _entry[0] == "M" and _entry[1] in MOB_DEFS:
                 MOB_DEFS[_entry[1]]["spec_fun"] = _entry[2]
         ITEM_DEFS.update(_mod.OBJECTS)
+        for _entry in getattr(_mod, "SHOPS", ()):
+            _keeper = _entry["keeper"]
+            if _keeper in MOB_DEFS:
+                MOB_DEFS[_keeper]["shop"] = _entry
         _adef = {"tag": _tag, "resets": _mod.RESETS}
         _adef.update(_mod.AREA)
         AREA_DEFS.append(_adef)

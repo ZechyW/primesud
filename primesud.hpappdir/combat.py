@@ -861,8 +861,9 @@ def is_safe(ch, victim):
         # [PRIMESUD] ROOM_SAFE not ported -- room_flags not on rooms yet
         # if room has "safe" flag: chprintln(ch, "Not in this room."); return True
 
-        # [PRIMESUD] shop check not ported -- no shop_data on mobs yet
-        # if victim has shop: chprintln(ch, "The shopkeeper wouldn't like that."); return True
+        if MOB_DEFS[victim["tpl"]].get("shop"):
+            chprintln(ch, "The shopkeeper wouldn't like that.")
+            return True
 
         act_f = victim.get("act_flags", {})
         if (act_f.get("train") or act_f.get("practice")
@@ -907,7 +908,8 @@ def is_safe_spell(ch, victim, area):
         return False
     if victim["is_npc"]:
         # [PRIMESUD] ROOM_SAFE not ported -- room_flags not on rooms yet
-        # [PRIMESUD] shop check not ported -- no shop_data on mobs yet
+        if MOB_DEFS[victim["tpl"]].get("shop"):
+            return True
         act = victim.get("act_flags", {})
         if (act.get("train") or act.get("practice")
                 or act.get("healer") or act.get("changer")):
