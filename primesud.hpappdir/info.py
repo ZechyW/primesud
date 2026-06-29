@@ -2,10 +2,10 @@
 
 import world
 from actor import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
-                   get_char_room, is_good, is_evil)
+                   get_char_room, mob_condition, is_good, is_evil)
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from colors import color_len, upper, draw_line
-from combat import _get_thac0, mob_condition
+from combat import _get_thac0
 from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS,
                     MAX_MORTAL_LEVEL, MAX_LEVEL, DIR_ALIASES,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC,

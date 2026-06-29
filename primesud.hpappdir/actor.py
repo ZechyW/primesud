@@ -805,3 +805,27 @@ def get_char_room(fragment, inst_ids, mob_instances):
             return mob_id
     return None
 
+
+def mob_condition(inst, tpl):
+    """Return a condition description string for a mob. [PRIMESUD]
+
+    Args:
+        inst (dict): Mob instance state dict.
+        tpl (dict): Mob template dict.
+
+    Returns:
+        str: Human-readable condition sentence.
+    """
+    _hm = inst.get("max_hit", 1)
+    pct = inst["hit"] * 100 // _hm if _hm > 0 else -1
+    name = tpl["short_descr"]
+    if pct >= 100: wound = name + " is in excellent condition."
+    elif pct >= 90:  wound = name + " has a few scratches."
+    elif pct >= 75:  wound = name + " has some small wounds and bruises."
+    elif pct >= 50:  wound = name + " has quite a few wounds."
+    elif pct >= 30:  wound = name + " has some big nasty wounds and scratches."
+    elif pct >= 15:  wound = name + " looks pretty hurt."
+    elif pct >= 0:   wound = name + " is in awful condition."
+    else:            wound = name + " is bleeding to death."
+    return upper(wound)
+
