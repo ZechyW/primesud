@@ -395,20 +395,3 @@ def get_obj_weight(obj):
             w += get_obj_weight(c)
     return w
 
-
-def get_char_room(fragment, inst_ids, mob_instances):
-    """Find the first mob in inst_ids whose keywords match fragment (cf. 1stMud get_char_room in handler.c).
-
-    Args:
-        fragment (str): Player-typed name fragment.
-        inst_ids (list): Ordered list of mob instance IDs to search.
-        mob_instances (dict): Mob instance mapping mob ID -> mob instance dict.
-
-    Returns:
-        int or None: First matching mob instance ID, or None if not found.
-    """
-    for mob_id in inst_ids:
-        if is_name(fragment, MOB_DEFS[mob_instances[mob_id]["tpl"]].get("keywords", "")):
-            return mob_id
-    return None
-

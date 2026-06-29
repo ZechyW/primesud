@@ -1,9 +1,8 @@
 """Communication commands: say, tell (cf. 1stMud do_say/do_tell in act_comm.c)."""
 
 import world
-from actor import (act, chprintln, chprintlnf, is_name,
+from actor import (act, chprintln, chprintlnf, is_name, get_char_room,
                    TO_CHAR, TO_ROOM)
-from item import get_char_room
 
 
 # -- say_verb (cf. 1stMud say_verb in act_comm.c) ----------------------------

@@ -2,8 +2,8 @@
 
 import world
 from actor import (is_name, is_affected, affect_to_char, affect_strip, is_awake,
-                   can_see_room, act, chprintln, TO_CHAR, TO_ROOM, TO_VICT,
-                   TO_NOTVICT, TO_ALL,
+                   can_see_room, act, chprintln, get_char_room,
+                   TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
                    is_good, is_evil, is_neutral)
 from area_limbo import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
                         I_DISC_DISK_FLOATING_BLACK)
@@ -15,7 +15,7 @@ from config import (POS_ORDER, DAM_ACID, DAM_BASH, DAM_COLD,
                     DAM_HARM, DAM_HOLY, DAM_LIGHT, DAM_LIGHTNING,
                     DAM_NEGATIVE, DAM_PIERCE, DAM_POISON, DAM_SLASH)
 from config import R_RECALL, MAX_MORTAL_LEVEL
-from item import (get_char_room, get_obj_list, obj_vnum, item_spell_level,
+from item import (get_obj_list, obj_vnum, item_spell_level,
                   item_spells, item_spell_name, item_extra_flags,
                   item_current_charges, item_affect_list,
                   item_affect_find, item_affect_remove, item_affect_to_obj,

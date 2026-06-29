@@ -3,7 +3,8 @@
 import world
 from actor import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
                    is_awake, can_see, affect_to_char, affect_remove,
-                   chprintln, chprintlnf, TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT,
+                   chprintln, chprintlnf, get_char_room,
+                   TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT,
                    is_good, is_evil, is_neutral)
 from area_limbo import (
     I_CORPSE, I_CORPSE_11,
@@ -48,7 +49,7 @@ from config import (
     XP_BASE,
     SIZE_RANK,
 )
-from item import (get_char_room, create_object, item_extra_flags,
+from item import (create_object, item_extra_flags,
                   set_item_extra_flag, get_obj_list, obj_vnum,
                   apply_money_pickup)
 from picker import pick_from

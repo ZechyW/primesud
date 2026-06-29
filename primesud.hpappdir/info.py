@@ -2,7 +2,7 @@
 
 import world
 from actor import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
-                   is_good, is_evil)
+                   get_char_room, is_good, is_evil)
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from colors import color_len, upper, draw_line
 from combat import _get_thac0, mob_condition
@@ -10,7 +10,7 @@ from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS,
                     MAX_MORTAL_LEVEL, MAX_LEVEL, DIR_ALIASES,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC,
                     WEAR_LABELS)
-from item import get_obj_list, get_obj_here, get_char_room, obj_vnum, item_extra_flags
+from item import get_obj_list, get_obj_here, obj_vnum, item_extra_flags
 from player import (PLR_AUTOMAP, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
                     PLR_AUTOSPLIT, PLR_DEFAULTS)
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
