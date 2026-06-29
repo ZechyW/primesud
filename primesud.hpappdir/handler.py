@@ -5,7 +5,7 @@ from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
                     POS_ORDER,
                     SEX_VALUES)
 from terminal import tprint
-from world import ITEM_DEFS
+from world import ITEM_DEFS, MOB_DEFS
 
 # -- Alignment helpers (cf. 1stMud IsGood/IsEvil/IsNeutral in macro.h) ----------------
 

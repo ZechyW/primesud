@@ -1,12 +1,6 @@
 """Combat rounds, damage resolution, skills, and fight state."""
 
 import world
-from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
-                   is_awake, can_see, affect_to_char, affect_remove,
-                   chprintln, chprintlnf, get_char_room,
-                   TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT,
-                   is_good, is_evil, is_neutral)
-from skill_utils import get_skill, check_improve, WaitState, DazeState
 from area_limbo import (
     I_CORPSE, I_CORPSE_11,
     I_COIN_SILVER_GCASH,
@@ -49,11 +43,18 @@ from config import (
     XP_BASE,
     SIZE_RANK,
 )
+from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
+                     is_awake, can_see, affect_to_char, affect_remove,
+                     chprintln, chprintlnf, get_char_room,
+                     TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT,
+                     is_good, is_evil, is_neutral)
 from item import (create_object, item_extra_flags,
                   set_item_extra_flag, get_obj_list, obj_vnum,
                   apply_money_pickup)
 from picker import pick_from
 from player import PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_DEFAULTS
+from races import RACE_TABLE
+from skill_utils import get_skill, check_improve, WaitState, DazeState
 from skills_table import (
     SKILL_TABLE, SKILLS, WEAPON_GSN_MAP,
     GSN_BACKSTAB, GSN_BASH, GSN_BERSERK, GSN_DIRT, GSN_DISARM,
@@ -61,7 +62,6 @@ from skills_table import (
     GSN_RESCUE, GSN_SHIELD_BLOCK, GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
     GSN_TRIP,
 )
-from races import RACE_TABLE
 from terminal import tprint
 from urandom import randint
 from util import wait
