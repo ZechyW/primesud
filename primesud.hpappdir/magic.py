@@ -8,8 +8,9 @@ from actor import (is_name, is_affected, affect_to_char, affect_strip, is_awake,
 from area_limbo import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
                         I_DISC_DISK_FLOATING_BLACK)
 from colors import upper
-from combat import (WaitState, check_improve, get_skill, is_safe, is_safe_spell,
+from combat import (is_safe, is_safe_spell,
                     multi_hit, damage, stop_fighting, update_pos)
+from skill_utils import WaitState, check_improve, get_skill
 from config import (POS_ORDER, DAM_ACID, DAM_BASH, DAM_COLD,
                     DAM_DISEASE, DAM_DROWNING, DAM_ENERGY, DAM_FIRE,
                     DAM_HARM, DAM_HOLY, DAM_LIGHT, DAM_LIGHTNING,

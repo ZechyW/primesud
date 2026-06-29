@@ -7,7 +7,8 @@ from area_school import (I_BANNER_WAR_MERC,
                          I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,
                          I_SPEAR_SUB_MERC, I_AXE_SUB_MERC, I_FLAIL_SUB_MERC,
                          I_WHIP_SUB_MERC, I_GLAIVE_SUB_MERC)
-from combat import _get_weapon_skill, WaitState, check_improve, get_skill
+from combat import _get_weapon_skill
+from skill_utils import WaitState, check_improve, get_skill
 from config import STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS
 from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   item_extra_flags, item_wear_flags, apply_money_pickup,

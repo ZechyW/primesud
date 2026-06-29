@@ -4,7 +4,7 @@ import world
 from world import ITEM_DEFS, MOB_DEFS
 from actor import (act, chprintln, chprintlnf, is_name, can_see, can_see_obj,
                    TO_CHAR, TO_VICT, TO_ROOM)
-from combat import get_skill, check_improve
+from skill_utils import get_skill, check_improve
 from comm import do_function, do_say
 from game_time import time_info
 from item import (get_obj_list, obj_vnum, create_object, item_extra_flags,
