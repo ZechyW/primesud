@@ -53,8 +53,8 @@ from item import (create_object, item_extra_flags,
                   set_item_extra_flag, get_obj_list, obj_vnum,
                   apply_money_pickup)
 from picker import pick_from
-from player import (save_world, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
-                    PLR_DEFAULTS)
+from game_state import save_world
+from player import PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_DEFAULTS
 from skills_table import (
     SKILL_TABLE, SKILLS, WEAPON_GSN_MAP,
     GSN_BACKSTAB, GSN_BASH, GSN_BERSERK, GSN_DIRT, GSN_DISARM,

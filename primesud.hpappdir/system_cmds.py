@@ -1,7 +1,7 @@
 """System command handlers for save and quit."""
 
 from actor import chprintln
-from player import save_world
+from game_state import save_world
 
 
 def do_save(player, args):
