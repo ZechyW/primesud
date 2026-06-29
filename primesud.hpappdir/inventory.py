@@ -2,11 +2,11 @@
 
 import world
 from handler import get_curr_stat, is_name, equip_char, unequip_char
-from area_school import (I_BANNER_WAR_MERC,
-                         I_MACE_SUB_MERC, I_DAGGER_SUB_MERC, I_SWORD_SUB_MERC,
-                         I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,
-                         I_SPEAR_SUB_MERC, I_AXE_SUB_MERC, I_FLAIL_SUB_MERC,
-                         I_WHIP_SUB_MERC, I_GLAIVE_SUB_MERC)
+from world import (I_BANNER_WAR_MERC,
+                   I_MACE_SUB_MERC, I_DAGGER_SUB_MERC, I_SWORD_SUB_MERC,
+                   I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,
+                   I_SPEAR_SUB_MERC, I_AXE_SUB_MERC, I_FLAIL_SUB_MERC,
+                   I_WHIP_SUB_MERC, I_GLAIVE_SUB_MERC)
 from combat import _get_weapon_skill
 from skill_utils import WaitState, check_improve, get_skill
 from config import STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS

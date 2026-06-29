@@ -17,7 +17,7 @@ def do_quit(player, args):
 def do_debug(player, args):
     """Debug playtesting helper: inject test items with patched stats. [PRIMESUD]"""
     from item import create_object
-    from area_school import I_DIPLOMA
+    from world import I_DIPLOMA
     obj = create_object(I_DIPLOMA)
     obj["affect_list"] = [{"location": "ac", "modifier": -1100}]
     player["inv"].append(obj)

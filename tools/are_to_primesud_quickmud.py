@@ -2,7 +2,7 @@
 """Convert a QuickMUD/ROM 2.4 .are file to a PrimeSUD Python area module.
 
 Usage:
-    python are_to_primesud_quickmud.py school.are area_school.py
+    python are_to_primesud_quickmud.py school.are area_school.dat
 
 QuickMUD uses standard ROM 2.4 area format which differs from 1stMud:
   - Flag encoding: letter-based (A=bit0, B=bit1 ... Z=bit25, a=bit26 ...)

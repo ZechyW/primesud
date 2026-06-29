@@ -2,7 +2,7 @@
 """Convert a 1stMud 4.5.x .are file to a PrimeSUD Python area module.
 
 Usage:
-    python are_to_primesud.py school.are area_school.py
+    python are_to_primesud.py school.are area_school.dat
 
 Sections handled:   #AREADATA  #ROOMS  #MOBILES  #OBJECTS  #RESETS  #SPECIALS
 Sections skipped:   #SHOPS  #MOBPROGS  #OBJPROGS  #ROOMPROGS

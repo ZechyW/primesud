@@ -101,7 +101,7 @@ def patch_area(area_name, filepath):
 if __name__ == "__main__":
     base = Path(__file__).resolve().parent.parent / "primesud.hpappdir"
     for area_name in sorted(CROSS_AREA_EXITS):
-        filepath = base / f"area_{area_name}.py"
+        filepath = base / f"area_{area_name}.dat"
         if filepath.exists():
             print(f"==> {area_name}", file=sys.stderr)
             patch_area(area_name, filepath)

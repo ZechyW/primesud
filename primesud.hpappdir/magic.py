@@ -5,8 +5,8 @@ from handler import (is_name, is_affected, affect_to_char, affect_strip, is_awak
                    can_see_room, act, chprintln, get_char_room,
                    TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
                    is_good, is_evil, is_neutral)
-from area_limbo import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
-                        I_DISC_DISK_FLOATING_BLACK)
+from world import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
+                   I_DISC_DISK_FLOATING_BLACK)
 from colors import upper
 from combat import (is_safe, is_safe_spell,
                     multi_hit, damage, stop_fighting, update_pos)

@@ -1,7 +1,7 @@
 """Combat rounds, damage resolution, skills, and fight state."""
 
 import world
-from area_limbo import (
+from world import (
     I_CORPSE, I_CORPSE_11,
     I_COIN_SILVER_GCASH,
     I_COIN_GOLD_GCASH,
