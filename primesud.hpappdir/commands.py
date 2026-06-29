@@ -17,7 +17,7 @@ from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
 from macros import do_macro
 from magic import do_cast
 from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
-                      do_open, do_close, do_recall)
+                      do_open, do_close, do_recall, do_run)
 from scan import do_scan
 from shop import do_buy, do_sell, do_list, do_value, do_appraise
 from system_cmds import do_save, do_quit, do_debug
@@ -327,7 +327,7 @@ _CMD_TABLE = [
     # ("spellup",   do_spellup,    "dead",     False),  # #281 imm lvl 54
     # ("webpass",   do_webpass,    "dead",     False),  # #282 imm lvl 54
     # ("strkey",    do_strkey,     "dead",     False),  # #283
-    # ("run",       do_run,        "standing", False),  # #284
+    ("run",        do_run,        "standing", False),  # #284
     # ("pload",     do_pload,      "dead",     False),  # #285 imm lvl 55
     # ("punload",   do_punload,    "dead",     False),  # #286 imm lvl 55
     # ("buddy",     do_buddy,      "sleeping", False),  # #287

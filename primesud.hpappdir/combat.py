@@ -1733,6 +1733,7 @@ def raw_kill(victim, killer):
         killer (dict or None): Character that landed the killing blow, or None.
     """
     stop_fighting(victim, both=True)
+    victim.pop("run_buf", None)  # [PRIMESUD] 1stMud omits this (latent bug: run_buf survives death)
     _death_cry(victim)
     make_corpse(victim)
 

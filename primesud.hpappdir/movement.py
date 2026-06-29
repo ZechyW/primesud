@@ -7,11 +7,12 @@ from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
                     MOVEMENT_LOSS,
                     SECT_AIR, SECT_WATER_NOSWIM,
                     R_RECALL, PULSE_PER_SECOND)
-from info import do_look
+from info import do_look, find_area_paths
 from picker import pick_from
 from skills_table import GSN_RECALL
 from terminal import tprint
 from urandom import randint
+import world
 from world import ROOM_DEFS
 
 
@@ -44,6 +45,10 @@ def move_char(player, direction):
 
     Position gate handled by command table (do_north etc. have
     min_pos = "standing").
+
+    Args:
+        player (dict): Player state dict.
+        direction (str): Single-char direction key (n/e/s/w/u/d).
     """
     # -- p_exit_trigger (mob/obj/room progs) not ported --
 
@@ -126,41 +131,64 @@ def move_char(player, direction):
 
     # 1stMud: do_function(ch, &do_look, "auto") -- "auto" triggers brief mode;
     # PrimeSUD has no brief mode, so empty args shows full room.
-    do_look(player, [])
+    # [PRIMESUD] During speedwalk, intermediate rooms get brief one-liners.
+    run_buf = player.get("run_buf")
+    if run_buf and any(a == "move" for a, _ in run_buf):
+        _brief_room_line(player)
+    else:
+        do_look(player, [])
 
 
 # -- Direction command handlers (cf. 1stMud do_north..do_down in act_move.c) --
 # Each registered in command table with min_pos = "standing".
-# 1stMud also tracks was_room for run-buffer; not applicable to PrimeSUD.
+# was_room check cancels run_buf on blocked movement (cf. 1stMud free_runbuf).
 
 def do_north(player, args):
     """Walk north (cf. 1stMud do_north in act_move.c)."""
+    was_room = player["room"]
     move_char(player, "n")
+    if was_room == player["room"]:
+        free_runbuf(player)
 
 
 def do_east(player, args):
     """Walk east (cf. 1stMud do_east in act_move.c)."""
+    was_room = player["room"]
     move_char(player, "e")
+    if was_room == player["room"]:
+        free_runbuf(player)
 
 
 def do_south(player, args):
     """Walk south (cf. 1stMud do_south in act_move.c)."""
+    was_room = player["room"]
     move_char(player, "s")
+    if was_room == player["room"]:
+        free_runbuf(player)
 
 
 def do_west(player, args):
     """Walk west (cf. 1stMud do_west in act_move.c)."""
+    was_room = player["room"]
     move_char(player, "w")
+    if was_room == player["room"]:
+        free_runbuf(player)
 
 
 def do_up(player, args):
     """Walk up (cf. 1stMud do_up in act_move.c)."""
+    was_room = player["room"]
     move_char(player, "u")
+    if was_room == player["room"]:
+        free_runbuf(player)
 
 
 def do_down(player, args):
     """Walk down (cf. 1stMud do_down in act_move.c)."""
+    was_room = player["room"]
     move_char(player, "d")
+    if was_room == player["room"]:
+        free_runbuf(player)
 
 
 def do_open(player, args):
@@ -292,3 +320,178 @@ def do_recall(player, args):
     perform_recall(player, location, "recall")
 
 
+_RUN_DIRS = frozenset(("n", "e", "s", "w", "u", "d"))
+
+
+def _parse_run_buf(buf):
+    """Parse a speedwalk string into a list of (action, direction) tuples.
+
+    Format matches 1stMud run_buf: digits are repeat counts, direction
+    chars (n/e/s/w/u/d) are steps, 'o' prefix means open door before
+    moving (cf. 1stMud read_from_buffer in comm.c).
+
+    Returns:
+        list: [(action, dir), ...] where action is "move" or "open".
+              None on parse error.
+    """
+    steps = []
+    i = 0
+    while i < len(buf):
+        count = 0
+        while i < len(buf) and buf[i].isdigit():
+            count = count * 10 + int(buf[i])
+            i += 1
+        if i >= len(buf):
+            break
+        ch = buf[i]
+        i += 1
+        if ch == "o":
+            if i >= len(buf) or buf[i] not in _RUN_DIRS:
+                return None
+            steps.append(("open", buf[i]))
+            i += 1
+        elif ch in _RUN_DIRS:
+            if count < 1:
+                count = 1
+            for _ in range(count):
+                steps.append(("move", ch))
+        else:
+            return None
+    return steps
+
+
+def _brief_room_line(player):
+    """One-line room summary for speedwalk intermediate steps. [PRIMESUD]"""
+    room = ROOM_DEFS[player["room"]]
+    exits = " ".join(
+        EXIT_NAMES.get(d, d) for d in EXIT_ORDER
+        if d in room.get("exits", {})
+        and not (isinstance(room["exits"][d], dict)
+                 and room["exits"][d].get("closed"))
+    )
+    exit_str = "[" + exits + "]" if exits else "[none]"
+    tprint("{Y" + room["name"] + "{x {g" + exit_str + "{x")
+
+
+def free_runbuf(player):
+    """Clear player's run buffer (cf. 1stMud free_runbuf in comm.c)."""
+    player.pop("run_buf", None)
+
+
+_DIR_CMDS = {
+    "n": do_north, "e": do_east, "s": do_south,
+    "w": do_west, "u": do_up, "d": do_down,
+}
+
+
+def run_buf_step(player):
+    """Consume one step from player's run_buf (cf. 1stMud read_from_buffer in comm.c).
+
+    Called once per pulse from game_loop when wait==0. Delegates move
+    steps to direction commands (do_north etc.) for SSOT -- any future
+    mechanics added there apply during runs too. Blocked-movement
+    cancellation handled by direction commands via free_runbuf
+    (cf. 1stMud do_north in act_move.c). Brief vs full room display
+    handled by move_char checking run_buf state.
+
+    Returns:
+        bool: True if a step was consumed.
+    """
+    run_buf = player.get("run_buf")
+    if not run_buf:
+        return False
+
+    # Combat cancels run (cf. 1stMud read_from_buffer POS_FIGHTING check).
+    # [PRIMESUD] 1stMud cancels silently; we notify the player.
+    if player.get("fighting") is not None:
+        chprintln(player, "You stop running -- you are fighting!")
+        free_runbuf(player)
+        return False
+
+    action, d = run_buf.pop(0)
+
+    if action == "open":
+        do_open(player, [EXIT_NAMES[d]])
+    else:
+        _DIR_CMDS[d](player, [])
+
+    if not player.get("run_buf"):
+        free_runbuf(player)
+
+    return True
+
+
+def do_run(player, args):
+    """Parse speedwalk and store in run_buf for tick-based execution
+    (cf. 1stMud do_run in act_move.c).
+
+    With args: parse speedwalk string (e.g. '3s2en', 'son2e').
+    Without args: [PRIMESUD] present picker of reachable areas from BFS
+    pathfinding, then store selected path.
+
+    Steps are consumed one-per-pulse by run_buf_step() in game_loop
+    (cf. 1stMud read_from_buffer consuming run_buf in comm.c).
+    move_char WaitState(1) means each move takes two pulses (one to
+    move, one recovery). Movement-point cost applies per step so the
+    player can exhaust mid-run.
+
+    Intermediate rooms show brief one-liners. [PRIMESUD] Final
+    destination gets full do_look. Combat or blocked movement cancels
+    the run (cf. 1stMud free_runbuf). Keyboard input (Enter) also
+    cancels. [PRIMESUD]
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Parsed command arguments (speedwalk string tokens).
+    """
+    # [PRIMESUD] 1stMud overwrites run_buf; we guard instead.
+    if player.get("run_buf"):
+        chprintln(player, "You are already running!")
+        return
+
+    if not args:
+        # [PRIMESUD] No-args picker: show reachable areas
+        # (1stMud prints "You run in place!" on no args)
+        paths = find_area_paths(player)
+        source_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
+        sorted_areas = sorted(world.AREA_DEFS,
+                              key=lambda a: a.get("name", "").lower())
+        candidates = []
+        for area in sorted_areas:
+            tag = area["tag"]
+            if tag == source_area:
+                continue
+            path = paths.get(tag)
+            if not path:
+                continue
+            candidates.append((area.get("name", tag), path))
+        if not candidates:
+            chprintln(player, "No accessible areas from here.")
+            return
+        labels = [str(c[0]) + " {D(" + c[1] + "){x" for c in candidates]
+        idx = pick_from("Run to which area?", labels)
+        if idx < 0:
+            return
+        buf = candidates[idx][1]
+    else:
+        buf = "".join(args)
+
+    # Validate (cf. 1stMud do_run validation in act_move.c)
+    has_dir = False
+    for ch in buf:
+        if ch in _RUN_DIRS:
+            has_dir = True
+        elif ch != "o" and not ch.isdigit():
+            chprintln(player, "Invalid direction!")
+            return
+    if not has_dir:
+        chprintln(player, "No directions specified!")
+        return
+
+    steps = _parse_run_buf(buf)
+    if steps is None:
+        chprintln(player, "Invalid direction!")
+        return
+
+    player["run_buf"] = steps
+    chprintln(player, "You start running...")

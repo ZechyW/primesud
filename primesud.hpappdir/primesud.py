@@ -26,6 +26,7 @@ from player import show_prompt
 from update import update_handler, UPD_VIOLENCE, UPD_TICK
 from commands import interpret
 from info import do_look
+from movement import run_buf_step, free_runbuf
 from macros import _MACRO_SUBST
 import terminal
 from config import SAVE_VAR
@@ -134,7 +135,13 @@ class Game:
                 if char == "\n":
                     self._hist_pos   = None
                     self._hist_saved = ""
-                    if player.get("wait", 0) > 0:
+                    if player.get("run_buf"):
+                        # [PRIMESUD] keyboard input cancels run
+                        free_runbuf(player)
+                        tr.print("You stop running.")
+                        self.input_buf = ""
+                        show_prompt(player, self.input_buf)
+                    elif player.get("wait", 0) > 0:
                         # cf. 1stMud comm.c: wait > 0 queues command
                         if self.input_buf:
                             self._pending_cmd = self.input_buf
@@ -186,7 +193,12 @@ class Game:
                             self._hist_saved = ""
                         show_prompt(player, self.input_buf)
                 elif auto_submit is True:  # [PRIMESUD] hardware key -- immediate submit
-                    if player.get("wait", 0) > 0:
+                    if player.get("run_buf"):
+                        # [PRIMESUD] keyboard input cancels run
+                        free_runbuf(player)
+                        tr.print("You stop running.")
+                        show_prompt(player, self.input_buf)
+                    elif player.get("wait", 0) > 0:
                         self._pending_cmd = char
                         tr.print("{D[Recovering... command queued]{x")  # [PRIMESUD]
                     else:
@@ -214,7 +226,11 @@ class Game:
                 # Per-pulse player timer decrement (cf. 1stMud comm.c:865-870)
                 if player.get("wait", 0) > 0:
                     player["wait"] -= 1
-                    if player["wait"] == 0 and self._pending_cmd is not None:
+                    if player["wait"] == 0 \
+                            and self._pending_cmd is not None \
+                            and not player.get("run_buf"):
+                        # run_buf takes priority over pending_cmd
+                        # (cf. 1stMud read_from_buffer: run_buf before inbuf)
                         _t0 = ticks()
                         _cmd = self._pending_cmd
                         self._pending_cmd = None
@@ -230,6 +246,13 @@ class Game:
                         if _quit:
                             break
                         show_prompt(player, self.input_buf)
+                # Run buffer consumption (cf. 1stMud read_from_buffer in comm.c).
+                # elif: pulse where wait transitions >0 to 0 is recovery only --
+                # run_buf consumed next pulse (matches 1stMud tick skip on wait>0).
+                elif player.get("run_buf"):
+                    run_buf_step(player)
+                    show_prompt(player, self.input_buf)
+
                 if player.get("daze", 0) > 0:
                     player["daze"] -= 1
 

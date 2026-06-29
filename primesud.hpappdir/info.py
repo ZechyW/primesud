@@ -781,7 +781,7 @@ def _compress_path(parent, source, target):
     return "".join(parts)
 
 
-def _find_area_paths(ch):
+def find_area_paths(ch):
     """Single BFS from player room to all areas (cf. 1stMud path_to_area in act_enter.c).
 
     Returns:
@@ -859,7 +859,7 @@ def do_areas(player, args):
     tprint("")
     tprint("{W" + _center_fill("[ {RAREAS ON PRIMESUD{W ]") + "{x")
 
-    paths = _find_area_paths(player)
+    paths = find_area_paths(player)
     source_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
 
     sorted_areas = sorted(world.AREA_DEFS, key=lambda a: a.get("name", "").lower())
