@@ -41,6 +41,7 @@ _WORLD_READY = False
 rooms = {}
 chars = {}
 areas = []
+save_pending = False
 
 
 def init_world():

@@ -53,7 +53,6 @@ from item import (create_object, item_extra_flags,
                   set_item_extra_flag, get_obj_list, obj_vnum,
                   apply_money_pickup)
 from picker import pick_from
-from game_state import save_world
 from player import PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_DEFAULTS
 from skills_table import (
     SKILL_TABLE, SKILLS, WEAPON_GSN_MAP,
@@ -1741,7 +1740,7 @@ def raw_kill(victim, killer):
         # 1stMud: extract_char(victim, true) -- remove NPC from world
         _extract_char(victim, pull=True)
         # [PRIMESUD] save after every kill (1stmud only saves on level up)
-        save_world(quiet=True)
+        world.save_pending = True
         return
 
     # 1stMud: extract_char(victim, false) -- teleport PC to altar
@@ -1773,7 +1772,7 @@ def raw_kill(victim, killer):
     do_look(victim, [])
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
-    save_world(quiet=True)
+    world.save_pending = True
 
 
 def _extract_char(ch, pull=True):

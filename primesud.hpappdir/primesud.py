@@ -251,6 +251,10 @@ class Game:
                         save_game(self, quiet=False)
                         tick_count = 0
 
+                if world.save_pending:
+                    save_game(self, quiet=True)
+                    world.save_pending = False
+
             wait_ms(POLL_MS)
 
 class PrimeSud:
