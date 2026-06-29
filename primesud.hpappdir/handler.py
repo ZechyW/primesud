@@ -1,4 +1,4 @@
-"""Shared actor stat, affect, equipment, and name-match helpers."""
+"""Character state, affects, equipment, visibility, and name-match helpers (cf. 1stMud handler.c)."""
 
 from colors import upper
 from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,

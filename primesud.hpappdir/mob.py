@@ -6,7 +6,7 @@ from config import EXIT_NAMES, SIZE_RANK
 import world
 from world import ROOM_DEFS, MOB_DEFS, AREA_DEFS, DOOR_DEFS
 from races import RACE_TABLE
-from actor import equip_char, act, _char_base, is_awake, TO_ROOM, can_see
+from handler import equip_char, act, _char_base, is_awake, TO_ROOM, can_see
 from item import create_object
 from special import SPEC_TABLE
 

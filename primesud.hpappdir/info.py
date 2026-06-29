@@ -1,7 +1,7 @@
 """Information and room-view command handlers."""
 
 import world
-from actor import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
+from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
                    get_char_room, mob_condition, is_good, is_evil)
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from colors import color_len, upper, draw_line

@@ -1,6 +1,6 @@
 """Movement, doors, and recall command handlers."""
 
-from actor import can_see_room, chprintln
+from handler import can_see_room, chprintln
 from combat import stop_fighting
 from skill_utils import WaitState, check_improve
 from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,

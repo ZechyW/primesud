@@ -21,7 +21,7 @@ from config import (
 from util import free_mem, gc_collect
 import world
 from world import MOB_DEFS, init_world
-from actor import mob_condition
+from handler import mob_condition
 from player import show_prompt
 from update import update_handler, UPD_VIOLENCE, UPD_TICK
 from commands import interpret

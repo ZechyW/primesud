@@ -1,7 +1,7 @@
 """Magic command handling and spell dispatch (cf. 1stMud magic.c)."""
 
 import world
-from actor import (is_name, is_affected, affect_to_char, affect_strip, is_awake,
+from handler import (is_name, is_affected, affect_to_char, affect_strip, is_awake,
                    can_see_room, act, chprintln, get_char_room,
                    TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
                    is_good, is_evil, is_neutral)

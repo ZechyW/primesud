@@ -71,7 +71,7 @@ def create_char():
 
 
 
-from actor import (get_curr_stat, affect_remove, affect_modify, _char_base,
+from handler import (get_curr_stat, affect_remove, affect_modify, _char_base,
                    _apply_item_modifiers, _item_armor_runtime)
 from world import ITEM_DEFS
 

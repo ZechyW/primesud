@@ -2,7 +2,7 @@
 
 from skills_table import SKILL_TABLE, SKILLS
 from config import MAX_MORTAL_LEVEL, INT_APP_LEARN
-from actor import get_curr_stat
+from handler import get_curr_stat
 from terminal import tprint
 from urandom import randint
 

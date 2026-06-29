@@ -1,7 +1,7 @@
 """Communication commands: say, tell (cf. 1stMud do_say/do_tell in act_comm.c)."""
 
 import world
-from actor import (act, chprintln, chprintlnf, is_name, get_char_room,
+from handler import (act, chprintln, chprintlnf, is_name, get_char_room,
                    TO_CHAR, TO_ROOM)
 
 

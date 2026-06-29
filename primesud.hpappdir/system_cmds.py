@@ -1,6 +1,6 @@
 """System command handlers for save and quit."""
 
-from actor import chprintln
+from handler import chprintln
 from game_state import save_world
 
 

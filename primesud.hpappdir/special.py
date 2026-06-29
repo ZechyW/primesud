@@ -6,7 +6,7 @@ Signature: spec_fun(ch) -> bool, matching 1stMud Spec_Fun macro.
 from urandom import randint
 
 import world
-from actor import act, is_awake, can_see, TO_ROOM
+from handler import act, is_awake, can_see, TO_ROOM
 
 
 def _spec_find_player(ch):

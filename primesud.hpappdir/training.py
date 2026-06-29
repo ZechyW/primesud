@@ -1,7 +1,7 @@
 """Training and practice command handlers."""
 
 import world
-from actor import (get_curr_stat, act, chprintln, chprintlnf,
+from handler import (get_curr_stat, act, chprintln, chprintlnf,
                    TO_CHAR, TO_ROOM)
 from config import INT_APP_LEARN, MAX_STATS, SKILL_ADEPT
 from info import print_practice_table

@@ -2,7 +2,7 @@
 
 import world
 from world import ITEM_DEFS, MOB_DEFS
-from actor import (act, chprintln, chprintlnf, is_name, can_see, can_see_obj,
+from handler import (act, chprintln, chprintlnf, is_name, can_see, can_see_obj,
                    TO_CHAR, TO_VICT, TO_ROOM)
 from skill_utils import get_skill, check_improve
 from comm import do_function, do_say

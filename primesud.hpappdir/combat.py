@@ -1,7 +1,7 @@
 """Combat rounds, damage resolution, skills, and fight state."""
 
 import world
-from actor import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
+from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
                    is_awake, can_see, affect_to_char, affect_remove,
                    chprintln, chprintlnf, get_char_room,
                    TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT,

@@ -1,7 +1,7 @@
 """Inventory, equipment, item-use, and starter-outfit commands."""
 
 import world
-from actor import get_curr_stat, is_name, equip_char, unequip_char
+from handler import get_curr_stat, is_name, equip_char, unequip_char
 from area_school import (I_BANNER_WAR_MERC,
                          I_MACE_SUB_MERC, I_DAGGER_SUB_MERC, I_SWORD_SUB_MERC,
                          I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,
