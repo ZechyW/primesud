@@ -198,6 +198,8 @@ def reset_mobs(mob_instances, room_state, resets, tr=None, debug=False):
         elif cmd == "E" and last_spawned:
             mob = mob_instances[last_mob_id]
             obj = create_object(entry[1])
+            if MOB_DEFS[mob["tpl"]].get("shop"):
+                obj.setdefault("extra_flags", {})["inventory"] = True
             mob["inv"].append(obj)
             equip_char(mob, obj, entry[2])
         elif cmd == "G" and last_spawned:

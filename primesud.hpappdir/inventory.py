@@ -10,7 +10,8 @@ from area_school import (I_BANNER_WAR_MERC,
 from combat import _get_weapon_skill, WaitState, check_improve, get_skill
 from config import STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS
 from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
-                  item_extra_flags, item_wear_flags, apply_money_pickup)
+                  item_extra_flags, item_wear_flags, apply_money_pickup,
+                  can_drop_obj, can_carry_n)
 from magic import cast_item_spells, validate_item_spell_payload
 from picker import pick_from
 from skills_table import GSN_SCROLLS, GSN_STAVES, GSN_WANDS
@@ -25,6 +26,7 @@ _CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
 
 
 def _loot_container_picker(player, container):
+    """Present picker UI to loot items from a container. [PRIMESUD]"""
     contents = container.get("contents", [])
     if not contents:
         tprint("It is empty.")
@@ -55,6 +57,7 @@ def _loot_container_picker(player, container):
 
 
 def do_get(player, args):
+    """Pick up items from the room or loot containers (cf. 1stMud `do_get` in act_obj.c)."""
     rs = world.rooms[player["room"]]
     if not args:
         loose = [obj for obj in reversed(rs["items"])
@@ -173,6 +176,7 @@ def do_get(player, args):
 
 
 def do_drop(player, args):
+    """Drop items from inventory onto the ground (cf. 1stMud `do_drop` in act_obj.c)."""
     if not args:
         if not player["inv"]:
             tprint("You are not carrying anything.")
@@ -182,6 +186,9 @@ def do_drop(player, args):
         if idx < 0:
             return
         obj = player["inv"][idx]
+        if not can_drop_obj(player, obj):
+            tprint("You can't let go of it.")
+            return
         tpl = ITEM_DEFS[obj["vnum"]]
         player["inv"].remove(obj)
         world.rooms[player["room"]]["items"].append(obj)
@@ -199,6 +206,8 @@ def do_drop(player, args):
             tpl = ITEM_DEFS[obj["vnum"]]
             if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
                 continue
+            if not can_drop_obj(player, obj):
+                continue
             found = True
             player["inv"].remove(obj)
             world.rooms[player["room"]]["items"].append(obj)
@@ -215,6 +224,9 @@ def do_drop(player, args):
     obj = get_obj_list(arg, player["inv"], ITEM_DEFS)
     if obj is None:
         tprint("You do not have that item.")
+        return
+    if not can_drop_obj(player, obj):
+        tprint("You can't let go of it.")
         return
     tpl = ITEM_DEFS[obj["vnum"]]
     player["inv"].remove(obj)
@@ -282,7 +294,8 @@ def _obj_flags(tpl):
 
 
 def do_inventory(player, args):
-    max_carry = min(37, 17 + player["level"])
+    """Display carried inventory with item counts (cf. 1stMud `do_inventory` in act_info.c)."""
+    max_carry = can_carry_n(player)
     tprint("{YYou are carrying {W%d/%d{Y items:{x" % (len(player["inv"]), max_carry))
     if not player["inv"]:
         return
@@ -614,6 +627,7 @@ def do_eat(player, args):
 
 
 def _find_here_char_or_obj(player, target_name):
+    """Find a mob or object in the current room by name. [PRIMESUD]"""
     for mob_id in world.rooms[player["room"]]["mobs"]:
         mob = world.chars[mob_id]
         if is_name(target_name, MOB_DEFS[mob["tpl"]].get("keywords", "")):
@@ -623,6 +637,7 @@ def _find_here_char_or_obj(player, target_name):
 
 
 def _destroy_equipped(player, slot):
+    """Remove and discard an equipped item from a slot. [PRIMESUD]"""
     if player["equip"].get(slot) is None:
         return
     unequip_char(player, slot)
@@ -817,7 +832,7 @@ def do_outfit(player, args):
 
 
 def _sacrifice_one(player, obj, rs):
-    """Sacrifice a single room item for silver (inner helper for do_sacrifice).
+    """Sacrifice a single room item for silver (inner helper for do_sacrifice). [PRIMESUD]
 
     Args:
         player (dict): Player state dict.

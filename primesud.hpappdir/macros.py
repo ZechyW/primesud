@@ -28,7 +28,7 @@ del _fns
 
 
 def _macro_cell(key, label=None):
-    """Return padded display lines for one cell; key=None -> blank."""
+    """Return padded display lines for one cell; key=None -> blank. [PRIMESUD]"""
     def pad(s):
         return s + " " * (_CELL_W - len(s))
     if key is None:
@@ -51,7 +51,7 @@ def _macro_cell(key, label=None):
 
 
 def _macro_row(entries):
-    """Render one 3-cell row; each entry is (key, label) or None for blank."""
+    """Render one 3-cell row; each entry is (key, label) or None for blank. [PRIMESUD]"""
     cells = [_macro_cell(*(e if e is not None else (None, None))) for e in entries]
     height = max(len(c) for c in cells)
     for c in cells:
@@ -67,7 +67,8 @@ def _macro_row(entries):
             for i in range(height)]
 
 
-def do_macro(player, args):  # [PRIMESUD]
+def do_macro(player, args):
+    """Display or set function-key and digit-key macros. [PRIMESUD]"""
     if not args:
         next_sep = _MACRO_SEP
         for row in _MACRO_TABLE:

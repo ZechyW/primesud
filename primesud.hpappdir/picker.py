@@ -7,11 +7,13 @@ _MAX_OPTS = 10
 
 
 def _cancel():
+    """Print cancellation message and return sentinel. [PRIMESUD]"""
     tr.print("Cancelled.")
     return -1
 
 
 def _read_key():
+    """Block until a keypress is available and return the character. [PRIMESUD]"""
     while True:
         result = tr.poll_char()
         if result is not None:
@@ -26,6 +28,7 @@ def _read_key():
 
 
 def _force_numeric_keys():
+    """Reset keyboard state to unshifted numeric entry mode. [PRIMESUD]"""
     tr.resync_keyboard()
     tr.alpha_lock = False
     tr.shift_lock = False
@@ -38,6 +41,7 @@ def _force_numeric_keys():
 
 
 def _render(title, options, page, max_page):
+    """Display one page of numbered picker options with navigation hints. [PRIMESUD]"""
     shown = options[page * _MAX_OPTS : page * _MAX_OPTS + _MAX_OPTS]
     tr.print("{Y" + title + "{x")
     for i, opt in enumerate(shown):

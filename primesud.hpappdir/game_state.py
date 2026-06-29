@@ -8,11 +8,12 @@ from player import create_char, save_world, load_world, reset_char
 
 
 def init_game_state(game):
-    """Initialise mutable game state fields."""
+    """Initialise mutable game state fields. [PRIMESUD]"""
     game._backup_ok = False
 
 
 def new_game(game, name="Hero"):
+    """Create a new game world with a fresh player character. [PRIMESUD]"""
     reset_area()
     world.areas = create_area_states()
     player = create_char()
@@ -24,6 +25,7 @@ def new_game(game, name="Hero"):
 
 
 def load_game(game):
+    """Load a saved game from persistent storage and restore world state. [PRIMESUD]"""
     reset_area()
     world.areas = create_area_states()
     player = create_char()
@@ -38,4 +40,5 @@ def load_game(game):
 
 
 def save_game(game, quiet=False):
+    """Persist the current world state to storage. [PRIMESUD]"""
     return save_world(quiet)

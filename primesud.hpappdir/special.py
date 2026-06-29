@@ -10,7 +10,7 @@ from actor import act, is_awake, can_see, TO_ROOM
 
 
 def _spec_find_player(ch):
-    """Find the player if in same room as ch (cf. 1stMud in_room->person_first scan in special.c)."""
+    """Find the player if in same room as ch (cf. 1stMud `spec_cast_*` in special.c: in_room->person_first scan)."""
     player = world.chars.get(1)
     if player is None or player["room"] != ch["room"]:
         return None
@@ -64,7 +64,7 @@ def spec_cast_adept(ch):
 
 
 def _find_combat_victim(ch):
-    """Find a victim the mob is fighting in its room (cf. 1stMud spec_cast victim scan in special.c)."""
+    """Find a victim the mob is fighting in its room (cf. 1stMud `spec_cast_*` in special.c: victim selection)."""
     player = _spec_find_player(ch)
     if player is None:
         return None
@@ -74,7 +74,7 @@ def _find_combat_victim(ch):
 
 
 def _pick_combat_spell(ch, spell_list):
-    """Pick a level-appropriate spell from a (roll, min_level, name) list (cf. 1stMud spec_cast for-loop in special.c)."""
+    """Pick a level-appropriate spell from a (roll, min_level, name) list (cf. 1stMud `spec_cast_*` in special.c: spell for-loop)."""
     for _ in range(20):
         roll = randint(0, 15)
         for r, ml, name in spell_list:

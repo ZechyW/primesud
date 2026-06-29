@@ -30,7 +30,7 @@ def _wrap_plain(text, width):
 
 
 def install_color_print(tr):
-    """Install PrimeSUD colour-code aware print wrappers on a tml instance."""
+    """Install PrimeSUD colour-code aware print wrappers on a tml instance. [PRIMESUD]"""
     font_w = grobw(FONT_GROB)
     font_h = grobh(FONT_GROB)
     dimgrob(COLOR_GROB, font_w, font_h, 0)
@@ -68,6 +68,7 @@ def install_color_print(tr):
     _pch = tr._put_char
 
     def wrapped_print(*args, sep=' ', end='\n'):
+        """Colour-aware print with word-wrap and per-run font recolouring. [PRIMESUD]"""
         text = sep.join(str(a) for a in args)
         if _CC not in text:
             # Fast path: skip color_wrap and all colour-code scanning.
@@ -149,6 +150,7 @@ def install_color_print(tr):
     _sc = strip_colors
 
     def wrapped_set_status(text):
+        """Colour-aware status bar renderer with visible-width truncation. [PRIMESUD]"""
         length = tr.columns - 6
         if _CC not in text:
             if current_fg[0] is not None:

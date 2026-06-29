@@ -859,7 +859,7 @@ RACE_TABLE = {
 
 
 def race_lookup(name):
-    """Look up a race by name (case-insensitive prefix match, cf. 1stMud race_lookup).
+    """Look up a race by name (case-insensitive prefix match) (cf. 1stMud `race_lookup` in lookup.c).
 
     Args:
         name (str): Race name or prefix.

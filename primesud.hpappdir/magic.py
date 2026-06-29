@@ -42,6 +42,7 @@ def spell_null(sn, level, ch, vo, target):
 
 
 def _dice(num, size):
+    """Roll num dice of given size and return total (cf. 1stMud `dice` in db.c)."""
     total = 0
     for _ in range(num):
         total += randint(1, size)
@@ -49,6 +50,7 @@ def _dice(num, size):
 
 
 def _heal_char(ch, victim, amount, msg):
+    """Heal victim by amount, clamped to max_hit, and print message. [PRIMESUD]"""
     victim["hit"] = min(victim["max_hit"], victim["hit"] + amount)
     chprintln(victim, msg)
     if victim is not ch:
@@ -59,6 +61,7 @@ def _heal_char(ch, victim, amount, msg):
 
 
 def _skill_lookup(name):
+    """Look up a skill/spell by exact name and return its sn (cf. 1stMud `skill_lookup` in magic.c)."""
     for sn, sk in SKILL_TABLE:
         if sk["name"] == name:
             return sn
@@ -66,6 +69,7 @@ def _skill_lookup(name):
 
 
 def _area_state_for_room(room_vnum):
+    """Return the area state dict for a room's area tag, or None. [PRIMESUD]"""
     tag = ROOM_DEFS.get(room_vnum, {}).get("area")
     if tag is None:
         return None
@@ -76,10 +80,12 @@ def _area_state_for_room(room_vnum):
 
 
 def _spell_tail(ch):
+    """Return the stored spell target name suffix for a character. [PRIMESUD]"""
     return ch.get("_spell_target_name", "")
 
 
 def _item_name(obj):
+    """Return the short description of an item, or 'item' if None. [PRIMESUD]"""
     if obj is None:
         return "item"
     tpl = ITEM_DEFS.get(obj_vnum(obj), {})
@@ -88,6 +94,7 @@ def _item_name(obj):
 
 
 def _number_fuzzy(n):
+    """Return n randomly adjusted by -1, 0, or +1, minimum 1 (cf. 1stMud `number_fuzzy` in db.c)."""
     r = randint(0, 3)
     if r == 0:
         n -= 1
@@ -103,12 +110,14 @@ def _number_fuzzy(n):
 
 
 def _new_obj_affect(sn, level, duration, location, modifier, bitvector=""):
+    """Create a new affect dict targeting an object. [PRIMESUD]"""
     af = _new_affect(sn, level, duration, location, modifier, bitvector)
     af["where"] = "to_object"
     return af
 
 
 def _dev_item_fail(obj, message):
+    """Log a dev-mode item failure message and return False. [PRIMESUD]"""
     tprint("[DEV] " + _item_name(obj) + ": " + message)
     return False
 
@@ -670,6 +679,7 @@ def spell_enchant_weapon(sn, level, ch, vo, target):
 
 
 def _new_affect(sn, level, duration, location, modifier, bitvector=""):
+    """Create a new affect dict with default 'to_affects' placement (cf. 1stMud `new_affect` in recycle.c: dict constructor)."""
     return {
         "where": "to_affects",
         "type": sn,
@@ -2519,6 +2529,7 @@ SPELL_FUNS = {
 
 
 def _implemented_spell(sn):
+    """Return True if spell sn has a registered spell_fun implementation. [PRIMESUD]"""
     sk = SKILLS.get(sn)
     if sk is None:
         return False
@@ -2526,6 +2537,7 @@ def _implemented_spell(sn):
 
 
 def _known_runtime_spells(player):
+    """Return list of (sn, sk) pairs for spells the player knows and can use. [PRIMESUD]"""
     learned = player.get("learned", {})
     rows = []
     for sn, sk in SKILL_TABLE:
@@ -2536,6 +2548,7 @@ def _known_runtime_spells(player):
 
 
 def _is_self_name(player, target_name):
+    """Return True if target_name refers to the player themselves. [PRIMESUD]"""
     if not target_name:
         return False
     pname = player.get("name", "")
@@ -2543,10 +2556,12 @@ def _is_self_name(player, target_name):
 
 
 def _room_state(player):
+    """Return the room state dict for the player's current room. [PRIMESUD]"""
     return world.rooms[player["room"]]
 
 
 def _find_room_char(player, target_name):
+    """Find a character in the player's room by name (cf. 1stMud `get_char_room` in handler.c)."""
     if _is_self_name(player, target_name):
         return player
     rs = _room_state(player)
@@ -2557,6 +2572,7 @@ def _find_room_char(player, target_name):
 
 
 def _find_room_char_id(player, target_name):
+    """Find a character id in the player's room by name (cf. 1stMud `get_char_room` in handler.c: by id)."""
     rs = _room_state(player)
     return get_char_room(target_name, rs["mobs"], world.chars)
 
@@ -2564,6 +2580,7 @@ def _find_room_char_id(player, target_name):
 
 
 def _mob_pick_name(mob):
+    """Return the first keyword or short_descr word for a mob. [PRIMESUD]"""
     tpl = MOB_DEFS[mob["tpl"]]
     words = tpl.get("keywords", "").split()
     if words:
@@ -2575,6 +2592,7 @@ def _mob_pick_name(mob):
 
 
 def _obj_pick_name(obj):
+    """Return the first keyword or short_descr word for an item. [PRIMESUD]"""
     tpl = ITEM_DEFS[obj_vnum(obj)]
     words = tpl.get("keywords", "").split()
     if words:
@@ -2646,6 +2664,7 @@ def _pick_cast_target_name(player, sn):
 
 
 def _resolve_item_spell_sn(spell_name, item_obj):
+    """Look up and validate a spell name from an item, returning sn or None. [PRIMESUD]"""
     if not spell_name:
         return None
     sn = _skill_lookup(spell_name)

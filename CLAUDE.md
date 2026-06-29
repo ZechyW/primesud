@@ -58,7 +58,7 @@ Code with no 1stMud equivalent or intentional deviation marked `# [PRIMESUD]`. W
 
 ## Docstrings
 
-Google-style: one-line summary, then `Args:` / `Returns:` / `Raises:` as needed; omit empty sections. For ported functions append `(cf. 1stMud <symbol> in <file>)` to summary (exact name + source file, e.g. `fight.c`); omit for PrimeSUD-invented functions.
+Google-style: one-line summary, then `Args:` / `Returns:` / `Raises:` as needed; omit empty sections. For ported functions append `(cf. 1stMud <symbol> in <file>)` to summary (exact name + source file, e.g. `fight.c`); PrimeSUD-only functions and helpers should be explicitly marked [PRIMESUD].
 
 ## Working style
 

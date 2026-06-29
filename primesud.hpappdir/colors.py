@@ -44,7 +44,7 @@ def upper(s):
 
 
 def capitalize(s):
-    """Lowercase all alpha, then uppercase first non-color char (cf. capitalize in db.c).
+    """Lowercase all alpha, then uppercase first non-color char (cf. 1stMud `capitalize` in db.c).
 
     Use for proper names.
     """
@@ -128,7 +128,7 @@ def draw_line(fill=None, length=0):
 
 
 def strip_colors(text):
-    """Return text with all {X color codes removed."""
+    """Return text with all {X color codes removed (cf. 1stMud `strip_color` in string.c)."""
     if COLOR_CODE not in text:
         return text
     out = []
@@ -144,12 +144,12 @@ def strip_colors(text):
 
 
 def color_len(text):
-    """Return the visible (non-color-code) length of text."""
+    """Return the visible (non-color-code) length of text. [PRIMESUD]"""
     return len(strip_colors(text))
 
 
 def _wrap_raw_index(text, cols):
-    """Raw string index to split at for a `cols`-wide visible line.
+    """Raw string index to split at for a `cols`-wide visible line. [PRIMESUD]
 
     Returns None if the text fits entirely.  Prefers splitting at a space;
     falls back to a hard break at the visible column limit.
@@ -174,7 +174,7 @@ def _wrap_raw_index(text, cols):
 
 
 def color_wrap(text, cols):
-    """Split `text` into lines of at most `cols` visible characters.
+    """Split `text` into lines of at most `cols` visible characters. [PRIMESUD]
 
     Color codes are preserved in the correct segment; they contribute no width.
     """
@@ -194,7 +194,7 @@ def color_wrap(text, cols):
 
 
 def _colour_after(text, initial=None):
-    """Return the active colour code letter after scanning text, given initial active colour."""
+    """Return the active colour code letter after scanning text, given initial active colour. [PRIMESUD]"""
     active = initial
     i = 0
     n = len(text)
@@ -212,7 +212,7 @@ def _colour_after(text, initial=None):
 
 
 def color_wrap_full(text, cols):
-    """Like color_wrap, but each continuation piece is prefixed with the active colour.
+    """Like color_wrap, but each continuation piece is prefixed with the active colour. [PRIMESUD]
 
     Ensures each piece is self-contained for colour-first rendering: if a colour is
     active at a split point, the next piece is prefixed with that colour code so the
@@ -239,7 +239,7 @@ def color_wrap_full(text, cols):
 
 
 def color_parse_runs(piece):
-    """Parse a self-contained colour-code piece into (colour, segment) runs.
+    """Parse a self-contained colour-code piece into (colour, segment) runs. [PRIMESUD]
 
     Returns [(colour_or_None, segment), ...] where colour_or_None is an ANSI int
     (from ANSI_COLORS) or None for default/reset. Handles {{ escapes.

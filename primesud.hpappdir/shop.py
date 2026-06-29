@@ -5,8 +5,11 @@ from world import ITEM_DEFS, MOB_DEFS
 from actor import (act, chprintln, chprintlnf, is_name, can_see, can_see_obj,
                    TO_CHAR, TO_VICT, TO_ROOM)
 from combat import get_skill, check_improve
+from comm import do_function, do_say
+from game_time import time_info
 from item import (get_obj_list, obj_vnum, create_object, item_extra_flags,
-                  ensure_item_extra_flags)
+                  ensure_item_extra_flags, can_drop_obj, can_carry_n,
+                  can_carry_w, get_obj_weight)
 from skills_table import GSN_HAGGLE
 from urandom import randint
 
@@ -14,12 +17,12 @@ from urandom import randint
 # -- Money helpers (cf. 1stMud check_worth/deduct_cost/add_cost in handler.c) --
 
 def check_worth(ch, cost):
-    """True if ch has enough gold+silver for cost in silver units (cf. 1stMud check_worth VALUE_DEFAULT)."""
+    """True if ch has enough gold+silver for cost in silver units (cf. 1stMud `check_worth` in handler.c: VALUE_DEFAULT branch)."""
     return ch["gold"] * 100 + ch["silver"] >= cost
 
 
 def deduct_cost(ch, cost):
-    """Remove cost (silver units) from ch, converting gold<->silver as needed (cf. 1stMud deduct_cost VALUE_DEFAULT)."""
+    """Remove cost (silver units) from ch, converting gold<->silver as needed (cf. 1stMud `deduct_cost` in handler.c: VALUE_DEFAULT branch)."""
     silver = cost % 100
     gold = cost // 100
     if ch["silver"] < silver:
@@ -33,7 +36,7 @@ def deduct_cost(ch, cost):
 
 
 def add_cost(ch, cost):
-    """Add cost (silver units) to ch's money (cf. 1stMud add_cost VALUE_DEFAULT)."""
+    """Add cost (silver units) to ch's money (cf. 1stMud `add_cost` in handler.c: VALUE_DEFAULT branch)."""
     ch["silver"] += cost % 100
     ch["gold"] += cost // 100
 
@@ -60,17 +63,16 @@ def find_keeper(player):
         chprintln(player, "You can't do that here.")
         return None, None
 
-    # [PRIMESUD] time_info not ported -- open_hour/close_hour checks stubbed (always open)
-    # shop = MOB_DEFS[keeper["tpl"]]["shop"]
-    # if time_info.hour < shop["open_hour"]:
-    #     act("$n says '$T'", keeper, None, "Sorry, I am closed. Come back later.", TO_ROOM)
-    #     return None, None
-    # if time_info.hour > shop["close_hour"]:
-    #     act("$n says '$T'", keeper, None, "Sorry, I am closed. Come back tomorrow.", TO_ROOM)
-    #     return None, None
+    shop = MOB_DEFS[keeper["tpl"]]["shop"]
+    if time_info["hour"] < shop.get("open_hour", 0):
+        do_function(keeper, do_say, "Sorry, I am closed. Come back later.")
+        return None, None
+    if time_info["hour"] > shop.get("close_hour", 23):
+        do_function(keeper, do_say, "Sorry, I am closed. Come back tomorrow.")
+        return None, None
 
     if not can_see(keeper, player):
-        act("$n says '$T'", keeper, None, "I don't trade with folks I can't see.", TO_ROOM)
+        do_function(keeper, do_say, "I don't trade with folks I can't see.")
         return None, None
 
     return keeper, keeper_id
@@ -176,7 +178,7 @@ def _get_obj_keeper(player, keeper, arg):
 
 
 def _mult_argument(argument):
-    """Parse '5*sword' into (5, 'sword'); plain 'sword' returns (1, 'sword') (cf. 1stMud mult_argument)."""
+    """Parse '5*sword' into (5, 'sword'); plain 'sword' returns (1, 'sword') (cf. 1stMud `mult_argument` in interp.c)."""
     star = argument.find('*')
     if star < 0:
         return 1, argument
@@ -213,7 +215,7 @@ def do_buy(player, args):
 
     if cost <= 0 or obj is None or not can_see_obj(player, obj):
         act("$n tells you 'I don't sell that -- try 'list''.", keeper, None, player, TO_VICT)
-        # [PRIMESUD] ch->reply not ported
+        player["reply"] = keeper
         return
 
     tpl = ITEM_DEFS[obj_vnum(obj)]
@@ -230,7 +232,7 @@ def do_buy(player, args):
                     count += 1
         if count < number:
             act("$n tells you 'I don't have that many in stock.", keeper, None, player, TO_VICT)
-            # [PRIMESUD] ch->reply not ported
+            player["reply"] = keeper
             return
 
     if not check_worth(player, cost * number):
@@ -238,15 +240,24 @@ def do_buy(player, args):
             act("$n tells you 'You can't afford to buy that many.", keeper, None, player, TO_VICT)
         else:
             act("$n tells you 'You can't afford to buy $p'.", keeper, obj, player, TO_VICT)
-        # [PRIMESUD] ch->reply not ported
+        player["reply"] = keeper
         return
 
     if tpl.get("level", 0) > player["level"]:
         act("$n tells you 'You can't use $p yet'.", keeper, obj, player, TO_VICT)
-        # [PRIMESUD] ch->reply not ported
+        player["reply"] = keeper
         return
 
-    # [PRIMESUD] can_carry_n / can_carry_w not ported -- weight/count checks skipped
+    carry_n = len(player["inv"]) + sum(1 for e in player["equip"].values() if e is not None)
+    if carry_n + number > can_carry_n(player):
+        chprintln(player, "You can't carry that many items.")
+        return
+
+    carry_w = sum(get_obj_weight(o) for o in player["inv"])
+    carry_w += sum(get_obj_weight(e) for e in player["equip"].values() if e is not None)
+    if get_obj_weight(obj) * number + carry_w > can_carry_w(player):
+        chprintln(player, "You can't carry that much weight.")
+        return
 
     # Haggle (cf. 1stMud do_buy haggle block)
     roll = randint(1, 100)
@@ -352,13 +363,15 @@ def do_sell(player, args):
     obj = get_obj_list(args[0], player["inv"], ITEM_DEFS)
     if obj is None:
         act("$n tells you 'You don't have that item'.", keeper, None, player, TO_VICT)
-        # [PRIMESUD] ch->reply not ported
+        player["reply"] = keeper
         return
 
     tpl = ITEM_DEFS[obj_vnum(obj)]
     flags = item_extra_flags(obj, tpl)
 
-    # [PRIMESUD] can_drop_obj not ported -- nodrop flag check skipped
+    if not can_drop_obj(player, obj):
+        chprintln(player, "You can't let go of it.")
+        return
 
     if flags.get("quest"):
         chprintln(player, "You should sell that to the questor instead!")
@@ -419,7 +432,7 @@ def do_value(player, args):
     obj = get_obj_list(args[0], player["inv"], ITEM_DEFS)
     if obj is None:
         act("$n tells you 'You don't have that item'.", keeper, None, player, TO_VICT)
-        # [PRIMESUD] ch->reply not ported
+        player["reply"] = keeper
         return
 
     tpl = ITEM_DEFS[obj_vnum(obj)]
@@ -428,7 +441,9 @@ def do_value(player, args):
         act("$n doesn't see what you are offering.", keeper, None, player, TO_VICT)
         return
 
-    # [PRIMESUD] can_drop_obj not ported -- nodrop flag check skipped
+    if not can_drop_obj(player, obj):
+        chprintln(player, "You can't let go of it.")
+        return
 
     cost = get_cost(keeper, obj, False)
     if cost <= 0:
@@ -439,4 +454,24 @@ def do_value(player, args):
     gold_part = cost // 100
     msg = "$n tells you 'I'll give you " + str(silver_part) + " silver and " + str(gold_part) + " gold coins for $p'."
     act(msg, keeper, obj, player, TO_VICT)
-    # [PRIMESUD] ch->reply not ported
+    player["reply"] = keeper
+
+
+def do_appraise(player, args):
+    """Appraise an item in a shopkeeper's inventory -- value + identify (cf. 1stMud do_appraise in act_obj.c)."""
+    if not args:
+        chprintln(player, "Appraise what?")
+        return
+
+    keeper, keeper_id = find_keeper(player)
+    if keeper is None:
+        return
+
+    obj = _get_obj_keeper(player, keeper, args[0])
+    if obj is None:
+        act("{c$n{c tells you '{CI don't have that item.{c'{x.", keeper, None, player, TO_VICT)
+        player["reply"] = keeper
+        return
+
+    from magic import spell_identify
+    spell_identify(0, player["level"], player, obj, "obj")

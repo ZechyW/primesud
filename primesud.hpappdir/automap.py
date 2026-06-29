@@ -42,6 +42,7 @@ _FULL_LEGEND = [
 
 
 def _room_char(room):
+    """Map character for a room (cf. 1stMud `show_map` in automap.c: room character selection)."""
     # [PRIMESUD] 1stMud only shows U/D/B for explored rooms; we show them unconditionally.
     if room is None:
         return 'o'
@@ -57,12 +58,14 @@ def _room_char(room):
 
 
 def _room_color(room):
+    """Sector colour code for a room (cf. 1stMud `show_map` in automap.c: room color selection)."""
     if room is None:
         return ''
     return SECTOR_COLORS.get(room.get('sector', 'inside'), '')
 
 
 def _map_exits(rooms, start_vnum, grid, colors, start_gx, start_gy, max_depth):
+    """BFS exit traversal to populate map grid (cf. 1stMud `show_map` in automap.c: exit traversal)."""
     gh = len(grid)
     gw = len(grid[0]) if gh else 0
     start_room = rooms.get(start_vnum)
@@ -107,6 +110,7 @@ def _map_exits(rooms, start_vnum, grid, colors, start_gx, start_gy, max_depth):
 
 
 def _build_grid(player, rooms, half_w, half_h, max_depth):
+    """Allocate and populate a map grid centered on player (cf. 1stMud `show_map` in automap.c: grid construction)."""
     gw = half_w * 2 + 1
     gh = half_h * 2 + 1
     grid = [[' '] * gw for _ in range(gh)]
@@ -136,7 +140,7 @@ def _colored_row(grid, colors, y, x0, x1, full=False):
 
 
 def build_compact_lines(player, rooms):
-    """Bordered compact map: (_CH+2) rows x COMPACT_W cols."""
+    """Bordered compact map: (_CH+2) rows x COMPACT_W cols (cf. 1stMud `show_map` in automap.c: compact output)."""
     grid, colors = _build_grid(player, rooms, MAP_HALF_W, MAP_HALF_H, COMPACT_MAP_DEPTH)
     cx, cy = MAP_HALF_W, MAP_HALF_H
     r_w = MAP_HALF_W

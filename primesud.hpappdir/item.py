@@ -30,35 +30,35 @@ def create_object(vnum):
 
 
 def item_extra_flags(obj, tpl):
-    """Return extra_flags for obj, preferring instance override over template."""
+    """Return extra_flags for obj, preferring instance override over template. [PRIMESUD]"""
     if isinstance(obj, dict) and "extra_flags" in obj:
         return obj["extra_flags"]
     return tpl.get("extra_flags", {})
 
 
 def item_wear_flags(obj, tpl):
-    """Return wear_flags for obj, preferring instance override over template."""
+    """Return wear_flags for obj, preferring instance override over template. [PRIMESUD]"""
     if isinstance(obj, dict) and "wear_flags" in obj:
         return obj["wear_flags"]
     return tpl.get("wear_flags", {})
 
 
 def item_affect_list(obj):
-    """Return runtime object affects list, defaulting to empty list."""
+    """Return runtime object affects list, defaulting to empty list. [PRIMESUD]"""
     if isinstance(obj, dict):
         return obj.get("affect_list", [])
     return []
 
 
 def ensure_item_extra_flags(obj, tpl):
-    """Return mutable full extra_flags set for item instance."""
+    """Return mutable full extra_flags set for item instance. [PRIMESUD]"""
     if "extra_flags" not in obj:
         obj["extra_flags"] = dict(tpl.get("extra_flags", {}))
     return obj["extra_flags"]
 
 
 def set_item_extra_flag(obj, tpl, flag, enabled):
-    """Set or clear one mutable extra flag on item instance."""
+    """Set or clear one mutable extra flag on item instance. [PRIMESUD]"""
     flags = ensure_item_extra_flags(obj, tpl)
     if enabled:
         flags[flag] = True
@@ -68,7 +68,7 @@ def set_item_extra_flag(obj, tpl, flag, enabled):
 
 
 def item_affect_find(obj, sn):
-    """Return first object affect of type sn, or None."""
+    """Return first object affect of type sn, or None. [PRIMESUD]"""
     for af in item_affect_list(obj):
         if af.get("type") == sn:
             return af
@@ -76,7 +76,7 @@ def item_affect_find(obj, sn):
 
 
 def item_affect_remove(obj, af, tpl):
-    """Remove one object affect and clear its direct flag bit if present."""
+    """Remove one object affect and clear its direct flag bit if present. [PRIMESUD]"""
     affects = obj.get("affect_list", [])
     if af in affects:
         affects.remove(af)
@@ -88,7 +88,7 @@ def item_affect_remove(obj, af, tpl):
 
 
 def item_affect_to_obj(obj, af, tpl):
-    """Apply one timed object affect to runtime item state."""
+    """Apply one timed object affect to runtime item state. [PRIMESUD]"""
     cur = dict(af)
     obj.setdefault("affect_list", []).append(cur)
     bit = cur.get("bitvector", "")
@@ -98,42 +98,42 @@ def item_affect_to_obj(obj, af, tpl):
 
 
 def item_spell_level(obj, tpl):
-    """Return spell level for magical item, preferring instance override."""
+    """Return spell level for magical item, preferring instance override. [PRIMESUD]"""
     if isinstance(obj, dict) and "spell_level" in obj:
         return obj["spell_level"]
     return tpl.get("spell_level")
 
 
 def item_spells(obj, tpl):
-    """Return list of spell names for potion/scroll/pill payloads."""
+    """Return list of spell names for potion/scroll/pill payloads. [PRIMESUD]"""
     if isinstance(obj, dict) and "spells" in obj:
         return obj["spells"]
     return tpl.get("spells", [])
 
 
 def item_current_charges(obj, tpl):
-    """Return current charges for wand/staff, preferring instance state."""
+    """Return current charges for wand/staff, preferring instance state. [PRIMESUD]"""
     if isinstance(obj, dict) and "charges" in obj:
         return obj["charges"]
     return tpl.get("charges", tpl.get("max_charges"))
 
 
 def item_max_charges(obj, tpl):
-    """Return maximum charges for wand/staff, preferring instance state."""
+    """Return maximum charges for wand/staff, preferring instance state. [PRIMESUD]"""
     if isinstance(obj, dict) and "max_charges" in obj:
         return obj["max_charges"]
     return tpl.get("max_charges", tpl.get("charges"))
 
 
 def item_spell_name(obj, tpl):
-    """Return single spell name for wand/staff payloads."""
+    """Return single spell name for wand/staff payloads. [PRIMESUD]"""
     if isinstance(obj, dict) and "spell" in obj:
         return obj["spell"]
     return tpl.get("spell")
 
 
 def _str_escape(s):
-    """Escape string for embedding in item token field value.
+    """Escape string for embedding in item token field value. [PRIMESUD]
 
     Escapes backslash, semicolon (field sep), and square brackets (contents
     scope delimiters). ponytail: only these 4 chars; MUD text never uses them.
@@ -146,7 +146,7 @@ def _str_escape(s):
 
 
 def _str_unescape(s):
-    """Unescape a string field value from an item token."""
+    """Unescape a string field value from an item token. [PRIMESUD]"""
     out = []
     i = 0
     while i < len(s):
@@ -160,7 +160,7 @@ def _str_unescape(s):
 
 
 def _split_token_fields(token):
-    """Split token into fields on ';', respecting backslash escapes and '[...]' brackets."""
+    """Split token into fields on ';', respecting backslash escapes and '[...]' brackets. [PRIMESUD]"""
     fields = []
     depth = 0
     buf = []
@@ -189,7 +189,7 @@ def _split_token_fields(token):
 
 
 def serialize_item_token(obj):
-    """Serialize item instance to v2 save token."""
+    """Serialize item instance to v2 save token. [PRIMESUD]"""
     fields = ["v:" + str(obj["vnum"])]
     if "cost" in obj:
         fields.append("c:" + str(obj["cost"]))
@@ -230,7 +230,7 @@ def serialize_item_token(obj):
 
 
 def parse_item_token(token):
-    """Parse v2 save token into runtime item instance dict."""
+    """Parse v2 save token into runtime item instance dict. [PRIMESUD]"""
     obj = {"affect_list": []}
     for field in _split_token_fields(token):
         if not field or ":" not in field:
@@ -359,6 +359,41 @@ def apply_money_pickup(player, obj, tpl):
     player["silver"] += obj.get("silver", 0)
     player["gold"] += obj.get("gold", 0)
     return True
+
+
+def can_drop_obj(ch, obj):
+    """True if ch can release obj (cf. 1stMud can_drop_obj in handler.c).
+
+    Nodrop items cannot be dropped, sold, or sacrificed.
+    [PRIMESUD] ITEM_AUCTIONED not ported (no auction system).
+    """
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    if item_extra_flags(obj, tpl).get("nodrop"):
+        return False
+    return True
+
+
+def can_carry_n(ch):
+    """Max number of items ch can carry (cf. 1stMud can_carry_n in handler.c)."""
+    from actor import get_curr_stat
+    return 20 + 2 * get_curr_stat(ch, "dex") + ch["level"]
+
+
+def can_carry_w(ch):
+    """Max carry weight for ch in tenths of lbs (cf. 1stMud can_carry_w in handler.c)."""
+    from actor import get_curr_stat
+    from config import STR_APP_CARRY
+    return STR_APP_CARRY[get_curr_stat(ch, "str")] * 10 + ch["level"] * 25
+
+
+def get_obj_weight(obj):
+    """Total weight of obj including contents (cf. 1stMud get_obj_weight in handler.c)."""
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    w = tpl.get("weight", 0)
+    if isinstance(obj, dict):
+        for c in obj.get("contents", []):
+            w += get_obj_weight(c)
+    return w
 
 
 def get_char_room(fragment, inst_ids, mob_instances):

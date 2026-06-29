@@ -175,7 +175,7 @@ def check_assist(ch, victim):
 # -- Helpers -------------------------------------------------------------------
 
 def _same_align(tpl_a, tpl_b):
-    """True if both templates share the same alignment band (good/neutral/evil).
+    """True if both templates share the same alignment band (good/neutral/evil). [PRIMESUD]
 
     Args:
         tpl_a (dict): First mob template.
@@ -190,7 +190,7 @@ def _same_align(tpl_a, tpl_b):
 
 
 def _dice(num, size):
-    """Roll num dice of size sides and return the sum.
+    """Roll num dice of size sides and return the sum (cf. 1stMud `dice` in db.c).
 
     Args:
         num (int): Number of dice to roll.
@@ -477,7 +477,7 @@ def _attack_info(dam_type):
 
 
 def _ac_type_for_damage_class(dam_class):
-    """Map damage class to 1stMud armor bucket."""
+    """Map damage class to 1stMud armor bucket. [PRIMESUD]"""
     if dam_class == DAM_PIERCE:
         return AC_PIERCE
     if dam_class == DAM_SLASH:
@@ -552,7 +552,7 @@ def check_immune(ch, dam_type):
 
 
 def mob_condition(inst, tpl):
-    """Return a condition description string for a mob.
+    """Return a condition description string for a mob. [PRIMESUD]
 
     Args:
         inst (dict): Mob instance state dict.
@@ -1694,7 +1694,7 @@ def stop_fighting(ch, both=False):
 
 
 def _advance_target(player, mob_instances, room_state):
-    """Switch player's combat target to the next aggro mob in the room.
+    """Switch player's combat target to the next aggro mob in the room. [PRIMESUD]
 
     Args:
         player (dict): Player state dict.
@@ -2125,7 +2125,7 @@ def _number_fuzzy(n):
 
 
 def _exit_to(exit_val):
-    """Return destination vnum from a plain-vnum or dict exit."""
+    """Return destination vnum from a plain-vnum or dict exit. [PRIMESUD]"""
     return exit_val["to"] if isinstance(exit_val, dict) else exit_val
 
 

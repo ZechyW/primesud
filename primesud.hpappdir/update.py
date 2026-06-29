@@ -12,6 +12,7 @@ from config import (
     TICK_SECS,
 )
 from combat import update_mob_timers, violence_update
+from game_time import time_update
 from mob import mobile_update, aggr_update, area_update
 from player import tick_update
 
@@ -62,7 +63,7 @@ def update_handler():
     if _pulse_tick <= 0:
         _pulse_tick = PULSE_TICK
         # weather_update()  # not yet ported
-        # time_update()     # not yet ported
+        time_update()
         player["played"] = player.get("played", 0) + TICK_SECS
         tick_update(tr, player, ROOM_DEFS[player["room"]])
         obj_update(tr, player)
@@ -78,7 +79,7 @@ def update_handler():
 
 
 def obj_update(tr, player):
-    """Tick down item timers and remove decayed items from all rooms (cf. 1stMud obj_update in update.c).
+    """Tick down item timers and remove decayed items from rooms and NPC inventories (cf. 1stMud obj_update in update.c).
 
     Args:
         tr: Terminal for decay messages.
@@ -108,3 +109,15 @@ def obj_update(tr, player):
                 if "contents" in obj:
                     del obj["contents"]
                 room["items"].remove(obj)
+
+    for cid, ch in world.chars.items():
+        if not ch.get("is_npc"):
+            continue
+        for obj in list(ch.get("inv", [])):
+            timer = obj.get("timer", -1)
+            if timer <= 0:
+                continue
+            timer -= 1
+            obj["timer"] = timer
+            if timer == 0:
+                ch["inv"].remove(obj)

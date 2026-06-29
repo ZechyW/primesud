@@ -13,6 +13,7 @@ from config import R_STARTING_ROOM, MAX_MORTAL_LEVEL
 from skills_table import SKILL_TABLE, SKILLS, GSN_SWORD, GSN_RECALL
 import world
 from world import ROOM_DEFS, AREA_DEFS
+from game_time import time_info
 from item import serialize_item_token, parse_item_token
 
 _EQUIP_SAVE_ORDER = (
@@ -274,6 +275,7 @@ def _serialize_world():
         if weather is not None:
             lines.append("a." + str(_as["tag"]) + ".precip=" + str(weather.get("precip", 0)))
             lines.append("a." + str(_as["tag"]) + ".precipv=" + str(weather.get("precip_vector", 0)))
+    lines.append("g.time=" + str(time_info["hour"]) + "|" + str(time_info["day"]) + "|" + str(time_info["month"]) + "|" + str(time_info["year"]))
     # Build reset-room map for single-instance mobs (gl=1): if the only live
     # instance is already in its reset room, omit it -- reset_area() will
     # restore it there on load without any save entry needed.
@@ -446,6 +448,23 @@ def load_world():
             if tag in _area_by_tag:
                 _area_by_tag[tag].setdefault("weather", {})
                 _area_by_tag[tag]["weather"]["precip_vector"] = int(val)
+        elif key == "g.time":
+            parts = val.split("|")
+            if len(parts) == 4:
+                time_info["hour"] = int(parts[0])
+                time_info["day"] = int(parts[1])
+                time_info["month"] = int(parts[2])
+                time_info["year"] = int(parts[3])
+                from game_time import SUN_DARK, SUN_RISE, SUN_LIGHT, SUN_SET
+                h = time_info["hour"]
+                if h < 5 or h >= 20:
+                    time_info["sunlight"] = SUN_DARK
+                elif h == 5:
+                    time_info["sunlight"] = SUN_RISE
+                elif h >= 18:
+                    time_info["sunlight"] = SUN_SET
+                else:
+                    time_info["sunlight"] = SUN_LIGHT
         elif key.startswith("m."):
             mob_saves[int(key[2:])] = [int(r) for r in val.split("|") if r]
 

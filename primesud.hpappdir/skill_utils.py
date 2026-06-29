@@ -45,7 +45,7 @@ def skill_rating(player, sn):
 
 
 def can_use_skill_spell(player, sn):
-    """Return whether player can use skill/spell (cf. 1stMud can_use_skpell).
+    """Return whether player can use skill/spell (cf. 1stMud `can_use_skpell` in multiclass.c).
 
     1stMud name is can_use_skpell, a skill/spell blend; PrimeSUD keeps readable
     helper name.

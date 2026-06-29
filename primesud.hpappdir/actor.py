@@ -10,12 +10,15 @@ from world import ITEM_DEFS
 # -- Alignment helpers (cf. 1stMud IsGood/IsEvil/IsNeutral in macro.h) ----------------
 
 def is_good(ch):
+    """Check if character is good-aligned (cf. 1stMud `IsGood` in macro.h)."""
     return ch.get("alignment", 0) >= 350
 
 def is_evil(ch):
+    """Check if character is evil-aligned (cf. 1stMud `IsEvil` in macro.h)."""
     return ch.get("alignment", 0) <= -350
 
 def is_neutral(ch):
+    """Check if character is neutral-aligned (cf. 1stMud `IsNeutral` in macro.h)."""
     return not is_good(ch) and not is_evil(ch)
 
 
@@ -108,6 +111,7 @@ def _char_base():
 
 
 def _item_armor_runtime(tpl):
+    """Return armor tuple from item template, or None if absent. [PRIMESUD]"""
     armor = tpl.get("armor")
     if armor is None:
         return None
@@ -303,7 +307,7 @@ def get_damroll(char):
 
 
 def get_armor(char, ac_type):
-    """Effective bucket AC: base + DEX bonus + equipped armor bonus.
+    """Effective bucket AC: base + DEX bonus + equipped armor bonus. [PRIMESUD]
 
     Args:
         char (dict): Character state dict (player or mob instance).
@@ -387,14 +391,14 @@ def equip_char(char, obj, slot):
 
 
 def _player_char():
-    """Return the runtime player character, if present."""
+    """Return the runtime player character, if present. [PRIMESUD]"""
     import world
     return world.chars.get(1)
 
 
 
 def _send_player_text(ch, txt):
-    """Deliver direct output only when ch is the local player.
+    """Deliver direct output only when ch is the local player. [PRIMESUD]
 
     Returns:
         int: 1 if output was sent, else 0.
@@ -461,12 +465,14 @@ _HIS_HER = {
 
 
 def _first_word(text):
+    """Return first whitespace-delimited word of text. [PRIMESUD]"""
     if not text:
         return ""
     return text.split()[0]
 
 
 def _char_name(ch):
+    """Return character name string, or empty string if None. [PRIMESUD]"""
     if ch is None:
         return ""
     return ch.get("name", "")
@@ -487,6 +493,7 @@ def _pers(ch, looker):
 
 
 def _obj_keywords(obj):
+    """Return object keywords from instance or template fallback. [PRIMESUD]"""
     if not isinstance(obj, dict):
         return ""
     if "keywords" in obj:
@@ -497,6 +504,7 @@ def _obj_keywords(obj):
 
 
 def _obj_short(obj):
+    """Return object short description from instance or template fallback. [PRIMESUD]"""
     if not isinstance(obj, dict):
         return "something"
     if "short_descr" in obj:

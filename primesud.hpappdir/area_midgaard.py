@@ -5628,7 +5628,7 @@ SHOPS = (
     {"keeper": M_ARMOURER_ARMORER, "buy_types": ['armor'], "profit_buy": 100, "profit_sell": 50, "open_hour": 0, "close_hour": 23},
     {"keeper": M_CAPTAIN, "buy_types": ['boat'], "profit_buy": 120, "profit_sell": 90, "open_hour": 6, "close_hour": 22},
     {"keeper": M_BOY, "buy_types": [], "profit_buy": 100, "profit_sell": 100, "open_hour": 0, "close_hour": 23},
-    {"keeper": M_JEWELLER, "buy_types": ['treasure', '30', 'gem', 'jewelry'], "profit_buy": 110, "profit_sell": 100, "open_hour": 0, "close_hour": 23},
+    {"keeper": M_JEWELLER, "buy_types": ['treasure', 'warp_stone', 'gem', 'jewelry'], "profit_buy": 110, "profit_sell": 100, "open_hour": 0, "close_hour": 23},
     {"keeper": M_LEATHER_WORKER, "buy_types": ['armor'], "profit_buy": 110, "profit_sell": 50, "open_hour": 0, "close_hour": 23},
     {"keeper": M_BARTENDER, "buy_types": [], "profit_buy": 110, "profit_sell": 100, "open_hour": 0, "close_hour": 23},
     {"keeper": M_WAITER_3042, "buy_types": [], "profit_buy": 100, "profit_sell": 100, "open_hour": 0, "close_hour": 23},

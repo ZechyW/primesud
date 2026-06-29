@@ -95,8 +95,11 @@ WEAR_SLOT = {
 }
 APPLY_LOC = {
     1: "str", 2: "dex", 3: "int", 4: "wis", 5: "con",
-    12: "mana", 13: "hit", 14: "move", 17: "ac", 18: "hitroll", 19: "damroll",
-    20: "saves",
+    6: "sex", 7: "class", 8: "level", 9: "age", 10: "height", 11: "weight",
+    12: "mana", 13: "hit", 14: "move", 15: "gold", 16: "exp",
+    17: "ac", 18: "hitroll", 19: "damroll",
+    20: "saves", 21: "saving_rod", 22: "saving_petri",
+    23: "saving_breath", 24: "saving_spell", 25: "spell_affect",
 }
 FORM_FLAGS = {
     0: "edible", 1: "poison", 2: "magical", 3: "instant_decay", 4: "other",
@@ -122,8 +125,9 @@ ITEM_TYPE_NUM = {
     8: "treasure", 9: "armor", 10: "potion", 11: "clothing",
     12: "furniture", 13: "trash", 15: "container", 17: "drink",
     18: "key", 19: "food", 20: "money", 22: "boat",
-    25: "fountain", 26: "pill", 28: "map", 29: "portal",
-    32: "gem", 33: "jewelry", 34: "jukebox",
+    23: "corpse_npc", 24: "corpse_pc", 25: "fountain", 26: "pill",
+    27: "protect", 28: "map", 29: "portal", 30: "warp_stone",
+    31: "room_key", 32: "gem", 33: "jewelry", 34: "jukebox",
 }
 TRIG_NAMES = {
     "ACT": "act", "BRIBE": "bribe", "DEATH": "death", "ENTRY": "entry",
@@ -588,6 +592,7 @@ def parse_objects(lines):
 
         wear_bits = flag_bits(wear_int)
         wear_flags = {}
+        no_sac = 15 in wear_bits
         if 0 in wear_bits:
             wear_flags["take"] = True
         for pos in sorted(wear_bits):
@@ -603,6 +608,7 @@ def parse_objects(lines):
             "material":    material,
             "type":        item_type,
             "wear_flags":  wear_flags,
+            "no_sac":      no_sac,
             "level":       level,
             "weight":      weight,
             "value":       cost,
@@ -1185,6 +1191,8 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
         w(f'        "material":    {pyrepr(obj["material"])},')
         w(f'        "type": {pyrepr(obj["type"])},')
         w(f'        "wear_flags": {_repr_flags(obj["wear_flags"])},')
+        if obj.get("no_sac"):
+            w(f'        "no_sac": True,')
         if obj.get("extra_flags"):
             bits = decode_flags(obj["extra_flags"], EXTRA_FLAGS)
             if bits:

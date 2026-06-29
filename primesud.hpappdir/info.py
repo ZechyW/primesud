@@ -22,6 +22,7 @@ from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
 
 
 def _wrap(text, width):
+    """Word-wrap a single line of text to the given width. [PRIMESUD]"""
     lines = []
     # Use >= so a line of exactly `width` chars is split: the combined
     # map+text line would otherwise reach _cols and trigger tml's auto-advance
@@ -37,7 +38,7 @@ def _wrap(text, width):
 
 
 def _wrap_paragraphs(text, width):
-    """Word-wrap text, preserving blank-line paragraph breaks from .are descriptions."""
+    """Word-wrap text, preserving blank-line paragraph breaks from .are descriptions. [PRIMESUD]"""
     lines = []
     for para in text.split('\n\n'):
         flat = ' '.join(para.split())  # [PRIMESUD] collapse whitespace runs (cf. erase_new_lines in automap.c)
@@ -69,6 +70,7 @@ _FLAG_TABLE = (
 
 
 def do_automap(player, args):
+    """Toggle automap display in room descriptions (cf. 1stMud `do_automap` in automap.c)."""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOMAP
     if player["flags"] & PLR_AUTOMAP:
         tprint("You now see an automap in room descriptions.")
@@ -197,7 +199,7 @@ def _look_in(player, args):
 
 
 def _look_scan_items(target, number, count, items):
-    """Scan an item list for extra_desc or name match (cf. 1stMud do_look item scan in act_info.c).
+    """Scan an item list for extra_desc or name match (cf. 1stMud `do_look` in act_info.c: item scan loop).
 
     Returns:
         tuple: (found, count) where found is True if the Nth match was displayed.
@@ -543,6 +545,7 @@ def do_score(player, args):
 
 
 def _parse_skill_range(args):
+    """Parse level range arguments for spell/skill list commands. [PRIMESUD]"""
     if not args:
         return (False, 1, MAX_MORTAL_LEVEL, True)
     f_all = True
@@ -574,10 +577,12 @@ def _parse_skill_range(args):
 
 
 def _pad_color(s, width):
+    """Right-pad a colour-coded string to the given visible width. [PRIMESUD]"""
     return s + " " * max(0, width - color_len(s))
 
 
 def _print_level_lists(player, args, want_spells):
+    """Print spells or skills grouped by level. [PRIMESUD]"""
     f_all, min_lev, max_lev, ok = _parse_skill_range(args)
     if not ok:
         return
@@ -648,6 +653,7 @@ def do_spells(player, args):
 
 
 def do_help(player, args):
+    """Display quick-reference help for available commands (cf. 1stMud `do_help` in act_info.c)."""
     tprint("Move: 2/8=n/s  4/6=w/e  7/9=u/d (or n/s/e/w/u/d)")
     tprint("5=look  i=inv  wear  remove  eat  quaff  recite  zap")
     tprint("brandish  st=stats  sk=skills  k/kill=fight  kick")
@@ -689,6 +695,7 @@ def do_affects(player, args):
 
 
 def do_credits(player, args):
+    """Display game credits and acknowledgements (cf. 1stMud `do_credits` in act_info.c)."""
     tprint("{WPrimeSUD{x -- a single-user dungeon for the HP Prime")
     tprint("Port by ZechyW.  Not for commercial distribution.")
     tprint("")
@@ -818,7 +825,7 @@ def _find_area_paths(ch):
 
 
 def _center_fill(text, width=0):
-    """Center text with oO fill pattern (cf. 1stMud stringf Center with oO in do_areas)."""
+    """Center text with oO fill pattern (cf. 1stMud `do_areas` in db.c: center-fill with oO)."""
     if width <= 0:
         width = TERMINAL_COLS
     vis = color_len(text)

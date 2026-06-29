@@ -4,6 +4,7 @@ from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
                     do_berserk, do_bash, do_dirt, do_trip, do_flee,
                     do_rescue, do_disarm, do_surrender, do_slay,
                     do_sskill, do_stance, do_autostance)
+from comm import do_say, do_tell, do_reply
 from config import POS_ORDER
 from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_help, do_affects, do_credits, do_areas, do_map, do_automap,
@@ -18,7 +19,7 @@ from magic import do_cast
 from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
                       do_open, do_close, do_recall)
 from scan import do_scan
-from shop import do_buy, do_sell, do_list, do_value
+from shop import do_buy, do_sell, do_list, do_value, do_appraise
 from system_cmds import do_save, do_quit, do_debug
 from terminal import tprint
 from training import do_train, do_practice
@@ -70,7 +71,7 @@ _CMD_TABLE = [
     # ("sit",       do_sit,        "sleeping", False),  # #26
     # ("sockets",   do_sockets,    "dead",     False),  # #27 imm lvl 56
     # ("stand",     do_stand,      "sleeping", False),  # #28
-    # ("tell",      do_tell,       "resting",  False),  # #29
+    ("tell",      do_tell,       "resting",  False),  # #29
     # ("unlock",    do_unlock,     "resting",  False),  # #30
     ("wield",      do_wear,       "resting",  False),  # #31
     # ("wizhelp",   do_wizhelp,    "dead",     False),  # #32 imm lvl 51
@@ -147,10 +148,10 @@ _CMD_TABLE = [
     # ("question",  do_question,   "sleeping", False),  # #103
     # ("quote",     do_quote,      "sleeping", False),  # #104
     # ("quiet",     do_quiet,      "sleeping", False),  # #105
-    # ("reply",     do_reply,      "sleeping", False),  # #106
+    ("reply",     do_reply,      "sleeping", False),  # #106
     # ("replay",    do_replay,     "sleeping", False),  # #107
-    # ("say",       do_say,        "resting",  False),  # #108
-    # ("'",         do_say,        "resting",  False),  # #109
+    ("say",       do_say,        "resting",  False),  # #108
+    ("'",         do_say,        "resting",  False),  # #109
     # ("shout",     do_shout,      "resting",  False),  # #110 lvl 3
     # ("yell",      do_yell,       "resting",  False),  # #111
     ("brandish",   do_brandish,   "resting",  False),  # #112
@@ -382,7 +383,7 @@ _CMD_TABLE = [
     # ("areadeaths", do_areadeaths, "sleeping", False), # #337
     # ("version",   do_version,    "dead",     False),  # #338
     # ("sshow",     do_sshow,      "sleeping", False),  # #339
-    # ("appraise",  do_appraise,   "standing", False),  # #340
+    ("appraise",  do_appraise,   "standing", False),  # #340
     # ("rename",    do_rename,     "dead",     True),   # #341 noprefix, imm lvl 59
     # ("path",      do_path,       "resting",  False),  # #342
     # ("nopretitles", do_nopretitles, "sleeping", False), # #343
