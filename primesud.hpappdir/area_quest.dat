@@ -14,40 +14,12 @@ AREA = {
     "version":  4,
 }
 
-# -- Room VNUMs -----------------------------------------------------------------
-R_QUESTORS_LOUNGE                  = 200
-R_REGISTAR_S_OFFICE                = 201
-R_TRIVIA_SHOP                      = 202
-
-# -- Mob template VNUMs ---------------------------------------------------------
-M_EDURIN_QUESTMASTER_QUESTOR       = 200
-M_TRIVIA_SHOPKEEPER                = 201
-M_200_REGISTRAR_GQUEST             = 202
-
-# -- Item template VNUMs --------------------------------------------------------
-I_TRIVIA_PILL                      = 200
-I_QUEST_AURA_SANCTUARY             = 201
-I_SWORD_QUEST_ANCIENT              = 203
-I_BREASTPLATE_QUEST_ANCIENT        = 204
-I_BOOTS_QUEST_ANCIENT              = 205
-I_GLOVES_QUEST_PROTECTION          = 206
-I_FLAME_QUEST_ANCIENTS             = 207
-I_QUEST_HELM_TRUE_SIGHT            = 208
-I_BAG_QUEST_ANCIENT                = 209
-I_SHIELD_QUEST_ANCIENT             = 210
-I_QUEST_RING_REGENERATION          = 211
-I_QUEST_RING_INVISIBILITY          = 212
-I_DRAGON_EYE                       = 214
-I_EAGLE_CLAW                       = 215
-I_RABBIT_FOOT                      = 216
-I_WOLF_TOOTH                       = 217
-
 # -- Mob templates --------------------------------------------------------------
 # hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
 # armor: (pierce, bash, slash, exotic), raw .are units
 # hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)
 MOBILES = {
-    M_EDURIN_QUESTMASTER_QUESTOR: {
+    200: {
         "keywords":    'Edurin Questmaster Questor',
         "short_descr": 'Edurin',
         "long_descr":  'Edurin the Questmaster is sitting at a table here.',
@@ -69,7 +41,7 @@ MOBILES = {
         "wealth": 422,
         "size":   'medium',
     },
-    M_TRIVIA_SHOPKEEPER: {
+    201: {
         "keywords":    'trivia shopkeeper',
         "short_descr": 'The Trivia Shopkeeper',
         "long_descr":  'The trivia shopkeeper is here, handing out prizes.',
@@ -91,7 +63,7 @@ MOBILES = {
         "wealth": 122,
         "size":   'medium',
     },
-    M_200_REGISTRAR_GQUEST: {
+    202: {
         "keywords":    '#200\n\n\nRegistrar gquest',
         "short_descr": 'The Registrar',
         "long_descr":  'A busy looking man is here, writing in a ledger.',
@@ -118,14 +90,14 @@ MOBILES = {
 # -- Specials -------------------------------------------------------------------
 # ("M", mob_vnum, spec_fun_name) -- assign special function to mob template
 SPECIALS = (
-    ("M", M_EDURIN_QUESTMASTER_QUESTOR, 'spec_questmaster'),
-    ("M", M_TRIVIA_SHOPKEEPER, 'spec_triviamob'),
-    ("M", M_200_REGISTRAR_GQUEST, 'spec_registar'),
+    ("M", 200, 'spec_questmaster'),
+    ("M", 201, 'spec_triviamob'),
+    ("M", 202, 'spec_registar'),
 )
 
 # -- Rooms ----------------------------------------------------------------------
 ROOMS = {
-    R_QUESTORS_LOUNGE: {
+    200: {
         "name": 'The Questors Lounge',
         "desc": '',
         "exits": {
@@ -133,7 +105,7 @@ ROOMS = {
         },
         "sector": 'inside',
     },
-    R_REGISTAR_S_OFFICE: {
+    201: {
         "name": "The Registar's Office",
         "desc": '',
         "exits": {
@@ -141,7 +113,7 @@ ROOMS = {
         },
         "sector": 'inside',
     },
-    R_TRIVIA_SHOP: {
+    202: {
         "name": 'The Trivia Shop',
         "desc": '',
         "exits": {
@@ -153,7 +125,7 @@ ROOMS = {
 
 # -- Item templates -------------------------------------------------------------
 OBJECTS = {
-    I_TRIVIA_PILL: {
+    200: {
         "keywords":    'trivia pill',
         "short_descr": 'A Trivia Pill',
         "description": 'A trivia pill is here!',
@@ -165,7 +137,7 @@ OBJECTS = {
         "spells": ['trivia pill'],
         "level": 0, "weight": 0, "value": 0,
     },
-    I_QUEST_AURA_SANCTUARY: {
+    201: {
         "keywords":    'quest aura sanctuary',
         "short_descr": 'An Aura of the Ancients',
         "description": 'A red and yellow aura lies here.',
@@ -176,7 +148,7 @@ OBJECTS = {
         "stat_bonuses": {'ac': -100, 'hitroll': 50, 'damroll': 50},
         "level": 0, "weight": 1, "value": -1,
     },
-    I_SWORD_QUEST_ANCIENT: {
+    203: {
         "keywords":    'Sword Quest Ancient',
         "short_descr": 'A Sword of the Ancients',
         "description": 'A red and yellow sword lies here.',
@@ -188,7 +160,7 @@ OBJECTS = {
         "weapon_flags": {"flaming": True},
         "level": 0, "weight": 35, "value": -1,
     },
-    I_BREASTPLATE_QUEST_ANCIENT: {
+    204: {
         "keywords":    'breastplate quest ancient',
         "short_descr": 'A BreastPlate of the Ancients',
         "description": 'Some red and yellow platemail was left here.',
@@ -200,7 +172,7 @@ OBJECTS = {
         "stat_bonuses": {'str': 1, 'dex': 1, 'wis': 1, 'int': 1},
         "level": 0, "weight": 20, "value": -1,
     },
-    I_BOOTS_QUEST_ANCIENT: {
+    205: {
         "keywords":    'boots quest ancient',
         "short_descr": 'Boots of the Ancients',
         "description": 'Some red and yellow boots were left here.',
@@ -212,7 +184,7 @@ OBJECTS = {
         "stat_bonuses": {'dex': 2},
         "level": 0, "weight": 8, "value": -1,
     },
-    I_GLOVES_QUEST_PROTECTION: {
+    206: {
         "keywords":    'gloves quest protection',
         "short_descr": 'Gloves of Protection',
         "description": 'Some red and yellow gloves lie here.',
@@ -224,7 +196,7 @@ OBJECTS = {
         "stat_bonuses": {'damroll': 50, 'hitroll': 50, 'con': 1, 'str': 1},
         "level": 0, "weight": 20, "value": -1,
     },
-    I_FLAME_QUEST_ANCIENTS: {
+    207: {
         "keywords":    'flame quest ancients',
         "short_descr": 'Flame of the Ancients',
         "description": 'A red and yellow flame burns here.',
@@ -235,7 +207,7 @@ OBJECTS = {
         "stat_bonuses": {'int': 1, 'wis': 1, 'mana': 100},
         "level": 0, "weight": 5, "value": -1,
     },
-    I_QUEST_HELM_TRUE_SIGHT: {
+    208: {
         "keywords":    'quest helm true sight',
         "short_descr": 'A Helm of True Sight',
         "description": 'A red and yellow helm lies here.',
@@ -246,7 +218,7 @@ OBJECTS = {
         "armor": (50, 50, 50, 40),
         "level": 0, "weight": 10, "value": -1,
     },
-    I_BAG_QUEST_ANCIENT: {
+    209: {
         "keywords":    'bag quest ancient',
         "short_descr": 'Bag of the Ancients',
         "description": 'A red and yellow bag lies here.',
@@ -257,7 +229,7 @@ OBJECTS = {
         "stat_bonuses": {'ac': -100},
         "level": 0, "weight": 0, "value": -1,
     },
-    I_SHIELD_QUEST_ANCIENT: {
+    210: {
         "keywords":    'shield quest ancient',
         "short_descr": 'A Shield of the Ancients',
         "description": 'A red and yellow shield lies here.',
@@ -269,7 +241,7 @@ OBJECTS = {
         "stat_bonuses": {'hit': 100},
         "level": 0, "weight": 20, "value": -1,
     },
-    I_QUEST_RING_REGENERATION: {
+    211: {
         "keywords":    'quest ring regeneration',
         "short_descr": 'A Ring of Regeneration',
         "description": 'A red and yellow ring lies here.',
@@ -279,7 +251,7 @@ OBJECTS = {
         "extra_flags": {"glow": True, "hum": True, "burn_proof": True, "quest": True},
         "level": 0, "weight": 3, "value": -1,
     },
-    I_QUEST_RING_INVISIBILITY: {
+    212: {
         "keywords":    'quest ring invisibility',
         "short_descr": 'A Ring of Invisibility',
         "description": 'A red and yellow ring was left here.',
@@ -289,7 +261,7 @@ OBJECTS = {
         "extra_flags": {"glow": True, "hum": True, "burn_proof": True, "quest": True},
         "level": 0, "weight": 2, "value": -1,
     },
-    I_DRAGON_EYE: {
+    214: {
         "keywords":    'dragon eye',
         "short_descr": "A Dragon's Eye",
         "description": "A Dragon's Eye lies here.",
@@ -299,7 +271,7 @@ OBJECTS = {
         "extra_flags": {"burn_proof": True},
         "level": 1, "weight": 0, "value": 0,
     },
-    I_EAGLE_CLAW: {
+    215: {
         "keywords":    'eagle claw',
         "short_descr": "An Eagles' Claw",
         "description": "An Eagle's Claw lies here.",
@@ -309,7 +281,7 @@ OBJECTS = {
         "extra_flags": {"burn_proof": True},
         "level": 0, "weight": 0, "value": 0,
     },
-    I_RABBIT_FOOT: {
+    216: {
         "keywords":    'rabbit foot',
         "short_descr": "A Rabbit's Foot",
         "description": "A Rabbit's Foot lies here.",
@@ -319,7 +291,7 @@ OBJECTS = {
         "extra_flags": {"burn_proof": True},
         "level": 0, "weight": 0, "value": 0,
     },
-    I_WOLF_TOOTH: {
+    217: {
         "keywords":    'wolf tooth',
         "short_descr": 'A Wolves Tooth',
         "description": 'A Wolves Tooth lies here.',
@@ -340,7 +312,7 @@ OBJECTS = {
 # ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
 # F and D .are resets are baked into room exit flags at conversion time
 RESETS = (
-    ("M", M_EDURIN_QUESTMASTER_QUESTOR, 1, R_QUESTORS_LOUNGE, 1),
-    ("M", M_200_REGISTRAR_GQUEST, 1, R_REGISTAR_S_OFFICE, 1),
-    ("M", M_TRIVIA_SHOPKEEPER, 1, R_TRIVIA_SHOP, 1),
+    ("M", 200, 1, 200, 1),
+    ("M", 202, 1, 201, 1),
+    ("M", 201, 1, 202, 1),
 )

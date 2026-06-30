@@ -11,11 +11,6 @@ from colors import (COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full,
 from hpprime import dimgrob, getpix, grobh, grobw, pixon, strblit2
 
 
-def tprint(*args, **kwargs):
-    """Module-level print -- delegates to tr.print (colour-aware)."""
-    tr.print(*args, **kwargs)
-
-
 def _wrap_plain(text, width):
     """Plain-text word-wrap with no colour-code scanning."""
     lines = []
@@ -191,9 +186,26 @@ def install_color_print(tr):
     tr.set_status = wrapped_set_status
 
 
-tr = tml(
-    dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font=FONT,
-    scrollback_size=SCROLLBACK_SIZE, scroll_step=SCROLL_STEP,
-    touch_scroll_step=TOUCH_SCROLL_STEP, swipe_threshold=SWIPE_THRESHOLD,
-)
-install_color_print(tr)
+tr = None
+
+
+def tprint(*args, **kwargs):
+    """Module-level print -- delegates to tr.print (colour-aware)."""
+    tr.print(*args, **kwargs)
+
+
+def init_terminal():
+    """Create the tml instance and install colour wrappers. [PRIMESUD]
+
+    Called once from PrimeSud.run() so HP Prime's alphabetical .py
+    auto-loading does not touch the display before the app is ready.
+    """
+    global tr
+    if tr is not None:
+        return
+    tr = tml(
+        dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font=FONT,
+        scrollback_size=SCROLLBACK_SIZE, scroll_step=SCROLL_STEP,
+        touch_scroll_step=TOUCH_SCROLL_STEP, swipe_threshold=SWIPE_THRESHOLD,
+    )
+    install_color_print(tr)

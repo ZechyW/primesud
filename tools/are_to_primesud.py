@@ -687,8 +687,8 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
     def w(s=""):
         out.append(s)
 
-    def r(vnum, mapping):
-        return mapping.get(vnum, str(vnum))
+    def r(vnum, mapping=None):
+        return str(vnum)
 
     aname    = area_data.get("name", "Unknown")
     vnums    = area_data.get("vnums", (0, 0))
@@ -716,20 +716,7 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
     w("}")
     w("")
 
-    # -- Constants --
     BAR = "-"
-    w(f"# -- Room VNUMs {BAR * 65}")
-    for vnum, _ in rooms:
-        w(f"{room_map[vnum]:<34} = {vnum}")
-    w("")
-    w(f"# -- Mob template VNUMs {BAR * 57}")
-    for vnum, _ in mobs:
-        w(f"{mob_map[vnum]:<34} = {vnum}")
-    w("")
-    w(f"# -- Item template VNUMs {BAR * 56}")
-    for vnum, _ in objs:
-        w(f"{obj_map[vnum]:<34} = {vnum}")
-    w("")
 
     # -- MOBILES --
     w(f"# -- Mob templates {BAR * 62}")
@@ -738,7 +725,7 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
     w("# hitroll: from level line; no separate damroll in .are (dam_dice bonus is it)")
     w("MOBILES = {")
     for vnum, mob in mobs:
-        cname = mob_map[vnum]
+        cname = vnum
         w(f"    {cname}: {{")
         w(f'        "keywords":    {pyrepr(mob["keywords"])},')
         w(f'        "short_descr": {pyrepr(mob["short_descr"])},')
@@ -783,7 +770,7 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
     w(f"# -- Rooms {BAR * 70}")
     w("ROOMS = {")
     for vnum, room in rooms:
-        cname = room_map[vnum]
+        cname = vnum
         w(f"    {cname}: {{")
         w(f'        "name": {pyrepr(room["name"])},')
         w(f'        "desc": {pyrepr(room["desc"])},')
@@ -837,7 +824,7 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
     w(f"# -- Item templates {BAR * 61}")
     w("OBJECTS = {")
     for vnum, obj in objs:
-        cname = obj_map[vnum]
+        cname = vnum
         w(f"    {cname}: {{")
         w(f'        "keywords":    {pyrepr(obj["keywords"])},')
         w(f'        "short_descr": {pyrepr(obj["short_descr"])},')

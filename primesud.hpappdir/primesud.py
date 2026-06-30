@@ -29,6 +29,7 @@ from info import do_look
 from movement import run_buf_step, free_runbuf
 from macros import _MACRO_SUBST
 import terminal
+from terminal import init_terminal
 from config import SAVE_VAR
 from game_state import (
     init_game_state,
@@ -299,6 +300,7 @@ class PrimeSud:
         """Entry point: run the game inside the environment context manager."""
         # Initialise world catalogs here so imports stay light but runtime users
         # can treat world globals as ready.
+        init_terminal()
         init_world()
         with self:
             game = self.game

@@ -1,26 +1,25 @@
 """Contextual picker UI for selecting mobs, items, and options."""
 
 from hpprime import eval as ppleval
-from terminal import tr
+import terminal
+from terminal import tprint
 
 _MAX_OPTS = 10
 
 
 def _cancel():
     """Print cancellation message and return sentinel. [PRIMESUD]"""
-    tr.print("Cancelled.")
+    tprint("Cancelled.")
     return -1
 
 
 def _read_key():
     """Block until a keypress is available and return the character. [PRIMESUD]"""
+    tr = terminal.tr
     while True:
         result = tr.poll_char()
         if result is not None:
             char, _auto_submit = result
-            # In picker we are already inside a blocking command; game_loop
-            # accounts for elapsed time around interpret(), so don't also carry
-            # scrollback time back to the main poll loop.
             if tr._scrollback_ms:
                 tr._scrollback_ms = 0
             return char
@@ -29,6 +28,7 @@ def _read_key():
 
 def _force_numeric_keys():
     """Reset keyboard state to unshifted numeric entry mode. [PRIMESUD]"""
+    tr = terminal.tr
     tr.resync_keyboard()
     tr.alpha_lock = False
     tr.shift_lock = False
@@ -43,24 +43,24 @@ def _force_numeric_keys():
 def _render(title, options, page, max_page):
     """Display one page of numbered picker options with navigation hints. [PRIMESUD]"""
     shown = options[page * _MAX_OPTS : page * _MAX_OPTS + _MAX_OPTS]
-    tr.print("{Y" + title + "{x")
+    tprint("{Y" + title + "{x")
     for i, opt in enumerate(shown):
         label = str(i + 1) if i < 9 else "0"
         suffix = " {C(default){x" if i == 0 else ""
-        tr.print("  {y" + label + "){x " + opt + suffix)
+        tprint("  {y" + label + "){x " + opt + suffix)
     if max_page > 0:
-        tr.print(
+        tprint(
             "{wPage " + str(page + 1) + "/" + str(max_page + 1) + " [+] next  [-] prev  [Esc] cancel{x"
         )
     else:
-        tr.print("{w[Esc] cancel{x")
+        tprint("{w[Esc] cancel{x")
 
 
 def pick_from(title, options):
     """Display a numbered list and read digit+Enter to select, or Esc to cancel.
 
     Prints title, then up to 10 options labelled 1-9 then 0 per page.
-    Uses tr.read_key() directly: Esc and +/- act on single keypress;
+    Uses tr.poll_char() directly: Esc and +/- act on single keypress;
     digit selection requires Enter to confirm. Bare Enter selects item 1.
 
     Args:
@@ -79,37 +79,37 @@ def pick_from(title, options):
     _render(title, options, page, max_page)
 
     while True:
-        tr.print("> ", end="")
+        tprint("> ", end="")
         while True:  # FIRST_KEY: loop until action taken
             char = _read_key()
             if char == "\e":
                 return _cancel()
             elif char == "\n":
-                tr.print("")
+                tprint("")
                 return page * _MAX_OPTS
             elif char == "+":
                 if page < max_page:
                     page += 1
-                    tr.print("")
+                    tprint("")
                     _render(title, options, page, max_page)
                     break
             elif char == "-":
                 if page > 0:
                     page -= 1
-                    tr.print("")
+                    tprint("")
                     _render(title, options, page, max_page)
                     break
             elif char is None:
                 pass
             elif char.isdigit():
                 page_idx = (int(char) - 1) % 10  # '1'->0 ... '9'->8, '0'->9
-                tr.print(char, end="")
+                tprint(char, end="")
                 while True:  # CONFIRM
                     char2 = _read_key()
                     if char2 == "\n":
                         absolute_idx = page * _MAX_OPTS + page_idx
                         if absolute_idx < len(options):
-                            tr.print("")
+                            tprint("")
                             return absolute_idx
                         n_shown = min(_MAX_OPTS, len(options) - page * _MAX_OPTS)
                         if n_shown == _MAX_OPTS:
@@ -118,11 +118,11 @@ def pick_from(title, options):
                             rang = "1"
                         else:
                             rang = "1-" + str(n_shown)
-                        tr.print("")
-                        tr.print("{wEnter " + rang + " (or Esc to cancel).{x")
+                        tprint("")
+                        tprint("{wEnter " + rang + " (or Esc to cancel).{x")
                         break
                     elif char2 == "\b":
-                        tr.print("")
+                        tprint("")
                         break
                     elif char2 == "\e":
                         return _cancel()

@@ -37,28 +37,22 @@ def patch_area(area_name, filepath):
     text = Path(filepath).read_text(encoding="utf-8")
     lines = text.split("\n")
 
-    vnum_to_const = {}
-    for line in lines:
-        m = re.match(r"^(R_\w+)\s*=\s*(\d+)$", line)
-        if m:
-            vnum_to_const[int(m.group(2))] = m.group(1)
+    rooms_section = None
+    for idx in range(len(lines)):
+        if lines[idx].startswith("ROOMS = {"):
+            rooms_section = idx
+            break
 
     modified = False
-    offset = 0
     for vnum, new_exits in sorted(exits_to_add.items()):
-        const_name = vnum_to_const.get(vnum)
-        if not const_name:
-            print(f"  WARNING: no constant for room {vnum}", file=sys.stderr)
-            continue
-
-        room_pattern = f"    {const_name}: {{"
+        room_pattern = f"    {vnum}: {{"
         room_start = None
-        for idx in range(len(lines)):
+        for idx in range(rooms_section or 0, len(lines)):
             if lines[idx].startswith(room_pattern):
                 room_start = idx
                 break
         if room_start is None:
-            print(f"  WARNING: room block for {const_name} not found", file=sys.stderr)
+            print(f"  WARNING: room block for {vnum} not found", file=sys.stderr)
             continue
 
         exits_start = None
@@ -67,7 +61,7 @@ def patch_area(area_name, filepath):
                 exits_start = idx
                 break
         if exits_start is None:
-            print(f"  WARNING: exits block not found for {const_name}", file=sys.stderr)
+            print(f"  WARNING: exits block not found for {vnum}", file=sys.stderr)
             continue
 
         exits_end = None
@@ -76,7 +70,7 @@ def patch_area(area_name, filepath):
                 exits_end = idx
                 break
         if exits_end is None:
-            print(f"  WARNING: exits end not found for {const_name}", file=sys.stderr)
+            print(f"  WARNING: exits end not found for {vnum}", file=sys.stderr)
             continue
 
         exit_lines = lines[exits_start + 1:exits_end]
@@ -91,7 +85,7 @@ def patch_area(area_name, filepath):
         lines[exits_start + 1:exits_end] = exit_lines
         modified = True
         dirs = ", ".join(sorted(new_exits.keys(), key=lambda x: DIR_ORDER.index(x)))
-        print(f"  {const_name} ({vnum}): +{dirs}", file=sys.stderr)
+        print(f"  {vnum}: +{dirs}", file=sys.stderr)
 
     if modified:
         Path(filepath).write_text("\n".join(lines), encoding="utf-8")

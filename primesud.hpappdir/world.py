@@ -30,19 +30,21 @@ I_WHIP_SUB_MERC            = 3721
 I_GLAIVE_SUB_MERC          = 3722
 
 # List of (filename, area_tag) -- add/remove areas here only.
+# Ascending size order: small areas load while heap is fresh (lower ms/KB),
+# big areas load last where heap pressure is unavoidable anyway.
 _AREA_FILES = [
-    ("area_chapel.dat", "chapel"),
-    ("area_grave.dat", "grave"),
-    ("area_haon.dat", "haon"),
-    ("area_immort.dat", "immort"),
     ("area_limbo.dat", "limbo"),
-    ("area_midgaard.dat", "midgaard"),
-    ("area_mobfact.dat", "mobfact"),
-    ("area_ofcol2.dat", "ofcol2"),
-    ("area_plains.dat", "plains"),
     ("area_quest.dat", "quest"),
+    ("area_immort.dat", "immort"),
+    ("area_mobfact.dat", "mobfact"),
+    ("area_grave.dat", "grave"),
+    ("area_plains.dat", "plains"),
+    ("area_chapel.dat", "chapel"),
     ("area_school.dat", "mud_school"),
     ("area_shire.dat", "shire"),
+    ("area_haon.dat", "haon"),
+    ("area_ofcol2.dat", "ofcol2"),
+    ("area_midgaard.dat", "midgaard"),
 ]
 
 # -- Static definitions (populated by init_world, constant after) -----------

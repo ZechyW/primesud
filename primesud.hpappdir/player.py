@@ -1,7 +1,8 @@
 """Player creation, progression, and prompt."""
 
 from colors import color_len
-from terminal import tprint, tr
+import terminal
+from terminal import tprint
 from config import TERMINAL_COLS
 from config import R_STARTING_ROOM, MAX_MORTAL_LEVEL
 from skills_table import SKILL_TABLE, SKILLS, GSN_SWORD, GSN_RECALL
@@ -193,4 +194,4 @@ def show_prompt(player, buf):
         player["xp_next"] - player["xp"],
     )
     avail = max(1, TERMINAL_COLS - 6 - color_len(prefix))
-    tr.set_status(prefix + buf[-avail:])
+    terminal.tr.set_status(prefix + buf[-avail:])
