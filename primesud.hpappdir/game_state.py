@@ -308,7 +308,10 @@ def init_game_state(game):
 
 def new_game(game, name="Hero"):
     """Create a new game world with a fresh player character. [PRIMESUD]"""
-    reset_area()
+    world.rooms.clear()
+    world.chars.clear()
+    for area in AREA_DEFS:
+        reset_area(area)
     world.areas = create_area_states()
     player = create_char()
     player["name"] = name
@@ -320,7 +323,10 @@ def new_game(game, name="Hero"):
 
 def load_game(game):
     """Load a saved game from persistent storage and restore world state. [PRIMESUD]"""
-    reset_area()
+    world.rooms.clear()
+    world.chars.clear()
+    for area in AREA_DEFS:
+        reset_area(area)
     world.areas = create_area_states()
     player = create_char()
     player["_macros"] = _MACRO_SUBST

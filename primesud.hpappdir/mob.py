@@ -152,51 +152,55 @@ def _tpl_room_count(mob_instances, room_vnum, tpl_vnum):
                if inst.get("is_npc") and inst["tpl"] == tpl_vnum and inst["room"] == room_vnum)
 
 
-def reset_mobs(mob_instances, room_state, resets, tr=None, debug=False):
-    """Spawn mobs for each M entry up to global and room limits (cf. 1stMud reset_room 'M' case, db.c).
+def reset_room(vnum, next_id):
+    """Reset one room's doors and process its resets (cf. 1stMud reset_room, db.c:1393).
 
-    E and G entries following a successful M equip or give items to the spawned mob,
-    matching 1stMud's LastMob/last context chain.  O and P entries clear the context.
-
-    Mutates mob_instances and room_state in place.  Safe to call on a
-    partially-populated mob_instances (area tick) as well as an empty one
-    (full reset via reset_area).
+    Resets door closed/locked state to initial values, then processes the
+    room's M/O/E/G/P reset commands with count-based dedup.
 
     Args:
-        mob_instances (dict): Mob instance mapping mob ID -> instance dict.
-        room_state (dict): Room state mapping room vnum -> room state dict.
-        resets (tuple): Area RESETS sequence.
-        tr: Optional terminal for reset debug output.
-        debug (bool): True to print each spawned mob.
+        vnum (int): Room VNUM.
+        next_id (int): Next available mob instance ID.
+
+    Returns:
+        int: Updated next_id after any mob spawns.
     """
-    mob_id = max(mob_instances, default=1) + 1
-    last_mob_id  = None   # cf. 1stMud LastMob in reset_room
-    last_spawned = False  # cf. 1stMud `last` flag in reset_room
-    for entry in resets:
+    rdef = ROOM_DEFS[vnum]
+    # Door reset (cf. db.c:1411)
+    doors = DOOR_DEFS.get(vnum)
+    if doors:
+        exits = rdef["exits"]
+        for d, state in doors.items():
+            exits[d]["closed"] = state["closed"]
+            exits[d]["locked"] = state["locked"]
+    # Process resets (cf. db.c:1427 switch on pReset->command)
+    room_resets = rdef.get("resets")
+    if not room_resets:
+        return next_id
+    rs = world.rooms[vnum]
+    last_mob_id = None
+    last_spawned = False
+    for entry in room_resets:
         cmd = entry[0]
         if cmd == "M":
             tpl_vnum, gl, room_vnum, rl = entry[1], entry[2], entry[3], entry[4]
-            if _tpl_live_count(mob_instances, tpl_vnum) >= gl:
+            if _tpl_live_count(world.chars, tpl_vnum) >= gl:
                 last_spawned = False
                 continue
-            if _tpl_room_count(mob_instances, room_vnum, tpl_vnum) >= rl:
+            if _tpl_room_count(world.chars, room_vnum, tpl_vnum) >= rl:
                 last_spawned = False
                 continue
             inst = create_mobile(tpl_vnum)
             inst["room"] = room_vnum
             inst["home_area"] = ROOM_DEFS[room_vnum].get("area")
-            inst["id"] = mob_id
-            mob_instances[mob_id] = inst
-            room_state[room_vnum]["mobs"].append(mob_id)
-            if debug and tr is not None:
-                tr.print("{D[reset] spawned %s in %s{x" % (
-                    MOB_DEFS[tpl_vnum]["short_descr"],
-                    ROOM_DEFS[room_vnum]["name"]))
-            last_mob_id  = mob_id
+            inst["id"] = next_id
+            world.chars[next_id] = inst
+            world.rooms[room_vnum]["mobs"].append(next_id)
+            last_mob_id = next_id
             last_spawned = True
-            mob_id += 1
+            next_id += 1
         elif cmd == "E" and last_spawned:
-            mob = mob_instances[last_mob_id]
+            mob = world.chars[last_mob_id]
             obj = create_object(entry[1])
             if MOB_DEFS[mob["tpl"]].get("shop"):
                 obj.setdefault("extra_flags", {})["inventory"] = True
@@ -204,33 +208,42 @@ def reset_mobs(mob_instances, room_state, resets, tr=None, debug=False):
             equip_char(mob, obj, entry[2])
         elif cmd == "G" and last_spawned:
             obj = create_object(entry[1])
-            if MOB_DEFS[mob_instances[last_mob_id]["tpl"]].get("shop"):
+            if MOB_DEFS[world.chars[last_mob_id]["tpl"]].get("shop"):
                 obj.setdefault("extra_flags", {})["inventory"] = True
-            mob_instances[last_mob_id]["inv"].append(obj)
-        elif cmd in ("O", "P"):
-            last_spawned = False  # breaks mob context (cf. 1stMud last=false on O)
+            world.chars[last_mob_id]["inv"].append(obj)
+        elif cmd == "O":
+            # [PRIMESUD] nplayer check omitted -- single-player, no reset delay
+            obj_tpl = entry[1]
+            has_one = False
+            for o in rs.get("items", []):
+                if (o["vnum"] if isinstance(o, dict) else o) == obj_tpl:
+                    has_one = True
+                    break
+            if has_one:
+                last_spawned = False
+                continue
+            obj = create_object(obj_tpl)
+            obj["cost"] = 0  # cf. db.c:1527 -- O-placed items have zero cost
+            rs["items"].append(obj)
+            last_spawned = True
+        elif cmd == "P":
+            last_spawned = False  # [PRIMESUD] containers not implemented
+    return next_id
 
 
-def reset_area():
-    """Reset all room state and mob instances in-place (cf. 1stMud reset_area).
+def reset_area(pArea):
+    """Reset one area's rooms (cf. 1stMud reset_area, db.c:1726).
 
-    Clears and repopulates world.rooms and world.chars via imported world module.
+    Creates room state entries if missing, then calls reset_room per room.
+
+    Args:
+        pArea (dict): Area definition with 'room_vnums' key.
     """
-    world.rooms.clear()
-    world.chars.clear()
-    for vnum in ROOM_DEFS:
-        world.rooms[vnum] = {"items": [], "mobs": []}
-    for area in AREA_DEFS:
-        reset_mobs(world.chars, world.rooms, area["resets"])
-        for entry in area["resets"]:
-            if entry[0] == "O":
-                world.rooms[entry[2]]["items"].append(create_object(entry[1]))
-    # Restore all door states to their reset-to values (cf. 1stMud reset_room door loop, db.c:1411)
-    for vnum, doors in DOOR_DEFS.items():
-        exits = ROOM_DEFS[vnum]["exits"]
-        for d, state in doors.items():
-            exits[d]["closed"] = state["closed"]
-            exits[d]["locked"] = state["locked"]
+    next_id = max(world.chars, default=1) + 1
+    for vnum in pArea["room_vnums"]:
+        if vnum not in world.rooms:
+            world.rooms[vnum] = {"items": [], "mobs": []}
+        next_id = reset_room(vnum, next_id)
 
 
 def create_area_states():
@@ -242,7 +255,7 @@ def create_area_states():
         states.append({
             "tag": d["tag"],
             "age": 0,
-            "resets": d["resets"],
+            "room_vnums": d["room_vnums"],
             "weather": {
                 "precip": randint(-2, 2),
                 "precip_vector": randint(-1, 1),
@@ -371,7 +384,7 @@ def aggr_update(tr, player):
 
 
 def area_update(tr, player):
-    """Increment area ages and reset areas at threshold (cf. 1stMud area_update in db.c).
+    """Increment area ages and reset areas at threshold (cf. 1stMud area_update, db.c:1296).
 
     Args:
         tr: Terminal for reset messages.
@@ -396,11 +409,11 @@ def area_update(tr, player):
                 weather["precip_vector"] = 1
         area["age"] += 1
         if area["age"] >= _AREA_AGE_MIN and area["age"] >= _AREA_AGE_RESET:
-            reset_mobs(world.chars, world.rooms, area["resets"])
+            reset_area(area)
             if area["tag"] == "mud_school":
                 area["age"] = 13  # resets every 2 ticks (cf. db.c:1330: age = 15-2)
             else:
                 area["age"] = randint(0, 3)
                 # School area is intentionally silent (cf. db.c:1335 else-if excludes it).
                 if ROOM_DEFS[player["room"]].get("area") == area["tag"]:
-                    tr.print(_RESET_MSGS[randint(0, len(_RESET_MSGS) - 1)])
+                    tr.print("{D" + _RESET_MSGS[randint(0, len(_RESET_MSGS) - 1)] + "{x")

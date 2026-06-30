@@ -77,9 +77,20 @@ def init_world():
     for _fname, _tag in _AREA_FILES:
         _ns = {}
         exec(open(_fname).read(), _ns)
+        _room_vnums = []
         for _vnum, _room in _ns["ROOMS"].items():
             _room["area"] = _tag
             ROOM_DEFS[_vnum] = _room
+            _room_vnums.append(_vnum)
+            # Snapshot initial door state (cf. 1stMud reset_room door loop, db.c:1411)
+            for _d, _ev in _room.get("exits", {}).items():
+                if isinstance(_ev, dict) and _ev.get("isdoor"):
+                    if _vnum not in DOOR_DEFS:
+                        DOOR_DEFS[_vnum] = {}
+                    DOOR_DEFS[_vnum][_d] = {
+                        "closed": bool(_ev.get("closed")),
+                        "locked": bool(_ev.get("locked")),
+                    }
         MOB_DEFS.update(_ns["MOBILES"])
         for _entry in _ns.get("SPECIALS", ()):
             if _entry[0] == "M" and _entry[1] in MOB_DEFS:
@@ -89,19 +100,23 @@ def init_world():
             _keeper = _entry["keeper"]
             if _keeper in MOB_DEFS:
                 MOB_DEFS[_keeper]["shop"] = _entry
+        # Partition resets to per-room lists (cf. 1stMud pRoom->reset_first).
+        # M/O set current room; E/G/P follow the preceding M's room.
+        _cur_rvnum = None
+        for _entry in _ns["RESETS"]:
+            _cmd = _entry[0]
+            if _cmd == "M":
+                _cur_rvnum = _entry[3]
+            elif _cmd == "O":
+                _cur_rvnum = _entry[2]
+            if _cur_rvnum is not None and _cur_rvnum in ROOM_DEFS:
+                _rdef = ROOM_DEFS[_cur_rvnum]
+                if "resets" not in _rdef:
+                    _rdef["resets"] = []
+                _rdef["resets"].append(_entry)
         _adef = {"tag": _tag, "resets": _ns["RESETS"]}
         _adef.update(_ns["AREA"])
+        _adef["room_vnums"] = _room_vnums
         AREA_DEFS.append(_adef)
-
-    # Snapshot initial door closed/locked state for reset (cf. 1stMud reset_room door loop, db.c:1411)
-    for _vnum, _room in ROOM_DEFS.items():
-        for _d, _ev in _room.get("exits", {}).items():
-            if isinstance(_ev, dict) and _ev.get("isdoor"):
-                if _vnum not in DOOR_DEFS:
-                    DOOR_DEFS[_vnum] = {}
-                DOOR_DEFS[_vnum][_d] = {
-                    "closed": bool(_ev.get("closed")),
-                    "locked": bool(_ev.get("locked")),
-                }
 
     _WORLD_READY = True
