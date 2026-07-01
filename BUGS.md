@@ -107,12 +107,16 @@ throw added independent -1 STR. Long fights accumulated many stacks.
 Fix: ported `affect_join` from 1stMud handler.c. Swapped all 4 call sites
 that 1stMud uses it for: chill_touch, poison, plague, sleep.
 
-### 12. `obj_cast_spell` sets target name to spell name
+### 12. `obj_cast_spell` sets target name to spell name [Fixed]
 
-`magic.py` `obj_cast_spell` sets `ch["_spell_target_name"] = spell_name`
-instead of actual target name. Spells using `_spell_tail(ch)` (locate object,
-farsight, control weather, continual light) receive spell name as argument when
-cast from scrolls/wands/staves.
+`magic.py` `obj_cast_spell` set `ch["_target_name"]` to the spell name
+instead of `""`. `TAR_IGNORE` spells that read the text argument (locate
+object, farsight, control weather, continual light) received the spell
+name as their search keyword when cast from scrolls/wands/staves. 1stMud
+sets global `target_name = ""` in `obj_cast_spell` (magic.c:641) --
+item-triggered spells get no text argument.
+
+Fix: set `_target_name` to `""` to match 1stMud.
 
 ### 13. Player inventory item timers never tick
 

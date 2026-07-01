@@ -54,7 +54,11 @@ def _dice(num, size):
 
 
 def _heal_char(ch, victim, amount, msg):
-    """Heal victim by amount, clamped to max_hit, and print message. [PRIMESUD]"""
+    """Heal victim by amount, clamped to max_hit, and print message. [PRIMESUD]
+
+    Inlines the pattern repeated across spell_cure_light / spell_heal / etc.
+    in 1stMud magic.c (victim->hit = Min(victim->hit + amount, victim->max_hit)).
+    """
     victim["hit"] = min(victim["max_hit"], victim["hit"] + amount)
     chprintln(victim, msg)
     if victim is not ch:
@@ -83,10 +87,6 @@ def _area_state_for_room(room_vnum):
     return None
 
 
-def _spell_tail(ch):
-    """Return the stored spell target name suffix for a character. [PRIMESUD]"""
-    return ch.get("_spell_target_name", "")
-
 
 def _item_name(obj):
     """Return the short description of an item, or 'item' if None. [PRIMESUD]"""
@@ -114,7 +114,11 @@ def _number_fuzzy(n):
 
 
 def _new_obj_affect(sn, level, duration, location, modifier, bitvector=""):
-    """Create a new affect dict targeting an object. [PRIMESUD]"""
+    """Create a new affect dict targeting an object. [PRIMESUD]
+
+    Same fields as _new_affect but with where="to_object" (cf. 1stMud
+    TO_OBJECT in handler.h, used by affect_to_obj in handler.c).
+    """
     af = _new_affect(sn, level, duration, location, modifier, bitvector)
     af["where"] = "to_object"
     return af
@@ -393,13 +397,13 @@ def spell_farsight(sn, level, ch, vo, target):
     if ch.get("affected_by", {}).get("blind"):
         chprintln(ch, "Maybe it would help if you could see?")
         return False
-    do_scan(ch, _spell_tail(ch).split())
+    do_scan(ch, ch.get("_target_name", "").split())
     return True
 
 
 def spell_locate_object(sn, level, ch, vo, target):
     """Locate object by name fragment (cf. 1stMud spell_locate_object in magic.c)."""
-    wanted = _spell_tail(ch)
+    wanted = ch.get("_target_name", "")
     if not wanted:
         chprintln(ch, "Nothing like that in heaven or earth.")
         return False
@@ -446,7 +450,7 @@ def spell_locate_object(sn, level, ch, vo, target):
 
 def spell_control_weather(sn, level, ch, vo, target):
     """Adjust simplified interim weather state (cf. 1stMud spell_control_weather in magic.c)."""
-    arg = _spell_tail(ch)
+    arg = ch.get("_target_name", "")
     area = _area_state_for_room(ch["room"])
     if area is None:
         chprintln(ch, "The weather is altered by your magic.")
@@ -1180,7 +1184,7 @@ def spell_color_spray(sn, level, ch, vo, target):
 
 def spell_continual_light(sn, level, ch, vo, target):
     """Create light ball or make carried item glow (cf. 1stMud spell_continual_light in magic.c)."""
-    tail = _spell_tail(ch)
+    tail = ch.get("_target_name", "")
     if tail:
         obj = get_obj_list(tail, ch["inv"], ITEM_DEFS)
         if obj is None:
@@ -1515,7 +1519,7 @@ def spell_frenzy(sn, level, ch, vo, target):
 
 def spell_gate(sn, level, ch, vo, target):
     """Gate to another character's location (cf. 1stMud spell_gate in magic.c)."""
-    tail = _spell_tail(ch)
+    tail = ch.get("_target_name", "")
     if not tail:
         chprintln(ch, "You failed.")
         return False
@@ -2010,7 +2014,7 @@ def spell_summon(sn, level, ch, vo, target):
 
 def spell_ventriloquate(sn, level, ch, vo, target):
     """Ventriloquate (cf. 1stMud spell_ventriloquate in magic.c)."""
-    tail = _spell_tail(ch)
+    tail = ch.get("_target_name", "")
     parts = tail.split(None, 1)
     if len(parts) < 2:
         chprintln(ch, "What do you want to make who say?")
@@ -2898,11 +2902,11 @@ def obj_cast_spell(spell_name, level, ch, victim, obj, item_obj=None):
         return False
 
     fun = SPELL_FUNS.get(sk.get("spell_fun", "spell_null"), spell_null)
-    if spell_name:
-        ch["_spell_target_name"] = spell_name  # [PRIMESUD] item spell display name
+    # 1stMud: target_name = "" (no user-typed argument for item spells)
+    ch["_target_name"] = ""
     ret = fun(sn, level, ch, vo, target)
-    if "_spell_target_name" in ch:
-        del ch["_spell_target_name"]
+    if "_target_name" in ch:
+        del ch["_target_name"]
     # 1stmud: victim retaliates after offensive item spell
     # (skipping victim->master != ch guard -- master field not yet ported)
     if (ret and tgt_type in ("char_offensive", "obj_char_offensive")
@@ -2992,9 +2996,9 @@ def do_cast(player, args):
     else:
         player["mana"] -= mana
         fun = SPELL_FUNS.get(sk.get("spell_fun", "spell_null"), spell_null)
-        player["_spell_target_name"] = target_name
+        player["_target_name"] = target_name  # cf. 1stMud global target_name (magic.c:266)
         ret = fun(sn, player.get("level", 1), player, vo, target)  # [PRIMESUD] classless
-        del player["_spell_target_name"]
+        del player["_target_name"]
         check_improve(player, sn, ret, 1)
 
     # 1stmud: victim retaliates after offensive cast (even on fizzle)

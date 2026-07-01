@@ -596,27 +596,19 @@ class TestBug11ChillTouchStacks:
 
 
 # ===========================================================================
-# Bug #12 -- obj_cast_spell sets target name to spell name  (UNFIXED)
+# Bug #12 -- obj_cast_spell sets target name to spell name  [Fixed]
 # ===========================================================================
 
 class TestBug12ObjCastSpellTargetName:
 
-    @pytest.mark.xfail(reason="Bug #12: _spell_target_name set to spell_name")
-    def test_obj_cast_spell_sets_actual_target_name(self):
-        """obj_cast_spell should set _spell_target_name to target's name, not spell name."""
-        ch = _make_char()
-        # After obj_cast_spell runs with a spell that uses _spell_tail,
-        # _spell_target_name should be the target name, not the spell name.
-        #
-        # We test the mechanism directly: obj_cast_spell sets
-        # ch["_spell_target_name"] = spell_name at line 2864.
-        # This is wrong -- it should be the victim/obj name.
+    def test_obj_cast_spell_sets_empty_target_name(self):
+        """obj_cast_spell should set _target_name to "" (matches 1stMud target_name = "")."""
         import inspect
         src = inspect.getsource(obj_cast_spell)
-        # The buggy line: ch["_spell_target_name"] = spell_name
-        # A fix would set it to victim's name or the user-supplied target arg.
-        assert 'ch["_spell_target_name"] = spell_name' not in src, \
-            "_spell_target_name should not be set to spell_name"
+        assert 'ch["_target_name"] = spell_name' not in src, \
+            "_target_name must not be set to spell_name"
+        assert '_target_name"] = ""' in src, \
+            "_target_name should be empty string for item spells"
 
 
 # ===========================================================================
