@@ -166,3 +166,45 @@ within-paragraph whitespace:
 
 This preserves the visual structure that area authors encoded with double newlines
 while still removing the soft-wrap artifacts that `.are` files embed.
+
+---
+
+## autoloot: searches by name, finds oldest corpse instead of fresh kill
+
+**Upstream:** `reference/1stMud4.5.3/src/fight.c`, `raw_kill()` caller block,
+lines 1160--1198; `make_corpse()`, line 1673.
+
+### The bug
+
+`make_corpse` is `void` -- it creates the corpse, appends it to the room's
+object list via `Link` (which adds to `content_last`), and returns nothing.
+
+The autoloot/autogold/autosac block that runs after `raw_kill` re-discovers
+the corpse by name search:
+
+```c
+corpse = get_obj_list(ch, "corpse", ch->in_room->content_first);
+```
+
+`get_obj_list` iterates from `content_first` and returns the first match.
+Since `make_corpse` appends to the end, the search finds the **oldest** corpse
+in the room, not the one just created.
+
+With two corpses present (old empty + new with loot):
+
+1. **Autoloot** (`do_get "all corpse"`) targets the old empty corpse. Gets nothing.
+2. **Autogold** checks `content_first` on the old corpse. Empty, skips.
+3. **Autosac** (`do_sacrifice "corpse"`) does its own `get_obj_list` search,
+   also finds and destroys the old empty corpse.
+
+The new corpse with loot sits untouched. Not destroyed -- just not
+auto-picked-up. In practice this rarely manifests because autosac clears
+the stale corpse each kill, so it only takes one extra kill to catch up.
+In rapid multi-kill scenarios the bug consistently lags by one corpse.
+
+### PrimeSUD fix -- implemented in `make_corpse` / `raw_kill` in `combat.py`
+
+`make_corpse` returns the corpse object. `raw_kill` returns it to the caller.
+The autoloot block uses the returned reference directly instead of searching
+by name, guaranteeing it always operates on the freshly created corpse
+regardless of how many other corpses are in the room.

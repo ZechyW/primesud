@@ -218,11 +218,14 @@ def _load_area(tag):
     _apply_pending_deltas(tag, _room_vnums)
 
     # Update mutable area tick state if game is running.
-    # Don't touch age -- preserve value restored from save data.
+    # Zero age after reset to prevent area_update from triggering a second
+    # reset on the next tick (bug #10). Matches 1stMud area_update behavior
+    # which zeros age after each reset_area call.
     if areas:
         for _s in areas:
             if _s["tag"] == tag:
                 _s["room_vnums"] = _room_vnums
+                _s["age"] = 0
                 break
 
 

@@ -1031,7 +1031,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         # [PRIMESUD] skip update_death (not ported)
 
         # 1stMud: raw_kill(victim, ch)
-        raw_kill(victim, ch)
+        corpse = raw_kill(victim, ch)
 
         if victim.get("is_npc"):
             _advance_target(ch, world.chars, world.rooms)
@@ -1040,10 +1040,10 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         # [PRIMESUD] skip outlaw flag removal (not ported)
 
         # 1stMud: if (!IsNPC(ch) && (corpse = get_obj_list...) ... autoloot/autogold/autosac
+        # [PRIMESUD] use corpse returned by raw_kill instead of searching by
+        # name -- 1stMud searches and gets oldest corpse when multiples exist.
         if not ch.get("is_npc"):
             flags = ch.get("flags", PLR_DEFAULTS)
-            rs = world.rooms[ch["room"]]
-            corpse = get_obj_list("corpse", rs["items"], ITEM_DEFS)
             if (corpse is not None and isinstance(corpse, dict)
                     and ITEM_DEFS[obj_vnum(corpse)].get("type") == "npc_corpse"):
                 contents = corpse.get("contents", [])
@@ -1080,7 +1080,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                         ch["silver"] = ch.get("silver", 0) + silver
                         short = corpse.get("short_descr", "a corpse")
                         tprint("You sacrifice " + short + " to your deity.")
-                        rs["items"].remove(corpse)
+                        world.rooms[ch["room"]]["items"].remove(corpse)
 
         return True
 
@@ -1662,6 +1662,11 @@ def make_corpse(ch):
 
     Args:
         ch (dict): Dying character (player or mob instance).
+
+    Returns:
+        dict: The corpse object. [PRIMESUD] 1stMud make_corpse is void;
+            we return it so autoloot can use it directly instead of searching
+            by name (which picks the oldest corpse when multiple exist).
     """
     # 1stMud: if (IsSet(ch->in_room->room_flags, ROOM_ARENA)) return;
     # [PRIMESUD] skip arena check (not ported)
@@ -1723,6 +1728,7 @@ def make_corpse(ch):
     corpse["description"] = "The corpse of " + name + " is lying here."
     # 1stMud: obj_to_room(corpse, ch->in_room);
     world.rooms[ch["room"]]["items"].append(corpse)
+    return corpse
 
 
 def raw_kill(victim, killer):
@@ -1731,18 +1737,21 @@ def raw_kill(victim, killer):
     Args:
         victim (dict): Dying character (player or mob instance).
         killer (dict or None): Character that landed the killing blow, or None.
+
+    Returns:
+        dict: The corpse object created by make_corpse. [PRIMESUD]
     """
     stop_fighting(victim, both=True)
     victim.pop("run_buf", None)  # [PRIMESUD] 1stMud omits this (latent bug: run_buf survives death)
     _death_cry(victim)
-    make_corpse(victim)
+    corpse = make_corpse(victim)
 
     if victim.get("is_npc"):
         # 1stMud: extract_char(victim, true) -- remove NPC from world
         _extract_char(victim, pull=True)
         # [PRIMESUD] save after every kill (1stmud only saves on level up)
         world.save_pending = True
-        return
+        return corpse
 
     # 1stMud: extract_char(victim, false) -- teleport PC to altar
     _extract_char(victim, pull=False)
@@ -1774,6 +1783,7 @@ def raw_kill(victim, killer):
 
     # [PRIMESUD] save after every kill (1stmud only saves on level up)
     world.save_pending = True
+    return corpse
 
 
 def _extract_char(ch, pull=True):

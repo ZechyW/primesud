@@ -78,18 +78,25 @@ heap, likely OOM crash.
 
 ## Medium
 
-### 9. Autoloot targets oldest corpse, not the freshly killed one
+### 9. Autoloot targets oldest corpse, not the freshly killed one [Fixed]
 
 `make_corpse` appends new corpse to end of `room["items"]`.
 `get_obj_list("corpse", ...)` returns first match. When multiple NPC corpses
 exist in room, autoloot operates on oldest (already-looted) corpse.
 
-### 10. Double area reset on lazy load
+[PRIMESUD] Fix: `make_corpse` and `raw_kill` now return the corpse object.
+Autoloot uses the returned reference directly instead of searching by name.
+1stMud has the same latent bug (void `make_corpse`, name search).
+
+### 10. Double area reset on lazy load [Fixed]
 
 Unloaded areas have age capped at 15 ticks. When lazy-loaded, `_load_area`
-calls `reset_area` (first reset). Age is not zeroed, so next `area_update` tick
-sees age >= threshold and triggers second reset. Duplicate mob spawns and item
-placements.
+calls `reset_area` (first reset). Age was not zeroed, so next `area_update`
+tick saw age >= threshold and triggered second reset. Duplicate mob spawns
+and item placements.
+
+Fix: `_load_area` now zeros area age after `reset_area`, matching what
+`area_update` does after its own reset call.
 
 ### 11. `spell_chill_touch` STR debuff stacks without bound
 
