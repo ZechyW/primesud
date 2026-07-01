@@ -106,8 +106,9 @@ def obj_update(tr, player):
                     msg = short + " crumbles into dust."
                 if player["room"] == rvnum:
                     tr.print(msg)
-                if "contents" in obj:
-                    del obj["contents"]
+                # Drop contents to room floor (cf. 1stMud obj_update in update.c)
+                for inner in obj.get("contents", []):
+                    room["items"].append(inner)
                 room["items"].remove(obj)
 
     for cid, ch in world.chars.items():

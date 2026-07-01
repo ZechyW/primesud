@@ -31,13 +31,13 @@ Two compounding bugs:
   1stMud copies all template affects to object runtime list before setting
   `enchanted = true`. PrimeSUD skips this step.
 
-### 3. Player spell affects not saved or loaded
+### 3. Player spell affects not saved or loaded [Fixed]
 
 `game_state.py` never serializes `affect_list`. All active spell buffs
 (sanctuary, haste, armor, giant strength, etc.) vanish silently on save/load.
 Current HP/MP from save may exceed recomputed max values with no clamping.
 
-### 4. Corpse contents destroyed on decay
+### 4. Corpse contents destroyed on decay [Fixed]
 
 `update.py` `obj_update` deletes the `contents` list when corpse timer reaches
 0. Items inside unlooted corpses are permanently gone. 1stMud drops NPC corpse
@@ -47,7 +47,7 @@ contents to room floor before removing corpse.
 
 ## High
 
-### 5. Unequip clears bitvector flags shared with active spells
+### 5. Unequip clears bitvector flags shared with active spells [Fixed]
 
 Unequipping an item whose bitvector matches an active spell flag (e.g. haste
 boots while haste spell is active) removes `affected_by["haste"]` entirely. No
@@ -57,19 +57,16 @@ False despite spell still in `affect_list`.
 Affects all bitvector flags: `haste`, `sanctuary`, `invisible`, `flying`,
 `detect_*`, `protect_*`, etc.
 
-### 6. `spell_haste` on slowed target: slow removed but haste never applied
+### 6. ~~`spell_haste` on slowed target: slow removed but haste never applied~~ [Not a bug]
 
-`magic.py` `spell_haste`: when target is slowed, `check_dispel` succeeds
-(returns True), `not check_dispel` is False, the `if` block is skipped, and
-`return False` fires unconditionally. Slow is removed but haste never applied.
-`do_cast` treats it as failed spell.
+Matches 1stMud `magic.c:2908-2918`. Haste spends its energy dispelling slow
+and does not apply haste afterward -- returns False in both cases. Added
+`act("$n is moving less slowly.")` message on successful dispel to match.
 
-### 7. `spell_stone_skin` checks caster instead of target
+### 7. ~~`spell_stone_skin` checks caster instead of target~~ [Not a bug]
 
-`magic.py` `spell_stone_skin`: `is_affected(ch, sn)` should be
-`is_affected(vo, sn)`. When cast on another target, checks whether the
-**caster** already has stone skin. Stacking duplicates or false rejections
-possible.
+Matches 1stMud `magic.c:4175`. Target type is `char_self`, so `ch is vo`
+always. The `is_affected(ch, sn)` check is correct. Cannot be cast on others.
 
 ### 8. `spell_teleport` loads entire world into memory [Fixed]
 

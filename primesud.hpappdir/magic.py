@@ -1583,6 +1583,9 @@ def spell_haste(sn, level, ch, vo, target):
         else:
             act("$N is already moving as fast as $E can.", ch, None, vo, TO_CHAR)
         return False
+    # 1stMud: if slowed, haste spends its energy dispelling slow and does NOT
+    # apply haste afterward -- returns False in both cases (dispel success or
+    # failure). This matches 1stMud magic.c:2908-2918 exactly.
     if vo.get("affected_by", {}).get("slow"):
         slow_sn = _skill_lookup("slow")
         if slow_sn is not None and not check_dispel(level, vo, slow_sn, ch):
@@ -1590,6 +1593,7 @@ def spell_haste(sn, level, ch, vo, target):
                 chprintln(ch, "Spell failed.")
             chprintln(vo, "You feel momentarily faster.")
             return False
+        act("$n is moving less slowly.", vo, None, None, TO_ROOM)
         return False
     dur = level // 2 if vo is ch else level // 4
     mod = 1 + (level >= 18) + (level >= 25) + (level >= 32)
@@ -1981,6 +1985,9 @@ def spell_slow(sn, level, ch, vo, target):
 
 def spell_stone_skin(sn, level, ch, vo, target):
     """Stone skin (cf. 1stMud spell_stone_skin in magic.c)."""
+    # 1stMud checks ch instead of vo here (magic.c:4175). Looks wrong, and
+    # the vo != ch message branch below is dead code (target is char_self,
+    # so ch is vo always). Likely copy-paste from char_defensive template.
     if is_affected(ch, sn):
         if vo is ch:
             chprintln(ch, "Your skin is already as hard as a rock.")

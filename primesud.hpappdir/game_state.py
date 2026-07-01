@@ -75,6 +75,19 @@ def _serialize_world():
     for sk in sorted(player["learned"]):
         learned_parts.append(str(sk) + ":" + str(player["learned"][sk]))
     lines.append("p.learned=" + "|".join(learned_parts))
+    af_parts = []
+    for af in player.get("affect_list", []):
+        af_parts.append(
+            str(af.get("type", "")) + ","
+            + str(af.get("level", 0)) + ","
+            + str(af.get("duration", 0)) + ","
+            + str(af.get("location", "")) + ","
+            + str(af.get("modifier", 0)) + ","
+            + str(af.get("bitvector", "")) + ","
+            + str(af.get("where", ""))
+        )
+    if af_parts:
+        lines.append("p.affects=" + "|".join(af_parts))
     _mk_int = sorted(k for k in player["_macros"] if isinstance(k, int))
     _mk_str = sorted(k for k in player["_macros"] if isinstance(k, str))
     for k in _mk_int + _mk_str:
@@ -243,6 +256,24 @@ def load_world():
             parts = val.split("|")
             if len(parts) == 4:
                 player["armor"] = (int(parts[0]), int(parts[1]), int(parts[2]), int(parts[3]))
+        elif key == "p.affects":
+            player["affect_list"] = []
+            for entry in val.split("|"):
+                if not entry:
+                    continue
+                parts = entry.split(",")
+                while len(parts) < 7:
+                    parts.append("")
+                af = {
+                    "type": int(parts[0]) if parts[0].lstrip("-").isdigit() else parts[0],
+                    "level": int(parts[1]) if parts[1] else 0,
+                    "duration": int(parts[2]) if parts[2].lstrip("-").isdigit() else 0,
+                    "location": parts[3],
+                    "modifier": int(parts[4]) if parts[4].lstrip("-").isdigit() else 0,
+                    "bitvector": parts[5],
+                    "where": parts[6],
+                }
+                player["affect_list"].append(af)
         elif key.startswith("p.macro.") and player["_macros"] is not None:
             raw = key[8:]
             player["_macros"][_name_to_fn.get(raw, raw)] = val

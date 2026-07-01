@@ -358,11 +358,16 @@ def _apply_item_modifiers(char, obj, tpl, add):
     # Template stat bonuses -- non-enchanted only (cf. 1stMud pIndexData->affect_first)
     if not obj.get("enchanted"):
         for loc, mod in tpl.get("stat_bonuses", {}).items():
-            affect_modify(char, {"where": "to_object", "location": loc,
-                                 "modifier": mod, "bitvector": ""}, add)
+            _af = {"where": "to_object", "location": loc,
+                   "modifier": mod, "bitvector": ""}
+            affect_modify(char, _af, add)
+            if not add:
+                affect_check(char, _af.get("where", ""), _af.get("bitvector", ""))
     # Runtime object affects (cf. 1stMud obj->affect_first)
     for af in obj.get("affect_list", []):
         affect_modify(char, af, add)
+        if not add:
+            affect_check(char, af.get("where", ""), af.get("bitvector", ""))
 
 
 def unequip_char(char, slot):
