@@ -116,6 +116,14 @@ def _serialize_world():
         for r in rooms:
             room_parts.append(str(r))
         lines.append("m." + str(tpl_vnum) + "=" + "|".join(room_parts))
+    # Re-serialize pending mob deltas for unloaded areas (not in world.chars)
+    for tpl_vnum in sorted(world._pending_mob_saves):
+        if tpl_vnum in tpl_rooms:
+            continue
+        room_parts = []
+        for r in world._pending_mob_saves[tpl_vnum]:
+            room_parts.append(str(r))
+        lines.append("m." + str(tpl_vnum) + "=" + "|".join(room_parts))
     for rvnum in sorted(world.rooms):
         rs = world.rooms[rvnum]
         if not rs["items"]:
@@ -124,6 +132,9 @@ def _serialize_world():
         for o in rs["items"]:
             item_parts.append(serialize_item_token(o))
         lines.append("r." + str(rvnum) + ".items=" + "|".join(item_parts))
+    # Re-serialize pending room items for unloaded areas (not in world.rooms)
+    for rvnum in sorted(world._pending_room_items):
+        lines.append("r." + str(rvnum) + ".items=" + str(world._pending_room_items[rvnum]))
     for i in range(len(lines)):
         if not isinstance(lines[i], str):
             raise Exception("non-str save line %s" % i)

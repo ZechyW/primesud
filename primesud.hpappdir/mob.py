@@ -416,6 +416,7 @@ def area_update(tr, player):
         area["age"] += 1
         if area["age"] >= _AREA_AGE_MIN and area["age"] >= _AREA_AGE_RESET:
             if "room_vnums" not in area:
+                area["age"] = _AREA_AGE_RESET
                 continue
             reset_area(area)
             if area["tag"] == "mud_school":
