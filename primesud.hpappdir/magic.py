@@ -401,8 +401,19 @@ def spell_farsight(sn, level, ch, vo, target):
     return True
 
 
+def _collect_objs_recursive(obj_list, location, out):
+    """Append (obj, location_str) for items and nested contents to out (cf. 1stMud obj_first flat list)."""
+    for obj in obj_list:
+        out.append((obj, location))
+        _collect_objs_recursive(obj.get("contents", []), location, out)
+
+
 def spell_locate_object(sn, level, ch, vo, target):
-    """Locate object by name fragment (cf. 1stMud spell_locate_object in magic.c)."""
+    """Locate object by name fragment (cf. 1stMud spell_locate_object in magic.c).
+
+    Recurses into container contents to match 1stMud's flat obj_first
+    iteration (magic.c:3523).
+    """
     wanted = ch.get("_target_name", "")
     if not wanted:
         chprintln(ch, "Nothing like that in heaven or earth.")
@@ -410,23 +421,24 @@ def spell_locate_object(sn, level, ch, vo, target):
     found = []
     max_found = 2 * level
     world_objs = []
-    for obj in ch.get("inv", []):
-        world_objs.append((obj, "one is carried by you"))
+    loc = "one is carried by you"
+    _collect_objs_recursive(ch.get("inv", []), loc, world_objs)
     for obj in ch.get("equip", {}).values():
         if obj is not None:
-            world_objs.append((obj, "one is carried by you"))
+            world_objs.append((obj, loc))
+            _collect_objs_recursive(obj.get("contents", []), loc, world_objs)
     for room_vnum, room_state in world.rooms.items():
-        for obj in room_state.get("items", []):
-            world_objs.append((obj, "one is in " + ROOM_DEFS.get(room_vnum, {}).get("name", "somewhere")))
+        rloc = "one is in " + ROOM_DEFS.get(room_vnum, {}).get("name", "somewhere")
+        _collect_objs_recursive(room_state.get("items", []), rloc, world_objs)
     for cid, mob in world.chars.items():
         if not mob.get("is_npc"):
             continue
-        mob_name = MOB_DEFS[mob["tpl"]]["short_descr"]
-        for obj in mob.get("inv", []):
-            world_objs.append((obj, "one is carried by " + mob_name))
+        mloc = "one is carried by " + MOB_DEFS[mob["tpl"]]["short_descr"]
+        _collect_objs_recursive(mob.get("inv", []), mloc, world_objs)
         for obj in mob.get("equip", {}).values():
             if obj is not None:
-                world_objs.append((obj, "one is carried by " + mob_name))
+                world_objs.append((obj, mloc))
+                _collect_objs_recursive(obj.get("contents", []), mloc, world_objs)
     for obj, line in world_objs:
         tpl = ITEM_DEFS[obj_vnum(obj)]
         if not is_name(wanted, tpl.get("keywords", "")):
@@ -1885,7 +1897,11 @@ def spell_refresh(sn, level, ch, vo, target):
 
 
 def spell_remove_curse(sn, level, ch, vo, target):
-    """Remove curse (cf. 1stMud spell_remove_curse in magic.c)."""
+    """Remove curse (cf. 1stMud spell_remove_curse in magic.c).
+
+    Inv scan is direct children only -- matches 1stMud carrying_first
+    (magic.c:4005), which does not recurse into containers.
+    """
     if target == TARGET_OBJ:
         tpl = ITEM_DEFS[obj_vnum(vo)]
         flags = item_extra_flags(vo, tpl)

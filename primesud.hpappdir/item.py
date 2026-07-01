@@ -191,6 +191,8 @@ def _split_token_fields(token):
 def serialize_item_token(obj):
     """Serialize item instance to v2 save token. [PRIMESUD]"""
     fields = ["v:" + str(obj["vnum"])]
+    if "level" in obj:
+        fields.append("lv:" + str(obj["level"]))
     if "cost" in obj:
         fields.append("c:" + str(obj["cost"]))
     if "charges" in obj:
@@ -238,6 +240,8 @@ def parse_item_token(token):
         key, value = field.split(":", 1)
         if key == "v":
             obj["vnum"] = int(value)
+        elif key == "lv":
+            obj["level"] = int(value)
         elif key == "c":
             obj["cost"] = int(value)
         elif key == "ch":

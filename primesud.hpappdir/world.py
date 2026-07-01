@@ -184,20 +184,30 @@ def _load_area(tag):
         if _keeper in MOB_DEFS._data:
             MOB_DEFS._data[_keeper]["shop"] = _entry
     # Partition resets to per-room lists (cf. 1stMud pRoom->reset_first).
-    # Uses LazyDict access (not ._data) so cross-area room refs trigger
-    # the target area's load, matching non-lazy behavior.
+    # Cross-area resets (target room in a different area) are deferred to
+    # avoid the cascade-load race: accessing ROOM_DEFS[cross_vnum] via
+    # LazyDict triggers the target area's load+reset before this area
+    # finishes partitioning, so the cross-area reset misses the first
+    # reset cycle (bug #16).
     _cur_rvnum = None
+    _cross_area_rooms = set()
     for _entry in _ns["RESETS"]:
         _cmd = _entry[0]
         if _cmd == "M":
             _cur_rvnum = _entry[3]
         elif _cmd == "O":
             _cur_rvnum = _entry[2]
-        if _cur_rvnum is not None and _cur_rvnum in ROOM_DEFS:
-            _rdef = ROOM_DEFS[_cur_rvnum]
+        if _cur_rvnum is None:
+            continue
+        if _cur_rvnum in _room_vnums:
+            _rdef = ROOM_DEFS._data[_cur_rvnum]
             if "resets" not in _rdef:
                 _rdef["resets"] = []
             _rdef["resets"].append(_entry)
+        else:
+            # Cross-area: access via LazyDict to trigger target load, but
+            # partition after own reset so target's first reset sees them.
+            _cross_area_rooms.add(_cur_rvnum)
 
     # Update AREA_DEFS entry with full metadata
     _adef = None
@@ -212,8 +222,30 @@ def _load_area(tag):
     # Mark loaded BEFORE reset to prevent recursion from LazyDict access
     _LOADED_AREAS.add(tag)
 
-    from mob import reset_area
+    from mob import reset_area, reset_room
     reset_area(_adef)
+
+    # Now partition cross-area resets and run reset_room on affected rooms.
+    # Target areas are loaded by now (LazyDict access below triggers load
+    # if needed), and our resets are appended before their reset_room call.
+    if _cross_area_rooms:
+        _cur_rvnum = None
+        for _entry in _ns["RESETS"]:
+            _cmd = _entry[0]
+            if _cmd == "M":
+                _cur_rvnum = _entry[3]
+            elif _cmd == "O":
+                _cur_rvnum = _entry[2]
+            if _cur_rvnum is not None and _cur_rvnum in _cross_area_rooms:
+                if _cur_rvnum in ROOM_DEFS:
+                    _rdef = ROOM_DEFS[_cur_rvnum]
+                    if "resets" not in _rdef:
+                        _rdef["resets"] = []
+                    _rdef["resets"].append(_entry)
+        _next_id = max(chars, default=1) + 1
+        for _rv in _cross_area_rooms:
+            if _rv in rooms:
+                reset_room(_rv, _next_id)
 
     _apply_pending_deltas(tag, _room_vnums)
 
@@ -233,8 +265,12 @@ def _apply_pending_deltas(tag, room_vnums):
     """Apply buffered save deltas after area load. [PRIMESUD]
 
     Mob deltas: kill excess instances, move remaining to saved rooms.
-    Cross-area wanderers whose destination is unloaded stay at default
-    room (position lost -- acceptable for single-player calculator MUD).
+    Cross-area wanderers (mob from area A at room in area B) are skipped
+    by the ``_vnum_to_tag(_tpl) != tag`` guard -- their saved position is
+    silently lost.  This matches 1stMud's effective behavior: NPC positions
+    are never persisted, and the 5% per-tick despawn (update.c:541) keeps
+    cross-area wanderers short-lived.  The mob respawns at its home room
+    on next area reset.
 
     Args:
         tag (str): Area tag just loaded.

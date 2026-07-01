@@ -2,7 +2,8 @@
 
 import world
 from world import ITEM_DEFS, ROOM_DEFS
-from item import obj_vnum
+from item import obj_vnum, item_affect_remove
+from urandom import randint
 import terminal
 from config import (
     PULSE_VIOLENCE,
@@ -78,47 +79,147 @@ def update_handler():
     return fired
 
 
+def _obj_affect_update(obj):
+    """Tick object affects: decrement duration, fade level, remove expired (cf. 1stMud obj_update in update.c, lines 781-816)."""
+    affects = obj.get("affect_list")
+    if not affects:
+        return
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    for af in list(affects):
+        dur = af.get("duration", -1)
+        if dur > 0:
+            af["duration"] = dur - 1
+            if randint(0, 4) == 0 and af.get("level", 0) > 0:
+                af["level"] = af["level"] - 1
+        elif dur == 0:
+            item_affect_remove(obj, af, tpl)
+
+
+def _decay_message(obj):
+    """Return decay message string for a timer-expired object (cf. 1stMud obj_update switch in update.c)."""
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    itype = tpl.get("type", "")
+    short = obj.get("short_descr", tpl.get("short_descr", "something"))
+    if itype == "fountain":
+        return short + " dries up."
+    if itype in ("npc_corpse", "pc_corpse"):
+        return short + " decays into dust."
+    if itype == "food":
+        return short + " decomposes."
+    if itype == "potion":
+        return short + " has evaporated from disuse."
+    if itype == "portal":
+        return short + " fades out of existence."
+    return short + " crumbles into dust."
+
+
+def _tick_contents(obj_list):
+    """Recursively tick affects and timers on nested contents (cf. 1stMud flat obj_first iteration).
+
+    Items whose timer expires are removed from their parent list.
+    Content spill is NOT done here -- only the top-level loops handle
+    where spilled items land (room floor vs. player inv).
+    """
+    for obj in list(obj_list):
+        _tick_contents(obj.get("contents", []))
+        _obj_affect_update(obj)
+        timer = obj.get("timer", -1)
+        if timer <= 0:
+            continue
+        timer -= 1
+        obj["timer"] = timer
+        if timer == 0:
+            obj_list.remove(obj)
+
+
 def obj_update(tr, player):
-    """Tick down item timers and remove decayed items from rooms and NPC inventories (cf. 1stMud obj_update in update.c).
+    """Tick object affects and item timers for all objects in game (cf. 1stMud obj_update in update.c).
+
+    Iterates room items, NPC inventories, and player inventory/equipment.
+    Recurses into container contents to match 1stMud's flat global object
+    list iteration.  Affects tick first (duration--, 20%% level fade, remove
+    expired), then timer countdown and decay handling.
 
     Args:
         tr: Terminal for decay messages.
-        player (dict): Player state (used to check if player is in affected room).
+        player (dict): Player state.
     """
+    # -- Room items --
     for rvnum, room in world.rooms.items():
         for obj in list(room.get("items", [])):
+            _tick_contents(obj.get("contents", []))
+            _obj_affect_update(obj)
             timer = obj.get("timer", -1)
             if timer <= 0:
                 continue
             timer -= 1
             obj["timer"] = timer
             if timer == 0:
-                tpl = ITEM_DEFS[obj_vnum(obj)]
-                itype = tpl.get("type", "")
-                short = obj.get("short_descr", tpl.get("short_descr", "something"))
-                if itype in ("npc_corpse", "pc_corpse"):
-                    msg = short + " decays into dust."
-                elif itype == "food":
-                    msg = short + " decomposes."
-                elif itype == "potion":
-                    msg = short + " has evaporated from disuse."
-                else:
-                    msg = short + " crumbles into dust."
                 if player["room"] == rvnum:
-                    tr.print(msg)
+                    tr.print(_decay_message(obj))
                 # Drop contents to room floor (cf. 1stMud obj_update in update.c)
                 for inner in obj.get("contents", []):
                     room["items"].append(inner)
                 room["items"].remove(obj)
 
+    # -- NPC inventories (cf. 1stMud obj->carried_by != NULL, IsNPC path) --
     for cid, ch in world.chars.items():
         if not ch.get("is_npc"):
             continue
         for obj in list(ch.get("inv", [])):
+            _tick_contents(obj.get("contents", []))
+            _obj_affect_update(obj)
             timer = obj.get("timer", -1)
             if timer <= 0:
                 continue
             timer -= 1
             obj["timer"] = timer
             if timer == 0:
+                # Shopkeeper recoup (cf. 1stMud update.c:878)
+                if ch.get("shop"):
+                    ch["silver"] = ch.get("silver", 0) + obj.get("cost", 0) // 5
                 ch["inv"].remove(obj)
+
+    # -- Player inventory + equipment (cf. 1stMud obj->carried_by, !IsNPC path) --
+    for obj in list(player.get("inv", [])):
+        _tick_contents(obj.get("contents", []))
+        _obj_affect_update(obj)
+        timer = obj.get("timer", -1)
+        if timer <= 0:
+            continue
+        timer -= 1
+        obj["timer"] = timer
+        if timer == 0:
+            tr.print(_decay_message(obj))
+            # PC corpse or floating item: spill contents to player inv
+            # (cf. 1stMud update.c:908-915, obj_to_char path)
+            tpl = ITEM_DEFS[obj_vnum(obj)]
+            itype = tpl.get("type", "")
+            if itype == "pc_corpse" or tpl.get("wear_flags", {}).get("float"):
+                for inner in obj.get("contents", []):
+                    player["inv"].append(inner)
+            player["inv"].remove(obj)
+
+    for slot, obj in list((player.get("equip") or {}).items()):
+        if obj is None:
+            continue
+        _tick_contents(obj.get("contents", []))
+        _obj_affect_update(obj)
+        timer = obj.get("timer", -1)
+        if timer <= 0:
+            continue
+        timer -= 1
+        obj["timer"] = timer
+        if timer == 0:
+            from handler import unequip_char
+            tr.print(_decay_message(obj))
+            # Floating equipped container: spill contents to room
+            # (cf. 1stMud update.c:910-913)
+            tpl = ITEM_DEFS[obj_vnum(obj)]
+            if tpl.get("wear_flags", {}).get("float"):
+                room = world.rooms.get(player["room"])
+                if room:
+                    for inner in obj.get("contents", []):
+                        room["items"].append(inner)
+            unequip_char(player, slot)
+            player["inv"].remove(obj)

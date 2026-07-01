@@ -22,7 +22,11 @@ def _exit_to(exit_val):
 
 
 def _has_boat(ch):
-    """Return True if ch carries a boat item (cf. 1stMud ITEM_BOAT check in move_char)."""
+    """Return True if ch carries a boat item (cf. 1stMud ITEM_BOAT check in move_char).
+
+    Direct children only -- matches 1stMud carrying_first (act_move.c:131),
+    which does not recurse into containers.
+    """
     from world import ITEM_DEFS
     for obj in ch.get("inv", []):
         vnum = obj.get("vnum") if isinstance(obj, dict) else obj

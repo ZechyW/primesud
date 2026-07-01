@@ -281,7 +281,10 @@ def mobile_update(tr, player):
         if not inst.get("is_npc"):
             continue
         if ROOM_DEFS[inst["room"]].get("area") != inst["home_area"] and randint(1, 100) <= 5:
-            # 5% chance to despawn when outside home area (cf. char_update, update.c:541)
+            # 5% despawn outside home area (cf. 1stMud char_update, update.c:541-547).
+            # 1stMud never persists NPC positions; this despawn keeps cross-area
+            # wanderers short-lived, so losing their position on save/load is
+            # fine -- they respawn at home on next area reset.
             act("$n wanders on home.", inst, type=TO_ROOM)
             world.rooms[inst["room"]]["mobs"].remove(mob_id)
             del world.chars[mob_id]

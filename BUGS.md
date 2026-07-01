@@ -118,59 +118,78 @@ item-triggered spells get no text argument.
 
 Fix: set `_target_name` to `""` to match 1stMud.
 
-### 13. Player inventory item timers never tick
+### 13. Player inventory item timers never tick [Fixed]
 
 `update.py` `obj_update` skips player with `if not ch.get("is_npc"): continue`.
 Items with `rot_death` flag picked up by player (which get
 `timer = randint(5, 10)` from `make_corpse`) never have timer decremented.
 Become permanent.
 
-### 14. Item instance level not serialized
+Fix: `obj_update` now iterates player inventory and equipment after NPC
+inventories, matching 1stMud's global object list iteration. Timer tick,
+decay messages, content spillover (PC corpse/floating items to player inv),
+and equipped-item unequip all ported. Also ported object affect ticking
+(duration--, 20% level fade, expired affect removal) for all objects.
+
+### 14. Item instance level not serialized [Fixed]
 
 `item.py` `serialize_item_token` never writes item level. Enchant spells
 increment `vo["level"]`, but after save/load it reverts to template default.
 Successive enchants don't accumulate level bump. Affects enchant failure
 calculations and `dispel_magic`/`remove_curse` difficulty.
 
+Fix: added `lv:` field to `serialize_item_token` / `parse_item_token`.
+Matches 1stMud `write_obj` (save.c:555) which writes `Lev` when item level
+differs from template.
+
 ---
 
 ## Low
 
-### 15. Container content timers never tick
+### 15. Container content timers never tick [Fixed]
 
 `update.py` `obj_update` only iterates top-level room items. Items nested
 inside containers/corpses never have timers decremented. Less impactful because
 container timer fires first (but see bug 4 -- those items are destroyed, not
 dropped).
 
-### 16. Cross-area object resets miss on first load
+Fix: `_tick_contents` recursively ticks affects and timers on nested items
+before processing the parent. Each top-level loop (room, NPC, player inv,
+player equip) calls `_tick_contents` on the object's contents. Matches
+1stMud's flat `obj_first` iteration which naturally covers all nesting.
+
+### 16. Cross-area object resets miss on first load [Fixed]
 
 Loading an area with resets targeting rooms in other areas triggers loading the
 target area, which runs `reset_area` before the cross-area reset is appended.
 Objects don't appear until target area's next natural reset (~15 ticks). Affects
 4 specific resets in current area data.
 
-### 17. No recursion guard during area reset partitioning
+Fix: `_load_area` now partitions own-area resets first (via `._data` to avoid
+LazyDict cascade), collects cross-area target rooms, then after own reset
+completes, partitions cross-area resets and runs `reset_room` on each affected
+target room.
+
+### 17. No recursion guard during area reset partitioning [Fixed]
 
 `_load_area` adds to `_LOADED_AREAS` after the reset loop that can trigger
 cross-area loads via `LazyDict`. Mutual cross-area resets would cause infinite
 recursion. Not triggered by current data, but latent crash.
 
-### 18. Cross-area mob deferred saves silently dropped
+Fix: resolved by bug #16 fix. Own-area resets now partition via `._data`
+(no LazyDict cascade). Cross-area resets are deferred until after
+`_LOADED_AREAS.add(tag)`, so any LazyDict-triggered recursive load sees
+the guard and skips re-entry.
+
+### 18. ~~Cross-area mob deferred saves silently dropped~~ [Acceptable]
 
 Mob template from area A saved at room in area B. When B loads,
 `_vnum_to_tag(mob_vnum) != "B"` skips the entry. Mob lingers until next save,
 then silently dropped. Cross-area mob position permanently lost.
 
----
+Acceptable: 1stMud never persists NPC positions (mobs are ephemeral, respawned
+by area resets on restart). Both 1stMud (char_update, update.c:541) and
+PrimeSUD despawn cross-area wanderers at 5% per tick, so they are short-lived.
+Losing position on save/load matches 1stMud's effective behavior -- the mob
+respawns at its home room on next area reset regardless.
 
-## Test priorities
-
-Highest-ROI test scenarios that expose multiple bugs:
-
-1. **Enchant any item** -- exposes bugs 2, 5, 14
-2. **Save/load with active buffs** -- exposes bug 3
-3. **Wimpy flee** -- exposes bug 1 (outright crash)
-4. **Let corpse decay with loot inside** -- exposes bug 4
-5. **Cast haste on slowed target** -- exposes bug 6
-6. **Cast teleport** -- exposes bug 8 (OOM on device)

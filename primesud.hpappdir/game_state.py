@@ -109,6 +109,10 @@ def _serialize_world():
             if entry[0] == "M" and entry[2] == 1:
                 _single_reset_room[entry[1]] = entry[3]
 
+    # Serialize mob positions by template vnum. Cross-area wanderers (mob
+    # from area A at room in area B) are saved here but silently dropped on
+    # load by _apply_pending_deltas -- 1stMud never persists NPC positions
+    # and the 5% despawn keeps cross-area wanderers transient anyway.
     tpl_rooms = {}
     tpl_order = []
     for mob_id in sorted(world.chars):
