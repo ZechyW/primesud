@@ -139,6 +139,12 @@ def _ensure_area(vnum):
         _load_area(tag)
 
 
+def _ensure_area_by_tag(tag):
+    """Load area by tag if not already loaded. [PRIMESUD]"""
+    if tag and tag not in _LOADED_AREAS and tag in _TAG_TO_FILE:
+        _load_area(tag)
+
+
 def _load_all():
     """Load all unloaded areas. [PRIMESUD]"""
     for _, tag, _, _ in _AREA_FILES:

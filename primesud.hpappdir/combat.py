@@ -1098,14 +1098,14 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         act_flags = victim.get("act_flags", {})
         if (act_flags.get("wimpy") and randint(0, 3) == 0
                 and victim["hit"] < victim.get("max_hit", 1) // 5):
-            do_flee([])
+            do_flee(victim, [])
         # [PRIMESUD] charmed mob flee requires master tracking (not yet ported)
 
     # 1stMud: player wimpy auto-flee
     if (not victim.get("is_npc") and victim["hit"] > 0
             and victim["hit"] <= victim.get("wimpy", 0)
             and victim.get("wait", 0) < PULSE_VIOLENCE // 2):
-        do_flee([])
+        do_flee(victim, [])
 
     # 1stMud: tail_chain();
     # [PRIMESUD] skip tail_chain (event queue not ported)

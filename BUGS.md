@@ -7,7 +7,7 @@ group.
 
 ## Critical
 
-### 1. `do_flee` crash on wimpy auto-flee
+### 1. `do_flee` crash on wimpy auto-flee [Fixed]
 
 `combat.py` `damage()` calls `do_flee([])` instead of `do_flee(victim, [])`.
 Passes `[]` as `ch`, omits `args`. Crashes with `TypeError` when any wimpy mob
@@ -15,7 +15,7 @@ drops below HP threshold or player has wimpy set.
 
 Intermittent: requires specific HP% to trigger wimpy check.
 
-### 2. Enchantment makes items weaker, not stronger
+### 2. Enchantment makes items weaker, not stronger [Fixed]
 
 Two compounding bugs:
 
@@ -71,7 +71,7 @@ Affects all bitvector flags: `haste`, `sanctuary`, `invisible`, `flying`,
 **caster** already has stone skin. Stacking duplicates or false rejections
 possible.
 
-### 8. `spell_teleport` loads entire world into memory
+### 8. `spell_teleport` loads entire world into memory [Fixed]
 
 `magic.py` `spell_teleport` iterates `ROOM_DEFS` which has
 `load_all_on_iter=True`. Forces every area to load. On HP Prime's constrained

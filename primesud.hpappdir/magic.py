@@ -34,7 +34,10 @@ TARGET_NONE = "none"
 TARGET_CHAR = "char"
 TARGET_OBJ = "obj"
 TARGET_ROOM = "room"
-_AC_LOCS = ("ac_pierce", "ac_bash", "ac_slash", "ac_exotic")
+def _enchant_copy_template(vo, tpl):
+    """Copy template stat_bonuses to runtime affect_list before enchant (cf. 1stMud enchant_armor/weapon in magic.c)."""
+    for loc, mod in tpl.get("stat_bonuses", {}).items():
+        item_affect_to_obj(vo, _new_obj_affect("", 0, -1, loc, mod), tpl)
 
 def spell_null(sn, level, ch, vo, target):
     """Do nothing spell placeholder (cf. 1stMud spell_null in magic.c)."""
@@ -303,8 +306,35 @@ def spell_chain_lightning(sn, level, ch, vo, target):
     return found
 
 
+def _teleport_candidates(area_tag, is_npc):
+    """Return valid teleport destination vnums within one loaded area. [PRIMESUD]"""
+    adef = None
+    for a in world.AREA_DEFS:
+        if a.get("tag") == area_tag:
+            adef = a
+            break
+    if adef is None or "room_vnums" not in adef:
+        return []
+    result = []
+    for rv in adef["room_vnums"]:
+        rd = ROOM_DEFS._data.get(rv)
+        if rd is None:
+            continue
+        flags = rd.get("flags", {})
+        if flags.get("private") or flags.get("solitary") or flags.get("safe") or flags.get("arena"):
+            continue
+        if not is_npc and flags.get("law"):
+            continue
+        result.append(rv)
+    return result
+
+
 def spell_teleport(sn, level, ch, vo, target):
-    """Teleport target to random room (cf. 1stMud spell_teleport in magic.c)."""
+    """Teleport target to random room (cf. 1stMud spell_teleport in magic.c).
+
+    [PRIMESUD] Picks a random area first, loads it if needed, then picks a
+    room within it. Avoids loading every area into memory (OOM on HP Prime).
+    """
     victim = vo
     room = ROOM_DEFS.get(victim.get("room"))
     if (room is None
@@ -313,19 +343,25 @@ def spell_teleport(sn, level, ch, vo, target):
             or (ch.get("is_npc") is not True and victim.get("fighting") is not None)):
         chprintln(ch, "You failed.")
         return False
-    chprintln(ch, "{YSearching all areas...{x")
-    candidates = []
-    for rv, rd in ROOM_DEFS.items():
-        flags = rd.get("flags", {})
-        if flags.get("private") or flags.get("solitary") or flags.get("safe") or flags.get("arena"):
+    area_files = world._AREA_FILES
+    if not area_files:
+        chprintln(ch, "You failed.")
+        return False
+    is_npc = victim.get("is_npc", False)
+    dest = None
+    # Pick random area, load if needed, filter rooms. Retry up to 10 times.
+    tried = set()
+    for _ in range(min(10, len(area_files))):
+        idx = randint(0, len(area_files) - 1)
+        _, area_tag, _, _ = area_files[idx]
+        if area_tag in tried:
             continue
-        if not victim.get("is_npc") and flags.get("law"):
-            continue
-        candidates.append(rv)
-    if not candidates:
-        dest = None
-    else:
-        dest = candidates[randint(0, len(candidates) - 1)]
+        tried.add(area_tag)
+        world._ensure_area_by_tag(area_tag)
+        candidates = _teleport_candidates(area_tag, is_npc)
+        if candidates:
+            dest = candidates[randint(0, len(candidates) - 1)]
+            break
     if dest is None:
         chprintln(ch, "You failed.")
         return False
@@ -524,15 +560,18 @@ def spell_enchant_armor(sn, level, ch, vo, target):
     if item_extra_flags(vo, tpl).get("quest"):
         chprintln(ch, "You can't enchant quest items.")
         return False
+    ac_found = False
     fail = 25
     if not vo.get("enchanted"):
         for loc, val in tpl.get("stat_bonuses", {}).items():
-            if loc in _AC_LOCS:
+            if loc == "ac":
+                ac_found = True
                 fail += 5 * (val * val)
             else:
                 fail += 20
     for af in item_affect_list(vo):
-        if af.get("location") in _AC_LOCS:
+        if af.get("location") == "ac":
+            ac_found = True
             fail += 5 * (af.get("modifier", 0) ** 2)
         else:
             fail += 20
@@ -561,7 +600,9 @@ def spell_enchant_armor(sn, level, ch, vo, target):
     if result <= fail:
         chprintln(ch, "Nothing seemed to happen.")
         return False
-    vo["enchanted"] = True
+    if not vo.get("enchanted"):
+        vo["enchanted"] = True
+        _enchant_copy_template(vo, tpl)
     if result <= (90 - level // 5):
         chprintln(ch, _item_name(vo) + " shimmers with a gold aura.")
         set_item_extra_flag(vo, tpl, "magic", True)
@@ -572,17 +613,14 @@ def spell_enchant_armor(sn, level, ch, vo, target):
         set_item_extra_flag(vo, tpl, "glow", True)
         added = -2
     vo["level"] = min(50, vo.get("level", tpl.get("level", 0)) + 1)
-    for loc in _AC_LOCS:
-        found = False
+    if ac_found:
         for af in item_affect_list(vo):
-            if af.get("location") == loc:
+            if af.get("location") == "ac":
                 af["type"] = sn
                 af["modifier"] = af.get("modifier", 0) + added
                 af["level"] = max(af.get("level", 0), level)
-                found = True
-                break
-        if not found:
-            item_affect_to_obj(vo, _new_obj_affect(sn, level, -1, loc, added), tpl)
+    else:
+        item_affect_to_obj(vo, _new_obj_affect(sn, level, -1, "ac", added), tpl)
     return True
 
 
@@ -646,7 +684,9 @@ def spell_enchant_weapon(sn, level, ch, vo, target):
     if result <= fail:
         chprintln(ch, "Nothing seemed to happen.")
         return False
-    vo["enchanted"] = True
+    if not vo.get("enchanted"):
+        vo["enchanted"] = True
+        _enchant_copy_template(vo, tpl)
     if result <= (100 - level // 5):
         chprintln(ch, _item_name(vo) + " glows blue.")
         set_item_extra_flag(vo, tpl, "magic", True)
