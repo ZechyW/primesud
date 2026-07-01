@@ -415,8 +415,11 @@ class TestBug6HasteOnSlowed:
     """Not a bug -- matches 1stMud. Haste spends its energy dispelling slow
     and does NOT apply haste afterward (magic.c:2908-2918)."""
 
-    def test_haste_on_slowed_removes_slow_without_applying_haste(self):
+    def test_haste_on_slowed_removes_slow_without_applying_haste(self, monkeypatch):
         """Casting haste on slowed target: slow removed, haste NOT applied (1stMud match)."""
+        import magic
+        monkeypatch.setattr(magic, "saves_dispel", lambda *a: False)
+
         ch = _make_char(level=50)
         vo = _make_char(level=10)
         slow_sn = _skill_lookup("slow")
