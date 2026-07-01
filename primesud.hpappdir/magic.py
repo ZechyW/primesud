@@ -313,6 +313,7 @@ def spell_teleport(sn, level, ch, vo, target):
             or (ch.get("is_npc") is not True and victim.get("fighting") is not None)):
         chprintln(ch, "You failed.")
         return False
+    chprintln(ch, "{YSearching all areas...{x")
     candidates = []
     for rv, rd in ROOM_DEFS.items():
         flags = rd.get("flags", {})

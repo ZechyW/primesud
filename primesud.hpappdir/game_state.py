@@ -243,8 +243,7 @@ def load_world():
                 player[pkey] = int(val) if pkey in int_keys else val
         elif key.startswith("r.") and key.endswith(".items"):
             rvnum = int(key.split(".")[1])
-            if rvnum in world.rooms:
-                world.rooms[rvnum]["items"] = [parse_item_token(v) for v in val.split("|") if v]
+            world._pending_room_items[rvnum] = val
         elif key.startswith("a.") and key.endswith(".age"):
             tag = key[2:-4]
             if tag in _area_by_tag:
@@ -279,24 +278,14 @@ def load_world():
         elif key.startswith("m."):
             mob_saves[int(key[2:])] = [int(r) for r in val.split("|") if r]
 
-    # Apply saved mob rooms: delete killed instances, patch wandered rooms.
-    # Same vnum appearing multiple times means multiple instances in one room -- correct.
-    for tpl_vnum, saved_rooms in mob_saves.items():
-        inst_ids = sorted(i for i, inst in world.chars.items() if inst.get("is_npc") and inst["tpl"] == tpl_vnum)
-        for mid in inst_ids[len(saved_rooms):]:   # excess = killed since last save
-            del world.chars[mid]
-        for mid, room_vnum in zip(inst_ids, saved_rooms):
-            if room_vnum in ROOM_DEFS:
-                world.chars[mid]["room"] = room_vnum
+    # Buffer mob saves for deferred application: _load_area will apply
+    # each area's deltas when it actually loads (player enters the area).
+    world._pending_mob_saves.update(mob_saves)
 
+    # Player room access triggers the player's area load, which applies
+    # pending deltas for that area via _apply_pending_deltas.
     if player["room"] not in world.rooms:
         player["room"] = R_STARTING_ROOM
-
-    for rs in world.rooms.values():
-        rs["mobs"] = []
-    for mob_id, inst in world.chars.items():
-        if inst.get("is_npc"):
-            world.rooms[inst["room"]]["mobs"].append(mob_id)
 
     return _source
 
@@ -308,10 +297,7 @@ def init_game_state(game):
 
 def new_game(game, name="Hero"):
     """Create a new game world with a fresh player character. [PRIMESUD]"""
-    world.rooms.clear()
-    world.chars.clear()
-    for area in AREA_DEFS:
-        reset_area(area)
+    world.reset_lazy()
     world.areas = create_area_states()
     player = create_char()
     player["name"] = name
@@ -323,10 +309,7 @@ def new_game(game, name="Hero"):
 
 def load_game(game):
     """Load a saved game from persistent storage and restore world state. [PRIMESUD]"""
-    world.rooms.clear()
-    world.chars.clear()
-    for area in AREA_DEFS:
-        reset_area(area)
+    world.reset_lazy()
     world.areas = create_area_states()
     player = create_char()
     player["_macros"] = _MACRO_SUBST
@@ -335,6 +318,8 @@ def load_game(game):
     if isinstance(result, tuple):   # (None, backup_ok) -- version mismatch
         _, game._backup_ok = result
         return None
+    # Retry deltas skipped during cascade (dest room states not yet created)
+    world._retry_pending_deltas()
     reset_char(player)
     return result
 

@@ -247,20 +247,26 @@ def reset_area(pArea):
 
 
 def create_area_states():
-    """Create mutable area tick state from static area definitions."""
+    """Create mutable area tick state from static area definitions.
+
+    room_vnums is omitted until the area is lazy-loaded; area_update skips
+    reset for areas without it.
+    """
     states = []
     for d in AREA_DEFS:
         # [PRIMESUD] Simplified interim weather model for spell gating. This
         # keeps only precipitation and its drift, not full 1stMud weather.c.
-        states.append({
+        entry = {
             "tag": d["tag"],
             "age": 0,
-            "room_vnums": d["room_vnums"],
             "weather": {
                 "precip": randint(-2, 2),
                 "precip_vector": randint(-1, 1),
             },
-        })
+        }
+        if "room_vnums" in d:
+            entry["room_vnums"] = d["room_vnums"]
+        states.append(entry)
     return states
 
 
@@ -409,6 +415,8 @@ def area_update(tr, player):
                 weather["precip_vector"] = 1
         area["age"] += 1
         if area["age"] >= _AREA_AGE_MIN and area["age"] >= _AREA_AGE_RESET:
+            if "room_vnums" not in area:
+                continue
             reset_area(area)
             if area["tag"] == "mud_school":
                 area["age"] = 13  # resets every 2 ticks (cf. db.c:1330: age = 15-2)

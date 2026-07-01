@@ -29,94 +29,313 @@ I_FLAIL_SUB_MERC           = 3720
 I_WHIP_SUB_MERC            = 3721
 I_GLAIVE_SUB_MERC          = 3722
 
-# List of (filename, area_tag) -- add/remove areas here only.
+# Area files: (filename, tag, vnum_lo, vnum_hi).
 # Ascending size order: small areas load while heap is fresh (lower ms/KB),
 # big areas load last where heap pressure is unavoidable anyway.
 _AREA_FILES = [
-    ("area_limbo.dat", "limbo"),
-    ("area_quest.dat", "quest"),
-    ("area_immort.dat", "immort"),
-    ("area_mobfact.dat", "mobfact"),
-    ("area_grave.dat", "grave"),
-    ("area_plains.dat", "plains"),
-    ("area_chapel.dat", "chapel"),
-    ("area_school.dat", "mud_school"),
-    ("area_shire.dat", "shire"),
-    ("area_haon.dat", "haon"),
-    ("area_ofcol2.dat", "ofcol2"),
-    ("area_midgaard.dat", "midgaard"),
+    ("area_limbo.dat", "limbo", 1, 30),
+    ("area_quest.dat", "quest", 200, 217),
+    ("area_immort.dat", "immort", 1200, 1221),
+    ("area_mobfact.dat", "mobfact", 9400, 9424),
+    ("area_grave.dat", "grave", 3600, 3651),
+    ("area_plains.dat", "plains", 300, 350),
+    ("area_chapel.dat", "chapel", 3400, 3475),
+    ("area_school.dat", "mud_school", 3700, 3760),
+    ("area_shire.dat", "shire", 1100, 1157),
+    ("area_haon.dat", "haon", 6000, 6155),
+    ("area_ofcol2.dat", "ofcol2", 600, 699),
+    ("area_midgaard.dat", "midgaard", 3000, 3378),
 ]
 
-# -- Static definitions (populated by init_world, constant after) -----------
-ROOM_DEFS = {}
-MOB_DEFS = {}
-ITEM_DEFS = {}
+# -- Lazy loading state -------------------------------------------------------
+_LOADED_AREAS = set()
+_TAG_TO_FILE = {}
+_VNUM_RANGES = []
+_pending_mob_saves = {}    # {tpl_vnum: [room_vnum, ...]} from save data
+_pending_room_items = {}   # {rvnum: "raw|token|string"} from save data
+
+
+class LazyDict:
+    """Dict wrapper that loads area data on demand via vnum range lookup. [PRIMESUD]"""
+
+    def __init__(self, load_all_on_iter=True):
+        self._data = {}
+        self._lai = load_all_on_iter
+
+    def __getitem__(self, key):
+        if key not in self._data:
+            _ensure_area(key)
+        return self._data[key]
+
+    def __contains__(self, key):
+        if key in self._data:
+            return True
+        _ensure_area(key)
+        return key in self._data
+
+    def __setitem__(self, key, value):
+        self._data[key] = value
+
+    def __delitem__(self, key):
+        del self._data[key]
+
+    def __len__(self):
+        if self._lai:
+            _load_all()
+        return len(self._data)
+
+    def __iter__(self):
+        if self._lai:
+            _load_all()
+        return iter(self._data)
+
+    def get(self, key, default=None):
+        if key not in self._data:
+            _ensure_area(key)
+        return self._data.get(key, default)
+
+    def items(self):
+        if self._lai:
+            _load_all()
+        return self._data.items()
+
+    def values(self):
+        if self._lai:
+            _load_all()
+        return self._data.values()
+
+    def keys(self):
+        if self._lai:
+            _load_all()
+        return self._data.keys()
+
+    def update(self, other):
+        self._data.update(other)
+
+    def clear(self):
+        self._data.clear()
+
+    def pop(self, key, *args):
+        return self._data.pop(key, *args)
+
+    def setdefault(self, key, default=None):
+        if key not in self._data:
+            _ensure_area(key)
+        return self._data.setdefault(key, default)
+
+
+def _vnum_to_tag(vnum):
+    """Return area tag owning a vnum, or None. [PRIMESUD]"""
+    for lo, hi, tag in _VNUM_RANGES:
+        if lo <= vnum <= hi:
+            return tag
+    return None
+
+
+def _ensure_area(vnum):
+    """Load the area owning vnum if not already loaded. [PRIMESUD]"""
+    tag = _vnum_to_tag(vnum)
+    if tag and tag not in _LOADED_AREAS:
+        _load_area(tag)
+
+
+def _load_all():
+    """Load all unloaded areas. [PRIMESUD]"""
+    for _, tag, _, _ in _AREA_FILES:
+        if tag not in _LOADED_AREAS:
+            _load_area(tag)
+
+
+def _load_area(tag):
+    """Load one area on demand: exec .dat, merge defs, reset. [PRIMESUD]
+
+    Args:
+        tag (str): Area tag (e.g. "midgaard").
+    """
+    _ns = {}
+    exec(open(_TAG_TO_FILE[tag]).read(), _ns)
+
+    _room_vnums = []
+    for _vnum, _room in _ns["ROOMS"].items():
+        _room["area"] = tag
+        ROOM_DEFS[_vnum] = _room
+        _room_vnums.append(_vnum)
+        for _d, _ev in _room.get("exits", {}).items():
+            if isinstance(_ev, dict) and _ev.get("isdoor"):
+                if _vnum not in DOOR_DEFS:
+                    DOOR_DEFS[_vnum] = {}
+                DOOR_DEFS[_vnum][_d] = {
+                    "closed": bool(_ev.get("closed")),
+                    "locked": bool(_ev.get("locked")),
+                }
+    MOB_DEFS.update(_ns["MOBILES"])
+    for _entry in _ns.get("SPECIALS", ()):
+        if _entry[0] == "M" and _entry[1] in MOB_DEFS._data:
+            MOB_DEFS._data[_entry[1]]["spec_fun"] = _entry[2]
+    ITEM_DEFS.update(_ns["OBJECTS"])
+    for _entry in _ns.get("SHOPS", ()):
+        _keeper = _entry["keeper"]
+        if _keeper in MOB_DEFS._data:
+            MOB_DEFS._data[_keeper]["shop"] = _entry
+    # Partition resets to per-room lists (cf. 1stMud pRoom->reset_first).
+    # Uses LazyDict access (not ._data) so cross-area room refs trigger
+    # the target area's load, matching non-lazy behavior.
+    _cur_rvnum = None
+    for _entry in _ns["RESETS"]:
+        _cmd = _entry[0]
+        if _cmd == "M":
+            _cur_rvnum = _entry[3]
+        elif _cmd == "O":
+            _cur_rvnum = _entry[2]
+        if _cur_rvnum is not None and _cur_rvnum in ROOM_DEFS:
+            _rdef = ROOM_DEFS[_cur_rvnum]
+            if "resets" not in _rdef:
+                _rdef["resets"] = []
+            _rdef["resets"].append(_entry)
+
+    # Update AREA_DEFS entry with full metadata
+    _adef = None
+    for _a in AREA_DEFS:
+        if _a["tag"] == tag:
+            _adef = _a
+            break
+    _adef["resets"] = _ns["RESETS"]
+    _adef.update(_ns["AREA"])
+    _adef["room_vnums"] = _room_vnums
+
+    # Mark loaded BEFORE reset to prevent recursion from LazyDict access
+    _LOADED_AREAS.add(tag)
+
+    from mob import reset_area
+    reset_area(_adef)
+
+    _apply_pending_deltas(tag, _room_vnums)
+
+    # Update mutable area tick state if game is running.
+    # Don't touch age -- preserve value restored from save data.
+    if areas:
+        for _s in areas:
+            if _s["tag"] == tag:
+                _s["room_vnums"] = _room_vnums
+                break
+
+
+def _apply_pending_deltas(tag, room_vnums):
+    """Apply buffered save deltas after area load. [PRIMESUD]
+
+    Mob deltas: kill excess instances, move remaining to saved rooms.
+    Cross-area wanderers whose destination is unloaded stay at default
+    room (position lost -- acceptable for single-player calculator MUD).
+
+    Args:
+        tag (str): Area tag just loaded.
+        room_vnums (list): Room vnums belonging to this area.
+    """
+    _rvnum_set = set(room_vnums)
+
+    for _tpl in list(_pending_mob_saves):
+        if _vnum_to_tag(_tpl) != tag:
+            continue
+        _saved = _pending_mob_saves[_tpl]
+        _ids = sorted(i for i, inst in chars.items()
+                      if inst.get("is_npc") and inst["tpl"] == _tpl)
+        if not _ids:
+            continue
+        for _mid in _ids[len(_saved):]:
+            _old = chars[_mid]["room"]
+            if _old in rooms._data:
+                _ml = rooms._data[_old]["mobs"]
+                if _mid in _ml:
+                    _ml.remove(_mid)
+            del chars[_mid]
+        _deferred = []
+        for _mid, _rv in zip(_ids, _saved):
+            _old = chars[_mid]["room"]
+            if _rv == _old:
+                continue
+            if _rv not in rooms._data:
+                _deferred.append(_rv)
+                continue
+            if _old in rooms._data:
+                _ml = rooms._data[_old]["mobs"]
+                if _mid in _ml:
+                    _ml.remove(_mid)
+            chars[_mid]["room"] = _rv
+            rooms._data[_rv]["mobs"].append(_mid)
+        if _deferred:
+            _pending_mob_saves[_tpl] = _deferred
+        else:
+            del _pending_mob_saves[_tpl]
+
+    from item import parse_item_token
+    for _rv in list(_pending_room_items):
+        if _rv not in _rvnum_set:
+            continue
+        _raw = _pending_room_items.pop(_rv)
+        if _rv in rooms._data:
+            rooms._data[_rv]["items"] = [parse_item_token(v)
+                                         for v in _raw.split("|") if v]
+
+
+def _retry_pending_deltas():
+    """Retry pending deltas for all loaded areas. [PRIMESUD]
+
+    Called after load_world to handle deltas that were skipped because
+    the destination area's rooms weren't in rooms._data yet (cascade
+    during reset partitioning runs before reset_area creates room state).
+    """
+    for _a in AREA_DEFS:
+        if _a["tag"] in _LOADED_AREAS and "room_vnums" in _a:
+            _apply_pending_deltas(_a["tag"], _a["room_vnums"])
+
+
+def is_area_loaded(tag):
+    """Check whether an area has been loaded. [PRIMESUD]"""
+    return tag in _LOADED_AREAS
+
+
+# -- Static definitions (LazyDict for on-demand area loading) ------------------
+ROOM_DEFS = LazyDict(load_all_on_iter=True)
+MOB_DEFS = LazyDict(load_all_on_iter=True)
+ITEM_DEFS = LazyDict(load_all_on_iter=True)
 AREA_DEFS = []
 DOOR_DEFS = {}
 _WORLD_READY = False
 
-# -- Mutable runtime state (mutated by reset_area / game functions) ---------
-rooms = {}
+# -- Mutable runtime state (mutated by reset_area / game functions) ------------
+rooms = LazyDict(load_all_on_iter=False)
 chars = {}
 areas = []
 save_pending = False
 
 
+def reset_lazy():
+    """Reset mutable state and lazy loading for new/load game. [PRIMESUD]"""
+    rooms._data.clear()
+    chars.clear()
+    _LOADED_AREAS.clear()
+    _pending_mob_saves.clear()
+    _pending_room_items.clear()
+    ROOM_DEFS._data.clear()
+    MOB_DEFS._data.clear()
+    ITEM_DEFS._data.clear()
+    DOOR_DEFS.clear()
+    del AREA_DEFS[:]
+    for _, _tag, _, _ in _AREA_FILES:
+        AREA_DEFS.append({"tag": _tag, "resets": []})
+
+
 def init_world():
-    """Initialise merged world catalogs on first use."""
+    """Build vnum range index for lazy area loading."""
     global _WORLD_READY
     if _WORLD_READY:
         return
 
-    ROOM_DEFS.clear()
-    MOB_DEFS.clear()
-    ITEM_DEFS.clear()
-    del AREA_DEFS[:]
-    DOOR_DEFS.clear()
+    _TAG_TO_FILE.clear()
+    del _VNUM_RANGES[:]
+    for _fname, _tag, _lo, _hi in _AREA_FILES:
+        _TAG_TO_FILE[_tag] = _fname
+        _VNUM_RANGES.append((_lo, _hi, _tag))
 
-    for _fname, _tag in _AREA_FILES:
-        _ns = {}
-        exec(open(_fname).read(), _ns)
-        _room_vnums = []
-        for _vnum, _room in _ns["ROOMS"].items():
-            _room["area"] = _tag
-            ROOM_DEFS[_vnum] = _room
-            _room_vnums.append(_vnum)
-            # Snapshot initial door state (cf. 1stMud reset_room door loop, db.c:1411)
-            for _d, _ev in _room.get("exits", {}).items():
-                if isinstance(_ev, dict) and _ev.get("isdoor"):
-                    if _vnum not in DOOR_DEFS:
-                        DOOR_DEFS[_vnum] = {}
-                    DOOR_DEFS[_vnum][_d] = {
-                        "closed": bool(_ev.get("closed")),
-                        "locked": bool(_ev.get("locked")),
-                    }
-        MOB_DEFS.update(_ns["MOBILES"])
-        for _entry in _ns.get("SPECIALS", ()):
-            if _entry[0] == "M" and _entry[1] in MOB_DEFS:
-                MOB_DEFS[_entry[1]]["spec_fun"] = _entry[2]
-        ITEM_DEFS.update(_ns["OBJECTS"])
-        for _entry in _ns.get("SHOPS", ()):
-            _keeper = _entry["keeper"]
-            if _keeper in MOB_DEFS:
-                MOB_DEFS[_keeper]["shop"] = _entry
-        # Partition resets to per-room lists (cf. 1stMud pRoom->reset_first).
-        # M/O set current room; E/G/P follow the preceding M's room.
-        _cur_rvnum = None
-        for _entry in _ns["RESETS"]:
-            _cmd = _entry[0]
-            if _cmd == "M":
-                _cur_rvnum = _entry[3]
-            elif _cmd == "O":
-                _cur_rvnum = _entry[2]
-            if _cur_rvnum is not None and _cur_rvnum in ROOM_DEFS:
-                _rdef = ROOM_DEFS[_cur_rvnum]
-                if "resets" not in _rdef:
-                    _rdef["resets"] = []
-                _rdef["resets"].append(_entry)
-        _adef = {"tag": _tag, "resets": _ns["RESETS"]}
-        _adef.update(_ns["AREA"])
-        _adef["room_vnums"] = _room_vnums
-        AREA_DEFS.append(_adef)
-
+    reset_lazy()
     _WORLD_READY = True
