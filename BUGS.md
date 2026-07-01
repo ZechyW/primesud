@@ -98,11 +98,14 @@ and item placements.
 Fix: `_load_area` now zeros area age after `reset_area`, matching what
 `area_update` does after its own reset call.
 
-### 11. `spell_chill_touch` STR debuff stacks without bound
+### 11. `spell_chill_touch` STR debuff stacks without bound [Fixed]
 
-Uses `affect_to_char` (always appends new affect) instead of 1stMud's
-`affect_join` (merges with existing). Each chill touch hit that fails saving
-throw adds independent -1 STR. Long fights accumulate many stacks.
+Used `affect_to_char` (always appends new affect) instead of 1stMud's
+`affect_join` (merges with existing). Each chill touch hit that failed saving
+throw added independent -1 STR. Long fights accumulated many stacks.
+
+Fix: ported `affect_join` from 1stMud handler.c. Swapped all 4 call sites
+that 1stMud uses it for: chill_touch, poison, plague, sleep.
 
 ### 12. `obj_cast_spell` sets target name to spell name
 

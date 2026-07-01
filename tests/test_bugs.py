@@ -569,30 +569,27 @@ class TestBug10DoubleReset:
 
 
 # ===========================================================================
-# Bug #11 -- spell_chill_touch stacks without bound  (UNFIXED)
+# Bug #11 -- spell_chill_touch stacks without bound  [Fixed]
 # ===========================================================================
 
 class TestBug11ChillTouchStacks:
 
-    @pytest.mark.xfail(reason="Bug #11: affect_to_char always appends, no merge")
-    def test_chill_touch_str_debuff_does_not_stack_infinitely(self):
-        """Multiple chill touch hits should merge, not stack independent -1 STR."""
-        ch = _make_char(level=50)
+    def test_chill_touch_str_debuff_merges(self):
+        """Multiple chill touch hits should merge via affect_join, not stack."""
+        from handler import affect_join
         vo = _make_char(level=1)
         sn = _skill_lookup("chill touch")
         if sn is None:
             pytest.skip("chill touch not in skill table")
 
-        # Simulate many hits where victim fails save (low level = always fails)
         for _ in range(10):
-            # Direct affect application (skip damage/save for determinism)
-            affect_to_char(vo, _new_affect(sn, 50, 6, "str", -1))
+            affect_join(vo, _new_affect(sn, 50, 6, "str", -1))
 
         str_affects = [a for a in vo["affect_list"] if a.get("type") == sn]
-        # Bug: 10 independent -1 STR affects accumulate to -10
-        # 1stMud would merge (affect_join) to a single affect
-        assert len(str_affects) <= 1, \
-            "chill touch should merge STR debuffs, not stack %d copies" % len(str_affects)
+        assert len(str_affects) == 1, \
+            "affect_join should merge to single affect, got %d" % len(str_affects)
+        assert str_affects[0]["modifier"] < -1, \
+            "merged modifier should accumulate"
 
 
 # ===========================================================================

@@ -225,6 +225,33 @@ def affect_to_char(char, af):
     affect_modify(char, cur, True)
 
 
+def affect_join(char, af):
+    """Merge-or-create affect (cf. 1stMud affect_join in handler.c).
+
+    If char already has an affect with matching type, merge: average the
+    levels, sum the durations and modifiers, remove old, then apply merged.
+    Otherwise just apply as new.
+
+    1stMud intentionally does NOT use this for buff spells (armor, haste,
+    shield, etc.) -- those guard with is_affected and refuse to reapply.
+    affect_join is used only for debuffs that should worsen on repeated
+    hits: chill_touch, poison, plague, sleep.
+
+    Args:
+        char (dict): Character state dict.
+        af (dict): New affect to merge or create.
+    """
+    for old in char.get("affect_list", []):
+        if old.get("type") == af.get("type"):
+            af = dict(af)
+            af["level"] = (af["level"] + old.get("level", 0)) // 2
+            af["duration"] = af.get("duration", 0) + old.get("duration", 0)
+            af["modifier"] = af.get("modifier", 0) + old.get("modifier", 0)
+            affect_remove(char, old)
+            break
+    affect_to_char(char, af)
+
+
 def affect_remove(char, af):
     """Remove one active affect from a character (cf. 1stMud affect_remove in handler.c)."""
     affects = char.get("affect_list", [])

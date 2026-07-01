@@ -1,7 +1,7 @@
 """Magic command handling and spell dispatch (cf. 1stMud magic.c)."""
 
 import world
-from handler import (is_name, is_affected, affect_to_char, affect_strip, is_awake,
+from handler import (is_name, is_affected, affect_to_char, affect_join, affect_strip, is_awake,
                    can_see_room, act, chprintln, get_char_room,
                    TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
                    is_good, is_evil, is_neutral)
@@ -854,7 +854,7 @@ def spell_poison(sn, level, ch, vo, target):
         act("$n turns slightly green, but it passes.", vo, None, None, TO_ROOM)
         chprintln(vo, "You feel momentarily ill, but it passes.")
         return False
-    affect_to_char(vo, _new_affect(sn, level, level, "str", -2, "poison"))
+    affect_join(vo, _new_affect(sn, level, level, "str", -2, "poison"))
     chprintln(vo, "You feel very sick.")
     act("$n looks very ill.", vo, None, None, TO_ROOM)
     return True
@@ -902,7 +902,7 @@ def spell_plague(sn, level, ch, vo, target):
         else:
             act("$N seems to be unaffected.", ch, None, vo, TO_CHAR)
         return False
-    affect_to_char(vo, _new_affect(sn, level * 3 // 4, level, "str", -5, "plague"))
+    affect_join(vo, _new_affect(sn, level * 3 // 4, level, "str", -5, "plague"))
     chprintln(vo, "You scream in agony as plague sores erupt from your skin.")
     act("$n screams in agony as plague sores erupt from $s skin.", vo, None, None, TO_ROOM)
     return True
@@ -1159,8 +1159,7 @@ def spell_chill_touch(sn, level, ch, vo, target):
     high = level | 50
     dam = randint(high // 2, high * 2)
     if not saves_spell(level, vo, "cold"):
-        # 1stMud uses affect_join; affect_to_char used [PRIMESUD]
-        affect_to_char(vo, _new_affect(sn, level, 6, "str", -1))
+        affect_join(vo, _new_affect(sn, level, 6, "str", -1))
     else:
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_COLD, True)
@@ -1945,8 +1944,7 @@ def spell_sleep(sn, level, ch, vo, target):
             or (level + 2) < vo.get("level", 1)
             or saves_spell(level - 4, vo, "charm")):
         return False
-    # 1stMud uses affect_join; affect_to_char used [PRIMESUD]
-    affect_to_char(vo, _new_affect(sn, level, 4 + level, "none", 0, "sleep"))
+    affect_join(vo, _new_affect(sn, level, 4 + level, "none", 0, "sleep"))
     if is_awake(vo):
         chprintln(vo, "You feel very sleepy ..... zzzzzz.")
         act("$n goes to sleep.", vo, None, None, TO_ROOM)
