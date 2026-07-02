@@ -61,10 +61,10 @@ No Paladin/Ranger guilds in midgaard -- [PRIMESUD] decision (02/07/2026):
 Paladin maps to the Cleric guild rooms, Ranger to the Warrior guild rooms,
 until areas with proper guilds are ported.
 
-## Status (02/07/2026)
+## Status (03/07/2026)
 
-All three phases implemented; see commits tagged "class system phase A/B/C".
-Regression tests in `tests/test_classes.py`.
+All four phases implemented; see commits tagged "class system phase A/B/C/D".
+Regression tests in `tests/test_classes.py` and `tests/test_groups.py`.
 
 ## Notes for human review
 
