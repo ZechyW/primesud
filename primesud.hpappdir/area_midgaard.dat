@@ -327,7 +327,7 @@ MOBILES = {
         "long_descr":  'Your guildmaster is standing here.',
         "description": 'Even though your guildmaster looks old and tired, you can clearly see the\nvast amount of knowledge she possesses. She is wearing fine magic clothing,\nand you notice that she is surrounded by a blue shimmering aura.',
         "race":        'elf',
-        "act_flags": {"sentinel": True, "practice": True, "train": True, "gain": True, "mage": True, "nopurge": True},
+        "act_flags": {"sentinel": True, "practice": True, "mage": True, "nopurge": True, "train": True, "gain": True},  # [PRIMESUD] +train/gain (patch_1stmud_deltas)
         "affected_by": {"detect_invis": True, "detect_magic": True, "detect_hidden": True, "dark_vision": True},
         "alignment": 1000,
         "level":     36,
@@ -351,7 +351,7 @@ MOBILES = {
         "long_descr":  'Your guildmaster is standing here.',
         "description": 'You are in no doubt that this guildmaster is truly close to your god; he has\na peaceful, loving look. You notice that he is surrounded by a white aura.',
         "race":        'human',
-        "act_flags": {"sentinel": True, "practice": True, "gain": True, "cleric": True, "nopurge": True},
+        "act_flags": {"sentinel": True, "practice": True, "cleric": True, "nopurge": True, "gain": True},  # [PRIMESUD] +gain (patch_1stmud_deltas)
         "affected_by": {"detect_evil": True, "detect_invis": True, "detect_magic": True, "detect_hidden": True, "sanctuary": True, "dark_vision": True},
         "alignment": 1000,
         "level":     36,
@@ -375,7 +375,7 @@ MOBILES = {
         "long_descr":  'Your guildmaster is standing here.',
         "description": 'You realize that whenever your guildmaster moves, you fail to notice it:\nthe way of the true thief.  She is dressed in poor clothing, having\nthe appearance of a beggar.\nhuman',
         "race":        'unique',
-        "act_flags": {"sentinel": True, "practice": True, "gain": True, "thief": True, "nopurge": True},
+        "act_flags": {"sentinel": True, "practice": True, "thief": True, "nopurge": True, "gain": True},  # [PRIMESUD] +gain (patch_1stmud_deltas)
         "affected_by": {"detect_invis": True, "detect_hidden": True, "dark_vision": True},
         "alignment": 1000,
         "level":     36,
@@ -399,7 +399,7 @@ MOBILES = {
         "long_descr":  'Your guildmaster is standing here.',
         "description": 'This is your master. A short, strong dwarf with bulging muscles.  Several scars\nacross his body prove that he was using arms before you were born.  He\nhas a calm look on his face.',
         "race":        'dwarf',
-        "act_flags": {"sentinel": True, "practice": True, "train": True, "gain": True, "warrior": True, "nopurge": True},
+        "act_flags": {"sentinel": True, "practice": True, "warrior": True, "nopurge": True, "train": True, "gain": True},  # [PRIMESUD] +train/gain (patch_1stmud_deltas)
         "affected_by": {"detect_invis": True, "detect_hidden": True},
         "alignment": 1000,
         "level":     36,

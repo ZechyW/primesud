@@ -22,9 +22,10 @@ for area in $QM_AREAS; do
         "primesud.hpappdir/area_${area}.dat"
 done
 
-# Wire in cross-area exits from 1stMud (not in quickmud .are files)
-echo "==> cross-area exits"
-uv run tools/patch_cross_area_exits.py
+# Wire in 1stMud-only deltas (not in quickmud .are files): cross-area
+# exits, guildmaster act flags
+echo "==> 1stMud deltas"
+uv run tools/patch_1stmud_deltas.py
 
 # Verify ASCII safety
 echo "==> ASCII check"
