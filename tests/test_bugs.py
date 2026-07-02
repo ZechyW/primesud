@@ -47,6 +47,8 @@ def _make_char(**overrides):
     ch["max_hit"] = 100
     ch["mana"] = 100
     ch["max_mana"] = 100
+    ch["xp"] = 0
+    ch["xp_next"] = 1000
     ch.update(overrides)
     return ch
 

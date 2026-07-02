@@ -1097,7 +1097,8 @@ def spell_cancellation(sn, level, ch, vo, target):
     victim = vo
     level += 2
     if ((not ch.get("is_npc") and victim.get("is_npc")
-            and not (ch.get("affected_by", {}).get("charm") and ch.get("master") is victim))
+            and not (ch.get("affected_by", {}).get("charm")
+                     and ch.get("master") == victim.get("id")))
             or (ch.get("is_npc") and not victim.get("is_npc"))):
         chprintln(ch, "You failed, try dispel magic.")
         return False

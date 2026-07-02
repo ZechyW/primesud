@@ -129,6 +129,9 @@ def check_improve(player, sk_vnum, success, multiplier):
         multiplier (int): Training context difficulty (1=easy, 6=hard); passed per
             call site as in 1stMud rather than stored in the skill table.
     """
+    # 1stMud: if (IsNPC(ch)) return; -- mob skills never improve
+    if player.get("is_npc"):
+        return
     current = player["learned"].get(sk_vnum, 0)
     sk_rating = classes.skill_rating(player, sk_vnum)
     if (not classes.can_use_skill_spell(player, sk_vnum) or sk_rating < 1
@@ -180,8 +183,13 @@ def get_skill(entity, sn, is_mob=False):
     if is_mob:
         lvl = entity["level"]
         skill = lvl if lvl <= 2 else lvl // 2 + lvl // 3
+    elif sn == -1:
+        skill = entity["level"] * 5 // 2
+    elif not classes.can_use_skill_spell(entity, sn):
+        # 1stMud: if (!can_use_skpell(ch, sn)) skill = 0;
+        skill = 0
     else:
-        skill = entity["learned"].get(sn, 0) if sn != -1 else entity["level"] * 5 // 2
+        skill = entity["learned"].get(sn, 0)
 
     if entity.get("daze", 0) > 0:
         is_spell = sn >= 0 and SKILLS.get(sn, {}).get("spell_fun", "spell_null") != "spell_null"

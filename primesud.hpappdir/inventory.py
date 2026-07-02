@@ -853,7 +853,9 @@ def _sacrifice_one(player, obj, rs):
         tprint(short + " is not an acceptable sacrifice.")
         return
 
-    silver = max(1, tpl.get("level", 0) * 3)
+    # 1stMud: silver = Max(1, obj->level * 3) -- instance level (set on corpses), not template
+    silver = max(1, (obj.get("level") if isinstance(obj, dict) and obj.get("level") is not None
+                     else tpl.get("level", 0)) * 3)
     if tpl.get("type") not in ("npc_corpse", "pc_corpse"):
         silver = min(silver, obj.get("cost", 0))
     silver = max(1, silver)
