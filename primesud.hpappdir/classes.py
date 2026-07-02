@@ -100,6 +100,15 @@ CLASS_TABLE = (
 )
 
 
+# Room vnum -> tuple of class indices allowed inside. [PRIMESUD] Derived from
+# guild_rooms (1stMud stores a single class index on the room; deriving here
+# lets Paladin/Ranger share the Cleric/Warrior rooms).
+GUILD_ROOMS = {}
+for _i in range(len(CLASS_TABLE)):
+    for _v in CLASS_TABLE[_i]["guild_rooms"]:
+        GUILD_ROOMS[_v] = GUILD_ROOMS.get(_v, ()) + (_i,)
+
+
 def char_classes(ch):
     """Class index list for ch; empty for NPCs. [PRIMESUD] (cf. 1stMud ch->Class[])"""
     return ch.get("classes") or []
@@ -295,3 +304,13 @@ def class_long(ch):
         return "Mobile"
     tier = min(len(classes) - 1, len(CLASS_TABLE[0]["names"]) - 1)
     return "/".join(CLASS_TABLE[cl]["names"][tier] for cl in classes)
+
+
+def class_short(ch):
+    """Slash-joined 4-char class names at current remort tier
+    (cf. 1stMud class_short in multiclass.c)."""
+    classes = char_classes(ch)
+    if not classes:
+        return "Mob"
+    tier = min(len(classes) - 1, len(CLASS_TABLE[0]["names"]) - 1)
+    return "/".join(CLASS_TABLE[cl]["names"][tier][:4] for cl in classes)

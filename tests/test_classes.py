@@ -140,3 +140,42 @@ class TestCreateChar:
 
     def test_xp_next_from_class_mult(self):
         assert create_char(CLASS_MAGE)["xp_next"] == 1000
+
+
+class TestGuildRooms:
+    """Guild-room entry restriction (cf. 1stMud act_move.c guild check)."""
+
+    def _setup_rooms(self):
+        import world
+        from world import ROOM_DEFS
+        base = {"desc": "x", "items": [], "mobs": [], "area": "test",
+                "sector": "inside", "flags": {}}
+        r1 = dict(base, name="Street", exits={"n": 3018})
+        r2 = dict(base, name="Mage's Bar", exits={"s": 3001})
+        for vnum, room in ((3001, r1), (3018, r2)):
+            ROOM_DEFS._data[vnum] = room
+            world.rooms._data[vnum] = room
+        return world
+
+    def test_non_member_blocked_member_allowed(self):
+        from movement import move_char
+        world = self._setup_rooms()
+        try:
+            for cls, expected_room in ((CLASS_WARRIOR, 3001), (CLASS_MAGE, 3018)):
+                player = create_char(cls)
+                player["room"] = 3001
+                world.chars[1] = player
+                world.rooms._data[3001]["mobs"] = []
+                move_char(player, "n")
+                assert player["room"] == expected_room, cls
+        finally:
+            for vnum in (3001, 3018):
+                world.rooms._data.pop(vnum, None)
+                from world import ROOM_DEFS
+                ROOM_DEFS._data.pop(vnum, None)
+            world.chars.pop(1, None)
+
+    def test_paladin_shares_cleric_guild(self):
+        from classes import GUILD_ROOMS, CLASS_PALADIN
+        assert CLASS_PALADIN in GUILD_ROOMS[3002]
+        assert CLASS_CLERIC in GUILD_ROOMS[3002]

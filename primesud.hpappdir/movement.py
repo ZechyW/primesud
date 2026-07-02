@@ -1,5 +1,6 @@
 """Movement, doors, and recall command handlers."""
 
+from classes import GUILD_ROOMS, is_class
 from handler import can_see_room, chprintln
 from combat import stop_fighting
 from skill_utils import WaitState, check_improve
@@ -90,9 +91,23 @@ def move_char(player, direction):
         chprintln(player, "What?  And leave your beloved master?")
         return
 
-    # -- Private room / area closed / guild room checks not ported --
+    # -- Private room / area closed checks not ported --
 
     if not player.get("is_npc", False):
+        # -- Guild room (cf. 1stMud act_move.c: to_room->guild + is_class) --
+        # [PRIMESUD] membership derived from CLASS_TABLE guild_rooms, so
+        # Paladin/Ranger share the Cleric/Warrior guilds (see CLASS_PLAN.md).
+        allowed = GUILD_ROOMS.get(dest)
+        if allowed is not None:
+            member = False
+            for cl in allowed:
+                if is_class(player, cl):
+                    member = True
+                    break
+            if not member:
+                chprintln(player, "You aren't allowed in there.")
+                return
+
         # -- Sector: air --
         in_sect = in_room.get("sector", "inside")
         to_sect = to_room.get("sector", "inside")
