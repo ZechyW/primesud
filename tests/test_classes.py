@@ -238,10 +238,10 @@ class TestRemort:
             assert player["level"] == 1
             assert player["gold"] == 0
             assert player["xp"] == 0
-            b = 50  # lvl_bonus at level 49, 1 class: 1 + 48*0.9 + drift -> ~55?
-            # don't hardcode b; check invariants instead
-            assert player["max_hit"] == player["perm_hit"] > 100
-            assert player["max_hit"] % 100 == 0
+            # b = lvl_bonus at level 49 with the new class already appended
+            # (2 classes): 2 + 48*.9 + inclev sums = 60.194 -> 60 (cf. 1stMud
+            # nanny appends class before finish_remort computes b)
+            assert player["max_hit"] == player["perm_hit"] == 6000
             assert player["train"] == 5 * (player["max_hit"] // 100)
             assert player["practice"] == 7 * (player["max_hit"] // 100)
             # level cap grew by one

@@ -291,7 +291,11 @@ def finish_remort(player, new_class):
     """
     from player import reset_char
 
-    b = lvl_bonus(player)  # cf. 1stMud: computed before the level reset
+    # cf. 1stMud: nanny appends the new class (CON_GET_NEW_CLASS) before
+    # finish_remort computes b, and the level reset happens after -- so
+    # b sees the new class count at the old level.
+    player["classes"].append(new_class)
+    b = lvl_bonus(player)
 
     for af in list(player.get("affect_list", [])):
         affect_remove(player, af)
@@ -299,7 +303,6 @@ def finish_remort(player, new_class):
         if player["equip"][slot] is not None:
             unequip_char(player, slot)
 
-    player["classes"].append(new_class)
     player["level"] = 1
     player["xp"] = 0
     player["gold"] -= REMORT_GOLD
