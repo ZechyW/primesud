@@ -6,7 +6,8 @@
       "Bash(python *)",
       "PowerShell(python *)",
       "Bash(awk *)",
-      "Bash(grep *)"
+      "Bash(grep *)",
+      "PowerShell(pytest *)"
     ]
   }
 }
