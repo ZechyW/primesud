@@ -33,8 +33,20 @@ Class indices match the 6-tuples already in `skills_table.py`
 (`skill_level` / `rating` per skill -- data is already in the repo, only
 flattened at load by `_flatten_skill`).
 
-`MAX_REMORT = 2` -> a character holds up to 3 classes (`Class[]` array);
-remort-tier names: tier 0 base name, tier 1 second name, `@` = keep previous.
+`MAX_REMORT = 2`, but `do_remort` refuses when class count reaches
+MAX_REMORT -> stock cap is **2 classes (1 remort)**. The `@` in the name
+list is the dat-format array terminator, not a name; exactly 2 name tiers
+exist (e.g. Mage/Wizard).
+
+### Remort-tier names (multiclass.c ClassName/class_long/class_who)
+
+Name tier = character's remort count (`GetRemort`), applied to ALL held
+classes: a mage who remorts into cleric displays tier-1 names for both ->
+`class_long` = "Wizard/Priest", `class_who` = "Wi+1" (2-char prime-class
+prefix + remort count), `class_short` = "Wiza/Prie". `prime_class` is a
+player-chosen slot (`do_prime`) used for who/score prominence.
+Allowing 3+ classes would need MAX_REMORT raised and a third name tier
+authored -- [PRIMESUD] decision if we ever want it; not in scope.
 
 ## Guild rooms (1stMud midgaard.are `G <class>` fields)
 
@@ -45,9 +57,9 @@ remort-tier names: tier 0 base name, tier 1 second name, `@` = keep previous.
 | Thief   | 3028 (Thieves Bar), 3029 (The Secret Yard)           |
 | Warrior | 3022 (Bar of Swordsmen), 3023 (Tournament Yard)      |
 
-No Paladin/Ranger guilds in midgaard -- [PRIMESUD] decision needed at
-implementation time: reuse Cleric/Warrior guilds respectively, or leave
-those classes unable to remort until more areas are ported.
+No Paladin/Ranger guilds in midgaard -- [PRIMESUD] decision (02/07/2026):
+Paladin maps to the Cleric guild rooms, Ranger to the Warrior guild rooms,
+until areas with proper guilds are ported.
 
 ## Phases
 
