@@ -48,6 +48,8 @@ When porting 1stMud code using `CTAG(_CONSTANT)` (e.g. `CTAG(_MOBILES)`), defaul
 
 When porting features from 1stmud, aim for full fidelity. In particular, match 1stmud's function signatures, logic flow, and output messages. Match data and naming conventions wherever possible. Add inline comments for features that aren't available yet or that are PRIMESUD specific, so that these are easy to find/validate/address later.
 
+Exception: fix typos, grammatical errors, and other linguistic slips in 1stmud output text where appropriate (e.g. "does" used for first person, "a outlaw", "beleive"); mark such fixes with a `[PRIMESUD]` comment.
+
 ## Verified port
 
 If a given function is marked as being verified against 1stmud in its docstring (`[Verified: <date>]`), NEVER edit it without asking for explicit permission first.
