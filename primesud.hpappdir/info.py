@@ -11,6 +11,7 @@ from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC,
                     WEAR_LABELS)
 from item import get_obj_list, get_obj_here, obj_vnum, item_extra_flags
+from picker import pick_from
 from player import (PLR_AUTOMAP, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
                     PLR_AUTOSPLIT, PLR_DEFAULTS)
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
@@ -187,6 +188,11 @@ def _look_in(player, args):
     if tpl.get("type") not in _CONTAINER_TYPES:
         tprint("That is not a container.")
         return
+    _show_container(obj, tpl)
+
+
+def _show_container(obj, tpl):
+    """Print container contents (cf. 1stMud do_look 'in' case in act_info.c)."""
     obj_name = (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]
     tprint("{} holds:".format(obj_name))
     contents = isinstance(obj, dict) and obj.get("contents", [])
@@ -903,31 +909,64 @@ def do_examine(player, args):
         args (list): Parsed command arguments.
     """
     if not args:
-        tprint("Examine what?")
+        # [PRIMESUD] picker menu when no args (1stMud prints "Examine what?" and stops)
+        rs = world.rooms[player["room"]]
+        equipped = [o for o in player["equip"].values() if o is not None]
+        mobs = list(rs["mobs"])
+        objs = list(rs["items"]) + player["inv"] + equipped
+        labels = [MOB_DEFS[world.chars[i]["tpl"]]["short_descr"] for i in mobs]
+        for o in objs:
+            labels.append((isinstance(o, dict) and o.get("short_descr"))
+                          or ITEM_DEFS[obj_vnum(o)]["short_descr"])
+        if not labels:
+            tprint("Examine what?")
+            return
+        idx = pick_from("Examine what?", labels)
+        if idx < 0:
+            return
+        if idx < len(mobs):
+            _show_char_to_char_1(player, mobs[idx])
+            return
+        obj = objs[idx - len(mobs)]
+        tpl = ITEM_DEFS[obj_vnum(obj)]
+        inst_desc = isinstance(obj, dict) and obj.get("description")
+        for line in _wrap_paragraphs(inst_desc or tpl.get("description", tpl["short_descr"]),
+                                     TERMINAL_COLS):
+            tprint(line)
+        _examine_extras(obj)
         return
     arg = args[0]
     do_look(player, [arg])
     obj = get_obj_here(player, arg)
     if obj is not None:
-        tpl = ITEM_DEFS[obj_vnum(obj)]
-        obj_type = tpl.get("type")
-        if obj_type == "money":
-            silver = obj.get("silver", 0)
-            gold = obj.get("gold", 0)
-            if silver == 0:
-                if gold == 0:
-                    tprint("Odd...there's no coins in the pile.")
-                elif gold == 1:
-                    tprint("Wow. One gold coin.")
-                else:
-                    tprint("There are " + str(gold) + " gold coins in the pile.")
-            elif gold == 0:
-                if silver == 1:
-                    tprint("Wow. One silver coin.")
-                else:
-                    tprint("There are " + str(silver) + " silver coins in the pile.")
+        _examine_extras(obj)
+
+
+def _examine_extras(obj):
+    """Show money coin counts or container contents after looking at obj (cf. 1stMud do_examine in act_info.c).
+
+    [PRIMESUD] Container contents shown from the resolved obj directly; 1stMud
+    re-resolves via do_look "in <arg>", which can match a different object.
+    """
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    obj_type = tpl.get("type")
+    if obj_type == "money":
+        silver = obj.get("silver", 0)
+        gold = obj.get("gold", 0)
+        if silver == 0:
+            if gold == 0:
+                tprint("Odd...there's no coins in the pile.")
+            elif gold == 1:
+                tprint("Wow. One gold coin.")
             else:
-                tprint("There are " + str(gold) + " gold and " + str(silver) + " silver coins in the pile.")
-        elif obj_type in _CONTAINER_TYPES:
-            do_look(player, ["in", arg])
-        # 1stMud: ITEM_JUKEBOX -> do_play "list" -- not yet ported
+                tprint("There are " + str(gold) + " gold coins in the pile.")
+        elif gold == 0:
+            if silver == 1:
+                tprint("Wow. One silver coin.")
+            else:
+                tprint("There are " + str(silver) + " silver coins in the pile.")
+        else:
+            tprint("There are " + str(gold) + " gold and " + str(silver) + " silver coins in the pile.")
+    elif obj_type in _CONTAINER_TYPES:
+        _show_container(obj, tpl)
+    # 1stMud: ITEM_JUKEBOX -> do_play "list" -- not yet ported
