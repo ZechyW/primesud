@@ -22,7 +22,7 @@ from scan import do_scan
 from shop import do_buy, do_sell, do_list, do_value, do_appraise
 from system_cmds import do_save, do_quit, do_debug
 from terminal import tprint
-from training import do_train, do_practice
+from training import do_train, do_practice, do_remort
 from urandom import randint
 
 _POS_MSG = {
@@ -219,7 +219,7 @@ _CMD_TABLE = [
     # ("where",     do_where,      "resting",  False),  # #174
     # ("showstats", do_showstats,  "sleeping", False),  # #175
     # ("compress",  do_compress,   "dead",     False),  # #176
-    # ("remort",    do_remort,     "standing", True),   # #177 noprefix, imm lvl 51
+    ("remort",     do_remort,     "standing", True),   # #177 noprefix
     # ("gquest",    do_gquest,     "resting",  False),  # #178
     # ("explored",  do_explored,   "sleeping", False),  # #179
     # --- Immortal commands #180-#252 ---

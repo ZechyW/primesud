@@ -1914,12 +1914,13 @@ def gain_exp(ch, gain):
         ch (dict): Player state dict.
         gain (int): XP to add (may be negative for death penalty).
     """
-    if ch.get("is_npc") or ch.get("level", 1) >= MAX_MORTAL_LEVEL:
+    # cf. 1stMud gain_exp: cap at calc_max_level (HERO + remort count)
+    if ch.get("is_npc") or ch.get("level", 1) >= classes.calc_max_level(ch):
         return
     # 1stMud: ch->exp = Max(exp_per_level(...), ch->exp + gain)
     # [PRIMESUD] floor at 0 (no creation-point system)
     ch["xp"] = max(0, ch["xp"] + gain)
-    while (ch.get("level", 1) < MAX_MORTAL_LEVEL
+    while (ch.get("level", 1) < classes.calc_max_level(ch)
            and ch["xp"] >= ch["xp_next"]):
         chprintln(ch, "You raise a level!!")
         ch["level"] += 1

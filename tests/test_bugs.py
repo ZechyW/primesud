@@ -497,7 +497,9 @@ class TestBug8TeleportLoadsWorld:
 
         ch = _make_char(room=100, is_npc=False)
         world.chars[1] = ch
-        world.rooms._data[100]["mobs"] = [1]
+        # NOTE: do not put the player id in room "mobs" -- that list holds NPC
+        # ids only; do_look would treat the player as a mob (KeyError: 'tpl')
+        # whenever teleport randomly lands back in room 100 (flaky ~1/3).
 
         spell_teleport(0, 50, ch, ch, 0)
 

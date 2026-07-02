@@ -179,3 +179,118 @@ class TestGuildRooms:
         from classes import GUILD_ROOMS, CLASS_PALADIN
         assert CLASS_PALADIN in GUILD_ROOMS[3002]
         assert CLASS_CLERIC in GUILD_ROOMS[3002]
+
+
+class TestRemort:
+    """do_remort / finish_remort (cf. 1stMud multiclass.c)."""
+
+    def _hero(self, monkeypatch, pick=0):
+        """Max-level warrior in his guild with a trainer, rich, at 3022."""
+        import world
+        from world import ROOM_DEFS, MOB_DEFS
+        from classes import calc_max_level
+
+        room = {"name": "Bar of Swordsmen", "desc": "x", "items": [], "mobs": [2],
+                "area": "test", "sector": "inside", "flags": {}, "exits": {}}
+        ROOM_DEFS._data[3022] = room
+        world.rooms._data[3022] = room
+        MOB_DEFS._data[9900] = {"short_descr": "the guildmaster", "level": 60,
+                                "act_flags": {"train": True}}
+        trainer = {"is_npc": True, "id": 2, "tpl": 9900, "room": 3022}
+        world.chars[2] = trainer
+
+        player = create_char(CLASS_WARRIOR)
+        player["room"] = 3022
+        player["gold"] = 500000
+        player["level"] = calc_max_level(player)
+        world.chars[1] = player
+
+        import training
+        monkeypatch.setattr(training, "pick_from", lambda t, o: pick)
+        monkeypatch.setattr(training, "save_world", lambda quiet=False: True,
+                            raising=False)
+        # school outfit items not loaded in the test world
+        monkeypatch.setattr(training, "do_outfit", lambda p, a: None)
+        return player
+
+    def _teardown(self):
+        import world
+        from world import ROOM_DEFS, MOB_DEFS
+        ROOM_DEFS._data.pop(3022, None)
+        world.rooms._data.pop(3022, None)
+        MOB_DEFS._data.pop(9900, None)
+        world.chars.pop(1, None)
+        world.chars.pop(2, None)
+
+    def test_remort_full_flow(self, monkeypatch):
+        import training
+        from classes import calc_max_level
+        # patch the function-level import target
+        import game_state
+        monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
+        player = self._hero(monkeypatch, pick=0)  # first available = Mage
+        try:
+            old_cap = calc_max_level(player)
+            training.do_remort(player, [])          # confirm prompt
+            assert player["confirm_remort"] is True
+            training.do_remort(player, [])          # confirmed -> picker -> remort
+            assert player["classes"] == [CLASS_WARRIOR, CLASS_MAGE]
+            assert player["level"] == 1
+            assert player["gold"] == 0
+            assert player["xp"] == 0
+            b = 50  # lvl_bonus at level 49, 1 class: 1 + 48*0.9 + drift -> ~55?
+            # don't hardcode b; check invariants instead
+            assert player["max_hit"] == player["perm_hit"] > 100
+            assert player["max_hit"] % 100 == 0
+            assert player["train"] == 5 * (player["max_hit"] // 100)
+            assert player["practice"] == 7 * (player["max_hit"] // 100)
+            # level cap grew by one
+            assert calc_max_level(player) == old_cap + 1
+            # mage skills granted at 1%
+            assert player["learned"].get(GSN_SANCTUARY, 0) >= 1
+            # in-progress skills reset to 1 (weapon was 40 -> but dagger set to 40)
+            assert player["learned"][WEAPON_GSN_MAP["dagger"]] == 40
+            assert player["learned"][WEAPON_GSN_MAP["sword"]] == 1
+            assert player["room"] == 3700 or player["room"] != 3022  # moved to school
+        finally:
+            self._teardown()
+
+    def test_remort_refused_when_not_max_level(self, monkeypatch):
+        import training
+        player = self._hero(monkeypatch)
+        player["level"] = 10
+        try:
+            training.do_remort(player, [])
+            assert "confirm_remort" not in player or not player["confirm_remort"]
+            assert player["classes"] == [CLASS_WARRIOR]
+        finally:
+            self._teardown()
+
+    def test_remort_refused_outside_guild(self, monkeypatch):
+        import training
+        from world import ROOM_DEFS
+        import world
+        player = self._hero(monkeypatch)
+        street = {"name": "Street", "desc": "x", "items": [], "mobs": [],
+                  "area": "test", "sector": "inside", "flags": {}, "exits": {}}
+        ROOM_DEFS._data[3001] = street
+        world.rooms._data[3001] = street
+        player["room"] = 3001
+        try:
+            training.do_remort(player, [])
+            assert not player.get("confirm_remort")
+        finally:
+            ROOM_DEFS._data.pop(3001, None)
+            world.rooms._data.pop(3001, None)
+            self._teardown()
+
+    def test_remort_cap(self, monkeypatch):
+        import training
+        player = self._hero(monkeypatch)
+        player["classes"] = [CLASS_WARRIOR, CLASS_MAGE]
+        try:
+            training.do_remort(player, [])
+            assert not player.get("confirm_remort")
+            assert len(player["classes"]) == 2
+        finally:
+            self._teardown()

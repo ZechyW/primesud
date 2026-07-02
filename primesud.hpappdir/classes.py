@@ -6,7 +6,7 @@ a fresh character has one entry, each remort appends one (max MAX_REMORT).
 NPCs have no "classes" key.
 """
 
-from config import LEVEL_IMMORTAL, MAX_LEVEL
+from config import LEVEL_HERO, LEVEL_IMMORTAL, MAX_LEVEL, MAX_MORTAL_LEVEL
 from races import RACE_TABLE
 from skills_table import SKILLS
 from urandom import randint
@@ -304,6 +304,13 @@ def class_long(ch):
         return "Mobile"
     tier = min(len(classes) - 1, len(CLASS_TABLE[0]["names"]) - 1)
     return "/".join(CLASS_TABLE[cl]["names"][tier] for cl in classes)
+
+
+def calc_max_level(ch):
+    """Mortal level cap: LEVEL_HERO + remort count (cf. 1stMud calc_max_level in handler.c)."""
+    if ch.get("is_npc"):
+        return MAX_LEVEL
+    return min(MAX_MORTAL_LEVEL, LEVEL_HERO + len(char_classes(ch)) - 1)
 
 
 def class_short(ch):

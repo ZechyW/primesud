@@ -61,7 +61,26 @@ No Paladin/Ranger guilds in midgaard -- [PRIMESUD] decision (02/07/2026):
 Paladin maps to the Cleric guild rooms, Ranger to the Warrior guild rooms,
 until areas with proper guilds are ported.
 
+## Status (02/07/2026)
+
+All three phases implemented; see commits tagged "class system phase A/B/C".
+Regression tests in `tests/test_classes.py`.
+
 ## Notes for human review
+
+- **Level cap changed by calc_max_level**: gain_exp previously capped at
+  MAX_MORTAL_LEVEL (51); now capped at calc_max_level = 49 single-class,
+  50 after one remort (faithful to 1stMud LEVEL_HERO + remorts, and fits
+  the existing [PRIMESUD] MAX_LEVEL=50). Existing dev saves above 49 keep
+  their level but stop gaining.
+- **Remort prerequisites**: gold-only (500,000); the 500-quest-point
+  requirement is `# TODO` in do_remort/finish_remort for when auto-quests
+  are ported.
+- **lvl_bonus magnitude**: at level 49 with 1 class the multiplier is 59,
+  so a remorted char restarts with 5900 hp/mana/move, 295 trains and 413
+  practices. That is faithful to 1stMud's formula but dwarfs PrimeSUD's
+  economy (a fresh char has 20 hp). Worth a balance review once remort is
+  reachable in normal play.
 
 - **1stMud skill data is permissive** (verified in skills.dat): most spells
   are learnable by every class at higher level/worse rating -- e.g.

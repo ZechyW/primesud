@@ -170,6 +170,7 @@ INT_APP_LEARN    = (3,5,7,8,9,10,11,12,13,15,17,19,22,25,28,31,34,37,40,44,49,55
 MAX_LEVEL = 50  # [PRIMESUD] single-user gameplay cap for now.
 MAX_MORTAL_LEVEL = 51  # 1stMud do_skills/do_spells display/filter cap.
 LEVEL_IMMORTAL = 52  # skill_level() sentinel for skills no held class learns.
+LEVEL_HERO = 49  # calc_max_level base: mortals cap at HERO + remort count.
 
 # -- Practice cap ----------------------------------------------------------------------
 SKILL_ADEPT = 75  # 1stMud class_table[].skill_adept; all shipped classes use 75
