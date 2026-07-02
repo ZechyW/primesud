@@ -83,6 +83,7 @@ def _char_base():
         "hitroll":     0,
         "damroll":     0,
         "armor":       (100, 100, 100, 100),
+        # [PRIMESUD] No stat rolling; fixed base stats (1stMud rolls in nanny.c)
         "perm_stat":   {"str": 13, "dex": 13, "int": 13, "wis": 13, "con": 13},
         "mod_stat":    {},
         # -- Flags (cf. .act, .imm_flags, .res_flags, .vuln_flags, .affected_by,

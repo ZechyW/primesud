@@ -3,7 +3,8 @@ import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-sys.path.insert(0, os.path.join(ROOT, "primesud.hpappdir"))
+_SRC = os.environ.get("PRIMESUD_SRC", "primesud.hpappdir")
+sys.path.insert(0, os.path.join(ROOT, _SRC))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
 import pytest

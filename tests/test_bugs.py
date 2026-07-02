@@ -10,7 +10,8 @@ import sys
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-sys.path.insert(0, os.path.join(ROOT, "primesud.hpappdir"))
+_SRC = os.environ.get("PRIMESUD_SRC", "primesud.hpappdir")
+sys.path.insert(0, os.path.join(ROOT, _SRC))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
 from handler import (
@@ -480,19 +481,29 @@ class TestBug7StoneSkinSelfOnly:
 
 class TestBug8TeleportLoadsWorld:
 
-    def test_teleport_does_not_iterate_all_room_defs(self):
-        """spell_teleport must not call ROOM_DEFS.items() (triggers full world load)."""
-        import inspect
-        src = inspect.getsource(spell_teleport)
-        assert "ROOM_DEFS.items()" not in src, \
-            "spell_teleport should not iterate ROOM_DEFS (triggers full world load)"
+    def test_teleport_does_not_load_all_areas(self, fresh_world):
+        """spell_teleport must not trigger a full world load."""
+        fw = fresh_world
+        _room = {"name": "R", "desc": "", "exits": {}, "sector": "inside",
+                 "flags": {}, "items": [], "mobs": []}
+        fw.register_area("a1", 100, 199,
+                         rooms={100: dict(_room, name="R1")})
+        fw.register_area("a2", 200, 299,
+                         rooms={200: dict(_room, name="R2")})
+        fw.register_area("a3", 300, 399,
+                         rooms={300: dict(_room, name="R3")})
+        fw.setup()
+        world._load_area("a1")
 
-    def test_teleport_uses_area_first_strategy(self):
-        """spell_teleport should pick an area first, then a room within it."""
-        import inspect
-        src = inspect.getsource(spell_teleport)
-        assert "_teleport_candidates" in src or "_AREA_FILES" in src, \
-            "spell_teleport should use area-first room selection"
+        ch = _make_char(room=100, is_npc=False)
+        world.chars[1] = ch
+        world.rooms._data[100]["mobs"] = [1]
+
+        spell_teleport(0, 50, ch, ch, 0)
+
+        # At most 2 areas should be loaded (source + 1 target), never all 3
+        assert len(world._LOADED_AREAS) < 3, \
+            "spell_teleport loaded all areas -- should use area-first strategy"
 
 
 # ===========================================================================
@@ -562,13 +573,24 @@ class TestBug10DoubleReset:
         assert area_state["age"] < _AREA_AGE_RESET, \
             "age must be < threshold to prevent double reset"
 
-    def test_load_area_code_zeros_age(self):
-        """Verify _load_area source contains age = 0 after reset_area call."""
-        import inspect
-        import world as world_mod
-        src = inspect.getsource(world_mod._load_area)
-        assert 'age"] = 0' in src or "age\"] = 0" in src, \
-            "_load_area should zero age after reset"
+    def test_load_area_zeros_age(self, fresh_world):
+        """_load_area must zero age in world.areas after reset."""
+        from mob import _AREA_AGE_RESET
+        fw = fresh_world
+        fw.register_area("agetest", 5000, 5099,
+                         rooms={5000: {"name": "R", "desc": "", "exits": {},
+                                       "sector": "inside", "flags": {}}})
+        fw.setup()
+        for _s in world.areas:
+            if _s["tag"] == "agetest":
+                _s["age"] = _AREA_AGE_RESET
+                break
+        world._load_area("agetest")
+        for _s in world.areas:
+            if _s["tag"] == "agetest":
+                assert _s["age"] == 0, \
+                    "_load_area should zero age after reset (bug #10)"
+                break
 
 
 # ===========================================================================
@@ -603,12 +625,31 @@ class TestBug12ObjCastSpellTargetName:
 
     def test_obj_cast_spell_sets_empty_target_name(self):
         """obj_cast_spell should set _target_name to "" (matches 1stMud target_name = "")."""
-        import inspect
-        src = inspect.getsource(obj_cast_spell)
-        assert 'ch["_target_name"] = spell_name' not in src, \
-            "_target_name must not be set to spell_name"
-        assert '_target_name"] = ""' in src, \
-            "_target_name should be empty string for item spells"
+        from magic import SKILLS, SPELL_FUNS
+        sn_name = "armor"
+        sn = _skill_lookup(sn_name)
+        if sn is None:
+            pytest.skip("armor spell not in skill table")
+        captured = {}
+        orig_fun = SPELL_FUNS.get(SKILLS[sn].get("spell_fun", "spell_null"))
+
+        def spy(sn_, level_, ch_, vo_, target_):
+            captured["_target_name"] = ch_.get("_target_name")
+            if orig_fun:
+                return orig_fun(sn_, level_, ch_, vo_, target_)
+            return True
+
+        old = SPELL_FUNS.get(SKILLS[sn].get("spell_fun"))
+        SPELL_FUNS[SKILLS[sn]["spell_fun"]] = spy
+        try:
+            ch = _make_char()
+            world.chars[1] = ch
+            obj_cast_spell(sn_name, 20, ch, ch, None)
+        finally:
+            if old is not None:
+                SPELL_FUNS[SKILLS[sn]["spell_fun"]] = old
+        assert captured.get("_target_name") == "", \
+            "_target_name should be empty string for item spells, got %r" % captured.get("_target_name")
 
 
 # ===========================================================================
@@ -815,18 +856,20 @@ class TestBug16CrossAreaResetMiss:
 
 class TestBug17RecursionGuard:
 
-    def test_loaded_areas_set_before_reset_loop(self):
-        """_LOADED_AREAS should be set before reset partitioning to prevent recursion."""
-        import inspect
-        src = inspect.getsource(world._load_area)
-        loaded_pos = src.find("_LOADED_AREAS.add")
-        partition_start = src.find("for _entry in _ns[\"RESETS\"]")
-        # _LOADED_AREAS.add must come AFTER reset partitioning for cross-area
-        # safety. Currently it comes after (line 207 vs 184), but the partition
-        # loop uses LazyDict access which can trigger recursive loads.
-        # The guard works IF the recursive load checks _LOADED_AREAS before
-        # re-entering. This is tested in test_lazy_loading.py more thoroughly.
-        assert loaded_pos > 0 and partition_start > 0
+    def test_loaded_areas_guard_prevents_reentry(self, fresh_world):
+        """_LOADED_AREAS must be set before reset to prevent recursive load."""
+        fw = fresh_world
+        fw.register_area("guard_a", 6000, 6099,
+                         rooms={6000: {"name": "R", "desc": "", "exits": {},
+                                       "sector": "inside", "flags": {}}})
+        fw.setup()
+        world._load_area("guard_a")
+        assert "guard_a" in world._LOADED_AREAS
+        # Second call should be a no-op (guard prevents re-entry)
+        old_areas_len = len(world.AREA_DEFS)
+        world._ensure_area_by_tag("guard_a")
+        assert len(world.AREA_DEFS) == old_areas_len, \
+            "re-entering _load_area for already-loaded area should be no-op"
 
 
 # ===========================================================================

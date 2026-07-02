@@ -200,7 +200,7 @@ _CMD_TABLE = [
     # ("mob",       do_mob,        "dead",     False),  # #155 mob prog
     # ("enter",     do_enter,      "standing", False),  # #156
     # ("follow",    do_follow,     "resting",  False),  # #157
-    # ("gain",      do_gain,       "standing", False),  # #158
+    # ("gain",      do_gain,       "standing", False),  # #158 [PRIMESUD] no skill groups
     # ("go",        do_enter,      "standing", False),  # #159
     # ("hide",      do_hide,       "resting",  False),  # #160
     # ("play",      do_play,       "resting",  False),  # #161
