@@ -12,4 +12,4 @@ Loose ends that don't belong in a specific plan file.
 
 - ~~Picker should implement pagination~~ — Done (was stale): `pick_from` pages 10/entry with `+`/`-` nav (`picker.py`).
 
-- Scrollback with mouse?
+- ~~Scrollback with mouse?~~ — Done (was stale): touch scrollback via `mouse()` in `tml_prime.py` -- swipe to enter (`SWIPE_THRESHOLD`), drag to scroll (`TOUCH_SCROLL_STEP`), shift+-/+ keyboard path, pulse-clock compensation in game loop.
