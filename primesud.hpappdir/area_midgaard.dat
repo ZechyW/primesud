@@ -1602,6 +1602,7 @@ ROOMS = {
         "extra_descs": [('plaque', 'This entire world has been integrated, modified, debugged, and enhanced by\nHatchet, Kahn, and Furey of MERC Industries to be run by any MERC Mud.\n1992 December 17\nROM enhancements by Alander.')],
     },
     3002: {
+        "guild": (1, 4),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": "Cleric's Inner Sanctum",
         "desc": 'This is the inner sanctum.  A picture of the mighty Mota is hanging on\nthe wall, just above the altar which is set against the western wall.  A well\nin the middle of the floor leads down into darkness.  Vile smells waft from\nthe depths.',
         "exits": {
@@ -1612,6 +1613,7 @@ ROOMS = {
         "sector": 'inside',
     },
     3003: {
+        "guild": (1, 4),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": "Cleric's Bar",
         "desc": 'The bar is one of the finest in the land, lucky it is members only.  Fine\nfurniture is set all around the room.  A small sign is hanging on the wall.',
         "exits": {
@@ -1777,6 +1779,7 @@ ROOMS = {
         "sector": 'inside',
     },
     3018: {
+        "guild": (0,),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": "Mage's Bar",
         "desc": 'The bar is one of the wierdest in the land.  Mystical images float around\nthe air.  Illusions of fine furniture appear all around the room.',
         "exits": {
@@ -1787,6 +1790,7 @@ ROOMS = {
         "sector": 'inside',
     },
     3019: {
+        "guild": (0,),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": "Mage's Laboratory",
         "desc": 'This is the Magical Experiments Laboratory.  Dark smoke-stained stones\narch over numerous huge oaken tables, most of these cluttered with strange-\nlooking pipes and flasks.  The floor is covered with half-erased pentagrams\nand even weirder symbols, and a blackboard in a dark corner has only been\npartially cleaned, some painful-looking letters faintly visible.  A well in\nthe middle of the floor leads down into darkness.  Vile smells waft from the\ndepths.',
         "exits": {
@@ -1817,6 +1821,7 @@ ROOMS = {
         "sector": 'inside',
     },
     3022: {
+        "guild": (3, 5),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": 'The Bar of Swordsmen',
         "desc": 'The bar of swordsmen, once upon a time beautifully furnished.  But now the\nfurniture is all around you in small pieces.  To the south is the yard, and\nto the west is the entrance hall.',
         "exits": {
@@ -1827,6 +1832,7 @@ ROOMS = {
         "sector": 'inside',
     },
     3023: {
+        "guild": (3, 5),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": 'The Tournament and Practice Yard',
         "desc": 'The practice yard of the fighters.  To the north is the bar.  A well leads\ndown into darkness.',
         "exits": {
@@ -1884,6 +1890,7 @@ ROOMS = {
         "sector": 'inside',
     },
     3028: {
+        "guild": (2,),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": 'The Thieves Bar',
         "desc": 'The bar of the thieves.  Once upon a time this place was beautifully\nfurnished, but now it seems almost empty.  To the south is the yard, and to\nthe west is the entrance hall.\n   (Maybe the furniture has been stolen?!)',
         "exits": {
@@ -1895,6 +1902,7 @@ ROOMS = {
         "extra_descs": [('furniture', 'As you look at the furniture, the chair you sit on disappears.')],
     },
     3029: {
+        "guild": (2,),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": 'The Secret Yard',
         "desc": 'The secret practice yard of thieves and assassins.  To the north is the\nbar.  A well leads down into darkness.',
         "exits": {

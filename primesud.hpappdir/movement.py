@@ -1,6 +1,6 @@
 """Movement, doors, and recall command handlers."""
 
-from classes import GUILD_ROOMS, is_class
+from classes import is_class
 from handler import can_see_room, chprintln
 from combat import stop_fighting
 from skill_utils import WaitState, check_improve
@@ -95,9 +95,9 @@ def move_char(player, direction):
 
     if not player.get("is_npc", False):
         # -- Guild room (cf. 1stMud act_move.c: to_room->guild + is_class) --
-        # [PRIMESUD] membership derived from CLASS_TABLE guild_rooms, so
-        # Paladin/Ranger share the Cleric/Warrior guilds (see CLASS_PLAN.md).
-        allowed = GUILD_ROOMS.get(dest)
+        # "guild" tuple patched onto rooms by patch_1stmud_deltas.py;
+        # Paladin/Ranger share the Cleric/Warrior guilds (CLASS_PLAN.md).
+        allowed = to_room.get("guild")
         if allowed is not None:
             member = False
             for cl in allowed:

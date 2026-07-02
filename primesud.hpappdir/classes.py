@@ -26,9 +26,8 @@ CLASS_RANGER  = 5
 # "names" = remort-tier display names (tier index = remort count).
 # "weapon" = starting weapon type ([PRIMESUD] type string; 1stMud stores the
 #            school item vnum -- 3700 mace / 3701 dagger / 3702 sword).
-# "guild_rooms" = [PRIMESUD] from 1stMud midgaard.are G fields; Paladin uses
-#                 the Cleric rooms and Ranger the Warrior rooms until areas
-#                 with proper guilds are ported (see CLASS_PLAN.md).
+# Guild membership lives on rooms as a "guild" field (cf. 1stMud room->guild
+# from area-file G fields; patched into area data by patch_1stmud_deltas.py).
 # "summary" = [PRIMESUD] one-line blurb for the chargen picker.
 # "base_group"/"default_group" = groups.py names (cf. classes.dat fields);
 #                 granted at creation/remort by add_base/default_groups.
@@ -41,7 +40,6 @@ CLASS_TABLE = (
         "thac0_00":    20, "thac0_32": 6,
         "hp_min":      6,  "hp_max":   8,
         "f_mana":      True,
-        "guild_rooms": (3018, 3019),
         "base_group":  "mage basics",
         "default_group": "mage default",
         "summary":     "Offensive magic; frail early, mighty late",
@@ -54,7 +52,6 @@ CLASS_TABLE = (
         "thac0_00":    20, "thac0_32": 2,
         "hp_min":      7,  "hp_max":   10,
         "f_mana":      True,
-        "guild_rooms": (3002, 3003),
         "base_group":  "cleric basics",
         "default_group": "cleric default",
         "summary":     "Healing and protection magic; all-rounder",
@@ -67,7 +64,6 @@ CLASS_TABLE = (
         "thac0_00":    20, "thac0_32": -4,
         "hp_min":      8,  "hp_max":   13,
         "f_mana":      False,
-        "guild_rooms": (3028, 3029),
         "base_group":  "thief basics",
         "default_group": "thief default",
         "summary":     "Backstab, stealth, and dirty tricks",
@@ -80,7 +76,6 @@ CLASS_TABLE = (
         "thac0_00":    20, "thac0_32": -10,
         "hp_min":      11, "hp_max":   15,
         "f_mana":      False,
-        "guild_rooms": (3022, 3023),
         "base_group":  "warrior basics",
         "default_group": "warrior default",
         "summary":     "Best to-hit and HP; weapons and extra attacks",
@@ -93,7 +88,6 @@ CLASS_TABLE = (
         "thac0_00":    20, "thac0_32": 2,
         "hp_min":      7,  "hp_max":   10,
         "f_mana":      True,
-        "guild_rooms": (3002, 3003),
         "base_group":  "paladin basics",
         "default_group": "paladin default",
         "summary":     "Holy warrior; sturdy, with support magic",
@@ -106,21 +100,11 @@ CLASS_TABLE = (
         "thac0_00":    20, "thac0_32": -10,
         "hp_min":      11, "hp_max":   15,
         "f_mana":      False,
-        "guild_rooms": (3022, 3023),
         "base_group":  "ranger basics",
         "default_group": "ranger default",
         "summary":     "Wilderness fighter; warrior with tricks",
     },
 )
-
-
-# Room vnum -> tuple of class indices allowed inside. [PRIMESUD] Derived from
-# guild_rooms (1stMud stores a single class index on the room; deriving here
-# lets Paladin/Ranger share the Cleric/Warrior rooms).
-GUILD_ROOMS = {}
-for _i in range(len(CLASS_TABLE)):
-    for _v in CLASS_TABLE[_i]["guild_rooms"]:
-        GUILD_ROOMS[_v] = GUILD_ROOMS.get(_v, ()) + (_i,)
 
 
 def char_classes(ch):

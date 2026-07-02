@@ -1,7 +1,7 @@
 """Training, practice, and remort command handlers."""
 
 import world
-from classes import (CLASS_TABLE, GUILD_ROOMS, MAX_REMORT, calc_max_level,
+from classes import (CLASS_TABLE, MAX_REMORT, calc_max_level,
                      exp_per_level, is_class, lvl_bonus)
 from handler import (get_curr_stat, act, chprintln, chprintlnf,
                    TO_CHAR, TO_ROOM, affect_remove, unequip_char)
@@ -219,7 +219,9 @@ def do_remort(player, args):
         player (dict): Player state dict.
         args (list): Any argument cancels a pending confirm.
     """
-    allowed = GUILD_ROOMS.get(player["room"], ())
+    rs = world.rooms[player["room"]]
+    # "guild" tuple patched onto rooms by patch_1stmud_deltas.py
+    allowed = rs.get("guild", ())
     member = False
     for cl in allowed:
         if is_class(player, cl):
@@ -230,7 +232,6 @@ def do_remort(player, args):
                    "(s)" if len(player["classes"]) > 1 else "")
         return
 
-    rs = world.rooms[player["room"]]
     trainer = None
     for mid in rs["mobs"]:
         inst = world.chars[mid]

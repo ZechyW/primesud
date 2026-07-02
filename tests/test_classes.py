@@ -151,7 +151,7 @@ class TestGuildRooms:
         base = {"desc": "x", "items": [], "mobs": [], "area": "test",
                 "sector": "inside", "flags": {}}
         r1 = dict(base, name="Street", exits={"n": 3018})
-        r2 = dict(base, name="Mage's Bar", exits={"s": 3001})
+        r2 = dict(base, name="Mage's Bar", exits={"s": 3001}, guild=(CLASS_MAGE,))
         for vnum, room in ((3001, r1), (3018, r2)):
             ROOM_DEFS._data[vnum] = room
             world.rooms._data[vnum] = room
@@ -176,9 +176,14 @@ class TestGuildRooms:
             world.chars.pop(1, None)
 
     def test_paladin_shares_cleric_guild(self):
-        from classes import GUILD_ROOMS, CLASS_PALADIN
-        assert CLASS_PALADIN in GUILD_ROOMS[3002]
-        assert CLASS_CLERIC in GUILD_ROOMS[3002]
+        # "guild" fields are patched into the generated area data by
+        # patch_1stmud_deltas; check the artifact without booting the world
+        path = os.path.join(ROOT, _SRC, "area_midgaard.dat")
+        with open(path) as f:
+            text = f.read()
+        assert '"guild": (1, 4),' in text  # cleric rooms shared with paladin
+        assert '"guild": (3, 5),' in text  # warrior rooms shared with ranger
+        assert '"guild": (0,),' in text    # mage rooms mage-only
 
 
 class TestRemort:
@@ -191,7 +196,8 @@ class TestRemort:
         from classes import calc_max_level
 
         room = {"name": "Bar of Swordsmen", "desc": "x", "items": [], "mobs": [2],
-                "area": "test", "sector": "inside", "flags": {}, "exits": {}}
+                "area": "test", "sector": "inside", "flags": {}, "exits": {},
+                "guild": (CLASS_WARRIOR,)}
         ROOM_DEFS._data[3022] = room
         world.rooms._data[3022] = room
         MOB_DEFS._data[9900] = {"short_descr": "the guildmaster", "level": 60,
