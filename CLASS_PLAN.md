@@ -59,7 +59,14 @@ authored -- [PRIMESUD] decision if we ever want it; not in scope.
 
 No Paladin/Ranger guilds in midgaard -- [PRIMESUD] decision (02/07/2026):
 Paladin maps to the Cleric guild rooms, Ranger to the Warrior guild rooms,
-until areas with proper guilds are ported.
+until areas with proper guilds are ported. Verified 03/07/2026: midgaard
+holds the ONLY G fields in all of 1stMud's shipped areas, so upstream
+paladins/rangers had no guild anywhere either.
+
+Implementation (03/07/2026): "guild" tuples are patched onto rooms by
+tools/patch_1stmud_deltas.py (ROOM_GUILDS) during area regen -- room data
+as in 1stMud, not a code table. Guild-room commands (remort/gain) also
+need the guildmaster act flags from the same patch layer.
 
 ## Status (03/07/2026)
 
