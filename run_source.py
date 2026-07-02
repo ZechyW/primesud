@@ -1,4 +1,7 @@
-"""PC entry point for PrimeSUD -- run with: python primesud_pc.py"""
+"""Run PrimeSUD on PC using un-minified source directly (no dist build).
+
+Usage: python run_source.py
+"""
 import sys
 import os
 

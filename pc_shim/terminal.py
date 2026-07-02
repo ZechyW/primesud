@@ -3,11 +3,6 @@ import sys
 from colors import COLOR_CODE, _RESET_CODES
 from tml_prime import tml_prime as tml
 
-
-def tprint(*args, **kwargs):
-    """Module-level print -- delegates to tr.print (colour-aware)."""
-    tr.print(*args, **kwargs)
-
 _ANSI = {
     'd': '\033[30m', 'r': '\033[31m', 'g': '\033[32m', 'y': '\033[33m',
     'b': '\033[34m', 'm': '\033[35m', 'c': '\033[36m', 'w': '\033[37m',
@@ -60,5 +55,18 @@ def install_color_print(tr):
     tr.set_status = wrapped_set_status
 
 
-tr = tml()
-install_color_print(tr)
+tr = None
+
+
+def tprint(*args, **kwargs):
+    """Module-level print -- delegates to tr.print (colour-aware)."""
+    tr.print(*args, **kwargs)
+
+
+def init_terminal():
+    """Create the tml instance and install colour wrappers. [PRIMESUD]"""
+    global tr
+    if tr is not None:
+        return
+    tr = tml()
+    install_color_print(tr)

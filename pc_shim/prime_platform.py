@@ -10,10 +10,6 @@ def ticks():
     return int(time.monotonic() * 1000)
 
 
-def wait(seconds):
-    time.sleep(seconds)
-
-
 def wait_ms(ms):
     time.sleep(ms / 1000.0)
 

@@ -53,6 +53,8 @@ _TAG_TO_FILE = {}
 _VNUM_RANGES = []
 _pending_mob_saves = {}    # {tpl_vnum: [room_vnum, ...]} from save data
 _pending_room_items = {}   # {rvnum: "raw|token|string"} from save data
+_reset_queue = []          # iterative drain prevents stack overflow
+_draining = False
 
 
 class LazyDict:
@@ -153,11 +155,12 @@ def _load_all():
 
 
 def _load_area(tag):
-    """Load one area on demand: exec .dat, merge defs, reset. [PRIMESUD]
+    """Load one area on demand: exec .dat, merge defs, queue reset. [PRIMESUD]
 
     Args:
         tag (str): Area tag (e.g. "midgaard").
     """
+    global _draining
     _ns = {}
     exec(open(_TAG_TO_FILE[tag]).read(), _ns)
 
@@ -219,18 +222,28 @@ def _load_area(tag):
     _adef.update(_ns["AREA"])
     _adef["room_vnums"] = _room_vnums
 
-    # Mark loaded BEFORE reset to prevent recursion from LazyDict access
     _LOADED_AREAS.add(tag)
 
+    # Queue reset; drain iteratively to prevent stack overflow from
+    # cross-area LazyDict lookups during create_object/create_mobile.
+    _reset_queue.append((tag, _adef, _room_vnums, _cross_area_rooms))
+    if not _draining:
+        _draining = True
+        try:
+            while _reset_queue:
+                _reset_loaded_area(*_reset_queue.pop(0))
+        finally:
+            _draining = False
+
+
+def _reset_loaded_area(tag, _adef, _room_vnums, _cross_area_rooms):
+    """Reset a loaded area and apply pending deltas. [PRIMESUD]"""
     from mob import reset_area, reset_room
     reset_area(_adef)
 
-    # Now partition cross-area resets and run reset_room on affected rooms.
-    # Target areas are loaded by now (LazyDict access below triggers load
-    # if needed), and our resets are appended before their reset_room call.
     if _cross_area_rooms:
         _cur_rvnum = None
-        for _entry in _ns["RESETS"]:
+        for _entry in _adef["resets"]:
             _cmd = _entry[0]
             if _cmd == "M":
                 _cur_rvnum = _entry[3]
@@ -249,10 +262,6 @@ def _load_area(tag):
 
     _apply_pending_deltas(tag, _room_vnums)
 
-    # Update mutable area tick state if game is running.
-    # Zero age after reset to prevent area_update from triggering a second
-    # reset on the next tick (bug #10). Matches 1stMud area_update behavior
-    # which zeros age after each reset_area call.
     if areas:
         for _s in areas:
             if _s["tag"] == tag:
@@ -361,6 +370,7 @@ def reset_lazy():
     _LOADED_AREAS.clear()
     _pending_mob_saves.clear()
     _pending_room_items.clear()
+    del _reset_queue[:]
     ROOM_DEFS._data.clear()
     MOB_DEFS._data.clear()
     ITEM_DEFS._data.clear()

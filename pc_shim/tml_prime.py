@@ -54,6 +54,7 @@ class tml_prime:
         self.cursor_y = 0
         self._scrollback_ms = 0
         self.alpha_lock = False
+        self.shift_lock = False
         self.is_alpha = False
         self.is_shift = False
         self.alpha_hold = False

@@ -8,6 +8,8 @@ sys.path.insert(0, os.path.join(ROOT, _SRC))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
 import pytest
+from terminal import init_terminal
+init_terminal()
 import world
 
 
