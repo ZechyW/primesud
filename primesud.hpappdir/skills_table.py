@@ -2149,16 +2149,9 @@ _SKILL_TABLE_RAW = [
 ]
 
 # -- Derived lookups -----------------------------------------------------------
-# Flatten per-class tuples: skill_level -> earliest any class learns it;
-# rating -> best (lowest non-zero) rate; default=1 guards all-zero edge case.
-def _flatten_skill(sn, data):
-    d = {}
-    d.update(data)
-    d["skill_level"] = min(data["skill_level"])
-    d["rating"] = min((v for v in data["rating"] if v > 0), default=1)
-    return (sn, d)
-
-SKILL_TABLE = [_flatten_skill(sn, data) for sn, data in _SKILL_TABLE_RAW]
+# skill_level / rating stay per-class tuples; class-aware lookups live in
+# classes.py (skill_level / skill_rating, cf. 1stMud multiclass.c).
+SKILL_TABLE = _SKILL_TABLE_RAW
 
 SKILLS = dict(SKILL_TABLE)
 

@@ -1,5 +1,6 @@
 """Skill/spell helper functions (cf. 1stMud multiclass.c and magic.c)."""
 
+import classes
 from skills_table import SKILL_TABLE, SKILLS
 from config import MAX_MORTAL_LEVEL, INT_APP_LEARN
 from handler import get_curr_stat
@@ -31,20 +32,17 @@ def is_runtime_spell(sn):
 def skill_level(player, sn):
     """Return level at which player can use skill/spell (cf. 1stMud skill_level in multiclass.c).
 
-    PrimeSUD is classless for now, so world.py flattens level to earliest class.
+    Class-aware: minimum across the player's held classes (see classes.py).
     """
-    sk = SKILLS.get(sn)
-    return sk.get("skill_level", MAX_MORTAL_LEVEL + 1) if sk else MAX_MORTAL_LEVEL + 1
+    return classes.skill_level(player, sn)
 
 
 def skill_rating(player, sn):
     """Return practice cost divisor/rating (cf. 1stMud skill_rating in multiclass.c).
 
-    PrimeSUD is classless for now, so world.py flattens rating to lowest positive
-    class rating.
+    Class-aware: best (lowest positive) rating across held classes (see classes.py).
     """
-    sk = SKILLS.get(sn)
-    return sk.get("rating", 0) if sk else 0
+    return classes.skill_rating(player, sn)
 
 
 def can_use_skill_spell(player, sn):
@@ -53,7 +51,7 @@ def can_use_skill_spell(player, sn):
     1stMud name is can_use_skpell, a skill/spell blend; PrimeSUD keeps readable
     helper name.
     """
-    return sn in SKILLS and player.get("level", 1) >= skill_level(player, sn)
+    return classes.can_use_skill_spell(player, sn)
 
 
 def find_skill_spell(player, name):
@@ -132,11 +130,12 @@ def check_improve(player, sk_vnum, success, multiplier):
             call site as in 1stMud rather than stored in the skill table.
     """
     current = player["learned"].get(sk_vnum, 0)
-    if current <= 0 or current >= 100:
+    sk_rating = classes.skill_rating(player, sk_vnum)
+    if (not classes.can_use_skill_spell(player, sk_vnum) or sk_rating < 1
+            or current <= 0 or current >= 100):
         return
 
-    sk        = SKILLS[sk_vnum]
-    sk_rating = sk.get("rating", 1)
+    sk = SKILLS[sk_vnum]
 
     chance = 10 * _int_learn(get_curr_stat(player, "int"))
     chance //= max(1, multiplier * sk_rating * 4)

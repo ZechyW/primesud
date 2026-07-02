@@ -18,11 +18,6 @@ from config import (
     DEATH_MSG_DELAY,
     CON_APP_HITP,
     WIS_APP_PRACTICE,
-    CLASS_HP_MIN,
-    CLASS_HP_MAX,
-    THAC0_00,
-    THAC0_MIN,
-    THAC0_PLATEAU,
     ATTACK_TABLE,
     TYPE_HIT,
     TYPE_UNDEFINED,
@@ -43,6 +38,7 @@ from config import (
     XP_BASE,
     SIZE_RANK,
 )
+import classes
 from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
                      is_awake, can_see, affect_to_char, affect_remove,
                      chprintln, chprintlnf, get_char_room,
@@ -54,7 +50,7 @@ from item import (create_object, item_extra_flags,
 from picker import pick_from
 from player import PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_DEFAULTS
 from races import RACE_TABLE
-from skill_utils import get_skill, check_improve, WaitState, DazeState
+from skill_utils import get_skill, check_improve, skill_level, WaitState, DazeState
 from skills_table import (
     SKILL_TABLE, SKILLS, WEAPON_GSN_MAP,
     GSN_BACKSTAB, GSN_BASH, GSN_BERSERK, GSN_DIRT, GSN_DISARM,
@@ -211,27 +207,51 @@ def _dice(num, size):
     return total
 
 
-def _get_thac0(level):
-    """Base THAC0 for a given level (classless curve, before hitroll/skill adj).
+def _cdiv(a, b):
+    """Integer division truncating toward zero (C semantics; Python // floors). [PRIMESUD]"""
+    q = abs(a) // abs(b)
+    return -q if (a < 0) != (b < 0) else q
 
-    Natural THAC0 plateaus at THAC0_PLATEAU; above that only hitroll/AC move
-    the needle.  [PRIMESUD] Classless -- 1stMud uses per-class curves; see DESIGN.md.
+
+def interpolate(level, value_00, value_32):
+    """Linear interpolation between level-0 and level-32 values (cf. 1stMud interpolate in db.c)."""
+    return value_00 + _cdiv(level * (value_32 - value_00), 32)
+
+
+def get_thac0(ch):
+    """Base THAC0 before hitroll/skill adjustments (cf. 1stMud one_hit in fight.c).
+    [Verified: 02/07/2026]
+
+    NPC curve from act class flags; player curve from the class table
+    (worst thac0_00, best thac0_32 across held classes).
 
     Args:
-        level (int): Character level.
+        ch (dict): Attacker (player or mob instance).
 
     Returns:
-        int: Base THAC0, clamped to minimum -5 after soft-cap.
+        int: Base THAC0 after the negative soft-caps.
     """
-    eff = min(level, THAC0_PLATEAU)
-    # cf. 1stMud interpolate(level, thac0_00, thac0_32) in fight.c
-    # Written as subtraction so the product is always positive, matching C truncation.
-    t = THAC0_00 - (THAC0_00 - THAC0_MIN) * eff // THAC0_PLATEAU
-    if t < 0:
-        t = t // 2
-    if t < -5:
-        t = -5 + (t + 5) // 2
-    return t
+    if ch["is_npc"]:
+        act = ch.get("act_flags", {})
+        thac0_00 = 20
+        thac0_32 = -4
+        if act.get("warrior"):
+            thac0_32 = -10
+        elif act.get("thief"):
+            thac0_32 = -4
+        elif act.get("cleric"):
+            thac0_32 = 2
+        elif act.get("mage"):
+            thac0_32 = 6
+    else:
+        thac0_00 = classes.get_thac00(ch)
+        thac0_32 = classes.get_thac32(ch)
+    thac0 = interpolate(ch["level"], thac0_00, thac0_32)
+    if thac0 < 0:
+        thac0 = _cdiv(thac0, 2)
+    if thac0 < -5:
+        thac0 = -5 + _cdiv(thac0 + 5, 2)
+    return thac0
 
 
 def xp_compute(gch, victim, total_levels):
@@ -1153,7 +1173,7 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False):
 
     # THAC0 -- mob attackers add affect-based hitroll bonus
     extra_hr = ch.get("affects", {}).get("m_hitroll", 0) if ch["is_npc"] else 0
-    thac0 = _get_thac0(ch["level"])
+    thac0 = get_thac0(ch)
     thac0 -= (get_hitroll(ch) + extra_hr) * skill // 100
     thac0 += 5 * (100 - skill) // 100
 
@@ -1840,15 +1860,17 @@ def advance_level(player):
     wis  = get_curr_stat(player, "wis")
     int_ = get_curr_stat(player, "int")
 
-    # HP: (con_app.hitp + class_hp_roll) * 9/10, min 2  (cf. 1stMud advance_level in update.c)
-    # Two-step roll mirrors 1stMud get_hp_gain: number_range(hp_min,hp_max) -> number_range(result,result+1)
-    hp_roll = randint(CLASS_HP_MIN, CLASS_HP_MAX)
-    hp_roll = randint(hp_roll, hp_roll + 1)
-    add_hp  = max(2, (CON_APP_HITP[con] + hp_roll) * 9 // 10)
+    # HP: (con_app.hitp + get_hp_gain) * 9/10, min 2  (cf. 1stMud advance_level in update.c;
+    # get_hp_gain in multiclass.c rolls the best class die + per-class fuzz)
+    add_hp = max(2, (CON_APP_HITP[con] + classes.get_hp_gain(player)) * 9 // 10)
 
-    # MP: number_range(2, (2*INT + WIS)//5) * 9/10, min 2  (1stMud advance_level)
+    # MP: number_range(2, (2*INT + WIS)//5), halved for non-casters, * 9/10, min 2
+    # (cf. 1stMud advance_level in update.c: if (!has_spells(ch)) add_mana /= 2)
     mp_hi  = max(2, (2 * int_ + wis) // 5)
-    add_mp = max(2, randint(2, mp_hi) * 9 // 10)
+    add_mp = randint(2, mp_hi)
+    if not classes.has_spells(player):
+        add_mp //= 2
+    add_mp = max(2, add_mp * 9 // 10)
 
     # MV: number_range(1, (CON+DEX)//6) * 9/10, min 6  (cf. 1stMud advance_level in update.c)
     dex = get_curr_stat(player, "dex")
@@ -1876,7 +1898,8 @@ def advance_level(player):
         add_prac, "practice" if add_prac == 1 else "practices")
     learned = player.get("learned", {})
     for _sn, data in SKILL_TABLE:
-        if data.get("skill_level") == player["level"]:
+        # cf. 1stMud advance_level: skill_level(ch, sn) == ch->level (class-aware)
+        if skill_level(player, _sn) == player["level"]:
             kind = "spell" if data.get("spell_fun", "spell_null") != "spell_null" else "skill"
             # 1stMud: learned==1 -> "learn" (go practice it), >1 -> "use" (already practiced)
             verb = "learn" if learned.get(_sn, 0) <= 1 else "use"

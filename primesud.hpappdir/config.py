@@ -163,16 +163,13 @@ WIS_APP_PRACTICE = (0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,2,2,2,3,3,3,3,4,4,4,5,5,5,6,6,
 # int_app: skill improvement rate used in check_improve and do_practice (1stMud int_app[].learn)
 INT_APP_LEARN    = (3,5,7,8,9,10,11,12,13,15,17,19,22,25,28,31,34,37,40,44,49,55,60,70,80,85,90,95,100,105,110)
 
-# -- Classless HP die (Cleric/Paladin range) -------------------------------------------
-CLASS_HP_MIN = 7
-CLASS_HP_MAX = 10
-
 # -- Level caps ------------------------------------------------------------------------
 # 1stMud 4.5.3 defines MAX_LEVEL=60, LEVEL_IMMORTAL=52,
 # MAX_MORTAL_LEVEL=51, MAX_REMORT=2, and LEVEL_HERO=49.
 # calc_max_level() caps mortals at HERO plus remort count: 49-51.
 MAX_LEVEL = 50  # [PRIMESUD] single-user gameplay cap for now.
 MAX_MORTAL_LEVEL = 51  # 1stMud do_skills/do_spells display/filter cap.
+LEVEL_IMMORTAL = 52  # skill_level() sentinel for skills no held class learns.
 
 # -- Practice cap ----------------------------------------------------------------------
 SKILL_ADEPT = 75  # 1stMud class_table[].skill_adept; all shipped classes use 75
@@ -180,11 +177,6 @@ SKILL_ADEPT = 75  # 1stMud class_table[].skill_adept; all shipped classes use 75
 # -- Stat training cap -----------------------------------------------------------------
 # Revisit when races are added: 1stMud uses race.max_stats[stat] + 2 (or +3 for human
 # prime stats) via get_max_train() in handler.c; flat MAX_STATS until then.
-
-# -- THAC0 constants (classless, balanced midpoint) ------------------------------------
-THAC0_PLATEAU = 32   # level at which natural THAC0 stops improving
-THAC0_00      = 20   # THAC0 at level 1              (higher = worse to-hit)
-THAC0_MIN     = -2   # THAC0 at level THAC0_PLATEAU  (lower  = better to-hit)
 
 # -- Position order (cf. 1stMud position_t enum in defines.h) -------------------------
 POS_ORDER = {

@@ -1,11 +1,12 @@
 """Player creation, progression, and prompt."""
 
+from classes import CLASS_TABLE, CLASS_WARRIOR, exp_per_level
 from colors import color_len
 import terminal
 from terminal import tprint
 from config import TERMINAL_COLS
 from config import R_STARTING_ROOM, MAX_MORTAL_LEVEL
-from skills_table import SKILL_TABLE, SKILLS, GSN_SWORD, GSN_RECALL
+from skills_table import SKILL_TABLE, SKILLS, GSN_RECALL, WEAPON_GSN_MAP
 import world
 from world import ROOM_DEFS, AREA_DEFS
 
@@ -26,36 +27,46 @@ PLR_DEFAULTS = PLR_AUTOMAP | PLR_AUTOLOOT | PLR_AUTOSAC | PLR_AUTOGOLD | PLR_AUT
 # -- Player model --------------------------------------------------------------
 
 
-def create_char():
+def create_char(class_idx=CLASS_WARRIOR):
     """Return fresh player state dict with default starting values.
 
     Overlays player-only (pcdata) fields onto _char_base()
     (cf. 1stMud new_char + new_pcdata in recycle.c; char_data in structs.h:560).
 
+    Args:
+        class_idx (int): Starting class index into CLASS_TABLE. Default only
+            matters for the load path, where the save overwrites it.
+
     Returns:
         dict: Player state dict.
     """
     ch = _char_base()
+    weapon_gsn = WEAPON_GSN_MAP[CLASS_TABLE[class_idx]["weapon"]]
     ch.update({
         "hit":      20,   "max_hit":  20,   "perm_hit":  20,
         "mana":     100,  "max_mana": 100,  "perm_mana": 100,
         "move":     100,  "max_move": 100,  "perm_move": 100,
         "room":     R_STARTING_ROOM,
         "id":       1,
+        # cf. 1stMud ch->Class[] array in multiclass.c; grows on remort.
+        "classes":     [class_idx],
+        "prime_class": 0,  # slot index into classes (cf. pcdata->prime_class)
         # pcdata fields (cf. 1stMud PcData in structs.h):
-        "xp_next":  1000,
         "practice": 5,
         "train":    3,
         "trivia":   0,
         "flags":    PLR_DEFAULTS,  # PLR_* bits; [DEVIATION] separate from act_flags
         "played":   0,
-        # [PRIMESUD] Classless: grant all learnable skills at 1% from creation.
-        # Level-gated via can_use_skill_spell; practice list filters by level.
-        # Sword=40 mirrors nanny.c weapon choice; recall=50 explicit in nanny.c.
+        # [PRIMESUD] No skill-group point-buy: grant every skill the starting
+        # class can learn at 1%. Level-gated via can_use_skill_spell; practice
+        # list filters by level. Class weapon=40 mirrors nanny.c weapon choice;
+        # recall=50 explicit in nanny.c. (Racial skills: none for Human;
+        # revisit when race selection is ported.)
         "learned": {
-            sn: (40 if sn == GSN_SWORD else 50 if sn == GSN_RECALL else 1)
+            sn: (40 if sn == weapon_gsn else 50 if sn == GSN_RECALL else 1)
             for sn, data in SKILL_TABLE
-            if data["skill_level"] <= MAX_MORTAL_LEVEL
+            if (data["skill_level"][class_idx] <= MAX_MORTAL_LEVEL
+                and data["rating"][class_idx] > 0)
         },
         "equip": {
             "light":     None, "finger_l":  None, "finger_r":  None,
@@ -67,6 +78,10 @@ def create_char():
             "float":     None, "secondary": None,
         },
     })
+    # cf. 1stMud nanny.c: weapon skill 40 set regardless of class skill list
+    ch["learned"][weapon_gsn] = 40
+    # cf. 1stMud exp_per_level in skills.c (race class_mult scaling)
+    ch["xp_next"] = exp_per_level(ch)
     return ch
 
 

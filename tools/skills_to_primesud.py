@@ -7,7 +7,8 @@ Usage:
 Output module exports:
     GSN_*              -- named integer constants for skills that have a gsn_* pgsn
     _SKILL_TABLE_RAW   -- list of (sn, dict) in load order; raw per-class tuples
-    SKILL_TABLE        -- flattened: skill_level/rating are scalars (min across classes)
+    SKILL_TABLE        -- alias of _SKILL_TABLE_RAW (per-class tuples preserved;
+                          class-aware lookups live in classes.py)
     SKILLS             -- dict keyed by sn (same data as SKILL_TABLE)
     WEAPON_GSN_MAP     -- maps weapon_type string -> GSN constant
 
@@ -158,18 +159,11 @@ def emit(skills):
     w("]")
     w("")
 
-    # -- Derived lookups (cf. 1stMud skill_table flatten + weapon_table in const.c) --
+    # -- Derived lookups (cf. 1stMud skill_table + weapon_table in const.c) --
     w(f"# -- Derived lookups {BAR * 59}")
-    w("# Flatten per-class tuples: skill_level -> earliest any class learns it;")
-    w("# rating -> best (lowest non-zero) rate; default=1 guards all-zero edge case.")
-    w("def _flatten_skill(sn, data):")
-    w("    d = {}")
-    w("    d.update(data)")
-    w('    d["skill_level"] = min(data["skill_level"])')
-    w('    d["rating"] = min((v for v in data["rating"] if v > 0), default=1)')
-    w("    return (sn, d)")
-    w("")
-    w("SKILL_TABLE = [_flatten_skill(sn, data) for sn, data in _SKILL_TABLE_RAW]")
+    w("# skill_level / rating stay per-class tuples; class-aware lookups live in")
+    w("# classes.py (skill_level / skill_rating, cf. 1stMud multiclass.c).")
+    w("SKILL_TABLE = _SKILL_TABLE_RAW")
     w("")
     w("SKILLS = dict(SKILL_TABLE)")
     w("")

@@ -61,6 +61,20 @@ No Paladin/Ranger guilds in midgaard -- [PRIMESUD] decision (02/07/2026):
 Paladin maps to the Cleric guild rooms, Ranger to the Warrior guild rooms,
 until areas with proper guilds are ported.
 
+## Notes for human review
+
+- **1stMud skill data is permissive** (verified in skills.dat): most spells
+  are learnable by every class at higher level/worse rating -- e.g.
+  sanctuary is Cleric 20/rating 1 but also Warrior 30/rating 2. Class
+  identity comes from level/rating gaps and the hard 53s (bash is
+  warrior-line only), not blanket spell locks. Ported faithfully; if
+  PrimeSUD wants sharper class identity, tightening the data is a design
+  decision, not a porting task.
+- 1stMud `has_spells` has an upstream indexing bug (see FIXES.md) that made
+  every un-remorted character count as a caster; PrimeSUD fixes it, so
+  Thief/Warrior mana gain is halved as designed -- a real balance change
+  vs. 1stMud-as-shipped.
+
 ## Phases
 
 ### Phase A -- single-class system (the big one)

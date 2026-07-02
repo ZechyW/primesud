@@ -208,3 +208,27 @@ In rapid multi-kill scenarios the bug consistently lags by one corpse.
 The autoloot block uses the returned reference directly instead of searching
 by name, guaranteeing it always operates on the freshly created corpse
 regardless of how many other corpses are in the room.
+
+## multiclass: has_spells checks the wrong class table rows
+
+**Upstream:** `reference/1stMud4.5.3/src/multiclass.c`, `has_spells()`, lines 257-267
+
+### The bug
+
+The loop iterates over the character's class slots but indexes `class_table`
+with the loop counter instead of the class held in that slot:
+
+```c
+for (i = 0; i < ch->Class[CLASS_COUNT]; i++)
+    if (class_table[i].fMana)   /* should be class_table[ch->Class[i]] */
+        return true;
+```
+
+A single-class character always checks `class_table[0]` (Mage, fMana=true),
+so every un-remorted character -- including Thieves and Warriors -- counts as
+a caster, and `advance_level()`'s non-caster mana halving never applies to
+them.
+
+### PrimeSUD fix -- implemented in `classes.py`
+
+`has_spells()` indexes `CLASS_TABLE[cl]` for each held class index `cl`.

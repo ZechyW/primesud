@@ -12,6 +12,8 @@ from inventory import do_outfit
 from macros import _MACRO_SUBST
 from mob import reset_area, create_area_states
 from player import create_char, reset_char, _EQUIP_SAVE_ORDER
+from picker import pick_from
+from classes import CLASS_TABLE, CLASS_WARRIOR
 
 
 # -- Save format version --------------------------------------------------------
@@ -24,7 +26,7 @@ from player import create_char, reset_char, _EQUIP_SAVE_ORDER
 #
 # Skill numeric IDs (GSN_*) are permanent once assigned: recycling an ID for a
 # different skill would cause old saves to corrupt the new skill's learned %.
-SAVE_VERSION = 5
+SAVE_VERSION = 6  # v6: class system -- classes/prime_class fields, per-class THAC0/HP/skills
 
 # -- Persistence ---------------------------------------------------------------
 # Dual-save strategy:
@@ -61,6 +63,12 @@ def _serialize_world():
         lines.append("p." + key + "=" + str(player[key]))
     for stat in ("str", "dex", "int", "wis", "con"):
         lines.append("p." + stat + "=" + str(player["perm_stat"][stat]))
+    # cf. 1stMud ch->Class[] -- comma-joined ints (str+concat per PRIME_STRING_FORMAT_BUG)
+    cls_str = ""
+    for c in player["classes"]:
+        cls_str = cls_str + ("," if cls_str else "") + str(c)
+    lines.append("p.classes=" + cls_str)
+    lines.append("p.prime_class=" + str(player["prime_class"]))
     armor = player["armor"]
     lines.append("p.armor=" + str(armor[0]) + "|" + str(armor[1]) + "|" + str(armor[2]) + "|" + str(armor[3]))
     inv_parts = []
@@ -228,7 +236,7 @@ def load_world():
                 "str", "dex", "int", "wis", "con",
                 "hit", "mana", "move",
                 "perm_hit", "perm_mana", "perm_move",
-                "room", "alignment",
+                "room", "alignment", "prime_class",
                 "practice", "train", "flags", "played",
                 "gold", "silver"}
 
@@ -248,6 +256,8 @@ def load_world():
             player["equip"][slot] = parse_item_token(val) if val else None
         elif key == "p.inv":
             player["inv"] = [parse_item_token(v) for v in val.split("|") if v]
+        elif key == "p.classes":
+            player["classes"] = [int(v) for v in val.split(",") if v]
         elif key == "p.learned":
             for entry in val.split("|"):
                 if ":" in entry:
@@ -343,9 +353,15 @@ def init_game_state(game):
 
 def new_game(game, name="Hero"):
     """Create a new game world with a fresh player character. [PRIMESUD]"""
+    # Class choice (cf. 1stMud nanny.c CON_GET_NEW_CLASS; [PRIMESUD] picker with
+    # one-line summaries instead of a bare list + 'help <class>').
+    labels = [c["names"][0] + " - " + c["summary"] for c in CLASS_TABLE]
+    idx = pick_from("Choose your class:", labels)
+    if idx < 0:
+        idx = CLASS_WARRIOR  # [PRIMESUD] Esc at new game defaults to Warrior
     world.reset_lazy()
     world.areas = create_area_states()
-    player = create_char()
+    player = create_char(idx)
     player["name"] = name
     player["_macros"] = _MACRO_SUBST
     world.chars[1] = player
