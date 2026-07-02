@@ -5,8 +5,8 @@ from colors import color_len
 import terminal
 from terminal import tprint
 from config import TERMINAL_COLS
-from config import R_STARTING_ROOM, MAX_MORTAL_LEVEL
-from skills_table import SKILL_TABLE, SKILLS, GSN_RECALL, WEAPON_GSN_MAP
+from config import R_STARTING_ROOM
+from skills_table import SKILLS, GSN_RECALL, WEAPON_GSN_MAP
 import world
 from world import ROOM_DEFS, AREA_DEFS
 
@@ -57,17 +57,14 @@ def create_char(class_idx=CLASS_WARRIOR):
         "trivia":   0,
         "flags":    PLR_DEFAULTS,  # PLR_* bits; [DEVIATION] separate from act_flags
         "played":   0,
-        # [PRIMESUD] No skill-group point-buy: grant every skill the starting
-        # class can learn at 1%. Level-gated via can_use_skill_spell; practice
-        # list filters by level. Class weapon=40 mirrors nanny.c weapon choice;
-        # recall=50 explicit in nanny.c. (Racial skills: none for Human;
-        # revisit when race selection is ported.)
-        "learned": {
-            sn: (40 if sn == weapon_gsn else 50 if sn == GSN_RECALL else 1)
-            for sn, data in SKILL_TABLE
-            if (data["skill_level"][class_idx] <= MAX_MORTAL_LEVEL
-                and data["rating"][class_idx] > 0)
-        },
+        # cf. 1stMud pcdata->group_known; filled by gn_add below.
+        "groups":  [],
+        # cf. 1stMud nanny default path: "rom basics" + class basics +
+        # class default groups, recall 50, class weapon 40. Other skills
+        # cost trains at a gain trainer (do_gain). Customization/creation
+        # points not ported (see groups.py). (Racial skills: none for
+        # Human; revisit when race selection is ported.)
+        "learned": {},
         "equip": {
             "light":     None, "finger_l":  None, "finger_r":  None,
             "neck_1":    None, "neck_2":    None, "body":      None,
@@ -78,11 +75,23 @@ def create_char(class_idx=CLASS_WARRIOR):
             "float":     None, "secondary": None,
         },
     })
+    # cf. 1stMud nanny.c CON_ROLL_STATS 'y' + add_default_groups ('N' path)
+    group_add_basics_and_defaults(ch)
+    ch["learned"][GSN_RECALL] = 50  # cf. nanny.c: learned[gsn_recall] = 50
     # cf. 1stMud nanny.c: weapon skill 40 set regardless of class skill list
     ch["learned"][weapon_gsn] = 40
     # cf. 1stMud exp_per_level in skills.c (race class_mult scaling)
     ch["xp_next"] = exp_per_level(ch)
     return ch
+
+
+def group_add_basics_and_defaults(ch):
+    """Grant "rom basics" + base + default groups for all held classes
+    (cf. 1stMud nanny.c creation/remort grants). [PRIMESUD] helper."""
+    from groups import add_base_groups, add_default_groups, gn_add, group_lookup
+    gn_add(ch, group_lookup("rom basics"))
+    add_base_groups(ch)
+    add_default_groups(ch)
 
 
 

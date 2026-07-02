@@ -76,11 +76,11 @@ Regression tests in `tests/test_classes.py`.
 - **Remort prerequisites**: gold-only (500,000); the 500-quest-point
   requirement is `# TODO` in do_remort/finish_remort for when auto-quests
   are ported.
-- **lvl_bonus magnitude**: at level 49 with 1 class the multiplier is 59,
-  so a remorted char restarts with 5900 hp/mana/move, 295 trains and 413
-  practices. That is faithful to 1stMud's formula but dwarfs PrimeSUD's
-  economy (a fresh char has 20 hp). Worth a balance review once remort is
-  reachable in normal play.
+- **lvl_bonus magnitude**: at remort the multiplier is 60 (level 49, new
+  class already appended -- ordering fixed 03/07/2026), so a remorted char
+  restarts with 6000 hp/mana/move, 300 trains and 420 practices. Faithful
+  to 1stMud's formula but dwarfs PrimeSUD's economy (a fresh char has 20
+  hp). Accepted 03/07/2026 as an NG+-style feature; revisit after playtest.
 
 - **1stMud skill data is permissive** (verified in skills.dat): most spells
   are learnable by every class at higher level/worse rating -- e.g.
@@ -88,7 +88,9 @@ Regression tests in `tests/test_classes.py`.
   identity comes from level/rating gaps and the hard 53s (bash is
   warrior-line only), not blanket spell locks. Ported faithfully; if
   PrimeSUD wants sharper class identity, tightening the data is a design
-  decision, not a porting task.
+  decision, not a porting task. 03/07/2026: resolved via Phase D -- the
+  cost side (default groups + gain) is what makes the permissive data
+  balanced; see below.
 - 1stMud `has_spells` has an upstream indexing bug (see FIXES.md) that made
   every un-remorted character count as a caster; PrimeSUD fixes it, so
   Thief/Warrior mana gain is halved as designed -- a real balance change
@@ -137,5 +139,54 @@ Regression tests in `tests/test_classes.py`.
   `calc_max_level` and port.
 - Remort-tier display names (Wizard, Priest, ...).
 
+### Phase D -- skill groups + gain (03/07/2026)
+
+Phases A-C granted every class-learnable skill at 1% on create/remort --
+more permissive than 1stMud, where the nanny default path grants only the
+class's *base* + *default* groups (a warrior's default groups do NOT
+include protective/sanctuary; cross-class spells cost 8 creation points or
+8 trains at a gain trainer). Phase D restores the faithful cost side:
+
+- New `groups.py`: `GROUP_TABLE` ported verbatim from 1stMud
+  data/groups.dat (31 groups, per-class rating 6-tuples, member skill /
+  sub-group names). `group_lookup`, `group_rating` (min positive across
+  held classes, cf. multiclass.c), `gn_add` (recursive grant at 1%,
+  cf. skills.c), `add_base_groups`, `add_default_groups`.
+- `classes.py`: `base_group` / `default_group` fields on CLASS_TABLE
+  (from classes.dat).
+- `player.py` `create_char`: replace grant-all with 1stMud nanny default
+  path -- "rom basics" + class basics + class defaults, recall 50,
+  class weapon 40. Player gains `"groups"` list (known group indices,
+  cf. pcdata->group_known).
+- `training.py` `finish_remort`: same replacement -- re-grant base +
+  default groups for ALL held classes (nanny remort flow re-runs
+  creation grants on the remorted char).
+- `training.py` `do_gain` + wire `gain` into commands.py: list / convert
+  (10 practices -> 1 train) / gain group by name / gain non-spell skill
+  by name. Spells refuse individual gain ("You must learn the full
+  group.") exactly as 1stMud skills.c.
+- `game_state.py`: persist `p.groups` (comma-joined ints; missing key
+  defaults empty, no SAVE_VERSION bump needed).
+
+Skipped permanently ([PRIMESUD], single-player scope):
+
+- `gen_groups` creation-point customization UI. Default-path characters
+  sit at the flat exp rate (points <= max_points 40 never escalates
+  exp_per_level), so skipping the whole points economy changes nothing
+  observable.
+- `gain points` (refunds creation points -- nothing to refund).
+- The >40-point exp_per_level escalation.
+
+Fidelity notes:
+
+- groups.dat says `invis`; the skill is `invisibility` (1stMud
+  skill_lookup is prefix-based). Stored under the full name.
+- 1stMud nanny order quirk: weapon-at-40 (and re-granted recall-at-50)
+  are set BEFORE finish_remort's in-progress reset, so a remorted 1stMud
+  char actually restarts with them at 1%. PrimeSUD sets the new class's
+  weapon to 40 and recall to 50 AFTER the reset -- deliberate [PRIMESUD]
+  deviation (kinder, matches fresh-char feel; confirmed 03/07/2026).
+
 Each phase ends playable: A = pick a class and level in it; B = class
-visible everywhere it should be; C = remort loop closes.
+visible everywhere it should be; C = remort loop closes; D = cross-class
+skills cost trains at a gain trainer instead of arriving free.

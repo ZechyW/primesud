@@ -26,7 +26,7 @@ from classes import CLASS_TABLE, CLASS_WARRIOR
 #
 # Skill numeric IDs (GSN_*) are permanent once assigned: recycling an ID for a
 # different skill would cause old saves to corrupt the new skill's learned %.
-SAVE_VERSION = 6  # v6: class system -- classes/prime_class fields, per-class THAC0/HP/skills
+SAVE_VERSION = 7  # v7: skill groups -- p.groups field; learned granted via groups, not grant-all
 
 # -- Persistence ---------------------------------------------------------------
 # Dual-save strategy:
@@ -69,6 +69,11 @@ def _serialize_world():
         cls_str = cls_str + ("," if cls_str else "") + str(c)
     lines.append("p.classes=" + cls_str)
     lines.append("p.prime_class=" + str(player["prime_class"]))
+    # cf. 1stMud pcdata->group_known -- comma-joined group indices
+    grp_str = ""
+    for g in player.get("groups", []):
+        grp_str = grp_str + ("," if grp_str else "") + str(g)
+    lines.append("p.groups=" + grp_str)
     armor = player["armor"]
     lines.append("p.armor=" + str(armor[0]) + "|" + str(armor[1]) + "|" + str(armor[2]) + "|" + str(armor[3]))
     inv_parts = []
@@ -258,7 +263,12 @@ def load_world():
             player["inv"] = [parse_item_token(v) for v in val.split("|") if v]
         elif key == "p.classes":
             player["classes"] = [int(v) for v in val.split(",") if v]
+        elif key == "p.groups":
+            player["groups"] = [int(v) for v in val.split(",") if v]
         elif key == "p.learned":
+            # authoritative: discard create_char() group grants (the save's
+            # class may differ from the default create_char class)
+            player["learned"] = {}
             for entry in val.split("|"):
                 if ":" in entry:
                     sk_str, pct_str = entry.split(":", 1)

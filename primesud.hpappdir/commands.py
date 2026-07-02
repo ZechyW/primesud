@@ -22,7 +22,7 @@ from scan import do_scan
 from shop import do_buy, do_sell, do_list, do_value, do_appraise
 from system_cmds import do_save, do_quit, do_debug
 from terminal import tprint
-from training import do_train, do_practice, do_remort
+from training import do_train, do_practice, do_remort, do_gain
 from urandom import randint
 
 _POS_MSG = {
@@ -200,7 +200,7 @@ _CMD_TABLE = [
     # ("mob",       do_mob,        "dead",     False),  # #155 mob prog
     # ("enter",     do_enter,      "standing", False),  # #156
     # ("follow",    do_follow,     "resting",  False),  # #157
-    # ("gain",      do_gain,       "standing", False),  # #158 [PRIMESUD] no skill groups
+    ("gain",       do_gain,       "standing", False),  # #158
     # ("go",        do_enter,      "standing", False),  # #159
     # ("hide",      do_hide,       "resting",  False),  # #160
     # ("play",      do_play,       "resting",  False),  # #161

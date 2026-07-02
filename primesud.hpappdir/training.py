@@ -10,8 +10,11 @@ from config import (INT_APP_LEARN, MAX_STATS, SKILL_ADEPT,
 from info import print_practice_table
 from inventory import do_outfit
 from picker import pick_from
-from skill_utils import can_use_skill_spell, find_skill_spell, skill_rating
-from skills_table import SKILL_TABLE, SKILLS, WEAPON_GSN_MAP
+from comm import do_say
+from groups import GROUP_TABLE, gn_add, group_lookup, group_rating
+from skill_utils import (can_use_skill_spell, find_skill_spell, skill_level,
+                         skill_rating)
+from skills_table import SKILL_TABLE, SKILLS, WEAPON_GSN_MAP, GSN_RECALL
 from world import MOB_DEFS
 
 _TRAIN_STATS = [
@@ -327,16 +330,18 @@ def finish_remort(player, new_class):
     for sn in list(learned):
         if 0 < learned[sn] < 100:
             learned[sn] = 1
-    # [PRIMESUD] nanny re-creation granted the new class's groups: grant its
-    # learnable skills at 1% and its weapon at 40 if better than current.
+    # cf. 1stMud nanny remort flow: re-grants "rom basics" + base + default
+    # groups for ALL held classes (CON_ROLL_STATS 'y' + add_default_groups).
+    from player import group_add_basics_and_defaults
+    group_add_basics_and_defaults(player)
+    # [PRIMESUD] Upstream sets weapon 40 / recall 50 BEFORE the reset loop,
+    # so a 1stMud remort actually restarts them at 1%. Kinder here: set
+    # after, matching fresh-char feel (see CLASS_PLAN.md Phase D).
     wgsn = WEAPON_GSN_MAP[CLASS_TABLE[new_class]["weapon"]]
-    for sn, data in SKILL_TABLE:
-        if (sn not in learned
-                and data["skill_level"][new_class] <= MAX_MORTAL_LEVEL
-                and data["rating"][new_class] > 0):
-            learned[sn] = 1
     if learned.get(wgsn, 0) < 40:
         learned[wgsn] = 40
+    if learned.get(GSN_RECALL, 0) < 50:
+        learned[GSN_RECALL] = 50
 
     player["confirm_remort"] = False
     player["room"] = R_STARTING_ROOM  # cf. 1stMud char_to_room(ROOM_VNUM_SCHOOL)
@@ -345,3 +350,126 @@ def finish_remort(player, new_class):
     do_outfit(player, "")
     from game_state import save_world
     save_world(quiet=True)
+
+
+def do_gain(player, args):
+    """Buy skill groups or non-spell skills with trains at a gain trainer
+    (cf. 1stMud do_gain in skills.c).
+
+    gain list / gain convert (10 practices -> 1 train; leading count
+    multiplies, "gain 3 convert") / gain <group> / gain <skill>. Spells
+    can only be gained via their group.
+    [PRIMESUD] "gain points" not ported -- no creation-point economy
+    (see groups.py).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Parsed command words.
+    """
+    rs = world.rooms[player["room"]]
+    trainer = None
+    for mid in rs["mobs"]:
+        inst = world.chars[mid]
+        if MOB_DEFS[inst["tpl"]].get("act_flags", {}).get("gain"):
+            trainer = inst
+            break
+    if trainer is None:
+        chprintln(player, "You can't do that here.")
+        return
+
+    # cf. 1stMud mult_argument: optional leading count
+    mult = 1
+    if args and args[0].isdigit():
+        mult = max(1, int(args[0]))
+        args = args[1:]
+
+    if not args:
+        do_say(trainer, ["Pardon", "me?"])
+        return
+
+    arg = " ".join(args)
+
+    if "list".startswith(args[0]):
+        # [PRIMESUD] single column per line; 1stMud prints 3-column tables
+        known = player["groups"]
+        learned = player["learned"]
+        chprintln(player, "{wGroup              Cost{x")
+        for gn in range(len(GROUP_TABLE)):
+            val = group_rating(player, gn)
+            if gn not in known and val > 0:
+                chprintlnf(player, "%-18s %d", GROUP_TABLE[gn][0], val)
+        chprintln(player, "")
+        chprintln(player, "{wSkill              Cost Lev{x")
+        for sn, sk in SKILL_TABLE:
+            val = skill_rating(player, sn)
+            if (learned.get(sn, 0) == 0 and val > 0
+                    and sk["spell_fun"] == 'spell_null'):
+                chprintlnf(player, "%-18s %-4d %d", sk["name"], val,
+                           skill_level(player, sn))
+        # cf. 1stMud intstr(ch->train, "train")
+        chprintlnf(player, "You have %d train%s left.", player["train"],
+                   "" if player["train"] == 1 else "s")
+        return
+
+    if "convert".startswith(args[0]):
+        if player["practice"] < 10 * mult:
+            act("$N tells you 'You are not yet ready.'", player, None,
+                trainer, TO_CHAR)
+            return
+        act("$N helps you apply your practice to training", player, None,
+            trainer, TO_CHAR)
+        player["practice"] -= 10 * mult
+        player["train"] += mult
+        return
+
+    # [not ported] 1stMud "gain points" refunds creation points -- no
+    # creation-point economy in PrimeSUD (see groups.py).
+
+    gn = group_lookup(arg)
+    if gn >= 0:
+        if gn in player["groups"]:
+            act("$N tells you 'You already know that group!'", player, None,
+                trainer, TO_CHAR)
+            return
+        val = group_rating(player, gn)
+        if val < 1:
+            act("$N tells you 'That group is beyond your powers.'", player,
+                None, trainer, TO_CHAR)
+            return
+        if player["train"] < val:
+            act("$N tells you 'You are not yet ready for that group.'",
+                player, None, trainer, TO_CHAR)
+            return
+        gn_add(player, gn)
+        act("$N trains you in the art of $t", player, GROUP_TABLE[gn][0],
+            trainer, TO_CHAR)
+        player["train"] -= val
+        return
+
+    sn = find_skill_spell(player, arg)
+    if sn is not None:
+        if SKILLS[sn]["spell_fun"] != 'spell_null':
+            act("$N tells you 'You must learn the full group.'", player,
+                None, trainer, TO_CHAR)
+            return
+        if player["learned"].get(sn, 0):
+            act("$N tells you 'You already know that skill!'", player, None,
+                trainer, TO_CHAR)
+            return
+        val = skill_rating(player, sn)
+        if val < 1:
+            act("$N tells you 'That skill is beyond your powers.'", player,
+                None, trainer, TO_CHAR)
+            return
+        if player["train"] < val:
+            act("$N tells you 'You are not yet ready for that skill.'",
+                player, None, trainer, TO_CHAR)
+            return
+        player["learned"][sn] = 1
+        act("$N trains you in the art of $t", player, SKILLS[sn]["name"],
+            trainer, TO_CHAR)
+        player["train"] -= val
+        return
+
+    act("$N tells you 'I do not understand...'", player, None, trainer,
+        TO_CHAR)
