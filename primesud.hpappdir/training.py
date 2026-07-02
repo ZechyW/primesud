@@ -6,7 +6,7 @@ from classes import (CLASS_TABLE, MAX_REMORT, calc_max_level,
 from handler import (get_curr_stat, act, chprintln, chprintlnf,
                    TO_CHAR, TO_ROOM, affect_remove, unequip_char)
 from config import (INT_APP_LEARN, MAX_STATS, SKILL_ADEPT,
-                    MAX_MORTAL_LEVEL, R_STARTING_ROOM)
+                    MAX_MORTAL_LEVEL, R_STARTING_ROOM, TERMINAL_COLS)
 from info import print_practice_table
 from inventory import do_outfit
 from picker import pick_from
@@ -353,6 +353,17 @@ def finish_remort(player, new_class):
     save_world(quiet=True)
 
 
+def _print_two_col(player, items):
+    """Print items two per line, half-width columns (cf. print_practice_table
+    in info.py). [PRIMESUD]"""
+    half = TERMINAL_COLS // 2
+    for i in range(0, len(items), 2):
+        line = items[i]
+        if i + 1 < len(items):
+            line = line + " " * (half - len(line)) + items[i + 1]
+        chprintln(player, line)
+
+
 def do_gain(player, args):
     """Buy skill groups or non-spell skills with trains at a gain trainer
     (cf. 1stMud do_gain in skills.c).
@@ -391,22 +402,30 @@ def do_gain(player, args):
     arg = " ".join(args)
 
     if "list".startswith(args[0]):
-        # [PRIMESUD] single column per line; 1stMud prints 3-column tables
+        # [PRIMESUD] two columns per line (practice-table style); 1stMud
+        # prints 3-column tables
         known = player["groups"]
         learned = player["learned"]
-        chprintln(player, "{wGroup              Cost{x")
+        half = TERMINAL_COLS // 2
+        hdr = "Group              Cost"
+        chprintln(player, "{w" + hdr + " " * (half - len(hdr)) + hdr + "{x")
+        items = []
         for gn in range(len(GROUP_TABLE)):
             val = group_rating(player, gn)
             if gn not in known and val > 0:
-                chprintlnf(player, "%-18s %d", GROUP_TABLE[gn][0], val)
+                items.append("%-18s %d" % (GROUP_TABLE[gn][0], val))
+        _print_two_col(player, items)
         chprintln(player, "")
-        chprintln(player, "{wSkill              Cost Lev{x")
+        hdr = "Skill              Cost Lev"
+        chprintln(player, "{w" + hdr + " " * (half - len(hdr)) + hdr + "{x")
+        items = []
         for sn, sk in SKILL_TABLE:
             val = skill_rating(player, sn)
             if (learned.get(sn, 0) == 0 and val > 0
                     and sk["spell_fun"] == 'spell_null'):
-                chprintlnf(player, "%-18s %-4d %d", sk["name"], val,
-                           skill_level(player, sn))
+                items.append("%-18s %-4d %d" % (sk["name"], val,
+                                                skill_level(player, sn)))
+        _print_two_col(player, items)
         # cf. 1stMud intstr(ch->train, "train")
         chprintlnf(player, "You have %d train%s left.", player["train"],
                    "" if player["train"] == 1 else "s")
