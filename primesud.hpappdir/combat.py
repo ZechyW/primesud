@@ -72,6 +72,7 @@ from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 
 def violence_update(player):
     """One combat pulse: all chars with a fight target attack (cf. 1stMud violence_update in fight.c).
+    [Verified: 02/07/2026] -- mobprog/objprog/roomprog TRIG_FIGHT and hunt_victim not ported (see TODOs).
 
     Args:
         player (dict): Player state dict.
@@ -116,6 +117,7 @@ def violence_update(player):
 
 def check_assist(ch, victim):
     """Let idle room chars join combat (cf. 1stMud check_assist in fight.c).
+    [Verified: 02/07/2026]
 
     Three cases mirror 1stMud exactly:
     - ch is player, rch is mob with assist_players: rch jumps in against victim.
@@ -166,8 +168,11 @@ def check_assist(ch, victim):
         if randint(0, 1) == 0:
             continue
 
-        # Pick random target from victim's group (cf. 1stMud target selection loop).
+        # Pick random target from victim's group (cf. 1stMud target selection loop:
+        # candidates require can_see(rch, vch)).
         # [PRIMESUD] Single-player: victim's group = victim only; target is always victim.
+        if not can_see(rch, victim):
+            continue
         tprint("{} screams and attacks!".format(rch_tpl["short_descr"]))
         multi_hit(rch, victim)
 
@@ -191,6 +196,7 @@ def _same_align(tpl_a, tpl_b):
 
 def _dice(num, size):
     """Roll num dice of size sides and return the sum (cf. 1stMud `dice` in db.c).
+    [Verified: 02/07/2026]
 
     Args:
         num (int): Number of dice to roll.
@@ -231,6 +237,7 @@ def _get_thac0(level):
 def xp_compute(gch, victim, total_levels):
     """Compute XP for gch from killing victim in a group of total_levels
     (cf. 1stMud xp_compute in fight.c).
+    [Verified: 02/07/2026] -- time_per_level penalty skipped (no play-time tracking).
 
     Includes alignment-based XP modifiers and alignment drift on the killer.
 
@@ -270,7 +277,11 @@ def xp_compute(gch, victim, total_levels):
             change = max(1, change)
             gch["alignment"] = min(1000, gch_align + change)
         else:
-            change = gch_align * base_exp // 500 * gch["level"] // total_levels
+            # C division truncates toward zero; Python // floors. gch_align may
+            # be negative here, so compute on the magnitude and re-apply sign.
+            change = abs(gch_align) * base_exp // 500 * gch["level"] // total_levels
+            if gch_align < 0:
+                change = -change
             gch["alignment"] -= change
 
     # -- Alignment XP modifiers (cf. 1stMud xp_compute alignment XP section)
@@ -351,6 +362,8 @@ def xp_compute(gch, victim, total_levels):
 
 def _get_weapon_sn(ch, slot="wield"):
     """Return (sn, tpl_or_None) for the weapon in the given equip slot (cf. get_weapon_sn in handler.c).
+    [Verified: 02/07/2026] -- 1stMud maps a wielded non-weapon to hand_to_hand; PrimeSUD's
+    slot system only seats weapons in wield/secondary, so the case cannot occur.
 
     Args:
         ch (dict): Player or mob instance dict.
@@ -370,6 +383,8 @@ def _get_weapon_sn(ch, slot="wield"):
 
 def _get_weapon_skill(ch, sn):
     """Return weapon skill% for ch and sn (cf. get_weapon_skill in handler.c).
+    [Verified: 02/07/2026] -- 1stMud clamps Range(0,skill,100); learned is capped
+    at 100 by check_improve and NPC formulas are non-negative, so min() suffices.
 
     Args:
         ch (dict): Player or mob instance dict.
