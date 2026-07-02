@@ -111,7 +111,7 @@ def do_tell(ch, args):
     chprintlnf(ch, "{cYou tell %s '{C%s{c'{x", victim_name, argument)
     chprintlnf(victim, "{c%s tells you '{C%s{c'{x", ch_name, argument)
 
-    victim["reply"] = ch
+    victim["reply"] = ch["id"]  # [PRIMESUD] stored as id, not dict ref (see _char_base)
     # [PRIMESUD] TRIG_SPEECH not ported
 
 
@@ -126,7 +126,9 @@ def do_reply(ch, args):
         ch (dict): Speaking character.
         args (list): Words to reply.
     """
-    victim = ch.get("reply")
+    # [PRIMESUD] reply stored as id; extracted (dead) targets resolve to None,
+    # matching 1stMud's extract_char nulling wch->reply
+    victim = world.chars.get(ch.get("reply"))
     if victim is None:
         chprintln(ch, "They aren't here.")
         return
@@ -140,7 +142,7 @@ def do_reply(ch, args):
     victim_name = victim.get("name", "someone")
     chprintlnf(ch, "{cYou tell %s '{C%s{c'{x", victim_name, argument)
     chprintlnf(victim, "{c%s tells you '{C%s{c'{x", ch_name, argument)
-    victim["reply"] = ch
+    victim["reply"] = ch["id"]  # [PRIMESUD] stored as id, not dict ref (see _char_base)
 
 
 # -- do_function (cf. 1stMud do_function in interp.c) ------------------------

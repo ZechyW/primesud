@@ -215,7 +215,7 @@ def do_buy(player, args):
 
     if cost <= 0 or obj is None or not can_see_obj(player, obj):
         act("$n tells you 'I don't sell that -- try 'list''.", keeper, None, player, TO_VICT)
-        player["reply"] = keeper
+        player["reply"] = keeper["id"]
         return
 
     tpl = ITEM_DEFS[obj_vnum(obj)]
@@ -232,7 +232,7 @@ def do_buy(player, args):
                     count += 1
         if count < number:
             act("$n tells you 'I don't have that many in stock.", keeper, None, player, TO_VICT)
-            player["reply"] = keeper
+            player["reply"] = keeper["id"]
             return
 
     if not check_worth(player, cost * number):
@@ -240,12 +240,12 @@ def do_buy(player, args):
             act("$n tells you 'You can't afford to buy that many.", keeper, None, player, TO_VICT)
         else:
             act("$n tells you 'You can't afford to buy $p'.", keeper, obj, player, TO_VICT)
-        player["reply"] = keeper
+        player["reply"] = keeper["id"]
         return
 
     if tpl.get("level", 0) > player["level"]:
         act("$n tells you 'You can't use $p yet'.", keeper, obj, player, TO_VICT)
-        player["reply"] = keeper
+        player["reply"] = keeper["id"]
         return
 
     carry_n = len(player["inv"]) + sum(1 for e in player["equip"].values() if e is not None)
@@ -363,7 +363,7 @@ def do_sell(player, args):
     obj = get_obj_list(args[0], player["inv"], ITEM_DEFS)
     if obj is None:
         act("$n tells you 'You don't have that item'.", keeper, None, player, TO_VICT)
-        player["reply"] = keeper
+        player["reply"] = keeper["id"]
         return
 
     tpl = ITEM_DEFS[obj_vnum(obj)]
@@ -432,7 +432,7 @@ def do_value(player, args):
     obj = get_obj_list(args[0], player["inv"], ITEM_DEFS)
     if obj is None:
         act("$n tells you 'You don't have that item'.", keeper, None, player, TO_VICT)
-        player["reply"] = keeper
+        player["reply"] = keeper["id"]
         return
 
     tpl = ITEM_DEFS[obj_vnum(obj)]
@@ -454,7 +454,7 @@ def do_value(player, args):
     gold_part = cost // 100
     msg = "$n tells you 'I'll give you " + str(silver_part) + " silver and " + str(gold_part) + " gold coins for $p'."
     act(msg, keeper, obj, player, TO_VICT)
-    player["reply"] = keeper
+    player["reply"] = keeper["id"]
 
 
 def do_appraise(player, args):
@@ -470,7 +470,7 @@ def do_appraise(player, args):
     obj = _get_obj_keeper(player, keeper, args[0])
     if obj is None:
         act("{c$n{c tells you '{CI don't have that item.{c'{x.", keeper, None, player, TO_VICT)
-        player["reply"] = keeper
+        player["reply"] = keeper["id"]
         return
 
     from magic import spell_identify
