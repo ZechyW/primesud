@@ -31,3 +31,6 @@ build/
 # PC shim state
 /primesud.hpappdir/primesud.sav
 /primesud.hpappdir/hvars.json
+/hvars.json
+/primesud.sav
+
