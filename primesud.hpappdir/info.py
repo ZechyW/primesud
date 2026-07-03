@@ -261,6 +261,38 @@ def _look_scan_items(target, number, count, items):
     return False, count
 
 
+def do_exits(player, args):
+    """List obvious exits with destination room names (cf. 1stMud do_exits in act_info.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Parsed command arguments (unused).
+    """
+    # [PRIMESUD] "auto" form not ported (autoexit uses its own line in do_look);
+    # check_blind / can_see_room stubbed; immortal room-vnum suffix not ported
+    tprint("Obvious exits:")
+    found = False
+    exits = world.rooms[player["room"]]["exits"]
+    for d in EXIT_ORDER:
+        ev = exits.get(d)
+        if ev is None:
+            continue
+        if isinstance(ev, dict):
+            if ev.get("closed"):
+                continue
+            to = ev["to"]
+        else:
+            to = ev
+        if to not in world.rooms:
+            continue
+        found = True
+        # [PRIMESUD] room_is_dark not ported -- 1stMud shows "Too dark to tell"
+        name = EXIT_NAMES.get(d, d)
+        tprint("%-5s - %s" % (upper(name), world.rooms[to]["name"]))
+    if not found:
+        tprint("None.")
+
+
 def do_look(player, args):
     """Display the current room, examine a target, or look in a direction (cf. 1stMud do_look in act_info.c).
 

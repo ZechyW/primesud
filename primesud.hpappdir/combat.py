@@ -1596,6 +1596,57 @@ def do_backstab(ch, args):
     return None
 
 
+def do_consider(player, args):
+    """Judge a potential opponent's level relative to yours (cf. 1stMud do_consider in act_info.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Target keyword; [PRIMESUD] picker shown if omitted.
+    """
+    rs = world.rooms[player["room"]]
+    live = rs["mobs"]
+    if args:
+        mob_id = get_char_room(" ".join(args), live, world.chars)
+        if mob_id is None:
+            tprint("They're not here.")
+            return
+    elif not live:
+        tprint("Consider killing whom?")
+        return
+    else:
+        # [PRIMESUD] picker menu when no args (1stMud prints "Consider killing whom?" and stops)
+        names = [MOB_DEFS[world.chars[i]["tpl"]]["short_descr"] for i in live]
+        idx = pick_from("Consider killing whom?", names)
+        if idx < 0:
+            return
+        mob_id = live[idx]
+
+    victim = world.chars[mob_id]
+
+    if is_safe(player, victim):
+        chprintln(player, "Don't even think about it.")
+        return
+
+    diff = victim.get("level", 1) - player.get("level", 1)
+
+    if diff <= -10:
+        msg = "You can kill $N naked and weaponless."
+    elif diff <= -5:
+        msg = "$N is no match for you."
+    elif diff <= -2:
+        msg = "$N looks like an easy kill."
+    elif diff <= 1:
+        msg = "The perfect match!"
+    elif diff <= 4:
+        msg = "$N says 'Do you feel lucky, punk?'."
+    elif diff <= 9:
+        msg = "$N laughs at you mercilessly."
+    else:
+        msg = "Death will thank you for your gift."
+
+    act(msg, player, None, victim, TO_CHAR)
+
+
 def do_kill(player, args):
     """Initiate melee combat with a target (cf. 1stMud do_kill in fight.c).
     [Verified: 02/07/2026] -- self-hit branch and check_killer not ported;

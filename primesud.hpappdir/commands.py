@@ -3,17 +3,17 @@
 from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
                     do_berserk, do_bash, do_dirt, do_trip, do_flee,
                     do_rescue, do_disarm, do_surrender, do_slay,
-                    do_sskill, do_stance, do_autostance)
+                    do_sskill, do_stance, do_autostance, do_consider)
 from comm import do_say, do_tell, do_reply, do_follow, do_ditch, do_order
 from config import POS_ORDER
 from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_help, do_affects, do_credits, do_areas, do_map, do_automap,
                   do_autolist, do_autoloot, do_autogold, do_autosac,
-                  do_autosplit, do_wimpy)
+                  do_autosplit, do_wimpy, do_exits)
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
-                       do_sacrifice)
+                       do_sacrifice, do_compare)
 from macros import do_macro
 from magic import do_cast
 from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
@@ -37,6 +37,27 @@ _POS_MSG = {
     "fighting": "No way!  You are still fighting!",
 }
 
+def do_commands(player, args):
+    """List all available commands in numbered columns (cf. 1stMud do_commands in interp.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Parsed command arguments.
+            [PRIMESUD] category filter not ported -- no cmd categories.
+    """
+    # cf. cmd_first_sorted -- alphabetical listing
+    row = ""
+    i = 0
+    for name in sorted(e[0] for e in _CMD_TABLE):
+        i += 1
+        row += "%3d. %-10s" % (i, name)
+        if i % 4 == 0:
+            tprint(row)
+            row = ""
+    if row:
+        tprint(row)
+
+
 # -- Command table -------------------------------------------------------------
 # All 348 1stMud entries in load order (cf. COMMANDS.md).
 # Unported commands commented out as placeholders.
@@ -55,7 +76,7 @@ _CMD_TABLE = [
     # ("auction",   do_auction,    "sleeping", False),  # #9
     ("buy",        do_buy,        "resting",  False),  # #10
     # ("channels",  do_channels,   "dead",     False),  # #11
-    # ("exits",     do_exits,      "resting",  False),  # #12
+    ("exits",      do_exits,      "resting",  False),  # #12
     ("get",        do_get,        "resting",  False),  # #13
     # ("goto",      do_goto,       "dead",     False),  # #14 imm lvl 52
     # ("group",     do_group,      "sleeping", False),  # #15
@@ -80,9 +101,9 @@ _CMD_TABLE = [
     ("areas",      do_areas,      "dead",     False),  # #34
     # ("bug",       do_bug,        "dead",     False),  # #35
     # ("board",     do_board,      "sleeping", False),  # #36
-    # ("commands",  do_commands,   "dead",     False),  # #37
-    # ("compare",   do_compare,    "resting",  False),  # #38
-    # ("consider",  do_consider,   "resting",  False),  # #39
+    ("commands",   do_commands,   "dead",     False),  # #37
+    ("compare",    do_compare,    "resting",  False),  # #38
+    ("consider",   do_consider,   "resting",  False),  # #39
     # ("count",     do_count,      "sleeping", False),  # #40
     ("credits",    do_credits,    "dead",     False),  # #41
     ("equipment",  do_equipment,  "dead",     False),  # #42

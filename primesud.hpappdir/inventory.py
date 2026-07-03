@@ -1,7 +1,7 @@
 """Inventory, equipment, item-use, and starter-outfit commands."""
 
 import world
-from handler import get_curr_stat, is_name, equip_char, unequip_char
+from handler import get_curr_stat, is_name, equip_char, unequip_char, act
 from world import (I_BANNER_WAR_MERC,
                    I_MACE_SUB_MERC, I_DAGGER_SUB_MERC, I_SWORD_SUB_MERC,
                    I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,
@@ -556,6 +556,85 @@ def do_equipment(player, args):
             tprint(line)
         else:
             tprint(label + "nothing")
+
+
+def do_compare(player, args):
+    """Compare a carried weapon or armor piece against another (cf. 1stMud do_compare in act_info.c).
+
+    With one arg: compares against the worn item of the same type sharing
+    a wear flag.  With two args: compares the two named carried items.
+
+    Args:
+        player (dict): Player state dict.
+        args (list): One or two item keywords.
+    """
+    if not args:
+        tprint("Compare what to what?")
+        return
+
+    carried = player["inv"] + [o for o in player["equip"].values() if o is not None]
+    obj1 = get_obj_list(args[0], carried, ITEM_DEFS)
+    if obj1 is None:
+        tprint("You do not have that item.")
+        return
+    tpl1 = ITEM_DEFS[obj_vnum(obj1)]
+
+    if len(args) < 2:
+        obj2 = None
+        wf1 = item_wear_flags(obj1, tpl1)
+        for o in player["equip"].values():
+            if o is None:
+                continue
+            tpl = ITEM_DEFS[obj_vnum(o)]
+            if (tpl.get("type") == tpl1.get("type")
+                    and any(f for f in item_wear_flags(o, tpl)
+                            if f != "take" and wf1.get(f))):
+                obj2 = o
+                break
+        if obj2 is None:
+            tprint("You aren't wearing anything comparable.")
+            return
+    else:
+        obj2 = get_obj_list(args[1], carried, ITEM_DEFS)
+        if obj2 is None:
+            tprint("You do not have that item.")
+            return
+    tpl2 = ITEM_DEFS[obj_vnum(obj2)]
+
+    msg = None
+    value1 = 0
+    value2 = 0
+
+    if obj1 is obj2:
+        msg = "You compare $p to itself.  It looks about the same."
+    elif tpl1.get("type") != tpl2.get("type"):
+        msg = "You can't compare $p and $P."
+    else:
+        itype = tpl1.get("type")
+        if itype == "armor":
+            a1 = tpl1.get("armor", (0, 0, 0, 0))
+            a2 = tpl2.get("armor", (0, 0, 0, 0))
+            value1 = a1[0] + a1[1] + a1[2]
+            value2 = a2[0] + a2[1] + a2[2]
+        elif itype == "weapon":
+            # 1stMud new_format: (1 + dice_size) * dice_num
+            # [PRIMESUD] old-format branch dropped -- converter emits dice for all weapons
+            d1 = tpl1.get("dice", (0, 0, 0))
+            d2 = tpl2.get("dice", (0, 0, 0))
+            value1 = (1 + d1[1]) * d1[0]
+            value2 = (1 + d2[1]) * d2[0]
+        else:
+            msg = "You can't compare $p and $P."
+
+    if msg is None:
+        if value1 == value2:
+            msg = "$p and $P look about the same."
+        elif value1 > value2:
+            msg = "$p looks better than $P."
+        else:
+            msg = "$p looks worse than $P."
+
+    act(msg, player, obj1, obj2)
 
 
 def do_second(player, args):
