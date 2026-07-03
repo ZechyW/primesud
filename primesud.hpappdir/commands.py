@@ -18,7 +18,8 @@ from macros import do_macro
 from magic import do_cast
 from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
                       do_open, do_close, do_recall, do_run,
-                      do_stand, do_rest, do_sit, do_sleep, do_wake)
+                      do_stand, do_rest, do_sit, do_sleep, do_wake,
+                      do_lock, do_unlock, do_pick)
 from scan import do_scan
 from shop import do_buy, do_sell, do_list, do_value, do_appraise
 from system_cmds import do_save, do_quit
@@ -95,7 +96,7 @@ _CMD_TABLE = [
     # ("sockets",   do_sockets,    "dead",     False),  # #27 imm lvl 56
     ("stand",      do_stand,      "sleeping", False),  # #28
     ("tell",      do_tell,       "resting",  False),  # #29
-    # ("unlock",    do_unlock,     "resting",  False),  # #30
+    ("unlock",     do_unlock,     "resting",  False),  # #30
     ("wield",      do_wear,       "resting",  False),  # #31
     # ("wizhelp",   do_wizhelp,    "dead",     False),  # #32 imm lvl 51
     ("affects",    do_affects,    "dead",     False),  # #33
@@ -188,9 +189,9 @@ _CMD_TABLE = [
     # ("heal",      do_heal,       "resting",  False),  # #120
     # ("hold",      do_wear,       "resting",  False),  # #121
     ("list",       do_list,       "resting",  False),  # #122
-    # ("lock",      do_lock,       "resting",  False),  # #123
+    ("lock",       do_lock,       "resting",  False),  # #123
     ("open",       do_open,       "resting",  False),  # #124
-    # ("pick",      do_pick,       "resting",  False),  # #125
+    ("pick",       do_pick,       "resting",  False),  # #125
     # ("pour",      do_pour,       "resting",  False),  # #126
     ("put",        do_put,        "resting",  False),  # #127
     ("second",     do_second,     "resting",  False),  # #128

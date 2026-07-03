@@ -4,7 +4,7 @@ from classes import is_class
 from handler import (can_see_room, chprintln, act, TO_CHAR, TO_ROOM, TO_VICT,
                      get_char_room, is_awake)
 from combat import stop_fighting
-from skill_utils import WaitState, check_improve
+from skill_utils import WaitState, check_improve, get_skill
 from stances import valid_stance, get_stance, STANCE_CURRENT
 from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
                     MOVEMENT_LOSS, POS_ORDER,
@@ -12,7 +12,7 @@ from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
                     R_RECALL, PULSE_PER_SECOND)
 from info import do_look, find_area_paths
 from picker import pick_from
-from skills_table import GSN_RECALL
+from skills_table import GSN_RECALL, GSN_PICK_LOCK, SKILLS
 from terminal import tprint
 from urandom import randint
 import world
@@ -347,6 +347,156 @@ def do_close(player, args):
         if isinstance(rev_exit, dict) and _exit_to(rev_exit) == player["room"]:
             rev_exit["closed"] = True
     return ("close " + EXIT_NAMES[_picked_dir].lower()) if _picked_dir is not None else None
+
+
+# -- Locks ---------------------------------------------------------------------
+# [PRIMESUD] ITEM_PORTAL / ITEM_CONTAINER branches of lock/unlock/pick not
+# ported -- container open/close itself not ported yet.  Doors only.
+
+def _has_key(ch, key_vnum):
+    """True if ch carries the key item (cf. 1stMud has_key in act_move.c)."""
+    from item import obj_vnum
+    for obj in ch["inv"] + [o for o in ch["equip"].values() if o is not None]:
+        if obj_vnum(obj) == key_vnum:
+            return True
+    return False
+
+
+def _door_for_lock_cmd(player, args, verb, want_locked):
+    """Resolve target door for lock/unlock/pick: direction arg or picker [PRIMESUD].
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Command args; first token is a direction alias if present.
+        verb (str): Command verb for prompts ("Lock" etc.).
+        want_locked (bool): Picker candidates must be locked (True) or unlocked (False).
+
+    Returns:
+        (direction, exit_dict, picked) or (None, None, False) after printing feedback.
+    """
+    exits = ROOM_DEFS[player["room"]]["exits"]
+    picked = False
+    if args:
+        direction = DIR_ALIASES.get(args[0].lower())
+        if direction is None:
+            tprint(verb + " what?")
+            return None, None, False
+    else:
+        candidates = [d for d in EXIT_ORDER
+                      if isinstance(exits.get(d), dict)
+                      and exits[d].get("isdoor") and exits[d].get("closed")
+                      and exits[d].get("key") is not None
+                      and bool(exits[d].get("locked")) == want_locked]
+        if not candidates:
+            tprint("There are no doors to " + verb.lower() + " here.")
+            return None, None, False
+        idx = pick_from(verb + " which door?", [EXIT_NAMES[d] for d in candidates])
+        if idx < 0:
+            return None, None, False
+        direction = candidates[idx]
+        picked = True
+    exit_val = exits.get(direction)
+    if not isinstance(exit_val, dict) or not exit_val.get("isdoor"):
+        tprint("You can't do that.")
+        return None, None, False
+    return direction, exit_val, picked
+
+
+def _set_rev_lock(player, direction, exit_val, locked):
+    """Mirror a lock state change onto the reverse exit (cf. 1stMud pexit_rev)."""
+    dest = exit_val["to"]
+    rev = REV_DIR.get(direction)
+    if rev and dest in ROOM_DEFS:
+        rev_exit = ROOM_DEFS[dest]["exits"].get(rev)
+        if isinstance(rev_exit, dict) and _exit_to(rev_exit) == player["room"]:
+            rev_exit["locked"] = locked
+
+
+def do_lock(player, args):
+    """Lock a closed door with its key (cf. 1stMud do_lock in act_move.c)."""
+    direction, exit_val, picked = _door_for_lock_cmd(player, args, "Lock", False)
+    if exit_val is None:
+        return
+    if not exit_val.get("closed"):
+        tprint("It's not closed.")
+        return
+    if exit_val.get("key") is None:
+        tprint("It can't be locked.")
+        return
+    if not _has_key(player, exit_val["key"]):
+        tprint("You lack the key.")
+        return
+    if exit_val.get("locked"):
+        tprint("It's already locked.")
+        return
+    exit_val["locked"] = True
+    tprint("*Click*")
+    _set_rev_lock(player, direction, exit_val, True)
+    return ("lock " + EXIT_NAMES[direction].lower()) if picked else None
+
+
+def do_unlock(player, args):
+    """Unlock a closed door with its key (cf. 1stMud do_unlock in act_move.c)."""
+    direction, exit_val, picked = _door_for_lock_cmd(player, args, "Unlock", True)
+    if exit_val is None:
+        return
+    if not exit_val.get("closed"):
+        tprint("It's not closed.")
+        return
+    if exit_val.get("key") is None:
+        tprint("It can't be unlocked.")
+        return
+    if not _has_key(player, exit_val["key"]):
+        tprint("You lack the key.")
+        return
+    if not exit_val.get("locked"):
+        tprint("It's already unlocked.")
+        return
+    exit_val["locked"] = False
+    tprint("*Click*")
+    _set_rev_lock(player, direction, exit_val, False)
+    return ("unlock " + EXIT_NAMES[direction].lower()) if picked else None
+
+
+def do_pick(player, args):
+    """Pick a door lock using the pick lock skill (cf. 1stMud do_pick in act_move.c)."""
+    direction, exit_val, picked = _door_for_lock_cmd(player, args, "Pick", True)
+    if exit_val is None:
+        return
+
+    WaitState(player, SKILLS[GSN_PICK_LOCK]["beats"])
+
+    # 1stMud: awake NPC more than 5 levels above ch blocks the attempt
+    rs = world.rooms[player["room"]]
+    for mob_id in rs["mobs"]:
+        gch = world.chars[mob_id]
+        if is_awake(gch) and player["level"] + 5 < gch["level"]:
+            act("$N is standing too close to the lock.", player, None, gch, TO_CHAR)
+            return
+
+    if randint(1, 100) > get_skill(player, GSN_PICK_LOCK):
+        tprint("You failed.")
+        check_improve(player, GSN_PICK_LOCK, False, 2)
+        return
+
+    if not exit_val.get("closed"):
+        tprint("It's not closed.")
+        return
+    if exit_val.get("key") is None:
+        tprint("It can't be picked.")
+        return
+    if not exit_val.get("locked"):
+        tprint("It's already unlocked.")
+        return
+    if exit_val.get("pickproof"):
+        tprint("You failed.")
+        return
+
+    exit_val["locked"] = False
+    tprint("*Click*")
+    check_improve(player, GSN_PICK_LOCK, True, 2)
+    _set_rev_lock(player, direction, exit_val, False)
+    return ("pick " + EXIT_NAMES[direction].lower()) if picked else None
 
 
 # -- Position commands ---------------------------------------------------------
