@@ -159,7 +159,7 @@ def improve_stance(ch):
         set_stance(ch, stance, 200)
         return
     if (dice1 > skill and dice2 > skill) or dice1 == 100 or dice2 == 100:
-        ch["stance"][stance] += 1
+        set_stance(ch, stance, skill + 1)
     else:
         return
     if skill == get_stance(ch, stance):

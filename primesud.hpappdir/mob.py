@@ -2,7 +2,7 @@
 
 from urandom import randint
 
-from config import EXIT_NAMES, SIZE_RANK
+from config import SIZE_RANK
 import world
 from world import ROOM_DEFS, MOB_DEFS, AREA_DEFS, DOOR_DEFS
 from races import RACE_TABLE
