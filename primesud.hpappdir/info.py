@@ -3,6 +3,7 @@
 import world
 from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
                    get_char_room, mob_condition, is_good, is_evil, can_see,
+                   act, TO_CHAR,
                    number_argument as _number_argument)
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from classes import class_long, class_short
@@ -12,15 +13,16 @@ from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, POS_FROM_SHORT, SECTO
                     MAX_MORTAL_LEVEL, MAX_LEVEL, DIR_ALIASES,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC,
                     WEAR_LABELS)
-from item import get_obj_list, get_obj_here, obj_vnum, item_extra_flags
+from item import get_obj_here, obj_vnum, item_extra_flags
 from picker import pick_from
 from player import (PLR_AUTOMAP, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
                     PLR_AUTOSPLIT, PLR_DEFAULTS)
 from gquest import gq_is_player_target
 from quest import is_quester
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
-    spell_mana
-from skills_table import SKILL_TABLE, SKILLS
+    spell_mana, get_skill, check_improve
+from skills_table import SKILL_TABLE, SKILLS, GSN_PEEK
+from urandom import randint
 from terminal import tprint
 from util import free_mem, gc_collect
 from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
@@ -55,14 +57,14 @@ def _wrap_paragraphs(text, width):
 
 
 _FLAG_TABLE = (
-    (PLR_AUTOMAP, "automap", "Map in room descriptions"),
+    (PLR_AUTOMAP, "automap", "Map in Room Descriptions"),
     # TODO: PLR_AUTODAMAGE "autodamage" - damage amounts in combat
     # TODO: PLR_AUTOASSIST "autoassist" - auto-assist group members
     # TODO: PLR_AUTOEXIT "autoexit" - exits in room descriptions
     (PLR_AUTOGOLD, "autogold", "Automatically loots gold from corpses."),
     (PLR_AUTOLOOT, "autoloot", "Automatically loots objects from corpses."),
     (PLR_AUTOSAC, "autosac", "Automatically sacrifices corpses."),
-    (PLR_AUTOSPLIT, "autosplit", "Automatically splits gold with group members."),
+    (PLR_AUTOSPLIT, "autosplit", "Automatically splits gold between group members."),
     # TODO: PLR_AUTOPROMPT "autoprompt" - selective prompt display
     # TODO: COMM_COMPACT "compact" - compact output (comm flags)
     # TODO: COMM_PROMPT "prompt" - prompt display (comm flags)
@@ -76,7 +78,7 @@ _FLAG_TABLE = (
 
 
 def do_automap(player, args):
-    """Toggle automap display in room descriptions (cf. 1stMud `do_automap` in automap.c)."""
+    """Toggle automap display in room descriptions (cf. 1stMud `do_automap` in automap.c). [Verified: 03/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOMAP
     if player["flags"] & PLR_AUTOMAP:
         tprint("You now see an automap in room descriptions.")
@@ -85,7 +87,7 @@ def do_automap(player, args):
 
 
 def do_autoloot(player, args):
-    """Toggle autoloot (cf. 1stMud do_autoloot in act_info.c)."""
+    """Toggle autoloot (cf. 1stMud do_autoloot in act_info.c). [Verified: 03/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOLOOT
     if player["flags"] & PLR_AUTOLOOT:
         tprint("You now loot objects from corpses automatically.")
@@ -94,7 +96,7 @@ def do_autoloot(player, args):
 
 
 def do_autogold(player, args):
-    """Toggle autogold (cf. 1stMud do_autogold in act_info.c)."""
+    """Toggle autogold (cf. 1stMud do_autogold in act_info.c). [Verified: 03/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOGOLD
     if player["flags"] & PLR_AUTOGOLD:
         tprint("You now loot gold from corpses automatically.")
@@ -103,7 +105,7 @@ def do_autogold(player, args):
 
 
 def do_autosac(player, args):
-    """Toggle autosac (cf. 1stMud do_autosac in act_info.c)."""
+    """Toggle autosac (cf. 1stMud do_autosac in act_info.c). [Verified: 03/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOSAC
     if player["flags"] & PLR_AUTOSAC:
         tprint("You now sacrifice corpses automatically.")
@@ -112,7 +114,7 @@ def do_autosac(player, args):
 
 
 def do_autosplit(player, args):
-    """Toggle autosplit (cf. 1stMud do_autosplit in act_info.c)."""
+    """Toggle autosplit (cf. 1stMud do_autosplit in act_info.c). [Verified: 03/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOSPLIT
     if player["flags"] & PLR_AUTOSPLIT:
         tprint("You now split gold with group members.")
@@ -121,7 +123,7 @@ def do_autosplit(player, args):
 
 
 def do_autolist(player, args):
-    """Display toggle settings (cf. 1stMud do_autolist in act_info.c)."""
+    """Display toggle settings (cf. 1stMud do_autolist in act_info.c). [Verified: 03/07/2026]"""
     tprint(" %-9s %-6s{w %s" % ("Command", "Status", "Description"))
     tprint(draw_line())
     flags = player.get("flags", PLR_DEFAULTS)
@@ -133,6 +135,8 @@ def do_autolist(player, args):
 
 def do_wimpy(player, args):
     """Set the hp threshold below which the player auto-flees in combat (cf. 1stMud do_wimpy in act_info.c).
+
+    [Verified: 03/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -156,7 +160,7 @@ def do_wimpy(player, args):
 
 
 def _get_ed(name, extra_descs):
-    """Find first extra description matching name (cf. 1stMud get_ed in db.c)."""
+    """Find first extra description matching name (cf. 1stMud get_ed in db.c). [Verified: 03/07/2026]"""
     for keywords, desc in extra_descs:
         if is_name(name, keywords):
             return desc
@@ -164,7 +168,11 @@ def _get_ed(name, extra_descs):
 
 
 def _show_char_to_char_1(player, mob_id):
-    """Show mob description, health condition, and equipment (cf. 1stMud show_char_to_char_1 in act_info.c)."""
+    """Show mob description, health condition, equipment, and peek (cf. 1stMud show_char_to_char_1 in act_info.c).
+
+    [Verified: 03/07/2026] -- "$n looks at ..." room/vict acts not ported
+    (no other players to notify; mobs ignore them).
+    """
     inst = world.chars[mob_id]
     tpl = MOB_DEFS[inst["tpl"]]
     # Instance description overrides template (cf. 1stMud per-char description;
@@ -174,7 +182,7 @@ def _show_char_to_char_1(player, mob_id):
         for line in _wrap_paragraphs(desc, TERMINAL_COLS):
             tprint(line)
     else:
-        tprint("You see nothing special about them.")
+        act("You see nothing special about $M.", player, None, inst, TO_CHAR)
     tprint(mob_condition(inst, tpl))
     found = False
     for slot, label in WEAR_LABELS:
@@ -186,21 +194,46 @@ def _show_char_to_char_1(player, mob_id):
                 found = True
             ctpl = ITEM_DEFS[obj_vnum(obj)]
             tprint(label + ctpl["short_descr"])
+    # cf. 1stMud peek check (act_info.c:459-465)
+    if randint(1, 100) < get_skill(player, GSN_PEEK):
+        tprint("")
+        tprint("You peek at the inventory:")
+        check_improve(player, GSN_PEEK, True, 4)
+        inv = inst.get("inv", [])
+        if not inv:
+            tprint("     Nothing.")
+        else:
+            # short-descr stacking (cf. 1stMud show_list_to_char fShort=true)
+            seen = {}
+            order = []
+            for obj in inv:
+                s = ((isinstance(obj, dict) and obj.get("short_descr"))
+                     or ITEM_DEFS[obj_vnum(obj)]["short_descr"])
+                if s in seen:
+                    seen[s] += 1
+                else:
+                    seen[s] = 1
+                    order.append(s)
+            for s in order:
+                n = seen[s]
+                tprint(("(%2d) " % n if n > 1 else "     ") + s)
 
 
 _CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
 
 
 def _look_in(player, args):
-    """Show contents of a container in room or inventory (cf. 1stMud do_look 'in' case in act_info.c)."""
+    """Show contents of a container in room or inventory (cf. 1stMud do_look 'in' case in act_info.c).
+
+    ITEM_DRINK_CON branch and the closed-container check not ported --
+    drink containers and container open/close don't exist yet [PRIMESUD].
+    [Verified: 03/07/2026]
+    """
     if not args:
         tprint("Look in what?")
         return
     keyword = " ".join(args)
-    rs = world.rooms[player["room"]]
-    obj = get_obj_list(keyword, player["inv"], ITEM_DEFS)
-    if obj is None:
-        obj = get_obj_list(keyword, rs["items"], ITEM_DEFS)
+    obj = get_obj_here(player, keyword)  # room, then inventory/equipped
     if obj is None:
         tprint("You do not see that here.")
         return
@@ -212,7 +245,7 @@ def _look_in(player, args):
 
 
 def _show_container(obj, tpl):
-    """Print container contents (cf. 1stMud do_look 'in' case in act_info.c)."""
+    """Print container contents (cf. 1stMud do_look 'in' case in act_info.c). [Verified: 03/07/2026]"""
     obj_name = (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]
     tprint("{} holds:".format(obj_name))
     contents = isinstance(obj, dict) and obj.get("contents", [])
@@ -226,6 +259,8 @@ def _show_container(obj, tpl):
 
 def _look_scan_items(target, number, count, items):
     """Scan an item list for extra_desc or name match (cf. 1stMud `do_look` in act_info.c: item scan loop).
+
+    [Verified: 03/07/2026]
 
     Returns:
         tuple: (found, count) where found is True if the Nth match was displayed.
@@ -255,6 +290,8 @@ def _look_scan_items(target, number, count, items):
 
 def do_exits(player, args):
     """List obvious exits with destination room names (cf. 1stMud do_exits in act_info.c).
+
+    [Verified: 03/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -301,6 +338,12 @@ _POS_LINES = {
 
 def do_look(player, args):
     """Display the current room, examine a target, or look in a direction (cf. 1stMud do_look in act_info.c).
+
+    Position ("stars"/sleeping), check_blind, and room_is_dark gates not
+    ported -- blindness and darkness are not implemented yet; position is
+    gated by the command table. Autoexit is always on (PLR_AUTOEXIT TODO).
+
+    [Verified: 03/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -360,6 +403,7 @@ def do_look(player, args):
             return
         ex = exits[door]
         if isinstance(ex, dict):
+            # EX_DOORBELL "perhaps you should ring it?" line not ported
             ex_desc = ex.get("desc")
             if ex_desc:
                 for line in _wrap_paragraphs(ex_desc, TERMINAL_COLS):
@@ -368,6 +412,7 @@ def do_look(player, args):
                 tprint("Nothing special there.")
             kw = ex.get("keyword", "")
             if kw and kw[0] != ' ':
+                kw = kw.split()[0]  # 1stMud act "$d": first word of keyword
                 if ex.get("closed"):
                     tprint("The %s is closed." % kw)
                 elif ex.get("isdoor"):
@@ -411,14 +456,21 @@ def do_look(player, args):
     # (cf. 1stMud format_obj_to_char + show_list_to_char in act_info.c)
     seen = {}
     order = []
+    p_aff = player.get("affected_by", {})
     for obj in rs["items"]:
         tpl = ITEM_DEFS[obj_vnum(obj)]
         flags = item_extra_flags(obj, tpl)
+        # cf. 1stMud format_obj_to_char flag order (act_info.c:53-64)
         flag_str = ""
         if flags.get("invis"):  flag_str += "({cInvis{x) "
+        if p_aff.get("detect_evil") and flags.get("evil"):
+            flag_str += "({RRed Aura{x) "
+        if p_aff.get("detect_good") and flags.get("bless"):
+            flag_str += "({BBlue Aura{x) "
+        if p_aff.get("detect_magic") and flags.get("magic"):
+            flag_str += "({MMagical{x) "
         if flags.get("glow"):   flag_str += "({YGlowing{x) "
         if flags.get("hum"):    flag_str += "({CHumming{x) "
-        if flags.get("magic"):  flag_str += "({MMagical{x) "
         # cf. 1stMud act_info.c:66 quest obj marker; [PRIMESUD] vnum match
         if is_quester(player) and obj_vnum(obj) == player.get("quest_obj", 0):
             flag_str += "{r[{RTARGET{r] {x"
@@ -452,7 +504,6 @@ def do_look(player, args):
         if aff.get("charm"):        prefix += "({MCharmed{x) "
         if aff.get("pass_door"):    prefix += "({cTranslucent{x) "
         if aff.get("faerie_fire"):  prefix += "({MPink Aura{x) "
-        p_aff = player.get("affected_by", {})
         if is_evil(inst) and p_aff.get("detect_evil"):   prefix += "({RRed Aura{x) "
         if is_good(inst) and p_aff.get("detect_good"):   prefix += "({YGolden Aura{x) "
         if aff.get("sanctuary"):    prefix += "({WWhite Aura{x) "
@@ -503,6 +554,8 @@ _PERCENT_BAR_COLORS = ('r', 'R', 'y', 'Y', 'g', 'G', 'W')
 def _make_percent_bar(val, max_val, length):
     """Colour-gradient fill bar of | chars (cf. 1stMud make_percent_bar in act_info.c).
 
+    [Verified: 03/07/2026]
+
     Args:
         val (int): Filled amount (0..max_val). Values <= 0 render empty bar.
         max_val (int): Scale maximum.
@@ -531,7 +584,11 @@ def _make_percent_bar(val, max_val, length):
 
 
 def do_score(player, args):
-    """Display the character score sheet (cf. 1stMud dlm_score in act_info.c)."""
+    """Display the character score sheet (cf. 1stMud dlm_score in act_info.c).
+
+    [Verified: 03/07/2026] -- data fields (age, hours, thac0, AC bars)
+    verified; box layout adapted for the 64-col screen [PRIMESUD].
+    """
     # two-column box mirroring 1stMud dlm_score layout, with bright/normal colours
     # alternating between horizontal segments.
     def _row(l, r):
@@ -658,6 +715,8 @@ def _parse_skill_range(args):
     """Parse level range arguments for spell/skill list commands. [PRIMESUD]"""
     if not args:
         return (False, 1, MAX_MORTAL_LEVEL, True)
+    # cf. 1stMud do_spells/do_skills: ANY argument sets fAll (numeric ranges
+    # list entries above the char's level as "n/a" rather than hiding them)
     f_all = True
     # cf. 1stMud !str_prefix(argument, "all"): arg is prefix of "all"
     if "all".startswith(args[0]):
@@ -722,7 +781,11 @@ def _print_level_lists(player, args, want_spells):
                 rows[level] = []
             rows[level].append(item)
     if not found:
-        tprint("{cNo " + ("spells" if want_spells else "skills") + " found.{x")
+        # 1stMud: do_spells prints plain, do_skills colored
+        if want_spells:
+            tprint("No spells found.")
+        else:
+            tprint("{cNo skills found.{x")
         return
     for level in range(MAX_MORTAL_LEVEL + 1):
         items = rows.get(level)
@@ -739,7 +802,7 @@ def _print_level_lists(player, args, want_spells):
 
 
 def print_practice_table(player):
-    """Print learned practice percentages (cf. 1stMud do_practice in act_info.c)."""
+    """Print learned practice percentages (cf. 1stMud do_practice in act_info.c). [Verified: 03/07/2026]"""
     items = []
     half = TERMINAL_COLS // 2
     name_w = 18
@@ -756,12 +819,12 @@ def print_practice_table(player):
 
 
 def do_skills(player, args):
-    """List known skills by level (cf. 1stMud do_skills in skills.c)."""
+    """List known skills by level (cf. 1stMud do_skills in skills.c). [Verified: 03/07/2026]"""
     _print_level_lists(player, args, False)
 
 
 def do_spells(player, args):
-    """List known spells by level (cf. 1stMud do_spells in skills.c)."""
+    """List known spells by level (cf. 1stMud do_spells in skills.c). [Verified: 03/07/2026]"""
     _print_level_lists(player, args, True)
 
 
@@ -801,6 +864,7 @@ def do_help(player, args):
     [PRIMESUD] Scans HELP_FILE line-by-line instead of an in-memory help
     list -- the full help text (~150KB) will not fit the HP Prime heap.
     Record format: '#<level>|<keywords>' header line, then text lines.
+    [Verified: 03/07/2026]
     """
     argall = " ".join(args) if args else "summary"
     number, target = _number_argument(argall)
@@ -881,28 +945,51 @@ def do_map(player, args):
 def do_affects(player, args):
     """List all active player affects with name, location, modifier, duration (cf. 1stMud do_affects in act_info.c).
 
+    [Verified: 03/07/2026] -- racial-ability and equipment-spell sections
+    not ported (see TODO below).
+
     Args:
         player (dict): Player state dict.
         args (list): Unused.
     """
+    # -- Racial-ability and equipment-spell sections not ported (TODO) --
     affects = player.get("affect_list", [])
     if not affects:
         tprint("You are not affected by any spells.")
         return
-    tprint("You are affected by:")
+    tprint("You are affected by the following spells:")
+    # cf. 1stMud: modifier/duration detail only at trust >= 20
+    show_detail = player.get("level", 1) >= 20
+    last_type = None
     for aff in affects:
         sn = aff.get("type")
-        sk = SKILLS.get(sn)
-        name = sk["name"] if sk else "unknown"
-        mod = aff["modifier"]
-        dur = aff["duration"]
-        dur_str = "permanent" if dur < 0 else "{} tick{}".format(dur, "" if dur == 1 else "s")
-        tprint("  {}: modifies {} by {:+d} for {}".format(
-            name, aff["location"], mod, dur_str))
+        if last_type is not None and sn == last_type:
+            # consecutive same-type affects: indented continuation
+            if not show_detail:
+                continue
+            line = " " * 26
+        else:
+            sk = SKILLS.get(sn)
+            name = sk["name"] if sk else "unknown"
+            line = "{xSpell: {c" + _pad_color(name, 19) + "{x"
+        if show_detail:
+            dur = aff["duration"]
+            line += (": modifies " + str(aff["location"])
+                     + " by " + str(aff["modifier"]) + " ")
+            if dur < 0:
+                line += "permanently"
+            else:
+                line += "for " + str(dur) + " hours"
+        tprint(line)
+        last_type = sn
 
 
 def do_credits(player, args):
-    """Display game credits and acknowledgements (cf. 1stMud `do_credits` in act_info.c)."""
+    """Display game credits and acknowledgements (cf. 1stMud `do_credits` in act_info.c).
+
+    [PRIMESUD] 1stMud shows the diku/ROM/1stMud help entries; PrimeSUD
+    prints its own condensed text (adds the port line).
+    """
     tprint("{WPrimeSUD{x -- a single-user dungeon for the HP Prime")
     tprint("Port by ZechyW.  Not for commercial distribution.")
     tprint("")
@@ -929,20 +1016,21 @@ def do_credits(player, args):
 
 
 def _convert_level(arg):
-    """Parse level string to int (cf. 1stMud convert_level in db.c)."""
+    """Parse level string to int (cf. 1stMud convert_level in db.c). [Verified: 03/07/2026]"""
     if not arg:
         return 0
     if arg.isdigit():
         return int(arg)
-    if arg == "imm":
-        return MAX_LEVEL
-    if arg in ("hero", "hro"):
+    # cf. 1stMud is_name("IMM", arg): "IMM" prefix-matches the typed arg
+    if arg.startswith("imm"):
+        return MAX_LEVEL  # 1stMud LEVEL_IMMORTAL; no imm tiers here
+    if arg.startswith("hero") or arg.startswith("hro"):
         return MAX_MORTAL_LEVEL
     return 0
 
 
 def _print_area_levels(levels):
-    """Format area level range for display (cf. 1stMud print_area_levels in db.c)."""
+    """Format area level range for display (cf. 1stMud print_area_levels in db.c). [Verified: 03/07/2026]"""
     lo, hi = levels
     if lo >= MAX_MORTAL_LEVEL and hi >= MAX_MORTAL_LEVEL:
         return " HERO+ "
@@ -952,7 +1040,7 @@ def _print_area_levels(levels):
 
 
 def _extract_builder(credits):
-    """Extract builder name from area credits line (cf. 1stMud convert_area_credits in db2.c)."""
+    """Extract builder name from area credits line (cf. 1stMud convert_area_credits in db2.c). [Verified: 03/07/2026]"""
     idx = credits.find("} ")
     if idx >= 0:
         parts = credits[idx + 2:].split()
@@ -962,7 +1050,12 @@ def _extract_builder(credits):
 
 
 def _compress_path(parent, source, target):
-    """Trace BFS parent chain and compress directions (cf. 1stMud path_to_area in act_enter.c)."""
+    """Trace BFS parent chain and compress directions (cf. 1stMud path_to_area in act_enter.c).
+
+    [PRIMESUD] Emits "<count><dir>" runs (e.g. "3s2en") matching do_run's
+    parser; 1stMud's own run-length prepending is inconsistent/buggy.
+    [Verified: 03/07/2026]
+    """
     path = []
     v = target
     while v != source:
@@ -990,6 +1083,9 @@ def _compress_path(parent, source, target):
 
 def find_area_paths(ch):
     """Single BFS from player room to all areas (cf. 1stMud path_to_area in act_enter.c).
+
+    [PRIMESUD] One BFS for all areas (1stMud re-runs per area).
+    [Verified: 03/07/2026]
 
     Returns:
         dict: Mapping of area_tag -> compressed direction string.
@@ -1047,7 +1143,11 @@ def _center_fill(text, width=0):
 
 
 def do_areas(player, args):
-    """List areas with level ranges, authors, and directions (cf. 1stMud do_areas in db.c)."""
+    """List areas with level ranges, authors, and directions (cf. 1stMud do_areas in db.c).
+
+    [Verified: 03/07/2026] -- clan restriction marker ("{G*") and its legend
+    line not ported (no clans).
+    """
     lo_lv = 0
     hi_lv = 0
     if args:
@@ -1085,6 +1185,7 @@ def do_areas(player, args):
             if tag == source_area:
                 dirs = "You are here."
             else:
+                # [PRIMESUD] 1stMud typo "Not accessable." fixed
                 dirs = paths.get(tag, "Not accessible.")
             tprint(" {W[{B%-7s{W] {r%-7s {C%-23s {W({M%s{W){x"
                    % (lvl_str, builder, name, dirs))
@@ -1098,12 +1199,14 @@ def do_areas(player, args):
 
 
 def do_read(player, args):
-    """Alias for do_look (cf. 1stMud do_read in act_info.c)."""
+    """Alias for do_look (cf. 1stMud do_read in act_info.c). [Verified: 03/07/2026]"""
     do_look(player, args)
 
 
 def do_examine(player, args):
     """Examine an object: look at it, then show contents or coin count (cf. 1stMud do_examine in act_info.c).
+
+    [Verified: 03/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -1148,6 +1251,7 @@ def _examine_extras(obj):
 
     [PRIMESUD] Container contents shown from the resolved obj directly; 1stMud
     re-resolves via do_look "in <arg>", which can match a different object.
+    [Verified: 03/07/2026]
     """
     tpl = ITEM_DEFS[obj_vnum(obj)]
     obj_type = tpl.get("type")
