@@ -1,21 +1,24 @@
 """Inventory, equipment, item-use, and starter-outfit commands."""
 
 import world
-from handler import get_curr_stat, is_name, equip_char, unequip_char, act
+from handler import (get_curr_stat, is_name, equip_char, unequip_char, act,
+                     get_char_room, can_see, is_awake, affect_strip)
+from colors import upper
 from world import (I_BANNER_WAR_MERC,
                    I_MACE_SUB_MERC, I_DAGGER_SUB_MERC, I_SWORD_SUB_MERC,
                    I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,
                    I_SPEAR_SUB_MERC, I_AXE_SUB_MERC, I_FLAIL_SUB_MERC,
                    I_WHIP_SUB_MERC, I_GLAIVE_SUB_MERC)
-from combat import _get_weapon_skill
+from combat import _get_weapon_skill, is_safe, multi_hit
 from skill_utils import WaitState, check_improve, get_skill
-from config import STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS
+from config import (STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS,
+                    MAX_LEVEL, TYPE_UNDEFINED)
 from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   item_extra_flags, item_wear_flags, apply_money_pickup,
                   can_drop_obj, can_carry_n)
 from magic import cast_item_spells, validate_item_spell_payload
 from picker import pick_from
-from skills_table import GSN_SCROLLS, GSN_STAVES, GSN_WANDS
+from skills_table import GSN_SCROLLS, GSN_STAVES, GSN_WANDS, GSN_STEAL, GSN_SNEAK
 from skills_table import SKILLS, WEAPON_GSN_MAP
 from terminal import tprint
 from urandom import randint
@@ -556,6 +559,114 @@ def do_equipment(player, args):
             tprint(line)
         else:
             tprint(label + "nothing")
+
+
+def do_steal(player, args):
+    """Steal coins or an item from a mob via the steal skill (cf. 1stMud do_steal in act_obj.c).
+
+    [PRIMESUD] arena, PvP level-gap, clan-membership, outlaw-flag, and
+    wiznet branches not ported -- victims are always NPCs; yell rendered
+    as a plain line (channels not ported).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): [what, whom] -- "coins"/"gold"/"silver" or item keyword.
+    """
+    if len(args) < 2:
+        tprint("Steal what from whom?")
+        return
+
+    rs = world.rooms[player["room"]]
+    victim_id = get_char_room(" ".join(args[1:]), rs["mobs"], world.chars)
+    if victim_id is None:
+        tprint("They aren't here.")
+        return
+    victim = world.chars[victim_id]
+
+    if is_safe(player, victim):
+        return
+
+    if victim.get("fighting") is not None:
+        tprint("Kill stealing is not permitted.")
+        tprint("You'd better not -- you might get hit.")
+        return
+
+    WaitState(player, SKILLS[GSN_STEAL]["beats"])
+    percent = randint(1, 100)
+
+    if not is_awake(victim):
+        percent -= 10
+    elif not can_see(victim, player):
+        percent += 25
+    else:
+        percent += 50
+
+    if percent > get_skill(player, GSN_STEAL):
+        # Failure -- victim notices
+        tprint("Oops.")
+        affect_strip(player, GSN_SNEAK)
+        player.get("affected_by", {}).pop("sneak", None)
+
+        vname = upper(MOB_DEFS[victim["tpl"]]["short_descr"])
+        yells = (
+            player["name"] + " is a lousy thief!",
+            player["name"] + " couldn't rob "
+            + ("her" if player.get("sex") == "female" else "his")
+            + " way out of a paper bag!",
+            player["name"] + " tried to rob me!",
+            "Keep your hands out of there, " + player["name"] + "!",
+        )
+        if not is_awake(victim):
+            victim["pos"] = "standing"  # cf. do_wake on victim
+        if is_awake(victim):
+            # [PRIMESUD] do_yell channel not ported -- plain line
+            tprint(vname + " yells '" + yells[randint(0, 3)] + "'")
+        check_improve(player, GSN_STEAL, False, 2)
+        multi_hit(victim, player, TYPE_UNDEFINED)
+        return
+
+    what = args[0]
+    if what in ("coin", "coins", "gold", "silver"):
+        gold = victim.get("gold", 0) * randint(1, player["level"]) // MAX_LEVEL
+        silver = victim.get("silver", 0) * randint(1, player["level"]) // MAX_LEVEL
+        if gold <= 0 and silver <= 0:
+            tprint("You couldn't get any coins.")
+            return
+        player["gold"] += gold
+        player["silver"] += silver
+        victim["gold"] -= gold
+        victim["silver"] -= silver
+        if silver <= 0:
+            tprint("Bingo!  You got %d gold coins." % gold)
+        elif gold <= 0:
+            tprint("Bingo!  You got %d silver coins." % silver)
+        else:
+            tprint("Bingo!  You got %d silver and %d gold coins." % (silver, gold))
+        check_improve(player, GSN_STEAL, True, 2)
+        return
+
+    obj = get_obj_list(what, victim.get("inv", []), ITEM_DEFS)
+    if obj is None:
+        tprint("You can't find it.")
+        return
+
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    if (not can_drop_obj(player, obj)
+            or item_extra_flags(obj, tpl).get("inventory")
+            or tpl.get("level", 0) > player["level"]):
+        tprint("You can't pry it away.")
+        return
+
+    if len(player["inv"]) + 1 > can_carry_n(player):
+        tprint("You have your hands full.")
+        return
+    # [PRIMESUD] carry-weight check not ported (no weight tracking)
+
+    victim["inv"].remove(obj)
+    player["inv"].append(obj)
+    act("You pocket $p.", player, obj, None)
+    check_improve(player, GSN_STEAL, True, 2)
+    tprint("Got it!")
 
 
 def do_compare(player, args):

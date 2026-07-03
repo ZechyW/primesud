@@ -5,6 +5,7 @@ from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
                     POS_ORDER,
                     SEX_VALUES)
 from terminal import tprint
+from urandom import randint
 from world import ITEM_DEFS, MOB_DEFS
 
 # -- Alignment helpers (cf. 1stMud IsGood/IsEvil/IsNeutral in macro.h) ----------------
@@ -794,9 +795,10 @@ def can_see_room(ch, room_vnum):
 def can_see(ch, victim):
     """Check if ch can see victim (cf. 1stMud can_see in handler.c).
 
-    Stub -- always returns True. Real checks (AFF_BLIND, room_is_dark,
-    AFF_INVISIBLE, AFF_SNEAK, AFF_HIDE) to be added when those systems
-    are ported.
+    Checks AFF_BLIND, AFF_INVISIBLE vs detect_invis, AFF_SNEAK skill
+    contest, and AFF_HIDE vs detect_hidden.
+    [PRIMESUD] invis_level/incog/holylight/arena/quest/gquest and
+    room_is_dark/infrared not ported.
 
     Args:
         ch (dict): Observer (player or mob instance).
@@ -805,9 +807,34 @@ def can_see(ch, victim):
     Returns:
         bool: True if ch can see victim.
     """
-    # [PRIMESUD] stub: fill in when AFF_BLIND/INVISIBLE/SNEAK/HIDE/dark rooms ported
     if ch is victim:
         return True
+
+    ch_aff = ch.get("affected_by", {})
+    v_aff = victim.get("affected_by", {})
+
+    if ch_aff.get("blind"):
+        return False
+
+    if v_aff.get("invisible") and not ch_aff.get("detect_invis"):
+        return False
+
+    if (v_aff.get("sneak") and not ch_aff.get("detect_hidden")
+            and victim.get("fighting") is None):
+        from skill_utils import get_skill
+        from skills_table import GSN_SNEAK
+        chance = get_skill(victim, GSN_SNEAK,
+                           is_mob=bool(victim.get("is_npc")))
+        chance += get_curr_stat(victim, "dex") * 3 // 2
+        chance -= get_curr_stat(ch, "int") * 2
+        chance -= ch.get("level", 1) - victim.get("level", 1) * 3 // 2
+        if randint(1, 100) < chance:
+            return False
+
+    if (v_aff.get("hide") and not ch_aff.get("detect_hidden")
+            and victim.get("fighting") is None):
+        return False
+
     return True
 
 

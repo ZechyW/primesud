@@ -449,7 +449,8 @@ def aggr_update(tr, player):
         # cf. update.c:965 -- wimpy mob won't attack awake player
         if act_flags.get("wimpy") and is_awake(player):
             continue
-        # [PRIMESUD] can_see not ported -- skip visibility check
+        if not can_see(ch, player):                       # cf. update.c can_see check
+            continue
         if randint(0, 1) == 0:                            # cf. number_bits(1) == 0
             continue
 

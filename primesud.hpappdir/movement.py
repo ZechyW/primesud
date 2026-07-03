@@ -2,7 +2,7 @@
 
 from classes import is_class
 from handler import (can_see_room, chprintln, act, TO_CHAR, TO_ROOM, TO_VICT,
-                     get_char_room, is_awake)
+                     get_char_room, is_awake, affect_strip, affect_to_char)
 from combat import stop_fighting
 from skill_utils import WaitState, check_improve, get_skill
 from stances import valid_stance, get_stance, STANCE_CURRENT
@@ -12,7 +12,8 @@ from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
                     R_RECALL, PULSE_PER_SECOND)
 from info import do_look, find_area_paths
 from picker import pick_from
-from skills_table import GSN_RECALL, GSN_PICK_LOCK, SKILLS
+from skills_table import (GSN_RECALL, GSN_PICK_LOCK, GSN_SNEAK, GSN_HIDE,
+                          GSN_INVIS, GSN_MASS_INVIS, SKILLS)
 from terminal import tprint
 from urandom import randint
 import world
@@ -641,6 +642,75 @@ def do_wake(player, args):
     # 1stMud passes ch to do_stand here (apparent bug -- ROM 2.4 stands the
     # victim); [PRIMESUD] stand the victim so waking mobs actually works
     victim["pos"] = "standing"
+
+
+# -- Stealth -------------------------------------------------------------------
+
+def do_sneak(player, args):
+    """Attempt to move silently via the sneak skill (cf. 1stMud do_sneak in act_move.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Parsed command arguments (unused).
+    """
+    tprint("You attempt to move silently.")
+    affect_strip(player, GSN_SNEAK)
+
+    if player.get("affected_by", {}).get("sneak"):
+        return
+
+    if randint(1, 100) < get_skill(player, GSN_SNEAK):
+        check_improve(player, GSN_SNEAK, True, 3)
+        affect_to_char(player, {
+            "where":     "to_affects",
+            "type":      GSN_SNEAK,
+            "level":     player["level"],
+            "duration":  player["level"],
+            "location":  "none",
+            "modifier":  0,
+            "bitvector": "sneak",
+        })
+    else:
+        check_improve(player, GSN_SNEAK, False, 3)
+
+
+def do_hide(player, args):
+    """Attempt to hide via the hide skill (cf. 1stMud do_hide in act_move.c).
+
+    Hide is a bare AFF bit with no affect entry; any command except
+    stealth/info commands removes it (see interpret in commands.py).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Parsed command arguments (unused).
+    """
+    tprint("You attempt to hide.")
+
+    aff = player.setdefault("affected_by", {})
+    aff.pop("hide", None)
+
+    if randint(1, 100) < get_skill(player, GSN_HIDE):
+        aff["hide"] = True
+        check_improve(player, GSN_HIDE, True, 3)
+    else:
+        check_improve(player, GSN_HIDE, False, 3)
+
+
+def do_visible(player, args):
+    """Strip invisibility, sneak, and hide (cf. 1stMud do_visible in act_move.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Parsed command arguments (unused).
+    """
+    affect_strip(player, GSN_INVIS)
+    affect_strip(player, GSN_MASS_INVIS)
+    affect_strip(player, GSN_SNEAK)
+    aff = player.get("affected_by", {})
+    aff.pop("hide", None)
+    aff.pop("invisible", None)
+    aff.pop("sneak", None)
+    tprint("Ok.")
 
 
 def perform_recall(player, location, what="recall"):

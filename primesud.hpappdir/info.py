@@ -2,7 +2,7 @@
 
 import world
 from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
-                   get_char_room, mob_condition, is_good, is_evil)
+                   get_char_room, mob_condition, is_good, is_evil, can_see)
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from classes import class_long, class_short
 from colors import color_len, upper, draw_line
@@ -443,6 +443,9 @@ def do_look(player, args):
     # Mobs: one per line, long_descr at idle or constructed position string (cf. 1stMud show_char_to_char_0 in act_info.c)
     for mob_id in live_mobs:
         inst = world.chars[mob_id]
+        # cf. 1stMud show_char_to_char: skip chars the viewer can't see
+        if not can_see(player, inst):
+            continue
         tpl = MOB_DEFS[inst["tpl"]]
         # Build AFF prefix string (cf. 1stMud show_char_to_char_0, act_info.c:191-214)
         # Race defaults merged into inst at create_mobile; dynamic spell AFF bits
