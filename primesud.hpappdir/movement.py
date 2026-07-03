@@ -1,7 +1,8 @@
 """Movement, doors, and recall command handlers."""
 
 from classes import is_class
-from handler import can_see_room, chprintln, act, TO_CHAR, TO_ROOM
+from handler import (can_see_room, chprintln, act, TO_CHAR, TO_ROOM, TO_VICT,
+                     get_char_room, is_awake)
 from combat import stop_fighting
 from skill_utils import WaitState, check_improve
 from stances import valid_stance, get_stance, STANCE_CURRENT
@@ -346,6 +347,150 @@ def do_close(player, args):
         if isinstance(rev_exit, dict) and _exit_to(rev_exit) == player["room"]:
             rev_exit["closed"] = True
     return ("close " + EXIT_NAMES[_picked_dir].lower()) if _picked_dir is not None else None
+
+
+# -- Position commands ---------------------------------------------------------
+# [PRIMESUD] ITEM_FURNITURE branches (stand/rest/sit/sleep at/on/in objects,
+# count_users, ch->on) not ported in all five commands below -- few furniture
+# items in current areas.  Revisit if furniture matters later.
+
+def do_stand(player, args):
+    """Stand up, waking first if asleep (cf. 1stMud do_stand in act_move.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Furniture keyword -- not ported, ignored [PRIMESUD].
+    """
+    pos = player.get("pos", "standing")
+    if pos == "sleeping":
+        if player.get("affected_by", {}).get("sleep"):
+            chprintln(player, "You can't wake up!")
+            return
+        chprintln(player, "You wake and stand up.")
+        act("$n wakes and stands up.", player, None, None, TO_ROOM)
+        player["pos"] = "standing"
+        do_look(player, [])
+    elif pos in ("resting", "sitting"):
+        chprintln(player, "You stand up.")
+        act("$n stands up.", player, None, None, TO_ROOM)
+        player["pos"] = "standing"
+    elif pos == "standing":
+        chprintln(player, "You are already standing.")
+    elif pos == "fighting":
+        chprintln(player, "You are already fighting!")
+
+
+def do_rest(player, args):
+    """Rest to speed regeneration (cf. 1stMud do_rest in act_move.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Furniture keyword -- not ported, ignored [PRIMESUD].
+    """
+    pos = player.get("pos", "standing")
+    if pos == "fighting":
+        chprintln(player, "You are already fighting!")
+        return
+    if pos == "sleeping":
+        if player.get("affected_by", {}).get("sleep"):
+            chprintln(player, "You can't wake up!")
+            return
+        chprintln(player, "You wake up and start resting.")
+        act("$n wakes up and starts resting.", player, None, None, TO_ROOM)
+        player["pos"] = "resting"
+    elif pos == "resting":
+        chprintln(player, "You are already resting.")
+    elif pos == "standing":
+        chprintln(player, "You rest.")
+        act("$n sits down and rests.", player, None, None, TO_ROOM)
+        player["pos"] = "resting"
+    elif pos == "sitting":
+        chprintln(player, "You rest.")
+        act("$n rests.", player, None, None, TO_ROOM)
+        player["pos"] = "resting"
+
+
+def do_sit(player, args):
+    """Sit down (cf. 1stMud do_sit in act_move.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Furniture keyword -- not ported, ignored [PRIMESUD].
+    """
+    pos = player.get("pos", "standing")
+    if pos == "fighting":
+        chprintln(player, "Maybe you should finish this fight first?")
+        return
+    if pos == "sleeping":
+        if player.get("affected_by", {}).get("sleep"):
+            chprintln(player, "You can't wake up!")
+            return
+        chprintln(player, "You wake and sit up.")
+        act("$n wakes and sits up.", player, None, None, TO_ROOM)
+        player["pos"] = "sitting"
+    elif pos == "resting":
+        chprintln(player, "You stop resting.")
+        player["pos"] = "sitting"
+    elif pos == "sitting":
+        chprintln(player, "You are already sitting down.")
+    elif pos == "standing":
+        chprintln(player, "You sit down.")
+        act("$n sits down on the ground.", player, None, None, TO_ROOM)
+        player["pos"] = "sitting"
+
+
+def do_sleep(player, args):
+    """Go to sleep for maximum regeneration (cf. 1stMud do_sleep in act_move.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Furniture keyword -- not ported, ignored [PRIMESUD].
+    """
+    pos = player.get("pos", "standing")
+    if pos == "sleeping":
+        chprintln(player, "You are already sleeping.")
+    elif pos in ("resting", "sitting", "standing"):
+        chprintln(player, "You go to sleep.")
+        act("$n goes to sleep.", player, None, None, TO_ROOM)
+        player["pos"] = "sleeping"
+    elif pos == "fighting":
+        chprintln(player, "You are already fighting!")
+
+
+def do_wake(player, args):
+    """Wake yourself (stand) or a sleeping character (cf. 1stMud do_wake in act_move.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Optional target keyword; without it, acts as stand.
+    """
+    if not args:
+        do_stand(player, [])
+        return
+
+    if not is_awake(player):
+        chprintln(player, "You are asleep yourself!")
+        return
+
+    rs = world.rooms[player["room"]]
+    victim_id = get_char_room(" ".join(args), rs["mobs"], world.chars)
+    if victim_id is None:
+        chprintln(player, "They aren't here.")
+        return
+    victim = world.chars[victim_id]
+
+    if is_awake(victim):
+        act("$N is already awake.", player, None, victim, TO_CHAR)
+        return
+
+    if victim.get("affected_by", {}).get("sleep"):
+        act("You can't wake $M!", player, None, victim, TO_CHAR)
+        return
+
+    act("$n wakes you.", player, None, victim, TO_VICT)
+    # 1stMud passes ch to do_stand here (apparent bug -- ROM 2.4 stands the
+    # victim); [PRIMESUD] stand the victim so waking mobs actually works
+    victim["pos"] = "standing"
 
 
 def perform_recall(player, location, what="recall"):

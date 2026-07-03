@@ -185,6 +185,11 @@ POS_ORDER = {
     "sleeping": 4, "resting": 5, "sitting": 6, "fighting": 7, "standing": 8,
 }
 
+# start_pos/default_pos short forms in area data -> position keys
+# (cf. 1stMud position_table in tables.c)
+POS_FROM_SHORT = {"stand": "standing", "sit": "sitting",
+                  "rest": "resting", "sleep": "sleeping"}
+
 # -- damage() dt threshold (cf. 1stMud TYPE_HIT / TYPE_UNDEFINED in defines.h) ----------
 # dt >= TYPE_HIT = physical weapon attack (dodge/parry apply); dt < TYPE_HIT = skill/spell.
 TYPE_HIT       = 1000

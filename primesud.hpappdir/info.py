@@ -7,7 +7,7 @@ from automap import build_compact_lines, build_full_lines, COMPACT_W
 from classes import class_long, class_short
 from colors import color_len, upper, draw_line
 from combat import get_thac0
-from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, SECTOR_COLORS,
+from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, POS_FROM_SHORT, SECTOR_COLORS,
                     MAX_MORTAL_LEVEL, MAX_LEVEL, DIR_ALIASES,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC,
                     WEAR_LABELS)
@@ -293,6 +293,20 @@ def do_exits(player, args):
         tprint("None.")
 
 
+# Position display strings (cf. 1stMud show_char_to_char_0 in act_info.c)
+# [PRIMESUD] furniture ("sleeping on X") variants not ported
+_POS_LINES = {
+    "dead":     " is DEAD!!",
+    "mortal":   " is mortally wounded.",
+    "incap":    " is incapacitated.",
+    "stunned":  " is lying here stunned.",
+    "sleeping": " is sleeping here.",
+    "resting":  " is resting here.",
+    "sitting":  " is sitting here.",
+    "standing": " is here.",
+}
+
+
 def do_look(player, args):
     """Display the current room, examine a target, or look in a direction (cf. 1stMud do_look in act_info.c).
 
@@ -444,15 +458,28 @@ def do_look(player, args):
         if is_evil(inst) and p_aff.get("detect_evil"):   prefix += "({RRed Aura{x) "
         if is_good(inst) and p_aff.get("detect_good"):   prefix += "({YGolden Aura{x) "
         if aff.get("sanctuary"):    prefix += "({WWhite Aura{x) "
-        if inst["fighting"] is None:
-            line = tpl.get("long_descr") or tpl["short_descr"]
+        # cf. 1stMud: long_descr only when mob is at its start_pos
+        pos = inst.get("pos", "standing")
+        start_pos = POS_FROM_SHORT.get(tpl.get("start_pos", "stand"), "standing")
+        if pos == start_pos and inst["fighting"] is None and tpl.get("long_descr"):
+            line = tpl["long_descr"]
         else:
             name = tpl["short_descr"]
             name = upper(name) if name else name
-            if inst["fighting"] == player["id"]:
-                line = "%s is here, fighting YOU!" % name
+            if inst["fighting"] is not None or pos == "fighting":
+                if inst["fighting"] == player["id"]:
+                    line = "%s is here, fighting YOU!" % name
+                else:
+                    # [PRIMESUD] 1stMud shows the target's name; mobs only
+                    # fight the player or each other's ids -- resolve if present
+                    tgt = world.chars.get(inst["fighting"])
+                    if tgt is None:
+                        line = "%s is here, fighting thin air??" % name
+                    else:
+                        line = "%s is here, fighting %s." % (
+                            name, MOB_DEFS[tgt["tpl"]]["short_descr"])
             else:
-                line = "%s is here, fighting someone." % name
+                line = name + _POS_LINES.get(pos, " is here.")
         if show_vnums:  # [PRIMESUD] template vnum; instance id via debug stat mob
             line += " {D[" + str(inst["tpl"]) + "]"
         tprint("%s{M%s{x" % (prefix, line))

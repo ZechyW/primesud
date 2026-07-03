@@ -17,7 +17,8 @@ from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
 from macros import do_macro
 from magic import do_cast
 from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
-                      do_open, do_close, do_recall, do_run)
+                      do_open, do_close, do_recall, do_run,
+                      do_stand, do_rest, do_sit, do_sleep, do_wake)
 from scan import do_scan
 from shop import do_buy, do_sell, do_list, do_value, do_appraise
 from system_cmds import do_save, do_quit
@@ -89,10 +90,10 @@ _CMD_TABLE = [
     # ("music",     do_music,      "sleeping", False),  # #22
     ("order",      do_order,      "resting",  False),  # #23
     ("practice",   do_practice,   "sleeping", False),  # #24
-    # ("rest",      do_rest,       "sleeping", False),  # #25
-    # ("sit",       do_sit,        "sleeping", False),  # #26
+    ("rest",       do_rest,       "sleeping", False),  # #25
+    ("sit",        do_sit,        "sleeping", False),  # #26
     # ("sockets",   do_sockets,    "dead",     False),  # #27 imm lvl 56
-    # ("stand",     do_stand,      "sleeping", False),  # #28
+    ("stand",      do_stand,      "sleeping", False),  # #28
     ("tell",      do_tell,       "resting",  False),  # #29
     # ("unlock",    do_unlock,     "resting",  False),  # #30
     ("wield",      do_wear,       "resting",  False),  # #31
@@ -231,13 +232,13 @@ _CMD_TABLE = [
     ("/",          do_recall,     "fighting", False),  # #164
     # ("rent",      do_rent,       "dead",     False),  # #165
     ("save",       do_save,       "dead",     False),  # #166
-    # ("sleep",     do_sleep,      "sleeping", False),  # #167
+    ("sleep",      do_sleep,      "sleeping", False),  # #167
     # ("sneak",     do_sneak,      "standing", False),  # #168
     # ("split",     do_split,      "resting",  False),  # #169
     # ("steal",     do_steal,      "standing", False),  # #170
     ("train",      do_train,      "resting",  False),  # #171
     # ("visible",   do_visible,    "sleeping", False),  # #172
-    # ("wake",      do_wake,       "sleeping", False),  # #173
+    ("wake",       do_wake,       "sleeping", False),  # #173
     # ("where",     do_where,      "resting",  False),  # #174
     # ("showstats", do_showstats,  "sleeping", False),  # #175
     # ("compress",  do_compress,   "dead",     False),  # #176

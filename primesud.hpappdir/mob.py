@@ -2,7 +2,7 @@
 
 from urandom import randint
 
-from config import SIZE_RANK
+from config import SIZE_RANK, POS_FROM_SHORT
 import world
 from world import ROOM_DEFS, MOB_DEFS, AREA_DEFS, DOOR_DEFS
 from races import RACE_TABLE
@@ -138,6 +138,8 @@ def create_mobile(tpl_vnum):
         "vuln_flags": vuln_flags,
         "form_flags": form_flags,
         "part_flags": part_flags,
+        # cf. 1stMud create_mobile: mob->position = mob->start_pos
+        "pos":        POS_FROM_SHORT.get(tpl.get("start_pos", "stand"), "standing"),
     })
     return ch
 

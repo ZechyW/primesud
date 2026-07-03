@@ -157,7 +157,6 @@ def reset_char(player):
 def tick_update(tr, player, room):
     """Regenerate HP and MP once per world tick (cf. 1stMud hit_gain/mana_gain in update.c).
 
-    Position is always treated as resting -- no position system [PRIMESUD].
     Hunger/thirst conditions omitted [PRIMESUD].
 
     Args:
@@ -172,25 +171,43 @@ def tick_update(tr, player, room):
     wis  = get_curr_stat(player, "wis")
     level = player.get("level", 1)
 
+    pos = player.get("pos", "standing")
+
     # HP (cf. 1stMud hit_gain in update.c)
     hp_gain = max(3, con - 3 + level // 2) + (player["max_hit"] - 10)
     # TODO: fast_healing bonus -- if roll < skill%, gain += roll * gain / 100
-    # Position: always resting [PRIMESUD] -- sleeping=/1, resting=/2, standing=/4, fighting=/6
-    hp_gain //= 2
+    # Position divisors: sleeping /1, resting /2, fighting /6, other /4
+    if pos == "resting":
+        hp_gain //= 2
+    elif pos == "fighting":
+        hp_gain //= 6
+    elif pos != "sleeping":
+        hp_gain //= 4
     # Hunger/thirst omitted [PRIMESUD]
     hp_gain = hp_gain * room.get("heal_rate", 100) // 100
     # TODO: poison /4, plague /8, haste/slow /2
     hp_gain = max(1, hp_gain)
 
-    # MP (cf. 1stMud mana_gain in update.c) -- base (WIS+INT+level)/2, resting /2
-    mp_gain = (int_ + wis + level) // 4
+    # MP (cf. 1stMud mana_gain in update.c) -- base (WIS+INT+level)/2, same divisors
+    mp_gain = (int_ + wis + level) // 2
+    if pos == "resting":
+        mp_gain //= 2
+    elif pos == "fighting":
+        mp_gain //= 6
+    elif pos != "sleeping":
+        mp_gain //= 4
     mp_gain = mp_gain * room.get("mana_rate", 100) // 100
     # TODO: poison /4, plague /8, haste/slow /2
     mp_gain = max(1, mp_gain)
 
-    # MV (cf. 1stMud move_gain in update.c) -- base max(15, level), resting +DEX/2
+    # MV (cf. 1stMud move_gain in update.c) -- base max(15, level);
+    # sleeping +DEX, resting +DEX/2
     dex = get_curr_stat(player, "dex")
-    mv_gain = max(15, level) + dex // 2
+    mv_gain = max(15, level)
+    if pos == "sleeping":
+        mv_gain += dex
+    elif pos == "resting":
+        mv_gain += dex // 2
     mv_gain = mv_gain * room.get("heal_rate", 100) // 100
     # TODO: poison /4, plague /8, haste/slow /2
     mv_gain = max(1, mv_gain)

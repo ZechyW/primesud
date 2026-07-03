@@ -69,6 +69,9 @@ def _serialize_world():
         cls_str = cls_str + ("," if cls_str else "") + str(c)
     lines.append("p.classes=" + cls_str)
     lines.append("p.prime_class=" + str(player["prime_class"]))
+    # cf. 1stMud fwrite_char "Pos" -- fighting saved as standing
+    lines.append("p.pos=" + str("standing" if player.get("pos") == "fighting"
+                                else player.get("pos", "standing")))
     # cf. 1stMud pcdata->group_known -- comma-joined group indices
     grp_str = ""
     for g in player.get("groups", []):

@@ -15,6 +15,7 @@ from config import (
     MAX_MORTAL_LEVEL,
     PULSE_VIOLENCE,
     POS_ORDER,
+    POS_FROM_SHORT,
     R_STARTING_ROOM,
     DEATH_MSG_DELAY,
     CON_APP_HITP,
@@ -1993,7 +1994,7 @@ def multi_hit(ch, victim, dt=TYPE_UNDEFINED):
 # -- Combat state --------------------------------------------------------------
 
 # default_pos short forms in area data -> position keys (cf. 1stMud position_table)
-_DEFAULT_POS = {"stand": "standing", "sit": "sitting", "rest": "resting", "sleep": "sleeping"}
+_DEFAULT_POS = POS_FROM_SHORT
 
 
 def set_fighting(ch, victim):
