@@ -61,9 +61,10 @@ def move_char(ch, direction):
     Position gate handled by command table (do_north etc. have
     min_pos = "standing").
 
-    [Verified: 03/07/2026] -- private-room / area-closed checks, area
-    entry sound, and exit/entry/greet progs not ported (see comments).
-    quest_room_check runs before the follower loop (1stMud: after).
+    [Verified: 03/07/2026; quest_room_check moved after follower loop to
+    match 1stMud order and re-verified same day] -- private-room /
+    area-closed checks, area entry sound, and exit/entry/greet progs not
+    ported (see comments).
 
     Args:
         ch (dict): Moving character (player or mob instance).
@@ -188,10 +189,9 @@ def move_char(ch, direction):
             _brief_room_line(ch)
         else:
             do_look(ch, [])
-        # cf. 1stMud move_char act_move.c:266 (after greet triggers)
-        quest_room_check(ch)
 
-    # cf. 1stMud move_char: exit looping back to the same room skips followers
+    # cf. 1stMud move_char: exit looping back to the same room skips
+    # followers and quest checks
     if from_vnum == dest:
         return
 
@@ -228,6 +228,11 @@ def move_char(ch, direction):
 
         act("You follow $N.", fch, None, ch, TO_CHAR)
         move_char(fch, direction)  # cf. 1stMud move_char(fch, door, true)
+
+    # cf. 1stMud move_char act_move.c:266: quest check runs after the
+    # follower loop (entry/greet progs, also there, not ported)
+    if not is_npc:
+        quest_room_check(ch)
 
 
 # -- Direction command handlers (cf. 1stMud do_north..do_down in act_move.c) --
