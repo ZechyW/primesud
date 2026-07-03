@@ -200,6 +200,16 @@ AC_SLASH  = 2
 AC_EXOTIC = 3
 
 # -- Damage classes (cf. 1stMud dam_class enum in merc.h) ------------------------------
+# Three related tables, three jobs:
+#   DAM_*        -- the damage class itself: what KIND of harm is dealt. Passed
+#                   through damage() / saves_spell() / check_immune().
+#   DAM_TO_FLAG  -- damage class -> imm/res/vuln flag name on a character, used
+#                   by check_immune. Classes with no entry (DAM_OTHER, DAM_HARM)
+#                   only get the broad-category check: bash/pierce/slash count
+#                   as "weapon", everything else as "magic".
+#   ATTACK_TABLE -- area-file attack key -> (display noun, damage class): how a
+#                   mob/weapon attack reads in combat messages and which damage
+#                   class it deals (cf. attack_table in const.c).
 DAM_NONE      = -1   # "none" / TYPE_HIT bare attack -- falls back to DAM_BASH
 DAM_BASH      =  0
 DAM_PIERCE    =  1
@@ -220,6 +230,27 @@ DAM_SOUND     = 15
 DAM_OTHER     = 16
 DAM_HARM      = 17
 DAM_CHARM     = 18
+
+# -- Damage-class to immunity flag mapping (cf. 1stMud check_immune in handler.c) ------
+DAM_TO_FLAG = {
+    DAM_BASH:      "bash",
+    DAM_PIERCE:    "pierce",
+    DAM_SLASH:     "slash",
+    DAM_FIRE:      "fire",
+    DAM_COLD:      "cold",
+    DAM_LIGHTNING: "lightning",
+    DAM_ACID:      "acid",
+    DAM_POISON:    "poison",
+    DAM_NEGATIVE:  "negative",
+    DAM_HOLY:      "holy",
+    DAM_ENERGY:    "energy",
+    DAM_MENTAL:    "mental",
+    DAM_DISEASE:   "disease",
+    DAM_DROWNING:  "drowning",
+    DAM_LIGHT:     "light",
+    DAM_CHARM:     "charm",
+    DAM_SOUND:     "sound",
+}
 
 # -- Attack table (cf. 1stMud attack_table in const.c) ---------------------------------
 # Maps dam_type area-file key -> (display noun, dam_class).
@@ -276,29 +307,6 @@ IS_IMMUNE     = 1
 IS_RESISTANT  = 2
 IS_VULNERABLE = 3
 IMMUNE_NONE   = -1
-
-# -- Damage-class to immunity flag mapping (cf. 1stMud check_immune in handler.c) ------
-# DAM_BASH/PIERCE/SLASH use "weapon" as the broad category; everything else uses "magic".
-# The specific flag name (e.g. "fire") overrides the broad one.
-DAM_TO_FLAG = {
-    DAM_BASH:      "bash",
-    DAM_PIERCE:    "pierce",
-    DAM_SLASH:     "slash",
-    DAM_FIRE:      "fire",
-    DAM_COLD:      "cold",
-    DAM_LIGHTNING: "lightning",
-    DAM_ACID:      "acid",
-    DAM_POISON:    "poison",
-    DAM_NEGATIVE:  "negative",
-    DAM_HOLY:      "holy",
-    DAM_ENERGY:    "energy",
-    DAM_MENTAL:    "mental",
-    DAM_DISEASE:   "disease",
-    DAM_DROWNING:  "drowning",
-    DAM_LIGHT:     "light",
-    DAM_CHARM:     "charm",
-    DAM_SOUND:     "sound",
-}
 
 # -- XP base table by level difference (cf. 1stMud xp_compute in fight.c) -------------
 XP_BASE = {

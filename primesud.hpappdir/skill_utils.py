@@ -55,7 +55,13 @@ def can_use_skill_spell(player, sn):
 
 
 def find_skill_spell(player, name):
-    """Prefix-match a skill/spell, preferring usable learned entries (cf. 1stMud find_spell in magic.c)."""
+    """Prefix-match a skill/spell, preferring usable learned entries (cf. 1stMud find_spell in magic.c).
+    [Verified: 03/07/2026]
+
+    [PRIMESUD] 1stMud's IsNPC branch (plain skill_lookup) not ported -- only the
+    player casts through this path. Case-sensitive startswith is safe: command
+    input is lowercased upstream (commands.py) and skill names are lowercase.
+    """
     found = None
     if not name:
         return None
@@ -72,7 +78,12 @@ def find_skill_spell(player, name):
 
 
 def spell_mana(player, sn):
-    """Return current mana cost for spell display (cf. 1stMud do_spells in skills.c)."""
+    """Return current mana cost for a spell (cf. 1stMud do_cast in magic.c and do_spells in skills.c).
+    [Verified: 03/07/2026]
+
+    Matches the live do_cast formula (50 at level+2, else max(min_mana,
+    100/(2+level diff))); 1stMud's mana_cost() (returns 1000) is dead code.
+    """
     sk = SKILLS[sn]
     level = skill_level(player, sn)
     if player.get("level", 1) + 2 == level:

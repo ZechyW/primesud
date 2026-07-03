@@ -192,9 +192,9 @@ def _same_align(tpl_a, tpl_b):
             or (is_neutral(tpl_a) and is_neutral(tpl_b)))
 
 
-def _dice(num, size):
+def dice(num, size):
     """Roll num dice of size sides and return the sum (cf. 1stMud `dice` in db.c).
-    [Verified: 02/07/2026]
+    [Verified: 03/07/2026]
 
     Args:
         num (int): Number of dice to roll.
@@ -203,6 +203,10 @@ def _dice(num, size):
     Returns:
         int: Sum of all dice rolls.
     """
+    if size == 0:
+        return 0
+    if size == 1:
+        return num
     total = 0
     for _ in range(num):
         total += randint(1, size)
@@ -1303,7 +1307,7 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False):
     # weapon dice like players; only unarmed NPCs use mob damage dice)
     if ch["is_npc"] and wtpl is None:
         num, size, _ = ch_tpl["damage"]
-        dam = _dice(num, size)
+        dam = dice(num, size)
     else:
         # 1stMud improves the weapon skill here, before damage() resolves
         # dodge/parry -- landing the swing is enough
@@ -1311,7 +1315,7 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False):
             check_improve(ch, sk_vnum, True, 5)
         if wtpl is not None:
             num, size, bonus = wtpl.get("dice", (1, 4, 0))
-            dam = (_dice(num, size) + bonus) * skill // 100
+            dam = (dice(num, size) + bonus) * skill // 100
             # 1stMud: if (get_eq_char(ch, WEAR_SHIELD) == NULL) dam = dam * 11 / 10;
             if ch["equip"].get("shield") is None:
                 dam = dam * 11 // 10
@@ -2305,10 +2309,10 @@ def _get_size(ch):
     return SIZE_RANK.get(ch.get("size", "medium"), 2)
 
 
-def _number_fuzzy(n):
+def number_fuzzy(n):
     """Return n-1 (25%), n (50%), or n+1 (25%), floored at 1
     (cf. 1stMud number_fuzzy in db.c).
-    [Verified: 02/07/2026]
+    [Verified: 03/07/2026]
     """
     r = randint(0, 3)
     if r == 0:
@@ -2464,7 +2468,7 @@ def do_berserk(ch, args):
         act("$n gets a wild look in $s eyes.", ch, type=TO_ROOM)
         check_improve(ch, GSN_BERSERK, True, 2)
 
-        dur = _number_fuzzy(ch["level"] // 8)
+        dur = number_fuzzy(ch["level"] // 8)
         mod_hr_dr = max(1, ch["level"] // 5)
         mod_ac = max(10, 10 * (ch["level"] // 5))
 

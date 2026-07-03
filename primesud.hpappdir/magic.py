@@ -8,13 +8,15 @@ from handler import (is_name, is_affected, affect_to_char, affect_join, affect_s
 from world import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
                    I_DISC_DISK_FLOATING_BLACK)
 from colors import upper
-from combat import (is_safe, is_safe_spell,
+from classes import has_spells
+from combat import (is_safe, is_safe_spell, check_immune, dice, number_fuzzy,
                     multi_hit, damage, stop_fighting, update_pos)
 from skill_utils import WaitState, check_improve, get_skill
-from config import (POS_ORDER, DAM_ACID, DAM_BASH, DAM_COLD,
+from config import (POS_ORDER, DAM_ACID, DAM_BASH, DAM_CHARM, DAM_COLD,
                     DAM_DISEASE, DAM_DROWNING, DAM_ENERGY, DAM_FIRE,
                     DAM_HARM, DAM_HOLY, DAM_LIGHT, DAM_LIGHTNING,
-                    DAM_NEGATIVE, DAM_PIERCE, DAM_POISON, DAM_SLASH)
+                    DAM_NEGATIVE, DAM_OTHER, DAM_PIERCE, DAM_POISON,
+                    DAM_SLASH, IS_IMMUNE, IS_RESISTANT, IS_VULNERABLE)
 from config import R_RECALL, MAX_MORTAL_LEVEL
 from item import (get_obj_list, obj_vnum, item_spell_level,
                   item_spells, item_spell_name, item_extra_flags,
@@ -40,26 +42,22 @@ def _enchant_copy_template(vo, tpl):
         item_affect_to_obj(vo, _new_obj_affect("", 0, -1, loc, mod), tpl)
 
 def spell_null(sn, level, ch, vo, target):
-    """Do nothing spell placeholder (cf. 1stMud spell_null in magic.c)."""
+    """Do nothing spell placeholder (cf. 1stMud spell_null in magic.c).
+    [Verified: 03/07/2026]"""
     chprintln(ch, "That's not a spell!")
     return False
 
 
-def _dice(num, size):
-    """Roll num dice of given size and return total (cf. 1stMud `dice` in db.c)."""
-    total = 0
-    for _ in range(num):
-        total += randint(1, size)
-    return total
-
-
 def _heal_char(ch, victim, amount, msg):
     """Heal victim by amount, clamped to max_hit, and print message. [PRIMESUD]
+    [Verified: 03/07/2026]
 
     Inlines the pattern repeated across spell_cure_light / spell_heal / etc.
-    in 1stMud magic.c (victim->hit = Min(victim->hit + amount, victim->max_hit)).
+    in 1stMud magic.c (hit = Min(hit + amount, max_hit); update_pos; message;
+    "Ok." to caster when healing another).
     """
     victim["hit"] = min(victim["max_hit"], victim["hit"] + amount)
+    update_pos(victim)
     chprintln(victim, msg)
     if victim is not ch:
         chprintln(ch, "Ok.")
@@ -69,7 +67,12 @@ def _heal_char(ch, victim, amount, msg):
 
 
 def _skill_lookup(name):
-    """Look up a skill/spell by exact name and return its sn (cf. 1stMud `skill_lookup` in magic.c)."""
+    """Look up a skill/spell by exact name and return its sn (cf. 1stMud `skill_lookup` in magic.c).
+    [Verified: 03/07/2026]
+
+    [PRIMESUD] 1stMud prefix-matches; exact match kept here since all callers
+    pass full internal names (avoids earlier-table prefix collisions).
+    """
     for sn, sk in SKILL_TABLE:
         if sk["name"] == name:
             return sn
@@ -77,7 +80,8 @@ def _skill_lookup(name):
 
 
 def _area_state_for_room(room_vnum):
-    """Return the area state dict for a room's area tag, or None. [PRIMESUD]"""
+    """Return the area state dict for a room's area tag, or None. [PRIMESUD]
+    [Verified: 03/07/2026]"""
     tag = ROOM_DEFS.get(room_vnum, {}).get("area")
     if tag is None:
         return None
@@ -89,22 +93,13 @@ def _area_state_for_room(room_vnum):
 
 
 def _item_name(obj):
-    """Return the short description of an item, or 'item' if None. [PRIMESUD]"""
+    """Return the short description of an item, or 'item' if None. [PRIMESUD]
+    [Verified: 03/07/2026]"""
     if obj is None:
         return "item"
     tpl = ITEM_DEFS.get(obj_vnum(obj), {})
     return tpl.get("short_descr", "item")
 
-
-
-def _number_fuzzy(n):
-    """Return n randomly adjusted by -1, 0, or +1, minimum 1 (cf. 1stMud `number_fuzzy` in db.c)."""
-    r = randint(0, 3)
-    if r == 0:
-        n -= 1
-    elif r == 3:
-        n += 1
-    return max(1, n)
 
 
 
@@ -115,6 +110,7 @@ def _number_fuzzy(n):
 
 def _new_obj_affect(sn, level, duration, location, modifier, bitvector=""):
     """Create a new affect dict targeting an object. [PRIMESUD]
+    [Verified: 03/07/2026]
 
     Same fields as _new_affect but with where="to_object" (cf. 1stMud
     TO_OBJECT in handler.h, used by affect_to_obj in handler.c).
@@ -125,14 +121,29 @@ def _new_obj_affect(sn, level, duration, location, modifier, bitvector=""):
 
 
 def _dev_item_fail(obj, message):
-    """Log a dev-mode item failure message and return False. [PRIMESUD]"""
+    """Log a dev-mode item failure message and return False. [PRIMESUD]
+    [Verified: 03/07/2026]"""
     tprint("[DEV] " + _item_name(obj) + ": " + message)
     return False
 
 
 def saves_spell(level, victim, dam_type):
-    """Return True when victim saves against spell (cf. 1stMud saves_spell in magic.c)."""
+    """Return True when victim saves against spell (cf. 1stMud saves_spell in magic.c).
+    [Verified: 03/07/2026]"""
     save = 50 + (victim.get("level", 1) - level) * 5 - victim.get("saving_throw", 0) * 2
+    if victim.get("affected_by", {}).get("berserk"):
+        save += victim.get("level", 1) // 2
+
+    res = check_immune(victim, dam_type)
+    if res == IS_IMMUNE:
+        return True
+    if res == IS_RESISTANT:
+        save += 2
+    elif res == IS_VULNERABLE:
+        save -= 2
+
+    if not victim.get("is_npc") and has_spells(victim):
+        save = 9 * save // 10
     if save < 5:
         save = 5
     elif save > 95:
@@ -141,7 +152,8 @@ def saves_spell(level, victim, dam_type):
 
 
 def saves_dispel(dis_level, spell_level, duration):
-    """Return True when affect resists dispel (cf. 1stMud saves_dispel in magic.c)."""
+    """Return True when affect resists dispel (cf. 1stMud saves_dispel in magic.c).
+    [Verified: 03/07/2026]"""
     if duration == -1:
         spell_level += 5
     save = 50 + (spell_level - dis_level) * 5
@@ -152,8 +164,9 @@ def saves_dispel(dis_level, spell_level, duration):
     return randint(1, 100) < save
 
 
-def check_dispel(dis_level, victim, sn, ch=None):
-    """Try to dispel one affect type (cf. 1stMud check_dispel in magic.c)."""
+def check_dispel(dis_level, victim, sn):
+    """Try to dispel one affect type (cf. 1stMud check_dispel in magic.c).
+    [Verified: 03/07/2026]"""
     if not is_affected(victim, sn):
         return False
     for af in list(victim.get("affect_list", [])):
@@ -162,6 +175,8 @@ def check_dispel(dis_level, victim, sn, ch=None):
         if not saves_dispel(dis_level, af.get("level", 0), af.get("duration", 0)):
             affect_strip(victim, sn)
             msg = SKILLS.get(sn, {}).get("msg_off", "")
+            # [PRIMESUD] 1stMud skills.dat uses "!Spell Name!~" as msg_off
+            # placeholder for affects with no wear-off message; skip those.
             if msg and not msg.startswith("!"):
                 chprintln(victim, msg)
             return True
@@ -170,44 +185,48 @@ def check_dispel(dis_level, victim, sn, ch=None):
 
 
 def spell_cure_light(sn, level, ch, vo, target):
-    """Cure light wounds (cf. 1stMud spell_cure_light in magic.c)."""
-    return _heal_char(ch, vo, _dice(1, 8) + level // 3, "You feel better!")
+    """Cure light wounds (cf. 1stMud spell_cure_light in magic.c).
+    [Verified: 03/07/2026]"""
+    return _heal_char(ch, vo, dice(1, 8) + level // 3, "You feel better!")
 
 
 def spell_cure_serious(sn, level, ch, vo, target):
-    """Cure serious wounds (cf. 1stMud spell_cure_serious in magic.c)."""
-    return _heal_char(ch, vo, _dice(2, 8) + level // 2, "You feel better!")
+    """Cure serious wounds (cf. 1stMud spell_cure_serious in magic.c).
+    [Verified: 03/07/2026]"""
+    return _heal_char(ch, vo, dice(2, 8) + level // 2, "You feel better!")
 
 
 def spell_cure_critical(sn, level, ch, vo, target):
-    """Cure critical wounds (cf. 1stMud spell_cure_critical in magic.c)."""
-    return _heal_char(ch, vo, _dice(3, 8) + level - 6, "You feel better!")
+    """Cure critical wounds (cf. 1stMud spell_cure_critical in magic.c).
+    [Verified: 03/07/2026]"""
+    return _heal_char(ch, vo, dice(3, 8) + level - 6, "You feel better!")
 
 
 def spell_heal(sn, level, ch, vo, target):
-    """Heal spell (cf. 1stMud spell_heal in magic.c)."""
+    """Heal spell (cf. 1stMud spell_heal in magic.c).
+    [Verified: 03/07/2026]"""
     return _heal_char(ch, vo, 100, "A warm feeling fills your body.")
 
 
 def spell_cause_light(sn, level, ch, vo, target):
     """Cause light wounds (cf. 1stMud spell_cause_light in magic.c)."""
-    return damage(ch, vo, _dice(1, 8) + level // 3, sn, DAM_HARM, True)
+    return damage(ch, vo, dice(1, 8) + level // 3, sn, DAM_HARM, True)
 
 
 def spell_cause_serious(sn, level, ch, vo, target):
     """Cause serious wounds (cf. 1stMud spell_cause_serious in magic.c)."""
-    return damage(ch, vo, _dice(2, 8) + level // 2, sn, DAM_HARM, True)
+    return damage(ch, vo, dice(2, 8) + level // 2, sn, DAM_HARM, True)
 
 
 def spell_cause_critical(sn, level, ch, vo, target):
     """Cause critical wounds (cf. 1stMud spell_cause_critical in magic.c)."""
-    return damage(ch, vo, _dice(3, 8) + level - 6, sn, DAM_HARM, True)
+    return damage(ch, vo, dice(3, 8) + level - 6, sn, DAM_HARM, True)
 
 
 def spell_harm(sn, level, ch, vo, target):
     """Harm spell (cf. 1stMud spell_harm in magic.c)."""
-    dam = max(20, vo["hit"] - _dice(1, 4))
-    if saves_spell(level, vo, "harm"):
+    dam = max(20, vo["hit"] - dice(1, 4))
+    if saves_spell(level, vo, DAM_HARM):
         dam = min(50, dam // 2)
     dam = min(100, dam)
     return damage(ch, vo, dam, sn, DAM_HARM, True)
@@ -217,7 +236,7 @@ def spell_magic_missile(sn, level, ch, vo, target):
     """Magic missile (cf. 1stMud spell_magic_missile in magic.c)."""
     high = level | 50
     dam = randint(high // 2, high * 2)
-    if saves_spell(level, vo, "energy"):
+    if saves_spell(level, vo, DAM_ENERGY):
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_ENERGY, True)
 
@@ -231,7 +250,7 @@ def spell_earthquake(sn, level, ch, vo, target):
         victim = world.chars.get(mob_id)
         if victim is None or victim is ch:
             continue
-        dam = 0 if victim.get("affected_by", {}).get("flying") else level + _dice(2, 8)
+        dam = 0 if victim.get("affected_by", {}).get("flying") else level + dice(2, 8)
         damage(ch, victim, dam, sn, DAM_BASH, True)
     return True
 
@@ -248,7 +267,7 @@ def spell_call_lightning(sn, level, ch, vo, target):
         chprintln(ch, "You need bad weather.")
         return False
 
-    dam = _dice(max(1, level // 2), 8)
+    dam = dice(max(1, level // 2), 8)
     act("$g's lightning strikes your foes!", ch, None, None, TO_CHAR)
     act("$n calls $g's lightning to strike $s foes!", ch, None, None, TO_ROOM)
     room_state = world.rooms[ch["room"]]
@@ -257,7 +276,7 @@ def spell_call_lightning(sn, level, ch, vo, target):
         if victim is None or victim is ch:
             continue
         cur_dam = dam
-        if saves_spell(level, victim, "lightning"):
+        if saves_spell(level, victim, DAM_LIGHTNING):
             cur_dam //= 2
         damage(ch, victim, cur_dam, sn, DAM_LIGHTNING, True)
     return True
@@ -269,8 +288,8 @@ def spell_chain_lightning(sn, level, ch, vo, target):
     act("A lightning bolt leaps from $n's hand and arcs to $N.", ch, None, victim, TO_ROOM)
     act("A lightning bolt leaps from your hand and arcs to $N.", ch, None, victim, TO_CHAR)
     act("A lightning bolt leaps from $n's hand and hits you!", ch, None, victim, TO_VICT)
-    dam = _dice(level, 6)
-    if saves_spell(level, victim, "lightning"):
+    dam = dice(level, 6)
+    if saves_spell(level, victim, DAM_LIGHTNING):
         dam //= 3
     damage(ch, victim, dam, sn, DAM_LIGHTNING, True)
     last_vict = victim
@@ -288,8 +307,8 @@ def spell_chain_lightning(sn, level, ch, vo, target):
             last_vict = tmp
             act("The bolt arcs to $n!", tmp, None, None, TO_ROOM)
             act("The bolt hits you!", tmp, None, None, TO_CHAR)
-            dam = _dice(level, 6)
-            if saves_spell(level, tmp, "lightning"):
+            dam = dice(level, 6)
+            if saves_spell(level, tmp, DAM_LIGHTNING):
                 dam //= 3
             damage(ch, tmp, dam, sn, DAM_LIGHTNING, True)
             level -= 4
@@ -302,8 +321,8 @@ def spell_chain_lightning(sn, level, ch, vo, target):
             last_vict = ch
             act("The bolt arcs to $n...whoops!", ch, None, None, TO_ROOM)
             chprintln(ch, "You are struck by your own lightning!")
-            dam = _dice(level, 6)
-            if saves_spell(level, ch, "lightning"):
+            dam = dice(level, 6)
+            if saves_spell(level, ch, DAM_LIGHTNING):
                 dam //= 3
             damage(ch, ch, dam, sn, DAM_LIGHTNING, True)
             level -= 4
@@ -343,7 +362,7 @@ def spell_teleport(sn, level, ch, vo, target):
     room = ROOM_DEFS.get(victim.get("room"))
     if (room is None
             or room.get("flags", {}).get("no_recall")
-            or (victim is not ch and saves_spell(level - 5, victim, "other"))
+            or (victim is not ch and saves_spell(level - 5, victim, DAM_OTHER))
             or (ch.get("is_npc") is not True and victim.get("fighting") is not None)):
         chprintln(ch, "You failed.")
         return False
@@ -832,7 +851,7 @@ def spell_giant_strength(sn, level, ch, vo, target):
 
 def spell_weaken(sn, level, ch, vo, target):
     """Weaken spell (cf. 1stMud spell_weaken in magic.c)."""
-    if is_affected(vo, sn) or saves_spell(level, vo, "other"):
+    if is_affected(vo, sn) or saves_spell(level, vo, DAM_OTHER):
         return False
     affect_to_char(vo, _new_affect(sn, level, level // 2, "str", -1 * (level // 5), "weaken"))
     chprintln(vo, "You feel your strength slip away.")
@@ -852,7 +871,7 @@ def spell_faerie_fire(sn, level, ch, vo, target):
 
 def spell_blindness(sn, level, ch, vo, target):
     """Blindness spell (cf. 1stMud spell_blindness in magic.c)."""
-    if vo.get("affected_by", {}).get("blind") or saves_spell(level, vo, "other"):
+    if vo.get("affected_by", {}).get("blind") or saves_spell(level, vo, DAM_OTHER):
         chprintln(ch, "You failed.")
         return False
     affect_to_char(vo, _new_affect(sn, level, 1 + level, "hitroll", -4, "blind"))
@@ -866,7 +885,7 @@ def spell_poison(sn, level, ch, vo, target):
     if target == TARGET_OBJ:
         chprintln(ch, "That spell does not work on objects yet.")
         return False
-    if saves_spell(level, vo, "poison"):
+    if saves_spell(level, vo, DAM_POISON):
         act("$n turns slightly green, but it passes.", vo, None, None, TO_ROOM)
         chprintln(vo, "You feel momentarily ill, but it passes.")
         return False
@@ -898,7 +917,7 @@ def spell_curse(sn, level, ch, vo, target):
         chprintln(ch, _item_name(vo) + " glows with a malevolent aura.")
         # TODO [PRIMESUD] saving_throw adjust for worn cursed items
         return True
-    if vo.get("affected_by", {}).get("curse") or saves_spell(level, vo, "negative"):
+    if vo.get("affected_by", {}).get("curse") or saves_spell(level, vo, DAM_NEGATIVE):
         return False
     mod = level // 8
     affect_to_char(vo, _new_affect(sn, level, 2 * level, "hitroll", -mod, "curse"))
@@ -911,7 +930,7 @@ def spell_curse(sn, level, ch, vo, target):
 
 def spell_plague(sn, level, ch, vo, target):
     """Plague spell (cf. 1stMud spell_plague in magic.c)."""
-    if saves_spell(level, vo, "disease") or (
+    if saves_spell(level, vo, DAM_DISEASE) or (
             vo.get("is_npc") and MOB_DEFS.get(vo.get("tpl"), {}).get("act_flags", {}).get("undead")):
         if vo is ch:
             chprintln(ch, "You feel momentarily ill, but it passes.")
@@ -933,7 +952,7 @@ def spell_cure_blindness(sn, level, ch, vo, target):
         else:
             act("$N doesn't appear to be blinded.", ch, None, vo, TO_CHAR)
         return False
-    if check_dispel(level, vo, blind_sn, ch):
+    if check_dispel(level, vo, blind_sn):
         chprintln(vo, "Your vision returns!")
         act("$n is no longer blinded.", vo, None, None, TO_ROOM)
         return True
@@ -950,7 +969,7 @@ def spell_cure_poison(sn, level, ch, vo, target):
         else:
             act("$N doesn't appear to be poisoned.", ch, None, vo, TO_CHAR)
         return False
-    if check_dispel(level, vo, poison_sn, ch):
+    if check_dispel(level, vo, poison_sn):
         chprintln(vo, "A warm feeling runs through your body.")
         act("$n looks much better.", vo, None, None, TO_ROOM)
         return True
@@ -967,7 +986,7 @@ def spell_cure_disease(sn, level, ch, vo, target):
         else:
             act("$N doesn't appear to be diseased.", ch, None, vo, TO_CHAR)
         return False
-    if check_dispel(level, vo, plague_sn, ch):
+    if check_dispel(level, vo, plague_sn):
         chprintln(vo, "Your sores vanish.")
         act("$n looks relieved as $s sores vanish.", vo, None, None, TO_ROOM)
         return True
@@ -977,7 +996,7 @@ def spell_cure_disease(sn, level, ch, vo, target):
 
 def spell_dispel_magic(sn, level, ch, vo, target):
     """Dispel magic (cf. 1stMud spell_dispel_magic in magic.c)."""
-    if saves_spell(level, vo, "other"):
+    if saves_spell(level, vo, DAM_OTHER):
         chprintln(vo, "You feel a brief tingling sensation.")
         chprintln(ch, "You failed.")
         return False
@@ -992,7 +1011,7 @@ def spell_dispel_magic(sn, level, ch, vo, target):
                  "shield", "sleep", "slow", "stone skin", "weaken",
                  "force shield", "static shield", "flame shield"):
         cur = _skill_lookup(name)
-        if cur is not None and check_dispel(level, vo, cur, ch):
+        if cur is not None and check_dispel(level, vo, cur):
             found = True
     sanc_sn = _skill_lookup("sanctuary")
     if (vo.get("affected_by", {}).get("sanctuary")
@@ -1014,8 +1033,8 @@ def spell_dispel_magic(sn, level, ch, vo, target):
 
 def spell_acid_blast(sn, level, ch, vo, target):
     """Acid blast (cf. 1stMud spell_acid_blast in magic.c)."""
-    dam = _dice(level, 12)
-    if saves_spell(level, vo, "acid"):
+    dam = dice(level, 12)
+    if saves_spell(level, vo, DAM_ACID):
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_ACID, True)
 
@@ -1024,7 +1043,7 @@ def spell_burning_hands(sn, level, ch, vo, target):
     """Burning hands (cf. 1stMud spell_burning_hands in magic.c)."""
     high = level | 50
     dam = randint(high // 2, high * 2)
-    if saves_spell(level, vo, "fire"):
+    if saves_spell(level, vo, DAM_FIRE):
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_FIRE, True)
 
@@ -1113,7 +1132,7 @@ def spell_cancellation(sn, level, ch, vo, target):
                  "shield", "sleep", "slow", "stone skin", "weaken",
                  "force shield", "static shield", "flame shield"):
         cur = _skill_lookup(name)
-        if cur is not None and check_dispel(level, victim, cur, ch):
+        if cur is not None and check_dispel(level, victim, cur):
             found = True
     if found:
         chprintln(ch, "Ok.")
@@ -1130,7 +1149,7 @@ def spell_change_sex(sn, level, ch, vo, target):
         else:
             act("$N has already had $s(?) sex changed.", ch, None, vo, TO_CHAR)
         return False
-    if saves_spell(level, vo, "other"):
+    if saves_spell(level, vo, DAM_OTHER):
         return False
     cur_sex = vo.get("sex", 0)
     mod = 0
@@ -1158,14 +1177,14 @@ def spell_charm_person(sn, level, ch, vo, target):
             or ch.get("affected_by", {}).get("charm")
             or level < victim.get("level", 1)
             or victim.get("imm_flags", {}).get("charm")
-            or saves_spell(level, victim, "charm")):
+            or saves_spell(level, victim, DAM_CHARM)):
         return False
     room = ROOM_DEFS.get(ch.get("room"))
     if room and room.get("flags", {}).get("law"):
         chprintln(ch, "The mayor does not allow charming in the city limits.")
         return False
     # TODO [PRIMESUD] follower system: stop_follower(victim); add_follower(victim, ch); victim.leader = ch
-    affect_to_char(victim, _new_affect(sn, level, _number_fuzzy(level // 4), "none", 0, "charm"))
+    affect_to_char(victim, _new_affect(sn, level, number_fuzzy(level // 4), "none", 0, "charm"))
     act("Isn't $n just so nice?", ch, None, victim, TO_VICT)
     act("$N looks at you with adoring eyes.", ch, None, victim, TO_CHAR)
     return True
@@ -1175,7 +1194,7 @@ def spell_chill_touch(sn, level, ch, vo, target):
     """Chill touch (cf. 1stMud spell_chill_touch in magic.c)."""
     high = level | 50
     dam = randint(high // 2, high * 2)
-    if not saves_spell(level, vo, "cold"):
+    if not saves_spell(level, vo, DAM_COLD):
         affect_join(vo, _new_affect(sn, level, 6, "str", -1))
     else:
         dam //= 2
@@ -1186,7 +1205,7 @@ def spell_color_spray(sn, level, ch, vo, target):
     """Color spray (cf. 1stMud spell_color_spray in magic.c)."""
     high = level | 50
     dam = randint(high // 2, high * 2)
-    if saves_spell(level, vo, "light"):
+    if saves_spell(level, vo, DAM_LIGHT):
         dam //= 2
     else:
         blind_sn = _skill_lookup("blindness")
@@ -1279,8 +1298,8 @@ def spell_demonfire(sn, level, ch, vo, target):
         act("$n calls forth the demons of Hell upon $N!", ch, None, victim, TO_ROOM)
         act("$n has assailed you with the demons of Hell!", ch, None, victim, TO_VICT)
         chprintln(ch, "You conjure forth the demons of hell!")
-    dam = _dice(level, 10)
-    if saves_spell(level, victim, "negative"):
+    dam = dice(level, 10)
+    if saves_spell(level, victim, DAM_NEGATIVE):
         dam //= 2
     curse_sn = _skill_lookup("curse")
     if curse_sn is not None:
@@ -1375,10 +1394,10 @@ def spell_dispel_evil(sn, level, ch, vo, target):
         act("$N does not seem to be affected.", ch, None, victim, TO_CHAR)
         return False
     if victim.get("hit", 0) > ch.get("level", 1) * 4:
-        dam = _dice(level, 4)
+        dam = dice(level, 4)
     else:
-        dam = max(victim.get("hit", 0), _dice(level, 4))
-    if saves_spell(level, victim, "holy"):
+        dam = max(victim.get("hit", 0), dice(level, 4))
+    if saves_spell(level, victim, DAM_HOLY):
         dam //= 2
     return damage(ch, victim, dam, sn, DAM_HOLY, True)
 
@@ -1395,10 +1414,10 @@ def spell_dispel_good(sn, level, ch, vo, target):
         act("$N does not seem to be affected.", ch, None, victim, TO_CHAR)
         return False
     if victim.get("hit", 0) > ch.get("level", 1) * 4:
-        dam = _dice(level, 4)
+        dam = dice(level, 4)
     else:
-        dam = max(victim.get("hit", 0), _dice(level, 4))
-    if saves_spell(level, victim, "negative"):
+        dam = max(victim.get("hit", 0), dice(level, 4))
+    if saves_spell(level, victim, DAM_NEGATIVE):
         dam //= 2
     return damage(ch, victim, dam, sn, DAM_NEGATIVE, True)
 
@@ -1408,7 +1427,7 @@ def spell_energy_drain(sn, level, ch, vo, target):
     victim = vo
     if victim is not ch:
         ch["alignment"] = max(-1000, ch.get("alignment", 0) - 50)
-    if saves_spell(level, victim, "negative"):
+    if saves_spell(level, victim, DAM_NEGATIVE):
         chprintln(victim, "You feel a momentary chill.")
         return False
     if victim.get("level", 1) <= 2:
@@ -1417,7 +1436,7 @@ def spell_energy_drain(sn, level, ch, vo, target):
         # TODO [PRIMESUD] gain_exp not yet ported
         victim["mana"] = victim.get("mana", 0) // 2
         victim["move"] = victim.get("move", 0) // 2
-        dam = _dice(1, level)
+        dam = dice(1, level)
         ch["hit"] = ch.get("hit", 0) + dam
     chprintln(victim, "You feel your life slipping away!")
     chprintln(ch, "Wow....what a rush!")
@@ -1429,15 +1448,15 @@ def spell_fireball(sn, level, ch, vo, target):
     """Fireball (cf. 1stMud spell_fireball in magic.c)."""
     high = level | 50
     dam = randint(high // 2, high * 2)
-    if saves_spell(level, vo, "fire"):
+    if saves_spell(level, vo, DAM_FIRE):
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_FIRE, True)
 
 
 def spell_flamestrike(sn, level, ch, vo, target):
     """Flamestrike (cf. 1stMud spell_flamestrike in magic.c)."""
-    dam = _dice(6 + level // 2, 8)
-    if saves_spell(level, vo, "fire"):
+    dam = dice(6 + level // 2, 8)
+    if saves_spell(level, vo, DAM_FIRE):
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_FIRE, True)
 
@@ -1452,7 +1471,7 @@ def spell_faerie_fog(sn, level, ch, vo, target):
         mob = world.chars.get(mob_id)
         if mob is None or mob is ch:
             continue
-        if saves_spell(level, mob, "other"):
+        if saves_spell(level, mob, DAM_OTHER):
             continue
         invis_sn = _skill_lookup("invis")
         if invis_sn is not None:
@@ -1577,7 +1596,7 @@ def spell_gate(sn, level, ch, vo, target):
             or victim.get("level", 0) >= level + 3
             or (not victim.get("is_npc") and victim.get("level", 0) >= MAX_MORTAL_LEVEL)
             or (victim.get("is_npc") and victim.get("imm_flags", {}).get("summon"))
-            or (victim.get("is_npc") and saves_spell(level, victim, "other"))):
+            or (victim.get("is_npc") and saves_spell(level, victim, DAM_OTHER))):
         chprintln(ch, "You failed.")
         return False
 
@@ -1604,7 +1623,7 @@ def spell_haste(sn, level, ch, vo, target):
     # failure). This matches 1stMud magic.c:2908-2918 exactly.
     if vo.get("affected_by", {}).get("slow"):
         slow_sn = _skill_lookup("slow")
-        if slow_sn is not None and not check_dispel(level, vo, slow_sn, ch):
+        if slow_sn is not None and not check_dispel(level, vo, slow_sn):
             if vo is not ch:
                 chprintln(ch, "Spell failed.")
             chprintln(vo, "You feel momentarily faster.")
@@ -1628,12 +1647,12 @@ def spell_heat_metal(sn, level, ch, vo, target):
     Simplified to flat damage based on level.
     """
     victim = vo
-    if saves_spell(level + 2, victim, "fire") or victim.get("imm_flags", {}).get("fire"):
+    if saves_spell(level + 2, victim, DAM_FIRE) or victim.get("imm_flags", {}).get("fire"):
         chprintln(ch, "Your spell had no effect.")
         chprintln(victim, "You feel momentarily warmer.")
         return False
-    dam = _dice(level // 2, 8)
-    if saves_spell(level, victim, "fire"):
+    dam = dice(level // 2, 8)
+    if saves_spell(level, victim, DAM_FIRE):
         dam = 2 * dam // 3
     act("You sear $N with heat!", ch, None, victim, TO_CHAR)  # [PRIMESUD] simplified stub
     # TODO [PRIMESUD] full equipment iteration and drop/sear mechanic
@@ -1666,7 +1685,7 @@ def spell_holy_word(sn, level, ch, vo, target):
             if curse_sn is not None:
                 spell_curse(curse_sn, level, ch, mob, TARGET_CHAR)
             chprintln(mob, "You are struck down!")
-            dam = _dice(level, 6)
+            dam = dice(level, 6)
             damage(ch, mob, dam, sn, DAM_ENERGY, True)
         elif is_neutral(ch):
             if is_safe_spell(ch, mob, True):
@@ -1674,7 +1693,7 @@ def spell_holy_word(sn, level, ch, vo, target):
             if curse_sn is not None:
                 spell_curse(curse_sn, level // 2, ch, mob, TARGET_CHAR)
             chprintln(mob, "You are struck down!")
-            dam = _dice(level, 4)
+            dam = dice(level, 4)
             damage(ch, mob, dam, sn, DAM_ENERGY, True)
     chprintln(ch, "You feel drained.")
     ch["move"] = 0
@@ -1740,7 +1759,7 @@ def spell_lightning_bolt(sn, level, ch, vo, target):
     """Lightning bolt (cf. 1stMud spell_lightning_bolt in magic.c)."""
     high = level | 50
     dam = randint(high // 2, high * 2)
-    if saves_spell(level, vo, "lightning"):
+    if saves_spell(level, vo, DAM_LIGHTNING):
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_LIGHTNING, True)
 
@@ -1780,7 +1799,7 @@ def spell_pass_door(sn, level, ch, vo, target):
         else:
             act("$N is already shifted out of phase.", ch, None, vo, TO_CHAR)
         return False
-    affect_to_char(vo, _new_affect(sn, level, _number_fuzzy(level // 4), "none", 0, "pass_door"))
+    affect_to_char(vo, _new_affect(sn, level, number_fuzzy(level // 4), "none", 0, "pass_door"))
     act("$n turns translucent.", vo, None, None, TO_ROOM)
     chprintln(vo, "You turn translucent.")
     return True
@@ -1826,8 +1845,8 @@ def spell_ray_of_truth(sn, level, ch, vo, target):
         act("$n seems unharmed by the light.", victim, None, victim, TO_ROOM)
         chprintln(victim, "The light seems powerless to affect you.")
         return False
-    dam = _dice(level, 10)
-    if saves_spell(level, victim, "holy"):
+    dam = dice(level, 10)
+    if saves_spell(level, victim, DAM_HOLY):
         dam //= 2
     align = victim.get("alignment", 0) - 350
     if align < -1000:
@@ -1918,7 +1937,7 @@ def spell_remove_curse(sn, level, ch, vo, target):
         return False
     curse_sn = _skill_lookup("curse")
     found = False
-    if curse_sn is not None and check_dispel(level, vo, curse_sn, ch):
+    if curse_sn is not None and check_dispel(level, vo, curse_sn):
         chprintln(vo, "You feel better.")
         act("$n looks more relaxed.", vo, None, None, TO_ROOM)
         found = True
@@ -1954,7 +1973,7 @@ def spell_shocking_grasp(sn, level, ch, vo, target):
     """Shocking grasp (cf. 1stMud spell_shocking_grasp in magic.c)."""
     high = level | 50
     dam = randint(high // 2, high * 2)
-    if saves_spell(level, vo, "lightning"):
+    if saves_spell(level, vo, DAM_LIGHTNING):
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_LIGHTNING, True)
 
@@ -1963,7 +1982,7 @@ def spell_sleep(sn, level, ch, vo, target):
     """Sleep spell (cf. 1stMud spell_sleep in magic.c)."""
     if (vo.get("affected_by", {}).get("sleep")
             or (level + 2) < vo.get("level", 1)
-            or saves_spell(level - 4, vo, "charm")):
+            or saves_spell(level - 4, vo, DAM_CHARM)):
         return False
     affect_join(vo, _new_affect(sn, level, 4 + level, "none", 0, "sleep"))
     if is_awake(vo):
@@ -1981,14 +2000,14 @@ def spell_slow(sn, level, ch, vo, target):
         else:
             act("$N can't get any slower than that.", ch, None, vo, TO_CHAR)
         return False
-    if saves_spell(level, vo, "other") or vo.get("imm_flags", {}).get("magic"):
+    if saves_spell(level, vo, DAM_OTHER) or vo.get("imm_flags", {}).get("magic"):
         if vo is not ch:
             chprintln(ch, "Nothing seemed to happen.")
         chprintln(vo, "You feel momentarily lethargic.")
         return False
     if vo.get("affected_by", {}).get("haste"):
         haste_sn = _skill_lookup("haste")
-        if haste_sn is not None and not check_dispel(level, vo, haste_sn, ch):
+        if haste_sn is not None and not check_dispel(level, vo, haste_sn):
             if vo is not ch:
                 chprintln(ch, "Spell failed.")
             chprintln(vo, "You feel momentarily slower.")
@@ -2046,7 +2065,7 @@ def spell_ventriloquate(sn, level, ch, vo, target):
             continue
         tpl = MOB_DEFS.get(mob.get("tpl"), {})
         if is_name(speaker, tpl.get("keywords", "")) and is_awake(mob):
-            if saves_spell(level, mob, "other"):
+            if saves_spell(level, mob, DAM_OTHER):
                 chprintln(mob, "Someone makes " + speaker + " say '" + message + "'.")
             else:
                 chprintln(mob, upper(speaker) + " says '" + message + "'.")
@@ -2068,9 +2087,9 @@ def spell_acid_breath(sn, level, ch, vo, target):
     act("You spit acid at $N.", ch, None, victim, TO_CHAR)
     hpch = max(12, ch.get("hit", 12))
     hp_dam = randint(hpch // 11 + 1, hpch // 6)
-    dice_dam = _dice(level, 16)
+    dice_dam = dice(level, 16)
     dam = max(hp_dam + dice_dam // 10, dice_dam + hp_dam // 10)
-    if saves_spell(level, victim, "acid"):
+    if saves_spell(level, victim, DAM_ACID):
         # TODO [PRIMESUD] acid_effect(victim, level/2, dam/4, TARGET_CHAR)
         dam //= 2
     # else: TODO acid_effect(victim, level, dam, TARGET_CHAR)
@@ -2085,7 +2104,7 @@ def spell_fire_breath(sn, level, ch, vo, target):
     act("You breath forth a cone of fire.", ch, None, None, TO_CHAR)
     hpch = max(10, ch.get("hit", 10))
     hp_dam = randint(hpch // 9 + 1, hpch // 5)
-    dice_dam = _dice(level, 20)
+    dice_dam = dice(level, 20)
     dam = max(hp_dam + dice_dam // 10, dice_dam + hp_dam // 10)
     # TODO [PRIMESUD] fire_effect(room, level, dam/2, TARGET_ROOM)
     room = world.rooms[ch["room"]]
@@ -2096,9 +2115,9 @@ def spell_fire_breath(sn, level, ch, vo, target):
             continue
         found = True
         if vch is victim:
-            cur_dam = dam // 2 if saves_spell(level, vch, "fire") else dam
+            cur_dam = dam // 2 if saves_spell(level, vch, DAM_FIRE) else dam
         else:
-            cur_dam = dam // 4 if saves_spell(level - 2, vch, "fire") else dam // 2
+            cur_dam = dam // 4 if saves_spell(level - 2, vch, DAM_FIRE) else dam // 2
         damage(ch, vch, cur_dam, sn, DAM_FIRE, True)
     return found
 
@@ -2111,7 +2130,7 @@ def spell_frost_breath(sn, level, ch, vo, target):
     act("You breath out a cone of frost.", ch, None, None, TO_CHAR)
     hpch = max(12, ch.get("hit", 12))
     hp_dam = randint(hpch // 11 + 1, hpch // 6)
-    dice_dam = _dice(level, 16)
+    dice_dam = dice(level, 16)
     dam = max(hp_dam + dice_dam // 10, dice_dam + hp_dam // 10)
     # TODO [PRIMESUD] cold_effect(room, level, dam/2, TARGET_ROOM)
     room = world.rooms[ch["room"]]
@@ -2122,9 +2141,9 @@ def spell_frost_breath(sn, level, ch, vo, target):
             continue
         found = True
         if vch is victim:
-            cur_dam = dam // 2 if saves_spell(level, vch, "cold") else dam
+            cur_dam = dam // 2 if saves_spell(level, vch, DAM_COLD) else dam
         else:
-            cur_dam = dam // 4 if saves_spell(level - 2, vch, "cold") else dam // 2
+            cur_dam = dam // 4 if saves_spell(level - 2, vch, DAM_COLD) else dam // 2
         damage(ch, vch, cur_dam, sn, DAM_COLD, True)
     return found
 
@@ -2135,7 +2154,7 @@ def spell_gas_breath(sn, level, ch, vo, target):
     act("You breath out a cloud of poisonous gas.", ch, None, None, TO_CHAR)
     hpch = max(16, ch.get("hit", 16))
     hp_dam = randint(hpch // 15 + 1, 8)
-    dice_dam = _dice(level, 12)
+    dice_dam = dice(level, 12)
     dam = max(hp_dam + dice_dam // 10, dice_dam + hp_dam // 10)
     # TODO [PRIMESUD] poison_effect(room, level, dam, TARGET_ROOM)
     room = world.rooms[ch["room"]]
@@ -2145,7 +2164,7 @@ def spell_gas_breath(sn, level, ch, vo, target):
         if vch is None or vch is ch:
             continue
         found = True
-        if saves_spell(level, vch, "poison"):
+        if saves_spell(level, vch, DAM_POISON):
             cur_dam = dam // 2
         else:
             cur_dam = dam
@@ -2160,9 +2179,9 @@ def spell_lightning_breath(sn, level, ch, vo, target):
     act("$n breathes a bolt of lightning at you!", ch, None, victim, TO_VICT)
     hpch = max(10, ch.get("hit", 10))
     hp_dam = randint(hpch // 9 + 1, hpch // 5)
-    dice_dam = _dice(level, 20)
+    dice_dam = dice(level, 20)
     dam = max(hp_dam + dice_dam // 10, dice_dam + hp_dam // 10)
-    if saves_spell(level, victim, "lightning"):
+    if saves_spell(level, victim, DAM_LIGHTNING):
         # TODO [PRIMESUD] shock_effect(victim, level/2, dam/4, TARGET_CHAR)
         dam //= 2
     # else: TODO shock_effect(victim, level, dam, TARGET_CHAR)
@@ -2172,7 +2191,7 @@ def spell_lightning_breath(sn, level, ch, vo, target):
 def spell_general_purpose(sn, level, ch, vo, target):
     """General purpose (cf. 1stMud spell_general_purpose in magic.c)."""
     dam = randint(25, 100)
-    if saves_spell(level, vo, "pierce"):
+    if saves_spell(level, vo, DAM_PIERCE):
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_PIERCE, True)
 
@@ -2180,7 +2199,7 @@ def spell_general_purpose(sn, level, ch, vo, target):
 def spell_high_explosive(sn, level, ch, vo, target):
     """High explosive (cf. 1stMud spell_high_explosive in magic.c)."""
     dam = randint(30, 120)
-    if saves_spell(level, vo, "pierce"):
+    if saves_spell(level, vo, DAM_PIERCE):
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_PIERCE, True)
 
@@ -2255,7 +2274,7 @@ def spell_channel(sn, level, ch, vo, target):
     if vo is ch:
         chprintln(ch, "You cannot channel energy into yourself.")
         return False
-    heal = _dice(3, 3) + (level // 3) * 2
+    heal = dice(3, 3) + (level // 3) * 2
     vo["mana"] = min(vo.get("mana", 0) + heal, vo.get("max_mana", 100))
     chprintln(vo, "A swirling cloud of energy engulfs you!")
     chprintln(ch, "A swirling cloud of energy slips from your fingertips.")
@@ -2285,7 +2304,7 @@ def spell_powerstorm(sn, level, ch, vo, target):
             continue
         if is_safe_spell(ch, vch, True):
             continue
-        dam = level // 3 * 2 + _dice(20, 20)
+        dam = level // 3 * 2 + dice(20, 20)
         damage(ch, vch, dam, sn, DAM_FIRE, True)
         found = True
     return found
@@ -2293,8 +2312,8 @@ def spell_powerstorm(sn, level, ch, vo, target):
 
 def spell_mana_burn(sn, level, ch, vo, target):
     """Mana burn (cf. 1stMud spell_mana_burn in magic2.c)."""
-    dam = _dice(level, 13)
-    if saves_spell(level, vo, "fire"):
+    dam = dice(level, 13)
+    if saves_spell(level, vo, DAM_FIRE):
         dam //= 2
     # TODO [PRIMESUD] fire_effect(victim, level/2, dam/10, TARGET_CHAR)
     return damage(ch, vo, dam, sn, DAM_FIRE, True)
@@ -2419,59 +2438,59 @@ def spell_wild_magic(sn, level, ch, vo, target):
     Structure mirrors 1stMud exactly: each branch saves, halves dam, deals
     damage, then applies elemental effect, then early-returns.
     """
-    dam = _dice(level * 3 // 2, 14)
+    dam = dice(level * 3 // 2, 14)
     numba = randint(1, 100)
     if numba <= 10:
-        if saves_spell(level, vo, "acid"):
+        if saves_spell(level, vo, DAM_ACID):
             dam //= 2
         damage(ch, vo, dam, sn, DAM_ACID, True)
         # TODO [PRIMESUD] acid_effect(vo, level, dam, TARGET_CHAR)
         return True
     if numba <= 20:
-        if saves_spell(level, vo, "fire"):
+        if saves_spell(level, vo, DAM_FIRE):
             dam //= 2
         damage(ch, vo, dam, sn, DAM_FIRE, True)
         # TODO [PRIMESUD] fire_effect(vo, level, dam, TARGET_CHAR)
         return True
     if numba <= 30:
-        if saves_spell(level, vo, "lightning"):
+        if saves_spell(level, vo, DAM_LIGHTNING):
             dam //= 2
         damage(ch, vo, dam, sn, DAM_LIGHTNING, True)
         # TODO [PRIMESUD] shock_effect(vo, level, dam, TARGET_CHAR)
         return True
     if numba <= 40:
-        if saves_spell(level, vo, "cold"):
+        if saves_spell(level, vo, DAM_COLD):
             dam //= 2
         damage(ch, vo, dam, sn, DAM_COLD, True)
         # TODO [PRIMESUD] cold_effect(vo, level, dam, TARGET_CHAR)
         return True
     if numba <= 50:
-        if saves_spell(level, vo, "holy"):
+        if saves_spell(level, vo, DAM_HOLY):
             dam //= 2
         damage(ch, vo, dam, sn, DAM_HOLY, True)
         return True
     if numba <= 60:
-        if saves_spell(level, vo, "light"):
+        if saves_spell(level, vo, DAM_LIGHT):
             dam //= 2
         damage(ch, vo, dam, sn, DAM_LIGHT, True)
         return True
     if numba <= 70:
-        if saves_spell(level, vo, "drowning"):
+        if saves_spell(level, vo, DAM_DROWNING):
             dam //= 2
         damage(ch, vo, dam, sn, DAM_DROWNING, True)
         return True
     if numba <= 80:
-        if saves_spell(level, vo, "disease"):
+        if saves_spell(level, vo, DAM_DISEASE):
             dam //= 2
         damage(ch, vo, dam, sn, DAM_DISEASE, True)
         return True
     if numba <= 90:
-        if saves_spell(level, vo, "slash"):
+        if saves_spell(level, vo, DAM_SLASH):
             dam //= 2
         damage(ch, vo, dam, sn, DAM_SLASH, True)
         return True
     # numba <= 100: negative -- saves halves FIRST, then /5, then all four effects
-    if saves_spell(level, vo, "negative"):
+    if saves_spell(level, vo, DAM_NEGATIVE):
         dam //= 2
     dam //= 5
     damage(ch, vo, dam, sn, DAM_NEGATIVE, True)
@@ -2851,7 +2870,8 @@ def _resolve_target(player, sn, target_name):
 
 
 def obj_cast_spell(spell_name, level, ch, victim, obj, item_obj=None):
-    """Cast spell payload from magical item (cf. 1stMud obj_cast_spell in magic.c)."""
+    """Cast spell payload from magical item (cf. 1stMud obj_cast_spell in magic.c).
+    [Verified: 03/07/2026]"""
     sn = _resolve_item_spell_sn(spell_name, item_obj)
     if sn is None:
         return False
@@ -2897,6 +2917,7 @@ def obj_cast_spell(spell_name, level, ch, victim, obj, item_obj=None):
                 return False
         if victim is not None:
             if is_safe_spell(ch, victim, False) and victim is not ch:
+                # [PRIMESUD] typo fix: 1stMud has "Somehting isn't right..."
                 chprintln(ch, "Something isn't right...")
                 return False
             vo = victim
@@ -2924,12 +2945,16 @@ def obj_cast_spell(spell_name, level, ch, victim, obj, item_obj=None):
     ret = fun(sn, level, ch, vo, target)
     if "_target_name" in ch:
         del ch["_target_name"]
-    # 1stmud: victim retaliates after offensive item spell
+    # 1stmud: victim retaliates after offensive item spell (even on failed
+    # spell) if still in the room
     # (skipping victim->master != ch guard -- master field not yet ported)
-    if (ret and tgt_type in ("char_offensive", "obj_char_offensive")
+    if (tgt_type in ("char_offensive", "obj_char_offensive")
             and target == TARGET_CHAR and vo is not ch
             and vo.get("fighting") is None):
-        multi_hit(vo, ch)
+        for mid in world.rooms[ch["room"]]["mobs"]:
+            if world.chars.get(mid) is vo:
+                multi_hit(vo, ch)
+                break
     return ret
 
 
@@ -2947,7 +2972,8 @@ def cast_item_spells(ch, item_obj, victim, obj):
 
 
 def do_cast(player, args):
-    """Cast a spell through 1stMud-style command flow (cf. 1stMud do_cast in magic.c)."""
+    """Cast a spell through 1stMud-style command flow (cf. 1stMud do_cast in magic.c).
+    [Verified: 03/07/2026]"""
     if not args:
         known = _known_runtime_spells(player)
         if not known:
@@ -3018,11 +3044,13 @@ def do_cast(player, args):
         del player["_target_name"]
         check_improve(player, sn, ret, 1)
 
-    # 1stmud: victim retaliates after offensive cast (even on fizzle)
+    # 1stmud: victim retaliates after offensive cast (even on fizzle) if
+    # still in the caster's room
     # (skipping victim->master != ch guard -- master field not yet ported)
     if (sk.get("target") in ("char_offensive", "obj_char_offensive")
             and target == TARGET_CHAR and vo is not player
-            and victim_id is not None and victim_id in world.chars
+            and victim_id is not None
+            and victim_id in world.rooms[player["room"]]["mobs"]
             and vo.get("fighting") is None):
         multi_hit(vo, player)
     # [PRIMESUD] return full command string for calculator command history
