@@ -13,7 +13,7 @@ for area in $FIRST_AREAS; do
 done
 
 # QuickMUD areas (converted with quickmud converter)
-QM_AREAS="chapel grave haon immort midgaard mobfact ofcol2 plains school shire"
+QM_AREAS="chapel grave haon immort midgaard mobfact moria ofcol ofcol2 plains school shire"
 
 for area in $QM_AREAS; do
     echo "==> $area (QuickMUD)"

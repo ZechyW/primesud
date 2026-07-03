@@ -33,24 +33,27 @@ I_GLAIVE_SUB_MERC          = 3722
 # Ascending size order: small areas load while heap is fresh (lower ms/KB),
 # big areas load last where heap pressure is unavoidable anyway.
 _AREA_FILES = [
-    ("area_limbo.dat", "limbo", 1, 30),
-    ("area_quest.dat", "quest", 200, 217),
-    ("area_immort.dat", "immort", 1200, 1221),
-    ("area_mobfact.dat", "mobfact", 9400, 9424),
-    ("area_grave.dat", "grave", 3600, 3651),
-    ("area_plains.dat", "plains", 300, 350),
-    ("area_chapel.dat", "chapel", 3400, 3475),
-    ("area_school.dat", "mud_school", 3700, 3760),
-    ("area_shire.dat", "shire", 1100, 1157),
-    ("area_haon.dat", "haon", 6000, 6155),
-    ("area_ofcol2.dat", "ofcol2", 600, 699),
-    ("area_midgaard.dat", "midgaard", 3000, 3378),
+    ("area_ofcol.dat", "ofcol", 5500, 5599),            # 7084 bytes
+    ("area_limbo.dat", "limbo", 1, 99),                 # 9466 bytes
+    ("area_quest.dat", "quest", 200, 249),              # 12528 bytes
+    ("area_mobfact.dat", "mobfact", 9400, 9499),        # 24889 bytes
+    ("area_immort.dat", "immort", 1200, 1299),          # 26758 bytes
+    ("area_grave.dat", "grave", 3600, 3699),            # 32513 bytes
+    ("area_plains.dat", "plains", 300, 399),            # 45308 bytes
+    ("area_chapel.dat", "chapel", 3400, 3499),          # 71267 bytes
+    ("area_school.dat", "mud_school", 3700, 3799),      # 76023 bytes
+    ("area_shire.dat", "shire", 1100, 1199),            # 79009 bytes
+    ("area_haon.dat", "haon", 6000, 6199),              # 85969 bytes
+    ("area_moria.dat", "moria", 3900, 4199),            # 98773 bytes
+    ("area_ofcol2.dat", "ofcol2", 600, 699),            # 126239 bytes
+    ("area_midgaard.dat", "midgaard", 3000, 3399),      # 259207 bytes
 ]
 
 # Area level ranges, duplicated from each .dat AREA["levels"] so quest
 # target selection can filter areas without triggering their load.
 # Keep in sync with the .dat files. [PRIMESUD]
 AREA_LEVELS = {
+    "ofcol":      (1, 50),
     "limbo":      (1, 10),
     "quest":      (1, 10),
     "immort":     (51, 60),
@@ -61,6 +64,7 @@ AREA_LEVELS = {
     "mud_school": (1, 5),
     "shire":      (5, 35),
     "haon":       (5, 10),
+    "moria":      (5, 15),
     "ofcol2":     (5, 35),
     "midgaard":   (1, 50),
 }
