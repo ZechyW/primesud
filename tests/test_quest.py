@@ -75,14 +75,20 @@ def test_request_assigns_quest(fresh):
     assert is_quester(fresh)
     assert fresh["quest_giver"] == 200
     assert 15 <= fresh["quest_time"] <= 30
+    from quest import QUEST_DELIVER
     assert fresh["quest_status"] in (QUEST_KILL, QUEST_RETRIEVE,
-                                     QUEST_FINDROOM, QUEST_FINDMOB)
+                                     QUEST_DELIVER, QUEST_FINDROOM,
+                                     QUEST_FINDMOB)
     if fresh["quest_status"] == QUEST_RETRIEVE:
         # token physically placed in the quest room
         assert fresh["quest_obj"] in _QUEST_PIECES
         items = world.rooms[fresh["quest_room"]]["items"]
         assert any(o["vnum"] == fresh["quest_obj"] for o in items)
-    if fresh["quest_status"] in (QUEST_KILL, QUEST_FINDMOB):
+    if fresh["quest_status"] == QUEST_DELIVER:
+        # token handed to the player
+        assert fresh["quest_obj"] in _QUEST_PIECES
+        assert any(o["vnum"] == fresh["quest_obj"] for o in fresh["inv"])
+    if fresh["quest_status"] in (QUEST_KILL, QUEST_FINDMOB, QUEST_DELIVER):
         assert fresh["quest_mob"] > 0
 
 
