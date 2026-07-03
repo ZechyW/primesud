@@ -128,6 +128,30 @@ def do_autolist(player, args):
     tprint(draw_line())
 
 
+def do_wimpy(player, args):
+    """Set the hp threshold below which the player auto-flees in combat (cf. 1stMud do_wimpy in act_info.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Parsed command words; optional hp value (default max_hit/5).
+    """
+    if not args:
+        wimpy = player["max_hit"] // 5
+    else:
+        try:
+            wimpy = int(args[0])
+        except ValueError:
+            wimpy = 0  # cf. atoi() -- non-numeric input yields 0
+    if wimpy < 0:
+        tprint("Your courage exceeds your wisdom.")
+        return
+    if wimpy > player["max_hit"] // 2:
+        tprint("Such cowardice ill becomes you.")
+        return
+    player["wimpy"] = wimpy
+    tprint("Wimpy set to %d hit points." % wimpy)
+
+
 def _number_argument(arg):
     """Parse '2.sword' into (2, 'sword'); plain 'sword' returns (1, 'sword') (cf. 1stMud number_argument in interp.c)."""
     dot = arg.find('.')

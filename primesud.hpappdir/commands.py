@@ -9,7 +9,7 @@ from config import POS_ORDER
 from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_help, do_affects, do_credits, do_areas, do_map, do_automap,
                   do_autolist, do_autoloot, do_autogold, do_autosac,
-                  do_autosplit)
+                  do_autosplit, do_wimpy)
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
@@ -129,7 +129,7 @@ _CMD_TABLE = [
     # ("screen",    do_screen,     "dead",     False),  # #83
     # ("title",     do_title,      "dead",     False),  # #84
     # ("unalias",   do_unalias,    "dead",     False),  # #85
-    # ("wimpy",     do_wimpy,      "dead",     False),  # #86
+    ("wimpy",      do_wimpy,      "dead",     False),  # #86
     # ("info",      do_info,       "dead",     False),  # #87
     # ("afk",       do_afk,        "sleeping", False),  # #88
     # ("answer",    do_answer,     "sleeping", False),  # #89

@@ -59,7 +59,7 @@ def _serialize_world():
                 "perm_hit", "perm_mana", "perm_move",
                 "room", "trivia",
                 "practice", "train", "flags", "played", "alignment",
-                "gold", "silver"):
+                "gold", "silver", "wimpy"):
         lines.append("p." + key + "=" + str(player[key]))
     for stat in ("str", "dex", "int", "wis", "con"):
         lines.append("p." + stat + "=" + str(player["perm_stat"][stat]))
@@ -276,7 +276,7 @@ def load_world():
                 "perm_hit", "perm_mana", "perm_move",
                 "room", "alignment", "prime_class",
                 "practice", "train", "flags", "played",
-                "gold", "silver"}
+                "gold", "silver", "wimpy"}
 
     if player["_macros"] is not None:
         player["_macros"].clear()
