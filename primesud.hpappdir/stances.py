@@ -215,6 +215,7 @@ def first_stance_pick(ch):
                   " memory stirs -- long hours of drills, a teacher's voice,"
                   " the ache of repetition. Almost reflexively, your body"
                   " begins to settle into a fighting stance...{x")
+    chprintln(ch, "")
     cancels = 0
     while True:
         idx = pick_from("Which stance?", [b[1] for b in _BASE_STANCE_BLURBS])
@@ -226,13 +227,14 @@ def first_stance_pick(ch):
                           " ear, almost punishing your moment of hesitation."
                           " Too close. You steady your frazzled nerves and"
                           " will your body to answer...{x")
+            chprintln(ch, "")
         else:
             # Repeat-safe escalation: reads naturally however many times
             # the player keeps cancelling.
             chprintln(ch, "{cAnother blow hammers past, close enough to"
                           " sting. You duck and weave on instinct alone,"
-                          " but instinct will not hold forever --"
-                          " choose, now...{x")
+                          " but instinct will not hold forever...{x")
+            chprintln(ch, "")
     stance = _BASE_STANCE_BLURBS[idx][0]
     set_stance(ch, STANCE_AUTODROP, stance)
     set_stance(ch, STANCE_CURRENT, stance)
