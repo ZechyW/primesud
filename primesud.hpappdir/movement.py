@@ -4,6 +4,7 @@ from classes import is_class
 from handler import can_see_room, chprintln, act, TO_CHAR, TO_ROOM
 from combat import stop_fighting
 from skill_utils import WaitState, check_improve
+from stances import valid_stance, get_stance, STANCE_CURRENT
 from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
                     MOVEMENT_LOSS, POS_ORDER,
                     SECT_AIR, SECT_WATER_NOSWIM,
@@ -138,8 +139,10 @@ def move_char(player, direction):
         WaitState(player, 1)
         player["move"] = player.get("move", 0) - move_cost
 
-    # -- Stance reset (stance system not ported) --
-    # if ValidStance(GetStance(ch, STANCE_CURRENT)): do_stance(ch, "")
+    # -- Stance drop on movement (cf. 1stMud move_char act_move.c:169)
+    if valid_stance(get_stance(player, STANCE_CURRENT)):
+        from combat import do_stance  # lazy import (combat imports movement targets)
+        do_stance(player, [])
 
     # -- Leave message (1stMud: act("$n leaves $T.", ch, NULL, dir_name[door], TO_ROOM))
     # Single-player: no other chars in room to notify; skip.

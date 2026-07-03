@@ -103,11 +103,14 @@ def _char_base():
         # -- Affects (cf. .affect linked list)
         "affect_list": [],
         "affects":     {},
+        # -- Stances (cf. .stance[MAX_STANCE]; slots 0-10 trained %, 11 current
+        #    stance id, 12 autodrop stance id -- zeroed as in 1stMud new_char)
+        "stance":      [0] * 13,
         # -- Inventory / equipment (cf. .carrying, worn slots)
         "inv":         [],
         "equip":       {},
     }
-    # Not ported: comm, wiznet, stance[], war, gquest, mprog_*,
+    # Not ported: comm, wiznet, war, gquest, mprog_*,
     # reply, desc, was_in_room, gen_data, hunting, trust,
     # invis/incog_level, logon, prompt/gprompt, group, rank, Class[],
     # deity, material, dam_type, start_pos, default_pos, info_settings, color_prefix

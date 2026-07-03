@@ -74,6 +74,11 @@ def _serialize_world():
     for g in player.get("groups", []):
         grp_str = grp_str + ("," if grp_str else "") + str(g)
     lines.append("p.groups=" + grp_str)
+    # cf. 1stMud ch->stance[] (fwrite_char "Stances" line) -- comma-joined ints
+    st_str = ""
+    for s in player.get("stance", []):
+        st_str = st_str + ("," if st_str else "") + str(s)
+    lines.append("p.stance=" + st_str)
     armor = player["armor"]
     lines.append("p.armor=" + str(armor[0]) + "|" + str(armor[1]) + "|" + str(armor[2]) + "|" + str(armor[3]))
     inv_parts = []
@@ -276,6 +281,10 @@ def load_world():
             player["classes"] = [int(v) for v in val.split(",") if v]
         elif key == "p.groups":
             player["groups"] = [int(v) for v in val.split(",") if v]
+        elif key == "p.stance":
+            _st = [int(v) for v in val.split(",") if v]
+            if len(_st) == len(player.get("stance", [])):
+                player["stance"] = _st
         elif key == "p.learned":
             # authoritative: discard create_char() group grants (the save's
             # class may differ from the default create_char class)

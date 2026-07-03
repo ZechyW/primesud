@@ -26,7 +26,6 @@ HP Prime Python appears to load all `.py` files in the app before `primesud.py` 
 | Alignment / deity | No solo gameplay hook identified |
 | Clan / rank | Multiplayer |
 | Hunger / thirst | No solo gameplay hook identified |
-| Stance system | 1stMud-specific extension; no equivalent content planned |
 | Age / hours played | HP Prime has no reliable RTC |
 | Gold / silver | Planned; placeholder in `do_score` |
 | Explore tracking | Planned; placeholder in `do_score` |

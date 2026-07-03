@@ -53,6 +53,10 @@ from picker import pick_from
 from player import PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_DEFAULTS
 from races import RACE_TABLE
 from skill_utils import get_skill, check_improve, skill_level, WaitState, DazeState
+from stances import (STANCE_TABLE, MAX_STANCE,
+                     STANCE_NONE, STANCE_NORMAL, STANCE_CURRENT, STANCE_AUTODROP,
+                     valid_stance, get_stance, set_stance, in_stance,
+                     stance_name, stance_lookup, can_use_stance)
 from skills_table import (
     SKILL_TABLE, SKILLS, WEAPON_GSN_MAP,
     GSN_BACKSTAB, GSN_BASH, GSN_BERSERK, GSN_DIRT, GSN_DISARM,
@@ -3113,40 +3117,138 @@ def do_slay(ch, args):
 def do_sskill(ch, args):
     """Display fighting stance skills (cf. 1stMud do_sskill in fight.c).
 
-    TODO: Stance system not ported. Placeholder prints a message.
-
     Args:
         ch (dict): Acting character.
         args (list): Unused.
     """
-    # TODO: stance_table, GetStance, stance_name not ported
-    tprint("Fighting stances are not yet available.")
+    # [PRIMESUD] simple header; 1stMud centers via stringf/draw_line
+    chprintln(ch, "{w--{W[ {RFighting Stances{W ]{w--{x")
+    for i in range(MAX_STANCE):
+        name, stance, prereq = STANCE_TABLE[i][0], STANCE_TABLE[i][1], STANCE_TABLE[i][2]
+        if prereq[0] == STANCE_NONE:
+            continue
+
+        if prereq[0] == STANCE_NORMAL:
+            chprintlnf(ch, "%-9s: {Y%d%%{x", name, get_stance(ch, stance))
+            continue
+
+        if prereq[0] == STANCE_CURRENT:
+            chprintlnf(ch, "%-9s: {R%s{x", name,
+                       stance_name(get_stance(ch, stance)))
+            continue
+
+        if (get_stance(ch, prereq[0]) >= 200
+                and get_stance(ch, prereq[1]) >= 200):
+            chprintlnf(ch, "%-9s: {Y%d%%{x", name, get_stance(ch, stance))
+        else:
+            chprintlnf(ch, "%-9s: {yrequires master in %s and %s.{x",
+                       name, stance_name(prereq[0]), stance_name(prereq[1]))
+    chprintln(ch, "{w----{x")
+    return None
+
+
+def show_available_stances(ch, n_fun):
+    """List stances ch can currently use (cf. 1stMud show_available_stances in fight.c).
+
+    Args:
+        ch (dict): Acting character.
+        n_fun (str): Invoking command name for the syntax line.
+    """
+    # cf. 1stMud cmd_syntax(ch, NULL, n_fun, "<stance>", NULL)
+    chprintln(ch, "Syntax: " + n_fun + " <stance>")
+    names = []
+    for i in range(MAX_STANCE):
+        stance, prereq = STANCE_TABLE[i][1], STANCE_TABLE[i][2]
+        if not valid_stance(stance):
+            continue
+        if prereq[0] <= STANCE_NORMAL:
+            names.append(STANCE_TABLE[i][0])
+        elif (get_stance(ch, prereq[0]) >= 200
+                and get_stance(ch, prereq[1]) >= 200):
+            names.append(STANCE_TABLE[i][0])
+    if not names:
+        chprintln(ch, "Valid stances are: none!")
+    else:
+        chprintln(ch, "Valid stances are:  " + " ".join(names) + ".")
     return None
 
 
 def do_stance(ch, args):
     """Set or toggle fighting stance (cf. 1stMud do_stance in fight.c).
 
-    TODO: Stance system not ported. Placeholder prints a message.
-
     Args:
         ch (dict): Acting character.
         args (list): Optional stance name.
     """
-    # TODO: stance_table, GetStance, SetStance, can_use_stance not ported
-    tprint("Fighting stances are not yet available.")
+    if not args:
+        if not valid_stance(get_stance(ch, STANCE_CURRENT)):
+            set_stance(ch, STANCE_CURRENT, STANCE_NORMAL)
+            chprintln(ch, "You drop into a general fighting stance.")
+            act("$n drops into a general fighting stance.", ch, type=TO_ROOM)
+        else:
+            set_stance(ch, STANCE_CURRENT, STANCE_NONE)
+            chprintln(ch, "You relax from your fighting stance.")
+            act("$n relaxes from $s fighting stance.", ch, type=TO_ROOM)
+        return None
+
+    if valid_stance(get_stance(ch, STANCE_CURRENT)):
+        chprintln(ch, "You cannot change stances until you come up from the one you are currently in.")
+        return None
+
+    i = stance_lookup(args[0])
+
+    if i == -1 or not valid_stance(STANCE_TABLE[i][1]):
+        show_available_stances(ch, "stance")
+        return None
+
+    if not can_use_stance(ch, STANCE_TABLE[i][1]):
+        chprintlnf(ch, "You need to master %s and %s stances to use %s.",
+                   stance_name(STANCE_TABLE[i][2][0]),
+                   stance_name(STANCE_TABLE[i][2][1]),
+                   STANCE_TABLE[i][0])
+        return None
+
+    set_stance(ch, STANCE_CURRENT, STANCE_TABLE[i][1])
+
+    chprintln(ch, STANCE_TABLE[i][3])
+    act(STANCE_TABLE[i][4], ch, type=TO_ROOM)
+
+    if ch.get("is_npc"):
+        set_stance(ch, STANCE_TABLE[i][1], min(ch["level"] * 4 // 2, 200))
     return None
 
 
 def do_autostance(ch, args):
     """Set auto-stance on combat start (cf. 1stMud do_autostance in fight.c).
 
-    TODO: Stance system not ported. Placeholder prints a message.
-
     Args:
         ch (dict): Acting character.
         args (list): Optional stance name or 'none'.
     """
-    # TODO: stance_table, GetStance, SetStance, STANCE_AUTODROP not ported
-    tprint("Fighting stances are not yet available.")
+    if ch.get("is_npc"):
+        return None
+
+    arg = args[0] if args else ""
+
+    if arg == "none":
+        chprintln(ch, "You no longer autostance.")
+        set_stance(ch, STANCE_AUTODROP, STANCE_NONE)
+        return None
+
+    i = stance_lookup(arg)
+
+    if i == -1 or not valid_stance(STANCE_TABLE[i][1]):
+        show_available_stances(ch, "autostance")
+        return None
+
+    if not can_use_stance(ch, STANCE_TABLE[i][1]):
+        chprintlnf(ch, "You need to master %s and %s stances to use %s.",
+                   stance_name(STANCE_TABLE[i][2][0]),
+                   stance_name(STANCE_TABLE[i][2][1]),
+                   STANCE_TABLE[i][0])
+        return None
+
+    set_stance(ch, STANCE_AUTODROP, STANCE_TABLE[i][1])
+
+    chprintlnf(ch, "You now autostance to %s.", STANCE_TABLE[i][0])
     return None
