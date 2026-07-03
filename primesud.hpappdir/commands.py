@@ -4,7 +4,7 @@ from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
                     do_berserk, do_bash, do_dirt, do_trip, do_flee,
                     do_rescue, do_disarm, do_surrender, do_slay,
                     do_sskill, do_stance, do_autostance, do_consider)
-from comm import do_say, do_tell, do_reply, do_follow, do_ditch, do_order
+from comm import do_say, do_tell, do_reply, do_follow, do_ditch, do_order, do_yell
 from config import POS_ORDER
 from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_help, do_affects, do_credits, do_areas, do_map, do_automap,
@@ -178,7 +178,7 @@ _CMD_TABLE = [
     ("say",       do_say,        "resting",  False),  # #108
     ("'",         do_say,        "resting",  False),  # #109
     # ("shout",     do_shout,      "resting",  False),  # #110 lvl 3
-    # ("yell",      do_yell,       "resting",  False),  # #111
+    ("yell",       do_yell,       "resting",  False),  # #111
     ("brandish",   do_brandish,   "resting",  False),  # #112
     ("close",      do_close,      "resting",  False),  # #113
     # ("drink",     do_drink,      "resting",  False),  # #114

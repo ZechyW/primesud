@@ -856,19 +856,23 @@ def can_see_obj(ch, obj):
     return True
 
 
-def get_char_room(fragment, inst_ids, mob_instances):
+def get_char_room(fragment, inst_ids, mob_instances, viewer=None):
     """Find the first mob in inst_ids whose keywords match fragment (cf. 1stMud get_char_room in handler.c).
 
     Args:
         fragment (str): Player-typed name fragment.
         inst_ids (list): Ordered list of mob instance IDs to search.
         mob_instances (dict): Mob instance mapping mob ID -> mob instance dict.
+        viewer (dict): Observer; unseen mobs are skipped (cf. 1stMud
+            can_see check).  None skips the visibility filter.
 
     Returns:
         int or None: First matching mob instance ID, or None if not found.
     """
     for mob_id in inst_ids:
         inst = mob_instances[mob_id]
+        if viewer is not None and not can_see(viewer, inst):
+            continue
         # Instance keywords override template (cf. 1stMud per-char name;
         # set when a bought pet is given a custom name)
         kw = inst.get("keywords") or MOB_DEFS[inst["tpl"]].get("keywords", "")

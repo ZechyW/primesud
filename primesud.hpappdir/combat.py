@@ -1558,7 +1558,7 @@ def do_backstab(ch, args):
         return None
 
     rs = world.rooms[ch["room"]]
-    target_id = get_char_room(" ".join(args), rs["mobs"], world.chars)
+    target_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
     if target_id is None:
         tprint("They aren't here.")
         return None
@@ -1607,7 +1607,7 @@ def do_consider(player, args):
     rs = world.rooms[player["room"]]
     live = rs["mobs"]
     if args:
-        mob_id = get_char_room(" ".join(args), live, world.chars)
+        mob_id = get_char_room(" ".join(args), live, world.chars, player)
         if mob_id is None:
             tprint("They're not here.")
             return
@@ -1660,7 +1660,7 @@ def do_kill(player, args):
     rs = world.rooms[player["room"]]
     live = rs["mobs"]
     if args:
-        mob_id = get_char_room(" ".join(args), live, world.chars)
+        mob_id = get_char_room(" ".join(args), live, world.chars, player)
         if mob_id is None:
             tprint("They aren't here.")
             return
@@ -2580,7 +2580,7 @@ def do_murder(ch, args):
         return None
 
     rs = world.rooms[ch["room"]]
-    mob_id = get_char_room(" ".join(args), rs["mobs"], world.chars)
+    mob_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
     if mob_id is None:
         tprint("They aren't here.")
         return None
@@ -2753,7 +2753,7 @@ def do_bash(ch, args):
         victim = world.chars[victim_id]
     else:
         rs = world.rooms[ch["room"]]
-        victim_id = get_char_room(" ".join(args), rs["mobs"], world.chars)
+        victim_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
         if victim_id is None:
             chprintln(ch, "They aren't here.")
             return None
@@ -2849,7 +2849,7 @@ def do_dirt(ch, args):
         victim = world.chars[victim_id]
     else:
         rs = world.rooms[ch["room"]]
-        victim_id = get_char_room(" ".join(args), rs["mobs"], world.chars)
+        victim_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
         if victim_id is None:
             chprintln(ch, "They aren't here.")
             return None
@@ -2953,7 +2953,7 @@ def do_trip(ch, args):
         victim = world.chars[victim_id]
     else:
         rs = world.rooms[ch["room"]]
-        victim_id = get_char_room(" ".join(args), rs["mobs"], world.chars)
+        victim_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
         if victim_id is None:
             chprintln(ch, "They aren't here.")
             return None
@@ -3123,7 +3123,7 @@ def do_rescue(ch, args):
         return None
 
     rs = world.rooms[ch["room"]]
-    victim_id = get_char_room(" ".join(args), rs["mobs"], world.chars)
+    victim_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
     if victim_id is None:
         tprint("They aren't here.")
         return None
@@ -3329,7 +3329,7 @@ def do_slay(ch, args):
         return None
 
     rs = world.rooms[ch["room"]]
-    mob_id = get_char_room(" ".join(args), rs["mobs"], world.chars)
+    mob_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
     if mob_id is None:
         tprint("They aren't here.")
         return None

@@ -2652,7 +2652,7 @@ def _find_room_char(player, target_name):
     if _is_self_name(player, target_name):
         return player
     rs = _room_state(player)
-    mob_id = get_char_room(target_name, rs["mobs"], world.chars)
+    mob_id = get_char_room(target_name, rs["mobs"], world.chars, player)
     if mob_id is None:
         return None
     return world.chars[mob_id]
@@ -2661,7 +2661,7 @@ def _find_room_char(player, target_name):
 def _find_room_char_id(player, target_name):
     """Find a character id in the player's room by name (cf. 1stMud `get_char_room` in handler.c: by id)."""
     rs = _room_state(player)
-    return get_char_room(target_name, rs["mobs"], world.chars)
+    return get_char_room(target_name, rs["mobs"], world.chars, player)
 
 
 

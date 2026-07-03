@@ -3,7 +3,7 @@
 import world
 from handler import (act, chprintln, chprintlnf, is_name, get_char_room,
                    affect_strip, can_see,
-                   TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT)
+                   TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ZONE)
 from skill_utils import WaitState
 from skills_table import GSN_CHARM_PERSON
 from config import PULSE_VIOLENCE
@@ -72,6 +72,24 @@ def do_say(ch, args):
 
 # -- do_tell (cf. 1stMud do_tell in act_comm.c) ------------------------------
 
+def do_yell(ch, args):
+    """Yell to everyone in the area (cf. 1stMud do_yell in act_comm.c).
+
+    [PRIMESUD] COMM_NOSHOUT, swearcheck, channel-ignore, and COMM_QUIET
+    not ported.  Also used by mobs (e.g. do_steal failure).
+
+    Args:
+        ch (dict): Speaker (player or mob instance).
+        args (list): Words to yell.
+    """
+    if not args:
+        chprintln(ch, "Yell what?")
+        return
+    text = " ".join(args)
+    act("You yell '$t'", ch, text, None, TO_CHAR)
+    act("$n yells '$t'", ch, text, None, TO_ZONE)
+
+
 def do_tell(ch, args):
     """Tell something to a character in the room (cf. 1stMud do_tell in act_comm.c).
 
@@ -96,7 +114,7 @@ def do_tell(ch, args):
         return
 
     victim = None
-    mob_id = get_char_room(target, rs["mobs"], world.chars)
+    mob_id = get_char_room(target, rs["mobs"], world.chars, ch)
     if mob_id is not None:
         victim = world.chars[mob_id]
     else:
@@ -271,7 +289,7 @@ def do_follow(ch, args):
         return
 
     rs = world.rooms.get(ch.get("room"))
-    mob_id = get_char_room(frag, rs["mobs"], world.chars) if rs else None
+    mob_id = get_char_room(frag, rs["mobs"], world.chars, ch) if rs else None
     if mob_id is None:
         chprintln(ch, "They aren't here.")
         return
@@ -303,7 +321,7 @@ def do_ditch(ch, args):
         return
 
     rs = world.rooms.get(ch.get("room"))
-    mob_id = get_char_room(" ".join(args), rs["mobs"], world.chars) if rs else None
+    mob_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch) if rs else None
     if mob_id is None:
         chprintln(ch, "They aren't here.")
         return
@@ -347,7 +365,7 @@ def _order_interpret(och, words):
         if rs is None:
             return
         targets = [m for m in rs["mobs"] if m != och["id"]]
-        mob_id = get_char_room(" ".join(rest), targets, world.chars)
+        mob_id = get_char_room(" ".join(rest), targets, world.chars, och)
         if mob_id is None:
             return
         victim = world.chars[mob_id]
@@ -392,7 +410,7 @@ def do_order(ch, args):
         victim = None
     else:
         f_all = False
-        mob_id = get_char_room(arg, rs["mobs"], world.chars)
+        mob_id = get_char_room(arg, rs["mobs"], world.chars, ch)
         if mob_id is None:
             chprintln(ch, "They aren't here.")
             return

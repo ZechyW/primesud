@@ -323,7 +323,7 @@ def do_look(player, args):
         number, target = _number_argument(arg1)
         rs = world.rooms[player["room"]]
 
-        mob_id = get_char_room(arg1, rs["mobs"], world.chars)
+        mob_id = get_char_room(arg1, rs["mobs"], world.chars, player)
         if mob_id is not None:
             _show_char_to_char_1(player, mob_id)
             return

@@ -94,6 +94,22 @@ class TestCanSee:
         assert can_see(scene, world.chars[2])
 
 
+class TestTargeting:
+    def test_get_char_room_skips_unseen(self, scene):
+        from handler import get_char_room
+        world.chars[2]["affected_by"]["invisible"] = True
+        assert get_char_room("merchant", [2], world.chars, scene) is None
+        # no viewer -> no filter (internal callers)
+        assert get_char_room("merchant", [2], world.chars) == 2
+
+    def test_yell_from_mob_reaches_player(self, scene, out, monkeypatch):
+        import comm
+        monkeypatch.setattr(handler, "_player_char", lambda: scene)
+        scene["area"] = None  # act TO_ZONE uses room area lookup
+        comm.do_yell(world.chars[2], ["Stop", "thief!"])
+        assert any("yells 'Stop thief!'" in l for l in out)
+
+
 class TestHideSneak:
     def test_hide_success(self, scene, out, monkeypatch):
         monkeypatch.setattr(movement, "get_skill", lambda ch, sn: 100)

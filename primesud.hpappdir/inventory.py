@@ -3,13 +3,13 @@
 import world
 from handler import (get_curr_stat, is_name, equip_char, unequip_char, act,
                      get_char_room, can_see, is_awake, affect_strip)
-from colors import upper
 from world import (I_BANNER_WAR_MERC,
                    I_MACE_SUB_MERC, I_DAGGER_SUB_MERC, I_SWORD_SUB_MERC,
                    I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,
                    I_SPEAR_SUB_MERC, I_AXE_SUB_MERC, I_FLAIL_SUB_MERC,
                    I_WHIP_SUB_MERC, I_GLAIVE_SUB_MERC)
 from combat import _get_weapon_skill, is_safe, multi_hit
+from comm import do_yell
 from skill_utils import WaitState, check_improve, get_skill
 from config import (STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS,
                     MAX_LEVEL, TYPE_UNDEFINED)
@@ -577,7 +577,7 @@ def do_steal(player, args):
         return
 
     rs = world.rooms[player["room"]]
-    victim_id = get_char_room(" ".join(args[1:]), rs["mobs"], world.chars)
+    victim_id = get_char_room(" ".join(args[1:]), rs["mobs"], world.chars, player)
     if victim_id is None:
         tprint("They aren't here.")
         return
@@ -607,7 +607,6 @@ def do_steal(player, args):
         affect_strip(player, GSN_SNEAK)
         player.get("affected_by", {}).pop("sneak", None)
 
-        vname = upper(MOB_DEFS[victim["tpl"]]["short_descr"])
         yells = (
             player["name"] + " is a lousy thief!",
             player["name"] + " couldn't rob "
@@ -619,8 +618,7 @@ def do_steal(player, args):
         if not is_awake(victim):
             victim["pos"] = "standing"  # cf. do_wake on victim
         if is_awake(victim):
-            # [PRIMESUD] do_yell channel not ported -- plain line
-            tprint(vname + " yells '" + yells[randint(0, 3)] + "'")
+            do_yell(victim, yells[randint(0, 3)].split())
         check_improve(player, GSN_STEAL, False, 2)
         multi_hit(victim, player, TYPE_UNDEFINED)
         return

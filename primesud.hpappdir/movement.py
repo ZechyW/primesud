@@ -624,7 +624,7 @@ def do_wake(player, args):
         return
 
     rs = world.rooms[player["room"]]
-    victim_id = get_char_room(" ".join(args), rs["mobs"], world.chars)
+    victim_id = get_char_room(" ".join(args), rs["mobs"], world.chars, player)
     if victim_id is None:
         chprintln(player, "They aren't here.")
         return
