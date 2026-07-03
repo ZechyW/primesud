@@ -571,7 +571,8 @@ def _parse_skill_range(args):
     if not args:
         return (False, 1, MAX_MORTAL_LEVEL, True)
     f_all = True
-    if args[0].startswith("all"):
+    # cf. 1stMud !str_prefix(argument, "all"): arg is prefix of "all"
+    if "all".startswith(args[0]):
         return (f_all, 1, MAX_MORTAL_LEVEL, True)
     try:
         max_lev = int(args[0])
@@ -622,13 +623,13 @@ def _print_level_lists(player, args, want_spells):
             found = True
             if want_spells:
                 if player.get("level", 1) < level:
-                    item = "{c" + _pad_color(sk["name"], 18) + " n/a      "
+                    item = "{c" + _pad_color(sk["name"], 16) + " n/a      "
                 else:
-                    item = "{c" + _pad_color(sk["name"], 18) + " {W%3d mana  " % spell_mana(player, sn)
+                    item = "{c" + _pad_color(sk["name"], 16) + " {W%3d mana  " % spell_mana(player, sn)
             elif player.get("level", 1) < level:
-                item = "{c" + _pad_color(sk["name"], 18) + " n/a      "
+                item = "{c" + _pad_color(sk["name"], 16) + " n/a      "
             else:
-                item = "{c" + _pad_color(sk["name"], 18) + " {W%3d%%      " % learned.get(sn, 0)
+                item = "{c" + _pad_color(sk["name"], 16) + " {W%3d%%      " % learned.get(sn, 0)
             if level not in rows:
                 rows[level] = []
             rows[level].append(item)
@@ -644,7 +645,9 @@ def _print_level_lists(player, args, want_spells):
             line = prefix + items[i]
             if i + 1 < len(items):
                 line += items[i + 1]
-            tprint(line + "{x")
+            # [PRIMESUD] 1stMud's 29-wide columns overflow 64 cols (68 vis);
+            # 16-wide names + stripped tail keep two columns under the wrap.
+            tprint(line.rstrip() + "{x")
 
 
 def print_practice_table(player):
