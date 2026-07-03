@@ -209,22 +209,26 @@ def spell_heal(sn, level, ch, vo, target):
 
 
 def spell_cause_light(sn, level, ch, vo, target):
-    """Cause light wounds (cf. 1stMud spell_cause_light in magic.c)."""
+    """Cause light wounds (cf. 1stMud spell_cause_light in magic.c).
+    [Verified: 03/07/2026]"""
     return damage(ch, vo, dice(1, 8) + level // 3, sn, DAM_HARM, True)
 
 
 def spell_cause_serious(sn, level, ch, vo, target):
-    """Cause serious wounds (cf. 1stMud spell_cause_serious in magic.c)."""
+    """Cause serious wounds (cf. 1stMud spell_cause_serious in magic.c).
+    [Verified: 03/07/2026]"""
     return damage(ch, vo, dice(2, 8) + level // 2, sn, DAM_HARM, True)
 
 
 def spell_cause_critical(sn, level, ch, vo, target):
-    """Cause critical wounds (cf. 1stMud spell_cause_critical in magic.c)."""
+    """Cause critical wounds (cf. 1stMud spell_cause_critical in magic.c).
+    [Verified: 03/07/2026]"""
     return damage(ch, vo, dice(3, 8) + level - 6, sn, DAM_HARM, True)
 
 
 def spell_harm(sn, level, ch, vo, target):
-    """Harm spell (cf. 1stMud spell_harm in magic.c)."""
+    """Harm spell (cf. 1stMud spell_harm in magic.c).
+    [Verified: 03/07/2026]"""
     dam = max(20, vo["hit"] - dice(1, 4))
     if saves_spell(level, vo, DAM_HARM):
         dam = min(50, dam // 2)
@@ -233,7 +237,9 @@ def spell_harm(sn, level, ch, vo, target):
 
 
 def spell_magic_missile(sn, level, ch, vo, target):
-    """Magic missile (cf. 1stMud spell_magic_missile in magic.c)."""
+    """Magic missile (cf. 1stMud spell_magic_missile in magic.c).
+    [Verified: 03/07/2026] -- (level | 50) bitwise OR is faithful to
+    1stMud magic.c:3571, quirk and all."""
     high = level | 50
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, DAM_ENERGY):
@@ -242,13 +248,15 @@ def spell_magic_missile(sn, level, ch, vo, target):
 
 
 def spell_earthquake(sn, level, ch, vo, target):
-    """Earthquake room spell (cf. 1stMud spell_earthquake in magic.c)."""
+    """Earthquake room spell (cf. 1stMud spell_earthquake in magic.c).
+    [Verified: 03/07/2026] -- same-area "trembles and shivers" echo to
+    other rooms not ported (single-player; no other PCs to notify)."""
     chprintln(ch, "The earth trembles beneath your feet!")
     act("$n makes the earth tremble and shiver.", ch, None, None, TO_ROOM)
     room = world.rooms[ch["room"]]
     for mob_id in list(room["mobs"]):
         victim = world.chars.get(mob_id)
-        if victim is None or victim is ch:
+        if victim is None or victim is ch or is_safe_spell(ch, victim, True):
             continue
         dam = 0 if victim.get("affected_by", {}).get("flying") else level + dice(2, 8)
         damage(ch, victim, dam, sn, DAM_BASH, True)
@@ -256,7 +264,9 @@ def spell_earthquake(sn, level, ch, vo, target):
 
 
 def spell_call_lightning(sn, level, ch, vo, target):
-    """Call lightning area spell (cf. 1stMud spell_call_lightning in magic.c)."""
+    """Call lightning area spell (cf. 1stMud spell_call_lightning in magic.c).
+    [Verified: 03/07/2026] -- same-area "Lightning flashes in the sky." echo
+    to awake outdoor chars in other rooms not ported (single-player)."""
     room = ROOM_DEFS[ch["room"]]
     if room.get("flags", {}).get("indoors"):
         chprintln(ch, "You must be out of doors.")
@@ -267,13 +277,17 @@ def spell_call_lightning(sn, level, ch, vo, target):
         chprintln(ch, "You need bad weather.")
         return False
 
-    dam = dice(max(1, level // 2), 8)
+    dam = dice(level // 2, 8)
     act("$g's lightning strikes your foes!", ch, None, None, TO_CHAR)
     act("$n calls $g's lightning to strike $s foes!", ch, None, None, TO_ROOM)
     room_state = world.rooms[ch["room"]]
+    caster_npc = ch.get("is_npc", False)
     for mob_id in list(room_state["mobs"]):
         victim = world.chars.get(mob_id)
         if victim is None or victim is ch:
+            continue
+        # NPC casters strike only PCs; PC casters only NPCs (magic.c:859).
+        if victim.get("is_npc", False) == caster_npc:
             continue
         cur_dam = dam
         if saves_spell(level, victim, DAM_LIGHTNING):
@@ -283,7 +297,8 @@ def spell_call_lightning(sn, level, ch, vo, target):
 
 
 def spell_chain_lightning(sn, level, ch, vo, target):
-    """Chain lightning room spell (cf. 1stMud spell_chain_lightning in magic.c)."""
+    """Chain lightning room spell (cf. 1stMud spell_chain_lightning in magic.c).
+    [Verified: 03/07/2026]"""
     victim = vo
     act("A lightning bolt leaps from $n's hand and arcs to $N.", ch, None, victim, TO_ROOM)
     act("A lightning bolt leaps from your hand and arcs to $N.", ch, None, victim, TO_CHAR)
@@ -297,6 +312,7 @@ def spell_chain_lightning(sn, level, ch, vo, target):
     room_state = world.rooms[ch["room"]]
     while level > 0:
         found = False
+        # One full room sweep per pass, no early break (magic.c:1176-1192).
         for mob_id in list(room_state["mobs"]):
             tmp = world.chars.get(mob_id)
             if tmp is None or tmp is last_vict:
@@ -312,7 +328,6 @@ def spell_chain_lightning(sn, level, ch, vo, target):
                 dam //= 3
             damage(ch, tmp, dam, sn, DAM_LIGHTNING, True)
             level -= 4
-            break
         if not found:
             if last_vict is ch:
                 act("The bolt seems to have fizzled out.", ch, None, None, TO_ROOM)
@@ -354,6 +369,7 @@ def _teleport_candidates(area_tag, is_npc):
 
 def spell_teleport(sn, level, ch, vo, target):
     """Teleport target to random room (cf. 1stMud spell_teleport in magic.c).
+    [Verified: 03/07/2026] -- failure checks and messages match magic.c:4244.
 
     [PRIMESUD] Picks a random area first, loads it if needed, then picks a
     room within it. Avoids loading every area into memory (OOM on HP Prime).
@@ -362,8 +378,9 @@ def spell_teleport(sn, level, ch, vo, target):
     room = ROOM_DEFS.get(victim.get("room"))
     if (room is None
             or room.get("flags", {}).get("no_recall")
-            or (victim is not ch and saves_spell(level - 5, victim, DAM_OTHER))
-            or (ch.get("is_npc") is not True and victim.get("fighting") is not None)):
+            or (victim is not ch and victim.get("imm_flags", {}).get("summon"))
+            or (ch.get("is_npc") is not True and victim.get("fighting") is not None)
+            or (victim is not ch and saves_spell(level - 5, victim, DAM_OTHER))):
         chprintln(ch, "You failed.")
         return False
     area_files = world._AREA_FILES
@@ -412,7 +429,8 @@ def spell_teleport(sn, level, ch, vo, target):
 
 
 def spell_farsight(sn, level, ch, vo, target):
-    """Farsight spell (cf. 1stMud spell_farsight in magic2.c)."""
+    """Farsight spell (cf. 1stMud spell_farsight in magic2.c).
+    [Verified: 03/07/2026]"""
     if ch.get("affected_by", {}).get("blind"):
         chprintln(ch, "Maybe it would help if you could see?")
         return False
@@ -429,6 +447,8 @@ def _collect_objs_recursive(obj_list, location, out):
 
 def spell_locate_object(sn, level, ch, vo, target):
     """Locate object by name fragment (cf. 1stMud spell_locate_object in magic.c).
+    [Verified: 03/07/2026] -- immortal branches and can_see checks not
+    ported; "carried by you" instead of player name is [PRIMESUD].
 
     Recurses into container contents to match 1stMud's flat obj_first
     iteration (magic.c:3523).
@@ -480,7 +500,9 @@ def spell_locate_object(sn, level, ch, vo, target):
 
 
 def spell_control_weather(sn, level, ch, vo, target):
-    """Adjust simplified interim weather state (cf. 1stMud spell_control_weather in magic.c)."""
+    """Adjust simplified interim weather state (cf. 1stMud spell_control_weather in magic.c).
+    [Verified: 03/07/2026] -- [PRIMESUD] interim model: precip only, vector
+    clamp +/-3 vs mud_info.max_vector, change formula rescaled to match."""
     arg = ch.get("_target_name", "")
     area = _area_state_for_room(ch["room"])
     if area is None:
@@ -506,15 +528,18 @@ def spell_control_weather(sn, level, ch, vo, target):
 
 
 def spell_word_of_recall(sn, level, ch, vo, target):
-    """Word of recall spell (cf. 1stMud spell_word_of_recall in magic.c)."""
+    """Word of recall spell (cf. 1stMud spell_word_of_recall in magic.c).
+    [Verified: 03/07/2026]"""
     victim = vo if vo is not None else ch
     if victim.get("is_npc"):
         return False
-    return perform_recall(victim, R_RECALL, "recall")
+    perform_recall(victim, R_RECALL, "recall")
+    return True
 
 
 def spell_trivia_pill(sn, level, ch, vo, target):
-    """Grant one trivia point (cf. 1stMud spell_trivia_pill in magic.c)."""
+    """Grant one trivia point (cf. 1stMud spell_trivia_pill in magic.c).
+    [Verified: 03/07/2026]"""
     victim = vo if vo is not None else ch
     if victim.get("is_npc"):
         return False
@@ -526,10 +551,12 @@ def spell_trivia_pill(sn, level, ch, vo, target):
 
 
 def spell_detect_poison(sn, level, ch, vo, target):
-    """Detect poison on object target (cf. 1stMud spell_detect_poison in magic.c)."""
+    """Detect poison on object target (cf. 1stMud spell_detect_poison in magic.c).
+    [Verified: 03/07/2026] -- 1stMud reads value[3]; PrimeSUD food/drink
+    poison state stored as "poisoned" flag."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     poisoned = bool(vo.get("poisoned") or tpl.get("poisoned"))
-    if tpl.get("type") in ("food", "fountain"):
+    if tpl.get("type") in ("drink", "food"):
         chprintln(ch, "You smell poisonous fumes." if poisoned else "It looks delicious.")
     else:
         chprintln(ch, "It doesn't look poisoned.")
@@ -537,12 +564,16 @@ def spell_detect_poison(sn, level, ch, vo, target):
 
 
 def spell_identify(sn, level, ch, vo, target):
-    """Identify object details (cf. 1stMud spell_identify in magic.c)."""
+    """Identify object details (cf. 1stMud spell_identify in magic.c).
+    [Verified: 03/07/2026] -- drink liquid colour line, container capacity /
+    weight multiplier, weapon flags line not ported (data not modeled);
+    to_affects/immune/resist/vuln bitvector lines not ported (only
+    to_object bitvectors exist in PrimeSUD item affects)."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     flags = item_extra_flags(vo, tpl)
     chprintln(ch, "Object '" + tpl.get("keywords", "") + "' is type " + tpl.get("type", "unknown")
              + ", extra flags " + (" ".join(sorted(flags)) or "none") + ".")
-    chprintln(ch, "Weight is " + str(tpl.get("weight", 0)) + ", value is "
+    chprintln(ch, "Weight is " + str(tpl.get("weight", 0) // 10) + ", value is "
              + str(vo.get("cost", tpl.get("value", 0))) + ", level is "
              + str(vo.get("level", tpl.get("level", 0))) + ".")  # instance level (quest gear scales)
     if tpl.get("type") in ("scroll", "potion", "pill"):
@@ -555,6 +586,10 @@ def spell_identify(sn, level, ch, vo, target):
         if spell_name:
             line += " '" + spell_name + "'"
         chprintln(ch, line + ".")
+    elif tpl.get("type") == "container":
+        # [PRIMESUD] capacity / weight multiplier not modeled; max weight and flags only
+        chprintln(ch, "Maximum weight: " + str(tpl.get("container_max_weight", 0))
+                  + "#  flags: " + (" ".join(sorted(tpl.get("container_flags", {}))) or "none"))
     elif tpl.get("type") == "weapon":
         chprintln(ch, "Weapon type is " + tpl.get("weapon_type", "unknown") + ".")
         # 1stMud new_format: instance value[1]/[2] (quest gear scales dice)
@@ -562,11 +597,19 @@ def spell_identify(sn, level, ch, vo, target):
         chprintln(ch, "Damage is " + str(d[0]) + "d" + str(d[1])
                   + " (average " + str((1 + d[1]) * d[0] // 2) + ").")
         # [PRIMESUD] weapon flags line skipped -- weapon flags not ported
-    for loc, mod in tpl.get("stat_bonuses", {}).items():
-        chprintln(ch, "Affects " + loc + " by " + str(mod) + ".")
+    elif tpl.get("type") == "armor":
+        a = tpl.get("armor", (0, 0, 0, 0))
+        chprintln(ch, "Armor class is " + str(a[0]) + " pierce, " + str(a[1])
+                  + " bash, " + str(a[2]) + " slash, and " + str(a[3]) + " vs. magic.")
+    if not vo.get("enchanted"):  # template affects hidden once enchanted (magic.c:3301)
+        for loc, mod in tpl.get("stat_bonuses", {}).items():
+            if mod != 0:
+                chprintln(ch, "Affects " + loc + " by " + str(mod) + ".")
     for af in item_affect_list(vo):
         loc = af.get("location", "none")
         mod = af.get("modifier", 0)
+        if loc == "none" or mod == 0:  # magic.c:3349
+            continue
         line = "Affects " + loc + " by " + str(mod)
         if af.get("duration", -1) > -1:
             line += ", " + str(af["duration"]) + " hours."
@@ -580,19 +623,23 @@ def spell_identify(sn, level, ch, vo, target):
 
 
 def spell_fireproof(sn, level, ch, vo, target):
-    """Fireproof object target (cf. 1stMud spell_fireproof in magic.c)."""
+    """Fireproof object target (cf. 1stMud spell_fireproof in magic.c).
+    [Verified: 03/07/2026] -- TO_ROOM "protective aura" echo not ported
+    (single-player)."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     flags = item_extra_flags(vo, tpl)
     if flags.get("burn_proof"):
         chprintln(ch, _item_name(vo) + " is already protected from burning.")
         return False
-    item_affect_to_obj(vo, _new_obj_affect(sn, level, max(1, level // 4), "none", 0, "burn_proof"), tpl)
+    item_affect_to_obj(vo, _new_obj_affect(sn, level, number_fuzzy(level // 4), "none", 0, "burn_proof"), tpl)
     chprintln(ch, "You protect " + _item_name(vo) + " from fire.")
     return True
 
 
 def spell_enchant_armor(sn, level, ch, vo, target):
-    """Enchant armor item (cf. 1stMud spell_enchant_armor in magic.c)."""
+    """Enchant armor item (cf. 1stMud spell_enchant_armor in magic.c).
+    [Verified: 03/07/2026] -- TO_ROOM echoes not ported (single-player);
+    carried check via inv membership (1stMud checks wear_loc == WEAR_NONE)."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     if tpl.get("type") != "armor":
         chprintln(ch, "That isn't an armor.")
@@ -655,7 +702,9 @@ def spell_enchant_armor(sn, level, ch, vo, target):
         set_item_extra_flag(vo, tpl, "magic", True)
         set_item_extra_flag(vo, tpl, "glow", True)
         added = -2
-    vo["level"] = min(50, vo.get("level", tpl.get("level", 0)) + 1)
+    lvl = vo.get("level", tpl.get("level", 0))
+    if lvl < MAX_MORTAL_LEVEL:  # magic.c:2313
+        vo["level"] = min(MAX_MORTAL_LEVEL - 1, lvl + 1)
     if ac_found:
         for af in item_affect_list(vo):
             if af.get("location") == "ac":
@@ -668,7 +717,9 @@ def spell_enchant_armor(sn, level, ch, vo, target):
 
 
 def spell_enchant_weapon(sn, level, ch, vo, target):
-    """Enchant weapon item (cf. 1stMud spell_enchant_weapon in magic.c)."""
+    """Enchant weapon item (cf. 1stMud spell_enchant_weapon in magic.c).
+    [Verified: 03/07/2026] -- TO_ROOM echoes not ported (single-player);
+    carried check via inv membership (1stMud checks wear_loc == WEAR_NONE)."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     if tpl.get("type") != "weapon":
         chprintln(ch, "That isn't a weapon.")
@@ -739,7 +790,9 @@ def spell_enchant_weapon(sn, level, ch, vo, target):
         set_item_extra_flag(vo, tpl, "magic", True)
         set_item_extra_flag(vo, tpl, "glow", True)
         added = 2
-    vo["level"] = min(50, vo.get("level", tpl.get("level", 0)) + 1)
+    lvl = vo.get("level", tpl.get("level", 0))
+    if lvl < MAX_MORTAL_LEVEL - 1:  # magic.c:2497
+        vo["level"] = min(MAX_MORTAL_LEVEL - 1, lvl + 1)
     if dam_found:
         for af in item_affect_list(vo):
             if af.get("location") == "damroll":
@@ -777,7 +830,8 @@ def _new_affect(sn, level, duration, location, modifier, bitvector=""):
 
 
 def spell_armor(sn, level, ch, vo, target):
-    """Armor spell (cf. 1stMud spell_armor in magic.c)."""
+    """Armor spell (cf. 1stMud spell_armor in magic.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn):
         if vo is ch:
             chprintln(ch, "You are already armored.")
@@ -792,7 +846,8 @@ def spell_armor(sn, level, ch, vo, target):
 
 
 def spell_shield(sn, level, ch, vo, target):
-    """Shield spell (cf. 1stMud spell_shield in magic.c)."""
+    """Shield spell (cf. 1stMud spell_shield in magic.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn):
         if vo is ch:
             chprintln(ch, "You are already shielded from harm.")
@@ -806,7 +861,8 @@ def spell_shield(sn, level, ch, vo, target):
 
 
 def spell_bless(sn, level, ch, vo, target):
-    """Bless character path (cf. 1stMud spell_bless in magic.c)."""
+    """Bless character and object paths (cf. 1stMud spell_bless in magic.c).
+    [Verified: 03/07/2026]"""
     if target == TARGET_OBJ:
         tpl = ITEM_DEFS[obj_vnum(vo)]
         flags = item_extra_flags(vo, tpl)
@@ -843,7 +899,8 @@ def spell_bless(sn, level, ch, vo, target):
 
 
 def spell_giant_strength(sn, level, ch, vo, target):
-    """Giant strength spell (cf. 1stMud spell_giant_strength in magic.c)."""
+    """Giant strength spell (cf. 1stMud spell_giant_strength in magic.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn):
         if vo is ch:
             chprintln(ch, "You are already as strong as you can get!")
@@ -858,7 +915,8 @@ def spell_giant_strength(sn, level, ch, vo, target):
 
 
 def spell_weaken(sn, level, ch, vo, target):
-    """Weaken spell (cf. 1stMud spell_weaken in magic.c)."""
+    """Weaken spell (cf. 1stMud spell_weaken in magic.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn) or saves_spell(level, vo, DAM_OTHER):
         return False
     affect_to_char(vo, _new_affect(sn, level, level // 2, "str", -1 * (level // 5), "weaken"))
@@ -868,7 +926,8 @@ def spell_weaken(sn, level, ch, vo, target):
 
 
 def spell_faerie_fire(sn, level, ch, vo, target):
-    """Faerie fire spell (cf. 1stMud spell_faerie_fire in magic.c)."""
+    """Faerie fire spell (cf. 1stMud spell_faerie_fire in magic.c).
+    [Verified: 03/07/2026]"""
     if vo.get("affected_by", {}).get("faerie_fire"):
         return False
     affect_to_char(vo, _new_affect(sn, level, level, "ac", 2 * level, "faerie_fire"))
@@ -878,7 +937,8 @@ def spell_faerie_fire(sn, level, ch, vo, target):
 
 
 def spell_blindness(sn, level, ch, vo, target):
-    """Blindness spell (cf. 1stMud spell_blindness in magic.c)."""
+    """Blindness spell (cf. 1stMud spell_blindness in magic.c).
+    [Verified: 03/07/2026]"""
     if vo.get("affected_by", {}).get("blind") or saves_spell(level, vo, DAM_OTHER):
         chprintln(ch, "You failed.")
         return False
@@ -889,9 +949,21 @@ def spell_blindness(sn, level, ch, vo, target):
 
 
 def spell_poison(sn, level, ch, vo, target):
-    """Poison character path (cf. 1stMud spell_poison in magic.c)."""
+    """Poison character and object paths (cf. 1stMud spell_poison in magic.c).
+    [Verified: 03/07/2026] -- weapon envenom (TO_WEAPON affect) not ported;
+    weapon poison procs don't exist in PrimeSUD combat yet."""
     if target == TARGET_OBJ:
-        chprintln(ch, "That spell does not work on objects yet.")
+        tpl = ITEM_DEFS[obj_vnum(vo)]
+        flags = item_extra_flags(vo, tpl)
+        if tpl.get("type") in ("food", "drink"):
+            if flags.get("bless") or flags.get("burn_proof"):
+                chprintln(ch, "Your spell fails to corrupt " + _item_name(vo) + ".")
+                return False
+            vo["poisoned"] = True
+            chprintln(ch, _item_name(vo) + " is infused with poisonous vapors.")
+            return False  # 1stMud returns false here (magic.c:3710)
+        # TODO [PRIMESUD] weapon envenom not ported (no weapon-flag procs)
+        chprintln(ch, "You can't poison " + _item_name(vo) + ".")
         return False
     if saves_spell(level, vo, DAM_POISON):
         act("$n turns slightly green, but it passes.", vo, None, None, TO_ROOM)
@@ -904,7 +976,8 @@ def spell_poison(sn, level, ch, vo, target):
 
 
 def spell_curse(sn, level, ch, vo, target):
-    """Curse character path (cf. 1stMud spell_curse in magic.c)."""
+    """Curse character and object paths (cf. 1stMud spell_curse in magic.c).
+    [Verified: 03/07/2026]"""
     if target == TARGET_OBJ:
         tpl = ITEM_DEFS[obj_vnum(vo)]
         flags = item_extra_flags(vo, tpl)
@@ -937,7 +1010,8 @@ def spell_curse(sn, level, ch, vo, target):
 
 
 def spell_plague(sn, level, ch, vo, target):
-    """Plague spell (cf. 1stMud spell_plague in magic.c)."""
+    """Plague spell (cf. 1stMud spell_plague in magic.c).
+    [Verified: 03/07/2026]"""
     if saves_spell(level, vo, DAM_DISEASE) or (
             vo.get("is_npc") and MOB_DEFS.get(vo.get("tpl"), {}).get("act_flags", {}).get("undead")):
         if vo is ch:
@@ -952,7 +1026,8 @@ def spell_plague(sn, level, ch, vo, target):
 
 
 def spell_cure_blindness(sn, level, ch, vo, target):
-    """Cure blindness (cf. 1stMud spell_cure_blindness in magic.c)."""
+    """Cure blindness (cf. 1stMud spell_cure_blindness in magic.c).
+    [Verified: 03/07/2026]"""
     blind_sn = _skill_lookup("blindness")
     if not is_affected(vo, blind_sn):
         if vo is ch:
@@ -969,7 +1044,8 @@ def spell_cure_blindness(sn, level, ch, vo, target):
 
 
 def spell_cure_poison(sn, level, ch, vo, target):
-    """Cure poison (cf. 1stMud spell_cure_poison in magic.c)."""
+    """Cure poison (cf. 1stMud spell_cure_poison in magic.c).
+    [Verified: 03/07/2026]"""
     poison_sn = _skill_lookup("poison")
     if not is_affected(vo, poison_sn):
         if vo is ch:
@@ -986,7 +1062,8 @@ def spell_cure_poison(sn, level, ch, vo, target):
 
 
 def spell_cure_disease(sn, level, ch, vo, target):
-    """Cure disease (cf. 1stMud spell_cure_disease in magic.c)."""
+    """Cure disease (cf. 1stMud spell_cure_disease in magic.c).
+    [Verified: 03/07/2026]"""
     plague_sn = _skill_lookup("plague")
     if not is_affected(vo, plague_sn):
         if vo is ch:
@@ -1002,30 +1079,72 @@ def spell_cure_disease(sn, level, ch, vo, target):
     return False
 
 
+# Dispellable spells + room echo on success, in 1stMud order
+# (shared by spell_dispel_magic and spell_cancellation, magic.c:959/1956).
+_DISPEL_TABLE = (
+    ("armor", None),
+    ("bless", None),
+    ("blindness", "$n is no longer blinded."),
+    ("calm", "$n no longer looks so peaceful..."),
+    ("change sex", "$n looks more like $mself again."),
+    ("charm person", "$n regains $s free will."),
+    ("chill touch", "$n looks warmer."),
+    ("curse", None),
+    ("detect evil", None),
+    ("detect good", None),
+    ("detect hidden", None),
+    ("detect invis", None),
+    ("detect magic", None),
+    ("faerie fire", "$n's outline fades."),
+    ("fly", "$n falls to the ground!"),
+    ("frenzy", "$n no longer looks so wild."),
+    ("giant strength", "$n no longer looks so mighty."),
+    ("haste", "$n is no longer moving so quickly."),
+    ("infravision", None),
+    ("invis", "$n fades into existance."),
+    ("mass invis", "$n fades into existance."),
+    ("pass door", None),
+    ("protection evil", None),
+    ("protection good", None),
+    ("sanctuary", "The white aura around $n's body vanishes."),
+    ("shield", "The shield protecting $n vanishes."),
+    ("sleep", None),
+    ("slow", "$n is no longer moving so slowly."),
+    ("stone skin", "$n's skin regains its normal texture."),
+    ("weaken", "$n looks stronger."),
+    ("force shield", "The force-shield encircling $n fades."),
+    ("static shield", "The static energy surrounding $n dissipates."),
+    ("flame shield", "The flames protecting $n sputter and die."),
+)
+
+
+def _dispel_all(level, victim):
+    """Run check_dispel over _DISPEL_TABLE with room echoes; return found. [PRIMESUD] shared helper."""
+    found = False
+    for name, msg in _DISPEL_TABLE:
+        cur = _skill_lookup(name)
+        if cur is not None and check_dispel(level, victim, cur):
+            found = True
+            if msg is not None:
+                act(msg, victim, None, None, TO_ROOM)
+    return found
+
+
 def spell_dispel_magic(sn, level, ch, vo, target):
-    """Dispel magic (cf. 1stMud spell_dispel_magic in magic.c)."""
+    """Dispel magic (cf. 1stMud spell_dispel_magic in magic.c).
+    [Verified: 03/07/2026] -- innate AFF_SANCTUARY strip rolls after the
+    full dispel list (1stMud rolls it between sanctuary and shield)."""
     if saves_spell(level, vo, DAM_OTHER):
         chprintln(vo, "You feel a brief tingling sensation.")
         chprintln(ch, "You failed.")
         return False
-    found = False
-    for name in ("armor", "bless", "blindness", "calm", "change sex",
-                 "charm person", "chill touch", "curse",
-                 "detect evil", "detect good", "detect hidden",
-                 "detect invis", "detect magic", "faerie fire",
-                 "fly", "frenzy", "giant strength", "haste",
-                 "infravision", "invis", "mass invis", "pass door",
-                 "protection evil", "protection good", "sanctuary",
-                 "shield", "sleep", "slow", "stone skin", "weaken",
-                 "force shield", "static shield", "flame shield"):
-        cur = _skill_lookup(name)
-        if cur is not None and check_dispel(level, vo, cur):
-            found = True
+    found = _dispel_all(level, vo)
     sanc_sn = _skill_lookup("sanctuary")
     if (vo.get("affected_by", {}).get("sanctuary")
             and not saves_dispel(level, vo.get("level", 1), -1)
             and not is_affected(vo, sanc_sn)):
         vo.get("affected_by", {}).pop("sanctuary", None)
+        act("The white aura around $n's body vanishes.", vo, None, None, TO_ROOM)
         found = True
     if found:
         chprintln(ch, "Ok.")
@@ -1040,7 +1159,8 @@ def spell_dispel_magic(sn, level, ch, vo, target):
 
 
 def spell_acid_blast(sn, level, ch, vo, target):
-    """Acid blast (cf. 1stMud spell_acid_blast in magic.c)."""
+    """Acid blast (cf. 1stMud spell_acid_blast in magic.c).
+    [Verified: 03/07/2026]"""
     dam = dice(level, 12)
     if saves_spell(level, vo, DAM_ACID):
         dam //= 2
@@ -1048,7 +1168,8 @@ def spell_acid_blast(sn, level, ch, vo, target):
 
 
 def spell_burning_hands(sn, level, ch, vo, target):
-    """Burning hands (cf. 1stMud spell_burning_hands in magic.c)."""
+    """Burning hands (cf. 1stMud spell_burning_hands in magic.c).
+    [Verified: 03/07/2026]"""
     high = level | 50
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, DAM_FIRE):
@@ -1057,7 +1178,10 @@ def spell_burning_hands(sn, level, ch, vo, target):
 
 
 def spell_calm(sn, level, ch, vo, target):
-    """Calm room occupants (cf. 1stMud spell_calm in magic.c)."""
+    """Calm room occupants (cf. 1stMud spell_calm in magic.c).
+    [Verified: 03/07/2026] -- 1stMud walks one room list with ch mixed in
+    and breaks at the first immune/undead/calm/berserk/frenzy occupant;
+    PrimeSUD processes mobs first then ch, so break order can differ."""
     room = world.rooms[ch["room"]]
     mlevel = 0
     count = 0
@@ -1120,7 +1244,8 @@ def spell_calm(sn, level, ch, vo, target):
 
 
 def spell_cancellation(sn, level, ch, vo, target):
-    """Cancellation -- dispel for self/allies (cf. 1stMud spell_cancellation in magic.c)."""
+    """Cancellation -- dispel for self/allies (cf. 1stMud spell_cancellation in magic.c).
+    [Verified: 03/07/2026]"""
     victim = vo
     level += 2
     if ((not ch.get("is_npc") and victim.get("is_npc")
@@ -1129,19 +1254,7 @@ def spell_cancellation(sn, level, ch, vo, target):
             or (ch.get("is_npc") and not victim.get("is_npc"))):
         chprintln(ch, "You failed, try dispel magic.")
         return False
-    found = False
-    for name in ("armor", "bless", "blindness", "calm", "change sex",
-                 "charm person", "chill touch", "curse",
-                 "detect evil", "detect good", "detect hidden",
-                 "detect invis", "detect magic", "faerie fire",
-                 "fly", "frenzy", "giant strength", "haste",
-                 "infravision", "invis", "mass invis", "pass door",
-                 "protection evil", "protection good", "sanctuary",
-                 "shield", "sleep", "slow", "stone skin", "weaken",
-                 "force shield", "static shield", "flame shield"):
-        cur = _skill_lookup(name)
-        if cur is not None and check_dispel(level, victim, cur):
-            found = True
+    found = _dispel_all(level, victim)
     if found:
         chprintln(ch, "Ok.")
     else:
@@ -1150,7 +1263,8 @@ def spell_cancellation(sn, level, ch, vo, target):
 
 
 def spell_change_sex(sn, level, ch, vo, target):
-    """Change sex (cf. 1stMud spell_change_sex in magic.c)."""
+    """Change sex (cf. 1stMud spell_change_sex in magic.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn):
         if vo is ch:
             chprintln(ch, "You've already been changed.")
@@ -1170,7 +1284,8 @@ def spell_change_sex(sn, level, ch, vo, target):
 
 
 def spell_charm_person(sn, level, ch, vo, target):
-    """Charm person (cf. 1stMud spell_charm_person in magic.c)."""
+    """Charm person (cf. 1stMud spell_charm_person in magic.c).
+    [Verified: 03/07/2026]"""
     victim = vo
     if is_safe(ch, victim):
         return False
@@ -1199,10 +1314,12 @@ def spell_charm_person(sn, level, ch, vo, target):
 
 
 def spell_chill_touch(sn, level, ch, vo, target):
-    """Chill touch (cf. 1stMud spell_chill_touch in magic.c)."""
+    """Chill touch (cf. 1stMud spell_chill_touch in magic.c).
+    [Verified: 03/07/2026]"""
     high = level | 50
     dam = randint(high // 2, high * 2)
     if not saves_spell(level, vo, DAM_COLD):
+        act("$n turns blue and shivers.", vo, None, None, TO_ROOM)
         affect_join(vo, _new_affect(sn, level, 6, "str", -1))
     else:
         dam //= 2
@@ -1210,7 +1327,8 @@ def spell_chill_touch(sn, level, ch, vo, target):
 
 
 def spell_color_spray(sn, level, ch, vo, target):
-    """Color spray (cf. 1stMud spell_color_spray in magic.c)."""
+    """Color spray (cf. 1stMud spell_color_spray in magic.c).
+    [Verified: 03/07/2026]"""
     high = level | 50
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, DAM_LIGHT):
@@ -1223,7 +1341,8 @@ def spell_color_spray(sn, level, ch, vo, target):
 
 
 def spell_continual_light(sn, level, ch, vo, target):
-    """Create light ball or make carried item glow (cf. 1stMud spell_continual_light in magic.c)."""
+    """Create light ball or make carried item glow (cf. 1stMud spell_continual_light in magic.c).
+    [Verified: 03/07/2026]"""
     tail = ch.get("_target_name", "")
     if tail:
         obj = get_obj_list(tail, ch["inv"], ITEM_DEFS)
@@ -1247,11 +1366,12 @@ def spell_continual_light(sn, level, ch, vo, target):
 
 
 def spell_create_food(sn, level, ch, vo, target):
-    """Create a mushroom (cf. 1stMud spell_create_food in magic.c)."""
+    """Create a mushroom (cf. 1stMud spell_create_food in magic.c).
+    [Verified: 03/07/2026]"""
     mushroom = create_object(I_MUSHROOM)
-    mushroom["level"] = level // 2 if level // 2 > 0 else 1
-    mushroom["food_hours"] = level // 2
-    mushroom["timer"] = 24
+    mushroom["food_hours"] = level // 2  # value[0] (magic.c:1425)
+    mushroom["food_hunger"] = level      # value[1]
+    mushroom["timer"] = 24  # [PRIMESUD] decay so leftovers don't accumulate
     rs = world.rooms[ch["room"]]
     rs.setdefault("items", []).append(mushroom)
     act("$p suddenly appears.", ch, mushroom, None, TO_ROOM)
@@ -1271,7 +1391,8 @@ def spell_create_rose(sn, level, ch, vo, target):
 
 
 def spell_create_spring(sn, level, ch, vo, target):
-    """Create a magical spring (cf. 1stMud spell_create_spring in magic.c)."""
+    """Create a magical spring (cf. 1stMud spell_create_spring in magic.c).
+    [Verified: 03/07/2026]"""
     spring = create_object(I_SPRING)
     spring["timer"] = level
     rs = world.rooms[ch["room"]]
@@ -1283,20 +1404,31 @@ def spell_create_spring(sn, level, ch, vo, target):
 
 def spell_create_water(sn, level, ch, vo, target):
     """Fill drink container with water (cf. 1stMud spell_create_water in magic.c).
-
-    TODO: drink container system not fully ported.
-    """
+    [Verified: 03/07/2026] -- drinking itself not yet ported; liquid state
+    updated for when it is. "water" keyword append not ported."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
-    if tpl.get("type") != "drink_con":
+    if tpl.get("type") != "drink":
         chprintln(ch, "It is unable to hold water.")
         return False
-    # TODO [PRIMESUD] liquid type / fill level not yet modeled
-    act("$p is filled.", ch, vo, None, TO_CHAR)
+    liq = vo.get("liquid_type", tpl.get("liquid_type", "water"))
+    left = vo.get("liquid_left", tpl.get("liquid_left", 0))
+    if liq != "water" and left != 0:
+        chprintln(ch, "It contains some other liquid.")
+        return False
+    # 1stMud multiplies by 4 always: its weather check compares a pointer
+    # (magic.c:1476), so the *2 branch is unreachable.
+    total = vo.get("liquid_total", tpl.get("liquid_total", 0))
+    water = min(level * 4, total - left)
+    if water > 0:
+        vo["liquid_type"] = "water"
+        vo["liquid_left"] = left + water
+        act("$p is filled.", ch, vo, None, TO_CHAR)
     return True
 
 
 def spell_demonfire(sn, level, ch, vo, target):
-    """Demonfire (cf. 1stMud spell_demonfire in magic.c)."""
+    """Demonfire (cf. 1stMud spell_demonfire in magic.c).
+    [Verified: 03/07/2026]"""
     victim = vo
     if not ch.get("is_npc") and not is_evil(ch):
         victim = ch
@@ -1316,7 +1448,8 @@ def spell_demonfire(sn, level, ch, vo, target):
 
 
 def spell_detect_evil(sn, level, ch, vo, target):
-    """Detect evil (cf. 1stMud spell_detect_evil in magic.c)."""
+    """Detect evil (cf. 1stMud spell_detect_evil in magic.c).
+    [Verified: 03/07/2026]"""
     if vo.get("affected_by", {}).get("detect_evil"):
         if vo is ch:
             chprintln(ch, "You can already sense evil.")
@@ -1331,7 +1464,8 @@ def spell_detect_evil(sn, level, ch, vo, target):
 
 
 def spell_detect_good(sn, level, ch, vo, target):
-    """Detect good (cf. 1stMud spell_detect_good in magic.c)."""
+    """Detect good (cf. 1stMud spell_detect_good in magic.c).
+    [Verified: 03/07/2026]"""
     if vo.get("affected_by", {}).get("detect_good"):
         if vo is ch:
             chprintln(ch, "You can already sense good.")
@@ -1346,7 +1480,8 @@ def spell_detect_good(sn, level, ch, vo, target):
 
 
 def spell_detect_hidden(sn, level, ch, vo, target):
-    """Detect hidden (cf. 1stMud spell_detect_hidden in magic.c)."""
+    """Detect hidden (cf. 1stMud spell_detect_hidden in magic.c).
+    [Verified: 03/07/2026] -- 1stMud's trailing space after "can be." dropped [PRIMESUD]."""
     if vo.get("affected_by", {}).get("detect_hidden"):
         if vo is ch:
             chprintln(ch, "You are already as alert as you can be.")
@@ -1361,7 +1496,8 @@ def spell_detect_hidden(sn, level, ch, vo, target):
 
 
 def spell_detect_invis(sn, level, ch, vo, target):
-    """Detect invis (cf. 1stMud spell_detect_invis in magic.c)."""
+    """Detect invis (cf. 1stMud spell_detect_invis in magic.c).
+    [Verified: 03/07/2026]"""
     if vo.get("affected_by", {}).get("detect_invis"):
         if vo is ch:
             chprintln(ch, "You can already see invisible.")
@@ -1376,7 +1512,8 @@ def spell_detect_invis(sn, level, ch, vo, target):
 
 
 def spell_detect_magic(sn, level, ch, vo, target):
-    """Detect magic (cf. 1stMud spell_detect_magic in magic.c)."""
+    """Detect magic (cf. 1stMud spell_detect_magic in magic.c).
+    [Verified: 03/07/2026]"""
     if vo.get("affected_by", {}).get("detect_magic"):
         if vo is ch:
             chprintln(ch, "You can already sense magical auras.")
@@ -1391,7 +1528,8 @@ def spell_detect_magic(sn, level, ch, vo, target):
 
 
 def spell_dispel_evil(sn, level, ch, vo, target):
-    """Dispel evil (cf. 1stMud spell_dispel_evil in magic.c)."""
+    """Dispel evil (cf. 1stMud spell_dispel_evil in magic.c).
+    [Verified: 03/07/2026]"""
     victim = vo
     if not ch.get("is_npc") and is_evil(ch):
         victim = ch
@@ -1411,7 +1549,8 @@ def spell_dispel_evil(sn, level, ch, vo, target):
 
 
 def spell_dispel_good(sn, level, ch, vo, target):
-    """Dispel good (cf. 1stMud spell_dispel_good in magic.c)."""
+    """Dispel good (cf. 1stMud spell_dispel_good in magic.c).
+    [Verified: 03/07/2026]"""
     victim = vo
     if not ch.get("is_npc") and is_good(ch):
         victim = ch
@@ -1431,7 +1570,9 @@ def spell_dispel_good(sn, level, ch, vo, target):
 
 
 def spell_energy_drain(sn, level, ch, vo, target):
-    """Energy drain (cf. 1stMud spell_energy_drain in magic.c)."""
+    """Energy drain (cf. 1stMud spell_energy_drain in magic.c).
+    [Verified: 03/07/2026] -- dam = ch's hit + 1 for level<=2 victims is
+    faithful to magic.c:2575 (reads the caster's hp, quirk and all)."""
     victim = vo
     if victim is not ch:
         ch["alignment"] = max(-1000, ch.get("alignment", 0) - 50)
@@ -1453,7 +1594,8 @@ def spell_energy_drain(sn, level, ch, vo, target):
 
 
 def spell_fireball(sn, level, ch, vo, target):
-    """Fireball (cf. 1stMud spell_fireball in magic.c)."""
+    """Fireball (cf. 1stMud spell_fireball in magic.c).
+    [Verified: 03/07/2026]"""
     high = level | 50
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, DAM_FIRE):
@@ -1462,7 +1604,8 @@ def spell_fireball(sn, level, ch, vo, target):
 
 
 def spell_flamestrike(sn, level, ch, vo, target):
-    """Flamestrike (cf. 1stMud spell_flamestrike in magic.c)."""
+    """Flamestrike (cf. 1stMud spell_flamestrike in magic.c).
+    [Verified: 03/07/2026]"""
     dam = dice(6 + level // 2, 8)
     if saves_spell(level, vo, DAM_FIRE):
         dam //= 2
@@ -1470,7 +1613,8 @@ def spell_flamestrike(sn, level, ch, vo, target):
 
 
 def spell_faerie_fog(sn, level, ch, vo, target):
-    """Faerie fog -- reveal hidden/invisible in room (cf. 1stMud spell_faerie_fog in magic.c)."""
+    """Faerie fog -- reveal hidden/invisible in room (cf. 1stMud spell_faerie_fog in magic.c).
+    [Verified: 03/07/2026] -- immortal invis_level skip not ported."""
     act("$n conjures a cloud of purple smoke.", ch, None, None, TO_ROOM)
     chprintln(ch, "You conjure a cloud of purple smoke.")
     room = world.rooms[ch["room"]]
@@ -1515,7 +1659,8 @@ def spell_floating_disc(sn, level, ch, vo, target):
 
 
 def spell_fly(sn, level, ch, vo, target):
-    """Fly spell (cf. 1stMud spell_fly in magic.c)."""
+    """Fly spell (cf. 1stMud spell_fly in magic.c).
+    [Verified: 03/07/2026]"""
     if vo.get("affected_by", {}).get("flying"):
         if vo is ch:
             chprintln(ch, "You are already airborne.")
@@ -1529,7 +1674,8 @@ def spell_fly(sn, level, ch, vo, target):
 
 
 def spell_frenzy(sn, level, ch, vo, target):
-    """Frenzy spell (cf. 1stMud spell_frenzy in magic.c)."""
+    """Frenzy spell (cf. 1stMud spell_frenzy in magic.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn) or vo.get("affected_by", {}).get("berserk"):
         if vo is ch:
             chprintln(ch, "You are already in a frenzy.")
@@ -1558,7 +1704,8 @@ def spell_frenzy(sn, level, ch, vo, target):
 
 
 def spell_gate(sn, level, ch, vo, target):
-    """Gate to another character's location (cf. 1stMud spell_gate in magic.c)."""
+    """Gate to another character's location (cf. 1stMud spell_gate in magic.c).
+    [Verified: 03/07/2026; pet gate added and re-verified 03/07/2026]"""
     tail = ch.get("_target_name", "")
     if not tail:
         chprintln(ch, "You failed.")
@@ -1614,18 +1761,31 @@ def spell_gate(sn, level, ch, vo, target):
         chprintln(ch, "You failed.")
         return False
 
-    # TODO [PRIMESUD] pet teleport not yet implemented
+    pet_id = ch.get("pet")
+    pet = world.chars.get(pet_id) if pet_id is not None else None
+    gate_pet = pet is not None and pet.get("room") == ch.get("room")
+
     act("$n steps through a gate and vanishes.", ch, None, None, TO_ROOM)
     chprintln(ch, "You step through a gate and vanish.")
+    old_room = ch["room"]
     ch["room"] = victim_vnum
     # act("$n has arrived through a gate.", ..., TO_ROOM) omitted -- single-player
     from info import do_look
     do_look(ch, [])
+
+    if gate_pet:
+        if pet_id in world.rooms.get(old_room, {}).get("mobs", []):
+            world.rooms[old_room]["mobs"].remove(pet_id)
+        pet["room"] = victim_vnum
+        world.rooms[victim_vnum]["mobs"].append(pet_id)
+        act("$n has arrived through a gate.", pet, None, None, TO_ROOM)
+        # pet do_look skipped -- NPC output is discarded in PrimeSUD
     return True
 
 
 def spell_haste(sn, level, ch, vo, target):
-    """Haste spell (cf. 1stMud spell_haste in magic.c)."""
+    """Haste spell (cf. 1stMud spell_haste in magic.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn) or vo.get("affected_by", {}).get("haste") or vo.get("off_flags", {}).get("fast"):
         if vo is ch:
             chprintln(ch, "You can't move any faster!")
@@ -1674,7 +1834,9 @@ def spell_heat_metal(sn, level, ch, vo, target):
 
 
 def spell_holy_word(sn, level, ch, vo, target):
-    """Holy word (cf. 1stMud spell_holy_word in magic.c)."""
+    """Holy word (cf. 1stMud spell_holy_word in magic.c).
+    [Verified: 03/07/2026] -- "You feel full more powerful." is faithful
+    to source (magic.c:3125)."""
     act("$n utters a word of divine power!", ch, None, None, TO_ROOM)
     chprintln(ch, "You utter a word of divine power.")
     bless_sn = _skill_lookup("bless")
@@ -1716,7 +1878,8 @@ def spell_holy_word(sn, level, ch, vo, target):
 
 
 def spell_infravision(sn, level, ch, vo, target):
-    """Infravision (cf. 1stMud spell_infravision in magic.c)."""
+    """Infravision (cf. 1stMud spell_infravision in magic.c).
+    [Verified: 03/07/2026]"""
     if vo.get("affected_by", {}).get("infrared"):
         if vo is ch:
             chprintln(ch, "You can already see in the dark.")
@@ -1730,7 +1893,8 @@ def spell_infravision(sn, level, ch, vo, target):
 
 
 def spell_invis(sn, level, ch, vo, target):
-    """Invisibility (cf. 1stMud spell_invis in magic.c)."""
+    """Invisibility (cf. 1stMud spell_invis in magic.c).
+    [Verified: 03/07/2026]"""
     if target == TARGET_OBJ:
         tpl = ITEM_DEFS[obj_vnum(vo)]
         flags = item_extra_flags(vo, tpl)
@@ -1749,7 +1913,8 @@ def spell_invis(sn, level, ch, vo, target):
 
 
 def spell_know_alignment(sn, level, ch, vo, target):
-    """Know alignment (cf. 1stMud spell_know_alignment in magic.c)."""
+    """Know alignment (cf. 1stMud spell_know_alignment in magic.c).
+    [Verified: 03/07/2026] -- "evil!." punctuation is faithful to source."""
     ap = vo.get("alignment", 0)
     if ap > 700:
         msg = "$N has a pure and good aura."
@@ -1770,7 +1935,8 @@ def spell_know_alignment(sn, level, ch, vo, target):
 
 
 def spell_lightning_bolt(sn, level, ch, vo, target):
-    """Lightning bolt (cf. 1stMud spell_lightning_bolt in magic.c)."""
+    """Lightning bolt (cf. 1stMud spell_lightning_bolt in magic.c).
+    [Verified: 03/07/2026]"""
     high = level | 50
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, DAM_LIGHTNING):
@@ -1779,7 +1945,9 @@ def spell_lightning_bolt(sn, level, ch, vo, target):
 
 
 def spell_mass_healing(sn, level, ch, vo, target):
-    """Mass healing (cf. 1stMud spell_mass_healing in magic.c)."""
+    """Mass healing (cf. 1stMud spell_mass_healing in magic.c).
+    [Verified: 03/07/2026] -- 1stMud heals same-type (PC/NPC) room chars;
+    for a PC caster that is only the player, so behaviour matches."""
     heal_sn = _skill_lookup("heal")
     refresh_sn = _skill_lookup("refresh")
     if heal_sn is not None:
@@ -1806,7 +1974,8 @@ def spell_mass_invis(sn, level, ch, vo, target):
 
 
 def spell_pass_door(sn, level, ch, vo, target):
-    """Pass door (cf. 1stMud spell_pass_door in magic.c)."""
+    """Pass door (cf. 1stMud spell_pass_door in magic.c).
+    [Verified: 03/07/2026]"""
     if vo.get("affected_by", {}).get("pass_door"):
         if vo is ch:
             chprintln(ch, "You are already out of phase.")
@@ -1820,7 +1989,8 @@ def spell_pass_door(sn, level, ch, vo, target):
 
 
 def spell_protection_evil(sn, level, ch, vo, target):
-    """Protection from evil (cf. 1stMud spell_protection_evil in magic.c)."""
+    """Protection from evil (cf. 1stMud spell_protection_evil in magic.c).
+    [Verified: 03/07/2026]"""
     if vo.get("affected_by", {}).get("protect_evil") or vo.get("affected_by", {}).get("protect_good"):
         if vo is ch:
             chprintln(ch, "You are already protected.")
@@ -1835,7 +2005,8 @@ def spell_protection_evil(sn, level, ch, vo, target):
 
 
 def spell_protection_good(sn, level, ch, vo, target):
-    """Protection from good (cf. 1stMud spell_protection_good in magic.c)."""
+    """Protection from good (cf. 1stMud spell_protection_good in magic.c).
+    [Verified: 03/07/2026]"""
     if vo.get("affected_by", {}).get("protect_good") or vo.get("affected_by", {}).get("protect_evil"):
         if vo is ch:
             chprintln(ch, "You are already protected.")
@@ -1850,11 +2021,17 @@ def spell_protection_good(sn, level, ch, vo, target):
 
 
 def spell_ray_of_truth(sn, level, ch, vo, target):
-    """Ray of truth (cf. 1stMud spell_ray_of_truth in magic.c)."""
+    """Ray of truth (cf. 1stMud spell_ray_of_truth in magic.c).
+    [Verified: 03/07/2026] -- blindness only rolls when damage() returns
+    False, faithful to the || short-circuit at magic.c:3872."""
     victim = vo
     if is_evil(ch):
         victim = ch
         chprintln(ch, "The energy explodes inside you!")
+    if victim is not ch:
+        act("$n raises $s hand, and a blinding ray of light shoots forth!",
+            ch, None, None, TO_ROOM)
+        chprintln(ch, "You raise your hand and a blinding ray of light shoots forth!")
     if is_good(victim):
         act("$n seems unharmed by the light.", victim, None, victim, TO_ROOM)
         chprintln(victim, "The light seems powerless to affect you.")
@@ -1866,15 +2043,18 @@ def spell_ray_of_truth(sn, level, ch, vo, target):
     if align < -1000:
         align = -1000 + (align + 1000) // 3
     dam = (dam * align * align) // 1000000
-    damage(ch, victim, dam, sn, DAM_HOLY, True)
+    ret = damage(ch, victim, dam, sn, DAM_HOLY, True)
+    if ret:
+        return True
     blind_sn = _skill_lookup("blindness")
-    if blind_sn is not None:
-        spell_blindness(blind_sn, 3 * level // 4, ch, victim, TARGET_CHAR)
-    return True
+    return (blind_sn is not None
+            and spell_blindness(blind_sn, 3 * level // 4, ch, victim, TARGET_CHAR))
 
 
 def spell_recharge(sn, level, ch, vo, target):
-    """Recharge wand/staff (cf. 1stMud spell_recharge in magic.c)."""
+    """Recharge wand/staff (cf. 1stMud spell_recharge in magic.c).
+    [Verified: 03/07/2026] -- 1stMud prints the partial-success glow twice
+    to the caster (duplicated TO_CHAR, magic.c:3923); fixed to TO_ROOM [PRIMESUD]."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     if tpl.get("type") not in ("wand", "staff"):
         chprintln(ch, "That item does not carry charges.")
@@ -1919,7 +2099,8 @@ def spell_recharge(sn, level, ch, vo, target):
 
 
 def spell_refresh(sn, level, ch, vo, target):
-    """Refresh movement (cf. 1stMud spell_refresh in magic.c)."""
+    """Refresh movement (cf. 1stMud spell_refresh in magic.c).
+    [Verified: 03/07/2026]"""
     vo["move"] = min(vo.get("move", 0) + level, vo.get("max_move", 100))
     if vo.get("max_move", 100) == vo.get("move", 0):
         chprintln(vo, "You feel fully refreshed!")
@@ -1932,6 +2113,7 @@ def spell_refresh(sn, level, ch, vo, target):
 
 def spell_remove_curse(sn, level, ch, vo, target):
     """Remove curse (cf. 1stMud spell_remove_curse in magic.c).
+    [Verified: 03/07/2026]
 
     Inv scan is direct children only -- matches 1stMud carrying_first
     (magic.c:4005), which does not recurse into containers.
@@ -1970,7 +2152,8 @@ def spell_remove_curse(sn, level, ch, vo, target):
 
 
 def spell_sanctuary(sn, level, ch, vo, target):
-    """Sanctuary (cf. 1stMud spell_sanctuary in magic.c)."""
+    """Sanctuary (cf. 1stMud spell_sanctuary in magic.c).
+    [Verified: 03/07/2026]"""
     if vo.get("affected_by", {}).get("sanctuary"):
         if vo is ch:
             chprintln(ch, "You are already in sanctuary.")
@@ -1984,7 +2167,8 @@ def spell_sanctuary(sn, level, ch, vo, target):
 
 
 def spell_shocking_grasp(sn, level, ch, vo, target):
-    """Shocking grasp (cf. 1stMud spell_shocking_grasp in magic.c)."""
+    """Shocking grasp (cf. 1stMud spell_shocking_grasp in magic.c).
+    [Verified: 03/07/2026]"""
     high = level | 50
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, DAM_LIGHTNING):
@@ -1993,8 +2177,10 @@ def spell_shocking_grasp(sn, level, ch, vo, target):
 
 
 def spell_sleep(sn, level, ch, vo, target):
-    """Sleep spell (cf. 1stMud spell_sleep in magic.c)."""
+    """Sleep spell (cf. 1stMud spell_sleep in magic.c).
+    [Verified: 03/07/2026]"""
     if (vo.get("affected_by", {}).get("sleep")
+            or (vo.get("is_npc") and MOB_DEFS.get(vo.get("tpl"), {}).get("act_flags", {}).get("undead"))
             or (level + 2) < vo.get("level", 1)
             or saves_spell(level - 4, vo, DAM_CHARM)):
         return False
@@ -2007,7 +2193,8 @@ def spell_sleep(sn, level, ch, vo, target):
 
 
 def spell_slow(sn, level, ch, vo, target):
-    """Slow spell (cf. 1stMud spell_slow in magic.c)."""
+    """Slow spell (cf. 1stMud spell_slow in magic.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn) or vo.get("affected_by", {}).get("slow"):
         if vo is ch:
             chprintln(ch, "You can't move any slower!")
@@ -2036,7 +2223,8 @@ def spell_slow(sn, level, ch, vo, target):
 
 
 def spell_stone_skin(sn, level, ch, vo, target):
-    """Stone skin (cf. 1stMud spell_stone_skin in magic.c)."""
+    """Stone skin (cf. 1stMud spell_stone_skin in magic.c).
+    [Verified: 03/07/2026]"""
     # 1stMud checks ch instead of vo here (magic.c:4175). Looks wrong, and
     # the vo != ch message branch below is dead code (target is char_self,
     # so ch is vo always). Likely copy-paste from char_defensive template.
@@ -2054,16 +2242,67 @@ def spell_stone_skin(sn, level, ch, vo, target):
 
 def spell_summon(sn, level, ch, vo, target):
     """Summon (cf. 1stMud spell_summon in magic.c).
+    [Verified: 03/07/2026] -- LEVEL_IMMORTAL / PLR_NOSUMMON PC checks and
+    AREA_CLOSED flag not ported (no other PCs; area flags not modeled)."""
+    tail = ch.get("_target_name", "")
 
-    TODO: world-wide char search not ported. PrimeSUD is single-player.
-    """
-    # TODO [PRIMESUD] get_char_world for cross-room summoning
-    chprintln(ch, "You failed.")
-    return False
+    # get_char_world over loaded NPCs (cf. spell_gate) [PRIMESUD]
+    victim = None
+    victim_id = None
+    if tail and not _is_self_name(ch, tail):
+        for _cid, _c in world.chars.items():
+            if _c is ch or not _c.get("is_npc"):
+                continue
+            _tpl = MOB_DEFS.get(_c.get("tpl"), {})
+            if is_name(tail, _tpl.get("keywords", "")):
+                victim = _c
+                victim_id = _cid
+                break
+
+    if victim is None or victim.get("room") is None:
+        chprintln(ch, "You failed.")
+        return False
+
+    src_flags = ROOM_DEFS.get(ch.get("room"), {}).get("flags", {})
+    dst_flags = ROOM_DEFS.get(victim.get("room"), {}).get("flags", {})
+    tpl = MOB_DEFS.get(victim.get("tpl"), {})
+
+    from quest import is_quester
+    from gquest import gq_is_target
+    if (src_flags.get("safe")
+            or dst_flags.get("safe")
+            or dst_flags.get("private")
+            or dst_flags.get("solitary")
+            or dst_flags.get("no_recall")
+            # TODO [PRIMESUD] arena flag not yet implemented
+            or gq_is_target(victim.get("tpl"))
+            # [PRIMESUD] vnum match instead of instance pointer
+            or (is_quester(ch) and victim.get("tpl") == ch.get("quest_mob", 0))
+            or tpl.get("act_flags", {}).get("aggressive")
+            or victim.get("level", 0) >= level + 3
+            or victim.get("fighting") is not None
+            or victim.get("imm_flags", {}).get("summon")
+            or tpl.get("shop") is not None
+            or saves_spell(level, victim, DAM_OTHER)):
+        chprintln(ch, "You failed.")
+        return False
+
+    old_room = victim["room"]
+    act("$n disappears suddenly.", victim, None, None, TO_ROOM)
+    if victim_id in world.rooms.get(old_room, {}).get("mobs", []):
+        world.rooms[old_room]["mobs"].remove(victim_id)
+    victim["room"] = ch["room"]
+    world.rooms[ch["room"]]["mobs"].append(victim_id)
+    act("$n arrives suddenly.", victim, None, None, TO_ROOM)
+    act("$n has summoned you!", ch, None, victim, TO_VICT)
+    # victim do_look skipped -- NPC output is discarded in PrimeSUD
+    return True
 
 
 def spell_ventriloquate(sn, level, ch, vo, target):
-    """Ventriloquate (cf. 1stMud spell_ventriloquate in magic.c)."""
+    """Ventriloquate (cf. 1stMud spell_ventriloquate in magic.c).
+    [Verified: 03/07/2026] -- like 1stMud, only awake chars matching the
+    spoken name hear anything (magic.c:4290)."""
     tail = ch.get("_target_name", "")
     parts = tail.split(None, 1)
     if len(parts) < 2:
@@ -2094,7 +2333,8 @@ def spell_ventriloquate(sn, level, ch, vo, target):
 
 
 def spell_acid_breath(sn, level, ch, vo, target):
-    """Acid breath (cf. 1stMud spell_acid_breath in magic.c)."""
+    """Acid breath (cf. 1stMud spell_acid_breath in magic.c).
+    [Verified: 03/07/2026] -- acid_effect item damage still TODO."""
     victim = vo
     act("$n spits acid at $N.", ch, None, victim, TO_NOTVICT)
     act("$n spits a stream of corrosive acid at you.", ch, None, victim, TO_VICT)
@@ -2111,7 +2351,8 @@ def spell_acid_breath(sn, level, ch, vo, target):
 
 
 def spell_fire_breath(sn, level, ch, vo, target):
-    """Fire breath -- area effect (cf. 1stMud spell_fire_breath in magic.c)."""
+    """Fire breath -- area effect (cf. 1stMud spell_fire_breath in magic.c).
+    [Verified: 03/07/2026] -- fire_effect item damage still TODO."""
     victim = vo
     act("$n breathes forth a cone of fire.", ch, None, victim, TO_NOTVICT)
     act("$n breathes a cone of hot fire over you!", ch, None, victim, TO_VICT)
@@ -2123,9 +2364,15 @@ def spell_fire_breath(sn, level, ch, vo, target):
     # TODO [PRIMESUD] fire_effect(room, level, dam/2, TARGET_ROOM)
     room = world.rooms[ch["room"]]
     found = False
+    caster_npc = ch.get("is_npc", False)
     for mob_id in list(room["mobs"]):
         vch = world.chars.get(mob_id)
-        if vch is None or vch is ch:
+        if vch is None or vch is ch or is_safe_spell(ch, vch, True):
+            continue
+        # NPC breathers only splash NPCs they are mutually fighting (magic.c:4388)
+        if (caster_npc and vch.get("is_npc")
+                and (ch.get("fighting") != vch.get("id")
+                     or vch.get("fighting") != ch.get("id"))):
             continue
         found = True
         if vch is victim:
@@ -2137,7 +2384,8 @@ def spell_fire_breath(sn, level, ch, vo, target):
 
 
 def spell_frost_breath(sn, level, ch, vo, target):
-    """Frost breath -- area effect (cf. 1stMud spell_frost_breath in magic.c)."""
+    """Frost breath -- area effect (cf. 1stMud spell_frost_breath in magic.c).
+    [Verified: 03/07/2026] -- cold_effect item damage still TODO."""
     victim = vo
     act("$n breathes out a freezing cone of frost!", ch, None, victim, TO_NOTVICT)
     act("$n breathes a freezing cone of frost over you!", ch, None, victim, TO_VICT)
@@ -2149,9 +2397,15 @@ def spell_frost_breath(sn, level, ch, vo, target):
     # TODO [PRIMESUD] cold_effect(room, level, dam/2, TARGET_ROOM)
     room = world.rooms[ch["room"]]
     found = False
+    caster_npc = ch.get("is_npc", False)
     for mob_id in list(room["mobs"]):
         vch = world.chars.get(mob_id)
-        if vch is None or vch is ch:
+        if vch is None or vch is ch or is_safe_spell(ch, vch, True):
+            continue
+        # NPC breathers only splash NPCs they are mutually fighting (magic.c:4449)
+        if (caster_npc and vch.get("is_npc")
+                and (ch.get("fighting") != vch.get("id")
+                     or vch.get("fighting") != ch.get("id"))):
             continue
         found = True
         if vch is victim:
@@ -2163,7 +2417,8 @@ def spell_frost_breath(sn, level, ch, vo, target):
 
 
 def spell_gas_breath(sn, level, ch, vo, target):
-    """Gas breath -- area poison (cf. 1stMud spell_gas_breath in magic.c)."""
+    """Gas breath -- area poison (cf. 1stMud spell_gas_breath in magic.c).
+    [Verified: 03/07/2026] -- poison_effect item damage still TODO."""
     act("$n breathes out a cloud of poisonous gas!", ch, None, None, TO_ROOM)
     act("You breath out a cloud of poisonous gas.", ch, None, None, TO_CHAR)
     hpch = max(16, ch.get("hit", 16))
@@ -2173,9 +2428,16 @@ def spell_gas_breath(sn, level, ch, vo, target):
     # TODO [PRIMESUD] poison_effect(room, level, dam, TARGET_ROOM)
     room = world.rooms[ch["room"]]
     found = False
+    caster_npc = ch.get("is_npc", False)
     for mob_id in list(room["mobs"]):
         vch = world.chars.get(mob_id)
-        if vch is None or vch is ch:
+        if vch is None or vch is ch or is_safe_spell(ch, vch, True):
+            continue
+        # 1stMud gas quirk: NPC breathers skip NPCs they ARE fighting
+        # (condition inverted vs fire/frost, magic.c:4506)
+        if (caster_npc and vch.get("is_npc")
+                and (ch.get("fighting") == vch.get("id")
+                     or vch.get("fighting") == ch.get("id"))):
             continue
         found = True
         if saves_spell(level, vch, DAM_POISON):
@@ -2187,10 +2449,12 @@ def spell_gas_breath(sn, level, ch, vo, target):
 
 
 def spell_lightning_breath(sn, level, ch, vo, target):
-    """Lightning breath (cf. 1stMud spell_lightning_breath in magic.c)."""
+    """Lightning breath (cf. 1stMud spell_lightning_breath in magic.c).
+    [Verified: 03/07/2026] -- shock_effect item damage still TODO."""
     victim = vo
-    act("You breathe a bolt of lightning at $N.", ch, None, victim, TO_CHAR)
+    act("$n breathes a bolt of lightning at $N.", ch, None, victim, TO_NOTVICT)
     act("$n breathes a bolt of lightning at you!", ch, None, victim, TO_VICT)
+    act("You breathe a bolt of lightning at $N.", ch, None, victim, TO_CHAR)
     hpch = max(10, ch.get("hit", 10))
     hp_dam = randint(hpch // 9 + 1, hpch // 5)
     dice_dam = dice(level, 20)
@@ -2203,7 +2467,8 @@ def spell_lightning_breath(sn, level, ch, vo, target):
 
 
 def spell_general_purpose(sn, level, ch, vo, target):
-    """General purpose (cf. 1stMud spell_general_purpose in magic.c)."""
+    """General purpose (cf. 1stMud spell_general_purpose in magic.c).
+    [Verified: 03/07/2026]"""
     dam = randint(25, 100)
     if saves_spell(level, vo, DAM_PIERCE):
         dam //= 2
@@ -2211,7 +2476,8 @@ def spell_general_purpose(sn, level, ch, vo, target):
 
 
 def spell_high_explosive(sn, level, ch, vo, target):
-    """High explosive (cf. 1stMud spell_high_explosive in magic.c)."""
+    """High explosive (cf. 1stMud spell_high_explosive in magic.c).
+    [Verified: 03/07/2026]"""
     dam = randint(30, 120)
     if saves_spell(level, vo, DAM_PIERCE):
         dam //= 2
@@ -2242,7 +2508,8 @@ def spell_nexus(sn, level, ch, vo, target):
 
 
 def spell_forceshield(sn, level, ch, vo, target):
-    """Force shield (cf. 1stMud spell_forceshield in magic2.c)."""
+    """Force shield (cf. 1stMud spell_forceshield in magic2.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn):
         if vo is ch:
             chprintln(ch, "You are already force-shielded.")
@@ -2256,7 +2523,8 @@ def spell_forceshield(sn, level, ch, vo, target):
 
 
 def spell_staticshield(sn, level, ch, vo, target):
-    """Static shield (cf. 1stMud spell_staticshield in magic2.c)."""
+    """Static shield (cf. 1stMud spell_staticshield in magic2.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn):
         if vo is ch:
             chprintln(ch, "You are surrounded by static charge.")
@@ -2270,7 +2538,8 @@ def spell_staticshield(sn, level, ch, vo, target):
 
 
 def spell_flameshield(sn, level, ch, vo, target):
-    """Flame shield (cf. 1stMud spell_flameshield in magic2.c)."""
+    """Flame shield (cf. 1stMud spell_flameshield in magic2.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn):
         if vo is ch:
             chprintln(ch, "You are already protected by fire.")
@@ -2284,19 +2553,22 @@ def spell_flameshield(sn, level, ch, vo, target):
 
 
 def spell_channel(sn, level, ch, vo, target):
-    """Channel mana to another (cf. 1stMud spell_channel in magic2.c)."""
+    """Channel mana to another (cf. 1stMud spell_channel in magic2.c).
+    [Verified: 03/07/2026]"""
+    heal = dice(3, 3) + (level // 3) * 2  # rolled before self-check (magic2.c:287)
     if vo is ch:
         chprintln(ch, "You cannot channel energy into yourself.")
         return False
-    heal = dice(3, 3) + (level // 3) * 2
     vo["mana"] = min(vo.get("mana", 0) + heal, vo.get("max_mana", 100))
+    update_pos(vo)
     chprintln(vo, "A swirling cloud of energy engulfs you!")
     chprintln(ch, "A swirling cloud of energy slips from your fingertips.")
     return True
 
 
 def spell_investiture(sn, level, ch, vo, target):
-    """Convert movement to mana (cf. 1stMud spell_investiture in magic2.c)."""
+    """Convert movement to mana (cf. 1stMud spell_investiture in magic2.c).
+    [Verified: 03/07/2026]"""
     heal = ch.get("move", 0)
     vo["mana"] = min(vo.get("mana", 0) + heal, vo.get("max_mana", 100))
     vo["move"] = 0
@@ -2308,7 +2580,9 @@ def spell_investiture(sn, level, ch, vo, target):
 
 
 def spell_powerstorm(sn, level, ch, vo, target):
-    """Powerstorm area damage (cf. 1stMud spell_powerstorm in magic2.c)."""
+    """Powerstorm area damage (cf. 1stMud spell_powerstorm in magic2.c).
+    [Verified: 03/07/2026] -- world-wide "storm rumbles" broadcast and its
+    found-flag side effect not ported (no other players to notify)."""
     act("$n makes a firey blaze of magic engulf the room!", ch, None, None, TO_ROOM)
     room = world.rooms[ch["room"]]
     found = False
@@ -2325,16 +2599,19 @@ def spell_powerstorm(sn, level, ch, vo, target):
 
 
 def spell_mana_burn(sn, level, ch, vo, target):
-    """Mana burn (cf. 1stMud spell_mana_burn in magic2.c)."""
+    """Mana burn (cf. 1stMud spell_mana_burn in magic2.c).
+    [Verified: 03/07/2026] -- fire_effect item damage still TODO."""
     dam = dice(level, 13)
     if saves_spell(level, vo, DAM_FIRE):
         dam //= 2
     # TODO [PRIMESUD] fire_effect(victim, level/2, dam/10, TARGET_CHAR)
-    return damage(ch, vo, dam, sn, DAM_FIRE, True)
+    damage(ch, vo, dam, sn, DAM_FIRE, True)
+    return True  # 1stMud always returns true (magic2.c:356)
 
 
 def spell_bark_skin(sn, level, ch, vo, target):
-    """Bark skin (cf. 1stMud spell_bark_skin in magic2.c)."""
+    """Bark skin (cf. 1stMud spell_bark_skin in magic2.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn):
         if vo is ch:
             chprintln(ch, "Your skin is already covered in bark.")
@@ -2349,7 +2626,8 @@ def spell_bark_skin(sn, level, ch, vo, target):
 
 
 def spell_spell_mantle(sn, level, ch, vo, target):
-    """Spell mantle (cf. 1stMud spell_spell_mantle in magic2.c)."""
+    """Spell mantle (cf. 1stMud spell_spell_mantle in magic2.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn):
         if vo is ch:
             chprintln(ch, "You are already protected against magic.")
@@ -2364,7 +2642,8 @@ def spell_spell_mantle(sn, level, ch, vo, target):
 
 
 def spell_animal_instinct(sn, level, ch, vo, target):
-    """Animal instinct (cf. 1stMud spell_animal_instinct in magic2.c)."""
+    """Animal instinct (cf. 1stMud spell_animal_instinct in magic2.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn):
         if vo is ch:
             chprintln(ch, "You are already animalistic.")
@@ -2380,7 +2659,8 @@ def spell_animal_instinct(sn, level, ch, vo, target):
 
 
 def spell_chaos_flare(sn, level, ch, vo, target):
-    """Chaos flare -- random buff/debuff (cf. 1stMud spell_chaos_flare in magic2.c)."""
+    """Chaos flare -- random buff/debuff (cf. 1stMud spell_chaos_flare in magic2.c).
+    [Verified: 03/07/2026]"""
     if is_affected(vo, sn):
         if vo is ch:
             chprintln(ch, "You are already touched by chaos.")
@@ -2448,6 +2728,7 @@ def spell_chaos_flare(sn, level, ch, vo, target):
 
 def spell_wild_magic(sn, level, ch, vo, target):
     """Wild magic -- random damage type (cf. 1stMud spell_wild_magic in magic2.c).
+    [Verified: 03/07/2026] -- elemental item effects still TODO.
 
     Structure mirrors 1stMud exactly: each branch saves, halves dam, deals
     damage, then applies elemental effect, then early-returns.
