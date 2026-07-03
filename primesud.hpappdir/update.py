@@ -62,6 +62,10 @@ def update_handler():
     if _pulse_violence <= 0:
         _pulse_violence = PULSE_VIOLENCE
         update_mob_timers()
+        if player["fighting"] is not None:
+            # [PRIMESUD] blank separator before combat round output
+            # (display concern; blank-before-block matches interpret)
+            tr.print("")
         violence_update(player)
         fired |= UPD_VIOLENCE
 

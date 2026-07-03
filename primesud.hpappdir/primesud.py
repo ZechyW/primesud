@@ -139,6 +139,7 @@ class Game:
                     if player.get("run_buf"):
                         # [PRIMESUD] keyboard input cancels run
                         free_runbuf(player)
+                        tr.print("")
                         tr.print("You stop running.")
                         self.input_buf = ""
                         show_prompt(player, self.input_buf)
@@ -146,6 +147,7 @@ class Game:
                         # cf. 1stMud comm.c: wait > 0 queues command
                         if self.input_buf:
                             self._pending_cmd = self.input_buf
+                            tr.print("")
                             tr.print("{D[Recovering... command queued]{x")  # [PRIMESUD]
                         self.input_buf = ""
                         show_prompt(player, self.input_buf)
@@ -197,10 +199,12 @@ class Game:
                     if player.get("run_buf"):
                         # [PRIMESUD] keyboard input cancels run
                         free_runbuf(player)
+                        tr.print("")
                         tr.print("You stop running.")
                         show_prompt(player, self.input_buf)
                     elif player.get("wait", 0) > 0:
                         self._pending_cmd = char
+                        tr.print("")
                         tr.print("{D[Recovering... command queued]{x")  # [PRIMESUD]
                     else:
                         _t0 = ticks()
@@ -265,14 +269,13 @@ class Game:
                         fid = player["fighting"]
                         finst = world.chars[fid]
                         tr.print(mob_condition(finst, MOB_DEFS[finst["tpl"]]))
-                        tr.print("")
                     show_prompt(player, self.input_buf)
 
                 if fired & UPD_TICK:
                     show_prompt(player, self.input_buf)
                     tick_count += 1
                     if tick_count >= AUTOSAVE_TICKS:
-                        save_game(self, quiet=False)
+                        save_game(self, quiet=True)
                         tick_count = 0
 
                 if world.save_pending:

@@ -124,6 +124,11 @@ def install_color_print(tr):
                         groups[current] = []
                     groups[current].append((x, seg))
                     x += len(seg)
+            if groups:
+                # [PRIMESUD] lazy scroll: resolve any pending scroll before
+                # drawing via print_xy (bypasses _put_char's check).
+                while tr.cursor_y >= tr.rows:
+                    tr._scroll_up()
             row = tr.cursor_y
             for colour in colour_order:
                 if colour is None:

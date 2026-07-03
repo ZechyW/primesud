@@ -108,6 +108,23 @@ class tml_prime(tml):
         super()._scroll_up()
 
     # ------------------------------------------------------------------
+    # Override: lazy scroll -- defer scrolling past the bottom row until
+    # the next character is actually drawn, so output ending in '\n' on
+    # the last row does not waste the bottom row of the screen.
+    # ------------------------------------------------------------------
+
+    def _end_of_screen_check(self):
+        # [PRIMESUD] no-op: pending scroll resolved in _put_char /
+        # terminal.wrapped_print just before the next draw.
+        pass
+
+    def _put_char(self, char):
+        if char != '\n':
+            while self.cursor_y >= self.rows:
+                self._scroll_up()
+        super()._put_char(char)
+
+    # ------------------------------------------------------------------
     # Override: intercept shift+- sentinel in the blocking read path
     # ------------------------------------------------------------------
 
