@@ -52,6 +52,31 @@ ROOM_GUILDS = {
     },
 }
 
+# {(src_area, dst_area): (reset_line, ...)} -- resets in src whose target
+# room lives in dst. Left in src they force dst (and its own cross-area
+# pulls) to load the moment src loads; moved to dst they run when dst
+# actually loads. [PRIMESUD] defer-load optimization; same world state.
+MOVE_RESETS = {
+    ("midgaard", "shire"): (
+        '    ("O", 3200, 1116),',   # the juke, The Ivy Bush
+        '    ("O", 3200, 1144),',   # the juke, The Green Dragon
+    ),
+    ("midgaard", "immort"): (
+        '    ("O", 3135, 1200),',   # a fountain, The Chat Room
+        '    ("O", 3200, 1200),',   # the juke, The Chat Room
+    ),
+}
+
+# {area: (reset_line, ...)} -- resets referencing another area's defs from
+# a local room (nothing to move). Dropped to defer the foreign load.
+DROP_RESETS = {
+    "midgaard": (
+        # Kate's Diner pipeweed bread: shire item def would pull shire (and
+        # via shire's shiriff gear, ofcol2) at game start; still sold in shire
+        '    ("G", 1103),',
+    ),
+}
+
 DIR_ORDER = "neswud"
 
 
@@ -211,15 +236,79 @@ def patch_room_guilds(area_name, filepath):
     return modified
 
 
+def patch_move_resets(base):
+    """Move MOVE_RESETS lines from src RESETS to dst RESETS. Idempotent."""
+    for (src, dst), reset_lines in sorted(MOVE_RESETS.items()):
+        src_path = base / f"area_{src}.dat"
+        dst_path = base / f"area_{dst}.dat"
+        if not (src_path.exists() and dst_path.exists()):
+            print(f"  SKIP: {src} -> {dst} (file missing)", file=sys.stderr)
+            continue
+        src_lines = src_path.read_text(encoding="utf-8").split("\n")
+        moved = []
+        for rl in reset_lines:
+            if rl in src_lines:
+                src_lines.remove(rl)
+                moved.append(rl)
+        if not moved:
+            continue  # already moved (or regen dropped them)
+        src_path.write_text("\n".join(src_lines), encoding="utf-8")
+
+        dst_lines = dst_path.read_text(encoding="utf-8").split("\n")
+        closing = None
+        in_resets = False
+        for idx in range(len(dst_lines)):
+            if dst_lines[idx].startswith("RESETS = ("):
+                in_resets = True
+            elif in_resets and dst_lines[idx] == ")":
+                closing = idx
+                break
+        if closing is None:
+            print(f"  WARNING: RESETS end not found in {dst}", file=sys.stderr)
+            continue
+        dst_lines[closing:closing] = [
+            rl + f"  # [PRIMESUD] moved from {src} (defer cross-area load)"
+            for rl in moved
+        ]
+        dst_path.write_text("\n".join(dst_lines), encoding="utf-8")
+        print(f"  {src} -> {dst}: {len(moved)} reset(s) moved", file=sys.stderr)
+
+
+def patch_drop_resets(base):
+    """Comment out DROP_RESETS lines in place. Idempotent."""
+    for area_name, reset_lines in sorted(DROP_RESETS.items()):
+        filepath = base / f"area_{area_name}.dat"
+        if not filepath.exists():
+            print(f"  SKIP: {filepath} not found", file=sys.stderr)
+            continue
+        lines = filepath.read_text(encoding="utf-8").split("\n")
+        dropped = 0
+        for rl in reset_lines:
+            if rl in lines:
+                idx = lines.index(rl)
+                lines[idx] = ("    # [PRIMESUD] dropped " + rl.strip().rstrip(",")
+                              + " (defer cross-area load)")
+                dropped += 1
+        if dropped:
+            filepath.write_text("\n".join(lines), encoding="utf-8")
+            print(f"  {area_name}: {dropped} reset(s) dropped", file=sys.stderr)
+
+
 if __name__ == "__main__":
     base = Path(__file__).resolve().parent.parent / "primesud.hpappdir"
-    for area_name in sorted(set(CROSS_AREA_EXITS) | set(MOB_ACT_FLAGS)
-                            | set(ROOM_GUILDS)):
-        filepath = base / f"area_{area_name}.dat"
-        if filepath.exists():
-            print(f"==> {area_name}", file=sys.stderr)
-            patch_area(area_name, filepath)
-            patch_mob_flags(area_name, filepath)
-            patch_room_guilds(area_name, filepath)
-        else:
-            print(f"  SKIP: {filepath} not found", file=sys.stderr)
+    # --resets-only: re-apply just the (idempotent) reset move/drop patches
+    # to already-patched .dats; the exit/flag/guild patches would duplicate
+    if "--resets-only" not in sys.argv:
+        for area_name in sorted(set(CROSS_AREA_EXITS) | set(MOB_ACT_FLAGS)
+                                | set(ROOM_GUILDS)):
+            filepath = base / f"area_{area_name}.dat"
+            if filepath.exists():
+                print(f"==> {area_name}", file=sys.stderr)
+                patch_area(area_name, filepath)
+                patch_mob_flags(area_name, filepath)
+                patch_room_guilds(area_name, filepath)
+            else:
+                print(f"  SKIP: {filepath} not found", file=sys.stderr)
+    print("==> reset moves/drops", file=sys.stderr)
+    patch_move_resets(base)
+    patch_drop_resets(base)

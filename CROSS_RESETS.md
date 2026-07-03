@@ -3,6 +3,13 @@
 Resets that reference mobs, items, or rooms defined in a different area.
 Generated from area .dat files.
 
+Note: patch_1stmud_deltas.py (MOVE_RESETS/DROP_RESETS) defers the
+midgaard start-load cascade: the juke resets into shire rooms 1116/1144
+and the fountain/juke into immort room 1200 now live in the target
+area's RESETS, and Kate's Diner `G 1103` (pipeweed bread, shire def) is
+dropped. New game loads mud_school+midgaard only instead of also
+pulling shire, ofcol2, and immort.
+
 ## limbo
 
 | Cmd | Vnum | Description | Def Area | Room | Room Name | Room Area |
