@@ -390,13 +390,13 @@ def mobile_update(tr, player):
         if act_flags.get("indoors") and not dest_flags.get("indoors"):
             continue
         old_room = inst["room"]
-        act("$n leaves $T.", inst, None, EXIT_NAMES.get(direction, direction), TO_ROOM)
-        world.rooms[old_room]["mobs"].remove(mob_id)
-        inst["room"] = dest_vnum
-        world.rooms[dest_vnum]["mobs"].append(mob_id)
-        act("$n has arrived.", inst, type=TO_ROOM)
-        if "move" in DBG:  # [PRIMESUD]
-            dbg("move " + inst["name"] + " " + str(old_room) + ">" + str(dest_vnum))
+        # Wander via move_char so leave/arrive acts fire and followers are
+        # dragged along (cf. 1stMud mobile_update move_char(ch, door, false),
+        # update.c:503)
+        from movement import move_char  # lazy import to avoid circular dependency
+        move_char(inst, direction)
+        if "move" in DBG and inst["room"] != old_room:  # [PRIMESUD]
+            dbg("move " + inst["name"] + " " + str(old_room) + ">" + str(inst["room"]))
 
 
 def aggr_update(tr, player):

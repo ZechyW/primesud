@@ -308,6 +308,57 @@ class TestFollowerMovement:
 # Charm spell linkage / mobile_update guard
 # ===========================================================================
 
+class TestWanderFollow:
+    def test_player_follows_wandering_mob(self, monkeypatch):
+        # mob wander goes through move_char, dragging the following player
+        # (cf. 1stMud mobile_update -> move_char(ch, door, false))
+        import mob as mob_mod
+        player = _make_player()
+        player["run_buf"] = [("move", "n")]   # brief room line; skip full look
+        leader = _make_mob(2, home_area="test")
+        player["master"] = 2
+        monkeypatch.setattr(mob_mod, "randint", lambda a, b: a)
+        mob_mod.mobile_update(None, player)
+        assert leader["room"] == 9002
+        assert player["room"] == 9002
+
+    def test_move_char_directly_moves_npc(self):
+        from movement import move_char
+        mob = _make_mob(2)
+        move_char(mob, "n")
+        assert mob["room"] == 9002
+        assert 2 in world.rooms._data[9002]["mobs"]
+        assert 2 not in world.rooms._data[9001]["mobs"]
+
+    def test_charmed_pet_anchored_to_present_master(self):
+        # pet alone can't walk away while its master is in the room
+        from movement import move_char
+        player = _make_player()
+        pet = _make_mob(2)
+        add_follower(pet, player)
+        pet["affected_by"]["charm"] = True
+        move_char(pet, "n")
+        assert pet["room"] == 9001
+
+
+class TestMobAffectTick:
+    def test_mob_affect_expires(self):
+        from player import tick_update
+        from handler import affect_to_char
+        player = _make_player()
+        player["xp_next"] = 1000
+        mob = _make_mob(2)
+        affect_to_char(mob, {"type": 999, "level": 20, "duration": 1,
+                             "location": "str", "modifier": 2,
+                             "bitvector": "", "where": "to_affects"})
+        room = ROOM_DEFS._data[9001]
+        tick_update(None, player, room)   # duration 1 -> 0
+        assert mob["affect_list"][0]["duration"] == 0
+        tick_update(None, player, room)   # duration 0 -> removed
+        assert mob["affect_list"] == []
+        assert mob["mod_stat"].get("str", 0) == 0   # modifier backed out
+
+
 class TestCharmIntegration:
     def test_spell_charm_person_adds_follower(self, monkeypatch):
         player = _make_player()

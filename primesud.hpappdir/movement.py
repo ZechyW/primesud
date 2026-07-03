@@ -42,59 +42,66 @@ def _has_boat(ch):
     return False
 
 
-def move_char(player, direction):
-    """Move player through an exit (cf. 1stMud move_char in act_move.c).
+def move_char(ch, direction):
+    """Move a character through an exit (cf. 1stMud move_char in act_move.c).
+
+    Actor-generic: players get full checks plus room display; mobs (wander
+    via mobile_update, follower recursion) get leave/arrive acts and
+    room-list bookkeeping. Followers recurse into move_char, matching
+    1stMud's move_char(fch, door, true).
 
     Checks: exit existence, visibility, closed doors (with pass_door /
-    nopass), charm anchor, sector restrictions (air, water),
-    movement-point cost, and haste/slow modifiers.
+    nopass), charm anchor, and for players: guild rooms, sector
+    restrictions (air, water), movement-point cost, haste/slow modifiers.
 
     Position gate handled by command table (do_north etc. have
     min_pos = "standing").
 
     Args:
-        player (dict): Player state dict.
+        ch (dict): Moving character (player or mob instance).
         direction (str): Single-char direction key (n/e/s/w/u/d).
     """
     # -- p_exit_trigger (mob/obj/room progs) not ported --
 
-    in_room = ROOM_DEFS[player["room"]]
+    in_room = ROOM_DEFS[ch["room"]]
     exits = in_room.get("exits", {})
+    is_npc = ch.get("is_npc", False)
 
     if direction not in exits:
-        chprintln(player, "Alas, you cannot go that way.")
+        chprintln(ch, "Alas, you cannot go that way.")
         return
 
     exit_val = exits[direction]
     dest = _exit_to(exit_val)
     if dest not in ROOM_DEFS:
-        chprintln(player, "Alas, you cannot go that way.")
+        chprintln(ch, "Alas, you cannot go that way.")
         return
     to_room = ROOM_DEFS[dest]
 
-    if not can_see_room(player, dest):
-        chprintln(player, "Alas, you cannot go that way.")
+    if not can_see_room(ch, dest):
+        chprintln(ch, "Alas, you cannot go that way.")
         return
 
-    aff = player.get("affected_by", {})
+    aff = ch.get("affected_by", {})
 
     # -- Closed door (with pass_door / nopass) --
     is_exit_dict = isinstance(exit_val, dict)
     if is_exit_dict and exit_val.get("closed"):
         if not aff.get("pass_door") or exit_val.get("nopass"):
             keyword = exit_val.get("keyword", EXIT_NAMES.get(direction, "door"))
-            chprintln(player, "The " + keyword + " is closed.")
+            chprintln(ch, "The " + keyword + " is closed.")
             return
 
     # -- Charm anchor (cf. 1stMud AFF_CHARM && master in same room) --
-    if aff.get("charm") and player.get("master") is not None:
-        # master/follower system not ported; stub for fidelity
-        chprintln(player, "What?  And leave your beloved master?")
-        return
+    if aff.get("charm") and ch.get("master") is not None:
+        master = world.chars.get(ch["master"])
+        if master is not None and master.get("room") == ch["room"]:
+            chprintln(ch, "What?  And leave your beloved master?")
+            return
 
     # -- Private room / area closed checks not ported --
 
-    if not player.get("is_npc", False):
+    if not is_npc:
         # -- Guild room (cf. 1stMud act_move.c: to_room->guild + is_class) --
         # "guild" tuple patched onto rooms by patch_1stmud_deltas.py;
         # Paladin/Ranger share the Cleric/Warrior guilds (CLASS_PLAN.md).
@@ -102,11 +109,11 @@ def move_char(player, direction):
         if allowed is not None:
             member = False
             for cl in allowed:
-                if is_class(player, cl):
+                if is_class(ch, cl):
                     member = True
                     break
             if not member:
-                chprintln(player, "You aren't allowed in there.")
+                chprintln(ch, "You aren't allowed in there.")
                 return
 
         # -- Sector: air --
@@ -114,15 +121,15 @@ def move_char(player, direction):
         to_sect = to_room.get("sector", "inside")
         if in_sect == SECT_AIR or to_sect == SECT_AIR:
             if not aff.get("flying"):
-                chprintln(player, "You can't fly.")
+                chprintln(ch, "You can't fly.")
                 return
 
         # -- Sector: deep water (need boat or flying) --
         if (in_sect == SECT_WATER_NOSWIM or to_sect == SECT_WATER_NOSWIM) \
                 and not aff.get("flying"):
-            found = _has_boat(player)
+            found = _has_boat(ch)
             if not found:
-                chprintln(player, "You need a boat to go there.")
+                chprintln(ch, "You need a boat to go there.")
                 return
 
         # -- Movement point cost --
@@ -132,63 +139,75 @@ def move_char(player, direction):
             move_cost //= 2
         if aff.get("slow"):
             move_cost *= 2
-        if player.get("move", 0) < move_cost:
-            chprintln(player, "You are too exhausted.")
+        if ch.get("move", 0) < move_cost:
+            chprintln(ch, "You are too exhausted.")
             return
 
-        WaitState(player, 1)
-        player["move"] = player.get("move", 0) - move_cost
+        WaitState(ch, 1)
+        ch["move"] = ch.get("move", 0) - move_cost
 
     # -- Stance drop on movement (cf. 1stMud move_char act_move.c:169)
-    if valid_stance(get_stance(player, STANCE_CURRENT)):
+    if valid_stance(get_stance(ch, STANCE_CURRENT)):
         from combat import do_stance  # lazy import (combat imports movement targets)
-        do_stance(player, [])
+        do_stance(ch, [])
 
     # -- Leave message (1stMud: act("$n leaves $T.", ch, NULL, dir_name[door], TO_ROOM))
-    # Single-player: no other chars in room to notify; skip.
+    # Player actor: single-player, nobody to notify; skip.
+    if is_npc:
+        act("$n leaves $T.", ch, None, EXIT_NAMES.get(direction, direction), TO_ROOM)
 
-    from_vnum = player["room"]
-    player["room"] = dest
-
-    # -- Arrive message (single-player: skip) --
-
-    # 1stMud: do_function(ch, &do_look, "auto") -- "auto" triggers brief mode;
-    # PrimeSUD has no brief mode, so empty args shows full room.
-    # [PRIMESUD] During speedwalk, intermediate rooms get brief one-liners.
-    run_buf = player.get("run_buf")
-    if run_buf and any(a == "move" for a, _ in run_buf):
-        _brief_room_line(player)
+    from_vnum = ch["room"]
+    ch["room"] = dest
+    if is_npc:
+        # Mobs are tracked in per-room lists (players are not)
+        if from_vnum in world.rooms and ch["id"] in world.rooms[from_vnum]["mobs"]:
+            world.rooms[from_vnum]["mobs"].remove(ch["id"])
+        if dest in world.rooms:
+            world.rooms[dest]["mobs"].append(ch["id"])
+        act("$n has arrived.", ch, type=TO_ROOM)
     else:
-        do_look(player, [])
+        # 1stMud: do_function(ch, &do_look, "auto") -- "auto" triggers brief mode;
+        # PrimeSUD has no brief mode, so empty args shows full room.
+        # [PRIMESUD] During speedwalk, intermediate rooms get brief one-liners.
+        run_buf = ch.get("run_buf")
+        if run_buf and any(a == "move" for a, _ in run_buf):
+            _brief_room_line(ch)
+        else:
+            do_look(ch, [])
 
-    # -- Followers move too (cf. 1stMud move_char follower loop, act_move.c:232-257)
+    # -- Followers move too (cf. 1stMud move_char follower loop, act_move.c:232-257).
+    # Mob followers come from the old room's mob list; the player (not tracked
+    # in room lists) is checked separately so following a wandering mob works.
+    followers = []
     if from_vnum in world.rooms:
         for fid in list(world.rooms[from_vnum]["mobs"]):
             fch = world.chars.get(fid)
-            if fch is None or fch.get("master") != player["id"]:
-                continue
+            if fch is not None and fch.get("master") == ch["id"]:
+                followers.append(fch)
+    _p = world.chars.get(1)
+    if (_p is not None and _p is not ch and _p.get("master") == ch["id"]
+            and _p.get("room") == from_vnum):
+        followers.append(_p)
 
-            # 1stMud: charmed follower below standing -> do_stand
-            if (fch.get("affected_by", {}).get("charm")
-                    and POS_ORDER[fch["pos"]] < POS_ORDER["standing"]):
-                fch["pos"] = "standing"
+    for fch in followers:
+        # 1stMud: charmed follower below standing -> do_stand
+        if (fch.get("affected_by", {}).get("charm")
+                and POS_ORDER[fch["pos"]] < POS_ORDER["standing"]):
+            fch["pos"] = "standing"
 
-            if fch["pos"] != "standing":
-                continue
+        if fch["pos"] != "standing" or not can_see_room(fch, dest):
+            continue
 
-            # 1stMud: ROOM_LAW blocks aggressive pets from entering the city
-            if (to_room.get("flags", {}).get("law")
-                    and fch.get("act_flags", {}).get("aggressive")):
-                act("You can't bring $N into the city.", player, None, fch, TO_CHAR)
-                act("You aren't allowed in the city.", fch, None, None, TO_CHAR)
-                continue
+        # 1stMud: ROOM_LAW blocks aggressive pets from entering the city
+        if (to_room.get("flags", {}).get("law")
+                and fch.get("is_npc")
+                and fch.get("act_flags", {}).get("aggressive")):
+            act("You can't bring $N into the city.", ch, None, fch, TO_CHAR)
+            act("You aren't allowed in the city.", fch, None, None, TO_CHAR)
+            continue
 
-            act("You follow $N.", fch, None, player, TO_CHAR)
-            # [PRIMESUD] direct room transfer; 1stMud recurses move_char(fch, door)
-            world.rooms[from_vnum]["mobs"].remove(fid)
-            fch["room"] = dest
-            world.rooms[dest]["mobs"].append(fid)
-            act("$n has arrived.", fch, type=TO_ROOM)
+        act("You follow $N.", fch, None, ch, TO_CHAR)
+        move_char(fch, direction)  # cf. 1stMud move_char(fch, door, true)
 
 
 # -- Direction command handlers (cf. 1stMud do_north..do_down in act_move.c) --
