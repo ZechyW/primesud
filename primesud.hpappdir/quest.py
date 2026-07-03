@@ -12,7 +12,8 @@ Player quest state (cf. 1stMud QuestData in structs.h), stored flat on the
 player dict for save simplicity:
     quest_points     quest points (pcdata->quest.points)
     quest_status     QUEST_* value (pcdata->quest.status)
-    quest_time       minutes left on quest, or cooldown when QUEST_NONE
+    quest_time       world ticks left on quest, or cooldown when QUEST_NONE
+                     (assigned/balanced in real minutes; see config.mins_to_ticks)
     quest_mob        target mob template vnum, 0 if none
     quest_obj        target obj template vnum, 0 if none
     quest_room       target room vnum, 0 if none
@@ -25,7 +26,7 @@ player dict for save simplicity:
 import world
 from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, AREA_DEFS, AREA_LEVELS
 from world import _ensure_area_by_tag
-from config import MAX_LEVEL
+from config import MAX_LEVEL, mins_to_ticks, ticks_to_mins, on_minute
 from handler import (chprintln, chprintlnf, act, is_evil, is_good, is_name,
                      unequip_char, equip_char, TO_CHAR, TO_ROOM, TO_VICT,
                      TO_NOTVICT)
@@ -131,12 +132,17 @@ def _prefix(arg, word):
 
 
 def end_quest(player, time):
-    """Clear quest state, set cooldown/penalty timer (cf. 1stMud end_quest in quest.c)."""
+    """Clear quest state, set cooldown/penalty timer (cf. 1stMud end_quest in quest.c).
+
+    Args:
+        player (dict): Player state dict.
+        time (int): Cooldown in real minutes (1stMud values verbatim).
+    """
     if player.get("is_npc"):
         return
     player["quest_status"] = QUEST_NONE
     player["quest_giver"] = 0
-    player["quest_time"] = time
+    player["quest_time"] = mins_to_ticks(time) if time > 0 else 0
     player["quest_mob"] = 0
     player["quest_obj"] = 0
     player["quest_room"] = 0
@@ -409,7 +415,10 @@ def create_quest_obj(player, vnum=-1):
         return None
     # 1stMud: replace_str(&obj->owner, ch->name) anti-theft owner tag --
     # [PRIMESUD] skipped, single player
-    obj["timer"] = (4 * player["quest_time"] + 10) // 3
+    # 1stMud formula is in minutes; quest_time stores ticks, so convert out
+    # and back (obj timers also decrement per world tick)
+    obj["timer"] = mins_to_ticks(
+        (4 * ticks_to_mins(player["quest_time"]) + 10) // 3)
     return obj
 
 
@@ -448,7 +457,7 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
     player["quest_room"] = rvnum
     player["quest_room_name"] = room_name
     player["quest_area_name"] = area_name
-    player["quest_time"] = randint(15, 30)
+    player["quest_time"] = mins_to_ticks(randint(15, 30))
     player["quest_status"] = status
 
     if status == QUEST_RETRIEVE:
@@ -564,7 +573,8 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
     mob_tell(player, questman,
              "The location is in the general area of %s." % area_name)
     mob_tell(player, questman,
-             "You have %s to complete this quest." % _intstr(player["quest_time"], "minute"))
+             "You have %s to complete this quest."
+             % _intstr(ticks_to_mins(player["quest_time"]), "minute"))
     # 1stMud: "May %s go with you!" (ch->deity->name) -- [PRIMESUD] no deities
     mob_tell(player, questman, "May the gods go with you!")
 
@@ -767,8 +777,9 @@ def quest_kill_check(player, victim):
 def quest_update():
     """Tick quest timers once per world tick (cf. 1stMud quest_update in update.c pulse_point).
 
-    [PRIMESUD] A quest "minute" is one world tick (30s on PrimeSUD vs
-    1stMud's 60s pulse_point) -- quest clocks run at 2x wall speed.
+    [PRIMESUD] Timers count world ticks; durations are balanced in real
+    minutes like 1stMud's 60s pulse_point, so per-minute messages fire on
+    whole-minute boundaries (on_minute) and display via ticks_to_mins.
     """
     player = world.chars.get(1)
     if player is None or player.get("quest_time", 0) <= 0:
@@ -781,8 +792,9 @@ def quest_update():
             chprintlnf(player,
                        "{RYou have run out of time for your quest!"
                        "  You may quest again in %d minutes.{x",
-                       player["quest_time"])
-        elif player["quest_time"] < 6:
+                       ticks_to_mins(player["quest_time"]))
+        elif (player["quest_time"] < mins_to_ticks(6)
+                and on_minute(player["quest_time"])):
             # [PRIMESUD] "{p" (1stMud pink) rendered as {M
             chprintln(player,
                       "{MBetter hurry, you're almost out of time for your quest!{x")
@@ -822,7 +834,7 @@ def do_quest(player, args):
             chprintln(player, "You aren't currently on a quest.")
             chprintlnf(player,
                        "There are %s remaining until you can go on another quest.",
-                       _intstr(player.get("quest_time", 0), "minute"))
+                       _intstr(ticks_to_mins(player.get("quest_time", 0)), "minute"))
             chprintlnf(player, "You have %s.",
                        _intstr(player.get("quest_points", 0), "quest point"))
         elif status == QUEST_RETRIEVE and player.get("quest_obj", 0):
@@ -865,7 +877,7 @@ def do_quest(player, args):
             chprintln(player, "{RYour quest is {WALMOST{R complete!{x")
             chprintlnf(player,
                        "{RYou have %s to get back to %s before your time runs out!{x",
-                       _intstr(player.get("quest_time", 0), "minute"),
+                       _intstr(ticks_to_mins(player.get("quest_time", 0)), "minute"),
                        _giver_name(player))
         return
 

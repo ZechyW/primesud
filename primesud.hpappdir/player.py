@@ -43,7 +43,11 @@ def create_char(class_idx=CLASS_WARRIOR):
     ch = _char_base()
     weapon_gsn = WEAPON_GSN_MAP[CLASS_TABLE[class_idx]["weapon"]]
     ch.update({
-        "hit":      20,   "max_hit":  20,   "perm_hit":  20,
+        # [PRIMESUD] Start new players with more max hp than 1stMud's 20:
+        # stances are forced from the start, which lowers damage output at
+        # low mastery, and mud school is a tutorial. Flat offset only --
+        # advance_level/do_train add absolutely and remort resets to 100*b.
+        "hit":      50,   "max_hit":  50,   "perm_hit":  50,
         "mana":     100,  "max_mana": 100,  "perm_mana": 100,
         "move":     100,  "max_move": 100,  "perm_move": 100,
         "room":     R_STARTING_ROOM,

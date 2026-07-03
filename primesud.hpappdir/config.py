@@ -25,6 +25,34 @@ POLL_MS          = 50                         # keyboard polling interval (ms)
 AUTOSAVE_TICKS   = 4                          # autosave every N world ticks
 DEATH_MSG_DELAY  = 3                          # seconds between death flavour lines
 
+
+# Quest/gquest durations are configured and balanced in real-world minutes
+# (matching 1stMud, whose tick is 60s); timers store world ticks internally
+# and convert at assignment/display via these helpers. [PRIMESUD]
+
+def mins_to_ticks(m):
+    """Real minutes -> world ticks, at least 1. [PRIMESUD]"""
+    return max(1, m * 60 // TICK_SECS)
+
+
+def ticks_to_mins(t):
+    """World ticks -> whole real minutes for display (ceil). [PRIMESUD]"""
+    if t <= 0:
+        return 0
+    return (t * TICK_SECS + 59) // 60
+
+
+def on_minute(t):
+    """True when a tick count sits on a whole-minute boundary. [PRIMESUD]"""
+    return (t * TICK_SECS) % 60 == 0
+
+
+# -- Global quests [PRIMESUD] ---------------------------------------------------------
+# Real-world minutes (see mins_to_ticks above).
+GQUEST_INITIAL_DELAY = 75     # first auto gquest of a new game
+GQUEST_AUTO_DELAY_MIN = 50    # random delay between auto gquests
+GQUEST_AUTO_DELAY_MAX = 100
+
 # -- Automap ---------------------------------------------------------------------------
 MAP_HALF_W      = 5   # compact automap half-width  (full grid = 2*W+1 = 11 cols)
 MAP_HALF_H      = 6   # compact automap half-height (full grid = 2*H+1 = 13 rows)

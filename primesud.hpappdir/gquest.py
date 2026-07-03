@@ -15,7 +15,9 @@ and is persisted by game_state (g.gq* save lines).
 
 import world
 from world import MOB_DEFS, ROOM_DEFS, AREA_LEVELS
-from config import MAX_LEVEL, MAX_MORTAL_LEVEL
+from config import (MAX_LEVEL, MAX_MORTAL_LEVEL, GQUEST_INITIAL_DELAY,
+                    GQUEST_AUTO_DELAY_MIN, GQUEST_AUTO_DELAY_MAX,
+                    mins_to_ticks, ticks_to_mins, on_minute)
 from handler import chprintln, chprintlnf
 from quest import (chance, is_quester, mob_tell, quest_target_ok,
                    quest_area_def, _find_spec_mob, _intstr, _prefix,
@@ -31,7 +33,7 @@ GQUEST_RUNNING = 2
 # GqData list into the single player's slot [PRIMESUD]
 gquest_info = {
     "running":   GQUEST_OFF,
-    "timer":     150,        # minutes to next auto gquest (randomized on end)
+    "timer":     mins_to_ticks(GQUEST_INITIAL_DELAY),  # world ticks
     "mob_count": 0,
     "minlevel":  0,
     "maxlevel":  0,
@@ -43,6 +45,15 @@ gquest_info = {
     "joined":    False,
     "pmobs":     [],         # player's copy; -1 = killed
 }
+
+
+def _next_auto_timer():
+    """Return the delay before the next auto gquest, in world ticks. [PRIMESUD]"""
+    lo = GQUEST_AUTO_DELAY_MIN
+    hi = GQUEST_AUTO_DELAY_MAX
+    if hi < lo:
+        hi = lo
+    return mins_to_ticks(randint(lo, hi))
 
 
 def gquester(player):
@@ -81,7 +92,7 @@ def end_gquest():
                        gquest_info["cost"])
     gquest_info["running"] = GQUEST_OFF
     gquest_info["mob_count"] = 0
-    gquest_info["timer"] = randint(100, 200)
+    gquest_info["timer"] = _next_auto_timer()
     gquest_info["qpoints"] = 0
     gquest_info["gold"] = 0
     gquest_info["minlevel"] = 0
@@ -167,7 +178,7 @@ def generate_gquest(who_name):
     gquest_info["joined"] = False
     gquest_info["qpoints"] = randint(15, 30) * gquest_info["mob_count"]
     gquest_info["gold"] = randint(100, 150) * gquest_info["mob_count"]
-    gquest_info["timer"] = 3
+    gquest_info["timer"] = mins_to_ticks(3)  # cf. 1stMud 3-minute join window
     gquest_info["who"] = who_name or "AutoQuest"
 
     player = world.chars.get(1)
@@ -298,7 +309,9 @@ def gq_kill_check(player, victim):
 def gquest_update():
     """Tick the gquest state machine (cf. 1stMud gquest_update in update.c pulse_point).
 
-    [PRIMESUD] A gquest "minute" is one world tick (30s), like quest_update.
+    [PRIMESUD] Timers count world ticks; durations are balanced in real
+    minutes like 1stMud's 60s pulse_point, so per-minute messages fire on
+    whole-minute boundaries (on_minute) and display via ticks_to_mins.
     """
     player = world.chars.get(1)
     running = gquest_info["running"]
@@ -308,53 +321,56 @@ def gquest_update():
             gquest_info["timer"] -= 1
             if gquest_info["timer"] == 0:
                 auto_gquest()
-            # [PRIMESUD] countdown announcements: ticks are 30s, so 2 ticks
-            # per real-world minute; announce every 20 min, then at 5 and 1
-            elif player is not None and (gquest_info["timer"] % 40 == 0
-                                         or gquest_info["timer"] in (2, 10)):
-                chprintlnf(player,
-                           "{WA global quest will begin in about %s.{x",
-                           _intstr(max(1, gquest_info["timer"] // 2), "minute"))
+            # [PRIMESUD] countdown announcements: every 20 real minutes,
+            # then at the 5- and 1-minute marks
+            elif player is not None and on_minute(gquest_info["timer"]):
+                mins = ticks_to_mins(gquest_info["timer"])
+                if mins % 20 == 0 or mins in (1, 5):
+                    chprintlnf(player,
+                               "{WA global quest will begin in about %s.{x",
+                               _intstr(mins, "minute"))
     elif running == GQUEST_WAITING:
         gquest_info["timer"] -= 1
         if gquest_info["timer"] > 0:
-            if player is not None:
+            if player is not None and on_minute(gquest_info["timer"]):
                 chprintlnf(player,
                            "%s left to join the global quest. (Levels %d - %d)",
-                           _intstr(gquest_info["timer"], "minute"),
+                           _intstr(ticks_to_mins(gquest_info["timer"]), "minute"),
                            gquest_info["minlevel"], gquest_info["maxlevel"])
         elif not gquest_info["joined"]:
             end_gquest()
             if player is not None:
                 chprintlnf(player,
                            "Not enough people for the global quest. The next quest will start in %s.",
-                           _intstr(gquest_info["timer"], "minute"))
+                           _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
         else:
-            gquest_info["timer"] = randint(4 * gquest_info["mob_count"],
-                                           6 * gquest_info["mob_count"])
+            gquest_info["timer"] = mins_to_ticks(
+                randint(4 * gquest_info["mob_count"],
+                        6 * gquest_info["mob_count"]))
             gquest_info["running"] = GQUEST_RUNNING
             if player is not None:
                 chprintlnf(player,
                            "The Global Quest begins! You have %s to complete the task!",
-                           _intstr(gquest_info["timer"], "minute"))
+                           _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
     elif running == GQUEST_RUNNING:
         if not gquest_info["joined"]:
             end_gquest()
             if player is not None:
                 chprintlnf(player,
                            "No one left in the Global Quest, next quest will start in %s.",
-                           _intstr(gquest_info["timer"], "minute"))
+                           _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
             return
         if gquest_info["timer"] == 0:
             end_gquest()
             if player is not None:
                 chprintlnf(player,
                            "Time has run out on the Global Quest, next quest will start in %s.",
-                           _intstr(gquest_info["timer"], "minute"))
+                           _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
             return
-        if gquest_info["timer"] in (1, 2, 3, 4, 5, 10, 15) and player is not None:
+        if (player is not None and on_minute(gquest_info["timer"])
+                and ticks_to_mins(gquest_info["timer"]) in (1, 2, 3, 4, 5, 10, 15)):
             chprintlnf(player, "%s remaining in the global quest.",
-                       _intstr(gquest_info["timer"], "minute"))
+                       _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
         gquest_info["timer"] -= 1
 
 
@@ -400,7 +416,7 @@ def do_gquest(player, args):
     if gquest_info["running"] == GQUEST_OFF:
         chprintlnf(player,
                    "There is no global quest running.  The next Gquest will start in %s.",
-                   _intstr(gquest_info["timer"], "minute"))
+                   _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
         return
 
     if _prefix(arg1, "join"):
@@ -443,7 +459,7 @@ def do_gquest(player, args):
         chprintlnf(player, "Status      : %s for %s.",
                    "Waiting" if gquest_info["running"] == GQUEST_WAITING
                    else "Running",
-                   _intstr(gquest_info["timer"], "minute"))
+                   _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
         chprintln(player, "[ Quest Rewards ]")
         chprintlnf(player, "Qp Reward   : %d", gquest_info["qpoints"])
         chprintlnf(player, "Gold Reward : %d", gquest_info["gold"])
@@ -455,7 +471,7 @@ def do_gquest(player, args):
         chprintlnf(player, "The Global Quest is %s for %s.",
                    "Waiting" if gquest_info["running"] == GQUEST_WAITING
                    else "Running",
-                   _intstr(gquest_info["timer"], "minute"))
+                   _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
         return
 
     if _prefix(arg1, "check"):
@@ -489,7 +505,7 @@ def do_gquest(player, args):
         end_gquest()
         chprintlnf(player,
                    "You have completed the global quest, next gquest in %s.",
-                   _intstr(gquest_info["timer"], "minute"))
+                   _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
         world.save_pending = True
         return
 
@@ -546,3 +562,5 @@ def gq_reset():
     gquest_info["cost"] = 0   # never refund across games
     gquest_info["who"] = ""
     end_gquest()
+    # Fresh games wait the fixed initial delay, not the random auto range
+    gquest_info["timer"] = mins_to_ticks(GQUEST_INITIAL_DELAY)

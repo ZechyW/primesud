@@ -29,30 +29,30 @@ I_FLAIL_SUB_MERC           = 3720
 I_WHIP_SUB_MERC            = 3721
 I_GLAIVE_SUB_MERC          = 3722
 
-# Area files: (filename, tag, vnum_lo, vnum_hi).
+# Area files: (filename, tag, display_name, vnum_lo, vnum_hi).
 # Ascending size order: small areas load while heap is fresh (lower ms/KB),
 # big areas load last where heap pressure is unavoidable anyway.
 _AREA_FILES = [
-    ("area_ofcol.dat", "ofcol", 5500, 5599),            # 7084 bytes
-    ("area_limbo.dat", "limbo", 1, 99),                 # 9466 bytes
-    ("area_quest.dat", "quest", 200, 249),              # 12528 bytes
-    ("area_trollden.dat", "trollden", 2800, 2899),      # 19073 bytes
-    ("area_mobfact.dat", "mobfact", 9400, 9499),        # 24889 bytes
-    ("area_immort.dat", "immort", 1200, 1299),          # 26758 bytes
-    ("area_grave.dat", "grave", 3600, 3699),            # 32513 bytes
-    ("area_marsh.dat", "marsh", 8300, 8399),            # 35321 bytes
-    ("area_arachnos.dat", "arachnos", 6200, 6399),      # 44543 bytes
-    ("area_plains.dat", "plains", 300, 399),            # 45308 bytes
-    ("area_chapel.dat", "chapel", 3400, 3499),          # 71267 bytes
-    ("area_school.dat", "mud_school", 3700, 3799),      # 76023 bytes
-    ("area_shire.dat", "shire", 1100, 1199),            # 79009 bytes
-    ("area_haon.dat", "haon", 6000, 6199),              # 85969 bytes
-    ("area_moria.dat", "moria", 3900, 4199),            # 98773 bytes
-    ("area_ofcol2.dat", "ofcol2", 600, 699),            # 126239 bytes
-    ("area_sewer.dat", "sewer", 7000, 7499),            # 158284 bytes
-    ("area_tohell.dat", "tohell", 10400, 10599),        # 195277 bytes
-    ("area_midgaard.dat", "midgaard", 3000, 3399),      # 259207 bytes
-    ("area_newthalos.dat", "newthalos", 9500, 9799),    # 265007 bytes
+    ("area_ofcol.dat", "ofcol", "Ofcol", 5500, 5599),                 # 7084 bytes
+    ("area_limbo.dat", "limbo", "Limbo", 1, 99),                      # 9466 bytes
+    ("area_quest.dat", "quest", "Quest", 200, 249),                   # 12528 bytes
+    ("area_trollden.dat", "trollden", "Troll Den", 2800, 2899),       # 19073 bytes
+    ("area_mobfact.dat", "mobfact", "Mob Factory", 9400, 9499),       # 24889 bytes
+    ("area_immort.dat", "immort", "Valhalla", 1200, 1299),            # 26758 bytes
+    ("area_grave.dat", "grave", "Graveyard", 3600, 3699),             # 32513 bytes
+    ("area_marsh.dat", "marsh", "Marsh", 8300, 8399),                 # 35321 bytes
+    ("area_arachnos.dat", "arachnos", "Arachnos", 6200, 6399),        # 44543 bytes
+    ("area_plains.dat", "plains", "Plains", 300, 399),                # 45308 bytes
+    ("area_chapel.dat", "chapel", "Chapel", 3400, 3499),              # 71267 bytes
+    ("area_school.dat", "mud_school", "Mud School", 3700, 3799),      # 76023 bytes
+    ("area_shire.dat", "shire", "Shire", 1100, 1199),                 # 79009 bytes
+    ("area_haon.dat", "haon", "Haon Dor", 6000, 6199),                # 85969 bytes
+    ("area_moria.dat", "moria", "Moria", 3900, 4199),                 # 98773 bytes
+    ("area_ofcol2.dat", "ofcol2", "New Ofcol", 600, 699),             # 126239 bytes
+    ("area_sewer.dat", "sewer", "Sewers", 7000, 7499),                # 158284 bytes
+    ("area_tohell.dat", "tohell", "Hell", 10400, 10599),              # 195277 bytes
+    ("area_midgaard.dat", "midgaard", "Midgaard", 3000, 3399),        # 259207 bytes
+    ("area_newthalos.dat", "newthalos", "New Thalos", 9500, 9799),    # 265007 bytes
 ]
 
 # Area level ranges, duplicated from each .dat AREA["levels"] so quest
@@ -84,11 +84,13 @@ AREA_LEVELS = {
 # -- Lazy loading state -------------------------------------------------------
 _LOADED_AREAS = set()
 _TAG_TO_FILE = {}
+_TAG_TO_NAME = {}
 _VNUM_RANGES = []
 _pending_mob_saves = {}    # {tpl_vnum: [room_vnum, ...]} from save data
 _pending_room_items = {}   # {rvnum: "raw|token|string"} from save data
 _reset_queue = []          # iterative drain prevents stack overflow
 _draining = False
+_LOADING_ALL = False
 
 
 class LazyDict:
@@ -183,9 +185,26 @@ def _ensure_area_by_tag(tag):
 
 def _load_all():
     """Load all unloaded areas. [PRIMESUD]"""
-    for _, tag, _, _ in _AREA_FILES:
-        if tag not in _LOADED_AREAS:
-            _load_area(tag)
+    global _LOADING_ALL
+    _LOADING_ALL = True
+    try:
+        for _, tag, _, _, _ in _AREA_FILES:
+            if tag not in _LOADED_AREAS:
+                _load_area(tag)
+    finally:
+        _LOADING_ALL = False
+
+
+def _loading_notice(tag):
+    """Print a subtle notice before slow lazy area loading. [PRIMESUD]"""
+    if _LOADING_ALL:
+        return
+    try:
+        import terminal
+        if terminal.tr is not None:
+            terminal.tprint("{DLoading area: " + _TAG_TO_NAME.get(tag, tag) + "{x")
+    except Exception:
+        pass
 
 
 def _load_area(tag):
@@ -195,6 +214,7 @@ def _load_area(tag):
         tag (str): Area tag (e.g. "midgaard").
     """
     global _draining
+    _loading_notice(tag)
     _ns = {}
     exec(open(_TAG_TO_FILE[tag]).read(), _ns)
 
@@ -414,7 +434,7 @@ def reset_lazy():
     ITEM_DEFS._data.clear()
     DOOR_DEFS.clear()
     del AREA_DEFS[:]
-    for _, _tag, _, _ in _AREA_FILES:
+    for _, _tag, _, _, _ in _AREA_FILES:
         AREA_DEFS.append({"tag": _tag, "resets": []})
 
 
@@ -425,9 +445,11 @@ def init_world():
         return
 
     _TAG_TO_FILE.clear()
+    _TAG_TO_NAME.clear()
     del _VNUM_RANGES[:]
-    for _fname, _tag, _lo, _hi in _AREA_FILES:
+    for _fname, _tag, _name, _lo, _hi in _AREA_FILES:
         _TAG_TO_FILE[_tag] = _fname
+        _TAG_TO_NAME[_tag] = _name
         _VNUM_RANGES.append((_lo, _hi, _tag))
 
     reset_lazy()

@@ -44,6 +44,7 @@ def fresh_world(tmp_path):
 
     world._LOADED_AREAS.clear()
     world._TAG_TO_FILE.clear()
+    world._TAG_TO_NAME.clear()
     world._VNUM_RANGES.clear()
     world._pending_mob_saves.clear()
     world._pending_room_items.clear()
@@ -71,17 +72,18 @@ def fresh_world(tmp_path):
         fname = "area_%s.dat" % tag
         fpath = str(tmp_path / fname)
         _write_dat(fpath, rooms, mobiles, objects, resets, specials, shops, area)
-        _area_entries.append((fpath, tag, vnum_lo, vnum_hi))
+        _area_entries.append((fpath, tag, tag, vnum_lo, vnum_hi))
 
     def setup():
         world._AREA_FILES[:] = _area_entries
         world._TAG_TO_FILE.clear()
         world._VNUM_RANGES.clear()
-        for fpath, tag, lo, hi in _area_entries:
+        for fpath, tag, name, lo, hi in _area_entries:
             world._TAG_TO_FILE[tag] = fpath
+            world._TAG_TO_NAME[tag] = name
             world._VNUM_RANGES.append((lo, hi, tag))
         del world.AREA_DEFS[:]
-        for _, tag, _, _ in _area_entries:
+        for _, tag, _, _, _ in _area_entries:
             world.AREA_DEFS.append({"tag": tag, "resets": []})
         world.areas = [{"tag": d["tag"], "age": 0} for d in world.AREA_DEFS]
 
@@ -94,6 +96,7 @@ def fresh_world(tmp_path):
     world._AREA_FILES[:] = old_area_files
     world._LOADED_AREAS.clear()
     world._TAG_TO_FILE.clear()
+    world._TAG_TO_NAME.clear()
     world._VNUM_RANGES.clear()
     world._pending_mob_saves.clear()
     world._pending_room_items.clear()

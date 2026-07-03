@@ -1065,7 +1065,7 @@ def do_areas(player, args):
 
     tprint("")
     tprint("{W" + _center_fill("[ {RAREAS ON PRIMESUD{W ]") + "{x")
-    tprint("{YLoading area paths...{x")
+    tprint("{YLoading all area paths...{x")
 
     paths = find_area_paths(player)
     source_area = ROOM_DEFS.get(player.get("room"), {}).get("area")

@@ -904,7 +904,7 @@ def do_run(player, args):
     if not args:
         # [PRIMESUD] No-args picker: show reachable areas
         # (1stMud prints "You run in place!" on no args)
-        tprint("{YLoading area paths...{x")
+        tprint("{YLoading all area paths...{x")
         paths = find_area_paths(player)
         source_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
         sorted_areas = sorted(world.AREA_DEFS,

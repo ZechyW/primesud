@@ -22,6 +22,7 @@ from quest import (do_quest, generate_quest, quest_update, quest_room_check,
                    QUEST_NONE, QUEST_KILL, QUEST_RETRIEVE, QUEST_FINDROOM,
                    QUEST_FINDMOB, QUEST_RETURN_KILL, QUEST_RETURN_RETRIEVE,
                    QUEST_TIME, _QUEST_PIECES)
+from config import mins_to_ticks
 
 QUESTMASTER_ROOM = 200  # quest area; Edurin (mob 200) resets here
 
@@ -74,7 +75,7 @@ def test_request_assigns_quest(fresh):
     do_quest(fresh, ["request"])
     assert is_quester(fresh)
     assert fresh["quest_giver"] == 200
-    assert 15 <= fresh["quest_time"] <= 30
+    assert mins_to_ticks(15) <= fresh["quest_time"] <= mins_to_ticks(30)
     from quest import QUEST_DELIVER
     assert fresh["quest_status"] in (QUEST_KILL, QUEST_RETRIEVE,
                                      QUEST_DELIVER, QUEST_FINDROOM,
@@ -113,7 +114,7 @@ def test_kill_flow(fresh):
     assert fresh["quest_status"] == QUEST_NONE
     assert fresh["quest_points"] > before
     assert fresh["gold"] > 0
-    assert fresh["quest_time"] == QUEST_TIME  # cooldown
+    assert fresh["quest_time"] == mins_to_ticks(QUEST_TIME)  # cooldown
 
 
 def test_retrieve_flow(fresh):
@@ -147,7 +148,7 @@ def test_timeout_penalizes(fresh):
     fresh["quest_time"] = 1
     quest_update()
     assert fresh["quest_status"] == QUEST_NONE
-    assert fresh["quest_time"] == QUEST_TIME - 2  # lockout
+    assert fresh["quest_time"] == mins_to_ticks(QUEST_TIME - 2)  # lockout
 
 
 def test_quit_penalizes(fresh):
@@ -156,7 +157,7 @@ def test_quit_penalizes(fresh):
         pytest.skip("no quest target rolled")
     do_quest(fresh, ["quit"])
     assert fresh["quest_status"] == QUEST_NONE
-    assert fresh["quest_time"] == QUEST_TIME * 3 // 2
+    assert fresh["quest_time"] == mins_to_ticks(QUEST_TIME * 3 // 2)
 
 
 def test_qp_cap_32000(fresh):
@@ -339,7 +340,7 @@ def test_end_quest_clears_state(fresh):
     assert fresh["quest_status"] == QUEST_NONE
     assert fresh["quest_mob"] == 0
     assert fresh["quest_mob_name"] == ""
-    assert fresh["quest_time"] == 5
+    assert fresh["quest_time"] == mins_to_ticks(5)
 
 
 def _goto_spec(fresh, spec):
@@ -397,8 +398,8 @@ def test_gquest_start_join_kill_complete(fresh):
     do_gquest(fresh, ["join"])
     assert gquest_info["joined"]
     assert gquest_info["pmobs"] == gquest_info["mobs"]
-    # waiting timer runs out -> running
-    for _ in range(5):
+    # waiting timer (3-minute join window) runs out -> running
+    for _ in range(mins_to_ticks(3) + 2):
         gquest_update()
     assert gquest_info["running"] == GQUEST_RUNNING
     # kill all targets
@@ -423,6 +424,19 @@ def test_gquest_countdown_announcement(fresh, capsys):
     assert "global quest will begin in about 20 minutes" in capsys.readouterr().out
     gquest_update()  # 39: no announcement
     assert "global quest" not in capsys.readouterr().out
+
+
+def test_gquest_auto_delay_uses_configured_range(fresh, monkeypatch):
+    import gquest
+    from gquest import end_gquest, gq_reset, gquest_info
+    monkeypatch.setattr(gquest, "GQUEST_AUTO_DELAY_MIN", 7)
+    monkeypatch.setattr(gquest, "GQUEST_AUTO_DELAY_MAX", 7)
+    end_gquest()
+    assert gquest_info["timer"] == mins_to_ticks(7)
+    # New games use the fixed initial delay instead
+    monkeypatch.setattr(gquest, "GQUEST_INITIAL_DELAY", 9)
+    gq_reset()
+    assert gquest_info["timer"] == mins_to_ticks(9)
 
 
 def test_gquest_save_roundtrip(fresh):

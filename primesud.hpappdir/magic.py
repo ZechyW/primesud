@@ -376,7 +376,7 @@ def spell_teleport(sn, level, ch, vo, target):
     tried = set()
     for _ in range(min(10, len(area_files))):
         idx = randint(0, len(area_files) - 1)
-        _, area_tag, _, _ = area_files[idx]
+        _, area_tag, _, _, _ = area_files[idx]
         if area_tag in tried:
             continue
         tried.add(area_tag)
