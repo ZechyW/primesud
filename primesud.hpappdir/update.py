@@ -16,6 +16,7 @@ from combat import update_mob_timers, violence_update
 from game_time import time_update
 from mob import mobile_update, aggr_update, area_update
 from player import tick_update
+from debug import DBG, dbg  # [PRIMESUD]
 
 # -- Return flags for update_handler (cf. 1stMud update.c) --------------------
 UPD_VIOLENCE = 1
@@ -44,6 +45,8 @@ def update_handler():
     _pulse_area -= 1
     if _pulse_area <= 0:
         _pulse_area = PULSE_AREA
+        if "tick" in DBG:  # [PRIMESUD]
+            dbg("pulse area")
         area_update(tr, player)
 
     # pulse_music -- not yet ported
@@ -51,6 +54,8 @@ def update_handler():
     _pulse_mobile -= 1
     if _pulse_mobile <= 0:
         _pulse_mobile = PULSE_MOBILE
+        if "tick" in DBG:  # [PRIMESUD]
+            dbg("pulse mobile")
         mobile_update(tr, player)
 
     _pulse_violence -= 1
@@ -63,6 +68,8 @@ def update_handler():
     _pulse_tick -= 1
     if _pulse_tick <= 0:
         _pulse_tick = PULSE_TICK
+        if "tick" in DBG:  # [PRIMESUD]
+            dbg("pulse tick")
         # weather_update()  # not yet ported
         time_update()
         player["played"] = player.get("played", 0) + TICK_SECS

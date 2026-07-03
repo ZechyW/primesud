@@ -20,7 +20,8 @@ from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
                       do_open, do_close, do_recall, do_run)
 from scan import do_scan
 from shop import do_buy, do_sell, do_list, do_value, do_appraise
-from system_cmds import do_save, do_quit, do_debug
+from system_cmds import do_save, do_quit
+from debug import do_debug
 from terminal import tprint
 from training import do_train, do_practice, do_remort, do_gain
 from urandom import randint

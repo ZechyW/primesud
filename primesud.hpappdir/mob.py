@@ -9,6 +9,7 @@ from races import RACE_TABLE
 from handler import equip_char, act, _char_base, is_awake, TO_ROOM, can_see
 from item import create_object
 from special import SPEC_TABLE
+from debug import DBG, dbg  # [PRIMESUD]
 
 
 # Area age thresholds (cf. 1stMud area_update: age < 3 skip; age >= 15 reset
@@ -196,6 +197,8 @@ def reset_room(vnum, next_id):
             inst["id"] = next_id
             world.chars[next_id] = inst
             world.rooms[room_vnum]["mobs"].append(next_id)
+            if "spawn" in DBG:  # [PRIMESUD]
+                dbg("spawn mob " + str(tpl_vnum) + " " + inst["name"] + " @" + str(room_vnum))
             last_mob_id = next_id
             last_spawned = True
             next_id += 1
@@ -225,6 +228,8 @@ def reset_room(vnum, next_id):
             obj = create_object(obj_tpl)
             obj["cost"] = 0  # cf. db.c:1527 -- O-placed items have zero cost
             rs["items"].append(obj)
+            if "spawn" in DBG:  # [PRIMESUD]
+                dbg("spawn obj " + str(obj_tpl) + " @" + str(vnum))
             last_spawned = True
         elif cmd == "P":
             last_spawned = False  # [PRIMESUD] containers not implemented
@@ -288,6 +293,8 @@ def mobile_update(tr, player):
             act("$n wanders on home.", inst, type=TO_ROOM)
             world.rooms[inst["room"]]["mobs"].remove(mob_id)
             del world.chars[mob_id]
+            if "move" in DBG:  # [PRIMESUD]
+                dbg("despawn " + inst["name"] + " @" + str(inst["room"]))
             continue
         # Special function dispatch (cf. 1stMud update.c:429-433)
         tpl = MOB_DEFS[inst["tpl"]]
@@ -329,6 +336,8 @@ def mobile_update(tr, player):
         inst["room"] = dest_vnum
         world.rooms[dest_vnum]["mobs"].append(mob_id)
         act("$n has arrived.", inst, type=TO_ROOM)
+        if "move" in DBG:  # [PRIMESUD]
+            dbg("move " + inst["name"] + " " + str(old_room) + ">" + str(dest_vnum))
 
 
 def aggr_update(tr, player):
@@ -421,6 +430,8 @@ def area_update(tr, player):
             if "room_vnums" not in area:
                 area["age"] = _AREA_AGE_RESET
                 continue
+            if "reset" in DBG:  # [PRIMESUD]
+                dbg("reset area " + area["tag"])
             reset_area(area)
             if area["tag"] == "mud_school":
                 area["age"] = 13  # resets every 2 ticks (cf. db.c:1330: age = 15-2)
