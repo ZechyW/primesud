@@ -515,8 +515,12 @@ def do_unlock(player, args):
 def do_pick(player, args):
     """Pick a door lock using the pick lock skill (cf. 1stMud do_pick in act_move.c).
 
-    [Verified: 03/07/2026] -- target door resolved (with picker) before
-    WaitState/close-stander/skill roll; 1stMud rolls before find_door.
+    [Verified: 03/07/2026] -- [PRIMESUD] intentional reorder: target door is
+    resolved (with picker) before WaitState/close-stander/skill roll, while
+    1stMud rolls before find_door. Deliberately removes a 1stMud quirk where
+    picking a nonexistent door still costs lag, rolls the skill, and can
+    train pick lock via check_improve on the failed roll (train-on-typo
+    exploit). Do not "fix" back to 1stMud order.
     """
     direction, exit_val, picked = _door_for_lock_cmd(player, args, "Pick", True)
     if exit_val is None:
