@@ -16,6 +16,7 @@ from combat import update_mob_timers, violence_update
 from game_time import time_update
 from mob import mobile_update, aggr_update, area_update
 from player import tick_update
+from stances import first_stance_tip  # [PRIMESUD]
 from debug import DBG, dbg  # [PRIMESUD]
 
 # -- Return flags for update_handler (cf. 1stMud update.c) --------------------
@@ -85,6 +86,7 @@ def update_handler():
     # cf. 1stMud aggr_update runs every pulse; gated to
     # PULSE_VIOLENCE here for HP Prime performance.
     if fired & UPD_VIOLENCE and player["fighting"] is None:
+        first_stance_tip(player)  # [PRIMESUD] one-time post-first-battle hint
         aggr_update(tr, player)
 
     return fired

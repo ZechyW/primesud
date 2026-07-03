@@ -57,6 +57,16 @@ STANCE_TABLE = (
     ("autodrop", STANCE_AUTODROP, (STANCE_CURRENT, STANCE_CURRENT), "", ""),
 )
 
+# [PRIMESUD] First-combat picker blurbs for the five base stances.
+_BASE_STANCE_BLURBS = (
+    (STANCE_VIPER,    "viper    - swift extra strikes, slips past guards"),
+    (STANCE_CRANE,    "crane    - sweeping style, strong parrying guard"),
+    (STANCE_CRAB,     "crab     - low and defensive, rolls with blows"),
+    (STANCE_MONGOOSE, "mongoose - light-footed, evades attacks"),
+    (STANCE_BULL,     "bull     - aggressive, pure physical power"),
+)
+
+
 # -- improve_stance rank titles (cf. 1stMud improve_stance switch in fight.c) --
 _RANK_TITLES = {
     1:   "an apprentice of",
@@ -175,13 +185,99 @@ def improve_stance(ch):
                stance_name(stance))
 
 
+def _never_stanced(ch):
+    """[PRIMESUD] True if ch has no current stance and no stance training."""
+    if valid_stance(get_stance(ch, STANCE_CURRENT)):
+        return False
+    for st in range(STANCE_NORMAL, STANCE_CURRENT):
+        if get_stance(ch, st) != 0:
+            return False
+    return True
+
+
+def first_stance_pick(ch):
+    """One-time cinematic stance choice when first entering combat. [PRIMESUD]
+
+    Sets both STANCE_AUTODROP and STANCE_CURRENT to the chosen stance and
+    arms the one-time post-battle hint.  Esc (likely accidental) shows a
+    close-call flavor line and re-prompts -- a stance must be chosen.
+    """
+    from handler import chprintln, _pers
+    from picker import pick_from
+    import world
+
+    foe = world.chars.get(ch.get("fighting"))
+    foe_name = _pers(foe, ch)
+    foe_name = foe_name[0].upper() + foe_name[1:]
+
+    chprintln(ch, "")
+    chprintln(ch, "{cAs you and your opponent square off, a half-forgotten"
+                  " memory stirs -- long hours of drills, a teacher's voice,"
+                  " the ache of repetition. Almost reflexively, your body"
+                  " begins to settle into a fighting stance...{x")
+    cancels = 0
+    while True:
+        idx = pick_from("Which stance?", [b[1] for b in _BASE_STANCE_BLURBS])
+        if idx >= 0:
+            break
+        cancels += 1
+        if cancels == 1:
+            chprintln(ch, "{c" + foe_name + "'s attack whizzes past your"
+                          " ear, almost punishing your moment of hesitation."
+                          " Too close. You steady your frazzled nerves and"
+                          " will your body to answer...{x")
+        else:
+            # Repeat-safe escalation: reads naturally however many times
+            # the player keeps cancelling.
+            chprintln(ch, "{cAnother blow hammers past, close enough to"
+                          " sting. You duck and weave on instinct alone,"
+                          " but instinct will not hold forever --"
+                          " choose, now...{x")
+    stance = _BASE_STANCE_BLURBS[idx][0]
+    set_stance(ch, STANCE_AUTODROP, stance)
+    set_stance(ch, STANCE_CURRENT, stance)
+    for entry in STANCE_TABLE:
+        if entry[1] == stance:
+            chprintln(ch, entry[3])
+            break
+    # Runtime-only flag: not in the save allowlist, so it never persists.
+    ch["_stance_tip"] = True
+
+
+def first_stance_tip(ch):
+    """One-time post-battle stance hint, armed by first_stance_pick. [PRIMESUD]"""
+    from handler import chprintln
+
+    if not ch.get("_stance_tip"):
+        return
+    ch["_stance_tip"] = False
+    if ch.get("hit", 1) <= 0:
+        return
+    chprintln(ch, "")
+    chprintln(ch, "{cYou catch your breath and shake out your limbs. The"
+                  " stance felt awkward -- but with practice it will become"
+                  " second nature.{x")
+    chprintln(ch, "{w(Stances improve as you fight, growing stronger past"
+                  " 100%. See 'sskill' for mastery, 'autostance' to change"
+                  " your reflex, 'stance none' to relax, and 'help"
+                  " stancetable' for details.){x")
+
+
 def autodrop(ch):
-    """Drop into the autostance when combat starts (cf. 1stMud autodrop in fight.c)."""
+    """Drop into the autostance when combat starts (cf. 1stMud autodrop in fight.c).
+
+    [PRIMESUD] A player who has never touched stances (no autostance, no
+    current stance, no training) gets the one-time first-combat stance
+    pick instead.
+    """
     from handler import act, chprintlnf, TO_ROOM
 
     stance = get_stance(ch, STANCE_AUTODROP)
 
     if not valid_stance(stance):
+        # [PRIMESUD] first-combat stance awakening
+        if not ch.get("is_npc") and _never_stanced(ch):
+            first_stance_pick(ch)
         return
 
     if not valid_stance(get_stance(ch, STANCE_CURRENT)):

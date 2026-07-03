@@ -3340,6 +3340,8 @@ def show_available_stances(ch, n_fun):
         stance, prereq = STANCE_TABLE[i][1], STANCE_TABLE[i][2]
         if not valid_stance(stance):
             continue
+        if stance == STANCE_NORMAL:
+            continue  # [PRIMESUD] normal stance is internal/NPC-only
         if prereq[0] <= STANCE_NORMAL:
             names.append(STANCE_TABLE[i][0])
         elif (get_stance(ch, prereq[0]) >= 200
@@ -3352,22 +3354,52 @@ def show_available_stances(ch, n_fun):
     return None
 
 
-def do_stance(ch, args):
-    """Set or toggle fighting stance (cf. 1stMud do_stance in fight.c).
+def _stance_status(ch):
+    """Show current stance, autostance, and valid stances. [PRIMESUD]
 
     Args:
         ch (dict): Acting character.
-        args (list): Optional stance name.
+    """
+    cur = get_stance(ch, STANCE_CURRENT)
+    auto = get_stance(ch, STANCE_AUTODROP)
+    if valid_stance(cur):
+        chprintlnf(ch, "Stance    : {Y%s{x (%d%%)", stance_name(cur),
+                   get_stance(ch, cur))
+    else:
+        chprintln(ch, "Stance    : {wnone{x")
+    if valid_stance(auto):
+        chprintlnf(ch, "Autostance: {Y%s{x", stance_name(auto))
+    else:
+        chprintln(ch, "Autostance: {wnone{x")
+    show_available_stances(ch, "stance")
+    chprintln(ch, "'stance none' relaxes; see 'sskill' and 'help stancetable'.")
+
+
+def do_stance(ch, args):
+    """Set, clear, or show fighting stance (cf. 1stMud do_stance in fight.c).
+
+    [PRIMESUD] Deviates from 1stMud's bare-argument toggle: bare 'stance'
+    shows stance status, and 'stance none' relaxes (1stMud toggled into and
+    out of the normal stance).  The normal stance is hidden from players
+    but kept for NPCs.
+
+    Args:
+        ch (dict): Acting character.
+        args (list): Optional stance name or 'none'.
     """
     if not args:
+        # [PRIMESUD] status screen; 1stMud toggled normal stance here
+        _stance_status(ch)
+        return None
+
+    if args[0] == "none":
+        # [PRIMESUD] explicit relax, replacing 1stMud's bare toggle-off
         if not valid_stance(get_stance(ch, STANCE_CURRENT)):
-            set_stance(ch, STANCE_CURRENT, STANCE_NORMAL)
-            chprintln(ch, "You drop into a general fighting stance.")
-            act("$n drops into a general fighting stance.", ch, type=TO_ROOM)
-        else:
-            set_stance(ch, STANCE_CURRENT, STANCE_NONE)
-            chprintln(ch, "You relax from your fighting stance.")
-            act("$n relaxes from $s fighting stance.", ch, type=TO_ROOM)
+            chprintln(ch, "You are not in a fighting stance.")
+            return None
+        set_stance(ch, STANCE_CURRENT, STANCE_NONE)
+        chprintln(ch, "You relax from your fighting stance.")
+        act("$n relaxes from $s fighting stance.", ch, type=TO_ROOM)
         return None
 
     if valid_stance(get_stance(ch, STANCE_CURRENT)):
@@ -3375,6 +3407,10 @@ def do_stance(ch, args):
         return None
 
     i = stance_lookup(args[0])
+
+    # [PRIMESUD] normal stance is internal/NPC-only; hide from players
+    if i != -1 and STANCE_TABLE[i][1] == STANCE_NORMAL and not ch.get("is_npc"):
+        i = -1
 
     if i == -1 or not valid_stance(STANCE_TABLE[i][1]):
         show_available_stances(ch, "stance")
@@ -3415,6 +3451,10 @@ def do_autostance(ch, args):
         return None
 
     i = stance_lookup(arg)
+
+    # [PRIMESUD] normal stance is internal/NPC-only; hide from players
+    if i != -1 and STANCE_TABLE[i][1] == STANCE_NORMAL:
+        i = -1
 
     if i == -1 or not valid_stance(STANCE_TABLE[i][1]):
         show_available_stances(ch, "autostance")

@@ -105,13 +105,30 @@ class TestCanUse:
 
 
 class TestDoStance:
-    def test_noarg_toggles(self):
+    # [PRIMESUD] bare 'stance' shows status; 'stance none' relaxes
+    def test_noarg_shows_status(self, capsys):
         ch = _make_char()
-        # fresh char: current == 0 == normal (1stMud zeroed stance[])
+        set_stance(ch, STANCE_CURRENT, STANCE_NONE)
         do_stance(ch, [])
+        assert get_stance(ch, STANCE_CURRENT) == STANCE_NONE  # no toggle
+        out = capsys.readouterr().out
+        assert "Autostance" in out
+        assert "Valid stances are" in out
+
+    def test_none_relaxes(self):
+        ch = _make_char()
+        set_stance(ch, STANCE_CURRENT, STANCE_VIPER)
+        do_stance(ch, ["none"])
         assert get_stance(ch, STANCE_CURRENT) == STANCE_NONE
-        do_stance(ch, [])
-        assert get_stance(ch, STANCE_CURRENT) == STANCE_NORMAL
+
+    def test_normal_hidden_from_players(self, capsys):
+        ch = _make_char()
+        set_stance(ch, STANCE_CURRENT, STANCE_NONE)
+        do_stance(ch, ["normal"])
+        assert get_stance(ch, STANCE_CURRENT) == STANCE_NONE
+        out = capsys.readouterr().out
+        assert "Valid stances are" in out
+        assert "normal" not in out
 
     def test_set_stance_by_name(self):
         ch = _make_char()
@@ -173,6 +190,66 @@ class TestAutostance:
         set_stance(ch, STANCE_CURRENT, STANCE_CRANE)
         autodrop(ch)
         assert get_stance(ch, STANCE_CURRENT) == STANCE_CRANE
+
+
+class TestFirstCombatPick:
+    # [PRIMESUD] one-time first-combat stance awakening in autodrop()
+    def _fresh(self):
+        ch = _make_char()
+        set_stance(ch, STANCE_CURRENT, STANCE_NONE)
+        set_stance(ch, STANCE_AUTODROP, STANCE_NONE)
+        return ch
+
+    def test_pick_sets_stance_and_autostance(self, monkeypatch):
+        import picker
+        monkeypatch.setattr(picker, "pick_from", lambda title, opts: 0)  # viper
+        ch = self._fresh()
+        autodrop(ch)
+        assert get_stance(ch, STANCE_CURRENT) == STANCE_VIPER
+        assert get_stance(ch, STANCE_AUTODROP) == STANCE_VIPER
+        assert ch["_stance_tip"] is True
+
+    def test_skipped_when_trained(self, monkeypatch):
+        import picker
+        monkeypatch.setattr(picker, "pick_from", lambda title, opts: 0)
+        ch = self._fresh()
+        set_stance(ch, STANCE_CRANE, 5)
+        autodrop(ch)
+        assert get_stance(ch, STANCE_CURRENT) == STANCE_NONE
+
+    def test_skipped_for_npc(self, monkeypatch):
+        import picker
+        monkeypatch.setattr(picker, "pick_from", lambda title, opts: 0)
+        mob = _make_char(is_npc=True)
+        set_stance(mob, STANCE_CURRENT, STANCE_NONE)
+        set_stance(mob, STANCE_AUTODROP, STANCE_NONE)
+        autodrop(mob)
+        assert get_stance(mob, STANCE_CURRENT) == STANCE_NONE
+
+    def test_cancel_reprompts_until_chosen(self, monkeypatch, capsys):
+        import picker
+        results = [-1, -1, -1, 0]  # three accidental Escs, then viper
+        monkeypatch.setattr(picker, "pick_from",
+                            lambda title, opts: results.pop(0))
+        ch = self._fresh()
+        autodrop(ch)
+        assert get_stance(ch, STANCE_CURRENT) == STANCE_VIPER
+        assert get_stance(ch, STANCE_AUTODROP) == STANCE_VIPER
+        assert ch["_stance_tip"] is True
+        out = capsys.readouterr().out
+        # first cancel gets the close call; later cancels the escalation
+        assert out.count("moment of hesitation") == 1
+        assert out.count("instinct will not hold forever") == 2
+
+    def test_tip_prints_once(self, capsys):
+        from stances import first_stance_tip
+        ch = _make_char()
+        ch["_stance_tip"] = True
+        ch["hit"] = 20
+        first_stance_tip(ch)
+        assert "sskill" in capsys.readouterr().out
+        first_stance_tip(ch)
+        assert "sskill" not in capsys.readouterr().out
 
 
 class TestImprove:

@@ -147,9 +147,11 @@ def move_char(ch, direction):
         ch["move"] = ch.get("move", 0) - move_cost
 
     # -- Stance drop on movement (cf. 1stMud move_char act_move.c:169)
+    # [PRIMESUD] 1stMud passed "" (bare toggle); bare stance is now a
+    # status screen, so relax explicitly via 'none'
     if valid_stance(get_stance(ch, STANCE_CURRENT)):
         from combat import do_stance  # lazy import (combat imports movement targets)
-        do_stance(ch, [])
+        do_stance(ch, ["none"])
 
     # -- Leave message (1stMud: act("$n leaves $T.", ch, NULL, dir_name[door], TO_ROOM))
     # Player actor: single-player, nobody to notify; skip.

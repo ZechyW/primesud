@@ -278,15 +278,19 @@ class TestNewPlayerDefaults:
         from player import create_char
         ch = create_char()
         assert get_stance(ch, STANCE_CURRENT) == STANCE_NONE
-        # autodrop left at NORMAL -> first combat announces the stance system
-        assert get_stance(ch, STANCE_AUTODROP) == STANCE_NORMAL
+        # [PRIMESUD] no autostance -> first combat runs the stance pick
+        assert get_stance(ch, STANCE_AUTODROP) == STANCE_NONE
 
-    def test_first_combat_announces_stance(self, capsys):
+    def test_first_combat_runs_stance_pick(self, monkeypatch, capsys):
+        import picker
+        monkeypatch.setattr(picker, "pick_from", lambda title, opts: 0)  # viper
         from player import create_char
         ch = create_char()
         ch["id"] = 1
         world.chars[1] = ch
         v = _make_char(2, npc=True)
         set_fighting(ch, v)
+        assert get_stance(ch, STANCE_CURRENT) == STANCE_VIPER
+        assert get_stance(ch, STANCE_AUTODROP) == STANCE_VIPER
         out = capsys.readouterr().out
-        assert "autodrop into the normal stance" in out
+        assert "half-forgotten memory" in out
