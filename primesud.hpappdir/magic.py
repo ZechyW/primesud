@@ -238,9 +238,9 @@ def spell_harm(sn, level, ch, vo, target):
 
 def spell_magic_missile(sn, level, ch, vo, target):
     """Magic missile (cf. 1stMud spell_magic_missile in magic.c).
-    [Verified: 03/07/2026] -- (level | 50) bitwise OR is faithful to
-    1stMud magic.c:3571, quirk and all."""
-    high = level | 50
+    [Verified: 03/07/2026; (level|50) -> level+50 fix 03/07/2026] --
+    1stMud magic.c:3571 uses bitwise OR, a typo for +; see FIXES.md."""
+    high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, DAM_ENERGY):
         dam //= 2
@@ -1170,7 +1170,7 @@ def spell_acid_blast(sn, level, ch, vo, target):
 def spell_burning_hands(sn, level, ch, vo, target):
     """Burning hands (cf. 1stMud spell_burning_hands in magic.c).
     [Verified: 03/07/2026]"""
-    high = level | 50
+    high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, DAM_FIRE):
         dam //= 2
@@ -1316,7 +1316,7 @@ def spell_charm_person(sn, level, ch, vo, target):
 def spell_chill_touch(sn, level, ch, vo, target):
     """Chill touch (cf. 1stMud spell_chill_touch in magic.c).
     [Verified: 03/07/2026]"""
-    high = level | 50
+    high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
     dam = randint(high // 2, high * 2)
     if not saves_spell(level, vo, DAM_COLD):
         act("$n turns blue and shivers.", vo, None, None, TO_ROOM)
@@ -1329,7 +1329,7 @@ def spell_chill_touch(sn, level, ch, vo, target):
 def spell_color_spray(sn, level, ch, vo, target):
     """Color spray (cf. 1stMud spell_color_spray in magic.c).
     [Verified: 03/07/2026]"""
-    high = level | 50
+    high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, DAM_LIGHT):
         dam //= 2
@@ -1571,8 +1571,8 @@ def spell_dispel_good(sn, level, ch, vo, target):
 
 def spell_energy_drain(sn, level, ch, vo, target):
     """Energy drain (cf. 1stMud spell_energy_drain in magic.c).
-    [Verified: 03/07/2026] -- dam = ch's hit + 1 for level<=2 victims is
-    faithful to magic.c:2575 (reads the caster's hp, quirk and all)."""
+    [Verified: 03/07/2026; low-level branch fixed to victim hp 03/07/2026
+    [PRIMESUD], see FIXES.md]"""
     victim = vo
     if victim is not ch:
         ch["alignment"] = max(-1000, ch.get("alignment", 0) - 50)
@@ -1580,7 +1580,9 @@ def spell_energy_drain(sn, level, ch, vo, target):
         chprintln(victim, "You feel a momentary chill.")
         return False
     if victim.get("level", 1) <= 2:
-        dam = ch.get("hit", 1) + 1
+        # [PRIMESUD] 1stMud reads ch->hit here (magic.c:2575), a typo --
+        # the intent is a guaranteed kill on the low-level victim.
+        dam = victim.get("hit", 1) + 1
     else:
         # TODO [PRIMESUD] gain_exp not yet ported
         victim["mana"] = victim.get("mana", 0) // 2
@@ -1596,7 +1598,7 @@ def spell_energy_drain(sn, level, ch, vo, target):
 def spell_fireball(sn, level, ch, vo, target):
     """Fireball (cf. 1stMud spell_fireball in magic.c).
     [Verified: 03/07/2026]"""
-    high = level | 50
+    high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, DAM_FIRE):
         dam //= 2
@@ -1835,8 +1837,8 @@ def spell_heat_metal(sn, level, ch, vo, target):
 
 def spell_holy_word(sn, level, ch, vo, target):
     """Holy word (cf. 1stMud spell_holy_word in magic.c).
-    [Verified: 03/07/2026] -- "You feel full more powerful." is faithful
-    to source (magic.c:3125)."""
+    [Verified: 03/07/2026; caster self-buff added and message typo fixed,
+    re-verified 03/07/2026]"""
     act("$n utters a word of divine power!", ch, None, None, TO_ROOM)
     chprintln(ch, "You utter a word of divine power.")
     bless_sn = _skill_lookup("bless")
@@ -1850,7 +1852,8 @@ def spell_holy_word(sn, level, ch, vo, target):
         if ((is_good(ch) and is_good(mob))
                 or (is_evil(ch) and is_evil(mob))
                 or (is_neutral(ch) and is_neutral(mob))):
-            chprintln(mob, "You feel full more powerful.")
+            # [PRIMESUD] 1stMud says "You feel full more powerful." (typo)
+            chprintln(mob, "You feel more powerful.")
             if frenzy_sn is not None:
                 spell_frenzy(frenzy_sn, level, ch, mob, TARGET_CHAR)
             if bless_sn is not None:
@@ -1871,6 +1874,14 @@ def spell_holy_word(sn, level, ch, vo, target):
             chprintln(mob, "You are struck down!")
             dam = dice(level, 4)
             damage(ch, mob, dam, sn, DAM_ENERGY, True)
+    # 1stMud's room walk includes the caster, who always matches own
+    # alignment and so gets the buffs too (magic.c:3122).
+    # [PRIMESUD] 1stMud says "You feel full more powerful." (typo)
+    chprintln(ch, "You feel more powerful.")
+    if frenzy_sn is not None:
+        spell_frenzy(frenzy_sn, level, ch, ch, TARGET_CHAR)
+    if bless_sn is not None:
+        spell_bless(bless_sn, level, ch, ch, TARGET_CHAR)
     chprintln(ch, "You feel drained.")
     ch["move"] = 0
     ch["hit"] = ch.get("hit", 1) // 2
@@ -1914,7 +1925,8 @@ def spell_invis(sn, level, ch, vo, target):
 
 def spell_know_alignment(sn, level, ch, vo, target):
     """Know alignment (cf. 1stMud spell_know_alignment in magic.c).
-    [Verified: 03/07/2026] -- "evil!." punctuation is faithful to source."""
+    [Verified: 03/07/2026] -- source's "evil!." double punctuation
+    fixed [PRIMESUD]."""
     ap = vo.get("alignment", 0)
     if ap > 700:
         msg = "$N has a pure and good aura."
@@ -1929,7 +1941,8 @@ def spell_know_alignment(sn, level, ch, vo, target):
     elif ap > -700:
         msg = "$N is a black-hearted murderer."
     else:
-        msg = "$N is the embodiment of pure evil!."
+        # [PRIMESUD] 1stMud has "evil!." (double punctuation)
+        msg = "$N is the embodiment of pure evil!"
     act(msg, ch, None, vo, TO_CHAR)
     return True
 
@@ -1937,7 +1950,7 @@ def spell_know_alignment(sn, level, ch, vo, target):
 def spell_lightning_bolt(sn, level, ch, vo, target):
     """Lightning bolt (cf. 1stMud spell_lightning_bolt in magic.c).
     [Verified: 03/07/2026]"""
-    high = level | 50
+    high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, DAM_LIGHTNING):
         dam //= 2
@@ -2169,7 +2182,7 @@ def spell_sanctuary(sn, level, ch, vo, target):
 def spell_shocking_grasp(sn, level, ch, vo, target):
     """Shocking grasp (cf. 1stMud spell_shocking_grasp in magic.c).
     [Verified: 03/07/2026]"""
-    high = level | 50
+    high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, DAM_LIGHTNING):
         dam //= 2
@@ -2301,8 +2314,11 @@ def spell_summon(sn, level, ch, vo, target):
 
 def spell_ventriloquate(sn, level, ch, vo, target):
     """Ventriloquate (cf. 1stMud spell_ventriloquate in magic.c).
-    [Verified: 03/07/2026] -- like 1stMud, only awake chars matching the
-    spoken name hear anything (magic.c:4290)."""
+    [Verified: 03/07/2026; audience fixed 03/07/2026 [PRIMESUD]] --
+    1stMud magic.c:4290 inverts stock ROM's name test so only the named
+    char hears anything (no visible output at all in single-player);
+    restored to ROM behaviour: everyone EXCEPT the named char hears it.
+    See FIXES.md."""
     tail = ch.get("_target_name", "")
     parts = tail.split(None, 1)
     if len(parts) < 2:
@@ -2310,20 +2326,20 @@ def spell_ventriloquate(sn, level, ch, vo, target):
         return False
     speaker = parts[0]
     message = parts[1]
+    buf1 = upper(speaker) + " says '" + message + "'."
+    buf2 = "Someone makes " + speaker + " say '" + message + "'."
     room = world.rooms[ch["room"]]
-    found = False
     for mob_id in room["mobs"]:
         mob = world.chars.get(mob_id)
         if mob is None:
             continue
         tpl = MOB_DEFS.get(mob.get("tpl"), {})
-        if is_name(speaker, tpl.get("keywords", "")) and is_awake(mob):
-            if saves_spell(level, mob, DAM_OTHER):
-                chprintln(mob, "Someone makes " + speaker + " say '" + message + "'.")
-            else:
-                chprintln(mob, upper(speaker) + " says '" + message + "'.")
-            found = True
-    return found
+        if not is_name(speaker, tpl.get("keywords", "")):
+            chprintln(mob, buf2 if saves_spell(level, mob, DAM_OTHER) else buf1)
+    # ROM's room walk includes the caster.
+    if not is_name(speaker, ch.get("name", "")):
+        chprintln(ch, buf2 if saves_spell(level, ch, DAM_OTHER) else buf1)
+    return True
 
 
 # -- Breath weapons (cf. 1stMud magic.c) --
@@ -2418,7 +2434,8 @@ def spell_frost_breath(sn, level, ch, vo, target):
 
 def spell_gas_breath(sn, level, ch, vo, target):
     """Gas breath -- area poison (cf. 1stMud spell_gas_breath in magic.c).
-    [Verified: 03/07/2026] -- poison_effect item damage still TODO."""
+    [Verified: 03/07/2026; NPC-vs-NPC filter aligned with fire/frost
+    03/07/2026 [PRIMESUD], see FIXES.md] -- poison_effect still TODO."""
     act("$n breathes out a cloud of poisonous gas!", ch, None, None, TO_ROOM)
     act("You breath out a cloud of poisonous gas.", ch, None, None, TO_CHAR)
     hpch = max(16, ch.get("hit", 16))
@@ -2433,11 +2450,12 @@ def spell_gas_breath(sn, level, ch, vo, target):
         vch = world.chars.get(mob_id)
         if vch is None or vch is ch or is_safe_spell(ch, vch, True):
             continue
-        # 1stMud gas quirk: NPC breathers skip NPCs they ARE fighting
-        # (condition inverted vs fire/frost, magic.c:4506)
+        # [PRIMESUD] 1stMud magic.c:4506 has this condition inverted vs
+        # fire/frost (skips the NPC it IS fighting, hits bystanders);
+        # clear typo, fixed to match the fire/frost convention.
         if (caster_npc and vch.get("is_npc")
-                and (ch.get("fighting") == vch.get("id")
-                     or vch.get("fighting") == ch.get("id"))):
+                and (ch.get("fighting") != vch.get("id")
+                     or vch.get("fighting") != ch.get("id"))):
             continue
         found = True
         if saves_spell(level, vch, DAM_POISON):

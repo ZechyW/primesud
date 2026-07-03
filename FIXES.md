@@ -232,3 +232,118 @@ them.
 ### PrimeSUD fix -- implemented in `classes.py`
 
 `has_spells()` indexes `CLASS_TABLE[cl]` for each held class index `cl`.
+
+---
+
+## magic: `(level | 50)` bitwise-OR damage rolls in seven attack spells
+
+**Upstream:** `reference/1stMud4.5.3/src/magic.c` -- `spell_magic_missile`
+(line 3571), `spell_burning_hands` (822), `spell_chill_touch` (1308),
+`spell_color_spray` (1334), `spell_fireball` (2598), `spell_lightning_bolt`
+(3503), `spell_shocking_grasp` (~4084).
+
+### The bug
+
+All seven spells roll damage as:
+
+```c
+dam = number_range((level | 50) / 2, (level | 50) * 2);
+```
+
+`|` is bitwise OR, almost certainly a typo for `+`. Stock ROM used
+increasing per-level damage tables here; 1stMud replaced them with this
+expression, which for levels 1-50 produces a non-monotonic value stuck in
+the 50-63 band (level 2 -> 50, level 13 -> 63, level 32 -> 50). Gaining
+levels barely changes damage and can even lower it, and all seven spells
+share one flat damage band.
+
+### PrimeSUD fix -- implemented in `magic.py`
+
+`high = level + 50` in all seven spell functions, giving the obviously
+intended smooth scaling (`randint((level+50)/2, (level+50)*2)`). Each site
+carries a `[PRIMESUD]` comment referencing this entry.
+
+---
+
+## magic: energy drain reads the caster's hp for the low-level kill branch
+
+**Upstream:** `reference/1stMud4.5.3/src/magic.c`, `spell_energy_drain`, line 2575.
+
+### The bug
+
+```c
+if (victim->level <= 2)
+    dam = ch->hit + 1;
+```
+
+The branch intends a guaranteed kill on victims of level 2 or below, but it
+reads the **caster's** current hp. A wounded caster at 5hp drains a level-2
+mob for only 6 damage and it survives.
+
+### PrimeSUD fix -- implemented in `magic.py`
+
+`dam = victim hp + 1`, the intended guaranteed kill.
+
+---
+
+## magic: holy word never buffs the caster in PrimeSUD's first port
+
+**Upstream behaviour (correct):** `magic.c:3118-3128` -- the room walk
+includes the caster, who always matches his own alignment and receives
+"You feel more powerful." plus frenzy and bless before the move/hp drain.
+
+PrimeSUD's room loop iterates `room["mobs"]`, which never contains the
+player, so the self-buff was silently lost. Fixed by applying the
+same-alignment branch to the caster after the mob loop. (The upstream
+message text "You feel full more powerful." is also a typo; PrimeSUD says
+"You feel more powerful.")
+
+---
+
+## magic: gas breath NPC-vs-NPC filter inverted vs fire/frost breath
+
+**Upstream:** `reference/1stMud4.5.3/src/magic.c`, `spell_gas_breath`, line 4506.
+
+### The bug
+
+Fire and frost breath skip NPC bystanders unless the NPC breather is
+mutually fighting them:
+
+```c
+(IsNPC(vch) && IsNPC(ch) && (ch->fighting != vch || vch->fighting != ch))
+```
+
+Gas breath has the comparison inverted (`==` / `==`), so an NPC gas
+breather skips the very NPC it is fighting and gasses uninvolved
+bystanders instead.
+
+### PrimeSUD fix -- implemented in `magic.py`
+
+Condition aligned with the fire/frost convention (skip unless mutually
+fighting).
+
+---
+
+## magic: ventriloquate audible only to the char it impersonates
+
+**Upstream:** `reference/1stMud4.5.3/src/magic.c`, `spell_ventriloquate`, line 4290.
+
+### The bug
+
+Stock ROM sends the thrown voice to everyone in the room **except** the
+character named as the speaker:
+
+```c
+if ( !is_name( speaker, vch->name ) )
+    send_to_char( saves_spell(...) ? buf2 : buf1, vch );
+```
+
+1stMud inverted the test (`is_name(...)`), so only the named character
+"hears" its own faked speech and nobody else sees anything. In
+single-player PrimeSUD that made the spell a complete no-op.
+
+### PrimeSUD fix -- implemented in `magic.py`
+
+Restored ROM behaviour: every room occupant whose name does not match the
+spoken name (including the caster) receives the line, with a successful
+save revealing "Someone makes X say ...".
