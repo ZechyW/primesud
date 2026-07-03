@@ -2070,8 +2070,12 @@ def _extract_char(ch, pull=True):
         ch (dict): Character to extract.
         pull (bool): True = fully remove (NPC death), False = teleport to altar (PC death).
     """
-    # 1stMud: nuke_pets, die_follower, etc.
-    # [PRIMESUD] skip pets/followers (not ported)
+    # 1stMud extract_char: nuke_pets always; die_follower only on fPull
+    from comm import nuke_pets, die_follower  # lazy import to avoid circular dependency
+    nuke_pets(ch)
+    ch["pet"] = None
+    if pull:
+        die_follower(ch)
 
     # 1stMud: stop_fighting(ch, true) -- redundant with raw_kill but harmless
     stop_fighting(ch, both=True)

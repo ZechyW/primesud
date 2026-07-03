@@ -1,11 +1,11 @@
 """Movement, doors, and recall command handlers."""
 
 from classes import is_class
-from handler import can_see_room, chprintln
+from handler import can_see_room, chprintln, act, TO_CHAR, TO_ROOM
 from combat import stop_fighting
 from skill_utils import WaitState, check_improve
 from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
-                    MOVEMENT_LOSS,
+                    MOVEMENT_LOSS, POS_ORDER,
                     SECT_AIR, SECT_WATER_NOSWIM,
                     R_RECALL, PULSE_PER_SECOND)
 from info import do_look, find_area_paths
@@ -144,6 +144,7 @@ def move_char(player, direction):
     # -- Leave message (1stMud: act("$n leaves $T.", ch, NULL, dir_name[door], TO_ROOM))
     # Single-player: no other chars in room to notify; skip.
 
+    from_vnum = player["room"]
     player["room"] = dest
 
     # -- Arrive message (single-player: skip) --
@@ -156,6 +157,35 @@ def move_char(player, direction):
         _brief_room_line(player)
     else:
         do_look(player, [])
+
+    # -- Followers move too (cf. 1stMud move_char follower loop, act_move.c:232-257)
+    if from_vnum in world.rooms:
+        for fid in list(world.rooms[from_vnum]["mobs"]):
+            fch = world.chars.get(fid)
+            if fch is None or fch.get("master") != player["id"]:
+                continue
+
+            # 1stMud: charmed follower below standing -> do_stand
+            if (fch.get("affected_by", {}).get("charm")
+                    and POS_ORDER[fch["pos"]] < POS_ORDER["standing"]):
+                fch["pos"] = "standing"
+
+            if fch["pos"] != "standing":
+                continue
+
+            # 1stMud: ROOM_LAW blocks aggressive pets from entering the city
+            if (to_room.get("flags", {}).get("law")
+                    and fch.get("act_flags", {}).get("aggressive")):
+                act("You can't bring $N into the city.", player, None, fch, TO_CHAR)
+                act("You aren't allowed in the city.", fch, None, None, TO_CHAR)
+                continue
+
+            act("You follow $N.", fch, None, player, TO_CHAR)
+            # [PRIMESUD] direct room transfer; 1stMud recurses move_char(fch, door)
+            world.rooms[from_vnum]["mobs"].remove(fid)
+            fch["room"] = dest
+            world.rooms[dest]["mobs"].append(fid)
+            act("$n has arrived.", fch, type=TO_ROOM)
 
 
 # -- Direction command handlers (cf. 1stMud do_north..do_down in act_move.c) --
@@ -323,7 +353,18 @@ def perform_recall(player, location, what="recall"):
         stop_fighting(player, both=True)
 
     player["move"] = player.get("move", 0) // 2
+    from_vnum = player["room"]
     player["room"] = location
+
+    # cf. 1stMud do_recall: pet recalls with its master
+    pet = world.chars.get(player.get("pet")) if player.get("pet") is not None else None
+    if (pet is not None and pet.get("room") == from_vnum
+            and from_vnum in world.rooms and location in world.rooms):
+        if pet["id"] in world.rooms[from_vnum]["mobs"]:
+            world.rooms[from_vnum]["mobs"].remove(pet["id"])
+        pet["room"] = location
+        world.rooms[location]["mobs"].append(pet["id"])
+
     do_look(player, [])
     return True
 

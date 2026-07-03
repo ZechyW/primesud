@@ -1162,11 +1162,7 @@ def spell_change_sex(sn, level, ch, vo, target):
 
 
 def spell_charm_person(sn, level, ch, vo, target):
-    """Charm person (cf. 1stMud spell_charm_person in magic.c).
-
-    TODO: follower/master system (add_follower, stop_follower) not yet ported.
-    Charm affect applied but follower linkage stubbed.
-    """
+    """Charm person (cf. 1stMud spell_charm_person in magic.c)."""
     victim = vo
     if is_safe(ch, victim):
         return False
@@ -1183,7 +1179,11 @@ def spell_charm_person(sn, level, ch, vo, target):
     if room and room.get("flags", {}).get("law"):
         chprintln(ch, "The mayor does not allow charming in the city limits.")
         return False
-    # TODO [PRIMESUD] follower system: stop_follower(victim); add_follower(victim, ch); victim.leader = ch
+    from comm import add_follower, stop_follower  # lazy import to avoid circular dependency
+    if victim.get("master") is not None:
+        stop_follower(victim)
+    add_follower(victim, ch)
+    victim["leader"] = ch["id"]
     affect_to_char(victim, _new_affect(sn, level, number_fuzzy(level // 4), "none", 0, "charm"))
     act("Isn't $n just so nice?", ch, None, victim, TO_VICT)
     act("$N looks at you with adoring eyes.", ch, None, victim, TO_CHAR)

@@ -71,6 +71,10 @@ def _char_base():
         "daze":        0,
         "fighting":    None,
         "wimpy":       0,
+        # -- Followers (cf. .master, .leader, .pet) -- stored as char ids
+        "master":      None,
+        "leader":      None,
+        "pet":         None,
         # -- Resources (cf. .hit/.max_hit, .mana/.max_mana, .move/.max_move, .gold, .silver, .exp)
         "hit":         20,  "max_hit":  20,
         "mana":        0,   "max_mana":  0,
@@ -104,7 +108,7 @@ def _char_base():
         "equip":       {},
     }
     # Not ported: comm, wiznet, stance[], war, gquest, mprog_*,
-    # master/leader/pet/reply, desc, was_in_room, gen_data, hunting, trust,
+    # reply, desc, was_in_room, gen_data, hunting, trust,
     # invis/incog_level, logon, prompt/gprompt, group, rank, Class[],
     # deity, material, dam_type, start_pos, default_pos, info_settings, color_prefix
     # timer: connection idle counter (ticks since last input) -- no-op in single-player

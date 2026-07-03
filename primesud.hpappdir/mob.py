@@ -285,6 +285,10 @@ def mobile_update(tr, player):
     for mob_id, inst in list(world.chars.items()):
         if not inst.get("is_npc"):
             continue
+        if inst.get("affected_by", {}).get("charm"):
+            # Charmed mobs (pets) neither wander nor despawn
+            # (cf. 1stMud IsAffected(ch, AFF_CHARM) skips in update.c)
+            continue
         if ROOM_DEFS[inst["room"]].get("area") != inst["home_area"] and randint(1, 100) <= 5:
             # 5% despawn outside home area (cf. 1stMud char_update, update.c:541-547).
             # 1stMud never persists NPC positions; this despawn keeps cross-area

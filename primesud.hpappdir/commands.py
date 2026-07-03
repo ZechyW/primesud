@@ -4,7 +4,7 @@ from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
                     do_berserk, do_bash, do_dirt, do_trip, do_flee,
                     do_rescue, do_disarm, do_surrender, do_slay,
                     do_sskill, do_stance, do_autostance)
-from comm import do_say, do_tell, do_reply
+from comm import do_say, do_tell, do_reply, do_follow, do_ditch, do_order
 from config import POS_ORDER
 from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_help, do_affects, do_credits, do_areas, do_map, do_automap,
@@ -66,7 +66,7 @@ _CMD_TABLE = [
     ("look",       do_look,       "resting",  False),  # #20
     # ("clantalk",  do_clantalk,   "sleeping", False),  # #21
     # ("music",     do_music,      "sleeping", False),  # #22
-    # ("order",     do_order,      "resting",  False),  # #23
+    ("order",      do_order,      "resting",  False),  # #23
     ("practice",   do_practice,   "sleeping", False),  # #24
     # ("rest",      do_rest,       "sleeping", False),  # #25
     # ("sit",       do_sit,        "sleeping", False),  # #26
@@ -200,7 +200,7 @@ _CMD_TABLE = [
     ("automap",    do_automap,    "sleeping", False),  # #154
     # ("mob",       do_mob,        "dead",     False),  # #155 mob prog
     # ("enter",     do_enter,      "standing", False),  # #156
-    # ("follow",    do_follow,     "resting",  False),  # #157
+    ("follow",     do_follow,     "resting",  False),  # #157
     ("gain",       do_gain,       "standing", False),  # #158
     # ("go",        do_enter,      "standing", False),  # #159
     # ("hide",      do_hide,       "resting",  False),  # #160
@@ -373,7 +373,7 @@ _CMD_TABLE = [
     # ("sooc",      do_sooc,       "resting",  False),  # #326
     # ("helpcheck", do_helpcheck,  "dead",     False),  # #327 imm lvl 54
     # ("think",     do_think,      "resting",  False),  # #328
-    # ("ditch",     do_ditch,      "resting",  False),  # #329
+    ("ditch",      do_ditch,      "resting",  False),  # #329
     # ("censor",    do_censor,     "sleeping", False),  # #330
     # ("clear",     do_clear,      "dead",     False),  # #331
     # ("cls",       do_clear,      "dead",     False),  # #332
