@@ -23,7 +23,7 @@ MOBILES = {
         "short_descr": 'Heimdall',
         "long_descr":  'Heimdall, guardian of Bifrost, stands guard over the Rainbow Bridge.',
         "description": 'Standing over 7 feet tall and muscled as only a god can be, Heimdall keeps\nhis unsleeping gaze over the Rainbow bridge.  His trusty Gjallor-horn never\nleaves his side, and shall remain unwinded until the dread ship Naglfar sails\ntowards Valhalla on the dawn of Ragnarok.',
-        "race":        'human',
+        "race":        'Human',
         "act_flags": {"sentinel": True, "warrior": True, "nopurge": True},
         "affected_by": {"detect_evil": True, "detect_invis": True, "detect_hidden": True, "infrared": True, "dark_vision": True},
         "alignment": 1000,
@@ -277,7 +277,7 @@ ROOMS = {
             "u": {"to": 1213, "desc": 'Asgard is above you, spread out in all its glory.'},
             "d": {"to": 1220, "desc": 'Bifrost, the Rainbow Bridge leads down to the Temple of Midgaard.'},
         },
-        "sector": '-1',
+        "sector": 'inside',
     },
 }
 

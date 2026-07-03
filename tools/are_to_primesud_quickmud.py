@@ -382,6 +382,9 @@ def parse_mobiles(lines):
         long_descr,  i = read_tilde_string(lines, i)
         description, i = read_tilde_string(lines, i)
         race,        i = read_tilde_string(lines, i)
+        # Normalize to RACE_TABLE key form ("dog" -> "Dog", "song bird" ->
+        # "Song bird"); .are files store lowercase, races.py capitalizes
+        race = race.capitalize()
 
         # act_flags  affected_by  alignment  group
         parts = lines[i].split(); i += 1
@@ -690,7 +693,9 @@ def parse_rooms(lines):
         room_int = parse_rom_flag(flag_parts[1]) if len(flag_parts) > 1 else 0
         if len(flag_parts) > 2:
             sector_int = int(flag_parts[2])
-            sector = SECTOR_NAMES.get(sector_int, str(sector_int))
+            # Unknown/negative sector (upstream data typos, e.g. sewer
+            # #7426 "-1") falls back to inside
+            sector = SECTOR_NAMES.get(sector_int, "inside")
         else:
             sector = None
 
