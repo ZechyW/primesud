@@ -142,6 +142,61 @@ def create_mobile(tpl_vnum):
     return ch
 
 
+def spawn_pet(tpl_vnum, owner, name_arg=None, hp=None, announce=True):
+    """Create and register a pet mob owned by owner. [PRIMESUD]
+
+    Shared by pet-shop purchase (do_buy pet branch in shop.py) and save
+    restore (load_world in game_state.py). Mirrors the pet setup in 1stMud
+    do_buy: ACT_PET, AFF_CHARM, optional custom name appended to keywords,
+    neck-tag description, follower/leader/pet linkage.
+
+    Args:
+        tpl_vnum (int): Pet mob template VNUM.
+        owner (dict): Player state dict; pet spawns in owner's room.
+        name_arg (str): Optional custom name appended to keywords.
+        hp (int): Optional current hp override (save restore).
+        announce (bool): False suppresses add_follower messages (save restore).
+
+    Returns:
+        dict: The registered pet mob instance.
+    """
+    pet = create_mobile(tpl_vnum)
+    pet["act_flags"]["pet"] = True           # cf. SetBit(pet->act, ACT_PET)
+    pet["affected_by"]["charm"] = True       # cf. SetBit(pet->affected_by, AFF_CHARM)
+    # 1stMud: pet->comm = COMM_NOTELL|NOSHOUT|NOCHANNELS -- comm flags not ported
+
+    if name_arg:
+        # cf. 1stMud replace_strf(&pet->name, "%s %s", pet->name, arg)
+        pet["keywords"] = MOB_DEFS[tpl_vnum].get("keywords", "") + " " + str(name_arg)
+        pet["pet_name"] = str(name_arg)      # [PRIMESUD] persisted for save/load
+
+    # cf. 1stMud: description += "A neck tag says 'I belong to <name>'."
+    _desc = MOB_DEFS[tpl_vnum].get("description", "")
+    if _desc and not _desc.endswith("\n"):
+        _desc = _desc + "\n"
+    pet["description"] = _desc + "A neck tag says 'I belong to " + str(owner.get("name", "")) + "'."
+
+    if hp is not None:
+        pet["hit"] = max(1, min(int(hp), pet["max_hit"]))
+
+    room_vnum = owner["room"]
+    next_id = max(world.chars, default=1) + 1
+    pet["id"] = next_id
+    pet["room"] = room_vnum
+    pet["home_area"] = ROOM_DEFS[room_vnum].get("area")
+    world.chars[next_id] = pet
+    world.rooms[room_vnum]["mobs"].append(next_id)
+
+    if announce:
+        from comm import add_follower  # lazy import to avoid circular dependency
+        add_follower(pet, owner)
+    else:
+        pet["master"] = owner["id"]
+    pet["leader"] = owner["id"]
+    owner["pet"] = next_id
+    return pet
+
+
 def _tpl_live_count(mob_instances, tpl_vnum):
     """Count live instances of a template across all rooms (cf. pMobIndex->count in db.c)."""
     return sum(1 for inst in mob_instances.values() if inst.get("is_npc") and inst["tpl"] == tpl_vnum)

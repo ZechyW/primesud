@@ -291,8 +291,12 @@ def _apply_pending_deltas(tag, room_vnums):
         if _vnum_to_tag(_tpl) != tag:
             continue
         _saved = _pending_mob_saves[_tpl]
+        # Owned pets are persisted via p.pet, not m. lines -- never count or
+        # cull them against saved template positions. [PRIMESUD]
         _ids = sorted(i for i, inst in chars.items()
-                      if inst.get("is_npc") and inst["tpl"] == _tpl)
+                      if inst.get("is_npc") and inst["tpl"] == _tpl
+                      and not (inst.get("act_flags", {}).get("pet")
+                               and inst.get("master") is not None))
         if not _ids:
             continue
         for _mid in _ids[len(_saved):]:

@@ -838,7 +838,11 @@ def get_char_room(fragment, inst_ids, mob_instances):
         int or None: First matching mob instance ID, or None if not found.
     """
     for mob_id in inst_ids:
-        if is_name(fragment, MOB_DEFS[mob_instances[mob_id]["tpl"]].get("keywords", "")):
+        inst = mob_instances[mob_id]
+        # Instance keywords override template (cf. 1stMud per-char name;
+        # set when a bought pet is given a custom name)
+        kw = inst.get("keywords") or MOB_DEFS[inst["tpl"]].get("keywords", "")
+        if is_name(fragment, kw):
             return mob_id
     return None
 

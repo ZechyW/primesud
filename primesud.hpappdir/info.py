@@ -151,7 +151,9 @@ def _show_char_to_char_1(player, mob_id):
     """Show mob description, health condition, and equipment (cf. 1stMud show_char_to_char_1 in act_info.c)."""
     inst = world.chars[mob_id]
     tpl = MOB_DEFS[inst["tpl"]]
-    desc = tpl.get("description")
+    # Instance description overrides template (cf. 1stMud per-char description;
+    # set when buying a pet: neck-tag line appended)
+    desc = inst.get("description") or tpl.get("description")
     if desc:
         for line in _wrap_paragraphs(desc, TERMINAL_COLS):
             tprint(line)

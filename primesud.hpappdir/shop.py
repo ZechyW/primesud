@@ -1,9 +1,9 @@
 """Shop system: buy, sell, list, and value commands (cf. 1stMud do_buy/do_sell/do_list/do_value in act_obj.c)."""
 
 import world
-from world import ITEM_DEFS, MOB_DEFS
+from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 from handler import (act, chprintln, chprintlnf, is_name, can_see, can_see_obj,
-                   TO_CHAR, TO_VICT, TO_ROOM)
+                   get_char_room, TO_CHAR, TO_VICT, TO_ROOM)
 from skill_utils import get_skill, check_improve
 from comm import do_function, do_say
 from game_time import time_info
@@ -190,16 +190,66 @@ def _mult_argument(argument):
 
 # -- Commands ------------------------------------------------------------------
 
-def do_buy(player, args):
-    """Purchase items from a shopkeeper (cf. 1stMud do_buy in act_obj.c).
+def _buy_pet(player, args):
+    """Buy a pet from a pet shop (cf. 1stMud do_buy ROOM_PET_SHOP branch in act_obj.c).
 
-    [PRIMESUD] Pet shop buying not ported -- ROOM_PET_SHOP not implemented.
+    Pets live in the room after the shop room (vnum + 1).
     """
+    from mob import spawn_pet  # lazy import to avoid circular dependency
+
+    # 1stMud: special case vnum 9621 -> 9706 (area not present; not ported)
+    next_vnum = player["room"] + 1
+    if next_vnum not in ROOM_DEFS or next_vnum not in world.rooms:
+        # 1stMud: bugf("Do_buy: bad pet shop at vnum %ld.")
+        chprintln(player, "Sorry, you can't buy that here.")
+        return
+
+    pet_id = get_char_room(args[0], world.rooms[next_vnum]["mobs"], world.chars)
+    stock = world.chars.get(pet_id) if pet_id is not None else None
+    if stock is None or not stock.get("act_flags", {}).get("pet"):
+        chprintln(player, "Sorry, you can't buy that here.")
+        return
+
+    if player.get("pet") is not None:
+        chprintln(player, "You already own a pet.")
+        return
+
+    cost = 10 * stock["level"] * stock["level"]
+
+    if not check_worth(player, cost):
+        chprintln(player, "You can't afford it.")
+        return
+
+    if player["level"] < stock["level"]:
+        chprintln(player, "You're not powerful enough to master this pet.")
+        return
+
+    roll = randint(1, 100)
+    if roll < get_skill(player, GSN_HAGGLE):
+        cost -= cost // 2 * roll // 100
+        chprintlnf(player, "You haggle the price down to %d coins.", cost)
+        check_improve(player, GSN_HAGGLE, True, 4)
+
+    deduct_cost(player, cost)
+
+    # cf. 1stMud: pet = create_mobile(pet->pIndexData) + ACT_PET/AFF_CHARM/
+    # name/neck tag/add_follower/leader/pet linkage
+    name_arg = args[1] if len(args) > 1 else None
+    pet = spawn_pet(stock["tpl"], player, name_arg=name_arg)
+    chprintln(player, "Enjoy your pet.")
+    act("$n bought $N as a pet.", player, None, pet, TO_ROOM)
+
+
+def do_buy(player, args):
+    """Purchase items from a shopkeeper or pet shop (cf. 1stMud do_buy in act_obj.c)."""
     if not args:
         chprintln(player, "Buy what?")
         return
 
-    # [PRIMESUD] ROOM_PET_SHOP not ported -- pet buying skipped
+    # -- Pet shop (cf. 1stMud ROOM_PET_SHOP branch)
+    if ROOM_DEFS[player["room"]].get("flags", {}).get("pet_shop"):
+        _buy_pet(player, args)
+        return
 
     keeper, keeper_id = find_keeper(player)
     if keeper is None:
@@ -297,11 +347,28 @@ def do_buy(player, args):
 
 
 def do_list(player, args):
-    """Display shopkeeper's inventory for sale (cf. 1stMud do_list in act_obj.c).
-
-    [PRIMESUD] Pet shop listing not ported -- ROOM_PET_SHOP not implemented.
-    """
-    # [PRIMESUD] ROOM_PET_SHOP not ported -- pet listing skipped
+    """Display shopkeeper's or pet shop's stock (cf. 1stMud do_list in act_obj.c)."""
+    # -- Pet shop (cf. 1stMud ROOM_PET_SHOP branch)
+    if ROOM_DEFS[player["room"]].get("flags", {}).get("pet_shop"):
+        # 1stMud: special case vnum 9621 -> 9706 (area not present; not ported)
+        next_vnum = player["room"] + 1
+        if next_vnum not in ROOM_DEFS or next_vnum not in world.rooms:
+            # 1stMud: bugf("Do_list: bad pet shop at vnum %ld.")
+            chprintln(player, "You can't do that here.")
+            return
+        found = False
+        for pid in world.rooms[next_vnum]["mobs"]:
+            pet = world.chars.get(pid)
+            if pet is not None and pet.get("act_flags", {}).get("pet"):
+                if not found:
+                    found = True
+                    chprintln(player, "Pets for sale:")
+                chprintlnf(player, "[%2d] %8d - %s", pet["level"],
+                           10 * pet["level"] * pet["level"],
+                           MOB_DEFS[pet["tpl"]]["short_descr"])
+        if not found:
+            chprintln(player, "Sorry, we're out of pets right now.")
+        return
 
     keeper, keeper_id = find_keeper(player)
     if keeper is None:

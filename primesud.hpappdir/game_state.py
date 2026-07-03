@@ -101,6 +101,12 @@ def _serialize_world():
         )
     if af_parts:
         lines.append("p.affects=" + "|".join(af_parts))
+    # cf. 1stMud fwrite_pet in save.c -- [PRIMESUD] minimal: tpl|hp|custom name
+    # (full pet affect/equipment state not persisted; pet respawns fresh)
+    pet = world.chars.get(player["pet"]) if player.get("pet") is not None else None
+    if pet is not None:
+        lines.append("p.pet=" + str(pet["tpl"]) + "|" + str(pet["hit"])
+                     + "|" + str(pet.get("pet_name", "")))
     _mk_int = sorted(k for k in player["_macros"] if isinstance(k, int))
     _mk_str = sorted(k for k in player["_macros"] if isinstance(k, str))
     for k in _mk_int + _mk_str:
@@ -132,6 +138,8 @@ def _serialize_world():
         inst = world.chars[mob_id]
         if not inst.get("is_npc"):
             continue
+        if mob_id == player.get("pet"):
+            continue  # pet persisted via p.pet, not as a template position
         tpl = inst["tpl"]
         if tpl not in tpl_rooms:
             tpl_rooms[tpl] = []
@@ -252,11 +260,14 @@ def load_world():
     mob_saves = {}  # tpl_vnum -> [room, room, ...]
 
     _name_to_fn = {name: sentinel for sentinel, name in FNKEY_NAMES.items()}
+    _pet_save = None
     for line in data.split("~"):
         if "=" not in line:
             continue
         key, val = line.split("=", 1)
-        if key.startswith("p.eq."):
+        if key == "p.pet":
+            _pet_save = val
+        elif key.startswith("p.eq."):
             slot = key[5:]
             player["equip"][slot] = parse_item_token(val) if val else None
         elif key == "p.inv":
@@ -352,6 +363,22 @@ def load_world():
     # pending deltas for that area via _apply_pending_deltas.
     if player["room"] not in world.rooms:
         player["room"] = R_STARTING_ROOM
+
+    # Restore pet in the player's room (cf. 1stMud fread_pet in save.c)
+    if _pet_save:
+        from world import MOB_DEFS
+        parts = _pet_save.split("|")
+        try:
+            _tpl = int(parts[0])
+        except ValueError:
+            _tpl = None
+        if _tpl is not None and _tpl in MOB_DEFS:
+            from mob import spawn_pet
+            _hp = (int(parts[1]) if len(parts) > 1
+                   and parts[1].lstrip("-").isdigit() else None)
+            _pname = parts[2] if len(parts) > 2 and parts[2] else None
+            player["pet"] = None
+            spawn_pet(_tpl, player, name_arg=_pname, hp=_hp, announce=False)
 
     return _source
 
