@@ -18,6 +18,7 @@ from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   can_drop_obj, can_carry_n)
 from magic import cast_item_spells, validate_item_spell_payload
 from picker import pick_from
+from quest import quest_obj_check, is_quester
 from skills_table import GSN_SCROLLS, GSN_STAVES, GSN_WANDS, GSN_STEAL, GSN_SNEAK
 from skills_table import SKILLS, WEAPON_GSN_MAP
 from terminal import tprint
@@ -51,6 +52,7 @@ def _loot_container_picker(player, container):
             tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
             if not apply_money_pickup(player, cobj, ctpl):
                 player["inv"].append(cobj)
+                quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
         return
     cobj = contents[cidx]
     ctpl = ITEM_DEFS[obj_vnum(cobj)]
@@ -58,6 +60,7 @@ def _loot_container_picker(player, container):
     tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
     if not apply_money_pickup(player, cobj, ctpl):
         player["inv"].append(cobj)
+        quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
 
 
 def do_get(player, args):
@@ -97,6 +100,7 @@ def do_get(player, args):
             if apply_money_pickup(player, obj, tpl):
                 return
             player["inv"].append(obj)
+            quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
             return "get " + tpl.get("keywords", tpl["short_descr"]).split()[0]
         if has_all and idx == len(loose):
             for obj in list(loose):
@@ -106,6 +110,7 @@ def do_get(player, args):
                     (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
                 if not apply_money_pickup(player, obj, tpl):
                     player["inv"].append(obj)
+                    quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
             return
         _loot_container_picker(player, conts[idx - cont_start])
         return
@@ -127,6 +132,7 @@ def do_get(player, args):
             tprint("You get {}.".format(tpl["short_descr"]))
             if not apply_money_pickup(player, obj, tpl):
                 player["inv"].append(obj)
+                quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
         if not found:
             if filter_kw:
                 tprint("I see no {} here.".format(filter_kw))
@@ -153,6 +159,7 @@ def do_get(player, args):
                         tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
                         if not apply_money_pickup(player, cobj, ctpl):
                             player["inv"].append(cobj)
+                            quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
                 return
             cobj = get_obj_list(item_arg, contents, ITEM_DEFS)
             if cobj is None:
@@ -164,6 +171,7 @@ def do_get(player, args):
             tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
             if not apply_money_pickup(player, cobj, ctpl):
                 player["inv"].append(cobj)
+                quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
             return
     obj = get_obj_list(arg, rs["items"], ITEM_DEFS)
     if obj is None:
@@ -177,6 +185,7 @@ def do_get(player, args):
     tprint("You get {}.".format((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
     if not apply_money_pickup(player, obj, tpl):
         player["inv"].append(obj)
+        quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
 
 
 def do_drop(player, args):
@@ -278,6 +287,11 @@ def do_put(player, args):
         tprint("You can't fold it into itself.")
         return
     tpl = ITEM_DEFS[obj_vnum(obj)]
+    # cf. 1stMud do_put act_obj.c:397 -- quest items only fit quest containers
+    if (item_extra_flags(obj, tpl).get("quest")
+            and not item_extra_flags(cont_obj, cont_tpl).get("quest")):
+        tprint("You can't put a quest item in something.")
+        return
     player["inv"].remove(obj)
     cont_obj.setdefault("contents", []).append(obj)
     cont_name = (isinstance(cont_obj, dict) and cont_obj.get("short_descr")) or cont_tpl["short_descr"]
@@ -313,6 +327,9 @@ def do_inventory(player, args):
         tpl = ITEM_DEFS[v]
         flags = _obj_flags(tpl)
         name = tpl["short_descr"]
+        # cf. 1stMud act_info.c:66 quest obj marker; [PRIMESUD] vnum match
+        if is_quester(player) and v == player.get("quest_obj", 0):
+            name = "{r[{RTARGET{r] {x" + name
         if show_vnums:  # [PRIMESUD]
             name += " {D[" + str(v) + "]{x"
         tprint("  {}{} x{}".format(flags, name, n) if n > 1 else "  {}{}".format(flags, name))
@@ -721,15 +738,16 @@ def do_compare(player, args):
     else:
         itype = tpl1.get("type")
         if itype == "armor":
-            a1 = tpl1.get("armor", (0, 0, 0, 0))
-            a2 = tpl2.get("armor", (0, 0, 0, 0))
+            # 1stMud compares instance values (act_info.c:3331) -- quest gear scales
+            a1 = obj1.get("armor") or tpl1.get("armor", (0, 0, 0, 0))
+            a2 = obj2.get("armor") or tpl2.get("armor", (0, 0, 0, 0))
             value1 = a1[0] + a1[1] + a1[2]
             value2 = a2[0] + a2[1] + a2[2]
         elif itype == "weapon":
-            # 1stMud new_format: (1 + dice_size) * dice_num
+            # 1stMud new_format: (1 + dice_size) * dice_num, instance values (act_info.c:3337)
             # [PRIMESUD] old-format branch dropped -- converter emits dice for all weapons
-            d1 = tpl1.get("dice", (0, 0, 0))
-            d2 = tpl2.get("dice", (0, 0, 0))
+            d1 = obj1.get("dice") or tpl1.get("dice", (0, 0, 0))
+            d2 = obj2.get("dice") or tpl2.get("dice", (0, 0, 0))
             value1 = (1 + d1[1]) * d1[0]
             value2 = (1 + d2[1]) * d2[0]
         else:

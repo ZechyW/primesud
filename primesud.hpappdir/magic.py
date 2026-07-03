@@ -543,7 +543,8 @@ def spell_identify(sn, level, ch, vo, target):
     chprintln(ch, "Object '" + tpl.get("keywords", "") + "' is type " + tpl.get("type", "unknown")
              + ", extra flags " + (" ".join(sorted(flags)) or "none") + ".")
     chprintln(ch, "Weight is " + str(tpl.get("weight", 0)) + ", value is "
-             + str(vo.get("cost", tpl.get("value", 0))) + ", level is " + str(tpl.get("level", 0)) + ".")
+             + str(vo.get("cost", tpl.get("value", 0))) + ", level is "
+             + str(vo.get("level", tpl.get("level", 0))) + ".")  # instance level (quest gear scales)
     if tpl.get("type") in ("scroll", "potion", "pill"):
         spells = item_spells(vo, tpl)
         if spells:
@@ -554,6 +555,13 @@ def spell_identify(sn, level, ch, vo, target):
         if spell_name:
             line += " '" + spell_name + "'"
         chprintln(ch, line + ".")
+    elif tpl.get("type") == "weapon":
+        chprintln(ch, "Weapon type is " + tpl.get("weapon_type", "unknown") + ".")
+        # 1stMud new_format: instance value[1]/[2] (quest gear scales dice)
+        d = vo.get("dice") or tpl.get("dice", (0, 0, 0))
+        chprintln(ch, "Damage is " + str(d[0]) + "d" + str(d[1])
+                  + " (average " + str((1 + d[1]) * d[0] // 2) + ").")
+        # [PRIMESUD] weapon flags line skipped -- weapon flags not ported
     for loc, mod in tpl.get("stat_bonuses", {}).items():
         chprintln(ch, "Affects " + loc + " by " + str(mod) + ".")
     for af in item_affect_list(vo):
@@ -1583,6 +1591,8 @@ def spell_gate(sn, level, ch, vo, target):
     src_flags = ROOM_DEFS.get(ch.get("room"), {}).get("flags", {})
     dst_flags = ROOM_DEFS.get(victim_vnum, {}).get("flags", {})
 
+    from quest import is_quester
+    from gquest import gq_is_target
     if (not can_see_room(ch, victim_vnum)
             or dst_flags.get("safe")
             # TODO [PRIMESUD] arena flag not yet implemented
@@ -1591,8 +1601,12 @@ def spell_gate(sn, level, ch, vo, target):
             or dst_flags.get("private")
             or dst_flags.get("solitary")
             # TODO [PRIMESUD] clan check (is_clan/is_same_clan) not yet ported
-            # TODO [PRIMESUD] gquest mob check (is_gqmob) not yet ported
-            # TODO [PRIMESUD] quester pcdata.quest.mob check not yet ported
+            # 1stMud: gquest targets can't be gated to (is_gqmob)
+            or (victim.get("is_npc") and gq_is_target(victim.get("tpl")))
+            # 1stMud: can't gate to your own quest mob;
+            # [PRIMESUD] vnum match instead of instance pointer
+            or (victim.get("is_npc") and is_quester(ch)
+                and victim.get("tpl") == ch.get("quest_mob", 0))
             or victim.get("level", 0) >= level + 3
             or (not victim.get("is_npc") and victim.get("level", 0) >= MAX_MORTAL_LEVEL)
             or (victim.get("is_npc") and victim.get("imm_flags", {}).get("summon"))

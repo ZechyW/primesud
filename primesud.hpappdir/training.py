@@ -213,7 +213,6 @@ def do_remort(player, args):
     Two-step confirm as in 1stMud (type remort twice; remort <arg> cancels).
     [PRIMESUD] nanny.c re-creation flow replaced by a class picker; race is
     always kept (1stMud stay_race path); no immortal backup/wiznet.
-    # TODO: 1stMud also requires 500 quest points -- add when auto-quests are ported.
 
     Args:
         player (dict): Player state dict.
@@ -252,10 +251,14 @@ def do_remort(player, args):
         chprintln(player, "You can't remort any more!")
         return
 
-    # 1stMud: IsQuester/Gquester check skipped -- quests not ported
-    if player["gold"] < REMORT_GOLD:
-        # TODO: "and 500 quest points" when auto-quests are ported
-        chprintln(player, "You need 500,000 gold to remort.")
+    from quest import is_quester
+    from gquest import gquester
+    if is_quester(player) or gquester(player):
+        chprintln(player, "Don't you want to finish your quest first?")
+        return
+
+    if player["gold"] < REMORT_GOLD or player.get("quest_points", 0) < 500:
+        chprintln(player, "You need 500,000 gold and 500 quest points to remort.")
         return
 
     if not player.get("confirm_remort"):
@@ -310,7 +313,7 @@ def finish_remort(player, new_class):
     player["level"] = 1
     player["xp"] = 0
     player["gold"] -= REMORT_GOLD
-    # TODO: deduct 500 quest points when auto-quests are ported
+    player["quest_points"] = player.get("quest_points", 0) - 500  # cf. 1stMud finish_remort
     # 1stMud assigns mana=max_move / move=max_mana (swapped) -- harmless
     # upstream since all three are 100*b; PrimeSUD assigns straight.
     player["max_hit"]  = player["perm_hit"]  = 100 * b

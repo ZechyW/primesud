@@ -10,6 +10,8 @@ import world
 from world import ROOM_DEFS, AREA_DEFS
 from inventory import do_outfit
 from macros import _MACRO_SUBST
+from quest import rescale_quest_gear
+from gquest import gq_save_lines, gq_load_line, gq_reset
 from mob import reset_area, create_area_states
 from player import create_char, reset_char, _EQUIP_SAVE_ORDER
 from picker import pick_from
@@ -59,7 +61,12 @@ def _serialize_world():
                 "perm_hit", "perm_mana", "perm_move",
                 "room", "trivia",
                 "practice", "train", "flags", "played", "alignment",
-                "gold", "silver", "wimpy"):
+                "gold", "silver", "wimpy",
+                # cf. 1stMud fwrite_char QuestPnts/QuestNext; PrimeSUD also
+                # persists the active quest (vnum-based, see quest.py)
+                "quest_points", "quest_status", "quest_time",
+                "quest_mob", "quest_obj", "quest_room", "quest_giver",
+                "quest_mob_name", "quest_room_name", "quest_area_name"):
         lines.append("p." + key + "=" + str(player[key]))
     for stat in ("str", "dex", "int", "wis", "con"):
         lines.append("p." + stat + "=" + str(player["perm_stat"][stat]))
@@ -142,6 +149,8 @@ def _serialize_world():
             lines.append("a." + str(_as["tag"]) + ".precip=" + str(weather.get("precip", 0)))
             lines.append("a." + str(_as["tag"]) + ".precipv=" + str(weather.get("precip_vector", 0)))
     lines.append("g.time=" + str(time_info["hour"]) + "|" + str(time_info["day"]) + "|" + str(time_info["month"]) + "|" + str(time_info["year"]))
+    for _gql in gq_save_lines():  # [PRIMESUD] gquest state
+        lines.append(_gql)
     # Build reset-room map for single-instance mobs (gl=1): if the only live
     # instance is already in its reset room, omit it -- reset_area() will
     # restore it there on load without any save entry needed.
@@ -279,7 +288,9 @@ def load_world():
                 "perm_hit", "perm_mana", "perm_move",
                 "room", "alignment", "prime_class",
                 "practice", "train", "flags", "played",
-                "gold", "silver", "wimpy"}
+                "gold", "silver", "wimpy",
+                "quest_points", "quest_status", "quest_time",
+                "quest_mob", "quest_obj", "quest_room", "quest_giver"}
 
     if player["_macros"] is not None:
         player["_macros"].clear()
@@ -370,6 +381,8 @@ def load_world():
             if tag in _area_by_tag:
                 _area_by_tag[tag].setdefault("weather", {})
                 _area_by_tag[tag]["weather"]["precip_vector"] = int(val)
+        elif key.startswith("g.gq") and gq_load_line(key, val):  # [PRIMESUD]
+            pass
         elif key == "g.time":
             parts = val.split("|")
             if len(parts) == 4:
@@ -458,6 +471,7 @@ def new_game(game, name="Hero"):
         idx = CLASS_WARRIOR  # [PRIMESUD] Esc at new game defaults to Warrior
     world.reset_lazy()
     world.areas = create_area_states()
+    gq_reset()  # [PRIMESUD] fresh gquest schedule per game
     player = create_char(idx)
     player["name"] = name
     player["_macros"] = _MACRO_SUBST
@@ -470,6 +484,7 @@ def load_game(game):
     """Load a saved game from persistent storage and restore world state. [PRIMESUD]"""
     world.reset_lazy()
     world.areas = create_area_states()
+    gq_reset()  # [PRIMESUD] clear stale state; save lines re-populate below
     player = create_char()
     player["_macros"] = _MACRO_SUBST
     world.chars[1] = player
@@ -479,6 +494,8 @@ def load_game(game):
         return None
     # Retry deltas skipped during cascade (dest room states not yet created)
     world._retry_pending_deltas()
+    # Quest gear armor/dice overrides are regenerated, not saved [PRIMESUD]
+    rescale_quest_gear(player)
     reset_char(player)
     return result
 

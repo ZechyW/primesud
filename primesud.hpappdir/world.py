@@ -47,6 +47,24 @@ _AREA_FILES = [
     ("area_midgaard.dat", "midgaard", 3000, 3378),
 ]
 
+# Area level ranges, duplicated from each .dat AREA["levels"] so quest
+# target selection can filter areas without triggering their load.
+# Keep in sync with the .dat files. [PRIMESUD]
+AREA_LEVELS = {
+    "limbo":      (1, 10),
+    "quest":      (1, 10),
+    "immort":     (51, 60),
+    "mobfact":    (5, 15),
+    "grave":      (5, 10),
+    "plains":     (1, 20),
+    "chapel":     (15, 25),
+    "mud_school": (1, 5),
+    "shire":      (5, 35),
+    "haon":       (5, 10),
+    "ofcol2":     (5, 35),
+    "midgaard":   (1, 50),
+}
+
 # -- Lazy loading state -------------------------------------------------------
 _LOADED_AREAS = set()
 _TAG_TO_FILE = {}

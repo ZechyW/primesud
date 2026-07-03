@@ -208,6 +208,7 @@ class TestRemort:
         player = create_char(CLASS_WARRIOR)
         player["room"] = 3022
         player["gold"] = 500000
+        player["quest_points"] = 500  # remort gate (cf. 1stMud do_remort)
         player["level"] = calc_max_level(player)
         world.chars[1] = player
 

@@ -119,8 +119,14 @@ def _char_base():
 
 
 
-def _item_armor_runtime(tpl):
-    """Return armor tuple from item template, or None if absent. [PRIMESUD]"""
+def _item_armor_runtime(tpl, obj=None):
+    """Return armor tuple from item instance override or template, or None. [PRIMESUD]
+
+    Instance "armor" supports quest gear that rescales with level
+    (cf. 1stMud update_questobj writing obj->value[0..3]).
+    """
+    if isinstance(obj, dict) and "armor" in obj:
+        return obj["armor"]
     armor = tpl.get("armor")
     if armor is None:
         return None
@@ -410,7 +416,7 @@ def unequip_char(char, slot):
     """Remove obj from slot, reverse stat_bonuses, return to inventory (cf. 1stMud unequip_char in handler.c)."""
     obj = char["equip"][slot]
     tpl = ITEM_DEFS[obj["vnum"]]
-    armor = _item_armor_runtime(tpl)
+    armor = _item_armor_runtime(tpl, obj)
     if armor is not None:
         a = char.get("armor") or (100, 100, 100, 100)
         char["armor"] = (a[0]+armor[0], a[1]+armor[1], a[2]+armor[2], a[3]+armor[3])
@@ -424,7 +430,7 @@ def equip_char(char, obj, slot):
     tpl = ITEM_DEFS[obj["vnum"]]
     char["inv"].remove(obj)
     char["equip"][slot] = obj
-    armor = _item_armor_runtime(tpl)
+    armor = _item_armor_runtime(tpl, obj)
     if armor is not None:
         a = char.get("armor") or (100, 100, 100, 100)
         char["armor"] = (a[0]-armor[0], a[1]-armor[1], a[2]-armor[2], a[3]-armor[3])

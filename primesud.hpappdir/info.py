@@ -16,6 +16,8 @@ from item import get_obj_list, get_obj_here, obj_vnum, item_extra_flags
 from picker import pick_from
 from player import (PLR_AUTOMAP, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
                     PLR_AUTOSPLIT, PLR_DEFAULTS)
+from gquest import gq_is_player_target
+from quest import is_quester
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
     spell_mana
 from skills_table import SKILL_TABLE, SKILLS
@@ -417,6 +419,9 @@ def do_look(player, args):
         if flags.get("glow"):   flag_str += "({YGlowing{x) "
         if flags.get("hum"):    flag_str += "({CHumming{x) "
         if flags.get("magic"):  flag_str += "({MMagical{x) "
+        # cf. 1stMud act_info.c:66 quest obj marker; [PRIMESUD] vnum match
+        if is_quester(player) and obj_vnum(obj) == player.get("quest_obj", 0):
+            flag_str += "{r[{RTARGET{r] {x"
         inst_desc = isinstance(obj, dict) and obj.get("description")
         line = flag_str + "{Y" + (inst_desc or tpl.get("description") or tpl["short_descr"]) + "{x"
         if show_vnums:  # [PRIMESUD]
@@ -451,6 +456,12 @@ def do_look(player, args):
         if is_evil(inst) and p_aff.get("detect_evil"):   prefix += "({RRed Aura{x) "
         if is_good(inst) and p_aff.get("detect_good"):   prefix += "({YGolden Aura{x) "
         if aff.get("sanctuary"):    prefix += "({WWhite Aura{x) "
+        # cf. 1stMud act_info.c:219 quest target marker; [PRIMESUD] vnum match
+        if is_quester(player) and inst["tpl"] == player.get("quest_mob", 0):
+            prefix += "{r[{RTARGET{r] {x"
+        # cf. 1stMud act_info.c:223 gquest target marker
+        if gq_is_player_target(inst["tpl"]):
+            prefix += "{Y({RGquest{Y) {x"
         # cf. 1stMud: long_descr only when mob is at its start_pos
         pos = inst.get("pos", "standing")
         start_pos = POS_FROM_SHORT.get(tpl.get("start_pos", "stand"), "standing")
@@ -613,7 +624,8 @@ def do_score(player, args):
             + "{C/{G"
             + "{:5d}".format(p.get("max_move", 100))
             + "{C]{x",
-            "",
+            # cf. 1stMud dlm_score "Quest Points" cell
+            _val_r("Quest Points", p.get("quest_points", 0), bright=True),
         ),
         _row(
             _val_l("Exp", p["xp"], bright=True),

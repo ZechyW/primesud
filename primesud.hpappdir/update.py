@@ -16,6 +16,8 @@ from combat import update_mob_timers, violence_update
 from game_time import time_update
 from mob import mobile_update, aggr_update, area_update
 from player import tick_update
+from quest import quest_update
+from gquest import gquest_update
 from stances import first_stance_tip  # [PRIMESUD]
 from debug import DBG, dbg  # [PRIMESUD]
 
@@ -80,7 +82,8 @@ def update_handler():
         player["played"] = player.get("played", 0) + TICK_SECS
         tick_update(tr, player, ROOM_DEFS[player["room"]])
         obj_update(tr, player)
-        # quest_update()    # not yet ported
+        quest_update()
+        gquest_update()
         fired |= UPD_TICK
 
     # cf. 1stMud aggr_update runs every pulse; gated to

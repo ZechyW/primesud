@@ -867,8 +867,9 @@ def _randomize_damage(dam, roll):
 
 def is_safe(ch, victim):
     """Check if ch is prevented from attacking victim (cf. 1stMud is_safe in fight.c).
-    [Verified: 02/07/2026] -- ROOM_SAFE, ACT_PET, quest-target, and PvP branches
-    not ported (noted inline); "$g" deity rendered as "the gods".
+    [Verified: 02/07/2026; quest-target check added and re-verified 03/07/2026]
+    -- ROOM_SAFE, ACT_PET, and PvP branches not ported (noted inline);
+    "$g" deity rendered as "the gods".
 
     Returns True (and prints a message) if the attack should be blocked.
     Unlike is_safe_spell, this prints feedback explaining why.
@@ -911,7 +912,16 @@ def is_safe(ch, victim):
                 chprintln(ch, "You don't own that monster.")
                 return True
 
-            # [PRIMESUD] quest deliver/findmob target check not ported
+            # 1stMud: quest deliver/findmob target protected;
+            # [PRIMESUD] vnum match instead of instance pointer
+            from quest import QUEST_DELIVER, QUEST_FINDMOB
+            if (ch.get("quest_status") in (QUEST_DELIVER, QUEST_FINDMOB)
+                    and victim.get("tpl") == ch.get("quest_mob", 0)):
+                # 1stMud: "You are supposed to deliver $p to $N, not kill $M."
+                # [PRIMESUD] generic text; findmob quests carry no object
+                act("You are supposed to find $N, not kill $M.",
+                    ch, None, victim, TO_CHAR)
+                return True
     else:
         # 1stMud: player victim
         if ch["is_npc"]:
@@ -927,8 +937,8 @@ def is_safe(ch, victim):
 
 def is_safe_spell(ch, victim, area):
     """Silent safety check for spell targeting (cf. 1stMud is_safe_spell in fight.c).
-    [Verified: 02/07/2026] -- ROOM_SAFE, ACT_PET, quest-target, immortal, and PvP
-    branches not ported (noted inline).
+    [Verified: 02/07/2026; quest-target check added and re-verified 03/07/2026]
+    -- ROOM_SAFE, ACT_PET, immortal, and PvP branches not ported (noted inline).
 
     Returns True if victim should NOT be hit. Unlike is_safe, prints no
     messages.
@@ -962,7 +972,12 @@ def is_safe_spell(ch, victim, area):
             if (victim.get("fighting") is not None
                     and not is_same_group(ch, world.chars.get(victim["fighting"]))):
                 return True
-            # [PRIMESUD] quest deliver/findmob target check not ported
+            # 1stMud: quest deliver/findmob target protected;
+            # [PRIMESUD] vnum match instead of instance pointer
+            from quest import QUEST_DELIVER, QUEST_FINDMOB
+            if (ch.get("quest_status") in (QUEST_DELIVER, QUEST_FINDMOB)
+                    and victim.get("tpl") == ch.get("quest_mob", 0)):
+                return True
         else:
             # 1stMud: area && !is_same_group(victim, ch->fighting)
             if area and not is_same_group(victim, world.chars.get(ch.get("fighting"))):
@@ -1248,9 +1263,14 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         # 1stMud: if (!IsNPC(victim)) { logf(...); if (!IsQuester...)
         #             gain_exp(victim, 2*(exp_per_level*level - exp)/3 + 50); }
         # [PRIMESUD] per-level XP model: level floor is xp == 0, so the
-        # penalty is -2/3 of progress into the current level, +50 (quest
-        # target exclusion not ported). C division truncates toward zero.
-        if not victim["is_npc"] and victim.get("xp", 0) > 0:
+        # penalty is -2/3 of progress into the current level, +50.
+        # C division truncates toward zero.
+        # 1stMud: no XP penalty when a quester dies to their own quest mob;
+        # [PRIMESUD] vnum match instead of instance pointer
+        from quest import is_quester
+        if (not victim["is_npc"] and victim.get("xp", 0) > 0
+                and not (is_quester(victim)
+                         and ch.get("tpl") == victim.get("quest_mob", 0))):
             gain_exp(victim, 50 - (2 * victim["xp"]) // 3)
 
         # 1stMud: new_wiznet / announce
@@ -1352,7 +1372,8 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
 def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False):
     """One attack from ch against victim (cf. 1stMud one_hit in fight.c).
     [Verified: 02/07/2026; stance dam mods and improve_stance added and
-    re-verified 03/07/2026] -- WEAPON_SHARP and weapon procs
+    re-verified 03/07/2026; instance weapon dice read (quest gear) added
+    with permission and re-verified 03/07/2026] -- WEAPON_SHARP and weapon procs
     (poison/vampiric/flaming/frost/shocking) not ported (noted inline);
     old-format mob damage fallback skipped.
 
@@ -1439,7 +1460,10 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False):
         if not ch["is_npc"] and sk_vnum != -1:
             check_improve(ch, sk_vnum, True, 5)
         if wtpl is not None:
-            num, size, bonus = wtpl.get("dice", (1, 4, 0))
+            # 1stMud reads instance values (fight.c:714 wield->value[1]/[2]);
+            # instance "dice" carries quest-gear scaling (cf. quest.c 253-256)
+            wobj = ch["equip"][slot]
+            num, size, bonus = wobj.get("dice") or wtpl.get("dice", (1, 4, 0))
             dam = (dice(num, size) + bonus) * skill // 100
             # 1stMud: if (get_eq_char(ch, WEAR_SHIELD) == NULL) dam = dam * 11 / 10;
             if ch["equip"].get("shield") is None:
@@ -2318,8 +2342,9 @@ def _extract_char(ch, pull=True):
 
 def advance_level(player):
     """Roll HP/MP gains, grant practice and train (cf. 1stMud advance_level in update.c).
-    [Verified: 02/07/2026] -- last_level play-time stamp and update_all_qobjs
-    not ported; [PRIMESUD] full heal/restore on level.
+    [Verified: 02/07/2026; update_all_qobjs added and re-verified 03/07/2026]
+    -- last_level play-time stamp not ported; [PRIMESUD] full heal/restore
+    on level.
 
     Level increment and XP deduction happen in gain_exp before this is called,
     matching 1stMud's flow.
@@ -2362,6 +2387,10 @@ def advance_level(player):
     player["move"]       = player["max_move"]  # [PRIMESUD] full restore for UX
     player["practice"] += add_prac
     player["train"]    += 1
+
+    # cf. 1stMud advance_level: quest gear rescales to the new level
+    from quest import update_all_qobjs
+    update_all_qobjs(player)
 
     chprintlnf(player, "You gain %d hit %s, %d mana, %d move, and %d %s.",
         add_hp,  "point" if add_hp  == 1 else "points",
@@ -2440,8 +2469,8 @@ GROUP_LVL_LIMIT = 20
 
 def group_gain(ch, victim):
     """Award XP to ch's group for killing victim (cf. 1stMud group_gain in fight.c).
-    [Verified: 02/07/2026] -- bonus-XP event, quest/gquest hooks not ported
-    (noted inline).
+    [Verified: 02/07/2026; quest kill hook added and re-verified 03/07/2026]
+    -- bonus-XP event and gquest hook not ported (noted inline).
 
     Iterates all characters in the same room that share ch's group.  NPCs
     (pets) contribute to the group level pool (at half level) but do not
@@ -2508,9 +2537,13 @@ def group_gain(ch, victim):
             str(xp), "point" if xp == 1 else "points"))
         gain_exp(gch, xp)
 
-        # 1stMud: quest mob check (IsQuester && quest.mob == victim)
-        # [PRIMESUD] quest completion handled separately in quest system
-        # 1stMud: gquest check -- [PRIMESUD] not ported
+        # 1stMud: quest mob check (IsQuester && quest.mob == victim);
+        # [PRIMESUD] vnum match inside quest_kill_check
+        from quest import quest_kill_check
+        quest_kill_check(gch, victim)
+        # 1stMud: gquest target check (is_gqmob)
+        from gquest import gq_kill_check
+        gq_kill_check(gch, victim)
 
         # 1stMud: worn anti-align items zap after the kill's alignment shift
         # (1stMud checks ch, the killer, not gch)

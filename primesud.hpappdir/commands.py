@@ -14,8 +14,10 @@ from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
                        do_sacrifice, do_compare, do_steal)
+from gquest import do_gquest
 from macros import do_macro
 from magic import do_cast
+from quest import do_quest, do_tpspend
 from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
                       do_open, do_close, do_recall, do_run,
                       do_stand, do_rest, do_sit, do_sleep, do_wake,
@@ -166,10 +168,11 @@ _CMD_TABLE = [
     # ("grats",     do_grats,      "sleeping", False),  # #96
     # ("gtell",     do_gtell,      "dead",     False),  # #97
     # (";",         do_gtell,      "dead",     False),  # #98
-    # ("quest",     do_quest,      "resting",  False),  # #99
+    ("quest",     do_quest,      "resting",  False),  # #99
+    # qpgive/tpgive: give points to another player -- [PRIMESUD] single-player, skipped
     # ("qpgive",    do_qpgive,     "resting",  False),  # #100
     # ("tpgive",    do_tpgive,     "resting",  False),  # #101
-    # ("tpspend",   do_tpspend,    "resting",  False),  # #102
+    ("tpspend",   do_tpspend,    "resting",  False),  # #102
     # ("question",  do_question,   "sleeping", False),  # #103
     # ("quote",     do_quote,      "sleeping", False),  # #104
     # ("quiet",     do_quiet,      "sleeping", False),  # #105
@@ -245,7 +248,7 @@ _CMD_TABLE = [
     # ("showstats", do_showstats,  "sleeping", False),  # #175
     # ("compress",  do_compress,   "dead",     False),  # #176
     ("remort",     do_remort,     "standing", True),   # #177 noprefix
-    # ("gquest",    do_gquest,     "resting",  False),  # #178
+    ("gquest",    do_gquest,     "resting",  False),  # #178
     # ("explored",  do_explored,   "sleeping", False),  # #179
     # --- Immortal commands #180-#252 ---
     # ("advance",   do_advance,    "dead",     False),  # #180 imm lvl 60

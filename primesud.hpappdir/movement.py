@@ -12,6 +12,7 @@ from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
                     R_RECALL, PULSE_PER_SECOND)
 from info import do_look, find_area_paths
 from picker import pick_from
+from quest import quest_room_check
 from skills_table import (GSN_RECALL, GSN_PICK_LOCK, GSN_SNEAK, GSN_HIDE,
                           GSN_INVIS, GSN_MASS_INVIS, SKILLS)
 from terminal import tprint
@@ -178,6 +179,8 @@ def move_char(ch, direction):
             _brief_room_line(ch)
         else:
             do_look(ch, [])
+        # cf. 1stMud move_char act_move.c:266 (after greet triggers)
+        quest_room_check(ch)
 
     # -- Followers move too (cf. 1stMud move_char follower loop, act_move.c:232-257).
     # Mob followers come from the old room's mob list; the player (not tracked

@@ -55,6 +55,17 @@ def create_char(class_idx=CLASS_WARRIOR):
         "practice": 5,
         "train":    3,
         "trivia":   0,
+        # cf. 1stMud pcdata->quest (QuestData); vnum-based, see quest.py
+        "quest_points": 0,
+        "quest_status": 0,
+        "quest_time":   0,
+        "quest_mob":    0,
+        "quest_obj":    0,
+        "quest_room":   0,
+        "quest_giver":  0,
+        "quest_mob_name":  "",
+        "quest_room_name": "",
+        "quest_area_name": "",
         "flags":    PLR_DEFAULTS,  # PLR_* bits; [DEVIATION] separate from act_flags
         "played":   0,
         # cf. 1stMud pcdata->group_known; filled by gn_add below.
@@ -141,7 +152,7 @@ def reset_char(player):
         tpl = ITEM_DEFS.get(obj["vnum"])
         if tpl is None:
             continue
-        armor = _item_armor_runtime(tpl)
+        armor = _item_armor_runtime(tpl, obj)
         if armor is not None:
             a = player["armor"]
             player["armor"] = (a[0]-armor[0], a[1]-armor[1], a[2]-armor[2], a[3]-armor[3])
