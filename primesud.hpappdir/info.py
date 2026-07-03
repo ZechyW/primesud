@@ -21,6 +21,7 @@ from skills_table import SKILL_TABLE, SKILLS
 from terminal import tprint
 from util import free_mem, gc_collect
 from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
+from debug import DBG  # [PRIMESUD]
 
 
 def _wrap(text, width):
@@ -315,7 +316,11 @@ def do_look(player, args):
     automap_on = player.get("flags", PLR_DEFAULTS) & PLR_AUTOMAP
     text_w = TERMINAL_COLS - COMPACT_W - 1 if automap_on else TERMINAL_COLS
 
-    tprint("{Y" + room["name"] + "{x")
+    show_vnums = "vnum" in DBG  # [PRIMESUD] debug vnum visibility toggle
+    if show_vnums:
+        tprint("{Y" + room["name"] + " {D[" + str(player["room"]) + "]{x")
+    else:
+        tprint("{Y" + room["name"] + "{x")
 
     color = SECTOR_COLORS.get(room.get("sector", "inside"), "")
     desc_lines = _wrap_paragraphs(room["desc"], text_w)
@@ -352,6 +357,8 @@ def do_look(player, args):
         if flags.get("magic"):  flag_str += "({MMagical{x) "
         inst_desc = isinstance(obj, dict) and obj.get("description")
         line = flag_str + "{Y" + (inst_desc or tpl.get("description") or tpl["short_descr"]) + "{x"
+        if show_vnums:  # [PRIMESUD]
+            line += " {D[" + str(obj_vnum(obj)) + "]{x"
         if line in seen:
             seen[line] += 1
         else:
@@ -388,6 +395,8 @@ def do_look(player, args):
                 line = "%s is here, fighting YOU!" % name
             else:
                 line = "%s is here, fighting someone." % name
+        if show_vnums:  # [PRIMESUD] instance id : template vnum
+            line += " {D[" + str(mob_id) + ":" + str(inst["tpl"]) + "]"
         tprint("%s{M%s{x" % (prefix, line))
 
 
