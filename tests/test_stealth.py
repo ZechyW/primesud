@@ -102,6 +102,21 @@ class TestTargeting:
         # no viewer -> no filter (internal callers)
         assert get_char_room("merchant", [2], world.chars) == 2
 
+    def test_get_char_room_counted(self, scene):
+        from handler import get_char_room
+        mob2 = _char_base()
+        mob2.update({"is_npc": True, "id": 3, "tpl": 9001, "room": 3001,
+                     "level": 5})
+        world.chars[3] = mob2
+        world.rooms._data[3001]["mobs"].append(3)
+        assert get_char_room("merchant", [2, 3], world.chars, scene) == 2
+        assert get_char_room("2.merchant", [2, 3], world.chars, scene) == 3
+        assert get_char_room("3.merchant", [2, 3], world.chars, scene) is None
+        assert get_char_room("abc.merchant", [2, 3], world.chars, scene) is None
+        # count skips unseen mobs, like 1stMud
+        world.chars[2]["affected_by"]["invisible"] = True
+        assert get_char_room("merchant", [2, 3], world.chars, scene) == 3
+
     def test_yell_from_mob_reaches_player(self, scene, out, monkeypatch):
         import comm
         monkeypatch.setattr(handler, "_player_char", lambda: scene)

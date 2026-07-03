@@ -2,7 +2,7 @@
 
 import world
 from world import ITEM_DEFS, MOB_DEFS
-from handler import is_name
+from handler import is_name, number_argument
 
 
 def obj_vnum(item):
@@ -304,15 +304,7 @@ def get_obj_list(fragment, item_list, templates):
     Returns:
         Item from item_list (int or dict), or None if not found.
     """
-    if '.' in fragment:
-        prefix, rest = fragment.split('.', 1)
-        try:
-            nth = int(prefix)
-            fragment = rest
-        except ValueError:
-            nth = 1
-    else:
-        nth = 1
+    nth, fragment = number_argument(fragment)
     count = 0
     for item in item_list:
         vnum = obj_vnum(item)

@@ -856,19 +856,40 @@ def can_see_obj(ch, obj):
     return True
 
 
+def number_argument(arg):
+    """Parse '2.sword' into (2, 'sword'); plain 'sword' returns (1, 'sword') (cf. 1stMud number_argument in interp.c).
+
+    Non-numeric prefix ('abc.sword') returns (0, 'sword') like C atoi, so
+    nothing matches.
+    """
+    dot = arg.find('.')
+    if dot < 0:
+        return 1, arg
+    try:
+        return int(arg[:dot]), arg[dot + 1:]
+    except ValueError:
+        return 0, arg[dot + 1:]
+
+
 def get_char_room(fragment, inst_ids, mob_instances, viewer=None):
-    """Find the first mob in inst_ids whose keywords match fragment (cf. 1stMud get_char_room in handler.c).
+    """Find the number-th mob in inst_ids whose keywords match fragment (cf. 1stMud get_char_room in handler.c).
+
+    Supports '2.guard' counted syntax via number_argument.  'self' is not
+    handled here since players are not mob instances; callers that allow
+    self-targeting check it themselves. [PRIMESUD]
 
     Args:
-        fragment (str): Player-typed name fragment.
+        fragment (str): Player-typed name fragment, optionally 'N.name'.
         inst_ids (list): Ordered list of mob instance IDs to search.
         mob_instances (dict): Mob instance mapping mob ID -> mob instance dict.
         viewer (dict): Observer; unseen mobs are skipped (cf. 1stMud
             can_see check).  None skips the visibility filter.
 
     Returns:
-        int or None: First matching mob instance ID, or None if not found.
+        int or None: Matching mob instance ID, or None if not found.
     """
+    number, arg = number_argument(fragment)
+    count = 0
     for mob_id in inst_ids:
         inst = mob_instances[mob_id]
         if viewer is not None and not can_see(viewer, inst):
@@ -876,7 +897,10 @@ def get_char_room(fragment, inst_ids, mob_instances, viewer=None):
         # Instance keywords override template (cf. 1stMud per-char name;
         # set when a bought pet is given a custom name)
         kw = inst.get("keywords") or MOB_DEFS[inst["tpl"]].get("keywords", "")
-        if is_name(fragment, kw):
+        if not is_name(arg, kw):
+            continue
+        count += 1
+        if count == number:
             return mob_id
     return None
 

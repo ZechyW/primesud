@@ -2,7 +2,8 @@
 
 import world
 from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
-                   get_char_room, mob_condition, is_good, is_evil, can_see)
+                   get_char_room, mob_condition, is_good, is_evil, can_see,
+                   number_argument as _number_argument)
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from classes import class_long, class_short
 from colors import color_len, upper, draw_line
@@ -150,17 +151,6 @@ def do_wimpy(player, args):
         return
     player["wimpy"] = wimpy
     tprint("Wimpy set to %d hit points." % wimpy)
-
-
-def _number_argument(arg):
-    """Parse '2.sword' into (2, 'sword'); plain 'sword' returns (1, 'sword') (cf. 1stMud number_argument in interp.c)."""
-    dot = arg.find('.')
-    if dot < 0:
-        return 1, arg
-    try:
-        return int(arg[:dot]), arg[dot + 1:]
-    except ValueError:
-        return 0, arg
 
 
 def _get_ed(name, extra_descs):
