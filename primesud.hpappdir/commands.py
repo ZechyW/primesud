@@ -13,7 +13,7 @@ from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
-                       do_sacrifice, do_compare, do_steal)
+                       do_sacrifice, do_compare, do_steal, do_give)
 from gquest import do_gquest
 from macros import do_macro
 from magic import do_cast
@@ -189,7 +189,7 @@ _CMD_TABLE = [
     ("eat",        do_eat,        "resting",  False),  # #116
     # ("envenom",   do_envenom,    "resting",  False),  # #117
     # ("fill",      do_fill,       "resting",  False),  # #118
-    # ("give",      do_give,       "resting",  False),  # #119
+    ("give",       do_give,       "resting",  False),  # #119
     # ("heal",      do_heal,       "resting",  False),  # #120
     # ("hold",      do_wear,       "resting",  False),  # #121
     ("list",       do_list,       "resting",  False),  # #122

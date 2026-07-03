@@ -2,7 +2,9 @@
 
 import world
 from handler import (get_curr_stat, is_name, equip_char, unequip_char, act,
-                     get_char_room, can_see, is_awake, affect_strip)
+                     get_char_room, can_see, can_see_obj, is_awake,
+                     affect_strip, chprintln, chprintlnf,
+                     TO_CHAR, TO_VICT, TO_NOTVICT)
 from world import (I_BANNER_WAR_MERC,
                    I_MACE_SUB_MERC, I_DAGGER_SUB_MERC, I_SWORD_SUB_MERC,
                    I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,
@@ -12,13 +14,14 @@ from combat import _get_weapon_skill, is_safe, multi_hit
 from comm import do_yell
 from skill_utils import WaitState, check_improve, get_skill
 from config import (STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS,
-                    MAX_LEVEL, TYPE_UNDEFINED)
+                    MAX_LEVEL, MAX_MORTAL_LEVEL, TYPE_UNDEFINED)
 from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   item_extra_flags, item_wear_flags, apply_money_pickup,
-                  can_drop_obj, can_carry_n)
+                  can_drop_obj, can_carry_n, can_carry_w, get_obj_weight)
 from magic import cast_item_spells, validate_item_spell_payload
 from picker import pick_from
-from quest import quest_obj_check, is_quester
+from quest import (quest_obj_check, is_quester, QUEST_DELIVER,
+                   QUEST_RETURN_DELIVER, _giver_name)
 from skills_table import GSN_SCROLLS, GSN_STAVES, GSN_WANDS, GSN_STEAL, GSN_SNEAK
 from skills_table import SKILLS, WEAPON_GSN_MAP
 from terminal import tprint
@@ -296,6 +299,151 @@ def do_put(player, args):
     cont_obj.setdefault("contents", []).append(obj)
     cont_name = (isinstance(cont_obj, dict) and cont_obj.get("short_descr")) or cont_tpl["short_descr"]
     tprint("You put {} in {}.".format(tpl["short_descr"], cont_name))
+
+
+def _give_coins(player, amount, coin, rest):
+    """Coin branch of do_give (cf. 1stMud do_give money path in act_obj.c:655).
+
+    [PRIMESUD] Bribe mob-trigger skipped (no mob progs).  The changer's
+    change comes straight from thin air like 1stMud's till top-up.
+    """
+    if amount <= 0 or coin not in ("coins", "coin", "gold", "silver"):
+        tprint("Sorry, you can't do that.")
+        return
+    silver = coin != "gold"
+    if not rest:
+        tprint("Give what to whom?")
+        return
+    rs = world.rooms[player["room"]]
+    vid = get_char_room(" ".join(rest), rs["mobs"], world.chars, player)
+    if vid is None:
+        tprint("They aren't here.")
+        return
+    victim = world.chars[vid]
+    wallet = "silver" if silver else "gold"
+    if player[wallet] < amount:
+        tprint("You haven't got that much.")
+        return
+    player[wallet] -= amount
+    victim[wallet] = victim.get(wallet, 0) + amount
+    act("$n gives you %d %s." % (amount, wallet), player, None, victim, TO_VICT)
+    act("$n gives $N some coins.", player, None, victim, TO_NOTVICT)
+    act("You give $N %d %s." % (amount, wallet), player, None, victim, TO_CHAR)
+
+    # Money changer (cf. 1stMud ACT_IS_CHANGER branch)
+    if victim.get("act_flags", {}).get("changer"):
+        change = (95 * amount // 100 // 100) if silver else (95 * amount)
+        if change < 1 and can_see(victim, player):
+            act("$n tells you 'I'm sorry, you did not give me enough to change.'",
+                victim, None, player, TO_VICT)
+            # 1stMud: changer gives the original amount back via do_give
+            victim[wallet] -= amount
+            player[wallet] += amount
+            act("$n gives you %d %s." % (amount, wallet), victim, None, player, TO_VICT)
+        elif can_see(victim, player):
+            out = "gold" if silver else "silver"
+            player[out] += change
+            act("$n gives you %d %s." % (change, out), victim, None, player, TO_VICT)
+            if silver:
+                rem = 95 * amount // 100 - change * 100
+                if rem > 0:
+                    player["silver"] += rem
+                    act("$n gives you %d silver." % rem, victim, None, player, TO_VICT)
+            act("$n tells you 'Thank you, come again.'", victim, None, player, TO_VICT)
+
+
+def do_give(player, args):
+    """Give coins or an item to a mob in the room (cf. 1stMud do_give in act_obj.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): [amount, coin-word, mob] for coins, or [item, mob].
+    """
+    if len(args) < 2:
+        tprint("Give what to whom?")
+        return
+    arg1 = args[0]
+
+    if arg1.isdigit():
+        _give_coins(player, int(arg1), args[1].lower(), args[2:])
+        return
+
+    obj = get_obj_list(arg1, player["inv"], ITEM_DEFS)
+    if obj is None:
+        tprint("You do not have that item.")
+        return
+    # 1stMud: wear_loc check -- [PRIMESUD] inv never holds equipped items
+
+    rs = world.rooms[player["room"]]
+    vid = get_char_room(" ".join(args[1:]), rs["mobs"], world.chars, player)
+    if vid is None:
+        tprint("They aren't here.")
+        return
+    victim = world.chars[vid]
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+
+    # Quest delivery (cf. 1stMud do_give act_obj.c:772)
+    if (is_quester(player)
+            and player.get("quest_status", 0) == QUEST_DELIVER
+            and obj_vnum(obj) == player.get("quest_obj", 0)):
+        if victim.get("tpl") == player.get("quest_mob", 0):  # [PRIMESUD] vnum match
+            act("$n gives $p to $N.", player, obj, victim, TO_NOTVICT)
+            act("$n gives you $p.", player, obj, victim, TO_VICT)
+            act("You give $p to $N.", player, obj, victim, TO_CHAR)
+            # [PRIMESUD] "{5+R" (blink) rendered as {R
+            chprintln(player, "{RYou have almost completed your QUEST!{x")
+            chprintlnf(player, "{RReturn to %s before your time runs out!{x",
+                       _giver_name(player))
+            player["quest_status"] = QUEST_RETURN_DELIVER
+            player["inv"].remove(obj)  # cf. 1stMud extract_obj
+            player["quest_obj"] = 0
+            player["quest_mob"] = 0
+            # 1stMud: interpret(victim, "thank <name>") -- [PRIMESUD] socials
+            # not ported; equivalent act
+            act("$N thanks you heartily.", player, None, victim, TO_CHAR)
+        else:
+            # [PRIMESUD] "who your ... deliver $p too" grammar fixed
+            act("That isn't who you're supposed to deliver $p to.",
+                player, obj, None, TO_CHAR)
+        return
+
+    if MOB_DEFS[victim["tpl"]].get("shop"):
+        act("$N tells you 'Sorry, you'll have to sell that.'",
+            player, None, victim, TO_CHAR)
+        return
+
+    if not can_drop_obj(player, obj):
+        tprint("You can't let go of it.")
+        return
+
+    if (item_extra_flags(obj, tpl).get("quest")
+            and player["level"] <= MAX_MORTAL_LEVEL):
+        tprint("You can't give quest items.")
+        return
+
+    carry_n = len(victim["inv"]) + sum(1 for e in victim["equip"].values()
+                                       if e is not None)
+    if carry_n + 1 > can_carry_n(victim):
+        act("$N has $S hands full.", player, None, victim, TO_CHAR)
+        return
+
+    carry_w = sum(get_obj_weight(o) for o in victim["inv"])
+    carry_w += sum(get_obj_weight(e) for e in victim["equip"].values()
+                   if e is not None)
+    if carry_w + get_obj_weight(obj) > can_carry_w(victim):
+        act("$N can't carry that much weight.", player, None, victim, TO_CHAR)
+        return
+
+    if not can_see_obj(victim, obj):
+        act("$N can't see it.", player, None, victim, TO_CHAR)
+        return
+
+    player["inv"].remove(obj)
+    victim["inv"].append(obj)
+    act("$n gives $p to $N.", player, obj, victim, TO_NOTVICT)
+    act("$n gives you $p.", player, obj, victim, TO_VICT)
+    act("You give $p to $N.", player, obj, victim, TO_CHAR)
+    # 1stMud: TRIG_GIVE obj/room/mob triggers -- [PRIMESUD] mob progs not ported
 
 
 def _obj_flags(tpl):

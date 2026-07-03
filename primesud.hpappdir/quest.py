@@ -27,7 +27,8 @@ from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, AREA_DEFS, AREA_LEVELS
 from world import _ensure_area_by_tag
 from config import MAX_LEVEL
 from handler import (chprintln, chprintlnf, act, is_evil, is_good, is_name,
-                     unequip_char, equip_char, TO_CHAR, TO_ROOM)
+                     unequip_char, equip_char, TO_CHAR, TO_ROOM, TO_VICT,
+                     TO_NOTVICT)
 from item import (create_object, obj_vnum, get_obj_list, item_extra_flags,
                   item_wear_flags)
 from urandom import randint
@@ -190,7 +191,7 @@ def quest_area_def(tag):
     return None
 
 
-def _random_quest_mob(player):
+def _random_quest_mob(player, deliver=False):
     """Pick a random quest target from area reset data.
 
     [PRIMESUD] Replaces 1stMud random_quest_mob (quest.c), which scans all
@@ -198,6 +199,12 @@ def _random_quest_mob(player):
     level-appropriate area, load only that area, and pick a mob template
     from its "M" resets (the reset room stands in for victim->in_room).
     Exclusion filters ported from 1stMud where they map onto template data.
+
+    Args:
+        player (dict): Player state dict.
+        deliver (bool): Skip aggressive/spec-fun mobs.  [PRIMESUD] 1stMud
+            strips those from the live DELIVER victim; vnum matching can't
+            mutate one instance, so unsuitable templates are excluded here.
 
     Returns:
         tuple: (mob_vnum, room_vnum, area_def) or None if no target found.
@@ -228,6 +235,11 @@ def _random_quest_mob(player):
             if not quest_level_diff(player, tpl.get("level", 1)):
                 continue
             if not quest_target_ok(tpl, rdef):
+                continue
+            # [PRIMESUD] see docstring; race-merged aggression not visible
+            # on the template, only template act_flags are checked
+            if deliver and (tpl.get("act_flags", {}).get("aggressive")
+                            or tpl.get("spec_fun")):
                 continue
             # 1stMud: same-alignment targets skipped half the time
             if is_evil(tpl) and is_evil(player) and chance(50):
@@ -399,7 +411,18 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
         questman (dict): Questmaster mob instance.
         qtype (int): Forced quest type, or QUEST_NONE for a random roll.
     """
-    picked = _random_quest_mob(player)
+    # [PRIMESUD] type rolled before the pick (1stMud rolls after) so DELIVER
+    # can filter its target; the rolls are independent of the pick
+    if qtype > QUEST_NONE:
+        status = qtype
+    elif chance(10):
+        status = QUEST_FINDMOB if chance(50) else QUEST_FINDROOM
+    elif chance(20):
+        status = QUEST_RETRIEVE if chance(50) else QUEST_DELIVER
+    else:
+        status = QUEST_KILL
+
+    picked = _random_quest_mob(player, deliver=(status == QUEST_DELIVER))
     if picked is None:
         mob_tell(player, questman,
                  "I'm sorry, but I don't have any quests for you at this time.")
@@ -416,17 +439,6 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
     player["quest_room_name"] = room_name
     player["quest_area_name"] = area_name
     player["quest_time"] = randint(15, 30)
-
-    if qtype > QUEST_NONE:
-        status = qtype
-    elif chance(10):
-        status = QUEST_FINDMOB if chance(50) else QUEST_FINDROOM
-    elif chance(20):
-        # 1stMud: chance(50) ? QUEST_RETRIEVE : QUEST_DELIVER
-        # TODO [PRIMESUD] QUEST_DELIVER disabled until do_give is ported
-        status = QUEST_RETRIEVE
-    else:
-        status = QUEST_KILL
     player["quest_status"] = status
 
     if status == QUEST_RETRIEVE:
@@ -486,7 +498,29 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
                  "Seek this %s out somewhere in the vicinity of %s!"
                  % (_QMOB_DESC[randint(0, len(_QMOB_DESC) - 1)], room_name))
 
-    # QUEST_DELIVER setup not ported -- see TODO above (needs do_give)
+    elif status == QUEST_DELIVER:
+        # 1stMud strips ACT_AGGRESSIVE/spec_fun from the live victim;
+        # [PRIMESUD] vnum matching can't mutate one instance, so aggressive
+        # and spec mobs are excluded at selection instead (_random_quest_mob)
+        obj = create_quest_obj(player)
+        if obj is None:
+            end_quest(player, QUEST_TIME // 5)
+            return
+        player["inv"].append(obj)
+        player["quest_obj"] = obj_vnum(obj)
+        player["quest_mob"] = mvnum
+        player["quest_mob_name"] = mob_name
+        short = ITEM_DEFS[obj_vnum(obj)]["short_descr"]
+        # [PRIMESUD] "Time is the essence" grammar fixed
+        mob_tell(player, questman,
+                 "Please deliver this %s to my friend - %s. Time is of the essence, please hurry."
+                 % (short, mob_name))
+        mob_tell(player, questman,
+                 "Seek %s out somewhere in the vicinity of {W%s{x!"
+                 % (mob_name, room_name))
+        act("$n gives $p to $N.", questman, obj, player, TO_NOTVICT)
+        act("$n gives you $p.", questman, obj, player, TO_VICT)
+        act("You give $p to $N.", questman, obj, player, TO_CHAR)
 
     elif status == QUEST_FINDROOM:
         player["quest_mob"] = 0
@@ -705,7 +739,6 @@ def quest_kill_check(player, victim):
         return
     status = player.get("quest_status", QUEST_NONE)
     if status == QUEST_DELIVER:
-        # Unreachable until QUEST_DELIVER is enabled (see generate_quest TODO)
         chprintln(player,
                   "{rOOPS! Now you did it! You were supposed to deliver the item, not kill!{x")
         chprintlnf(player,
@@ -791,7 +824,6 @@ def do_quest(player, args):
                        player.get("quest_area_name", "?"),
                        player.get("quest_room_name", "?"))
         elif status == QUEST_DELIVER and player.get("quest_mob", 0):
-            # Unreachable until QUEST_DELIVER is enabled
             # 1stMud: "known area %s" grammar slip fixed [PRIMESUD]
             chprintlnf(player, "You are on a quest to deliver an item to %s.",
                        player.get("quest_mob_name", "?"))

@@ -233,6 +233,77 @@ def test_update_all_qobjs_rescales_on_levelup(fresh):
     assert len([a for a in obj["affect_list"] if a["location"] == "damroll"]) == 1
 
 
+def _fake_room_mob(fresh, tpl_vnum, mob_id=99):
+    """Register a live mob of tpl_vnum in the player's room."""
+    victim = _char_base()
+    victim.update({"is_npc": True, "tpl": tpl_vnum, "id": mob_id,
+                   "level": 10, "room": fresh["room"]})
+    world.chars[mob_id] = victim
+    world.rooms[fresh["room"]]["mobs"].append(mob_id)
+    return victim
+
+
+def test_deliver_flow(fresh):
+    from quest import generate_quest, QUEST_DELIVER, QUEST_RETURN_DELIVER
+    from inventory import do_give
+    generate_quest(fresh, _questman(fresh), QUEST_DELIVER)
+    assert fresh["quest_status"] == QUEST_DELIVER
+    assert fresh["quest_mob"] > 0
+    token = next(o for o in fresh["inv"] if o["vnum"] in _QUEST_PIECES)
+    assert token["vnum"] == fresh["quest_obj"]
+    # deliver target must not be aggressive or spec'd [PRIMESUD]
+    mtpl = MOB_DEFS[fresh["quest_mob"]]
+    assert not mtpl.get("act_flags", {}).get("aggressive")
+    assert not mtpl.get("spec_fun")
+    # wrong recipient refused
+    tok_kw = ITEM_DEFS[token["vnum"]]["keywords"].split()[0]
+    do_give(fresh, [tok_kw, "edurin"])
+    assert fresh["quest_status"] == QUEST_DELIVER
+    assert token in fresh["inv"]
+    # right recipient (any instance of the vnum) completes the errand
+    victim = _fake_room_mob(fresh, fresh["quest_mob"])
+    v_kw = MOB_DEFS[victim["tpl"]]["keywords"].split()[0]
+    do_give(fresh, [tok_kw, v_kw])
+    assert fresh["quest_status"] == QUEST_RETURN_DELIVER
+    assert token not in fresh["inv"]
+    assert token not in victim["inv"]  # extracted, not transferred
+    assert fresh["quest_obj"] == 0 and fresh["quest_mob"] == 0
+    # questmaster pays out
+    before = fresh["quest_points"]
+    assert quest_complete(fresh, _questman(fresh)) is True
+    assert 32 <= fresh["quest_points"] - before <= 40  # randint(4/5, full) of 40
+
+
+def test_give_coins_and_item(fresh):
+    from inventory import do_give
+    victim = _fake_room_mob(fresh, 202)  # the Registrar; resets elsewhere
+    v_kw = MOB_DEFS[202]["keywords"].split()[0]
+    fresh["gold"] = 100
+    do_give(fresh, ["40", "gold", v_kw])
+    assert fresh["gold"] == 60 and victim["gold"] == 40
+    do_give(fresh, ["70", "gold", v_kw])  # more than carried
+    assert fresh["gold"] == 60 and victim["gold"] == 40
+    # plain item hand-over
+    from item import create_object
+    obj = create_object(214)
+    obj["extra_flags"] = {}  # instance override: plain giveable item
+    fresh["inv"].append(obj)
+    kw = ITEM_DEFS[214]["keywords"].split()[0]
+    do_give(fresh, [kw, v_kw])
+    assert obj not in fresh["inv"] and obj in victim["inv"]
+
+
+def test_give_quest_item_refused(fresh):
+    from inventory import do_give
+    victim = _fake_room_mob(fresh, 202)
+    v_kw = MOB_DEFS[202]["keywords"].split()[0]
+    fresh["quest_points"] = 750
+    do_quest(fresh, ["buy", "shield"])
+    do_give(fresh, ["shield", v_kw])
+    assert any(o["vnum"] == 210 for o in fresh["inv"])  # still ours
+    assert not victim["inv"]
+
+
 def test_end_quest_clears_state(fresh):
     fresh["quest_status"] = QUEST_KILL
     fresh["quest_mob"] = 1234
