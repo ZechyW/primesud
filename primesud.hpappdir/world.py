@@ -36,9 +36,12 @@ _AREA_FILES = [
     ("area_ofcol.dat", "ofcol", 5500, 5599),            # 7084 bytes
     ("area_limbo.dat", "limbo", 1, 99),                 # 9466 bytes
     ("area_quest.dat", "quest", 200, 249),              # 12528 bytes
+    ("area_trollden.dat", "trollden", 2800, 2899),      # 19073 bytes
     ("area_mobfact.dat", "mobfact", 9400, 9499),        # 24889 bytes
     ("area_immort.dat", "immort", 1200, 1299),          # 26758 bytes
     ("area_grave.dat", "grave", 3600, 3699),            # 32513 bytes
+    ("area_marsh.dat", "marsh", 8300, 8399),            # 35321 bytes
+    ("area_arachnos.dat", "arachnos", 6200, 6399),      # 44543 bytes
     ("area_plains.dat", "plains", 300, 399),            # 45308 bytes
     ("area_chapel.dat", "chapel", 3400, 3499),          # 71267 bytes
     ("area_school.dat", "mud_school", 3700, 3799),      # 76023 bytes
@@ -46,7 +49,10 @@ _AREA_FILES = [
     ("area_haon.dat", "haon", 6000, 6199),              # 85969 bytes
     ("area_moria.dat", "moria", 3900, 4199),            # 98773 bytes
     ("area_ofcol2.dat", "ofcol2", 600, 699),            # 126239 bytes
+    ("area_sewer.dat", "sewer", 7000, 7499),            # 158284 bytes
+    ("area_tohell.dat", "tohell", 10400, 10599),        # 195277 bytes
     ("area_midgaard.dat", "midgaard", 3000, 3399),      # 259207 bytes
+    ("area_newthalos.dat", "newthalos", 9500, 9799),    # 265007 bytes
 ]
 
 # Area level ranges, duplicated from each .dat AREA["levels"] so quest
@@ -67,6 +73,12 @@ AREA_LEVELS = {
     "moria":      (5, 15),
     "ofcol2":     (5, 35),
     "midgaard":   (1, 50),
+    "trollden":   (10, 15),
+    "marsh":      (15, 25),
+    "arachnos":   (5, 20),
+    "sewer":      (5, 30),
+    "tohell":     (32, 51),
+    "newthalos":  (10, 35),
 }
 
 # -- Lazy loading state -------------------------------------------------------

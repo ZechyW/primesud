@@ -69,3 +69,30 @@ pulling shire, ofcol2, and immort.
 | O | 3200 | `the juke` | midgaard | 1116 | `The Ivy Bush` | shire |
 | O | 3200 | `the juke` | midgaard | 1144 | `The Green Dragon` | shire |
 
+## arachnos
+
+Note: room 6134 sits inside haon's vnum block (6000-6199) in the QuickMUD
+layout, so the queen's den loads with haon, not arachnos.
+
+| Cmd | Vnum | Description | Def Area | Room | Room Name | Room Area |
+|-----|------|-------------|----------|------|-----------|-----------|
+| M | 6319 | `the Queen Spider` | arachnos | 6134 | `The Den of the Queen Spider` | haon |
+| M | 6318 | `the huge, poisonous spider` | arachnos | 6134 | `The Den of the Queen Spider` | haon |
+| M | 6318 | `the huge, poisonous spider` | arachnos | 6134 | `The Den of the Queen Spider` | haon |
+| M | 6318 | `the huge, poisonous spider` | arachnos | 6134 | `The Den of the Queen Spider` | haon |
+
+## newthalos
+
+Loading newthalos pulls midgaard defs (always loaded anyway -- midgaard is
+a start area).
+
+| Cmd | Vnum | Description | Def Area | Room | Room Name | Room Area |
+|-----|------|-------------|----------|------|-----------|-----------|
+| O | 3200 | `the juke` | midgaard | 9502 | `The Dancing Daemon Inn` | newthalos |
+| G | 3061 | `a leather cap` | midgaard | 9642 | `Shipwright` | newthalos |
+| G | 3060 | `a leather jerkin` | midgaard | 9642 | `Shipwright` | newthalos |
+| M | 3097 | `the tiger` | midgaard | 9706 | `Nabil's Back Room` | newthalos |
+| M | 3096 | `the lion` | midgaard | 9706 | `Nabil's Back Room` | newthalos |
+| M | 3095 | `the eagle` | midgaard | 9706 | `Nabil's Back Room` | newthalos |
+| O | 3200 | `the juke` | midgaard | 9638 | `Smuggler's Inn` | newthalos |
+
