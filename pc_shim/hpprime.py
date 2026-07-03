@@ -1,11 +1,14 @@
 """HP Prime hpprime module stub for PC debugging."""
+import builtins
 import time
 
 
 def eval(expr):
     if expr.startswith("WAIT("):
+        # Arg may be an expression like "1/1e3", not just a float literal
+        # (float() on it raised, silently skipping the sleep -> busy wait).
         try:
-            time.sleep(float(expr[5:-1]))
+            time.sleep(builtins.eval(expr[5:-1]))
         except Exception:
             pass
     return 0

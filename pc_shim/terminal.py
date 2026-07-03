@@ -1,6 +1,7 @@
 """ANSI colour install_color_print for PC -- replaces HP Prime pixel-font version."""
 import sys
-from colors import COLOR_CODE, _RESET_CODES
+from colors import COLOR_CODE, _RESET_CODES, color_wrap
+from config import TERMINAL_COLS
 from tml_prime import tml_prime as tml
 
 _ANSI = {
@@ -37,6 +38,14 @@ def _to_ansi(text):
 def install_color_print(tr):
     def wrapped_print(*args, sep=' ', end='\n'):
         text = sep.join(str(a) for a in args)
+        # Word-wrap at the calc's 64-col width so PC output matches the
+        # device (console otherwise hard-wraps long lines mid-word).
+        # Wrap before ANSI conversion; colour state carries across lines.
+        if text:
+            wrapped = []
+            for ln in text.split('\n'):
+                wrapped.extend(color_wrap(ln, TERMINAL_COLS) if ln else [''])
+            text = '\n'.join(wrapped)
         out = _to_ansi(text)
         if COLOR_CODE in text:
             out += _RST

@@ -82,6 +82,10 @@ class tml_prime:
                 c = _q.get(timeout=0.05)
             except queue.Empty:
                 continue
+            if c == '\x03':
+                # Ctrl-C arrives as a raw char (getwch/setraw bypass console
+                # signal handling); mirror the calc's On-key exit signal.
+                raise KeyboardInterrupt
             if c == '\n':
                 break
             elif c == '\b' and result:
@@ -109,6 +113,11 @@ class tml_prime:
 
     def poll_char(self, key_commands=None):
         try:
-            return (_q.get_nowait(), None)
+            c = _q.get_nowait()
         except queue.Empty:
             return None
+        if c == '\x03':
+            # Ctrl-C arrives as a raw char (getwch/setraw bypass console
+            # signal handling); mirror the calc's On-key exit signal.
+            raise KeyboardInterrupt
+        return (c, None)
