@@ -54,6 +54,8 @@ Exception: fix typos, grammatical errors, and other linguistic slips in 1stmud o
 
 If a given function is marked as being verified against 1stmud in its docstring (`[Verified: <date>]`), NEVER edit it without asking for explicit permission first.
 
+Exception: targeted edits that resolve a documented TODO / "not ported" note toward 1stMud fidelity are allowed without asking. Keep the edit minimal, re-verify the function against the 1stMud source, and extend the tag (e.g. `[Verified: <old date>; <feature> added and re-verified <new date>]`). Anything beyond the documented TODO still needs explicit permission.
+
 ## PrimeSUD-only extensions -- `[PRIMESUD]` tag
 
 Code with no 1stMud equivalent or intentional deviation marked `# [PRIMESUD]`. When porting from 1stMud, don't overwrite tagged items without checking if Prime variant differs on purpose.
