@@ -191,6 +191,16 @@ def quest_area_def(tag):
     return None
 
 
+def _merged_act_flags(tpl):
+    """Race act flags merged under template act_flags, as create_mobile
+    does at spawn (cf. 1stMud db2.c:88-136). [PRIMESUD] helper."""
+    from races import RACE_TABLE
+    race = RACE_TABLE.get(tpl.get("race", "Human")) or RACE_TABLE["Human"]
+    merged = dict(race.get("act", {}))
+    merged.update(tpl.get("act_flags", {}))
+    return merged
+
+
 def _random_quest_mob(player, deliver=False):
     """Pick a random quest target from area reset data.
 
@@ -236,9 +246,9 @@ def _random_quest_mob(player, deliver=False):
                 continue
             if not quest_target_ok(tpl, rdef):
                 continue
-            # [PRIMESUD] see docstring; race-merged aggression not visible
-            # on the template, only template act_flags are checked
-            if deliver and (tpl.get("act_flags", {}).get("aggressive")
+            # [PRIMESUD] see docstring; race act flags merged as in
+            # create_mobile so race-based aggression is caught too
+            if deliver and (_merged_act_flags(tpl).get("aggressive")
                             or tpl.get("spec_fun")):
                 continue
             # 1stMud: same-alignment targets skipped half the time

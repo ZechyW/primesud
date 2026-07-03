@@ -251,9 +251,10 @@ def test_deliver_flow(fresh):
     assert fresh["quest_mob"] > 0
     token = next(o for o in fresh["inv"] if o["vnum"] in _QUEST_PIECES)
     assert token["vnum"] == fresh["quest_obj"]
-    # deliver target must not be aggressive or spec'd [PRIMESUD]
+    # deliver target must not be aggressive (incl. race flags) or spec'd [PRIMESUD]
+    from quest import _merged_act_flags
     mtpl = MOB_DEFS[fresh["quest_mob"]]
-    assert not mtpl.get("act_flags", {}).get("aggressive")
+    assert not _merged_act_flags(mtpl).get("aggressive")
     assert not mtpl.get("spec_fun")
     # wrong recipient refused
     tok_kw = ITEM_DEFS[token["vnum"]]["keywords"].split()[0]
