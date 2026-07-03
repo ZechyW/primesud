@@ -54,9 +54,13 @@ from player import PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_DEFAULTS
 from races import RACE_TABLE
 from skill_utils import get_skill, check_improve, skill_level, WaitState, DazeState
 from stances import (STANCE_TABLE, MAX_STANCE,
-                     STANCE_NONE, STANCE_NORMAL, STANCE_CURRENT, STANCE_AUTODROP,
+                     STANCE_NONE, STANCE_NORMAL, STANCE_VIPER, STANCE_CRANE,
+                     STANCE_CRAB, STANCE_MONGOOSE, STANCE_BULL, STANCE_MANTIS,
+                     STANCE_DRAGON, STANCE_TIGER, STANCE_MONKEY, STANCE_SWALLOW,
+                     STANCE_CURRENT, STANCE_AUTODROP,
                      valid_stance, get_stance, set_stance, in_stance,
-                     stance_name, stance_lookup, can_use_stance)
+                     stance_name, stance_lookup, can_use_stance,
+                     improve_stance, autodrop)
 from skills_table import (
     SKILL_TABLE, SKILLS, WEAPON_GSN_MAP,
     GSN_BACKSTAB, GSN_BASH, GSN_BERSERK, GSN_DIRT, GSN_DISARM,
@@ -119,11 +123,13 @@ def violence_update(player):
 
 def check_assist(ch, victim):
     """Let idle room chars join combat (cf. 1stMud check_assist in fight.c).
-    [Verified: 02/07/2026]
+    [Verified: 02/07/2026; charmed-follower assist added and re-verified
+    03/07/2026]
 
     Three cases mirror 1stMud exactly:
     - ch is player, rch is mob with assist_players: rch jumps in against victim.
-    - ch is player, rch is player: autoassist / charm (no-op in single-player).
+    - ch is player or charmed: charmed rch in ch's group assists
+      (PLR_AUTOASSIST for player rch not applicable in single-player).
     - ch is mob (not charmed), rch is mob: assist_all / group / race / align / vnum;
       50% trigger chance; target picked from victim's group (single-player: victim).
 
@@ -144,13 +150,20 @@ def check_assist(ch, victim):
         rch_tpl = MOB_DEFS[rch["tpl"]]
         off = rch.get("off_flags", {})
 
-        # Case 1 & 2: ch is player
+        # Case 1: mob with assist_players aids player against victim
         if not ch["is_npc"]:
-            # Case 1: mob with assist_players aids player against victim
             if off.get("assist_players") and rch["level"] + 6 > victim["level"]:
                 tprint("{} screams and attacks!".format(rch_tpl["short_descr"]))
                 multi_hit(rch, victim)
-            # Case 2: autoassist / charm -- not implemented; skip mob
+                continue
+
+        # Case 2: charmed follower assists its group (cf. 1stMud fight.c:139-148;
+        # PLR_AUTOASSIST branch omitted -- rch is never a player here)
+        if not ch["is_npc"] or ch.get("affected_by", {}).get("charm"):
+            if (rch.get("affected_by", {}).get("charm")
+                    and is_same_group(ch, rch)
+                    and not is_safe(rch, victim)):
+                multi_hit(rch, victim)
             continue
 
         # Case 3: ch is mob (not charmed)
@@ -619,9 +632,72 @@ def update_mob_timers():
 
 # -- Defensive checks ----------------------------------------------------------
 
+def can_counter(ch):
+    """True if ch's stance counters stance defences (cf. 1stMud can_counter in fight.c)."""
+    return in_stance(ch, STANCE_MONKEY)
+
+
+def can_bypass(ch, victim):
+    """True if ch's stance bypasses stance defences (cf. 1stMud can_bypass in fight.c)."""
+    return (in_stance(ch, STANCE_VIPER)
+            or in_stance(ch, STANCE_MANTIS)
+            or in_stance(ch, STANCE_TIGER))
+
+
+def dambonus(ch, victim, dam, stance):
+    """Stance damage modifiers for attacker and victim (cf. 1stMud dambonus in fight.c).
+
+    Args:
+        ch (dict): Attacker.
+        victim (dict): Defender.
+        dam (int): Damage so far.
+        stance (int): ch's current stance id.
+
+    Returns:
+        int: Modified damage.
+    """
+    if dam < 1:
+        return 0
+
+    if not valid_stance(stance):
+        return dam
+
+    if not can_counter(victim):
+        if in_stance(ch, STANCE_MONKEY):
+            mindam = dam * 25 // 100
+            dam *= (get_stance(ch, STANCE_MONKEY) + 1) // 200
+            if dam < mindam:
+                dam = mindam
+        elif (in_stance(ch, STANCE_BULL)
+                and get_stance(ch, STANCE_BULL) > 100):
+            dam += dam * (get_stance(ch, STANCE_BULL) // 100)
+        elif (in_stance(ch, STANCE_DRAGON)
+                and get_stance(ch, STANCE_DRAGON) > 100):
+            dam += dam * (get_stance(ch, STANCE_DRAGON) // 100)
+        elif (in_stance(ch, STANCE_TIGER)
+                and get_stance(ch, STANCE_TIGER) > 100):
+            dam += dam * (get_stance(ch, STANCE_TIGER) // 100)
+        elif (get_stance(ch, STANCE_CURRENT) > 0
+                and get_stance(ch, stance) < 100):
+            dam = dam * 5 // 10
+
+    if not can_counter(ch):
+        if (in_stance(victim, STANCE_CRAB)
+                and get_stance(victim, STANCE_CRAB) > 100):
+            dam //= get_stance(victim, STANCE_CRAB) // 100
+        elif (in_stance(victim, STANCE_DRAGON)
+                and get_stance(victim, STANCE_DRAGON) > 100):
+            dam //= get_stance(victim, STANCE_DRAGON) // 100
+        elif (in_stance(victim, STANCE_SWALLOW)
+                and get_stance(victim, STANCE_SWALLOW) > 100):
+            dam //= get_stance(victim, STANCE_SWALLOW) // 100
+
+    return dam
+
+
 def check_parry(ch, victim):
     """Check if victim parries ch's strike (cf. 1stMud check_parry in fight.c).
-    [Verified: 02/07/2026] -- stance bonuses omitted.
+    [Verified: 02/07/2026; stance bonuses added and re-verified 03/07/2026]
 
     Args:
         ch (dict): Attacker (player or mob instance).
@@ -647,7 +723,15 @@ def check_parry(ch, victim):
     if not can_see(ch, victim):
         chance //= 2
 
-    # [PRIMESUD] stance bonuses (STANCE_CRANE / STANCE_MANTIS) omitted -- stances not ported
+    # Stance bonuses (cf. 1stMud check_parry fight.c:1539-1545)
+    if (in_stance(victim, STANCE_CRANE)
+            and get_stance(victim, STANCE_CRANE) > 0
+            and not can_counter(ch) and not can_bypass(ch, victim)):
+        chance += get_stance(victim, STANCE_CRANE) * 25 // 100
+    elif (in_stance(victim, STANCE_MANTIS)
+            and get_stance(victim, STANCE_MANTIS) > 0
+            and not can_counter(ch) and not can_bypass(ch, victim)):
+        chance += get_stance(victim, STANCE_MANTIS) * 25 // 100
 
     if randint(1, 100) >= chance + victim["level"] - ch["level"]:
         return False
@@ -694,7 +778,7 @@ def check_shield_block(ch, victim):
 
 def check_dodge(ch, victim):
     """Check if victim dodges ch's strike (cf. 1stMud check_dodge in fight.c).
-    [Verified: 02/07/2026] -- stance bonuses omitted.
+    [Verified: 02/07/2026; stance bonuses added and re-verified 03/07/2026]
 
     Args:
         ch (dict): Attacker (player or mob instance).
@@ -714,7 +798,16 @@ def check_dodge(ch, victim):
     if not can_see(victim, ch):
         chance //= 2
 
-    # [PRIMESUD] stance bonuses (STANCE_MONGOOSE / STANCE_SWALLOW) omitted -- stances not ported
+    # Stance bonuses (cf. 1stMud check_dodge fight.c:1589-1596; both may stack
+    # in 1stMud but current stance is single, so at most one applies)
+    if (in_stance(victim, STANCE_MONGOOSE)
+            and get_stance(victim, STANCE_MONGOOSE) > 0
+            and not can_counter(ch) and not can_bypass(ch, victim)):
+        chance += get_stance(victim, STANCE_MONGOOSE) * 25 // 100
+    if (in_stance(victim, STANCE_SWALLOW)
+            and get_stance(victim, STANCE_SWALLOW) > 0
+            and not can_counter(ch) and not can_bypass(ch, victim)):
+        chance += get_stance(victim, STANCE_SWALLOW) * 25 // 100
 
     if randint(1, 100) >= chance + victim["level"] - ch["level"]:
         return False
@@ -937,9 +1030,10 @@ def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
 def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
     """Apply damage to victim from ch; handle combat state, immunity, and death
     (cf. 1stMud damage in fight.c).
-    [Verified: 02/07/2026] -- stance re-checks, force/static/flame shields,
-    drunk reduction, arena/war, PvP, mobprogs, and wiznet not ported (noted
-    inline); autoloot/autogold/autosac inlined instead of do_get/do_sacrifice
+    [Verified: 02/07/2026; stance re-checks and stop_follower added and
+    re-verified 03/07/2026] -- force/static/flame shields, drunk reduction,
+    arena/war, PvP, mobprogs, and wiznet not ported (noted inline);
+    autoloot/autogold/autosac inlined instead of do_get/do_sacrifice
     dispatch; randomize_damage applied (1stMud discards it -- see FIXES.md).
 
     dt >= TYPE_HIT = physical attack (dodge/parry checks apply).
@@ -994,7 +1088,9 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                 set_fighting(ch, victim)
 
         # 1stMud: if (victim->master == ch) stop_follower(victim);
-        # [PRIMESUD] skip stop_follower (no charm/follower system ported)
+        if victim.get("master") == ch.get("id"):
+            from comm import stop_follower  # lazy import to avoid circular dependency
+            stop_follower(victim)
 
     # 1stMud: if (IsAffected(ch, AFF_INVISIBLE)) { affect_strip invis + mass invis;
     #             RemBit(AFF_INVISIBLE); act("$n fades into existence.", TO_ROOM); }
@@ -1030,8 +1126,30 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         # 1stMud: if (check_dodge(ch, victim)) return false;
         if check_dodge(ch, victim):
             return False
+        # Stance second dodge chance (cf. 1stMud damage fight.c:967-975)
+        if (in_stance(victim, STANCE_MONGOOSE)
+                and get_stance(victim, STANCE_MONGOOSE) > 100
+                and not can_counter(ch) and not can_bypass(ch, victim)
+                and check_dodge(ch, victim)):
+            return False
+        elif (in_stance(victim, STANCE_SWALLOW)
+                and get_stance(victim, STANCE_SWALLOW) > 100
+                and not can_counter(ch) and not can_bypass(ch, victim)
+                and check_dodge(ch, victim)):
+            return False
         # 1stMud: if (check_parry(ch, victim)) return false;
         if check_parry(ch, victim):
+            return False
+        # Stance second parry chance (cf. 1stMud damage fight.c:978-985)
+        if (in_stance(victim, STANCE_CRANE)
+                and get_stance(victim, STANCE_CRANE) > 100
+                and not can_counter(ch) and not can_bypass(ch, victim)
+                and check_parry(ch, victim)):
+            return False
+        elif (in_stance(victim, STANCE_MANTIS)
+                and get_stance(victim, STANCE_MANTIS) > 100
+                and not can_counter(ch) and not can_bypass(ch, victim)
+                and check_parry(ch, victim)):
             return False
         # 1stMud: if (check_shield_block(ch, victim)) return false;
         if check_shield_block(ch, victim):
@@ -1232,9 +1350,10 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
 
 def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False):
     """One attack from ch against victim (cf. 1stMud one_hit in fight.c).
-    [Verified: 02/07/2026] -- stances (PC STANCE_NORMAL baseline applied),
-    WEAPON_SHARP, and weapon procs (poison/vampiric/flaming/frost/shocking)
-    not ported (noted inline); old-format mob damage fallback skipped.
+    [Verified: 02/07/2026; stance dam mods and improve_stance added and
+    re-verified 03/07/2026] -- WEAPON_SHARP and weapon procs
+    (poison/vampiric/flaming/frost/shocking) not ported (noted inline);
+    old-format mob damage fallback skipped.
 
     Args:
         ch (dict): Attacker (player or mob instance).
@@ -1305,6 +1424,7 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False):
     roll = randint(0, 19)
     if roll == 0 or (roll != 19 and roll < thac0 - victim_ac):
         damage(ch, victim, 0, effective_dt, dam_class, show=True, attack_noun=noun)
+        improve_stance(ch)  # cf. 1stMud one_hit fight.c:692 (miss path only)
         return False
 
     # Damage calculation (cf. 1stMud one_hit fight.c:697-735 -- armed NPCs use
@@ -1332,11 +1452,14 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False):
             hi = max(lo, (2 * ch["level"] // 3) * skill // 100)
             dam = randint(lo, hi)
 
-    # 1stMud stance baseline: PCs default to STANCE_NORMAL (dam * 115/100);
-    # mobs default to STANCE_NONE, for which dambonus() is a no-op.
-    # [PRIMESUD] stance switching not ported -- PC default applied unconditionally
-    if not ch["is_npc"]:
-        dam = dam * 115 // 100
+    # Stance damage modifiers (cf. 1stMud one_hit fight.c:737-745)
+    if in_stance(ch, STANCE_NORMAL):
+        if ch["is_npc"]:
+            dam = dam * 113 // 100
+        else:
+            dam = dam * 115 // 100
+    else:
+        dam = dambonus(ch, victim, dam, get_stance(ch, STANCE_CURRENT))
 
     # 1stMud: enhanced damage skill chance (improves on success)
     ed_skill = get_skill(ch, GSN_ENHANCED_DAMAGE, ch["is_npc"])
@@ -1655,6 +1778,28 @@ _SPECIAL_MOVES = [
 ]
 
 
+def special_move(ch, victim):
+    """Stance-mastery special move: flavour + stun (cf. 1stMud special_move in fight.c).
+
+    Triggered from multi_hit when the current stance is trained to 200
+    (1-in-100). Victim stops fighting and is left stunned.
+    [PRIMESUD] flavour lines shared with _try_special_move (player-adapted
+    second-person variants of the 1stMud acts).
+
+    Args:
+        ch (dict): Attacker (player).
+        victim (dict): Target mob instance.
+    """
+    if victim is None or victim.get("pos") == "dead":
+        return
+    name = MOB_DEFS[victim["tpl"]]["short_descr"]
+    move = _SPECIAL_MOVES[randint(0, len(_SPECIAL_MOVES) - 1)]
+    for line in move:
+        tprint(line % name if "%s" in line else line)
+    stop_fighting(victim, both=True)
+    victim["pos"] = "stunned"
+
+
 def _try_special_move(player, target_inst):
     """Unarmed-only bonus attack with flavour (cf. 1stMud special_move).
 
@@ -1693,9 +1838,9 @@ def _try_special_move(player, target_inst):
 
 def multi_hit(ch, victim, dt=TYPE_UNDEFINED):
     """Full attack sequence for one combat round (cf. 1stMud multi_hit in fight.c).
-    [Verified: 02/07/2026] -- stance special_move and viper/mantis/tiger extra
-    hits not ported; [PRIMESUD] unarmed special move added instead. Returns
-    kill status ([PRIMESUD]; 1stMud is void).
+    [Verified: 02/07/2026; stance special_move and viper/mantis/tiger extra
+    hits added and re-verified 03/07/2026] -- [PRIMESUD] unarmed special move
+    retained alongside. Returns kill status ([PRIMESUD]; 1stMud is void).
 
     Args:
         ch (dict): Attacker (player or mob instance).
@@ -1737,7 +1882,12 @@ def multi_hit(ch, victim, dt=TYPE_UNDEFINED):
     if ch.get("fighting") != victim.get("id") or dt == GSN_BACKSTAB:
         return victim.get("pos") == "dead"
 
-    # [PRIMESUD] stance special_move (>= 200 trained, 1-in-100) not ported
+    # Stance special move: mastered stance, 1-in-100 (cf. 1stMud multi_hit fight.c:393-398)
+    if (valid_stance(get_stance(ch, STANCE_CURRENT))
+            and get_stance(ch, get_stance(ch, STANCE_CURRENT)) >= 200
+            and randint(1, 100) == 50):
+        special_move(ch, victim)
+        return victim.get("pos") == "dead"
 
     # Second attack: skill/2 chance; third: skill/4 chance (cf. 1stMud multi_hit in fight.c)
     chance = get_skill(ch, GSN_SECOND_ATTACK) // 2
@@ -1758,7 +1908,23 @@ def multi_hit(ch, victim, dt=TYPE_UNDEFINED):
         if ch.get("fighting") != victim.get("id"):
             return victim.get("pos") == "dead"
 
-    # [PRIMESUD] viper/mantis/tiger stance extra hits not ported
+    # Viper/mantis/tiger stance extra hit (cf. 1stMud multi_hit fight.c:426-446;
+    # C compares number_percent() < stance * 0.5, so use (stance + 1) // 2)
+    if (in_stance(ch, STANCE_VIPER)
+            and randint(1, 100) < (get_stance(ch, STANCE_VIPER) + 1) // 2):
+        one_hit(ch, victim, dt=dt)
+        if ch.get("fighting") != victim.get("id"):
+            return victim.get("pos") == "dead"
+    elif (in_stance(ch, STANCE_MANTIS)
+            and randint(1, 100) < (get_stance(ch, STANCE_MANTIS) + 1) // 2):
+        one_hit(ch, victim, dt=dt)
+        if ch.get("fighting") != victim.get("id"):
+            return victim.get("pos") == "dead"
+    elif (in_stance(ch, STANCE_TIGER)
+            and randint(1, 100) < (get_stance(ch, STANCE_TIGER) + 1) // 2):
+        one_hit(ch, victim, dt=dt)
+        if ch.get("fighting") != victim.get("id"):
+            return victim.get("pos") == "dead"
 
     # [PRIMESUD] wait gate for the PrimeSUD-only special move below
     if ch.get("wait", 0) > 0:
@@ -1781,7 +1947,7 @@ _DEFAULT_POS = {"stand": "standing", "sit": "sitting", "rest": "resting", "sleep
 
 def set_fighting(ch, victim):
     """Engage ch in combat against victim (cf. 1stMud set_fighting in fight.c).
-    [Verified: 02/07/2026] -- stance autodrop not ported."""
+    [Verified: 02/07/2026; stance autodrop added and re-verified 03/07/2026]"""
     # 1stMud: if (ch->fighting != NULL) { bug("Set_fighting: already fighting"); return; }
     if ch.get("fighting") is not None:
         return
@@ -1795,6 +1961,7 @@ def set_fighting(ch, victim):
 
     ch["fighting"] = victim["id"]
     ch["pos"] = "fighting"
+    autodrop(ch)  # cf. 1stMud set_fighting fight.c:1651
 
 
 def stop_fighting(ch, both=False):
@@ -1802,7 +1969,7 @@ def stop_fighting(ch, both=False):
     Given character stops fighting its target.
     Optionally make all other characters stop fighting it.
     (cf. 1stMud stop_fighting in fight.c).
-    [Verified: 02/07/2026] -- stance reset not ported.
+    [Verified: 02/07/2026; stance reset added and re-verified 03/07/2026]
 
     Args:
         ch (dict): Character that stops fighting its target.
@@ -1822,7 +1989,8 @@ def stop_fighting(ch, both=False):
             # specified, but we haven't ported this yet.
             char["pos"] = "standing"
             update_pos(char)
-            # TODO: Stance is reset here.
+            # cf. 1stMud: SetStance(fch, STANCE_CURRENT, STANCE_NONE)
+            set_stance(char, STANCE_CURRENT, STANCE_NONE)
 
 
 def _advance_target(player, mob_instances, room_state):
@@ -2711,8 +2879,9 @@ def do_dirt(ch, args):
 
 def do_trip(ch, args):
     """Trip an opponent (cf. 1stMud do_trip in fight.c).
-    [Verified: 02/07/2026] -- stance-trip, kill-stealing, charm master, and
-    check_killer not ported (noted inline).
+    [Verified: 02/07/2026; stance-trip and charm-master check added and
+    re-verified 03/07/2026] -- kill-stealing and check_killer not ported
+    (noted inline).
 
     Args:
         ch (dict): Acting character.
@@ -2756,7 +2925,11 @@ def do_trip(ch, args):
         act("$n trips over $s own feet!", ch, type=TO_ROOM)
         return None
 
-    # [PRIMESUD] charm master check not ported
+    # cf. 1stMud: AFF_CHARM && ch->master == victim -> "beloved master"
+    if (ch.get("affected_by", {}).get("charm")
+            and ch.get("master") == victim.get("id")):
+        act("$N is your beloved master.", ch, None, victim, TO_CHAR)
+        return None
 
     ch_size = _get_size(ch)
     v_size = _get_size(victim)
@@ -2785,7 +2958,13 @@ def do_trip(ch, args):
         victim["pos"] = "resting"
         dam = randint(2, 2 + 2 * v_size)
         damage(ch, victim, dam, GSN_TRIP, DAM_BASH, show=True)
-        # TODO: stance trip (if ValidStance && chance-5 check) not ported
+        # Stance trip (cf. 1stMud do_trip fight.c:3187-3194)
+        if (randint(1, 100) < chance - 5
+                and valid_stance(get_stance(victim, STANCE_CURRENT))):
+            set_stance(victim, STANCE_CURRENT, STANCE_NONE)
+            act("You trip up $N's stance!", ch, None, victim, TO_CHAR)
+            act("$n trips up $N's stance!", ch, None, victim, TO_NOTVICT)
+            act("$n trips up your stance!", ch, None, victim, TO_VICT)
     else:
         damage(ch, victim, 0, GSN_TRIP, DAM_BASH, show=True)
         WaitState(ch, SKILLS[GSN_TRIP]["beats"] * 2 // 3)

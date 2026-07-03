@@ -75,6 +75,12 @@ def create_char(class_idx=CLASS_WARRIOR):
             "float":     None, "secondary": None,
         },
     })
+    # [PRIMESUD] Start out of stance (1stMud zeroed stance[] leaves new chars
+    # silently in the normal stance). With autodrop left at NORMAL, the first
+    # combat prints "You autodrop into the normal stance." -- surfaces the
+    # stance system to new players.
+    from stances import STANCE_CURRENT, STANCE_NONE
+    ch["stance"][STANCE_CURRENT] = STANCE_NONE
     # cf. 1stMud nanny.c CON_ROLL_STATS 'y' + add_default_groups ('N' path)
     group_add_basics_and_defaults(ch)
     ch["learned"][GSN_RECALL] = 50  # cf. nanny.c: learned[gsn_recall] = 50
