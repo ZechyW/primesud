@@ -2,7 +2,8 @@
 
 from classes import is_class
 from handler import (can_see_room, chprintln, act, TO_CHAR, TO_ROOM, TO_VICT,
-                     get_char_room, is_awake, affect_strip, affect_to_char)
+                     get_char_room, is_awake, is_name, affect_strip,
+                     affect_to_char)
 from combat import stop_fighting
 from skill_utils import WaitState, check_improve, get_skill
 from stances import valid_stance, get_stance, STANCE_CURRENT
@@ -60,6 +61,10 @@ def move_char(ch, direction):
     Position gate handled by command table (do_north etc. have
     min_pos = "standing").
 
+    [Verified: 03/07/2026] -- private-room / area-closed checks, area
+    entry sound, and exit/entry/greet progs not ported (see comments).
+    quest_room_check runs before the follower loop (1stMud: after).
+
     Args:
         ch (dict): Moving character (player or mob instance).
         direction (str): Single-char direction key (n/e/s/w/u/d).
@@ -91,7 +96,9 @@ def move_char(ch, direction):
     is_exit_dict = isinstance(exit_val, dict)
     if is_exit_dict and exit_val.get("closed"):
         if not aff.get("pass_door") or exit_val.get("nopass"):
-            keyword = exit_val.get("keyword", EXIT_NAMES.get(direction, "door"))
+            # 1stMud act "$d": first word of exit keyword, "door" if unset
+            keyword = exit_val.get("keyword")
+            keyword = keyword.split()[0] if keyword else "door"
             chprintln(ch, "The " + keyword + " is closed.")
             return
 
@@ -158,7 +165,8 @@ def move_char(ch, direction):
 
     # -- Leave message (1stMud: act("$n leaves $T.", ch, NULL, dir_name[door], TO_ROOM))
     # Player actor: single-player, nobody to notify; skip.
-    if is_npc:
+    # 1stMud suppresses leave/arrive acts under AFF_SNEAK (invis_level n/a).
+    if is_npc and not aff.get("sneak"):
         act("$n leaves $T.", ch, None, EXIT_NAMES.get(direction, direction), TO_ROOM)
 
     from_vnum = ch["room"]
@@ -169,7 +177,8 @@ def move_char(ch, direction):
             world.rooms[from_vnum]["mobs"].remove(ch["id"])
         if dest in world.rooms:
             world.rooms[dest]["mobs"].append(ch["id"])
-        act("$n has arrived.", ch, type=TO_ROOM)
+        if not aff.get("sneak"):
+            act("$n has arrived.", ch, type=TO_ROOM)
     else:
         # 1stMud: do_function(ch, &do_look, "auto") -- "auto" triggers brief mode;
         # PrimeSUD has no brief mode, so empty args shows full room.
@@ -181,6 +190,10 @@ def move_char(ch, direction):
             do_look(ch, [])
         # cf. 1stMud move_char act_move.c:266 (after greet triggers)
         quest_room_check(ch)
+
+    # cf. 1stMud move_char: exit looping back to the same room skips followers
+    if from_vnum == dest:
+        return
 
     # -- Followers move too (cf. 1stMud move_char follower loop, act_move.c:232-257).
     # Mob followers come from the old room's mob list; the player (not tracked
@@ -222,7 +235,7 @@ def move_char(ch, direction):
 # was_room check cancels run_buf on blocked movement (cf. 1stMud free_runbuf).
 
 def do_north(player, args):
-    """Walk north (cf. 1stMud do_north in act_move.c)."""
+    """Walk north (cf. 1stMud do_north in act_move.c). [Verified: 03/07/2026]"""
     was_room = player["room"]
     move_char(player, "n")
     if was_room == player["room"]:
@@ -230,7 +243,7 @@ def do_north(player, args):
 
 
 def do_east(player, args):
-    """Walk east (cf. 1stMud do_east in act_move.c)."""
+    """Walk east (cf. 1stMud do_east in act_move.c). [Verified: 03/07/2026]"""
     was_room = player["room"]
     move_char(player, "e")
     if was_room == player["room"]:
@@ -238,7 +251,7 @@ def do_east(player, args):
 
 
 def do_south(player, args):
-    """Walk south (cf. 1stMud do_south in act_move.c)."""
+    """Walk south (cf. 1stMud do_south in act_move.c). [Verified: 03/07/2026]"""
     was_room = player["room"]
     move_char(player, "s")
     if was_room == player["room"]:
@@ -246,7 +259,7 @@ def do_south(player, args):
 
 
 def do_west(player, args):
-    """Walk west (cf. 1stMud do_west in act_move.c)."""
+    """Walk west (cf. 1stMud do_west in act_move.c). [Verified: 03/07/2026]"""
     was_room = player["room"]
     move_char(player, "w")
     if was_room == player["room"]:
@@ -254,7 +267,7 @@ def do_west(player, args):
 
 
 def do_up(player, args):
-    """Walk up (cf. 1stMud do_up in act_move.c)."""
+    """Walk up (cf. 1stMud do_up in act_move.c). [Verified: 03/07/2026]"""
     was_room = player["room"]
     move_char(player, "u")
     if was_room == player["room"]:
@@ -262,21 +275,58 @@ def do_up(player, args):
 
 
 def do_down(player, args):
-    """Walk down (cf. 1stMud do_down in act_move.c)."""
+    """Walk down (cf. 1stMud do_down in act_move.c). [Verified: 03/07/2026]"""
     was_room = player["room"]
     move_char(player, "d")
     if was_room == player["room"]:
         free_runbuf(player)
 
 
+def _find_door(player, arg, exits):
+    """Resolve a direction word or door keyword to a door exit
+    (cf. 1stMud find_door in act_move.c).
+
+    Args:
+        player (dict): Player state dict.
+        arg (str): Direction alias ("n", "north") or door keyword ("grate").
+        exits (dict): Current room's exits.
+
+    Returns:
+        str: Direction key, or None after printing feedback.
+
+    [Verified: 03/07/2026]
+    """
+    direction = DIR_ALIASES.get(arg.lower())
+    if direction is None:
+        for d in EXIT_ORDER:
+            ev = exits.get(d)
+            if (isinstance(ev, dict) and ev.get("isdoor")
+                    and ev.get("keyword") and is_name(arg, ev["keyword"])):
+                return d
+        act("I see no $T here.", player, None, arg, TO_CHAR)
+        return None
+    if direction not in exits:
+        act("I see no door $T here.", player, None, arg, TO_CHAR)
+        return None
+    exit_val = exits[direction]
+    if not isinstance(exit_val, dict) or not exit_val.get("isdoor"):
+        chprintln(player, "You can't do that.")
+        return None
+    return direction
+
+
 def do_open(player, args):
-    """Open a door in a given direction (cf. 1stMud do_open in act_move.c)."""
+    """Open a door in a given direction or by keyword (cf. 1stMud do_open in act_move.c).
+
+    ITEM_PORTAL / ITEM_CONTAINER branches not ported -- doors only [PRIMESUD].
+    [Verified: 03/07/2026]
+    """
     exits = ROOM_DEFS[player["room"]]["exits"]
     _picked_dir = None
     if args:
-        direction = DIR_ALIASES.get(args[0].lower())
+        # 1stMud prints "Open what?" on no args; [PRIMESUD] picker below instead
+        direction = _find_door(player, " ".join(args), exits)
         if direction is None:
-            tprint("Open what?")
             return
     else:
         candidates = [d for d in EXIT_ORDER
@@ -290,10 +340,7 @@ def do_open(player, args):
             return
         direction = candidates[idx]
         _picked_dir = direction
-    exit_val = exits.get(direction)
-    if not isinstance(exit_val, dict) or not exit_val.get("isdoor"):
-        tprint("You can't do that.")
-        return
+    exit_val = exits[direction]
     if not exit_val.get("closed"):
         tprint("It's already open.")
         return
@@ -312,13 +359,17 @@ def do_open(player, args):
 
 
 def do_close(player, args):
-    """Close a door in a given direction (cf. 1stMud do_close in act_move.c)."""
+    """Close a door in a given direction or by keyword (cf. 1stMud do_close in act_move.c).
+
+    ITEM_PORTAL / ITEM_CONTAINER branches not ported -- doors only [PRIMESUD].
+    [Verified: 03/07/2026]
+    """
     exits = ROOM_DEFS[player["room"]]["exits"]
     _picked_dir = None
     if args:
-        direction = DIR_ALIASES.get(args[0].lower())
+        # 1stMud prints "Close what?" on no args; [PRIMESUD] picker below instead
+        direction = _find_door(player, " ".join(args), exits)
         if direction is None:
-            tprint("Close what?")
             return
     else:
         candidates = [d for d in EXIT_ORDER
@@ -332,13 +383,12 @@ def do_close(player, args):
             return
         direction = candidates[idx]
         _picked_dir = direction
-    exit_val = exits.get(direction)
-    if not isinstance(exit_val, dict) or not exit_val.get("isdoor"):
-        tprint("You can't do that.")
-        return
+    exit_val = exits[direction]
     if exit_val.get("closed"):
         tprint("It's already closed.")
         return
+    # [PRIMESUD] 1stMud only checks EX_NOCLOSE on portals, not doors;
+    # guard kept so noclose exits stay open
     if exit_val.get("noclose"):
         tprint("You can't do that.")
         return
@@ -358,7 +408,7 @@ def do_close(player, args):
 # ported -- container open/close itself not ported yet.  Doors only.
 
 def _has_key(ch, key_vnum):
-    """True if ch carries the key item (cf. 1stMud has_key in act_move.c)."""
+    """True if ch carries the key item (cf. 1stMud has_key in act_move.c). [Verified: 03/07/2026]"""
     from item import obj_vnum
     for obj in ch["inv"] + [o for o in ch["equip"].values() if o is not None]:
         if obj_vnum(obj) == key_vnum:
@@ -381,9 +431,8 @@ def _door_for_lock_cmd(player, args, verb, want_locked):
     exits = ROOM_DEFS[player["room"]]["exits"]
     picked = False
     if args:
-        direction = DIR_ALIASES.get(args[0].lower())
+        direction = _find_door(player, " ".join(args), exits)
         if direction is None:
-            tprint(verb + " what?")
             return None, None, False
     else:
         candidates = [d for d in EXIT_ORDER
@@ -399,11 +448,7 @@ def _door_for_lock_cmd(player, args, verb, want_locked):
             return None, None, False
         direction = candidates[idx]
         picked = True
-    exit_val = exits.get(direction)
-    if not isinstance(exit_val, dict) or not exit_val.get("isdoor"):
-        tprint("You can't do that.")
-        return None, None, False
-    return direction, exit_val, picked
+    return direction, exits[direction], picked
 
 
 def _set_rev_lock(player, direction, exit_val, locked):
@@ -417,7 +462,7 @@ def _set_rev_lock(player, direction, exit_val, locked):
 
 
 def do_lock(player, args):
-    """Lock a closed door with its key (cf. 1stMud do_lock in act_move.c)."""
+    """Lock a closed door with its key (cf. 1stMud do_lock in act_move.c). [Verified: 03/07/2026]"""
     direction, exit_val, picked = _door_for_lock_cmd(player, args, "Lock", False)
     if exit_val is None:
         return
@@ -440,7 +485,7 @@ def do_lock(player, args):
 
 
 def do_unlock(player, args):
-    """Unlock a closed door with its key (cf. 1stMud do_unlock in act_move.c)."""
+    """Unlock a closed door with its key (cf. 1stMud do_unlock in act_move.c). [Verified: 03/07/2026]"""
     direction, exit_val, picked = _door_for_lock_cmd(player, args, "Unlock", True)
     if exit_val is None:
         return
@@ -463,7 +508,11 @@ def do_unlock(player, args):
 
 
 def do_pick(player, args):
-    """Pick a door lock using the pick lock skill (cf. 1stMud do_pick in act_move.c)."""
+    """Pick a door lock using the pick lock skill (cf. 1stMud do_pick in act_move.c).
+
+    [Verified: 03/07/2026] -- target door resolved (with picker) before
+    WaitState/close-stander/skill roll; 1stMud rolls before find_door.
+    """
     direction, exit_val, picked = _door_for_lock_cmd(player, args, "Pick", True)
     if exit_val is None:
         return
@@ -509,7 +558,7 @@ def do_pick(player, args):
 # items in current areas.  Revisit if furniture matters later.
 
 def do_stand(player, args):
-    """Stand up, waking first if asleep (cf. 1stMud do_stand in act_move.c).
+    """Stand up, waking first if asleep (cf. 1stMud do_stand in act_move.c). [Verified: 03/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -535,7 +584,7 @@ def do_stand(player, args):
 
 
 def do_rest(player, args):
-    """Rest to speed regeneration (cf. 1stMud do_rest in act_move.c).
+    """Rest to speed regeneration (cf. 1stMud do_rest in act_move.c). [Verified: 03/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -565,7 +614,7 @@ def do_rest(player, args):
 
 
 def do_sit(player, args):
-    """Sit down (cf. 1stMud do_sit in act_move.c).
+    """Sit down (cf. 1stMud do_sit in act_move.c). [Verified: 03/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -594,7 +643,7 @@ def do_sit(player, args):
 
 
 def do_sleep(player, args):
-    """Go to sleep for maximum regeneration (cf. 1stMud do_sleep in act_move.c).
+    """Go to sleep for maximum regeneration (cf. 1stMud do_sleep in act_move.c). [Verified: 03/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -612,7 +661,7 @@ def do_sleep(player, args):
 
 
 def do_wake(player, args):
-    """Wake yourself (stand) or a sleeping character (cf. 1stMud do_wake in act_move.c).
+    """Wake yourself (stand) or a sleeping character (cf. 1stMud do_wake in act_move.c). [Verified: 03/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -645,12 +694,14 @@ def do_wake(player, args):
     # 1stMud passes ch to do_stand here (apparent bug -- ROM 2.4 stands the
     # victim); [PRIMESUD] stand the victim so waking mobs actually works
     victim["pos"] = "standing"
+    # ROM 2.4 victim do_stand side effect, so the waker sees it happen
+    act("$n wakes and stands up.", victim, None, None, TO_ROOM)
 
 
 # -- Stealth -------------------------------------------------------------------
 
 def do_sneak(player, args):
-    """Attempt to move silently via the sneak skill (cf. 1stMud do_sneak in act_move.c).
+    """Attempt to move silently via the sneak skill (cf. 1stMud do_sneak in act_move.c). [Verified: 03/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -678,7 +729,7 @@ def do_sneak(player, args):
 
 
 def do_hide(player, args):
-    """Attempt to hide via the hide skill (cf. 1stMud do_hide in act_move.c).
+    """Attempt to hide via the hide skill (cf. 1stMud do_hide in act_move.c). [Verified: 03/07/2026]
 
     Hide is a bare AFF bit with no affect entry; any command except
     stealth/info commands removes it (see interpret in commands.py).
@@ -700,7 +751,7 @@ def do_hide(player, args):
 
 
 def do_visible(player, args):
-    """Strip invisibility, sneak, and hide (cf. 1stMud do_visible in act_move.c).
+    """Strip invisibility, sneak, and hide (cf. 1stMud do_visible in act_move.c). [Verified: 03/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -717,13 +768,15 @@ def do_visible(player, args):
 
 
 def perform_recall(player, location, what="recall"):
-    """Move player to recall destination (cf. 1stMud perform_recall in act_move.c)."""
-    room = ROOM_DEFS[player["room"]]
+    """Move player to recall destination (cf. 1stMud perform_recall in act_move.c).
 
-    if room.get("flags", {}).get("no_recall") \
-            or player.get("affected_by", {}).get("curse"):
-        tprint("Your deity has forsaken you.")
-        return False
+    Only-players / arena checks and the "$n prays for transportation!" /
+    "$n disappears." / "$n appears in the room." room acts are not ported
+    (single-player, no arena). [PRIMESUD]
+
+    [Verified: 03/07/2026]
+    """
+    room = ROOM_DEFS[player["room"]]
 
     if location is None:
         tprint("You are completely lost.")
@@ -732,12 +785,18 @@ def perform_recall(player, location, what="recall"):
     if player["room"] == location:
         return True
 
+    if room.get("flags", {}).get("no_recall") \
+            or player.get("affected_by", {}).get("curse"):
+        # 1stMud: act "$g has forsaken you." ($g = deity name; no deities here)
+        tprint("Your deity has forsaken you.")
+        return False
+
     if player["fighting"] is not None:
-        skill = player["learned"].get(GSN_RECALL, 50)
+        skill = get_skill(player, GSN_RECALL)
         if randint(1, 100) < 80 * skill // 100:
             check_improve(player, GSN_RECALL, False, 6)
             WaitState(player, PULSE_PER_SECOND)
-            tprint("You failed!")
+            tprint("You failed!")  # [PRIMESUD] 1stMud typo "You failed!."
             return False
         player["xp"] = max(0, player["xp"] - 25)
         check_improve(player, GSN_RECALL, True, 4)
@@ -765,8 +824,10 @@ def do_recall(player, args):
     """Teleport to the area's recall room (cf. 1stMud perform_recall in act_move.c).
 
     Per-area recall VNUMs (area->recall in 1stMud) are not yet implemented;
-    all areas fall back to R_RECALL (ROOM_VNUM_TEMPLE).  When a pet system is
-    added, pet teleport should mirror the player teleport here.
+    all areas fall back to R_RECALL (ROOM_VNUM_TEMPLE).  Pet recall is
+    handled in perform_recall.
+
+    [Verified: 03/07/2026]
     """
     location = R_RECALL
     perform_recall(player, location, "recall")
