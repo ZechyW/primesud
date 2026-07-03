@@ -18,7 +18,7 @@ from picker import pick_from
 from player import (PLR_AUTOMAP, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
                     PLR_AUTOSPLIT, PLR_DEFAULTS)
 from gquest import gq_is_player_target
-from quest import is_quester
+from quest import is_quester, _intstr
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
     spell_mana, get_skill, check_improve
 from skills_table import SKILL_TABLE, SKILLS, GSN_PEEK
@@ -709,6 +709,20 @@ def do_score(player, args):
     ]
     for line in lines:
         tprint(line)
+
+
+def do_worth(player, args):
+    """Show gold, silver, experience and quest/trivia points (cf. 1stMud do_worth in act_info.c).
+
+    [Verified: 04/07/2026] -- IsNPC branch not applicable (single player);
+    "exp to level" uses the per-level xp model (xp_next - xp) in place of
+    1stMud's (level+1)*exp_per_level - exp [PRIMESUD].
+    """
+    tprint("You have " + str(player["gold"]) + " gold, " + str(player["silver"])
+           + " silver, and " + str(player["xp"]) + " experience ("
+           + str(player["xp_next"] - player["xp"]) + " exp to level).")
+    tprint("You have earned " + _intstr(player.get("quest_points", 0), "questpoint")
+           + " and " + _intstr(player.get("trivia", 0), "trivia point") + ".")
 
 
 def _parse_skill_range(args):
