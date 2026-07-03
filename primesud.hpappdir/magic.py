@@ -2,7 +2,7 @@
 
 import world
 from handler import (is_name, is_affected, affect_to_char, affect_join, affect_strip, is_awake,
-                   can_see_room, act, chprintln, get_char_room,
+                   can_see_room, act, chprintln, get_char_room, equip_char,
                    TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
                    is_good, is_evil, is_neutral)
 from world import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
@@ -10,7 +10,7 @@ from world import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
 from colors import upper
 from classes import has_spells
 from combat import (is_safe, is_safe_spell, check_immune, dice, number_fuzzy,
-                    multi_hit, damage, stop_fighting, update_pos)
+                    multi_hit, damage, stop_fighting, update_pos, is_same_group)
 from skill_utils import WaitState, check_improve, get_skill
 from config import (POS_ORDER, DAM_ACID, DAM_BASH, DAM_CHARM, DAM_COLD,
                     DAM_DISEASE, DAM_DROWNING, DAM_ENERGY, DAM_FIRE,
@@ -1647,16 +1647,25 @@ def spell_faerie_fog(sn, level, ch, vo, target):
 
 
 def spell_floating_disc(sn, level, ch, vo, target):
-    """Create a floating disc container (cf. 1stMud spell_floating_disc in magic.c).
-
-    TODO: equip-to-float slot not yet ported; disc added to inventory.
-    """
+    """Create and float a disc container (cf. 1stMud spell_floating_disc in magic.c).
+    [Verified: 03/07/2026; float-slot equip added and re-verified 03/07/2026]"""
+    floating = ch.get("equip", {}).get("float")
+    if floating is not None and item_extra_flags(
+            floating, ITEM_DEFS[obj_vnum(floating)]).get("noremove"):
+        act("You can't remove $p.", ch, floating, None, TO_CHAR)
+        return False
     disc = create_object(I_DISC_DISK_FLOATING_BLACK)
+    # value[0] capacity / value[3] max weight collapse into one field [PRIMESUD]
+    disc["container_max_weight"] = ch.get("level", 1) * 10
     disc["timer"] = ch.get("level", 1) * 2 - randint(0, level // 2)
     ch.setdefault("inv", []).append(disc)
     act("$n has created a floating black disc.", ch, None, None, TO_ROOM)
     chprintln(ch, "You create a floating disc.")
-    # TODO [PRIMESUD] auto-equip to float slot: wear_obj(ch, disc, True)
+    from inventory import remove_obj  # lazy import to avoid circular dependency
+    if remove_obj(ch, "float", True):
+        tpl = ITEM_DEFS[obj_vnum(disc)]
+        chprintln(ch, "You release " + tpl["short_descr"] + " and it floats next to you.")
+        equip_char(ch, disc, "float")
     return True
 
 
@@ -1972,16 +1981,20 @@ def spell_mass_healing(sn, level, ch, vo, target):
 
 
 def spell_mass_invis(sn, level, ch, vo, target):
-    """Mass invis (cf. 1stMud spell_mass_invis in magic.c).
-
-    TODO: group system not ported. Applies invis to caster only.
-    """
-    if ch.get("affected_by", {}).get("invisible"):
-        chprintln(ch, "You are already invisible.")
-        return True
-    act("$n slowly fades out of existence.", ch, None, None, TO_ROOM)
-    chprintln(ch, "You slowly fade out of existence.")
-    affect_to_char(ch, _new_affect(sn, level // 2, 24, "none", 0, "invisible"))
+    """Mass invis for the caster's group (cf. 1stMud spell_mass_invis in magic.c).
+    [Verified: 03/07/2026; group application added and re-verified
+    03/07/2026] -- group = leader-linked chars (player + pet/charmies)."""
+    room = world.rooms[ch["room"]]
+    members = [world.chars.get(mob_id) for mob_id in list(room["mobs"])]
+    members.append(ch)  # 1stMud room walk includes the caster
+    for gch in members:
+        if gch is None:
+            continue
+        if not is_same_group(gch, ch) or gch.get("affected_by", {}).get("invisible"):
+            continue
+        act("$n slowly fades out of existence.", gch, None, None, TO_ROOM)
+        chprintln(gch, "You slowly fade out of existence.")
+        affect_to_char(gch, _new_affect(sn, level // 2, 24, "none", 0, "invisible"))
     chprintln(ch, "Ok.")
     return True
 

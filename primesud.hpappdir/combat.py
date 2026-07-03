@@ -2441,8 +2441,8 @@ def is_same_group(ach, bch):
     [Verified: 02/07/2026]
 
     Resolves leader pointers: if a char has a leader, use the leader for
-    comparison.  Without followers/pets ported, every char is its own leader,
-    so this returns True only when ach is bch.
+    comparison.  A player and their pet/charmies share the player as
+    leader, so they count as one group.
 
     Args:
         ach (dict): First character.
