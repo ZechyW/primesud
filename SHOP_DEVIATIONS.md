@@ -4,7 +4,7 @@
 
 1. ~~**No time system (open/close hours)**~~ **RESOLVED** -- `game_time.py` ports `time_info` + `time_update`. `find_keeper` now checks `open_hour`/`close_hour` against `time_info["hour"]`.
 
-2. ~~**No pet shop**~~ **RESOLVED** -- pet-shop branch of `do_buy`/`do_list` ported (`pet_shop` room flag; stock lives in room vnum + 1). Deviations: 1stMud's vnum 9621 -> 9706 special case not ported (area absent); pet `comm` flags (NOTELL etc.) not ported; pet persistence is minimal `p.pet=tpl|hp|name` (pet respawns fresh on load; affects/equipment not saved, cf. 1stMud `fwrite_pet`/`fread_pet` full char save).
+2. ~~**No pet shop**~~ **RESOLVED** -- pet-shop branch of `do_buy`/`do_list` ported (`pet_shop` room flag; stock lives in room vnum + 1). Deviations: 1stMud's vnum 9621 -> 9706 special case not ported (area absent); pet `comm` flags (NOTELL etc.) not ported; pet persistence saves `p.pet=tpl|hp|max_hp|name` plus timed affects (`p.pet.affects`); other write_pet fields (exp, gold, inventory, comm bits) respawn from the template since PrimeSUD pets cannot accumulate them.
 
 3. ~~**No carry weight/count limits**~~ **RESOLVED** -- `can_carry_n()` / `can_carry_w()` / `get_obj_weight()` ported in `item.py`. `do_buy` checks both before purchase.
 

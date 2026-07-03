@@ -176,7 +176,8 @@ class TestPetPersistence:
         game_state._serialize_world()
         with open(str(tmp_path / "t.sav")) as f:
             payload = f.read()
-        assert "p.pet=" + str(PET_TPL) + "|7|fido" in payload
+        assert ("p.pet=" + str(PET_TPL) + "|7|" + str(pet["max_hit"])
+                + "|fido") in payload
         # pet must not be serialized as a template position
         assert "m." + str(PET_TPL) + "=" not in payload
 
@@ -187,6 +188,12 @@ class TestPetPersistence:
         player = self._full_player()
         pet = spawn_pet(PET_TPL, player, name_arg="fido", announce=False)
         pet["hit"] = 7
+        pet["max_hit"] = 11
+        # player buff on the pet persists (cf. 1stMud write_pet Affc entries)
+        from handler import affect_to_char
+        affect_to_char(pet, {"type": 999, "level": 20, "duration": 5,
+                             "location": "str", "modifier": 2,
+                             "bitvector": "", "where": "to_affects"})
         game_state._serialize_world()
 
         # fresh world: drop pet, reset player links
@@ -201,6 +208,11 @@ class TestPetPersistence:
         pet2 = world.chars[pid]
         assert pet2["tpl"] == PET_TPL
         assert pet2["hit"] == 7
+        assert pet2["max_hit"] == 11
         assert pet2["pet_name"] == "fido"
         assert pet2["master"] == 1
         assert pet2["room"] == player2["room"]
+        afs = pet2.get("affect_list", [])
+        assert len(afs) == 1
+        assert afs[0]["duration"] == 5
+        assert pet2["mod_stat"].get("str") == 2   # modifier re-applied

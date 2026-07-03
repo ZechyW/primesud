@@ -106,12 +106,27 @@ def _serialize_world():
         )
     if af_parts:
         lines.append("p.affects=" + "|".join(af_parts))
-    # cf. 1stMud fwrite_pet in save.c -- [PRIMESUD] minimal: tpl|hp|custom name
-    # (full pet affect/equipment state not persisted; pet respawns fresh)
+    # cf. 1stMud write_pet in save.c -- [PRIMESUD] persists tpl/hp/max_hp/name
+    # and timed affects; other fields (exp, gold, inventory) respawn from the
+    # template since PrimeSUD pets cannot accumulate them
     pet = world.chars.get(player["pet"]) if player.get("pet") is not None else None
     if pet is not None:
         lines.append("p.pet=" + str(pet["tpl"]) + "|" + str(pet["hit"])
+                     + "|" + str(pet["max_hit"])
                      + "|" + str(pet.get("pet_name", "")))
+        pet_af_parts = []
+        for af in pet.get("affect_list", []):
+            pet_af_parts.append(
+                str(af.get("type", "")) + ","
+                + str(af.get("level", 0)) + ","
+                + str(af.get("duration", 0)) + ","
+                + str(af.get("location", "")) + ","
+                + str(af.get("modifier", 0)) + ","
+                + str(af.get("bitvector", "")) + ","
+                + str(af.get("where", ""))
+            )
+        if pet_af_parts:
+            lines.append("p.pet.affects=" + "|".join(pet_af_parts))
     _mk_int = sorted(k for k in player["_macros"] if isinstance(k, int))
     _mk_str = sorted(k for k in player["_macros"] if isinstance(k, str))
     for k in _mk_int + _mk_str:
@@ -266,12 +281,15 @@ def load_world():
 
     _name_to_fn = {name: sentinel for sentinel, name in FNKEY_NAMES.items()}
     _pet_save = None
+    _pet_affects = None
     for line in data.split("~"):
         if "=" not in line:
             continue
         key, val = line.split("=", 1)
         if key == "p.pet":
             _pet_save = val
+        elif key == "p.pet.affects":
+            _pet_affects = val
         elif key.startswith("p.eq."):
             slot = key[5:]
             player["equip"][slot] = parse_item_token(val) if val else None
@@ -385,9 +403,34 @@ def load_world():
             from mob import spawn_pet
             _hp = (int(parts[1]) if len(parts) > 1
                    and parts[1].lstrip("-").isdigit() else None)
-            _pname = parts[2] if len(parts) > 2 and parts[2] else None
+            _max = (int(parts[2]) if len(parts) > 2
+                    and parts[2].lstrip("-").isdigit() else None)
+            _pname = parts[3] if len(parts) > 3 and parts[3] else None
             player["pet"] = None
-            spawn_pet(_tpl, player, name_arg=_pname, hp=_hp, announce=False)
+            _pet = spawn_pet(_tpl, player, name_arg=_pname, announce=False)
+            # max_hit rerolls in create_mobile; restore the saved roll
+            if _max is not None:
+                _pet["max_hit"] = _max
+            if _hp is not None:
+                _pet["hit"] = max(1, min(_hp, _pet["max_hit"]))
+            # Re-apply saved affects (cf. 1stMud fread_pet "Affc" entries)
+            if _pet_affects:
+                from handler import affect_to_char
+                for entry in _pet_affects.split("|"):
+                    if not entry:
+                        continue
+                    _ap = entry.split(",")
+                    while len(_ap) < 7:
+                        _ap.append("")
+                    affect_to_char(_pet, {
+                        "type": int(_ap[0]) if _ap[0].lstrip("-").isdigit() else _ap[0],
+                        "level": int(_ap[1]) if _ap[1] else 0,
+                        "duration": int(_ap[2]) if _ap[2].lstrip("-").isdigit() else 0,
+                        "location": _ap[3],
+                        "modifier": int(_ap[4]) if _ap[4].lstrip("-").isdigit() else 0,
+                        "bitvector": _ap[5],
+                        "where": _ap[6],
+                    })
 
     return _source
 

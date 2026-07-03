@@ -198,14 +198,32 @@ def tick_update(tr, player, room):
     player["mana"] = min(player["max_mana"], player["mana"] + mp_gain)
     player["move"] = min(player["max_move"], player["move"] + mv_gain)
 
-    for aff in list(player.get("affect_list", [])):
+    _tick_affects(player, tr)
+
+    # Mob affects tick too (cf. 1stMud char_update iterating char_first;
+    # wear-off messages are char-directed, so silent for mobs)
+    import world as _world
+    for _inst in list(_world.chars.values()):
+        if _inst.get("is_npc") and _inst.get("affect_list"):
+            _tick_affects(_inst, None)
+
+
+def _tick_affects(ch, tr):
+    """Decrement affect durations, remove expired (cf. 1stMud char_update affect loop in update.c).
+
+    Args:
+        ch (dict): Character (player or mob instance).
+        tr: Terminal for wear-off messages, or None to tick silently (mobs).
+    """
+    for aff in list(ch.get("affect_list", [])):
         if aff["duration"] > 0:
             aff["duration"] -= 1
         elif aff["duration"] == 0:
-            msg = SKILLS.get(aff.get("type"), {}).get("msg_off", "")
-            if msg and not msg.startswith("!"):
-                tr.print(msg)
-            affect_remove(player, aff)
+            if tr is not None:
+                msg = SKILLS.get(aff.get("type"), {}).get("msg_off", "")
+                if msg and not msg.startswith("!"):
+                    tr.print(msg)
+            affect_remove(ch, aff)
 
 
 # -- Display -------------------------------------------------------------------
