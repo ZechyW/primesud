@@ -8,13 +8,20 @@ Usage:
 import ast
 import shutil
 import sys
+import warnings
 from pathlib import Path
 
 import python_minifier
 
+# tml.py (external lib) uses "\e"-style escapes; harmless on-device, noisy
+# when CPython compiles it inside the minifier
+warnings.filterwarnings("ignore", category=SyntaxWarning)
+
 SRC_DIR = Path("primesud.hpappdir")
 DIST_DIR = Path("dist/primesud.hpappdir")
 BOM = b"\xef\xbb\xbf"
+# Save files -- packaging these would overwrite on-calc data
+EXCLUDE = {"primesud.sav", "hvars.json"}
 
 
 def minify_source(source):
@@ -50,7 +57,7 @@ def main():
     errors = []
 
     for src_file in sorted(SRC_DIR.iterdir()):
-        if src_file.is_dir():
+        if src_file.is_dir() or src_file.name in EXCLUDE:
             continue
         dst_file = DIST_DIR / src_file.name
 
