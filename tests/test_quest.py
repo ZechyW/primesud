@@ -157,7 +157,8 @@ def test_quit_penalizes(fresh):
         pytest.skip("no quest target rolled")
     do_quest(fresh, ["quit"])
     assert fresh["quest_status"] == QUEST_NONE
-    assert fresh["quest_time"] == mins_to_ticks(QUEST_TIME * 3 // 2)
+    # [PRIMESUD] lenient quit penalty: announced 15, not 1stMud's 30
+    assert fresh["quest_time"] == mins_to_ticks(QUEST_TIME * 3 // 4)
 
 
 def test_qp_cap_32000(fresh):

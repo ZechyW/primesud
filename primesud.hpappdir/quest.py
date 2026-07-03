@@ -1013,9 +1013,13 @@ def do_quest(player, args):
                      "I never sent you on a quest! Perhaps you're thinking of someone else.")
             return
         if is_quester(player):
-            end_quest(player, QUEST_TIME * 3 // 2)
+            # [PRIMESUD] 1stMud sets QUEST_TIME*3/2 = 30 but announces
+            # "15 minutes"; resolved toward the lenient announced value
+            end_quest(player, QUEST_TIME * 3 // 4)
             mob_tell(player, questman,
-                     "Your quest is over, but for your cowardly behavior, you may not quest again for 15 minutes.")
+                     "Your quest is over, but for your cowardly behavior,"
+                     " you may not quest again for %s."
+                     % _intstr(ticks_to_mins(player["quest_time"]), "minute"))
         else:
             chprintln(player, "You aren't on a quest!")
         return

@@ -2467,7 +2467,7 @@ The QUEST command is used for information about your current quest, to request
 a quest from a quest master, etc. Commands are as follows:
 
 QUEST INFO - If you are on a quest, this will remind you who or what you are
-after and time remaining, else it will show you time lef ttill next quest.
+after and time remaining, else it will show you time left till next quest.
 
 QUEST REQUEST - Petitions the quest master to send you on a quest. If you
 accept the quest, you will be given a real time limit (in minutes) in which you
@@ -2479,7 +2479,7 @@ QUEST COMPLETE - Once you have completed your quest and recovered the item or
 killed the mob or whatever, you must return to the quest master who sent you on
 the quest and use this command. If you have successfully completed your quest,
 he will reward you with gold and quest points. Once you complete a quest you
-cannot request another for 12 minutes.
+cannot request another for 15 to 30 minutes, depending on the quest.
 
 QUEST LIST - Displays the list of fabulous items for sale by the quest master.
 These items are not purchased via gold, they must be purchased with quest points.
