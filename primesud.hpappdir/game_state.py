@@ -211,6 +211,11 @@ def save_world(quiet=False):
         _serialize_world()
         if not quiet:
             tprint("Saved.")
+        else:
+            # [PRIMESUD] 'debug save' channel makes silent autosaves visible
+            from debug import DBG, dbg
+            if "save" in DBG:
+                dbg("autosave")
         return True
     except Exception as e:
         tprint("Save failed: %s" % e)

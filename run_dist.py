@@ -26,4 +26,9 @@ os.chdir(os.path.join(_ROOT, "dist", "primesud.hpappdir"))
 import gc
 gc.mem_free = lambda: 0
 
+# PC saves live at repo root (gitignored) so dist stays a clean transfer
+# artifact for the physical Prime
+import game_state
+game_state.SAVE_FILE = os.path.join(_ROOT, "primesud.sav")
+
 import primesud

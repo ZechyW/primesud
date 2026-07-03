@@ -1,9 +1,12 @@
 """PC replacements for HP Prime platform calls."""
 import time
 import json
+import os
 
 
-_HVARS_FILE = "hvars.json"
+# Repo root, not cwd -- shared between run_source.py and run_dist.py,
+# and keeps dist/ a clean transfer artifact
+_HVARS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "hvars.json")
 
 
 def ticks():

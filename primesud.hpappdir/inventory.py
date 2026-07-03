@@ -304,10 +304,14 @@ def do_inventory(player, args):
     for obj in player["inv"]:
         v = obj["vnum"]
         counts[v] = counts.get(v, 0) + 1
+    from debug import DBG  # [PRIMESUD] debug vnum visibility toggle
+    show_vnums = "vnum" in DBG
     for v, n in counts.items():
         tpl = ITEM_DEFS[v]
         flags = _obj_flags(tpl)
         name = tpl["short_descr"]
+        if show_vnums:  # [PRIMESUD]
+            name += " {D[" + str(v) + "]{x"
         tprint("  {}{} x{}".format(flags, name, n) if n > 1 else "  {}{}".format(flags, name))
 
 
@@ -540,11 +544,16 @@ def do_equipment(player, args):
         args (list): Parsed command arguments (unused).
     """
     tprint("You are wearing:")
+    from debug import DBG  # [PRIMESUD] debug vnum visibility toggle
+    show_vnums = "vnum" in DBG
     for slot, label in WEAR_LABELS:
         obj = player["equip"].get(slot)
         if obj is not None:
             tpl = ITEM_DEFS[obj["vnum"]]
-            tprint(label + _obj_flags(tpl) + "{Y" + tpl["short_descr"] + "{x")
+            line = label + _obj_flags(tpl) + "{Y" + tpl["short_descr"] + "{x"
+            if show_vnums:  # [PRIMESUD]
+                line += " {D[" + str(obj["vnum"]) + "]{x"
+            tprint(line)
         else:
             tprint(label + "nothing")
 

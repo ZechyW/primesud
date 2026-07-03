@@ -23,7 +23,7 @@ TICK_SECS        = PULSE_TICK // PULSE_PER_SECOND  # seconds elapsed per world t
 PULSE_AREA       = 30 * PULSE_PER_SECOND      # Quicker age ticks for better UX
 POLL_MS          = 50                         # keyboard polling interval (ms)
 AUTOSAVE_TICKS   = 4                          # autosave every N world ticks
-DEATH_MSG_DELAY  = 1                          # seconds between death flavour lines
+DEATH_MSG_DELAY  = 3                          # seconds between death flavour lines
 
 # -- Automap ---------------------------------------------------------------------------
 MAP_HALF_W      = 5   # compact automap half-width  (full grid = 2*W+1 = 11 cols)

@@ -397,8 +397,8 @@ def do_look(player, args):
                 line = "%s is here, fighting YOU!" % name
             else:
                 line = "%s is here, fighting someone." % name
-        if show_vnums:  # [PRIMESUD] instance id : template vnum
-            line += " {D[" + str(mob_id) + ":" + str(inst["tpl"]) + "]"
+        if show_vnums:  # [PRIMESUD] template vnum; instance id via debug stat mob
+            line += " {D[" + str(inst["tpl"]) + "]"
         tprint("%s{M%s{x" % (prefix, line))
 
 

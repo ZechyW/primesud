@@ -7,7 +7,7 @@ import terminal
 # call sites are in per-mob per-pulse loops.
 DBG = set()
 
-_CHANNELS = ("spawn", "move", "tick", "reset", "vnum")
+_CHANNELS = ("spawn", "move", "tick", "reset", "vnum", "save")
 
 
 def dbg(msg):
@@ -117,6 +117,14 @@ def do_debug(player, args):
     name = args[0]
     if "stat".startswith(name):
         _debug_stat(player, args[1:])
+        return
+    if "all".startswith(name):
+        if DBG.issuperset(_CHANNELS):
+            DBG.clear()
+            terminal.tr.print("All debug channels off.")
+        else:
+            DBG.update(_CHANNELS)
+            terminal.tr.print("All debug channels on.")
         return
     match = None
     for c in _CHANNELS:

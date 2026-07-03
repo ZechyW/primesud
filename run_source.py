@@ -13,4 +13,8 @@ os.chdir(os.path.join(_ROOT, 'primesud.hpappdir'))
 import gc
 gc.mem_free = lambda: 0  # HP Prime MicroPython built-in, not in CPython gc
 
+# PC saves live at repo root (gitignored), shared with run_dist.py
+import game_state
+game_state.SAVE_FILE = os.path.join(_ROOT, 'primesud.sav')
+
 import primesud
