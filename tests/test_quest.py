@@ -293,6 +293,26 @@ def test_give_coins_and_item(fresh):
     assert obj not in fresh["inv"] and obj in victim["inv"]
 
 
+def test_give_changer_exchanges_coins(fresh):
+    from inventory import do_give
+    victim = _fake_room_mob(fresh, 202)
+    victim["act_flags"] = {"changer": True}
+    victim["name"] = "The Registrar"
+    v_kw = MOB_DEFS[202]["keywords"].split()[0]
+    fresh["gold"] = 10
+    fresh["silver"] = 0
+    do_give(fresh, ["10", "gold", v_kw])
+    assert fresh["gold"] == 0
+    assert fresh["silver"] == 950  # 95 silver per gold
+    do_give(fresh, ["300", "silver", v_kw])
+    assert fresh["silver"] == 950 - 300 + (95 * 300 // 100 - 2 * 100)  # remainder back
+    assert fresh["gold"] == 2  # 95*300/100/100
+    # too little to change: refunded
+    silver_before = fresh["silver"]
+    do_give(fresh, ["1", "silver", v_kw])
+    assert fresh["silver"] == silver_before
+
+
 def test_give_quest_item_refused(fresh):
     from inventory import do_give
     victim = _fake_room_mob(fresh, 202)
