@@ -2,7 +2,7 @@
 
 from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
                     do_berserk, do_bash, do_dirt, do_trip, do_flee,
-                    do_rescue, do_disarm, do_surrender, do_slay,
+                    do_rescue, do_disarm, do_surrender,
                     do_sskill, do_stance, do_autostance, do_consider)
 from comm import do_say, do_tell, do_reply, do_follow, do_ditch, do_order, do_yell
 from config import POS_ORDER
@@ -16,6 +16,7 @@ from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_sacrifice, do_compare, do_steal, do_give,
                        do_drink, do_fill, do_pour)
 from gquest import do_gquest
+from healer import do_heal
 from macros import do_macro
 from magic import do_cast
 from quest import do_quest, do_tpspend
@@ -191,7 +192,7 @@ _CMD_TABLE = [
     # ("envenom",   do_envenom,    "resting",  False),  # #117
     ("fill",       do_fill,       "resting",  False),  # #118
     ("give",       do_give,       "resting",  False),  # #119
-    # ("heal",      do_heal,       "resting",  False),  # #120
+    ("heal",       do_heal,       "resting",  False),  # #120
     # ("hold",      do_wear,       "resting",  False),  # #121
     ("list",       do_list,       "resting",  False),  # #122
     ("lock",       do_lock,       "resting",  False),  # #123
@@ -281,7 +282,7 @@ _CMD_TABLE = [
     # ("pardon",    do_pardon,     "dead",     False),  # #206 imm lvl 57
     # ("purge",     do_purge,      "dead",     False),  # #207 imm lvl 56
     # ("restore",   do_restore,    "dead",     False),  # #208 imm lvl 56
-    ("slay",       do_slay,       "dead",     True),   # #209 noprefix, imm
+    # ("slay",     do_slay,       "dead",     True),   # #209 noprefix, imm -- [PRIMESUD] moved to 'debug slay'
     # ("teleport",  do_transfer,   "dead",     False),  # #210 imm lvl 55
     # ("transfer",  do_transfer,   "dead",     False),  # #211 imm lvl 55
     # ("sedit",     do_sedit,      "dead",     False),  # #212 imm lvl 57

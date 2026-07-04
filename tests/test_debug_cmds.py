@@ -278,3 +278,16 @@ def test_exact_channel_beats_subcmd_prefix(scene, out):
 def test_subcmd_prefix_dispatch(scene, out):
     _run(scene["player"], "mem")  # prefix of memory
     assert any(l.startswith("Heap:") for l in out)
+
+
+def test_debug_slay(scene, out, monkeypatch):
+    import combat
+    monkeypatch.setattr(combat, "tprint", lambda s="", end="\n": out.append(s))
+    # raw_kill builds a corpse from the limbo template
+    ITEM_DEFS._data[10] = {"keywords": "corpse", "short_descr": "The corpse of %s",
+                           "description": "The corpse of %s is lying here.",
+                           "type": "npc_corpse", "wear_flags": {"take": True},
+                           "level": 0, "weight": 1000, "value": 0}
+    _run(scene["player"], "slay guard")
+    assert 2 not in world.chars
+    assert 2 not in scene["r1"]["mobs"]

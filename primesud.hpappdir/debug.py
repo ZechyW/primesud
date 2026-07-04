@@ -366,8 +366,19 @@ def _debug_memory(player, args):
                       + str(len(world.rooms._data)) + " active")
 
 
+def _debug_slay(player, args):
+    """Instant-kill a mob in the room (cf. 1stMud do_slay in fight.c). [PRIMESUD]
+
+    Thin wrapper: the port lives in combat.do_slay; 1stMud's top-level imm
+    command slot (#209) is retired in favour of 'debug slay'.
+    """
+    from combat import do_slay
+    do_slay(player, args)
+
+
 _SUBCMDS = (
     ("stat",    _debug_stat),
+    ("slay",    _debug_slay),
     ("goto",    _debug_goto),
     ("load",    _debug_load),
     ("purge",   _debug_purge),
