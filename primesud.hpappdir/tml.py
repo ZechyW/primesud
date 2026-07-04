@@ -91,7 +91,7 @@ class tml:
         else:
             raise ValueError("Cursor position out of bounds")
 
-    def input(self, prompt=None, length=0, alpha=True, shift=False, new_line=True, default=''):
+    def input(self, prompt=None, length=0, alpha=True, shift=False, new_line=True):
         # Custom input method to gather text input from the user
         self.alpha_lock = alpha
         self.shift_lock = False
@@ -108,10 +108,7 @@ class tml:
             self.print(prompt, end='')
         start_x = self.cursor_x
         length = min(length, self.columns - start_x - 1) if length > 0 else self.columns - self.cursor_x - 1
-        # [PRIMESUD] optional pre-filled text, editable like typed input
-        input_string = default[:length] if default else ''
-        if input_string:
-            self.print(input_string, end='')
+        input_string = ''
         self._invert_cursor()
         
         try:

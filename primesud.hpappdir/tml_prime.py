@@ -89,6 +89,7 @@ class tml_prime(tml):
         self._swipe_threshold   = swipe_threshold
         self._touch_start_y     = None
         self._touch_last_y      = 0
+        self._input_replay      = ''  # pending chars fed to read_key by input(default=)
         if scrollback_size > 0:
             dimgrob(hist_grob, self.width, scrollback_size * self.char_height, self.back_color)
             dimgrob(save_grob, self.width, self.height, self.back_color)
@@ -128,7 +129,24 @@ class tml_prime(tml):
     # Override: intercept shift+- sentinel in the blocking read path
     # ------------------------------------------------------------------
 
+    def input(self, prompt=None, length=0, alpha=True, shift=False, new_line=True, default=''):
+        """Blocking input with optional pre-filled, editable default text.
+
+        [PRIMESUD] default chars are replayed through read_key, so tml.input
+        builds and echoes them exactly like typed input (backspace, Esc-clear
+        and arrows all work on them); tml.py itself stays untouched.
+        """
+        self._input_replay = default
+        try:
+            return tml.input(self, prompt, length, alpha, shift, new_line)
+        finally:
+            self._input_replay = ''
+
     def read_key(self, code=False):
+        if self._input_replay and not code:
+            char = self._input_replay[0]
+            self._input_replay = self._input_replay[1:]
+            return char
         if code or self._hist_size == 0:
             return super().read_key(code=code)
 
