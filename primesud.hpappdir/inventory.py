@@ -14,17 +14,20 @@ from combat import _get_weapon_skill, is_safe, multi_hit, number_fuzzy
 from comm import do_yell
 from skill_utils import WaitState, check_improve, get_skill
 from config import (STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS,
-                    MAX_LEVEL, MAX_MORTAL_LEVEL, TYPE_UNDEFINED)
+                    MAX_LEVEL, MAX_MORTAL_LEVEL, TYPE_UNDEFINED,
+                    ATTACK_TABLE, DAM_BASH)
 from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   item_extra_flags, item_wear_flags, apply_money_pickup,
                   can_drop_obj, can_carry_n, can_carry_w, get_obj_weight,
+                  item_weapon_flags, item_affect_to_obj,
                   promote_obj as _promote_obj)
 from magic import (cast_item_spells, validate_item_spell_payload,
                    _new_affect, _skill_lookup)
 from picker import pick_from
 from quest import (quest_obj_check, is_quester, QUEST_DELIVER,
                    QUEST_RETURN_DELIVER, _giver_name)
-from skills_table import GSN_SCROLLS, GSN_STAVES, GSN_WANDS, GSN_STEAL, GSN_SNEAK
+from skills_table import (GSN_SCROLLS, GSN_STAVES, GSN_WANDS, GSN_STEAL,
+                          GSN_SNEAK, GSN_ENVENOM, GSN_POISON)
 from skills_table import SKILLS, WEAPON_GSN_MAP
 from terminal import tprint
 from urandom import randint
@@ -969,6 +972,90 @@ def do_quaff(player, args):
     tprint("You quaff {}.".format(tpl["short_descr"]))
     cast_item_spells(player, obj, player, None)
     player["inv"].remove(obj)
+
+
+def do_envenom(player, args):
+    """Coat a weapon or food/drink with poison (cf. 1stMud do_envenom in act_obj.c).
+    [Verified: 04/07/2026]
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Item name arguments.
+    """
+    if not args:
+        tprint("Envenom what item?")
+        return
+
+    # 1stMud: get_obj_list(ch, argument, ch->carrying_first) -- carried + worn
+    equipped = [o for o in player["equip"].values() if o is not None]
+    obj = get_obj_list(" ".join(args), player["inv"] + equipped, ITEM_DEFS)
+    if obj is None:
+        tprint("You don't have that item.")
+        return
+
+    skill = get_skill(player, GSN_ENVENOM)
+    if skill < 1:
+        tprint("Are you crazy? You'd poison yourself!")
+        return
+
+    obj = _promote_obj(player, obj)
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    itype = tpl.get("type")
+
+    if itype in ("food", "drink"):
+        flags = item_extra_flags(obj, tpl)
+        if flags.get("bless") or flags.get("burn_proof"):
+            act("You fail to poison $p.", player, obj, None, TO_CHAR)
+            return
+        already = obj["poisoned"] if "poisoned" in obj else tpl.get("poisoned")
+        if randint(1, 100) < skill:
+            act("$n treats $p with deadly poison.", player, obj, None, TO_ROOM)
+            act("You treat $p with deadly poison.", player, obj, None, TO_CHAR)
+            if not already:
+                obj["poisoned"] = True  # 1stMud: obj->value[3] = 1
+                check_improve(player, GSN_ENVENOM, True, 4)
+            WaitState(player, SKILLS[GSN_ENVENOM]["beats"])
+            return
+        act("You fail to poison $p.", player, obj, None, TO_CHAR)
+        if not already:
+            check_improve(player, GSN_ENVENOM, False, 4)
+        WaitState(player, SKILLS[GSN_ENVENOM]["beats"])
+        return
+
+    if itype == "weapon":
+        wf = item_weapon_flags(obj, tpl)
+        flags = item_extra_flags(obj, tpl)
+        if (wf.get("flaming") or wf.get("frost") or wf.get("vampiric")
+                or wf.get("sharp") or wf.get("vorpal") or wf.get("shocking")
+                or flags.get("bless") or flags.get("burn_proof")):
+            act("You can't seem to envenom $p.", player, obj, None, TO_CHAR)
+            return
+        # 1stMud: value[3] < 0 or DAM_BASH attack -> edged weapons only
+        _, dam_class = ATTACK_TABLE.get(tpl.get("dam_type", ""), ("", DAM_BASH))
+        if dam_class == DAM_BASH:
+            tprint("You can only envenom edged weapons.")
+            return
+        if wf.get("poison"):
+            act("$p is already envenomed.", player, obj, None, TO_CHAR)
+            return
+        percent = randint(1, 100)
+        if percent < skill:
+            item_affect_to_obj(obj, {
+                "where": "to_weapon", "type": GSN_POISON,
+                "level": player["level"] * percent // 100,
+                "duration": player["level"] // 2 * percent // 100,
+                "location": "none", "modifier": 0, "bitvector": "poison",
+            }, tpl)
+            act("$n coats $p with deadly venom.", player, obj, None, TO_ROOM)
+            act("You coat $p with venom.", player, obj, None, TO_CHAR)
+            check_improve(player, GSN_ENVENOM, True, 3)
+        else:
+            act("You fail to envenom $p.", player, obj, None, TO_CHAR)
+            check_improve(player, GSN_ENVENOM, False, 3)
+        WaitState(player, SKILLS[GSN_ENVENOM]["beats"])
+        return
+
+    act("You can't poison $p.", player, obj, None, TO_CHAR)
 
 
 def do_eat(player, args):

@@ -22,7 +22,8 @@ from item import (get_obj_list, obj_vnum, item_spell_level,
                   item_spells, item_spell_name, item_extra_flags,
                   item_current_charges, item_affect_list,
                   item_affect_find, item_affect_remove, item_affect_to_obj,
-                  set_item_extra_flag, create_object, promote_obj)
+                  set_item_extra_flag, create_object, promote_obj,
+                  item_weapon_flags)
 from movement import perform_recall
 from picker import pick_from
 from scan import do_scan
@@ -950,8 +951,8 @@ def spell_blindness(sn, level, ch, vo, target):
 
 def spell_poison(sn, level, ch, vo, target):
     """Poison character and object paths (cf. 1stMud spell_poison in magic.c).
-    [Verified: 03/07/2026] -- weapon envenom (TO_WEAPON affect) not ported;
-    weapon poison procs don't exist in PrimeSUD combat yet."""
+    [Verified: 03/07/2026; weapon envenom (to_weapon affect) added and
+    re-verified 04/07/2026]"""
     if target == TARGET_OBJ:
         tpl = ITEM_DEFS[obj_vnum(vo)]
         flags = item_extra_flags(vo, tpl)
@@ -962,7 +963,21 @@ def spell_poison(sn, level, ch, vo, target):
             vo["poisoned"] = True
             chprintln(ch, _item_name(vo) + " is infused with poisonous vapors.")
             return False  # 1stMud returns false here (magic.c:3710)
-        # TODO [PRIMESUD] weapon envenom not ported (no weapon-flag procs)
+        if tpl.get("type") == "weapon":
+            wf = item_weapon_flags(vo, tpl)
+            if (wf.get("flaming") or wf.get("frost") or wf.get("vampiric")
+                    or wf.get("sharp") or wf.get("vorpal") or wf.get("shocking")
+                    or flags.get("bless") or flags.get("burn_proof")):
+                act("You can't seem to envenom $p.", ch, vo, None, TO_CHAR)
+                return False
+            if wf.get("poison"):
+                act("$p is already envenomed.", ch, vo, None, TO_CHAR)
+                return False
+            af = _new_obj_affect(sn, level // 2, level // 8, "none", 0, "poison")
+            af["where"] = "to_weapon"  # cf. 1stMud TO_WEAPON (magic.c:3734)
+            item_affect_to_obj(vo, af, tpl)
+            act("$p is coated with deadly venom.", ch, vo, None, TO_ALL)
+            return True
         chprintln(ch, "You can't poison " + _item_name(vo) + ".")
         return False
     if saves_spell(level, vo, DAM_POISON):

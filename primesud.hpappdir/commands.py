@@ -15,7 +15,7 @@ from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
                        do_sacrifice, do_compare, do_steal, do_give,
-                       do_drink, do_fill, do_pour)
+                       do_drink, do_fill, do_pour, do_envenom)
 from gquest import do_gquest
 from healer import do_heal
 from macros import do_macro
@@ -205,7 +205,7 @@ _CMD_TABLE = [
     ("drink",      do_drink,      "resting",  False),  # #114
     ("drop",       do_drop,       "resting",  False),  # #115
     ("eat",        do_eat,        "resting",  False),  # #116
-    # ("envenom",   do_envenom,    "resting",  False),  # #117
+    ("envenom",    do_envenom,    "resting",  False),  # #117
     ("fill",       do_fill,       "resting",  False),  # #118
     ("give",       do_give,       "resting",  False),  # #119
     ("heal",       do_heal,       "resting",  False),  # #120

@@ -67,6 +67,25 @@ def item_wear_flags(obj, tpl):
     return tpl.get("wear_flags", {})
 
 
+def item_weapon_flags(obj, tpl):
+    """Return weapon_flags for obj, preferring instance override over template. [PRIMESUD]"""
+    if isinstance(obj, dict) and "weapon_flags" in obj:
+        return obj["weapon_flags"]
+    return tpl.get("weapon_flags", {})
+
+
+def set_item_weapon_flag(obj, tpl, flag, enabled):
+    """Set or clear one mutable weapon flag on item instance. [PRIMESUD]"""
+    if "weapon_flags" not in obj:
+        obj["weapon_flags"] = dict(tpl.get("weapon_flags", {}))
+    flags = obj["weapon_flags"]
+    if enabled:
+        flags[flag] = True
+    elif flag in flags:
+        del flags[flag]
+    return flags
+
+
 def item_affect_list(obj):
     """Return runtime object affects list, defaulting to empty list. [PRIMESUD]"""
     if isinstance(obj, dict):
@@ -100,7 +119,11 @@ def item_affect_find(obj, sn):
 
 
 def item_affect_remove(obj, af, tpl):
-    """Remove one object affect and clear its direct flag bit if present. [PRIMESUD]"""
+    """Remove one object affect and clear its direct flag bit if present. [PRIMESUD]
+
+    where="to_weapon" affects clear a weapon_flags bit (cf. 1stMud TO_WEAPON
+    in affect_remove_obj); all others clear an extra_flags bit.
+    """
     affects = obj.get("affect_list", [])
     if af in affects:
         affects.remove(af)
@@ -108,16 +131,26 @@ def item_affect_remove(obj, af, tpl):
         del obj["affect_list"]
     bit = af.get("bitvector", "")
     if bit:
-        set_item_extra_flag(obj, tpl, bit, False)
+        if af.get("where") == "to_weapon":
+            set_item_weapon_flag(obj, tpl, bit, False)
+        else:
+            set_item_extra_flag(obj, tpl, bit, False)
 
 
 def item_affect_to_obj(obj, af, tpl):
-    """Apply one timed object affect to runtime item state. [PRIMESUD]"""
+    """Apply one timed object affect to runtime item state. [PRIMESUD]
+
+    where="to_weapon" affects set a weapon_flags bit (cf. 1stMud TO_WEAPON
+    in affect_to_obj); all others set an extra_flags bit.
+    """
     cur = dict(af)
     obj.setdefault("affect_list", []).append(cur)
     bit = cur.get("bitvector", "")
     if bit:
-        set_item_extra_flag(obj, tpl, bit, True)
+        if cur.get("where") == "to_weapon":
+            set_item_weapon_flag(obj, tpl, bit, True)
+        else:
+            set_item_extra_flag(obj, tpl, bit, True)
     return cur
 
 
@@ -228,6 +261,9 @@ def serialize_item_token(obj):
     if "extra_flags" in obj:
         names = sorted(obj["extra_flags"])
         fields.append("ef:" + ",".join(names))
+    if "weapon_flags" in obj:
+        names = sorted(obj["weapon_flags"])
+        fields.append("wf:" + ",".join(names))
     for af in obj.get("affect_list", []):
         parts = [
             str(af.get("type", 0)),
@@ -289,6 +325,12 @@ def parse_item_token(token):
                 if name:
                     flags[name] = True
             obj["extra_flags"] = flags
+        elif key == "wf":
+            flags = {}
+            for name in value.split(","):
+                if name:
+                    flags[name] = True
+            obj["weapon_flags"] = flags
         elif key == "af":
             parts = value.split(",")
             while len(parts) < 7:

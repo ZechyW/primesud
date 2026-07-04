@@ -27,6 +27,11 @@ from config import (
     DAM_BASH,
     DAM_PIERCE,
     DAM_SLASH,
+    DAM_FIRE,
+    DAM_COLD,
+    DAM_LIGHTNING,
+    DAM_POISON,
+    DAM_NEGATIVE,
     AC_PIERCE,
     AC_BASH,
     AC_SLASH,
@@ -43,13 +48,13 @@ from config import (
 import classes
 from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
                      is_awake, can_see, affect_to_char, affect_remove, affect_strip,
-                     is_affected,
+                     affect_join, is_affected,
                      chprintln, chprintlnf, get_char_room, unequip_char,
                      TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT,
                      is_good, is_evil, is_neutral)
 from item import (create_object, item_extra_flags,
                   set_item_extra_flag, get_obj_list, obj_vnum,
-                  apply_money_pickup)
+                  apply_money_pickup, item_weapon_flags, item_affect_find)
 from picker import pick_from
 from player import (PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOASSIST,
                     PLR_AUTODAMAGE, PLR_DEFAULTS)
@@ -68,7 +73,7 @@ from skills_table import (
     GSN_BACKSTAB, GSN_BASH, GSN_BERSERK, GSN_DIRT, GSN_DISARM,
     GSN_DODGE, GSN_ENHANCED_DAMAGE, GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY,
     GSN_RESCUE, GSN_SHIELD_BLOCK, GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
-    GSN_TRIP,
+    GSN_TRIP, GSN_POISON,
 )
 from terminal import tprint
 from urandom import randint
@@ -1393,9 +1398,9 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False):
     """One attack from ch against victim (cf. 1stMud one_hit in fight.c).
     [Verified: 02/07/2026; stance dam mods and improve_stance added and
     re-verified 03/07/2026; instance weapon dice read (quest gear) added
-    with permission and re-verified 03/07/2026] -- WEAPON_SHARP and weapon procs
-    (poison/vampiric/flaming/frost/shocking) not ported (noted inline);
-    old-format mob damage fallback skipped.
+    with permission and re-verified 03/07/2026; WEAPON_SHARP and weapon
+    procs (poison/vampiric/flaming/frost/shocking) added and re-verified
+    04/07/2026] -- old-format mob damage fallback skipped.
 
     Args:
         ch (dict): Attacker (player or mob instance).
@@ -1488,8 +1493,11 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False):
             # 1stMud: if (get_eq_char(ch, WEAR_SHIELD) == NULL) dam = dam * 11 / 10;
             if ch["equip"].get("shield") is None:
                 dam = dam * 11 // 10
-            # 1stMud: WEAPON_SHARP double-damage proc
-            # [PRIMESUD] weapon flags (sharp/poison/etc.) not ported -- later phase
+            # 1stMud: WEAPON_SHARP double-damage proc (fight.c:723-729)
+            if item_weapon_flags(wobj, wtpl).get("sharp"):
+                percent = randint(1, 100)
+                if percent <= skill // 8:
+                    dam = 2 * dam + (dam * 2 * percent // 100)
         else:
             # Unarmed (cf. 1stMud: number_range(1 + 4*skill/100, 2*ch->level/3 * skill/100);
             # C divides by 3 before multiplying by skill)
@@ -1536,10 +1544,77 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False):
     # Soft caps, immunity, dodge/parry all handled inside damage().
     hit = damage(ch, victim, dam, effective_dt, dam_class, show=True, attack_noun=noun)
 
-    # 1stMud: weapon flag procs (poison/vampiric/flaming/frost/shocking) run here
-    # [PRIMESUD] weapon flags not ported -- later phase
+    # 1stMud: weapon flag procs run here (fight.c:777-861); each proc
+    # re-checks ch->fighting == victim so a kill mid-chain stops the rest
+    if hit and wtpl is not None:
+        _weapon_procs(ch, victim, ch["equip"][slot], wtpl)
 
     return hit
+
+
+def _weapon_procs(ch, victim, wobj, wtpl):
+    """Post-hit weapon flag procs (cf. 1stMud one_hit in fight.c:777-861).
+    [Verified: 04/07/2026] -- fire/cold/shock_effect side effects (item
+    destruction, blind/daze chances) not ported, matching the spell ports.
+
+    Args:
+        ch (dict): Attacker wielding the weapon.
+        victim (dict): Defender.
+        wobj (dict): Weapon instance.
+        wtpl (dict): Weapon template.
+    """
+    from magic import saves_spell  # late import: magic imports combat
+    wf = item_weapon_flags(wobj, wtpl)
+    wlevel = wobj.get("level", wtpl.get("level", 0))
+    vid = victim["id"]
+
+    if ch["fighting"] == vid and wf.get("poison"):
+        poison = item_affect_find(wobj, GSN_POISON)
+        level = poison.get("level", wlevel) if poison else wlevel
+        if not saves_spell(level // 2, victim, DAM_POISON):
+            chprintln(victim, "You feel poison coursing through your veins.")
+            act("$n is poisoned by the venom on $p.", victim, wobj, None, TO_ROOM)
+            affect_join(victim, {
+                "where": "to_affects", "type": GSN_POISON,
+                "level": level * 3 // 4, "duration": level // 2,
+                "location": "str", "modifier": -1, "bitvector": "poison",
+            })
+        if poison is not None:
+            poison["level"] = max(0, poison.get("level", 0) - 2)
+            poison["duration"] = max(0, poison.get("duration", 0) - 1)
+            # 1stMud only prints here; the affect itself expires (and the
+            # weapon flag clears) in the obj update tick at duration 0
+            if poison["level"] == 0 or poison["duration"] == 0:
+                act("The poison on $p has worn off.", ch, wobj, None, TO_CHAR)
+
+    if ch["fighting"] == vid and wf.get("vampiric"):
+        pdam = randint(1, wlevel // 5 + 1)
+        act("$p draws life from $n.", victim, wobj, None, TO_ROOM)
+        act("You feel $p drawing your life away.", victim, wobj, None, TO_CHAR)
+        damage(ch, victim, pdam, 0, DAM_NEGATIVE, show=False)
+        ch["alignment"] = max(-1000, ch.get("alignment", 0) - 1)
+        ch["hit"] += pdam // 2
+
+    if ch["fighting"] == vid and wf.get("flaming"):
+        pdam = randint(1, wlevel // 4 + 1)
+        act("$n is burned by $p.", victim, wobj, None, TO_ROOM)
+        act("$p sears your flesh.", victim, wobj, None, TO_CHAR)
+        # TODO [PRIMESUD] fire_effect (item burn, blind chance) not ported
+        damage(ch, victim, pdam, 0, DAM_FIRE, show=False)
+
+    if ch["fighting"] == vid and wf.get("frost"):
+        pdam = randint(1, wlevel // 6 + 2)
+        act("$p freezes $n.", victim, wobj, None, TO_ROOM)
+        act("The cold touch of $p surrounds you with ice.", victim, wobj, None, TO_CHAR)
+        # TODO [PRIMESUD] cold_effect (item freeze, chill str debuff) not ported
+        damage(ch, victim, pdam, 0, DAM_COLD, show=False)
+
+    if ch["fighting"] == vid and wf.get("shocking"):
+        pdam = randint(1, wlevel // 5 + 2)
+        act("$n is struck by lightning from $p.", victim, wobj, None, TO_ROOM)
+        act("You are shocked by $p.", victim, wobj, None, TO_CHAR)
+        # TODO [PRIMESUD] shock_effect (item zap, daze chance) not ported
+        damage(ch, victim, pdam, 0, DAM_LIGHTNING, show=False)
 
 
 def do_kick(ch, args):
