@@ -176,6 +176,26 @@ class TestFightState:
         assert v["fighting"] is None
         assert ch["fighting"] is None   # stop_fighting(victim, both=True)
 
+    def test_special_move_acts_route_to_player(self, monkeypatch):
+        # Player attacker sees the TO_CHAR lines and the victim's TO_ROOM
+        # line; TO_VICT/TO_NOTVICT lines address absent observers and must
+        # not leak (cf. fight.c:221-237, case 1).
+        import handler
+        out = []
+        monkeypatch.setattr(handler, "tprint",
+                            lambda s="", end="\n": out.append(s))
+        ch = _make_char()
+        v = _make_char(2, npc=True)
+        ch["fighting"] = 2
+        v["fighting"] = 1
+        monkeypatch.setattr(combat, "randint", lambda a, b: 0)  # case 1
+        special_move(ch, v)
+        blob = "\n".join(out)
+        assert "You pull your hands into your waist" in blob
+        assert "doubles over in agony" in blob      # victim TO_ROOM line
+        assert "snaps them into your stomach" not in blob  # TO_VICT
+        assert "<@@@>" not in blob
+
 
 class TestMultiHitStances:
     def _fix_rolls(self, monkeypatch, rolls):
@@ -206,7 +226,6 @@ class TestMultiHitStances:
         set_stance(ch, STANCE_VIPER, 150)
         hits = []
         monkeypatch.setattr(combat, "one_hit", lambda *a, **k: hits.append(1))
-        monkeypatch.setattr(combat, "_try_special_move", lambda *a: 0)
         # rolls: special-move roll skipped (stance < 200); second attack
         # (100, no), third attack (100, no),
         # viper extra ((150+1)//2 = 75; 74 < 75 yes)
@@ -221,7 +240,6 @@ class TestMultiHitStances:
         v["fighting"] = 1
         hits = []
         monkeypatch.setattr(combat, "one_hit", lambda *a, **k: hits.append(1))
-        monkeypatch.setattr(combat, "_try_special_move", lambda *a: 0)
         self._fix_rolls(monkeypatch, [100, 100, 1])
         combat.multi_hit(ch, v)
         assert len(hits) == 1

@@ -70,6 +70,27 @@ def do_say(ch, args):
     # [PRIMESUD] TRIG_SPEECH (mob/obj/room speech triggers) not ported
 
 
+# -- do_emote (cf. 1stMud do_emote in act_comm.c) ----------------------------
+
+def do_emote(ch, args):
+    """Act out a free-form emote (cf. 1stMud do_emote in act_comm.c).
+    [Verified: 04/07/2026] -- COMM_NOEMOTE check not ported (comm flags /
+    channel penalties do not exist); MOBtrigger guard not ported (mobprogs
+    not ported).
+
+    Args:
+        ch (dict): Acting character (player or mob instance).
+        args (list): Emote text words.
+    """
+    if not args:
+        chprintln(ch, "Emote what?")
+        return
+
+    argument = " ".join(args)
+    act("$n $T", ch, None, argument, TO_ROOM)
+    act("$n $T", ch, None, argument, TO_CHAR)
+
+
 # -- do_tell (cf. 1stMud do_tell in act_comm.c) ------------------------------
 
 def do_yell(ch, args):

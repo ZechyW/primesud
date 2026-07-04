@@ -4,7 +4,8 @@ from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
                     do_berserk, do_bash, do_dirt, do_trip, do_flee,
                     do_rescue, do_disarm, do_surrender,
                     do_sskill, do_stance, do_autostance, do_consider)
-from comm import do_say, do_tell, do_reply, do_follow, do_ditch, do_order, do_yell
+from comm import (do_say, do_tell, do_reply, do_follow, do_ditch, do_order,
+                  do_yell, do_emote)
 from config import POS_ORDER
 from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_help, do_affects, do_credits, do_areas, do_map, do_automap,
@@ -180,11 +181,11 @@ _CMD_TABLE = [
     # ("afk",       do_afk,        "sleeping", False),  # #88
     # ("answer",    do_answer,     "sleeping", False),  # #89
     # ("deaf",      do_deaf,       "dead",     False),  # #90
-    # ("emote",     do_emote,      "resting",  False),  # #91
+    ("emote",      do_emote,      "resting",  False),  # #91
     # ("pmote",     do_pmote,      "resting",  False),  # #92
     # (".",         do_gossip,     "sleeping", False),  # #93
     # ("gossip",    do_gossip,     "sleeping", False),  # #94
-    # (",",         do_emote,      "resting",  False),  # #95
+    (",",          do_emote,      "resting",  False),  # #95
     # ("grats",     do_grats,      "sleeping", False),  # #96
     # ("gtell",     do_gtell,      "dead",     False),  # #97
     # (";",         do_gtell,      "dead",     False),  # #98

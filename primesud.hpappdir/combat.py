@@ -133,7 +133,7 @@ def check_assist(ch, victim):
     """Let idle room chars join combat (cf. 1stMud check_assist in fight.c).
     [Verified: 02/07/2026; charmed-follower assist added and re-verified
     03/07/2026; PLR_AUTOASSIST player branch added and re-verified 04/07/2026;
-    tprint->chprintln output routing re-verified 04/07/2026]
+    assist scream routed through ported do_emote and re-verified 04/07/2026]
 
     Three cases mirror 1stMud exactly:
     - ch is player, rch is mob with assist_players: rch jumps in against victim.
@@ -163,10 +163,8 @@ def check_assist(ch, victim):
         # Case 1: mob with assist_players aids player against victim
         if not ch["is_npc"]:
             if off.get("assist_players") and rch["level"] + 6 > victim["level"]:
-                # do_function(rch, do_emote, ...): do_emote not ported -- inline
-                # its act pair (cf. act_comm.c do_emote)
-                act("$n screams and attacks!", rch, None, None, TO_ROOM)
-                act("$n screams and attacks!", rch, None, None, TO_CHAR)
+                from comm import do_function, do_emote
+                do_function(rch, do_emote, "screams and attacks!")
                 multi_hit(rch, victim)
                 continue
 
@@ -200,10 +198,8 @@ def check_assist(ch, victim):
         # [PRIMESUD] Single-player: victim's group = victim only; target is always victim.
         if not can_see(rch, victim):
             continue
-        # do_function(rch, do_emote, ...): do_emote not ported -- inline
-        # its act pair (cf. act_comm.c do_emote)
-        act("$n screams and attacks!", rch, None, None, TO_ROOM)
-        act("$n screams and attacks!", rch, None, None, TO_CHAR)
+        from comm import do_function, do_emote
+        do_function(rch, do_emote, "screams and attacks!")
         multi_hit(rch, victim)
 
     # [PRIMESUD] Player as assisting rch: 1stMud's rch loop naturally includes
@@ -1923,98 +1919,98 @@ def mob_hit(ch, victim, dt=TYPE_UNDEFINED):
     # (OFF_BACKSTAB) calls do_backstab with no argument, which no-ops -- skipped
 
 
-# -- Special unarmed moves [PRIMESUD] (cf. 1stMud special_move for inspiration) -
+# -- Special stance moves (cf. 1stMud special_move in fight.c) -----------------
 
+# Each move is a sequence of (template, actor, act_type) acts. Actor "ch"
+# acts pass victim as $N; actor "v" acts are victim-only with no argument.
+# Templates byte-exact from fight.c:212-352, including the lines in case 4
+# that are missing their {x terminator upstream.
 _SPECIAL_MOVES = [
-    (
-        "{RYou pull your hands into your waist then snap them into %s's stomach.{x",
-        "{R%s doubles over in agony, and falls to the ground gasping for breath.{x",
+    (   # case 1
+        ("{RYou pull your hands into your waist then snap them into $N's{R stomach.{x", "ch", TO_CHAR),
+        ("{R$n{R pulls $s{R hands into $s{R waist then snaps them into your stomach.{x", "ch", TO_VICT),
+        ("{R$n{R pulls $s{R hands into $s{R waist then snaps them into $N's{R stomach.{x", "ch", TO_NOTVICT),
+        ("{RYou double over in agony, and fall to the ground gasping for breath.{x", "v", TO_CHAR),
+        ("{R$n{R doubles over in agony, and falls to the ground gasping for breath.{x", "v", TO_ROOM),
     ),
-    (
-        "{RYou spin in a low circle, catching %s behind its ankle.{x",
-        "{R%s crashes to the ground, stunned.{x",
+    (   # case 2
+        ("{RYou spin in a low circle, catching $N{R behind $S{R ankle.{x", "ch", TO_CHAR),
+        ("{R$n{R spins in a low circle, catching you behind your ankle.{x", "ch", TO_VICT),
+        ("{R$n{R spins in a low circle, catching $N{R behind $S{R ankle.{x", "ch", TO_NOTVICT),
+        ("{RYou crash to the ground, stunned.{x", "v", TO_CHAR),
+        ("{R$n{R crashes to the ground, stunned.{x", "v", TO_ROOM),
     ),
-    (
-        "{RYou roll between %s's legs and flip to your feet.{x",
-        "{RYou spin around and smash your elbow into the back of %s's head.{x",
-        "{R%s falls to the ground, stunned.{x",
+    (   # case 3
+        ("{RYou roll between $N's{R legs and flip to your feet.{x", "ch", TO_CHAR),
+        ("{R$n{R rolls between your legs and flips to $s{R feet.{x", "ch", TO_VICT),
+        ("{R$n{R rolls between $N's{R legs and flips to $s{R feet.{x", "ch", TO_NOTVICT),
+        ("{RYou spin around and smash your elbow into the back of $N's{R head.{x", "ch", TO_CHAR),
+        ("{R$n{R spins around and smashes $s{R elbow into the back of your head.{x", "ch", TO_VICT),
+        ("{R$n{R spins around and smashes $s{R elbow into the back of $N's{R head.{x", "ch", TO_NOTVICT),
+        ("{RYou fall to the ground, stunned.{x", "v", TO_CHAR),
+        ("{R$n{R falls to the ground, stunned.{x", "v", TO_ROOM),
     ),
-    (
-        "{RYou somersault over %s's head and land lightly on your toes.{x",
-        "{RYou roll back onto your shoulders and kick both feet into %s's back.{x",
-        "{R%s falls to the ground, stunned.{x",
-        "{RYou flip back up to your feet.{x",
+    (   # case 4
+        ("{RYou somersault over $N's{R head and land lightly on your toes.{x", "ch", TO_CHAR),
+        ("{R$n{R somersaults over your head and lands lightly on $s toes.{x", "ch", TO_VICT),
+        ("{R$n{R somersaults over $N's{R head and lands lightly on $s toes.{x", "ch", TO_NOTVICT),
+        ("{RYou roll back onto your shoulders and kick both feet into $N's{R back.{x", "ch", TO_CHAR),
+        ("{R$n{R rolls back onto $s{R shoulders and kicks both feet into your back.{x", "ch", TO_VICT),
+        ("{R$n{R rolls back onto $s{R shoulders and kicks both feet into $N's{R back.{x", "ch", TO_NOTVICT),
+        ("{RYou fall to the ground, stunned.", "v", TO_CHAR),
+        ("{R$n{R falls to the ground, stunned.", "v", TO_ROOM),
+        ("{RYou flip back up to your feet.", "ch", TO_CHAR),
+        ("{R$n{R flips back up to $s feet.", "ch", TO_ROOM),
     ),
-    (
-        "{RYou grab %s by the waist and hoist it above your head.{x",
-        "{R%s crashes to the ground, stunned.{x",
+    (   # case 5
+        ("{RYou grab $N{R by the waist and hoist $M{R above your head.{x", "ch", TO_CHAR),
+        ("{R$n{R grabs $N{R by the waist and hoists $M{R above $s{R head.{x", "ch", TO_NOTVICT),
+        ("{R$n{R grabs you by the waist and hoists you above $s{R head.{x", "ch", TO_VICT),
+        ("{RYou crash to the ground, stunned.{x", "v", TO_CHAR),
+        ("{R$n{R crashes to the ground, stunned.{x", "v", TO_ROOM),
     ),
-    (
-        "{RYou grab %s by the head and slam its face into your knee.{x",
-        "{R%s crashes to the ground, stunned.{x",
-        "{RYou flip back up to your feet.{x",
+    (   # case 6
+        ("{RYou grab $N{R by the head and slam $S{R face into your knee.{x", "ch", TO_CHAR),
+        ("{R$n{R grabs you by the head and slams your face into $s{R knee.{x", "ch", TO_VICT),
+        ("{R$n{R grabs $N{R by the head and slams $S{R face into $s{R knee.{x", "ch", TO_NOTVICT),
+        ("{RYou crash to the ground, stunned.{x", "v", TO_CHAR),
+        ("{R$n{R crashes to the ground, stunned.{x", "v", TO_ROOM),
+        ("{RYou flip back up to your feet.{x", "ch", TO_CHAR),
+        ("{R$n{R flips back up to $s{R feet.{x", "ch", TO_ROOM),
     ),
-    (
-        "{RYou duck under %s's attack and pound your fist into its stomach.{x",
-        "{R%s doubles over in agony.{x",
+    (   # case 7
+        ("{RYou duck under $N's{R attack and pound your fist into $S{R stomach.{x", "ch", TO_CHAR),
+        ("{R$n{R ducks under your attack and pounds $s{R fist into your stomach.{x", "ch", TO_VICT),
+        ("{R$n{R ducks under $N's{R attack and pounds $s{R fist into $N's{R stomach.{x", "ch", TO_NOTVICT),
+        ("{RYou double over in agony.{x", "v", TO_CHAR),
+        ("{R$n{R doubles over in agony.{x", "v", TO_ROOM),
     ),
 ]
 
 
 def special_move(ch, victim):
-    """Stance-mastery special move: flavour + stun (cf. 1stMud special_move in fight.c).
+    """Stance-mastery special move: flavour acts + stun (cf. 1stMud special_move in fight.c).
+    [Verified: 04/07/2026] -- 1stMud's switch default is unreachable
+    (number_range(1,7) always lands on a case) and collapses away; the
+    seven case bodies are table-driven here, acts byte-exact.
 
     Triggered from multi_hit when the current stance is trained to 200
     (1-in-100). Victim stops fighting and is left stunned.
-    [PRIMESUD] flavour lines shared with _try_special_move (player-adapted
-    second-person variants of the 1stMud acts).
 
     Args:
-        ch (dict): Attacker (player).
-        victim (dict): Target mob instance.
+        ch (dict): Attacker (player or mob instance).
+        victim (dict): Target (player or mob instance).
     """
     if victim is None or victim.get("pos") == "dead":
         return
-    name = MOB_DEFS[victim["tpl"]]["short_descr"]
     move = _SPECIAL_MOVES[randint(0, len(_SPECIAL_MOVES) - 1)]
-    for line in move:
-        chprintln(ch, line % name if "%s" in line else line)
+    for template, actor, act_type in move:
+        if actor == "ch":
+            act(template, ch, None, victim, act_type)
+        else:
+            act(template, victim, None, None, act_type)
     stop_fighting(victim, both=True)
     victim["pos"] = "stunned"
-
-
-def _try_special_move(player, target_inst):
-    """Unarmed-only bonus attack with flavour (cf. 1stMud special_move).
-
-    Args:
-        player (dict): Player state dict.
-        target_inst (dict): Target mob instance dict.
-
-    Returns:
-        int: Damage dealt (0 if not triggered or player has a weapon).
-    """
-    if player["equip"].get("wield") is not None:
-        return 0
-    chance = 20 + (get_curr_stat(player, "dex") - 10) * 3
-    if randint(1, 100) > chance:
-        return 0
-    tpl  = MOB_DEFS[target_inst["tpl"]]
-    name = tpl["short_descr"]
-    move = _SPECIAL_MOVES[randint(0, len(_SPECIAL_MOVES) - 1)]
-    for line in move[:-1]:
-        chprintln(player, line % name if "%s" in line else line)
-    # Damage: same unarmed formula as one_hit (cf. 1stMud: skill = 20 + get_weapon_skill;
-    # C divides by 3 before multiplying by skill)
-    skill = 20 + _get_weapon_skill(player, GSN_HAND_TO_HAND)
-    lo  = 1 + 4 * skill // 100
-    hi  = max(lo, (2 * player["level"] // 3) * skill // 100)
-    dam = max(1, randint(lo, hi))
-    last = move[-1] % name if "%s" in move[-1] else move[-1]
-    chprintln(player, "%s {W[{R%d{W]{x" % (last, dam))
-    check_improve(player, GSN_HAND_TO_HAND, True, 5)
-    # show=False: flavor text above already shows dam count; damage() still handles death/state
-    damage(player, target_inst, dam, GSN_HAND_TO_HAND, DAM_BASH, show=False)
-    return dam
 
 
 # -- Multi-hit (player's full attack sequence) ---------------------------------
@@ -2022,8 +2018,9 @@ def _try_special_move(player, target_inst):
 def multi_hit(ch, victim, dt=TYPE_UNDEFINED):
     """Full attack sequence for one combat round (cf. 1stMud multi_hit in fight.c).
     [Verified: 02/07/2026; stance special_move and viper/mantis/tiger extra
-    hits added and re-verified 03/07/2026] -- [PRIMESUD] unarmed special move
-    retained alongside. Returns kill status ([PRIMESUD]; 1stMud is void).
+    hits added and re-verified 03/07/2026; PrimeSUD-only unarmed special move
+    dropped and re-verified 04/07/2026] -- Returns kill status ([PRIMESUD];
+    1stMud is void).
 
     Args:
         ch (dict): Attacker (player or mob instance).
@@ -2108,16 +2105,6 @@ def multi_hit(ch, victim, dt=TYPE_UNDEFINED):
         one_hit(ch, victim, dt=dt)
         if ch.get("fighting") != victim.get("id"):
             return victim.get("pos") == "dead"
-
-    # [PRIMESUD] wait gate for the PrimeSUD-only special move below
-    if ch.get("wait", 0) > 0:
-        return False
-
-    # [PRIMESUD] Unarmed special move -- no 1stMud equivalent
-    if ch["equip"].get("wield") is None:
-        _try_special_move(ch, victim)
-        if victim.get("pos") == "dead":
-            return True
 
     return False
 

@@ -1,4 +1,5 @@
 '|say something (alias for say)
+,|act out an action or feeling (alias for emote)
 /|return to the recall point (alias for recall)
 affects|list active spells and effects on you
 appraise|ask a shopkeeper the sell value of an item
@@ -37,6 +38,7 @@ drop|drop an item, or coins: drop 5 gold
 east|move east
 enter|step through a portal object
 eat|eat something from your inventory
+emote|act out an action or feeling: emote grins wickedly
 equipment|show what you are wearing and wielding
 envenom|coat an edged weapon or food with poison (thief)
 examine|look closely at an item or container
