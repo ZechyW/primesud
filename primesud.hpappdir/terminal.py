@@ -199,53 +199,6 @@ def tprint(*args, **kwargs):
     tr.print(*args, **kwargs)
 
 
-def tpage(lines):
-    """Show lines a page at a time (cf. 1stMud sendpage/show_string in comm.c). [PRIMESUD]
-
-    Keys: '+' next page ('+' on the last page exits), '-' previous page,
-    any other key exits.  Pages go through the normal print path, so they
-    land in the scrollback history like ordinary streamed output --
-    revisiting a page prints it again.
-
-    Callers should keep each line within the terminal width; wrapped
-    lines make a page taller than one screen.
-
-    Args:
-        lines (list): Pre-rendered output lines (colour codes allowed).
-    """
-    page_rows = tr.rows - 1
-    total = (len(lines) + page_rows - 1) // page_rows
-    if total <= 1:
-        for line in lines:
-            tr.print(line)
-        return
-    old_status = tr.status_text
-    page = 0
-    shown = -1
-    try:
-        while True:
-            if page != shown:
-                start = page * page_rows
-                for line in lines[start:start + page_rows]:
-                    tr.print(line)
-                shown = page
-                tr.set_status("-- page " + str(page + 1) + "/" + str(total)
-                              + "  [+] next  [-] back  [any] done --")
-            key = tr.read_key()
-            if key == '+':
-                if page + 1 >= total:
-                    break
-                page += 1
-            elif key == '-':
-                if page > 0:
-                    page -= 1
-            else:
-                break
-    finally:
-        tr.set_status(old_status)
-        tr.resync_keyboard()
-
-
 def init_terminal():
     """Create the tml instance and install colour wrappers. [PRIMESUD]
 

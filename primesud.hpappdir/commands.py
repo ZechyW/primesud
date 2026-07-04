@@ -30,7 +30,8 @@ from scan import do_scan
 from shop import do_buy, do_sell, do_list, do_value, do_appraise
 from system_cmds import do_save, do_quit
 from debug import do_debug
-from terminal import tprint, tpage
+from pager import tpage
+from terminal import tprint
 from training import do_train, do_practice, do_remort, do_gain
 from urandom import randint
 

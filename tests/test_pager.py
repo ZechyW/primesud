@@ -9,17 +9,9 @@ _SRC = os.environ.get("PRIMESUD_SRC", "primesud.hpappdir")
 sys.path.insert(0, os.path.join(ROOT, _SRC))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
-import importlib.util
-
 import commands
-
-# Load the DEVICE terminal module (pc_shim shadows the module name and
-# replaces tpage with a print-all stub; the pager logic lives on-device).
-_spec = importlib.util.spec_from_file_location(
-    "terminal_device", os.path.join(ROOT, _SRC, "terminal.py"))
-terminal = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(terminal)
-tpage = terminal.tpage
+import terminal
+from pager import tpage, _ESC
 
 
 class FakeTr:
@@ -28,6 +20,7 @@ class FakeTr:
     def __init__(self, rows=22, keys=()):
         self.rows = rows
         self.status_text = "old status"
+        self._scrollback_ms = 0
         self.lines = []
         self.statuses = []
         self.keys = list(keys)
@@ -66,10 +59,10 @@ def test_single_page_prints_all_no_keys(fake_tr):
     assert tr.resynced == 0
 
 
-def test_multipage_forward_then_exit(fake_tr):
-    tr = fake_tr(rows=6, keys=["+", "q"])  # 5 lines per page
+def test_multipage_enter_then_esc(fake_tr):
+    tr = fake_tr(rows=6, keys=["\n", _ESC])  # 5 lines per page
     tpage(["L%d" % i for i in range(12)])  # 3 pages
-    # page 1 (5) + page 2 (5) printed; exited on 'q' before page 3
+    # page 1 (5) + page 2 (5) printed; esc exits before page 3
     assert tr.lines == ["L%d" % i for i in range(10)]
     assert any("page 1/3" in s for s in tr.statuses)
     assert any("page 2/3" in s for s in tr.statuses)
@@ -77,8 +70,14 @@ def test_multipage_forward_then_exit(fake_tr):
     assert tr.resynced == 1
 
 
+def test_plus_also_pages_forward(fake_tr):
+    tr = fake_tr(rows=6, keys=["+", _ESC])
+    tpage(["L%d" % i for i in range(12)])
+    assert len(tr.lines) == 10
+
+
 def test_back_reprints_previous_page(fake_tr):
-    tr = fake_tr(rows=6, keys=["+", "-", "\x1b"])
+    tr = fake_tr(rows=6, keys=["\n", "-", _ESC])
     tpage(["L%d" % i for i in range(12)])
     # page 1, page 2, page 1 again (streamed duplicate by design)
     assert tr.lines == (["L%d" % i for i in range(5)]
@@ -86,18 +85,26 @@ def test_back_reprints_previous_page(fake_tr):
                         + ["L%d" % i for i in range(5)])
 
 
-def test_plus_on_last_page_exits(fake_tr):
-    tr = fake_tr(rows=6, keys=["+", "+", "+"])
+def test_enter_on_last_page_exits(fake_tr):
+    tr = fake_tr(rows=6, keys=["\n", "\n", "\n"])
     tpage(["L%d" % i for i in range(12)])
-    # 3 pages shown, third '+' exits; keys fully consumed
+    # 3 pages shown, third enter exits; keys fully consumed
     assert len(tr.lines) == 12
     assert tr.keys == []
 
 
 def test_minus_on_first_page_stays(fake_tr):
-    tr = fake_tr(rows=6, keys=["-", "x"])
+    tr = fake_tr(rows=6, keys=["-", _ESC])
     tpage(["L%d" % i for i in range(12)])
     assert tr.lines == ["L%d" % i for i in range(5)]  # no reprint
+
+
+def test_unmapped_keys_ignored(fake_tr):
+    # fat-finger guard: letters/digits neither page nor exit
+    tr = fake_tr(rows=6, keys=["q", "x", "5", _ESC])
+    tpage(["L%d" % i for i in range(12)])
+    assert tr.lines == ["L%d" % i for i in range(5)]
+    assert tr.keys == []
 
 
 # -- do_commands -----------------------------------------------------------

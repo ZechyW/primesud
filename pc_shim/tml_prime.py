@@ -52,6 +52,8 @@ class tml_prime:
     def __init__(self, **kwargs):
         self.cursor_x = 0
         self.cursor_y = 0
+        self.rows = 22           # match device geometry for the pager
+        self.status_text = ""
         self._scrollback_ms = 0
         self.alpha_lock = False
         self.shift_lock = False
@@ -107,6 +109,14 @@ class tml_prime:
 
     def resync_keyboard(self):
         pass
+
+    def read_key(self, code=False):
+        """Blocking single-key read (pager etc.); esc arrives as '\\e'."""
+        while True:
+            c = _q.get()
+            if c == '\x03':
+                raise KeyboardInterrupt
+            return c
 
     def _refresh_indicators(self):
         pass

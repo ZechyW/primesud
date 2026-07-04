@@ -57,6 +57,7 @@ def install_color_print(tr):
     tr.print = wrapped_print
 
     def wrapped_set_status(text):
+        tr.status_text = text  # tracked so the pager can restore it
         sys.stdout.write('\r' + _to_ansi(text) + _RST + '\033[K')
         sys.stdout.flush()
         tr._at_prompt = True
@@ -72,10 +73,6 @@ def tprint(*args, **kwargs):
     tr.print(*args, **kwargs)
 
 
-def tpage(lines):
-    """PC shim: console scrollback is unlimited, so just print. [PRIMESUD]"""
-    for line in lines:
-        tr.print(line)
 
 
 def init_terminal():
