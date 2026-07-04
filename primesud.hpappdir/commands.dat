@@ -50,6 +50,7 @@ give|give an item or coins to a character
 gquest|global quest status and commands
 go|step through a portal object (same as enter)
 heal|buy healing services from a healer NPC
+hunt|track a mob in the current area (skill)
 help|read a help entry: help <topic>
 hide|hide from view
 hit|attack a mob (alias for kill)

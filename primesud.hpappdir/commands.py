@@ -18,6 +18,7 @@ from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_drink, do_fill, do_pour, do_envenom)
 from gquest import do_gquest
 from healer import do_heal
+from hunt import do_hunt
 from macros import do_macro
 from magic import do_cast
 from quest import do_quest, do_tpspend
@@ -241,7 +242,7 @@ _CMD_TABLE = [
     ("rescue",     do_rescue,     "fighting", False),  # #150
     ("surrender",  do_surrender,  "fighting", False),  # #151
     ("trip",       do_trip,       "fighting", False),  # #152
-    # ("hunt",      do_hunt,       "standing", False),  # #153
+    ("hunt",       do_hunt,       "standing", False),  # #153
     ("automap",    do_automap,    "sleeping", False),  # #154
     # ("mob",       do_mob,        "dead",     False),  # #155 mob prog
     ("enter",      do_enter,      "standing", False),  # #156
