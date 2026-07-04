@@ -25,7 +25,7 @@ from item import (get_obj_list, obj_vnum, item_spell_level,
                   item_affect_find, item_affect_remove, item_affect_to_obj,
                   set_item_extra_flag, create_object, promote_obj,
                   item_weapon_flags)
-from movement import perform_recall
+from movement import perform_recall, get_random_room
 from picker import pick_from
 from scan import do_scan
 from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
@@ -346,35 +346,11 @@ def spell_chain_lightning(sn, level, ch, vo, target):
     return found
 
 
-def _teleport_candidates(area_tag, is_npc):
-    """Return valid teleport destination vnums within one loaded area. [PRIMESUD]"""
-    adef = None
-    for a in world.AREA_DEFS:
-        if a.get("tag") == area_tag:
-            adef = a
-            break
-    if adef is None or "room_vnums" not in adef:
-        return []
-    result = []
-    for rv in adef["room_vnums"]:
-        rd = ROOM_DEFS._data.get(rv)
-        if rd is None:
-            continue
-        flags = rd.get("flags", {})
-        if flags.get("private") or flags.get("solitary") or flags.get("safe") or flags.get("arena"):
-            continue
-        if not is_npc and flags.get("law"):
-            continue
-        result.append(rv)
-    return result
-
-
 def spell_teleport(sn, level, ch, vo, target):
     """Teleport target to random room (cf. 1stMud spell_teleport in magic.c).
-    [Verified: 03/07/2026] -- failure checks and messages match magic.c:4244.
-
-    [PRIMESUD] Picks a random area first, loads it if needed, then picks a
-    room within it. Avoids loading every area into memory (OOM on HP Prime).
+    [Verified: 03/07/2026; collapsed onto get_random_room (magic.c:4260 calls
+    it too) and re-verified 04/07/2026] -- failure checks and messages match
+    magic.c:4244.
     """
     victim = vo
     room = ROOM_DEFS.get(victim.get("room"))
@@ -385,25 +361,8 @@ def spell_teleport(sn, level, ch, vo, target):
             or (victim is not ch and saves_spell(level - 5, victim, DAM_OTHER))):
         chprintln(ch, "You failed.")
         return False
-    area_files = world._AREA_FILES
-    if not area_files:
-        chprintln(ch, "You failed.")
-        return False
-    is_npc = victim.get("is_npc", False)
-    dest = None
-    # Pick random area, load if needed, filter rooms. Retry up to 10 times.
-    tried = set()
-    for _ in range(min(10, len(area_files))):
-        idx = randint(0, len(area_files) - 1)
-        _, area_tag, _, _, _ = area_files[idx]
-        if area_tag in tried:
-            continue
-        tried.add(area_tag)
-        world._ensure_area_by_tag(area_tag)
-        candidates = _teleport_candidates(area_tag, is_npc)
-        if candidates:
-            dest = candidates[randint(0, len(candidates) - 1)]
-            break
+    # cf. magic.c:4260: pRoomIndex = get_random_room(victim)
+    dest = get_random_room(victim)
     if dest is None:
         chprintln(ch, "You failed.")
         return False
