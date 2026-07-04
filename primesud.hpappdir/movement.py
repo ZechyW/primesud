@@ -28,6 +28,25 @@ def _exit_to(exit_val):
     return exit_val["to"] if isinstance(exit_val, dict) else exit_val
 
 
+def _close_auto_door(ch, auto_door):
+    """Re-close a door move_char auto-opened, unless noclose. [PRIMESUD]
+
+    Args:
+        ch (dict): Moving character.
+        auto_door: (exit_dict, rev_exit_dict_or_None, keyword) from
+            move_char's auto-open, or None if no door was auto-opened.
+    """
+    if auto_door is None:
+        return
+    orig_exit, rev_exit, keyword = auto_door
+    if orig_exit.get("noclose"):
+        return
+    orig_exit["closed"] = True
+    if rev_exit is not None:
+        rev_exit["closed"] = True
+    chprintln(ch, "You close the " + keyword + " behind you.")
+
+
 def _has_boat(ch):
     """Return True if ch carries a boat item (cf. 1stMud ITEM_BOAT check in move_char).
 
@@ -62,10 +81,14 @@ def move_char(ch, direction):
     Position gate handled by command table (do_north etc. have
     min_pos = "standing").
 
+    A closed-but-unlocked door blocking a player's path is opened
+    automatically, then re-closed (unless noclose) once the player and
+    any followers are through -- no 1stMud equivalent. [PRIMESUD]
+
     [Verified: 03/07/2026; quest_room_check moved after follower loop to
-    match 1stMud order and re-verified same day] -- private-room /
-    area-closed checks, area entry sound, and exit/entry/greet progs not
-    ported (see comments).
+    match 1stMud order and re-verified same day; [PRIMESUD] auto-door
+    added 04/07/2026] -- private-room / area-closed checks, area entry
+    sound, and exit/entry/greet progs not ported (see comments).
 
     Args:
         ch (dict): Moving character (player or mob instance).
@@ -95,14 +118,27 @@ def move_char(ch, direction):
     aff = ch.get("affected_by", {})
 
     # -- Closed door (with pass_door / nopass) --
+    auto_door = None
     is_exit_dict = isinstance(exit_val, dict)
     if is_exit_dict and exit_val.get("closed"):
         if not aff.get("pass_door") or exit_val.get("nopass"):
             # 1stMud act "$d": first word of exit keyword, "door" if unset
             keyword = exit_val.get("keyword")
             keyword = keyword.split()[0] if keyword else "door"
-            chprintln(ch, "The " + keyword + " is closed.")
-            return
+            # [PRIMESUD] auto-door: open unlocked door, re-close after moving
+            if is_npc or exit_val.get("locked"):
+                chprintln(ch, "The " + keyword + " is closed.")
+                return
+            chprintln(ch, "You open the " + keyword + ".")
+            exit_val["closed"] = False
+            rev_exit = None
+            rev = REV_DIR.get(direction)
+            if rev and dest in ROOM_DEFS:
+                candidate = ROOM_DEFS[dest]["exits"].get(rev)
+                if isinstance(candidate, dict) and _exit_to(candidate) == ch["room"]:
+                    candidate["closed"] = False
+                    rev_exit = candidate
+            auto_door = (exit_val, rev_exit, keyword)
 
     # -- Charm anchor (cf. 1stMud AFF_CHARM && master in same room) --
     if aff.get("charm") and ch.get("master") is not None:
@@ -194,6 +230,7 @@ def move_char(ch, direction):
     # cf. 1stMud move_char: exit looping back to the same room skips
     # followers and quest checks
     if from_vnum == dest:
+        _close_auto_door(ch, auto_door)
         return
 
     # -- Followers move too (cf. 1stMud move_char follower loop, act_move.c:232-257).
@@ -229,6 +266,9 @@ def move_char(ch, direction):
 
         act("You follow $N.", fch, None, ch, TO_CHAR)
         move_char(fch, direction)  # cf. 1stMud move_char(fch, door, true)
+
+    # [PRIMESUD] re-close an auto-opened door once followers are through
+    _close_auto_door(ch, auto_door)
 
     # cf. 1stMud move_char act_move.c:266: quest check runs after the
     # follower loop (entry/greet progs, also there, not ported)
