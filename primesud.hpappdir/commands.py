@@ -9,7 +9,8 @@ from config import POS_ORDER
 from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_help, do_affects, do_credits, do_areas, do_map, do_automap,
                   do_autolist, do_autoloot, do_autogold, do_autosac,
-                  do_autosplit, do_wimpy, do_exits, do_worth, do_where)
+                  do_autosplit, do_wimpy, do_exits, do_worth, do_where,
+                  do_clear)
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
@@ -193,7 +194,7 @@ _CMD_TABLE = [
     ("fill",       do_fill,       "resting",  False),  # #118
     ("give",       do_give,       "resting",  False),  # #119
     ("heal",       do_heal,       "resting",  False),  # #120
-    # ("hold",      do_wear,       "resting",  False),  # #121
+    ("hold",       do_wear,       "resting",  False),  # #121
     ("list",       do_list,       "resting",  False),  # #122
     ("lock",       do_lock,       "resting",  False),  # #123
     ("open",       do_open,       "resting",  False),  # #124
@@ -404,8 +405,8 @@ _CMD_TABLE = [
     # ("think",     do_think,      "resting",  False),  # #328
     ("ditch",      do_ditch,      "resting",  False),  # #329
     # ("censor",    do_censor,     "sleeping", False),  # #330
-    # ("clear",     do_clear,      "dead",     False),  # #331
-    # ("cls",       do_clear,      "dead",     False),  # #332
+    ("clear",      do_clear,      "dead",     False),  # #331
+    ("cls",        do_clear,      "dead",     False),  # #332
     # ("nosayverbs", do_nosayverbs, "sleeping", False), # #333
     # ("mobdeaths", do_mobdeaths,  "sleeping", False),  # #334
     # ("mobkills",  do_mobkills,   "sleeping", False),  # #335

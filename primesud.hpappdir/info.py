@@ -187,6 +187,16 @@ def do_autolist(player, args):
     tprint(draw_line())
 
 
+def do_clear(player, args):
+    """Clear the screen (cf. 1stMud do_clear in act_info.c).
+
+    1stMud clear_screen sends VT100 erase codes; [PRIMESUD] the tml layer
+    clears the LCD directly.
+    """
+    import terminal
+    terminal.tr.clear()
+
+
 def do_wimpy(player, args):
     """Set the hp threshold below which the player auto-flees in combat (cf. 1stMud do_wimpy in act_info.c).
 
