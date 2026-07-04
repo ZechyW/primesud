@@ -549,7 +549,8 @@ def do_open(player, args):
     """Open a door in a given direction or by keyword (cf. 1stMud do_open in act_move.c).
 
     ITEM_PORTAL / ITEM_CONTAINER branches not ported -- doors only [PRIMESUD].
-    [Verified: 03/07/2026]
+    [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
+    room + far-side messages) added and re-verified 04/07/2026]
     """
     exits = ROOM_DEFS[player["room"]]["exits"]
     _picked_dir = None
@@ -563,7 +564,7 @@ def do_open(player, args):
                       if isinstance(exits.get(d), dict)
                       and exits[d].get("isdoor") and exits[d].get("closed")]
         if not candidates:
-            tprint("There are no doors to open here.")
+            chprintln(player, "There are no doors to open here.")
             return
         idx = pick_from("Open which door?", [EXIT_NAMES[d] for d in candidates])
         if idx < 0:
@@ -572,19 +573,25 @@ def do_open(player, args):
         _picked_dir = direction
     exit_val = exits[direction]
     if not exit_val.get("closed"):
-        tprint("It's already open.")
+        chprintln(player, "It's already open.")
         return
     if exit_val.get("locked"):
-        tprint("It's locked.")
+        chprintln(player, "It's locked.")
         return
     exit_val["closed"] = False
-    tprint("Ok.")
+    act("$n opens the $d.", player, None, exit_val.get("keyword"), TO_ROOM)
+    chprintln(player, "Ok.")
     dest = exit_val["to"]
     rev = REV_DIR.get(direction)
     if rev and dest in ROOM_DEFS:
         rev_exit = ROOM_DEFS[dest]["exits"].get(rev)
         if isinstance(rev_exit, dict) and _exit_to(rev_exit) == player["room"]:
             rev_exit["closed"] = False
+            # cf. act_move.c:483-485: notify chars on the far side
+            for rch in world.chars.values():
+                if rch.get("room") == dest:
+                    act("The $d opens.", rch, None, rev_exit.get("keyword"),
+                        TO_CHAR)
     return ("open " + EXIT_NAMES[_picked_dir].lower()) if _picked_dir is not None else None
 
 
