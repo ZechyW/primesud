@@ -128,6 +128,11 @@ PART_FLAGS = {                                          # PART_* from bits.h
 OBJ_CONDITION = {
     "P": 100, "G": 90, "A": 75, "W": 50, "D": 25, "B": 10, "R": 0,
 }
+# 1stMud position_flags long names (tables.c) -> QuickMUD-style short forms
+POS_TO_SHORT = {
+    "standing": "stand", "sitting": "sit", "resting": "rest",
+    "sleeping": "sleep", "fighting": "fight",
+}
 DIR_NAME = {0: "n", 1: "e", 2: "s", 3: "w", 4: "u", 5: "d"}
 WLOC_SLOT = {                                           # wloc_t enum from h/defines.h (E reset arg3)
     0:  "light",
@@ -418,9 +423,13 @@ def parse_mobiles(lines, version=None):
         vuln_bits = parse_bitstring(parts[3]) if len(parts) > 3 else set()
 
         # start_pos  default_pos  sex  wealth
+        # 1stMud .are stores long-form positions ("standing"); normalize to
+        # the short form QuickMUD areas use ("stand") so the emitted schema
+        # is common across converters and matches config.py POS_FROM_SHORT.
         parts = lines[i].split(); i += 1
-        start_pos   = parts[0] if parts else "standing"
-        default_pos = parts[1] if len(parts) > 1 else "standing"
+        start_pos   = POS_TO_SHORT.get(parts[0], parts[0]) if parts else "stand"
+        default_pos = (POS_TO_SHORT.get(parts[1], parts[1])
+                       if len(parts) > 1 else "stand")
         sex    = parts[2] if len(parts) > 2 else "neutral"
         wealth = int(parts[3]) if len(parts) > 3 else 0
 
@@ -429,7 +438,8 @@ def parse_mobiles(lines, version=None):
         form_bits = parse_bitstring(parts[0]) if parts else set()
         part_bits = parse_bitstring(parts[1]) if len(parts) > 1 else set()
         size      = parts[2] if len(parts) > 2 else "medium"
-        material  = parts[3] if len(parts) > 3 else ""
+        # read_word() strips surrounding quotes (fileio.c:441): 'unknown' -> unknown
+        material  = parts[3].strip("'\"") if len(parts) > 3 else ""
 
         # optional trailer lines: F (flag remove) / M (mobprog trigger) / S
         # (kills/deaths, runtime save-state -- not modeled, consumed only).
