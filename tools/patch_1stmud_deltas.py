@@ -73,7 +73,7 @@ DROP_RESETS = {
     "midgaard": (
         # Kate's Diner pipeweed bread: shire item def would pull shire (and
         # via shire's shiriff gear, ofcol2) at game start; still sold in shire
-        '    ("G", 1103),',
+        '    ("G", 1103, -1),',
     ),
 }
 
@@ -246,12 +246,26 @@ def patch_move_resets(base):
             continue
         src_lines = src_path.read_text(encoding="utf-8").split("\n")
         moved = []
+        missing = []
         for rl in reset_lines:
             if rl in src_lines:
                 src_lines.remove(rl)
                 moved.append(rl)
+            else:
+                missing.append(rl)
+        if missing:
+            # Not in src: must already sit in dst with its moved-marker;
+            # otherwise the converter's emission format drifted and the
+            # move silently stopped applying.
+            dst_text = dst_path.read_text(encoding="utf-8")
+            for rl in missing:
+                marker = rl + f"  # [PRIMESUD] moved from {src} (defer cross-area load)"
+                if marker not in dst_text:
+                    print(f"  WARNING: {src} -> {dst}: move pattern not found: "
+                          f"{rl.strip()} (emission format drift?)",
+                          file=sys.stderr)
         if not moved:
-            continue  # already moved (or regen dropped them)
+            continue  # already moved
         src_path.write_text("\n".join(src_lines), encoding="utf-8")
 
         dst_lines = dst_path.read_text(encoding="utf-8").split("\n")
@@ -289,6 +303,18 @@ def patch_drop_resets(base):
                 lines[idx] = ("    # [PRIMESUD] dropped " + rl.strip().rstrip(",")
                               + " (defer cross-area load)")
                 dropped += 1
+            else:
+                # Pattern must match either the raw line or its already-
+                # dropped marker; anything else means the converter's
+                # emission format drifted and the drop silently stopped
+                # applying (caught the hard way when E/G resets gained a
+                # limit field).
+                marker = ("    # [PRIMESUD] dropped " + rl.strip().rstrip(",")
+                          + " (defer cross-area load)")
+                if marker not in lines:
+                    print(f"  WARNING: {area_name}: drop pattern not found: "
+                          f"{rl.strip()} (emission format drift?)",
+                          file=sys.stderr)
         if dropped:
             filepath.write_text("\n".join(lines), encoding="utf-8")
             print(f"  {area_name}: {dropped} reset(s) dropped", file=sys.stderr)
