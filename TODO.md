@@ -61,9 +61,9 @@ Loose ends that don't belong in a specific plan file.
     `no_sac`, `flag_affects` (F-line affect/immune/resist/vuln grants),
     container `container_max_item_weight` / `container_weight_mult`,
     food/drink `poisoned`
-  - mob `start_pos`/`default_pos` (long-form strings; `config.py`
-    `POS_FROM_SHORT` only has short keys, so non-"standing" values silently
-    fall back to standing), `group`, `material`, `mob_triggers`
+  - mob `default_pos` (spawn `start_pos` IS consumed -- `mob.py` sets
+    initial position -- but nothing returns idle mobs to `default_pos`),
+    `group`, `material`, `mob_triggers`
   - room `heal_rate`/`mana_rate`, `owner`
 - **`_unknown_bits` in quest.are** — stock 1stMud data sets ACT bits 11/31 and
   AFF bits 34/36 that are undefined even in 1stMud's own `bits.h`; preserved
