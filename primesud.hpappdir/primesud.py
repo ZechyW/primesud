@@ -78,6 +78,36 @@ class Game:
         self._backup_ok = False  # set by load_game on version mismatch
         init_game_state(self)
 
+    def _submit(self, cmd, player, record=True):
+        """Interpret one command; optionally record it in history. [PRIMESUD]
+
+        Args:
+            cmd: Raw or picker-resolved command text to interpret.
+            player: The player character instance.
+            record: If True, append the resolved (or raw) command to
+                _cmd_history with dedupe-against-last and CMD_HISTORY_MAX cap.
+
+        Returns:
+            bool: True if the command was quit.
+        """
+        resolved = interpret(cmd, player)
+        if resolved == "quit":
+            return True
+        if record:
+            entry = resolved if resolved else cmd
+            if entry:  # [PRIMESUD] store picker-resolved form so replay works
+                if not self._cmd_history or self._cmd_history[-1] != entry:
+                    self._cmd_history.append(entry)
+                    if len(self._cmd_history) > CMD_HISTORY_MAX:
+                        self._cmd_history.pop(0)
+        return False
+
+    def _cancel_run(self, player):
+        """Stop an active run buffer and notify the player. [PRIMESUD]"""
+        free_runbuf(player)
+        self.tr.print("")
+        self.tr.print("You stop running.")
+
     def show_greeting(self):
         tr = self.tr
         tr.clear()
@@ -138,30 +168,30 @@ class Game:
                     self._hist_saved = ""
                     if player.get("run_buf"):
                         # [PRIMESUD] keyboard input cancels run
-                        free_runbuf(player)
-                        tr.print("")
-                        tr.print("You stop running.")
+                        self._cancel_run(player)
                         self.input_buf = ""
                         show_prompt(player, self.input_buf)
                     elif player.get("wait", 0) > 0:
                         # cf. 1stMud comm.c: wait > 0 queues command
                         if self.input_buf:
+                            # [PRIMESUD] single-slot queue -- latest Enter during
+                            # wait wins; 1stMud inbuf queues all input, one
+                            # command per pulse.
                             self._pending_cmd = self.input_buf
                             tr.print("")
                             tr.print("{D[Recovering... command queued]{x")  # [PRIMESUD]
                         self.input_buf = ""
                         show_prompt(player, self.input_buf)
                     else:
-                        _t0 = ticks()
-                        resolved = interpret(self.input_buf, player)
-                        next_pulse += ticks() - _t0  # [PRIMESUD] skip missed pulses during blocking input (e.g. picker)
-                        _quit = resolved == "quit"
-                        entry = resolved if (resolved and resolved != "quit") else self.input_buf
-                        if entry:  # [PRIMESUD] store picker-resolved form so replay works
-                            if not self._cmd_history or self._cmd_history[-1] != entry:
-                                self._cmd_history.append(entry)
-                                if len(self._cmd_history) > CMD_HISTORY_MAX:
-                                    self._cmd_history.pop(0)
+                        _quit = self._submit(self.input_buf, player)
+                        now = ticks()
+                        if now >= next_pulse:
+                            # [PRIMESUD] re-anchor after blocking input (picker/AFK) so
+                            # missed pulses are dropped, not burst-fired -- matches
+                            # 1stMud comm.c:754-793, which re-anchors last_time every
+                            # iteration and never catch-up-bursts; sub-pulse command
+                            # cost is absorbed by remaining pulse slack.
+                            next_pulse = now + MS_PER_PULSE
                         if _quit:
                             break
                         self.input_buf = ""
@@ -198,18 +228,19 @@ class Game:
                 elif auto_submit is True:  # [PRIMESUD] hardware key -- immediate submit
                     if player.get("run_buf"):
                         # [PRIMESUD] keyboard input cancels run
-                        free_runbuf(player)
-                        tr.print("")
-                        tr.print("You stop running.")
+                        self._cancel_run(player)
                         show_prompt(player, self.input_buf)
                     elif player.get("wait", 0) > 0:
+                        # [PRIMESUD] single-slot queue -- latest Enter during wait
+                        # wins; 1stMud inbuf queues all input, one command per pulse.
                         self._pending_cmd = char
                         tr.print("")
                         tr.print("{D[Recovering... command queued]{x")  # [PRIMESUD]
                     else:
-                        _t0 = ticks()
-                        _quit = interpret(char, player) == "quit"
-                        next_pulse += ticks() - _t0  # [PRIMESUD] skip missed pulses during blocking input
+                        _quit = self._submit(char, player, record=False)
+                        now = ticks()
+                        if now >= next_pulse:  # [PRIMESUD] re-anchor, see above
+                            next_pulse = now + MS_PER_PULSE
                         if _quit:
                             break
                         show_prompt(player, self.input_buf)
@@ -228,38 +259,31 @@ class Game:
             if now >= next_pulse:
                 next_pulse += MS_PER_PULSE
 
-                # Per-pulse player timer decrement (cf. 1stMud comm.c:865-870)
+                # Per-pulse daze/wait timer decrement (cf. 1stMud comm.c:865-872).
+                if player.get("daze", 0) > 0:
+                    player["daze"] -= 1
+
                 if player.get("wait", 0) > 0:
+                    # Recovery pulse -- decrement only, cf. comm.c:868-872
+                    # "--wait; continue": buffered input fires next pulse, not
+                    # this one.
                     player["wait"] -= 1
-                    if player["wait"] == 0 \
-                            and self._pending_cmd is not None \
-                            and not player.get("run_buf"):
-                        # run_buf takes priority over pending_cmd
-                        # (cf. 1stMud read_from_buffer: run_buf before inbuf)
-                        _t0 = ticks()
-                        _cmd = self._pending_cmd
-                        self._pending_cmd = None
-                        resolved = interpret(_cmd, player)
-                        next_pulse += ticks() - _t0
-                        _quit = resolved == "quit"
-                        entry = resolved if (resolved and resolved != "quit") else _cmd
-                        if entry:
-                            if not self._cmd_history or self._cmd_history[-1] != entry:
-                                self._cmd_history.append(entry)
-                                if len(self._cmd_history) > CMD_HISTORY_MAX:
-                                    self._cmd_history.pop(0)
-                        if _quit:
-                            break
-                        show_prompt(player, self.input_buf)
                 # Run buffer consumption (cf. 1stMud read_from_buffer in comm.c).
-                # elif: pulse where wait transitions >0 to 0 is recovery only --
-                # run_buf consumed next pulse (matches 1stMud tick skip on wait>0).
+                # run_buf takes priority over pending_cmd (cf. read_from_buffer:
+                # run_buf consumed before inbuf).
                 elif player.get("run_buf"):
                     run_buf_step(player)
                     show_prompt(player, self.input_buf)
-
-                if player.get("daze", 0) > 0:
-                    player["daze"] -= 1
+                elif self._pending_cmd is not None:
+                    _cmd = self._pending_cmd
+                    self._pending_cmd = None
+                    _quit = self._submit(_cmd, player)
+                    now = ticks()
+                    if now >= next_pulse:
+                        next_pulse = now + MS_PER_PULSE
+                    if _quit:
+                        break
+                    show_prompt(player, self.input_buf)
 
                 fired = update_handler()
 
