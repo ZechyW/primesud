@@ -3,6 +3,9 @@
 affects|list active spells and effects on you
 appraise|ask a shopkeeper the sell value of an item
 areas|list the areas of the world
+autoassist|toggle auto-assisting group members in combat
+autodamage|toggle damage amounts in combat messages
+autoexit|toggle exit display in room descriptions
 autogold|toggle auto gold looting from corpses
 autolist|show your auto-action toggle settings
 autoloot|toggle auto looting of corpses

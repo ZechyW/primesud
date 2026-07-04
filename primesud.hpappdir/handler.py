@@ -573,9 +573,12 @@ def _act_code(code, ch, arg1, arg2, to, type):
             return "<@@@>"
         # 1stMud: TO_DAMAGE suppresses $t for NPC viewers / players without PLR_AUTODAMAGE
         if type & TO_DAMAGE:
-            if to is not None and to.get("is_npc"):
+            # 1024 = PLR_AUTODAMAGE (player.py; literal here -- player.py
+            # imports handler, so importing back would be a cycle); missing
+            # "flags" defaults to all-on (-1) like PLR_DEFAULTS
+            if to is not None and (to.get("is_npc")
+                                   or not (to.get("flags", -1) & 1024)):
                 return ""
-            # [PRIMESUD] PLR_AUTODAMAGE not ported -- player always sees damage text
         return arg1
     if code == "T":
         return arg2 if isinstance(arg2, str) else "<@@@>"

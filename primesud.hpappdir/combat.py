@@ -51,7 +51,8 @@ from item import (create_object, item_extra_flags,
                   set_item_extra_flag, get_obj_list, obj_vnum,
                   apply_money_pickup)
 from picker import pick_from
-from player import PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_DEFAULTS
+from player import (PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOASSIST,
+                    PLR_AUTODAMAGE, PLR_DEFAULTS)
 from races import RACE_TABLE
 from skill_utils import get_skill, check_improve, skill_level, WaitState, DazeState
 from stances import (STANCE_TABLE, MAX_STANCE,
@@ -125,12 +126,13 @@ def violence_update(player):
 def check_assist(ch, victim):
     """Let idle room chars join combat (cf. 1stMud check_assist in fight.c).
     [Verified: 02/07/2026; charmed-follower assist added and re-verified
-    03/07/2026]
+    03/07/2026; PLR_AUTOASSIST player branch added and re-verified 04/07/2026]
 
     Three cases mirror 1stMud exactly:
     - ch is player, rch is mob with assist_players: rch jumps in against victim.
-    - ch is player or charmed: charmed rch in ch's group assists
-      (PLR_AUTOASSIST for player rch not applicable in single-player).
+    - ch is player or charmed: charmed rch in ch's group assists; the player
+      as assisting rch (PLR_AUTOASSIST) is special-cased after the loop since
+      rs["mobs"] excludes the player.
     - ch is mob (not charmed), rch is mob: assist_all / group / race / align / vnum;
       50% trigger chance; target picked from victim's group (single-player: victim).
 
@@ -158,8 +160,7 @@ def check_assist(ch, victim):
                 multi_hit(rch, victim)
                 continue
 
-        # Case 2: charmed follower assists its group (cf. 1stMud fight.c:139-148;
-        # PLR_AUTOASSIST branch omitted -- rch is never a player here)
+        # Case 2: charmed follower assists its group (cf. 1stMud fight.c:139-148)
         if not ch["is_npc"] or ch.get("affected_by", {}).get("charm"):
             if (rch.get("affected_by", {}).get("charm")
                     and is_same_group(ch, rch)
@@ -191,6 +192,20 @@ def check_assist(ch, victim):
             continue
         tprint("{} screams and attacks!".format(rch_tpl["short_descr"]))
         multi_hit(rch, victim)
+
+    # [PRIMESUD] Player as assisting rch: 1stMud's rch loop naturally includes
+    # players in the room, but our rs["mobs"] excludes the player, so the
+    # PLR_AUTOASSIST branch of case 2 is handled here (fires when the charmed
+    # pet fights and the player is idle).
+    player = chars.get(1)
+    if (player is not None and ch is not player
+            and ch["is_npc"] and ch.get("affected_by", {}).get("charm")
+            and ch["room"] == player["room"]
+            and is_awake(player) and player["fighting"] is None
+            and player.get("flags", PLR_DEFAULTS) & PLR_AUTOASSIST
+            and is_same_group(ch, player)
+            and not is_safe(player, victim)):
+        multi_hit(player, victim)
 
 
 # -- Helpers -------------------------------------------------------------------
@@ -1000,8 +1015,8 @@ def is_safe_spell(ch, victim, area):
 
 def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
     """Print damage message from ch's attack on victim (cf. 1stMud dam_message in fight.c).
-    [Verified: 02/07/2026] -- room/observer (buf1) messages and self-hit branch not
-    ported (single-player); PLR_AUTODAMAGE treated as always on.
+    [Verified: 02/07/2026; PLR_AUTODAMAGE gate added and re-verified 04/07/2026]
+    -- room/observer (buf1) messages and self-hit branch not ported (single-player).
 
     Single-player: only the player sees messages, as attacker (ch=player) or victim (ch=mob).
 
@@ -1020,9 +1035,14 @@ def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
     vs, vp = _damage_verb(dam)
     punct  = _damage_punct(dam)
 
-    # [PRIMESUD] PLR_AUTODAMAGE always on -- damage tag always appended for
-    # player viewer (1stMud: SEE_DAMAGE(ch) ? chmesg : "{x")
+    # cf. 1stMud SEE_DAMAGE(ch): damage tag only for player viewers with
+    # PLR_AUTODAMAGE ("{x" otherwise); TO_CHAR line sees ch's flag, TO_VICT
+    # line sees victim's flag
     tag = " {W[{R%d{W]{x" % dam
+    tag_ch = tag if (not ch["is_npc"]
+                     and ch.get("flags", PLR_DEFAULTS) & PLR_AUTODAMAGE) else "{x"
+    tag_vict = tag if (not victim["is_npc"]
+                       and victim.get("flags", PLR_DEFAULTS) & PLR_AUTODAMAGE) else "{x"
 
     # 1stMud dam_message: TO_CHAR goes to attacker, TO_VICT goes to defender
     # (cf. fight.c:2610-2693). Routing replaces is_npc branching.
@@ -1030,8 +1050,8 @@ def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
     if attack_noun is None and not immune:
         # dt == TYPE_HIT: bare hit, no attack noun (misses included -- 1stMud
         # has no separate miss branch; dam 0 resolves to miss/misses verbs)
-        act("{GYou %s{G $N%s%s" % (vs, punct, tag), ch, None, victim, TO_CHAR)
-        act("{R$n %s{R you%s%s" % (vp, punct, tag), ch, None, victim, TO_VICT)
+        act("{GYou %s{G $N%s%s" % (vs, punct, tag_ch), ch, None, victim, TO_CHAR)
+        act("{R$n %s{R you%s%s" % (vp, punct, tag_vict), ch, None, victim, TO_VICT)
     else:
         # 1stMud: dt == TYPE_HIT under immunity resolves attack_table[0].noun = "hit"
         noun = attack_noun if attack_noun else "hit"
@@ -1039,8 +1059,8 @@ def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
             act("{G$N is unaffected by your %s!{x" % noun, ch, None, victim, TO_CHAR)
             act("{R$n's %s is powerless against you.{x" % noun, ch, None, victim, TO_VICT)
         else:
-            act("{GYour %s %s{G $N%s%s" % (noun, vp, punct, tag), ch, None, victim, TO_CHAR)
-            act("{R$n's %s %s{R you%s%s" % (noun, vp, punct, tag), ch, None, victim, TO_VICT)
+            act("{GYour %s %s{G $N%s%s" % (noun, vp, punct, tag_ch), ch, None, victim, TO_CHAR)
+            act("{R$n's %s %s{R you%s%s" % (noun, vp, punct, tag_vict), ch, None, victim, TO_VICT)
 
 
 def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):

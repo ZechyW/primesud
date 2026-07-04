@@ -9,8 +9,8 @@ from config import POS_ORDER
 from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_help, do_affects, do_credits, do_areas, do_map, do_automap,
                   do_autolist, do_autoloot, do_autogold, do_autosac,
-                  do_autosplit, do_wimpy, do_exits, do_worth, do_where,
-                  do_clear)
+                  do_autosplit, do_autoassist, do_autoexit, do_autodamage,
+                  do_wimpy, do_exits, do_worth, do_where, do_clear)
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
@@ -151,8 +151,8 @@ _CMD_TABLE = [
     ("worth",      do_worth,      "sleeping", False),  # #61
     # ("alias",     do_alias,      "dead",     True),   # #62 noprefix
     ("autolist",   do_autolist,   "dead",     False),  # #63
-    # ("autoassist", do_autoassist, "dead",    False),  # #64
-    # ("autoexit",  do_autoexit,   "dead",     False),  # #65
+    ("autoassist", do_autoassist, "dead",     False),  # #64
+    ("autoexit",   do_autoexit,   "dead",     False),  # #65
     ("autogold",   do_autogold,   "dead",     False),  # #66
     ("autoloot",   do_autoloot,   "dead",     False),  # #67
     ("autosac",    do_autosac,    "dead",     False),  # #68
@@ -350,7 +350,7 @@ _CMD_TABLE = [
     # ("cledit",    do_cledit,     "dead",     False),  # #258 imm lvl 57
     # ("home",      do_home,       "standing", False),  # #259
     # ("bid",       do_bid,        "sleeping", False),  # #260 lvl 2
-    # ("autodamage", do_autodamage, "sleeping", False), # #261
+    ("autodamage", do_autodamage, "sleeping", False),  # #261
     # ("unread",    do_board,      "sleeping", False),  # #262
     # ("clist",     do_clist,      "sleeping", False),  # #263
     # ("cinfo",     do_cinfo,      "sleeping", False),  # #264

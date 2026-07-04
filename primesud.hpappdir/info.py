@@ -16,7 +16,8 @@ from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, POS_FROM_SHORT, SECTO
 from item import get_obj_here, obj_vnum, item_extra_flags
 from picker import pick_from
 from player import (PLR_AUTOMAP, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
-                    PLR_AUTOSPLIT, PLR_DEFAULTS)
+                    PLR_AUTOSPLIT, PLR_AUTOASSIST, PLR_AUTOEXIT,
+                    PLR_AUTODAMAGE, PLR_DEFAULTS)
 from gquest import gq_is_player_target
 from quest import is_quester, _intstr
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
@@ -112,14 +113,15 @@ def do_where(player, args):
 
 _FLAG_TABLE = (
     (PLR_AUTOMAP, "automap", "Map in Room Descriptions"),
-    # TODO: PLR_AUTODAMAGE "autodamage" - damage amounts in combat
-    # TODO: PLR_AUTOASSIST "autoassist" - auto-assist group members
-    # TODO: PLR_AUTOEXIT "autoexit" - exits in room descriptions
+    (PLR_AUTODAMAGE, "autodamage", "Displays damage amounts in combat."),
+    (PLR_AUTOASSIST, "autoassist", "Automatically assists group members."),
+    (PLR_AUTOEXIT, "autoexit", "Displays exits in room descriptions."),
     (PLR_AUTOGOLD, "autogold", "Automatically loots gold from corpses."),
     (PLR_AUTOLOOT, "autoloot", "Automatically loots objects from corpses."),
     (PLR_AUTOSAC, "autosac", "Automatically sacrifices corpses."),
     (PLR_AUTOSPLIT, "autosplit", "Automatically splits gold between group members."),
-    # TODO: PLR_AUTOPROMPT "autoprompt" - selective prompt display
+    # PLR_AUTOPROMPT "autoprompt": [PRIMESUD] not ported -- the status bar
+    # is the prompt and is always visible, so selective display is moot
     # TODO: COMM_COMPACT "compact" - compact output (comm flags)
     # TODO: COMM_PROMPT "prompt" - prompt display (comm flags)
     # TODO: COMM_GPROMPT "gprompt" - group prompt (comm flags)
@@ -174,6 +176,33 @@ def do_autosplit(player, args):
         tprint("You now split gold with group members.")
     else:
         tprint("You no longer split gold with group members.")
+
+
+def do_autoassist(player, args):
+    """Toggle autoassist (cf. 1stMud do_autoassist in act_info.c). [Verified: 04/07/2026]"""
+    player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOASSIST
+    if player["flags"] & PLR_AUTOASSIST:
+        tprint("You now assist group members in combat.")
+    else:
+        tprint("You no longer assist group members in combat.")
+
+
+def do_autodamage(player, args):
+    """Toggle autodamage (cf. 1stMud do_autodamage in act_info.c). [Verified: 04/07/2026]"""
+    player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTODAMAGE
+    if player["flags"] & PLR_AUTODAMAGE:
+        tprint("You now see damage amounts in combat.")
+    else:
+        tprint("You no longer see damage amounts in combat.")
+
+
+def do_autoexit(player, args):
+    """Toggle autoexit (cf. 1stMud do_autoexit in act_info.c). [Verified: 04/07/2026]"""
+    player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOEXIT
+    if player["flags"] & PLR_AUTOEXIT:
+        tprint("Exits will now be displayed.")
+    else:
+        tprint("Exits will no longer be displayed.")
 
 
 def do_autolist(player, args):
@@ -405,9 +434,9 @@ def do_look(player, args):
 
     Position ("stars"/sleeping), check_blind, and room_is_dark gates not
     ported -- blindness and darkness are not implemented yet; position is
-    gated by the command table. Autoexit is always on (PLR_AUTOEXIT TODO).
+    gated by the command table.
 
-    [Verified: 03/07/2026]
+    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -509,12 +538,14 @@ def do_look(player, args):
         for tl in desc_lines:
             tprint(color + tl)
 
-    exits = " ".join(
-        EXIT_NAMES.get(d, d) for d in EXIT_ORDER
-        if d in room["exits"] and not (isinstance(room["exits"][d], dict) and room["exits"][d].get("closed"))
-    )
-    exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
-    tprint("{g" + exit_string + "{x")
+    # cf. 1stMud do_look: exits only shown with PLR_AUTOEXIT (do_exits "auto")
+    if player.get("flags", PLR_DEFAULTS) & PLR_AUTOEXIT:
+        exits = " ".join(
+            EXIT_NAMES.get(d, d) for d in EXIT_ORDER
+            if d in room["exits"] and not (isinstance(room["exits"][d], dict) and room["exits"][d].get("closed"))
+        )
+        exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
+        tprint("{g" + exit_string + "{x")
     live_mobs = rs["mobs"]
     # Items: build a display string per instance (flags + desc), stack by exact string match
     # (cf. 1stMud format_obj_to_char + show_list_to_char in act_info.c)
