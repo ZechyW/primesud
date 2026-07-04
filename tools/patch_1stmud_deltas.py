@@ -6,6 +6,8 @@ converter reads: cross-area exits, and mob act flags (1stMud gives its
 midgaard guildmasters ACT_TRAIN/ACT_GAIN). Run after
 are_to_primesud_quickmud.py conversion (regen_areas.sh does).
 
+All patches are idempotent; safe to re-run on already-patched .dats.
+
 Usage:
     python patch_1stmud_deltas.py
 """
@@ -136,17 +138,22 @@ def patch_area(area_name, filepath):
             continue
 
         exit_lines = lines[exits_start + 1:exits_end]
+        added = []
         for d in new_exits:
             target = new_exits[d]
-            exit_lines.append(
-                f'            "{d}": {target},'
-                f"  # [PRIMESUD] cross-area (1stMud)"
-            )
+            new_line = (f'            "{d}": {target},'
+                        f"  # [PRIMESUD] cross-area (1stMud)")
+            if new_line in exit_lines:   # already patched -- idempotent re-run
+                continue
+            exit_lines.append(new_line)
+            added.append(d)
+        if not added:
+            continue
         exit_lines.sort(key=exit_sort_key)
 
         lines[exits_start + 1:exits_end] = exit_lines
         modified = True
-        dirs = ", ".join(sorted(new_exits.keys(), key=lambda x: DIR_ORDER.index(x)))
+        dirs = ", ".join(sorted(added, key=DIR_ORDER.index))
         print(f"  {vnum}: +{dirs}", file=sys.stderr)
 
     if modified:
@@ -327,20 +334,21 @@ def patch_drop_resets(base):
 
 
 if __name__ == "__main__":
+    if "-h" in sys.argv or "--help" in sys.argv:
+        print(__doc__.strip())
+        sys.exit(0)
     base = Path(__file__).resolve().parent.parent / "primesud.hpappdir"
-    # --resets-only: re-apply just the (idempotent) reset move/drop patches
-    # to already-patched .dats; the exit/flag/guild patches would duplicate
-    if "--resets-only" not in sys.argv:
-        for area_name in sorted(set(CROSS_AREA_EXITS) | set(MOB_ACT_FLAGS)
-                                | set(ROOM_GUILDS)):
-            filepath = base / f"area_{area_name}.dat"
-            if filepath.exists():
-                print(f"==> {area_name}", file=sys.stderr)
-                patch_area(area_name, filepath)
-                patch_mob_flags(area_name, filepath)
-                patch_room_guilds(area_name, filepath)
-            else:
-                print(f"  SKIP: {filepath} not found", file=sys.stderr)
+    # All patches are idempotent: safe to re-run on already-patched .dats.
+    for area_name in sorted(set(CROSS_AREA_EXITS) | set(MOB_ACT_FLAGS)
+                            | set(ROOM_GUILDS)):
+        filepath = base / f"area_{area_name}.dat"
+        if filepath.exists():
+            print(f"==> {area_name}", file=sys.stderr)
+            patch_area(area_name, filepath)
+            patch_mob_flags(area_name, filepath)
+            patch_room_guilds(area_name, filepath)
+        else:
+            print(f"  SKIP: {filepath} not found", file=sys.stderr)
     print("==> reset moves/drops", file=sys.stderr)
     patch_move_resets(base)
     patch_drop_resets(base)
