@@ -71,7 +71,7 @@ def do_commands(player, args):
                 break
             if "|" in line:
                 name, desc = line.split("|", 1)
-                descs[name] = desc.rstrip("\n")
+                descs[name] = desc.rstrip()  # CRLF-safe
         f.close()
     except OSError:
         pass  # missing file: names-only listing
