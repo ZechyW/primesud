@@ -525,7 +525,9 @@ def interpret(raw, player):
     ch0 = argument[0]
     if not ch0.isalpha() and not ch0.isdigit():
         command = ch0.lower()
-        argument = argument[1:].strip().lower()
+        # cf. interp.c: only leading whitespace skipped; remainder kept
+        # verbatim (was .strip().lower() -- lowercased say/emote text)
+        argument = argument[1:].lstrip()
     else:
         command, argument = one_argument(argument)
 
