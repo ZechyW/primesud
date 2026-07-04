@@ -784,6 +784,9 @@ def do_pick(player, args):
             act("$N is standing too close to the lock.", player, None, gch, TO_CHAR)
             return
 
+    # [PRIMESUD] 1stMud skips this roll for NPC invokers (act_move.c:889,
+    # "!IsNPC(ch) && ..."); we roll for everyone -- intentional, revisit if
+    # an NPC ever needs to pick locks reliably
     if randint(1, 100) > get_skill(player, GSN_PICK_LOCK):
         chprintln(player, "You failed.")
         check_improve(player, GSN_PICK_LOCK, False, 2)
