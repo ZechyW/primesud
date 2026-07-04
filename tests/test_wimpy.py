@@ -9,6 +9,7 @@ _SRC = os.environ.get("PRIMESUD_SRC", "primesud.hpappdir")
 sys.path.insert(0, os.path.join(ROOT, _SRC))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
+import handler
 import info
 from handler import _char_base
 from info import do_wimpy
@@ -18,7 +19,11 @@ from info import do_wimpy
 def out(monkeypatch):
     """Capture tprint output as list of lines."""
     lines = []
-    monkeypatch.setattr(info, "tprint", lambda s="", end="\n": lines.append(s))
+    capture = lambda s="", end="\n": lines.append(s)
+    monkeypatch.setattr(handler, "tprint", capture)
+    # player dict is not registered as world.chars[1], so chprintln's
+    # local-player gate would drop output -- capture at the info level
+    monkeypatch.setattr(info, "chprintln", lambda ch, s="": lines.append(s))
     return lines
 
 

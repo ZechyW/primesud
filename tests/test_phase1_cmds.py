@@ -23,7 +23,8 @@ def out(monkeypatch):
     """Capture tprint output across all modules under test."""
     lines = []
     cap = lambda s="", end="\n": lines.append(s)
-    for mod in (info, inventory, commands, combat):
+    # info/combat no longer import tprint (output routes via handler)
+    for mod in (inventory, commands):
         monkeypatch.setattr(mod, "tprint", cap)
     import handler
     monkeypatch.setattr(handler, "tprint", cap)

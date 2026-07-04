@@ -9,6 +9,7 @@ _SRC = os.environ.get("PRIMESUD_SRC", "primesud.hpappdir")
 sys.path.insert(0, os.path.join(ROOT, _SRC))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
+import handler
 import info
 import world
 from handler import _char_base
@@ -19,7 +20,11 @@ from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 def out(monkeypatch):
     """Capture tprint output as list of lines."""
     lines = []
-    monkeypatch.setattr(info, "tprint", lambda s="", end="\n": lines.append(s))
+    capture = lambda s="", end="\n": lines.append(s)
+    monkeypatch.setattr(handler, "tprint", capture)
+    # some tests use players not registered as world.chars[1]; capture
+    # chprintln at the info level so their output is not gate-dropped
+    monkeypatch.setattr(info, "chprintln", lambda ch, s="": lines.append(s))
     return lines
 
 

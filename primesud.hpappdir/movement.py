@@ -962,13 +962,13 @@ def do_wake(player, args):
 # -- Stealth -------------------------------------------------------------------
 
 def do_sneak(player, args):
-    """Attempt to move silently via the sneak skill (cf. 1stMud do_sneak in act_move.c). [Verified: 03/07/2026]
+    """Attempt to move silently via the sneak skill (cf. 1stMud do_sneak in act_move.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
 
     Args:
         player (dict): Player state dict.
         args (list): Parsed command arguments (unused).
     """
-    tprint("You attempt to move silently.")
+    chprintln(player, "You attempt to move silently.")
     affect_strip(player, GSN_SNEAK)
 
     if player.get("affected_by", {}).get("sneak"):
@@ -990,7 +990,7 @@ def do_sneak(player, args):
 
 
 def do_hide(player, args):
-    """Attempt to hide via the hide skill (cf. 1stMud do_hide in act_move.c). [Verified: 03/07/2026]
+    """Attempt to hide via the hide skill (cf. 1stMud do_hide in act_move.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
 
     Hide is a bare AFF bit with no affect entry; any command except
     stealth/info commands removes it (see interpret in commands.py).
@@ -999,7 +999,7 @@ def do_hide(player, args):
         player (dict): Player state dict.
         args (list): Parsed command arguments (unused).
     """
-    tprint("You attempt to hide.")
+    chprintln(player, "You attempt to hide.")
 
     aff = player.setdefault("affected_by", {})
     aff.pop("hide", None)
@@ -1012,7 +1012,7 @@ def do_hide(player, args):
 
 
 def do_visible(player, args):
-    """Strip invisibility, sneak, and hide (cf. 1stMud do_visible in act_move.c). [Verified: 03/07/2026]
+    """Strip invisibility, sneak, and hide (cf. 1stMud do_visible in act_move.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -1025,7 +1025,7 @@ def do_visible(player, args):
     aff.pop("hide", None)
     aff.pop("invisible", None)
     aff.pop("sneak", None)
-    tprint("Ok.")
+    chprintln(player, "Ok.")
 
 
 def perform_recall(player, location, what="recall"):
@@ -1035,12 +1035,12 @@ def perform_recall(player, location, what="recall"):
     "$n disappears." / "$n appears in the room." room acts are not ported
     (single-player, no arena). [PRIMESUD]
 
-    [Verified: 03/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
     """
     room = ROOM_DEFS[player["room"]]
 
     if location is None:
-        tprint("You are completely lost.")
+        chprintln(player, "You are completely lost.")
         return False
 
     if player["room"] == location:
@@ -1049,7 +1049,7 @@ def perform_recall(player, location, what="recall"):
     if room.get("flags", {}).get("no_recall") \
             or player.get("affected_by", {}).get("curse"):
         # 1stMud: act "$g has forsaken you." ($g = deity name; no deities here)
-        tprint("Your deity has forsaken you.")
+        chprintln(player, "Your deity has forsaken you.")
         return False
 
     if player["fighting"] is not None:
@@ -1057,11 +1057,11 @@ def perform_recall(player, location, what="recall"):
         if randint(1, 100) < 80 * skill // 100:
             check_improve(player, GSN_RECALL, False, 6)
             WaitState(player, PULSE_PER_SECOND)
-            tprint("You failed!")  # [PRIMESUD] 1stMud typo "You failed!."
+            chprintln(player, "You failed!")  # [PRIMESUD] 1stMud typo "You failed!."
             return False
         player["xp"] = max(0, player["xp"] - 25)
         check_improve(player, GSN_RECALL, True, 4)
-        tprint("You " + what + " from combat!  You lose 25 exps.")
+        chprintln(player, "You " + what + " from combat!  You lose 25 exps.")
         stop_fighting(player, both=True)
 
     player["move"] = player.get("move", 0) // 2
@@ -1144,7 +1144,7 @@ def _brief_room_line(player):
                  and room["exits"][d].get("closed"))
     )
     exit_str = "[" + exits + "]" if exits else "[none]"
-    tprint("{Y" + room["name"] + "{x {g" + exit_str + "{x")
+    chprintln(player, "{Y" + room["name"] + "{x {g" + exit_str + "{x")
 
 
 def free_runbuf(player):

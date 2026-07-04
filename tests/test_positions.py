@@ -21,7 +21,6 @@ def out(monkeypatch):
     lines = []
     cap = lambda s="", end="\n": lines.append(s)
     monkeypatch.setattr(movement, "tprint", cap)
-    monkeypatch.setattr(info, "tprint", cap)
     import handler
     monkeypatch.setattr(handler, "tprint", cap)
     return lines

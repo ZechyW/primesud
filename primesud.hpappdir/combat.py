@@ -76,7 +76,6 @@ from skills_table import (
     GSN_TRIP, GSN_POISON,
 )
 from hunt import hunt_victim
-from terminal import tprint
 from urandom import randint
 from util import wait
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
@@ -133,7 +132,8 @@ def violence_update(player):
 def check_assist(ch, victim):
     """Let idle room chars join combat (cf. 1stMud check_assist in fight.c).
     [Verified: 02/07/2026; charmed-follower assist added and re-verified
-    03/07/2026; PLR_AUTOASSIST player branch added and re-verified 04/07/2026]
+    03/07/2026; PLR_AUTOASSIST player branch added and re-verified 04/07/2026;
+    tprint->chprintln output routing re-verified 04/07/2026]
 
     Three cases mirror 1stMud exactly:
     - ch is player, rch is mob with assist_players: rch jumps in against victim.
@@ -163,7 +163,10 @@ def check_assist(ch, victim):
         # Case 1: mob with assist_players aids player against victim
         if not ch["is_npc"]:
             if off.get("assist_players") and rch["level"] + 6 > victim["level"]:
-                tprint("{} screams and attacks!".format(rch_tpl["short_descr"]))
+                # do_function(rch, do_emote, ...): do_emote not ported -- inline
+                # its act pair (cf. act_comm.c do_emote)
+                act("$n screams and attacks!", rch, None, None, TO_ROOM)
+                act("$n screams and attacks!", rch, None, None, TO_CHAR)
                 multi_hit(rch, victim)
                 continue
 
@@ -197,7 +200,10 @@ def check_assist(ch, victim):
         # [PRIMESUD] Single-player: victim's group = victim only; target is always victim.
         if not can_see(rch, victim):
             continue
-        tprint("{} screams and attacks!".format(rch_tpl["short_descr"]))
+        # do_function(rch, do_emote, ...): do_emote not ported -- inline
+        # its act pair (cf. act_comm.c do_emote)
+        act("$n screams and attacks!", rch, None, None, TO_ROOM)
+        act("$n screams and attacks!", rch, None, None, TO_CHAR)
         multi_hit(rch, victim)
 
     # [PRIMESUD] Player as assisting rch: 1stMud's rch loop naturally includes
@@ -1074,7 +1080,8 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
     """Apply damage to victim from ch; handle combat state, immunity, and death
     (cf. 1stMud damage in fight.c).
     [Verified: 02/07/2026; stance re-checks and stop_follower added and
-    re-verified 03/07/2026] -- force/static/flame shields, drunk reduction,
+    re-verified 03/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026] -- force/static/flame shields, drunk reduction,
     arena/war, PvP, mobprogs, and wiznet not ported (noted inline);
     autoloot/autogold/autosac inlined instead of do_get/do_sacrifice
     dispatch; randomize_damage applied (1stMud discards it -- see FIXES.md).
@@ -1252,15 +1259,15 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
     if pos == "mortal":
         act("$n is mortally wounded, and will die soon, if not aided.", victim, type=TO_ROOM)
         if not victim["is_npc"]:
-            tprint("You are mortally wounded, and will die soon, if not aided.")
+            chprintln(victim, "You are mortally wounded, and will die soon, if not aided.")
     elif pos == "incap":
         act("$n is incapacitated and will slowly die, if not aided.", victim, type=TO_ROOM)
         if not victim["is_npc"]:
-            tprint("You are incapacitated and will slowly die, if not aided.")
+            chprintln(victim, "You are incapacitated and will slowly die, if not aided.")
     elif pos == "stunned":
         act("$n is stunned, but will probably recover.", victim, type=TO_ROOM)
         if not victim["is_npc"]:
-            tprint("You are stunned, but will probably recover.")
+            chprintln(victim, "You are stunned, but will probably recover.")
     elif pos == "dead":
         act("$n is DEAD!!", victim, type=TO_ROOM)
         # [PRIMESUD] player death message printed by game loop (primesud.py) to avoid duplicate
@@ -1271,9 +1278,9 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         if not victim["is_npc"]:
             max_hit = victim.get("max_hit", 1)
             if dam > max_hit // 4:
-                tprint("That really did HURT!")
+                chprintln(victim, "That really did HURT!")
             if victim["hit"] < max_hit // 4:
-                tprint("You sure are BLEEDING!")
+                chprintln(victim, "You sure are BLEEDING!")
 
     # 1stMud: if (!IsAwake(victim)) stop_fighting(victim, false);
     if not is_awake(victim):
@@ -1332,7 +1339,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                     for cobj in list(contents):
                         ctpl = ITEM_DEFS[obj_vnum(cobj)]
                         corpse["contents"].remove(cobj)
-                        tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+                        chprintln(ch, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
                         if not apply_money_pickup(ch, cobj, ctpl):
                             ch["inv"].append(cobj)
 
@@ -1343,7 +1350,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                         ctpl = ITEM_DEFS[obj_vnum(cobj)]
                         if ctpl.get("type") == "money":
                             corpse["contents"].remove(cobj)
-                            tprint("You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+                            chprintln(ch, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
                             apply_money_pickup(ch, cobj, ctpl)
 
                 # 1stMud: if (PLR_AUTOSAC) { if (autoloot && still has contents) skip; else sacrifice }
@@ -1353,12 +1360,12 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                     else:
                         silver = max(1, corpse.get("level", 0) * 3)
                         if silver == 1:
-                            tprint("Your deity gives you one silver coin for your sacrifice.")
+                            chprintln(ch, "Your deity gives you one silver coin for your sacrifice.")
                         else:
-                            tprint("Your deity gives you " + str(silver) + " silver coins for your sacrifice.")
+                            chprintln(ch, "Your deity gives you " + str(silver) + " silver coins for your sacrifice.")
                         ch["silver"] = ch.get("silver", 0) + silver
                         short = corpse.get("short_descr", "a corpse")
-                        tprint("You sacrifice " + short + " to your deity.")
+                        chprintln(ch, "You sacrifice " + short + " to your deity.")
                         world.rooms[ch["room"]]["items"].remove(corpse)
 
         return True
@@ -1621,7 +1628,8 @@ def _weapon_procs(ch, victim, wobj, wtpl):
 
 def do_kick(ch, args):
     """Kick for player or mob (cf. 1stMud do_kick in fight.c).
-    [Verified: 02/07/2026] -- check_killer not ported.
+    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026] -- check_killer not ported.
 
     Args:
         ch (dict): Acting character (player or mob instance).
@@ -1629,7 +1637,7 @@ def do_kick(ch, args):
     """
     # 1stMud: !IsNPC && !can_use_skpell -> message; IsNPC && !OFF_KICK -> silent return
     if not ch["is_npc"] and not classes.can_use_skill_spell(ch, GSN_KICK):
-        tprint("You better leave the martial arts to fighters.")
+        chprintln(ch, "You better leave the martial arts to fighters.")
         return None
     if ch["is_npc"] and not ch.get("off_flags", {}).get("kick"):
         return None
@@ -1659,7 +1667,8 @@ def do_kick(ch, args):
 
 def do_backstab(ch, args):
     """Backstab a target from behind (cf. 1stMud do_backstab in fight.c).
-    [Verified: 02/07/2026] -- check_killer not ported.
+    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026] -- check_killer not ported.
 
     Args:
         ch (dict): Acting character (player or mob instance).
@@ -1667,26 +1676,26 @@ def do_backstab(ch, args):
     """
     # [PRIMESUD] explicit gate; 1stMud lets it through but get_skill returns 0 -> guaranteed miss + lag
     if not ch["is_npc"] and GSN_BACKSTAB not in ch["learned"]:
-        tprint("You don't know how to backstab.")
+        chprintln(ch, "You don't know how to backstab.")
         return None
 
     if not args:
-        tprint("Backstab whom?")
+        chprintln(ch, "Backstab whom?")
         return None
 
     if ch["fighting"] is not None:
-        tprint("You're facing the wrong end.")
+        chprintln(ch, "You're facing the wrong end.")
         return None
 
     rs = world.rooms[ch["room"]]
     target_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
     if target_id is None:
-        tprint("They aren't here.")
+        chprintln(ch, "They aren't here.")
         return None
 
     victim = world.chars[target_id]
     if victim is ch:
-        tprint("How can you sneak up on yourself?")
+        chprintln(ch, "How can you sneak up on yourself?")
         return None
 
     if is_safe(ch, victim):
@@ -1699,7 +1708,7 @@ def do_backstab(ch, args):
         return None
 
     if ch["equip"].get("wield") is None:
-        tprint("You need to wield a weapon to backstab.")
+        chprintln(ch, "You need to wield a weapon to backstab.")
         return None
 
     if victim["hit"] < victim["max_hit"] // 3:
@@ -1730,10 +1739,10 @@ def do_consider(player, args):
     if args:
         mob_id = get_char_room(" ".join(args), live, world.chars, player)
         if mob_id is None:
-            tprint("They're not here.")
+            chprintln(player, "They're not here.")
             return
     elif not live:
-        tprint("Consider killing whom?")
+        chprintln(player, "Consider killing whom?")
         return
     else:
         # [PRIMESUD] picker menu when no args (1stMud prints "Consider killing whom?" and stops)
@@ -1771,7 +1780,8 @@ def do_consider(player, args):
 
 def do_kill(player, args):
     """Initiate melee combat with a target (cf. 1stMud do_kill in fight.c).
-    [Verified: 02/07/2026] -- self-hit branch and check_killer not ported;
+    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026] -- self-hit branch and check_killer not ported;
     [PRIMESUD] picker menu when no args.
 
     Args:
@@ -1783,10 +1793,10 @@ def do_kill(player, args):
     if args:
         mob_id = get_char_room(" ".join(args), live, world.chars, player)
         if mob_id is None:
-            tprint("They aren't here.")
+            chprintln(player, "They aren't here.")
             return
     elif not live:
-        tprint("Kill whom?")
+        chprintln(player, "Kill whom?")
         return
     else:
         # [PRIMESUD] picker menu when no args (1stMud prints "Kill whom?" and stops)
@@ -1817,7 +1827,7 @@ def do_kill(player, args):
         return
 
     if player.get("pos") == "fighting":
-        tprint("You do the best you can!")
+        chprintln(player, "You do the best you can!")
         return
 
     WaitState(player, PULSE_VIOLENCE)
@@ -1968,7 +1978,7 @@ def special_move(ch, victim):
     name = MOB_DEFS[victim["tpl"]]["short_descr"]
     move = _SPECIAL_MOVES[randint(0, len(_SPECIAL_MOVES) - 1)]
     for line in move:
-        tprint(line % name if "%s" in line else line)
+        chprintln(ch, line % name if "%s" in line else line)
     stop_fighting(victim, both=True)
     victim["pos"] = "stunned"
 
@@ -1992,7 +2002,7 @@ def _try_special_move(player, target_inst):
     name = tpl["short_descr"]
     move = _SPECIAL_MOVES[randint(0, len(_SPECIAL_MOVES) - 1)]
     for line in move[:-1]:
-        tprint(line % name if "%s" in line else line)
+        chprintln(player, line % name if "%s" in line else line)
     # Damage: same unarmed formula as one_hit (cf. 1stMud: skill = 20 + get_weapon_skill;
     # C divides by 3 before multiplying by skill)
     skill = 20 + _get_weapon_skill(player, GSN_HAND_TO_HAND)
@@ -2000,7 +2010,7 @@ def _try_special_move(player, target_inst):
     hi  = max(lo, (2 * player["level"] // 3) * skill // 100)
     dam = max(1, randint(lo, hi))
     last = move[-1] % name if "%s" in move[-1] else move[-1]
-    tprint("%s {W[{R%d{W]{x" % (last, dam))
+    chprintln(player, "%s {W[{R%d{W]{x" % (last, dam))
     check_improve(player, GSN_HAND_TO_HAND, True, 5)
     # show=False: flavor text above already shows dam count; damage() still handles death/state
     damage(player, target_inst, dam, GSN_HAND_TO_HAND, DAM_BASH, show=False)
@@ -2353,7 +2363,8 @@ def make_corpse(ch):
 
 def raw_kill(victim, killer):
     """Kill victim: stop fight, death cry, corpse, extract/respawn (cf. 1stMud raw_kill in fight.c).
-    [Verified: 02/07/2026] -- update_all_qobjs (quests) not ported;
+    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026] -- update_all_qobjs (quests) not ported;
     [PRIMESUD] respawn flavour text and per-kill save added.
 
     Args:
@@ -2393,13 +2404,13 @@ def raw_kill(victim, killer):
     victim["move"] = max(1, victim.get("move", 100))
 
     # [PRIMESUD] respawn flavour text (1stmud has no equivalent)
-    tprint("You have been KILLED!!")
-    tprint("Your lifeforce ebbs away...")
+    chprintln(victim, "You have been KILLED!!")
+    chprintln(victim, "Your lifeforce ebbs away...")
     wait(DEATH_MSG_DELAY)
-    tprint("A distant warmth draws you back.")
+    chprintln(victim, "A distant warmth draws you back.")
     wait(DEATH_MSG_DELAY)
-    tprint("You come to your senses. Alive, but barely.")
-    tprint("")
+    chprintln(victim, "You come to your senses. Alive, but barely.")
+    chprintln(victim, "")
     from info import do_look  # lazy import to avoid circular dependency
     do_look(victim, [])
 
@@ -2566,8 +2577,9 @@ GROUP_LVL_LIMIT = 20
 
 def group_gain(ch, victim):
     """Award XP to ch's group for killing victim (cf. 1stMud group_gain in fight.c).
-    [Verified: 02/07/2026; quest kill hook added and re-verified 03/07/2026]
-    -- bonus-XP event and gquest hook not ported (noted inline).
+    [Verified: 02/07/2026; quest kill hook added and re-verified 03/07/2026;
+    tprint->chprintln output routing re-verified 04/07/2026] -- bonus-XP
+    event and gquest hook not ported (noted inline).
 
     Iterates all characters in the same room that share ch's group.  NPCs
     (pets) contribute to the group level pool (at half level) but do not
@@ -2620,7 +2632,7 @@ def group_gain(ch, victim):
         # 1stMud: level range check (group_lvl_limit)
         if (highest_level - gch["level"] >= GROUP_LVL_LIMIT
                 or highest_level - gch["level"] <= -GROUP_LVL_LIMIT):
-            tprint("Your powers are useless to such an advanced group of adventurers.")
+            chprintln(gch, "Your powers are useless to such an advanced group of adventurers.")
             # 1stMud: if IsNPC(gch) && gch->master: act to master
             # [PRIMESUD] skip (gch is always a PC here)
             continue
@@ -2630,7 +2642,7 @@ def group_gain(ch, victim):
         # 1stMud: if (mud_info.bonus.status == BONUS_XP) ...
         # [PRIMESUD] skip bonus XP event (not ported)
         # [PRIMESUD] singular/plural fixed; 1stMud always prints "points"
-        tprint("You receive %s experience %s." % (
+        chprintln(gch, "You receive %s experience %s." % (
             str(xp), "point" if xp == 1 else "points"))
         gain_exp(gch, xp)
 
@@ -2695,14 +2707,15 @@ def do_murder(ch, args):
     guard (charmed mobs can't murder).  By 1stMud both run check_killer,
     so the practical difference is just the yell broadcast and the noprefix
     flag (can't trigger by abbreviation).
-    [Verified: 02/07/2026] -- check_killer not ported; yell rendered locally.
+    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026] -- check_killer not ported; yell rendered locally.
 
     Args:
         ch (dict): Acting character.
         args (list): Target keyword.
     """
     if not args:
-        tprint("Murder whom?")
+        chprintln(ch, "Murder whom?")
         return None
 
     # 1stMud: if (IsAffected(ch, AFF_CHARM) || (IsNPC(ch) && ACT_PET)) return;
@@ -2712,12 +2725,12 @@ def do_murder(ch, args):
     rs = world.rooms[ch["room"]]
     mob_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
     if mob_id is None:
-        tprint("They aren't here.")
+        chprintln(ch, "They aren't here.")
         return None
 
     victim = world.chars[mob_id]
     if victim is ch:
-        tprint("Suicide is a mortal sin.")
+        chprintln(ch, "Suicide is a mortal sin.")
         return None
 
     if is_safe(ch, victim):
@@ -2730,16 +2743,17 @@ def do_murder(ch, args):
         return None
 
     if ch.get("pos") == "fighting":
-        tprint("You do the best you can!")
+        chprintln(ch, "You do the best you can!")
         return None
 
     WaitState(ch, PULSE_VIOLENCE)
 
     # 1stMud: do_yell(victim, "Help!  I am being attacked by <ch>!")
     # [PRIMESUD] no comms channels; rendered as a scream in the room
+    # [PRIMESUD] third-person about victim -- flagged, plain chprintln kept per sweep scope
     victim_name = MOB_DEFS[victim["tpl"]]["short_descr"] if victim["is_npc"] else "someone"
     ch_name = ch.get("name", "someone")
-    tprint("{} screams 'Help!  I am being attacked by {}!'".format(
+    chprintln(ch, "{} screams 'Help!  I am being attacked by {}!'".format(
         upper(victim_name), ch_name))
 
     # [PRIMESUD] check_killer not ported
@@ -2749,21 +2763,22 @@ def do_murder(ch, args):
 
 def do_suicide(ch, args):
     """Confirm-gated suicide (cf. 1stMud do_suicide in fight.c).
-    [Verified: 02/07/2026] -- ROOM_ARENA/ROOM_SAFE check not ported.
+    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026] -- ROOM_ARENA/ROOM_SAFE check not ported.
 
     Args:
         ch (dict): Acting character.
         args (list): Unused.
     """
     if ch["fighting"] is not None:
-        tprint("You too busy!")
+        chprintln(ch, "You too busy!")
         return None
 
     # [PRIMESUD] ROOM_ARENA / ROOM_SAFE check not ported
 
     if not ch.get("confirm_suicide"):
         act("$g disapproves of the taking of your own life.", ch, type=TO_CHAR)
-        tprint("If you REALLY want to commit suicide, type 'suicide' again. :(")
+        chprintln(ch, "If you REALLY want to commit suicide, type 'suicide' again. :(")
         ch["confirm_suicide"] = True
     else:
         act("$n uses a small knife to slit $s own throat!", ch, type=TO_ROOM)
@@ -3158,7 +3173,8 @@ def do_trip(ch, args):
 
 def do_flee(ch, args):
     """Attempt to flee from combat (cf. 1stMud do_flee in fight.c).
-    [Verified: 02/07/2026] -- arena check not ported; [PRIMESUD] auto-look
+    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026] -- arena check not ported; [PRIMESUD] auto-look
     after fleeing.
 
     Works for both players and NPCs.
@@ -3173,7 +3189,7 @@ def do_flee(ch, args):
         if ch.get("pos") == "fighting":
             ch["pos"] = "standing"
         if not ch.get("is_npc"):
-            tprint("You aren't fighting anyone.")
+            chprintln(ch, "You aren't fighting anyone.")
         return None
 
     # [PRIMESUD] arena check not ported
@@ -3242,43 +3258,44 @@ def do_rescue(ch, args):
     [PRIMESUD] Single-player: rescuing NPCs is blocked by 1stMud (!IsNPC(ch) &&
     IsNPC(victim) -> "Doesn't need your help!"). Ported for fidelity but largely
     a no-op in single-player.
-    [Verified: 02/07/2026] -- check_killer not ported.
+    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026] -- check_killer not ported.
 
     Args:
         ch (dict): Acting character.
         args (list): Target keyword.
     """
     if not args:
-        tprint("Rescue whom?")
+        chprintln(ch, "Rescue whom?")
         return None
 
     rs = world.rooms[ch["room"]]
     victim_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
     if victim_id is None:
-        tprint("They aren't here.")
+        chprintln(ch, "They aren't here.")
         return None
     victim = world.chars[victim_id]
 
     if victim is ch:
-        tprint("What about fleeing instead?")
+        chprintln(ch, "What about fleeing instead?")
         return None
 
     # 1stMud: if (!IsNPC(ch) && IsNPC(victim)) "Doesn't need your help!"
     if not ch["is_npc"] and victim["is_npc"]:
-        tprint("Doesn't need your help!")
+        chprintln(ch, "Doesn't need your help!")
         return None
 
     if ch["fighting"] == victim_id:
-        tprint("Too late.")
+        chprintln(ch, "Too late.")
         return None
 
     fch_id = victim["fighting"]
     if fch_id is None:
-        tprint("That person is not fighting right now.")
+        chprintln(ch, "That person is not fighting right now.")
         return None
     fch = world.chars.get(fch_id)
     if fch is None:
-        tprint("That person is not fighting right now.")
+        chprintln(ch, "That person is not fighting right now.")
         return None
 
     # 1stMud: IsNPC(fch) && !is_same_group(ch, victim) -> kill stealing
@@ -3348,7 +3365,8 @@ def disarm(ch, victim):
 
 def do_disarm(ch, args):
     """Attempt to disarm opponent's weapon (cf. 1stMud do_disarm in fight.c).
-    [Verified: 02/07/2026] -- check_killer not ported.
+    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026] -- check_killer not ported.
 
     Args:
         ch (dict): Acting character.
@@ -3356,7 +3374,7 @@ def do_disarm(ch, args):
     """
     chance = get_skill(ch, GSN_DISARM, ch["is_npc"])
     if chance == 0:
-        tprint("You don't know how to disarm opponents.")
+        chprintln(ch, "You don't know how to disarm opponents.")
         return None
 
     hth = 0
@@ -3369,12 +3387,12 @@ def do_disarm(ch, args):
 
     victim_id = ch["fighting"]
     if victim_id is None:
-        tprint("You aren't fighting anyone.")
+        chprintln(ch, "You aren't fighting anyone.")
         return None
     victim = world.chars[victim_id]
 
     if victim["equip"].get("wield") is None:
-        tprint("Your opponent is not wielding a weapon.")
+        chprintln(ch, "Your opponent is not wielding a weapon.")
         return None
 
     ch_weapon_sn, _ = _get_weapon_sn(ch)
@@ -3412,7 +3430,8 @@ def do_disarm(ch, args):
 
 def do_surrender(ch, args):
     """Surrender to current opponent (cf. 1stMud do_surrender in fight.c).
-    [Verified: 02/07/2026] -- TRIG_SURR mobprog not ported (mob always resumes).
+    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026] -- TRIG_SURR mobprog not ported (mob always resumes).
 
     Args:
         ch (dict): Acting character.
@@ -3420,13 +3439,13 @@ def do_surrender(ch, args):
     """
     mob_id = ch["fighting"]
     if mob_id is None:
-        tprint("But you're not fighting!")
+        chprintln(ch, "But you're not fighting!")
         return None
 
     mob = world.chars.get(mob_id)
     if mob is None:
         stop_fighting(ch, both=False)
-        tprint("But you're not fighting!")
+        chprintln(ch, "But you're not fighting!")
         return None
 
     act("You surrender to $N!", ch, None, mob, TO_CHAR)
@@ -3447,7 +3466,8 @@ def do_slay(ch, args):
 
     [PRIMESUD] No immortal system, but ported for completeness. Could be
     used as a debug/GM command.
-    [Verified: 02/07/2026] -- trust check and TO_VICT/TO_NOTVICT messages not
+    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026] -- trust check and TO_VICT/TO_NOTVICT messages not
     ported (mob victims never see output).
 
     Args:
@@ -3455,18 +3475,18 @@ def do_slay(ch, args):
         args (list): Target keyword.
     """
     if not args:
-        tprint("Slay whom?")
+        chprintln(ch, "Slay whom?")
         return None
 
     rs = world.rooms[ch["room"]]
     mob_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
     if mob_id is None:
-        tprint("They aren't here.")
+        chprintln(ch, "They aren't here.")
         return None
 
     victim = world.chars[mob_id]
     if victim is ch:
-        tprint("Suicide is a mortal sin.")
+        chprintln(ch, "Suicide is a mortal sin.")
         return None
 
     # 1stMud: trust-level check; [PRIMESUD] no trust system

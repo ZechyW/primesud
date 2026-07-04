@@ -281,8 +281,11 @@ def test_subcmd_prefix_dispatch(scene, out):
 
 
 def test_debug_slay(scene, out, monkeypatch):
-    import combat
-    monkeypatch.setattr(combat, "tprint", lambda s="", end="\n": out.append(s))
+    # combat.py no longer imports tprint (output now routes via chprintln/act
+    # through handler, which does the local-player gating) -- patch handler.tprint
+    cap = lambda s="", end="\n": out.append(s)
+    import handler
+    monkeypatch.setattr(handler, "tprint", cap)
     # raw_kill builds a corpse from the limbo template
     ITEM_DEFS._data[10] = {"keywords": "corpse", "short_descr": "The corpse of %s",
                            "description": "The corpse of %s is lying here.",

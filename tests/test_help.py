@@ -3,6 +3,7 @@ import os
 
 import pytest
 
+import handler
 import info
 
 
@@ -12,8 +13,11 @@ def help_out(monkeypatch):
     monkeypatch.setattr(info, "HELP_FILE",
                         os.path.join("primesud.hpappdir", "help.dat"))
     lines = []
-    monkeypatch.setattr(info, "tprint", lambda *a, **kw: lines.append(
-        a[0] if a else ""))
+    capture = lambda *a, **kw: lines.append(a[0] if a else "")
+    monkeypatch.setattr(handler, "tprint", capture)
+    # PLAYER dict is not registered as world.chars[1], so chprintln's
+    # local-player gate would drop output -- capture at the info level
+    monkeypatch.setattr(info, "chprintln", lambda ch, s="": lines.append(s))
     return lines
 
 

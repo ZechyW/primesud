@@ -88,7 +88,6 @@ def _clean_world_state():
 def out(monkeypatch):
     lines = []
     capture = lambda *a, **kw: lines.append(" ".join(str(x) for x in a))
-    monkeypatch.setattr(info, "tprint", capture)
     monkeypatch.setattr(handler, "tprint", capture)
     return lines
 

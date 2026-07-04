@@ -24,7 +24,6 @@ from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_l
     spell_mana, get_skill, check_improve
 from skills_table import SKILL_TABLE, SKILLS, GSN_PEEK
 from urandom import randint
-from terminal import tprint
 from util import free_mem, gc_collect
 from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
 from debug import DBG  # [PRIMESUD]
@@ -134,86 +133,86 @@ _FLAG_TABLE = (
 
 
 def do_automap(player, args):
-    """Toggle automap display in room descriptions (cf. 1stMud `do_automap` in automap.c). [Verified: 03/07/2026]"""
+    """Toggle automap display in room descriptions (cf. 1stMud `do_automap` in automap.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOMAP
     if player["flags"] & PLR_AUTOMAP:
-        tprint("You now see an automap in room descriptions.")
+        chprintln(player, "You now see an automap in room descriptions.")
     else:
-        tprint("You no longer see automap room descriptions.")
+        chprintln(player, "You no longer see automap room descriptions.")
 
 
 def do_autoloot(player, args):
-    """Toggle autoloot (cf. 1stMud do_autoloot in act_info.c). [Verified: 03/07/2026]"""
+    """Toggle autoloot (cf. 1stMud do_autoloot in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOLOOT
     if player["flags"] & PLR_AUTOLOOT:
-        tprint("You now loot objects from corpses automatically.")
+        chprintln(player, "You now loot objects from corpses automatically.")
     else:
-        tprint("You no longer loot objects from corpses automatically.")
+        chprintln(player, "You no longer loot objects from corpses automatically.")
 
 
 def do_autogold(player, args):
-    """Toggle autogold (cf. 1stMud do_autogold in act_info.c). [Verified: 03/07/2026]"""
+    """Toggle autogold (cf. 1stMud do_autogold in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOGOLD
     if player["flags"] & PLR_AUTOGOLD:
-        tprint("You now loot gold from corpses automatically.")
+        chprintln(player, "You now loot gold from corpses automatically.")
     else:
-        tprint("You no longer loot gold from corpses automatically.")
+        chprintln(player, "You no longer loot gold from corpses automatically.")
 
 
 def do_autosac(player, args):
-    """Toggle autosac (cf. 1stMud do_autosac in act_info.c). [Verified: 03/07/2026]"""
+    """Toggle autosac (cf. 1stMud do_autosac in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOSAC
     if player["flags"] & PLR_AUTOSAC:
-        tprint("You now sacrifice corpses automatically.")
+        chprintln(player, "You now sacrifice corpses automatically.")
     else:
-        tprint("You no longer automatically sacrifice corpses.")
+        chprintln(player, "You no longer automatically sacrifice corpses.")
 
 
 def do_autosplit(player, args):
-    """Toggle autosplit (cf. 1stMud do_autosplit in act_info.c). [Verified: 03/07/2026]"""
+    """Toggle autosplit (cf. 1stMud do_autosplit in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOSPLIT
     if player["flags"] & PLR_AUTOSPLIT:
-        tprint("You now split gold with group members.")
+        chprintln(player, "You now split gold with group members.")
     else:
-        tprint("You no longer split gold with group members.")
+        chprintln(player, "You no longer split gold with group members.")
 
 
 def do_autoassist(player, args):
-    """Toggle autoassist (cf. 1stMud do_autoassist in act_info.c). [Verified: 04/07/2026]"""
+    """Toggle autoassist (cf. 1stMud do_autoassist in act_info.c). [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOASSIST
     if player["flags"] & PLR_AUTOASSIST:
-        tprint("You now assist group members in combat.")
+        chprintln(player, "You now assist group members in combat.")
     else:
-        tprint("You no longer assist group members in combat.")
+        chprintln(player, "You no longer assist group members in combat.")
 
 
 def do_autodamage(player, args):
-    """Toggle autodamage (cf. 1stMud do_autodamage in act_info.c). [Verified: 04/07/2026]"""
+    """Toggle autodamage (cf. 1stMud do_autodamage in act_info.c). [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTODAMAGE
     if player["flags"] & PLR_AUTODAMAGE:
-        tprint("You now see damage amounts in combat.")
+        chprintln(player, "You now see damage amounts in combat.")
     else:
-        tprint("You no longer see damage amounts in combat.")
+        chprintln(player, "You no longer see damage amounts in combat.")
 
 
 def do_autoexit(player, args):
-    """Toggle autoexit (cf. 1stMud do_autoexit in act_info.c). [Verified: 04/07/2026]"""
+    """Toggle autoexit (cf. 1stMud do_autoexit in act_info.c). [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOEXIT
     if player["flags"] & PLR_AUTOEXIT:
-        tprint("Exits will now be displayed.")
+        chprintln(player, "Exits will now be displayed.")
     else:
-        tprint("Exits will no longer be displayed.")
+        chprintln(player, "Exits will no longer be displayed.")
 
 
 def do_autolist(player, args):
-    """Display toggle settings (cf. 1stMud do_autolist in act_info.c). [Verified: 03/07/2026]"""
-    tprint(" %-9s %-6s{w %s" % ("Command", "Status", "Description"))
-    tprint(draw_line())
+    """Display toggle settings (cf. 1stMud do_autolist in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
+    chprintln(player, " %-9s %-6s{w %s" % ("Command", "Status", "Description"))
+    chprintln(player, draw_line())
     flags = player.get("flags", PLR_DEFAULTS)
     for bit, name, desc in _FLAG_TABLE:
         status = "ON" if flags & bit else "OFF"
-        tprint("{G%-11s {W%-6s{w %s{x" % (name, status, desc))
-    tprint(draw_line())
+        chprintln(player, "{G%-11s {W%-6s{w %s{x" % (name, status, desc))
+    chprintln(player, draw_line())
 
 
 def do_clear(player, args):
@@ -229,7 +228,7 @@ def do_clear(player, args):
 def do_wimpy(player, args):
     """Set the hp threshold below which the player auto-flees in combat (cf. 1stMud do_wimpy in act_info.c).
 
-    [Verified: 03/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -243,13 +242,13 @@ def do_wimpy(player, args):
         except ValueError:
             wimpy = 0  # cf. atoi() -- non-numeric input yields 0
     if wimpy < 0:
-        tprint("Your courage exceeds your wisdom.")
+        chprintln(player, "Your courage exceeds your wisdom.")
         return
     if wimpy > player["max_hit"] // 2:
-        tprint("Such cowardice ill becomes you.")
+        chprintln(player, "Such cowardice ill becomes you.")
         return
     player["wimpy"] = wimpy
-    tprint("Wimpy set to %d hit points." % wimpy)
+    chprintln(player, "Wimpy set to %d hit points." % wimpy)
 
 
 def _get_ed(name, extra_descs):
@@ -263,7 +262,7 @@ def _get_ed(name, extra_descs):
 def _show_char_to_char_1(player, mob_id):
     """Show mob description, health condition, equipment, and peek (cf. 1stMud show_char_to_char_1 in act_info.c).
 
-    [Verified: 03/07/2026] -- "$n looks at ..." room/vict acts not ported
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026] -- "$n looks at ..." room/vict acts not ported
     (no other players to notify; mobs ignore them).
     """
     inst = world.chars[mob_id]
@@ -273,28 +272,28 @@ def _show_char_to_char_1(player, mob_id):
     desc = inst.get("description") or tpl.get("description")
     if desc:
         for line in _wrap_paragraphs(desc, TERMINAL_COLS):
-            tprint(line)
+            chprintln(player, line)
     else:
         act("You see nothing special about $M.", player, None, inst, TO_CHAR)
-    tprint(mob_condition(inst, tpl))
+    chprintln(player, mob_condition(inst, tpl))
     found = False
     for slot, label in WEAR_LABELS:
         obj = inst["equip"].get(slot)
         if obj is not None:
             if not found:
-                tprint("")
-                tprint(upper(tpl["short_descr"]) + " is using:")
+                chprintln(player, "")
+                chprintln(player, upper(tpl["short_descr"]) + " is using:")
                 found = True
             ctpl = ITEM_DEFS[obj_vnum(obj)]
-            tprint(label + ctpl["short_descr"])
+            chprintln(player, label + ctpl["short_descr"])
     # cf. 1stMud peek check (act_info.c:459-465)
     if randint(1, 100) < get_skill(player, GSN_PEEK):
-        tprint("")
-        tprint("You peek at the inventory:")
+        chprintln(player, "")
+        chprintln(player, "You peek at the inventory:")
         check_improve(player, GSN_PEEK, True, 4)
         inv = inst.get("inv", [])
         if not inv:
-            tprint("     Nothing.")
+            chprintln(player, "     Nothing.")
         else:
             # short-descr stacking (cf. 1stMud show_list_to_char fShort=true)
             seen = {}
@@ -309,7 +308,7 @@ def _show_char_to_char_1(player, mob_id):
                     order.append(s)
             for s in order:
                 n = seen[s]
-                tprint(("(%2d) " % n if n > 1 else "     ") + s)
+                chprintln(player, ("(%2d) " % n if n > 1 else "     ") + s)
 
 
 _CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
@@ -320,40 +319,40 @@ def _look_in(player, args):
 
     ITEM_DRINK_CON branch and the closed-container check not ported --
     drink containers and container open/close don't exist yet [PRIMESUD].
-    [Verified: 03/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
     """
     if not args:
-        tprint("Look in what?")
+        chprintln(player, "Look in what?")
         return
     keyword = " ".join(args)
     obj = get_obj_here(player, keyword)  # room, then inventory/equipped
     if obj is None:
-        tprint("You do not see that here.")
+        chprintln(player, "You do not see that here.")
         return
     tpl = ITEM_DEFS[obj_vnum(obj)]
     if tpl.get("type") not in _CONTAINER_TYPES:
-        tprint("That is not a container.")
+        chprintln(player, "That is not a container.")
         return
-    _show_container(obj, tpl)
+    _show_container(player, obj, tpl)
 
 
-def _show_container(obj, tpl):
-    """Print container contents (cf. 1stMud do_look 'in' case in act_info.c). [Verified: 03/07/2026]"""
+def _show_container(player, obj, tpl):
+    """Print container contents (cf. 1stMud do_look 'in' case in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
     obj_name = (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]
-    tprint("{} holds:".format(obj_name))
+    chprintln(player, "{} holds:".format(obj_name))
     contents = isinstance(obj, dict) and obj.get("contents", [])
     if not contents:
-        tprint("  Nothing.")
+        chprintln(player, "  Nothing.")
         return
     for cobj in contents:
         ctpl = ITEM_DEFS[obj_vnum(cobj)]
-        tprint("  " + (cobj.get("short_descr") or ctpl["short_descr"]))
+        chprintln(player, "  " + (cobj.get("short_descr") or ctpl["short_descr"]))
 
 
-def _look_scan_items(target, number, count, items):
+def _look_scan_items(player, target, number, count, items):
     """Scan an item list for extra_desc or name match (cf. 1stMud `do_look` in act_info.c: item scan loop).
 
-    [Verified: 03/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
 
     Returns:
         tuple: (found, count) where found is True if the Nth match was displayed.
@@ -366,7 +365,7 @@ def _look_scan_items(target, number, count, items):
             count += 1
             if count == number:
                 for line in _wrap_paragraphs(pdesc, TERMINAL_COLS):
-                    tprint(line)
+                    chprintln(player, line)
                 return True, count
             continue
         if is_name(target, tpl.get("keywords", "")):
@@ -376,7 +375,7 @@ def _look_scan_items(target, number, count, items):
                 for line in _wrap_paragraphs(
                         inst_desc or tpl.get("description", tpl["short_descr"]),
                         TERMINAL_COLS):
-                    tprint(line)
+                    chprintln(player, line)
                 return True, count
     return False, count
 
@@ -384,7 +383,7 @@ def _look_scan_items(target, number, count, items):
 def do_exits(player, args):
     """List obvious exits with destination room names (cf. 1stMud do_exits in act_info.c).
 
-    [Verified: 03/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -392,7 +391,7 @@ def do_exits(player, args):
     """
     # [PRIMESUD] "auto" form not ported (autoexit uses its own line in do_look);
     # check_blind / can_see_room stubbed; immortal room-vnum suffix not ported
-    tprint("Obvious exits:")
+    chprintln(player, "Obvious exits:")
     found = False
     exits = world.rooms[player["room"]]["exits"]
     for d in EXIT_ORDER:
@@ -410,9 +409,9 @@ def do_exits(player, args):
         found = True
         # [PRIMESUD] room_is_dark not ported -- 1stMud shows "Too dark to tell"
         name = EXIT_NAMES.get(d, d)
-        tprint("%-5s - %s" % (upper(name), world.rooms[to]["name"]))
+        chprintln(player, "%-5s - %s" % (upper(name), world.rooms[to]["name"]))
     if not found:
-        tprint("None.")
+        chprintln(player, "None.")
 
 
 # Position display strings (cf. 1stMud show_char_to_char_0 in act_info.c)
@@ -436,7 +435,7 @@ def do_look(player, args):
     ported -- blindness and darkness are not implemented yet; position is
     gated by the command table.
 
-    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026]
+    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -459,12 +458,12 @@ def do_look(player, args):
         count = 0
         # Inventory + equipped (cf. 1stMud carrying_first which includes worn)
         equipped = [o for o in player["equip"].values() if o is not None]
-        found, count = _look_scan_items(target, number, count,
+        found, count = _look_scan_items(player, target, number, count,
                                         player["inv"] + equipped)
         if found:
             return
         # Room items
-        found, count = _look_scan_items(target, number, count, rs["items"])
+        found, count = _look_scan_items(player, target, number, count, rs["items"])
         if found:
             return
 
@@ -475,24 +474,24 @@ def do_look(player, args):
             count += 1
             if count == number:
                 for line in _wrap_paragraphs(pdesc, TERMINAL_COLS):
-                    tprint(line)
+                    chprintln(player, line)
                 return
 
         if count > 0 and count != number:
             if count == 1:
-                tprint("You only see one %s here." % target)
+                chprintln(player, "You only see one %s here." % target)
             else:
-                tprint("You only see %d of those here." % count)
+                chprintln(player, "You only see %d of those here." % count)
             return
 
         # Direction look (cf. 1stMud do_look lines 1330-1362)
         door = DIR_ALIASES.get(arg1)
         if door is None:
-            tprint("You do not see that here.")
+            chprintln(player, "You do not see that here.")
             return
         exits = room["exits"]
         if door not in exits:
-            tprint("Nothing special there.")
+            chprintln(player, "Nothing special there.")
             return
         ex = exits[door]
         if isinstance(ex, dict):
@@ -500,18 +499,18 @@ def do_look(player, args):
             ex_desc = ex.get("desc")
             if ex_desc:
                 for line in _wrap_paragraphs(ex_desc, TERMINAL_COLS):
-                    tprint(line)
+                    chprintln(player, line)
             else:
-                tprint("Nothing special there.")
+                chprintln(player, "Nothing special there.")
             kw = ex.get("keyword", "")
             if kw and kw[0] != ' ':
                 kw = kw.split()[0]  # 1stMud act "$d": first word of keyword
                 if ex.get("closed"):
-                    tprint("The %s is closed." % kw)
+                    chprintln(player, "The %s is closed." % kw)
                 elif ex.get("isdoor"):
-                    tprint("The %s is open." % kw)
+                    chprintln(player, "The %s is open." % kw)
         else:
-            tprint("Nothing special there.")
+            chprintln(player, "Nothing special there.")
         return
     room = ROOM_DEFS[player["room"]]
     rs = world.rooms[player["room"]]
@@ -520,9 +519,9 @@ def do_look(player, args):
 
     show_vnums = "vnum" in DBG  # [PRIMESUD] debug vnum visibility toggle
     if show_vnums:
-        tprint("{Y" + room["name"] + " {D[" + str(player["room"]) + "]{x")
+        chprintln(player, "{Y" + room["name"] + " {D[" + str(player["room"]) + "]{x")
     else:
-        tprint("{Y" + room["name"] + "{x")
+        chprintln(player, "{Y" + room["name"] + "{x")
 
     color = SECTOR_COLORS.get(room.get("sector", "inside"), "")
     desc_lines = _wrap_paragraphs(room["desc"], text_w)
@@ -533,10 +532,10 @@ def do_look(player, args):
         for i in range(n):
             ml = map_lines[i] if i < len(map_lines) else ' ' * COMPACT_W
             tl = desc_lines[i] if i < len(desc_lines) else ''
-            tprint(ml + ' ' + color + tl)
+            chprintln(player, ml + ' ' + color + tl)
     else:
         for tl in desc_lines:
-            tprint(color + tl)
+            chprintln(player, color + tl)
 
     # cf. 1stMud do_look: exits only shown with PLR_AUTOEXIT (do_exits "auto")
     if player.get("flags", PLR_DEFAULTS) & PLR_AUTOEXIT:
@@ -545,7 +544,7 @@ def do_look(player, args):
             if d in room["exits"] and not (isinstance(room["exits"][d], dict) and room["exits"][d].get("closed"))
         )
         exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
-        tprint("{g" + exit_string + "{x")
+        chprintln(player, "{g" + exit_string + "{x")
     live_mobs = rs["mobs"]
     # Items: build a display string per instance (flags + desc), stack by exact string match
     # (cf. 1stMud format_obj_to_char + show_list_to_char in act_info.c)
@@ -581,7 +580,7 @@ def do_look(player, args):
     for line in order:
         n = seen[line]
         stack_prefix = "(%2d) " % n if n > 1 else "     "
-        tprint(stack_prefix + line)
+        chprintln(player, stack_prefix + line)
     # Mobs: one per line, long_descr at idle or constructed position string (cf. 1stMud show_char_to_char_0 in act_info.c)
     for mob_id in live_mobs:
         inst = world.chars[mob_id]
@@ -632,7 +631,7 @@ def do_look(player, args):
                 line = name + _POS_LINES.get(pos, " is here.")
         if show_vnums:  # [PRIMESUD] template vnum; instance id via debug stat mob
             line += " {D[" + str(inst["tpl"]) + "]"
-        tprint("%s{M%s{x" % (prefix, line))
+        chprintln(player, "%s{M%s{x" % (prefix, line))
 
 
 _SCORE_INNER = TERMINAL_COLS - 2
@@ -681,7 +680,7 @@ def _make_percent_bar(val, max_val, length):
 def do_score(player, args):
     """Display the character score sheet (cf. 1stMud dlm_score in act_info.c).
 
-    [Verified: 03/07/2026] -- data fields (age, hours, thac0, AC bars)
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026] -- data fields (age, hours, thac0, AC bars)
     verified; box layout adapted for the 64-col screen [PRIMESUD].
     """
     # two-column box mirroring 1stMud dlm_score layout, with bright/normal colours
@@ -803,24 +802,24 @@ def do_score(player, args):
         _SCORE_SEP_OUTER,
     ]
     for line in lines:
-        tprint(line)
+        chprintln(player, line)
 
 
 def do_worth(player, args):
     """Show gold, silver, experience and quest/trivia points (cf. 1stMud do_worth in act_info.c).
 
-    [Verified: 04/07/2026] -- IsNPC branch not applicable (single player);
+    [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026] -- IsNPC branch not applicable (single player);
     "exp to level" uses the per-level xp model (xp_next - xp) in place of
     1stMud's (level+1)*exp_per_level - exp [PRIMESUD].
     """
-    tprint("You have " + str(player["gold"]) + " gold, " + str(player["silver"])
+    chprintln(player, "You have " + str(player["gold"]) + " gold, " + str(player["silver"])
            + " silver, and " + str(player["xp"]) + " experience ("
            + str(player["xp_next"] - player["xp"]) + " exp to level).")
-    tprint("You have earned " + _intstr(player.get("quest_points", 0), "questpoint")
+    chprintln(player, "You have earned " + _intstr(player.get("quest_points", 0), "questpoint")
            + " and " + _intstr(player.get("trivia", 0), "trivia point") + ".")
 
 
-def _parse_skill_range(args):
+def _parse_skill_range(player, args):
     """Parse level range arguments for spell/skill list commands. [PRIMESUD]"""
     if not args:
         return (False, 1, MAX_MORTAL_LEVEL, True)
@@ -833,10 +832,10 @@ def _parse_skill_range(args):
     try:
         max_lev = int(args[0])
     except ValueError:
-        tprint("Arguments must be numerical or all.")
+        chprintln(player, "Arguments must be numerical or all.")
         return (False, 1, MAX_MORTAL_LEVEL, False)
     if max_lev < 1 or max_lev > MAX_MORTAL_LEVEL:
-        tprint("Levels must be between 1 and {}.".format(MAX_MORTAL_LEVEL))
+        chprintln(player, "Levels must be between 1 and {}.".format(MAX_MORTAL_LEVEL))
         return (False, 1, MAX_MORTAL_LEVEL, False)
     min_lev = 1
     if len(args) > 1:
@@ -844,13 +843,13 @@ def _parse_skill_range(args):
             min_lev = max_lev
             max_lev = int(args[1])
         except ValueError:
-            tprint("Arguments must be numerical or all.")
+            chprintln(player, "Arguments must be numerical or all.")
             return (False, 1, MAX_MORTAL_LEVEL, False)
         if max_lev < 1 or max_lev > MAX_MORTAL_LEVEL:
-            tprint("Levels must be between 1 and {}.".format(MAX_MORTAL_LEVEL))
+            chprintln(player, "Levels must be between 1 and {}.".format(MAX_MORTAL_LEVEL))
             return (False, 1, MAX_MORTAL_LEVEL, False)
         if min_lev > max_lev:
-            tprint("That would be silly.")
+            chprintln(player, "That would be silly.")
             return (False, 1, MAX_MORTAL_LEVEL, False)
     return (f_all, min_lev, max_lev, True)
 
@@ -862,7 +861,7 @@ def _pad_color(s, width):
 
 def _print_level_lists(player, args, want_spells):
     """Print spells or skills grouped by level. [PRIMESUD]"""
-    f_all, min_lev, max_lev, ok = _parse_skill_range(args)
+    f_all, min_lev, max_lev, ok = _parse_skill_range(player, args)
     if not ok:
         return
     rows = {}
@@ -892,9 +891,9 @@ def _print_level_lists(player, args, want_spells):
     if not found:
         # 1stMud: do_spells prints plain, do_skills colored
         if want_spells:
-            tprint("No spells found.")
+            chprintln(player, "No spells found.")
         else:
-            tprint("{cNo skills found.{x")
+            chprintln(player, "{cNo skills found.{x")
         return
     for level in range(MAX_MORTAL_LEVEL + 1):
         items = rows.get(level)
@@ -907,11 +906,11 @@ def _print_level_lists(player, args, want_spells):
                 line += items[i + 1]
             # [PRIMESUD] 1stMud's 29-wide columns overflow 64 cols (68 vis);
             # 16-wide names + stripped tail keep two columns under the wrap.
-            tprint(line.rstrip() + "{x")
+            chprintln(player, line.rstrip() + "{x")
 
 
 def print_practice_table(player):
-    """Print learned practice percentages (cf. 1stMud do_practice in act_info.c). [Verified: 03/07/2026]"""
+    """Print learned practice percentages (cf. 1stMud do_practice in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
     items = []
     half = TERMINAL_COLS // 2
     name_w = 18
@@ -924,7 +923,7 @@ def print_practice_table(player):
         line = items[i]
         if i + 1 < len(items):
             line = line + " " * (half - len(line)) + items[i + 1]
-        tprint(line)
+        chprintln(player, line)
 
 
 def do_skills(player, args):
@@ -973,7 +972,7 @@ def do_help(player, args):
     [PRIMESUD] Scans HELP_FILE line-by-line instead of an in-memory help
     list -- the full help text (~150KB) will not fit the HP Prime heap.
     Record format: '#<level>|<keywords>' header line, then text lines.
-    [Verified: 03/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
     """
     argall = " ".join(args) if args else "summary"
     number, target = _number_argument(argall)
@@ -992,7 +991,7 @@ def do_help(player, args):
             break
         if line[0] == "#":
             if printing:
-                tprint(sep)
+                chprintln(player, sep)
                 printing = False
             level_s, keyword = line[1:].rstrip("\n").split("|", 1)
             if int(level_s) > trust:
@@ -1005,22 +1004,22 @@ def do_help(player, args):
             else:
                 count += 1
                 if count == number:
-                    tprint(sep)
-                    tprint("Help Keywords : %s" % keyword)
-                    tprint(sep)
+                    chprintln(player, sep)
+                    chprintln(player, "Help Keywords : %s" % keyword)
+                    chprintln(player, sep)
                     printing = True
                     found = True
                 elif found:
                     related.append(keyword)
         elif printing:
-            tprint(line.rstrip("\n"))
+            chprintln(player, line.rstrip("\n"))
     f.close()
     if printing:
-        tprint(sep)
+        chprintln(player, sep)
     if matches:
         # [PRIMESUD] 1stMud prints 3 columns; 2 columns fit the 64-col screen
-        tprint("Help files that start with the letter '%s'." % target[0].upper())
-        tprint(sep)
+        chprintln(player, "Help files that start with the letter '%s'." % target[0].upper())
+        chprintln(player, sep)
         half = TERMINAL_COLS // 2
         cells = []
         for i, kw in enumerate(matches):
@@ -1029,15 +1028,15 @@ def do_help(player, args):
             line = cells[i]
             if i + 1 < len(cells):
                 line = line + " " * (half - len(line)) + cells[i + 1]
-            tprint(line)
-        tprint(sep)
-        tprint("%d total help files." % len(matches))
+            chprintln(player, line)
+        chprintln(player, sep)
+        chprintln(player, "%d total help files." % len(matches))
     elif not found:
-        tprint("No help found for %s. Try using just the first letter." % target)
+        chprintln(player, "No help found for %s. Try using just the first letter." % target)
         # new_wiznet missing-help log: no immortals in single-user [PRIMESUD]
     elif related:
-        tprint("See Also : %s." % ", ".join(related))
-        tprint(sep)
+        chprintln(player, "See Also : %s." % ", ".join(related))
+        chprintln(player, sep)
 
 
 def do_map(player, args):
@@ -1048,13 +1047,13 @@ def do_map(player, args):
     """
     # [TODO blind] 1stMud checks check_blind(ch) here and refuses if AFF_BLIND -- add when blindness is implemented
     for line in build_full_lines(player, ROOM_DEFS):
-        tprint(line)
+        chprintln(player, line)
 
 
 def do_affects(player, args):
     """List all active player affects with name, location, modifier, duration (cf. 1stMud do_affects in act_info.c).
 
-    [Verified: 03/07/2026] -- racial-ability and equipment-spell sections
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026] -- racial-ability and equipment-spell sections
     not ported (see TODO below).
 
     Args:
@@ -1064,9 +1063,9 @@ def do_affects(player, args):
     # -- Racial-ability and equipment-spell sections not ported (TODO) --
     affects = player.get("affect_list", [])
     if not affects:
-        tprint("You are not affected by any spells.")
+        chprintln(player, "You are not affected by any spells.")
         return
-    tprint("You are affected by the following spells:")
+    chprintln(player, "You are affected by the following spells:")
     # cf. 1stMud: modifier/duration detail only at trust >= 20
     show_detail = player.get("level", 1) >= 20
     last_type = None
@@ -1089,7 +1088,7 @@ def do_affects(player, args):
                 line += "permanently"
             else:
                 line += "for " + str(dur) + " hours"
-        tprint(line)
+        chprintln(player, line)
         last_type = sn
 
 
@@ -1099,29 +1098,29 @@ def do_credits(player, args):
     [PRIMESUD] 1stMud shows the diku/ROM/1stMud help entries; PrimeSUD
     prints its own condensed text (adds the port line).
     """
-    tprint("{WPrimeSUD{x -- a single-user dungeon for the HP Prime")
-    tprint("Port by ZechyW.  Not for commercial distribution.")
-    tprint("")
-    tprint("{W1stMud ROM Derivative{x")
-    tprint("  {c(c) 2001-2003 Ryan Jennings (Markanth){x")
-    tprint("  markanth@firstmud.com")
-    tprint("")
-    tprint("{WROM 2.4 beta{x")
-    tprint("  {c(c) 1993-1998 Russ Taylor{x")
-    tprint("  rtaylor@hypercube.org")
-    tprint("")
-    tprint("{WMerc 2.1{x")
-    tprint("  {c(c) 1992-1993 Michael Chastain  mec@shell.portal.com{x")
-    tprint("            Michael Quan       michael@uclink.berkeley.edu")
-    tprint("            Mitchell Tse       hatchet@uclink.berkeley.edu")
-    tprint("")
-    tprint("{WDikuMud{x -- creators of the original game")
-    tprint("  {c(c) 1990-1991 Sebastian Hammer       quinn@freja.diku.dk{x")
-    tprint("            Michael Seifert        seifert@freja.diku.dk")
-    tprint("            Hans Henrik Staerfeldt bombman@freja.diku.dk")
-    tprint("            Tom Madsen             noop@freja.diku.dk")
-    tprint("            Katja Nyboe            katz@freja.diku.dk")
-    tprint("  DIKU, Computer Science Institute, Copenhagen University")
+    chprintln(player, "{WPrimeSUD{x -- a single-user dungeon for the HP Prime")
+    chprintln(player, "Port by ZechyW.  Not for commercial distribution.")
+    chprintln(player, "")
+    chprintln(player, "{W1stMud ROM Derivative{x")
+    chprintln(player, "  {c(c) 2001-2003 Ryan Jennings (Markanth){x")
+    chprintln(player, "  markanth@firstmud.com")
+    chprintln(player, "")
+    chprintln(player, "{WROM 2.4 beta{x")
+    chprintln(player, "  {c(c) 1993-1998 Russ Taylor{x")
+    chprintln(player, "  rtaylor@hypercube.org")
+    chprintln(player, "")
+    chprintln(player, "{WMerc 2.1{x")
+    chprintln(player, "  {c(c) 1992-1993 Michael Chastain  mec@shell.portal.com{x")
+    chprintln(player, "            Michael Quan       michael@uclink.berkeley.edu")
+    chprintln(player, "            Mitchell Tse       hatchet@uclink.berkeley.edu")
+    chprintln(player, "")
+    chprintln(player, "{WDikuMud{x -- creators of the original game")
+    chprintln(player, "  {c(c) 1990-1991 Sebastian Hammer       quinn@freja.diku.dk{x")
+    chprintln(player, "            Michael Seifert        seifert@freja.diku.dk")
+    chprintln(player, "            Hans Henrik Staerfeldt bombman@freja.diku.dk")
+    chprintln(player, "            Tom Madsen             noop@freja.diku.dk")
+    chprintln(player, "            Katja Nyboe            katz@freja.diku.dk")
+    chprintln(player, "  DIKU, Computer Science Institute, Copenhagen University")
 
 
 def _convert_level(arg):
@@ -1254,7 +1253,7 @@ def _center_fill(text, width=0):
 def do_areas(player, args):
     """List areas with level ranges, authors, and directions (cf. 1stMud do_areas in db.c).
 
-    [Verified: 03/07/2026] -- clan restriction marker ("{G*") and its legend
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026] -- clan restriction marker ("{G*") and its legend
     line not ported (no clans).
     """
     lo_lv = 0
@@ -1272,9 +1271,9 @@ def do_areas(player, args):
     else:
         hi_lv = MAX_LEVEL
 
-    tprint("")
-    tprint("{W" + _center_fill("[ {RAREAS ON PRIMESUD{W ]") + "{x")
-    tprint("{YLoading all area paths...{x")
+    chprintln(player, "")
+    chprintln(player, "{W" + _center_fill("[ {RAREAS ON PRIMESUD{W ]") + "{x")
+    chprintln(player, "{YLoading all area paths...{x")
 
     paths = find_area_paths(player)
     source_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
@@ -1296,15 +1295,15 @@ def do_areas(player, args):
             else:
                 # [PRIMESUD] 1stMud typo "Not accessable." fixed
                 dirs = paths.get(tag, "Not accessible.")
-            tprint(" {W[{B%-7s{W] {r%-7s {C%-23s {W({M%s{W){x"
+            chprintln(player, " {W[{B%-7s{W] {r%-7s {C%-23s {W({M%s{W){x"
                    % (lvl_str, builder, name, dirs))
             count += 1
 
     if count == 0:
-        tprint("{W" + _center_fill("[ {RNo areas meeting those criteria.{W ]") + "{x")
+        chprintln(player, "{W" + _center_fill("[ {RNo areas meeting those criteria.{W ]") + "{x")
     else:
-        tprint("{W" + _center_fill("[ {R" + str(count) + " areas found{W ]") + "{x")
-        tprint("All directions are from your current position.")
+        chprintln(player, "{W" + _center_fill("[ {R" + str(count) + " areas found{W ]") + "{x")
+        chprintln(player, "All directions are from your current position.")
 
 
 def do_read(player, args):
@@ -1315,7 +1314,7 @@ def do_read(player, args):
 def do_examine(player, args):
     """Examine an object: look at it, then show contents or coin count (cf. 1stMud do_examine in act_info.c).
 
-    [Verified: 03/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -1332,7 +1331,7 @@ def do_examine(player, args):
             labels.append((isinstance(o, dict) and o.get("short_descr"))
                           or ITEM_DEFS[obj_vnum(o)]["short_descr"])
         if not labels:
-            tprint("Examine what?")
+            chprintln(player, "Examine what?")
             return
         idx = pick_from("Examine what?", labels)
         if idx < 0:
@@ -1345,22 +1344,22 @@ def do_examine(player, args):
         inst_desc = isinstance(obj, dict) and obj.get("description")
         for line in _wrap_paragraphs(inst_desc or tpl.get("description", tpl["short_descr"]),
                                      TERMINAL_COLS):
-            tprint(line)
-        _examine_extras(obj)
+            chprintln(player, line)
+        _examine_extras(player, obj)
         return
     arg = args[0]
     do_look(player, [arg])
     obj = get_obj_here(player, arg)
     if obj is not None:
-        _examine_extras(obj)
+        _examine_extras(player, obj)
 
 
-def _examine_extras(obj):
+def _examine_extras(player, obj):
     """Show money coin counts or container contents after looking at obj (cf. 1stMud do_examine in act_info.c).
 
     [PRIMESUD] Container contents shown from the resolved obj directly; 1stMud
     re-resolves via do_look "in <arg>", which can match a different object.
-    [Verified: 03/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
     """
     tpl = ITEM_DEFS[obj_vnum(obj)]
     obj_type = tpl.get("type")
@@ -1369,18 +1368,18 @@ def _examine_extras(obj):
         gold = obj.get("gold", 0)
         if silver == 0:
             if gold == 0:
-                tprint("Odd...there's no coins in the pile.")
+                chprintln(player, "Odd...there's no coins in the pile.")
             elif gold == 1:
-                tprint("Wow. One gold coin.")
+                chprintln(player, "Wow. One gold coin.")
             else:
-                tprint("There are " + str(gold) + " gold coins in the pile.")
+                chprintln(player, "There are " + str(gold) + " gold coins in the pile.")
         elif gold == 0:
             if silver == 1:
-                tprint("Wow. One silver coin.")
+                chprintln(player, "Wow. One silver coin.")
             else:
-                tprint("There are " + str(silver) + " silver coins in the pile.")
+                chprintln(player, "There are " + str(silver) + " silver coins in the pile.")
         else:
-            tprint("There are " + str(gold) + " gold and " + str(silver) + " silver coins in the pile.")
+            chprintln(player, "There are " + str(gold) + " gold and " + str(silver) + " silver coins in the pile.")
     elif obj_type in _CONTAINER_TYPES:
-        _show_container(obj, tpl)
+        _show_container(player, obj, tpl)
     # 1stMud: ITEM_JUKEBOX -> do_play "list" -- not yet ported

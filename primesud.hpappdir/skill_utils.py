@@ -3,8 +3,7 @@
 import classes
 from skills_table import SKILL_TABLE, SKILLS
 from config import MAX_MORTAL_LEVEL, INT_APP_LEARN
-from handler import get_curr_stat
-from terminal import tprint
+from handler import get_curr_stat, chprintln
 from urandom import randint
 
 
@@ -163,18 +162,18 @@ def check_improve(player, sk_vnum, success, multiplier):
         inner = min(95, max(5, 100 - current))
         if randint(1, 100) < inner:
             player["learned"][sk_vnum] += 1
-            tprint("You have become better at {}!".format(sk_name))
+            chprintln(player, "You have become better at {}!".format(sk_name))
             player["xp"] += 2 * sk_rating
     else:
         inner = min(30, max(5, current // 2))
         if randint(1, 100) < inner:
             gain = randint(1, 3)
             player["learned"][sk_vnum] = min(100, current + gain)
-            tprint("You learn from your mistakes, and your {} improves.".format(sk_name))
+            chprintln(player, "You learn from your mistakes, and your {} improves.".format(sk_name))
             player["xp"] += 2 * sk_rating
 
     if player["learned"].get(sk_vnum) == 100:
-        tprint("{GYou have mastered %s!{x" % sk_name)
+        chprintln(player, "{GYou have mastered %s!{x" % sk_name)
 
 
 # -- Skill lookup -------------------------------------------------------------

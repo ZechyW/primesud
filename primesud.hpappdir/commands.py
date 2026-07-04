@@ -17,6 +17,7 @@ from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_sacrifice, do_compare, do_steal, do_give,
                        do_drink, do_fill, do_pour, do_envenom)
 from gquest import do_gquest
+from handler import chprintln
 from healer import do_heal
 from hunt import do_hunt
 from macros import do_macro
@@ -546,9 +547,9 @@ def interpret(raw, player):
         # check_social: not yet ported
         msg = _HUH_MESSAGES[randint(0, len(_HUH_MESSAGES) - 1)]
         if "%s" in msg:
-            tprint(msg % command)
+            chprintln(player, msg % command)
         else:
-            tprint(msg)
+            chprintln(player, msg)
         return None
 
     # -- check_disabled: not yet ported
@@ -558,7 +559,7 @@ def interpret(raw, player):
     # -- Position gate (cf. switch on ch->position)
     pos = player.get("pos", "standing")
     if POS_ORDER[pos] < POS_ORDER[min_pos]:
-        tprint(_POS_MSG.get(pos, ""))
+        chprintln(player, _POS_MSG.get(pos, ""))
         return None
 
     args = split_args(argument)
