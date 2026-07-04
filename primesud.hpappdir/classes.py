@@ -294,6 +294,13 @@ def lvl_bonus(ch):
     return (adlev + inclev) // 1000
 
 
+def class_name(ch, cl):
+    """Full name of class cl at the char's current remort tier
+    (cf. 1stMud ClassName macro in macro.h: class_table[i].name[GetRemort(ch)])."""
+    tier = min(len(char_classes(ch)) - 1, len(CLASS_TABLE[0]["names"]) - 1)
+    return CLASS_TABLE[cl]["names"][max(0, tier)]
+
+
 def class_long(ch):
     """Slash-joined full class names at current remort tier
     (cf. 1stMud class_long in multiclass.c)."""

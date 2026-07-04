@@ -6,7 +6,7 @@ from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name
                     act, chprintln, TO_CHAR,
                     number_argument as _number_argument)
 from automap import build_compact_lines, build_full_lines, COMPACT_W
-from classes import class_long, class_short
+from classes import class_long, class_short, class_name
 from colors import color_len, upper, draw_line
 from combat import get_thac0
 from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, POS_FROM_SHORT, SECTOR_COLORS,
@@ -680,7 +680,9 @@ def _make_percent_bar(val, max_val, length):
 def do_score(player, args):
     """Display the character score sheet (cf. 1stMud dlm_score in act_info.c).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026] -- data fields (age, hours, thac0, AC bars)
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
+    header name+title (cf. dlm_score/set_title) added and re-verified 04/07/2026]
+    -- data fields (age, hours, thac0, AC bars)
     verified; box layout adapted for the 64-col screen [PRIMESUD].
     """
     # two-column box mirroring 1stMud dlm_score layout, with bright/normal colours
@@ -721,8 +723,21 @@ def do_score(player, args):
         cls_name = class_short(p)
     mem_str = _free_mem()
     name_raw = p.get('name', '???')
-    name_col = "{c" + name_raw + "{x" + ' ' * (_SCORE_LEFT - len(name_raw))
-    mem_col  = ' ' * (_SCORE_RIGHT - color_len(mem_str)) + mem_str
+    # cf. 1stMud dlm_score header "<name><title>"; the initial title set at
+    # creation is "the <race> <ClassName(prime)>" (nanny.c set_title).
+    # [PRIMESUD] No title field or 'title' command, so derive that initial
+    # title on the fly; fall back to the bare name if it would not fit.
+    classes = p.get("classes")
+    if classes:
+        title_raw = (name_raw + " the " + str(p.get("race", "Human")) + " "
+                     + class_name(p, classes[p.get("prime_class", 0)]))
+    else:
+        title_raw = name_raw
+    _hdr_w = _SCORE_LEFT + 3 + _SCORE_RIGHT
+    if len(title_raw) + color_len(mem_str) + 1 > _hdr_w:
+        title_raw = name_raw
+    name_col = "{c" + title_raw + "{x"
+    mem_col  = ' ' * (_hdr_w - len(title_raw) - color_len(mem_str)) + mem_str
 
     total_played = p.get('played', 0)
     hours = total_played // 3600            # cf. 1stMud act_info.c: played/HOUR
@@ -730,7 +745,7 @@ def do_score(player, args):
 
     lines = [
         _SCORE_SEP_OUTER,
-        "{W|{x " + name_col + "   " + mem_col + " {W|{x",
+        "{W|{x " + name_col + mem_col + " {W|{x",
         _SCORE_SEP_INNER,
         _row(
             _stat("Strength", ps["str"], get_curr_stat(p, "str")),

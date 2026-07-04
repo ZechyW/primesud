@@ -1438,8 +1438,8 @@ def do_zap(player, args):
 _WEAPON_OUTFIT_CHOICES = [
     ("mace",    I_MACE_SUB_MERC),
     ("dagger",  I_DAGGER_SUB_MERC),
-    ("spear",   I_SPEAR_SUB_MERC),
     ("axe",     I_AXE_SUB_MERC),
+    ("spear",   I_SPEAR_SUB_MERC),  # const.c entry displays as "staff" but maps to gsn_spear
     ("flail",   I_FLAIL_SUB_MERC),
     ("whip",    I_WHIP_SUB_MERC),
     ("polearm", I_GLAIVE_SUB_MERC),
