@@ -217,6 +217,46 @@ def test_enter_last_charge_fades_portal(out):
     assert any("fades out of existence" in l for l in out)
 
 
+def test_portal_targets_unloaded_area_mob(out, monkeypatch, tmp_path):
+    # _find_unloaded_mob: index hit -> area load -> spawned instance found
+    player = _make_player(9001)
+    _held_stone(player)
+    player["_target_name"] = "dragon"
+    idx = tmp_path / "mob_index.dat"
+    idx.write_text("testarea|9402|red dragon\n")
+    monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
+    loaded = []
+
+    def fake_load(tag):
+        loaded.append(tag)
+        MOB_DEFS._data[9402] = {"keywords": "red dragon",
+                                "short_descr": "a red dragon", "level": 10}
+        _make_mob(3, room=9002, tpl=9402)
+    monkeypatch.setattr(world, "_ensure_area_by_tag", fake_load)
+    ok = magic.spell_portal(0, 30, player, None, "char")
+    assert ok
+    assert loaded == ["testarea"]
+    assert world.rooms._data[9001]["items"][0]["to_vnum"] == 9002
+
+
+def test_find_unloaded_mob_edge_cases(monkeypatch, tmp_path):
+    # missing index file: quiet None
+    monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(tmp_path / "absent.dat"))
+    assert magic._find_unloaded_mob("dragon") == (None, None)
+    # loaded areas skipped; no-spawn load capped at 2
+    idx = tmp_path / "mob_index.dat"
+    idx.write_text("loadedarea|9402|red dragon\n"
+                   "ghost1|9403|red dragon\n"
+                   "ghost2|9404|red dragon\n"
+                   "ghost3|9405|red dragon\n")
+    monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
+    monkeypatch.setattr(world, "_LOADED_AREAS", {"loadedarea"})
+    loaded = []
+    monkeypatch.setattr(world, "_ensure_area_by_tag", loaded.append)
+    assert magic._find_unloaded_mob("dragon") == (None, None)
+    assert loaded == ["ghost1", "ghost2"]
+
+
 def test_random_gate_uses_area_pick(out, monkeypatch):
     # get_random_room: random area -> ensure loaded -> room within it
     player = _make_player(9001)

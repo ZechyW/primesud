@@ -1691,7 +1691,9 @@ def spell_frenzy(sn, level, ch, vo, target):
 
 def spell_gate(sn, level, ch, vo, target):
     """Gate to another character's location (cf. 1stMud spell_gate in magic.c).
-    [Verified: 03/07/2026; pet gate added and re-verified 03/07/2026]"""
+    [Verified: 03/07/2026; pet gate added and re-verified 03/07/2026;
+    unloaded-area target fallback (get_char_world fidelity) added and
+    re-verified 04/07/2026]"""
     tail = ch.get("_target_name", "")
     if not tail:
         chprintln(ch, "You failed.")
@@ -1711,6 +1713,8 @@ def spell_gate(sn, level, ch, vo, target):
                 if is_name(tail, _tpl.get("keywords", "")):
                     victim = _c
                     break
+        if victim is None:
+            victim = _find_unloaded_mob(tail)[1]
 
     if victim is None or victim is ch:
         chprintln(ch, "You failed.")
@@ -2243,8 +2247,10 @@ def spell_stone_skin(sn, level, ch, vo, target):
 
 def spell_summon(sn, level, ch, vo, target):
     """Summon (cf. 1stMud spell_summon in magic.c).
-    [Verified: 03/07/2026] -- LEVEL_IMMORTAL / PLR_NOSUMMON PC checks and
-    AREA_CLOSED flag not ported (no other PCs; area flags not modeled)."""
+    [Verified: 03/07/2026; unloaded-area target fallback (get_char_world
+    fidelity) added and re-verified 04/07/2026] -- LEVEL_IMMORTAL /
+    PLR_NOSUMMON PC checks and AREA_CLOSED flag not ported (no other PCs;
+    area flags not modeled)."""
     tail = ch.get("_target_name", "")
 
     # get_char_world over loaded NPCs (cf. spell_gate) [PRIMESUD]
@@ -2259,6 +2265,8 @@ def spell_summon(sn, level, ch, vo, target):
                 victim = _c
                 victim_id = _cid
                 break
+        if victim is None:
+            victim_id, victim = _find_unloaded_mob(tail)
 
     if victim is None or victim.get("room") is None:
         chprintln(ch, "You failed.")
@@ -2493,6 +2501,57 @@ def spell_high_explosive(sn, level, ch, vo, target):
 # -- magic2.c spells --
 
 
+MOB_INDEX_FILE = "mob_index.dat"  # [PRIMESUD] "tag|vnum|keywords" per line
+
+
+def _find_unloaded_mob(tail):
+    """Locate a name-matched mob in an unloaded area and load that area. [PRIMESUD]
+
+    1stMud get_char_world sees every mob in the world; PrimeSUD only
+    instantiates mobs of loaded areas. Fallback: scan the keyword index
+    built by tools/build_mob_index.py (one line per M-reset mob, in
+    _AREA_FILES ascending-size order, so ambiguous names resolve to the
+    cheapest area load).
+
+    Args:
+        tail (str): Target name words.
+
+    Returns:
+        tuple: (char_id, char) of the spawned instance, or (None, None).
+    """
+    try:
+        f = open(MOB_INDEX_FILE)
+    except OSError:
+        return None, None  # no index shipped: loaded-world search only
+    loads = 0
+    try:
+        while True:
+            line = f.readline()
+            if not line:
+                break
+            parts = line.rstrip("\n").split("|", 2)
+            if len(parts) < 3:
+                continue
+            tag, vnum, keywords = parts
+            if tag in world._LOADED_AREAS:
+                continue  # already covered by the world.chars scan
+            if not is_name(tail, keywords):
+                continue
+            world._ensure_area_by_tag(tag)
+            vnum = int(vnum)
+            for _cid, _c in world.chars.items():
+                if _c.get("is_npc") and _c.get("tpl") == vnum:
+                    return _cid, _c
+            # area loaded but no instance spawned (dead / limit 0);
+            # keep scanning further index lines
+            loads += 1
+            if loads >= 2:  # ponytail: cap heap growth per cast
+                break
+    finally:
+        f.close()
+    return None, None
+
+
 def _warp_victim(level, ch, check_from=False):
     """Find and validate the target for portal/nexus. [PRIMESUD helper]
     (cf. 1stMud spell_portal/spell_nexus target checks in magic2.c)
@@ -2517,6 +2576,8 @@ def _warp_victim(level, ch, check_from=False):
         if is_name(tail, _tpl.get("keywords", "")):
             victim = _c
             break
+    if victim is None:
+        victim = _find_unloaded_mob(tail)[1]
     if victim is None:
         return None
 
