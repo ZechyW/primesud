@@ -72,6 +72,12 @@ def tprint(*args, **kwargs):
     tr.print(*args, **kwargs)
 
 
+def tpage(lines):
+    """PC shim: console scrollback is unlimited, so just print. [PRIMESUD]"""
+    for line in lines:
+        tr.print(line)
+
+
 def init_terminal():
     """Create the tml instance and install colour wrappers. [PRIMESUD]"""
     global tr
