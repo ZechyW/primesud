@@ -15,7 +15,7 @@ from gquest import gq_save_lines, gq_load_line, gq_reset
 from mob import reset_area, create_area_states
 from player import create_char, reset_char, _EQUIP_SAVE_ORDER
 from picker import pick_from
-from classes import CLASS_TABLE, CLASS_WARRIOR
+from classes import CLASS_TABLE
 from skills_table import WEAPON_GSN_MAP
 from colors import capitalize
 
@@ -473,6 +473,19 @@ _WEAPON_PICK_ORDER = ("sword", "mace", "dagger", "axe", "spear", "flail",
                       "whip", "polearm")
 
 
+def _pick_required(title, options):
+    """pick_from that re-prompts until a choice is made. [PRIMESUD]
+
+    Chargen choices are permanent, so a fat-fingered Esc must not silently
+    lock in a default; 1stMud nanny.c likewise re-prompts on invalid input
+    at every creation step.
+    """
+    while True:
+        idx = pick_from(title, options)
+        if idx >= 0:
+            return idx
+
+
 def _sanitize_name(raw):
     """Filter a chargen name entry down to a safe, capitalized ASCII name. [PRIMESUD]
 
@@ -522,9 +535,7 @@ def new_game(game):
     # Class choice (cf. 1stMud nanny.c CON_GET_NEW_CLASS; [PRIMESUD] picker with
     # one-line summaries instead of a bare list + 'help <class>').
     labels = [c["names"][0] + " - " + c["summary"] for c in CLASS_TABLE]
-    idx = pick_from("Choose your class:", labels)
-    if idx < 0:
-        idx = CLASS_WARRIOR  # [PRIMESUD] Esc at new game defaults to Warrior
+    idx = _pick_required("Choose your class:", labels)
     world.reset_lazy()
     world.areas = create_area_states()
     gq_reset()  # [PRIMESUD] fresh gquest schedule per game
@@ -534,9 +545,7 @@ def new_game(game):
     world.chars[1] = player
 
     # Alignment pick (cf. 1stMud nanny.c HANDLE_CON_GET_ALIGNMENT).
-    align_idx = pick_from("Choose your alignment:", ["Good", "Neutral", "Evil"])
-    if align_idx < 0:
-        align_idx = 1  # [PRIMESUD] Esc defaults to Neutral; 1stMud re-prompts instead
+    align_idx = _pick_required("Choose your alignment:", ["Good", "Neutral", "Evil"])
     player["alignment"] = (750, 0, -750)[align_idx]
 
     # Weapon pick (cf. 1stMud nanny.c send_weapon_info + HANDLE_CON_PICK_WEAPON).
@@ -548,11 +557,9 @@ def new_game(game):
     if candidates:
         # colors.capitalize, not str.capitalize -- the latter is missing on
         # HP Prime (see BUILTINS.md).
-        widx = pick_from("Please pick a weapon from the following choices:",
-                          [capitalize(w) for w in candidates])
-        wname = candidates[widx] if widx >= 0 else CLASS_TABLE[idx]["weapon"]
-        # [PRIMESUD] Esc defaults to the class's own starting weapon;
-        # 1stMud re-prompts instead of allowing cancellation.
+        widx = _pick_required("Please pick a weapon from the following choices:",
+                              [capitalize(w) for w in candidates])
+        wname = candidates[widx]
     else:
         wname = CLASS_TABLE[idx]["weapon"]
     wgsn = WEAPON_GSN_MAP[wname]
