@@ -16,6 +16,8 @@ from mob import reset_area, create_area_states
 from player import create_char, reset_char, _EQUIP_SAVE_ORDER
 from picker import pick_from
 from classes import CLASS_TABLE, CLASS_WARRIOR
+from skills_table import WEAPON_GSN_MAP
+from colors import capitalize
 
 
 # -- Save format version --------------------------------------------------------
@@ -461,8 +463,62 @@ def init_game_state(game):
     game._backup_ok = False
 
 
-def new_game(game, name="Hero"):
-    """Create a new game world with a fresh player character. [PRIMESUD]"""
+# Weapon pick order for new_game (cf. 1stMud const.c weapon_table -- the
+# array order send_weapon_info/HANDLE_CON_PICK_WEAPON iterate in). MicroPython
+# dict iteration order is not guaranteed, so this explicit tuple stands in for
+# looping over weapon_table directly. 1stMud's 5th entry displays as "staff"
+# but resolves to gsn_spear; WEAPON_GSN_MAP (skills_table.py) has no "staff"
+# key, so "spear" (the underlying skill name) is used here instead.
+_WEAPON_PICK_ORDER = ("sword", "mace", "dagger", "axe", "spear", "flail",
+                      "whip", "polearm")
+
+
+def _sanitize_name(raw):
+    """Filter a chargen name entry down to a safe, capitalized ASCII name. [PRIMESUD]
+
+    cf. 1stMud check_parse_name in nanny.c (CON_GET_NAME): ROM allows 2-12
+    ASCII letters and rejects banned/reserved/duplicate names. PrimeSUD is
+    single-user with no player roster to collide with, so only the
+    length/character-set checks are ported: non-letters are dropped and the
+    result is capped at 12 characters. Capitalizes the first letter like
+    1stMud's capitalize() (db.c). The '~'/'"'-delimited save payload (see
+    _serialize_world) forbids those characters in any saved field; keeping
+    only ASCII letters guarantees that by construction.
+
+    Args:
+        raw (str): Raw input string from tr.input.
+
+    Returns:
+        str: Sanitized name, or "Hero" if nothing valid remains.
+    """
+    letters = []
+    for c in raw:
+        if ("a" <= c <= "z") or ("A" <= c <= "Z"):
+            letters.append(c)
+            if len(letters) == 12:
+                break
+    if len(letters) < 2:  # ROM minimum name length (check_parse_name: 2-12)
+        return "Hero"
+    return capitalize("".join(letters))
+
+
+def new_game(game):
+    """Create a new game world with a fresh player character. [PRIMESUD]
+
+    Mirrors 1stMud nanny.c chargen order: name (CON_GET_NAME) -> class
+    (CON_GET_NEW_CLASS) -> create_char (fixed stats/skill grants) -> alignment
+    (HANDLE_CON_GET_ALIGNMENT) -> weapon pick (send_weapon_info /
+    HANDLE_CON_PICK_WEAPON) -> outfit -> newbie info (CON_READ_MOTD
+    level==0 block) -> save. Deity/timezone/email/screen-size prompts are not
+    ported [PRIMESUD] -- single-user, no deity or telnet negotiation system.
+
+    Args:
+        game: Game instance (supplies the terminal for prompts).
+    """
+    # Name prompt (cf. 1stMud nanny.c CON_GET_NAME).
+    raw_name = game.tr.input("By what name do you wish to be known? ")
+    name = _sanitize_name(raw_name)
+
     # Class choice (cf. 1stMud nanny.c CON_GET_NEW_CLASS; [PRIMESUD] picker with
     # one-line summaries instead of a bare list + 'help <class>').
     labels = [c["names"][0] + " - " + c["summary"] for c in CLASS_TABLE]
@@ -476,7 +532,44 @@ def new_game(game, name="Hero"):
     player["name"] = name
     player["_macros"] = _MACRO_SUBST
     world.chars[1] = player
-    do_outfit(player, "")  # cf. 1stMud do_outfit in nanny.c for new chars
+
+    # Alignment pick (cf. 1stMud nanny.c HANDLE_CON_GET_ALIGNMENT).
+    align_idx = pick_from("Choose your alignment:", ["Good", "Neutral", "Evil"])
+    if align_idx < 0:
+        align_idx = 1  # [PRIMESUD] Esc defaults to Neutral; 1stMud re-prompts instead
+    player["alignment"] = (750, 0, -750)[align_idx]
+
+    # Weapon pick (cf. 1stMud nanny.c send_weapon_info + HANDLE_CON_PICK_WEAPON).
+    # Candidates are weapons create_char's group grants already gave nonzero
+    # skill in (nanny.c: learned[*weapon_table[i].gsn] > 0), in weapon_table
+    # order (see _WEAPON_PICK_ORDER above).
+    candidates = [wname for wname in _WEAPON_PICK_ORDER
+                  if player["learned"].get(WEAPON_GSN_MAP[wname], 0) > 0]
+    if candidates:
+        # colors.capitalize, not str.capitalize -- the latter is missing on
+        # HP Prime (see BUILTINS.md).
+        widx = pick_from("Please pick a weapon from the following choices:",
+                          [capitalize(w) for w in candidates])
+        wname = candidates[widx] if widx >= 0 else CLASS_TABLE[idx]["weapon"]
+        # [PRIMESUD] Esc defaults to the class's own starting weapon;
+        # 1stMud re-prompts instead of allowing cancellation.
+    else:
+        wname = CLASS_TABLE[idx]["weapon"]
+    wgsn = WEAPON_GSN_MAP[wname]
+    player["learned"][wgsn] = max(40, player["learned"].get(wgsn, 0))
+
+    # do_outfit (cf. 1stMud do_outfit in nanny.c for new chars) picks the
+    # wield weapon by highest learned% (inventory.py); the weapon just raised
+    # to >=40 above outranks any other weapon skill still sitting at its 1%
+    # group-grant floor, so it drives the starting wield item.
+    do_outfit(player, "")
+
+    # Newbie info help (cf. 1stMud nanny.c CON_READ_MOTD level==0 block:
+    # do_function(ch, &nanny_help, "newbie info")). Local import: matches this
+    # module's existing lazy-import style for less-frequently-used deps.
+    from info import do_help
+    do_help(player, ["newbie", "info"])
+
     save_game(game, quiet=True)
 
 

@@ -69,7 +69,10 @@ class TestCreateCharGrants:
         assert GSN_SANCTUARY not in w["learned"]
         assert _sn("dodge") not in w["learned"]  # thief default only
         assert w["learned"][GSN_RECALL] == 50
-        assert w["learned"][WEAPON_GSN_MAP["sword"]] == 40
+        # cf. 1stMud nanny.c: the class weapon only reaches 40 once picked at
+        # HANDLE_CON_PICK_WEAPON (ported in game_state.py new_game);
+        # create_char alone only grants the 1% base-group floor.
+        assert w["learned"][WEAPON_GSN_MAP["sword"]] == 1
 
     def test_mage_gets_spell_groups(self):
         m = create_char(CLASS_MAGE)

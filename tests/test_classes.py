@@ -132,11 +132,14 @@ class TestCreateChar:
                 d["skill_level"][CLASS_WARRIOR] <= 51
                 and d["rating"][CLASS_WARRIOR] > 0)
 
-    def test_class_weapon_starts_at_40(self):
+    def test_class_weapon_starts_at_group_grant_floor(self):
+        # cf. 1stMud nanny.c: the class weapon only reaches 40 once the
+        # player picks it at HANDLE_CON_PICK_WEAPON (ported in game_state.py
+        # new_game); create_char alone only grants the 1% base-group floor.
         mage = create_char(CLASS_MAGE)
         warrior = create_char(CLASS_WARRIOR)
-        assert mage["learned"][WEAPON_GSN_MAP["dagger"]] == 40
-        assert warrior["learned"][WEAPON_GSN_MAP["sword"]] == 40
+        assert mage["learned"][WEAPON_GSN_MAP["dagger"]] == 1
+        assert warrior["learned"][WEAPON_GSN_MAP["sword"]] == 1
 
     def test_xp_next_from_class_mult(self):
         assert create_char(CLASS_MAGE)["xp_next"] == 1000

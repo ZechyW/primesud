@@ -6,7 +6,7 @@ import terminal
 from terminal import tprint
 from config import TERMINAL_COLS
 from config import R_STARTING_ROOM
-from skills_table import SKILLS, GSN_RECALL, WEAPON_GSN_MAP
+from skills_table import SKILLS, GSN_RECALL
 import world
 from world import ROOM_DEFS, AREA_DEFS
 
@@ -39,7 +39,6 @@ def create_char(class_idx=CLASS_WARRIOR):
         dict: Player state dict.
     """
     ch = _char_base()
-    weapon_gsn = WEAPON_GSN_MAP[CLASS_TABLE[class_idx]["weapon"]]
     ch.update({
         # [PRIMESUD] Start new players with more max hp than 1stMud's 20:
         # stances are forced from the start, which lowers damage output at
@@ -50,6 +49,9 @@ def create_char(class_idx=CLASS_WARRIOR):
         "move":     100,  "max_move": 100,  "perm_move": 100,
         "room":     R_STARTING_ROOM,
         "id":       1,
+        # cf. 1stMud nanny.c CON_READ_MOTD level==0 block: ch->gold = 10
+        # (base is 0 -- see _char_base).
+        "gold":     10,
         # cf. 1stMud ch->Class[] array in multiclass.c; grows on remort.
         "classes":     [class_idx],
         "prime_class": 0,  # slot index into classes (cf. pcdata->prime_class)
@@ -73,10 +75,13 @@ def create_char(class_idx=CLASS_WARRIOR):
         # cf. 1stMud pcdata->group_known; filled by gn_add below.
         "groups":  [],
         # cf. 1stMud nanny default path: "rom basics" + class basics +
-        # class default groups, recall 50, class weapon 40. Other skills
-        # cost trains at a gain trainer (do_gain). Customization/creation
-        # points not ported (see groups.py). (Racial skills: none for
-        # Human; revisit when race selection is ported.)
+        # class default groups, recall 50. The weapon pick's Max(40, learned)
+        # floor (nanny.c HANDLE_CON_PICK_WEAPON) is applied by game_state.py
+        # new_game, not here -- it needs the player's choice of weapon, and
+        # this function has no interactive path. Other skills cost trains at
+        # a gain trainer (do_gain). Customization/creation points not ported
+        # (see groups.py). (Racial skills: none for Human; revisit when race
+        # selection is ported.)
         "learned": {},
         "equip": {
             "light":     None, "finger_l":  None, "finger_r":  None,
@@ -88,6 +93,13 @@ def create_char(class_idx=CLASS_WARRIOR):
             "float":     None, "secondary": None,
         },
     })
+    # cf. 1stMud nanny.c CON_READ_MOTD level==0 block:
+    # ch->perm_stat[class_table[prime_class(ch)].attr_prime] += 3 -- applied
+    # once for brand-new characters only. Safe on the load path too: game_state
+    # load_world's "p.str"/"p.dex"/etc. save lines overwrite perm_stat
+    # wholesale after create_char() runs, so this +3 is never double-applied
+    # or left stale for a loaded character.
+    ch["perm_stat"][CLASS_TABLE[class_idx]["attr_prime"]] += 3
     # [PRIMESUD] Start out of stance with no autostance (1stMud zeroed
     # stance[] leaves new chars silently in the normal stance). First combat
     # then triggers the one-time stance pick in autodrop() -- surfaces the
@@ -98,8 +110,6 @@ def create_char(class_idx=CLASS_WARRIOR):
     # cf. 1stMud nanny.c CON_ROLL_STATS 'y' + add_default_groups ('N' path)
     group_add_basics_and_defaults(ch)
     ch["learned"][GSN_RECALL] = 50  # cf. nanny.c: learned[gsn_recall] = 50
-    # cf. 1stMud nanny.c: weapon skill 40 set regardless of class skill list
-    ch["learned"][weapon_gsn] = 40
     # cf. 1stMud exp_per_level in skills.c (race class_mult scaling)
     ch["xp_next"] = exp_per_level(ch)
     return ch
