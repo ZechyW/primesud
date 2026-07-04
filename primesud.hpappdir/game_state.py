@@ -502,7 +502,8 @@ def _sanitize_name(raw):
         raw (str): Raw input string from tr.input.
 
     Returns:
-        str: Sanitized name, or "Hero" if nothing valid remains.
+        str: Sanitized name, or "" if fewer than 2 letters remain (caller
+        re-prompts, cf. nanny.c "Illegal name, try another.").
     """
     letters = []
     for c in raw:
@@ -511,7 +512,7 @@ def _sanitize_name(raw):
             if len(letters) == 12:
                 break
     if len(letters) < 2:  # ROM minimum name length (check_parse_name: 2-12)
-        return "Hero"
+        return ""
     return capitalize("".join(letters))
 
 
@@ -528,9 +529,16 @@ def new_game(game):
     Args:
         game: Game instance (supplies the terminal for prompts).
     """
-    # Name prompt (cf. 1stMud nanny.c CON_GET_NAME).
-    raw_name = game.tr.input("By what name do you wish to be known? ")
-    name = _sanitize_name(raw_name)
+    # Name prompt (cf. 1stMud nanny.c CON_GET_NAME). [PRIMESUD] "Hero" is
+    # pre-filled on the input line -- bare Enter accepts it, backspace to
+    # replace; invalid entries re-prompt like nanny's illegal-name path.
+    while True:
+        raw_name = game.tr.input("By what name do you wish to be known? ",
+                                 default="Hero")
+        name = _sanitize_name(raw_name)
+        if name:
+            break
+        game.tr.print("Illegal name, try another.")
 
     # Class choice (cf. 1stMud nanny.c CON_GET_NEW_CLASS; [PRIMESUD] picker with
     # one-line summaries instead of a bare list + 'help <class>').
