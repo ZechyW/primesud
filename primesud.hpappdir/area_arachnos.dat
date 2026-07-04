@@ -7,7 +7,7 @@
 
 AREA = {
     "name":     'Arachnos',
-    "builders": '{ 5 20} Mahatma Arachnos',
+    "builders": 'None',
     "vnums":    (6200, 6399),
     "credits":  '{ 5 20} Mahatma Arachnos',
     "levels":   (5, 20),
@@ -1029,15 +1029,18 @@ OBJECTS = {
 # -- Resets ---------------------------------------------------------------------
 # ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
 # ("O", item_vnum, room_vnum)                          -- place one item copy in room
-# ("E", item_vnum, slot_name)                          -- equip item on last M mob
-# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)
+# means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
 # ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
 # ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
 # D resets are baked into room exit flags at conversion time
 RESETS = (
     ("M", 6319, 1, 6134, 1),
-    ("G", 6308),
-    ("G", 6309),
+    ("G", 6308, 1),
+    ("G", 6309, -1),
     ("M", 6318, 3, 6134, 3),
     ("M", 6318, 3, 6134, 3),
     ("M", 6318, 3, 6134, 3),
@@ -1061,17 +1064,17 @@ RESETS = (
     ("M", 6306, 3, 6331, 1),
     ("M", 6311, 1, 6373, 1),
     ("M", 6315, 1, 6350, 1),
-    ("G", 6309),
-    ("G", 6309),
+    ("G", 6309, -1),
+    ("G", 6309, -1),
     ("M", 6314, 1, 6399, 1),
-    ("G", 6303),
-    ("G", 6304),
+    ("G", 6303, 2),
+    ("G", 6304, 2),
     ("M", 6312, 1, 6370, 1),
-    ("G", 6309),
+    ("G", 6309, -1),
     ("M", 6313, 1, 6367, 1),
     ("M", 6306, 3, 6330, 1),
     ("M", 6302, 1, 6360, 1),
-    ("G", 6304),
+    ("G", 6304, 2),
     ("M", 6316, 1, 6330, 1),
     ("M", 6317, 1, 6340, 1),
 )

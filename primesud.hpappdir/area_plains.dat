@@ -7,7 +7,7 @@
 
 AREA = {
     "name":     'Plains',
-    "builders": '{ 1 20} Copper  Plains of the North',
+    "builders": 'None',
     "vnums":    (300, 399),
     "credits":  '{ 1 20} Copper  Plains of the North',
     "levels":   (1, 20),
@@ -699,6 +699,7 @@ OBJECTS = {
         "type": 'food',
         "wear_flags": {"take": True},
         "food_hours": 1, "food_hunger": 1,
+        "poisoned": True,
         "level": 0, "weight": 10, "value": 0,
         "extra_descs": [('plant ivy', 'This plant has dark green juicy leaves.\nYou notice some small white thorns on it.')],
     },
@@ -720,7 +721,7 @@ OBJECTS = {
         "description": 'A bunch of pretty wild flowers is here.',
         "material":    'oldstyle',
         "type": 'trash',
-        "wear_flags": {"take": True, "head": True},
+        "wear_flags": {"take": True, "head": True, "hold": True},
         "extra_flags": {"anti_evil": True},
         "level": 0, "weight": 10, "value": 0,
         "extra_descs": [('wild flowers', 'These wild flowers are really pretty.\nJust like the flowers you would wear in your hair.')],
@@ -801,8 +802,11 @@ OBJECTS = {
 # -- Resets ---------------------------------------------------------------------
 # ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
 # ("O", item_vnum, room_vnum)                          -- place one item copy in room
-# ("E", item_vnum, slot_name)                          -- equip item on last M mob
-# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)
+# means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
 # ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
 # ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
 # D resets are baked into room exit flags at conversion time
@@ -813,18 +817,18 @@ RESETS = (
     ("O", 304, 323),
     ("O", 304, 338),
     ("M", 305, 1, 344, 1),
-    ("G", 310),
-    ("G", 311),
+    ("G", 310, 5),
+    ("G", 311, -1),
     ("M", 309, 10, 324, 4),
     ("M", 309, 10, 318, 4),
     ("M", 309, 10, 334, 4),
     ("M", 300, 1, 323, 1),
-    ("E", 308, "hold"),
-    ("E", 307, "neck_1"),
-    ("G", 312),
-    ("G", 302),
+    ("E", 308, "hold", 2),
+    ("E", 307, "neck_1", 2),
+    ("G", 312, 1),
+    ("G", 302, 10),
     ("M", 301, 1, 331, 1),
-    ("G", 303),
+    ("G", 303, 2),
     ("O", 309, 331),
 )
 

@@ -7,7 +7,7 @@
 
 AREA = {
     "name":     'Marsh',
-    "builders": '{15 25} Generic Old Marsh',
+    "builders": 'None',
     "vnums":    (8300, 8399),
     "credits":  '{15 25} Generic Old Marsh',
     "levels":   (15, 25),
@@ -695,8 +695,11 @@ OBJECTS = {
 # -- Resets ---------------------------------------------------------------------
 # ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
 # ("O", item_vnum, room_vnum)                          -- place one item copy in room
-# ("E", item_vnum, slot_name)                          -- equip item on last M mob
-# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)
+# means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
 # ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
 # ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
 # D resets are baked into room exit flags at conversion time
@@ -704,17 +707,17 @@ RESETS = (
     ("M", 8301, 2, 8303, 1),
     ("M", 8301, 2, 8308, 1),
     ("M", 8302, 6, 8303, 2),
-    ("G", 8307),
+    ("G", 8307, -1),
     ("M", 8302, 6, 8304, 2),
-    ("G", 8307),
+    ("G", 8307, -1),
     ("M", 8302, 6, 8306, 2),
     ("M", 8303, 3, 8303, 1),
     ("M", 8303, 3, 8313, 1),
     ("M", 8303, 3, 8307, 1),
     ("M", 8304, 1, 8307, 1),
     ("M", 8305, 2, 8306, 2),
-    ("E", 8303, "body"),
-    ("E", 8308, "wield"),
+    ("E", 8303, "body", 20),
+    ("E", 8308, "wield", 20),
     ("M", 8306, 2, 8304, 1),
     ("M", 8306, 2, 8310, 1),
     ("M", 8307, 2, 8305, 1),
@@ -727,8 +730,8 @@ RESETS = (
     ("M", 8312, 2, 8310, 1),
     ("M", 8312, 2, 8309, 1),
     ("M", 8313, 1, 8310, 1),
-    ("E", 8306, "wield"),
-    ("E", 8302, "head"),
+    ("E", 8306, "wield", 1),
+    ("E", 8302, "head", 5),
     ("M", 8314, 6, 8304, 1),
     ("M", 8314, 6, 8305, 1),
     ("M", 8314, 6, 8306, 1),
@@ -736,23 +739,23 @@ RESETS = (
     ("M", 8314, 6, 8308, 1),
     ("M", 8314, 6, 8309, 1),
     ("M", 8318, 2, 8312, 2),
-    ("G", 8307),
+    ("G", 8307, -1),
     ("M", 8318, 2, 8312, 2),
-    ("G", 8307),
+    ("G", 8307, -1),
     ("M", 8321, 2, 8318, 2),
     ("M", 8321, 2, 8318, 2),
     ("M", 8320, 5, 8307, 1),
-    ("G", 8301),
+    ("G", 8301, 10),
     ("M", 8320, 5, 8309, 1),
-    ("G", 8301),
+    ("G", 8301, 10),
     ("M", 8320, 5, 8311, 1),
-    ("G", 8301),
+    ("G", 8301, 10),
     ("M", 8320, 5, 8313, 1),
-    ("G", 8301),
-    ("G", 8307),
+    ("G", 8301, 10),
+    ("G", 8307, -1),
     ("M", 8320, 5, 8315, 1),
-    ("G", 8301),
-    ("E", 8302, "head"),
+    ("G", 8301, 10),
+    ("E", 8302, "head", 5),
 )
 
 # -- Shops ---------------------------------------------------------------------

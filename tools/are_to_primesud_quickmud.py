@@ -60,33 +60,33 @@ RESIST_FLAGS = {
     15: "mental", 16: "disease", 17: "drowning", 18: "light", 19: "sound",
     23: "wood", 24: "silver", 25: "iron",
 }
+# ROM_* undefined for 4/5/20/21/22 in this QuickMUD's merc.h -- deleted
+# (were "arena"/"bank"/"noexplore"/"noautomap"/"save_objs"); real occurrences
+# of those bits must surface via _unknown_bits.
 ROOM_FLAGS = {
-    0: "dark", 2: "no_mob", 3: "indoors", 4: "arena", 5: "bank",
+    0: "dark", 2: "no_mob", 3: "indoors",
     9: "private", 10: "safe", 11: "solitary", 12: "pet_shop",
     13: "no_recall", 14: "imp_only", 15: "gods_only", 16: "heroes_only",
-    17: "newbies_only", 18: "law", 19: "nowhere", 20: "noexplore",
-    21: "noautomap", 22: "save_objs",
+    17: "newbies_only", 18: "law", 19: "nowhere",
 }
-EXIT_FLAGS = {
-    0: "isdoor", 1: "closed", 2: "locked", 3: "doorbell",
-    5: "pickproof", 6: "nopass", 7: "easy", 8: "hard",
-    9: "infuriating", 10: "noclose", 11: "nolock",
-}
+# cf. merc.h SECT_* (SECT_MAX 11); entries 11-16 previously here don't exist
+# in this QuickMUD and have been removed.
 SECTOR_NAMES = {
-     0: "inside",    1: "city",     2: "field",   3: "forest",
-     4: "hills",     5: "mountain", 6: "swim",    7: "noswim",
-     8: "ice",       9: "air",     10: "desert",  11: "road",
-    12: "path",     13: "swamp",   14: "jungle",  15: "cave",
-    16: "none",
+    0: "inside",  1: "city",    2: "field",  3: "forest",
+    4: "hills",   5: "mountain", 6: "swim",  7: "noswim",
+    8: "unused",  9: "air",    10: "desert",
 }
+# EXTRA_FLAGS 17 ("auctioned") and 26 ("quest") deleted: no ITEM_* define
+# exists at those bit positions in this QuickMUD's merc.h; real occurrences
+# must surface via _unknown_bits.
 EXTRA_FLAGS = {
     0: "glow",        1: "hum",          2: "dark",        3: "lock",
     4: "evil",        5: "invis",        6: "magic",       7: "nodrop",
     8: "bless",       9: "anti_good",   10: "anti_evil",  11: "anti_neutral",
    12: "noremove",   13: "inventory",   14: "nopurge",    15: "rot_death",
-   16: "vis_death",  17: "auctioned",   18: "nonmetal",   19: "nolocate",
+   16: "vis_death",  18: "nonmetal",   19: "nolocate",
    20: "melt_drop",  21: "had_timer",   22: "sell_extract",
-   24: "burn_proof", 25: "nouncurse",   26: "quest",
+   24: "burn_proof", 25: "nouncurse",
 }
 WEAR_SLOT = {
     1: "finger", 2: "neck", 3: "body", 4: "head", 5: "legs",
@@ -119,21 +119,20 @@ PART_FLAGS = {
 CONTAINER_FLAGS = {
     0: "closeable", 1: "pickproof", 2: "closed", 3: "locked", 4: "put_on",
 }
+# Object condition letter (cf. db2.c load_objects condition switch); missing
+# or unrecognized letter defaults to 100 (perfect condition).
+OBJ_CONDITION = {
+    "P": 100, "G": 90, "A": 75, "W": 50, "D": 25, "B": 10, "R": 0,
+}
 DIR_NAME = {0: "n", 1: "e", 2: "s", 3: "w", 4: "u", 5: "d"}
 ITEM_TYPE_NUM = {
     1: "light", 2: "scroll", 3: "wand", 4: "staff", 5: "weapon",
     8: "treasure", 9: "armor", 10: "potion", 11: "clothing",
     12: "furniture", 13: "trash", 15: "container", 17: "drink",
     18: "key", 19: "food", 20: "money", 22: "boat",
-    23: "corpse_npc", 24: "corpse_pc", 25: "fountain", 26: "pill",
+    23: "npc_corpse", 24: "pc_corpse", 25: "fountain", 26: "pill",
     27: "protect", 28: "map", 29: "portal", 30: "warp_stone",
     31: "room_key", 32: "gem", 33: "jewelry", 34: "jukebox",
-}
-TRIG_NAMES = {
-    "ACT": "act", "BRIBE": "bribe", "DEATH": "death", "ENTRY": "entry",
-    "FIGHT": "fight", "GIVE": "give", "GREET": "greet", "GRALL": "grall",
-    "KILL": "kill", "HPCNT": "hpcnt", "RANDOM": "random", "SPEECH": "speech",
-    "EXIT": "exit", "EXALL": "exall", "DELAY": "delay", "SURRENDER": "surrender",
 }
 WLOC_SLOT = {
     0:  "light",
@@ -143,7 +142,6 @@ WLOC_SLOT = {
     9:  "hands",    10: "arms",    11: "shield", 12: "about",
     13: "waist",    14: "wrist_l", 15: "wrist_r",
     16: "wield",    17: "hold",    18: "float",
-    19: "secondary",
 }
 
 
@@ -161,6 +159,14 @@ def rom_flag_convert(letter):
 def parse_rom_flag(s):
     """Parse a ROM flag field: letter sequence like 'ABV', plain number, or number|number.
 
+    Mirrors db.c fread_flag/flag_convert exactly (db.c:2743-2809): letters
+    accumulate flag_convert(c) into a single running `number`; if a digit
+    follows directly (no separating '|'), it does NOT start a fresh value --
+    it continues the SAME accumulator via number = number*10 + digit for each
+    consecutive digit. E.g. "AB12" -> letters A=1,B=2 give number=3, then
+    digit '1' -> 3*10+1=31, digit '2' -> 31*10+2=312 (NOT 3+12=15). A
+    trailing '|' recurses: number += fread_flag(rest-of-field).
+
     Returns integer bitmask.
     """
     s = s.strip()
@@ -172,30 +178,20 @@ def parse_rom_flag(s):
         negative = True
         s = s[1:]
 
-    if s[0].isdigit():
-        total = 0
-        for part in s.split('|'):
-            part = part.strip()
-            if part and part[0].isdigit():
-                total += int(part)
-            else:
-                total += parse_rom_flag(part)
-        return -total if negative else total
+    number = 0
+    i = 0
+    n = len(s)
+    if i < n and not s[i].isdigit():
+        while i < n and (('A' <= s[i] <= 'Z') or ('a' <= s[i] <= 'z')):
+            number += rom_flag_convert(s[i])
+            i += 1
+    while i < n and s[i].isdigit():
+        number = number * 10 + int(s[i])
+        i += 1
+    if i < n and s[i] == '|':
+        number += parse_rom_flag(s[i + 1:])
 
-    total = 0
-    for ch in s:
-        if ('A' <= ch <= 'Z') or ('a' <= ch <= 'z'):
-            total += rom_flag_convert(ch)
-        elif ch == '|':
-            continue
-        elif ch.isdigit():
-            rest = s[s.index(ch):]
-            total += int(rest)
-            break
-        else:
-            break
-
-    return -total if negative else total
+    return -number if negative else number
 
 
 def flag_bits(flag_int):
@@ -287,8 +283,36 @@ def make_const_map(prefix, items, name_fn):
 # -- Low-level .are reader -----------------------------------------------------
 
 def read_tilde_string(lines, i):
-    """Read a ~-terminated string from lines[i:]. Returns (text, next_i)."""
+    """Read a ~-terminated string from lines[i:]. Returns (text, next_i).
+
+    The blanket .strip() below is an intentional PrimeSUD normalization: ROM's
+    fread_string preserves leading/trailing blank lines verbatim, but
+    PrimeSUD's display layer manages its own spacing.
+    """
     parts = []
+    while i < len(lines):
+        line = lines[i]
+        i += 1
+        idx = line.find("~")
+        if idx >= 0:
+            parts.append(line[:idx])
+            break
+        parts.append(line)
+    return "\n".join(parts).strip(), i
+
+
+def read_tilde_string_inline(prefix, lines, i):
+    """Like read_tilde_string, but the string may start with `prefix` -- text
+    already sitting on the same physical line as a bare command letter (e.g.
+    ROM's "O Saska~" owner line: fread_string(fp) skips whitespace -- which
+    includes newlines -- after the single-char fread_letter(fp), so the
+    value can be on the SAME line as the letter or, if nothing follows,
+    spill onto the next one). Returns (text, next_i).
+    """
+    idx = prefix.find("~")
+    if idx >= 0:
+        return prefix[:idx].strip(), i
+    parts = [prefix]
     while i < len(lines):
         line = lines[i]
         i += 1
@@ -461,21 +485,25 @@ def parse_mobiles(lines):
             else:
                 break
 
-        # Apply F-line flag removals (cf. db2.c REMOVE_BIT)
-        F_MAP = {
-            "act": (act_int,  ACT_FLAGS),
-            "aff": (aff_int,  AFFECTED_BY),
-            "off": (off_int,  OFF_FLAGS),
-            "imm": (imm_int,  RESIST_FLAGS),
-            "res": (res_int,  RESIST_FLAGS),
-            "vul": (vuln_int, RESIST_FLAGS),
-            "for": (form_int, FORM_FLAGS),
-            "par": (part_int, PART_FLAGS),
+        # Apply F-line flag removals (cf. db2.c REMOVE_BIT, db2.c:307-335).
+        # F_PREFIX_MAP: file field-word prefix -> (canonical mob.py race key,
+        # decode table for that field's bits).
+        F_PREFIX_MAP = {
+            "act": ("act",   ACT_FLAGS),
+            "aff": ("aff",   AFFECTED_BY),
+            "off": ("off",   OFF_FLAGS),
+            "imm": ("imm",   RESIST_FLAGS),
+            "res": ("res",   RESIST_FLAGS),
+            "vul": ("vuln",  RESIST_FLAGS),
+            "for": ("form",  FORM_FLAGS),
+            "par": ("parts", PART_FLAGS),
         }
+        flag_removes_acc = {}  # canonical field -> (table, combined bit vector)
         for f_field, f_vector in f_removes:
-            for prefix, (cur_val, _) in F_MAP.items():
+            for prefix, (canon, table) in F_PREFIX_MAP.items():
                 if f_field.startswith(prefix):
-                    # Mutate the int - need to reassign
+                    # Mutate the file-level int (still correct for race-merge
+                    # independent bits set directly on this mob's own flags).
                     if prefix == "act":  act_int  &= ~f_vector
                     elif prefix == "aff": aff_int &= ~f_vector
                     elif prefix == "off": off_int &= ~f_vector
@@ -484,9 +512,20 @@ def parse_mobiles(lines):
                     elif prefix == "vul": vuln_int &= ~f_vector
                     elif prefix == "for": form_int &= ~f_vector
                     elif prefix == "par": part_int &= ~f_vector
+                    # Also record the removal itself so the runtime race-merge
+                    # (mob.py create_mobile) can subtract race-granted bits
+                    # that this mob's F line strips off (cf. db2.c: race bits
+                    # OR'd in at load time, then F lines REMOVE_BIT).
+                    prev_table, prev_vec = flag_removes_acc.get(canon, (table, 0))
+                    flag_removes_acc[canon] = (table, prev_vec | f_vector)
                     break
 
-        mobs.append((vnum, {
+        flag_removes = []
+        for canon, (table, vector) in flag_removes_acc.items():
+            names = tuple(table.get(pos, pos) for pos in sorted(flag_bits(vector)))
+            flag_removes.append((canon, names))
+
+        mob = {
             "keywords":    keywords,
             "short_descr": short_descr,
             "long_descr":  long_descr,
@@ -516,7 +555,10 @@ def parse_mobiles(lines):
             "wealth":      wealth,
             "size":        size,
             "mob_triggers": mob_triggers,
-        }))
+        }
+        if f_removes:
+            mob["flag_removes"] = tuple(flag_removes)
+        mobs.append((vnum, mob))
     return mobs
 
 
@@ -552,10 +594,13 @@ def parse_objects(lines):
         level  = int(lw_line[0]) if lw_line else 0
         weight = int(lw_line[1]) if len(lw_line) > 1 else 0
         cost   = int(lw_line[2]) if len(lw_line) > 2 else 0
+        cond_letter = lw_line[3] if len(lw_line) > 3 else ""
+        condition = OBJ_CONDITION.get(cond_letter, 100)
 
         # optional A / E / F trailer lines
-        applies     = {}
-        extra_descs = []
+        applies      = {}
+        extra_descs  = []
+        flag_affects = []
         while i < len(lines):
             tline = lines[i].strip()
             if tline.startswith("#"):
@@ -585,8 +630,9 @@ def parse_objects(lines):
                     mod = int(fparts[3])
                     bv = parse_rom_flag(fparts[4]) if len(fparts) > 4 else 0
                     loc_name = APPLY_LOC.get(loc, str(loc))
-                    if mod != 0 and loc_name != "0":
-                        applies[loc_name] = applies.get(loc_name, 0) + mod
+                    bit_table = AFFECTED_BY if where == "affects" else RESIST_FLAGS
+                    bits = decode_flags(flag_bits(bv), bit_table)
+                    flag_affects.append((where, loc_name, mod, bits))
                 i += 1
             elif tline == "":
                 i += 1
@@ -601,7 +647,6 @@ def parse_objects(lines):
         for pos in sorted(wear_bits):
             if pos in WEAR_SLOT:
                 wear_flags[WEAR_SLOT[pos]] = True
-                break
 
         obj = {
             "keywords":    keywords,
@@ -617,6 +662,10 @@ def parse_objects(lines):
             "value":       cost,
             "extra_flags": flag_bits(extra_int),
         }
+        if condition != 100:
+            obj["condition"] = condition
+        if flag_affects:
+            obj["flag_affects"] = tuple(flag_affects)
 
         if item_type == "weapon" and val_line:
             obj["weapon_type"] = val_line[0]
@@ -654,13 +703,26 @@ def parse_objects(lines):
             container_flags = parse_rom_flag(val_line[1]) if len(val_line) > 1 else 0
             obj["container_flags"] = container_flags
             obj["container_key"] = int(val_line[2]) if len(val_line) > 2 else 0
+            # value[3]/value[4] (cf. db2.c load_objects ITEM_CONTAINER case +
+            # merc.h WEIGHT_MULT). Old-format containers predating these
+            # fields have no tokens here; ROM's struct default (0-init /
+            # zeroed value[]) would read as 0, but WEIGHT_MULT() falls back
+            # to 100 when the field is unset, so we mirror that default here.
+            obj["container_max_item_weight"] = int(val_line[3]) if len(val_line) > 3 else 0
+            obj["container_weight_mult"] = int(val_line[4]) if len(val_line) > 4 else 100
         elif item_type in ("drink", "fountain") and val_line:
             obj["liquid_total"] = int(val_line[0]) if val_line else 0
             obj["liquid_left"]  = int(val_line[1]) if len(val_line) > 1 else 0
             obj["liquid_type"]  = val_line[2] if len(val_line) > 2 else "water"
+            # value[3] (cf. act_obj.c do_drink: nonzero -> poisoned)
+            if len(val_line) > 3 and int(val_line[3]) != 0:
+                obj["poisoned"] = True
         elif item_type == "food" and val_line:
             obj["food_hours"]   = int(val_line[0]) if val_line else 0
             obj["food_hunger"]  = int(val_line[1]) if len(val_line) > 1 else 0
+            # value[3] (cf. act_obj.c do_eat: nonzero -> poisoned; NOT value[2])
+            if len(val_line) > 3 and int(val_line[3]) != 0:
+                obj["poisoned"] = True
         elif item_type == "money" and val_line:
             obj["silver"] = int(val_line[0]) if val_line else 0
             obj["gold"]   = int(val_line[1]) if len(val_line) > 1 else 0
@@ -706,6 +768,12 @@ def parse_rooms(lines):
         heal_rate  = None
         mana_rate  = None
         room_flags = decode_flags(flag_bits(room_int), ROOM_FLAGS)
+        # "Horrible hack" (db.c load_rooms): any room in [3000, 3400) is
+        # forced ROOM_LAW regardless of its stored flags.
+        if 3000 <= vnum < 3400:
+            room_flags["law"] = True
+        clan  = ""
+        owner = ""
 
         while i < len(lines):
             tline = lines[i].strip()
@@ -728,17 +796,28 @@ def parse_rooms(lines):
                     d = DIR_NAME[direction]
                     exits[d] = to_room
                     # ROM lock types: 0=open, 1=door, 2=door+pickproof,
-                    #                 3=door+nopass, 4=door+nopass+pickproof
+                    #                 3=door+nopass, 4=door+nopass+pickproof.
+                    # db.c load_rooms only has cases 1-4 in its switch;
+                    # anything else falls through with exit_info left at 0
+                    # (no door), so values outside 0-4 are treated as 0 here.
                     ex_flags = {}
-                    if locks >= 1:
+                    if locks in (1, 2, 3, 4):
                         ex_flags["isdoor"] = True
-                    if locks == 2:
-                        ex_flags["pickproof"] = True
-                    elif locks == 3:
-                        ex_flags["nopass"] = True
-                    elif locks == 4:
-                        ex_flags["pickproof"] = True
-                        ex_flags["nopass"] = True
+                        if locks == 2:
+                            ex_flags["pickproof"] = True
+                        elif locks == 3:
+                            ex_flags["nopass"] = True
+                        elif locks == 4:
+                            ex_flags["pickproof"] = True
+                            ex_flags["nopass"] = True
+                    elif locks != 0:
+                        print(
+                            "warning: room " + str(vnum) + " exit " +
+                            DIR_NAME.get(direction, str(direction)) +
+                            ": unrecognized lock value " + str(locks) +
+                            " (db.c load_rooms only handles 1-4); treating as no door",
+                            file=sys.stderr,
+                        )
                     if ex_key > 0:
                         ex_flags["key"] = ex_key
                     if ex_flags:
@@ -747,6 +826,19 @@ def parse_rooms(lines):
                         exit_descs[d] = ex_desc
                     if ex_keyword:
                         exit_notes.setdefault(d, {})["keyword"] = ex_keyword
+                else:
+                    # ROM keeps such exits as examinable-but-untraversable
+                    # (fix_exits only nulls the destination pointer); dropping
+                    # them entirely is a documented PrimeSUD simplification.
+                    # Warn so the data loss is never silent.
+                    print(
+                        "warning: room " + str(vnum) + " exit " +
+                        DIR_NAME.get(direction, str(direction)) +
+                        ": to_room <= 0 (" + str(to_room) + "), dropping exit"
+                        " (desc=" + str(bool(ex_desc)) +
+                        ", keyword=" + str(bool(ex_keyword)) + ")",
+                        file=sys.stderr,
+                    )
             elif tline == "E":
                 i += 1
                 ekw, i = read_tilde_string(lines, i)
@@ -763,13 +855,21 @@ def parse_rooms(lines):
                     else:
                         j += 1
                 i += 1
-            elif tline == "" or (tline and tline[0] in "CO"):
-                # C=clan, O=owner -- skip
+            elif tline == "":
                 i += 1
+            elif tline[0] == "C":
+                # clan: 'C' letter, then a tilde string that may continue on
+                # the same line (cf. db.c load_rooms:
+                # clan_lookup(fread_string(fp)))
+                clan, i = read_tilde_string_inline(tline[1:], lines, i + 1)
+            elif tline[0] == "O":
+                # owner: 'O' letter, then a tilde string that may continue on
+                # the same line (cf. db.c load_rooms: fread_string(fp))
+                owner, i = read_tilde_string_inline(tline[1:], lines, i + 1)
             else:
                 i += 1
 
-        rooms.append((vnum, {
+        room = {
             "name":       name,
             "desc":       description,
             "exits":      exits,
@@ -780,7 +880,12 @@ def parse_rooms(lines):
             "sector":     sector,
             "heal_rate":  heal_rate,
             "mana_rate":  mana_rate,
-        }))
+        }
+        if clan:
+            room["clan"] = clan
+        if owner:
+            room["owner"] = owner
+        rooms.append((vnum, room))
     return rooms
 
 
@@ -814,9 +919,11 @@ def parse_resets(lines):
             resets.append(("O", int(parts[2]), int(parts[4])))
         elif cmd == "E" and len(parts) >= 5:
             slot = WLOC_SLOT.get(int(parts[4]), "hold")
-            resets.append(("E", int(parts[2]), slot))
+            limit = int(parts[3])
+            resets.append(("E", int(parts[2]), slot, limit))
         elif cmd == "G" and len(parts) >= 3:
-            resets.append(("G", int(parts[2])))
+            limit = int(parts[3]) if len(parts) > 3 else 0
+            resets.append(("G", int(parts[2]), limit))
         elif cmd == "P" and len(parts) >= 6:
             resets.append(("P", int(parts[2]), int(parts[3]), int(parts[4]), int(parts[5])))
         elif cmd == "R" and len(parts) >= 4:
@@ -1043,9 +1150,13 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
     w("")
     w("AREA = {")
     w(f'    "name":     {pyrepr(aname)},')
-    w(f'    "builders": {pyrepr(credits)},')
+    # QuickMUD load_area hardcodes builders="None" for old-style areas
+    # (the raw credits text is preserved separately under "credits").
+    w(f'    "builders": {pyrepr("None")},')
     w(f'    "vnums":    {pyrepr(vnums)},')
     w(f'    "credits":  {pyrepr(credits)},')
+    # [PRIMESUD] heuristic parsed from the credits text; ROM derives no
+    # level range for old-style areas.
     w(f'    "levels":   ({min_lvl}, {max_lvl}),')
     w("}")
     w("")
@@ -1099,6 +1210,13 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
             for trig_type, mpv, phrase in mob["mob_triggers"]:
                 w(f'            ({pyrepr(trig_type)}, {mpv}, {pyrepr(phrase)}),')
             w(f'        ),')
+        if mob.get("flag_removes"):
+            # F-line flag removals, applied after race-merge at runtime
+            # (cf. mob.py create_mobile; QuickMUD db2.c REMOVE_BIT).
+            w(f'        "flag_removes": (')
+            for canon, names in mob["flag_removes"]:
+                w(f'            ({pyrepr(canon)}, {pyrepr(names)}),')
+            w(f'        ),')
         w("    },")
     w("}")
     w("")
@@ -1132,15 +1250,25 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
             dstate = (doverrides or {}).get((vnum, d))
             if dstate is not None and note.get("isdoor"):
                 note = dict(note)
+                # cf. db.c load_resets 'D' switch: case 0 = no change,
+                # case 1 = SET closed, case 2 = SET closed+locked; anything
+                # else hits `default: bug(...)` and leaves state unchanged.
                 if dstate == 0:
                     note.pop("closed", None)
                     note.pop("locked", None)
                 elif dstate == 1:
                     note["closed"] = True
                     note.pop("locked", None)
-                else:
+                elif dstate == 2:
                     note["closed"] = True
                     note["locked"] = True
+                else:
+                    print(
+                        "warning: room " + str(vnum) + " exit " + str(d) +
+                        ": D-reset lock value " + str(dstate) +
+                        " unrecognized (db.c load_resets 'D' bug()); exit state left unchanged",
+                        file=sys.stderr,
+                    )
             ex_desc = room.get("exit_descs", {}).get(d, "")
             if note or ex_desc:
                 eparts = [f'"to": {to_c}']
@@ -1149,7 +1277,7 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
                 if note.get("keyword"):
                     eparts.append(f'"keyword": {pyrepr(note["keyword"])}')
                 for flag in ("isdoor", "closed", "locked", "pickproof", "nopass",
-                             "doorbell", "easy", "hard", "infuriating", "noclose", "nolock"):
+                             "easy", "hard", "infuriating", "noclose", "nolock"):
                     if note.get(flag):
                         eparts.append(f'"{flag}": True')
                 if note.get("key") and note["key"] > 0:
@@ -1168,6 +1296,10 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
             w(f'        "mana_rate": {room["mana_rate"]},')
         if room.get("extra_descs"):
             w(f'        "extra_descs": {pyrepr(room["extra_descs"])},')
+        if room.get("clan"):
+            w(f'        "clan": {pyrepr(room["clan"])},')
+        if room.get("owner"):
+            w(f'        "owner": {pyrepr(room["owner"])},')
         w("    },")
     w("}")
     w("")
@@ -1186,6 +1318,9 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
         w(f'        "wear_flags": {_repr_flags(obj["wear_flags"])},')
         if obj.get("no_sac"):
             w(f'        "no_sac": True,')
+        if "condition" in obj:
+            # cf. db2.c load_objects condition switch; absent = 100 (perfect)
+            w(f'        "condition": {obj["condition"]},')
         if obj.get("extra_flags"):
             bits = decode_flags(obj["extra_flags"], EXTRA_FLAGS)
             if bits:
@@ -1219,18 +1354,35 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
                 w(f'        "container_flags": {_repr_flags(cf)},')
             if obj.get("container_key", 0) > 0:
                 w(f'        "container_key": {obj["container_key"]},')
+            if "container_max_item_weight" in obj:
+                # value[3]/value[4] (cf. db2.c load_objects + merc.h
+                # WEIGHT_MULT); old-format containers lack these tokens --
+                # default max_item_weight to 0, weight_mult to 100 (ROM's
+                # WEIGHT_MULT() fallback for non-container/unset value[4]).
+                w(f'        "container_max_item_weight": {obj["container_max_item_weight"]},')
+                w(f'        "container_weight_mult": {obj["container_weight_mult"]},')
         elif obj["type"] in ("drink", "fountain"):
             if "liquid_total" in obj:
                 w(f'        "liquid_total": {obj["liquid_total"]}, "liquid_left": {obj["liquid_left"]},')
                 w(f'        "liquid_type": {pyrepr(obj.get("liquid_type", "water"))},')
+            if obj.get("poisoned"):
+                w(f'        "poisoned": True,')
         elif obj["type"] == "food":
             if "food_hours" in obj:
                 w(f'        "food_hours": {obj["food_hours"]}, "food_hunger": {obj["food_hunger"]},')
+            if obj.get("poisoned"):
+                w(f'        "poisoned": True,')
         elif obj["type"] == "money":
             if "silver" in obj:
                 w(f'        "silver": {obj["silver"]}, "gold": {obj["gold"]},')
         if obj.get("stat_bonuses"):
             w(f'        "stat_bonuses": {pyrepr(obj["stat_bonuses"])},')
+        if obj.get("flag_affects"):
+            # F-line flag-setting affects (cf. db2.c load_objects 'F' case).
+            w(f'        "flag_affects": (')
+            for where, loc_name, mod, bits in obj["flag_affects"]:
+                w(f'            ({pyrepr(where)}, {pyrepr(loc_name)}, {mod}, {_repr_flags(bits)}),')
+            w(f'        ),')
         w(f'        "level": {obj["level"]}, "weight": {obj["weight"]}, "value": {obj["value"]},')
         if obj["extra_descs"]:
             w(f'        "extra_descs": {pyrepr(obj["extra_descs"])},')
@@ -1242,8 +1394,11 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
     w(f"# -- Resets {BAR * 69}")
     w('# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits')
     w('# ("O", item_vnum, room_vnum)                          -- place one item copy in room')
-    w('# ("E", item_vnum, slot_name)                          -- equip item on last M mob')
-    w('# ("G", item_vnum)                                     -- give item to last M mob inventory')
+    w('# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob')
+    w('# ("G", item_vnum, limit)                              -- give item to last M mob inventory')
+    w('# E/G limit: raw ROM reset-count field (cf. db.c reset_room): a value')
+    w('# > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)')
+    w('# means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].')
     w('# ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers')
     w('# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas')
     w('# D resets are baked into room exit flags at conversion time')
@@ -1260,13 +1415,13 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
             rc = r(rv, room_map)
             w(f'    ("O", {oc}, {rc}),')
         elif reset[0] == "E":
-            _, iv, slot = reset
+            _, iv, slot, limit = reset
             ic = r(iv, obj_map)
-            w(f'    ("E", {ic}, "{slot}"),')
+            w(f'    ("E", {ic}, "{slot}", {limit}),')
         elif reset[0] == "G":
-            _, iv = reset
+            _, iv, limit = reset
             ic = r(iv, obj_map)
-            w(f'    ("G", {ic}),')
+            w(f'    ("G", {ic}, {limit}),')
         elif reset[0] == "P":
             _, iv, lim, cv, mx = reset
             ic = r(iv, obj_map)

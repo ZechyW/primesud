@@ -7,7 +7,7 @@
 
 AREA = {
     "name":     'New Thalos',
-    "builders": '{10 35} Conner  New Thalos',
+    "builders": 'None',
     "vnums":    (9500, 9799),
     "credits":  '{10 35} Conner  New Thalos',
     "levels":   (10, 35),
@@ -135,6 +135,9 @@ MOBILES = {
         "sex":    'female',
         "wealth": 505,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9505: {
         "keywords":    'oldstyle bartender',
@@ -158,6 +161,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 505,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9506: {
         "keywords":    'oldstyle john brother singer lead',
@@ -181,6 +187,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 250,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9507: {
         "keywords":    'oldstyle panhandler',
@@ -203,6 +212,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 1,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9508: {
         "keywords":    'oldstyle panhandler',
@@ -225,6 +237,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 2,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9509: {
         "keywords":    'oldstyle beggar',
@@ -247,6 +262,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 1,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9510: {
         "keywords":    'oldstyle baker',
@@ -270,6 +288,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 505,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9511: {
         "keywords":    'oldstyle shopkeeper',
@@ -293,6 +314,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 505,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9512: {
         "keywords":    'oldstyle Nabil shopkeeper',
@@ -317,6 +341,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 505,
         "size":   'medium',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9513: {
         "keywords":    'oldstyle ahkeem tailor',
@@ -340,6 +367,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 505,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9514: {
         "keywords":    'oldstyle vera',
@@ -363,6 +393,9 @@ MOBILES = {
         "sex":    'female',
         "wealth": 505,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9515: {
         "keywords":    'oldstyle butch',
@@ -386,6 +419,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 505,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9516: {
         "keywords":    'oldstyle abdul armorer',
@@ -409,6 +445,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 505,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9517: {
         "keywords":    'oldstyle igor weaponsmith',
@@ -432,6 +471,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 505,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9518: {
         "keywords":    'oldstyle cassandra',
@@ -455,6 +497,9 @@ MOBILES = {
         "sex":    'female',
         "wealth": 505,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9519: {
         "keywords":    'oldstyle foreman man',
@@ -477,6 +522,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 125,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9520: {
         "keywords":    'oldstyle construction worker',
@@ -499,6 +547,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 45,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9521: {
         "keywords":    'oldstyle statue',
@@ -521,6 +572,9 @@ MOBILES = {
         "sex":    'female',
         "wealth": 1150,
         "size":   'huge',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9522: {
         "keywords":    'oldstyle statue',
@@ -543,6 +597,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 1150,
         "size":   'huge',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9523: {
         "keywords":    'oldstyle statue',
@@ -565,6 +622,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 1150,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9524: {
         "keywords":    'oldstyle statue',
@@ -587,6 +647,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 1190,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9525: {
         "keywords":    'oldstyle statue',
@@ -609,6 +672,9 @@ MOBILES = {
         "sex":    'female',
         "wealth": 1150,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9526: {
         "keywords":    'oldstyle statue',
@@ -631,6 +697,9 @@ MOBILES = {
         "sex":    'female',
         "wealth": 1150,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9527: {
         "keywords":    'oldstyle statue',
@@ -653,6 +722,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 3250,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9528: {
         "keywords":    'oldstyle statue',
@@ -675,6 +747,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 3250,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9529: {
         "keywords":    'oldstyle aziz',
@@ -698,6 +773,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 65,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9530: {
         "keywords":    'oldstyle mustafah',
@@ -721,6 +799,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 11,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9531: {
         "keywords":    'oldstyle fatima',
@@ -744,6 +825,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 30,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9532: {
         "keywords":    'oldstyle kareem',
@@ -767,6 +851,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 60,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9533: {
         "keywords":    'oldstyle nomad merchant',
@@ -789,6 +876,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 45,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9534: {
         "keywords":    'oldstyle bodyguard',
@@ -811,6 +901,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 60,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9535: {
         "keywords":    'oldstyle kid thief',
@@ -834,6 +927,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 11,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9536: {
         "keywords":    'oldstyle dockworker',
@@ -856,6 +952,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 60,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9537: {
         "keywords":    'oldstyle man tax collector',
@@ -878,6 +977,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 3,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9538: {
         "keywords":    'oldstyle gord',
@@ -901,6 +1003,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 615,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9539: {
         "keywords":    'oldstyle caramon',
@@ -923,6 +1028,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 615,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9540: {
         "keywords":    'oldstyle raistlin',
@@ -946,6 +1054,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 615,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9541: {
         "keywords":    'oldstyle curley greenleaf',
@@ -969,6 +1080,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 615,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9542: {
         "keywords":    'oldstyle man wandering prophet',
@@ -991,6 +1105,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 11,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9543: {
         "keywords":    'oldstyle alley cat feline',
@@ -1013,6 +1130,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 1,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9544: {
         "keywords":    'oldstyle vulture',
@@ -1035,6 +1155,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 0,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9545: {
         "keywords":    'oldstyle old man',
@@ -1057,6 +1180,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 3,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9546: {
         "keywords":    'oldstyle conan librarian',
@@ -1079,6 +1205,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 345,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9547: {
         "keywords":    'oldstyle dirt devil',
@@ -1101,6 +1230,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 1,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9548: {
         "keywords":    'oldstyle lamia',
@@ -1123,6 +1255,9 @@ MOBILES = {
         "sex":    'female',
         "wealth": 18,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9549: {
         "keywords":    'oldstyle dervish',
@@ -1146,6 +1281,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 30,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9550: {
         "keywords":    'oldstyle sultan',
@@ -1169,6 +1307,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 2200,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9551: {
         "keywords":    'oldstyle harem girl',
@@ -1191,6 +1332,9 @@ MOBILES = {
         "sex":    'female',
         "wealth": 2,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9552: {
         "keywords":    'oldstyle jailer',
@@ -1214,6 +1358,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 250,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9553: {
         "keywords":    'oldstyle eunuch',
@@ -1237,6 +1384,9 @@ MOBILES = {
         "sex":    'none',
         "wealth": 125,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9554: {
         "keywords":    'oldstyle sultans favorite girl nichole',
@@ -1260,6 +1410,9 @@ MOBILES = {
         "sex":    'female',
         "wealth": 345,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9555: {
         "keywords":    'oldstyle allah',
@@ -1283,6 +1436,9 @@ MOBILES = {
         "sex":    'none',
         "wealth": 1400,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9556: {
         "keywords":    'oldstyle mage guildguard',
@@ -1306,6 +1462,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 395,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9557: {
         "keywords":    'oldstyle cleric guildguard',
@@ -1329,6 +1488,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 395,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9558: {
         "keywords":    'oldstyle warrior guildguard',
@@ -1352,6 +1514,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 395,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9559: {
         "keywords":    'oldstyle thief guildguard',
@@ -1375,6 +1540,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 395,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9560: {
         "keywords":    'oldstyle servant boy',
@@ -1397,6 +1565,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 1,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9561: {
         "keywords":    'oldstyle sultans guard',
@@ -1419,6 +1590,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 45,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9562: {
         "keywords":    'oldstyle sultans guard',
@@ -1441,6 +1615,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 45,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9563: {
         "keywords":    'oldstyle sultans guard chief',
@@ -1464,6 +1641,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 345,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9564: {
         "keywords":    'oldstyle mercenary',
@@ -1486,6 +1666,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 3,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9565: {
         "keywords":    'oldstyle shipwright captain',
@@ -1508,6 +1691,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 1150,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9566: {
         "keywords":    'oldstyle blacksmith',
@@ -1530,6 +1716,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 1150,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9567: {
         "keywords":    'oldstyle horse',
@@ -1552,6 +1741,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 3,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9568: {
         "keywords":    'oldstyle tourist',
@@ -1574,6 +1766,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 3,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9569: {
         "keywords":    'oldstyle shelbye',
@@ -1595,6 +1790,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 1150,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9570: {
         "keywords":    'oldstyle cryohydra',
@@ -1617,6 +1815,9 @@ MOBILES = {
         "sex":    'none',
         "wealth": 18,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9571: {
         "keywords":    'oldstyle giant minotaur lizard',
@@ -1683,6 +1884,9 @@ MOBILES = {
         "sex":    'none',
         "wealth": 18,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9574: {
         "keywords":    'oldstyle behir',
@@ -1706,6 +1910,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 60,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9575: {
         "keywords":    'oldstyle chimera',
@@ -1729,6 +1936,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 30,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9576: {
         "keywords":    'oldstyle couatl',
@@ -1752,6 +1962,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 125,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9577: {
         "keywords":    'oldstyle giant hornet',
@@ -1796,6 +2009,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 45,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9579: {
         "keywords":    'oldstyle elvira',
@@ -1818,6 +2034,9 @@ MOBILES = {
         "sex":    'female',
         "wealth": 1190,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9580: {
         "keywords":    'oldstyle braheem',
@@ -1840,6 +2059,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 1190,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9581: {
         "keywords":    'oldstyle high priest',
@@ -1863,6 +2085,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 1190,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9582: {
         "keywords":    'oldstyle royal guard elite',
@@ -1886,6 +2111,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 1250,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9583: {
         "keywords":    'oldstyle patch bartender',
@@ -1909,6 +2137,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 345,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9584: {
         "keywords":    'oldstyle stitch',
@@ -1932,6 +2163,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 345,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9585: {
         "keywords":    'oldstyle gardener small elf',
@@ -1954,6 +2188,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 345,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9586: {
         "keywords":    'oldstyle nightmare demon horse',
@@ -1977,6 +2214,9 @@ MOBILES = {
         "sex":    'female',
         "wealth": 60,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9587: {
         "keywords":    'oldstyle wolverine',
@@ -2000,6 +2240,9 @@ MOBILES = {
         "sex":    'female',
         "wealth": 60,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9588: {
         "keywords":    'oldstyle mimic painting',
@@ -2022,6 +2265,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 45,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9589: {
         "keywords":    'oldstyle mayor',
@@ -2044,6 +2290,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 345,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9590: {
         "keywords":    'oldstyle chef',
@@ -2066,6 +2315,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 345,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9591: {
         "keywords":    'oldstyle ixitxachitl',
@@ -2089,6 +2341,9 @@ MOBILES = {
         "sex":    'none',
         "wealth": 1190,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
     9592: {
         "keywords":    'oldstyle guard bodyguard',
@@ -2111,6 +2366,9 @@ MOBILES = {
         "sex":    'male',
         "wealth": 45,
         "size":   'tiny',
+        "flag_removes": (
+            ('parts', ('hands', 'feet', 'fingers', 'ear', 'eye')),
+        ),
     },
 }
 
@@ -2165,7 +2423,7 @@ ROOMS = {
         "exits": {
             "d": {"to": 9500, "desc": 'The stairs lead down to the Daemon.'},
         },
-        "flags": {"no_mob": True, "indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
         "extra_descs": [('4.picture', "You see a picture of Loki... at least you think it's Loki.\nHe seems to be hiding from the camera."), ('3.picture', 'You see a picture of Hammor on the front porch of the Danjerhaus,\ndrinking a guinness stout and petting Big Guy the Cat.'), ('2.picture', 'You see a picture of Shark standing behind his desk screaming at a newbie.\nThrough a window in the back you see a large aquarium. The newbie seems to\nbe cowering in fear.'), ('1.1picture', 'You see a picture of Felix here, standing before the arena.\nHe seems to be doing a body count.')],
     },
@@ -2484,7 +2742,7 @@ ROOMS = {
         "exits": {
             "s": 9541,
         },
-        "flags": {"indoors": True, "arena": True, "bank": True},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5]},
         "sector": 'inside',
     },
     9533: {
@@ -3104,7 +3362,7 @@ ROOMS = {
             "u": {"to": 9595, "keyword": 'door up', "isdoor": True},
             "d": {"to": 9598, "keyword": 'door down', "isdoor": True},
         },
-        "flags": {"indoors": True, "bank": True},
+        "flags": {"indoors": True, "_unknown_bits": [5]},
         "sector": 'inside',
     },
     9595: {
@@ -3113,7 +3371,7 @@ ROOMS = {
         "exits": {
             "d": {"to": 9594, "keyword": 'door', "isdoor": True},
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
     },
     9596: {
@@ -3122,7 +3380,7 @@ ROOMS = {
         "exits": {
             "w": {"to": 9594, "keyword": 'door', "isdoor": True},
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
     },
     9597: {
@@ -3132,7 +3390,7 @@ ROOMS = {
             "n": 9710,
             "e": {"to": 9594, "keyword": 'door', "isdoor": True},
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
     },
     9598: {
@@ -3141,7 +3399,7 @@ ROOMS = {
         "exits": {
             "u": {"to": 9594, "keyword": 'door', "isdoor": True},
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
     },
     9599: {
@@ -3150,7 +3408,7 @@ ROOMS = {
         "exits": {
             "s": {"to": 9594, "keyword": 'iron gate', "isdoor": True},
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
     },
     9600: {
@@ -3190,7 +3448,7 @@ ROOMS = {
             "e": {"to": 9579, "desc": 'You notice the floor at the base of the eastern wall has some faint\nscratches in it.', "keyword": 'secret door', "isdoor": True, "closed": True},
             "u": 9619,
         },
-        "flags": {"no_mob": True, "indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
     },
     9604: {
@@ -3250,7 +3508,7 @@ ROOMS = {
             "s": 9613,
             "w": 9608,
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
     },
     9610: {
@@ -3298,7 +3556,7 @@ ROOMS = {
         "exits": {
             "s": 9514,
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
         "extra_descs": [('note sign', "LIST : gives you a list of items for sale.\nVALUE : tells you how much an item is worth to Ahkeem\nSELL : sells an item to Akheem for a generous sum\nBUY : Akheem's FAVORITE command lets you have an item for his low low price.")],
     },
@@ -3308,7 +3566,7 @@ ROOMS = {
         "exits": {
             "s": 9516,
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
         "extra_descs": [('note poster', "LIST : gives you a list of items for sale.\nVALUE : tells you how much an item is worth to Vera\nSELL : sells an item to Vera for a generous sum\nBUY : Vera's FAVORITE command lets you have an item for her low low price.\n\n                                        NEWBEE INTRUCTOR COMITEE")],
     },
@@ -3360,7 +3618,7 @@ ROOMS = {
             "s": 9524,
             "u": 9613,
         },
-        "flags": {"bank": True},
+        "flags": {"_unknown_bits": [5]},
         "sector": 'city',
     },
     9621: {
@@ -3369,7 +3627,7 @@ ROOMS = {
         "exits": {
             "e": 9514,
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "pet_shop": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "pet_shop": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
     },
     9622: {
@@ -3378,7 +3636,7 @@ ROOMS = {
         "exits": {
             "w": 9516,
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
         "extra_descs": [('vat', 'You think you hear noises from the vat....nah.'), ('note sign', "LIST : gives you a list of items for sale.\nVALUE : tells you how much an item is worth\nSELL : sells an item to Butch for a generous sum\nBUY : Butch's FAVORITE command lets you have an item for his low low price.\n\n                                        NEWBEE INTRUCTOR COMMITEE")],
     },
@@ -3388,7 +3646,7 @@ ROOMS = {
         "exits": {
             "s": 9529,
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
         "extra_descs": [('note sign', "LIST : gives you a list of items for sale.\nVALUE : tells you how much an item is worth to Elvira\nSELL : sells an item to Elvira for a generous sum\nBUY : Elvira's FAVORITE command lets you have an item for her low low price.")],
     },
@@ -3398,7 +3656,7 @@ ROOMS = {
         "exits": {
             "s": 9530,
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
         "extra_descs": [('sign', "Welcome to Braheem's.\nLIST -Shows you all of my wonderful creations.\nVAL  -Shows what an item might be worth to me.\nSELL -Allows you to rid yourself of excessive magic items.\nBUY  -Allows you to rid youself of excessive cash.")],
     },
@@ -3437,7 +3695,7 @@ ROOMS = {
         "exits": {
             "e": 9508,
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
     },
     9629: {
@@ -3446,7 +3704,7 @@ ROOMS = {
         "exits": {
             "w": 9507,
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
         "extra_descs": [('note', "LIST : gives you a list of items for sale.\nVALUE : tells you how much an item is worth to Abdul\nSELL : sells an item to Abdul for a generous sum\nBUY : Abdul's FAVORITE command lets you have an item for his low low price.")],
     },
@@ -3494,7 +3752,7 @@ ROOMS = {
             "e": {"to": 9573, "desc": 'You see the grass near the base of the wall here is slightly torn.', "keyword": 'secret door', "isdoor": True, "closed": True},
             "w": 9633,
         },
-        "flags": {"no_mob": True, "indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
     },
     9635: {
@@ -3503,7 +3761,7 @@ ROOMS = {
         "exits": {
             "n": 9508,
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
     },
     9636: {
@@ -3513,7 +3771,7 @@ ROOMS = {
             "n": 9507,
             "d": {"to": 9750, "keyword": 'secret sesame', "isdoor": True, "closed": True, "locked": True, "pickproof": True, "key": 9591},
         },
-        "flags": {"indoors": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [5, 6]},
         "sector": 'inside',
         "extra_descs": [('note', "LIST : gives you a list of items for sale.\nVALUE : tells you how much an item is worth to Igor\nSELL : sells an item to Igor for a generous sum\nBUY : Igor's FAVORITE command lets you have an item for his low low price.\n\n                                        NEWBEE INTRUCTOR COMITEE")],
     },
@@ -3523,7 +3781,7 @@ ROOMS = {
         "exits": {
             "e": 9566,
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
         "extra_descs": [('note', 'LIST : gives you a list of items for sale.\nVALUE : tells you how much an item is worth\nSELL : sells an item for a generous sum\nBUY :  buy an item for an outrageous price.')],
     },
@@ -3574,7 +3832,7 @@ ROOMS = {
             "e": 9643,
             "s": 9535,
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
         "extra_descs": [('note poster', "LIST : gives you a list of items for sale.\nVALUE : tells you how much an item is worth to the shipwright\nSELL : sells an item to the shipwright for a generous sum\nBUY : The shipwright's FAVORITE command lets you have an item for his low low pr\nice.")],
     },
@@ -3593,7 +3851,7 @@ ROOMS = {
         "exits": {
             "s": 9537,
         },
-        "flags": {"no_mob": True, "indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"no_mob": True, "indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
         "extra_descs": [('letters wall', 'LIST : gives you a list of items for sale.\nVALUE : tells you how much the blacksmith will give you for his merchandise\nSELL : sells an item to the blacksmith\nBUY : buy an item from the blacksmith for a fair price')],
     },
@@ -3680,7 +3938,7 @@ ROOMS = {
         "exits": {
             "n": {"to": 9544, "keyword": 'secret gate', "isdoor": True, "pickproof": True, "key": 9593},
         },
-        "flags": {"indoors": True, "arena": True, "bank": True, "_unknown_bits": [6]},
+        "flags": {"indoors": True, "_unknown_bits": [4, 5, 6]},
         "sector": 'inside',
     },
     9654: {
@@ -4213,6 +4471,7 @@ ROOMS = {
         },
         "flags": {"no_mob": True, "indoors": True},
         "sector": 'inside',
+        "owner": 'Saska',
     },
     9719: {
         "name": 'Headwaters of the River of Lost Souls',
@@ -4684,7 +4943,7 @@ OBJECTS = {
         "description": 'The heavy city key lies here in the dust',
         "material":    'oldstyle',
         "type": 'key',
-        "wear_flags": {"take": True, "neck": True},
+        "wear_flags": {"take": True, "neck": True, "hold": True},
         "level": 0, "weight": 30, "value": 0,
     },
     9503: {
@@ -5021,6 +5280,8 @@ OBJECTS = {
         "wear_flags": {"take": True, "hold": True},
         "container_max_weight": 50,
         "container_flags": {},
+        "container_max_item_weight": 5,
+        "container_weight_mult": 100,
         "level": 0, "weight": 10, "value": 12,
     },
     9535: {
@@ -5041,6 +5302,8 @@ OBJECTS = {
         "wear_flags": {"take": True, "about": True},
         "container_max_weight": 100,
         "container_flags": {"closeable": True},
+        "container_max_item_weight": 10,
+        "container_weight_mult": 100,
         "level": 0, "weight": 40, "value": 50,
     },
     9537: {
@@ -5052,6 +5315,8 @@ OBJECTS = {
         "wear_flags": {"take": True},
         "container_max_weight": 50,
         "container_flags": {},
+        "container_max_item_weight": 5,
+        "container_weight_mult": 100,
         "level": 0, "weight": 40, "value": 8,
     },
     9538: {
@@ -5063,6 +5328,8 @@ OBJECTS = {
         "wear_flags": {"take": True, "waist": True},
         "container_max_weight": 25,
         "container_flags": {},
+        "container_max_item_weight": 2,
+        "container_weight_mult": 100,
         "level": 0, "weight": 10, "value": 27,
     },
     9539: {
@@ -5184,7 +5451,7 @@ OBJECTS = {
         "description": 'A nicely made robe of embroidered cloth lies here.',
         "material":    'oldstyle',
         "type": 'clothing',
-        "wear_flags": {"take": True, "body": True},
+        "wear_flags": {"take": True, "body": True, "about": True},
         "level": 0, "weight": 20, "value": 200,
     },
     9553: {
@@ -5559,7 +5826,7 @@ OBJECTS = {
         "description": 'A horse shoe lies here.',
         "material":    'oldstyle',
         "type": 'armor',
-        "wear_flags": {"take": True, "neck": True},
+        "wear_flags": {"take": True, "neck": True, "hold": True},
         "extra_flags": {"hum": True, "magic": True},
         "armor": (1, 1, 1, 0),
         "stat_bonuses": {'hitroll': 1},
@@ -5734,26 +6001,29 @@ OBJECTS = {
 # -- Resets ---------------------------------------------------------------------
 # ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
 # ("O", item_vnum, room_vnum)                          -- place one item copy in room
-# ("E", item_vnum, slot_name)                          -- equip item on last M mob
-# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)
+# means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
 # ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
 # ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
 # D resets are baked into room exit flags at conversion time
 RESETS = (
     ("M", 9504, 1, 9501, 1),
     ("M", 9505, 1, 9502, 1),
-    ("G", 9569),
-    ("G", 9568),
-    ("G", 9567),
+    ("G", 9569, 910),
+    ("G", 9568, 910),
+    ("G", 9567, 910),
     ("M", 9506, 1, 9502, 1),
     ("O", 3200, 9502),
     ("M", 9507, 1, 9503, 1),
     ("M", 9508, 1, 9504, 1),
     ("M", 9539, 1, 9505, 1),
-    ("E", 9515, "body"),
-    ("E", 9600, "wield"),
+    ("E", 9515, "body", 60),
+    ("E", 9600, "wield", 4),
     ("M", 9537, 2, 9506, 2),
-    ("G", 9500),
+    ("G", 9500, 10),
     ("M", 9540, 1, 9506, 1),
     ("O", 9601, 9506),
     ("M", 9582, 16, 9507, 2),
@@ -5766,21 +6036,21 @@ RESETS = (
     ("M", 9547, 1, 9511, 1),
     ("M", 9549, 1, 9511, 1),
     ("M", 9565, 1, 9642, 1),
-    ("G", 3061),
-    ("G", 3060),
+    ("G", 3061, 20),
+    ("G", 3060, 30),
     ("M", 9548, 1, 9511, 1),
     ("M", 9561, 32, 9512, 2),
-    ("E", 9513, "wield"),
-    ("E", 9519, "body"),
-    ("E", 9521, "shield"),
+    ("E", 9513, "wield", 50),
+    ("E", 9519, "body", 53),
+    ("E", 9521, "shield", 52),
     ("M", 9562, 20, 9513, 5),
-    ("E", 9513, "wield"),
-    ("E", 9519, "body"),
-    ("E", 9521, "shield"),
+    ("E", 9513, "wield", 50),
+    ("E", 9519, "body", 53),
+    ("E", 9521, "shield", 72),
     ("M", 9562, 20, 9513, 5),
-    ("E", 9513, "wield"),
-    ("E", 9519, "body"),
-    ("E", 9521, "shield"),
+    ("E", 9513, "wield", 50),
+    ("E", 9519, "body", 53),
+    ("E", 9521, "shield", 42),
     ("M", 9582, 16, 9514, 2),
     ("M", 9541, 1, 9515, 1),
     ("M", 9538, 1, 9515, 1),
@@ -5789,52 +6059,52 @@ RESETS = (
     ("M", 9592, 14, 9517, 4),
     ("M", 9533, 20, 9517, 1),
     ("M", 9561, 32, 9518, 2),
-    ("E", 9519, "body"),
-    ("E", 9521, "shield"),
+    ("E", 9519, "body", 43),
+    ("E", 9521, "shield", 42),
     ("M", 9561, 32, 9519, 2),
-    ("E", 9513, "wield"),
-    ("E", 9519, "body"),
-    ("E", 9521, "shield"),
+    ("E", 9513, "wield", 1),
+    ("E", 9519, "body", 43),
+    ("E", 9521, "shield", 42),
     ("M", 9561, 32, 9520, 2),
-    ("E", 9513, "wield"),
-    ("E", 9519, "body"),
-    ("E", 9521, "shield"),
+    ("E", 9513, "wield", 1),
+    ("E", 9519, "body", 43),
+    ("E", 9521, "shield", 42),
     ("M", 9562, 20, 9522, 5),
-    ("E", 9513, "wield"),
-    ("E", 9519, "body"),
-    ("E", 9521, "shield"),
+    ("E", 9513, "wield", 1),
+    ("E", 9519, "body", 43),
+    ("E", 9521, "shield", 42),
     ("M", 9562, 20, 9522, 5),
-    ("E", 9513, "wield"),
-    ("E", 9519, "body"),
-    ("E", 9521, "shield"),
+    ("E", 9513, "wield", 1),
+    ("E", 9519, "body", 43),
+    ("E", 9521, "shield", 42),
     ("M", 9562, 20, 9523, 5),
-    ("E", 9513, "wield"),
-    ("E", 9519, "body"),
-    ("E", 9521, "shield"),
+    ("E", 9513, "wield", 1),
+    ("E", 9519, "body", 43),
+    ("E", 9521, "shield", 42),
     ("M", 9562, 20, 9523, 5),
-    ("E", 9513, "wield"),
-    ("E", 9519, "body"),
-    ("E", 9521, "shield"),
+    ("E", 9513, "wield", 1),
+    ("E", 9519, "body", 43),
+    ("E", 9521, "shield", 42),
     ("M", 9542, 22, 9524, 4),
     ("M", 9520, 2, 9525, 2),
-    ("E", 9586, "wield"),
+    ("E", 9586, "wield", 2),
     ("M", 9520, 2, 9525, 2),
-    ("E", 9586, "wield"),
+    ("E", 9586, "wield", 2),
     ("M", 9519, 1, 9525, 1),
-    ("E", 9585, "wield"),
+    ("E", 9585, "wield", 1),
     ("M", 9568, 15, 9527, 8),
     ("M", 9568, 15, 9528, 8),
     ("M", 9544, 20, 9529, 2),
     ("M", 9544, 20, 9530, 2),
     ("M", 9562, 20, 9531, 5),
-    ("E", 9519, "body"),
-    ("E", 9521, "shield"),
+    ("E", 9519, "body", 43),
+    ("E", 9521, "shield", 42),
     ("M", 9562, 20, 9531, 5),
-    ("E", 9519, "body"),
-    ("E", 9521, "shield"),
+    ("E", 9519, "body", 43),
+    ("E", 9521, "shield", 42),
     ("M", 9518, 1, 9532, 1),
-    ("G", 9564),
-    ("G", 9565),
+    ("G", 9564, 20),
+    ("G", 9565, 20),
     ("M", 9536, 18, 9533, 6),
     ("M", 9536, 18, 9533, 6),
     ("M", 9536, 18, 9533, 6),
@@ -5852,9 +6122,9 @@ RESETS = (
     ("M", 9582, 16, 9552, 2),
     ("M", 9544, 20, 9553, 2),
     ("M", 9545, 2, 9555, 2),
-    ("E", 9590, "wield"),
+    ("E", 9590, "wield", 2),
     ("M", 9545, 2, 9555, 2),
-    ("E", 9590, "wield"),
+    ("E", 9590, "wield", 2),
     ("M", 9544, 20, 9563, 1),
     ("M", 9543, 13, 9565, 1),
     ("M", 9530, 1, 9566, 1),
@@ -5886,24 +6156,24 @@ RESETS = (
     ("M", 9543, 13, 9614, 3),
     ("M", 9542, 22, 9614, 3),
     ("M", 9513, 1, 9614, 1),
-    ("E", 9583, "wield"),
-    ("G", 9555),
-    ("G", 9554),
-    ("G", 9553),
-    ("G", 9552),
-    ("G", 9551),
-    ("G", 9550),
-    ("G", 9549),
-    ("G", 9548),
-    ("G", 9547),
-    ("G", 9546),
+    ("E", 9583, "wield", 1),
+    ("G", 9555, 10),
+    ("G", 9554, 10),
+    ("G", 9553, 10),
+    ("G", 9552, 10),
+    ("G", 9551, 10),
+    ("G", 9550, 10),
+    ("G", 9549, 10),
+    ("G", 9548, 10),
+    ("G", 9547, 10),
+    ("G", 9546, 10),
     ("M", 9592, 14, 9615, 2),
     ("M", 9514, 1, 9615, 1),
-    ("G", 9560),
-    ("G", 9559),
-    ("G", 9558),
-    ("G", 9557),
-    ("G", 9556),
+    ("G", 9560, 10),
+    ("G", 9559, 10),
+    ("G", 9558, 10),
+    ("G", 9557, 10),
+    ("G", 9556, 10),
     ("M", 9522, 1, 9616, 1),
     ("M", 9527, 1, 9616, 1),
     ("M", 9526, 1, 9611, 1),
@@ -5914,89 +6184,89 @@ RESETS = (
     ("M", 3095, 1, 9706, 1),
     ("M", 9544, 20, 9622, 2),
     ("M", 9515, 1, 9622, 1),
-    ("E", 9584, "wield"),
-    ("G", 9563),
-    ("G", 9562),
-    ("G", 9561),
+    ("E", 9584, "wield", 1),
+    ("G", 9563, 10),
+    ("G", 9562, 10),
+    ("G", 9561, 10),
     ("M", 9544, 20, 9623, 2),
     ("M", 9579, 1, 9623, 1),
-    ("G", 9574),
-    ("G", 9573),
-    ("G", 9572),
-    ("G", 9571),
-    ("G", 9570),
+    ("G", 9574, 10),
+    ("G", 9573, 15),
+    ("G", 9572, 10),
+    ("G", 9571, 10),
+    ("G", 9570, 10),
     ("M", 9544, 20, 9624, 2),
     ("M", 9592, 14, 9624, 2),
     ("M", 9580, 1, 9624, 1),
-    ("G", 9582),
-    ("G", 9581),
-    ("G", 9579),
-    ("G", 9578),
+    ("G", 9582, 10),
+    ("G", 9581, 10),
+    ("G", 9579, 10),
+    ("G", 9578, 10),
     ("M", 9556, 1, 9625, 1),
     ("M", 9533, 20, 9626, 2),
     ("M", 9558, 1, 9626, 1),
     ("M", 9511, 1, 9628, 1),
-    ("G", 9538),
-    ("G", 9539),
-    ("G", 9537),
-    ("G", 9536),
-    ("G", 9535),
-    ("G", 9534),
+    ("G", 9538, 10),
+    ("G", 9539, 10),
+    ("G", 9537, 10),
+    ("G", 9536, 10),
+    ("G", 9535, 10),
+    ("G", 9534, 10),
     ("M", 9516, 1, 9629, 1),
-    ("G", 9521),
-    ("G", 9520),
-    ("G", 9519),
-    ("G", 9518),
-    ("G", 9517),
-    ("G", 9516),
-    ("G", 9515),
+    ("G", 9521, 140),
+    ("G", 9520, 10),
+    ("G", 9519, 10),
+    ("G", 9518, 10),
+    ("G", 9517, 22),
+    ("G", 9516, 10),
+    ("G", 9515, 20),
     ("M", 9564, 1, 9631, 1),
     ("M", 9544, 20, 9632, 2),
     ("M", 9559, 1, 9632, 1),
     ("M", 9502, 1, 9634, 1),
     ("M", 9510, 1, 9635, 1),
-    ("G", 9545),
-    ("G", 9543),
-    ("G", 9542),
-    ("G", 9541),
-    ("G", 9540),
+    ("G", 9545, 10),
+    ("G", 9543, 10),
+    ("G", 9542, 10),
+    ("G", 9541, 10),
+    ("G", 9540, 10),
     ("M", 9533, 20, 9636, 2),
     ("M", 9517, 1, 9636, 1),
-    ("E", 9591, "hold"),
-    ("G", 9514),
-    ("G", 9513),
-    ("G", 9512),
-    ("G", 9511),
-    ("G", 9510),
-    ("G", 9509),
-    ("G", 9508),
-    ("G", 9507),
-    ("G", 9506),
-    ("G", 9505),
-    ("G", 9504),
-    ("G", 9503),
+    ("E", 9591, "hold", 1),
+    ("G", 9514, 10),
+    ("G", 9513, 18),
+    ("G", 9512, 10),
+    ("G", 9511, 10),
+    ("G", 9510, 10),
+    ("G", 9509, 10),
+    ("G", 9508, 10),
+    ("G", 9507, 10),
+    ("G", 9506, 10),
+    ("G", 9505, 10),
+    ("G", 9504, 10),
+    ("G", 9503, 10),
     ("M", 9584, 1, 9637, 1),
-    ("G", 9533),
-    ("G", 9532),
-    ("G", 9531),
-    ("G", 9530),
-    ("G", 9529),
-    ("G", 9528),
-    ("G", 9527),
-    ("G", 9526),
-    ("G", 9525),
-    ("G", 9524),
-    ("G", 9523),
-    ("G", 9522),
+    ("G", 9533, 10),
+    ("G", 9532, 10),
+    ("G", 9531, 10),
+    ("G", 9530, 10),
+    ("G", 9529, 10),
+    ("G", 9528, 10),
+    ("G", 9527, 10),
+    ("G", 9526, 10),
+    ("G", 9525, 10),
+    ("G", 9524, 10),
+    ("G", 9523, 10),
+    ("G", 9522, 10),
     ("M", 9583, 1, 9638, 1),
-    ("G", 9577),
-    ("G", 9576),
-    ("G", 9575),
+    ("G", 9577, 10),
+    ("G", 9576, 10),
+    ("G", 9575, 10),
     ("O", 3200, 9638),
     ("M", 9566, 1, 9644, 1),
-    ("G", 9589),
-    ("G", 9588),
-    ("G", 9587),
+    ("G", 9589, 100),
+    ("G", 9588, 10),
+    ("G", 9587, 10),
     ("M", 9567, 6, 9645, 6),
     ("M", 9567, 6, 9645, 6),
     ("M", 9567, 6, 9645, 6),
@@ -6007,7 +6277,7 @@ RESETS = (
     ("M", 9500, 1, 9648, 1),
     ("M", 9544, 20, 9649, 2),
     ("M", 9589, 1, 9654, 1),
-    ("G", 9501),
+    ("G", 9501, 10),
     ("M", 9544, 20, 9655, 1),
     ("M", 9560, 2, 9661, 2),
     ("M", 9560, 2, 9661, 2),
@@ -6041,9 +6311,9 @@ RESETS = (
     ("M", 9561, 32, 9688, 5),
     ("M", 9550, 1, 9689, 1),
     ("M", 9552, 1, 9691, 1),
-    ("G", 9593),
+    ("G", 9593, 10),
     ("M", 9587, 1, 9696, 1),
-    ("E", 9599, "wield"),
+    ("E", 9599, "wield", 1),
     ("M", 9575, 1, 9697, 1),
     ("M", 9574, 1, 9698, 1),
     ("M", 9572, 5, 9699, 5),
@@ -6058,7 +6328,7 @@ RESETS = (
     ("M", 9571, 1, 9704, 1),
     ("O", 9598, 9750),
     ("M", 9591, 1, 9799, 1),
-    ("G", 9602),
+    ("G", 9602, 10),
 )
 
 # -- Shops ---------------------------------------------------------------------

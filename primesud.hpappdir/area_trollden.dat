@@ -7,7 +7,7 @@
 
 AREA = {
     "name":     'Troll Den',
-    "builders": '{10 15} Merc    Troll Den',
+    "builders": 'None',
     "vnums":    (2800, 2899),
     "credits":  '{10 15} Merc    Troll Den',
     "levels":   (10, 15),
@@ -299,6 +299,8 @@ OBJECTS = {
         "wear_flags": {"take": True},
         "container_max_weight": 30,
         "container_flags": {},
+        "container_max_item_weight": 30,
+        "container_weight_mult": 100,
         "level": 0, "weight": 500, "value": 1,
     },
     2801: {
@@ -310,6 +312,8 @@ OBJECTS = {
         "wear_flags": {},
         "container_max_weight": 30,
         "container_flags": {},
+        "container_max_item_weight": 30,
+        "container_weight_mult": 100,
         "level": 0, "weight": 0, "value": 0,
     },
     2802: {
@@ -366,8 +370,11 @@ OBJECTS = {
 # -- Resets ---------------------------------------------------------------------
 # ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
 # ("O", item_vnum, room_vnum)                          -- place one item copy in room
-# ("E", item_vnum, slot_name)                          -- equip item on last M mob
-# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)
+# means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
 # ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
 # ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
 # D resets are baked into room exit flags at conversion time
@@ -385,7 +392,7 @@ RESETS = (
     ("M", 2803, 4, 2804, 4),
     ("M", 2803, 4, 2804, 4),
     ("M", 2804, 1, 2805, 1),
-    ("E", 2802, "about"),
+    ("E", 2802, "about", 5),
     ("M", 2805, 1, 2805, 1),
     ("O", 2801, 2805),
     ("P", 2803, 5, 2801, 1),

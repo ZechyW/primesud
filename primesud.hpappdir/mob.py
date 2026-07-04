@@ -83,6 +83,20 @@ def create_mobile(tpl_vnum):
     form_flags = _merge("form_flags", "form")
     part_flags = _merge("part_flags", "parts")
 
+    # [PRIMESUD] apply .are F-line flag removals after race merge
+    # (cf. QuickMUD db2.c: race bits OR'd in, then F lines REMOVE_BIT)
+    _removes = tpl.get("flag_removes")
+    if _removes:
+        _fmap = {"act": act_flags, "aff": affected_by, "off": off,
+                 "imm": imm_flags, "res": res_flags, "vuln": vuln_flags,
+                 "form": form_flags, "parts": part_flags}
+        for _field, _names in _removes:
+            _d = _fmap.get(_field)
+            if _d:
+                for _nm in _names:
+                    if _nm in _d:
+                        del _d[_nm]
+
     # Per-stat values start uniform then receive class/off/size bonuses
     # (cf. 1stMud create_mobile perm_stat loop + ACT_WARRIOR/THIEF/CLERIC/MAGE blocks)
     s_str = s_dex = s_int = s_wis = s_con = base

@@ -7,7 +7,7 @@
 
 AREA = {
     "name":     'Haon Dor',
-    "builders": '{ 5 10} Diku    Haon Dor',
+    "builders": 'None',
     "vnums":    (6000, 6199),
     "credits":  '{ 5 10} Diku    Haon Dor',
     "levels":   (5, 10),
@@ -1113,6 +1113,8 @@ OBJECTS = {
         "wear_flags": {},
         "container_max_weight": 200,
         "container_flags": {},
+        "container_max_item_weight": 200,
+        "container_weight_mult": 100,
         "level": 0, "weight": 0, "value": 0,
         "extra_descs": [('fireplace', 'It is fashioned from stones of various sizes that have been stacked on top of\neach other and fastened with mortar.  Its chimney is constructed likewise and\nleads the smoke out through the low cabin ceiling.')],
     },
@@ -1126,6 +1128,8 @@ OBJECTS = {
         "container_max_weight": 100,
         "container_flags": {"closeable": True, "closed": True, "locked": True},
         "container_key": 6006,
+        "container_max_item_weight": 20,
+        "container_weight_mult": 100,
         "level": 0, "weight": 400, "value": 100,
         "extra_descs": [('chest', 'It is a robust chest made from short, heavy planks that have been fastened\ntogether with tenons.  It is equipped with a simple brass lock.')],
     },
@@ -1192,6 +1196,8 @@ OBJECTS = {
         "wear_flags": {},
         "container_max_weight": 1000,
         "container_flags": {},
+        "container_max_item_weight": 400,
+        "container_weight_mult": 100,
         "level": 0, "weight": 0, "value": 0,
         "extra_descs": [('opening', 'The opening is far too narrow for you to squeeze through but it looks as if the\ntree is hollow.'), ('tree', 'This enormous tree must be a thousand years old.  Its rough bark looks grey\nand pale and is decorated with scratches and claw marks.  On its west side is a\nsmall opening just above ground level.')],
     },
@@ -1244,6 +1250,7 @@ OBJECTS = {
         "type": 'food',
         "wear_flags": {"take": True},
         "food_hours": 12, "food_hunger": 12,
+        "poisoned": True,
         "level": 0, "weight": 50, "value": 0,
         "extra_descs": [('toadstool', 'It is a large, brown boletus that must weigh nearly five pounds.  It has small\nwhite spots and the top surface is covered in a thin layer of transparent slime\nthat emits a weak, musty smell.  Not the most delicious thing you have seen.')],
     },
@@ -1311,16 +1318,19 @@ OBJECTS = {
 # -- Resets ---------------------------------------------------------------------
 # ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
 # ("O", item_vnum, room_vnum)                          -- place one item copy in room
-# ("E", item_vnum, slot_name)                          -- equip item on last M mob
-# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)
+# means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
 # ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
 # ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
 # D resets are baked into room exit flags at conversion time
 RESETS = (
     ("M", 6000, 1, 6009, 1),
-    ("E", 6000, "wield"),
-    ("E", 6001, "body"),
-    ("E", 6002, "feet"),
+    ("E", 6000, "wield", 10),
+    ("E", 6001, "body", 10),
+    ("E", 6002, "feet", 10),
     ("M", 309, 5, 6012, 2),
     ("M", 309, 5, 6015, 1),
     ("M", 309, 5, 6017, 1),
@@ -1350,13 +1360,13 @@ RESETS = (
     ("M", 6103, 4, 6118, 2),
     ("M", 6103, 4, 6118, 2),
     ("M", 6112, 1, 6143, 1),
-    ("G", 6110),
-    ("G", 6112),
-    ("G", 6111),
+    ("G", 6110, -1),
+    ("G", 6112, 10),
+    ("G", 6111, 10),
     ("M", 6115, 1, 6100, 1),
-    ("E", 6114, "finger_l"),
+    ("E", 6114, "finger_l", 3),
     ("M", 6116, 1, 6155, 1),
-    ("E", 6155, "wield"),
+    ("E", 6155, "wield", 1),
     ("O", 6102, 6103),
     ("O", 6103, 6113),
     ("O", 6104, 6125),

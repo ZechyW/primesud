@@ -7,7 +7,7 @@
 
 AREA = {
     "name":     'mud school',
-    "builders": '{ 1  5} Hatchet Mud School',
+    "builders": 'None',
     "vnums":    (3700, 3799),
     "credits":  '{ 1  5} Hatchet Mud School',
     "levels":   (1, 5),
@@ -1485,36 +1485,39 @@ OBJECTS = {
 # -- Resets ---------------------------------------------------------------------
 # ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
 # ("O", item_vnum, room_vnum)                          -- place one item copy in room
-# ("E", item_vnum, slot_name)                          -- equip item on last M mob
-# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)
+# means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
 # ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
 # ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
 # D resets are baked into room exit flags at conversion time
 RESETS = (
     ("M", 3720, 1, 3721, 1),
-    ("E", 3715, "hold"),
+    ("E", 3715, "hold", -1),
     ("M", 3700, 1, 3701, 1),
     ("M", 3701, 1, 3710, 1),
     ("M", 3702, 1, 3716, 1),
-    ("E", 3705, "neck_1"),
-    ("E", 3705, "neck_2"),
+    ("E", 3705, "neck_1", -1),
+    ("E", 3705, "neck_2", -1),
     ("M", 3703, 1, 3715, 1),
-    ("E", 3706, "head"),
-    ("E", 3711, "about"),
+    ("E", 3706, "head", -1),
+    ("E", 3711, "about", -1),
     ("M", 3704, 1, 3713, 1),
-    ("E", 3707, "legs"),
-    ("E", 3712, "waist"),
+    ("E", 3707, "legs", -1),
+    ("E", 3712, "waist", -1),
     ("M", 3705, 1, 3714, 1),
-    ("E", 3708, "feet"),
-    ("E", 3713, "wrist_l"),
+    ("E", 3708, "feet", -1),
+    ("E", 3713, "wrist_l", -1),
     ("M", 3717, 1, 3718, 1),
-    ("G", 3138),
-    ("G", 3031),
+    ("G", 3138, -1),
+    ("G", 3031, -1),
     ("M", 3706, 1, 3720, 1),
-    ("E", 3709, "hands"),
-    ("E", 3710, "arms"),
-    ("E", 3714, "hold"),
-    ("E", 3713, "wrist_l"),
+    ("E", 3709, "hands", -1),
+    ("E", 3710, "arms", -1),
+    ("E", 3714, "hold", -1),
+    ("E", 3713, "wrist_l", -1),
     ("M", 3709, 4, 3734, 4),
     ("M", 3710, 3, 3742, 3),
     ("M", 3711, 3, 3746, 3),

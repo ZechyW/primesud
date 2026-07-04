@@ -7,7 +7,7 @@
 
 AREA = {
     "name":     'Graveyard',
-    "builders": '{ 5 10} Alfa    Graveyard',
+    "builders": 'None',
     "vnums":    (3600, 3699),
     "credits":  '{ 5 10} Alfa    Graveyard',
     "levels":   (5, 10),
@@ -619,8 +619,11 @@ OBJECTS = {
 # -- Resets ---------------------------------------------------------------------
 # ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
 # ("O", item_vnum, room_vnum)                          -- place one item copy in room
-# ("E", item_vnum, slot_name)                          -- equip item on last M mob
-# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)
+# means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
 # ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
 # ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
 # D resets are baked into room exit flags at conversion time
@@ -630,20 +633,20 @@ RESETS = (
     ("M", 3603, 4, 3611, 1),
     ("O", 3613, 3611),
     ("M", 3600, 1, 3613, 1),
-    ("G", 3601),
+    ("G", 3601, -1),
     ("O", 3602, 3613),
     ("O", 3603, 3613),
     ("O", 3604, 3613),
     ("O", 3605, 3613),
     ("O", 3610, 3615),
     ("M", 3602, 1, 3617, 1),
-    ("G", 3612),
+    ("G", 3612, -1),
     ("O", 3610, 3619),
     ("M", 3603, 4, 3639, 1),
     ("O", 3610, 3641),
     ("O", 3603, 3643),
     ("M", 3601, 1, 3645, 1),
-    ("G", 3611),
+    ("G", 3611, -1),
     ("O", 3610, 3647),
     ("M", 3603, 4, 3649, 1),
     ("M", 3604, 4, 3606, 1),
