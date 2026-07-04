@@ -2527,6 +2527,7 @@ ROOMS = {
         "desc": 'You see before you the expanse of the Sands of Sorrow.  The shifting sands\nstretch on endlessly to the south, hiding treasure and adventure.',
         "exits": {
             "n": {"to": 9513, "keyword": 'gate', "isdoor": True, "closed": True, "key": 9501},
+            "s": {"to": None},
         },
         "sector": 'city',
     },
@@ -4068,7 +4069,9 @@ ROOMS = {
         "desc": 'You stand outside the gate of New Thalos. The city lies to the south, and\nwilderness to the north.  The Sands of Sorrow continues to the east\nand west.',
         "exits": {
             "n": 9781,
+            "e": {"to": None},
             "s": 9522,
+            "w": {"to": None},
         },
         "sector": 'city',
     },

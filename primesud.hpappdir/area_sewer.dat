@@ -1305,6 +1305,7 @@ ROOMS = {
         "desc": "You are dangling on the slippery sides of the old well leading down and up.\nThe only secure point here is the metal bars that are cemented into the\nsides, the ones that you cling frantically to so that you don't fall. Who\nknows how deep this well is?",
         "exits": {
             "u": {"to": 7015, "desc": "There's a slight, dim light from above, or maybe it's your imagination.\nAnyway it SEEMS darker down here than up there, if that is possible."},
+            "d": {"to": None, "desc": "Down there nothing at all can be spotted. The darkness that engulfs this\ndescent seems utterly impossible in a mortal world. It's so thick that a\ntorch down there would be utterly useless.  You'd better not go down any\nfurther."},
         },
         "flags": {"dark": True, "indoors": True},
         "sector": 'mountain',
@@ -1486,6 +1487,7 @@ ROOMS = {
         "name": 'Under the pit',
         "desc": 'You stand in a completely dark cavern leading west. The wall looks weird here.',
         "exits": {
+            "e": {"to": None, "keyword": 'crack wall rock'},
             "w": 7112,
         },
         "flags": {"dark": True, "indoors": True},
@@ -1960,6 +1962,8 @@ ROOMS = {
         "name": 'The Entrance to the Realm of silence',
         "desc": "This is an utterly silent place. As you look around you see that there\nhasn't been a living thing in a long time. The dust lies here in a thick\nlayer on the floor and on the furniture. On the wall hangs a bleak and\nworn tapestry. A winding stone staircase leads up into darkness. On the\nwall to the west you can see a huge torch stuck into the solid rock.\nA large portcullis blocks your way to the north.",
         "exits": {
+            "n": {"to": None, "desc": 'Through the portcullis, you can see a faintly lighted hallway leading east.', "isdoor": True},
+            "u": {"to": None},
         },
         "flags": {"no_mob": True, "indoors": True},
         "sector": 'field',
@@ -2348,6 +2352,7 @@ ROOMS = {
         "desc": "You are standing in a small room. Drawings of faces in pain\nare on the walls. You can feel that darkness is ruling this place.\nthere are two exits: south and down. You have a feeling the downward exit\nisn't finished yet...",
         "exits": {
             "s": {"to": 7435, "desc": 'nothing but darkness'},
+            "d": {"to": None, "desc": "A sign is blocking the way: 'This has not been implemented\nyet'."},
         },
         "flags": {"dark": True, "indoors": True},
         "sector": 'city',

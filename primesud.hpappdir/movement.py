@@ -1141,7 +1141,8 @@ def _brief_room_line(player):
         EXIT_NAMES.get(d, d) for d in EXIT_ORDER
         if d in room.get("exits", {})
         and not (isinstance(room["exits"][d], dict)
-                 and room["exits"][d].get("closed"))
+                 and (room["exits"][d].get("closed")
+                      or room["exits"][d].get("to") is None))
     )
     exit_str = "[" + exits + "]" if exits else "[none]"
     chprintln(player, "{Y" + room["name"] + "{x {g" + exit_str + "{x")

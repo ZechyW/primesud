@@ -435,7 +435,7 @@ def do_look(player, args):
     ported -- blindness and darkness are not implemented yet; position is
     gated by the command table.
 
-    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
+    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check)]
 
     Args:
         player (dict): Player state dict.
@@ -541,7 +541,9 @@ def do_look(player, args):
     if player.get("flags", PLR_DEFAULTS) & PLR_AUTOEXIT:
         exits = " ".join(
             EXIT_NAMES.get(d, d) for d in EXIT_ORDER
-            if d in room["exits"] and not (isinstance(room["exits"][d], dict) and room["exits"][d].get("closed"))
+            if d in room["exits"] and not (isinstance(room["exits"][d], dict)
+                and (room["exits"][d].get("closed")
+                     or room["exits"][d].get("to") is None))
         )
         exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
         chprintln(player, "{g" + exit_string + "{x")

@@ -792,9 +792,12 @@ def parse_rooms(lines):
                 locks   = int(ex_parts[0]) if ex_parts else 0
                 ex_key  = int(ex_parts[1]) if len(ex_parts) > 1 else -1
                 to_room = int(ex_parts[2]) if len(ex_parts) > 2 else -1
-                if to_room > 0 and direction in DIR_NAME:
+                if direction in DIR_NAME:
                     d = DIR_NAME[direction]
-                    exits[d] = to_room
+                    # to_room <= 0: ROM keeps the exit as examinable but
+                    # untraversable (fix_exits only nulls the destination
+                    # pointer); preserved as "to": None.
+                    exits[d] = to_room if to_room > 0 else None
                     # ROM lock types: 0=open, 1=door, 2=door+pickproof,
                     #                 3=door+nopass, 4=door+nopass+pickproof.
                     # db.c load_rooms only has cases 1-4 in its switch;
@@ -826,19 +829,6 @@ def parse_rooms(lines):
                         exit_descs[d] = ex_desc
                     if ex_keyword:
                         exit_notes.setdefault(d, {})["keyword"] = ex_keyword
-                else:
-                    # ROM keeps such exits as examinable-but-untraversable
-                    # (fix_exits only nulls the destination pointer); dropping
-                    # them entirely is a documented PrimeSUD simplification.
-                    # Warn so the data loss is never silent.
-                    print(
-                        "warning: room " + str(vnum) + " exit " +
-                        DIR_NAME.get(direction, str(direction)) +
-                        ": to_room <= 0 (" + str(to_room) + "), dropping exit"
-                        " (desc=" + str(bool(ex_desc)) +
-                        ", keyword=" + str(bool(ex_keyword)) + ")",
-                        file=sys.stderr,
-                    )
             elif tline == "E":
                 i += 1
                 ekw, i = read_tilde_string(lines, i)
@@ -1244,7 +1234,10 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
         w(f'        "exits": {{')
         for d in sorted(room["exits"], key=lambda x: "neswud".index(x)):
             to_vnum = room["exits"][d]
-            to_c    = r(to_vnum, room_map)
+            # "to": None = examinable-but-untraversable exit (ROM keeps
+            # exits whose to_room fails to resolve; fix_exits nulls only
+            # the destination pointer).
+            to_c    = "None" if to_vnum is None else r(to_vnum, room_map)
             note    = room["exit_notes"].get(d) or {}
             # D override sets closed/locked state
             dstate = (doverrides or {}).get((vnum, d))
@@ -1270,7 +1263,7 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
                         file=sys.stderr,
                     )
             ex_desc = room.get("exit_descs", {}).get(d, "")
-            if note or ex_desc:
+            if note or ex_desc or to_vnum is None:
                 eparts = [f'"to": {to_c}']
                 if ex_desc:
                     eparts.append(f'"desc": {pyrepr(ex_desc)}')

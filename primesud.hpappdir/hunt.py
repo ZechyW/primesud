@@ -82,6 +82,8 @@ def find_path(in_vnum, out_vnum, area_only=True):
             if ev is None:
                 continue
             to = _exit_to(ev)
+            if to is None:  # blind exit ("to": None)
+                continue
             if to == out_vnum:
                 return first if first is not None else d
             if to not in visited:

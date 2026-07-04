@@ -165,6 +165,8 @@ class LazyDict:
 
 def _vnum_to_tag(vnum):
     """Return area tag owning a vnum, or None. [PRIMESUD]"""
+    if vnum is None:  # blind exits ("to": None) probe ROOM_DEFS with None
+        return None
     for lo, hi, tag in _VNUM_RANGES:
         if lo <= vnum <= hi:
             return tag

@@ -85,6 +85,8 @@ def _map_exits(rooms, start_vnum, grid, colors, start_gx, start_gy, max_depth):
         for direction, exit_val in room["exits"].items():
             is_closed = isinstance(exit_val, dict) and exit_val.get("closed")
             dest_vnum = exit_val["to"] if isinstance(exit_val, dict) else exit_val
+            if dest_vnum is None:  # blind exit: not traversable, not mapped
+                continue
             delta = _DIR_DELTA.get(direction)
             if delta is None:
                 continue

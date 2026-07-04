@@ -608,6 +608,7 @@ ROOMS = {
         "desc": 'You stand before the gates of a huge fortress.  The drawbridge is up, the\ngates closed, and the portcullis down.  This place looks very dangerous,\nand you decide not to continue onward.',
         "exits": {
             "e": {"to": 8317, "desc": 'To the east is a marshy beach.'},
+            "s": {"to": None, "isdoor": True},
         },
         "flags": {"dark": True},
         "sector": 'forest',
