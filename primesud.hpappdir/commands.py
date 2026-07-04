@@ -25,7 +25,7 @@ from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
                       do_open, do_close, do_recall, do_run,
                       do_stand, do_rest, do_sit, do_sleep, do_wake,
                       do_lock, do_unlock, do_pick,
-                      do_hide, do_sneak, do_visible)
+                      do_hide, do_sneak, do_visible, do_enter)
 from scan import do_scan
 from shop import do_buy, do_sell, do_list, do_value, do_appraise
 from system_cmds import do_save, do_quit
@@ -244,10 +244,10 @@ _CMD_TABLE = [
     # ("hunt",      do_hunt,       "standing", False),  # #153
     ("automap",    do_automap,    "sleeping", False),  # #154
     # ("mob",       do_mob,        "dead",     False),  # #155 mob prog
-    # ("enter",     do_enter,      "standing", False),  # #156
+    ("enter",      do_enter,      "standing", False),  # #156
     ("follow",     do_follow,     "resting",  False),  # #157
     ("gain",       do_gain,       "standing", False),  # #158
-    # ("go",        do_enter,      "standing", False),  # #159
+    ("go",         do_enter,      "standing", False),  # #159
     ("hide",       do_hide,       "resting",  False),  # #160
     # ("play",      do_play,       "resting",  False),  # #161
     ("quit",       do_quit,       "dead",     True),   # #162 noprefix

@@ -15,6 +15,7 @@ I_MUSHROOM                 = 20
 I_BALL_LIGHT               = 21
 I_SPRING                   = 22
 I_DISC_DISK_FLOATING_BLACK = 23
+I_GATE_PORTAL              = 25   # cf. 1stMud OBJ_VNUM_PORTAL
 # -- area_school items --
 I_MACE_SUB_MERC            = 3700
 I_DAGGER_SUB_MERC          = 3701

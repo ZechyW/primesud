@@ -16,10 +16,11 @@ from picker import pick_from
 from quest import quest_room_check
 from skills_table import (GSN_RECALL, GSN_PICK_LOCK, GSN_SNEAK, GSN_HIDE,
                           GSN_INVIS, GSN_MASS_INVIS, SKILLS)
+from item import get_obj_list, create_object, obj_vnum
 from terminal import tprint
 from urandom import randint
 import world
-from world import ROOM_DEFS
+from world import ROOM_DEFS, ITEM_DEFS
 
 
 def _exit_to(exit_val):
@@ -285,6 +286,168 @@ def do_down(player, args):
     move_char(player, "d")
     if was_room == player["room"]:
         free_runbuf(player)
+
+
+def get_random_room(ch):
+    """Pick a random reachable room (cf. 1stMud get_random_room in act_enter.c).
+
+    [PRIMESUD] Draws only from currently loaded areas -- a full-world sweep
+    would force-load every area on the calculator.
+
+    Returns:
+        int or None: Room vnum, or None if no candidate found.
+    """
+    vnums = list(ROOM_DEFS._data.keys())
+    if not vnums:
+        return None
+    # ponytail: bounded retry instead of 1stMud's infinite loop; None if
+    # unlucky -- do_enter shows "doesn't seem to go anywhere"
+    for _ in range(100):
+        vnum = vnums[randint(0, len(vnums) - 1)]
+        flags = ROOM_DEFS._data[vnum].get("flags", {})
+        # TODO [PRIMESUD] arena / closed-area checks not yet ported
+        if (can_see_room(ch, vnum)
+                and not flags.get("private") and not flags.get("solitary")
+                and not flags.get("safe")
+                and (ch["is_npc"] or ch.get("act_flags", {}).get("aggressive")
+                     or not flags.get("law"))):
+            return vnum
+    return None
+
+
+def do_enter(ch, args):
+    """Enter a portal object in the room (cf. 1stMud do_enter in act_enter.c).
+    [Verified: 04/07/2026] -- IsTrusted immortal bypasses and mob entry/greet
+    triggers not ported.
+
+    Args:
+        ch (dict): Character entering (player or follower mob).
+        args (list): Portal keyword arguments.
+    """
+    if ch["fighting"] is not None:
+        return
+    if not args:
+        chprintln(ch, "Nope, can't do it.")
+        return
+
+    old_vnum = ch["room"]
+    rs = world.rooms[old_vnum]
+    portal = get_obj_list(" ".join(args), rs["items"], ITEM_DEFS)
+    if portal is None:
+        chprintln(ch, "You don't see that here.")
+        return
+    # act $p rendering and instance mutation need a dict
+    if not isinstance(portal, dict):
+        inst = create_object(portal)
+        rs["items"][rs["items"].index(portal)] = inst
+        portal = inst
+
+    tpl = ITEM_DEFS[obj_vnum(portal)]
+    gate = portal.get("gate_flags", tpl.get("gate_flags", {}))
+    exit_flags = portal.get("exit_flags", tpl.get("exit_flags", {}))
+    if tpl.get("type") != "portal" or exit_flags.get("closed"):
+        chprintln(ch, "You can't seem to find a way in.")
+        return
+
+    # 1stMud: curse or no_recall room bars exit unless GATE_NOCURSE
+    old_flags = ROOM_DEFS.get(old_vnum, {}).get("flags", {})
+    if (not gate.get("nocurse")
+            and (ch.get("affected_by", {}).get("curse")
+                 or old_flags.get("no_recall"))):
+        chprintln(ch, "Something prevents you from leaving...")
+        return
+
+    # 1stMud value[3]: destination vnum; -1 = re-randomize each use
+    to_vnum = portal["to_vnum"] if "to_vnum" in portal else tpl.get("to_vnum", 0)
+    if gate.get("random") or to_vnum == -1:
+        dest = get_random_room(ch)
+        portal["to_vnum"] = dest  # 1stMud: portal->value[3] = location->vnum
+    elif gate.get("buggy") and randint(1, 100) < 5:
+        dest = get_random_room(ch)
+    else:
+        dest = to_vnum
+
+    dest_flags = ROOM_DEFS.get(dest, {}).get("flags", {}) if dest else {}
+    if (not dest or dest == old_vnum or dest not in ROOM_DEFS
+            or not can_see_room(ch, dest)
+            or dest_flags.get("private") or dest_flags.get("solitary")):
+        act("$p doesn't seem to go anywhere.", ch, portal, None, TO_CHAR)
+        return
+
+    if (ch["is_npc"] and ch.get("act_flags", {}).get("aggressive")
+            and dest_flags.get("law")):
+        chprintln(ch, "Something prevents you from leaving...")
+        return
+
+    act("$n steps into $p.", ch, portal, None, TO_ROOM)
+    if gate.get("normal_exit"):
+        act("You enter $p.", ch, portal, None, TO_CHAR)
+    else:
+        act("You walk through $p and find yourself somewhere else...",
+            ch, portal, None, TO_CHAR)
+
+    ch["room"] = dest
+    if ch["is_npc"]:
+        if ch["id"] in rs["mobs"]:
+            rs["mobs"].remove(ch["id"])
+        world.rooms[dest]["mobs"].append(ch["id"])
+
+    if gate.get("gowith"):
+        if portal in rs["items"]:
+            rs["items"].remove(portal)
+        world.rooms[dest]["items"].append(portal)
+
+    if gate.get("normal_exit"):
+        act("$n has arrived.", ch, portal, None, TO_ROOM)
+    else:
+        act("$n has arrived through $p.", ch, portal, None, TO_ROOM)
+
+    if not ch["is_npc"]:
+        # 1stMud: do_function(ch, &do_look, "auto") -- no brief mode here
+        do_look(ch, [])
+
+    # 1stMud value[0]: charges > 0 count down; 0 -> -1 marks it spent
+    charges = portal.get("charges")
+    if charges is not None and charges > 0:
+        charges -= 1
+        portal["charges"] = charges if charges > 0 else -1
+
+    # -- Followers enter too (cf. act_enter.c follower loop; recursion
+    # decrements charges per follower, as in 1stMud)
+    followers = []
+    for fid in list(world.rooms[old_vnum]["mobs"]):
+        fch = world.chars.get(fid)
+        if fch is not None and fch.get("master") == ch["id"]:
+            followers.append(fch)
+    _p = world.chars.get(1)
+    if (_p is not None and _p is not ch and _p.get("master") == ch["id"]
+            and _p.get("room") == old_vnum):
+        followers.append(_p)
+    for fch in followers:
+        if portal.get("charges") == -1:  # spent mid-loop
+            continue
+        if (fch.get("affected_by", {}).get("charm")
+                and POS_ORDER[fch["pos"]] < POS_ORDER["standing"]):
+            fch["pos"] = "standing"
+        if fch["pos"] != "standing":
+            continue
+        if (dest_flags.get("law") and fch.get("is_npc")
+                and fch.get("act_flags", {}).get("aggressive")):
+            act("You can't bring $N into the city.", ch, None, fch, TO_CHAR)
+            act("You aren't allowed in the city.", fch, None, None, TO_CHAR)
+            continue
+        act("You follow $N.", fch, None, ch, TO_CHAR)
+        do_enter(fch, args)
+
+    # spent portal fades (may sit in the old room or, via gowith, the new one)
+    if portal.get("charges") == -1:
+        act("$p fades out of existence.", ch, portal, None, TO_CHAR)
+        for items in (rs["items"], world.rooms[dest]["items"]):
+            if portal in items:
+                items.remove(portal)
+                break
+    # 1stMud runs entry/greet mobprogs here (not ported); no quest room
+    # check in do_enter -- that is a move_char-only mechanic
 
 
 def _find_door(player, arg, exits):

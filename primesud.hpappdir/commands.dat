@@ -35,6 +35,7 @@ down|move down
 drink|drink from a container or fountain
 drop|drop an item, or coins: drop 5 gold
 east|move east
+enter|step through a portal object
 eat|eat something from your inventory
 equipment|show what you are wearing and wielding
 envenom|coat an edged weapon or food with poison (thief)
@@ -47,6 +48,7 @@ gain|learn or improve skill groups at a trainer
 get|pick up an item: get <item> [container]
 give|give an item or coins to a character
 gquest|global quest status and commands
+go|step through a portal object (same as enter)
 heal|buy healing services from a healer NPC
 help|read a help entry: help <topic>
 hide|hide from view

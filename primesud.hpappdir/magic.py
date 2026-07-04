@@ -3,10 +3,11 @@
 import world
 from handler import (is_name, is_affected, affect_to_char, affect_join, affect_strip, is_awake,
                    can_see_room, act, chprintln, get_char_room, equip_char,
+                   unequip_char,
                    TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
                    is_good, is_evil, is_neutral)
 from world import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
-                   I_DISC_DISK_FLOATING_BLACK)
+                   I_DISC_DISK_FLOATING_BLACK, I_GATE_PORTAL)
 from colors import upper
 from classes import has_spells
 from combat import (is_safe, is_safe_spell, check_immune, dice, number_fuzzy,
@@ -15,7 +16,7 @@ from skill_utils import WaitState, check_improve, get_skill
 from config import (POS_ORDER, DAM_ACID, DAM_BASH, DAM_CHARM, DAM_COLD,
                     DAM_DISEASE, DAM_DROWNING, DAM_ENERGY, DAM_FIRE,
                     DAM_HARM, DAM_HOLY, DAM_LIGHT, DAM_LIGHTNING,
-                    DAM_NEGATIVE, DAM_OTHER, DAM_PIERCE, DAM_POISON,
+                    DAM_NEGATIVE, DAM_NONE, DAM_OTHER, DAM_PIERCE, DAM_POISON,
                     DAM_SLASH, IS_IMMUNE, IS_RESISTANT, IS_VULNERABLE)
 from config import R_RECALL, MAX_MORTAL_LEVEL
 from item import (get_obj_list, obj_vnum, item_spell_level,
@@ -2533,24 +2534,123 @@ def spell_high_explosive(sn, level, ch, vo, target):
 # -- magic2.c spells --
 
 
-def spell_portal(sn, level, ch, vo, target):
-    """Create a portal to another location (cf. 1stMud spell_portal in magic2.c).
+def _warp_victim(level, ch, check_from=False):
+    """Find and validate the target for portal/nexus. [PRIMESUD helper]
+    (cf. 1stMud spell_portal/spell_nexus target checks in magic2.c)
 
-    TODO: world-wide char search and portal object placement not fully ported.
+    Args:
+        level (int): Cast level.
+        ch (dict): Caster.
+        check_from (bool): Also gate on the caster's room (nexus).
+
+    Returns:
+        dict or None: Valid victim, or None (caller prints "You failed.").
     """
-    # TODO [PRIMESUD] get_char_world, warp stone component, portal creation
-    chprintln(ch, "You failed.")
-    return False
+    tail = ch.get("_target_name", "")
+    if not tail:
+        return None
+    # get_char_world: search all loaded chars by name (no other PCs).
+    victim = None
+    for _c in world.chars.values():
+        if _c is ch or not _c.get("is_npc"):
+            continue
+        _tpl = MOB_DEFS.get(_c.get("tpl"), {})
+        if is_name(tail, _tpl.get("keywords", "")):
+            victim = _c
+            break
+    if victim is None:
+        return None
+
+    dst = victim.get("room")
+    if dst is None:
+        return None
+    src_flags = ROOM_DEFS.get(ch.get("room"), {}).get("flags", {})
+    dst_flags = ROOM_DEFS.get(dst, {}).get("flags", {})
+
+    from quest import is_quester
+    from gquest import gq_is_target
+    if (not can_see_room(ch, dst)
+            or dst_flags.get("safe")
+            or dst_flags.get("private")
+            or dst_flags.get("solitary")
+            or dst_flags.get("no_recall")
+            or src_flags.get("no_recall")
+            # TODO [PRIMESUD] arena / area closed / clan checks not yet ported
+            or (check_from and (src_flags.get("safe")
+                                or not can_see_room(ch, ch.get("room"))))
+            # 1stMud: gquest targets can't be warped to (is_gqmob)
+            or gq_is_target(victim.get("tpl"))
+            # 1stMud: can't warp to your own quest mob;
+            # [PRIMESUD] vnum match instead of instance pointer
+            or (is_quester(ch) and victim.get("tpl") == ch.get("quest_mob", 0))
+            or victim.get("level", 0) >= level + 3
+            or victim.get("imm_flags", {}).get("summon")
+            or saves_spell(level, victim, DAM_NONE)):
+        return None
+    return victim
+
+
+def _consume_warp_stone(ch):
+    """Require and burn a held warp stone (cf. 1stMud spell_portal/nexus in magic2.c).
+    [PRIMESUD helper] -- IsImmortal bypass not applicable (single-player mortal).
+
+    Returns:
+        bool: True if the component was present and consumed.
+    """
+    stone = ch["equip"].get("hold")
+    if stone is None or ITEM_DEFS[obj_vnum(stone)].get("type") != "warp_stone":
+        chprintln(ch, "You lack the proper component for this spell.")
+        return False
+    act("You draw upon the power of $p.", ch, stone, None, TO_CHAR)
+    act("It flares brightly and vanishes!", ch, stone, None, TO_CHAR)
+    unequip_char(ch, "hold")
+    ch["inv"].remove(stone)  # extract_obj: unequip returns it to inventory
+    return True
+
+
+def _make_portal(room_vnum, to_vnum, timer):
+    """Drop a portal object into a room. [PRIMESUD helper]"""
+    inst = create_object(I_GATE_PORTAL)
+    inst["timer"] = timer
+    inst["to_vnum"] = to_vnum
+    world.rooms[room_vnum]["items"].append(inst)
+    return inst
+
+
+def spell_portal(sn, level, ch, vo, target):
+    """Create a one-way portal to a far-off character (cf. 1stMud spell_portal
+    in magic2.c). [Verified: 04/07/2026]"""
+    victim = _warp_victim(level, ch)
+    if victim is None:
+        chprintln(ch, "You failed.")
+        return False
+    if not _consume_warp_stone(ch):
+        return False
+    portal = _make_portal(ch["room"], victim["room"], 2 + level // 25)
+    act("$p rises up from the ground.", ch, portal, None, TO_ROOM)
+    act("$p rises up before you.", ch, portal, None, TO_CHAR)
+    return True
 
 
 def spell_nexus(sn, level, ch, vo, target):
-    """Create a two-way portal (cf. 1stMud spell_nexus in magic2.c).
-
-    TODO: world-wide char search and portal object placement not fully ported.
-    """
-    # TODO [PRIMESUD] similar to portal but creates portals in both rooms
-    chprintln(ch, "You failed.")
-    return False
+    """Create a two-way portal pair (cf. 1stMud spell_nexus in magic2.c).
+    [Verified: 04/07/2026]"""
+    from_room = ch["room"]
+    victim = _warp_victim(level, ch, check_from=True)
+    if victim is None:
+        chprintln(ch, "You failed.")
+        return False
+    if not _consume_warp_stone(ch):
+        return False
+    to_room = victim["room"]
+    portal = _make_portal(from_room, to_room, 1 + level // 10)
+    act("$p rises up from the ground.", ch, portal, None, TO_ROOM)
+    act("$p rises up before you.", ch, portal, None, TO_CHAR)
+    if to_room == from_room:
+        return True
+    # far-end portal; arrival acts skipped -- no player there to see them
+    _make_portal(to_room, from_room, 1 + level // 10)
+    return True
 
 
 def spell_forceshield(sn, level, ch, vo, target):
