@@ -41,10 +41,11 @@ Pickers force numeric keyboard mode on entry (`picker.py:_force_numeric_keys`) s
 | EXP per level | `exp_per_level()` -- scales with creation points and race/class mult | Flat 1000 XP / level | Equivalent at 40 creation points, human baseline |
 | Level-up heal | Adds gains to `max_hit`/`max_mana`; current HP/MP unchanged | Fully restores current HP and MP | Eliminates "levelled at 1 HP mid-fight" |
 | Remort progression | `lvl_bonus` multiplier against 1stMud's economy | Same formula against PrimeSUD's flatter economy (20 HP at creation) -- first remort lands ~6000 HP/mana/move, 300 trains, 420 practices | Accepted 03/07/2026 as an NG+-style feature; revisit after playtest |
+| Guild rooms | Single class per guild room; midgaard has no paladin/ranger guilds | Paladin shares the Cleric guild rooms, Ranger shares the Warrior's; all four midgaard GMs are gain-capable (`patch_1stmud_deltas.py`) | Every class must be gain/remort-capable within the loaded-area set |
 | Pulse timing | `PULSE_VIOLENCE = 3xPPS`, `PULSE_MOBILE = 4xPPS`, `PULSE_TICK = 45xPPS` | `2xPPS`, `5xPPS`, `30xPPS` | Faster combat/regen; slower mob wander |
 
 ---
 
 ## Area files
 
-Python modules (`area_<name>.py`) instead of parsed `.are` files -- runtime text parsing too memory-intensive. See **[AREA_FILES.md](AREA_FILES.md)** for full format reference.
+Python modules (`area_<name>.py`) instead of parsed `.are` files -- runtime text parsing too memory-intensive. See **[docs/AREA_FILES.md](docs/AREA_FILES.md)** for full format reference.

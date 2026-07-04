@@ -6,9 +6,6 @@ Snippets of implementation detail from the reference 1stMud 4.5.3 source
 See also: **[COMMANDS.md](COMMANDS.md)** — full command table with load order,
 positions, levels, flags, and categories (source: `data/commands.dat`).
 
-See also: **[CMD_PLAN.md](CMD_PLAN.md)** — plan for porting the command dispatch
-infrastructure and extending the command set.
-
 See also: **[BUILTINS.md](BUILTINS.md)** — HP Prime Python built-in type method
 availability (verified via `dir()` on-device).
 

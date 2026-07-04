@@ -20,7 +20,7 @@ Reusable terminal abstraction by Piotr Kowalewski (komame). Renders chars onto H
 
 ## Constraints and pitfalls
 
-1. **HP Prime Python is not CPython.** Many stdlib modules missing, built-ins have reduced method sets. See **[BUILTINS.md](BUILTINS.md)** for verified availability (confirmed via `dir()` on-device).
+1. **HP Prime Python is not CPython.** Many stdlib modules missing, built-ins have reduced method sets. See **[docs/BUILTINS.md](docs/BUILTINS.md)** for verified availability (confirmed via `dir()` on-device).
 
 2. **Memory very limited.** Small heap. Avoid large structures, deep call stacks, string concat in loops (use lists + `join`), or unnecessary caching.
 
@@ -36,13 +36,13 @@ Reusable terminal abstraction by Piotr Kowalewski (komame). Renders chars onto H
 python tools/check_ascii_py.py
 ```
 
-8. **Use str() + concat in persisted/serialized strings.** Physical HP Prime Python has confirmed heap-sensitive string formatting bug. Values can behave like strings at first, then fail later during list/string operations such as `"~".join(lines)`. For save payloads, HVars/PPL strings, file formats, area-data generated strings, or any string that will be joined/stored/parsing-critical, use explicit `str()` plus concatenation. See `PRIME_STRING_FORMAT_BUG.md`.
+8. **Use str() + concat in persisted/serialized strings.** Physical HP Prime Python has confirmed heap-sensitive string formatting bug. Values can behave like strings at first, then fail later during list/string operations such as `"~".join(lines)`. For save payloads, HVars/PPL strings, file formats, area-data generated strings, or any string that will be joined/stored/parsing-critical, use explicit `str()` plus concatenation. See `docs/PRIME_STRING_FORMAT_BUG.md`.
 
 ## Colour codes
 
-Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` -- handled by `colors.py`. For transient UI-only strings, `%` (`"{G%s{x" % name`, `"hp: %d" % hp`) avoids `.format()` conflicts with `{X` colour delimiters. For persisted/serialized strings, do **not** use `%`; use explicit `str()` plus concatenation. Concatenation (`"{G" + name + "{x"`) works but verbose. Full table in REFERENCE.md sec. Colour codes.
+Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` -- handled by `colors.py`. For transient UI-only strings, `%` (`"{G%s{x" % name`, `"hp: %d" % hp`) avoids `.format()` conflicts with `{X` colour delimiters. For persisted/serialized strings, do **not** use `%`; use explicit `str()` plus concatenation. Concatenation (`"{G" + name + "{x"`) works but verbose. Full table in docs/REFERENCE.md sec. Colour codes.
 
-When porting 1stMud code using `CTAG(_CONSTANT)` (e.g. `CTAG(_MOBILES)`), default colour per constant documented in REFERENCE.md sec. CTAG colour scheme. Use that table to pick equivalent `{X` code.
+When porting 1stMud code using `CTAG(_CONSTANT)` (e.g. `CTAG(_MOBILES)`), default colour per constant documented in docs/REFERENCE.md sec. CTAG colour scheme. Use that table to pick equivalent `{X` code.
 
 ## Porting from 1stmud
 
@@ -63,6 +63,16 @@ Code with no 1stMud equivalent or intentional deviation marked `# [PRIMESUD]`. W
 ## Docstrings
 
 Google-style: one-line summary, then `Args:` / `Returns:` / `Raises:` as needed; omit empty sections. For ported functions append `(cf. 1stMud <symbol> in <file>)` to summary (exact name + source file, e.g. `fight.c`); PrimeSUD-only functions and helpers should be explicitly marked [PRIMESUD].
+
+## Documentation map
+
+Root: `README.md`, `CLAUDE.md`, `DESIGN.md` (intentional deviations + settled decisions), `TODO.md` (loose ends). Everything else lives in `docs/`:
+
+- 1stMud reference: `REFERENCE.md`, `COMMANDS.md`, `SKILLS.md`
+- Device limits/perf: `BUILTINS.md`, `PRIME_STRING_FORMAT_BUG.md`, `PRIME_COLOURS.md`
+- PrimeSUD systems: `AREA_FILES.md`, `PRIME_UX.md`, `FIXES.md`, `SHOP_DEVIATIONS.md`, `CROSS_RESETS.md`
+
+Completed plan documents are deleted, not archived -- durable decisions get harvested into `DESIGN.md`/`TODO.md` first; full text stays in git history.
 
 ## Working style
 
