@@ -291,27 +291,49 @@ def do_down(player, args):
 def get_random_room(ch):
     """Pick a random reachable room (cf. 1stMud get_random_room in act_enter.c).
 
-    [PRIMESUD] Draws only from currently loaded areas -- a full-world sweep
-    would force-load every area on the calculator.
+    [PRIMESUD] Picks a random area first, loads it if needed, then picks a
+    room within it (same pattern as spell_teleport in magic.py) -- 1stMud
+    sweeps all vnums 0-65535, which would force-load every area here.
 
     Returns:
         int or None: Room vnum, or None if no candidate found.
     """
-    vnums = list(ROOM_DEFS._data.keys())
-    if not vnums:
+    area_files = world._AREA_FILES
+    if not area_files:
         return None
     # ponytail: bounded retry instead of 1stMud's infinite loop; None if
     # unlucky -- do_enter shows "doesn't seem to go anywhere"
-    for _ in range(100):
-        vnum = vnums[randint(0, len(vnums) - 1)]
-        flags = ROOM_DEFS._data[vnum].get("flags", {})
-        # TODO [PRIMESUD] arena / closed-area checks not yet ported
-        if (can_see_room(ch, vnum)
-                and not flags.get("private") and not flags.get("solitary")
-                and not flags.get("safe")
-                and (ch["is_npc"] or ch.get("act_flags", {}).get("aggressive")
-                     or not flags.get("law"))):
-            return vnum
+    tried = set()
+    for _ in range(min(10, len(area_files))):
+        idx = randint(0, len(area_files) - 1)
+        _, area_tag, _, _, _ = area_files[idx]
+        if area_tag in tried:
+            continue
+        tried.add(area_tag)
+        world._ensure_area_by_tag(area_tag)
+        adef = None
+        for a in world.AREA_DEFS:
+            if a.get("tag") == area_tag:
+                adef = a
+                break
+        if adef is None or "room_vnums" not in adef:
+            continue
+        candidates = []
+        for vnum in adef["room_vnums"]:
+            rd = ROOM_DEFS._data.get(vnum)
+            if rd is None:
+                continue
+            flags = rd.get("flags", {})
+            # TODO [PRIMESUD] arena / closed-area checks not yet ported
+            if (can_see_room(ch, vnum)
+                    and not flags.get("private") and not flags.get("solitary")
+                    and not flags.get("safe")
+                    and (ch["is_npc"]
+                         or ch.get("act_flags", {}).get("aggressive")
+                         or not flags.get("law"))):
+                candidates.append(vnum)
+        if candidates:
+            return candidates[randint(0, len(candidates) - 1)]
     return None
 
 

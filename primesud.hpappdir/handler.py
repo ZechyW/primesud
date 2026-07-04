@@ -33,6 +33,21 @@ TO_DAMAGE  = 32   # BIT_F
 TO_ZONE    = 64   # BIT_G
 TO_SOCIALS = 128  # BIT_H
 
+# -- Player flag bits (cf. 1stMud PLR_* in bits.h) -----------------------------
+# Defined here (not player.py) because player.py imports handler; player.py
+# re-exports them, so import from either.
+PLR_AUTOMAP = 1
+PLR_AUTOASSIST = 4   # BIT_C
+PLR_AUTOEXIT = 8     # BIT_D
+PLR_AUTOLOOT = 16    # BIT_E
+PLR_AUTOSAC = 32     # BIT_F
+PLR_AUTOGOLD = 64    # BIT_G
+PLR_AUTOSPLIT = 128  # BIT_H
+PLR_AUTODAMAGE = 1024  # BIT_K
+# cf. 1stMud pload_default in save.c: all auto* flags on for new players
+PLR_DEFAULTS = (PLR_AUTOMAP | PLR_AUTOASSIST | PLR_AUTOEXIT | PLR_AUTOLOOT
+                | PLR_AUTOSAC | PLR_AUTOGOLD | PLR_AUTOSPLIT | PLR_AUTODAMAGE)
+
 AFF_TO_WHERE = {
     "to_affects": "affected_by",
     "to_immune": "imm_flags",
@@ -573,11 +588,9 @@ def _act_code(code, ch, arg1, arg2, to, type):
             return "<@@@>"
         # 1stMud: TO_DAMAGE suppresses $t for NPC viewers / players without PLR_AUTODAMAGE
         if type & TO_DAMAGE:
-            # 1024 = PLR_AUTODAMAGE (player.py; literal here -- player.py
-            # imports handler, so importing back would be a cycle); missing
-            # "flags" defaults to all-on (-1) like PLR_DEFAULTS
+            # missing "flags" defaults to all-on (-1) like PLR_DEFAULTS
             if to is not None and (to.get("is_npc")
-                                   or not (to.get("flags", -1) & 1024)):
+                                   or not (to.get("flags", -1) & PLR_AUTODAMAGE)):
                 return ""
         return arg1
     if code == "T":

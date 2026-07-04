@@ -217,6 +217,21 @@ def test_enter_last_charge_fades_portal(out):
     assert any("fades out of existence" in l for l in out)
 
 
+def test_random_gate_uses_area_pick(out, monkeypatch):
+    # get_random_room: random area -> ensure loaded -> room within it
+    player = _make_player(9001)
+    monkeypatch.setattr(world, "_AREA_FILES",
+                        [("test.py", "test", "Test", 0, 0)])
+    monkeypatch.setattr(world, "_ensure_area_by_tag", lambda tag: None)
+    world.AREA_DEFS.append({"tag": "test", "room_vnums": [9002]})
+    try:
+        _room_portal(to_vnum=-1, gate_flags={"random": True})
+        movement.do_enter(player, ["gate"])
+    finally:
+        world.AREA_DEFS.pop()
+    assert player["room"] == 9002
+
+
 def test_enter_pet_follows(out):
     player = _make_player(9001)
     pet = _make_mob(2, room=9001)

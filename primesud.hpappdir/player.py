@@ -16,18 +16,11 @@ _EQUIP_SAVE_ORDER = (
     "wrist_r", "wield", "hold", "float", "secondary",
 )
 
-# -- Player flag bits (cf. 1stMud PLR_* in bits.h) -----------------------------
-PLR_AUTOMAP = 1
-PLR_AUTOASSIST = 4   # BIT_C
-PLR_AUTOEXIT = 8     # BIT_D
-PLR_AUTOLOOT = 16    # BIT_E
-PLR_AUTOSAC = 32     # BIT_F
-PLR_AUTOGOLD = 64    # BIT_G
-PLR_AUTOSPLIT = 128  # BIT_H
-PLR_AUTODAMAGE = 1024  # BIT_K; also hardcoded in handler.py _act_code (import cycle)
-# cf. 1stMud pload_default in save.c: all auto* flags on for new players
-PLR_DEFAULTS = (PLR_AUTOMAP | PLR_AUTOASSIST | PLR_AUTOEXIT | PLR_AUTOLOOT
-                | PLR_AUTOSAC | PLR_AUTOGOLD | PLR_AUTOSPLIT | PLR_AUTODAMAGE)
+# Player flag bits live in handler.py (import-cycle: player -> handler);
+# re-exported here so callers can import from either module.
+from handler import (PLR_AUTOMAP, PLR_AUTOASSIST, PLR_AUTOEXIT, PLR_AUTOLOOT,
+                     PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOSPLIT, PLR_AUTODAMAGE,
+                     PLR_DEFAULTS)
 
 # -- Player model --------------------------------------------------------------
 
