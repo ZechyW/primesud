@@ -10,7 +10,7 @@ AREA = {
     "builders": 'None',
     "vnums":    (200, 249),
     "credits":  '1stMud',
-    "levels":   (1, 10),
+    "levels":   (0, 60),
     "version":  4,
 }
 
@@ -37,6 +37,11 @@ MOBILES = {
         "imm_flags": {"summon": True, "magic": True, "weapon": True},
         "res_flags": {"charm": True},
         "vuln_flags": {"iron": True},
+        "start_pos":   'standing',
+        "default_pos": 'standing',
+        "form_flags": {"edible": True, "magical": True, "sentient": True, "biped": True, "mammal": True},
+        "part_flags": {"head": True, "arms": True, "legs": True, "heart": True, "brains": True, "guts": True, "hands": True, "feet": True, "fingers": True, "ear": True, "eye": True},
+        "material": "'unknown'",
         "sex":    'male',
         "wealth": 422,
         "size":   'medium',
@@ -59,6 +64,11 @@ MOBILES = {
         "imm_flags": {"magic": True, "weapon": True},
         "res_flags": {"charm": True},
         "vuln_flags": {"iron": True},
+        "start_pos":   'standing',
+        "default_pos": 'standing',
+        "form_flags": {"edible": True, "magical": True, "sentient": True, "biped": True, "mammal": True},
+        "part_flags": {"head": True, "arms": True, "legs": True, "heart": True, "brains": True, "guts": True, "hands": True, "feet": True, "fingers": True, "ear": True, "eye": True},
+        "material": "'unknown'",
         "sex":    'male',
         "wealth": 122,
         "size":   'medium',
@@ -81,6 +91,11 @@ MOBILES = {
         "imm_flags": {"summon": True, "magic": True, "weapon": True},
         "res_flags": {"charm": True},
         "vuln_flags": {"iron": True},
+        "start_pos":   'standing',
+        "default_pos": 'standing',
+        "form_flags": {"edible": True, "magical": True, "sentient": True, "biped": True, "mammal": True},
+        "part_flags": {"head": True, "arms": True, "legs": True, "heart": True, "brains": True, "guts": True, "hands": True, "feet": True, "fingers": True, "ear": True, "eye": True},
+        "material": "'unknown'",
         "sex":    'male',
         "wealth": 422,
         "size":   'medium',
@@ -132,6 +147,7 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'pill',
         "wear_flags": {"take": True},
+        "no_sac": True,
         "extra_flags": {"glow": True, "hum": True, "magic": True, "nonmetal": True, "nolocate": True, "burn_proof": True, "quest": True},
         "spell_level": 100,
         "spells": ['trivia pill'],
@@ -144,6 +160,7 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'jewelry',
         "wear_flags": {"take": True, "float": True},
+        "no_sac": True,
         "extra_flags": {"glow": True, "hum": True, "magic": True, "nonmetal": True, "burn_proof": True, "quest": True},
         "stat_bonuses": {'ac': -100, 'hitroll': 50, 'damroll': 50},
         "level": 0, "weight": 1, "value": -1,
@@ -155,6 +172,7 @@ OBJECTS = {
         "material":    'adamantite',
         "type": 'weapon',
         "wear_flags": {"take": True, "wield": True},
+        "no_sac": True,
         "extra_flags": {"glow": True, "hum": True, "burn_proof": True, "quest": True},
         "weapon_type": 'sword', "dam_type": 'slice', "dice": (-1, -1, 0),
         "weapon_flags": {"flaming": True},
@@ -167,9 +185,13 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'armor',
         "wear_flags": {"take": True, "body": True},
+        "no_sac": True,
         "extra_flags": {"glow": True, "hum": True, "burn_proof": True, "quest": True},
         "armor": (0, 1, 1, 0),
-        "stat_bonuses": {'str': 1, 'dex': 1, 'wis': 1, 'int': 1},
+        "stat_bonuses": {'str': 1, 'dex': 1, 'wis': 1, 'int': 1, 'move': 125, 'mana': 125, 'hit': 125},
+        "flag_affects": (
+            ('affects', '0', 0, {"_unknown_bits": [36]}),
+        ),
         "level": 0, "weight": 20, "value": -1,
     },
     205: {
@@ -179,9 +201,13 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'armor',
         "wear_flags": {"take": True, "feet": True},
+        "no_sac": True,
         "extra_flags": {"magic": True, "burn_proof": True, "quest": True},
         "armor": (0, 0, 0, 0),
         "stat_bonuses": {'dex': 2},
+        "flag_affects": (
+            ('affects', '0', 0, {"haste": True}),
+        ),
         "level": 0, "weight": 8, "value": -1,
     },
     206: {
@@ -191,9 +217,14 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'armor',
         "wear_flags": {"take": True, "hands": True},
+        "no_sac": True,
         "extra_flags": {"magic": True, "burn_proof": True, "quest": True},
         "armor": (0, 0, 0, 0),
-        "stat_bonuses": {'damroll': 50, 'hitroll': 50, 'con': 1, 'str': 1},
+        "stat_bonuses": {'saves': -20, 'damroll': 50, 'hitroll': 50, 'con': 1, 'str': 1},
+        "flag_affects": (
+            ('affects', '0', -1, {"protect_evil": True}),
+            ('affects', '0', -1, {"protect_good": True}),
+        ),
         "level": 0, "weight": 20, "value": -1,
     },
     207: {
@@ -203,8 +234,15 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'light',
         "wear_flags": {"take": True, "hold": True},
+        "no_sac": True,
         "extra_flags": {"glow": True, "burn_proof": True, "quest": True},
-        "stat_bonuses": {'int': 1, 'wis': 1, 'mana': 100},
+        "light_hours": 0,
+        "stat_bonuses": {'int': 1, 'wis': 1, 'saving_breath': -5, 'mana': 150, 'hit': 100},
+        "flag_affects": (
+            ('affects', '0', -1, {"pass_door": True}),
+            ('affects', '0', -1, {"dark_vision": True}),
+            ('affects', '0', -1, {"infrared": True}),
+        ),
         "level": 0, "weight": 5, "value": -1,
     },
     208: {
@@ -214,8 +252,16 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'armor',
         "wear_flags": {"take": True, "head": True},
+        "no_sac": True,
         "extra_flags": {"glow": True, "hum": True, "magic": True, "burn_proof": True, "quest": True},
         "armor": (50, 50, 50, 40),
+        "flag_affects": (
+            ('affects', '0', 0, {"detect_magic": True}),
+            ('affects', '0', 0, {"detect_evil": True}),
+            ('affects', '0', 0, {"detect_good": True}),
+            ('affects', '0', 0, {"detect_hidden": True}),
+            ('affects', '0', 0, {"detect_invis": True}),
+        ),
         "level": 0, "weight": 10, "value": -1,
     },
     209: {
@@ -225,8 +271,12 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'container',
         "wear_flags": {"take": True},
+        "no_sac": True,
         "extra_flags": {"glow": True, "magic": True, "nonmetal": True, "quest": True},
-        "stat_bonuses": {'ac': -100},
+        "stat_bonuses": {'ac': -100, 'move': 200},
+        "flag_affects": (
+            ('affects', '0', -1, {"_unknown_bits": [34]}),
+        ),
         "level": 0, "weight": 0, "value": -1,
     },
     210: {
@@ -236,9 +286,13 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'armor',
         "wear_flags": {"take": True, "shield": True},
+        "no_sac": True,
         "extra_flags": {"magic": True, "burn_proof": True, "quest": True, "_unknown_bits": [27]},
         "armor": (0, 0, 0, 0),
         "stat_bonuses": {'hit': 100},
+        "flag_affects": (
+            ('resist', '0', -1, {"weapon": True}),
+        ),
         "level": 0, "weight": 20, "value": -1,
     },
     211: {
@@ -248,7 +302,11 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'jewelry',
         "wear_flags": {"take": True, "finger": True},
+        "no_sac": True,
         "extra_flags": {"glow": True, "hum": True, "burn_proof": True, "quest": True},
+        "flag_affects": (
+            ('affects', '0', 0, {"regeneration": True}),
+        ),
         "level": 0, "weight": 3, "value": -1,
     },
     212: {
@@ -258,7 +316,12 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'jewelry',
         "wear_flags": {"take": True, "finger": True},
+        "no_sac": True,
         "extra_flags": {"glow": True, "hum": True, "burn_proof": True, "quest": True},
+        "stat_bonuses": {'ac': -200},
+        "flag_affects": (
+            ('affects', '0', 0, {"invisible": True}),
+        ),
         "level": 0, "weight": 2, "value": -1,
     },
     214: {
@@ -268,6 +331,7 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'trash',
         "wear_flags": {"take": True},
+        "no_sac": True,
         "extra_flags": {"burn_proof": True},
         "level": 1, "weight": 0, "value": 0,
     },
@@ -278,6 +342,7 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'trash',
         "wear_flags": {"take": True},
+        "no_sac": True,
         "extra_flags": {"burn_proof": True},
         "level": 0, "weight": 0, "value": 0,
     },
@@ -288,6 +353,7 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'trash',
         "wear_flags": {"take": True},
+        "no_sac": True,
         "extra_flags": {"burn_proof": True},
         "level": 0, "weight": 0, "value": 0,
     },
@@ -298,6 +364,7 @@ OBJECTS = {
         "material":    'unknown',
         "type": 'trash',
         "wear_flags": {"take": True},
+        "no_sac": True,
         "extra_flags": {"burn_proof": True},
         "level": 0, "weight": 0, "value": 0,
     },
@@ -306,10 +373,13 @@ OBJECTS = {
 # -- Resets ---------------------------------------------------------------------
 # ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
 # ("O", item_vnum, room_vnum)                          -- place one item copy in room
-# ("E", item_vnum, slot_name)                          -- equip item on last M mob
-# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G limit: raw 1stMud reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 or 0 means unlimited (999).
+# Runtime enforcement of this limit is deferred [PRIMESUD].
 # ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
-# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
+# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: not enforced by runtime yet
 # F and D .are resets are baked into room exit flags at conversion time
 RESETS = (
     ("M", 200, 1, 200, 1),

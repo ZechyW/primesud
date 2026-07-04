@@ -702,7 +702,7 @@ OBJECTS = {
 # > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)
 # means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
 # ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
-# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
+# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: not enforced by runtime yet
 # D resets are baked into room exit flags at conversion time
 RESETS = (
     ("M", 8301, 2, 8303, 1),

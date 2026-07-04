@@ -10,7 +10,7 @@ AREA = {
     "builders": 'None',
     "vnums":    (1, 99),
     "credits":  'Diku',
-    "levels":   (1, 10),
+    "levels":   (0, 60),
     "version":  4,
 }
 
@@ -33,6 +33,11 @@ MOBILES = {
         "mana_dice": (62, 8, 61),
         "damage":    (7, 12, 48),  "dam_type": 'none',
         "armor":     (-47, -47, -47, -41),
+        "start_pos":   'standing',
+        "default_pos": 'standing',
+        "form_flags": {"edible": True, "sentient": True, "biped": True, "mammal": True},
+        "part_flags": {"head": True, "arms": True, "legs": True, "heart": True, "brains": True, "guts": True, "hands": True, "feet": True, "fingers": True, "ear": True, "eye": True},
+        "material": "'unknown'",
         "sex":    'either',
         "wealth": 0,
         "size":   'medium',
@@ -128,6 +133,7 @@ OBJECTS = {
         "material":    'meat',
         "type": 'npc_corpse',
         "wear_flags": {"take": True},
+        "condition": 25,
         "level": 0, "weight": 1000, "value": 0,
     },
     11: {
@@ -137,6 +143,7 @@ OBJECTS = {
         "material":    'meat',
         "type": 'pc_corpse',
         "wear_flags": {"take": True},
+        "condition": 25,
         "extra_flags": {"nopurge": True},
         "level": 0, "weight": 1000, "value": 0,
     },
@@ -147,6 +154,7 @@ OBJECTS = {
         "material":    'meat',
         "type": 'trash',
         "wear_flags": {"take": True},
+        "condition": 25,
         "level": 0, "weight": 50, "value": 0,
     },
     13: {
@@ -156,6 +164,7 @@ OBJECTS = {
         "material":    'meat',
         "type": 'food',
         "wear_flags": {"take": True},
+        "condition": 25,
         "level": 0, "weight": 20, "value": 0,
     },
     14: {
@@ -165,6 +174,7 @@ OBJECTS = {
         "material":    'meat',
         "type": 'food',
         "wear_flags": {"take": True},
+        "condition": 25,
         "level": 0, "weight": 50, "value": 0,
     },
     15: {
@@ -174,6 +184,7 @@ OBJECTS = {
         "material":    'meat',
         "type": 'food',
         "wear_flags": {"take": True},
+        "condition": 25,
         "level": 0, "weight": 50, "value": 0,
     },
     16: {
@@ -183,6 +194,7 @@ OBJECTS = {
         "material":    'meat',
         "type": 'food',
         "wear_flags": {"take": True},
+        "condition": 25,
         "level": 0, "weight": 20, "value": 0,
     },
     17: {
@@ -192,6 +204,7 @@ OBJECTS = {
         "material":    'meat',
         "type": 'food',
         "wear_flags": {"take": True},
+        "condition": 25,
         "level": 0, "weight": 20, "value": 0,
     },
     20: {
@@ -211,6 +224,7 @@ OBJECTS = {
         "type": 'light',
         "wear_flags": {"take": True},
         "extra_flags": {"glow": True},
+        "light_hours": 0,
         "level": 0, "weight": 0, "value": 0,
     },
     22: {
@@ -257,10 +271,13 @@ OBJECTS = {
 # -- Resets ---------------------------------------------------------------------
 # ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
 # ("O", item_vnum, room_vnum)                          -- place one item copy in room
-# ("E", item_vnum, slot_name)                          -- equip item on last M mob
-# ("G", item_vnum)                                     -- give item to last M mob inventory
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G limit: raw 1stMud reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 or 0 means unlimited (999).
+# Runtime enforcement of this limit is deferred [PRIMESUD].
 # ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
-# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
+# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: not enforced by runtime yet
 # F and D .are resets are baked into room exit flags at conversion time
 RESETS = (
     ("O", 3415, 3),

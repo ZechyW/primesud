@@ -1312,6 +1312,7 @@ OBJECTS = {
         "type": 'light',
         "wear_flags": {"take": True},
         "extra_flags": {"magic": True},
+        "light_hours": -1,
         "stat_bonuses": {'wis': 1},
         "level": 5, "weight": 80, "value": 550,
     },
@@ -1448,6 +1449,7 @@ OBJECTS = {
         "material":    'oldstyle',
         "type": 'light',
         "wear_flags": {"take": True},
+        "light_hours": 200,
         "level": 0, "weight": 40, "value": 60,
     },
     1113: {
@@ -1519,7 +1521,7 @@ OBJECTS = {
 # > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)
 # means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
 # ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
-# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
+# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: not enforced by runtime yet
 # D resets are baked into room exit flags at conversion time
 RESETS = (
     ("O", 1102, 1103),

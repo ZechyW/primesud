@@ -698,6 +698,10 @@ def parse_objects(lines):
             obj["max_charges"] = int(val_line[1]) if len(val_line) > 1 else 0
             obj["charges"] = int(val_line[2]) if len(val_line) > 2 else 0
             obj["spell"] = val_line[3] if len(val_line) > 3 and val_line[3] else ""
+        elif item_type == "light" and val_line:
+            # value[2]: hours of light (cf. db2.c load_objects / act_obj.c);
+            # raw int, ROM/1stMud 0/999 conventions differ -- stored as-is.
+            obj["light_hours"] = int(val_line[2]) if len(val_line) > 2 else 0
         elif item_type == "container" and val_line:
             obj["container_max_weight"] = int(val_line[0]) if val_line else 0
             container_flags = parse_rom_flag(val_line[1]) if len(val_line) > 1 else 0
@@ -1339,6 +1343,9 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
                 w(f'        "max_charges": {obj["max_charges"]}, "charges": {obj["charges"]},')
             if "spell" in obj:
                 w(f'        "spell": {pyrepr(obj["spell"])},')
+        elif obj["type"] == "light":
+            if "light_hours" in obj:
+                w(f'        "light_hours": {obj["light_hours"]},')
         elif obj["type"] == "container":
             if "container_max_weight" in obj:
                 w(f'        "container_max_weight": {obj["container_max_weight"]},')
@@ -1393,7 +1400,7 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
     w('# > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)')
     w('# means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].')
     w('# ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers')
-    w('# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas')
+    w('# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: not enforced by runtime yet')
     w('# D resets are baked into room exit flags at conversion time')
     w("RESETS = (")
     for reset in resets:

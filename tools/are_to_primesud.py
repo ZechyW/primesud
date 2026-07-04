@@ -98,9 +98,35 @@ WEAR_SLOT = {
     6: "feet", 7: "hands", 8: "arms", 9: "shield", 10: "about",
     11: "waist", 12: "wrist", 13: "wield", 14: "hold", 16: "float",
 }
+# cf. 1stMud h/defines.h apply_t enum -- note APPLY_SAVING_PARA sits at 21,
+# shifting rod/petri/breath/spell/spell_affect one slot later than ROM/QuickMUD.
 APPLY_LOC = {
     1: "str", 2: "dex", 3: "int", 4: "wis", 5: "con",
-    12: "mana", 13: "hit", 17: "ac", 18: "hitroll", 19: "damroll",
+    6: "sex", 7: "class", 8: "level", 9: "age", 10: "height", 11: "weight",
+    12: "mana", 13: "hit", 14: "move", 15: "gold", 16: "exp",
+    17: "ac", 18: "hitroll", 19: "damroll",
+    20: "saves", 21: "saving_para", 22: "saving_rod", 23: "saving_petri",
+    24: "saving_breath", 25: "saving_spell", 26: "spell_affect",
+}
+FORM_FLAGS = {                                          # FORM_* from bits.h
+    0: "edible", 1: "poison", 2: "magical", 3: "instant_decay", 4: "other",
+    6: "animal", 7: "sentient", 8: "undead", 9: "construct", 10: "mist",
+    11: "intangible", 12: "biped", 13: "centaur", 14: "insect", 15: "spider",
+    16: "crustacean", 17: "worm", 18: "blob", 21: "mammal", 22: "bird",
+    23: "reptile", 24: "snake", 25: "dragon", 26: "amphibian", 27: "fish",
+    28: "cold_blood",
+}
+PART_FLAGS = {                                          # PART_* from bits.h
+    0: "head", 1: "arms", 2: "legs", 3: "heart", 4: "brains", 5: "guts",
+    6: "hands", 7: "feet", 8: "fingers", 9: "ear", 10: "eye",
+    11: "long_tongue", 12: "eyestalks", 13: "tentacles", 14: "fins",
+    15: "wings", 16: "tail", 20: "claws", 21: "fangs", 22: "horns",
+    23: "scales", 24: "tusks",
+}
+# Object condition letter (cf. db2.c load_objects condition switch); missing
+# or unrecognized letter defaults to 100 (perfect condition).
+OBJ_CONDITION = {
+    "P": 100, "G": 90, "A": 75, "W": 50, "D": 25, "B": 10, "R": 0,
 }
 DIR_NAME = {0: "n", 1: "e", 2: "s", 3: "w", 4: "u", 5: "d"}
 WLOC_SLOT = {                                           # wloc_t enum from h/defines.h (E reset arg3)
@@ -245,6 +271,29 @@ def read_tilde_string(lines, i):
     return "\n".join(parts).strip(), i
 
 
+def read_tilde_string_inline(prefix, lines, i):
+    """Like read_tilde_string, but the string may start with `prefix` -- text
+    already sitting on the same physical line as a bare command letter (e.g.
+    a room owner line "OSaska~"): fread_string(fp) skips whitespace -- which
+    includes newlines -- after the single-char fread_letter(fp), so the
+    value can be on the SAME line as the letter or, if nothing follows,
+    spill onto the next one). Returns (text, next_i).
+    """
+    idx = prefix.find("~")
+    if idx >= 0:
+        return prefix[:idx].strip(), i
+    parts = [prefix]
+    while i < len(lines):
+        line = lines[i]
+        i += 1
+        idx = line.find("~")
+        if idx >= 0:
+            parts.append(line[:idx])
+            break
+        parts.append(line)
+    return "\n".join(parts).strip(), i
+
+
 def split_sections(text):
     """Split .are text into {SECTION_NAME: [lines]} dict."""
     sections = {}
@@ -294,7 +343,22 @@ def parse_areadata(lines):
     return area
 
 
-def parse_mobiles(lines):
+# F-line field-word prefix -> (canonical mob.py flag-removal key, decode table
+# for that field's bits); cf. db2.c load_mobiles case 'F' str_prefix() chain.
+F_PREFIX_MAP = {
+    "act": ("act",   ACT_FLAGS),
+    "aff": ("aff",   AFFECTED_BY),
+    "off": ("off",   OFF_FLAGS),
+    "imm": ("imm",   RESIST_FLAGS),
+    "res": ("res",   RESIST_FLAGS),
+    "vul": ("vuln",  RESIST_FLAGS),
+    "for": ("form",  FORM_FLAGS),
+    "par": ("parts", PART_FLAGS),
+}
+
+
+def parse_mobiles(lines, version=None):
+    is_v4 = isinstance(version, int) and version >= 4
     mobs = []
     i = 0
     while i < len(lines):
@@ -312,17 +376,25 @@ def parse_mobiles(lines):
         long_descr,  i = read_tilde_string(lines, i)
         description, i = read_tilde_string(lines, i)
         race,        i = read_tilde_string(lines, i)
+        # Normalize to RACE_TABLE key form ("elf" -> "Elf"); .are files store
+        # lowercase, race_lookup() in 1stMud is case-insensitive.
+        race = race.capitalize()
 
         # act_flags  affected_by  alignment  group
         parts = lines[i].split(); i += 1
         act_bits = parse_bitstring(parts[0]) if parts else set()
         aff_bits = parse_bitstring(parts[1]) if len(parts) > 1 else set()
         alignment = int(parts[2]) if len(parts) > 2 else 0
+        group = int(parts[3]) if len(parts) > 3 else 0
 
-        # level  random  autoset  hitroll
+        # level  [random  autoset]  hitroll -- random/autoset only present
+        # when #AREADATA Version >= 4 (cf. db2.c load_mobiles:101-107)
         parts = lines[i].split(); i += 1
-        level   = int(parts[0]) if parts else 0
-        hitroll = int(parts[3]) if len(parts) > 3 else 0
+        level = int(parts[0]) if parts else 0
+        if is_v4:
+            hitroll = int(parts[3]) if len(parts) > 3 else 0
+        else:
+            hitroll = int(parts[1]) if len(parts) > 1 else 0
 
         # hp_dice  mana_dice  dam_dice  'dam_type'
         parts = lines[i].split(); i += 1
@@ -347,24 +419,75 @@ def parse_mobiles(lines):
 
         # start_pos  default_pos  sex  wealth
         parts = lines[i].split(); i += 1
+        start_pos   = parts[0] if parts else "standing"
+        default_pos = parts[1] if len(parts) > 1 else "standing"
         sex    = parts[2] if len(parts) > 2 else "neutral"
         wealth = int(parts[3]) if len(parts) > 3 else 0
 
         # form_flags  part_flags  size  material
         parts = lines[i].split(); i += 1
-        size = parts[2] if len(parts) > 2 else "medium"
+        form_bits = parse_bitstring(parts[0]) if parts else set()
+        part_bits = parse_bitstring(parts[1]) if len(parts) > 1 else set()
+        size      = parts[2] if len(parts) > 2 else "medium"
+        material  = parts[3] if len(parts) > 3 else ""
 
-        # optional trailer lines: S / M / F
+        # optional trailer lines: F (flag remove) / M (mobprog trigger) / S
+        # (kills/deaths, runtime save-state -- not modeled, consumed only).
+        # cf. db2.c load_mobiles:142-207. [PRIMESUD] neither limbo.are nor
+        # quest.are contains any F/M/S mob trailer, so the exact same-line
+        # vs. next-line data layout below is inferred by analogy with the
+        # OBJECTS 'A'/'F' trailers (bare letter, data on the following
+        # line) rather than confirmed against real 1stMud data; the parser
+        # tolerates both layouts.
+        flag_removes_acc = {}
+        mob_triggers = []
         while i < len(lines):
             tline = lines[i].strip()
             if tline.startswith("#") or tline == "":
                 break
-            if tline and tline[0] in "SMF":
+            tparts = tline.split(None, 1)
+            letter = tparts[0] if tparts else ""
+            rest_inline = tparts[1] if len(tparts) > 1 else ""
+            if letter == "F":
                 i += 1
+                if rest_inline:
+                    fparts = rest_inline.split()
+                else:
+                    fparts = lines[i].split() if i < len(lines) else []
+                    i += 1
+                if len(fparts) >= 2:
+                    f_field = fparts[0]
+                    f_bits = parse_bitstring(fparts[1])
+                    for prefix, (canon, table) in F_PREFIX_MAP.items():
+                        if f_field.startswith(prefix):
+                            prev_table, prev_bits = flag_removes_acc.get(canon, (table, set()))
+                            flag_removes_acc[canon] = (table, prev_bits | f_bits)
+                            break
+            elif letter == "M":
+                i += 1
+                if rest_inline:
+                    data_line, data_i = rest_inline, i
+                else:
+                    data_line, data_i = (lines[i] if i < len(lines) else ""), i + 1
+                mparts = data_line.split(None, 2)
+                trig_type = mparts[0] if mparts else "random"
+                mpv = int(mparts[1]) if len(mparts) > 1 and mparts[1].lstrip("-").isdigit() else 0
+                rest = mparts[2] if len(mparts) > 2 else ""
+                phrase, i = read_tilde_string_inline(rest, lines, data_i)
+                mob_triggers.append((trig_type.lower(), mpv, phrase))
+            elif letter == "S":
+                i += 1
+                if not rest_inline:
+                    i += 1
             else:
                 break
 
-        mobs.append((vnum, {
+        flag_removes = []
+        for canon, (table, bits) in flag_removes_acc.items():
+            names = tuple(table.get(pos, pos) for pos in sorted(bits))
+            flag_removes.append((canon, names))
+
+        mob = {
             "keywords":    keywords,
             "short_descr": short_descr,
             "long_descr":  long_descr,
@@ -373,6 +496,7 @@ def parse_mobiles(lines):
             "act_flags":   decode_flags(act_bits, ACT_FLAGS, skip={0}),  # omit IS_NPC
             "affected_by":   decode_flags(aff_bits, AFFECTED_BY),
             "alignment":   alignment,
+            "group":       group,
             "level":       level,
             "hitroll":     hitroll,
             "hp_dice":     hp_dice,
@@ -384,10 +508,19 @@ def parse_mobiles(lines):
             "imm_flags":   decode_flags(imm_bits, RESIST_FLAGS),
             "res_flags":   decode_flags(res_bits, RESIST_FLAGS),
             "vuln_flags":  decode_flags(vuln_bits, RESIST_FLAGS),
+            "start_pos":   start_pos,
+            "default_pos": default_pos,
+            "form_flags":  decode_flags(form_bits, FORM_FLAGS),
+            "part_flags":  decode_flags(part_bits, PART_FLAGS),
+            "material":    material,
             "sex":         sex,
             "wealth":      wealth,
             "size":        size,
-        }))
+            "mob_triggers": mob_triggers,
+        }
+        if flag_removes:
+            mob["flag_removes"] = tuple(flag_removes)
+        mobs.append((vnum, mob))
     return mobs
 
 
@@ -423,10 +556,12 @@ def parse_objects(lines):
         level  = int(lw_line[0]) if lw_line else 0
         weight = int(lw_line[1]) if len(lw_line) > 1 else 0
         cost   = int(lw_line[2]) if len(lw_line) > 2 else 0
+        condition = OBJ_CONDITION.get(lw_line[3], 100) if len(lw_line) > 3 else 100
 
         # optional A / E / F / O trailer lines
-        applies     = {}
-        extra_descs = []
+        applies      = {}
+        extra_descs  = []
+        flag_affects = []
         while i < len(lines):
             tline = lines[i].strip()
             if tline.startswith("#"):
@@ -436,8 +571,9 @@ def parse_objects(lines):
                 ap = lines[i].split(); i += 1
                 try:
                     loc, mod = int(ap[0]), int(ap[1])
-                    if loc in APPLY_LOC:
-                        applies[APPLY_LOC[loc]] = mod
+                    # Unknown apply locs are kept under a str(loc) key rather
+                    # than silently dropped (cf. F-line handling below).
+                    applies[APPLY_LOC.get(loc, str(loc))] = mod
                 except (ValueError, IndexError):
                     pass
             elif tline == "E":
@@ -445,19 +581,38 @@ def parse_objects(lines):
                 ekw,  i = read_tilde_string(lines, i)
                 edesc, i = read_tilde_string(lines, i)
                 extra_descs.append((ekw, edesc))
-            elif tline in ("F", "O") or tline == "":
+            elif tline == "F":
+                # cf. db2.c load_objects case 'F': where apply_loc modifier
+                # bitvector (where: A=affects I=immune R=resist V=vuln) --
+                # same apply_t location table as the plain 'A' affect above,
+                # decoded against AFFECTED_BY/RESIST_FLAGS per `where`.
+                i += 1
+                fp_ = lines[i].split(); i += 1
+                if len(fp_) >= 4:
+                    where_map = {"A": "affects", "I": "immune", "R": "resist", "V": "vuln"}
+                    where = where_map.get(fp_[0], fp_[0])
+                    try:
+                        f_loc, f_mod = int(fp_[1]), int(fp_[2])
+                    except ValueError:
+                        f_loc, f_mod = 0, 0
+                    loc_name = APPLY_LOC.get(f_loc, str(f_loc))
+                    bit_table = AFFECTED_BY if where == "affects" else RESIST_FLAGS
+                    bits = decode_flags(parse_bitstring(fp_[3]), bit_table)
+                    flag_affects.append((where, loc_name, f_mod, bits))
+            elif tline == "O" or tline == "":
                 i += 1
             else:
                 break
 
-        # Build wear_flags dict (bit 0 = ITEM_TAKE; WEAR_SLOT covers equip slots)
+        # Build wear_flags dict (bit 0 = ITEM_TAKE; WEAR_SLOT covers equip
+        # slots; an object may occupy more than one slot bit, e.g. wrist).
         wear_flags = {}
+        no_sac = 15 in wear_bits  # ITEM_NO_SAC (bits.h:386)
         if 0 in wear_bits:
             wear_flags["take"] = True
         for pos in sorted(wear_bits):
             if pos in WEAR_SLOT:
                 wear_flags[WEAR_SLOT[pos]] = True
-                break
 
         obj = {
             "keywords":    keywords,
@@ -467,11 +622,16 @@ def parse_objects(lines):
             "material":    material,
             "type":        item_type,
             "wear_flags":  wear_flags,
+            "no_sac":      no_sac,
             "level":       level,
             "weight":      weight,
             "value":       cost,
             "extra_flags": extra_bits,
         }
+        if condition != 100:
+            obj["condition"] = condition
+        if flag_affects:
+            obj["flag_affects"] = tuple(flag_affects)
 
         if item_type == "weapon" and val_line:
             obj["weapon_type"] = val_line[0]
@@ -505,6 +665,12 @@ def parse_objects(lines):
             obj["charges"] = int(val_line[2]) if len(val_line) > 2 else 0
             obj["spell"] = val_line[3] if len(val_line) > 3 and val_line[3] else ""
             # value[4] (recharge) is a dead field in 1stMud 4.5.3 - skipped
+        elif item_type == "light" and val_line:
+            # value[2] (cf. db2.c load_objects default case: read_flag() --
+            # light falls through to the generic 4-flag-field value line, so
+            # this token is bitstring-encoded, not a plain decimal number).
+            # Raw hours stored as-is; ROM/1stMud 0/999 conventions differ.
+            obj["light_hours"] = parse_flagnum(val_line[2]) if len(val_line) > 2 else 0
 
         if applies:
             obj["stat_bonuses"] = applies
@@ -542,7 +708,14 @@ def parse_rooms(lines):
         exit_notes = {}
         exit_descs = {}
         extra_descs = []
+        heal_rate  = None
+        mana_rate  = None
+        owner = ""
         room_flags = decode_flags(room_bits, ROOM_FLAGS)
+        # "Horrible hack" (db.c load_rooms:895-896): any room in [3000, 3400)
+        # is forced ROOM_LAW regardless of its stored flags.
+        if 3000 <= vnum < 3400:
+            room_flags["law"] = True
 
         while i < len(lines):
             tline = lines[i].strip()
@@ -556,13 +729,21 @@ def parse_rooms(lines):
                 i += 1
                 ex_desc, i = read_tilde_string(lines, i)
                 ex_keyword, i = read_tilde_string(lines, i)
+                # New-format (version >= 2) exit line: flags key to_room
+                # (cf. db.c load_rooms:982-990).
                 ex_parts = lines[i].split(); i += 1
                 ex_bits  = parse_bitstring(ex_parts[0]) if ex_parts else set()
+                ex_key   = int(ex_parts[1]) if len(ex_parts) > 1 else -1
                 to_room  = int(ex_parts[2]) if len(ex_parts) > 2 else -1
-                if to_room > 0 and direction in DIR_NAME:
+                if direction in DIR_NAME:
                     d = DIR_NAME[direction]
-                    exits[d] = to_room
+                    # to_room <= 0: keep the exit as examinable but
+                    # untraversable, preserved as "to": None (cf. quickmud
+                    # converter / fix_exits nulling only the destination).
+                    exits[d] = to_room if to_room > 0 else None
                     ex_flags = decode_flags(ex_bits, EXIT_FLAGS)
+                    if ex_key > 0:
+                        ex_flags["key"] = ex_key
                     if ex_flags:
                         exit_notes[d] = ex_flags
                     if ex_desc:
@@ -574,12 +755,40 @@ def parse_rooms(lines):
                 ekw, i = read_tilde_string(lines, i)
                 edesc, i = read_tilde_string(lines, i)
                 extra_descs.append((ekw, edesc))
-            elif tline == "" or tline[0] in "HMG":
+            elif tline[0:2] in ("H ", "M "):
+                # heal_rate / mana_rate (cf. db.c load_rooms:915-921)
+                parts = tline.split()
+                j = 0
+                while j < len(parts):
+                    if parts[j] == "H" and j + 1 < len(parts):
+                        heal_rate = int(parts[j + 1]); j += 2
+                    elif parts[j] == "M" and j + 1 < len(parts):
+                        mana_rate = int(parts[j + 1]); j += 2
+                    else:
+                        j += 1
+                i += 1
+            elif tline == "":
+                i += 1
+            elif tline[0] == "C":
+                # cf. db.c load_rooms:923-929 case 'C': reads and discards a
+                # tilde string (`const char *tmp = read_string(fp);
+                # free_string(tmp);`) -- 1stMud does NOT persist a room clan
+                # value (unlike ROM/QuickMUD); consumed here only so the
+                # parser stays aligned, never emitted.
+                _discarded, i = read_tilde_string_inline(tline[1:], lines, i + 1)
+            elif tline[0] == "O":
+                # cf. db.c load_rooms:1007-1016 case 'O': owner = read_string
+                # (fp); also force-sets ROOM_NOEXPLORE on the room.
+                owner, i = read_tilde_string_inline(tline[1:], lines, i + 1)
+                room_flags["noexplore"] = True
+            elif tline[0] == "G":
+                # cf. db.c load_rooms case 'G': guild = read_number(fp).
+                # [PRIMESUD] not modeled at runtime; consumed only.
                 i += 1
             else:
                 i += 1
 
-        rooms.append((vnum, {
+        room = {
             "name":       name,
             "desc":       description,
             "exits":      exits,
@@ -588,7 +797,12 @@ def parse_rooms(lines):
             "extra_descs": extra_descs,
             "flags":      room_flags,
             "sector":     sector,
-        }))
+            "heal_rate":  heal_rate,
+            "mana_rate":  mana_rate,
+        }
+        if owner:
+            room["owner"] = owner
+        rooms.append((vnum, room))
     return rooms
 
 
@@ -618,12 +832,14 @@ def parse_resets(lines):
             # O  0  obj_vnum  0  room_vnum
             resets.append(("O", int(parts[2]), int(parts[4])))
         elif cmd == "E" and len(parts) >= 5:
-            # E  0  item_vnum  0  wloc_num
+            # E  0  item_vnum  limit  wloc_num
             slot = WLOC_SLOT.get(int(parts[4]), "hold")
-            resets.append(("E", int(parts[2]), slot))
-        elif cmd == "G" and len(parts) >= 3:
-            # G  0  item_vnum  [0]   (arg3 not read for G in 1stMud load_resets)
-            resets.append(("G", int(parts[2])))
+            limit = int(parts[3])
+            resets.append(("E", int(parts[2]), slot, limit))
+        elif cmd == "G" and len(parts) >= 4:
+            # G  0  item_vnum  limit   (arg3 not read for G in 1stMud load_resets)
+            limit = int(parts[3])
+            resets.append(("G", int(parts[2]), limit))
         elif cmd == "P" and len(parts) >= 6:
             # P  0  item_vnum  global_limit  container_vnum  max_count
             resets.append(("P", int(parts[2]), int(parts[3]), int(parts[4]), int(parts[5])))
@@ -693,8 +909,9 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
     aname    = area_data.get("name", "Unknown")
     vnums    = area_data.get("vnums", (0, 0))
     version  = area_data.get("version", None)
-    min_lvl  = area_data.get("min_level", 1)
-    max_lvl  = area_data.get("max_level", 10)
+    # cf. recycle.c new_area(): min_level=0, max_level=MAX_LEVEL (60)
+    min_lvl  = area_data.get("min_level", 0)
+    max_lvl  = area_data.get("max_level", 60)
     builders = area_data.get("builders", "Unknown")
     credits  = area_data.get("credits", "Unknown")
 
@@ -737,6 +954,8 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
             if fd:
                 w(f'        "{flag_key}": {_repr_flags(fd)},')
         w(f'        "alignment": {mob["alignment"]},')
+        if mob["group"] != 0:
+            w(f'        "group":     {mob["group"]},')
         w(f'        "level":     {mob["level"]},')
         w(f'        "hitroll":   {mob["hitroll"]},')
         w(f'        "hp_dice":   {pyrepr(mob["hp_dice"])},')
@@ -747,9 +966,28 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
             fd = mob[flag_key]
             if fd:
                 w(f'        "{flag_key}": {_repr_flags(fd)},')
+        w(f'        "start_pos":   {pyrepr(mob["start_pos"])},')
+        w(f'        "default_pos": {pyrepr(mob["default_pos"])},')
+        for flag_key in ("form_flags", "part_flags"):
+            fd = mob[flag_key]
+            if fd:
+                w(f'        "{flag_key}": {_repr_flags(fd)},')
+        w(f'        "material": {pyrepr(mob["material"])},')
         w(f'        "sex":    {pyrepr(mob["sex"])},')
         w(f'        "wealth": {mob["wealth"]},')
         w(f'        "size":   {pyrepr(mob["size"])},')
+        if mob.get("mob_triggers"):
+            w(f'        "mob_triggers": (')
+            for trig_type, mpv, phrase in mob["mob_triggers"]:
+                w(f'            ({pyrepr(trig_type)}, {mpv}, {pyrepr(phrase)}),')
+            w(f'        ),')
+        if mob.get("flag_removes"):
+            # F-line flag removals, applied after race-merge at runtime
+            # (cf. mob.py create_mobile; db2.c load_mobiles REMOVE_BIT).
+            w(f'        "flag_removes": (')
+            for canon, names in mob["flag_removes"]:
+                w(f'            ({pyrepr(canon)}, {pyrepr(names)}),')
+            w(f'        ),')
         w("    },")
     w("}")
     w("")
@@ -777,11 +1015,18 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
         w(f'        "exits": {{')
         for d in sorted(room["exits"], key=lambda x: "neswud".index(x)):
             to_vnum = room["exits"][d]
-            to_c    = r(to_vnum, room_map)
+            # "to": None = examinable-but-untraversable exit (blind exit,
+            # to_room <= 0 in the .are data).
+            to_c    = "None" if to_vnum is None else r(to_vnum, room_map)
             note    = room["exit_notes"].get(d) or {}
-            # F override completely replaces exit flags (cf. 1stMud rs_flags = arg5)
+            # F override completely replaces exit flags (cf. 1stMud rs_flags
+            # = arg5); "key" is a separate exit field untouched by the F
+            # reset (db.c only overwrites rs_flags/exit_info), so preserve it.
             if foverrides and (vnum, d) in foverrides:
-                note = foverrides[(vnum, d)]
+                saved_key = note.get("key")
+                note = dict(foverrides[(vnum, d)])
+                if saved_key:
+                    note["key"] = saved_key
             # D override sets closed/locked state (only valid on isdoor exits)
             dstate = (doverrides or {}).get((vnum, d))
             if dstate is not None and note.get("isdoor"):
@@ -796,7 +1041,7 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
                     note["closed"] = True
                     note["locked"] = True
             ex_desc = room.get("exit_descs", {}).get(d, "")
-            if note or ex_desc:
+            if note or ex_desc or to_vnum is None:
                 eparts = [f'"to": {to_c}']
                 if ex_desc:
                     eparts.append(f'"desc": {pyrepr(ex_desc)}')
@@ -806,6 +1051,8 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
                              "doorbell", "easy", "hard", "infuriating", "noclose", "nolock"):
                     if note.get(flag):
                         eparts.append(f'"{flag}": True')
+                if note.get("key") and note["key"] > 0:
+                    eparts.append(f'"key": {note["key"]}')
                 w(f'            "{d}": {{{", ".join(eparts)}}},')
             else:
                 w(f'            "{d}": {to_c},')
@@ -814,8 +1061,14 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
             w(f'        "flags": {_repr_flags(room["flags"])},')
         if room["sector"] is not None:
             w(f'        "sector": {pyrepr(room["sector"])},')
+        if room.get("heal_rate") is not None:
+            w(f'        "heal_rate": {room["heal_rate"]},')
+        if room.get("mana_rate") is not None:
+            w(f'        "mana_rate": {room["mana_rate"]},')
         if room.get("extra_descs"):
             w(f'        "extra_descs": {pyrepr(room["extra_descs"])},')
+        if room.get("owner"):
+            w(f'        "owner": {pyrepr(room["owner"])},')
         w("    },")
     w("}")
     w("")
@@ -832,6 +1085,11 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
         w(f'        "material":    {pyrepr(obj["material"])},')
         w(f'        "type": {pyrepr(obj["type"])},')
         w(f'        "wear_flags": {_repr_flags(obj["wear_flags"])},')
+        if obj.get("no_sac"):
+            w(f'        "no_sac": True,')
+        if "condition" in obj:
+            # cf. db2.c load_objects condition switch; absent = 100 (perfect)
+            w(f'        "condition": {obj["condition"]},')
         if obj.get("extra_flags"):
             bits = decode_flags(obj["extra_flags"], EXTRA_FLAGS)
             if bits:
@@ -857,8 +1115,17 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
                 w(f'        "max_charges": {obj["max_charges"]}, "charges": {obj["charges"]},')
             if obj.get("spell"):
                 w(f'        "spell": {pyrepr(obj["spell"])},')
+        elif obj["type"] == "light":
+            if "light_hours" in obj:
+                w(f'        "light_hours": {obj["light_hours"]},')
         if obj.get("stat_bonuses"):
             w(f'        "stat_bonuses": {pyrepr(obj["stat_bonuses"])},')
+        if obj.get("flag_affects"):
+            # F-line flag-setting affects (cf. db2.c load_objects 'F' case).
+            w(f'        "flag_affects": (')
+            for where, loc_name, mod, bits in obj["flag_affects"]:
+                w(f'            ({pyrepr(where)}, {pyrepr(loc_name)}, {mod}, {_repr_flags(bits)}),')
+            w(f'        ),')
         w(f'        "level": {obj["level"]}, "weight": {obj["weight"]}, "value": {obj["value"]},')
         if obj["extra_descs"]:
             w(f'        "extra_descs": {pyrepr(obj["extra_descs"])},')
@@ -870,10 +1137,13 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
     w(f"# -- Resets {BAR * 69}")
     w('# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits')
     w('# ("O", item_vnum, room_vnum)                          -- place one item copy in room')
-    w('# ("E", item_vnum, slot_name)                          -- equip item on last M mob')
-    w('# ("G", item_vnum)                                     -- give item to last M mob inventory')
+    w('# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob')
+    w('# ("G", item_vnum, limit)                              -- give item to last M mob inventory')
+    w('# E/G limit: raw 1stMud reset-count field (cf. db.c reset_room): a value')
+    w('# > 50 is a legacy encoding meaning limit 6; -1 or 0 means unlimited (999).')
+    w('# Runtime enforcement of this limit is deferred [PRIMESUD].')
     w('# ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers')
-    w('# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas')
+    w('# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: not enforced by runtime yet')
     w('# F and D .are resets are baked into room exit flags at conversion time')
     w("RESETS = (")
     for reset in resets:
@@ -888,13 +1158,13 @@ def emit(area_data, rooms, mobs, objs, resets, specials, room_map, mob_map, obj_
             rc = r(rv, room_map)
             w(f'    ("O", {oc}, {rc}),')
         elif reset[0] == "E":
-            _, iv, slot = reset
+            _, iv, slot, limit = reset
             ic = r(iv, obj_map)
-            w(f'    ("E", {ic}, "{slot}"),')
+            w(f'    ("E", {ic}, "{slot}", {limit}),')
         elif reset[0] == "G":
-            _, iv = reset
+            _, iv, limit = reset
             ic = r(iv, obj_map)
-            w(f'    ("G", {ic}),')
+            w(f'    ("G", {ic}, {limit}),')
         elif reset[0] == "P":
             _, iv, lim, cv, mx = reset
             ic = r(iv, obj_map)
@@ -918,7 +1188,7 @@ def convert(are_path, out_path=None):
 
     area_data = parse_areadata(sects.get("AREADATA", []))
     rooms     = parse_rooms(sects.get("ROOMS", []))
-    mobs      = parse_mobiles(sects.get("MOBILES", []))
+    mobs      = parse_mobiles(sects.get("MOBILES", []), area_data.get("version"))
     objs      = parse_objects(sects.get("OBJECTS", []))
     resets, foverrides, doverrides = parse_resets(sects.get("RESETS", []))
     specials = parse_specials(sects.get("SPECIALS", []))

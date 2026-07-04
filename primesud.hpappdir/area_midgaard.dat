@@ -3403,6 +3403,7 @@ OBJECTS = {
         "type": 'light',
         "wear_flags": {"take": True},
         "condition": 90,
+        "light_hours": 50,
         "level": 0, "weight": 30, "value": 4,
     },
     3031: {
@@ -3412,6 +3413,7 @@ OBJECTS = {
         "material":    'brass',
         "type": 'light',
         "wear_flags": {"take": True},
+        "light_hours": 250,
         "level": 0, "weight": 40, "value": 75,
         "extra_descs": [('letters', 'They say, "Use \'hold lantern\' to activate."'), ('lantern', 'It is a large and robust but somewhat battered oil lantern made from brass,\nequipped with a handle to make it handy and a hood to protect its flame.\nSome letters have been scratched on its bottom.')],
     },
@@ -4865,6 +4867,7 @@ OBJECTS = {
         "type": 'light',
         "wear_flags": {"take": True},
         "extra_flags": {"glow": True, "magic": True},
+        "light_hours": 500,
         "stat_bonuses": {'ac': -2, 'saves': -1},
         "level": 8, "weight": 10, "value": 640,
         "extra_descs": [('banner', 'This is the official Merc war banner to see you through the darkest realm!')],
@@ -4964,7 +4967,7 @@ OBJECTS = {
 # > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)
 # means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
 # ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
-# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: unused in current areas
+# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: not enforced by runtime yet
 # D resets are baked into room exit flags at conversion time
 RESETS = (
     ("M", 3011, 1, 3001, 1),
