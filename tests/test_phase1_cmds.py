@@ -100,7 +100,9 @@ class TestExits:
 
 
 class TestCommands:
-    def test_lists_known_commands(self, scene, out):
+    def test_lists_known_commands(self, scene, out, monkeypatch):
+        # do_commands routes through the tpage pager, not tprint
+        monkeypatch.setattr(commands, "tpage", lambda lines: out.extend(lines))
         commands.do_commands(scene, [])
         blob = "\n".join(out)
         assert "kill" in blob and "look" in blob and "wimpy" in blob

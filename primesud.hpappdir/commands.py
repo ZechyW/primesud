@@ -30,7 +30,7 @@ from scan import do_scan
 from shop import do_buy, do_sell, do_list, do_value, do_appraise
 from system_cmds import do_save, do_quit
 from debug import do_debug
-from terminal import tprint
+from terminal import tprint, tpage
 from training import do_train, do_practice, do_remort, do_gain
 from urandom import randint
 
@@ -45,25 +45,39 @@ _POS_MSG = {
     "fighting": "No way!  You are still fighting!",
 }
 
+CMD_DESC_FILE = "commands.dat"  # [PRIMESUD] name|description per line
+
+
 def do_commands(player, args):
-    """List all available commands in numbered columns (cf. 1stMud do_commands in interp.c).
+    """List all available commands with brief descriptions (cf. 1stMud do_commands in interp.c).
+
+    [PRIMESUD] 1stMud prints a bare 4-column name list; here each command
+    gets a one-line description, read from commands.dat at display time
+    (kept off-heap, cf. help.dat) and shown through the tpage pager.
+    Category filter not ported -- no cmd categories.
 
     Args:
         player (dict): Player state dict.
         args (list): Parsed command arguments.
-            [PRIMESUD] category filter not ported -- no cmd categories.
     """
+    descs = {}
+    try:
+        f = open(CMD_DESC_FILE)
+        while True:
+            line = f.readline()
+            if not line:
+                break
+            if "|" in line:
+                name, desc = line.split("|", 1)
+                descs[name] = desc.rstrip("\n")
+        f.close()
+    except OSError:
+        pass  # missing file: names-only listing
     # cf. cmd_first_sorted -- alphabetical listing
-    row = ""
-    i = 0
+    lines = []
     for name in sorted(e[0] for e in _CMD_TABLE):
-        i += 1
-        row += "%3d. %-10s" % (i, name)
-        if i % 4 == 0:
-            tprint(row)
-            row = ""
-    if row:
-        tprint(row)
+        lines.append("{G%-10s{x %s" % (name, descs.get(name, "")))
+    tpage(lines)
 
 
 # -- Command table -------------------------------------------------------------

@@ -1,0 +1,118 @@
+'|say something (alias for say)
+/|return to the recall point (alias for recall)
+affects|list active spells and effects on you
+appraise|ask a shopkeeper the sell value of an item
+areas|list the areas of the world
+autogold|toggle auto gold looting from corpses
+autolist|show your auto-action toggle settings
+autoloot|toggle auto looting of corpses
+automap|toggle the mini-map beside room descriptions
+autosac|toggle auto sacrifice of empty corpses
+autosplit|toggle auto gold splitting (group)
+autostance|set the stance to enter when combat starts
+backstab|attack from the shadows for heavy damage
+bash|slam into an opponent to knock it down
+berserk|fly into a rage: more damage, less defense
+brandish|invoke a held magical staff
+bs|backstab, the short form
+buy|purchase an item (or pet) from a shop
+cast|cast a spell: cast <spell> [target]
+clear|clear the screen
+close|close a door or container
+cls|clear the screen (alias for clear)
+commands|this list
+compare|compare an item with what you have equipped
+consider|judge how dangerous a mob is to fight
+credits|the people behind the game
+debug|playtest tools: goto, load, slay, stat, ...
+dirt|kick dirt into an opponent's eyes
+disarm|knock the weapon from an opponent's grip
+ditch|get rid of a follower
+down|move down
+drink|drink from a container or fountain
+drop|drop an item, or coins: drop 5 gold
+east|move east
+eat|eat something from your inventory
+equipment|show what you are wearing and wielding
+examine|look closely at an item or container
+exits|show obvious exits from this room
+fill|fill a container from a fountain
+flee|run away from a fight
+follow|follow a character (or yourself to stop)
+gain|learn or improve skill groups at a trainer
+get|pick up an item: get <item> [container]
+give|give an item or coins to a character
+gquest|global quest status and commands
+heal|buy healing services from a healer NPC
+help|read a help entry: help <topic>
+hide|hide from view
+hit|attack a mob (alias for kill)
+hold|hold an item in your hand
+inventory|list what you are carrying
+junk|sacrifice an item (alias for sacrifice)
+kick|kick an opponent in combat
+kill|attack a mob and start combat
+list|see what a shop sells
+lock|lock a door or container (needs the key)
+look|look at the room, a mob, or an item
+macro|bind command shortcuts to keys
+map|show the area map
+murder|attack without mercy (no prefix matching)
+north|move north
+open|open a door or container
+order|command a charmed follower or pet
+outfit|receive a free set of basic equipment
+pick|pick a lock (thief skill)
+pour|pour liquid between containers, or out
+practice|practice skills and spells at a trainer
+put|put an item into a container
+quaff|drink a magical potion
+quest|personal quest status and commands
+quit|leave the game (progress is saved)
+read|read a sign or scroll (alias for look)
+recall|pray for transport to the recall point
+recite|recite a magical scroll at a target
+remort|be reborn into a new class at max level
+remove|take off a worn or wielded item
+reply|answer the last mob that spoke to you
+rescue|pull a friend out of combat
+rest|sit down and rest to recover faster
+run|speedwalk a path: run 2n3e
+sacrifice|offer an item to the gods for silver
+save|save your character
+say|say something out loud
+scan|look for mobs in adjacent rooms
+score|show your character sheet
+second|wield a second weapon in your off hand
+sell|sell an item to a shop
+sit|sit down
+skills|list the skills you know
+sleep|go to sleep to recover fastest
+sneak|move silently between rooms
+south|move south
+spells|list the spells you know
+sskill|show stance skill ratings
+stance|enter a combat stance: stance <name>
+stand|stand up
+steal|steal coins or an item from a mob
+suicide|end your character permanently
+surrender|give up and hope for mercy
+take|pick up an item (alias for get)
+tap|sacrifice an item (alias for sacrifice)
+tell|send a private message to a mob
+tpspend|spend trivia points on rewards
+train|convert sessions into stats at a trainer
+trip|trip an opponent off its feet
+unlock|unlock a door or container (needs the key)
+up|move up
+value|ask a shopkeeper what an item is worth
+visible|step out of hiding / cancel invisibility
+wake|wake up (yourself)
+wear|wear armor or clothing from your inventory
+west|move west
+where|show area info, or find mobs: where <name>
+wield|wield a weapon (alias for wear)
+wimpy|set auto-flee hp threshold: wimpy <hp>
+worth|show your gold, silver, and experience
+yell|yell something (everyone nearby hears)
+zap|invoke a held magical wand at a target
