@@ -21,7 +21,7 @@ PULSE_TICK       = 30 * PULSE_PER_SECOND      # world tick
 TICK_SECS        = PULSE_TICK // PULSE_PER_SECOND  # seconds elapsed per world tick
 # PULSE_AREA     = 120 * PULSE_PER_SECOND     # area reset
 PULSE_AREA       = 30 * PULSE_PER_SECOND      # Quicker age ticks for better UX
-POLL_MS          = 50                         # keyboard polling interval (ms)
+POLL_MS          = 10                         # keyboard polling interval (ms)
 AUTOSAVE_TICKS   = 4                          # autosave every N world ticks
 DEATH_MSG_DELAY  = 3                          # seconds between death flavour lines
 

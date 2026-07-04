@@ -211,8 +211,8 @@ def first_stance_pick(ch):
     foe_name = foe_name[0].upper() + foe_name[1:]
 
     chprintln(ch, "")
-    chprintln(ch, "{cAs you and your opponent square off, a half-forgotten"
-                  " memory stirs -- long hours of drills, a teacher's voice,"
+    chprintln(ch, "{CAs you and your opponent square off, a half-forgotten"
+                  " memory stirs - long hours of drills, a teacher's voice,"
                   " the ache of repetition. Almost reflexively, your body"
                   " begins to settle into a fighting stance...{x")
     chprintln(ch, "")
@@ -223,7 +223,7 @@ def first_stance_pick(ch):
             break
         cancels += 1
         if cancels == 1:
-            chprintln(ch, "{c" + foe_name + "'s attack whizzes past your"
+            chprintln(ch, "{C" + foe_name + "'s attack whizzes past your"
                           " ear, almost punishing your moment of hesitation."
                           " Too close. You steady your frazzled nerves and"
                           " will your body to answer...{x")
@@ -231,7 +231,7 @@ def first_stance_pick(ch):
         else:
             # Repeat-safe escalation: reads naturally however many times
             # the player keeps cancelling.
-            chprintln(ch, "{cAnother blow hammers past, close enough to"
+            chprintln(ch, "{CAnother blow hammers past, close enough to"
                           " sting. You duck and weave on instinct alone,"
                           " but instinct will not hold forever...{x")
             chprintln(ch, "")
@@ -256,8 +256,8 @@ def first_stance_tip(ch):
     if ch.get("hit", 1) <= 0:
         return
     chprintln(ch, "")
-    chprintln(ch, "{cYou catch your breath and shake out your limbs. The"
-                  " stance felt awkward -- but with practice it will become"
+    chprintln(ch, "{CYou catch your breath and shake out your limbs. The"
+                  " stance felt awkward - but with practice it will become"
                   " second nature.{x")
     chprintln(ch, "{w(Stances improve as you fight, growing stronger past"
                   " 100%. See 'sskill' for mastery, 'autostance' to change"

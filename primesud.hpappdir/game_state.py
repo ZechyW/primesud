@@ -533,7 +533,7 @@ def new_game(game):
     # pre-filled on the input line -- bare Enter accepts it, backspace to
     # replace; invalid entries re-prompt like nanny's illegal-name path.
     while True:
-        raw_name = game.tr.input("By what name do you wish to be known? ",
+        raw_name = game.tr.input("By what name do you wish to be known?\n",
                                  default="Hero")
         name = _sanitize_name(raw_name)
         if name:

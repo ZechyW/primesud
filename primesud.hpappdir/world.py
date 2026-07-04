@@ -205,7 +205,7 @@ def _loading_notice(tag):
     try:
         import terminal
         if terminal.tr is not None:
-            terminal.tprint("{DLoading area: " + _TAG_TO_NAME.get(tag, tag) + "{x")
+            terminal.tprint("{D[Loading area: " + _TAG_TO_NAME.get(tag, tag) + "]{x")
     except Exception:
         pass
 
