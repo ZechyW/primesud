@@ -1,7 +1,6 @@
 """General-purpose output pager (cf. 1stMud sendpage/show_string in comm.c). [PRIMESUD]"""
 
 import terminal
-from hpprime import eval as ppleval
 
 _ESC = "\\e"  # tml key_map escape char (literal backslash-e, not \x1b)
 
@@ -18,10 +17,12 @@ def tpage(lines):
 
     Pages print through the normal print path, so they land in the
     scrollback history like ordinary streamed output -- revisiting a
-    page prints it again.  Blocked time is added to tr._scrollback_ms
-    so the game loop shifts its pulse clock, as scrollback does; time
-    spent in a nested scrollback (shift+- while paging) is already
-    inside our span, so its own contribution is discarded.
+    page prints it again.  Pulse timing: the game loop already shifts
+    next_pulse by the whole interpret() span (primesud.py), which
+    covers time blocked here, so tpage must NOT add to
+    tr._scrollback_ms -- that would double-count.  Any nested
+    scrollback entered while paging (shift+-) is inside the same span,
+    so its accrual is discarded on exit, as picker.py does.
 
     Callers should keep each line within the terminal width; wrapped
     lines make a page taller than one screen.
@@ -37,7 +38,6 @@ def tpage(lines):
             tr.print(line)
         return
     old_status = tr.status_text
-    t0 = int(ppleval("Ticks"))
     sb0 = tr._scrollback_ms
     page = 0
     shown = -1
@@ -62,6 +62,8 @@ def tpage(lines):
                 break
             # other keys ignored
     finally:
-        tr._scrollback_ms = sb0 + (int(ppleval("Ticks")) - t0)
+        # Discard scrollback accrual from paging; interpret-span shift
+        # in the game loop already compensates for our blocked time.
+        tr._scrollback_ms = sb0
         tr.set_status(old_status)
         tr.resync_keyboard()

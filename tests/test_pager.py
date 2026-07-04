@@ -61,6 +61,7 @@ def test_single_page_prints_all_no_keys(fake_tr):
 
 def test_multipage_enter_then_esc(fake_tr):
     tr = fake_tr(rows=6, keys=["\n", _ESC])  # 5 lines per page
+    tr._scrollback_ms = 77
     tpage(["L%d" % i for i in range(12)])  # 3 pages
     # page 1 (5) + page 2 (5) printed; esc exits before page 3
     assert tr.lines == ["L%d" % i for i in range(10)]
@@ -68,6 +69,8 @@ def test_multipage_enter_then_esc(fake_tr):
     assert any("page 2/3" in s for s in tr.statuses)
     assert tr.status_text == "old status"  # restored
     assert tr.resynced == 1
+    # interpret-span shift covers paging time; pager must not add on top
+    assert tr._scrollback_ms == 77
 
 
 def test_plus_also_pages_forward(fake_tr):
