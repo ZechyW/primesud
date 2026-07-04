@@ -167,3 +167,126 @@ def test_hunt_failed_roll_random_direction(monkeypatch, out):
     monkeypatch.setattr(hunt, "randint", lambda a, b: next(rolls))
     hunt.do_hunt(player, ["dog"])
     assert any("is east from here" in l for l in out)
+
+
+# -- hunt_victim (cf. 1stMud hunt_victim in hunt.c) --------------------------
+# [PRIMESUD] Dormant scaffolding: nothing sets ch["hunting"] in-game, so
+# these tests drive hunt_victim() directly with a pre-seeded "hunting" id.
+
+def test_hunt_victim_prey_gone(out):
+    _make_player(9001)  # so TO_ROOM act messages have somewhere to route
+    hunter = _make_mob(2, room=9001, hunting=99)  # 99: no such char
+    hunt.hunt_victim(hunter)
+    assert hunter["hunting"] is None
+    assert any("Damn!  My prey is gone!!" in l for l in out)
+
+
+def test_hunt_victim_prey_not_visible(monkeypatch, out):
+    _make_player(9001)
+    hunter = _make_mob(2, room=9001, hunting=3)
+    _make_mob(3, room=9001)
+    monkeypatch.setattr(hunt, "can_see", lambda ch, v: False)
+    hunt.hunt_victim(hunter)
+    assert hunter["hunting"] is None
+    assert any("Damn!  My prey is gone!!" in l for l in out)
+
+
+def test_hunt_victim_same_room_kills_prey(monkeypatch, out):
+    import combat
+    _make_player(9001)
+    hunter = _make_mob(2, room=9001, hunting=3)
+    _make_mob(3, room=9001)
+    monkeypatch.setattr(hunt, "randint", lambda a, b: 10)  # < 60 -> "Ye shall DIE!" trio
+    calls = []
+    monkeypatch.setattr(combat, "multi_hit", lambda a, b: calls.append((a["id"], b["id"])))
+    hunt.hunt_victim(hunter)
+    assert calls == [(2, 3)]
+    assert hunter["hunting"] is None
+    assert any("Ye shall DIE!" in l for l in out)
+
+
+def test_hunt_victim_same_room_recognizes_prey(monkeypatch, out):
+    import combat
+    _make_player(9001)
+    hunter = _make_mob(2, room=9001, hunting=3)
+    _make_mob(3, room=9001)
+    monkeypatch.setattr(hunt, "randint", lambda a, b: 90)  # >= 60 -> "Hey, I remember you!" trio
+    calls = []
+    monkeypatch.setattr(combat, "multi_hit", lambda a, b: calls.append((a["id"], b["id"])))
+    hunt.hunt_victim(hunter)
+    assert calls == [(2, 3)]
+    assert hunter["hunting"] is None
+    assert any("Hey, I remember you!" in l for l in out)
+
+
+def test_hunt_victim_moves_toward_prey(monkeypatch):
+    import movement
+    hunter = _make_mob(2, room=9001, hunting=3)
+    _make_mob(3, room=9003)
+    # 10 <= 50: keep find_path's computed direction (no random override)
+    monkeypatch.setattr(hunt, "randint", lambda a, b: 10)
+    calls = []
+    monkeypatch.setattr(movement, "move_char", lambda ch, d: calls.append((ch["id"], d)))
+    hunt.hunt_victim(hunter)
+    assert calls == [(2, "n")]
+    # 1stMud does not clear ch->hunting after a successful move
+    assert hunter["hunting"] == 3
+    assert hunter["wait"] > 0
+
+
+def test_hunt_victim_closed_door_opens_instead_of_moving(monkeypatch):
+    import movement
+    hunter = _make_mob(2, room=9001, hunting=3)
+    _make_mob(3, room=9003)
+    ROOM_DEFS._data[9001]["exits"]["n"] = {"to": 9002, "closed": True, "isdoor": True}
+    monkeypatch.setattr(hunt, "randint", lambda a, b: 10)
+    open_calls = []
+    move_calls = []
+    monkeypatch.setattr(movement, "do_open", lambda ch, args: open_calls.append((ch["id"], args)))
+    monkeypatch.setattr(movement, "move_char", lambda ch, d: move_calls.append((ch["id"], d)))
+    hunt.hunt_victim(hunter)
+    assert open_calls == [(2, ["north"])]
+    assert move_calls == []
+
+
+def test_hunt_victim_real_do_open_routes_output(monkeypatch, out):
+    # NPC invoker: player in the room sees "$n opens the $d."; the
+    # invoker-only "Ok." must NOT reach the terminal.
+    _make_player(9001)
+    hunter = _make_mob(2, room=9001, hunting=3)
+    _make_mob(3, room=9003)
+    ROOM_DEFS._data[9001]["exits"]["n"] = {"to": 9002, "closed": True,
+                                           "isdoor": True}
+    ROOM_DEFS._data[9002]["exits"]["s"] = {"to": 9001, "closed": True,
+                                           "isdoor": True}
+    monkeypatch.setattr(hunt, "randint", lambda a, b: 10)
+    hunt.hunt_victim(hunter)
+    assert not ROOM_DEFS._data[9001]["exits"]["n"]["closed"]
+    assert not ROOM_DEFS._data[9002]["exits"]["s"]["closed"]
+    assert any("opens the door" in l for l in out)
+    assert not any("Ok." in l for l in out)
+
+
+def test_hunt_victim_do_open_far_side_message(monkeypatch, out):
+    # Player on the far side of the door sees "The $d opens."
+    # (cf. act_move.c:483-485).
+    _make_player(9002)
+    hunter = _make_mob(2, room=9001, hunting=3)
+    _make_mob(3, room=9003)
+    ROOM_DEFS._data[9001]["exits"]["n"] = {"to": 9002, "closed": True,
+                                           "isdoor": True}
+    ROOM_DEFS._data[9002]["exits"]["s"] = {"to": 9001, "closed": True,
+                                           "isdoor": True}
+    monkeypatch.setattr(hunt, "randint", lambda a, b: 10)
+    hunt.hunt_victim(hunter)
+    assert any("The door opens." in l for l in out)
+
+
+def test_hunt_victim_no_path_gives_up(out):
+    _make_player(9001)
+    _stub_room(9006)  # same area, unconnected
+    hunter = _make_mob(2, room=9001, hunting=3)
+    _make_mob(3, room=9006)
+    hunt.hunt_victim(hunter)
+    assert hunter["hunting"] is None
+    assert any("Damn!  Lost" in l for l in out)

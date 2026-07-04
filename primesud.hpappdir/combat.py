@@ -75,6 +75,7 @@ from skills_table import (
     GSN_RESCUE, GSN_SHIELD_BLOCK, GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
     GSN_TRIP, GSN_POISON,
 )
+from hunt import hunt_victim
 from terminal import tprint
 from urandom import randint
 from util import wait
@@ -85,7 +86,8 @@ from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 
 def violence_update(player):
     """One combat pulse: all chars with a fight target attack (cf. 1stMud violence_update in fight.c).
-    [Verified: 02/07/2026] -- mobprog/objprog/roomprog TRIG_FIGHT and hunt_victim not ported (see TODOs).
+    [Verified: 02/07/2026; hunt_victim wired and re-verified 04/07/2026] --
+    mobprog/objprog/roomprog TRIG_FIGHT still not ported (see TODOs).
 
     Args:
         player (dict): Player state dict.
@@ -96,7 +98,7 @@ def violence_update(player):
     for ch in [chars[k] for k in sorted(chars)]:
         # 1stMud: IsNPC(ch) && ch->fighting == NULL && IsAwake(ch) && ch->hunting != NULL
         if ch["is_npc"] and ch["fighting"] is None and is_awake(ch) and ch.get("hunting") is not None:
-            # TODO: hunt_victim not ported
+            hunt_victim(ch)
             continue
 
         # 1stMud: victim = ch->fighting; if victim == NULL || ch->in_room == NULL: continue

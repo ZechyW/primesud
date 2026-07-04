@@ -1,8 +1,8 @@
 """Hunt skill: locate a mob in the current area (cf. 1stMud hunt.c)."""
 
 from config import EXIT_ORDER, EXIT_NAMES
-from handler import (act, chprintln, TO_CHAR, TO_ROOM, get_char_room,
-                     number_argument, can_see, is_name)
+from handler import (act, chprintln, TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT,
+                     get_char_room, number_argument, can_see, is_name)
 from skill_utils import WaitState, check_improve, get_skill
 from skills_table import GSN_HUNT, SKILLS
 from urandom import randint
@@ -94,7 +94,8 @@ def do_hunt(player, args):
     """Track down a mob in the current area (cf. 1stMud do_hunt in hunt.c).
     [Verified: 04/07/2026] -- mortal branch only: fArea is always true
     (no immortals), so the search and pathfinding stay in-area. NPC
-    hunters (hunt_victim) not ported -- see TODO in combat.py.
+    hunters use hunt_victim (ported as dormant [PRIMESUD] scaffolding --
+    nothing in-game sets ch["hunting"] yet; see hunt_victim docstring).
 
     Args:
         player (dict): Player state dict.
@@ -141,6 +142,82 @@ def do_hunt(player, args):
     act("$N is " + EXIT_NAMES[direction] + " from here.", player, None,
         victim, TO_CHAR)
     check_improve(player, GSN_HUNT, True, 1)
+
+
+def hunt_victim(ch):
+    """NPC pursuit AI: chase down ch's hunting target (cf. 1stMud hunt_victim in hunt.c).
+    [Verified: 04/07/2026] -- dormant scaffolding (see [PRIMESUD] note below).
+
+    [PRIMESUD] Dormant scaffolding: nothing in 1stMud ever sets ch->hunting
+    during play (only the imm `set` command does), so this mechanism has no
+    in-game trigger yet. Ported faithfully so a future [PRIMESUD] trigger
+    can flip ch["hunting"] and have it picked up automatically --
+    violence_update (combat.py) and mobile_update (mob.py) already call
+    this whenever "hunting" is set.
+
+    Args:
+        ch (dict): NPC instance state dict, or None.
+    """
+    if ch is None or ch.get("hunting") is None or not ch.get("is_npc"):
+        return
+
+    # 1stMud scans char_first for ch->hunting; our chars dict membership
+    # is equivalent (get() returns None if the id is stale/gone).
+    victim = world.chars.get(ch["hunting"])
+    if victim is None or not can_see(ch, victim):
+        from comm import do_say
+        # do_say(ch, args) rejoins args with " ".join -- splitting on the
+        # literal separator " " (not whitespace-collapsing .split()) round
+        # trips exactly, preserving the double space in "Damn!  My" that
+        # hunt.c's literal C string has.
+        do_say(ch, "Damn!  My prey is gone!!".split(" "))
+        ch["hunting"] = None
+        return
+
+    if ch["room"] == victim["room"]:
+        if randint(1, 100) < 60:
+            act("{g$n{g glares at $N{g and says, '{GYe shall DIE!{g'{x",
+                ch, None, victim, TO_NOTVICT)
+            act("{g$n{g glares at you and says, '{GYe shall DIE!{g'{x",
+                ch, None, victim, TO_VICT)
+            act("{gYou glare at $N{g and say, '{GYe shall DIE!{g'{x",
+                ch, None, victim, TO_CHAR)
+        else:
+            act("{g$n{g glares at $N{g and says, '{GHey, I remember you!{g'{x",
+                ch, None, victim, TO_NOTVICT)
+            act("{g$n{g glares at you and says, '{GHey, I remember you!{g'{x",
+                ch, None, victim, TO_VICT)
+            act("{gYou glare at $N{g and say, '{GHey, I remember you!{g'{x",
+                ch, None, victim, TO_CHAR)
+        from combat import multi_hit
+        multi_hit(ch, victim)
+        ch["hunting"] = None
+        return
+
+    WaitState(ch, SKILLS[GSN_HUNT]["beats"])
+    direction = find_path(ch["room"], victim["room"])
+    if direction is None:
+        # 1stMud checks `dir < 0 || dir >= MAX_DIR`; find_path only returns
+        # a valid letter or None, so the upper-bound half of that check is
+        # unreachable here (same collapse as do_hunt above, hunt.py:126-132).
+        act("{g$n{g says '{GDamn!  Lost $M{g!'{x", ch, None, victim, TO_ROOM)
+        ch["hunting"] = None
+        return
+
+    if randint(1, 100) > 50:
+        exits = ROOM_DEFS[ch["room"]].get("exits", {})
+        candidates = [d for d in EXIT_ORDER if exits.get(d) is not None]
+        if candidates:  # [PRIMESUD] exitless room would hang 1stMud's do/while loop
+            direction = candidates[randint(0, len(candidates) - 1)]
+
+    exit_val = ROOM_DEFS[ch["room"]].get("exits", {}).get(direction)
+    if isinstance(exit_val, dict) and exit_val.get("closed"):
+        from movement import do_open
+        do_open(ch, [EXIT_NAMES[direction]])
+        return
+
+    from movement import move_char
+    move_char(ch, direction)
 
 
 def player_room_exit(player, d):

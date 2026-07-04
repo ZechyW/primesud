@@ -7,6 +7,7 @@ import world
 from world import ROOM_DEFS, MOB_DEFS, AREA_DEFS, DOOR_DEFS
 from races import RACE_TABLE
 from handler import equip_char, act, _char_base, is_awake, TO_ROOM, can_see
+from hunt import hunt_victim
 from item import create_object
 from special import SPEC_TABLE
 from debug import DBG, dbg  # [PRIMESUD]
@@ -346,6 +347,10 @@ def mobile_update(tr, player):
             # Charmed mobs (pets) neither wander nor despawn
             # (cf. 1stMud IsAffected(ch, AFF_CHARM) skips in update.c)
             continue
+        if inst.get("hunting") is not None:
+            # cf. 1stMud update.c:423-424 -- no continue after this call:
+            # a hunting mob may still despawn/wander below, same as 1stMud.
+            hunt_victim(inst)
         if ROOM_DEFS[inst["room"]].get("area") != inst["home_area"] and randint(1, 100) <= 5:
             # 5% despawn outside home area (cf. 1stMud char_update, update.c:541-547).
             # 1stMud never persists NPC positions; this despawn keeps cross-area
