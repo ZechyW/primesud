@@ -51,13 +51,23 @@ Loose ends that don't belong in a specific plan file.
 
 ## Area data
 
-- **Re-audit QuickMUD-regenerated areas** — `area_school_audit.md` (deleted;
-  see git history) verified the old 1stMud-sourced `area_school.py`. The area
-  was later regenerated from `reference/quickmud/area/school.are` via
-  `tools/are_to_primesud_quickmud.py` and converted to `.dat` (new E/G resets,
-  SHOPS/HELPS/SOCIALS/MOBPROGS sections the audit never saw). Fidelity of the
-  QuickMUD converter output was never re-verified for school or the other
-  regenerated areas.
+- **Deferred runtime hooks for converter-emitted fields** — the 2026-07
+  converter audit brought both converters (`are_to_primesud.py`,
+  `are_to_primesud_quickmud.py`) to a common lossless schema; these emitted
+  fields are captured in the `.dat` files but not yet consumed at runtime:
+  - E/G reset `limit` (raw arg2; >50 means legacy 6, <=0 unlimited) — resets
+    currently spawn without count enforcement
+  - object `condition` (spawn wear-state), `light_hours` (light burnout),
+    `no_sac`, `flag_affects` (F-line affect/immune/resist/vuln grants),
+    container `container_max_item_weight` / `container_weight_mult`,
+    food/drink `poisoned`
+  - mob `start_pos`/`default_pos` (long-form strings; `config.py`
+    `POS_FROM_SHORT` only has short keys, so non-"standing" values silently
+    fall back to standing), `group`, `material`, `mob_triggers`
+  - room `heal_rate`/`mana_rate`, `owner`
+- **`_unknown_bits` in quest.are** — stock 1stMud data sets ACT bits 11/31 and
+  AFF bits 34/36 that are undefined even in 1stMud's own `bits.h`; preserved
+  losslessly under `_unknown_bits`, no runtime meaning.
 
 ## Platform
 

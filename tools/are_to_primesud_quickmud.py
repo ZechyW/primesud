@@ -329,6 +329,11 @@ def split_sections(text):
 
     Handles both '#SECTION' and old-style '#AREA' (which has no trailing newline
     before data).
+
+    Note: rstrip() drops trailing whitespace on every line, including inside
+    description text. Intentional normalization -- trailing spaces are
+    render-invisible in the game and the few stock-area occurrences are
+    accidental. Accepted deviation from byte-exact fidelity.
     """
     sections = {}
     current = None
