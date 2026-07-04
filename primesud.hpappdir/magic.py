@@ -22,7 +22,7 @@ from item import (get_obj_list, obj_vnum, item_spell_level,
                   item_spells, item_spell_name, item_extra_flags,
                   item_current_charges, item_affect_list,
                   item_affect_find, item_affect_remove, item_affect_to_obj,
-                  set_item_extra_flag, create_object)
+                  set_item_extra_flag, create_object, promote_obj)
 from movement import perform_recall
 from picker import pick_from
 from scan import do_scan
@@ -1404,8 +1404,8 @@ def spell_create_spring(sn, level, ch, vo, target):
 
 def spell_create_water(sn, level, ch, vo, target):
     """Fill drink container with water (cf. 1stMud spell_create_water in magic.c).
-    [Verified: 03/07/2026] -- drinking itself not yet ported; liquid state
-    updated for when it is. "water" keyword append not ported."""
+    [Verified: 03/07/2026; drink/fill/pour ported 04/07/2026] --
+    "water" keyword append not ported."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     if tpl.get("type") != "drink":
         chprintln(ch, "It is unable to hold water.")
@@ -3159,7 +3159,8 @@ def _resolve_target(player, sn, target_name):
         if obj is None:
             chprintln(player, "You are not carrying that.")
             return (None, TARGET_NONE, None, False)
-        return (obj, TARGET_OBJ, None, True)
+        # [PRIMESUD] spells mutate obj state; plain vnums need instances
+        return (promote_obj(player, obj), TARGET_OBJ, None, True)
 
     if target_type == "obj_char_offensive":
         victim_id = None
@@ -3175,7 +3176,8 @@ def _resolve_target(player, sn, target_name):
         rs = _room_state(player)
         obj = get_obj_list(target_name, rs["items"], ITEM_DEFS)
         if obj is not None:
-            return (obj, TARGET_OBJ, None, True)
+            # [PRIMESUD] spells mutate obj state; plain vnums need instances
+            return (promote_obj(player, obj), TARGET_OBJ, None, True)
         chprintln(player, "You don't see that here.")
         return (None, TARGET_NONE, None, False)
 
@@ -3187,7 +3189,8 @@ def _resolve_target(player, sn, target_name):
             return (victim, TARGET_CHAR, None, True)
         obj = get_obj_list(target_name, player["inv"], ITEM_DEFS)
         if obj is not None:
-            return (obj, TARGET_OBJ, None, True)
+            # [PRIMESUD] spells mutate obj state; plain vnums need instances
+            return (promote_obj(player, obj), TARGET_OBJ, None, True)
         chprintln(player, "You don't see that here.")
         return (None, TARGET_NONE, None, False)
 

@@ -1,0 +1,261 @@
+"""Tests for mob special functions (special.py) vs 1stMud special.c."""
+import os
+import sys
+
+import pytest
+
+ROOT = os.path.dirname(os.path.dirname(__file__))
+_SRC = os.environ.get("PRIMESUD_SRC", "primesud.hpappdir")
+sys.path.insert(0, os.path.join(ROOT, _SRC))
+sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
+
+from handler import _char_base
+import combat
+import special
+import world
+from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS
+
+
+MOB_TPL = 9401
+TRASH_TPL = 9451
+GEM_TPL = 9452
+
+
+def _stub_room(vnum, **extra):
+    room = {"name": "Test Room", "desc": "A test room.", "exits": {},
+            "items": [], "mobs": [], "area": "test", "flags": {},
+            "sector": "inside"}
+    room.update(extra)
+    ROOM_DEFS._data[vnum] = room
+    world.rooms._data[vnum] = room
+    return room
+
+
+def _make_player(room=9001, **overrides):
+    ch = _char_base()
+    ch["id"] = 1
+    ch["name"] = "Tester"
+    ch["level"] = 20
+    ch["room"] = room
+    ch.update(overrides)
+    world.chars[1] = ch
+    return ch
+
+
+def _make_mob(mid, room=9001, **overrides):
+    ch = _char_base()
+    ch["id"] = mid
+    ch["is_npc"] = True
+    ch["tpl"] = MOB_TPL
+    ch["name"] = "a test mob"
+    ch["level"] = 20
+    ch["room"] = room
+    ch.update(overrides)
+    world.chars[mid] = ch
+    if room in world.rooms._data:
+        world.rooms._data[room]["mobs"].append(mid)
+    return ch
+
+
+@pytest.fixture(autouse=True)
+def _clean_world_state():
+    old_rooms = dict(ROOM_DEFS._data)
+    old_wrooms = dict(world.rooms._data)
+    old_chars = dict(world.chars)
+    old_mobs = dict(MOB_DEFS._data)
+    old_items = dict(ITEM_DEFS._data)
+    MOB_DEFS._data[MOB_TPL] = {
+        "short_descr": "a test mob", "long_descr": "A test mob is here.",
+        "keywords": "mob test", "level": 20, "race": "Human",
+        "hp_dice": (1, 1, 10), "hitroll": 0, "damage": (1, 4, 0),
+        "armor": (0, 0, 0, 0),
+    }
+    ITEM_DEFS._data[TRASH_TPL] = {
+        "short_descr": "some trash", "keywords": "trash",
+        "type": "trash", "wear_flags": {"take": True}, "value": 0,
+    }
+    ITEM_DEFS._data[GEM_TPL] = {
+        "short_descr": "a gem", "keywords": "gem",
+        "type": "gem", "wear_flags": {"take": True}, "value": 500,
+    }
+    _stub_room(9001)
+    yield
+    ROOM_DEFS._data.clear()
+    ROOM_DEFS._data.update(old_rooms)
+    world.rooms._data.clear()
+    world.rooms._data.update(old_wrooms)
+    world.chars.clear()
+    world.chars.update(old_chars)
+    MOB_DEFS._data.clear()
+    MOB_DEFS._data.update(old_mobs)
+    ITEM_DEFS._data.clear()
+    ITEM_DEFS._data.update(old_items)
+
+
+@pytest.fixture
+def low_rolls(monkeypatch):
+    """Force every randint to its minimum -- all chance gates pass."""
+    monkeypatch.setattr(special, "randint", lambda a, b: a)
+
+
+@pytest.fixture
+def cast_log(monkeypatch):
+    """Record _cast_spell calls instead of running real spells."""
+    calls = []
+
+    def fake(ch, spell_name, victim):
+        calls.append((spell_name, victim))
+        return True
+
+    monkeypatch.setattr(special, "_cast_spell", fake)
+    return calls
+
+
+# ---------------------------------------------------------------------------
+# Breath specs
+# ---------------------------------------------------------------------------
+
+def test_dragon_breathes_on_fighting_victim(low_rolls, cast_log):
+    dragon = _make_mob(2, pos="fighting")
+    player = _make_player()
+    player["fighting"] = 2
+    assert special.spec_breath_acid(dragon) is True
+    assert cast_log == [("acid breath", player)]
+
+
+def test_dragon_needs_fighting_position(low_rolls, cast_log):
+    dragon = _make_mob(2)  # pos standing
+    player = _make_player()
+    player["fighting"] = 2
+    assert special.spec_breath_acid(dragon) is False
+    assert cast_log == []
+
+
+def test_gas_breath_targets_room(low_rolls, cast_log):
+    dragon = _make_mob(2, pos="fighting")
+    _make_player()
+    assert special.spec_breath_gas(dragon) is True
+    assert cast_log == [("gas breath", None)]
+
+
+def test_breath_any_dispatches(low_rolls, cast_log):
+    dragon = _make_mob(2, pos="fighting")
+    player = _make_player()
+    player["fighting"] = 2
+    assert special.spec_breath_any(dragon) is True  # roll 0 -> fire
+    assert cast_log == [("fire breath", player)]
+
+
+# ---------------------------------------------------------------------------
+# spec_poison
+# ---------------------------------------------------------------------------
+
+def test_poison_bites_and_casts(low_rolls, cast_log):
+    snake = _make_mob(2, pos="fighting")
+    player = _make_player()
+    snake["fighting"] = 1
+    assert special.spec_poison(snake) is True
+    assert cast_log == [("poison", player)]
+
+
+# ---------------------------------------------------------------------------
+# spec_thief
+# ---------------------------------------------------------------------------
+
+def test_thief_steals_from_sleeping_player(low_rolls):
+    thief = _make_mob(2)  # pos standing
+    player = _make_player(pos="sleeping", gold=1000, silver=500)
+    assert special.spec_thief(thief) is True
+    # randint -> min: gold = 1000 * min(1, 10) // 100 = 10
+    assert player["gold"] == 990 and thief["gold"] == 10
+    assert player["silver"] == 495 and thief["silver"] == 5
+
+
+def test_thief_caught_by_awake_player(low_rolls):
+    thief = _make_mob(2)
+    player = _make_player(gold=1000)
+    assert special.spec_thief(thief) is True
+    assert player["gold"] == 1000  # caught -- nothing stolen
+
+
+# ---------------------------------------------------------------------------
+# spec_guard
+# ---------------------------------------------------------------------------
+
+def test_guard_attacks_most_evil_fighter(monkeypatch):
+    guard = _make_mob(2)
+    victim_mob = _make_mob(3)
+    player = _make_player(alignment=-500)
+    player["fighting"] = 3
+    victim_mob["fighting"] = 1
+    hits = []
+    monkeypatch.setattr(combat, "multi_hit",
+                        lambda ch, victim, dt: hits.append((ch, victim)))
+    assert special.spec_guard(guard) is True
+    assert hits == [(guard, player)]  # player align -500 < mob align 0
+
+
+def test_guard_ignores_good_fighters(monkeypatch):
+    guard = _make_mob(2)
+    victim_mob = _make_mob(3, alignment=350)
+    player = _make_player(alignment=350)
+    player["fighting"] = 3
+    victim_mob["fighting"] = 1
+    monkeypatch.setattr(combat, "multi_hit",
+                        lambda ch, victim, dt: pytest.fail("should not attack"))
+    assert special.spec_guard(guard) is False
+
+
+# ---------------------------------------------------------------------------
+# spec_janitor
+# ---------------------------------------------------------------------------
+
+def test_janitor_picks_up_trash_vnum():
+    janitor = _make_mob(2)
+    room = world.rooms._data[9001]
+    room["items"].append(TRASH_TPL)  # plain vnum, as area resets place them
+    _make_player()
+    assert special.spec_janitor(janitor) is True
+    assert room["items"] == []
+    assert janitor["inv"] == [TRASH_TPL]
+
+
+def test_janitor_leaves_valuables():
+    janitor = _make_mob(2)
+    room = world.rooms._data[9001]
+    room["items"].append({"vnum": GEM_TPL, "cost": 500})
+    _make_player()
+    assert special.spec_janitor(janitor) is False
+    assert len(room["items"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# spec_nasty
+# ---------------------------------------------------------------------------
+
+def test_nasty_slashes_purse(low_rolls):
+    nasty = _make_mob(2, pos="fighting")
+    player = _make_player(gold=100)
+    nasty["fighting"] = 1
+    assert special.spec_nasty(nasty) is True  # roll 0 -> purse slash
+    assert player["gold"] == 90 and nasty["gold"] == 10
+
+
+# ---------------------------------------------------------------------------
+# spec_cast_undead / judge dispatch
+# ---------------------------------------------------------------------------
+
+def test_cast_judge_uses_high_explosive(low_rolls, cast_log):
+    judge = _make_mob(2, pos="fighting")
+    player = _make_player()
+    player["fighting"] = 2
+    assert special.spec_cast_judge(judge) is True
+    assert cast_log == [("high explosive", player)]
+
+
+def test_cast_undead_picks_level_spell(low_rolls, cast_log):
+    undead = _make_mob(2, pos="fighting")
+    player = _make_player()
+    player["fighting"] = 2
+    assert special.spec_cast_undead(undead) is True
+    assert cast_log == [("curse", player)]  # roll 0 -> curse

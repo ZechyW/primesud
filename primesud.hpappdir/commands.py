@@ -9,11 +9,12 @@ from config import POS_ORDER
 from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_help, do_affects, do_credits, do_areas, do_map, do_automap,
                   do_autolist, do_autoloot, do_autogold, do_autosac,
-                  do_autosplit, do_wimpy, do_exits, do_worth)
+                  do_autosplit, do_wimpy, do_exits, do_worth, do_where)
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
-                       do_sacrifice, do_compare, do_steal, do_give)
+                       do_sacrifice, do_compare, do_steal, do_give,
+                       do_drink, do_fill, do_pour)
 from gquest import do_gquest
 from macros import do_macro
 from magic import do_cast
@@ -184,11 +185,11 @@ _CMD_TABLE = [
     ("yell",       do_yell,       "resting",  False),  # #111
     ("brandish",   do_brandish,   "resting",  False),  # #112
     ("close",      do_close,      "resting",  False),  # #113
-    # ("drink",     do_drink,      "resting",  False),  # #114
+    ("drink",      do_drink,      "resting",  False),  # #114
     ("drop",       do_drop,       "resting",  False),  # #115
     ("eat",        do_eat,        "resting",  False),  # #116
     # ("envenom",   do_envenom,    "resting",  False),  # #117
-    # ("fill",      do_fill,       "resting",  False),  # #118
+    ("fill",       do_fill,       "resting",  False),  # #118
     ("give",       do_give,       "resting",  False),  # #119
     # ("heal",      do_heal,       "resting",  False),  # #120
     # ("hold",      do_wear,       "resting",  False),  # #121
@@ -196,7 +197,7 @@ _CMD_TABLE = [
     ("lock",       do_lock,       "resting",  False),  # #123
     ("open",       do_open,       "resting",  False),  # #124
     ("pick",       do_pick,       "resting",  False),  # #125
-    # ("pour",      do_pour,       "resting",  False),  # #126
+    ("pour",       do_pour,       "resting",  False),  # #126
     ("put",        do_put,        "resting",  False),  # #127
     ("second",     do_second,     "resting",  False),  # #128
     ("quaff",      do_quaff,      "resting",  False),  # #129
@@ -244,7 +245,7 @@ _CMD_TABLE = [
     ("train",      do_train,      "resting",  False),  # #171
     ("visible",    do_visible,    "sleeping", False),  # #172
     ("wake",       do_wake,       "sleeping", False),  # #173
-    # ("where",     do_where,      "resting",  False),  # #174
+    ("where",      do_where,      "resting",  False),  # #174
     # ("showstats", do_showstats,  "sleeping", False),  # #175
     # ("compress",  do_compress,   "dead",     False),  # #176
     ("remort",     do_remort,     "standing", True),   # #177 noprefix

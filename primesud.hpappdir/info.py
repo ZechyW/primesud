@@ -2,9 +2,9 @@
 
 import world
 from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
-                   get_char_room, mob_condition, is_good, is_evil, can_see,
-                   act, TO_CHAR,
-                   number_argument as _number_argument)
+                    get_char_room, mob_condition, is_good, is_evil, can_see,
+                    act, chprintln, TO_CHAR,
+                    number_argument as _number_argument)
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from classes import class_long, class_short
 from colors import color_len, upper, draw_line
@@ -54,6 +54,60 @@ def _wrap_paragraphs(text, width):
             lines.append('')
         lines.extend(_wrap(flat, width))
     return lines
+
+
+def _current_area_def(player):
+    """Return current area metadata and tag. [PRIMESUD]"""
+    tag = ROOM_DEFS[player["room"]].get("area")
+    for area in world.AREA_DEFS:
+        if area.get("tag") == tag:
+            return area, tag
+    return {}, tag
+
+
+def do_where(player, args):
+    """Show area info or matching mob locations (cf. 1stMud do_where in act_info.c).
+
+    [PRIMESUD] No-arg form stops after area info. With an argument, searches
+    all matching mobs in the current area for solo quest/gquest utility.
+    """
+    area, tag = _current_area_def(player)
+    if not args:
+        # [PRIMESUD] "Recomended" typo in 1stMud fixed; labels re-padded
+        # by one to keep the colons aligned
+        chprintln(player, "You are in zone   : " + str(area.get("name", tag)))
+        if area.get("lvl_comment"):
+            chprintln(player, "Recommended Levels: [%-7s]" % area["lvl_comment"])
+        else:
+            levels = area.get("levels", (0, 0))
+            chprintln(player, "Recommended Levels: [%03d %03d]" % (levels[0], levels[1]))
+        chprintln(player, "Author            : [%-7s]" % area.get("credits", ""))
+        return
+
+    target = args[0]
+    rows = []
+    # room_vnums exists only once the area is loaded, and the player being
+    # in it guarantees that, so every lookup below hits loaded data
+    for room_vnum in area.get("room_vnums", []):
+        rs = world.rooms.get(room_vnum)
+        if rs is None:
+            continue
+        room = ROOM_DEFS[room_vnum]
+        for mob_id in rs.get("mobs", []):
+            mob = world.chars.get(mob_id)
+            if mob is None:
+                continue
+            aff = mob.get("affected_by", {})
+            if aff.get("hide") or aff.get("sneak") or not can_see(player, mob):
+                continue
+            tpl = MOB_DEFS[mob["tpl"]]
+            if is_name(target, tpl.get("keywords", "")):
+                rows.append((tpl["short_descr"], room["name"]))
+    if not rows:
+        act("You didn't find any $T.", player, None, target, TO_CHAR)
+        return
+    for name, room_name in rows:
+        chprintln(player, "%-28s %s" % (name[:28], room_name))
 
 
 _FLAG_TABLE = (

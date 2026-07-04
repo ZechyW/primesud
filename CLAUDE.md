@@ -68,5 +68,5 @@ Google-style: one-line summary, then `Args:` / `Returns:` / `Raises:` as needed;
 
 - Read `DESIGN.md`, and relevant reference docs before porting behavior from 1stMud.
 - Provide sanity check and brief explanation of key decisions -- especially HP Prime constraints or PPL interop -- before complex coding.
-- Minimal targeted changes. No surrounding refactor unless asked.
+- Minimal targeted changes. No surrounding refactor unless it is substantially cleaner or better; if so, raise for review.
 - Unsure if Python feature is available on HP Prime? Ask for human check.

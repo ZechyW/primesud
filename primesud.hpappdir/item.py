@@ -26,7 +26,31 @@ def create_object(vnum):
         obj["charges"] = tpl.get("charges", tpl["max_charges"])
     elif "charges" in tpl:
         obj["charges"] = tpl["charges"]
+    # [PRIMESUD] liquid fields stay on the template until first mutated
+    # (inventory._set_liquid), keeping instances and save payloads small
     return obj
+
+
+def promote_obj(player, obj):
+    """Swap a plain-vnum item for a mutable instance dict in place. [PRIMESUD]
+
+    Area resets and pickups keep items as plain ints; state mutation and
+    act() $p rendering need instance dicts. Replaces the first matching
+    vnum in inventory, room, or equipment (identical plain vnums are
+    indistinguishable, so first-match is safe).
+    """
+    if isinstance(obj, dict):
+        return obj
+    inst = create_object(obj)
+    for lst in (player["inv"], world.rooms[player["room"]]["items"]):
+        if obj in lst:
+            lst[lst.index(obj)] = inst
+            return inst
+    for slot in player["equip"]:
+        if player["equip"][slot] == obj:
+            player["equip"][slot] = inst
+            return inst
+    return inst
 
 
 def item_extra_flags(obj, tpl):
@@ -217,6 +241,15 @@ def serialize_item_token(obj):
         fields.append("af:" + ",".join(parts))
     if "timer" in obj:
         fields.append("ti:" + str(obj["timer"]))
+    if "liquid_left" in obj:
+        fields.append("ll:" + str(obj["liquid_left"]))
+    if "liquid_total" in obj:
+        fields.append("lt:" + str(obj["liquid_total"]))
+    if "liquid_type" in obj:
+        fields.append("lq:" + _str_escape(str(obj["liquid_type"])))
+    if "poisoned" in obj:
+        # explicit 0 preserved: a cleared poison must override template
+        fields.append("po:" + ("1" if obj["poisoned"] else "0"))
     if "short_descr" in obj:
         fields.append("sd:" + _str_escape(str(obj["short_descr"])))
     if "description" in obj:
@@ -271,6 +304,14 @@ def parse_item_token(token):
             })
         elif key == "ti":
             obj["timer"] = int(value)
+        elif key == "ll":
+            obj["liquid_left"] = int(value)
+        elif key == "lt":
+            obj["liquid_total"] = int(value)
+        elif key == "lq":
+            obj["liquid_type"] = _str_unescape(value)
+        elif key == "po":
+            obj["poisoned"] = value == "1"
         elif key == "sd":
             obj["short_descr"] = _str_unescape(value)
         elif key == "de":

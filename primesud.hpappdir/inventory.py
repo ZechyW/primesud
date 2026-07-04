@@ -3,22 +3,24 @@
 import world
 from handler import (get_curr_stat, is_name, equip_char, unequip_char, act,
                      get_char_room, can_see, can_see_obj, is_awake,
-                     affect_strip, chprintln, chprintlnf,
-                     TO_CHAR, TO_VICT, TO_NOTVICT)
+                     affect_strip, affect_join, chprintln, chprintlnf,
+                     TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT)
 from world import (I_BANNER_WAR_MERC,
                    I_MACE_SUB_MERC, I_DAGGER_SUB_MERC, I_SWORD_SUB_MERC,
                    I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,
                    I_SPEAR_SUB_MERC, I_AXE_SUB_MERC, I_FLAIL_SUB_MERC,
                    I_WHIP_SUB_MERC, I_GLAIVE_SUB_MERC)
-from combat import _get_weapon_skill, is_safe, multi_hit
+from combat import _get_weapon_skill, is_safe, multi_hit, number_fuzzy
 from comm import do_yell
 from skill_utils import WaitState, check_improve, get_skill
 from config import (STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS,
                     MAX_LEVEL, MAX_MORTAL_LEVEL, TYPE_UNDEFINED)
 from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   item_extra_flags, item_wear_flags, apply_money_pickup,
-                  can_drop_obj, can_carry_n, can_carry_w, get_obj_weight)
-from magic import cast_item_spells, validate_item_spell_payload
+                  can_drop_obj, can_carry_n, can_carry_w, get_obj_weight,
+                  promote_obj as _promote_obj)
+from magic import (cast_item_spells, validate_item_spell_payload,
+                   _new_affect, _skill_lookup)
 from picker import pick_from
 from quest import (quest_obj_check, is_quester, QUEST_DELIVER,
                    QUEST_RETURN_DELIVER, _giver_name)
@@ -988,6 +990,216 @@ def do_eat(player, args):
     if tpl["type"] == "pill":
         cast_item_spells(player, obj, player, None)
     player["inv"].remove(obj)
+
+
+def _liquid_left(obj, tpl):
+    """Return current liquid units for a drink object. [PRIMESUD]"""
+    if isinstance(obj, dict) and "liquid_left" in obj:
+        return obj["liquid_left"]
+    return tpl.get("liquid_left", 0)
+
+
+def _liquid_total(obj, tpl):
+    """Return liquid capacity for a drink object. [PRIMESUD]"""
+    if isinstance(obj, dict) and "liquid_total" in obj:
+        return obj["liquid_total"]
+    return tpl.get("liquid_total", 0)
+
+
+def _liquid_type(obj, tpl):
+    """Return current liquid type for a drink object. [PRIMESUD]"""
+    if isinstance(obj, dict) and "liquid_type" in obj:
+        return obj["liquid_type"]
+    return tpl.get("liquid_type", "water")
+
+
+def _set_liquid(obj, tpl, left, liq):
+    """Persist mutable liquid state onto an item instance. [PRIMESUD]"""
+    obj["liquid_total"] = _liquid_total(obj, tpl)
+    obj["liquid_left"] = left
+    obj["liquid_type"] = liq
+
+
+def _is_poisoned_drink(obj, tpl):
+    """Return True if drink object/template is poisoned. [PRIMESUD]
+
+    An explicit instance value wins over the template so a poisoned drink
+    stays clean after `pour out` clears it (1stMud value[3] = 0).
+    """
+    if isinstance(obj, dict) and "poisoned" in obj:
+        return obj["poisoned"]
+    return tpl.get("poisoned")
+
+
+# Sip sizes for liquids used in area data, from 1stMud liq_table
+# liq_affect[4] (cf. const.c); unlisted liquids fall back to water.
+_LIQ_SIP = {
+    "water": 16, "beer": 12, "red wine": 5, "ale": 12, "dark ale": 12,
+    "whisky": 2, "firebreather": 2, "local specialty": 2, "milk": 12,
+    "tea": 6, "coffee": 6, "blood": 6,
+}
+
+
+def _first_room_fountain(player):
+    """Return the first fountain in the current room (cf. 1stMud do_drink/do_fill fountain scan in act_obj.c)."""
+    for obj in world.rooms[player["room"]]["items"]:
+        if ITEM_DEFS[obj_vnum(obj)].get("type") == "fountain":
+            return obj
+    return None
+
+
+def do_drink(player, args):
+    """Drink from a fountain or drink container (cf. 1stMud do_drink in act_obj.c).
+
+    [PRIMESUD] Drunk/hunger/thirst condition tracking (gain_condition and
+    the COND_* checks) is intentionally omitted.
+    """
+    if not args:
+        obj = _first_room_fountain(player)
+        if obj is None:
+            chprintln(player, "Drink what?")
+            return
+    else:
+        obj = get_obj_here(player, " ".join(args))
+        if obj is None:
+            chprintln(player, "You can't find it.")
+            return
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    otype = tpl.get("type")
+    if otype == "fountain":
+        liq = _liquid_type(obj, tpl)
+        amount = _LIQ_SIP.get(liq, _LIQ_SIP["water"]) * 3
+    elif otype == "drink":
+        if _liquid_left(obj, tpl) <= 0:
+            chprintln(player, "It is already empty.")
+            return
+        liq = _liquid_type(obj, tpl)
+        amount = min(_LIQ_SIP.get(liq, _LIQ_SIP["water"]), _liquid_left(obj, tpl))
+    else:
+        chprintln(player, "You can't drink from that.")
+        return
+    # 1stMud: value[0] == 0 means an unlimited source (typical fountain);
+    # those never mutate, so a transient instance renders act $p without
+    # persisting to room items / save payload [PRIMESUD]
+    if _liquid_total(obj, tpl) > 0:
+        obj = _promote_obj(player, obj)
+    elif not isinstance(obj, dict):
+        obj = create_object(obj_vnum(obj))
+    act("$n drinks $T from $p.", player, obj, liq, TO_ROOM)
+    act("You drink $T from $p.", player, obj, liq, TO_CHAR)
+    if _is_poisoned_drink(obj, tpl):
+        # 1stMud applies the poison affect directly -- no saving throw
+        act("$n chokes and gags.", player, None, None, TO_ROOM)
+        chprintln(player, "You choke and gag.")
+        affect_join(player, _new_affect(_skill_lookup("poison"),
+                                        number_fuzzy(amount), amount * 3,
+                                        None, 0, "poison"))
+    if _liquid_total(obj, tpl) > 0:
+        _set_liquid(obj, tpl, _liquid_left(obj, tpl) - amount, liq)
+
+
+def do_fill(player, args):
+    """Fill a drink container from a fountain (cf. 1stMud do_fill in act_obj.c)."""
+    if not args:
+        chprintln(player, "Fill what?")
+        return
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS)
+    if obj is None:
+        chprintln(player, "You do not have that item.")
+        return
+    fountain = _first_room_fountain(player)
+    if fountain is None:
+        chprintln(player, "There is no fountain here!")
+        return
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    if tpl.get("type") != "drink":
+        chprintln(player, "You can't fill that.")
+        return
+    ftpl = ITEM_DEFS[obj_vnum(fountain)]
+    left = _liquid_left(obj, tpl)
+    fliq = _liquid_type(fountain, ftpl)
+    if left != 0 and _liquid_type(obj, tpl) != fliq:
+        chprintln(player, "There is already another liquid in it.")
+        return
+    if left >= _liquid_total(obj, tpl):
+        chprintln(player, "Your container is full.")
+        return
+    obj = _promote_obj(player, obj)
+    # fountain is never mutated by fill; transient instance renders act $P
+    # without persisting to room items / save payload [PRIMESUD]
+    if not isinstance(fountain, dict):
+        fountain = create_object(obj_vnum(fountain))
+    act("You fill $p with %s from $P." % fliq, player, obj, fountain, TO_CHAR)
+    act("$n fills $p with %s from $P." % fliq, player, obj, fountain, TO_ROOM)
+    _set_liquid(obj, tpl, _liquid_total(obj, tpl), fliq)
+
+
+def do_pour(player, args):
+    """Pour liquid between drink containers or onto the ground (cf. 1stMud do_pour in act_obj.c).
+
+    [PRIMESUD] Pouring for another character holding a container
+    (get_char_room + WEAR_HOLD fallback) is not ported.
+    """
+    if len(args) < 2:
+        chprintln(player, "Pour what into what?")
+        return
+    out = get_obj_list(args[0], player["inv"], ITEM_DEFS)
+    if out is None:
+        chprintln(player, "You don't have that item.")
+        return
+    tpl = ITEM_DEFS[obj_vnum(out)]
+    if tpl.get("type") != "drink":
+        chprintln(player, "That's not a drink container.")
+        return
+    liq = _liquid_type(out, tpl)
+    argument = " ".join(args[1:])
+    if argument == "out":
+        if _liquid_left(out, tpl) == 0:
+            chprintln(player, "It's already empty.")
+            return
+        out = _promote_obj(player, out)
+        _set_liquid(out, tpl, 0, liq)
+        out["poisoned"] = False  # 1stMud: value[3] = 0
+        act("You invert $p, spilling %s all over the ground." % liq,
+            player, out, None, TO_CHAR)
+        act("$n inverts $p, spilling %s all over the ground." % liq,
+            player, out, None, TO_ROOM)
+        return
+    # out must be promoted BEFORE the dest lookup: if both names match the
+    # same plain-vnum element, the lookup then returns the promoted dict and
+    # the `dest is out` self-pour check below stays sound (`is` on equal
+    # ints is unreliable) [PRIMESUD]
+    out = _promote_obj(player, out)
+    dest = get_obj_here(player, argument)
+    if dest is None:
+        # [PRIMESUD] 1stMud falls back to pouring for a character holding
+        # a container; no such targets exist in PrimeSUD
+        chprintln(player, "Pour into what?")
+        return
+    dtpl = ITEM_DEFS[obj_vnum(dest)]
+    if dtpl.get("type") != "drink":
+        chprintln(player, "You can only pour into other drink containers.")
+        return
+    if dest is out:
+        chprintln(player, "You cannot change the laws of physics!")
+        return
+    dleft = _liquid_left(dest, dtpl)
+    if dleft != 0 and _liquid_type(dest, dtpl) != liq:
+        chprintln(player, "They don't hold the same liquid.")
+        return
+    if _liquid_left(out, tpl) == 0:
+        act("There's nothing in $p to pour.", player, out, None, TO_CHAR)
+        return
+    # promote only once a mutation or act $p render is certain [PRIMESUD]
+    dest = _promote_obj(player, dest)
+    if dleft >= _liquid_total(dest, dtpl):
+        act("$p is already filled to the top.", player, dest, None, TO_CHAR)
+        return
+    amount = min(_liquid_left(out, tpl), _liquid_total(dest, dtpl) - dleft)
+    _set_liquid(dest, dtpl, dleft + amount, liq)
+    _set_liquid(out, tpl, _liquid_left(out, tpl) - amount, liq)
+    act("You pour %s from $p into $P." % liq, player, out, dest, TO_CHAR)
+    act("$n pours %s from $p into $P." % liq, player, out, dest, TO_ROOM)
 
 
 def _find_here_char_or_obj(player, target_name):
