@@ -239,6 +239,28 @@ def test_portal_targets_unloaded_area_mob(out, monkeypatch, tmp_path):
     assert world.rooms._data[9001]["items"][0]["to_vnum"] == 9002
 
 
+def test_find_unloaded_mob_second_mob_same_area(monkeypatch, tmp_path):
+    # first index hit has no instance; sibling mob spawned by the same
+    # area load must still be found (later same-tag lines get skipped)
+    _make_player(9001)
+    idx = tmp_path / "mob_index.dat"
+    idx.write_text("testarea|9402|red dragon\n"
+                   "testarea|9403|blue dragon\n")
+    monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
+
+    def fake_load(tag):
+        # 9402 never spawns; 9403 does
+        MOB_DEFS._data[9403] = {"keywords": "blue dragon",
+                                "short_descr": "a blue dragon", "level": 10}
+        _make_mob(3, room=9002, tpl=9403)
+        world._LOADED_AREAS.add(tag)
+    monkeypatch.setattr(world, "_ensure_area_by_tag", fake_load)
+    monkeypatch.setattr(world, "_LOADED_AREAS", set())
+    cid, mob = magic._find_unloaded_mob("dragon")
+    assert cid == 3
+    assert mob["tpl"] == 9403
+
+
 def test_find_unloaded_mob_edge_cases(monkeypatch, tmp_path):
     # missing index file: quiet None
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(tmp_path / "absent.dat"))

@@ -2529,21 +2529,25 @@ def _find_unloaded_mob(tail):
             line = f.readline()
             if not line:
                 break
-            parts = line.rstrip("\n").split("|", 2)
+            parts = line.rstrip().split("|", 2)
             if len(parts) < 3:
                 continue
-            tag, vnum, keywords = parts
+            tag, _vnum, keywords = parts
             if tag in world._LOADED_AREAS:
                 continue  # already covered by the world.chars scan
             if not is_name(tail, keywords):
                 continue
             world._ensure_area_by_tag(tag)
-            vnum = int(vnum)
+            # Re-scan chars by keywords (not just this line's vnum): the
+            # load spawned ALL of the area's mobs, and its remaining index
+            # lines are skipped by the _LOADED_AREAS guard above.
             for _cid, _c in world.chars.items():
-                if _c.get("is_npc") and _c.get("tpl") == vnum:
+                if not _c.get("is_npc"):
+                    continue
+                _tpl = MOB_DEFS.get(_c.get("tpl"), {})
+                if is_name(tail, _tpl.get("keywords", "")):
                     return _cid, _c
-            # area loaded but no instance spawned (dead / limit 0);
-            # keep scanning further index lines
+            # area loaded but no matching instance spawned (dead / limit 0)
             loads += 1
             if loads >= 2:  # ponytail: cap heap growth per cast
                 break
