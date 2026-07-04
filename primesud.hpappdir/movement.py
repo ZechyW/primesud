@@ -599,7 +599,8 @@ def do_close(player, args):
     """Close a door in a given direction or by keyword (cf. 1stMud do_close in act_move.c).
 
     ITEM_PORTAL / ITEM_CONTAINER branches not ported -- doors only [PRIMESUD].
-    [Verified: 03/07/2026]
+    [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
+    room + far-side messages) added and re-verified 04/07/2026]
     """
     exits = ROOM_DEFS[player["room"]]["exits"]
     _picked_dir = None
@@ -613,7 +614,7 @@ def do_close(player, args):
                       if isinstance(exits.get(d), dict)
                       and exits[d].get("isdoor") and not exits[d].get("closed")]
         if not candidates:
-            tprint("There are no open doors to close here.")
+            chprintln(player, "There are no open doors to close here.")
             return
         idx = pick_from("Close which door?", [EXIT_NAMES[d] for d in candidates])
         if idx < 0:
@@ -622,21 +623,27 @@ def do_close(player, args):
         _picked_dir = direction
     exit_val = exits[direction]
     if exit_val.get("closed"):
-        tprint("It's already closed.")
+        chprintln(player, "It's already closed.")
         return
     # [PRIMESUD] 1stMud only checks EX_NOCLOSE on portals, not doors;
     # guard kept so noclose exits stay open
     if exit_val.get("noclose"):
-        tprint("You can't do that.")
+        chprintln(player, "You can't do that.")
         return
     exit_val["closed"] = True
-    tprint("Ok.")
+    act("$n closes the $d.", player, None, exit_val.get("keyword"), TO_ROOM)
+    chprintln(player, "Ok.")
     dest = exit_val["to"]
     rev = REV_DIR.get(direction)
     if rev and dest in ROOM_DEFS:
         rev_exit = ROOM_DEFS[dest]["exits"].get(rev)
         if isinstance(rev_exit, dict) and _exit_to(rev_exit) == player["room"]:
             rev_exit["closed"] = True
+            # cf. act_move.c:578-580: notify chars on the far side
+            for rch in world.chars.values():
+                if rch.get("room") == dest:
+                    act("The $d closes.", rch, None, rev_exit.get("keyword"),
+                        TO_CHAR)
     return ("close " + EXIT_NAMES[_picked_dir].lower()) if _picked_dir is not None else None
 
 
@@ -678,7 +685,7 @@ def _door_for_lock_cmd(player, args, verb, want_locked):
                       and exits[d].get("key") is not None
                       and bool(exits[d].get("locked")) == want_locked]
         if not candidates:
-            tprint("There are no doors to " + verb.lower() + " here.")
+            chprintln(player, "There are no doors to " + verb.lower() + " here.")
             return None, None, False
         idx = pick_from(verb + " which door?", [EXIT_NAMES[d] for d in candidates])
         if idx < 0:
@@ -699,47 +706,55 @@ def _set_rev_lock(player, direction, exit_val, locked):
 
 
 def do_lock(player, args):
-    """Lock a closed door with its key (cf. 1stMud do_lock in act_move.c). [Verified: 03/07/2026]"""
+    """Lock a closed door with its key (cf. 1stMud do_lock in act_move.c).
+    [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
+    room message) added and re-verified 04/07/2026]
+    """
     direction, exit_val, picked = _door_for_lock_cmd(player, args, "Lock", False)
     if exit_val is None:
         return
     if not exit_val.get("closed"):
-        tprint("It's not closed.")
+        chprintln(player, "It's not closed.")
         return
     if exit_val.get("key") is None:
-        tprint("It can't be locked.")
+        chprintln(player, "It can't be locked.")
         return
     if not _has_key(player, exit_val["key"]):
-        tprint("You lack the key.")
+        chprintln(player, "You lack the key.")
         return
     if exit_val.get("locked"):
-        tprint("It's already locked.")
+        chprintln(player, "It's already locked.")
         return
     exit_val["locked"] = True
-    tprint("*Click*")
+    chprintln(player, "*Click*")
+    act("$n locks the $d.", player, None, exit_val.get("keyword"), TO_ROOM)
     _set_rev_lock(player, direction, exit_val, True)
     return ("lock " + EXIT_NAMES[direction].lower()) if picked else None
 
 
 def do_unlock(player, args):
-    """Unlock a closed door with its key (cf. 1stMud do_unlock in act_move.c). [Verified: 03/07/2026]"""
+    """Unlock a closed door with its key (cf. 1stMud do_unlock in act_move.c).
+    [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
+    room message) added and re-verified 04/07/2026]
+    """
     direction, exit_val, picked = _door_for_lock_cmd(player, args, "Unlock", True)
     if exit_val is None:
         return
     if not exit_val.get("closed"):
-        tprint("It's not closed.")
+        chprintln(player, "It's not closed.")
         return
     if exit_val.get("key") is None:
-        tprint("It can't be unlocked.")
+        chprintln(player, "It can't be unlocked.")
         return
     if not _has_key(player, exit_val["key"]):
-        tprint("You lack the key.")
+        chprintln(player, "You lack the key.")
         return
     if not exit_val.get("locked"):
-        tprint("It's already unlocked.")
+        chprintln(player, "It's already unlocked.")
         return
     exit_val["locked"] = False
-    tprint("*Click*")
+    chprintln(player, "*Click*")
+    act("$n unlocks the $d.", player, None, exit_val.get("keyword"), TO_ROOM)
     _set_rev_lock(player, direction, exit_val, False)
     return ("unlock " + EXIT_NAMES[direction].lower()) if picked else None
 
@@ -747,12 +762,13 @@ def do_unlock(player, args):
 def do_pick(player, args):
     """Pick a door lock using the pick lock skill (cf. 1stMud do_pick in act_move.c).
 
-    [Verified: 03/07/2026] -- [PRIMESUD] intentional reorder: target door is
-    resolved (with picker) before WaitState/close-stander/skill roll, while
-    1stMud rolls before find_door. Deliberately removes a 1stMud quirk where
-    picking a nonexistent door still costs lag, rolls the skill, and can
-    train pick lock via check_improve on the failed roll (train-on-typo
-    exploit). Do not "fix" back to 1stMud order.
+    [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
+    room message) added and re-verified 04/07/2026] -- [PRIMESUD] intentional
+    reorder: target door is resolved (with picker) before WaitState/close-
+    stander/skill roll, while 1stMud rolls before find_door. Deliberately
+    removes a 1stMud quirk where picking a nonexistent door still costs lag,
+    rolls the skill, and can train pick lock via check_improve on the failed
+    roll (train-on-typo exploit). Do not "fix" back to 1stMud order.
     """
     direction, exit_val, picked = _door_for_lock_cmd(player, args, "Pick", True)
     if exit_val is None:
@@ -769,25 +785,26 @@ def do_pick(player, args):
             return
 
     if randint(1, 100) > get_skill(player, GSN_PICK_LOCK):
-        tprint("You failed.")
+        chprintln(player, "You failed.")
         check_improve(player, GSN_PICK_LOCK, False, 2)
         return
 
     if not exit_val.get("closed"):
-        tprint("It's not closed.")
+        chprintln(player, "It's not closed.")
         return
     if exit_val.get("key") is None:
-        tprint("It can't be picked.")
+        chprintln(player, "It can't be picked.")
         return
     if not exit_val.get("locked"):
-        tprint("It's already unlocked.")
+        chprintln(player, "It's already unlocked.")
         return
     if exit_val.get("pickproof"):
-        tprint("You failed.")
+        chprintln(player, "You failed.")
         return
 
     exit_val["locked"] = False
-    tprint("*Click*")
+    chprintln(player, "*Click*")
+    act("$n picks the $d.", player, None, exit_val.get("keyword"), TO_ROOM)
     check_improve(player, GSN_PICK_LOCK, True, 2)
     _set_rev_lock(player, direction, exit_val, False)
     return ("pick " + EXIT_NAMES[direction].lower()) if picked else None

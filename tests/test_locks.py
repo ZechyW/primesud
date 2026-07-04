@@ -151,3 +151,138 @@ class TestPick:
         finally:
             MOB_DEFS._data.clear()
             MOB_DEFS._data.update(old_mobs)
+
+
+class TestDoorActRouting:
+    def test_close_room_act_and_ok(self, scene, out):
+        _door()["closed"] = False
+        _door(3002, "s")["closed"] = False
+        movement.do_close(scene, ["north"])
+        assert _door()["closed"] is True
+        assert _door(3002, "s")["closed"] is True
+        assert "Ok." in out
+        assert not any("closes the" in l for l in out)
+
+    def test_close_far_side_message(self, scene, out):
+        from world import MOB_DEFS
+        old_mobs = dict(MOB_DEFS._data)
+        MOB_DEFS._data[9002] = {"short_descr": "a test dog",
+                                "keywords": "dog test"}
+        _door()["closed"] = False
+        _door(3002, "s")["closed"] = False
+        npc = _char_base()
+        npc.update({"is_npc": True, "id": 2, "tpl": 9002, "room": 3001,
+                    "level": 5, "pos": "standing"})
+        world.chars[2] = npc
+        world.rooms[3001]["mobs"] = [2]
+        scene["room"] = 3002
+        try:
+            movement.do_close(npc, ["north"])
+            assert _door()["closed"] is True
+            assert any("The door closes" in l for l in out)
+            assert "Ok." not in out
+        finally:
+            MOB_DEFS._data.clear()
+            MOB_DEFS._data.update(old_mobs)
+            if 2 in world.chars:
+                del world.chars[2]
+
+    def test_close_npc_room_act_visible(self, scene, out):
+        from world import MOB_DEFS
+        old_mobs = dict(MOB_DEFS._data)
+        MOB_DEFS._data[9002] = {"short_descr": "a test dog",
+                                "keywords": "dog test"}
+        _door()["closed"] = False
+        _door(3002, "s")["closed"] = False
+        npc = _char_base()
+        npc.update({"is_npc": True, "id": 2, "tpl": 9002, "room": 3001,
+                    "level": 5, "pos": "standing"})
+        world.chars[2] = npc
+        world.rooms[3001]["mobs"] = [2]
+        try:
+            movement.do_close(npc, ["north"])
+            assert any("closes the door" in l for l in out)
+            assert "Ok." not in out
+        finally:
+            MOB_DEFS._data.clear()
+            MOB_DEFS._data.update(old_mobs)
+            if 2 in world.chars:
+                del world.chars[2]
+
+    def test_lock_npc_no_click_leak(self, scene, out, monkeypatch):
+        from world import MOB_DEFS
+        old_mobs = dict(MOB_DEFS._data)
+        MOB_DEFS._data[9002] = {"short_descr": "a test dog",
+                                "keywords": "dog test"}
+        _door()["closed"] = True
+        _door()["locked"] = False
+        _door(3002, "s")["closed"] = True
+        _door(3002, "s")["locked"] = False
+        npc = _char_base()
+        npc.update({"is_npc": True, "id": 2, "tpl": 9002, "room": 3001,
+                    "level": 5, "pos": "standing", "inv": [{"vnum": KEY_VNUM}]})
+        world.chars[2] = npc
+        world.rooms[3001]["mobs"] = [2]
+        try:
+            movement.do_lock(npc, ["north"])
+            assert _door()["locked"] is True
+            assert any("locks the door" in l for l in out)
+            assert "*Click*" not in out
+        finally:
+            MOB_DEFS._data.clear()
+            MOB_DEFS._data.update(old_mobs)
+            if 2 in world.chars:
+                del world.chars[2]
+
+    def test_unlock_npc_room_act(self, scene, out):
+        from world import MOB_DEFS
+        old_mobs = dict(MOB_DEFS._data)
+        MOB_DEFS._data[9002] = {"short_descr": "a test dog",
+                                "keywords": "dog test"}
+        _door()["closed"] = True
+        _door()["locked"] = True
+        _door(3002, "s")["closed"] = True
+        _door(3002, "s")["locked"] = True
+        npc = _char_base()
+        npc.update({"is_npc": True, "id": 2, "tpl": 9002, "room": 3001,
+                    "level": 5, "pos": "standing", "inv": [{"vnum": KEY_VNUM}]})
+        world.chars[2] = npc
+        world.rooms[3001]["mobs"] = [2]
+        try:
+            movement.do_unlock(npc, ["north"])
+            assert _door()["locked"] is False
+            assert any("unlocks the door" in l for l in out)
+            assert "*Click*" not in out
+        finally:
+            MOB_DEFS._data.clear()
+            MOB_DEFS._data.update(old_mobs)
+            if 2 in world.chars:
+                del world.chars[2]
+
+    def test_pick_npc_room_act(self, scene, out, monkeypatch):
+        from world import MOB_DEFS
+        old_mobs = dict(MOB_DEFS._data)
+        MOB_DEFS._data[9002] = {"short_descr": "a test dog",
+                                "keywords": "dog test"}
+        _door()["closed"] = True
+        _door()["locked"] = True
+        _door(3002, "s")["closed"] = True
+        _door(3002, "s")["locked"] = True
+        npc = _char_base()
+        npc.update({"is_npc": True, "id": 2, "tpl": 9002, "room": 3001,
+                    "level": 5, "pos": "standing"})
+        world.chars[2] = npc
+        world.rooms[3001]["mobs"] = [2]
+        monkeypatch.setattr(movement, "get_skill", lambda ch, sn: 100)
+        monkeypatch.setattr(movement, "randint", lambda a, b: 1)
+        monkeypatch.setattr(movement, "check_improve", lambda *a: None)
+        try:
+            movement.do_pick(npc, ["north"])
+            assert _door()["locked"] is False
+            assert any("picks the door" in l for l in out)
+            assert "*Click*" not in out
+        finally:
+            MOB_DEFS._data.clear()
+            MOB_DEFS._data.update(old_mobs)
+            if 2 in world.chars:
+                del world.chars[2]
