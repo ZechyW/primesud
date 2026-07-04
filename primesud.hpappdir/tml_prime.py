@@ -165,6 +165,16 @@ class tml_prime(tml):
     # Non-blocking poll -- replaces the standalone _poll_char function
     # ------------------------------------------------------------------
 
+    # [PRIMESUD] No get_key() (from `cas`) here, unlike a naive blocking-read
+    # port. Root cause of a former dropped-keystroke bug: get_key() blocks on
+    # the firmware's software key-event queue, which lags a poll behind
+    # keyboard()'s hardware bitmask read. Touch scrollback never populates
+    # that queue, so the first post-touch keypress would stall get_key()
+    # until the *next* keypress -- eating one char and offsetting the rest.
+    # keyboard() alone is race-free here. NOTE: base tml.read_key() still
+    # calls get_key() the same way; harmless there since a blocking read
+    # gives firmware time to queue first, but watch for the same bug if
+    # blocking-input keystrokes ever go missing.
     def poll_char(self, key_commands=None):
         """Non-blocking: return (char, auto_submit) if a new key was pressed, else None."""
         # -- touch entry into scrollback (game-loop path) --

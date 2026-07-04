@@ -101,6 +101,33 @@ loop (`poll_char`).  Screen is saved to GROB 6 on entry and restored on exit.
 Ring size and step are configurable via `tml_prime` constructor args
 `scrollback_size` and `scroll_step`.
 
+### Touch scrollback
+
+Alongside the key bindings above, a vertical drag on the touchscreen
+(`hpprime.mouse()`) can enter and drive scrollback.  Only the first touch
+slot (finger 0) is read; a second touch point is ignored.
+
+| Gesture | Action |
+|---------|--------|
+| Swipe down (drag toward the bottom of the screen) | Enter scrollback, or scroll further back if already inside it |
+| Swipe up (drag toward the top of the screen) | Scroll toward the present; exits automatically at depth 0 |
+| Tap (lift with no significant vertical movement) | No-op -- stays put, so an accidental touch can't eject the player |
+| Continued drag past the threshold | Keeps scrolling in `touch_scroll_step`-row steps for as long as the finger is held, without needing to lift and re-swipe |
+
+Entry (from the game loop's `poll_char`) fires as soon as the drag exceeds
+`swipe_threshold` pixels while the finger is still down; a sub-threshold
+lift resets the touch state as a tap.  Once inside scrollback, `_scrollback()`
+measures drag distance against `touch_scroll_step * char_height` pixels per
+step, so a continued hold-and-drag keeps scrolling mid-hold.
+
+Touch and keyboard scrollback share the same underlying `_scrollback()` loop,
+so switching between Shift+-/Shift++ and touch mid-session works naturally.
+
+Constructor args (`tml_prime`): `swipe_threshold` (default 20 px) is the
+minimum drag distance to register as a swipe rather than a tap;
+`touch_scroll_step` (default 3 rows) is how many rows each scroll step moves
+once inside scrollback.
+
 ---
 
 ## Status bar prompt

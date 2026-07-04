@@ -499,3 +499,76 @@ M_GUARD: {
 - **`# TODO` comments** mark `.are` features that weren't converted because the
   corresponding PrimeSUD system (doors, mob equipment, shops) is not yet implemented.
   Keep them verbatim from the source file so the original data isn't lost.
+
+---
+
+## Flag bits reference
+
+Full ROM/1stMud bit-to-name maps used by the area-file converters
+(`tools/are_to_primesud.py`, `tools/are_to_primesud_quickmud.py`) to decode
+`.are` bit-strings into the `act_flags` / `affected_by` / `off_flags` /
+`imm_flags` / `res_flags` / `vuln_flags` dicts described above. Useful when
+auditing any area file's `.py` output against its `.are` source by hand. Bit
+0 of `act_flags` (`is_npc`) is always set for mobiles and is omitted from the
+converted dict.
+
+### ACT_FLAGS (bit -> name)
+
+```
+1=sentinel  2=scavenger  5=aggressive  6=stay_area  7=wimpy
+8=pet  9=train  10=practice  14=undead  16=cleric  17=mage
+18=thief  19=warrior  20=noalign  21=nopurge  22=outdoors
+24=indoors  26=healer  27=gain  28=update_always  29=changer
+```
+
+### AFFECTED_BY (bit -> name)
+
+```
+0=blind  1=invisible  2=detect_evil  3=detect_invis  4=detect_magic
+5=detect_hidden  6=detect_good  7=sanctuary  8=faerie_fire  9=infrared
+10=curse  12=poison  13=protect_evil  14=protect_good  15=sneak  16=hide
+17=sleep  18=charm  19=flying  20=pass_door  21=haste  22=calm  23=plague
+24=weaken  25=dark_vision  26=berserk  27=swim  28=regeneration  29=slow
+```
+
+### OFF_FLAGS (bit -> name)
+
+```
+0=area_attack  1=backstab  2=bash  3=berserk  4=disarm  5=dodge
+6=fade  7=fast  8=kick  9=kick_dirt  10=parry  11=rescue  12=tail
+13=trip  14=crush  15=assist_all  16=assist_align  17=assist_race
+18=assist_players  19=assist_guard  20=assist_vnum
+```
+
+### RESIST_FLAGS (bit -> name; shared by imm_flags / res_flags / vuln_flags)
+
+```
+0=summon  1=charm  2=magic  3=weapon  4=bash  5=pierce  6=slash
+7=fire  8=cold  9=lightning  10=acid  11=poison  12=negative  13=holy
+14=energy  15=mental  16=disease  17=drowning  18=light  19=sound
+23=wood  24=silver  25=iron
+```
+
+### AC interpretation
+
+Raw `.are` AC values are per-bucket (`pierce, bash, slash, exotic`) and are
+kept as-is by the converter -- see `armor` under ROOMS/MOBILES/OBJECTS above.
+Runtime combat (`handler.get_armor`, `combat.py`) uses each bucket
+independently rather than a single combined score: `mob.py` multiplies the
+raw `.are` value by 10 on load, and `combat.py` divides back by 10 per
+bucket when checking to-hit.
+
+The formula below is **not** the runtime formula. It is a quick eyeball
+conversion for reading a raw four-bucket `.are` AC line as a single
+traditional descriptor (10 = unarmored, lower/negative = better armored)
+while auditing a new area file:
+
+`ac = (sum of 4 AC values) // 4 // 10` (Python floor division, rounds toward
+negative infinity)
+
+Examples:
+- All 10s -> 40 // 4 = 10, 10 // 10 = **1**
+- (8, 8, 8, 10) -> 34 // 4 = 8, 8 // 10 = **0**
+- (7, 7, 7, 9) -> 30 // 4 = 7, 7 // 10 = **0**
+- (6, 5, 6, 7) -> 24 // 4 = 6, 6 // 10 = **0**
+- All -15 -> -60 // 4 = -15, -15 // 10 = **-2**
