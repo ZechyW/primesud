@@ -280,6 +280,6 @@ OBJECTS = {
 # ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: not enforced by runtime yet
 # F and D .are resets are baked into room exit flags at conversion time
 RESETS = (
-    ("O", 3415, 3),
+    # [PRIMESUD] dropped ("O", 3415, 3) (defer cross-area load)
     ("R", 3, 1),
 )

@@ -344,8 +344,20 @@ class PrimeSud:
                 game.tr.print("")
                 new_game(game)
             else:                       # save loaded
+                # Preload limbo before the status line so its "Loading area"
+                # notice groups with the player-area loads, not after them.
+                world._ensure_area_by_tag("limbo")
                 game.tr.print("Loaded from: %s." % result)
                 game.tr.print("")
+
+            # [PRIMESUD] Preload limbo: it holds the morgue where corpses spawn
+            # (I_CORPSE), so a first mob kill would otherwise trigger its lazy
+            # load mid-combat, printing "Loading area" into the kill sequence.
+            # Its chapel-pulling sarcophagus reset is dropped at convert time
+            # (patch_1stmud_deltas.py), so this stays self-contained. Idempotent
+            # no-op on the load path (done above); real preload for new-game
+            # paths, whose new_game() -> reset_lazy() would wipe an earlier one.
+            world._ensure_area_by_tag("limbo")
 
             try:
                 game.game_loop()

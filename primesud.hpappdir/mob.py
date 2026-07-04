@@ -399,7 +399,11 @@ def mobile_update(tr, player):
         if isinstance(exit_val, dict) and exit_val.get("closed"):  # cf. EX_CLOSED check, update.c:499
             continue
         dest_vnum = exit_val["to"] if isinstance(exit_val, dict) else exit_val
-        if dest_vnum not in ROOM_DEFS:
+        if dest_vnum not in ROOM_DEFS._data:
+            # [PRIMESUD] Only wander into already-resident rooms. `in ROOM_DEFS`
+            # would lazy-load a foreign area in full just to answer the probe
+            # (and the mob usually despawns outside home anyway); defer area
+            # loads to when the *player* actually crosses the border.
             continue
         dest_flags = ROOM_DEFS[dest_vnum].get("flags", {})
         if dest_flags.get("no_mob"):  # cf. ROOM_NO_MOB check, update.c:500

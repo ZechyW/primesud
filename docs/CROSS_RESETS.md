@@ -8,7 +8,10 @@ midgaard start-load cascade: the juke resets into shire rooms 1116/1144
 and the fountain/juke into immort room 1200 now live in the target
 area's RESETS, and Kate's Diner `G 1103` (pipeweed bread, shire def) is
 dropped. New game loads mud_school+midgaard only instead of also
-pulling shire, ofcol2, and immort.
+pulling shire, ofcol2, and immort. Limbo's `O 3415` (stone sarcophagus,
+chapel def, The Morgue) is likewise dropped -- limbo is preloaded at
+session start for corpse storage (primesud.py) and must not cascade
+into chapel; the morgue simply has no sarcophagus.
 
 ## limbo
 

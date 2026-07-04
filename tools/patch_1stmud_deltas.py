@@ -70,6 +70,12 @@ MOVE_RESETS = {
 # {area: (reset_line, ...)} -- resets referencing another area's defs from
 # a local room (nothing to move). Dropped to defer the foreign load.
 DROP_RESETS = {
+    "limbo": (
+        # Morgue sarcophagus (obj 3415, chapel-owned): would pull all of
+        # chapel the moment limbo loads. Limbo is preloaded at session start
+        # for corpse storage; dropping this keeps that preload self-contained.
+        '    ("O", 3415, 3),',
+    ),
     "midgaard": (
         # Kate's Diner pipeweed bread: shire item def would pull shire (and
         # via shire's shiriff gear, ofcol2) at game start; still sold in shire
