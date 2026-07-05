@@ -31,10 +31,10 @@ def create_char(class_idx=CLASS_WARRIOR):
 
     Overlays player-only (pcdata) fields onto _char_base()
     (cf. 1stMud new_char + new_pcdata in recycle.c; char_data in structs.h:560).
-    Also derives form_flags/part_flags from RACE_TABLE (cf. 1stMud
-    nanny.c:533-534 `ch->form = race->form; ch->parts = race->parts;`),
-    so PC deaths hit the same body-part-drop logic as mobs (combat.py
-    _death_cry).
+    Also derives race-backed combat/body fields from RACE_TABLE (cf. 1stMud
+    nanny.c:533-540 / save.c:723-730), so PCs get racial
+    aff/imm/res/vuln/stats/size plus the same body-part-drop logic as mobs
+    (combat.py _death_cry).
 
     Args:
         class_idx (int): Starting class index into CLASS_TABLE. Default only
@@ -98,6 +98,19 @@ def create_char(class_idx=CLASS_WARRIOR):
             "float":     None, "secondary": None,
         },
     })
+    _race = race_lookup(ch["race"]) or RACE_TABLE["Human"]
+    _stats = _race.get("stats", (13, 13, 13, 13, 13))
+    ch["perm_stat"] = {
+        "str": _stats[0], "dex": _stats[1], "int": _stats[2],
+        "wis": _stats[3], "con": _stats[4],
+    }
+    ch["size"] = _race.get("size", "medium")
+    ch["affected_by"] = dict(_race.get("aff", {}))
+    ch["imm_flags"] = dict(_race.get("imm", {}))
+    ch["res_flags"] = dict(_race.get("res", {}))
+    ch["vuln_flags"] = dict(_race.get("vuln", {}))
+    ch["form_flags"] = dict(_race.get("form", {}))
+    ch["part_flags"] = dict(_race.get("parts", {}))
     # cf. 1stMud nanny.c CON_READ_MOTD level==0 block:
     # ch->perm_stat[class_table[prime_class(ch)].attr_prime] += 3 -- applied
     # once for brand-new characters only. Safe on the load path too: game_state
@@ -117,17 +130,6 @@ def create_char(class_idx=CLASS_WARRIOR):
     ch["learned"][GSN_RECALL] = 50  # cf. nanny.c: learned[gsn_recall] = 50
     # cf. 1stMud exp_per_level in skills.c (race class_mult scaling)
     ch["xp_next"] = exp_per_level(ch)
-    # cf. 1stMud nanny.c:533-534 / save.c:723-724: ch->form = race->form;
-    # ch->parts = race->parts -- derived from race, not persisted. Only
-    # "Human" is currently selectable (no race chargen prompt yet), but this
-    # keeps the load path correct too: game_state.load_game() calls
-    # create_char() before load_world(), and load_world has no
-    # p.form_flags/p.part_flags save key, so whatever create_char sets here
-    # survives the load overlay untouched -- matching 1stMud's
-    # re-derive-from-race-on-load behaviour.
-    _race = race_lookup(ch["race"]) or RACE_TABLE["Human"]
-    ch["form_flags"] = dict(_race.get("form", {}))
-    ch["part_flags"] = dict(_race.get("parts", {}))
     return ch
 
 

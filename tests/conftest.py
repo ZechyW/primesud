@@ -41,8 +41,27 @@ def fresh_world(tmp_path):
         register_area: register an area in world internals
         setup: finalize registration (call after all register_area calls)
     """
-    # Snapshot and clear world state
+    # Snapshot and clear world state (restored in full at teardown so a
+    # later test lazily loading a real vnum via ITEM_DEFS[vnum] still works
+    # regardless of run order -- see TODO.md Tests, resolved 06/07/2026)
     old_area_files = world._AREA_FILES[:]
+    old_state = {
+        "_LOADED_AREAS": set(world._LOADED_AREAS),
+        "_TAG_TO_FILE": dict(world._TAG_TO_FILE),
+        "_TAG_TO_NAME": dict(world._TAG_TO_NAME),
+        "_VNUM_RANGES": list(world._VNUM_RANGES),
+        "_pending_mob_saves": dict(world._pending_mob_saves),
+        "_pending_room_items": dict(world._pending_room_items),
+        "ROOM_DEFS": dict(world.ROOM_DEFS._data),
+        "MOB_DEFS": dict(world.MOB_DEFS._data),
+        "ITEM_DEFS": dict(world.ITEM_DEFS._data),
+        "DOOR_DEFS": dict(world.DOOR_DEFS),
+        "AREA_DEFS": list(world.AREA_DEFS),
+        "rooms": dict(world.rooms._data),
+        "chars": dict(world.chars),
+        "areas": list(world.areas),
+        "_WORLD_READY": world._WORLD_READY,
+    }
 
     world._LOADED_AREAS.clear()
     world._TAG_TO_FILE.clear()
@@ -93,23 +112,27 @@ def fresh_world(tmp_path):
 
     yield ns
 
-    # Restore
+    # Restore snapshots in place (module-level names are aliased elsewhere,
+    # so mutate, don't rebind -- except world.areas, which world.py itself
+    # rebinds)
     world._AREA_FILES[:] = old_area_files
     world._LOADED_AREAS.clear()
-    world._TAG_TO_FILE.clear()
-    world._TAG_TO_NAME.clear()
-    world._VNUM_RANGES.clear()
-    world._pending_mob_saves.clear()
-    world._pending_room_items.clear()
-    world.ROOM_DEFS._data.clear()
-    world.MOB_DEFS._data.clear()
-    world.ITEM_DEFS._data.clear()
-    world.DOOR_DEFS.clear()
-    del world.AREA_DEFS[:]
+    world._LOADED_AREAS.update(old_state["_LOADED_AREAS"])
+    for name in ("_TAG_TO_FILE", "_TAG_TO_NAME", "_pending_mob_saves",
+                 "_pending_room_items", "DOOR_DEFS", "chars"):
+        d = getattr(world, name)
+        d.clear()
+        d.update(old_state[name])
+    world._VNUM_RANGES[:] = old_state["_VNUM_RANGES"]
+    world.AREA_DEFS[:] = old_state["AREA_DEFS"]
+    for name in ("ROOM_DEFS", "MOB_DEFS", "ITEM_DEFS"):
+        d = getattr(world, name)._data
+        d.clear()
+        d.update(old_state[name])
     world.rooms._data.clear()
-    world.chars.clear()
-    world.areas = []
-    # Force False (not the snapshotted value): the tables above are now
-    # empty, and a restored True would make the next init_world() no-op,
-    # leaving lazy loading dead for later tests (test-order KeyErrors).
-    world._WORLD_READY = False
+    world.rooms._data.update(old_state["rooms"])
+    world.areas = old_state["areas"]
+    # Restored tables make the snapshotted value safe again: if it was True,
+    # lazy loading keeps working for later tests; if False, the next
+    # init_world() rebuilds as usual.
+    world._WORLD_READY = old_state["_WORLD_READY"]

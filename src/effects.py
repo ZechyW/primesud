@@ -9,7 +9,7 @@ lazy imports below, matching the existing combat.py<->magic.py pattern).
 import world
 from world import ITEM_DEFS
 from handler import act, chprintln, affect_join, affect_to_char, unequip_char, TO_ROOM, TO_ALL
-from item import obj_vnum, item_extra_flags, item_affect_to_obj, create_object
+from item import obj_vnum, item_extra_flags, item_affect_to_obj, create_object, item_type
 from skill_utils import DazeState
 from skills_table import SKILL_TABLE, GSN_POISON
 from config import DAM_FIRE, DAM_COLD, DAM_LIGHTNING, DAM_POISON
@@ -145,7 +145,7 @@ def _acid_obj(obj, level, dam, owner, room, container, worn=False):
         chance -= 5
     chance -= _obj_level(obj, tpl) * 2
 
-    itype = tpl.get("type")
+    itype = item_type(obj, tpl)
     if itype in ("container", "npc_corpse", "pc_corpse"):
         msg = "$p fumes and dissolves."
     elif itype == "armor":
@@ -238,7 +238,7 @@ def _fire_obj(obj, level, dam, owner, room, container):
         chance -= 5
     chance -= _obj_level(obj, tpl) * 2
 
-    itype = tpl.get("type")
+    itype = item_type(obj, tpl)
     if itype == "container":
         msg = "$p ignites and burns!"
     elif itype == "potion":
@@ -326,7 +326,7 @@ def _cold_obj(obj, level, dam, owner, room, container):
         chance -= 5
     chance -= _obj_level(obj, tpl) * 2
 
-    itype = tpl.get("type")
+    itype = item_type(obj, tpl)
     if itype == "potion":
         chance += 25
         msg = "$p freezes and shatters!"
@@ -398,7 +398,7 @@ def _poison_obj(obj, level, dam, container):
         chance = (chance - 50) // 2 + 50
     chance -= _obj_level(obj, tpl) * 2
 
-    itype = tpl.get("type")
+    itype = item_type(obj, tpl)
     if itype == "food":
         pass
     elif itype == "drink":
@@ -470,7 +470,7 @@ def _shock_obj(obj, level, dam, owner, room, container):
         chance -= 5
     chance -= _obj_level(obj, tpl) * 2
 
-    itype = tpl.get("type")
+    itype = item_type(obj, tpl)
     if itype in ("wand", "staff"):
         chance += 10
         msg = "$p overloads and explodes!"

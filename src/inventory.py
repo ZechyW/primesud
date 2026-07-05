@@ -24,6 +24,7 @@ from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   item_weapon_flags, item_affect_to_obj,
                   item_container_flags, set_item_container_flag,
                   CONTAINER_TYPES,
+                  item_type as _item_type,
                   promote_obj as _promote_obj)
 from magic import (cast_item_spells, validate_item_spell_payload,
                    _new_affect, _skill_lookup)
@@ -417,7 +418,7 @@ def do_put(player, args):
         chprintln(player, "I see no {} here.".format(cont_arg))
         return
     cont_tpl = ITEM_DEFS[obj_vnum(cont_obj)]
-    if cont_tpl.get("type") not in _CONTAINER_TYPES:
+    if _item_type(cont_obj, cont_tpl) != "container":
         chprintln(player, "That's not a container.")
         return
     # cf. 1stMud do_put CONT_CLOSED check, act_obj.c:370
@@ -1147,8 +1148,8 @@ def do_quaff(player, args):
     if obj is None:
         chprintln(player, "You do not have that potion.")
         return
-    tpl = ITEM_DEFS[obj["vnum"]]
-    if tpl["type"] != "potion":
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    if _item_type(obj, tpl) != "potion":
         chprintln(player, "You can quaff only potions.")
         return
     if player["level"] < tpl.get("level", 1):
@@ -1163,7 +1164,8 @@ def do_quaff(player, args):
 
 def do_envenom(player, args):
     """Coat a weapon or food/drink with poison (cf. 1stMud do_envenom in act_obj.c).
-    [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
+    [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
+    instance type override added and re-verified 06/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -1187,7 +1189,7 @@ def do_envenom(player, args):
 
     obj = _promote_obj(player, obj)
     tpl = ITEM_DEFS[obj_vnum(obj)]
-    itype = tpl.get("type")
+    itype = _item_type(obj, tpl)
 
     if itype in ("food", "drink"):
         flags = item_extra_flags(obj, tpl)
@@ -1324,17 +1326,6 @@ def _is_poisoned_drink(obj, tpl):
     if isinstance(obj, dict) and "poisoned" in obj:
         return obj["poisoned"]
     return tpl.get("poisoned")
-
-
-def _item_type(obj, tpl):
-    """Return the effective item type, checking instance override first. [PRIMESUD]
-
-    An explicit instance type wins over template (e.g., death_cry downgrades
-    non-edible body parts to 'trash').
-    """
-    if isinstance(obj, dict) and "type" in obj:
-        return obj["type"]
-    return tpl.get("type")
 
 
 def _is_poisoned_food(obj, tpl):

@@ -25,6 +25,7 @@ CHEST_VNUM = 9605
 HEAVY_ITEM_VNUM = 9606
 LIGHT_ITEM_VNUM = 9607
 NODROP_VNUM = 9608
+CORPSE_VNUM = 9609
 
 _EQUIP_SLOTS = ("light", "finger_l", "finger_r", "neck_1", "neck_2", "body",
                 "head", "legs", "feet", "hands", "arms", "shield", "about",
@@ -96,6 +97,11 @@ def _clean_world_state():
         "keywords": "cursed dagger test", "short_descr": "a cursed test dagger",
         "type": "misc", "level": 0, "weight": 5,
         "wear_flags": {"take": True}, "extra_flags": {"nodrop": True},
+    }
+    ITEM_DEFS._data[CORPSE_VNUM] = {
+        "keywords": "corpse test", "short_descr": "a test corpse",
+        "type": "npc_corpse", "level": 0, "weight": 0,
+        "wear_flags": {}, "extra_flags": {},
     }
     # Real money templates (area_limbo.txt vnums 1-5), pre-seeded so
     # combat.create_money's create_object() calls don't trigger LazyDict
@@ -214,6 +220,17 @@ def test_put_item_fits_container(out):
     assert any("You put a test pebble in a test chest." in l for l in out)
     assert len(chest["contents"]) == 1
     assert player["inv"] == []
+
+
+def test_put_rejects_corpse_container(out):
+    player = _make_player()
+    corpse = {"vnum": CORPSE_VNUM, "contents": []}
+    player["inv"].append({"vnum": LIGHT_ITEM_VNUM})
+    world.rooms[ROOM_VNUM]["items"].append(corpse)
+    inventory.do_put(player, ["pebble", "corpse"])
+    assert "That's not a container." in out
+    assert corpse["contents"] == []
+    assert len(player["inv"]) == 1
 
 
 # -- Container closed/locked flags (TODO.md Items section) ------------------------

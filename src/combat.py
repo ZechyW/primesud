@@ -2273,7 +2273,7 @@ def _death_cry(ch):
             if form_flags.get("poison"):
                 obj["poisoned"] = True  # 1stMud: obj->value[3] = 1
             elif not form_flags.get("edible"):
-                obj["type"] = "trash"  # [PRIMESUD] see observations: not yet consulted by item-type lookups
+                obj["type"] = "trash"  # [PRIMESUD] instance override; consumers use item.item_type()
         # 1stMud: obj_to_room(obj, ch->in_room);
         world.rooms[ch["room"]]["items"].append(obj)
 

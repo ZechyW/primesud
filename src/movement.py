@@ -18,7 +18,7 @@ from skills_table import (GSN_RECALL, GSN_PICK_LOCK, GSN_SNEAK, GSN_HIDE,
                           GSN_INVIS, GSN_MASS_INVIS, SKILLS)
 from item import (get_obj_list, get_obj_here, create_object, obj_vnum,
                   item_container_flags, set_item_container_flag,
-                  promote_obj, CONTAINER_TYPES)
+                  promote_obj, item_type as _item_type)
 from terminal import tprint
 from urandom import randint
 import world
@@ -590,7 +590,7 @@ def _open_container(player, obj):
     lookup order.
     """
     tpl = ITEM_DEFS[obj_vnum(obj)]
-    if tpl.get("type") not in CONTAINER_TYPES:
+    if _item_type(obj, tpl) != "container":
         chprintln(player, "That's not a container.")
         return
     # [PRIMESUD] reset-spawned items may be plain vnum ints; flag mutation
@@ -616,7 +616,7 @@ def _close_container(player, obj):
     in act_move.c:531-550). [PRIMESUD] split out, see _open_container.
     """
     tpl = ITEM_DEFS[obj_vnum(obj)]
-    if tpl.get("type") not in CONTAINER_TYPES:
+    if _item_type(obj, tpl) != "container":
         chprintln(player, "That's not a container.")
         return
     # [PRIMESUD] reset-spawned items may be plain vnum ints; flag mutation
@@ -641,7 +641,7 @@ def _lock_container(player, obj):
     Unlike the door branch, 1stMud prints no "*Click*" for containers.
     """
     tpl = ITEM_DEFS[obj_vnum(obj)]
-    if tpl.get("type") not in CONTAINER_TYPES:
+    if _item_type(obj, tpl) != "container":
         chprintln(player, "That's not a container.")
         return
     # [PRIMESUD] reset-spawned items may be plain vnum ints; flag mutation
@@ -676,7 +676,7 @@ def _unlock_container(player, obj):
     Unlike the door branch, 1stMud prints no "*Click*" for containers.
     """
     tpl = ITEM_DEFS[obj_vnum(obj)]
-    if tpl.get("type") not in CONTAINER_TYPES:
+    if _item_type(obj, tpl) != "container":
         chprintln(player, "That's not a container.")
         return
     # [PRIMESUD] reset-spawned items may be plain vnum ints; flag mutation
@@ -699,6 +699,35 @@ def _unlock_container(player, obj):
     set_item_container_flag(obj, tpl, "locked", False)
     act("You unlock $p.", player, obj, None, TO_CHAR)
     act("$n unlocks $p.", player, obj, None, TO_ROOM)
+
+
+def _pick_container(player, obj):
+    """Container branch of do_pick (cf. 1stMud do_pick ITEM_CONTAINER branch
+    in act_move.c:839-866). [PRIMESUD] split out, see _open_container.
+    """
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    if _item_type(obj, tpl) != "container":
+        chprintln(player, "That's not a container.")
+        return
+    obj = promote_obj(player, obj)
+    flags = item_container_flags(obj, tpl)
+    if not flags.get("closed"):
+        chprintln(player, "It's not closed.")
+        return
+    key = tpl.get("container_key")
+    if not key:  # [PRIMESUD] see _lock_container
+        chprintln(player, "It can't be unlocked.")
+        return
+    if not flags.get("locked"):
+        chprintln(player, "It's already unlocked.")
+        return
+    if flags.get("pickproof"):
+        chprintln(player, "You failed.")
+        return
+    set_item_container_flag(obj, tpl, "locked", False)
+    act("You pick the lock on $p.", player, obj, None, TO_CHAR)
+    act("$n picks the lock on $p.", player, obj, None, TO_ROOM)
+    check_improve(player, GSN_PICK_LOCK, True, 2)
 
 
 def do_open(player, args):
@@ -819,8 +848,8 @@ def do_close(player, args):
 
 # -- Locks ---------------------------------------------------------------------
 # [PRIMESUD] ITEM_PORTAL branch of lock/unlock/pick not ported -- no portal
-# objects in any stock area.  do_lock/do_unlock now also cover ITEM_CONTAINER
-# (see _lock_container/_unlock_container above); do_pick remains doors only.
+# objects in any stock area.  do_lock/do_unlock/do_pick now also cover
+# ITEM_CONTAINER (see _lock_container/_unlock_container/_pick_container below).
 
 def _has_key(ch, key_vnum):
     """True if ch carries the key item (cf. 1stMud has_key in act_move.c). [Verified: 03/07/2026]"""
@@ -943,19 +972,26 @@ def do_unlock(player, args):
 
 
 def do_pick(player, args):
-    """Pick a door lock using the pick lock skill (cf. 1stMud do_pick in act_move.c).
+    """Pick a door or container lock using the pick lock skill (cf. 1stMud do_pick in act_move.c).
 
     [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
-    room message) added and re-verified 04/07/2026] -- [PRIMESUD] intentional
+    room message) added and re-verified 04/07/2026; container branch added
+    and re-verified 06/07/2026] -- [PRIMESUD] intentional
     reorder: target door is resolved (with picker) before WaitState/close-
     stander/skill roll, while 1stMud rolls before find_door. Deliberately
     removes a 1stMud quirk where picking a nonexistent door still costs lag,
     rolls the skill, and can train pick lock via check_improve on the failed
     roll (train-on-typo exploit). Do not "fix" back to 1stMud order.
     """
-    direction, exit_val, picked = _door_for_lock_cmd(player, args, "Pick", True)
-    if exit_val is None:
-        return
+    obj = None
+    if args:
+        obj = get_obj_here(player, " ".join(args))
+    if obj is None:
+        direction, exit_val, picked = _door_for_lock_cmd(player, args, "Pick", True)
+        if exit_val is None:
+            return
+    else:
+        direction, exit_val, picked = None, None, False
 
     WaitState(player, SKILLS[GSN_PICK_LOCK]["beats"])
 
@@ -974,6 +1010,9 @@ def do_pick(player, args):
         chprintln(player, "You failed.")
         check_improve(player, GSN_PICK_LOCK, False, 2)
         return
+
+    if obj is not None:
+        return _pick_container(player, obj)
 
     if not exit_val.get("closed"):
         chprintln(player, "It's not closed.")

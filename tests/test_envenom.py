@@ -1,4 +1,4 @@
-"""Tests for do_envenom (act_obj.c) and weapon flag procs (fight.c one_hit)."""
+"""Tests for do_envenom/do_quaff (act_obj.c) and weapon flag procs (fight.c one_hit)."""
 import os
 import sys
 
@@ -23,6 +23,7 @@ MOB_TPL = 9401
 SWORD_VNUM = 9410
 MACE_VNUM = 9411
 BREAD_VNUM = 9412
+POTION_VNUM = 9413
 
 
 def _stub_room(vnum, **extra):
@@ -88,6 +89,10 @@ def _clean_world_state():
     ITEM_DEFS._data[BREAD_VNUM] = {
         "keywords": "bread test", "short_descr": "a loaf of bread",
         "type": "food", "level": 0, "wear_flags": {"take": True},
+    }
+    ITEM_DEFS._data[POTION_VNUM] = {
+        "keywords": "potion test", "short_descr": "a test potion",
+        "type": "potion", "level": 1, "wear_flags": {"take": True},
     }
     _stub_room(9001)
     yield
@@ -165,6 +170,29 @@ def test_envenom_food(out, skilled):
     inventory.do_envenom(player, ["bread"])
     assert bread["poisoned"] is True
     assert any("deadly poison" in l for l in out)
+
+
+def test_envenom_respects_instance_type_override(out, skilled):
+    player = _make_player()
+    sword = {"vnum": SWORD_VNUM, "type": "trash"}
+    player["inv"].append(sword)
+    inventory.do_envenom(player, ["sword"])
+    assert any("can't poison" in l for l in out)
+    assert "weapon_flags" not in sword
+
+
+def test_quaff_respects_instance_type_override(out, monkeypatch):
+    player = _make_player()
+    potion = {"vnum": POTION_VNUM, "type": "trash"}
+    player["inv"].append(potion)
+    called = []
+    monkeypatch.setattr(inventory, "validate_item_spell_payload", lambda obj: obj)
+    monkeypatch.setattr(inventory, "cast_item_spells",
+                        lambda ch, obj, victim, target: called.append(obj))
+    inventory.do_quaff(player, ["potion"])
+    assert "You can quaff only potions." in out
+    assert called == []
+    assert potion in player["inv"]
 
 
 # -- weapon procs ----------------------------------------------------------------

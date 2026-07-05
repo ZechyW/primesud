@@ -157,6 +157,42 @@ class TestPick:
         assert _door()["locked"] is True
         assert "You failed." in out
 
+    def test_pick_container_success(self, scene, out, monkeypatch):
+        _chest()["container_flags"] = {
+            "closeable": True, "closed": True, "locked": True}
+        monkeypatch.setattr(movement, "get_skill", lambda ch, sn: 100)
+        monkeypatch.setattr(movement, "randint", lambda a, b: 1)
+        monkeypatch.setattr(movement, "check_improve", lambda *a: None)
+        movement.do_pick(scene, ["chest"])
+        assert not _chest()["container_flags"].get("locked")
+        assert any("You pick the lock on a wooden chest." in l for l in out)
+
+    def test_pick_pickproof_container(self, scene, out, monkeypatch):
+        _chest()["container_flags"] = {
+            "closeable": True, "closed": True, "locked": True, "pickproof": True}
+        monkeypatch.setattr(movement, "get_skill", lambda ch, sn: 100)
+        monkeypatch.setattr(movement, "randint", lambda a, b: 1)
+        movement.do_pick(scene, ["chest"])
+        assert _chest()["container_flags"]["locked"] is True
+        assert "You failed." in out
+
+    def test_pick_object_branch_wins_before_door_lookup(self, scene, out, monkeypatch):
+        monkeypatch.setattr(movement, "get_skill", lambda ch, sn: 100)
+        monkeypatch.setattr(movement, "randint", lambda a, b: 1)
+        movement.do_pick(scene, ["key"])
+        assert "That's not a container." in out
+        assert not any("I see no key here." in l for l in out)
+
+    def test_pick_container_respects_instance_type_override(self, scene, out, monkeypatch):
+        _chest()["type"] = "trash"
+        _chest()["container_flags"] = {
+            "closeable": True, "closed": True, "locked": True}
+        monkeypatch.setattr(movement, "get_skill", lambda ch, sn: 100)
+        monkeypatch.setattr(movement, "randint", lambda a, b: 1)
+        movement.do_pick(scene, ["chest"])
+        assert _chest()["container_flags"]["locked"] is True
+        assert "That's not a container." in out
+
     def test_high_level_mob_blocks(self, scene, out, monkeypatch):
         from world import MOB_DEFS
         old_mobs = dict(MOB_DEFS._data)
@@ -323,6 +359,15 @@ class TestContainer:
         # not set to a literal False (same convention as extra_flags).
         assert not _chest()["container_flags"].get("closed")
         assert any("You open a wooden chest." in l for l in out)
+
+    def test_open_rejects_corpse_and_instance_override(self, scene, out):
+        # 1stMud requires strict ITEM_CONTAINER (act_move.c:426); corpses
+        # and instance-type-downgraded objects are not openable/lockable.
+        _chest()["type"] = "npc_corpse"
+        movement.do_open(scene, ["chest"])
+        movement.do_lock(scene, ["chest"])
+        assert out.count("That's not a container.") == 2
+        assert "container_flags" not in _chest()  # untouched instance
 
     def test_open_already_open_container(self, scene, out):
         _chest()["container_flags"] = {"closeable": True, "closed": False}

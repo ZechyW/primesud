@@ -4,24 +4,21 @@ Loose ends that don't belong in a specific plan file.
 
 ## Combat
 
-- **PC race aff/imm/res/vuln/stats not applied** — 1stMud's race-assignment
-  path (nanny.c:533ff / save.c:723ff) also ORs race `aff`/`imm`/`res`/`vuln`
-  into the char and sets `perm_stat`/`size` from race, like `mob.py` does for
-  mobs. `player.py create_char` only merges `form`/`parts` (05/07/2026);
-  elf infravision, dwarf poison/disease resist etc. are inert for PCs.
-  Low-stakes while only "Human" is selectable (no race chargen yet).
+- **Race not persisted** — `create_char` now derives racial
+  aff/imm/res/vuln/stats/size/form/parts (06/07/2026), but `game_state.py`
+  has no `p.race` save key, so the load path always re-derives from
+  `_char_base`'s "Human". Harmless while only "Human" is selectable; when
+  race chargen lands, persist race and re-derive after load (cf. 1stMud
+  save.c:723ff re-deriving after fread).
+- **Wield-drop on strength loss not ported** — `handler.py:220` TODO:
+  1stMud affect_modify (handler.c:1030-1045) makes a char drop a wielded
+  weapon when a stat-draining affect leaves them too weak to hold it
+  (str_app wield limit). PrimeSUD affect_modify applies the stat change
+  but never rechecks the wield.
 
 ## Items
 
-- **`do_put` accepts corpses** — `_CONTAINER_TYPES` includes
-  `npc_corpse`/`pc_corpse`, but 1stMud `do_put` requires strict
-  ITEM_CONTAINER (corpses are separate item types): lootable, not stashable.
-- **`do_pick` doors only** — containers now honour `locked`/`pickproof`
-  (05/07/2026), but lockpicking still has no container branch, so a
-  locked+pickproof-with-no-key container is permanently sealed.
-- **Template-only type lookups remain in `do_envenom` and `do_quaff`** —
-  instance `type` overrides (e.g. death_cry's trash downgrade) now gate
-  `do_eat` via `_item_type`, but envenom/quaff still read the template only.
+(nothing outstanding)
 
 ## Magic
 
@@ -81,11 +78,7 @@ Loose ends that don't belong in a specific plan file.
 
 ## Tests
 
-- **`conftest.py` `fresh_world` doesn't restore lazy-load state** — it clears
-  `world._LOADED_AREAS`/`_TAG_TO_FILE`/`_VNUM_RANGES` at setup and teardown
-  without saving/restoring, so a later test that lazily loads a real vnum via
-  `ITEM_DEFS[vnum]` can `KeyError` depending on run order.
-  `test_carry_and_align.py` sidesteps it by pre-seeding money templates.
+(nothing outstanding)
 
 ## Platform
 

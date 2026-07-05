@@ -4,17 +4,28 @@ import world
 from world import ITEM_DEFS, MOB_DEFS
 from handler import is_name, number_argument
 
-# Item types treated as ITEM_CONTAINER for lock/open/loot purposes [PRIMESUD]:
-# stock 1stMud uses a single ITEM_CONTAINER type for chests, safes, and
-# corpses alike; PrimeSUD's converter splits corpses into their own
-# npc_corpse/pc_corpse types (see inventory._obj_number), so callers that
-# mean "is this an ITEM_CONTAINER" need this combined set instead.
+# Item types that can hold contents, for loot/look-in purposes [PRIMESUD]:
+# matches 1stMud's do_get/get_obj_list acceptance of ITEM_CONTAINER plus
+# ITEM_CORPSE_NPC/ITEM_CORPSE_PC (act_obj.c do_get container switch).
+# Open/close/lock/unlock/pick require strict "container" (1stMud
+# act_move.c checks item_type != ITEM_CONTAINER) -- use item_type() there.
 CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
 
 
 def obj_vnum(item):
     """Return the VNUM of an item instance dict or a plain VNUM int."""
     return item["vnum"] if isinstance(item, dict) else item
+
+
+def item_type(obj, tpl):
+    """Return the effective item type, checking instance override first. [PRIMESUD]
+
+    An explicit instance type wins over template (e.g., death_cry downgrades
+    non-edible body parts to 'trash').
+    """
+    if isinstance(obj, dict) and "type" in obj:
+        return obj["type"]
+    return tpl.get("type")
 
 
 def create_object(vnum):
