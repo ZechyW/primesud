@@ -15,6 +15,8 @@ from handler import _char_base
 import combat
 import world
 from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
+from player import create_char
+from races import RACE_TABLE
 
 MOB_TPL = 9403
 
@@ -192,6 +194,38 @@ class TestPoisonFood:
         obj = world.rooms[9001]["items"][0]
         assert "poisoned" not in obj
         assert "type" not in obj
+
+
+class TestPCRaceFormParts:
+    """PC form_flags/part_flags come from RACE_TABLE via player.create_char
+    (cf. 1stMud nanny.c:533-534 / save.c:723-724), so PC deaths hit the same
+    part-drop logic as mobs. [PRIMESUD] regression test for TODO.md's
+    "PC victims never drop body parts"."""
+
+    def test_create_char_populates_form_and_part_flags_from_race(self):
+        ch = create_char()
+        human = RACE_TABLE["Human"]
+        assert ch["form_flags"] == dict(human["form"])
+        assert ch["part_flags"] == dict(human["parts"])
+
+    def test_pc_victim_of_part_bearing_race_drops_body_part(self, monkeypatch, out):
+        victim = create_char()
+        victim["id"] = 2
+        victim["room"] = 9001
+        victim["name"] = "Tester"
+        world.chars[2] = victim
+        player = _make_char(1, npc=False, room=9001)
+        _force_roll(monkeypatch, 2)  # case 2: guts
+
+        combat._death_cry(victim)
+
+        assert any("spills" in l and "guts" in l for l in out)
+        room = world.rooms[9001]
+        assert len(room["items"]) == 1
+        obj = room["items"][0]
+        assert obj["vnum"] == combat._OBJ_VNUM_GUTS
+        assert obj["short_descr"] == "The guts of Tester"
+        assert obj["description"] == "A steaming pile of Tester's entrails is lying here."
 
 
 class TestAdjacentRoomCry:

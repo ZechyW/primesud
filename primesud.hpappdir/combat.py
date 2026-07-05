@@ -2236,11 +2236,12 @@ _BODY_PART_TEXT = {
 def _death_cry(ch):
     """Death flavour message, body-part drop, and adjacent-room cry
     (cf. 1stMud death_cry in fight.c).
-    [Verified: 05/07/2026] -- part-flag gated message/object selection,
+    [Verified: 05/07/2026; PC form_flags/part_flags added and re-verified
+    05/07/2026] -- part-flag gated message/object selection,
     poison-food/trash-downgrade, and adjacent-room broadcast added per
-    fight.c. PC part_flags/form_flags are never populated from RACE_TABLE
-    (player.py does not merge race data the way mob.py does), so PC
-    victims always fall through to the default message -- see TODO.md.
+    fight.c. PCs now get form_flags/part_flags from RACE_TABLE via
+    player.py create_char (cf. 1stMud nanny.c:533-534 / save.c:723-724),
+    so PC victims of part-bearing races hit the same drop logic as mobs.
 
     Args:
         ch (dict): Dying character (player or mob instance).
