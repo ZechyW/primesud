@@ -30,6 +30,7 @@ from pathlib import Path
 
 SRC = Path("reference/1stMud4.5.3/data/help.dat")
 DST = Path("primesud.hpappdir/help.dat")
+IDX = Path("primesud.hpappdir/help.idx")
 MAX_MORTAL_LEVEL = 51  # cf. primesud.hpappdir/config.py
 
 # cp1252 punctuation found in upstream data -> ASCII
@@ -50,6 +51,8 @@ EXTRA_RECORDS = [
 TYPO_FIXES = {
     "and costs more experience points, then fleeing":
         "and costs more experience points, than fleeing",
+    "show you time lef ttill next quest":
+        "show you time left till next quest",
 }
 
 
@@ -104,6 +107,28 @@ def main():
     DST.write_bytes(data.encode("ascii"))
     print("Wrote %s: %d/%d entries, %d bytes"
           % (DST, len(kept), len(records), len(data)))
+    build_index()
+
+
+def build_index():
+    """Write help.idx: '<level>|<offset>|<keywords>' per entry.
+
+    Offset is the byte offset of the entry's first text line in help.dat
+    (LF line endings assumed -- do not let git normalize to CRLF). Built by
+    re-reading the final help.dat so index and data can never drift.
+    do_help scans this ~7KB index instead of the full ~150KB file, then
+    seeks straight to the matched entry.
+    """
+    pos = 0
+    idx_lines = []
+    with open(DST, "rb") as f:
+        for line in f:
+            pos += len(line)
+            if line.startswith(b"#"):
+                level_s, kw = line[1:].rstrip(b"\n").split(b"|", 1)
+                idx_lines.append(level_s + b"|" + b"%d" % pos + b"|" + kw)
+    IDX.write_bytes(b"\n".join(idx_lines) + b"\n")
+    print("Wrote %s: %d entries" % (IDX, len(idx_lines)))
 
 
 if __name__ == "__main__":

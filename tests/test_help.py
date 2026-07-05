@@ -12,6 +12,8 @@ def help_out(monkeypatch):
     """Point do_help at the generated help file and capture tprint output."""
     monkeypatch.setattr(info, "HELP_FILE",
                         os.path.join("primesud.hpappdir", "help.dat"))
+    monkeypatch.setattr(info, "HELP_INDEX",
+                        os.path.join("primesud.hpappdir", "help.idx"))
     lines = []
     capture = lambda *a, **kw: lines.append(a[0] if a else "")
     monkeypatch.setattr(handler, "tprint", capture)
@@ -67,6 +69,26 @@ def test_level_filter(help_out):
     # negative-level helps (e.g. hidden keyword entries) still visible
     info.do_help(PLAYER, ["wizlist"])
     assert not any("No help found" in ln for ln in help_out)
+
+
+def test_last_entry_prints_to_eof(help_out):
+    # last entry's body terminates on EOF, not a following '#' header
+    info.do_help(PLAYER, ["worship"])
+    text = "\n".join(help_out)
+    assert "Help Keywords : WORSHIP DEITY" in text
+    assert "No help found" not in text
+
+
+def test_index_offsets_align():
+    # every index offset must sit immediately after its own header line
+    with open(os.path.join("primesud.hpappdir", "help.dat"), "rb") as f:
+        data = f.read()
+    with open(os.path.join("primesud.hpappdir", "help.idx"), "rb") as f:
+        for line in f:
+            level, off_s, kw = line.rstrip(b"\n").split(b"|", 2)
+            off = int(off_s)
+            header = b"#" + level + b"|" + kw + b"\n"
+            assert data[off - len(header):off] == header, kw
 
 
 def test_help_is_name():

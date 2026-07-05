@@ -2479,7 +2479,7 @@ QUEST COMPLETE - Once you have completed your quest and recovered the item or
 killed the mob or whatever, you must return to the quest master who sent you on
 the quest and use this command. If you have successfully completed your quest,
 he will reward you with gold and quest points. Once you complete a quest you
-cannot request another for 15 to 30 minutes, depending on the quest.
+cannot request another for 12 minutes.
 
 QUEST LIST - Displays the list of fabulous items for sale by the quest master.
 These items are not purchased via gold, they must be purchased with quest points.
