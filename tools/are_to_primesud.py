@@ -150,6 +150,12 @@ ITEM_TYPE_NUM = {
     27: "protect", 28: "map", 29: "portal", 30: "warp_stone",
     31: "room_key", 32: "gem", 33: "jewelry", 34: "jukebox",
 }
+# Valid mobprog trigger type words (cf. tables.c mprog_flags; db2.c
+# exit(1)s on a word flag_lookup doesn't find).
+MPROG_TRIGGERS = {
+    "act", "bribe", "death", "entry", "fight", "give", "greet", "grall",
+    "kill", "hpcnt", "random", "speech", "exit", "exall", "delay", "surr",
+}
 WLOC_SLOT = {
     0:  "light",
     1:  "finger_l", 2:  "finger_r",
@@ -489,16 +495,31 @@ def parse_mobiles(lines):
                 i += 1
             elif tline and tline[0] == "M":
                 # M <trig_type> <mprog_vnum> <trig_phrase>~
-                rest = tline[1:].strip()
-                tilde = rest.find("~")
-                if tilde >= 0:
-                    rest = rest[:tilde]
-                mparts = rest.split(None, 2)
-                trig_type = mparts[0] if mparts else "RANDOM"
-                mprog_vnum = int(mparts[1]) if len(mparts) > 1 else 0
-                trig_phrase = mparts[2] if len(mparts) > 2 else ""
-                mob_triggers.append((trig_type.lower(), mprog_vnum, trig_phrase))
-                i += 1
+                # db2.c:337-355: fread_word + fread_number + fread_string,
+                # all whitespace-skipping -- type/vnum may spill onto later
+                # lines and the phrase is a full multi-line tilde string.
+                mparts = tline.split(None, 3)
+                while len(mparts) < 3 and i + 1 < len(lines) and lines[i + 1].strip():
+                    i += 1
+                    mparts = " ".join(mparts + [lines[i]]).split(None, 3)
+                if len(mparts) < 3:
+                    raise ValueError(
+                        "mob trailer 'M' line incomplete (need trig_type + "
+                        "mprog vnum + phrase): " + repr(tline)
+                    )
+                trig_type = mparts[1].lower()
+                if trig_type not in MPROG_TRIGGERS:
+                    # cf. db2.c: flag_lookup(word, mprog_flags) == NO_FLAG
+                    # -> bug ("MOBprogs: invalid trigger.", 0); exit (1);
+                    raise ValueError(
+                        "mob trailer 'M' has invalid trigger type " +
+                        repr(mparts[1])
+                    )
+                mprog_vnum = int(mparts[2])
+                phrase_start = mparts[3] if len(mparts) > 3 else ""
+                trig_phrase, i = read_tilde_string_inline(
+                    phrase_start, lines, i + 1)
+                mob_triggers.append((trig_type, mprog_vnum, trig_phrase))
             else:
                 break
 
@@ -1727,6 +1748,7 @@ def convert(are_path, out_path=None):
         print(f"Written to {out_path}", file=sys.stderr)
     else:
         sys.stdout.write(code)
+    return code
 
 
 if __name__ == "__main__":

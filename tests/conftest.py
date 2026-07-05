@@ -13,9 +13,9 @@ init_terminal()
 import world
 
 
-def _write_dat(path, rooms, mobiles=None, objects=None, resets=None,
+def _write_area_txt(path, rooms, mobiles=None, objects=None, resets=None,
                area=None):
-    """Write a synthetic .dat file for testing.
+    """Write a synthetic area .txt data file for testing.
 
     spec_fun/shop data is baked directly into individual MOBILES entries
     by the caller (cf. tools/are_to_primesud.py) -- there are no
@@ -36,8 +36,8 @@ def fresh_world(tmp_path):
     """Reset world module state and provide helpers for test area setup.
 
     Yields a namespace with:
-        tmp_path: temp directory for .dat files
-        write_dat: helper to write synthetic .dat files
+        tmp_path: temp directory for area .txt files
+        write_area_txt: helper to write synthetic area .txt files
         register_area: register an area in world internals
         setup: finalize registration (call after all register_area calls)
     """
@@ -72,7 +72,7 @@ def fresh_world(tmp_path):
                       objects=None, resets=None, area=None):
         fname = "area_%s.txt" % tag
         fpath = str(tmp_path / fname)
-        _write_dat(fpath, rooms, mobiles, objects, resets, area)
+        _write_area_txt(fpath, rooms, mobiles, objects, resets, area)
         _area_entries.append((fpath, tag, tag, vnum_lo, vnum_hi))
 
     def setup():
