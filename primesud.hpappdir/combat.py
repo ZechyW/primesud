@@ -2185,30 +2185,108 @@ def _advance_target(player, mob_instances, room_state):
 
 # -- Death / Victory -----------------------------------------------------------
 
-# [PRIMESUD] uniform distribution over all variants; 1stMud uses number_bits(4)
-# with per-mob part flags, giving ~50% chance of the fallback "death cry" line.
-_DEATH_CRIES = [
-    "$n hits the ground ... DEAD.",
-    "$n splatters blood on your armor.",
-    "$n spills $s guts all over the floor.",
-    "$n's heart is torn from $s chest.",
-    "$n's severed head plops on the ground.",
-    "$n's arm is sliced from $s dead body.",
-    "$n's leg is sliced from $s dead body.",
-    "$n's head is shattered, and $s brains splash all over you.",
-    "You hear $n's death cry.",
-]
+# OBJ_VNUM_* body-part templates (area_limbo.dat #12-17; cf. 1stMud
+# vnums.h). Not exposed as named constants in world.py (only the corpse
+# vnums I_CORPSE/I_CORPSE_11 are), so defined locally here.
+_OBJ_VNUM_SEVERED_HEAD = 12
+_OBJ_VNUM_TORN_HEART   = 13
+_OBJ_VNUM_SLICED_ARM   = 14
+_OBJ_VNUM_SLICED_LEG   = 15
+_OBJ_VNUM_GUTS         = 16
+_OBJ_VNUM_BRAINS       = 17
+
+_DEATH_CRY_DEFAULT = "You hear $n's death cry."
+
+# Death-cry cases keyed by number_bits(4) roll (cf. 1stMud death_cry switch
+# in fight.c): (message, part_flags key, body-part OBJ_VNUM). part key of
+# None means unconditional; a part-gated case only fires when ch's
+# part_flags has that key set, otherwise it falls through to
+# _DEATH_CRY_DEFAULT (rolls 8-15 have no case at all and always fall
+# through too). 1stMud case 1 additionally guards on `ch->material == 0`,
+# falling through to case 2 (guts) when material is set; PrimeSUD chars
+# carry no "material" field at all (not ported), so case 1 is always taken
+# here -- see TODO.md / porting notes.
+_DEATH_CRY_CASES = {
+    0: ("$n hits the ground ... DEAD.", None, 0),
+    1: ("$n splatters blood on your armor.", None, 0),
+    2: ("$n spills $s guts all over the floor.", "guts", _OBJ_VNUM_GUTS),
+    3: ("$n's severed head plops on the ground.", "head", _OBJ_VNUM_SEVERED_HEAD),
+    4: ("$n's heart is torn from $s chest.", "heart", _OBJ_VNUM_TORN_HEART),
+    5: ("$n's arm is sliced from $s dead body.", "arms", _OBJ_VNUM_SLICED_ARM),
+    6: ("$n's leg is sliced from $s dead body.", "legs", _OBJ_VNUM_SLICED_LEG),
+    7: ("$n's head is shattered, and $s brains splash all over you.", "brains", _OBJ_VNUM_BRAINS),
+}
+
+# short_descr / description templates for dropped body parts (cf. 1stMud
+# death_cry: sprintf(buf, obj->short_descr / obj->description, name)).
+# PrimeSUD uses str() + concat instead of sprintf/"%" since these strings
+# persist on the item instance (see CLAUDE.md string-format-bug note).
+# Tuple: (short_descr prefix, description prefix, description suffix).
+_BODY_PART_TEXT = {
+    _OBJ_VNUM_SEVERED_HEAD: ("The head of ", "The severed head of ", " is lying here."),
+    _OBJ_VNUM_TORN_HEART:   ("The heart of ", "The torn-out heart of ", " is lying here."),
+    _OBJ_VNUM_SLICED_ARM:   ("The arm of ", "The sliced-off arm of ", " is lying here."),
+    _OBJ_VNUM_SLICED_LEG:   ("The leg of ", "The sliced-off leg of ", " is lying here."),
+    _OBJ_VNUM_GUTS:         ("The guts of ", "A steaming pile of ", "'s entrails is lying here."),
+    _OBJ_VNUM_BRAINS:       ("The brains of ", "The splattered brains of ", " are lying here."),
+}
 
 
 def _death_cry(ch):
-    """Random death flavour message (cf. 1stMud death_cry in fight.c).
-    [Verified: 02/07/2026] -- [PRIMESUD] uniform pick, no part-flag gating,
-    no body-part objects, no adjacent-room cry (see list comment above).
+    """Death flavour message, body-part drop, and adjacent-room cry
+    (cf. 1stMud death_cry in fight.c).
+    [Verified: 05/07/2026] -- part-flag gated message/object selection,
+    poison-food/trash-downgrade, and adjacent-room broadcast added per
+    fight.c. PC part_flags/form_flags are never populated from RACE_TABLE
+    (player.py does not merge race data the way mob.py does), so PC
+    victims always fall through to the default message -- see TODO.md.
 
     Args:
         ch (dict): Dying character (player or mob instance).
     """
-    act(_DEATH_CRIES[randint(0, len(_DEATH_CRIES) - 1)], ch, type=TO_ROOM)
+    msg = _DEATH_CRY_DEFAULT
+    vnum = 0
+    case = _DEATH_CRY_CASES.get(randint(0, 15))  # 1stMud: number_bits(4)
+    if case is not None:
+        cmsg, part, cvnum = case
+        if part is None or ch.get("part_flags", {}).get(part):
+            msg, vnum = cmsg, cvnum
+
+    act(msg, ch, type=TO_ROOM)
+
+    if vnum:
+        # 1stMud: name = IsNPC(ch) ? ch->short_descr : ch->name;
+        name = MOB_DEFS[ch["tpl"]]["short_descr"] if ch.get("is_npc") else ch.get("name", "someone")
+        obj = create_object(vnum)
+        # 1stMud: obj->timer = number_range(4, 7);
+        obj["timer"] = randint(4, 7)
+        pre_short, pre_desc, suf_desc = _BODY_PART_TEXT[vnum]
+        obj["short_descr"] = pre_short + name
+        obj["description"] = pre_desc + name + suf_desc
+        # 1stMud: if (obj->item_type == ITEM_FOOD) { poison, or downgrade
+        # to ITEM_TRASH if not FORM_EDIBLE }
+        if ITEM_DEFS[vnum].get("type") == "food":
+            form_flags = ch.get("form_flags", {})
+            if form_flags.get("poison"):
+                obj["poisoned"] = True  # 1stMud: obj->value[3] = 1
+            elif not form_flags.get("edible"):
+                obj["type"] = "trash"  # [PRIMESUD] see observations: not yet consulted by item-type lookups
+        # 1stMud: obj_to_room(obj, ch->in_room);
+        world.rooms[ch["room"]]["items"].append(obj)
+
+    # 1stMud: walks ch->in_room->exit[0..5] and act()s "You hear
+    # something's/someone's death cry." into every adjacent room.
+    # [PRIMESUD] single-player: only the player can "hear" it, so just
+    # check whether the player's current room is one exit away.
+    death_room = ch.get("room")
+    player = world.chars.get(1)
+    if player is not None and player is not ch and death_room is not None:
+        cry_msg = "You hear something's death cry." if ch.get("is_npc") else "You hear someone's death cry."
+        for _ex in ROOM_DEFS[death_room].get("exits", {}).values():
+            dest = _ex["to"] if isinstance(_ex, dict) else _ex
+            if dest == player.get("room") and dest != death_room:
+                chprintln(player, cry_msg)
+                break
 
 
 def create_money(gold, silver):
