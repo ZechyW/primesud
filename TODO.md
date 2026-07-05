@@ -23,15 +23,9 @@ Loose ends that don't belong in a specific plan file.
   instance `type` overrides (e.g. death_cry's trash downgrade) now gate
   `do_eat` via `_item_type`, but envenom/quaff still read the template only.
 
-(do_eat instance type/poisoned overrides, container closed/locked flags, and
-do_put's can_drop_obj check landed 05/07/2026 -- see inventory.py _item_type/
-_is_poisoned_food, item.py container_flags helpers, movement.py
-_open_container et al.)
-
 ## Magic
 
-(elemental `effects.c` port and non-caster cast-level scaling landed
-05/07/2026 -- nothing outstanding)
+(nothing outstanding)
 
 ## Classes
 
