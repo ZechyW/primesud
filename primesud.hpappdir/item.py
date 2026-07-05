@@ -4,6 +4,13 @@ import world
 from world import ITEM_DEFS, MOB_DEFS
 from handler import is_name, number_argument
 
+# Item types treated as ITEM_CONTAINER for lock/open/loot purposes [PRIMESUD]:
+# stock 1stMud uses a single ITEM_CONTAINER type for chests, safes, and
+# corpses alike; PrimeSUD's converter splits corpses into their own
+# npc_corpse/pc_corpse types (see inventory._obj_number), so callers that
+# mean "is this an ITEM_CONTAINER" need this combined set instead.
+CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
+
 
 def obj_vnum(item):
     """Return the VNUM of an item instance dict or a plain VNUM int."""
@@ -79,6 +86,36 @@ def set_item_weapon_flag(obj, tpl, flag, enabled):
     if "weapon_flags" not in obj:
         obj["weapon_flags"] = dict(tpl.get("weapon_flags", {}))
     flags = obj["weapon_flags"]
+    if enabled:
+        flags[flag] = True
+    elif flag in flags:
+        del flags[flag]
+    return flags
+
+
+def item_container_flags(obj, tpl):
+    """Return container_flags for obj, preferring instance override over template. [PRIMESUD]
+
+    Backs the runtime closed/locked/closeable/pickproof state (cf. 1stMud
+    ObjData.value[1] CONT_* bits in merc.h) -- mirrors item_extra_flags'
+    instance-override-wins pattern so container state can be flipped by
+    do_open/do_close/do_lock/do_unlock without mutating the shared template.
+    """
+    if isinstance(obj, dict) and "container_flags" in obj:
+        return obj["container_flags"]
+    return tpl.get("container_flags", {})
+
+
+def ensure_item_container_flags(obj, tpl):
+    """Return mutable full container_flags set for item instance. [PRIMESUD]"""
+    if "container_flags" not in obj:
+        obj["container_flags"] = dict(tpl.get("container_flags", {}))
+    return obj["container_flags"]
+
+
+def set_item_container_flag(obj, tpl, flag, enabled):
+    """Set or clear one mutable container flag on item instance. [PRIMESUD]"""
+    flags = ensure_item_container_flags(obj, tpl)
     if enabled:
         flags[flag] = True
     elif flag in flags:
@@ -264,6 +301,14 @@ def serialize_item_token(obj):
     if "weapon_flags" in obj:
         names = sorted(obj["weapon_flags"])
         fields.append("wf:" + ",".join(names))
+    if "container_flags" in obj:
+        # instance closed/locked state (see item_container_flags); empty dict
+        # preserved -- an opened chest must keep overriding a closed template
+        names = sorted(obj["container_flags"])
+        fields.append("cf:" + ",".join(names))
+    if "type" in obj:
+        # instance type override, e.g. death_cry/poison_effect trash downgrade
+        fields.append("ty:" + _str_escape(str(obj["type"])))
     for af in obj.get("affect_list", []):
         parts = [
             str(af.get("type", 0)),
@@ -331,6 +376,14 @@ def parse_item_token(token):
                 if name:
                     flags[name] = True
             obj["weapon_flags"] = flags
+        elif key == "cf":
+            flags = {}
+            for name in value.split(","):
+                if name:
+                    flags[name] = True
+            obj["container_flags"] = flags
+        elif key == "ty":
+            obj["type"] = _str_unescape(value)
         elif key == "af":
             parts = value.split(",")
             while len(parts) < 7:

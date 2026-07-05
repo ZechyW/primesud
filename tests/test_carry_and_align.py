@@ -24,6 +24,7 @@ ANTI_EVIL_ROBE_VNUM = 9604
 CHEST_VNUM = 9605
 HEAVY_ITEM_VNUM = 9606
 LIGHT_ITEM_VNUM = 9607
+NODROP_VNUM = 9608
 
 _EQUIP_SLOTS = ("light", "finger_l", "finger_r", "neck_1", "neck_2", "body",
                 "head", "legs", "feet", "hands", "arms", "shield", "about",
@@ -90,6 +91,11 @@ def _clean_world_state():
         "keywords": "pebble test", "short_descr": "a test pebble",
         "type": "misc", "level": 0, "weight": 10,
         "wear_flags": {"take": True}, "extra_flags": {},
+    }
+    ITEM_DEFS._data[NODROP_VNUM] = {
+        "keywords": "cursed dagger test", "short_descr": "a cursed test dagger",
+        "type": "misc", "level": 0, "weight": 5,
+        "wear_flags": {"take": True}, "extra_flags": {"nodrop": True},
     }
     # Real money templates (area_limbo.dat vnums 1-5), pre-seeded so
     # combat.create_money's create_object() calls don't trigger LazyDict
@@ -208,6 +214,46 @@ def test_put_item_fits_container(out):
     assert any("You put a test pebble in a test chest." in l for l in out)
     assert len(chest["contents"]) == 1
     assert player["inv"] == []
+
+
+# -- Container closed/locked flags (TODO.md Items section) ------------------------
+
+def test_get_from_closed_container_blocked(out):
+    """cf. 1stMud do_get CONT_CLOSED check, act_obj.c:280."""
+    player = _make_player()
+    chest = {"vnum": CHEST_VNUM, "contents": [{"vnum": LIGHT_ITEM_VNUM}],
+             "container_flags": {"closed": True}}
+    world.rooms[ROOM_VNUM]["items"].append(chest)
+    inventory.do_get(player, ["pebble", "chest"])
+    assert any("The chest is closed." in l for l in out)
+    assert len(chest["contents"]) == 1
+    assert player["inv"] == []
+
+
+def test_put_into_closed_container_blocked(out):
+    """cf. 1stMud do_put CONT_CLOSED check, act_obj.c:370."""
+    player = _make_player()
+    chest = {"vnum": CHEST_VNUM, "contents": [],
+             "container_flags": {"closed": True}}
+    player["inv"].append({"vnum": LIGHT_ITEM_VNUM})
+    world.rooms[ROOM_VNUM]["items"].append(chest)
+    inventory.do_put(player, ["pebble", "chest"])
+    assert any("The chest is closed." in l for l in out)
+    assert chest["contents"] == []
+    assert len(player["inv"]) == 1
+
+
+def test_put_nodrop_item_blocked(out):
+    """cf. 1stMud do_put can_drop_obj check, act_obj.c:391."""
+    player = _make_player()
+    chest = {"vnum": CHEST_VNUM, "contents": []}
+    nodrop = {"vnum": NODROP_VNUM}
+    player["inv"].append(nodrop)
+    world.rooms[ROOM_VNUM]["items"].append(chest)
+    inventory.do_put(player, ["cursed", "chest"])
+    assert any("You can't let go of it." in l for l in out)
+    assert chest["contents"] == []
+    assert nodrop in player["inv"]
 
 
 # -- Task 2: anti-align wear zap --------------------------------------------------

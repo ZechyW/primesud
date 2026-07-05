@@ -22,6 +22,8 @@ from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   can_drop_obj, can_carry_n, can_carry_w, get_obj_weight,
                   get_carry_weight,
                   item_weapon_flags, item_affect_to_obj,
+                  item_container_flags, set_item_container_flag,
+                  CONTAINER_TYPES,
                   promote_obj as _promote_obj)
 from magic import (cast_item_spells, validate_item_spell_payload,
                    _new_affect, _skill_lookup)
@@ -35,13 +37,22 @@ from terminal import tprint
 from urandom import randint
 from world import ITEM_DEFS, MOB_DEFS
 
-_CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
+_CONTAINER_TYPES = CONTAINER_TYPES  # [PRIMESUD] shared definition now lives in item.py
 
 
 
 
 def _loot_container_picker(player, container):
-    """Present picker UI to loot items from a container. [PRIMESUD]"""
+    """Present picker UI to loot items from a container. [PRIMESUD]
+
+    cf. 1stMud do_get CONT_CLOSED check (act_obj.c:280) -- closed containers
+    can't be looted, checked before the no-arg [loot] picker shown here.
+    """
+    cont_tpl = ITEM_DEFS[obj_vnum(container)]
+    if item_container_flags(container, cont_tpl).get("closed"):
+        kw = cont_tpl.get("keywords", cont_tpl["short_descr"])
+        act("The $d is closed.", player, None, kw, TO_CHAR)
+        return
     contents = container.get("contents", [])
     if not contents:
         chprintln(player, "It is empty.")
@@ -123,7 +134,12 @@ def _check_carry_get(player, obj, tpl, from_carried=False):
 
 
 def do_get(player, args):
-    """Pick up items from the room or loot containers (cf. 1stMud `do_get` in act_obj.c)."""
+    """Pick up items from the room or loot containers (cf. 1stMud `do_get` in act_obj.c).
+
+    Closed containers block looting (CONT_CLOSED, act_obj.c:280) via both
+    the no-arg [loot] picker (_loot_container_picker) and the explicit
+    "get <item> <container>" form below.
+    """
     rs = world.rooms[player["room"]]
     if not args:
         loose = [obj for obj in reversed(rs["items"])
@@ -213,6 +229,11 @@ def do_get(player, args):
                 and ITEM_DEFS[obj_vnum(cont_obj)].get("type") in _CONTAINER_TYPES):
             item_arg = args[0]
             cont_tpl = ITEM_DEFS[obj_vnum(cont_obj)]
+            # cf. 1stMud do_get CONT_CLOSED check, act_obj.c:280
+            if item_container_flags(cont_obj, cont_tpl).get("closed"):
+                kw = cont_tpl.get("keywords", cont_tpl["short_descr"])
+                act("The $d is closed.", player, None, kw, TO_CHAR)
+                return
             contents = cont_obj.get("contents", [])
             cont_carried = cont_obj in player["inv"]
             if item_arg == "all":
@@ -399,12 +420,21 @@ def do_put(player, args):
     if cont_tpl.get("type") not in _CONTAINER_TYPES:
         chprintln(player, "That's not a container.")
         return
+    # cf. 1stMud do_put CONT_CLOSED check, act_obj.c:370
+    if item_container_flags(cont_obj, cont_tpl).get("closed"):
+        kw = cont_tpl.get("keywords", cont_tpl["short_descr"])
+        act("The $d is closed.", player, None, kw, TO_CHAR)
+        return
     obj = get_obj_list(item_arg, player["inv"], ITEM_DEFS)
     if obj is None:
         chprintln(player, "You do not have that item.")
         return
     if obj is cont_obj:
         chprintln(player, "You can't fold it into itself.")
+        return
+    # cf. 1stMud do_put act_obj.c:391 -- nodrop items can't be stashed either
+    if not can_drop_obj(player, obj):
+        chprintln(player, "You can't let go of it.")
         return
     tpl = ITEM_DEFS[obj_vnum(obj)]
     # cf. 1stMud do_put act_obj.c:397 -- quest items only fit quest containers
@@ -1216,7 +1246,9 @@ def do_envenom(player, args):
 
 
 def do_eat(player, args):
-    """Eat food or pill (cf. 1stMud do_eat in act_obj.c)."""
+    """Eat food or pill; honour instance type override and poison
+    (cf. 1stMud do_eat in act_obj.c).
+    """
     if not args:
         chprintln(player, "Eat what?")
         return
@@ -1224,16 +1256,35 @@ def do_eat(player, args):
     if obj is None:
         chprintln(player, "You do not have that item.")
         return
-    tpl = ITEM_DEFS[obj["vnum"]]
-    if tpl["type"] not in ("food", "pill"):
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    # Check instance type override first (death_cry may set obj["type"]="trash")
+    otype = _item_type(obj, tpl)
+    if otype not in ("food", "pill"):
         chprintln(player, "That's not edible.")
         return
-    if tpl["type"] == "pill" and validate_item_spell_payload(obj) is None:
+    if otype == "pill" and validate_item_spell_payload(obj) is None:
         return
-    chprintln(player, "You eat {}.".format(tpl["short_descr"]))
-    if tpl["type"] == "pill":
-        cast_item_spells(player, obj, player, None)
+    # Remove from inventory first, then promote to dict for act() rendering [PRIMESUD]
     player["inv"].remove(obj)
+    # Promote plain vnum to dict so act() can render short_descr properly [PRIMESUD]
+    if not isinstance(obj, dict):
+        obj = create_object(obj_vnum(obj))
+    # 1stMud: act("$n eats $p.", ch, obj, NULL, TO_ROOM/TO_CHAR)
+    act("$n eats $p.", player, obj, None, TO_ROOM)
+    act("You eat $p.", player, obj, None, TO_CHAR)
+    if otype == "pill":
+        cast_item_spells(player, obj, player, None)
+    # 1stMud: poison check if obj->value[3] != 0
+    elif _is_poisoned_food(obj, tpl):
+        # 1stMud value[0] (food fullness hours) = converter's "food_hours";
+        # the .dat "value" field is the item's gold cost, not value[0].
+        food_amount = tpl.get("food_hours", 0)
+        act("$n chokes and gags.", player, None, None, TO_ROOM)
+        chprintln(player, "You choke and gag.")
+        # 1stMud: af.level = number_fuzzy(obj->value[0]); af.duration = 2 * obj->value[0]
+        affect_join(player, _new_affect(_skill_lookup("poison"),
+                                        number_fuzzy(food_amount), food_amount * 2,
+                                        None, 0, "poison"))
 
 
 def _liquid_left(obj, tpl):
@@ -1269,6 +1320,28 @@ def _is_poisoned_drink(obj, tpl):
 
     An explicit instance value wins over the template so a poisoned drink
     stays clean after `pour out` clears it (1stMud value[3] = 0).
+    """
+    if isinstance(obj, dict) and "poisoned" in obj:
+        return obj["poisoned"]
+    return tpl.get("poisoned")
+
+
+def _item_type(obj, tpl):
+    """Return the effective item type, checking instance override first. [PRIMESUD]
+
+    An explicit instance type wins over template (e.g., death_cry downgrades
+    non-edible body parts to 'trash').
+    """
+    if isinstance(obj, dict) and "type" in obj:
+        return obj["type"]
+    return tpl.get("type")
+
+
+def _is_poisoned_food(obj, tpl):
+    """Return True if food object/template is poisoned. [PRIMESUD]
+
+    An explicit instance value wins over the template so a poisoned food
+    item can be cleared by instance override if needed.
     """
     if isinstance(obj, dict) and "poisoned" in obj:
         return obj["poisoned"]

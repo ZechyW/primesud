@@ -13,7 +13,7 @@ from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, POS_FROM_SHORT, SECTO
                     MAX_MORTAL_LEVEL, MAX_LEVEL, DIR_ALIASES,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC,
                     WEAR_LABELS)
-from item import get_obj_here, obj_vnum, item_extra_flags
+from item import get_obj_here, obj_vnum, item_extra_flags, item_container_flags
 from picker import pick_from
 from player import (PLR_AUTOMAP, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
                     PLR_AUTOSPLIT, PLR_AUTOASSIST, PLR_AUTOEXIT,
@@ -317,9 +317,10 @@ _CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
 def _look_in(player, args):
     """Show contents of a container in room or inventory (cf. 1stMud do_look 'in' case in act_info.c).
 
-    ITEM_DRINK_CON branch and the closed-container check not ported --
-    drink containers and container open/close don't exist yet [PRIMESUD].
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
+    ITEM_DRINK_CON branch not ported -- drink containers don't exist yet
+    [PRIMESUD].
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026; closed-container check added and re-verified 05/07/2026]
     """
     if not args:
         chprintln(player, "Look in what?")
@@ -332,6 +333,11 @@ def _look_in(player, args):
     tpl = ITEM_DEFS[obj_vnum(obj)]
     if tpl.get("type") not in _CONTAINER_TYPES:
         chprintln(player, "That is not a container.")
+        return
+    # cf. 1stMud do_look 'in' CONT_CLOSED check, act_info.c:1225 (containers
+    # and corpses alike)
+    if item_container_flags(obj, tpl).get("closed"):
+        chprintln(player, "It is closed.")
         return
     _show_container(player, obj, tpl)
 

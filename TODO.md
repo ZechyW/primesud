@@ -4,27 +4,29 @@ Loose ends that don't belong in a specific plan file.
 
 ## Combat
 
-- **PC victims never drop body parts** — `_death_cry` (ported 05/07/2026) gates
-  on `part_flags`/`form_flags`, but `player.py` never merges `RACE_TABLE`
-  parts/form for PCs the way `mob.py` does for mobs (1stMud sets
-  `ch->form/parts` from race for players too). PC deaths always fall through
-  to the default cry, no part drop.
+- **PC race aff/imm/res/vuln/stats not applied** — 1stMud's race-assignment
+  path (nanny.c:533ff / save.c:723ff) also ORs race `aff`/`imm`/`res`/`vuln`
+  into the char and sets `perm_stat`/`size` from race, like `mob.py` does for
+  mobs. `player.py create_char` only merges `form`/`parts` (05/07/2026);
+  elf infravision, dwarf poison/disease resist etc. are inert for PCs.
+  Low-stakes while only "Human" is selectable (no race chargen yet).
 
 ## Items
 
-- **Instance-level `type`/`poisoned` overrides partly inert** — `death_cry`
-  and `poison_effect` set `obj["poisoned"]` and `obj["type"] = "trash"` on
-  food per 1stMud, but `do_eat` (`inventory.py`) checks neither (no poison
-  affect on eating, trash still edible); item-type lookups read only the
-  template. `do_drink` already honours instance `poisoned` — mirror that.
-- **Container `closed`/`locked` flags inert** — area data carries
-  `container_flags` (midgaard/haon/chapel/sewer/newthalos chests, safes), but
-  `do_open`/`do_close`/`do_lock`/`do_unlock` handle doors only, and
-  `do_get`/`do_put` never check container state — "locked" containers are
-  freely accessible.
-- **`do_put` missing `can_drop_obj` check** — 1stMud do_put blocks nodrop
-  items (act_obj.c:391); PrimeSUD's never calls it, so cursed items can be
-  stashed in containers.
+- **`do_put` accepts corpses** — `_CONTAINER_TYPES` includes
+  `npc_corpse`/`pc_corpse`, but 1stMud `do_put` requires strict
+  ITEM_CONTAINER (corpses are separate item types): lootable, not stashable.
+- **`do_pick` doors only** — containers now honour `locked`/`pickproof`
+  (05/07/2026), but lockpicking still has no container branch, so a
+  locked+pickproof-with-no-key container is permanently sealed.
+- **Template-only type lookups remain in `do_envenom` and `do_quaff`** —
+  instance `type` overrides (e.g. death_cry's trash downgrade) now gate
+  `do_eat` via `_item_type`, but envenom/quaff still read the template only.
+
+(do_eat instance type/poisoned overrides, container closed/locked flags, and
+do_put's can_drop_obj check landed 05/07/2026 -- see inventory.py _item_type/
+_is_poisoned_food, item.py container_flags helpers, movement.py
+_open_container et al.)
 
 ## Magic
 

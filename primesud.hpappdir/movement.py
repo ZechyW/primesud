@@ -16,7 +16,9 @@ from picker import pick_from
 from quest import quest_room_check
 from skills_table import (GSN_RECALL, GSN_PICK_LOCK, GSN_SNEAK, GSN_HIDE,
                           GSN_INVIS, GSN_MASS_INVIS, SKILLS)
-from item import get_obj_list, create_object, obj_vnum
+from item import (get_obj_list, get_obj_here, create_object, obj_vnum,
+                  item_container_flags, set_item_container_flag,
+                  promote_obj, CONTAINER_TYPES)
 from terminal import tprint
 from urandom import randint
 import world
@@ -577,18 +579,147 @@ def _find_door(player, arg, exits):
     return direction
 
 
-def do_open(player, args):
-    """Open a door in a given direction or by keyword (cf. 1stMud do_open in act_move.c).
+# -- Containers ------------------------------------------------------------
+# [PRIMESUD] ITEM_PORTAL branches of open/close/lock/unlock not ported --
+# no portal objects exist in any stock area.
 
-    ITEM_PORTAL / ITEM_CONTAINER branches not ported -- doors only [PRIMESUD].
+def _open_container(player, obj):
+    """Container branch of do_open (cf. 1stMud do_open ITEM_CONTAINER branch
+    in act_move.c:426-450). [PRIMESUD] split out so do_open can try this
+    before falling back to door resolution, matching 1stMud's obj-then-door
+    lookup order.
+    """
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    if tpl.get("type") not in CONTAINER_TYPES:
+        chprintln(player, "That's not a container.")
+        return
+    # [PRIMESUD] reset-spawned items may be plain vnum ints; flag mutation
+    # and act() $p rendering need an instance dict
+    obj = promote_obj(player, obj)
+    flags = item_container_flags(obj, tpl)
+    if not flags.get("closed"):
+        chprintln(player, "It's already open.")
+        return
+    if not flags.get("closeable"):
+        chprintln(player, "You can't do that.")
+        return
+    if flags.get("locked"):
+        chprintln(player, "It's locked.")
+        return
+    set_item_container_flag(obj, tpl, "closed", False)
+    act("You open $p.", player, obj, None, TO_CHAR)
+    act("$n opens $p.", player, obj, None, TO_ROOM)
+
+
+def _close_container(player, obj):
+    """Container branch of do_close (cf. 1stMud do_close ITEM_CONTAINER branch
+    in act_move.c:531-550). [PRIMESUD] split out, see _open_container.
+    """
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    if tpl.get("type") not in CONTAINER_TYPES:
+        chprintln(player, "That's not a container.")
+        return
+    # [PRIMESUD] reset-spawned items may be plain vnum ints; flag mutation
+    # and act() $p rendering need an instance dict
+    obj = promote_obj(player, obj)
+    flags = item_container_flags(obj, tpl)
+    if flags.get("closed"):
+        chprintln(player, "It's already closed.")
+        return
+    if not flags.get("closeable"):
+        chprintln(player, "You can't do that.")
+        return
+    set_item_container_flag(obj, tpl, "closed", True)
+    act("You close $p.", player, obj, None, TO_CHAR)
+    act("$n closes $p.", player, obj, None, TO_ROOM)
+
+
+def _lock_container(player, obj):
+    """Container branch of do_lock (cf. 1stMud do_lock ITEM_CONTAINER branch
+    in act_move.c:655-684). [PRIMESUD] split out, see _open_container.
+
+    Unlike the door branch, 1stMud prints no "*Click*" for containers.
+    """
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    if tpl.get("type") not in CONTAINER_TYPES:
+        chprintln(player, "That's not a container.")
+        return
+    # [PRIMESUD] reset-spawned items may be plain vnum ints; flag mutation
+    # and act() $p rendering need an instance dict
+    obj = promote_obj(player, obj)
+    flags = item_container_flags(obj, tpl)
+    if not flags.get("closed"):
+        chprintln(player, "It's not closed.")
+        return
+    key = tpl.get("container_key")
+    # [PRIMESUD] area converter omits container_key when 1stMud's
+    # value[2] <= 0 ("It can't be locked."); the <0 vs. ==0 distinction
+    # is lost in conversion but both mean "no valid key" in practice.
+    if not key:
+        chprintln(player, "It can't be locked.")
+        return
+    if not _has_key(player, key):
+        chprintln(player, "You lack the key.")
+        return
+    if flags.get("locked"):
+        chprintln(player, "It's already locked.")
+        return
+    set_item_container_flag(obj, tpl, "locked", True)
+    act("You lock $p.", player, obj, None, TO_CHAR)
+    act("$n locks $p.", player, obj, None, TO_ROOM)
+
+
+def _unlock_container(player, obj):
+    """Container branch of do_unlock (cf. 1stMud do_unlock ITEM_CONTAINER
+    branch in act_move.c:786-815). [PRIMESUD] split out, see _open_container.
+
+    Unlike the door branch, 1stMud prints no "*Click*" for containers.
+    """
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    if tpl.get("type") not in CONTAINER_TYPES:
+        chprintln(player, "That's not a container.")
+        return
+    # [PRIMESUD] reset-spawned items may be plain vnum ints; flag mutation
+    # and act() $p rendering need an instance dict
+    obj = promote_obj(player, obj)
+    flags = item_container_flags(obj, tpl)
+    if not flags.get("closed"):
+        chprintln(player, "It's not closed.")
+        return
+    key = tpl.get("container_key")
+    if not key:  # [PRIMESUD] see _lock_container
+        chprintln(player, "It can't be unlocked.")
+        return
+    if not _has_key(player, key):
+        chprintln(player, "You lack the key.")
+        return
+    if not flags.get("locked"):
+        chprintln(player, "It's already unlocked.")
+        return
+    set_item_container_flag(obj, tpl, "locked", False)
+    act("You unlock $p.", player, obj, None, TO_CHAR)
+    act("$n unlocks $p.", player, obj, None, TO_ROOM)
+
+
+def do_open(player, args):
+    """Open a door in a given direction or by keyword, or open a closeable
+    container (cf. 1stMud do_open in act_move.c).
+
+    ITEM_PORTAL branch not ported -- no portal objects in any stock area
+    [PRIMESUD].
     [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
-    room + far-side messages) added and re-verified 04/07/2026]
+    room + far-side messages) added and re-verified 04/07/2026; container
+    branch added and re-verified 05/07/2026]
     """
     exits = ROOM_DEFS[player["room"]]["exits"]
     _picked_dir = None
     if args:
+        arg = " ".join(args)
+        obj = get_obj_here(player, arg)
+        if obj is not None:
+            return _open_container(player, obj)
         # 1stMud prints "Open what?" on no args; [PRIMESUD] picker below instead
-        direction = _find_door(player, " ".join(args), exits)
+        direction = _find_door(player, arg, exits)
         if direction is None:
             return
     else:
@@ -628,17 +759,24 @@ def do_open(player, args):
 
 
 def do_close(player, args):
-    """Close a door in a given direction or by keyword (cf. 1stMud do_close in act_move.c).
+    """Close a door in a given direction or by keyword, or close a closeable
+    container (cf. 1stMud do_close in act_move.c).
 
-    ITEM_PORTAL / ITEM_CONTAINER branches not ported -- doors only [PRIMESUD].
+    ITEM_PORTAL branch not ported -- no portal objects in any stock area
+    [PRIMESUD].
     [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
-    room + far-side messages) added and re-verified 04/07/2026]
+    room + far-side messages) added and re-verified 04/07/2026; container
+    branch added and re-verified 05/07/2026]
     """
     exits = ROOM_DEFS[player["room"]]["exits"]
     _picked_dir = None
     if args:
+        arg = " ".join(args)
+        obj = get_obj_here(player, arg)
+        if obj is not None:
+            return _close_container(player, obj)
         # 1stMud prints "Close what?" on no args; [PRIMESUD] picker below instead
-        direction = _find_door(player, " ".join(args), exits)
+        direction = _find_door(player, arg, exits)
         if direction is None:
             return
     else:
@@ -680,8 +818,9 @@ def do_close(player, args):
 
 
 # -- Locks ---------------------------------------------------------------------
-# [PRIMESUD] ITEM_PORTAL / ITEM_CONTAINER branches of lock/unlock/pick not
-# ported -- container open/close itself not ported yet.  Doors only.
+# [PRIMESUD] ITEM_PORTAL branch of lock/unlock/pick not ported -- no portal
+# objects in any stock area.  do_lock/do_unlock now also cover ITEM_CONTAINER
+# (see _lock_container/_unlock_container above); do_pick remains doors only.
 
 def _has_key(ch, key_vnum):
     """True if ch carries the key item (cf. 1stMud has_key in act_move.c). [Verified: 03/07/2026]"""
@@ -738,10 +877,16 @@ def _set_rev_lock(player, direction, exit_val, locked):
 
 
 def do_lock(player, args):
-    """Lock a closed door with its key (cf. 1stMud do_lock in act_move.c).
+    """Lock a closed door with its key, or lock a closed container with its
+    key (cf. 1stMud do_lock in act_move.c).
     [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
-    room message) added and re-verified 04/07/2026]
+    room message) added and re-verified 04/07/2026; container branch added
+    and re-verified 05/07/2026]
     """
+    if args:
+        obj = get_obj_here(player, " ".join(args))
+        if obj is not None:
+            return _lock_container(player, obj)
     direction, exit_val, picked = _door_for_lock_cmd(player, args, "Lock", False)
     if exit_val is None:
         return
@@ -765,10 +910,16 @@ def do_lock(player, args):
 
 
 def do_unlock(player, args):
-    """Unlock a closed door with its key (cf. 1stMud do_unlock in act_move.c).
+    """Unlock a closed door with its key, or unlock a closed container with
+    its key (cf. 1stMud do_unlock in act_move.c).
     [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
-    room message) added and re-verified 04/07/2026]
+    room message) added and re-verified 04/07/2026; container branch added
+    and re-verified 05/07/2026]
     """
+    if args:
+        obj = get_obj_here(player, " ".join(args))
+        if obj is not None:
+            return _unlock_container(player, obj)
     direction, exit_val, picked = _door_for_lock_cmd(player, args, "Unlock", True)
     if exit_val is None:
         return
