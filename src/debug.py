@@ -7,7 +7,7 @@ import terminal
 # call sites are in per-mob per-pulse loops.
 DBG = set()
 
-_CHANNELS = ("spawn", "move", "tick", "reset", "vnum", "save")
+_CHANNELS = ("spawn", "move", "tick", "reset", "vnum", "save", "time")
 
 
 def dbg(msg):

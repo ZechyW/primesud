@@ -26,7 +26,8 @@ from skills_table import SKILL_TABLE, SKILLS, GSN_PEEK
 from urandom import randint
 from util import free_mem, gc_collect
 from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
-from debug import DBG  # [PRIMESUD]
+from debug import DBG, dbg  # [PRIMESUD]
+from prime_platform import ticks  # [PRIMESUD] 'debug time' channel timings
 
 
 def _wrap(text, width):
@@ -1010,7 +1011,8 @@ def do_help(player, args):
     Index format: '<level>|<offset>|<keywords>' per line; offset is the byte
     position of the entry's first text line in HELP_FILE, printed via seek.
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; index-scan rework re-verified 05/07/2026]
+    04/07/2026; index-scan rework re-verified 05/07/2026; 'debug time'
+    timing instrumentation added 05/07/2026]
     """
     argall = " ".join(args) if args else "summary"
     number, target = _number_argument(argall)
@@ -1022,6 +1024,7 @@ def do_help(player, args):
     matches = []  # list-mode keywords
     related = []  # "See Also" keywords after the shown entry
     show = None   # (keyword, offset) of the entry to print
+    t0 = ticks()  # [PRIMESUD] 'debug time' channel timings
     f = open(HELP_INDEX)
     while True:
         line = f.readline()
@@ -1043,18 +1046,25 @@ def do_help(player, args):
             elif found:
                 related.append(keyword)
     f.close()
+    t1 = t2 = ticks()  # [PRIMESUD] idx scan done
     if show:
-        chprintln(player, sep)
-        chprintln(player, "Help Keywords : %s" % show[0])
-        chprintln(player, sep)
+        # [PRIMESUD] read body before printing so 'debug time' can split
+        # file-read cost from terminal-render cost
+        body = []
         f = open(HELP_FILE)
         f.seek(show[1])
         while True:
             line = f.readline()
             if not line or line[0] == "#":
                 break
-            chprintln(player, line.rstrip("\n"))
+            body.append(line.rstrip("\n"))
         f.close()
+        t2 = ticks()
+        chprintln(player, sep)
+        chprintln(player, "Help Keywords : %s" % show[0])
+        chprintln(player, sep)
+        for line in body:
+            chprintln(player, line)
         chprintln(player, sep)
     if matches:
         # [PRIMESUD] 1stMud prints 3 columns; 2 columns fit the 64-col screen
@@ -1077,6 +1087,10 @@ def do_help(player, args):
     elif related:
         chprintln(player, "See Also : %s." % ", ".join(related))
         chprintln(player, sep)
+    if "time" in DBG:  # [PRIMESUD] 'debug time' channel
+        t3 = ticks()
+        dbg("help: idx=" + str(t1 - t0) + "ms read=" + str(t2 - t1) +
+            "ms print=" + str(t3 - t2) + "ms")
 
 
 def do_map(player, args):
