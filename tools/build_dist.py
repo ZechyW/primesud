@@ -45,6 +45,11 @@ def minify_source(source):
     )
 
 
+def _is_area_data(path):
+    """area_*.txt: Python source exec'd at load time (see world._load_area)."""
+    return path.suffix == ".txt" and path.name.startswith("area_")
+
+
 def preflight():
     """Regenerate all derived data (areas, mob index, help + index).
 
@@ -106,7 +111,10 @@ def main():
             continue
         dst_file = DIST_DIR / src_file.name
 
-        if src_file.suffix != ".py":
+        # area_*.txt are Python source exec'd by world.py -- minify like
+        # .py. Other .txt stay verbatim: help.txt's index is byte-offset
+        # based; mob_index.txt/commands.txt are custom line formats.
+        if src_file.suffix != ".py" and not _is_area_data(src_file):
             shutil.copy2(src_file, dst_file)
             continue
 
@@ -172,6 +180,42 @@ def extract_public_names(source):
     return names
 
 
+def check_area_data():
+    """Exec source and dist area files, verify identical data content.
+
+    Stronger than the .py symbol check: minified area data must produce
+    byte-for-byte equal Python values, not just the same global names.
+    """
+    errors = []
+    for src_file in sorted(SRC_DIR.glob("area_*.txt")):
+        dst_file = DIST_DIR / src_file.name
+        if not dst_file.exists():
+            errors.append("%s: missing from dist" % src_file.name)
+            continue
+        try:
+            src_ns, dst_ns = {}, {}
+            exec(src_file.read_text(encoding="utf-8"), src_ns)
+            exec(dst_file.read_text(encoding="utf-8"), dst_ns)
+        except Exception as e:
+            errors.append("%s: exec failed: %s" % (src_file.name, e))
+            continue
+        src_data = {k: v for k, v in src_ns.items() if not k.startswith("__")}
+        dst_data = {k: v for k, v in dst_ns.items() if not k.startswith("__")}
+        if src_data != dst_data:
+            diff_keys = [k for k in sorted(set(src_data) | set(dst_data))
+                         if src_data.get(k) != dst_data.get(k)]
+            errors.append("%s: data mismatch in %s" %
+                          (src_file.name, ", ".join(diff_keys)))
+
+    if errors:
+        print("\nArea data check FAILED:")
+        for e in errors:
+            print("  " + e)
+        return 1
+    print("Area data check passed: minified area files exec to identical data")
+    return 0
+
+
 def check_symbols():
     """Verify all public names from source survive in dist."""
     errors = []
@@ -204,5 +248,5 @@ if __name__ == "__main__":
     if rc != 0:
         raise SystemExit(rc)
     if "--check" in sys.argv:
-        raise SystemExit(check_symbols())
+        raise SystemExit(check_symbols() or check_area_data())
     raise SystemExit(rc)

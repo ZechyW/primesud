@@ -211,7 +211,7 @@ def _loading_notice(tag):
 
 
 def _load_area(tag):
-    """Load one area on demand: exec .dat, merge defs, queue reset. [PRIMESUD]
+    """Load one area on demand: exec data file, merge defs, queue reset. [PRIMESUD]
 
     Args:
         tag (str): Area tag (e.g. "midgaard").
