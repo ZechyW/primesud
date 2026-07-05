@@ -4,7 +4,7 @@ Usage:
     python tools/help_to_primesud.py
 
 Reads reference/1stMud4.5.3/data/help.dat (tagged #HELP...#END records,
-'~'-terminated string fields) and writes primesud.hpappdir/help.dat in a
+'~'-terminated string fields) and writes src/help.dat in a
 line-oriented format built for low-memory sequential scanning on the
 HP Prime:
 
@@ -29,9 +29,9 @@ import sys
 from pathlib import Path
 
 SRC = Path("reference/1stMud4.5.3/data/help.dat")
-DST = Path("primesud.hpappdir/help.dat")
-IDX = Path("primesud.hpappdir/help.idx")
-MAX_MORTAL_LEVEL = 51  # cf. primesud.hpappdir/config.py
+DST = Path("src/help.dat")
+IDX = Path("src/help.idx")
+MAX_MORTAL_LEVEL = 51  # cf. src/config.py
 
 # cp1252 punctuation found in upstream data -> ASCII
 CP1252_FIXES = {"\x91": "'", "\x92": "'", "\x96": "-"}

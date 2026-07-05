@@ -11,7 +11,7 @@ import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-APPDIR = os.path.join(ROOT, "primesud.hpappdir")
+APPDIR = os.path.join(ROOT, "src")
 sys.path.insert(0, APPDIR)
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 

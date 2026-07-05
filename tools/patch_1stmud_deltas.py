@@ -337,7 +337,7 @@ if __name__ == "__main__":
     if "-h" in sys.argv or "--help" in sys.argv:
         print(__doc__.strip())
         sys.exit(0)
-    base = Path(__file__).resolve().parent.parent / "primesud.hpappdir"
+    base = Path(__file__).resolve().parent.parent / "src"
     # All patches are idempotent: safe to re-run on already-patched .dats.
     for area_name in sorted(set(CROSS_AREA_EXITS) | set(MOB_ACT_FLAGS)
                             | set(ROOM_GUILDS)):

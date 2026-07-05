@@ -1,6 +1,6 @@
 # PrimeSUD — Area File Reference
 
-Area files are Python modules (`area_<name>.py`) in `primesud.hpappdir/`. They replace
+Area files are Python modules (`area_<name>.py`) in `src/`. They replace
 the text-based `.are` files used by 1stMud — parsing text at runtime would be
 memory-intensive and slow on the HP Prime. The structure mirrors 1stMud's sections but
 uses plain Python dicts and tuples.

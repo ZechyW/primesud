@@ -1,4 +1,4 @@
-"""Build minified dist copy of primesud.hpappdir for HP Prime deployment.
+"""Build minified dist copy of src for HP Prime deployment.
 
 Usage:
     python tools/build_dist.py          Build dist
@@ -18,7 +18,7 @@ import python_minifier
 # when CPython compiles it inside the minifier
 warnings.filterwarnings("ignore", category=SyntaxWarning)
 
-SRC_DIR = Path("primesud.hpappdir")
+SRC_DIR = Path("src")
 DIST_DIR = Path("dist/primesud.hpappdir")
 BOM = b"\xef\xbb\xbf"
 # Save files -- packaging these would overwrite on-calc data
@@ -73,9 +73,13 @@ def preflight():
 
     # Surface generator drift: regen writes into SRC_DIR, so any diff here
     # means checked-in data no longer matches the generators
-    drift = subprocess.run(
+    out = subprocess.run(
         ["git", "status", "--porcelain", str(SRC_DIR)],
-        capture_output=True, text=True).stdout.strip()
+        capture_output=True, text=True).stdout
+    # Worktree column only ("XY path", Y != space): staged-but-identical
+    # entries (e.g. mid-rename) are not generator drift
+    drift = "\n".join(
+        ln for ln in out.splitlines() if len(ln) > 1 and ln[1] != " ")
     if drift:
         print("\nWARNING: preflight changed checked-in data (generator drift):")
         print(drift)

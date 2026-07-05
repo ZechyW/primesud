@@ -29,8 +29,8 @@ build/
 /reference/1stmud4.5.3/data/
 
 # PC shim state
-/primesud.hpappdir/primesud.sav
-/primesud.hpappdir/hvars.json
+/src/primesud.sav
+/src/hvars.json
 /hvars.json
 /primesud.sav
 

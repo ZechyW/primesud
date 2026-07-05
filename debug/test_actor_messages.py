@@ -3,7 +3,7 @@ import sys
 
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-sys.path.insert(0, os.path.join(ROOT, "primesud.hpappdir"))
+sys.path.insert(0, os.path.join(ROOT, "src"))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
 import actor

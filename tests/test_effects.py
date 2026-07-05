@@ -10,7 +10,7 @@ import sys
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-_SRC = os.environ.get("PRIMESUD_SRC", "primesud.hpappdir")
+_SRC = os.environ.get("PRIMESUD_SRC", "src")
 sys.path.insert(0, os.path.join(ROOT, _SRC))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 

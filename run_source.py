@@ -7,8 +7,8 @@ import os
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_ROOT, 'pc_shim'))
-sys.path.insert(1, os.path.join(_ROOT, 'primesud.hpappdir'))
-os.chdir(os.path.join(_ROOT, 'primesud.hpappdir'))
+sys.path.insert(1, os.path.join(_ROOT, 'src'))
+os.chdir(os.path.join(_ROOT, 'src'))
 
 import gc
 gc.mem_free = lambda: 0  # HP Prime MicroPython built-in, not in CPython gc
