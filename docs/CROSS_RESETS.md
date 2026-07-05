@@ -1,7 +1,7 @@
 # Cross-Area Resets
 
 Resets that reference mobs, items, or rooms defined in a different area.
-Generated from area .dat files.
+Generated from area data files (src/area_*.txt).
 
 Note: patch_1stmud_deltas.py (MOVE_RESETS/DROP_RESETS) defers the
 midgaard start-load cascade: the juke resets into shire rooms 1116/1144
