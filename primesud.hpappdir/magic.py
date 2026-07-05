@@ -3441,7 +3441,7 @@ def cast_item_spells(ch, item_obj, victim, obj):
 
 def do_cast(player, args):
     """Cast a spell through 1stMud-style command flow (cf. 1stMud do_cast in magic.c).
-    [Verified: 03/07/2026]"""
+    [Verified: 03/07/2026; cast level scaling for non-casters added and re-verified 05/07/2026]"""
     if not args:
         known = _known_runtime_spells(player)
         if not known:
@@ -3508,7 +3508,14 @@ def do_cast(player, args):
         player["mana"] -= mana
         fun = SPELL_FUNS.get(sk.get("spell_fun", "spell_null"), spell_null)
         player["_target_name"] = target_name  # cf. 1stMud global target_name (magic.c:266)
-        ret = fun(sn, player.get("level", 1), player, vo, target)  # [PRIMESUD] classless
+        # 1stMud: NPC or caster class gets full level; non-caster PCs get 3*level/4
+        # (cf. magic.c:492-499: IsNPC(ch) || has_spells(ch) -> ch->level; else 3*ch->level/4)
+        level = player.get("level", 1)
+        if player.get("is_npc") or has_spells(player):
+            cast_level = level
+        else:
+            cast_level = 3 * level // 4
+        ret = fun(sn, cast_level, player, vo, target)
         del player["_target_name"]
         check_improve(player, sn, ret, 1)
 
