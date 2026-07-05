@@ -2186,7 +2186,7 @@ def _advance_target(player, mob_instances, room_state):
 
 # -- Death / Victory -----------------------------------------------------------
 
-# OBJ_VNUM_* body-part templates (area_limbo.dat #12-17; cf. 1stMud
+# OBJ_VNUM_* body-part templates (area_limbo.txt #12-17; cf. 1stMud
 # vnums.h). Not exposed as named constants in world.py (only the corpse
 # vnums I_CORPSE/I_CORPSE_11 are), so defined locally here.
 _OBJ_VNUM_SEVERED_HEAD = 12

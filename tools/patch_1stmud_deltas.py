@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Patch 1stMud-only deltas into generated area .dat files.
+"""Patch 1stMud-only deltas into generated area .txt files.
 
 Data that exists in 1stMud but not in the QuickMUD .are files the
 converter reads: cross-area exits, and mob act flags (1stMud gives its
 midgaard guildmasters ACT_TRAIN/ACT_GAIN). Run after
 are_to_primesud_quickmud.py conversion (regen_areas.sh does).
 
-All patches are idempotent; safe to re-run on already-patched .dats.
+All patches are idempotent; safe to re-run on already-patched .txts.
 
 Usage:
     python patch_1stmud_deltas.py
@@ -252,8 +252,8 @@ def patch_room_guilds(area_name, filepath):
 def patch_move_resets(base):
     """Move MOVE_RESETS lines from src RESETS to dst RESETS. Idempotent."""
     for (src, dst), reset_lines in sorted(MOVE_RESETS.items()):
-        src_path = base / f"area_{src}.dat"
-        dst_path = base / f"area_{dst}.dat"
+        src_path = base / f"area_{src}.txt"
+        dst_path = base / f"area_{dst}.txt"
         if not (src_path.exists() and dst_path.exists()):
             print(f"  SKIP: {src} -> {dst} (file missing)", file=sys.stderr)
             continue
@@ -304,7 +304,7 @@ def patch_move_resets(base):
 def patch_drop_resets(base):
     """Comment out DROP_RESETS lines in place. Idempotent."""
     for area_name, reset_lines in sorted(DROP_RESETS.items()):
-        filepath = base / f"area_{area_name}.dat"
+        filepath = base / f"area_{area_name}.txt"
         if not filepath.exists():
             print(f"  SKIP: {filepath} not found", file=sys.stderr)
             continue
@@ -341,7 +341,7 @@ if __name__ == "__main__":
     # All patches are idempotent: safe to re-run on already-patched .dats.
     for area_name in sorted(set(CROSS_AREA_EXITS) | set(MOB_ACT_FLAGS)
                             | set(ROOM_GUILDS)):
-        filepath = base / f"area_{area_name}.dat"
+        filepath = base / f"area_{area_name}.txt"
         if filepath.exists():
             print(f"==> {area_name}", file=sys.stderr)
             patch_area(area_name, filepath)

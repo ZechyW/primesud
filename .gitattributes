@@ -1,4 +1,7 @@
 # Generated data files: byte-exact on device (help.idx stores byte offsets
-# into help.dat). Never let git eol-normalize these.
-*.dat -text
+# into help.txt). Never let git eol-normalize these.
+src/area_*.txt -text
+src/help.txt -text
+src/mob_index.txt -text
+src/commands.txt -text
 *.idx -text

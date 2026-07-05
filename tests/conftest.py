@@ -14,16 +14,19 @@ import world
 
 
 def _write_dat(path, rooms, mobiles=None, objects=None, resets=None,
-               specials=None, shops=None, area=None):
-    """Write a synthetic .dat file for testing."""
+               area=None):
+    """Write a synthetic .dat file for testing.
+
+    spec_fun/shop data is baked directly into individual MOBILES entries
+    by the caller (cf. tools/are_to_primesud_quickmud.py) -- there are no
+    longer separate SPECIALS/SHOPS sections.
+    """
     lines = []
     lines.append("AREA = %r" % (area or {"name": "test", "vnums": (0, 0)},))
     lines.append("ROOMS = %r" % (rooms or {},))
     lines.append("MOBILES = %r" % (mobiles or {},))
     lines.append("OBJECTS = %r" % (objects or {},))
     lines.append("RESETS = %r" % (resets or (),))
-    lines.append("SPECIALS = %r" % (specials or (),))
-    lines.append("SHOPS = %r" % (shops or (),))
     with open(path, "w") as f:
         f.write("\n".join(lines))
 
@@ -66,11 +69,10 @@ def fresh_world(tmp_path):
     ns.tmp_path = tmp_path
 
     def register_area(tag, vnum_lo, vnum_hi, rooms=None, mobiles=None,
-                      objects=None, resets=None, specials=None, shops=None,
-                      area=None):
-        fname = "area_%s.dat" % tag
+                      objects=None, resets=None, area=None):
+        fname = "area_%s.txt" % tag
         fpath = str(tmp_path / fname)
-        _write_dat(fpath, rooms, mobiles, objects, resets, specials, shops, area)
+        _write_dat(fpath, rooms, mobiles, objects, resets, area)
         _area_entries.append((fpath, tag, tag, vnum_lo, vnum_hi))
 
     def setup():

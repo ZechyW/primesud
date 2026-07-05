@@ -34,26 +34,26 @@ I_GLAIVE_SUB_MERC          = 3722
 # Ascending size order: small areas load while heap is fresh (lower ms/KB),
 # big areas load last where heap pressure is unavoidable anyway.
 _AREA_FILES = [
-    ("area_ofcol.dat", "ofcol", "Ofcol", 5500, 5599),                 # 7084 bytes
-    ("area_limbo.dat", "limbo", "Limbo", 1, 99),                      # 9466 bytes
-    ("area_quest.dat", "quest", "Quest", 200, 249),                   # 12528 bytes
-    ("area_trollden.dat", "trollden", "Troll Den", 2800, 2899),       # 19073 bytes
-    ("area_mobfact.dat", "mobfact", "Mob Factory", 9400, 9499),       # 24889 bytes
-    ("area_immort.dat", "immort", "Valhalla", 1200, 1299),            # 26758 bytes
-    ("area_grave.dat", "grave", "Graveyard", 3600, 3699),             # 32513 bytes
-    ("area_marsh.dat", "marsh", "Marsh", 8300, 8399),                 # 35321 bytes
-    ("area_arachnos.dat", "arachnos", "Arachnos", 6200, 6399),        # 44543 bytes
-    ("area_plains.dat", "plains", "Plains", 300, 399),                # 45308 bytes
-    ("area_chapel.dat", "chapel", "Chapel", 3400, 3499),              # 71267 bytes
-    ("area_school.dat", "mud_school", "Mud School", 3700, 3799),      # 76023 bytes
-    ("area_shire.dat", "shire", "Shire", 1100, 1199),                 # 79009 bytes
-    ("area_haon.dat", "haon", "Haon Dor", 6000, 6199),                # 85969 bytes
-    ("area_moria.dat", "moria", "Moria", 3900, 4199),                 # 98773 bytes
-    ("area_ofcol2.dat", "ofcol2", "New Ofcol", 600, 699),             # 126239 bytes
-    ("area_sewer.dat", "sewer", "Sewers", 7000, 7499),                # 158284 bytes
-    ("area_tohell.dat", "tohell", "Hell", 10400, 10599),              # 195277 bytes
-    ("area_midgaard.dat", "midgaard", "Midgaard", 3000, 3399),        # 259207 bytes
-    ("area_newthalos.dat", "newthalos", "New Thalos", 9500, 9799),    # 265007 bytes
+    ("area_ofcol.txt", "ofcol", "Ofcol", 5500, 5599),                 # 7084 bytes
+    ("area_limbo.txt", "limbo", "Limbo", 1, 99),                      # 9466 bytes
+    ("area_quest.txt", "quest", "Quest", 200, 249),                   # 12528 bytes
+    ("area_trollden.txt", "trollden", "Troll Den", 2800, 2899),       # 19073 bytes
+    ("area_mobfact.txt", "mobfact", "Mob Factory", 9400, 9499),       # 24889 bytes
+    ("area_immort.txt", "immort", "Valhalla", 1200, 1299),            # 26758 bytes
+    ("area_grave.txt", "grave", "Graveyard", 3600, 3699),             # 32513 bytes
+    ("area_marsh.txt", "marsh", "Marsh", 8300, 8399),                 # 35321 bytes
+    ("area_arachnos.txt", "arachnos", "Arachnos", 6200, 6399),        # 44543 bytes
+    ("area_plains.txt", "plains", "Plains", 300, 399),                # 45308 bytes
+    ("area_chapel.txt", "chapel", "Chapel", 3400, 3499),              # 71267 bytes
+    ("area_school.txt", "mud_school", "Mud School", 3700, 3799),      # 76023 bytes
+    ("area_shire.txt", "shire", "Shire", 1100, 1199),                 # 79009 bytes
+    ("area_haon.txt", "haon", "Haon Dor", 6000, 6199),                # 85969 bytes
+    ("area_moria.txt", "moria", "Moria", 3900, 4199),                 # 98773 bytes
+    ("area_ofcol2.txt", "ofcol2", "New Ofcol", 600, 699),             # 126239 bytes
+    ("area_sewer.txt", "sewer", "Sewers", 7000, 7499),                # 158284 bytes
+    ("area_tohell.txt", "tohell", "Hell", 10400, 10599),              # 195277 bytes
+    ("area_midgaard.txt", "midgaard", "Midgaard", 3000, 3399),        # 259207 bytes
+    ("area_newthalos.txt", "newthalos", "New Thalos", 9500, 9799),    # 265007 bytes
 ]
 
 # Area level ranges, duplicated from each .dat AREA["levels"] so quest
@@ -235,14 +235,7 @@ def _load_area(tag):
                     "locked": bool(_ev.get("locked")),
                 }
     MOB_DEFS.update(_ns["MOBILES"])
-    for _entry in _ns.get("SPECIALS", ()):
-        if _entry[0] == "M" and _entry[1] in MOB_DEFS._data:
-            MOB_DEFS._data[_entry[1]]["spec_fun"] = _entry[2]
     ITEM_DEFS.update(_ns["OBJECTS"])
-    for _entry in _ns.get("SHOPS", ()):
-        _keeper = _entry["keeper"]
-        if _keeper in MOB_DEFS._data:
-            MOB_DEFS._data[_keeper]["shop"] = _entry
     # Partition resets to per-room lists (cf. 1stMud pRoom->reset_first).
     # Cross-area resets (target room in a different area) are deferred to
     # avoid the cascade-load race: accessing ROOM_DEFS[cross_vnum] via

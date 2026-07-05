@@ -7,7 +7,7 @@ Covers:
 - Mob ID/room alignment in pending deltas
 - Room item persistence across save cycles for unvisited areas
 - Area age accumulation for unloaded areas
-- SPECIALS/SHOPS merge with cross-area mob vnums
+- spec_fun/shop present on MOB_DEFS entries after area load (baked format)
 - Serialization round-trip with lazy areas
 """
 import os
@@ -260,26 +260,28 @@ class TestSingleAreaLoad:
         assert adef["name"] == "Alpha Land"
         assert adef["room_vnums"] == [100]
 
-    def test_specials_applied_to_mob_defs(self, fresh_world):
+    def test_spec_fun_present_on_mob_defs(self, fresh_world):
+        """spec_fun is baked into the MOBILES entry by the converter now
+        (cf. tools/are_to_primesud_quickmud.py) -- no separate merge step."""
         fw = fresh_world
         fw.register_area("alpha", 100, 199,
                          rooms={100: {"name": "R100", "exits": {}}},
-                         mobiles={100: _mob_tpl()},
-                         specials=(("M", 100, "spec_test"),))
+                         mobiles={100: _mob_tpl(spec_fun="spec_test")})
         fw.setup()
 
         _load_area("alpha")
         assert MOB_DEFS._data[100]["spec_fun"] == "spec_test"
 
-    def test_shops_applied_to_mob_defs(self, fresh_world):
+    def test_shop_present_on_mob_defs(self, fresh_world):
+        """shop dict is baked into the MOBILES entry by the converter now
+        (cf. tools/are_to_primesud_quickmud.py) -- no separate merge step."""
         fw = fresh_world
         shop = {"keeper": 100, "buy_types": ["weapon"],
                 "profit_buy": 120, "profit_sell": 40,
                 "open_hour": 0, "close_hour": 23}
         fw.register_area("alpha", 100, 199,
                          rooms={100: {"name": "R100", "exits": {}}},
-                         mobiles={100: _mob_tpl()},
-                         shops=(shop,))
+                         mobiles={100: _mob_tpl(shop=shop)})
         fw.setup()
 
         _load_area("alpha")
@@ -558,58 +560,6 @@ class TestAreaAgeUnloaded:
         # 1stMud hard cap is 31 -> force reset. PrimeSUD doesn't enforce this.
 
 
-# ===== SPECIALS/SHOPS with cross-area mob vnums ============================
-
-class TestCrossAreaSpecialsShops:
-    """SPECIALS and SHOPS merge uses MOB_DEFS._data (bypasses LazyDict).
-    Cross-area references silently dropped if other area not loaded."""
-
-    def test_special_for_own_mob_applied(self, fresh_world):
-        fw = fresh_world
-        fw.register_area("alpha", 100, 199,
-                         rooms={100: {"name": "R100", "exits": {}}},
-                         mobiles={100: _mob_tpl()},
-                         specials=(("M", 100, "spec_own"),))
-        fw.setup()
-
-        _load_area("alpha")
-        assert MOB_DEFS._data[100].get("spec_fun") == "spec_own"
-
-    def test_special_for_cross_area_mob_skipped(self, fresh_world):
-        """SPECIAL referencing mob in unloaded area is silently dropped."""
-        fw = fresh_world
-        fw.register_area("alpha", 100, 199,
-                         rooms={100: {"name": "R100", "exits": {}}},
-                         mobiles={100: _mob_tpl()},
-                         # Special references mob 200 (in beta, not loaded)
-                         specials=(("M", 200, "spec_cross"),))
-        fw.register_area("beta", 200, 299,
-                         rooms={200: {"name": "R200", "exits": {}}},
-                         mobiles={200: _mob_tpl()})
-        fw.setup()
-
-        _load_area("alpha")
-        # Mob 200 not in MOB_DEFS._data yet (beta not loaded)
-        # The special should have been silently skipped
-        assert 200 not in MOB_DEFS._data
-
-    def test_shop_for_cross_area_keeper_skipped(self, fresh_world):
-        """SHOP referencing keeper in unloaded area is silently dropped."""
-        fw = fresh_world
-        shop = {"keeper": 200, "buy_types": [], "profit_buy": 100,
-                "profit_sell": 50, "open_hour": 0, "close_hour": 23}
-        fw.register_area("alpha", 100, 199,
-                         rooms={100: {"name": "R100", "exits": {}}},
-                         shops=(shop,))
-        fw.register_area("beta", 200, 299,
-                         rooms={200: {"name": "R200", "exits": {}}},
-                         mobiles={200: _mob_tpl()})
-        fw.setup()
-
-        _load_area("alpha")
-        assert 200 not in MOB_DEFS._data
-
-
 # ===== reset_lazy / init_world ==============================================
 
 class TestResetLazy:
@@ -852,51 +802,3 @@ class TestAreaAgeCapped:
 
         assert area_state["age"] == _AREA_AGE_RESET
 
-
-# ===== BUG: cross-area SPECIALS/SHOPS silently lost ========================
-#
-# _load_area applies SPECIALS and SHOPS by checking MOB_DEFS._data directly
-# (bypasses LazyDict). If the mob belongs to an unloaded area, it's not in
-# _data yet and the entry is silently skipped. When that area loads later,
-# no retry happens — the special/shop is permanently lost.
-# Currently academic: no real area file has cross-area special/shop refs.
-
-class TestBugCrossAreaSpecialLost:
-
-    def test_special_lost_when_areas_load_in_wrong_order(self, fresh_world):
-        """Alpha defines SPECIAL for beta's mob. Load alpha first, beta
-        second. The special is never applied to beta's mob."""
-        fw = fresh_world
-        fw.register_area("alpha", 100, 199,
-                         rooms={100: {"name": "R100", "exits": {}}},
-                         specials=(("M", 200, "spec_cross"),))
-        fw.register_area("beta", 200, 299,
-                         rooms={200: {"name": "R200", "exits": {}}},
-                         mobiles={200: _mob_tpl()})
-        fw.setup()
-
-        _load_area("alpha")  # skips special — mob 200 not in _data
-        _load_area("beta")   # loads mob 200 but doesn't retry alpha's specials
-
-        # BUG: mob 200 never gets spec_cross
-        assert MOB_DEFS._data[200].get("spec_fun") is None
-
-    def test_shop_lost_when_areas_load_in_wrong_order(self, fresh_world):
-        """Alpha defines SHOP with keeper in beta. Load alpha first, beta
-        second. The shop is never applied to beta's mob."""
-        fw = fresh_world
-        shop = {"keeper": 200, "buy_types": ["weapon"], "profit_buy": 120,
-                "profit_sell": 40, "open_hour": 0, "close_hour": 23}
-        fw.register_area("alpha", 100, 199,
-                         rooms={100: {"name": "R100", "exits": {}}},
-                         shops=(shop,))
-        fw.register_area("beta", 200, 299,
-                         rooms={200: {"name": "R200", "exits": {}}},
-                         mobiles={200: _mob_tpl()})
-        fw.setup()
-
-        _load_area("alpha")
-        _load_area("beta")
-
-        # BUG: mob 200 never gets shop assignment
-        assert MOB_DEFS._data[200].get("shop") is None

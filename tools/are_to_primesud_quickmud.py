@@ -2,7 +2,7 @@
 """Convert a QuickMUD/ROM 2.4 .are file to a PrimeSUD Python area module.
 
 Usage:
-    python are_to_primesud_quickmud.py school.are area_school.dat
+    python are_to_primesud_quickmud.py school.are area_school.txt
 
 QuickMUD uses standard ROM 2.4 area format which differs from 1stMud:
   - Flag encoding: letter-based (A=bit0, B=bit1 ... Z=bit25, a=bit26 ...)
@@ -20,6 +20,13 @@ Output format matches are_to_primesud.py exactly.
 
 Sections handled:   #AREA  #ROOMS  #MOBILES  #OBJECTS  #RESETS  #SPECIALS
                     #SHOPS  #HELPS  #SOCIALS  #MOBPROGS
+
+#SPECIALS and #SHOPS are not emitted as standalone sections: each entry is
+baked directly into its target mob's MOBILES dict at conversion time
+("spec_fun" / "shop" keys) [PRIMESUD]. Verified across all stock QuickMUD
+areas that specials/shops never reference a mob outside their own file, so
+this is safe; a mob vnum that isn't found in this file's MOBILES raises a
+hard error rather than emitting a fallback section.
 """
 
 import re
@@ -60,14 +67,16 @@ RESIST_FLAGS = {
     15: "mental", 16: "disease", 17: "drowning", 18: "light", 19: "sound",
     23: "wood", 24: "silver", 25: "iron",
 }
-# ROM_* undefined for 4/5/20/21/22 in this QuickMUD's merc.h -- deleted
-# (were "arena"/"bank"/"noexplore"/"noautomap"/"save_objs"); real occurrences
-# of those bits must surface via _unknown_bits.
+# Bits 4/5/20/21/22 are 1stMud extensions (no ROM_* define in QuickMUD's
+# merc.h). PrimeSUD's runtime is 1stMud-ported, so 1stMud semantics are
+# canonical; QuickMUD stock areas never set these bits (verified across all
+# shipped areas), so decoding them is unambiguous. [PRIMESUD]
 ROOM_FLAGS = {
-    0: "dark", 2: "no_mob", 3: "indoors",
+    0: "dark", 2: "no_mob", 3: "indoors", 4: "arena", 5: "bank",
     9: "private", 10: "safe", 11: "solitary", 12: "pet_shop",
     13: "no_recall", 14: "imp_only", 15: "gods_only", 16: "heroes_only",
     17: "newbies_only", 18: "law", 19: "nowhere",
+    20: "noexplore", 21: "noautomap", 22: "save_objs",
 }
 # cf. merc.h SECT_* (SECT_MAX 11); entries 11-16 previously here don't exist
 # in this QuickMUD and have been removed.
@@ -76,17 +85,19 @@ SECTOR_NAMES = {
     4: "hills",   5: "mountain", 6: "swim",  7: "noswim",
     8: "unused",  9: "air",    10: "desert",
 }
-# EXTRA_FLAGS 17 ("auctioned") and 26 ("quest") deleted: no ITEM_* define
-# exists at those bit positions in this QuickMUD's merc.h; real occurrences
-# must surface via _unknown_bits.
+# Bits 17 ("auctioned") and 26 ("quest") are 1stMud extensions (no ITEM_*
+# define in QuickMUD's merc.h). PrimeSUD's runtime is 1stMud-ported and
+# quest.py/shop.py/inventory.py/magic.py gate on "quest", so 1stMud
+# semantics are canonical; QuickMUD stock areas never set these bits
+# (verified across all shipped areas). [PRIMESUD]
 EXTRA_FLAGS = {
     0: "glow",        1: "hum",          2: "dark",        3: "lock",
     4: "evil",        5: "invis",        6: "magic",       7: "nodrop",
     8: "bless",       9: "anti_good",   10: "anti_evil",  11: "anti_neutral",
    12: "noremove",   13: "inventory",   14: "nopurge",    15: "rot_death",
-   16: "vis_death",  18: "nonmetal",   19: "nolocate",
+   16: "vis_death",  17: "auctioned",  18: "nonmetal",   19: "nolocate",
    20: "melt_drop",  21: "had_timer",   22: "sell_extract",
-   24: "burn_proof", 25: "nouncurse",
+   24: "burn_proof", 25: "nouncurse",  26: "quest",
 }
 WEAR_SLOT = {
     1: "finger", 2: "neck", 3: "body", 4: "head", 5: "legs",
@@ -627,7 +638,13 @@ def parse_objects(lines):
             elif tline and tline[0] == "F":
                 # F lines on objects add flag-setting affects (cf. db2.c:536-569)
                 # Format: F <where_letter> <apply_loc> <modifier> <bitvector>
+                # db2.c reads each token with whitespace-skipping freads, so
+                # the payload may follow on the next line(s) (e.g. shire.are
+                # #1105) instead of sharing the F line.
                 fparts = tline.split()
+                while len(fparts) < 5 and i + 1 < len(lines) and lines[i + 1].strip():
+                    i += 1
+                    fparts += lines[i].split()
                 if len(fparts) >= 4:
                     where_map = {"A": "affects", "I": "immune", "R": "resist", "V": "vuln"}
                     where = where_map.get(fparts[1], fparts[1])
@@ -1124,7 +1141,7 @@ def asciitext(value):
     return str(value).encode("ascii", "backslashreplace").decode("ascii")
 
 
-def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
+def emit(area_data, rooms, mobs, objs, resets, helps, socials,
          mobprogs, room_map, mob_map, obj_map, doverrides=None):
     out = []
 
@@ -1216,20 +1233,24 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
             for canon, names in mob["flag_removes"]:
                 w(f'            ({pyrepr(canon)}, {pyrepr(names)}),')
             w(f'        ),')
+        if mob.get("spec_fun"):
+            # [PRIMESUD] baked from this file's #SPECIALS section at
+            # conversion time (formerly a standalone SPECIALS tuple merged
+            # into MOB_DEFS by world.py at load time).
+            w(f'        "spec_fun": {pyrepr(mob["spec_fun"])},')
+        if mob.get("shop"):
+            # [PRIMESUD] baked from this file's #SHOPS section at conversion
+            # time (formerly a standalone SHOPS tuple merged into MOB_DEFS
+            # by world.py at load time). Dict shape matches exactly what
+            # world.py used to assign to MOB_DEFS[keeper]["shop"], including
+            # the redundant "keeper" key.
+            shop = mob["shop"]
+            bt = pyrepr(shop["buy_types"]) if shop["buy_types"] else "[]"
+            w(f'        "shop": {{"keeper": {shop["keeper"]}, "buy_types": {bt},'
+              f' "profit_buy": {shop["profit_buy"]}, "profit_sell": {shop["profit_sell"]},'
+              f' "open_hour": {shop["open_hour"]}, "close_hour": {shop["close_hour"]}}},')
         w("    },")
     w("}")
-    w("")
-
-    # -- SPECIALS --
-    w(f"# -- Specials {BAR * 67}")
-    w('# ("M", mob_vnum, spec_fun_name) -- assign special function to mob template')
-    w("SPECIALS = (")
-    for special in specials:
-        if special[0] == "M":
-            _, mv, spec_name = special
-            mc = r(mv, mob_map)
-            w(f'    ("M", {mc}, {pyrepr(spec_name)}),')
-    w(")")
     w("")
 
     # -- ROOMS --
@@ -1439,21 +1460,6 @@ def emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
     w(")")
     w("")
 
-    # -- SHOPS --
-    w(f"# -- Shops {BAR * 69}")
-    w('# keeper_vnum: mob that runs the shop')
-    w('# buy_types: item type names the shop will purchase')
-    w('# profit_buy/profit_sell: percentage markup/markdown')
-    w("SHOPS = (")
-    for shop in shops:
-        mc = r(shop["keeper"], mob_map)
-        bt = pyrepr(shop["buy_types"]) if shop["buy_types"] else "[]"
-        w(f'    {{"keeper": {mc}, "buy_types": {bt},'
-          f' "profit_buy": {shop["profit_buy"]}, "profit_sell": {shop["profit_sell"]},'
-          f' "open_hour": {shop["open_hour"]}, "close_hour": {shop["close_hour"]}}},')
-    w(")")
-    w("")
-
     # -- HELPS --
     w(f"# -- Helps {BAR * 69}")
     w("HELPS = (")
@@ -1506,11 +1512,38 @@ def convert(are_path, out_path=None):
     socials   = parse_socials(sects.get("SOCIALS", []))
     mobprogs  = parse_mobprogs(sects.get("MOBPROGS", []))
 
+    # [PRIMESUD] Bake #SPECIALS and #SHOPS entries directly into their target
+    # mob's MOBILES dict ("spec_fun" / "shop" keys) instead of emitting them
+    # as standalone SPECIALS/SHOPS sections merged at runtime by world.py.
+    # Verified across all stock QuickMUD areas: specials/shops never
+    # reference a mob vnum outside their own file. A vnum that isn't found
+    # here is a hard error rather than a silently dropped fallback section.
+    mobs_by_vnum = dict(mobs)
+    for special in specials:
+        if special[0] != "M":
+            continue
+        _, mv, spec_name = special
+        if mv not in mobs_by_vnum:
+            raise ValueError(
+                "SPECIALS entry (\"M\", " + str(mv) + ", " + repr(spec_name) +
+                ") references mob vnum " + str(mv) +
+                " not present in this file's MOBILES section"
+            )
+        mobs_by_vnum[mv]["spec_fun"] = spec_name
+    for shop in shops:
+        keeper = shop["keeper"]
+        if keeper not in mobs_by_vnum:
+            raise ValueError(
+                "SHOPS entry references keeper vnum " + str(keeper) +
+                " not present in this file's MOBILES section"
+            )
+        mobs_by_vnum[keeper]["shop"] = shop
+
     room_map = make_const_map("R", rooms, lambda d: d["name"])
     mob_map  = make_const_map("M", mobs,  lambda d: d["keywords"])
     obj_map  = make_const_map("I", objs,  lambda d: d["keywords"])
 
-    code = emit(area_data, rooms, mobs, objs, resets, specials, shops, helps, socials,
+    code = emit(area_data, rooms, mobs, objs, resets, helps, socials,
                 mobprogs, room_map, mob_map, obj_map, doverrides)
 
     if out_path:

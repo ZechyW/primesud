@@ -2,30 +2,27 @@
 set -e
 cd "$(dirname "$0")/.."
 
-# 1stMud areas (converted with 1stMud converter)
-FIRST_AREAS="limbo quest"
+# areas/*.are: ROM 2.4 / QuickMUD-format area sources, converted from
+# their original 1stMud/QuickMUD layouts (originals live untouched under
+# reference/). Regenerate src/area_<name>.txt for every one.
+AREAS="arachnos chapel daycare grave haon immort limbo marsh midgaard mobfact moria newthalos ofcol ofcol2 plains quest school sewer shire tohell trollden"
 
-for area in $FIRST_AREAS; do
-    echo "==> $area (1stMud)"
-    uv run tools/are_to_primesud.py \
-        "reference/1stMud4.5.3/area/${area}.are" \
-        "src/area_${area}.dat"
-done
-
-# QuickMUD areas (converted with quickmud converter)
-QM_AREAS="arachnos chapel daycare grave haon immort marsh midgaard mobfact moria newthalos ofcol ofcol2 plains school sewer shire tohell trollden"
-
-for area in $QM_AREAS; do
-    echo "==> $area (QuickMUD)"
+for area in $AREAS; do
+    echo "==> $area"
     uv run tools/are_to_primesud_quickmud.py \
-        "reference/quickmud/area/${area}.are" \
-        "src/area_${area}.dat"
+        "areas/${area}.are" \
+        "src/area_${area}.txt"
 done
 
 # Wire in 1stMud-only deltas (not in quickmud .are files): cross-area
 # exits, guildmaster act flags
 echo "==> 1stMud deltas"
 uv run tools/patch_1stmud_deltas.py
+
+# Rebuild mob_index.txt (spec_fun/portal/summon target lookup) -- must be
+# regenerated after any area regen since it derives from RESETS/MOBILES.
+echo "==> mob_index"
+uv run tools/build_mob_index.py
 
 # Verify ASCII safety
 echo "==> ASCII check"

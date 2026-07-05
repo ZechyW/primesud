@@ -47,19 +47,27 @@ _open_container et al.)
 ## Area data
 
 - **Deferred runtime hooks for converter-emitted fields** — the 2026-07
-  converter audit brought both converters (`are_to_primesud.py`,
-  `are_to_primesud_quickmud.py`) to a common lossless schema; these emitted
-  fields are captured in the `.dat` files but not yet consumed at runtime:
+  converter audit brought `are_to_primesud_quickmud.py` (now the single ROM
+  2.4 converter; the old 1stMud-format `are_to_primesud.py` is deleted) to a
+  lossless schema; these emitted fields are captured in the `.txt` files but
+  not yet consumed at runtime:
   - E/G reset `limit` (raw arg2; >50 means legacy 6, <=0 unlimited) — resets
     currently spawn without count enforcement
   - object `condition` (spawn wear-state), `light_hours` (light burnout),
-    `no_sac`, `flag_affects` (F-line affect/immune/resist/vuln grants),
-    container `container_max_item_weight` / `container_weight_mult`,
+    `no_sac`, container `container_max_item_weight` / `container_weight_mult`,
     food/drink `poisoned`
   - mob `default_pos` (spawn `start_pos` IS consumed -- `mob.py` sets
     initial position -- but nothing returns idle mobs to `default_pos`),
     `group`, `material`, `mob_triggers`
   - room `heal_rate`/`mana_rate`, `owner`
+- **`flag_affects` on objects parsed+stored but no runtime consumer yet** —
+  `.are` F-trailer affect/immune/resist/vuln grants (e.g. One Ring
+  invisibility, `src/area_shire.txt` object 1105); see docs/AREA_FILES.md
+  OBJECTS section.
+- **Room flag `save_objs` (bit 22, 1stMud extension) has no runtime reader** —
+  carried by the Limbo Morgue room (vnum 3, `areas/limbo.are`); investigate
+  how 1stMud uses it (room contents persisting across reboot/reset) before
+  porting.
 - **`_unknown_bits` in quest.are** — stock 1stMud data sets ACT bits 11/31 and
   AFF bits 34/36 that are undefined even in 1stMud's own `bits.h`; preserved
   losslessly under `_unknown_bits`, no runtime meaning.

@@ -1,0 +1,310 @@
+# fmt: off
+# Area: Limbo
+# Source: QuickMUD/ROM 2.4
+# VNUM ranges: 1-99
+# Credits: {None } Diku    Limbo
+
+
+AREA = {
+    "name":     'Limbo',
+    "builders": 'None',
+    "vnums":    (1, 99),
+    "credits":  '{None } Diku    Limbo',
+    "levels":   (1, 60),
+}
+
+# -- Mob templates --------------------------------------------------------------
+# hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
+# armor: (pierce, bash, slash, exotic), raw .are units
+# hitroll: from mob level line
+MOBILES = {
+    30: {
+        "keywords":    'dummy mob',
+        "short_descr": 'a dummy mobile',
+        "long_descr":  'A dummy mobile is here.',
+        "description": '',
+        "race":        'Human',
+        "act_flags": {"sentinel": True},
+        "alignment": 0,
+        "level":     60,
+        "hitroll":   59,
+        "hp_dice":   (85, 71, 1073),
+        "mana_dice": (62, 8, 61),
+        "damage":    (7, 12, 48),  "dam_type": 'none',
+        "armor":     (-47, -47, -47, -41),
+        "start_pos":   'stand',
+        "default_pos": 'stand',
+        "form_flags": {"edible": True, "sentient": True, "biped": True, "mammal": True},
+        "part_flags": {"head": True, "arms": True, "legs": True, "heart": True, "brains": True, "guts": True, "hands": True, "feet": True, "fingers": True, "ear": True, "eye": True},
+        "material": 'unknown',
+        "sex":    'either',
+        "wealth": 0,
+        "size":   'medium',
+    },
+}
+
+# -- Rooms ----------------------------------------------------------------------
+ROOMS = {
+    1: {
+        "name": 'The Void',
+        "desc": 'You are floating in nothing.',
+        "exits": {
+        },
+        "flags": {"no_mob": True, "indoors": True},
+        "sector": 'city',
+    },
+    2: {
+        "name": 'Limbo',
+        "desc": 'You are floating in a formless void, detached from all sensation of physical\nmatter, surrounded by swirling glowing light, which fades into the relative\ndarkness around you without any trace of edges or shadow.\n   There is a "No Tipping" notice pinned to the darkness.',
+        "exits": {
+            "u": 3001,
+        },
+        "flags": {"indoors": True},
+        "sector": 'city',
+    },
+    3: {
+        "name": 'The Morgue',
+        "desc": 'Here lies marble tabletops holding coffins and empty bodies.',
+        "exits": {
+            "u": 3054,
+        },
+        "flags": {"indoors": True, "safe": True, "law": True, "save_objs": True},
+        "sector": 'inside',
+    },
+}
+
+# -- Item templates -------------------------------------------------------------
+OBJECTS = {
+    1: {
+        "keywords":    'coin silver gcash',
+        "short_descr": 'A silver coin',
+        "description": 'One miserable silver coin.',
+        "material":    'silver',
+        "type": 'money',
+        "wear_flags": {"take": True},
+        "silver": 1, "gold": 0,
+        "level": 0, "weight": 10, "value": 0,
+    },
+    2: {
+        "keywords":    'coin gold gcash',
+        "short_descr": 'A gold coin',
+        "description": 'One valuable gold coin.',
+        "material":    'gold',
+        "type": 'money',
+        "wear_flags": {"take": True},
+        "silver": 0, "gold": 1,
+        "level": 0, "weight": 10, "value": 0,
+    },
+    3: {
+        "keywords":    'coins gold gcash',
+        "short_descr": '%d gold coins',
+        "description": 'A pile of gold coins.',
+        "material":    'gold',
+        "type": 'money',
+        "wear_flags": {"take": True},
+        "silver": 0, "gold": 0,
+        "level": 0, "weight": 10, "value": 0,
+    },
+    4: {
+        "keywords":    'coins silver gcash',
+        "short_descr": '%d silver coins',
+        "description": 'A pile of silver coins.',
+        "material":    'silver',
+        "type": 'money',
+        "wear_flags": {"take": True},
+        "silver": 0, "gold": 0,
+        "level": 0, "weight": 10, "value": 0,
+    },
+    5: {
+        "keywords":    'coins silver gold gcash',
+        "short_descr": '%d silver coins and %d gold coins',
+        "description": 'A pile of coins.',
+        "material":    'gold',
+        "type": 'money',
+        "wear_flags": {"take": True},
+        "silver": 0, "gold": 0,
+        "level": 0, "weight": 10, "value": 0,
+    },
+    10: {
+        "keywords":    'corpse',
+        "short_descr": 'The corpse of %s',
+        "description": 'The corpse of %s is lying here.',
+        "material":    'meat',
+        "type": 'npc_corpse',
+        "wear_flags": {"take": True},
+        "condition": 25,
+        "level": 0, "weight": 1000, "value": 0,
+    },
+    11: {
+        "keywords":    'corpse',
+        "short_descr": 'The corpse of %s',
+        "description": 'The corpse of %s is lying here.',
+        "material":    'meat',
+        "type": 'pc_corpse',
+        "wear_flags": {"take": True},
+        "condition": 25,
+        "extra_flags": {"nopurge": True},
+        "level": 0, "weight": 1000, "value": 0,
+    },
+    12: {
+        "keywords":    'head',
+        "short_descr": 'The head of %s',
+        "description": 'The severed head of %s is lying here.',
+        "material":    'meat',
+        "type": 'trash',
+        "wear_flags": {"take": True},
+        "condition": 25,
+        "level": 0, "weight": 50, "value": 0,
+    },
+    13: {
+        "keywords":    'heart',
+        "short_descr": 'The heart of %s',
+        "description": 'The torn-out heart of %s is lying here.',
+        "material":    'meat',
+        "type": 'food',
+        "wear_flags": {"take": True},
+        "condition": 25,
+        "food_hours": 16, "food_hunger": 16,
+        "level": 0, "weight": 20, "value": 0,
+    },
+    14: {
+        "keywords":    'arm',
+        "short_descr": 'The arm of %s',
+        "description": 'The sliced-off arm of %s is lying here.',
+        "material":    'meat',
+        "type": 'food',
+        "wear_flags": {"take": True},
+        "condition": 25,
+        "food_hours": 20, "food_hunger": 20,
+        "level": 0, "weight": 50, "value": 0,
+    },
+    15: {
+        "keywords":    'leg',
+        "short_descr": 'The leg of %s',
+        "description": 'The sliced-off leg of %s is lying here.',
+        "material":    'meat',
+        "type": 'food',
+        "wear_flags": {"take": True},
+        "condition": 25,
+        "food_hours": 20, "food_hunger": 20,
+        "level": 0, "weight": 50, "value": 0,
+    },
+    16: {
+        "keywords":    'guts entrails',
+        "short_descr": 'The guts of %s',
+        "description": "A steaming pile of %s's entrails is lying here.",
+        "material":    'meat',
+        "type": 'food',
+        "wear_flags": {"take": True},
+        "condition": 25,
+        "food_hours": 5, "food_hunger": 5,
+        "poisoned": True,
+        "level": 0, "weight": 20, "value": 0,
+    },
+    17: {
+        "keywords":    'brains brain',
+        "short_descr": 'The brains of %s',
+        "description": 'The splattered brains of %s are lying here.',
+        "material":    'meat',
+        "type": 'food',
+        "wear_flags": {"take": True},
+        "condition": 25,
+        "food_hours": 10, "food_hunger": 10,
+        "level": 0, "weight": 20, "value": 0,
+    },
+    20: {
+        "keywords":    'mushroom',
+        "short_descr": 'A Magic Mushroom',
+        "description": 'A delicious magic mushroom is here.',
+        "material":    'food',
+        "type": 'food',
+        "wear_flags": {"take": True},
+        "food_hours": 8, "food_hunger": 8,
+        "level": 0, "weight": 10, "value": 0,
+    },
+    21: {
+        "keywords":    'ball light',
+        "short_descr": 'A bright ball of light',
+        "description": 'A bright ball of light shimmers in the air.',
+        "material":    'energy',
+        "type": 'light',
+        "wear_flags": {"take": True},
+        "extra_flags": {"glow": True},
+        "light_hours": 0,
+        "level": 0, "weight": 0, "value": 0,
+    },
+    22: {
+        "keywords":    'spring',
+        "short_descr": 'A magical spring',
+        "description": 'A magical spring flows from the ground here.',
+        "material":    'water',
+        "type": 'fountain',
+        "wear_flags": {},
+        "extra_flags": {"magic": True},
+        "liquid_total": 100000, "liquid_left": 100000,
+        "liquid_type": 'water',
+        "level": 0, "weight": 0, "value": 0,
+    },
+    23: {
+        "keywords":    'disc disk floating black',
+        "short_descr": 'A floating disc',
+        "description": 'A floating black disc hangs in the air.',
+        "material":    'energy',
+        "type": 'container',
+        "wear_flags": {"take": True, "float": True},
+        "extra_flags": {"magic": True, "noremove": True, "rot_death": True, "melt_drop": True, "burn_proof": True, "nouncurse": True},
+        "container_max_weight": 0,
+        "container_flags": {"put_on": True},
+        "container_max_item_weight": 0,
+        "container_weight_mult": 0,
+        "level": 0, "weight": 0, "value": 0,
+    },
+    25: {
+        "keywords":    'gate portal',
+        "short_descr": 'A shimmering gate',
+        "description": 'A shimmering black gate rises from the ground, leading to parts unknown.',
+        "material":    'shadow',
+        "type": 'portal',
+        "wear_flags": {},
+        "extra_flags": {"magic": True, "nopurge": True, "nolocate": True},
+        "level": 0, "weight": 0, "value": 0,
+    },
+    30: {
+        "keywords":    'dummy object',
+        "short_descr": 'A dummy object',
+        "description": 'Dummy object is used for loading non-existent objects',
+        "material":    '',
+        "type": 'trash',
+        "wear_flags": {},
+        "level": 0, "weight": 0, "value": 0,
+    },
+}
+
+# -- Resets ---------------------------------------------------------------------
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          -- place one item copy in room
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)
+# means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
+# ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
+# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: not enforced by runtime yet
+# D resets are baked into room exit flags at conversion time
+RESETS = (
+    # [PRIMESUD] dropped ("O", 3415, 3) (defer cross-area load)
+    ("R", 3, 1),
+)
+
+# -- Helps ---------------------------------------------------------------------
+HELPS = (
+)
+
+# -- Socials -------------------------------------------------------------------
+SOCIALS = (
+)
+
+# -- MobProgs ------------------------------------------------------------------
+# (vnum, code) -- mob program code blocks, referenced by mob triggers
+MOBPROGS = {
+}

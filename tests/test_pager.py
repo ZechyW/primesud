@@ -121,12 +121,12 @@ def paged(monkeypatch):
 
 def test_commands_have_descriptions(paged, monkeypatch):
     monkeypatch.setattr(commands, "CMD_DESC_FILE",
-                        os.path.join(ROOT, _SRC, "commands.dat"))
+                        os.path.join(ROOT, _SRC, "commands.txt"))
     commands.do_commands({}, [])
     assert len(paged) == len(commands._CMD_TABLE)
-    # every ported command must have a description line in commands.dat
+    # every ported command must have a description line in commands.txt
     missing = [l for l in paged if l.rstrip().endswith("{x")]
-    assert missing == [], "commands.dat missing descriptions: %s" % missing
+    assert missing == [], "commands.txt missing descriptions: %s" % missing
 
 
 def test_commands_missing_dat_falls_back_to_names(paged, monkeypatch):

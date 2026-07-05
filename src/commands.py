@@ -49,15 +49,15 @@ _POS_MSG = {
     "fighting": "No way!  You are still fighting!",
 }
 
-CMD_DESC_FILE = "commands.dat"  # [PRIMESUD] name|description per line
+CMD_DESC_FILE = "commands.txt"  # [PRIMESUD] name|description per line
 
 
 def do_commands(player, args):
     """List all available commands with brief descriptions (cf. 1stMud do_commands in interp.c).
 
     [PRIMESUD] 1stMud prints a bare 4-column name list; here each command
-    gets a one-line description, read from commands.dat at display time
-    (kept off-heap, cf. help.dat) and shown through the tpage pager.
+    gets a one-line description, read from commands.txt at display time
+    (kept off-heap, cf. help.txt) and shown through the tpage pager.
     Category filter not ported -- no cmd categories.
 
     Args:

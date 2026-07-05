@@ -48,7 +48,7 @@ def minify_source(source):
 def preflight():
     """Regenerate all derived data (areas, mob index, help + index).
 
-    Order matters: mob_index.dat is built from the area .dat files.
+    Order matters: mob_index.txt is built from the area .txt files.
     Regen writes into SRC_DIR, so a dirty git tree afterwards means the
     checked-in data had drifted from the generators -- inspect before
     copying to the calculator.

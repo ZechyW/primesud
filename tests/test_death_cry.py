@@ -20,7 +20,7 @@ from races import RACE_TABLE
 
 MOB_TPL = 9403
 
-# Real area_limbo.dat #12/#13/#16 templates, stubbed here so tests don't
+# Real area_limbo.txt #12/#13/#16 templates, stubbed here so tests don't
 # depend on the on-disk area file or global lazy-load state (cf.
 # tests/test_bugs.py _stub_item_tpl pattern).
 I_HEAD  = 12

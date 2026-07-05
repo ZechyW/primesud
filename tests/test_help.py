@@ -11,7 +11,7 @@ import info
 def help_out(monkeypatch):
     """Point do_help at the generated help file and capture tprint output."""
     monkeypatch.setattr(info, "HELP_FILE",
-                        os.path.join("src", "help.dat"))
+                        os.path.join("src", "help.txt"))
     monkeypatch.setattr(info, "HELP_INDEX",
                         os.path.join("src", "help.idx"))
     lines = []
@@ -81,7 +81,7 @@ def test_last_entry_prints_to_eof(help_out):
 
 def test_index_offsets_align():
     # every index offset must sit immediately after its own header line
-    with open(os.path.join("src", "help.dat"), "rb") as f:
+    with open(os.path.join("src", "help.txt"), "rb") as f:
         data = f.read()
     with open(os.path.join("src", "help.idx"), "rb") as f:
         for line in f:

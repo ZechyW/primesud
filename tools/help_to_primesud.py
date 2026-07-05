@@ -4,7 +4,7 @@ Usage:
     python tools/help_to_primesud.py
 
 Reads reference/1stMud4.5.3/data/help.dat (tagged #HELP...#END records,
-'~'-terminated string fields) and writes src/help.dat in a
+'~'-terminated string fields) and writes src/help.txt in a
 line-oriented format built for low-memory sequential scanning on the
 HP Prime:
 
@@ -30,7 +30,7 @@ import textwrap
 from pathlib import Path
 
 SRC = Path("reference/1stMud4.5.3/data/help.dat")
-DST = Path("src/help.dat")
+DST = Path("src/help.txt")
 IDX = Path("src/help.idx")
 MAX_MORTAL_LEVEL = 51  # cf. src/config.py
 WIDTH = 64  # TERMINAL_COLS, cf. src/config.py

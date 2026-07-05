@@ -181,7 +181,7 @@ class TestGuildRooms:
     def test_paladin_shares_cleric_guild(self):
         # "guild" fields are patched into the generated area data by
         # patch_1stmud_deltas; check the artifact without booting the world
-        path = os.path.join(ROOT, _SRC, "area_midgaard.dat")
+        path = os.path.join(ROOT, _SRC, "area_midgaard.txt")
         with open(path) as f:
             text = f.read()
         assert '"guild": (1, 4),' in text  # cleric rooms shared with paladin

@@ -1,21 +1,30 @@
 # PrimeSUD — Area File Reference
 
-Area files are Python modules (`area_<name>.py`) in `src/`. They replace
-the text-based `.are` files used by 1stMud — parsing text at runtime would be
-memory-intensive and slow on the HP Prime. The structure mirrors 1stMud's sections but
-uses plain Python dicts and tuples.
+Area files are generated `.txt` files (`area_<name>.txt`) in `src/`, holding plain
+Python source that `world.py` `exec()`s at load time. `.txt` rather than `.py` so
+build/transfer tooling doesn't mistake them for binary; the content is Python dicts
+and tuples, same as any other module. They replace the text-based `.are` files used
+by 1stMud/ROM — parsing text at runtime would be memory-intensive and slow on the
+HP Prime. The structure mirrors ROM 2.4's `#SECTION` layout.
 
-> **Do not edit area files directly.** They are generated from `.are` source files by
-> `tools/are_to_primesud.py` (1stMud format) or `tools/are_to_primesud_quickmud.py`
-> (QuickMUD/ROM 2.4 format). Edit the converter and regenerate instead.
+> **Do not edit area files directly.** They are generated from ROM 2.4 (QuickMUD-dialect)
+> `.are` source files in `areas/` by `tools/are_to_primesud_quickmud.py`. Edit the
+> `.are` source or the converter and regenerate via `tools/regen_areas.sh` instead.
+> `areas/*.are` are editable working copies; pristine upstream originals remain under
+> `reference/`.
 
 `world.py` loads every area module and merges `ROOMS`, `MOBILES`, `OBJECTS`, and
 `RESETS` into the game-wide tables. `SKILL_TABLE` and `SKILLS` live in `world.py`
 directly — skills are global, not per-area.
 
 Cross-area VNUM constants that game logic needs to hardcode (e.g. respawn room, skill
-IDs) go in `world_consts.py`. Area files may define their own local constants for
-internal cross-referencing only.
+IDs) go in `world_consts.py`.
+
+**No named VNUM constants in generated files.** Room/mob/item VNUMs appear as raw
+integers everywhere — dict keys, `exits`, `RESETS` — not as `R_FOO`/`M_FOO`/`I_FOO`
+names. (The converter builds `R_`/`M_`/`I_` name maps internally but the emitter
+never uses them.) Cross-reference VNUMs by reading the `.are` source or the area's
+`# VNUM ranges` header comment.
 
 ---
 
@@ -24,50 +33,33 @@ internal cross-referencing only.
 Sections appear in this fixed order:
 
 ```
-# fmt: off          ← must be first line; keeps aligned dicts from being reformatted
+# fmt: off              <- must be first line; keeps aligned dicts from being reformatted
 # Area: <name>
-# Builders: <names>
-# VNUM ranges: Rooms XXXX-XXXX, Mobs XXXX-XXXX, Items XXXX-XXXX
+# Source: QuickMUD/ROM 2.4
+# VNUM ranges: <lo>-<hi>
+# Credits: <text>
 
-AREA = { ... }      ← area metadata
+AREA = { ... }          <- area metadata
 
-# ── Room VNUMs ──
-R_FOO = 1234
-...
-
-# ── Mob template VNUMs ──
-M_FOO = 1234
-...
-
-# ── Item template VNUMs ──
-I_FOO = 1234
-...
-
-# ── Rooms ──
-ROOMS = { ... }
-
-# ── Mob templates ──
+# -- Mob templates --
 MOBILES = { ... }
 
-# ── Specials ──
-SPECIALS = ( ... )
+# -- Rooms --
+ROOMS = { ... }
 
-# ── Item templates ──
+# -- Item templates --
 OBJECTS = { ... }
 
-# ── Resets ──
+# -- Resets --
 RESETS = ( ... )
 
-# ── Shops ──
-SHOPS = ( ... )
-
-# ── Helps ──
+# -- Helps --
 HELPS = ( ... )
 
-# ── Socials ──
+# -- Socials --
 SOCIALS = ( ... )
 
-# ── MobProgs ──
+# -- MobProgs --
 MOBPROGS = { ... }
 ```
 
@@ -77,34 +69,17 @@ MOBPROGS = { ... }
 
 ```python
 AREA = {
-    "name":     "Mud School",
-    "builders": "None",
-    "vnums":    (3700, 3799),   # inclusive VNUM range claimed by this area
-    "credits":  "Hatchet",
-    "levels":   (1, 5),         # recommended level range
-    "version":  4,              # .are file version (informational)
+    "name":     "Shire",
+    "builders": "None",           # QuickMUD old-style .are has no builder field
+    "vnums":    (1100, 1199),     # inclusive VNUM range claimed by this area
+    "credits":  "{ 5 35} Poohb   The Shire",
+    "levels":   (5, 35),          # [PRIMESUD] heuristic parsed from credits text
 }
 ```
 
-All fields are optional except `name` and `vnums`. `world.py` uses `vnums` to detect
-VNUM collisions at load time.
-
----
-
-## VNUM constants
-
-Each section declares named constants before its dict so the dicts can reference other
-rooms/mobs/items by name rather than bare integers.
-
-| Prefix | Meaning            | Example                       |
-|--------|--------------------|-------------------------------|
-| `R_`   | Room VNUM          | `R_VILLAGE_SQUARE = 1000`     |
-| `M_`   | Mob template VNUM  | `M_GOBLIN = 2001`             |
-| `I_`   | Item template VNUM | `I_IRON_SWORD = 3000`         |
-
-Within an area file, always reference by constant name, never by raw integer. Raw
-integers are acceptable only for exits that point to rooms in other areas (those VNUMs
-belong to `world_consts.py` or are self-evident from context).
+All fields are always emitted. `world.py` uses `vnums` to detect VNUM collisions at
+load time. `levels` is a converter heuristic, not derived data from ROM (old-style
+`#AREA` headers carry no level range).
 
 ---
 
@@ -112,57 +87,92 @@ belong to `world_consts.py` or are self-evident from context).
 
 ```python
 ROOMS = {
-    R_VILLAGE_SQUARE: {
-        "name":   "Village Square",
-        "desc":   "Long multi-line description...",
-        "exits":  {"n": R_MARKET, "s": R_DUNGEON_ENTRANCE},
-        "flags":  {"no_mob": True, "indoors": True},
-        "sector": 1,
+    1105: {
+        "name":   "The General Store",
+        "desc":   "You are inside the general store. ...",
+        "exits":  {"s": {"to": 1104, "desc": "The only exit lies to the south."}},
+        "flags":  {"indoors": True},
+        "sector": "inside",
     },
     ...
 }
 ```
 
-| Key      | Type           | Required | Notes |
-|----------|----------------|----------|-------|
-| `name`   | str            | yes      | Shown in the room header line |
-| `desc`   | str            | yes      | Room description; use `\n` for line breaks |
-| `exits`  | dict           | yes      | Direction string → destination VNUM. Valid directions: `"n"`, `"e"`, `"s"`, `"w"`, `"u"`, `"d"` |
-| `flags`  | dict           | no       | Boolean room flags (see below) |
-| `sector` | int            | no       | Terrain type; defaults to `0` if omitted |
+| Key          | Type      | Required | Notes |
+|--------------|-----------|----------|-------|
+| `name`       | str       | yes      | Shown in the room header line |
+| `desc`       | str       | yes      | Room description; `\n` for line breaks |
+| `exits`      | dict      | yes      | Direction string -> destination (int, `None`, or door dict). Directions: `"n"`, `"e"`, `"s"`, `"w"`, `"u"`, `"d"` |
+| `flags`      | dict      | no       | Boolean room flags (see below); omitted if none set |
+| `sector`     | str       | no       | Terrain name (see `SECTOR_NAMES`); omitted if the source room line has no sector token. Runtime default when absent: `"inside"` (`room.get("sector", "inside")`) |
+| `heal_rate`  | int       | no       | ROM `H` room trailer; percentage HP regen modifier |
+| `mana_rate`  | int       | no       | ROM `M` room trailer; percentage mana regen modifier |
+| `extra_descs`| list      | no       | `(keyword, desc)` tuples from `E` room trailers |
+| `clan`       | str       | no       | ROM `C` room trailer (clan name) |
+| `owner`      | str       | no       | ROM `O` room trailer (owner name) |
+
+A destination of `None` means the exit exists (and is listed by `exits`/automap
+data) but doesn't lead anywhere — ROM keeps such exits examinable but
+untraversable rather than dropping them (`fix_exits` only nulls the destination
+pointer).
 
 ### Room flags
 
+Decoded from the ROM `room_flags` bitvector (see `ROOM_FLAGS` in the "Flag bits
+reference" section below for the full bit map, including 1stMud extension bits).
+
 | Flag            | Meaning |
 |-----------------|---------|
+| `dark`          | Room is unlit; player needs a light source |
 | `no_mob`        | Mobs will not wander into this room |
 | `indoors`       | Room is inside a building |
-| `dark`          | Room is unlit; player needs a light source |
+| `arena`         | 1stMud extension |
+| `bank`          | 1stMud extension |
+| `private`       | Limited to a small number of occupants |
 | `safe`          | No combat allowed |
+| `solitary`      | Only one occupant allowed |
+| `pet_shop`      | Pet shop room |
+| `no_recall`     | `recall` doesn't work here |
+| `imp_only`      | Implementor-only |
+| `gods_only`     | Immortal-only |
+| `heroes_only`   | Hero-level-only |
+| `newbies_only`  | Newbie-only |
+| `law`           | Law-enforced (guards attack outlaws); also force-set on any room with VNUM in `[3000, 3400)` regardless of stored flags — a "horrible hack" ported verbatim from `db.c load_rooms` |
+| `nowhere`       | Not a real location (informational) |
+| `noexplore`     | 1stMud extension; excluded from explore-tracking |
+| `noautomap`     | 1stMud extension; hidden from the automap |
+| `save_objs`     | 1stMud extension; room contents persist across reboot/reset. No runtime reader yet [PRIMESUD] — carried by e.g. Limbo's Morgue room (vnum 3, `areas/limbo.are`) |
 | `_unknown_bits` | List of uninterpreted bit positions from the original `.are` conversion; preserve, don't add new ones |
 
 ### Doors
 
-Use a dict instead of a plain integer for exits that have a door. Only include keys whose value is `True` — the converter never emits `False` entries:
+Only include keys whose value is `True`/set — the converter never emits `False`
+entries:
 
 ```python
 "exits": {
-    "e": {"to": R_LOCKED_ROOM, "isdoor": True, "closed": True, "locked": True},
+    "e": {"to": 1234, "isdoor": True, "pickproof": True, "key": 3001,
+          "desc": "A stout oak door blocks the way.", "keyword": "door"},
 },
 ```
 
-| Key            | Meaning |
-|----------------|---------|
-| `to`           | Destination VNUM (always present in dict form) |
-| `isdoor`       | Required for `open`/`close` to work |
-| `closed`       | Door starts closed |
-| `locked`       | Door starts locked (implies `closed`) |
-| `pickproof`    | Cannot be picked |
-| `nopass`       | Blocks `pass door` spell |
-| `doorbell`     | Has a doorbell |
-| `easy`/`hard`/`infuriating` | Pick difficulty |
-| `noclose`      | Cannot be closed |
-| `nolock`       | Cannot be locked |
+| Key         | Meaning |
+|-------------|---------|
+| `to`        | Destination VNUM, or `None` (see above). Always present in dict form |
+| `desc`      | Extra look-description text for the exit direction (`D`-trailer desc string) |
+| `keyword`   | Feature keyword matched by `look <keyword>`/`open <keyword>` etc. |
+| `isdoor`    | Required for `open`/`close` to work |
+| `pickproof` | Cannot be picked |
+| `nopass`    | Blocks `pass door` spell |
+| `key`       | VNUM of the key item that opens/locks this door (0/absent = no key) |
+| `closed`    | Door starts closed — only set via a `D`-reset override (see RESETS) |
+| `locked`    | Door starts locked, implies `closed` — only set via a `D`-reset override |
+
+`easy`/`hard`/`infuriating` (pick difficulty), `doorbell`, `noclose`, `nolock` are
+part of the emitter's schema (`emit()` checks for them) but the ROM 2.4 `.are`
+lock encoding used by the current converter (`0`=open, `1`=door, `2`=+pickproof,
+`3`=+nopass, `4`=+pickproof+nopass) has no source data for them, so no current
+area file sets them.
 
 The automap will not draw past a currently-closed door (matching 1stMud behaviour).
 
@@ -172,43 +182,68 @@ The automap will not draw past a currently-closed door (matching 1stMud behaviou
 
 ```python
 MOBILES = {
-    M_GOBLIN: {
-        "name":      "Goblin",
-        "desc":      "A goblin crouches here, eyeing you hungrily.",
-        "level":     3,
-        "hp_dice":   (3, 3, 10),   # max HP = 3d3 + 10
-        "hitroll":   1,
-        "armor":     (0, 0, 0, 0),
-        "damage":    (1, 4, 1),    # per hit: 1d4 + 1
-        "gold":      15,
-        "act_flags": {"aggressive": True, "stay_area": True},
-        "affected_by": {"infrared": True},
-        "off_flags": {"dodge": True, "trip": True},
-        "imm_flags": {"charm": True},
-        "res_flags": {"poison": True},
-        "vuln_flags": {"magic": True},
+    1101: {
+        "keywords":    "oldstyle ring keeper",
+        "short_descr": "the Keeper of the Ring",
+        "long_descr":  "The Keeper of the Ring is here, guarding his treasure jealously.",
+        "description": "The Ring Keeper is a rather big but short halfling. ...",
+        "race":        "Human",
+        "act_flags":   {"sentinel": True, "stay_area": True, "thief": True},
+        "affected_by": {"invisible": True, "detect_invis": True},
+        "alignment":   0,
+        "level":       20,
+        "hitroll":     0,
+        "hp_dice":     (3, 9, 308),     # max HP = 3d9 + 308
+        "mana_dice":   (10, 9, 100),
+        "damage":      (2, 7, 5),  "dam_type": "none",
+        "armor":       (-4, -4, -4, 6),
+        "off_flags":   {"backstab": True, "dodge": True},
+        "start_pos":   "stand",
+        "default_pos": "stand",
+        "material":    "0",
+        "sex":         "male",
+        "wealth":      61,
+        "size":        "medium",
+        "spec_fun":    "spec_thief",
     },
     ...
 }
 ```
 
-| Key         | Type  | Required | Notes |
-|-------------|-------|----------|-------|
-| `name`      | str   | yes      | Short name used in combat messages |
-| `desc`      | str   | yes      | "A foo is here." line shown in room |
-| `level`     | int   | yes      | Used to derive THAC0 and stat scaling |
-| `hp_dice`   | tuple | yes      | `(num_dice, die_size, bonus)` — max HP |
-| `hitroll`   | int   | yes      | Added to attack roll |
-| `armor`     | tuple | yes      | `(pierce, bash, slash, exotic)` armor buckets from `.are`; lower is better |
-| `damage`    | tuple | yes      | `(num_dice, die_size, bonus)` per hit |
-| `dam_type`  | str   | yes      | Attack noun for combat messages (e.g. `'claw'`, `'bite'`, `'beating'`); also the damage category for future resistance checks |
-| `gold`      | int   | yes      | Gold carried (unused until economy is implemented) |
-| `act_flags` | dict  | no       | Behaviour flags (see below) |
-| `affected_by` | dict  | no       | Permanent affect flags |
-| `off_flags` | dict  | no       | Combat offence flags |
-| `imm_flags` | dict  | no       | Damage immunities |
-| `res_flags` | dict  | no       | Damage resistances (half damage) |
-| `vuln_flags`| dict  | no       | Damage vulnerabilities (double damage) |
+| Key            | Type  | Required | Notes |
+|----------------|-------|----------|-------|
+| `keywords`     | str   | yes      | Space-separated match words for targeting the mob |
+| `short_descr`  | str   | yes      | Name used in combat/inventory messages (e.g. "the Keeper of the Ring") |
+| `long_descr`   | str   | yes      | "X is here" line shown when the mob is present in a room |
+| `description`  | str   | yes      | Full paragraph shown on `look <mob>` |
+| `race`         | str   | yes      | `RACE_TABLE` key (capitalized, e.g. `"Human"`); race defaults are merged in at mob creation |
+| `act_flags`    | dict  | no       | Behaviour flags (see below); `is_npc` (bit 0) is always set and omitted from the dict |
+| `affected_by`  | dict  | no       | Permanent affect flags |
+| `alignment`    | int   | yes      | -1000..1000 |
+| `group`        | int   | no       | ROM mob group number; omitted when `0` |
+| `level`        | int   | yes      | Used to derive THAC0 and stat scaling |
+| `hitroll`      | int   | yes      | Added to attack roll |
+| `hp_dice`      | tuple | yes      | `(num_dice, die_size, bonus)` — max HP |
+| `mana_dice`    | tuple | yes      | `(num_dice, die_size, bonus)` — max mana |
+| `damage`       | tuple | yes      | `(num_dice, die_size, bonus)` per hit |
+| `dam_type`     | str   | yes      | Attack noun for combat messages |
+| `armor`        | tuple | yes      | `(pierce, bash, slash, exotic)` armor buckets from `.are`; lower is better |
+| `off_flags`    | dict  | no       | Combat offence flags |
+| `imm_flags`    | dict  | no       | Damage immunities |
+| `res_flags`    | dict  | no       | Damage resistances (half damage) |
+| `vuln_flags`   | dict  | no       | Damage vulnerabilities (double damage) |
+| `start_pos`    | str   | yes      | Spawn position (e.g. `"stand"`, `"sleep"`) |
+| `default_pos`  | str   | yes      | Position the mob returns to when idle. `start_pos` is consumed at spawn (`mob.py`); nothing currently returns idle mobs to `default_pos` [PRIMESUD deferred] |
+| `form_flags`   | dict  | no       | Body form (e.g. `biped`, `animal`, `undead`) |
+| `part_flags`   | dict  | no       | Body parts present (for dismemberment-style messages) |
+| `material`     | str   | yes      | Body material; often `"0"` for old-style `.are` mobs |
+| `sex`          | str   | yes      | `"male"`, `"female"`, `"neutral"` |
+| `wealth`       | int   | yes      | Gold carried (unused until economy is implemented) |
+| `size`         | str   | yes      | `"tiny"`..`"huge"` etc. |
+| `mob_triggers` | tuple | no       | `(trig_type, mprog_vnum, trig_phrase)` — see MOBPROGS below; omitted if empty |
+| `flag_removes` | tuple | no       | `(canonical_field, flag_names)` — `F`-trailer bit removals applied after race-merge at runtime (cf. `mob.py create_mobile`, ROM `db2.c` `REMOVE_BIT`) |
+| `spec_fun`     | str   | no       | See SPECIALS below |
+| `shop`         | dict  | no       | See SHOPS below |
 
 ### `act_flags`
 
@@ -219,41 +254,63 @@ MOBILES = {
 | `wimpy`       | Flees when HP drops low |
 | `stay_area`   | Will not follow players out of the area |
 | `scavenger`   | Picks up items from the ground |
+| `pet`         | Mob is a pet template |
 | `train`       | Mob is a trainer (for `train` command) |
 | `practice`    | Mob is a practitioner (for `practice` command) |
+| `undead`      | Undead |
 | `nopurge`     | Survives area purge |
 | `noalign`     | No alignment (informational; alignment not implemented) |
+| `outdoors`    | Only found outdoors (informational) |
+| `indoors`     | Only found indoors (informational) |
 | `cleric`      | Has cleric skills (informational) |
+| `mage`        | Has mage skills (informational) |
+| `thief`       | Has thief skills (informational) |
 | `warrior`     | Has warrior skills (informational) |
+| `healer`      | Healer shop-style mob |
+| `gain`        | Mob is a class-gain trainer |
+| `update_always` | Updated even when no players are in the room |
+| `changer`     | Shapechanger |
 
 ### `off_flags` (combat)
 
-Common values: `area_attack`, `bash`, `berserk`, `crush`, `disarm`, `dodge`, `fast`,
-`kick`, `kick_dirt`, `parry`, `tail`, `trip`, `assist_race`.
+Common values: `area_attack`, `backstab`, `bash`, `berserk`, `disarm`, `dodge`,
+`fade`, `fast`, `kick`, `kick_dirt`, `parry`, `rescue`, `tail`, `trip`, `crush`,
+`assist_all`, `assist_align`, `assist_race`, `assist_players`, `assist_guard`,
+`assist_vnum`.
 
 ### `affected_by` (affects)
 
-Common values: `detect_evil`, `infrared`, `dark_vision`, `sanctuary`.
+Common values: `blind`, `invisible`, `detect_evil`, `detect_invis`, `detect_magic`,
+`detect_hidden`, `detect_good`, `sanctuary`, `faerie_fire`, `infrared`, `curse`,
+`poison`, `protect_evil`, `protect_good`, `sneak`, `hide`, `sleep`, `charm`,
+`flying`, `pass_door`, `haste`, `calm`, `plague`, `weaken`, `dark_vision`,
+`berserk`, `swim`, `regeneration`, `slow`.
+
+### `form_flags` / `part_flags`
+
+Common `form_flags` values: `edible`, `poison`, `magical`, `animal`, `sentient`,
+`undead`, `construct`, `biped`, `dragon`, `snake`. Common `part_flags` values:
+`head`, `arms`, `legs`, `heart`, `hands`, `feet`, `claws`, `fangs`, `wings`, `tail`.
 
 ---
 
-## `SPECIALS`
+## `spec_fun` (baked from `.are` `#SPECIALS`)
 
 ```python
-SPECIALS = (
-    ("M", M_ADEPT, "spec_cast_adept"),
-    ("M", M_FIDO,  "spec_fido"),
-)
+1113: {
+    ...
+    "spec_fun": "spec_cast_mage",
+},
 ```
 
-`SPECIALS` preserves the `.are` `#SPECIALS` section as a one-shot review list.
-`world.init_world()` applies each entry to `MOB_DEFS[mob_vnum]["spec_fun"]` when
-the area modules are loaded. PrimeSUD may ignore a `spec_fun` until the matching
+`#SPECIALS` entries are no longer emitted as a standalone `SPECIALS` tuple merged
+at load time — the converter bakes each `("M", mob_vnum, spec_fun)` entry
+directly into that mob's own `MOBILES[mob_vnum]["spec_fun"]` at conversion time.
+Verified across all stock QuickMUD areas: specials never reference a mob vnum
+outside their own file. **A `#SPECIALS` entry whose mob vnum isn't present in the
+same file's `MOBILES` section is a hard conversion error** (`ValueError`), not a
+silently dropped entry. PrimeSUD may ignore a `spec_fun` name until the matching
 runtime behavior is ported.
-
-| Command | Format                      | Meaning |
-|---------|-----------------------------|---------|
-| `"M"`   | `("M", mob_vnum, spec_fun)` | Assign named special function to a mob template |
 
 ---
 
@@ -261,62 +318,123 @@ runtime behavior is ported.
 
 ```python
 OBJECTS = {
-    I_IRON_SWORD: {
-        "name":        "Iron Sword",
-        "desc":        "A plain iron sword lies here.",
-        "type":        "weapon",
-        "slot":        "weapon",
-        "weight":      30,
-        "value":       200,
-        "dice":        (1, 6, 0),    # weapon only: damage dice
-        "weapon_type": "sword",      # weapon only
-        "hitroll":     1,            # weapon only
-        "damroll":     0,            # weapon only
-        "extra_flags": {"melt_drop": True},
+    1105: {
+        "keywords":    "one ring",
+        "short_descr": "the One Ring",
+        "description": "The One Ring is here.",
+        "material":    "oldstyle",
+        "type":        "jewelry",
+        "wear_flags":  {"take": True, "finger": True},
+        "extra_flags": {"magic": True},
+        "stat_bonuses": {"str": -1},
+        "flag_affects": (
+            ("affects", "0", 0, {"invisible": True}),
+        ),
+        "level": 20, "weight": 30, "value": 1660,
     },
-    I_LEATHER_VEST: {
-        "name":   "Leather Vest",
-        "desc":   "A worn leather vest lies here.",
-        "type":   "armor",
-        "slot":   "body",
-        "weight": 40,
-        "value":  100,
-        "armor":  (1, 1, 1, 0),      # armor only: per-bucket AC bonus
-        "extra_flags": {},
+    1106: {
+        "keywords":    "iron sword",
+        "short_descr": "an iron sword",
+        "description": "An iron sword lies here.",
+        "material":    "iron",
+        "type":        "weapon",
+        "wear_flags":  {"take": True, "wield": True},
+        "weapon_type": "sword", "dam_type": "slash", "dice": (1, 6, 0),
+        "weapon_flags": {},
+        "level": 5, "weight": 30, "value": 200,
     },
     ...
 }
 ```
 
-| Key           | Type       | Required    | Notes |
-|---------------|------------|-------------|-------|
-| `name`        | str        | yes         | Shown in inventory and equipment lists |
-| `desc`        | str        | yes         | "You see a foo here." line in rooms |
-| `type`        | str        | yes         | `weapon`, `armor`, `key`, `treasure`, `light`, … |
-| `slot`        | str\|None  | yes         | Equipment slot; `None` for non-wearable items |
-| `weight`      | int        | yes         | Item weight (currently informational) |
-| `value`       | int        | yes         | Shop buy price (unused until economy implemented) |
-| `dice`        | tuple      | weapons     | `(num_dice, die_size, bonus)` — damage roll |
-| `weapon_type` | str        | weapons     | `sword`, `dagger`, `mace`, `axe`, `flail`, `whip`, `staff`, `polearm`, … |
-| `dam_type`    | str        | weapons     | Attack noun for combat messages, matching `attack_table` (e.g. `'slash'`, `'pierce'`, `'pound'`) |
-| `hitroll`     | int        | weapons     | Added to attack roll when wielded |
-| `damroll`     | int        | weapons     | Added to damage roll when wielded |
-| `armor`       | tuple      | armor       | `(pierce, bash, slash, exotic)` AC bonus when worn |
-| `extra_flags` | dict       | no          | Item flags (see below) |
+| Key            | Type       | Required     | Notes |
+|----------------|------------|--------------|-------|
+| `keywords`     | str        | yes          | Space-separated match words |
+| `short_descr`  | str        | yes          | Shown in inventory/equipment lists |
+| `description`  | str        | yes          | "You see a foo here." line in rooms |
+| `material`     | str        | yes          | Freeform material string |
+| `type`         | str        | yes          | `weapon`, `armor`, `light`, `container`, `drink`, `food`, `money`, `jewelry`, `treasure`, `trash`, `key`, ... (see `ITEM_TYPE_NUM`) |
+| `wear_flags`   | dict       | yes          | Boolean equipment-slot/take flags (see below) |
+| `no_sac`       | bool       | no           | Present (`True`) only when set; item cannot be sacrificed |
+| `condition`    | int        | no           | Spawn wear-state (0-100); omitted when `100` (perfect, the default) |
+| `extra_flags`  | dict       | no           | Item flags (see below); omitted if none set |
+| `level`        | int        | yes          | |
+| `weight`       | int        | yes          | Item weight (currently informational) |
+| `value`        | int        | yes          | Shop buy price (unused until economy implemented) |
+| `extra_descs`  | list       | no           | `(keyword, desc)` tuples; omitted if empty |
+| `stat_bonuses` | dict       | no           | `{apply_loc_name: modifier}` from `.are` `A`-trailers |
+| `flag_affects` | tuple      | no           | `.are` `F`-trailers — see below |
 
-### Equipment slots
+### Type-specific keys
 
-`weapon`, `shield`, `body`, `head`, `legs`, `feet`, `hands`, `arms`, `neck`, `waist`,
-`wrist`, `about`, `hold`
+| `type`                  | Keys |
+|-------------------------|------|
+| `weapon`                | `weapon_type`, `dam_type`, `dice` (num, die, bonus), `weapon_flags` (dict: `flaming`, `frost`, `vampiric`, `sharp`, `vorpal`, `two_hands`, `shocking`, `poison`) |
+| `armor`                 | `armor`: `(pierce, bash, slash, exotic)` AC bonus when worn |
+| `potion` / `pill` / `scroll` | `spell_level` (optional), `spells` (optional list of spell names) |
+| `wand` / `staff`        | `spell_level`, `max_charges`/`charges`, `spell` (optional keys) |
+| `light`                 | `light_hours` (optional) |
+| `container`             | `container_max_weight` (optional), `container_flags` (dict: `closeable`, `pickproof`, `closed`, `locked`, `put_on`; optional), `container_key` (optional, >0 only), `container_max_item_weight`/`container_weight_mult` (optional pair; old-format containers default to `0`/`100`) |
+| `drink` / `fountain`    | `liquid_total`/`liquid_left`/`liquid_type` (optional), `poisoned` (optional bool) |
+| `food`                  | `food_hours`/`food_hunger` (optional), `poisoned` (optional bool) |
+| `money`                 | `silver`/`gold` (optional pair) |
+
+### `wear_flags` (equipment slots + take)
+
+| Flag     | Meaning |
+|----------|---------|
+| `take`   | Item can be picked up (ROM `ITEM_TAKE`, bit 0) |
+| `finger`, `neck`, `body`, `head`, `legs`, `feet`, `hands`, `arms`, `shield`, `about`, `waist`, `wrist`, `wield`, `hold`, `float` | Wearable in that slot |
 
 ### `extra_flags`
 
-| Flag         | Meaning |
-|--------------|---------|
-| `glow`       | Item glows (acts as light source) |
-| `magic`      | Item is magical |
-| `melt_drop`  | Item disappears when dropped (starter gear guard) |
+| Flag            | Meaning |
+|-----------------|---------|
+| `glow`          | Item glows (acts as light source) |
+| `hum`           | Item hums |
+| `dark`          | Item darkens surroundings |
+| `lock`          | Lockable |
+| `evil`/`bless`  | Alignment-detectable |
+| `invis`         | Item is invisible |
+| `magic`         | Item is magical |
+| `nodrop`        | Cannot be dropped once held |
+| `anti_good`/`anti_evil`/`anti_neutral` | Alignment-restricted |
+| `noremove`      | Cannot be removed once worn |
+| `inventory`     | Shows in `inventory` even if normally hidden |
+| `nopurge`       | Survives area purge |
+| `rot_death`/`vis_death` | Decays / stays visible on owner death |
+| `auctioned`     | 1stMud extension (bit 17); no ROM `ITEM_*` define |
+| `nonmetal`      | Not affected by metal-detection effects |
+| `nolocate`      | Immune to `locate object` |
+| `melt_drop`     | Item disappears when dropped (starter gear guard) |
+| `had_timer`     | Had a decay timer at some point |
+| `sell_extract`  | Removed from the game when sold |
+| `burn_proof`    | Immune to fire damage to the item itself |
+| `nouncurse`     | Cannot be uncursed |
+| `quest`         | 1stMud extension (bit 26); gated on by `quest.py`/`shop.py`/`inventory.py`/`magic.py` |
 | `_unknown_bits` | Uninterpreted bits from `.are` conversion |
+
+### `flag_affects` (`.are` `F`-trailers)
+
+```python
+"flag_affects": (
+    ("affects", "0", 0, {"invisible": True}),
+),
+```
+
+Tuple of `(where, loc, modifier, flags)`:
+
+| Field      | Meaning |
+|------------|---------|
+| `where`    | `"affects"` (grants an `affected_by` flag while worn/held) or `"immune"`/`"resist"`/`"vuln"` (grants a damage flag) |
+| `loc`      | `APPLY_LOC` name for the affect location, or the raw numeric string if unrecognized (e.g. `"0"`) |
+| `modifier` | Integer modifier value from the `.are` line |
+| `flags`    | Decoded flag dict (`affected_by` names for `"affects"`, `RESIST_FLAGS` names otherwise) |
+
+Parsed and stored losslessly (both one-line and two-line `F`-trailer layouts,
+per `db2.c:536-569`'s whitespace-skipping reads); **no runtime consumer yet**
+[PRIMESUD deferred]. Example: `src/area_shire.txt` object 1105 (the One Ring)
+grants `invisible` while worn.
 
 ---
 
@@ -324,27 +442,32 @@ OBJECTS = {
 
 ```python
 RESETS = (
-    ("M", M_GOBLIN, 3, R_DUNGEON_HALL, 3),  # spawn goblin: global_limit=3, room_limit=3
-    ("E", I_IRON_SWORD, "wield"),            # equip sword on last M mob
-    ("G", I_GOLD_POUCH),                     # give pouch to last M mob's inventory
-    ("O", I_IRON_SWORD, R_DUNGEON_HALL),     # place one item copy in room
+    ("M", 2001, 3, 1000, 3),   # spawn goblin: global_limit=3, room_limit=3
+    ("E", 3000, "wield", 6),   # equip sword on last M mob, limit=6
+    ("G", 3001, 0),            # give item to last M mob's inventory, unlimited
+    ("O", 3000, 1000),         # place one item copy in room
     ...
 )
 ```
 
-| Command | Format                                                          | Meaning |
-|---------|-----------------------------------------------------------------|---------|
-| `"M"`   | `("M", mob_vnum, global_limit, room_vnum, room_limit)`         | Spawn mob up to both caps; sets mob context for E/G |
-| `"O"`   | `("O", item_vnum, room_vnum)`                                  | Place one item copy in room; clears mob context |
-| `"E"`   | `("E", item_vnum, slot_name)`                                  | Equip item on last M mob; skipped if last M was capped |
-| `"G"`   | `("G", item_vnum)`                                             | Give item to last M mob's inventory; skipped if last M was capped |
-| `"P"`   | `("P", item_vnum, limit, container_vnum, max)`                 | [PRIMESUD] deferred: no container system yet |
-| `"R"`   | `("R", room_vnum, num_dirs)`                                   | [PRIMESUD] deferred: unused in current areas |
+| Command | Format                                                  | Meaning |
+|---------|----------------------------------------------------------|---------|
+| `"M"`   | `("M", mob_vnum, global_limit, room_vnum, room_limit)`   | Spawn mob up to both caps; sets mob context for E/G |
+| `"O"`   | `("O", item_vnum, room_vnum)`                            | Place one item copy in room; clears mob context |
+| `"E"`   | `("E", item_vnum, slot_name, limit)`                     | Equip item on last M mob; skipped if last M was capped |
+| `"G"`   | `("G", item_vnum, limit)`                                | Give item to last M mob's inventory; skipped if last M was capped |
+| `"P"`   | `("P", item_vnum, limit, container_vnum, max)`           | [PRIMESUD] deferred: no container system yet |
+| `"R"`   | `("R", room_vnum, num_dirs)`                             | [PRIMESUD] deferred: not enforced by runtime yet |
 
-**F and D .are resets** are consumed at conversion time and baked into the room exits
-dict — they do not appear in `RESETS`.  F completely overwrites a door's exit flags;
-D sets its closed/locked state.  On every area reset, `reset_area()` restores all
-door exits to the state encoded in the exits dict.
+**E/G `limit`** is the raw ROM reset-count field (cf. `db.c reset_room`): a value
+`> 50` is a legacy encoding meaning limit 6; `-1` (or `0`, for E/G specifically)
+means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
+
+**D resets** are consumed at conversion time and baked into the room exits dict —
+they do not appear in `RESETS`. A `D` reset overwrites a door's `closed`/`locked`
+state (case 0 = no change, 1 = set closed, 2 = set closed+locked). On every area
+reset, `reset_area()` restores all door exits to the state encoded in the exits
+dict.
 
 **Mob limits and dynamic allocation.** `reset_mobs(mob_instances, room_state, resets)`
 in `player.py` processes each `"M"` entry and spawns at most one instance if both caps
@@ -358,26 +481,32 @@ behaviour. `reset_area()` (game start / full wipe only) creates a fresh empty
 
 ---
 
-## `SHOPS`
+## `shop` (baked from `.are` `#SHOPS`)
 
 ```python
-SHOPS = (
-    {"keeper": M_WEAPONSMITH, "buy_types": ["weapon"],
-     "profit_buy": 120, "profit_sell": 40, "open_hour": 0, "close_hour": 23},
+1113: {
     ...
-)
+    "shop": {"keeper": 1113, "buy_types": ["drink"],
+             "profit_buy": 150, "profit_sell": 50,
+             "open_hour": 0, "close_hour": 23},
+},
 ```
+
+Like `spec_fun`, `#SHOPS` entries are no longer emitted as a standalone `SHOPS`
+tuple merged at load time — the converter bakes each shop dict directly into its
+keeper mob's own `MOBILES[keeper]["shop"]` at conversion time. Same hard-error
+rule as `spec_fun`: a `#SHOPS` entry whose keeper vnum isn't present in the same
+file's `MOBILES` section is a conversion error, not a silently dropped entry.
 
 | Key           | Type    | Notes |
 |---------------|---------|-------|
-| `keeper`      | int     | Mob VNUM that runs the shop |
-| `buy_types`   | list    | Item type names the shop will purchase (e.g. `"weapon"`, `"armor"`, `"scroll"`). Empty list = sell-only |
+| `keeper`      | int     | Mob VNUM that runs the shop; redundant with the dict's own key but kept (matches what `world.py` used to assign) |
+| `buy_types`   | list    | Item type names the shop will purchase (e.g. `"weapon"`, `"armor"`, `"drink"`). Empty list = sell-only |
 | `profit_buy`  | int     | Percentage of item value the player pays when buying (100 = no markup) |
 | `profit_sell` | int     | Percentage of item value the player receives when selling |
-| `open_hour`   | int     | Game hour the shop opens (0–23) |
-| `close_hour`  | int     | Game hour the shop closes (0–23) |
+| `open_hour`   | int     | Game hour the shop opens (0-23) |
+| `close_hour`  | int     | Game hour the shop closes (0-23) |
 
-`world.init_world()` applies each shop entry to `MOB_DEFS[keeper]["shop"]`.
 [PRIMESUD] deferred: buy/sell commands not yet implemented.
 
 ---
@@ -397,8 +526,6 @@ HELPS = (
 | `level`   | int  | Minimum player level to see this help entry (0 = all) |
 | `keyword` | str  | Space-separated keywords that match the `help` command argument |
 | `text`    | str  | Full help text body |
-
-[PRIMESUD] deferred: `help` command not yet implemented.
 
 ---
 
@@ -458,7 +585,7 @@ MOBPROGS = {
 Mob templates reference programs via `mob_triggers` in their `MOBILES` entry:
 
 ```python
-M_GUARD: {
+1200: {
     ...
     "mob_triggers": (
         ("greet", 1234, "100"),   # (trig_type, mprog_vnum, trig_phrase)
@@ -492,25 +619,21 @@ M_GUARD: {
 
 ## Conventions
 
-- **`# fmt: off` is mandatory.** The aligned column style in VNUM constants and mob/item
-  dicts would be destroyed by an auto-formatter. Do not remove it.
+- **`# fmt: off` is mandatory.** The aligned column style in mob/item/room dicts
+  would be destroyed by an auto-formatter. Do not remove it.
 - **`_unknown_bits`** keys in flag dicts record uninterpreted bit positions from the
   original `.are` file. Preserve them; do not add new ones manually.
-- **`# TODO` comments** mark `.are` features that weren't converted because the
-  corresponding PrimeSUD system (doors, mob equipment, shops) is not yet implemented.
-  Keep them verbatim from the source file so the original data isn't lost.
 
 ---
 
 ## Flag bits reference
 
-Full ROM/1stMud bit-to-name maps used by the area-file converters
-(`tools/are_to_primesud.py`, `tools/are_to_primesud_quickmud.py`) to decode
-`.are` bit-strings into the `act_flags` / `affected_by` / `off_flags` /
-`imm_flags` / `res_flags` / `vuln_flags` dicts described above. Useful when
-auditing any area file's `.py` output against its `.are` source by hand. Bit
-0 of `act_flags` (`is_npc`) is always set for mobiles and is omitted from the
-converted dict.
+Full ROM/1stMud bit-to-name maps used by `tools/are_to_primesud_quickmud.py` to
+decode `.are` bit-strings into the `act_flags` / `affected_by` / `off_flags` /
+`imm_flags` / `res_flags` / `vuln_flags` / room `flags` / item `extra_flags` dicts
+described above. Useful when auditing an area file's `.txt` output against its
+`.are` source by hand. Bit 0 of `act_flags` (`is_npc`) is always set for mobiles
+and is omitted from the converted dict.
 
 ### ACT_FLAGS (bit -> name)
 
@@ -547,6 +670,36 @@ converted dict.
 7=fire  8=cold  9=lightning  10=acid  11=poison  12=negative  13=holy
 14=energy  15=mental  16=disease  17=drowning  18=light  19=sound
 23=wood  24=silver  25=iron
+```
+
+### ROOM_FLAGS (bit -> name)
+
+Bits 4, 5, 20, 21, 22 are 1stMud extensions with no `ROOM_*` define in QuickMUD's
+`merc.h`. PrimeSUD's runtime is 1stMud-ported, so 1stMud semantics are canonical;
+QuickMUD stock areas never set these bits (verified across all shipped areas), so
+decoding them is unambiguous. [PRIMESUD]
+
+```
+0=dark  2=no_mob  3=indoors  4=arena*  5=bank*  9=private  10=safe
+11=solitary  12=pet_shop  13=no_recall  14=imp_only  15=gods_only
+16=heroes_only  17=newbies_only  18=law  19=nowhere
+20=noexplore*  21=noautomap*  22=save_objs*     (* = 1stMud extension)
+```
+
+### EXTRA_FLAGS (bit -> name; item `extra_flags`)
+
+Bits 17 (`auctioned`) and 26 (`quest`) are 1stMud extensions with no `ITEM_*`
+define in QuickMUD's `merc.h`. PrimeSUD's runtime is 1stMud-ported and
+`quest.py`/`shop.py`/`inventory.py`/`magic.py` gate on `"quest"`, so 1stMud
+semantics are canonical; QuickMUD stock areas never set these bits (verified
+across all shipped areas). [PRIMESUD]
+
+```
+0=glow  1=hum  2=dark  3=lock  4=evil  5=invis  6=magic  7=nodrop
+8=bless  9=anti_good  10=anti_evil  11=anti_neutral  12=noremove
+13=inventory  14=nopurge  15=rot_death  16=vis_death  17=auctioned*
+18=nonmetal  19=nolocate  20=melt_drop  21=had_timer  22=sell_extract
+24=burn_proof  25=nouncurse  26=quest*          (* = 1stMud extension)
 ```
 
 ### AC interpretation

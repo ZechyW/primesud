@@ -222,7 +222,7 @@ def test_portal_targets_unloaded_area_mob(out, monkeypatch, tmp_path):
     player = _make_player(9001)
     _held_stone(player)
     player["_target_name"] = "dragon"
-    idx = tmp_path / "mob_index.dat"
+    idx = tmp_path / "mob_index.txt"
     idx.write_text("testarea|9402|red dragon\n")
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
     loaded = []
@@ -243,7 +243,7 @@ def test_find_unloaded_mob_second_mob_same_area(monkeypatch, tmp_path):
     # first index hit has no instance; sibling mob spawned by the same
     # area load must still be found (later same-tag lines get skipped)
     _make_player(9001)
-    idx = tmp_path / "mob_index.dat"
+    idx = tmp_path / "mob_index.txt"
     idx.write_text("testarea|9402|red dragon\n"
                    "testarea|9403|blue dragon\n")
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
@@ -266,7 +266,7 @@ def test_find_unloaded_mob_edge_cases(monkeypatch, tmp_path):
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(tmp_path / "absent.dat"))
     assert magic._find_unloaded_mob("dragon") == (None, None)
     # loaded areas skipped; no-spawn load capped at 2
-    idx = tmp_path / "mob_index.dat"
+    idx = tmp_path / "mob_index.txt"
     idx.write_text("loadedarea|9402|red dragon\n"
                    "ghost1|9403|red dragon\n"
                    "ghost2|9404|red dragon\n"

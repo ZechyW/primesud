@@ -2523,7 +2523,7 @@ def spell_high_explosive(sn, level, ch, vo, target):
 # -- magic2.c spells --
 
 
-MOB_INDEX_FILE = "mob_index.dat"  # [PRIMESUD] "tag|vnum|keywords" per line
+MOB_INDEX_FILE = "mob_index.txt"  # [PRIMESUD] "tag|vnum|keywords" per line
 
 
 def _find_unloaded_mob(tail):

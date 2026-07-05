@@ -97,7 +97,7 @@ def _clean_world_state():
         "type": "misc", "level": 0, "weight": 5,
         "wear_flags": {"take": True}, "extra_flags": {"nodrop": True},
     }
-    # Real money templates (area_limbo.dat vnums 1-5), pre-seeded so
+    # Real money templates (area_limbo.txt vnums 1-5), pre-seeded so
     # combat.create_money's create_object() calls don't trigger LazyDict
     # area loading (world._LOADED_AREAS is process-global and can be left
     # stale by other tests' fresh_world fixture use -- pre-seeding sidesteps
