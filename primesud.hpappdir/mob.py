@@ -79,7 +79,7 @@ def create_mobile(tpl_vnum):
     imm_flags = _merge("imm_flags", "imm")
     res_flags = _merge("res_flags", "res")
     vuln_flags = _merge("vuln_flags", "vuln")
-    # [not ported] form and parts merged but not yet used in gameplay
+    # form/parts drive death_cry body-part drops and poison food (combat.py)
     form_flags = _merge("form_flags", "form")
     part_flags = _merge("part_flags", "parts")
 

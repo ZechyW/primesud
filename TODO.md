@@ -4,39 +4,32 @@ Loose ends that don't belong in a specific plan file.
 
 ## Combat
 
-- **Body-part drops via `death_cry`** (was CORPSE_PLAN Phase 4) — race `part_flags`
-  now populated on every mob instance (`mob.py` merges race `parts`); body-part
-  objects exist in `area_limbo.py` (`I_HEAD`, `I_HEART`, ...). `_death_cry`
-  (`combat.py`) is still uniform-random text only: no part-flag gating, no
-  body-part object creation, no adjacent-room cry broadcast. Prereq (race data)
-  is satisfied; implement per 1stMud `death_cry` in `fight.c`. Fold in the
-  deferred sub-items: poison food from mob `form` flags.
+- **PC victims never drop body parts** — `_death_cry` (ported 05/07/2026) gates
+  on `part_flags`/`form_flags`, but `player.py` never merges `RACE_TABLE`
+  parts/form for PCs the way `mob.py` does for mobs (1stMud sets
+  `ch->form/parts` from race for players too). PC deaths always fall through
+  to the default cry, no part drop.
 
 ## Items
 
-- **Weight/count limits not enforced in `do_get`/`do_put`** — `can_carry_w` /
-  `get_obj_weight` / `can_carry_n` exist and are enforced in `do_give` and
-  `do_buy`, but `do_get` and `do_put` (`inventory.py`) never call them.
-- **Alignment-restricted wear not enforced** — `anti_good`/`anti_evil`/
-  `anti_neutral` extra_flags are parsed from area data and drive the post-kill
-  equipment zap (`combat.py`), but `wear_obj` (`inventory.py`) never blocks
-  wearing an anti-aligned item.
-- `drop <n> gold` / `drop <n> silver` unimplemented (no coin-drop path in
-  `inventory.py`).
-- **Mob `extra_descs` not checked in `do_look`** — room/item extra_descs work
-  via `_get_ed`; the mob branch (`info.py`) short-circuits before any
-  extra_desc lookup.
+- **Instance-level `type`/`poisoned` overrides partly inert** — `death_cry`
+  and `poison_effect` set `obj["poisoned"]` and `obj["type"] = "trash"` on
+  food per 1stMud, but `do_eat` (`inventory.py`) checks neither (no poison
+  affect on eating, trash still edible); item-type lookups read only the
+  template. `do_drink` already honours instance `poisoned` — mirror that.
+- **Container `closed`/`locked` flags inert** — area data carries
+  `container_flags` (midgaard/haon/chapel/sewer/newthalos chests, safes), but
+  `do_open`/`do_close`/`do_lock`/`do_unlock` handle doors only, and
+  `do_get`/`do_put` never check container state — "locked" containers are
+  freely accessible.
+- **`do_put` missing `can_drop_obj` check** — 1stMud do_put blocks nodrop
+  items (act_obj.c:391); PrimeSUD's never calls it, so cursed items can be
+  stashed in containers.
 
 ## Magic
 
-- **Elemental object/room side-effects from `effects.c` not ported** —
-  `acid_effect`/`fire_effect`/`cold_effect`/`shock_effect`/`poison_effect`
-  (item destruction, blind/daze chances). Breath, damage, and weapon-proc
-  spells apply raw damage only; see inline `# TODO [PRIMESUD]` markers in
-  `magic.py` and `combat.py:_weapon_procs`.
-- **Revisit spell cast level scaling** — `do_cast` still passes full
-  `player["level"]` regardless of class (tagged `# [PRIMESUD] classless` in
-  `magic.py`). Classes exist now; 1stMud casts non-casters at `3 * level / 4`.
+(elemental `effects.c` port and non-caster cast-level scaling landed
+05/07/2026 -- nothing outstanding)
 
 ## Classes
 
@@ -68,6 +61,14 @@ Loose ends that don't belong in a specific plan file.
 - **`_unknown_bits` in quest.are** — stock 1stMud data sets ACT bits 11/31 and
   AFF bits 34/36 that are undefined even in 1stMud's own `bits.h`; preserved
   losslessly under `_unknown_bits`, no runtime meaning.
+
+## Tests
+
+- **`conftest.py` `fresh_world` doesn't restore lazy-load state** — it clears
+  `world._LOADED_AREAS`/`_TAG_TO_FILE`/`_VNUM_RANGES` at setup and teardown
+  without saving/restoring, so a later test that lazily loads a real vnum via
+  `ITEM_DEFS[vnum]` can `KeyError` depending on run order.
+  `test_carry_and_align.py` sidesteps it by pre-seeding money templates.
 
 ## Platform
 
