@@ -1012,7 +1012,8 @@ def do_help(player, args):
     position of the entry's first text line in HELP_FILE, printed via seek.
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified
     04/07/2026; index-scan rework re-verified 05/07/2026; 'debug time'
-    timing instrumentation added 05/07/2026]
+    timing instrumentation added 05/07/2026; one-shot idx read + substring
+    pre-filter re-verified 05/07/2026]
     """
     argall = " ".join(args) if args else "summary"
     number, target = _number_argument(argall)
@@ -1025,12 +1026,19 @@ def do_help(player, args):
     related = []  # "See Also" keywords after the shown entry
     show = None   # (keyword, offset) of the entry to print
     t0 = ticks()  # [PRIMESUD] 'debug time' channel timings
+    # [PRIMESUD] one f.read() beats 283 readline() calls ~100x on Prime FS.
+    # Substring pre-filter: any _help_is_name match needs the first target
+    # word to prefix some keyword, so its uppercase form must appear in the
+    # index line -- skips split/int/is_name work on non-candidates.
     f = open(HELP_INDEX)
-    while True:
-        line = f.readline()
-        if not line:
-            break
-        level_s, off_s, keyword = line.rstrip("\n").split("|", 2)
+    data = f.read()
+    f.close()
+    words = target.split()
+    q = words[0].strip("'\"").upper() if words else ""
+    for line in data.split("\n"):
+        if not line or q not in line:
+            continue
+        level_s, off_s, keyword = line.split("|", 2)
         if int(level_s) > trust:
             continue
         if not _help_is_name(target, keyword):
@@ -1045,7 +1053,7 @@ def do_help(player, args):
                 found = True
             elif found:
                 related.append(keyword)
-    f.close()
+    data = None  # [PRIMESUD] release 7KB index string promptly
     t1 = t2 = ticks()  # [PRIMESUD] idx scan done
     if show:
         # [PRIMESUD] read body before printing so 'debug time' can split
