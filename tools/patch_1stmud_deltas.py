@@ -157,7 +157,7 @@ def patch_area(area_name, filepath):
         print(f"  {vnum}: +{dirs}", file=sys.stderr)
 
     if modified:
-        Path(filepath).write_text("\n".join(lines), encoding="utf-8")
+        Path(filepath).write_text("\n".join(lines), encoding="utf-8", newline="\n")
     return modified
 
 
@@ -206,7 +206,7 @@ def patch_mob_flags(area_name, filepath):
         print(f"  mob {vnum}: +{'/'.join(added)}", file=sys.stderr)
 
     if modified:
-        Path(filepath).write_text("\n".join(lines), encoding="utf-8")
+        Path(filepath).write_text("\n".join(lines), encoding="utf-8", newline="\n")
     return modified
 
 
@@ -245,7 +245,7 @@ def patch_room_guilds(area_name, filepath):
         print(f"  room {vnum}: guild {tup}", file=sys.stderr)
 
     if modified:
-        Path(filepath).write_text("\n".join(lines), encoding="utf-8")
+        Path(filepath).write_text("\n".join(lines), encoding="utf-8", newline="\n")
     return modified
 
 
@@ -279,7 +279,7 @@ def patch_move_resets(base):
                           file=sys.stderr)
         if not moved:
             continue  # already moved
-        src_path.write_text("\n".join(src_lines), encoding="utf-8")
+        src_path.write_text("\n".join(src_lines), encoding="utf-8", newline="\n")
 
         dst_lines = dst_path.read_text(encoding="utf-8").split("\n")
         closing = None
@@ -297,7 +297,7 @@ def patch_move_resets(base):
             rl + f"  # [PRIMESUD] moved from {src} (defer cross-area load)"
             for rl in moved
         ]
-        dst_path.write_text("\n".join(dst_lines), encoding="utf-8")
+        dst_path.write_text("\n".join(dst_lines), encoding="utf-8", newline="\n")
         print(f"  {src} -> {dst}: {len(moved)} reset(s) moved", file=sys.stderr)
 
 
@@ -329,7 +329,7 @@ def patch_drop_resets(base):
                           f"{rl.strip()} (emission format drift?)",
                           file=sys.stderr)
         if dropped:
-            filepath.write_text("\n".join(lines), encoding="utf-8")
+            filepath.write_text("\n".join(lines), encoding="utf-8", newline="\n")
             print(f"  {area_name}: {dropped} reset(s) dropped", file=sys.stderr)
 
 

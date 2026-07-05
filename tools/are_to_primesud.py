@@ -1211,7 +1211,7 @@ def convert(are_path, out_path=None):
                 foverrides, doverrides)
 
     if out_path:
-        Path(out_path).write_text(code, encoding="utf-8")
+        Path(out_path).write_text(code, encoding="utf-8", newline="\n")
         print(f"Written to {out_path}", file=sys.stderr)
     else:
         sys.stdout.write(code)

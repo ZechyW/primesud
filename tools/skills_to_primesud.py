@@ -196,7 +196,7 @@ def convert(dat_path, out_path=None):
     print(f"Parsed {len(skills)} skills.", file=sys.stderr)
     code = emit(skills)
     if out_path:
-        Path(out_path).write_text(code, encoding="utf-8")
+        Path(out_path).write_text(code, encoding="utf-8", newline="\n")
         print(f"Written to {out_path}", file=sys.stderr)
     else:
         sys.stdout.write(code)

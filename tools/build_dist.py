@@ -7,6 +7,7 @@ Usage:
 
 import ast
 import shutil
+import subprocess
 import sys
 import warnings
 from pathlib import Path
@@ -44,9 +45,49 @@ def minify_source(source):
     )
 
 
+def preflight():
+    """Regenerate all derived data (areas, mob index, help + index).
+
+    Order matters: mob_index.dat is built from the area .dat files.
+    Regen writes into SRC_DIR, so a dirty git tree afterwards means the
+    checked-in data had drifted from the generators -- inspect before
+    copying to the calculator.
+    """
+    # ponytail: shell out to the bash script instead of duplicating its
+    # area lists here; port to Python if bash/uv ever unavailable.
+    # shutil.which, not bare "bash": CreateProcess checks System32 before
+    # PATH, so bare "bash" hits the WSL shim on Windows.
+    bash = shutil.which("bash")
+    if not bash:
+        sys.exit("Preflight needs bash (git-bash) on PATH")
+    steps = [
+        [bash, "tools/regen_areas.sh"],
+        [sys.executable, "tools/build_mob_index.py"],
+        [sys.executable, "tools/help_to_primesud.py"],
+    ]
+    for cmd in steps:
+        print("==> preflight: %s" % cmd[-1])
+        rc = subprocess.call(cmd)
+        if rc != 0:
+            sys.exit("Preflight step failed (%d): %s" % (rc, " ".join(cmd)))
+
+    # Surface generator drift: regen writes into SRC_DIR, so any diff here
+    # means checked-in data no longer matches the generators
+    drift = subprocess.run(
+        ["git", "status", "--porcelain", str(SRC_DIR)],
+        capture_output=True, text=True).stdout.strip()
+    if drift:
+        print("\nWARNING: preflight changed checked-in data (generator drift):")
+        print(drift)
+        print("Review and commit before copying to the calculator.\n")
+
+
 def main():
     if not SRC_DIR.is_dir():
         sys.exit("Source dir %s not found" % SRC_DIR)
+
+    if "--skip-preflight" not in sys.argv:
+        preflight()
 
     if DIST_DIR.exists():
         shutil.rmtree(DIST_DIR)
