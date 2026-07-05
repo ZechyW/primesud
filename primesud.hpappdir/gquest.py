@@ -26,7 +26,7 @@ from urandom import randint
 
 # cf. 1stMud gquest_t in defines.h
 GQUEST_OFF     = 0
-GQUEST_WAITING = 1
+GQUEST_WAITING = 1  # [PRIMESUD] unused live state; kept for legacy save load
 GQUEST_RUNNING = 2
 
 # cf. 1stMud GQuestInfo gquest_info; "joined"/"pmobs" fold the per-player
@@ -178,7 +178,12 @@ def generate_gquest(who_name):
     gquest_info["joined"] = False
     gquest_info["qpoints"] = randint(15, 30) * gquest_info["mob_count"]
     gquest_info["gold"] = randint(100, 150) * gquest_info["mob_count"]
-    gquest_info["timer"] = mins_to_ticks(3)  # cf. 1stMud 3-minute join window
+    # [PRIMESUD] 1stMud opens a 3-minute join window (GQUEST_WAITING) and
+    # cancels with "Not enough people" if no one joins; single-player quests
+    # start running immediately and the player may join at any time.
+    gquest_info["timer"] = mins_to_ticks(
+        randint(4 * gquest_info["mob_count"], 6 * gquest_info["mob_count"]))
+    gquest_info["running"] = GQUEST_RUNNING
     gquest_info["who"] = who_name or "AutoQuest"
 
     player = world.chars.get(1)
@@ -192,6 +197,20 @@ def generate_gquest(who_name):
             chprintlnf(player,
                        "A Global Quest for levels %d to %d has started.  Type 'gquest info' to see the quest.",
                        gquest_info["minlevel"], gquest_info["maxlevel"])
+        # [PRIMESUD] auto-join the single player when eligible (same gates
+        # as 'gquest join': no regular quest running, level in range)
+        if (not is_quester(player)
+                and gquest_info["minlevel"] <= player["level"]
+                <= gquest_info["maxlevel"]):
+            gquest_info["joined"] = True
+            gquest_info["pmobs"] = list(gquest_info["mobs"])
+            chprintlnf(player,
+                       "You have %s to complete the task!",
+                       _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
+        else:
+            chprintlnf(player,
+                       "You have %s to join and complete the task!",
+                       _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
     return True
 
 
@@ -218,7 +237,11 @@ def auto_gquest():
     hi = min(MAX_MORTAL_LEVEL, max((middle * 3) // 2, minlvl + 10))
     maxlvl = min(MAX_MORTAL_LEVEL, randint(min(hi, maxlvl), max(hi, maxlvl)))
 
-    gquest_info["running"] = GQUEST_WAITING
+    # [PRIMESUD] the randomized band can drift off the player's level
+    # (e.g. low levels); clamp so the single player is always eligible
+    minlvl = min(minlvl, player["level"])
+    maxlvl = max(maxlvl, player["level"])
+
     gquest_info["mob_count"] = randint(5, 30 - lbonus)
     gquest_info["minlevel"] = max(1, minlvl)
     gquest_info["maxlevel"] = min(MAX_MORTAL_LEVEL, maxlvl)
@@ -273,7 +296,6 @@ def start_gquest(player, args):
              "%d mobs have cost you %d trivia points." % (mobs, cost))
     player["trivia"] -= cost
 
-    gquest_info["running"] = GQUEST_WAITING
     gquest_info["minlevel"] = blevel
     gquest_info["maxlevel"] = elevel
     gquest_info["mob_count"] = mobs
@@ -329,37 +351,10 @@ def gquest_update():
                     chprintlnf(player,
                                "{WA global quest will begin in about %s.{x",
                                _intstr(mins, "minute"))
-    elif running == GQUEST_WAITING:
-        gquest_info["timer"] -= 1
-        if gquest_info["timer"] > 0:
-            if player is not None and on_minute(gquest_info["timer"]):
-                chprintlnf(player,
-                           "%s left to join the global quest. (Levels %d - %d)",
-                           _intstr(ticks_to_mins(gquest_info["timer"]), "minute"),
-                           gquest_info["minlevel"], gquest_info["maxlevel"])
-        elif not gquest_info["joined"]:
-            end_gquest()
-            if player is not None:
-                chprintlnf(player,
-                           "Not enough people for the global quest. The next quest will start in %s.",
-                           _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
-        else:
-            gquest_info["timer"] = mins_to_ticks(
-                randint(4 * gquest_info["mob_count"],
-                        6 * gquest_info["mob_count"]))
-            gquest_info["running"] = GQUEST_RUNNING
-            if player is not None:
-                chprintlnf(player,
-                           "The Global Quest begins! You have %s to complete the task!",
-                           _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
     elif running == GQUEST_RUNNING:
-        if not gquest_info["joined"]:
-            end_gquest()
-            if player is not None:
-                chprintlnf(player,
-                           "No one left in the Global Quest, next quest will start in %s.",
-                           _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
-            return
+        # [PRIMESUD] 1stMud ends the quest here if no players remain; kept
+        # running so the (single) player can join or rejoin until time runs
+        # out.
         if gquest_info["timer"] == 0:
             end_gquest()
             if player is not None:
@@ -456,9 +451,7 @@ def do_gquest(player, args):
         chprintlnf(player, "Started by  : %s", gquest_info["who"] or "Unknown")
         chprintlnf(player, "Levels      : %d - %d",
                    gquest_info["minlevel"], gquest_info["maxlevel"])
-        chprintlnf(player, "Status      : %s for %s.",
-                   "Waiting" if gquest_info["running"] == GQUEST_WAITING
-                   else "Running",
+        chprintlnf(player, "Status      : Running for %s.",
                    _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
         chprintln(player, "[ Quest Rewards ]")
         chprintlnf(player, "Qp Reward   : %d", gquest_info["qpoints"])
@@ -468,9 +461,7 @@ def do_gquest(player, args):
         return
 
     if _prefix(arg1, "time"):
-        chprintlnf(player, "The Global Quest is %s for %s.",
-                   "Waiting" if gquest_info["running"] == GQUEST_WAITING
-                   else "Running",
+        chprintlnf(player, "The Global Quest is Running for %s.",
                    _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
         return
 
@@ -547,6 +538,11 @@ def gq_load_line(key, val):
         gquest_info["cost"] = int(parts[7] or 0)
         gquest_info["joined"] = parts[8] == "1"
         gquest_info["who"] = parts[9]
+        # [PRIMESUD] legacy save from before the join window was removed:
+        # promote to running with a fresh run timer
+        if gquest_info["running"] == GQUEST_WAITING:
+            gquest_info["running"] = GQUEST_RUNNING
+            gquest_info["timer"] = mins_to_ticks(5 * gquest_info["mob_count"])
         return True
     if key == "g.gqmobs":
         gquest_info["mobs"] = [int(v) for v in val.split(",") if v]

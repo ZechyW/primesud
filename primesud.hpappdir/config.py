@@ -49,9 +49,9 @@ def on_minute(t):
 
 # -- Global quests [PRIMESUD] ---------------------------------------------------------
 # Real-world minutes (see mins_to_ticks above).
-GQUEST_INITIAL_DELAY = 75     # first auto gquest of a new game
-GQUEST_AUTO_DELAY_MIN = 50    # random delay between auto gquests
-GQUEST_AUTO_DELAY_MAX = 100
+GQUEST_INITIAL_DELAY = 30     # first auto gquest of a new game
+GQUEST_AUTO_DELAY_MIN = 30    # random delay between auto gquests
+GQUEST_AUTO_DELAY_MAX = 60
 
 # -- Automap ---------------------------------------------------------------------------
 MAP_HALF_W      = 5   # compact automap half-width  (full grid = 2*W+1 = 11 cols)

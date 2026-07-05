@@ -29,22 +29,28 @@ def _exit_to(exit_val):
 
 
 def _close_auto_door(ch, auto_door):
-    """Re-close a door move_char auto-opened, unless noclose. [PRIMESUD]
+    """Re-close (and re-lock) a door move_char auto-opened, unless noclose. [PRIMESUD]
 
     Args:
         ch (dict): Moving character.
-        auto_door: (exit_dict, rev_exit_dict_or_None, keyword) from
+        auto_door: (exit_dict, rev_exit_dict_or_None, keyword, relock) from
             move_char's auto-open, or None if no door was auto-opened.
     """
     if auto_door is None:
         return
-    orig_exit, rev_exit, keyword = auto_door
+    orig_exit, rev_exit, keyword, relock = auto_door
     if orig_exit.get("noclose"):
         return
     orig_exit["closed"] = True
     if rev_exit is not None:
         rev_exit["closed"] = True
-    chprintln(ch, "You close the " + keyword + " behind you.")
+    if relock:
+        orig_exit["locked"] = True
+        if rev_exit is not None:
+            rev_exit["locked"] = True
+        chprintln(ch, "You close and lock the " + keyword + " behind you.")
+    else:
+        chprintln(ch, "You close the " + keyword + " behind you.")
 
 
 def _has_boat(ch):
@@ -81,13 +87,15 @@ def move_char(ch, direction):
     Position gate handled by command table (do_north etc. have
     min_pos = "standing").
 
-    A closed-but-unlocked door blocking a player's path is opened
-    automatically, then re-closed (unless noclose) once the player and
-    any followers are through -- no 1stMud equivalent. [PRIMESUD]
+    A closed door blocking a player's path is opened automatically
+    (unlocked first if the player carries its key), then re-closed and
+    re-locked (unless noclose) once the player and any followers are
+    through -- no 1stMud equivalent. [PRIMESUD]
 
     [Verified: 03/07/2026; quest_room_check moved after follower loop to
     match 1stMud order and re-verified same day; [PRIMESUD] auto-door
-    added 04/07/2026] -- private-room / area-closed checks, area entry
+    added 04/07/2026, auto-unlock with key added 05/07/2026] --
+    private-room / area-closed checks, area entry
     sound, and exit/entry/greet progs not ported (see comments).
 
     Args:
@@ -119,26 +127,30 @@ def move_char(ch, direction):
 
     # -- Closed door (with pass_door / nopass) --
     auto_door = None
+    pending_door = None
     is_exit_dict = isinstance(exit_val, dict)
     if is_exit_dict and exit_val.get("closed"):
         if not aff.get("pass_door") or exit_val.get("nopass"):
             # 1stMud act "$d": first word of exit keyword, "door" if unset
             keyword = exit_val.get("keyword")
             keyword = keyword.split()[0] if keyword else "door"
-            # [PRIMESUD] auto-door: open unlocked door, re-close after moving
-            if is_npc or exit_val.get("locked"):
+            # [PRIMESUD] auto-door: open door (unlocking with a carried key
+            # if needed), re-close/re-lock after moving; keep door/lock
+            # semantics in sync with do_open/do_unlock
+            if is_npc:
                 chprintln(ch, "The " + keyword + " is closed.")
                 return
-            chprintln(ch, "You open the " + keyword + ".")
-            exit_val["closed"] = False
-            rev_exit = None
-            rev = REV_DIR.get(direction)
-            if rev and dest in ROOM_DEFS:
-                candidate = ROOM_DEFS[dest]["exits"].get(rev)
-                if isinstance(candidate, dict) and _exit_to(candidate) == ch["room"]:
-                    candidate["closed"] = False
-                    rev_exit = candidate
-            auto_door = (exit_val, rev_exit, keyword)
+            needs_unlock = False
+            if exit_val.get("locked"):
+                key = exit_val.get("key")
+                if key is None or not _has_key(ch, key):
+                    chprintln(ch, "The " + keyword + " is locked.")
+                    return
+                needs_unlock = True
+            # open deferred until the remaining move checks pass, so a
+            # failed move (charm, guild, sector, exhaustion) leaves the
+            # door untouched
+            pending_door = (keyword, needs_unlock)
 
     # -- Charm anchor (cf. 1stMud AFF_CHARM && master in same room) --
     if aff.get("charm") and ch.get("master") is not None:
@@ -193,6 +205,26 @@ def move_char(ch, direction):
 
         WaitState(ch, 1)
         ch["move"] = ch.get("move", 0) - move_cost
+
+    # [PRIMESUD] auto-door: all move checks passed -- open (and unlock) now
+    if pending_door is not None:
+        keyword, needs_unlock = pending_door
+        if needs_unlock:
+            exit_val["locked"] = False
+            chprintln(ch, "You unlock and open the " + keyword + ".")
+        else:
+            chprintln(ch, "You open the " + keyword + ".")
+        exit_val["closed"] = False
+        rev_exit = None
+        rev = REV_DIR.get(direction)
+        if rev and dest in ROOM_DEFS:
+            candidate = ROOM_DEFS[dest]["exits"].get(rev)
+            if isinstance(candidate, dict) and _exit_to(candidate) == ch["room"]:
+                candidate["closed"] = False
+                if needs_unlock:
+                    candidate["locked"] = False
+                rev_exit = candidate
+        auto_door = (exit_val, rev_exit, keyword, needs_unlock)
 
     # -- Stance drop on movement (cf. 1stMud move_char act_move.c:169)
     # [PRIMESUD] 1stMud passed "" (bare toggle); bare stance is now a

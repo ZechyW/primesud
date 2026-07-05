@@ -43,6 +43,7 @@ Pickers force numeric keyboard mode on entry (`picker.py:_force_numeric_keys`) s
 | Remort progression | `lvl_bonus` multiplier against 1stMud's economy | Same formula against PrimeSUD's flatter economy (20 HP at creation) -- first remort lands ~6000 HP/mana/move, 300 trains, 420 practices | Accepted 03/07/2026 as an NG+-style feature; revisit after playtest |
 | Guild rooms | Single class per guild room; midgaard has no paladin/ranger guilds | Paladin shares the Cleric guild rooms, Ranger shares the Warrior's; all four midgaard GMs are gain-capable (`patch_1stmud_deltas.py`) | Every class must be gain/remort-capable within the loaded-area set |
 | Pulse timing | `PULSE_VIOLENCE = 3xPPS`, `PULSE_MOBILE = 4xPPS`, `PULSE_TICK = 45xPPS` | `2xPPS`, `5xPPS`, `30xPPS` | Faster combat/regen; slower mob wander |
+| Gquest joining | 3-min GQUEST_WAITING window to gather joiners via `gquest join`; cancels with "Not enough people" if none join; ends running quest when last player leaves | No window -- quest starts running at announcement with the player auto-joined (same gates as manual join: no regular quest, level in range); auto-quest level band clamped to always include the player; runs until time expires; `gquest quit`/`join` still allow opt-out/rejoin (e.g. join after wrapping up a regular quest) | Single player -- window was dead time (kills don't credit until RUNNING), "not enough players" can't be a failure mode, joining has no penalty, and an unjoinable quest is dead content |
 
 ---
 

@@ -1,4 +1,4 @@
-"""Tests for auto-open/auto-close of unlocked doors during movement. [PRIMESUD]"""
+"""Tests for auto-open/auto-close (and key auto-unlock) of doors during movement. [PRIMESUD]"""
 import os
 import sys
 
@@ -72,12 +72,53 @@ class TestAutoDoor:
         assert "You open the door." in out
         assert "You close the door behind you." in out
 
-    def test_locked_door_stays_blocked(self, scene, out):
+    def test_locked_door_with_key_auto_unlocks_and_relocks(self, scene, out):
         _door()["locked"] = True
+        _door(3002, "s")["locked"] = True
+        movement.move_char(scene, "n")
+        assert scene["room"] == 3002
+        assert "You unlock and open the door." in out
+        assert "You close and lock the door behind you." in out
+        assert _door()["closed"] is True
+        assert _door()["locked"] is True
+        assert _door(3002, "s")["closed"] is True
+        assert _door(3002, "s")["locked"] is True
+
+    def test_locked_door_without_key_stays_blocked(self, scene, out):
+        _door()["locked"] = True
+        scene["inv"] = []
         movement.move_char(scene, "n")
         assert scene["room"] == 3001
-        assert "The door is closed." in out
+        assert "The door is locked." in out
         assert _door()["closed"] is True
+        assert _door()["locked"] is True
+
+    def test_locked_keyless_door_stays_blocked(self, scene, out):
+        _door()["locked"] = True
+        _door()["key"] = None
+        movement.move_char(scene, "n")
+        assert scene["room"] == 3001
+        assert "The door is locked." in out
+        assert _door()["locked"] is True
+
+    def test_failed_move_leaves_door_untouched(self, scene, out):
+        _door()["locked"] = True
+        scene["move"] = 0
+        movement.move_char(scene, "n")
+        assert scene["room"] == 3001
+        assert "You are too exhausted." in out
+        assert not any("You unlock and open" in l for l in out)
+        assert _door()["closed"] is True
+        assert _door()["locked"] is True
+
+    def test_noclose_locked_door_stays_open_and_unlocked(self, scene, out):
+        _door()["locked"] = True
+        _door()["noclose"] = True
+        movement.move_char(scene, "n")
+        assert scene["room"] == 3002
+        assert not _door().get("closed")
+        assert not _door().get("locked")
+        assert not any("behind you" in l for l in out)
 
     def test_keyword_used_in_messages(self, scene, out):
         _door()["keyword"] = "gate iron"

@@ -380,7 +380,7 @@ def test_tpspend(fresh):
 def test_gquest_start_join_kill_complete(fresh):
     import gquest
     from gquest import (do_gquest, gquest_update, gq_kill_check, gq_reset,
-                        gquest_info, GQUEST_WAITING, GQUEST_RUNNING, GQUEST_OFF)
+                        gquest_info, GQUEST_RUNNING, GQUEST_OFF)
     gq_reset()
     fresh["room"] = 202  # registar's room (mob 202 resets at room 201... find via spec)
     # place player in the registar's actual room
@@ -392,16 +392,21 @@ def test_gquest_start_join_kill_complete(fresh):
                 break
     fresh["trivia"] = 10
     do_gquest(fresh, ["start", "1", "30", "5"])
-    assert gquest_info["running"] == GQUEST_WAITING
+    # [PRIMESUD] no join window: quest starts running immediately,
+    # eligible player is auto-joined
+    assert gquest_info["running"] == GQUEST_RUNNING
     assert len(gquest_info["mobs"]) == 5
     assert len(set(gquest_info["mobs"])) == 5  # distinct targets
     assert fresh["trivia"] == 10 - (5 + 5 // 5)
+    assert gquest_info["joined"]
+    assert gquest_info["pmobs"] == gquest_info["mobs"]
+    # quit then rejoin still works
+    do_gquest(fresh, ["quit"])
+    assert not gquest_info["joined"]
     do_gquest(fresh, ["join"])
     assert gquest_info["joined"]
     assert gquest_info["pmobs"] == gquest_info["mobs"]
-    # waiting timer (3-minute join window) runs out -> running
-    for _ in range(mins_to_ticks(3) + 2):
-        gquest_update()
+    gquest_update()
     assert gquest_info["running"] == GQUEST_RUNNING
     # kill all targets
     for vnum in list(gquest_info["mobs"]):
@@ -413,6 +418,21 @@ def test_gquest_start_join_kill_complete(fresh):
     assert gquest_info["running"] == GQUEST_OFF
     assert fresh["quest_points"] > qp_before
     assert fresh["gold"] > gold_before
+
+
+def test_auto_gquest_always_joinable(fresh):
+    # [PRIMESUD] auto band is clamped to the player's level and auto-joins
+    from gquest import auto_gquest, gq_reset, gquest_info, GQUEST_OFF
+    for lvl in (1, 3, 5, 8, 25, 51):
+        for _ in range(5):  # randomized band: sample a few rolls
+            fresh["level"] = lvl
+            gq_reset()
+            auto_gquest()
+            if gquest_info["running"] == GQUEST_OFF:
+                continue  # not enough targets at this band; quest ended
+            assert gquest_info["minlevel"] <= lvl <= gquest_info["maxlevel"]
+            assert gquest_info["joined"]
+    gq_reset()
 
 
 def test_gquest_countdown_announcement(fresh, capsys):
