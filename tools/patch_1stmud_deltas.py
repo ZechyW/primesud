@@ -4,7 +4,7 @@
 Data that exists in 1stMud but not in the QuickMUD .are files the
 converter reads: cross-area exits, and mob act flags (1stMud gives its
 midgaard guildmasters ACT_TRAIN/ACT_GAIN). Run after
-are_to_primesud_quickmud.py conversion (regen_areas.sh does).
+are_to_primesud.py conversion (regen_areas.sh does).
 
 All patches are idempotent; safe to re-run on already-patched .txts.
 

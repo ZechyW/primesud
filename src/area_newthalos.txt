@@ -4948,6 +4948,7 @@ OBJECTS = {
         "material":    'oldstyle',
         "type": 'key',
         "wear_flags": {"take": True},
+        "values": (1, 0, 0, 0, 0),
         "level": 0, "weight": 30, "value": 0,
     },
     9501: {
@@ -4957,6 +4958,7 @@ OBJECTS = {
         "material":    'oldstyle',
         "type": 'key',
         "wear_flags": {"take": True, "neck": True, "hold": True},
+        "values": (1, 0, 0, 0, 0),
         "level": 0, "weight": 30, "value": 0,
     },
     9503: {

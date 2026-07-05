@@ -9,7 +9,7 @@ AREAS="arachnos chapel daycare grave haon immort limbo marsh midgaard mobfact mo
 
 for area in $AREAS; do
     echo "==> $area"
-    uv run tools/are_to_primesud_quickmud.py \
+    uv run tools/are_to_primesud.py \
         "areas/${area}.are" \
         "src/area_${area}.txt"
 done

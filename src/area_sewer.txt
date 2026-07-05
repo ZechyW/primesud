@@ -2833,6 +2833,7 @@ OBJECTS = {
         "type": 'furniture',
         "wear_flags": {"take": True, "hands": True},
         "extra_flags": {"magic": True, "anti_good": True},
+        "values": (9, 0, 0, 0, 0),
         "stat_bonuses": {'damroll': 2},
         "level": 20, "weight": 40, "value": 1150,
     },

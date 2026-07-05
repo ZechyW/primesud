@@ -8,7 +8,7 @@ by 1stMud/ROM — parsing text at runtime would be memory-intensive and slow on 
 HP Prime. The structure mirrors ROM 2.4's `#SECTION` layout.
 
 > **Do not edit area files directly.** They are generated from ROM 2.4 (QuickMUD-dialect)
-> `.are` source files in `areas/` by `tools/are_to_primesud_quickmud.py`. Edit the
+> `.are` source files in `areas/` by `tools/are_to_primesud.py`. Edit the
 > `.are` source or the converter and regenerate via `tools/regen_areas.sh` instead.
 > `areas/*.are` are editable working copies; pristine upstream originals remain under
 > `reference/`.
@@ -22,9 +22,18 @@ IDs) go in `world_consts.py`.
 
 **No named VNUM constants in generated files.** Room/mob/item VNUMs appear as raw
 integers everywhere — dict keys, `exits`, `RESETS` — not as `R_FOO`/`M_FOO`/`I_FOO`
-names. (The converter builds `R_`/`M_`/`I_` name maps internally but the emitter
-never uses them.) Cross-reference VNUMs by reading the `.are` source or the area's
+names. Cross-reference VNUMs by reading the `.are` source or the area's
 `# VNUM ranges` header comment.
+
+**The converter fails loudly on anything it doesn't handle** (2026-07-05 audit,
+mirroring QuickMUD's own `bug()`+`exit(1)` loader behavior): unknown `#SECTION`
+names (including `#AREADATA` new-style headers and legacy `#MOBOLD`/`#OBJOLD`),
+unrecognized trailer/command letters in rooms, resets, and specials, malformed
+or truncated payloads, out-of-range exit/reset directions, and `spec_fun` names
+not present in `src/special.py`'s `SPEC_TABLE` all raise `ValueError` rather
+than silently dropping data. Trailer payloads split across physical lines
+(legal under ROM's whitespace-skipping readers) are handled for object `A`/`F`
+and mob `F` lines.
 
 ---
 
@@ -378,6 +387,7 @@ OBJECTS = {
 | `drink` / `fountain`    | `liquid_total`/`liquid_left`/`liquid_type` (optional), `poisoned` (optional bool) |
 | `food`                  | `food_hours`/`food_hunger` (optional), `poisoned` (optional bool) |
 | `money`                 | `silver`/`gold` (optional pair) |
+| any other type          | `values` (optional): raw `(value[0], ..., value[4])` tuple decoded per QuickMUD `db2.c`'s `default:` branch (all five via `fread_flag`). Covers `furniture` (max occupants, position flags), `key` (linked door/portal vnum), `map`, `portal`, `jukebox`, `warp_stone`, corpses, etc. Omitted when all five are zero; read via `obj.get("values", (0, 0, 0, 0, 0))`. No runtime consumer yet (see TODO.md). |
 
 ### `wear_flags` (equipment slots + take)
 
@@ -628,7 +638,7 @@ Mob templates reference programs via `mob_triggers` in their `MOBILES` entry:
 
 ## Flag bits reference
 
-Full ROM/1stMud bit-to-name maps used by `tools/are_to_primesud_quickmud.py` to
+Full ROM/1stMud bit-to-name maps used by `tools/are_to_primesud.py` to
 decode `.are` bit-strings into the `act_flags` / `affected_by` / `off_flags` /
 `imm_flags` / `res_flags` / `vuln_flags` / room `flags` / item `extra_flags` dicts
 described above. Useful when auditing an area file's `.txt` output against its

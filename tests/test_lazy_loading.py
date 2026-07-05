@@ -262,7 +262,7 @@ class TestSingleAreaLoad:
 
     def test_spec_fun_present_on_mob_defs(self, fresh_world):
         """spec_fun is baked into the MOBILES entry by the converter now
-        (cf. tools/are_to_primesud_quickmud.py) -- no separate merge step."""
+        (cf. tools/are_to_primesud.py) -- no separate merge step."""
         fw = fresh_world
         fw.register_area("alpha", 100, 199,
                          rooms={100: {"name": "R100", "exits": {}}},
@@ -274,7 +274,7 @@ class TestSingleAreaLoad:
 
     def test_shop_present_on_mob_defs(self, fresh_world):
         """shop dict is baked into the MOBILES entry by the converter now
-        (cf. tools/are_to_primesud_quickmud.py) -- no separate merge step."""
+        (cf. tools/are_to_primesud.py) -- no separate merge step."""
         fw = fresh_world
         shop = {"keeper": 100, "buy_types": ["weapon"],
                 "profit_buy": 120, "profit_sell": 40,

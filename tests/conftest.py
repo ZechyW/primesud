@@ -18,7 +18,7 @@ def _write_dat(path, rooms, mobiles=None, objects=None, resets=None,
     """Write a synthetic .dat file for testing.
 
     spec_fun/shop data is baked directly into individual MOBILES entries
-    by the caller (cf. tools/are_to_primesud_quickmud.py) -- there are no
+    by the caller (cf. tools/are_to_primesud.py) -- there are no
     longer separate SPECIALS/SHOPS sections.
     """
     lines = []

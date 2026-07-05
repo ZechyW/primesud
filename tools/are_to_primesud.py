@@ -2,7 +2,7 @@
 """Convert a QuickMUD/ROM 2.4 .are file to a PrimeSUD Python area module.
 
 Usage:
-    python are_to_primesud_quickmud.py school.are area_school.txt
+    python are_to_primesud.py school.are area_school.txt
 
 QuickMUD uses standard ROM 2.4 area format which differs from 1stMud:
   - Flag encoding: letter-based (A=bit0, B=bit1 ... Z=bit25, a=bit26 ...)
@@ -257,38 +257,21 @@ def split_tokens(line):
 
 
 def parse_dice(s):
-    """'NdM+B' or 'NdM-B' -> (N, M, B)."""
+    """'NdM+B' or 'NdM-B' -> (N, M, B).
+
+    Engine quirk (cf. db2.c:250-269, e.g. hit-dice read): fread_letter(fp) is
+    called unchecked to consume the '+'/'-' separator, then fread_number(fp)
+    reads the bonus digits alone (the sign was already eaten by the
+    separator read). So real QuickMUD can NEVER load a negative dice bonus
+    -- "2d6-3" loads in-engine as +3, not -3. We keep the faithful sign here
+    since no stock .are file actually uses a negative bonus; flagging this
+    for awareness only, not changing behavior. [PRIMESUD]
+    """
     m = re.match(r"(\d+)d(\d+)([+-]\d+)?", s)
     if m:
         n, d, b = m.groups()
         return (int(n), int(d), int(b) if b else 0)
     return (1, 1, 0)
-
-
-def strip_article(s):
-    """Strip leading 'the ', 'a ', 'an ' (case-insensitive)."""
-    return re.sub(r"^(?:the|a|an)\s+", "", s.strip(), flags=re.IGNORECASE)
-
-
-def to_const(prefix, text):
-    """Convert display text to PREFIX_SCREAMING_SNAKE_CASE constant name."""
-    text = strip_article(text).lower()
-    text = re.sub(r"[^a-z0-9]+", "_", text).strip("_")
-    return f"{prefix}_{text.upper()}"
-
-
-def make_const_map(prefix, items, name_fn):
-    """Build {vnum: const_name}, deduplicating clashes with _<vnum> suffix."""
-    used = {}
-    result = {}
-    for vnum, data in items:
-        base = to_const(prefix, name_fn(data))
-        name = base
-        if name in used and used[name] != vnum:
-            name = f"{base}_{vnum}"
-        used[name] = vnum
-        result[vnum] = name
-    return result
 
 
 # -- Low-level .are reader -----------------------------------------------------
@@ -351,10 +334,13 @@ def split_sections(text):
     buf = []
     for raw in text.splitlines():
         line = raw.rstrip()
-        if line.startswith("#") and re.match(r"#[A-Z]+$", line):
+        # QuickMUD's section dispatch uses case-insensitive str_cmp
+        # (db.c boot_db); match headers case-insensitively and store the
+        # key upper-cased so lookups elsewhere stay uniform. [PRIMESUD]
+        if line.startswith("#") and re.match(r"#[A-Za-z]+$", line):
             if current is not None:
                 sections[current] = buf
-            current = line[1:]
+            current = line[1:].upper()
             buf = []
         elif line == "#$":
             if current is not None:
@@ -392,11 +378,14 @@ def parse_area_old(lines):
             area["max_level"] = 50
     if i < len(lines):
         vn = lines[i].split()
-        if len(vn) >= 2:
-            try:
-                area["vnums"] = (int(vn[0]), int(vn[1]))
-            except ValueError:
-                area["vnums"] = (0, 0)
+        if len(vn) < 2:
+            raise ValueError(
+                "area vnum-range line has fewer than 2 tokens: " + repr(lines[i])
+            )
+        try:
+            area["vnums"] = (int(vn[0]), int(vn[1]))
+        except ValueError:
+            area["vnums"] = (0, 0)
     if "name" not in area:
         area["name"] = "Unknown"
     if "vnums" not in area:
@@ -445,10 +434,7 @@ def parse_mobiles(lines):
         # ac_pierce  ac_bash  ac_slash  ac_exotic
         # ROM stores raw then does *10 at load; we store raw
         parts = lines[i].split(); i += 1
-        try:
-            armor = tuple(int(x) for x in parts[:4])
-        except (ValueError, TypeError):
-            armor = (10, 10, 10, 10)
+        armor = tuple(int(x) for x in parts[:4])
 
         # off_flags  imm_flags  res_flags  vuln_flags
         parts = lines[i].split(); i += 1
@@ -480,11 +466,21 @@ def parse_mobiles(lines):
             if tline.startswith("#") or tline == "":
                 break
             if tline and tline[0] == "F":
+                # db2.c:307-313 reads word/vector via whitespace-skipping
+                # freads, so the payload may spill onto the next line(s)
+                # (mirrors the OBJECTS 'F' trailer handling below).
                 fparts = tline.split()
-                if len(fparts) >= 3:
-                    f_field = fparts[1]
-                    f_vector = parse_rom_flag(fparts[2])
-                    f_removes.append((f_field, f_vector))
+                while len(fparts) < 3 and i + 1 < len(lines) and lines[i + 1].strip():
+                    i += 1
+                    fparts += lines[i].split()
+                if len(fparts) < 3:
+                    raise ValueError(
+                        "mob trailer 'F' line incomplete (need field + flag-vector): " +
+                        repr(tline)
+                    )
+                f_field = fparts[1]
+                f_vector = parse_rom_flag(fparts[2])
+                f_removes.append((f_field, f_vector))
                 i += 1
             elif tline and tline[0] == "M":
                 # M <trig_type> <mprog_vnum> <trig_phrase>~
@@ -516,25 +512,41 @@ def parse_mobiles(lines):
         }
         flag_removes_acc = {}  # canonical field -> (table, combined bit vector)
         for f_field, f_vector in f_removes:
-            for prefix, (canon, table) in F_PREFIX_MAP.items():
-                if f_field.startswith(prefix):
-                    # Mutate the file-level int (still correct for race-merge
-                    # independent bits set directly on this mob's own flags).
-                    if prefix == "act":  act_int  &= ~f_vector
-                    elif prefix == "aff": aff_int &= ~f_vector
-                    elif prefix == "off": off_int &= ~f_vector
-                    elif prefix == "imm": imm_int &= ~f_vector
-                    elif prefix == "res": res_int &= ~f_vector
-                    elif prefix == "vul": vuln_int &= ~f_vector
-                    elif prefix == "for": form_int &= ~f_vector
-                    elif prefix == "par": part_int &= ~f_vector
-                    # Also record the removal itself so the runtime race-merge
-                    # (mob.py create_mobile) can subtract race-granted bits
-                    # that this mob's F line strips off (cf. db2.c: race bits
-                    # OR'd in at load time, then F lines REMOVE_BIT).
-                    prev_table, prev_vec = flag_removes_acc.get(canon, (table, 0))
-                    flag_removes_acc[canon] = (table, prev_vec | f_vector)
-                    break
+            # db2.c:315-334 matches with !str_prefix(word, canonical), i.e.
+            # the FILE's word must be a prefix of the canonical field name
+            # ("vu" matches "vul"; "actz" does NOT match "act"), compared
+            # case-insensitively (str_prefix LOWERs both sides). [PRIMESUD
+            # note: the converter previously had this inverted.]
+            f_field_lower = f_field.lower()
+            matched = False
+            if f_field_lower:
+                for prefix, (canon, table) in F_PREFIX_MAP.items():
+                    if prefix.startswith(f_field_lower):
+                        # Mutate the file-level int (still correct for race-merge
+                        # independent bits set directly on this mob's own flags).
+                        if prefix == "act":  act_int  &= ~f_vector
+                        elif prefix == "aff": aff_int &= ~f_vector
+                        elif prefix == "off": off_int &= ~f_vector
+                        elif prefix == "imm": imm_int &= ~f_vector
+                        elif prefix == "res": res_int &= ~f_vector
+                        elif prefix == "vul": vuln_int &= ~f_vector
+                        elif prefix == "for": form_int &= ~f_vector
+                        elif prefix == "par": part_int &= ~f_vector
+                        # Also record the removal itself so the runtime race-merge
+                        # (mob.py create_mobile) can subtract race-granted bits
+                        # that this mob's F line strips off (cf. db2.c: race bits
+                        # OR'd in at load time, then F lines REMOVE_BIT).
+                        prev_vec = flag_removes_acc.get(canon, (table, 0))[1]
+                        flag_removes_acc[canon] = (table, prev_vec | f_vector)
+                        matched = True
+                        break
+            if not matched:
+                # cf. db2.c:331-334: falls to `else { bug(...); exit(1); }`
+                # when no field-word prefix matches. [PRIMESUD]
+                raise ValueError(
+                    "mob trailer 'F' field word " + repr(f_field) +
+                    " does not match any of act/aff/off/imm/res/vul/for/par"
+                )
 
         flag_removes = []
         for canon, (table, vector) in flag_removes_acc.items():
@@ -621,15 +633,25 @@ def parse_objects(lines):
             tline = lines[i].strip()
             if tline.startswith("#"):
                 break
-            if tline == "A":
+            if tline and tline[0] == "A":
+                # db2.c:519-534 reads loc/mod via two whitespace-skipping
+                # fread_number calls, so the payload may spill onto the
+                # next line(s) just like the 'F' trailer below. Previously
+                # a single-line split wrapped in a bare except swallowed
+                # both malformed applies AND desynced the line pointer.
+                aparts = tline.split()
+                while len(aparts) < 3 and i + 1 < len(lines) and lines[i + 1].strip():
+                    i += 1
+                    aparts += lines[i].split()
+                if len(aparts) < 3:
+                    raise ValueError(
+                        "object trailer 'A' line incomplete (need loc + modifier): " +
+                        repr(tline)
+                    )
+                loc, mod = int(aparts[1]), int(aparts[2])
+                if loc in APPLY_LOC:
+                    applies[APPLY_LOC[loc]] = mod
                 i += 1
-                ap = lines[i].split(); i += 1
-                try:
-                    loc, mod = int(ap[0]), int(ap[1])
-                    if loc in APPLY_LOC:
-                        applies[APPLY_LOC[loc]] = mod
-                except (ValueError, IndexError):
-                    pass
             elif tline == "E":
                 i += 1
                 ekw,  i = read_tilde_string(lines, i)
@@ -645,16 +667,29 @@ def parse_objects(lines):
                 while len(fparts) < 5 and i + 1 < len(lines) and lines[i + 1].strip():
                     i += 1
                     fparts += lines[i].split()
-                if len(fparts) >= 4:
-                    where_map = {"A": "affects", "I": "immune", "R": "resist", "V": "vuln"}
-                    where = where_map.get(fparts[1], fparts[1])
-                    loc = int(fparts[2])
-                    mod = int(fparts[3])
-                    bv = parse_rom_flag(fparts[4]) if len(fparts) > 4 else 0
-                    loc_name = APPLY_LOC.get(loc, str(loc))
-                    bit_table = AFFECTED_BY if where == "affects" else RESIST_FLAGS
-                    bits = decode_flags(flag_bits(bv), bit_table)
-                    flag_affects.append((where, loc_name, mod, bits))
+                if len(fparts) < 5:
+                    # db2.c reads all four payload tokens unconditionally --
+                    # a short F trailer means the file is malformed.
+                    raise ValueError(
+                        "object trailer 'F' line incomplete (need where + "
+                        "loc + modifier + bitvector): " + repr(tline)
+                    )
+                where_map = {"A": "affects", "I": "immune", "R": "resist", "V": "vuln"}
+                where = where_map.get(fparts[1])
+                if where is None:
+                    # cf. db2.c:556-559: `default: bug ("Load_objects: Bad
+                    # where on flag set.", 0); exit (1);`
+                    raise ValueError(
+                        "object trailer 'F' has bad where-letter " +
+                        repr(fparts[1]) + " (expected A/I/R/V)"
+                    )
+                loc = int(fparts[2])
+                mod = int(fparts[3])
+                bv = parse_rom_flag(fparts[4])
+                loc_name = APPLY_LOC.get(loc, str(loc))
+                bit_table = AFFECTED_BY if where == "affects" else RESIST_FLAGS
+                bits = decode_flags(flag_bits(bv), bit_table)
+                flag_affects.append((where, loc_name, mod, bits))
                 i += 1
             elif tline == "":
                 i += 1
@@ -703,27 +738,36 @@ def parse_objects(lines):
                 4: "vorpal", 5: "two_hands", 6: "shocking", 7: "poison",
             })
         elif item_type == "armor" and val_line:
-            try:
-                obj["armor"] = (
-                    int(val_line[0]),
-                    int(val_line[1]) if len(val_line) > 1 else 0,
-                    int(val_line[2]) if len(val_line) > 2 else 0,
-                    int(val_line[3]) if len(val_line) > 3 else 0,
-                )
-            except ValueError:
-                obj["armor"] = (0, 0, 0, 0)
+            # db2.c's switch has no ITEM_ARMOR case, so it falls to the
+            # `default:` branch: all 4 (of 5) value[] slots used here are
+            # read via fread_flag, not fread_number -- letter forms are
+            # legal. Previously read with bare int() + a try/except that
+            # masked a field desync from earlier misparse by defaulting to
+            # a fixed quartet; every other numeric field fails loud, so
+            # this one should too.
+            obj["armor"] = (
+                parse_rom_flag(val_line[0]),
+                parse_rom_flag(val_line[1]) if len(val_line) > 1 else 0,
+                parse_rom_flag(val_line[2]) if len(val_line) > 2 else 0,
+                parse_rom_flag(val_line[3]) if len(val_line) > 3 else 0,
+            )
         elif item_type in ("potion", "pill", "scroll") and val_line:
             obj["spell_level"] = int(val_line[0])
             obj["spells"] = [s for s in val_line[1:] if s]
         elif item_type in ("wand", "staff") and val_line:
+            # db2.c ITEM_WAND/ITEM_STAFF: value[0]/[1]/[2] (spell_level,
+            # max_charges, charges) are read via fread_number, not
+            # fread_flag -- these stay plain int().
             obj["spell_level"] = int(val_line[0])
             obj["max_charges"] = int(val_line[1]) if len(val_line) > 1 else 0
             obj["charges"] = int(val_line[2]) if len(val_line) > 2 else 0
             obj["spell"] = val_line[3] if len(val_line) > 3 and val_line[3] else ""
         elif item_type == "light" and val_line:
+            # No ITEM_LIGHT case in db2.c's switch either -- `default:`
+            # branch, value[2] (hours) read via fread_flag.
             # value[2]: hours of light (cf. db2.c load_objects / act_obj.c);
             # raw int, ROM/1stMud 0/999 conventions differ -- stored as-is.
-            obj["light_hours"] = int(val_line[2]) if len(val_line) > 2 else 0
+            obj["light_hours"] = parse_rom_flag(val_line[2]) if len(val_line) > 2 else 0
         elif item_type == "container" and val_line:
             obj["container_max_weight"] = int(val_line[0]) if val_line else 0
             container_flags = parse_rom_flag(val_line[1]) if len(val_line) > 1 else 0
@@ -740,18 +784,40 @@ def parse_objects(lines):
             obj["liquid_total"] = int(val_line[0]) if val_line else 0
             obj["liquid_left"]  = int(val_line[1]) if len(val_line) > 1 else 0
             obj["liquid_type"]  = val_line[2] if len(val_line) > 2 else "water"
-            # value[3] (cf. act_obj.c do_drink: nonzero -> poisoned)
+            # value[3] (cf. act_obj.c do_drink: nonzero -> poisoned); ROM's
+            # ITEM_DRINK_CON/ITEM_FOUNTAIN case reads value[3] via
+            # fread_number, so this stays plain int().
             if len(val_line) > 3 and int(val_line[3]) != 0:
                 obj["poisoned"] = True
         elif item_type == "food" and val_line:
-            obj["food_hours"]   = int(val_line[0]) if val_line else 0
-            obj["food_hunger"]  = int(val_line[1]) if len(val_line) > 1 else 0
+            # No ITEM_FOOD case in db2.c's switch -- `default:` branch,
+            # all values read via fread_flag.
+            obj["food_hours"]   = parse_rom_flag(val_line[0]) if val_line else 0
+            obj["food_hunger"]  = parse_rom_flag(val_line[1]) if len(val_line) > 1 else 0
             # value[3] (cf. act_obj.c do_eat: nonzero -> poisoned; NOT value[2])
-            if len(val_line) > 3 and int(val_line[3]) != 0:
+            if len(val_line) > 3 and parse_rom_flag(val_line[3]) != 0:
                 obj["poisoned"] = True
         elif item_type == "money" and val_line:
-            obj["silver"] = int(val_line[0]) if val_line else 0
-            obj["gold"]   = int(val_line[1]) if len(val_line) > 1 else 0
+            # No ITEM_MONEY case in db2.c's switch -- `default:` branch,
+            # all values read via fread_flag.
+            obj["silver"] = parse_rom_flag(val_line[0]) if val_line else 0
+            obj["gold"]   = parse_rom_flag(val_line[1]) if len(val_line) > 1 else 0
+        elif val_line:
+            # [PRIMESUD] Fallback for every item type not special-cased
+            # above (furniture, portal, jukebox, map, warp_stone, key,
+            # treasure, clothing, trash, boat, gem, jewelry, npc_corpse,
+            # pc_corpse, protect, room_key): db2.c's `default:` branch
+            # reads all 5 value[] slots via fread_flag (db2.c:471-477), and
+            # the engine consumes them (e.g. furniture occupancy in
+            # act_move.c:1016-1030). Omitted from output when all-zero to
+            # keep shipped data lean; runtime should read via
+            # obj.get("values", (0, 0, 0, 0, 0)).
+            values = tuple(
+                parse_rom_flag(val_line[j]) if j < len(val_line) else 0
+                for j in range(5)
+            )
+            if any(values):
+                obj["values"] = values
 
         if applies:
             obj["stat_bonuses"] = applies
@@ -855,6 +921,14 @@ def parse_rooms(lines):
                         exit_descs[d] = ex_desc
                     if ex_keyword:
                         exit_notes.setdefault(d, {})["keyword"] = ex_keyword
+                else:
+                    # cf. db.c load_rooms: "if (door < 0 || door > 5) { bug
+                    # (...); exit (1); }" -- fail loud rather than silently
+                    # dropping the whole exit block.
+                    raise ValueError(
+                        "room " + str(vnum) + " has D-exit with direction " +
+                        str(direction) + " outside 0-5"
+                    )
             elif tline == "E":
                 i += 1
                 ekw, i = read_tilde_string(lines, i)
@@ -883,7 +957,13 @@ def parse_rooms(lines):
                 # the same line (cf. db.c load_rooms: fread_string(fp))
                 owner, i = read_tilde_string_inline(tline[1:], lines, i + 1)
             else:
-                i += 1
+                # cf. db.c load_rooms: "bug (...vnum %d has flag not
+                # 'DES'...); exit (1);" -- fail loud on any unrecognized
+                # non-blank trailer line rather than silently eating it.
+                raise ValueError(
+                    "room " + str(vnum) +
+                    " has trailer letter not DESHMCO: " + repr(tline)
+                )
 
         room = {
             "name":       name,
@@ -937,21 +1017,39 @@ def parse_resets(lines):
             slot = WLOC_SLOT.get(int(parts[4]), "hold")
             limit = int(parts[3])
             resets.append(("E", int(parts[2]), slot, limit))
-        elif cmd == "G" and len(parts) >= 3:
-            limit = int(parts[3]) if len(parts) > 3 else 0
-            resets.append(("G", int(parts[2]), limit))
+        elif cmd == "G" and len(parts) >= 4:
+            # cmd if_flag arg1(obj_vnum) arg2(limit) -- db.c load_resets
+            # reads if_flag/arg1/arg2 unconditionally for every command
+            # letter (arg3/arg4 are skipped for 'G'), so 4 tokens minimum.
+            resets.append(("G", int(parts[2]), int(parts[3])))
         elif cmd == "P" and len(parts) >= 6:
             resets.append(("P", int(parts[2]), int(parts[3]), int(parts[4]), int(parts[5])))
         elif cmd == "R" and len(parts) >= 4:
             resets.append(("R", int(parts[2]), int(parts[3])))
         elif cmd == "D" and len(parts) >= 5:
             d = DIR_NAME.get(int(parts[3]))
-            if d is not None:
-                doverrides[(int(parts[2]), d)] = int(parts[4])
+            if d is None:
+                # cf. db.c fix_exits 'D' case: get_room_index/pexit NULL
+                # checks end in bug()+exit(1) for a bogus direction.
+                raise ValueError(
+                    "RESETS 'D' line has direction " + repr(parts[3]) +
+                    " outside 0-5: " + repr(stripped)
+                )
+            doverrides[(int(parts[2]), d)] = int(parts[4])
+        else:
+            raise ValueError(
+                "RESETS: unrecognized command letter " + repr(cmd) +
+                " or too few fields: " + repr(stripped)
+            )
     return resets, doverrides
 
 
 def parse_specials(lines):
+    """Parse #SPECIALS section (cf. db.c load_specials:1344-1376).
+
+    Raises ValueError on any unrecognized command letter or malformed 'M'
+    line -- db.c's `default: bug(...); exit(1);` has no silent fallback.
+    """
     specials = []
     for line in lines:
         parts = line.split()
@@ -960,8 +1058,16 @@ def parse_specials(lines):
         cmd = parts[0]
         if cmd == "S":
             break
-        if cmd == "M" and len(parts) >= 3:
-            specials.append(("M", int(parts[1]), parts[2]))
+        if cmd != "M":
+            raise ValueError(
+                "SPECIALS: unrecognized command letter " + repr(cmd) +
+                " (expected 'M', '*', or 'S')"
+            )
+        if len(parts) < 3:
+            raise ValueError(
+                "SPECIALS 'M' line malformed (need vnum + spec_name): " + repr(line)
+            )
+        specials.append(("M", int(parts[1]), parts[2]))
     return specials
 
 
@@ -1024,8 +1130,9 @@ def parse_helps(lines):
         try:
             level = int(parts[0])
         except ValueError:
-            i += 1
-            continue
+            # cf. db.c load_helps: level = fread_number(fp), which exit(1)s
+            # on a non-numeric token -- fail loud instead of skipping.
+            raise ValueError("HELPS entry has non-integer level: " + repr(stripped))
         rest = parts[1] if len(parts) > 1 else ""
         tilde = rest.find("~")
         if tilde >= 0:
@@ -1084,6 +1191,13 @@ def parse_socials(lines):
 
         social = {"name": name}
         for field in fields:
+            # fread_string_eol skips leading whitespace INCLUDING newlines
+            # (db.c:2950-2954 do/while isspace(c)), so a blank line inside
+            # a social block is transparent to ROM -- it must not shift
+            # the remaining fields. Blank line BETWEEN socials is handled
+            # by the loop-top check above and is unaffected by this.
+            while i < len(lines) and not lines[i].strip():
+                i += 1
             if i >= len(lines):
                 break
             val = lines[i].strip()
@@ -1142,14 +1256,11 @@ def asciitext(value):
 
 
 def emit(area_data, rooms, mobs, objs, resets, helps, socials,
-         mobprogs, room_map, mob_map, obj_map, doverrides=None):
+         mobprogs, doverrides=None):
     out = []
 
     def w(s=""):
         out.append(s)
-
-    def r(vnum, mapping=None):
-        return str(vnum)
 
     aname    = area_data.get("name", "Unknown")
     vnums    = area_data.get("vnums", (0, 0))
@@ -1267,7 +1378,7 @@ def emit(area_data, rooms, mobs, objs, resets, helps, socials,
             # "to": None = examinable-but-untraversable exit (ROM keeps
             # exits whose to_room fails to resolve; fix_exits nulls only
             # the destination pointer).
-            to_c    = "None" if to_vnum is None else r(to_vnum, room_map)
+            to_c    = "None" if to_vnum is None else str(to_vnum)
             note    = room["exit_notes"].get(d) or {}
             # D override sets closed/locked state
             dstate = (doverrides or {}).get((vnum, d))
@@ -1401,6 +1512,10 @@ def emit(area_data, rooms, mobs, objs, resets, helps, socials,
         elif obj["type"] == "money":
             if "silver" in obj:
                 w(f'        "silver": {obj["silver"]}, "gold": {obj["gold"]},')
+        elif "values" in obj:
+            # [PRIMESUD] raw value[0..4] fallback for item types not
+            # otherwise special-cased above; see parse_objects.
+            w(f'        "values": {pyrepr(obj["values"])},')
         if obj.get("stat_bonuses"):
             w(f'        "stat_bonuses": {pyrepr(obj["stat_bonuses"])},')
         if obj.get("flag_affects"):
@@ -1432,30 +1547,30 @@ def emit(area_data, rooms, mobs, objs, resets, helps, socials,
     for reset in resets:
         if reset[0] == "M":
             _, mv, gl, rv, rl = reset
-            mc = r(mv, mob_map)
-            rc = r(rv, room_map)
+            mc = str(mv)
+            rc = str(rv)
             w(f'    ("M", {mc}, {gl}, {rc}, {rl}),')
         elif reset[0] == "O":
             _, ov, rv = reset
-            oc = r(ov, obj_map)
-            rc = r(rv, room_map)
+            oc = str(ov)
+            rc = str(rv)
             w(f'    ("O", {oc}, {rc}),')
         elif reset[0] == "E":
             _, iv, slot, limit = reset
-            ic = r(iv, obj_map)
+            ic = str(iv)
             w(f'    ("E", {ic}, "{slot}", {limit}),')
         elif reset[0] == "G":
             _, iv, limit = reset
-            ic = r(iv, obj_map)
+            ic = str(iv)
             w(f'    ("G", {ic}, {limit}),')
         elif reset[0] == "P":
             _, iv, lim, cv, mx = reset
-            ic = r(iv, obj_map)
-            cc = r(cv, obj_map)
+            ic = str(iv)
+            cc = str(cv)
             w(f'    ("P", {ic}, {lim}, {cc}, {mx}),')
         elif reset[0] == "R":
             _, rv, nd = reset
-            rc = r(rv, room_map)
+            rc = str(rv)
             w(f'    ("R", {rc}, {nd}),')
     w(")")
     w("")
@@ -1497,9 +1612,57 @@ def emit(area_data, rooms, mobs, objs, resets, helps, socials,
 
 # -- Entry point ---------------------------------------------------------------
 
+# Section names this converter (and QuickMUD's boot_db) recognizes.
+KNOWN_SECTIONS = {
+    "AREA", "ROOMS", "MOBILES", "OBJECTS", "RESETS", "SPECIALS",
+    "SHOPS", "HELPS", "SOCIALS", "MOBPROGS",
+}
+
+
+def check_known_sections(sects):
+    """Raise ValueError naming any section this converter doesn't handle.
+
+    cf. db.c boot_db:359-406, which exit(1)s on an unrecognized section
+    name via `bug ("Boot_db: bad section name.", 0); exit (1);`.
+    """
+    for name in sects:
+        if name in KNOWN_SECTIONS:
+            continue
+        if name == "AREADATA":
+            raise ValueError(
+                "#AREADATA: new-style area header not supported; convert to "
+                "old-style #AREA 4-line header"
+            )
+        if name in ("MOBOLD", "OBJOLD"):
+            new_name = "MOBILES" if name == "MOBOLD" else "OBJECTS"
+            raise ValueError(
+                "#" + name + ": legacy pre-ROM-2.4 format not supported; "
+                "convert to new-format #" + new_name
+            )
+        raise ValueError("unknown section #" + name)
+
+
+def load_spec_names():
+    """Read src/special.py's SPEC_TABLE keys: the implemented spec_fun names.
+
+    [PRIMESUD] cf. db.c load_specials 'M' case / spec_lookup(): QuickMUD
+    treats an unrecognized spec_fun name as a hard bug()+exit(1) at boot
+    time. The converter has no such runtime check, so an unimplemented name
+    would otherwise silently produce a mob with no AI; we mirror QuickMUD's
+    fail-loud behavior here instead.
+    """
+    special_path = Path(__file__).resolve().parent.parent / "src" / "special.py"
+    text = special_path.read_text(encoding="utf-8")
+    names = set(re.findall(r'"(spec_\w+)"\s*:', text))
+    if not names:
+        raise ValueError("could not find any SPEC_TABLE entries in " + str(special_path))
+    return names
+
+
 def convert(are_path, out_path=None):
     text  = Path(are_path).read_text(encoding="utf-8", errors="replace")
     sects = split_sections(text)
+    check_known_sections(sects)
 
     area_data = parse_area_old(sects.get("AREA", []))
     rooms     = parse_rooms(sects.get("ROOMS", []))
@@ -1519,6 +1682,12 @@ def convert(are_path, out_path=None):
     # reference a mob vnum outside their own file. A vnum that isn't found
     # here is a hard error rather than a silently dropped fallback section.
     mobs_by_vnum = dict(mobs)
+    spec_lookup = None
+    if specials:
+        # ROM's spec_lookup() matches case-insensitively (str_cmp); bake the
+        # canonical SPEC_TABLE spelling into the output regardless of the
+        # case used in the .are file. [PRIMESUD]
+        spec_lookup = {name.lower(): name for name in load_spec_names()}
     for special in specials:
         if special[0] != "M":
             continue
@@ -1529,7 +1698,13 @@ def convert(are_path, out_path=None):
                 ") references mob vnum " + str(mv) +
                 " not present in this file's MOBILES section"
             )
-        mobs_by_vnum[mv]["spec_fun"] = spec_name
+        canonical = spec_lookup.get(spec_name.lower())
+        if canonical is None:
+            raise ValueError(
+                "SPECIALS entry (\"M\", " + str(mv) + ", " + repr(spec_name) +
+                ") is not an implemented spec_fun (see src/special.py SPEC_TABLE)"
+            )
+        mobs_by_vnum[mv]["spec_fun"] = canonical
     for shop in shops:
         keeper = shop["keeper"]
         if keeper not in mobs_by_vnum:
@@ -1539,12 +1714,8 @@ def convert(are_path, out_path=None):
             )
         mobs_by_vnum[keeper]["shop"] = shop
 
-    room_map = make_const_map("R", rooms, lambda d: d["name"])
-    mob_map  = make_const_map("M", mobs,  lambda d: d["keywords"])
-    obj_map  = make_const_map("I", objs,  lambda d: d["keywords"])
-
     code = emit(area_data, rooms, mobs, objs, resets, helps, socials,
-                mobprogs, room_map, mob_map, obj_map, doverrides)
+                mobprogs, doverrides)
 
     if out_path:
         Path(out_path).write_text(code, encoding="utf-8", newline="\n")

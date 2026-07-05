@@ -133,6 +133,7 @@ OBJECTS = {
         "type": 'npc_corpse',
         "wear_flags": {"take": True},
         "condition": 25,
+        "values": (0, 0, 0, 1, 0),
         "level": 0, "weight": 1000, "value": 0,
     },
     11: {
@@ -144,6 +145,7 @@ OBJECTS = {
         "wear_flags": {"take": True},
         "condition": 25,
         "extra_flags": {"nopurge": True},
+        "values": (0, 0, 0, 1, 0),
         "level": 0, "weight": 1000, "value": 0,
     },
     12: {

@@ -1135,6 +1135,7 @@ OBJECTS = {
         "material":    'oldstyle',
         "type": 'key',
         "wear_flags": {"take": True},
+        "values": (6005, 0, 0, 0, 0),
         "level": 0, "weight": 10, "value": 0,
         "extra_descs": [('key', 'It is a small, simple brass key with no inscriptions or marks of any kind.')],
     },

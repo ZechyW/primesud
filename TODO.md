@@ -47,10 +47,10 @@ _open_container et al.)
 ## Area data
 
 - **Deferred runtime hooks for converter-emitted fields** — the 2026-07
-  converter audit brought `are_to_primesud_quickmud.py` (now the single ROM
-  2.4 converter; the old 1stMud-format `are_to_primesud.py` is deleted) to a
-  lossless schema; these emitted fields are captured in the `.txt` files but
-  not yet consumed at runtime:
+  converter audit brought `are_to_primesud.py` (the single ROM 2.4
+  converter; formerly `are_to_primesud_quickmud.py`, renamed after the
+  1stMud-format converter was deleted) to a lossless schema; these emitted
+  fields are captured in the `.txt` files but not yet consumed at runtime:
   - E/G reset `limit` (raw arg2; >50 means legacy 6, <=0 unlimited) — resets
     currently spawn without count enforcement
   - object `condition` (spawn wear-state), `light_hours` (light burnout),
@@ -60,6 +60,19 @@ _open_container et al.)
     initial position -- but nothing returns idle mobs to `default_pos`),
     `group`, `material`, `mob_triggers`
   - room `heal_rate`/`mana_rate`, `owner`
+  - object `values` raw value[0..4] fallback for item types with no
+    dedicated decode (furniture max-occupants/position flags, key linked
+    vnum, map, portal, jukebox, ...) — emitted only when nonzero
+    (2026-07-05 audit); runtime reads via `obj.get("values", ...)` when a
+    consumer (e.g. furniture occupancy) gets ported
+- **No `fix_exits` equivalent at world load** — QuickMUD's post-boot pass
+  (db.c fix_exits) nulls exits whose destination room doesn't exist and
+  auto-sets `no_mob` on rooms with zero resolvable exits. The per-file
+  converter architecturally can't do this (cross-area vnums); the runtime
+  has no such pass either. Currently zero behavioral impact (audited: the
+  only affected stock room, newthalos 9706, is unreachable anyway), but a
+  future area with a dangling exit would surface it. Belongs in world.py
+  after-load if ever needed.
 - **`flag_affects` on objects parsed+stored but no runtime consumer yet** —
   `.are` F-trailer affect/immune/resist/vuln grants (e.g. One Ring
   invisibility, `src/area_shire.txt` object 1105); see docs/AREA_FILES.md
@@ -82,6 +95,14 @@ _open_container et al.)
 
 ## Platform
 
+- **Keypresses still dropped on physical Prime during long computations** —
+  suspect keys pressed while a long computation runs never make it into the
+  poll; investigate firmware polling methods further (buffering, more
+  frequent `keyboard()` sampling inside long loops, or an interrupt-style
+  check between work chunks).
+- **Fling-scroll glitch** — swiping to scroll misbehaves when flinging (lift
+  off too quickly, then tap again: screen jumps). Investigate and implement
+  phone-like easing/momentum with proper touch-cancel for good UX.
 - `tml.py` `read_key()` still uses `get_key()`, which has a firmware race that
   swallowed keystrokes in the non-blocking path (see comment near
   `tml_prime.py:poll_char`). If blocking input ever drops keystrokes, apply the
