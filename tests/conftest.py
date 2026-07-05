@@ -40,7 +40,6 @@ def fresh_world(tmp_path):
     """
     # Snapshot and clear world state
     old_area_files = world._AREA_FILES[:]
-    old_world_ready = world._WORLD_READY
 
     world._LOADED_AREAS.clear()
     world._TAG_TO_FILE.clear()
@@ -108,4 +107,7 @@ def fresh_world(tmp_path):
     world.rooms._data.clear()
     world.chars.clear()
     world.areas = []
-    world._WORLD_READY = old_world_ready
+    # Force False (not the snapshotted value): the tables above are now
+    # empty, and a restored True would make the next init_world() no-op,
+    # leaving lazy loading dead for later tests (test-order KeyErrors).
+    world._WORLD_READY = False
