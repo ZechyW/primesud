@@ -26,12 +26,14 @@ macro.h). The 'category' field is dropped (do_index not ported).
 
 import re
 import sys
+import textwrap
 from pathlib import Path
 
 SRC = Path("reference/1stMud4.5.3/data/help.dat")
 DST = Path("src/help.dat")
 IDX = Path("src/help.idx")
 MAX_MORTAL_LEVEL = 51  # cf. src/config.py
+WIDTH = 64  # TERMINAL_COLS, cf. src/config.py
 
 # cp1252 punctuation found in upstream data -> ASCII
 CP1252_FIXES = {"\x91": "'", "\x92": "'", "\x96": "-"}
@@ -74,6 +76,45 @@ def parse_records(raw):
     return records
 
 
+def reflow(text):
+    """Rewrap wrapped-prose paragraphs to WIDTH cols. [PRIMESUD]
+
+    Upstream text is pre-wrapped at ~76 cols; the Prime screen is 64, so
+    unmodified prose renders as alternating full/orphan lines on-device.
+    A paragraph is rejoined and rewrapped only when it looks like wrapped
+    prose: every line flush-left, no 3+ space column gaps, and every line
+    but the last near full width. Tables, syntax blocks, and indented text
+    pass through verbatim (device word-wrap handles any long ones).
+    """
+    out = []
+    para = []
+
+    def flush():
+        if not para:
+            return
+        # ponytail: heuristic, not a parser -- source data stays pristine
+        # in reference/, so worst case is one oddly-wrapped entry
+        prose = (all(l == l.lstrip() for l in para)
+                 and not any("   " in l for l in para)
+                 and all(len(l) > 55 for l in para[:-1])
+                 and any(len(l) > WIDTH for l in para))
+        if prose:
+            out.extend(textwrap.wrap(" ".join(para), WIDTH))
+        else:
+            out.extend(para)
+        del para[:]
+
+    for line in text.split("\n"):
+        line = line.rstrip()
+        if line:
+            para.append(line)
+        else:
+            flush()
+            out.append("")
+    flush()
+    return "\n".join(out)
+
+
 def main():
     raw = SRC.read_bytes().decode("latin-1")
     for bad, good in CP1252_FIXES.items():
@@ -95,7 +136,7 @@ def main():
     for level, keyword, text in kept:
         assert "|" not in keyword, keyword
         out.append("#%d|%s" % (level, keyword))
-        for line in text.split("\n"):
+        for line in reflow(text).split("\n"):
             assert not line.startswith("#"), line
             out.append(line)
         # drop trailing blank from texts that end with newline-before-~

@@ -36,6 +36,8 @@ Reusable terminal abstraction by Piotr Kowalewski (komame). Renders chars onto H
 python tools/check_ascii_py.py
 ```
 
+7. **File I/O calls are expensive (~20ms each).** Never loop `readline()` at runtime; use one `f.read()` (or `seek` + bounded read) and split in memory. Measured numbers in `docs/BUILTINS.md` sec. File I/O performance.
+
 8. **Use str() + concat in persisted/serialized strings.** Physical HP Prime Python has confirmed heap-sensitive string formatting bug. Values can behave like strings at first, then fail later during list/string operations such as `"~".join(lines)`. For save payloads, HVars/PPL strings, file formats, area-data generated strings, or any string that will be joined/stored/parsing-critical, use explicit `str()` plus concatenation. See `docs/PRIME_STRING_FORMAT_BUG.md`.
 
 ## Colour codes

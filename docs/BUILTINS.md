@@ -104,3 +104,22 @@ Verified via smoke tests in `primesud.py` (June 2026).
 ## `__import__` (confirmed working)
 
 `__import__("module_name")` returns the module object, equivalent to `import module_name`. Verified June 2026 via dynamic area loading in `world.py`.
+
+---
+
+## File I/O performance (measured on-device)
+
+Measured 05 Jul 2026 via the `debug time` channel on `do_help` (help.idx,
+283 lines / ~7KB):
+
+| Pattern | Cost |
+|:--------|:-----|
+| `f.readline()` per line | ~20 ms **per call** — 283 lines took ~5.9 s |
+| One `f.read()` of the same file | ~40 ms total |
+| `f.seek(offset)` + short read | ~40 ms (seek verified working on-device) |
+
+Per-call file I/O overhead dominates everything else. For any file scanned
+at runtime: read it in one `f.read()` (or one `seek` + bounded read) and
+split/iterate in memory. Never loop `readline()` over more than a handful
+of lines. Watch heap size — bulk reads are fine for KB-scale files, not
+the 150KB help.dat.
