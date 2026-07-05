@@ -4,13 +4,14 @@ import world
 from handler import (get_curr_stat, is_name, equip_char, unequip_char, act,
                      get_char_room, can_see, can_see_obj, is_awake,
                      affect_strip, affect_join, chprintln, chprintlnf,
+                     is_good, is_evil, is_neutral,
                      TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT)
 from world import (I_BANNER_WAR_MERC,
                    I_MACE_SUB_MERC, I_DAGGER_SUB_MERC, I_SWORD_SUB_MERC,
                    I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,
                    I_SPEAR_SUB_MERC, I_AXE_SUB_MERC, I_FLAIL_SUB_MERC,
                    I_WHIP_SUB_MERC, I_GLAIVE_SUB_MERC)
-from combat import _get_weapon_skill, is_safe, multi_hit, number_fuzzy
+from combat import _get_weapon_skill, is_safe, multi_hit, number_fuzzy, create_money
 from comm import do_yell
 from skill_utils import WaitState, check_improve, get_skill
 from config import (STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS,
@@ -19,6 +20,7 @@ from config import (STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS,
 from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   item_extra_flags, item_wear_flags, apply_money_pickup,
                   can_drop_obj, can_carry_n, can_carry_w, get_obj_weight,
+                  get_carry_weight,
                   item_weapon_flags, item_affect_to_obj,
                   promote_obj as _promote_obj)
 from magic import (cast_item_spells, validate_item_spell_payload,
@@ -56,6 +58,8 @@ def _loot_container_picker(player, container):
     if cidx == len(contents):
         for cobj in list(contents):
             ctpl = ITEM_DEFS[obj_vnum(cobj)]
+            if not _check_carry_get(player, cobj, ctpl):
+                continue
             container["contents"].remove(cobj)
             chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
             if not apply_money_pickup(player, cobj, ctpl):
@@ -64,11 +68,58 @@ def _loot_container_picker(player, container):
         return
     cobj = contents[cidx]
     ctpl = ITEM_DEFS[obj_vnum(cobj)]
+    if not _check_carry_get(player, cobj, ctpl):
+        return
     container["contents"].remove(cobj)
     chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
     if not apply_money_pickup(player, cobj, ctpl):
         player["inv"].append(cobj)
         quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
+
+
+def _obj_number(obj):
+    """Return obj's contribution (plus contents) to the carry-item count
+    (cf. 1stMud get_obj_number in handler.c).
+
+    Containers, corpses, money, gems, and jewelry contribute 0 themselves;
+    everything else contributes 1.  [PRIMESUD] gem/jewelry types added to
+    the zero-count set alongside PrimeSUD's corpse split of ITEM_CONTAINER.
+    """
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    n = 0 if tpl.get("type") in _CONTAINER_TYPES + ("money", "gem", "jewelry") else 1
+    if isinstance(obj, dict):
+        for c in obj.get("contents", []):
+            n += _obj_number(c)
+    return n
+
+
+def _check_carry_get(player, obj, tpl, from_carried=False):
+    """Block pickup if it would exceed carry count/weight limits
+    (cf. 1stMud get_obj carry_n/carry_w checks in act_obj.c).
+
+    Args:
+        player (dict): Player state dict.
+        obj: Item instance dict (or plain vnum) about to be picked up.
+        tpl (dict): obj's item template.
+        from_carried (bool): True if obj comes from a container the player
+            already carries -- skips the weight check, since obj's weight
+            already counts (cf. 1stMud act_obj.c get_obj:
+            `!obj->in_obj || obj->in_obj->carried_by != ch`).
+
+    Returns:
+        bool: True if obj may be picked up.
+    """
+    kw = tpl.get("keywords", tpl["short_descr"])
+    carried = player["inv"] + [e for e in player["equip"].values() if e is not None]
+    carry_n = sum(_obj_number(o) for o in carried)
+    if carry_n + _obj_number(obj) > can_carry_n(player):
+        act("$d: you can't carry that many items.", player, None, kw, TO_CHAR)
+        return False
+    if (not from_carried
+            and get_carry_weight(player) + get_obj_weight(obj) > can_carry_w(player)):
+        act("$d: you can't carry that much weight.", player, None, kw, TO_CHAR)
+        return False
+    return True
 
 
 def do_get(player, args):
@@ -102,6 +153,8 @@ def do_get(player, args):
         if idx < len(loose):
             obj = loose[idx]
             tpl = ITEM_DEFS[obj_vnum(obj)]
+            if not _check_carry_get(player, obj, tpl):
+                return
             rs["items"].remove(obj)
             chprintln(player, "You get {}.".format(
                 (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
@@ -113,6 +166,8 @@ def do_get(player, args):
         if has_all and idx == len(loose):
             for obj in list(loose):
                 tpl = ITEM_DEFS[obj_vnum(obj)]
+                if not _check_carry_get(player, obj, tpl):
+                    continue
                 rs["items"].remove(obj)
                 chprintln(player, "You get {}.".format(
                     (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
@@ -136,6 +191,8 @@ def do_get(player, args):
             if "take" not in item_wear_flags(obj, tpl):
                 chprintln(player, "You can't take that.")
                 continue
+            if not _check_carry_get(player, obj, tpl):
+                continue
             rs["items"].remove(obj)
             chprintln(player, "You get {}.".format(tpl["short_descr"]))
             if not apply_money_pickup(player, obj, tpl):
@@ -157,12 +214,15 @@ def do_get(player, args):
             item_arg = args[0]
             cont_tpl = ITEM_DEFS[obj_vnum(cont_obj)]
             contents = cont_obj.get("contents", [])
+            cont_carried = cont_obj in player["inv"]
             if item_arg == "all":
                 if not contents:
                     chprintln(player, "It is empty.")
                 else:
                     for cobj in list(contents):
                         ctpl = ITEM_DEFS[obj_vnum(cobj)]
+                        if not _check_carry_get(player, cobj, ctpl, cont_carried):
+                            continue
                         cont_obj["contents"].remove(cobj)
                         chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
                         if not apply_money_pickup(player, cobj, ctpl):
@@ -175,6 +235,8 @@ def do_get(player, args):
                     cont_obj.get("short_descr") or cont_tpl["short_descr"]))
                 return
             ctpl = ITEM_DEFS[obj_vnum(cobj)]
+            if not _check_carry_get(player, cobj, ctpl, cont_carried):
+                return
             cont_obj["contents"].remove(cobj)
             chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
             if not apply_money_pickup(player, cobj, ctpl):
@@ -189,6 +251,8 @@ def do_get(player, args):
     if "take" not in item_wear_flags(obj, tpl):
         chprintln(player, "You can't take that.")
         return
+    if not _check_carry_get(player, obj, tpl):
+        return
     rs["items"].remove(obj)
     chprintln(player, "You get {}.".format((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
     if not apply_money_pickup(player, obj, tpl):
@@ -196,8 +260,56 @@ def do_get(player, args):
         quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
 
 
+def _drop_coins(player, amount, coin):
+    """Coin branch of do_drop (cf. 1stMud do_drop money path in act_obj.c:483).
+
+    Merges the dropped coins with any existing money pile in the room,
+    matching 1stMud's per-vnum coin-pile scan before recreating a single
+    combined money object.
+
+    Args:
+        player (dict): Player state dict.
+        amount (int): Coin count to drop.
+        coin (str): "coins"/"coin"/"gold"/"silver" -- coin denomination word.
+    """
+    if amount <= 0 or coin not in ("coins", "coin", "gold", "silver"):
+        chprintln(player, "Sorry, you can't do that.")
+        return
+    silver = coin != "gold"
+    wallet = "silver" if silver else "gold"
+    if player[wallet] < amount:
+        chprintln(player, "You don't have that much %s." % wallet)
+        return
+    player[wallet] -= amount
+    gold = 0 if silver else amount
+    silver_amt = amount if silver else 0
+
+    rs = world.rooms[player["room"]]
+    for obj in list(rs["items"]):
+        if not isinstance(obj, dict) or ITEM_DEFS[obj_vnum(obj)].get("type") != "money":
+            continue
+        rs["items"].remove(obj)
+        silver_amt += obj.get("silver", 0)
+        gold += obj.get("gold", 0)
+
+    coin_obj = create_money(gold, silver_amt)
+    if coin_obj is not None:
+        rs["items"].append(coin_obj)
+    act("$n drops some coins.", player, None, None, TO_ROOM)
+    chprintln(player, "OK.")
+
+
 def do_drop(player, args):
-    """Drop items from inventory onto the ground (cf. 1stMud `do_drop` in act_obj.c)."""
+    """Drop items from inventory onto the ground (cf. 1stMud `do_drop` in act_obj.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Parsed command arguments; ["<n>", "gold"/"silver"/"coin"/"coins", ...]
+            drops coins (cf. 1stMud do_drop act_obj.c:483), otherwise an item keyword or "all".
+    """
+    if args and args[0].isdigit():
+        _drop_coins(player, int(args[0]), args[1].lower() if len(args) > 1 else "")
+        return
     if not args:
         if not player["inv"]:
             chprintln(player, "You are not carrying anything.")
@@ -300,6 +412,20 @@ def do_put(player, args):
             and not item_extra_flags(cont_obj, cont_tpl).get("quest")):
         chprintln(player, "You can't put a quest item in something.")
         return
+    # cf. 1stMud do_put act_obj.c:403 -- nested weight-reducing containers barred
+    if tpl.get("container_weight_mult", 100) != 100:
+        chprintln(player, "You have a feeling that would be a bad idea.")
+        return
+    # cf. 1stMud do_put act_obj.c:409 -- container capacity checks; [PRIMESUD]
+    # containers without converted container_max_weight/container_max_item_weight
+    # (e.g. limbo's floating disc) carry no capacity limit
+    max_weight = cont_tpl.get("container_max_weight")
+    max_item_weight = cont_tpl.get("container_max_item_weight")
+    if max_weight is not None and max_item_weight is not None:
+        if (get_obj_weight(obj) + get_obj_weight(cont_obj) > max_weight * 10
+                or get_obj_weight(obj) > max_item_weight * 10):
+            chprintln(player, "It won't fit.")
+            return
     player["inv"].remove(obj)
     cont_obj.setdefault("contents", []).append(obj)
     cont_name = (isinstance(cont_obj, dict) and cont_obj.get("short_descr")) or cont_tpl["short_descr"]
@@ -432,10 +558,8 @@ def do_give(player, args):
         act("$N has $S hands full.", player, None, victim, TO_CHAR)
         return
 
-    carry_w = sum(get_obj_weight(o) for o in victim["inv"])
-    carry_w += sum(get_obj_weight(e) for e in victim["equip"].values()
-                   if e is not None)
-    if carry_w + get_obj_weight(obj) > can_carry_w(victim):
+    # cf. 1stMud act_obj.c do_give: get_carry_weight includes coin weight
+    if get_carry_weight(victim) + get_obj_weight(obj) > can_carry_w(victim):
         act("$N can't carry that much weight.", player, None, victim, TO_CHAR)
         return
 
@@ -552,6 +676,33 @@ def remove_obj(player, slot, fReplace):
     return True
 
 
+def _zap_anti_align(player, obj, tpl):
+    """Zap and drop obj if anti-aligned against player's alignment
+    (cf. 1stMud equip_char anti-align check in handler.c). [PRIMESUD] ported
+    here rather than in equip_char since PrimeSUD's equip_char (handler.py)
+    has no alignment awareness; see combat.py's post-kill zap for the same
+    flag names.
+
+    Args:
+        player (dict): Player state dict.
+        obj (dict): Item instance about to be equipped.
+        tpl (dict): obj's item template.
+
+    Returns:
+        bool: True if obj was zapped (dropped to the room, not equipped).
+    """
+    ef = item_extra_flags(obj, tpl)
+    if not ((ef.get("anti_evil") and is_evil(player))
+            or (ef.get("anti_good") and is_good(player))
+            or (ef.get("anti_neutral") and is_neutral(player))):
+        return False
+    act("You are zapped by $p and drop it.", player, obj, None, TO_CHAR)
+    act("$n is zapped by $p and drops it.", player, obj, None, TO_ROOM)
+    player["inv"].remove(obj)
+    world.rooms[player["room"]]["items"].append(obj)
+    return True
+
+
 def wear_obj(player, obj, fReplace):
     """Equip obj, selecting slot from wear flags (cf. 1stMud wear_obj in act_obj.c).
 
@@ -569,6 +720,8 @@ def wear_obj(player, obj, fReplace):
         if not remove_obj(player, "light", fReplace):
             return
         chprintln(player, _WEAR_MSG["light"].format(tpl["short_descr"]))
+        if _zap_anti_align(player, obj, tpl):
+            return
         equip_char(player, obj, "light")
         return
 
@@ -610,6 +763,8 @@ def wear_obj(player, obj, fReplace):
             return
 
     chprintln(player, _WEAR_MSG[slot].format(tpl["short_descr"]))
+    if _zap_anti_align(player, obj, tpl):
+        return
     equip_char(player, obj, slot)
 
     if slot == "wield":
@@ -948,6 +1103,8 @@ def do_second(player, args):
     if not remove_obj(player, "secondary", True):
         return
     chprintln(player, "You wield {} in your off-hand.".format(tpl["short_descr"]))
+    if _zap_anti_align(player, obj, tpl):
+        return
     equip_char(player, obj, "secondary")
 
 

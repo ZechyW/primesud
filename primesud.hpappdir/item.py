@@ -474,3 +474,15 @@ def get_obj_weight(obj):
             w += get_obj_weight(c)
     return w
 
+
+def get_carry_weight(ch):
+    """Total carried weight incl. coin weight, in tenths of lbs
+    (cf. 1stMud get_carry_weight in macro.h)."""
+    w = 0
+    for o in ch["inv"]:
+        w += get_obj_weight(o)
+    for e in ch["equip"].values():
+        if e is not None:
+            w += get_obj_weight(e)
+    return w + ch.get("silver", 0) // 10 + ch.get("gold", 0) * 2 // 5
+
