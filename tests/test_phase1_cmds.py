@@ -95,9 +95,17 @@ class TestExits:
         assert not any("East" in l for l in out)  # closed door hidden
 
     def test_no_exits(self, scene, out):
-        world.rooms[3001]["exits"] = {}
+        ROOM_DEFS[3001]["exits"] = {}
         info.do_exits(scene, [])
         assert out == ["Obvious exits:", "None."]
+
+    def test_runtime_room_state_shape(self, scene, out):
+        # On device world.rooms entries are state-only ({"items", "mobs"});
+        # static data lives in ROOM_DEFS. do_exits must not touch world.rooms.
+        world.rooms._data[3001] = {"items": [], "mobs": []}
+        world.rooms._data[3002] = {"items": [], "mobs": []}
+        info.do_exits(scene, [])
+        assert any("North - North Room" in l for l in out)
 
 
 class TestCommands:
