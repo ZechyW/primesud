@@ -352,7 +352,7 @@ def _show_container(player, obj, tpl):
 def _look_scan_items(player, target, number, count, items):
     """Scan an item list for extra_desc or name match (cf. 1stMud `do_look` in act_info.c: item scan loop).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; instance extra_descs check added and re-verified 05/07/2026]
 
     Returns:
         tuple: (found, count) where found is True if the Nth match was displayed.
@@ -360,6 +360,17 @@ def _look_scan_items(player, target, number, count, items):
     for obj in items:
         vnum = obj_vnum(obj)
         tpl = ITEM_DEFS[vnum]
+        # Check instance extra_descs first (cf. 1stMud obj->ed_first, act_info.c:1248)
+        if isinstance(obj, dict):
+            pdesc = _get_ed(target, obj.get("extra_descs", []))
+            if pdesc is not None:
+                count += 1
+                if count == number:
+                    for line in _wrap_paragraphs(pdesc, TERMINAL_COLS):
+                        chprintln(player, line)
+                    return True, count
+                continue
+        # Then check template extra_descs (cf. 1stMud obj->pIndexData->ed_first, act_info.c:1259)
         pdesc = _get_ed(target, tpl.get("extra_descs", []))
         if pdesc is not None:
             count += 1
