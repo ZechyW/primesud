@@ -34,6 +34,7 @@ def out(monkeypatch):
 @pytest.fixture
 def scene():
     old_rooms = dict(world.rooms._data)
+    old_room_defs = dict(ROOM_DEFS._data)
     old_chars = dict(world.chars)
     old_mobs = dict(MOB_DEFS._data)
     old_items = dict(ITEM_DEFS._data)
@@ -79,6 +80,8 @@ def scene():
 
     world.rooms._data.clear()
     world.rooms._data.update(old_rooms)
+    ROOM_DEFS._data.clear()
+    ROOM_DEFS._data.update(old_room_defs)
     world.chars.clear()
     world.chars.update(old_chars)
     MOB_DEFS._data.clear()
