@@ -200,8 +200,8 @@ def quest_area_def(tag):
 def _merged_act_flags(tpl):
     """Race act flags merged under template act_flags, as create_mobile
     does at spawn (cf. 1stMud db2.c:88-136). [PRIMESUD] helper."""
-    from races import RACE_TABLE
-    race = RACE_TABLE.get(tpl.get("race", "Human")) or RACE_TABLE["Human"]
+    from races import RACE_TABLE, race_lookup
+    race = race_lookup(tpl.get("race", "Human")) or RACE_TABLE["Human"]
     merged = dict(race.get("act", {}))
     merged.update(tpl.get("act_flags", {}))
     return merged

@@ -225,7 +225,7 @@ MOBILES = {
 | `short_descr`  | str   | yes      | Name used in combat/inventory messages (e.g. "the Keeper of the Ring") |
 | `long_descr`   | str   | yes      | "X is here" line shown when the mob is present in a room |
 | `description`  | str   | yes      | Full paragraph shown on `look <mob>` |
-| `race`         | str   | yes      | `RACE_TABLE` key (capitalized, e.g. `"Human"`); race defaults are merged in at mob creation |
+| `race`         | str   | yes      | Source `.are` race string (usually lowercase, e.g. `"human"`); race defaults are merged in at mob creation via `race_lookup()` |
 | `act_flags`    | dict  | no       | Behaviour flags (see below); `is_npc` (bit 0) is always set and omitted from the dict |
 | `affected_by`  | dict  | no       | Permanent affect flags |
 | `alignment`    | int   | yes      | -1000..1000 |

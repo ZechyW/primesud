@@ -23,7 +23,7 @@ MOBILES = {
         "short_descr": 'Heimdall',
         "long_descr":  'Heimdall, guardian of Bifrost, stands guard over the Rainbow Bridge.',
         "description": 'Standing over 7 feet tall and muscled as only a god can be, Heimdall keeps\nhis unsleeping gaze over the Rainbow bridge.  His trusty Gjallor-horn never\nleaves his side, and shall remain unwinded until the dread ship Naglfar sails\ntowards Valhalla on the dawn of Ragnarok.',
-        "race":        'Human',
+        "race":        'human',
         "act_flags": {"sentinel": True, "warrior": True, "nopurge": True},
         "affected_by": {"detect_evil": True, "detect_invis": True, "detect_hidden": True, "infrared": True, "dark_vision": True},
         "alignment": 1000,

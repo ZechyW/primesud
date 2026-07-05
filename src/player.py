@@ -7,7 +7,7 @@ from terminal import tprint
 from config import TERMINAL_COLS
 from config import R_STARTING_ROOM
 from skills_table import SKILLS, GSN_RECALL
-from races import RACE_TABLE
+from races import RACE_TABLE, race_lookup
 import world
 from world import ROOM_DEFS, AREA_DEFS
 
@@ -125,7 +125,7 @@ def create_char(class_idx=CLASS_WARRIOR):
     # p.form_flags/p.part_flags save key, so whatever create_char sets here
     # survives the load overlay untouched -- matching 1stMud's
     # re-derive-from-race-on-load behaviour.
-    _race = RACE_TABLE.get(ch["race"], RACE_TABLE["Human"])
+    _race = race_lookup(ch["race"]) or RACE_TABLE["Human"]
     ch["form_flags"] = dict(_race.get("form", {}))
     ch["part_flags"] = dict(_race.get("parts", {}))
     return ch

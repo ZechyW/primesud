@@ -5,7 +5,7 @@ from urandom import randint
 from config import SIZE_RANK, POS_FROM_SHORT
 import world
 from world import ROOM_DEFS, MOB_DEFS, AREA_DEFS, DOOR_DEFS
-from races import RACE_TABLE
+from races import RACE_TABLE, race_lookup
 from handler import equip_char, act, _char_base, is_awake, TO_ROOM, can_see
 from hunt import hunt_victim
 from item import create_object
@@ -64,9 +64,7 @@ def create_mobile(tpl_vnum):
 
     # Merge race defaults into template flags (cf. 1stMud db2.c:88-136,
     # where race->act/aff/off/imm/res/vuln/form/parts are OR'd into mob index).
-    race = RACE_TABLE.get(tpl.get("race", "Human"))
-    if race is None:
-        race = RACE_TABLE["Human"]
+    race = race_lookup(tpl.get("race", "Human")) or RACE_TABLE["Human"]
 
     def _merge(tpl_key, race_key):
         merged = dict(race.get(race_key, {}))

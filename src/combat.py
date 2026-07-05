@@ -59,7 +59,7 @@ from item import (create_object, item_extra_flags,
 from picker import pick_from
 from player import (PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOASSIST,
                     PLR_AUTODAMAGE, PLR_DEFAULTS)
-from races import RACE_TABLE
+from races import RACE_TABLE, race_lookup
 from skill_utils import get_skill, check_improve, skill_level, WaitState, DazeState
 from stances import (STANCE_TABLE, MAX_STANCE,
                      STANCE_NONE, STANCE_NORMAL, STANCE_VIPER, STANCE_CRANE,
@@ -183,7 +183,8 @@ def check_assist(ch, victim):
         qualifies = (
             off.get("assist_all")
             or (rch_grp and rch_grp == ch_grp)
-            or (off.get("assist_race") and rch_tpl.get("race") == ch_tpl.get("race"))
+            or (off.get("assist_race")
+                and rch_tpl.get("race", "").lower() == ch_tpl.get("race", "").lower())
             or (off.get("assist_align") and _same_align(rch_tpl, ch_tpl))
             or (off.get("assist_vnum") and rch["tpl"] == ch["tpl"])
         )
@@ -2459,7 +2460,7 @@ def raw_kill(victim, killer):
     for af in list(victim.get("affect_list", [])):
         affect_remove(victim, af)
     # 1stMud: victim->affected_by = victim->race->aff
-    race_data = RACE_TABLE.get(victim.get("race", "Human"), {})
+    race_data = race_lookup(victim.get("race", "Human")) or {}
     victim["affected_by"] = dict(race_data.get("aff", {}))
     # 1stMud: for (i = 0; i < MAX_AC; i++) victim->armor[i] = 100
     victim["armor"] = (100, 100, 100, 100)

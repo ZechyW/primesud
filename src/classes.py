@@ -7,7 +7,7 @@ NPCs have no "classes" key.
 """
 
 from config import LEVEL_HERO, LEVEL_IMMORTAL, MAX_LEVEL, MAX_MORTAL_LEVEL
-from races import RACE_TABLE
+from races import RACE_TABLE, race_lookup
 from skills_table import SKILLS
 from urandom import randint
 
@@ -142,7 +142,7 @@ def is_race_skill(ch, sn):
     sk = SKILLS.get(sn)
     if sk is None:
         return False
-    race = RACE_TABLE.get(ch.get("race", "Human"))
+    race = race_lookup(ch.get("race", "Human"))
     return race is not None and sk["name"] in race.get("skills", ())
 
 
@@ -246,7 +246,7 @@ def get_thac32(ch):
 def class_mult(ch):
     """XP multiplier: best (lowest) race class_mult across held classes
     (cf. 1stMud class_mult in multiclass.c)."""
-    race = RACE_TABLE.get(ch.get("race", "Human"), RACE_TABLE["Human"])
+    race = race_lookup(ch.get("race", "Human")) or RACE_TABLE["Human"]
     mults = race.get("class_mult", (100,) * len(CLASS_TABLE))
     temp = 999
     for cl in char_classes(ch):
