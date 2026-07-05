@@ -55,6 +55,8 @@ TYPO_FIXES = {
         "and costs more experience points, than fleeing",
     "show you time lef ttill next quest":
         "show you time left till next quest",
+    "what your are wielding":
+        "what you are wielding",
 }
 
 
