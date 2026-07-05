@@ -16,10 +16,15 @@ QuickMUD uses standard ROM 2.4 area format which differs from 1stMud:
   - Room exits have a key vnum field
   - Resets: slightly different field layout (limit fields differ)
 
-Output format matches are_to_primesud.py exactly.
+Ground truth for all db.c/db2.c line references in this file: QuickMUD's
+C sources, formerly at reference/quickmud/src/ (removed from the tree to
+avoid confusion with the similarly-named 1stMud sources; recover via git
+history, commit f74****, or reference/quickmud/rom24-quickmud-master.zip).
 
 Sections handled:   #AREA  #ROOMS  #MOBILES  #OBJECTS  #RESETS  #SPECIALS
                     #SHOPS  #HELPS  #SOCIALS  #MOBPROGS
+Anything else -- including #AREADATA and legacy #MOBOLD/#OBJOLD -- is a
+hard conversion error, mirroring QuickMUD boot_db's bug()+exit(1).
 
 #SPECIALS and #SHOPS are not emitted as standalone sections: each entry is
 baked directly into its target mob's MOBILES dict at conversion time
