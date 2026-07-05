@@ -15,6 +15,8 @@ _FN_PM    = 15  # +/- key -- index 27
 _FN_PAREN = 16  # ()  key -- index 28
 _FN_COMMA = 17  # ,   key -- index 29
 
+_KEY_QUEUE_SIZE = 16
+
 
 class tml_prime(tml):
     """tml subclass with HP Prime-specific enhancements: scrollback history and
@@ -90,6 +92,11 @@ class tml_prime(tml):
         self._touch_start_y     = None
         self._touch_last_y      = 0
         self._input_replay      = ''  # pending chars fed to read_key by input(default=)
+        self._key_queue         = [None] * _KEY_QUEUE_SIZE
+        self._key_queue_head    = 0
+        self._key_queue_tail    = 0
+        self._key_queue_count   = 0
+        self._key_queue_drops   = 0  # debug counter; full queue drops newest event
         if scrollback_size > 0:
             dimgrob(hist_grob, self.width, scrollback_size * self.char_height, self.back_color)
             dimgrob(save_grob, self.width, self.height, self.back_color)
@@ -165,6 +172,105 @@ class tml_prime(tml):
     # Non-blocking poll -- replaces the standalone _poll_char function
     # ------------------------------------------------------------------
 
+    def _queue_key(self, event):
+        """Append translated key event to small fixed queue. [PRIMESUD]"""
+        if event is None:
+            return
+        if self._key_queue_count >= _KEY_QUEUE_SIZE:
+            self._key_queue_drops += 1
+            return
+        self._key_queue[self._key_queue_tail] = event
+        self._key_queue_tail = (self._key_queue_tail + 1) % _KEY_QUEUE_SIZE
+        self._key_queue_count += 1
+
+    def _dequeue_key(self):
+        """Pop next translated key event, or None. [PRIMESUD]"""
+        if self._key_queue_count <= 0:
+            return None
+        event = self._key_queue[self._key_queue_head]
+        self._key_queue[self._key_queue_head] = None
+        self._key_queue_head = (self._key_queue_head + 1) % _KEY_QUEUE_SIZE
+        self._key_queue_count -= 1
+        return event
+
+    def _clear_key_queue(self):
+        """Discard queued key events after keyboard resync. [PRIMESUD]"""
+        for i in range(_KEY_QUEUE_SIZE):
+            self._key_queue[i] = None  # drop refs -- heap-constrained device
+        self._key_queue_head = 0
+        self._key_queue_tail = 0
+        self._key_queue_count = 0
+
+    def has_queued_keys(self):
+        """Return True if translated key events are waiting. [PRIMESUD]"""
+        return self._key_queue_count > 0
+
+    def _translate_key_press(self, bit, key_commands=None):
+        """Update modifier state or return translated press event. [PRIMESUD]"""
+        if bit == 36:  # Alpha
+            self.alpha_hold = True
+            if self.alpha_lock:
+                if self.is_shift:
+                    self.shift_lock = not self.shift_lock
+                else:
+                    self.alpha_lock = self.is_alpha = False
+                    self.shift_lock = False
+                self.is_shift = False
+            elif self.is_alpha:
+                if self.is_shift:
+                    if self.alpha_lock:
+                        self.shift_lock = not self.shift_lock
+                    else:
+                        self.alpha_lock = True
+                    self.is_shift = False
+                else:
+                    self.alpha_lock = True
+            else:
+                self.is_alpha = True
+            self._refresh_indicators()
+            return None
+        if bit == 41:  # Shift
+            self.shift_hold = True
+            if self.is_shift:
+                self.is_shift = self.shift_lock if not self.is_shift else False
+            else:
+                self.is_shift = True
+            self._refresh_indicators()
+            return None
+        if bit == 1:   # Symb -- command history up
+            return (_HIST_UP, None)
+        if bit == 3:   # Help -- command history down
+            return (_HIST_DN, None)
+        if key_commands and bit in key_commands:
+            cmd, auto_submit = key_commands[bit]
+            return (cmd, auto_submit)
+        if self.shift_hold:
+            self.is_shift = True
+        if self.alpha_hold:
+            self.is_alpha = True
+        mod_idx = ((self.is_shift ^ self.shift_lock) << 1) | (self.is_alpha | self.alpha_lock)
+        char = self.key_map.get(bit, [None, None, None, None])[mod_idx]
+        if not self.alpha_lock:
+            self.is_alpha = False
+        if self.is_shift:
+            self.is_shift = False
+        self._refresh_indicators()
+        # [PRIMESUD] _SB_UP/_SB_DN pass through the queue; scrollback is
+        # triggered at the dequeue site in poll_char, never mid-pump --
+        # _scrollback() ends in resync_keyboard(), which clears the queue,
+        # so running it here would let the pump loop re-queue stale events
+        # from the pre-scrollback keyboard snapshot afterwards.
+        return (char, None)
+
+    def _handle_key_release(self, bit):
+        """Update modifier hold state for released key. [PRIMESUD]"""
+        if bit == 36:
+            self.alpha_hold = False
+            self._refresh_indicators()
+        elif bit == 41:
+            self.shift_hold = False
+            self._refresh_indicators()
+
     # [PRIMESUD] No get_key() (from `cas`) here, unlike a naive blocking-read
     # port. Root cause of a former dropped-keystroke bug: get_key() blocks on
     # the firmware's software key-event queue, which lags a poll behind
@@ -175,8 +281,24 @@ class tml_prime(tml):
     # calls get_key() the same way; harmless there since a blocking read
     # gives firmware time to queue first, but watch for the same bug if
     # blocking-input keystrokes ever go missing.
+    def _pump_keyboard(self, key_commands=None):
+        """Queue all visible press edges from current keyboard state. [PRIMESUD]"""
+        cur = keyboard()
+        changed = cur ^ self.last_keyboard_state
+        if not changed:
+            return
+        self.last_keyboard_state = cur
+        for bit in range(52):
+            mask = 1 << bit
+            if changed & mask and not (cur & mask):
+                self._handle_key_release(bit)
+        for bit in range(52):
+            mask = 1 << bit
+            if changed & mask and cur & mask:
+                self._queue_key(self._translate_key_press(bit, key_commands))
+
     def poll_char(self, key_commands=None):
-        """Non-blocking: return (char, auto_submit) if a new key was pressed, else None."""
+        """Non-blocking: queue new key presses, return next queued event or None."""
         # -- touch entry into scrollback (game-loop path) --
         if self._hist_size > 0 and self._hist_count > 0 and not self._in_scrollback:
             pt = mouse()[0]
@@ -190,90 +312,30 @@ class tml_prime(tml):
                     _t0 = int(ppleval("Ticks"))
                     forwarded = self._scrollback()
                     self._scrollback_ms += int(ppleval("Ticks")) - _t0
-                    return (forwarded, None) if forwarded is not None else None
+                    self._queue_key((forwarded, None) if forwarded is not None else None)
             elif self._touch_start_y is not None:
                 # Finger is currently lifted
                 self._touch_start_y = None  # sub-threshold lift = tap, no-op
 
-        cur = keyboard()
-        changed = cur ^ self.last_keyboard_state
-        if not changed:
+        self._pump_keyboard(key_commands)
+        event = self._dequeue_key()
+        if event is None or self._hist_size == 0 or self._in_scrollback:
+            return event
+        char = event[0]
+        if char == _SB_UP and self._hist_count > 0:
+            _t0 = int(ppleval("Ticks"))
+            forwarded = self._scrollback()
+            self._scrollback_ms += int(ppleval("Ticks")) - _t0
+            return (forwarded, None) if forwarded is not None else None
+        if char == _SB_DN:
             return None
-        self.last_keyboard_state = cur
-        for bit in range(52):
-            mask = 1 << bit
-            if not (changed & mask):
-                continue
-            if cur & mask:  # key pressed
-                if bit == 36:  # Alpha
-                    self.alpha_hold = True
-                    if self.alpha_lock:
-                        if self.is_shift:
-                            self.shift_lock = not self.shift_lock
-                        else:
-                            self.alpha_lock = self.is_alpha = False
-                            self.shift_lock = False
-                        self.is_shift = False
-                    elif self.is_alpha:
-                        if self.is_shift:
-                            if self.alpha_lock:
-                                self.shift_lock = not self.shift_lock
-                            else:
-                                self.alpha_lock = True
-                            self.is_shift = False
-                        else:
-                            self.alpha_lock = True
-                    else:
-                        self.is_alpha = True
-                    self._refresh_indicators()
-                elif bit == 41:  # Shift
-                    self.shift_hold = True
-                    if self.is_shift:
-                        self.is_shift = self.shift_lock if not self.is_shift else False
-                    else:
-                        self.is_shift = True
-                    self._refresh_indicators()
-                elif bit == 1:   # Symb -- command history up
-                    return (_HIST_UP, None)
-                elif bit == 3:   # Help -- command history down
-                    return (_HIST_DN, None)
-                else:
-                    if key_commands and bit in key_commands:
-                        cmd, auto_submit = key_commands[bit]
-                        return (cmd, auto_submit)
-                    if self.shift_hold:
-                        self.is_shift = True
-                    if self.alpha_hold:
-                        self.is_alpha = True
-                    mod_idx = ((self.is_shift ^ self.shift_lock) << 1) | (self.is_alpha | self.alpha_lock)
-                    char = self.key_map.get(bit, [None, None, None, None])[mod_idx]
-                    if not self.alpha_lock:
-                        self.is_alpha = False
-                    if self.is_shift:
-                        self.is_shift = False
-                    self._refresh_indicators()
-                    if self._hist_size > 0 and not self._in_scrollback:
-                        if char == _SB_UP and self._hist_count > 0:
-                            _t0 = int(ppleval("Ticks"))
-                            forwarded = self._scrollback()
-                            self._scrollback_ms += int(ppleval("Ticks")) - _t0
-                            return (forwarded, None) if forwarded is not None else None
-                        if char == _SB_DN:
-                            return None
-                    return (char, None)
-            else:  # key released
-                if bit == 36:
-                    self.alpha_hold = False
-                    self._refresh_indicators()
-                elif bit == 41:
-                    self.shift_hold = False
-                    self._refresh_indicators()
-        return None
+        return event
 
     def resync_keyboard(self):
         """Reset keyboard state after a blocking input section."""
         self.last_keyboard_state = keyboard()
         self.is_alpha = self.is_shift = self.alpha_hold = self.shift_hold = self.symb_hold = False
+        self._clear_key_queue()
         self._refresh_indicators()
 
     # ------------------------------------------------------------------

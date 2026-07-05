@@ -306,7 +306,8 @@ class Game:
                     save_game(self, quiet=True)
                     world.save_pending = False
 
-            wait_ms(POLL_MS)
+            if not tr.has_queued_keys():
+                wait_ms(POLL_MS)
 
 class PrimeSud:
     """
