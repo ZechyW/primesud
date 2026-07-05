@@ -52,6 +52,7 @@ from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
                      chprintln, chprintlnf, get_char_room, unequip_char,
                      TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT,
                      is_good, is_evil, is_neutral)
+from effects import TARGET_CHAR, fire_effect, cold_effect, shock_effect
 from item import (create_object, item_extra_flags,
                   set_item_extra_flag, get_obj_list, obj_vnum,
                   apply_money_pickup, item_weapon_flags, item_affect_find)
@@ -1559,8 +1560,8 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False):
 
 def _weapon_procs(ch, victim, wobj, wtpl):
     """Post-hit weapon flag procs (cf. 1stMud one_hit in fight.c:777-861).
-    [Verified: 04/07/2026] -- fire/cold/shock_effect side effects (item
-    destruction, blind/daze chances) not ported, matching the spell ports.
+    [Verified: 04/07/2026; fire/cold/shock_effect side effects wired
+    05/07/2026]
 
     Args:
         ch (dict): Attacker wielding the weapon.
@@ -1604,21 +1605,21 @@ def _weapon_procs(ch, victim, wobj, wtpl):
         pdam = randint(1, wlevel // 4 + 1)
         act("$n is burned by $p.", victim, wobj, None, TO_ROOM)
         act("$p sears your flesh.", victim, wobj, None, TO_CHAR)
-        # TODO [PRIMESUD] fire_effect (item burn, blind chance) not ported
+        fire_effect(victim, wlevel // 2, pdam, TARGET_CHAR)
         damage(ch, victim, pdam, 0, DAM_FIRE, show=False)
 
     if ch["fighting"] == vid and wf.get("frost"):
         pdam = randint(1, wlevel // 6 + 2)
         act("$p freezes $n.", victim, wobj, None, TO_ROOM)
         act("The cold touch of $p surrounds you with ice.", victim, wobj, None, TO_CHAR)
-        # TODO [PRIMESUD] cold_effect (item freeze, chill str debuff) not ported
+        cold_effect(victim, wlevel // 2, pdam, TARGET_CHAR)
         damage(ch, victim, pdam, 0, DAM_COLD, show=False)
 
     if ch["fighting"] == vid and wf.get("shocking"):
         pdam = randint(1, wlevel // 5 + 2)
         act("$n is struck by lightning from $p.", victim, wobj, None, TO_ROOM)
         act("You are shocked by $p.", victim, wobj, None, TO_CHAR)
-        # TODO [PRIMESUD] shock_effect (item zap, daze chance) not ported
+        shock_effect(victim, wlevel // 2, pdam, TARGET_CHAR)
         damage(ch, victim, pdam, 0, DAM_LIGHTNING, show=False)
 
 

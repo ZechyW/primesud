@@ -12,6 +12,7 @@ from colors import upper
 from classes import has_spells
 from combat import (is_safe, is_safe_spell, check_immune, dice, number_fuzzy,
                     multi_hit, damage, stop_fighting, update_pos, is_same_group)
+from effects import acid_effect, fire_effect, cold_effect, poison_effect, shock_effect
 from skill_utils import WaitState, check_improve, get_skill
 from config import (POS_ORDER, DAM_ACID, DAM_BASH, DAM_CHARM, DAM_COLD,
                     DAM_DISEASE, DAM_DROWNING, DAM_ENERGY, DAM_FIRE,
@@ -2340,13 +2341,13 @@ def spell_ventriloquate(sn, level, ch, vo, target):
 
 # -- Breath weapons (cf. 1stMud magic.c) --
 # Note: *_effect functions (acid_effect, fire_effect, cold_effect,
-# shock_effect, poison_effect) are environmental item-damage effects
-# not yet ported.  Damage is applied; environmental effects are TODO.
+# shock_effect, poison_effect) are environmental item-damage effects,
+# ported in effects.py and wired at each call site below.
 
 
 def spell_acid_breath(sn, level, ch, vo, target):
     """Acid breath (cf. 1stMud spell_acid_breath in magic.c).
-    [Verified: 03/07/2026] -- acid_effect item damage still TODO."""
+    [Verified: 03/07/2026; acid_effect wired 05/07/2026]"""
     victim = vo
     act("$n spits acid at $N.", ch, None, victim, TO_NOTVICT)
     act("$n spits a stream of corrosive acid at you.", ch, None, victim, TO_VICT)
@@ -2356,15 +2357,16 @@ def spell_acid_breath(sn, level, ch, vo, target):
     dice_dam = dice(level, 16)
     dam = max(hp_dam + dice_dam // 10, dice_dam + hp_dam // 10)
     if saves_spell(level, victim, DAM_ACID):
-        # TODO [PRIMESUD] acid_effect(victim, level/2, dam/4, TARGET_CHAR)
+        acid_effect(victim, level // 2, dam // 4, TARGET_CHAR)
         dam //= 2
-    # else: TODO acid_effect(victim, level, dam, TARGET_CHAR)
+    else:
+        acid_effect(victim, level, dam, TARGET_CHAR)
     return damage(ch, victim, dam, sn, DAM_ACID, True)
 
 
 def spell_fire_breath(sn, level, ch, vo, target):
     """Fire breath -- area effect (cf. 1stMud spell_fire_breath in magic.c).
-    [Verified: 03/07/2026] -- fire_effect item damage still TODO."""
+    [Verified: 03/07/2026; fire_effect wired 05/07/2026]"""
     victim = vo
     act("$n breathes forth a cone of fire.", ch, None, victim, TO_NOTVICT)
     act("$n breathes a cone of hot fire over you!", ch, None, victim, TO_VICT)
@@ -2373,8 +2375,8 @@ def spell_fire_breath(sn, level, ch, vo, target):
     hp_dam = randint(hpch // 9 + 1, hpch // 5)
     dice_dam = dice(level, 20)
     dam = max(hp_dam + dice_dam // 10, dice_dam + hp_dam // 10)
-    # TODO [PRIMESUD] fire_effect(room, level, dam/2, TARGET_ROOM)
     room = world.rooms[ch["room"]]
+    fire_effect(room, level, dam // 2, TARGET_ROOM)
     found = False
     caster_npc = ch.get("is_npc", False)
     for mob_id in list(room["mobs"]):
@@ -2388,16 +2390,25 @@ def spell_fire_breath(sn, level, ch, vo, target):
             continue
         found = True
         if vch is victim:
-            cur_dam = dam // 2 if saves_spell(level, vch, DAM_FIRE) else dam
+            if saves_spell(level, vch, DAM_FIRE):
+                fire_effect(vch, level // 2, dam // 4, TARGET_CHAR)
+                damage(ch, vch, dam // 2, sn, DAM_FIRE, True)
+            else:
+                fire_effect(vch, level, dam, TARGET_CHAR)
+                damage(ch, vch, dam, sn, DAM_FIRE, True)
         else:
-            cur_dam = dam // 4 if saves_spell(level - 2, vch, DAM_FIRE) else dam // 2
-        damage(ch, vch, cur_dam, sn, DAM_FIRE, True)
+            if saves_spell(level - 2, vch, DAM_FIRE):
+                fire_effect(vch, level // 4, dam // 8, TARGET_CHAR)
+                damage(ch, vch, dam // 4, sn, DAM_FIRE, True)
+            else:
+                fire_effect(vch, level // 2, dam // 4, TARGET_CHAR)
+                damage(ch, vch, dam // 2, sn, DAM_FIRE, True)
     return found
 
 
 def spell_frost_breath(sn, level, ch, vo, target):
     """Frost breath -- area effect (cf. 1stMud spell_frost_breath in magic.c).
-    [Verified: 03/07/2026] -- cold_effect item damage still TODO."""
+    [Verified: 03/07/2026; cold_effect wired 05/07/2026]"""
     victim = vo
     act("$n breathes out a freezing cone of frost!", ch, None, victim, TO_NOTVICT)
     act("$n breathes a freezing cone of frost over you!", ch, None, victim, TO_VICT)
@@ -2406,8 +2417,8 @@ def spell_frost_breath(sn, level, ch, vo, target):
     hp_dam = randint(hpch // 11 + 1, hpch // 6)
     dice_dam = dice(level, 16)
     dam = max(hp_dam + dice_dam // 10, dice_dam + hp_dam // 10)
-    # TODO [PRIMESUD] cold_effect(room, level, dam/2, TARGET_ROOM)
     room = world.rooms[ch["room"]]
+    cold_effect(room, level, dam // 2, TARGET_ROOM)
     found = False
     caster_npc = ch.get("is_npc", False)
     for mob_id in list(room["mobs"]):
@@ -2421,25 +2432,34 @@ def spell_frost_breath(sn, level, ch, vo, target):
             continue
         found = True
         if vch is victim:
-            cur_dam = dam // 2 if saves_spell(level, vch, DAM_COLD) else dam
+            if saves_spell(level, vch, DAM_COLD):
+                cold_effect(vch, level // 2, dam // 4, TARGET_CHAR)
+                damage(ch, vch, dam // 2, sn, DAM_COLD, True)
+            else:
+                cold_effect(vch, level, dam, TARGET_CHAR)
+                damage(ch, vch, dam, sn, DAM_COLD, True)
         else:
-            cur_dam = dam // 4 if saves_spell(level - 2, vch, DAM_COLD) else dam // 2
-        damage(ch, vch, cur_dam, sn, DAM_COLD, True)
+            if saves_spell(level - 2, vch, DAM_COLD):
+                cold_effect(vch, level // 4, dam // 8, TARGET_CHAR)
+                damage(ch, vch, dam // 4, sn, DAM_COLD, True)
+            else:
+                cold_effect(vch, level // 2, dam // 4, TARGET_CHAR)
+                damage(ch, vch, dam // 2, sn, DAM_COLD, True)
     return found
 
 
 def spell_gas_breath(sn, level, ch, vo, target):
     """Gas breath -- area poison (cf. 1stMud spell_gas_breath in magic.c).
     [Verified: 03/07/2026; NPC-vs-NPC filter aligned with fire/frost
-    03/07/2026 [PRIMESUD], see FIXES.md] -- poison_effect still TODO."""
+    03/07/2026 [PRIMESUD], see FIXES.md; poison_effect wired 05/07/2026]"""
     act("$n breathes out a cloud of poisonous gas!", ch, None, None, TO_ROOM)
     act("You breath out a cloud of poisonous gas.", ch, None, None, TO_CHAR)
     hpch = max(16, ch.get("hit", 16))
     hp_dam = randint(hpch // 15 + 1, 8)
     dice_dam = dice(level, 12)
     dam = max(hp_dam + dice_dam // 10, dice_dam + hp_dam // 10)
-    # TODO [PRIMESUD] poison_effect(room, level, dam, TARGET_ROOM)
     room = world.rooms[ch["room"]]
+    poison_effect(room, level, dam, TARGET_ROOM)
     found = False
     caster_npc = ch.get("is_npc", False)
     for mob_id in list(room["mobs"]):
@@ -2455,16 +2475,17 @@ def spell_gas_breath(sn, level, ch, vo, target):
             continue
         found = True
         if saves_spell(level, vch, DAM_POISON):
-            cur_dam = dam // 2
+            poison_effect(vch, level // 2, dam // 4, TARGET_CHAR)
+            damage(ch, vch, dam // 2, sn, DAM_POISON, True)
         else:
-            cur_dam = dam
-        damage(ch, vch, cur_dam, sn, DAM_POISON, True)
+            poison_effect(vch, level, dam, TARGET_CHAR)
+            damage(ch, vch, dam, sn, DAM_POISON, True)
     return found
 
 
 def spell_lightning_breath(sn, level, ch, vo, target):
     """Lightning breath (cf. 1stMud spell_lightning_breath in magic.c).
-    [Verified: 03/07/2026] -- shock_effect item damage still TODO."""
+    [Verified: 03/07/2026; shock_effect wired 05/07/2026]"""
     victim = vo
     act("$n breathes a bolt of lightning at $N.", ch, None, victim, TO_NOTVICT)
     act("$n breathes a bolt of lightning at you!", ch, None, victim, TO_VICT)
@@ -2474,9 +2495,10 @@ def spell_lightning_breath(sn, level, ch, vo, target):
     dice_dam = dice(level, 20)
     dam = max(hp_dam + dice_dam // 10, dice_dam + hp_dam // 10)
     if saves_spell(level, victim, DAM_LIGHTNING):
-        # TODO [PRIMESUD] shock_effect(victim, level/2, dam/4, TARGET_CHAR)
+        shock_effect(victim, level // 2, dam // 4, TARGET_CHAR)
         dam //= 2
-    # else: TODO shock_effect(victim, level, dam, TARGET_CHAR)
+    else:
+        shock_effect(victim, level, dam, TARGET_CHAR)
     return damage(ch, victim, dam, sn, DAM_LIGHTNING, True)
 
 
@@ -2770,11 +2792,11 @@ def spell_powerstorm(sn, level, ch, vo, target):
 
 def spell_mana_burn(sn, level, ch, vo, target):
     """Mana burn (cf. 1stMud spell_mana_burn in magic2.c).
-    [Verified: 03/07/2026] -- fire_effect item damage still TODO."""
+    [Verified: 03/07/2026; fire_effect wired 05/07/2026]"""
     dam = dice(level, 13)
     if saves_spell(level, vo, DAM_FIRE):
         dam //= 2
-    # TODO [PRIMESUD] fire_effect(victim, level/2, dam/10, TARGET_CHAR)
+    fire_effect(vo, level // 2, dam // 10, TARGET_CHAR)
     damage(ch, vo, dam, sn, DAM_FIRE, True)
     return True  # 1stMud always returns true (magic2.c:356)
 
@@ -2898,7 +2920,7 @@ def spell_chaos_flare(sn, level, ch, vo, target):
 
 def spell_wild_magic(sn, level, ch, vo, target):
     """Wild magic -- random damage type (cf. 1stMud spell_wild_magic in magic2.c).
-    [Verified: 03/07/2026] -- elemental item effects still TODO.
+    [Verified: 03/07/2026; elemental item effects wired 05/07/2026]
 
     Structure mirrors 1stMud exactly: each branch saves, halves dam, deals
     damage, then applies elemental effect, then early-returns.
@@ -2909,25 +2931,25 @@ def spell_wild_magic(sn, level, ch, vo, target):
         if saves_spell(level, vo, DAM_ACID):
             dam //= 2
         damage(ch, vo, dam, sn, DAM_ACID, True)
-        # TODO [PRIMESUD] acid_effect(vo, level, dam, TARGET_CHAR)
+        acid_effect(vo, level, dam, TARGET_CHAR)
         return True
     if numba <= 20:
         if saves_spell(level, vo, DAM_FIRE):
             dam //= 2
         damage(ch, vo, dam, sn, DAM_FIRE, True)
-        # TODO [PRIMESUD] fire_effect(vo, level, dam, TARGET_CHAR)
+        fire_effect(vo, level, dam, TARGET_CHAR)
         return True
     if numba <= 30:
         if saves_spell(level, vo, DAM_LIGHTNING):
             dam //= 2
         damage(ch, vo, dam, sn, DAM_LIGHTNING, True)
-        # TODO [PRIMESUD] shock_effect(vo, level, dam, TARGET_CHAR)
+        shock_effect(vo, level, dam, TARGET_CHAR)
         return True
     if numba <= 40:
         if saves_spell(level, vo, DAM_COLD):
             dam //= 2
         damage(ch, vo, dam, sn, DAM_COLD, True)
-        # TODO [PRIMESUD] cold_effect(vo, level, dam, TARGET_CHAR)
+        cold_effect(vo, level, dam, TARGET_CHAR)
         return True
     if numba <= 50:
         if saves_spell(level, vo, DAM_HOLY):
@@ -2959,10 +2981,10 @@ def spell_wild_magic(sn, level, ch, vo, target):
         dam //= 2
     dam //= 5
     damage(ch, vo, dam, sn, DAM_NEGATIVE, True)
-    # TODO [PRIMESUD] acid_effect(vo, level, dam, TARGET_CHAR)
-    # TODO [PRIMESUD] fire_effect(vo, level, dam, TARGET_CHAR)
-    # TODO [PRIMESUD] cold_effect(vo, level, dam, TARGET_CHAR)
-    # TODO [PRIMESUD] shock_effect(vo, level, dam, TARGET_CHAR)
+    acid_effect(vo, level, dam, TARGET_CHAR)
+    fire_effect(vo, level, dam, TARGET_CHAR)
+    cold_effect(vo, level, dam, TARGET_CHAR)
+    shock_effect(vo, level, dam, TARGET_CHAR)
     return True
 
 
