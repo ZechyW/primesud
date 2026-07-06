@@ -54,10 +54,6 @@ Loose ends that don't belong in a specific plan file.
   only affected stock room, newthalos 9706, is unreachable anyway), but a
   future area with a dangling exit would surface it. Belongs in world.py
   after-load if ever needed.
-- **`flag_affects` on objects parsed+stored but no runtime consumer yet** —
-  `.are` F-trailer affect/immune/resist/vuln grants (e.g. One Ring
-  invisibility, `src/area_shire.txt` object 1105); see docs/AREA_FILES.md
-  OBJECTS section.
 - **Room flag `save_objs` (bit 22, 1stMud extension) has no runtime reader** —
   carried by the Limbo Morgue room (vnum 3, `areas/limbo.are`); investigate
   how 1stMud uses it (room contents persisting across reboot/reset) before

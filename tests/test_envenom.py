@@ -121,6 +121,9 @@ def out(monkeypatch):
 def skilled(monkeypatch):
     monkeypatch.setattr(inventory, "get_skill", lambda ch, sn, *a: 100)
     monkeypatch.setattr(inventory, "check_improve", lambda *a, **kw: None)
+    # Pin the skill roll: success paths assert on roll < skill, and the
+    # shared RNG stream shifts whenever earlier tests consume randint calls.
+    monkeypatch.setattr(inventory, "randint", lambda a, b: a)
 
 
 # -- do_envenom ----------------------------------------------------------------

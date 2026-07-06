@@ -442,9 +442,11 @@ Tuple of `(where, loc, modifier, flags)`:
 | `flags`    | Decoded flag dict (`affected_by` names for `"affects"`, `RESIST_FLAGS` names otherwise) |
 
 Parsed and stored losslessly (both one-line and two-line `F`-trailer layouts,
-per `db2.c:536-569`'s whitespace-skipping reads); **no runtime consumer yet**
-[PRIMESUD deferred]. Example: `src/area_shire.txt` object 1105 (the One Ring)
-grants `invisible` while worn.
+per `db2.c:536-569`'s whitespace-skipping reads). Consumed at runtime by
+`handler.tpl_flag_affects` (expansion), `_apply_item_modifiers`/`affect_check`
+(equip/unequip), and `do_affects` (display); `_unknown_bits` entries are
+skipped. Example: `src/area_shire.txt` object 1105 (the One Ring) grants
+`invisible` while worn.
 
 ---
 

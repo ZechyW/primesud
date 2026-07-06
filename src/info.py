@@ -4,7 +4,7 @@ import world
 from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
                     get_char_room, mob_condition, is_good, is_evil, can_see,
                     act, chprintln, TO_CHAR,
-                    number_argument as _number_argument)
+                    number_argument as _number_argument, tpl_flag_affects)
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from classes import class_long, class_short, class_name
 from colors import color_len, upper, draw_line
@@ -17,7 +17,7 @@ from item import get_obj_here, obj_vnum, item_extra_flags, item_container_flags
 from picker import pick_from
 from player import (PLR_AUTOMAP, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
                     PLR_AUTOSPLIT, PLR_AUTOASSIST, PLR_AUTOEXIT,
-                    PLR_AUTODAMAGE, PLR_DEFAULTS)
+                    PLR_AUTODAMAGE, PLR_DEFAULTS, _EQUIP_SAVE_ORDER)
 from gquest import gq_is_player_target
 from quest import is_quester, _intstr
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
@@ -1116,8 +1116,8 @@ def do_affects(player, args):
     """List all active player affects with name, location, modifier, duration (cf. 1stMud do_affects in act_info.c).
 
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
-    racial-ability section added and re-verified 06/07/2026] -- equipment-spells
-    section (act_info.c:2265ff) not ported.
+    racial-ability section added and re-verified 06/07/2026; equipment-spells
+    section added and re-verified 06/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -1165,6 +1165,48 @@ def do_affects(player, args):
             chprintln(player, "{xSpell: {c" + _pad_color(flag_name, 19) + "{x")
         found = True
         chprintln(player, "")
+    # cf. 1stMud do_affects equipment-spells section (act_info.c:2265-2337):
+    # gated on any active affected_by bit not accounted for by race->aff.
+    active = set(f for f in affected_by if affected_by.get(f))
+    if active and active != set(race_aff):
+        printed = False
+        for slot in _EQUIP_SAVE_ORDER:
+            obj = player.get("equip", {}).get(slot)
+            if obj is None:
+                continue
+            tpl = ITEM_DEFS[obj["vnum"]]
+            short_descr = tpl.get("short_descr", "")
+            # Runtime object affects first (cf. 1stMud obj->affect_first)
+            for paf in obj.get("affect_list", []):
+                if paf.get("where", "to_affects") != "to_affects":
+                    continue
+                bit = paf.get("bitvector")
+                if not bit or not affected_by.get(bit):
+                    continue
+                if not printed:
+                    chprintln(player, "You are affected by the following equipment spells:")
+                    printed = True
+                chprintln(player, "{xSpell: {c" + _pad_color(bit, 19)
+                          + ":{x " + short_descr)
+            # Then template flag_affects, non-enchanted only (cf. 1stMud
+            # obj->pIndexData->affect_first, gated on !obj->enchanted)
+            if not obj.get("enchanted"):
+                for paf in tpl_flag_affects(tpl):
+                    if paf.get("where", "to_affects") != "to_affects":
+                        continue
+                    bit = paf.get("bitvector")
+                    if not bit or not affected_by.get(bit):
+                        continue
+                    if not printed:
+                        chprintln(player, "You are affected by the following equipment spells:")
+                        printed = True
+                    chprintln(player, "{xSpell: {c" + _pad_color(bit, 19)
+                              + ":{x " + short_descr)
+        # 1stMud sets found=true here unconditionally, even if nothing printed
+        # (act_info.c:2333-2334) -- quirk preserved for fidelity.
+        found = True
+        if printed:
+            chprintln(player, "")
     if not found:
         chprintln(player, "You are not affected by any spells.")
 

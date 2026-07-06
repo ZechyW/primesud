@@ -367,11 +367,14 @@ def affect_remove(char, af):
 
 
 def affect_check(char, where, vector):
-    """Re-set a bitvector if any remaining affect still provides it (cf. 1stMud affect_check in handler.c).
+    """Re-set a bitvector if any remaining affect still provides it (cf. 1stMud affect_check in handler.c:1063-1148).
 
-    Called after affect_remove clears a bit. Scans char affect_list and
-    equipped item affects; if any still carry the same where+bitvector,
-    re-sets the flag.
+    Called after affect_remove clears a bit. Scans char affect_list, then
+    each equipped item's runtime affect_list, then (for non-enchanted items)
+    the item template's flag_affects; if any still carry the same
+    where+bitvector, re-sets the flag and returns immediately (cf. 1stMud:
+    runtime obj->affect_first checked before pIndexData->affect_first,
+    per item, with an early return on first match).
 
     Args:
         char (dict): Character state dict.
@@ -393,10 +396,19 @@ def affect_check(char, where, vector):
 
     # Check equipped item affects (cf. 1stMud: scan ch->carrying_first where wear_loc != -1)
     for obj in char.get("equip", {}).values():
+        if obj is None:
+            continue
         for paf in obj.get("affect_list", []):
             if paf.get("where", "to_affects") == where and paf.get("bitvector") == vector:
                 char.setdefault(key, {})[vector] = True
                 return
+        # Template flag_affects -- non-enchanted only (cf. 1stMud handler.c:1121-1146)
+        if not obj.get("enchanted"):
+            tpl = ITEM_DEFS[obj["vnum"]]
+            for paf in tpl_flag_affects(tpl):
+                if paf.get("where", "to_affects") == where and paf.get("bitvector") == vector:
+                    char.setdefault(key, {})[vector] = True
+                    return
 
 
 def affect_strip(char, sn):
@@ -472,10 +484,53 @@ def is_name(fragment, namelist):
     return True
 
 
+# Converter "flag_affects" where -> runtime affect dict "where" (cf. 1stMud
+# db2.c load_objects 'F' case: fWhere selects TO_AFFECTS/TO_IMMUNE/TO_RESIST/TO_VULN)
+_FLAG_AFFECT_WHERE = {
+    "affects": "to_affects",
+    "immune": "to_immune",
+    "resist": "to_resist",
+    "vuln": "to_vuln",
+}
+
+
+def tpl_flag_affects(tpl):
+    """Expand a template's "flag_affects" tuple into runtime affect dicts. [PRIMESUD]
+
+    Converter-emitted "flag_affects" entries are (where, loc_name, mod, bits)
+    tuples (cf. 1stMud pObjIndex affect_first, db2.c 'F' case), where "bits"
+    is a dict of flag names (possibly with a "_unknown_bits" list of
+    undefined bit ints, which is skipped). Each entry corresponds to a
+    single 1stMud AffectData node -- one modifier applied once, even though
+    its bitvector may carry several bits. To keep that semantics after
+    expanding to one dict per bit, the modifier is only attached to the
+    first (sorted) bit in the entry; the rest get modifier 0.
+
+    Args:
+        tpl (dict): Item template, as emitted by the area converter.
+
+    Returns:
+        list: Runtime affect dicts {"where", "location", "modifier", "bitvector"}.
+    """
+    result = []
+    for where, loc_name, mod, bits in tpl.get("flag_affects", ()):
+        mapped_where = _FLAG_AFFECT_WHERE.get(where, where)
+        first = True
+        for bit_name in sorted(bits):
+            if bit_name == "_unknown_bits":
+                continue
+            result.append({"where": mapped_where, "location": loc_name,
+                           "modifier": mod if first else 0,
+                           "bitvector": bit_name})
+            first = False
+    return result
+
+
 def _apply_item_modifiers(char, obj, tpl, add):
     """Apply stat bonuses and runtime object affects for equipped item (cf. 1stMud equip_char/unequip_char in handler.c).
 
     stat_bonuses maps to 1stMud .are "A" lines (TO_OBJECT, location+modifier only).
+    flag_affects maps to 1stMud .are "F" lines (TO_AFFECTS/TO_IMMUNE/TO_RESIST/TO_VULN).
     Skips template affects for enchanted items (cf. 1stMud handler.c enchanted check).
     Does NOT handle base armor values -- those are subtracted/added
     directly in equip_char/unequip_char (cf. 1stMud handler.c).
@@ -492,6 +547,11 @@ def _apply_item_modifiers(char, obj, tpl, add):
             affect_modify(char, _af, add)
             if not add:
                 affect_check(char, _af.get("where", ""), _af.get("bitvector", ""))
+        # Template flag_affects -- non-enchanted only (cf. 1stMud pIndexData->affect_first)
+        for af in tpl_flag_affects(tpl):
+            affect_modify(char, af, add)
+            if not add:
+                affect_check(char, af.get("where", ""), af.get("bitvector", ""))
     # Runtime object affects (cf. 1stMud obj->affect_first)
     for af in obj.get("affect_list", []):
         affect_modify(char, af, add)
@@ -500,15 +560,22 @@ def _apply_item_modifiers(char, obj, tpl, add):
 
 
 def unequip_char(char, slot):
-    """Remove obj from slot, reverse stat_bonuses, return to inventory (cf. 1stMud unequip_char in handler.c)."""
+    """Remove obj from slot, reverse stat_bonuses, return to inventory (cf. 1stMud unequip_char in handler.c).
+
+    Clears the equip slot before reversing modifiers (cf. 1stMud
+    `obj->wear_loc = WEAR_NONE` at handler.c:1598, set before the
+    affect_modify/affect_check loop) so affect_check's equipped-item scan
+    does not see the very item being removed and immediately re-set the
+    bit it just cleared.
+    """
     obj = char["equip"][slot]
     tpl = ITEM_DEFS[obj["vnum"]]
     armor = _item_armor_runtime(tpl, obj)
     if armor is not None:
         a = char.get("armor") or (100, 100, 100, 100)
         char["armor"] = (a[0]+armor[0], a[1]+armor[1], a[2]+armor[2], a[3]+armor[3])
-    _apply_item_modifiers(char, obj, tpl, False)
     char["equip"][slot] = None
+    _apply_item_modifiers(char, obj, tpl, False)
     char["inv"].append(obj)
 
 

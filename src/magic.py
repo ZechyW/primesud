@@ -3,7 +3,7 @@
 import world
 from handler import (is_name, is_affected, affect_to_char, affect_join, affect_strip, is_awake,
                    can_see_room, act, chprintln, get_char_room, equip_char,
-                   unequip_char,
+                   unequip_char, tpl_flag_affects,
                    TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
                    is_good, is_evil, is_neutral)
 from world import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
@@ -40,9 +40,21 @@ TARGET_CHAR = "char"
 TARGET_OBJ = "obj"
 TARGET_ROOM = "room"
 def _enchant_copy_template(vo, tpl):
-    """Copy template stat_bonuses to runtime affect_list before enchant (cf. 1stMud enchant_armor/weapon in magic.c)."""
+    """Copy template affects to runtime affect_list before enchant (cf. 1stMud enchant_armor/weapon in magic.c:2273-2294).
+
+    1stMud duplicates every pIndexData affect node, bitvector included;
+    stat_bonuses map to .are 'A' lines, flag_affects to 'F' lines.
+    """
     for loc, mod in tpl.get("stat_bonuses", {}).items():
         item_affect_to_obj(vo, _new_obj_affect("", 0, -1, loc, mod), tpl)
+    # F-line affects: type Max(0,-1)=0 -> "", level = obj level, duration -1
+    # (cf. db2.c:403-405 load values, magic.c:2286-2292 copy)
+    for af in tpl_flag_affects(tpl):
+        cur = dict(af)
+        cur["type"] = ""
+        cur["level"] = tpl.get("level", 0)
+        cur["duration"] = -1
+        item_affect_to_obj(vo, cur, tpl)
 
 def spell_null(sn, level, ch, vo, target):
     """Do nothing spell placeholder (cf. 1stMud spell_null in magic.c).

@@ -169,8 +169,9 @@ def item_affect_find(obj, sn):
 def item_affect_remove(obj, af, tpl):
     """Remove one object affect and clear its direct flag bit if present. [PRIMESUD]
 
-    where="to_weapon" affects clear a weapon_flags bit (cf. 1stMud TO_WEAPON
-    in affect_remove_obj); all others clear an extra_flags bit.
+    where="to_weapon" affects clear a weapon_flags bit, where="to_object" an
+    extra_flags bit; other wheres (to_affects etc.) touch no item flags
+    (cf. 1stMud affect_remove_obj switch in handler.c:1233-1245, default case).
     """
     affects = obj.get("affect_list", [])
     if af in affects:
@@ -181,15 +182,16 @@ def item_affect_remove(obj, af, tpl):
     if bit:
         if af.get("where") == "to_weapon":
             set_item_weapon_flag(obj, tpl, bit, False)
-        else:
+        elif af.get("where") == "to_object":
             set_item_extra_flag(obj, tpl, bit, False)
 
 
 def item_affect_to_obj(obj, af, tpl):
     """Apply one timed object affect to runtime item state. [PRIMESUD]
 
-    where="to_weapon" affects set a weapon_flags bit (cf. 1stMud TO_WEAPON
-    in affect_to_obj); all others set an extra_flags bit.
+    where="to_weapon" affects set a weapon_flags bit, where="to_object" an
+    extra_flags bit; other wheres (to_affects etc.) touch no item flags
+    (cf. 1stMud affect_to_obj switch in handler.c:1176-1188, default case).
     """
     cur = dict(af)
     obj.setdefault("affect_list", []).append(cur)
@@ -197,7 +199,7 @@ def item_affect_to_obj(obj, af, tpl):
     if bit:
         if cur.get("where") == "to_weapon":
             set_item_weapon_flag(obj, tpl, bit, True)
-        else:
+        elif cur.get("where") == "to_object":
             set_item_extra_flag(obj, tpl, bit, True)
     return cur
 

@@ -2432,8 +2432,10 @@ def make_corpse(ch):
 def raw_kill(victim, killer):
     """Kill victim: stop fight, death cry, corpse, extract/respawn (cf. 1stMud raw_kill in fight.c).
     [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- update_all_qobjs (quests) not ported;
-    [PRIMESUD] respawn flavour text and per-kill save added.
+    04/07/2026; post-death reset_char added and re-verified 06/07/2026]
+    -- update_all_qobjs (quests) not ported;
+    [PRIMESUD] respawn flavour text, per-kill save, and post-death
+    reset_char added.
 
     Args:
         victim (dict): Dying character (player or mob instance).
@@ -2464,6 +2466,13 @@ def raw_kill(victim, killer):
     victim["affected_by"] = dict(race_data.get("aff", {}))
     # 1stMud: for (i = 0; i < MAX_AC; i++) victim->armor[i] = 100
     victim["armor"] = (100, 100, 100, 100)
+    # [PRIMESUD] 1stMud's affected_by/armor wipe above is correct upstream
+    # only because the corpse took all equipment; PrimeSUD players keep
+    # their gear on respawn (see make_corpse), so re-derive equipment-granted
+    # armor, stats, and affect bits. affect_list is empty after the strip
+    # above, so no spell affects re-apply.
+    from player import reset_char  # deferred: player -> magic -> combat cycle
+    reset_char(victim)
     # 1stMud: victim->position = POS_RESTING
     victim["pos"] = "resting"
     # 1stMud: victim->hit = Max(1, victim->hit) (etc.)
