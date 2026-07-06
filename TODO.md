@@ -10,11 +10,6 @@ Loose ends that don't belong in a specific plan file.
   `_char_base`'s "Human". Harmless while only "Human" is selectable; when
   race chargen lands, persist race and re-derive after load (cf. 1stMud
   save.c:723ff re-deriving after fread).
-- **Wield-drop on strength loss not ported** — `handler.py:220` TODO:
-  1stMud affect_modify (handler.c:1030-1045) makes a char drop a wielded
-  weapon when a stat-draining affect leaves them too weak to hold it
-  (str_app wield limit). PrimeSUD affect_modify applies the stat change
-  but never rechecks the wield.
 
 ## Items
 

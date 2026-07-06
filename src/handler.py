@@ -2,10 +2,11 @@
 
 from colors import upper
 from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
-                    POS_ORDER,
+                    STR_APP_WIELD, POS_ORDER,
                     SEX_VALUES)
 from terminal import tprint
 from urandom import randint
+import world
 from world import ITEM_DEFS, MOB_DEFS
 
 # -- Alignment helpers (cf. 1stMud IsGood/IsEvil/IsNeutral in macro.h) ----------------
@@ -164,6 +165,14 @@ def get_curr_stat(char, stat):
     return max(3, min(MAX_STATS, v))
 
 
+# [PRIMESUD] Recursion guard for affect_modify's wield-drop branch. Mirrors
+# 1stMud's `static int depth` in affect_modify (handler.c:1034). Needed here
+# because our wield-drop calls unequip_char, which reverses the weapon's own
+# stat_bonuses via _apply_item_modifiers -> affect_modify; a +str weapon would
+# otherwise re-enter this branch (equip["wield"] still set) and drop twice.
+_affect_depth = 0
+
+
 def affect_modify(char, af, add):
     """Apply or remove an affect's bitvector and stat modifier
 
@@ -171,7 +180,7 @@ def affect_modify(char, af, add):
     to_resist, to_vuln) and stat mod based on af["location"].
 
     (cf. 1stMud affect_modify in handler.c).
-    [Verified: 23/06/2026]
+    [Verified: 23/06/2026; wield-drop added and re-verified 06/07/2026]
 
     Args:
         char (dict): Character state dict (player or mob instance).
@@ -217,9 +226,23 @@ def affect_modify(char, af, add):
         char["damroll"] += mod
     elif loc in ("saves", "saving_rod", "saving_petri", "saving_breath", "saving_spell"):
         char["saving_throw"] = char.get("saving_throw", 0) + mod
-    # TODO: port wield-drop check (cf. 1stMud affect_modify lines 1030-1045):
-    # after any stat change, if STR too low for wielded weapon, drop it to room.
-    # Needs obj_from_char/obj_to_room. Skip until room/item plumbing is ready.
+
+    # -- Wield-drop if now too weak to hold weapon (cf. 1stMud affect_modify
+    # handler.c:1030-1045). [PRIMESUD] unequip_char re-enters affect_modify
+    # (reverses the weapon's stat_bonuses), so _affect_depth guards against a
+    # +str weapon dropping twice -- same role as 1stMud's static depth counter.
+    global _affect_depth
+    wield = char.get("equip", {}).get("wield")
+    if (_affect_depth == 0 and not char.get("is_npc") and wield is not None
+            and ITEM_DEFS[wield["vnum"]].get("weight", 0)
+                > STR_APP_WIELD[get_curr_stat(char, "str")] * 10):
+        _affect_depth += 1
+        act("You drop $p.", char, wield, None, TO_CHAR)
+        act("$n drops $p.", char, wield, None, TO_ROOM)
+        unequip_char(char, "wield")
+        char["inv"].remove(wield)
+        world.rooms[char["room"]]["items"].append(wield)
+        _affect_depth -= 1
 
 
 def is_affected(char, sn):
