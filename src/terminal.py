@@ -5,6 +5,8 @@ from config import (
     TERMINAL_COLS, FONT_GROB, COLOR_GROB,
     DARK_MODE, BG_COLOR, TAB_SIZE, FONT,
     SCROLLBACK_SIZE, SCROLL_STEP, SWIPE_THRESHOLD, TOUCH_SCROLL_STEP,
+    FLING_FRAME_MS, FLING_MIN_VELOCITY, FLING_DECAY_NUM, FLING_DECAY_DEN,
+    FLING_SMOOTH_NUM,
 )
 from colors import (COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full,
                     color_parse_runs, strip_colors)
@@ -212,5 +214,8 @@ def init_terminal():
         dark_mode=DARK_MODE, tab_size=TAB_SIZE, bg_color=BG_COLOR, font=FONT,
         scrollback_size=SCROLLBACK_SIZE, scroll_step=SCROLL_STEP,
         touch_scroll_step=TOUCH_SCROLL_STEP, swipe_threshold=SWIPE_THRESHOLD,
+        fling_frame_ms=FLING_FRAME_MS, fling_min_velocity=FLING_MIN_VELOCITY,
+        fling_decay_num=FLING_DECAY_NUM, fling_decay_den=FLING_DECAY_DEN,
+        fling_smooth_num=FLING_SMOOTH_NUM,
     )
     install_color_print(tr)

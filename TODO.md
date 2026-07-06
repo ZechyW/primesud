@@ -87,9 +87,10 @@ Loose ends that don't belong in a specific plan file.
   poll; investigate firmware polling methods further (buffering, more
   frequent `keyboard()` sampling inside long loops, or an interrupt-style
   check between work chunks).
-- **Fling-scroll glitch** — swiping to scroll misbehaves when flinging (lift
-  off too quickly, then tap again: screen jumps). Investigate and implement
-  phone-like easing/momentum with proper touch-cancel for good UX.
+- **Validate fling-scroll tuning on physical Prime** — touch scrollback now
+  uses row-step fling easing with touch-cancel/release guard
+  (`tml_prime.py`, 06/07/2026). Re-tune thresholds/decay on device if it
+  still feels jumpy or too eager.
 - `tml.py` `read_key()` still uses `get_key()`, which has a firmware race that
   swallowed keystrokes in the non-blocking path (see comment near
   `tml_prime.py:poll_char`). If blocking input ever drops keystrokes, apply the

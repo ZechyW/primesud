@@ -113,20 +113,27 @@ slot (finger 0) is read; a second touch point is ignored.
 | Swipe up (drag toward the top of the screen) | Scroll toward the present; exits automatically at depth 0 |
 | Tap (lift with no significant vertical movement) | No-op -- stays put, so an accidental touch can't eject the player |
 | Continued drag past the threshold | Keeps scrolling in `touch_scroll_step`-row steps for as long as the finger is held, without needing to lift and re-swipe |
+| Fast lift after a drag | Starts a short row-step fling that eases to a stop |
+| New touch during a fling | Cancels the fling immediately and starts a fresh gesture from that touch-down |
 
 Entry (from the game loop's `poll_char`) fires as soon as the drag exceeds
 `swipe_threshold` pixels while the finger is still down; a sub-threshold
 lift resets the touch state as a tap.  Once inside scrollback, `_scrollback()`
 measures drag distance against `touch_scroll_step * char_height` pixels per
-step, so a continued hold-and-drag keeps scrolling mid-hold.
+step, so a continued hold-and-drag keeps scrolling mid-hold.  A quick lift
+can carry into a fling using the same row-step renderer; velocity decays each
+`fling_frame_ms` tick until it falls below `fling_min_velocity`.
 
 Touch and keyboard scrollback share the same underlying `_scrollback()` loop,
 so switching between Shift+-/Shift++ and touch mid-session works naturally.
+After scrollback exits, touch re-entry is blocked until the screen sees one
+full release, so a lift-off or retouch cannot immediately re-trigger and jump.
 
 Constructor args (`tml_prime`): `swipe_threshold` (default 20 px) is the
 minimum drag distance to register as a swipe rather than a tap;
 `touch_scroll_step` (default 3 rows) is how many rows each scroll step moves
-once inside scrollback.
+once inside scrollback; `fling_frame_ms`, `fling_min_velocity`,
+`fling_decay_num`, and `fling_decay_den` tune fling timing and easing.
 
 ---
 
