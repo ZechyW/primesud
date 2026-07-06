@@ -85,6 +85,11 @@ SCROLL_STEP     = 7   # rows scrolled per Shift+- / Shift++ keypress
 # -- Touch input [PRIMESUD] ------------------------------------------------------------
 SWIPE_THRESHOLD   = 20  # min Y-pixel delta on lift to enter scrollback
 TOUCH_SCROLL_STEP = 3   # rows scrolled per char_height of drag inside scrollback
+FLING_FRAME_MS    = 16  # fling integration cadence inside touch scrollback
+FLING_MIN_VELOCITY = 120  # min fling speed in px/sec after lift
+FLING_DECAY_NUM   = 7   # fling velocity decay numerator per frame
+FLING_DECAY_DEN   = 8   # fling velocity decay denominator per frame
+FLING_SMOOTH_NUM  = 3   # velocity EMA: old-sample weight (new-sample weight = 1)
 
 # -- Command history [PRIMESUD] --------------------------------------------------------
 CMD_HISTORY_MAX = 50  # maximum number of submitted commands to remember

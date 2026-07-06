@@ -82,6 +82,7 @@ Loose ends that don't belong in a specific plan file.
 
 ## Platform
 
-- **Fling-scroll glitch** — swiping to scroll misbehaves when flinging (lift
-  off too quickly, then tap again: screen jumps). Investigate and implement
-  phone-like easing/momentum with proper touch-cancel for good UX.
+- **Validate fling-scroll tuning on physical Prime** — touch scrollback now
+  uses row-step fling easing with touch-cancel/release guard
+  (`tml_prime.py`, 06/07/2026). Re-tune thresholds/decay on device if it
+  still feels jumpy or too eager.

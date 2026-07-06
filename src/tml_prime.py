@@ -18,6 +18,39 @@ _FN_COMMA = 17  # ,   key -- index 29
 _KEY_QUEUE_SIZE = 16
 
 
+def _advance_fling(depth, accum_px, velocity, dt_ms, step_px, step_rows,
+                   hist_count, min_velocity, decay_num, decay_den):
+    """Advance fling state by dt_ms using integer row steps. [PRIMESUD]"""
+    if velocity == 0 or dt_ms <= 0:
+        return depth, accum_px, velocity, False
+
+    accum_px += velocity * dt_ms // 1000
+    moved = False
+    while accum_px >= step_px:
+        new_depth = min(depth + step_rows, hist_count)
+        if new_depth == depth:
+            accum_px = 0
+            break
+        depth = new_depth
+        accum_px -= step_px
+        moved = True
+    while accum_px <= -step_px:
+        new_depth = max(depth - step_rows, 0)
+        if new_depth == depth:
+            accum_px = 0
+            break
+        depth = new_depth
+        accum_px += step_px
+        moved = True
+
+    velocity = velocity * decay_num // decay_den
+    if -min_velocity < velocity < min_velocity:
+        velocity = 0
+    if velocity == 0 or (depth == 0 and accum_px < 0) or (depth == hist_count and accum_px > 0):
+        accum_px = 0
+    return depth, accum_px, velocity, moved
+
+
 class tml_prime(tml):
     """tml subclass with HP Prime-specific enhancements: scrollback history and
     non-blocking poll_char / resync_keyboard.
@@ -36,6 +69,8 @@ class tml_prime(tml):
 
     def __init__(self, scrollback_size=250, scroll_step=5,
                  touch_scroll_step=3, swipe_threshold=20,
+                 fling_frame_ms=16, fling_min_velocity=120,
+                 fling_decay_num=7, fling_decay_den=8, fling_smooth_num=3,
                  hist_grob=7, save_grob=6, **kwargs):
         tml.__init__(self, **kwargs)
         # [PRIMESUD] Rebuild key_map: G2 Prime's MicroPython corrupts
@@ -89,8 +124,14 @@ class tml_prime(tml):
         self._in_scrollback     = False
         self._touch_scroll_step = touch_scroll_step
         self._swipe_threshold   = swipe_threshold
+        self._fling_frame_ms    = fling_frame_ms
+        self._fling_min_velocity = fling_min_velocity
+        self._fling_decay_num   = fling_decay_num
+        self._fling_decay_den   = fling_decay_den
+        self._fling_smooth_num  = fling_smooth_num
         self._touch_start_y     = None
         self._touch_last_y      = 0
+        self._touch_release_seen = True
         self._input_replay      = ''  # pending chars fed to read_key by input(default=)
         self._key_queue         = [None] * _KEY_QUEUE_SIZE
         self._key_queue_head    = 0
@@ -314,19 +355,22 @@ class tml_prime(tml):
         if self._hist_size > 0 and self._hist_count > 0 and not self._in_scrollback:
             pt = mouse()[0]
             if pt and pt[0] >= 0:
-                # Finger is currently down
-                if self._touch_start_y is None:
-                    self._touch_start_y = pt[1]
-                self._touch_last_y = pt[1]
-                if self._touch_last_y - self._touch_start_y > self._swipe_threshold:
-                    self._touch_start_y = None
-                    _t0 = int(ppleval("Ticks"))
-                    forwarded = self._scrollback()
-                    self._scrollback_ms += int(ppleval("Ticks")) - _t0
-                    self._queue_key((forwarded, None) if forwarded is not None else None)
-            elif self._touch_start_y is not None:
-                # Finger is currently lifted
-                self._touch_start_y = None  # sub-threshold lift = tap, no-op
+                if self._touch_release_seen:
+                    # Finger is currently down
+                    if self._touch_start_y is None:
+                        self._touch_start_y = pt[1]
+                    self._touch_last_y = pt[1]
+                    if self._touch_last_y - self._touch_start_y > self._swipe_threshold:
+                        self._touch_start_y = None
+                        self._touch_release_seen = False
+                        _t0 = int(ppleval("Ticks"))
+                        forwarded = self._scrollback()
+                        self._scrollback_ms += int(ppleval("Ticks")) - _t0
+                        self._queue_key((forwarded, None) if forwarded is not None else None)
+            else:
+                # Finger is currently lifted; sub-threshold lift = tap, no-op.
+                self._touch_start_y = None
+                self._touch_release_seen = True
 
         self._pump_keyboard(key_commands)
         event = self._dequeue_key()
@@ -365,9 +409,13 @@ class tml_prime(tml):
         self._render_scrollback(depth)
 
         result       = None
-        t_finger_down = False
+        t_mode       = "idle"
         t_last_y     = 0
         t_base_y     = 0
+        t_last_ticks = 0
+        t_velocity   = 0
+        t_accum_px   = 0
+        t_fling_ticks = 0
         step_px      = self._touch_scroll_step * self.char_height
 
         self._in_scrollback = True
@@ -393,27 +441,65 @@ class tml_prime(tml):
 
                 # -- touch (repeat scroll while dragging) --
                 pt = mouse()[0]
-                if pt and pt[0] >= 0:
-                    # Finger is down
-                    if not t_finger_down:
-                        t_finger_down = True
+                touching = pt and pt[0] >= 0
+                # Ticks is only needed while a gesture is live; skip the ppleval when idle.
+                now = int(ppleval("Ticks")) if touching or t_mode != "idle" else 0
+                if touching:
+                    # New touch cancels any in-flight fling and re-arms drag from here.
+                    if t_mode != "drag":
+                        t_mode = "drag"
                         t_base_y = pt[1]
-                    t_last_y = pt[1]
-                    delta = t_last_y - t_base_y
-                    if delta > step_px:
-                        depth = min(depth + self._touch_scroll_step, self._hist_count)
-                        self._render_scrollback(depth)
-                        t_base_y += step_px
-                    elif delta < -step_px:
-                        depth = max(depth - self._touch_scroll_step, 0)
-                        t_base_y -= step_px
-                        if depth == 0:
-                            break
-                        self._render_scrollback(depth)
-                elif t_finger_down:
-                    t_finger_down = False  # finger lifted; direction already handled by repeat scroll
+                        t_last_y = pt[1]
+                        t_last_ticks = now
+                        t_velocity = 0
+                        t_accum_px = 0
+                    else:
+                        # Velocity EMA samples position/time as a pair; t_last_y advances
+                        # only alongside t_last_ticks so dy and dt cover the same span.
+                        if now > t_last_ticks:
+                            inst_v = (pt[1] - t_last_y) * 1000 // (now - t_last_ticks)
+                            t_velocity = ((t_velocity * self._fling_smooth_num + inst_v)
+                                          // (self._fling_smooth_num + 1))
+                            t_last_ticks = now
+                            t_last_y = pt[1]
+                        delta = pt[1] - t_base_y
+                        if delta > step_px:
+                            depth = min(depth + self._touch_scroll_step, self._hist_count)
+                            self._render_scrollback(depth)
+                            t_base_y += step_px
+                        elif delta < -step_px:
+                            depth = max(depth - self._touch_scroll_step, 0)
+                            t_base_y -= step_px
+                            if depth == 0:
+                                break
+                            self._render_scrollback(depth)
+                elif t_mode == "drag":
+                    if abs(t_velocity) >= self._fling_min_velocity:
+                        t_mode = "fling"
+                        t_fling_ticks = now
+                    else:
+                        t_mode = "idle"
+                        t_velocity = 0
+                        t_accum_px = 0
+                elif t_mode == "fling":
+                    dt_ms = now - t_fling_ticks
+                    if dt_ms >= self._fling_frame_ms:
+                        t_fling_ticks = now
+                        depth, t_accum_px, t_velocity, moved = _advance_fling(
+                            depth, t_accum_px, t_velocity, dt_ms, step_px,
+                            self._touch_scroll_step, self._hist_count,
+                            self._fling_min_velocity, self._fling_decay_num,
+                            self._fling_decay_den)
+                        if moved:
+                            if depth == 0:
+                                break
+                            self._render_scrollback(depth)
+                        if t_velocity == 0:
+                            t_mode = "idle"
+                ppleval("WAIT(0.001)")
         finally:
             self._in_scrollback = False
+            self._touch_release_seen = False
 
         strblit2(0, 0, 0, self.width, self.height,
                  self._save_grob, 0, 0, self.width, self.height)
