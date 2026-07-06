@@ -6,14 +6,11 @@ a fresh character has one entry, each remort appends one (max MAX_REMORT).
 NPCs have no "classes" key.
 """
 
-from config import LEVEL_HERO, LEVEL_IMMORTAL, MAX_LEVEL, MAX_MORTAL_LEVEL
+from config import (LEVEL_HERO, LEVEL_IMMORTAL, MAX_LEVEL, MAX_MORTAL_LEVEL,
+                     MAX_REMORT)
 from races import RACE_TABLE, race_lookup
 from skills_table import SKILLS
 from urandom import randint
-
-# Cap on classes per character (cf. 1stMud MAX_REMORT in defines.h).
-# do_remort refuses once len(classes) == MAX_REMORT -> stock cap 2 classes.
-MAX_REMORT = 2
 
 CLASS_MAGE    = 0
 CLASS_CLERIC  = 1
@@ -23,7 +20,9 @@ CLASS_PALADIN = 4
 CLASS_RANGER  = 5
 
 # Indices match the per-class tuples in skills_table.py and races.py class_mult.
-# "names" = remort-tier display names (tier index = remort count).
+# "names" = remort-tier display names (tier index = remort count); needs one
+# entry per config.MAX_REMORT tier (see comment there) or extra remorts
+# silently reuse the last name.
 # "weapon" = starting weapon type ([PRIMESUD] type string; 1stMud stores the
 #            school item vnum -- 3700 mace / 3701 dagger / 3702 sword).
 # Guild membership lives on rooms as a "guild" field (cf. 1stMud room->guild

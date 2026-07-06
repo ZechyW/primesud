@@ -200,10 +200,23 @@ INT_APP_LEARN    = (3,5,7,8,9,10,11,12,13,15,17,19,22,25,28,31,34,37,40,44,49,55
 # 1stMud 4.5.3 defines MAX_LEVEL=60, LEVEL_IMMORTAL=52,
 # MAX_MORTAL_LEVEL=51, MAX_REMORT=2, and LEVEL_HERO=49.
 # calc_max_level() caps mortals at HERO plus remort count: 49-51.
-MAX_LEVEL = 50  # [PRIMESUD] single-user gameplay cap for now.
+MAX_LEVEL = 60  # Levels 52-60 would be immortal levels in 1stmud
 MAX_MORTAL_LEVEL = 51  # 1stMud do_skills/do_spells display/filter cap.
 LEVEL_IMMORTAL = 52  # skill_level() sentinel for skills no held class learns.
 LEVEL_HERO = 49  # calc_max_level base: mortals cap at HERO + remort count.
+
+# Class-count cap (cf. 1stMud MAX_REMORT in defines.h); do_remort in training.py
+# refuses once len(classes) == MAX_REMORT. Stock = 2 (1 remort). classes.py's
+# calc_max_level() combines this with LEVEL_HERO/MAX_MORTAL_LEVEL above, so a
+# different remort count needs ALL of the following changed together:
+#  - MAX_REMORT here (how many classes/remorts are allowed)
+#  - MAX_MORTAL_LEVEL above (hard ceiling; currently 51 == LEVEL_HERO + 2 remorts)
+#  - CLASS_TABLE["names"] tuples in classes.py need one entry per remort tier
+#    (currently 2: base + 1 remort); short of that, extra remorts silently
+#    reuse the last tier's name instead of erroring.
+#  - MAX_LEVEL above if the extra levels should also apply elsewhere (gquest
+#    level bounds, debug setlevel, corpse-gold split, info.py display clamps).
+MAX_REMORT = 2
 
 # -- Practice cap ----------------------------------------------------------------------
 SKILL_ADEPT = 75  # 1stMud class_table[].skill_adept; all shipped classes use 75
