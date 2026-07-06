@@ -21,6 +21,7 @@ from world import ITEM_DEFS
 
 ROOM_VNUM = 9701
 SWORD_VNUM = 9710
+ORB_VNUM = 9711
 
 
 def _stub_room():
@@ -101,3 +102,31 @@ def test_no_drop_when_still_strong_enough():
 
     assert ch["equip"]["wield"] is sword
     assert world.rooms._data[ROOM_VNUM]["items"].count(sword) == 0
+
+
+def test_reset_char_does_not_drop_on_transient_mid_reset_str():
+    """reset_char re-applies equipment through affect_modify, so a weapon
+    holdable only via a +str item in a later slot (hold, after wield in
+    _EQUIP_SAVE_ORDER) sees a transient low-str state mid-reset. It must NOT
+    drop: 1stMud reset_char applies mods with its own inline switch
+    (handler.c:530-734), never via affect_modify, so a reset never drops."""
+    from player import reset_char
+
+    _stub_room()
+    ch = _player(13)                       # limit 130 < 150 without the orb
+    ch["perm_hit"] = ch["perm_mana"] = ch["perm_move"] = 100
+    orb_tpl = {"short_descr": "an orb of might", "weight": 10,
+               "stat_bonuses": {"str": 3}}
+    ITEM_DEFS._data[ORB_VNUM] = orb_tpl
+    orb = {"vnum": ORB_VNUM}
+    ch["inv"].append(orb)
+    equip_char(ch, orb, "hold")            # str 13 -> 16, limit 160 >= 150
+    # dex bonus makes affect_modify (and its drop check) run when reset_char
+    # re-applies the wield slot -- before hold's +3 str is back.
+    sword = _wield(ch, 150, stat_bonuses={"dex": 1})
+
+    reset_char(ch)
+
+    assert ch["equip"]["wield"] is sword
+    assert world.rooms._data[ROOM_VNUM]["items"].count(sword) == 0
+    assert ch["mod_stat"]["str"] == 3      # orb re-applied exactly once

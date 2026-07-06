@@ -140,7 +140,8 @@ def group_rating(ch, gn):
     (cf. 1stMud group_rating in multiclass.c)."""
     if gn < 0 or gn >= len(GROUP_TABLE):
         return 0
-    # [not ported] 1stMud also checks is_race_skill/is_deity_skill -> 2
+    # 1stMud also checks is_race_skill/is_deity_skill -> 2; no race has a
+    # group (only individual skills) as a racial grant, so the check is moot.
     rate = 999
     for cl in char_classes(ch):
         r = GROUP_TABLE[gn][1][cl]

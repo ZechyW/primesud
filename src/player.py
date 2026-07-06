@@ -26,8 +26,9 @@ from handler import (PLR_AUTOMAP, PLR_AUTOASSIST, PLR_AUTOEXIT, PLR_AUTOLOOT,
 # -- Player model --------------------------------------------------------------
 
 
-def create_char(class_idx=CLASS_WARRIOR):
-    """Return fresh player state dict with default starting values.
+def create_char(class_idx=CLASS_WARRIOR, race_name="Human"):
+    """Create a new player character with the given class and race
+    (cf. 1stMud nanny.c chargen path).
 
     Overlays player-only (pcdata) fields onto _char_base()
     (cf. 1stMud new_char + new_pcdata in recycle.c; char_data in structs.h:560).
@@ -39,6 +40,8 @@ def create_char(class_idx=CLASS_WARRIOR):
     Args:
         class_idx (int): Starting class index into CLASS_TABLE. Default only
             matters for the load path, where the save overwrites it.
+        race_name (str): Starting race name, looked up in RACE_TABLE. Default
+            only matters for the load path, where the save overwrites it.
 
     Returns:
         dict: Player state dict.
@@ -85,8 +88,7 @@ def create_char(class_idx=CLASS_WARRIOR):
         # new_game, not here -- it needs the player's choice of weapon, and
         # this function has no interactive path. Other skills cost trains at
         # a gain trainer (do_gain). Customization/creation points not ported
-        # (see groups.py). (Racial skills: none for Human; revisit when race
-        # selection is ported.)
+        # (see groups.py). (Racial skills granted below after race-merge block.)
         "learned": {},
         "equip": {
             "light":     None, "finger_l":  None, "finger_r":  None,
@@ -98,6 +100,7 @@ def create_char(class_idx=CLASS_WARRIOR):
             "float":     None, "secondary": None,
         },
     })
+    ch["race"] = race_name
     _race = race_lookup(ch["race"]) or RACE_TABLE["Human"]
     _stats = _race.get("stats", (13, 13, 13, 13, 13))
     ch["perm_stat"] = {
@@ -111,6 +114,14 @@ def create_char(class_idx=CLASS_WARRIOR):
     ch["vuln_flags"] = dict(_race.get("vuln", {}))
     ch["form_flags"] = dict(_race.get("form", {}))
     ch["part_flags"] = dict(_race.get("parts", {}))
+    # cf. 1stMud nanny.c: group_add(ch, race->skills[i], false) grants
+    # racial skills at 1% learned. 1stMud group_add calls skill_lookup
+    # internally (skills.c:900); PrimeSUD uses _skill_lookup (magic.py).
+    from magic import _skill_lookup  # deferred: player -> magic -> combat -> player cycle
+    for rsk_name in _race.get("skills", ()):
+        rsk_sn = _skill_lookup(rsk_name)
+        if rsk_sn is not None and ch["learned"].get(rsk_sn, 0) == 0:
+            ch["learned"][rsk_sn] = 1
     # cf. 1stMud nanny.c CON_READ_MOTD level==0 block:
     # ch->perm_stat[class_table[prime_class(ch)].attr_prime] += 3 -- applied
     # once for brand-new characters only. Safe on the load path too: game_state
@@ -144,6 +155,7 @@ def group_add_basics_and_defaults(ch):
 
 
 
+import handler
 from handler import (get_curr_stat, affect_remove, affect_modify, _char_base,
                    _apply_item_modifiers, _item_armor_runtime)
 from world import ITEM_DEFS
@@ -158,12 +170,13 @@ def reset_char(player):
 
     [PRIMESUD] Omits perm-recovery block (no legacy saves to migrate).
     [PRIMESUD] Omits last_level (XP penalty not ported).
-    [PRIMESUD] Omits sex handling (hardcoded neutral until character customisation ported).
 
     Args:
         player (dict): Player state dict.
     """
     # -- Reset to baselines (cf. 1stMud handler.c lines 512-528)
+    # cf. 1stMud: ch->sex = ch->pcdata->true_sex (handler.c:518)
+    player["sex"] = player.get("true_sex", player.get("sex", "neutral"))
     for k in player.get("mod_stat", {}):
         player["mod_stat"][k] = 0
     player["max_hit"] = player["perm_hit"]
@@ -174,23 +187,32 @@ def reset_char(player):
     player["damroll"] = 0
     player["saving_throw"] = 0
 
-    # -- Re-apply equipment (cf. 1stMud handler.c lines 530-668)
-    for slot in _EQUIP_SAVE_ORDER:
-        obj = player["equip"].get(slot)
-        if obj is None:
-            continue
-        tpl = ITEM_DEFS.get(obj["vnum"])
-        if tpl is None:
-            continue
-        armor = _item_armor_runtime(tpl, obj)
-        if armor is not None:
-            a = player["armor"]
-            player["armor"] = (a[0]-armor[0], a[1]-armor[1], a[2]-armor[2], a[3]-armor[3])
-        _apply_item_modifiers(player, obj, tpl, True)
+    # [PRIMESUD] Hold handler._affect_depth so affect_modify's wield-drop
+    # can't fire on transient mid-reset stats (e.g. wield re-applied before a
+    # +str item in a later slot). 1stMud reset_char applies mods with its own
+    # inline switch (handler.c:530-734), never via affect_modify, so it can
+    # never drop during a reset either.
+    handler._affect_depth += 1
+    try:
+        # -- Re-apply equipment (cf. 1stMud handler.c lines 530-668)
+        for slot in _EQUIP_SAVE_ORDER:
+            obj = player["equip"].get(slot)
+            if obj is None:
+                continue
+            tpl = ITEM_DEFS.get(obj["vnum"])
+            if tpl is None:
+                continue
+            armor = _item_armor_runtime(tpl, obj)
+            if armor is not None:
+                a = player["armor"]
+                player["armor"] = (a[0]-armor[0], a[1]-armor[1], a[2]-armor[2], a[3]-armor[3])
+            _apply_item_modifiers(player, obj, tpl, True)
 
-    # -- Re-apply character spell affects (cf. 1stMud handler.c lines 671-734)
-    for af in player.get("affect_list", []):
-        affect_modify(player, af, True)
+        # -- Re-apply character spell affects (cf. 1stMud handler.c lines 671-734)
+        for af in player.get("affect_list", []):
+            affect_modify(player, af, True)
+    finally:
+        handler._affect_depth -= 1
 
 
 # -- Tick regen ---------------------------------------------------------------

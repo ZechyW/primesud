@@ -1,9 +1,12 @@
 """Character state, affects, equipment, visibility, and name-match helpers (cf. 1stMud handler.c)."""
 
+from classes import is_prime_stat
 from colors import upper
-from config import (MAX_STATS, STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
+from config import (LEVEL_IMMORTAL, MAX_STATS,
+                    STR_APP_TOHIT, STR_APP_TODAM, DEX_APP_DEF,
                     STR_APP_WIELD, POS_ORDER,
                     SEX_VALUES)
+from races import race_lookup, RACE_TABLE
 from terminal import tprint
 from urandom import randint
 import world
@@ -78,6 +81,7 @@ def _char_base():
         "is_npc":      False,
         "level":       1,
         "sex":         "neutral",
+        "true_sex":    "neutral",  # cf. 1stMud pcdata->true_sex; baseline for reset_char
         "race":        "Human",
         "alignment":   0,
         "size":        "medium",
@@ -151,6 +155,12 @@ def _item_armor_runtime(tpl, obj=None):
 
 # -- Stat application helpers --------------------------------------------------
 
+# Maps stat name -> index position in a race's stats/max_stats tuples
+# (cf. 1stMud pc_race_table[].max_stats[] index order in const.c).
+# Dict, not tuple.index() -- get_curr_stat runs in combat loops.
+_STAT_IDX = {"str": 0, "dex": 1, "int": 2, "wis": 3, "con": 4}
+
+
 def get_curr_stat(char, stat):
     """Effective stat value: base + affect modifiers (cf. 1stMud get_curr_stat in handler.c).
 
@@ -159,10 +169,46 @@ def get_curr_stat(char, stat):
         stat (str): Stat name -- one of "str", "dex", "int", "wis", "con".
 
     Returns:
-        int: Clamped stat value in [3, MAX_STATS].
+        int: Clamped stat value in [3, max] where max depends on race and class.
     """
     v = char.get("perm_stat", {}).get(stat, 10) + char.get("mod_stat", {}).get(stat, 0)
-    return max(3, min(MAX_STATS, v))
+    if char.get("is_npc") or char.get("level", 1) > LEVEL_IMMORTAL:
+        return max(3, min(MAX_STATS, v))
+    _race = race_lookup(char.get("race", "Human")) or RACE_TABLE["Human"]
+    _max = _race.get("max_stats", (18, 18, 18, 18, 18))
+    cap = _max[_STAT_IDX.get(stat, 0)] + 4
+    if is_prime_stat(char, stat):
+        cap += 2
+    if char.get("race", "Human") == "Human":
+        cap += 1
+    cap = min(cap, MAX_STATS)
+    return max(3, min(cap, v))
+
+
+def get_max_train(ch, stat):
+    """Maximum trainable value for a stat (cf. 1stMud get_max_train in handler.c).
+
+    For PCs: race.max_stats[stat] + prime bonus (human +3, else +2),
+    capped at MAX_STATS. NPCs and immortals get flat MAX_STATS.
+
+    Args:
+        ch (dict): Character state dict.
+        stat (str): Stat name -- one of "str", "dex", "int", "wis", "con".
+
+    Returns:
+        int: Maximum trainable stat value.
+    """
+    if ch.get("is_npc") or ch.get("level", 1) > LEVEL_IMMORTAL:
+        return MAX_STATS
+    _race = race_lookup(ch.get("race", "Human")) or RACE_TABLE["Human"]
+    _max = _race.get("max_stats", (18, 18, 18, 18, 18))
+    cap = _max[_STAT_IDX.get(stat, 0)]
+    if is_prime_stat(ch, stat):
+        if ch.get("race", "Human") == "Human":
+            cap += 3
+        else:
+            cap += 2
+    return min(cap, MAX_STATS)
 
 
 # [PRIMESUD] Recursion guard for affect_modify's wield-drop branch. Mirrors
@@ -209,6 +255,9 @@ def affect_modify(char, af, add):
         ms = char.setdefault("mod_stat", {})
         ms[loc] = ms.get(loc, 0) + mod
     elif loc == "sex":
+        # [PRIMESUD] 1stMud adds mod unclamped (APPLY_SEX, handler.c:975) and
+        # lets reset_char repair out-of-range values; sex is a string here, so
+        # clamp to the valid range instead.
         cur = SEX_VALUES.index(char["sex"]) if char.get("sex") in SEX_VALUES else 0
         char["sex"] = SEX_VALUES[max(0, min(2, cur + mod))]
     elif loc == "mana":

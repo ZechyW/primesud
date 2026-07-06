@@ -3,9 +3,9 @@
 import world
 from classes import (CLASS_TABLE, MAX_REMORT, calc_max_level,
                      exp_per_level, is_class, lvl_bonus)
-from handler import (get_curr_stat, act, chprintln, chprintlnf,
+from handler import (get_curr_stat, get_max_train, act, chprintln, chprintlnf,
                    TO_CHAR, TO_ROOM, affect_remove, unequip_char)
-from config import (INT_APP_LEARN, MAX_STATS, SKILL_ADEPT,
+from config import (INT_APP_LEARN, SKILL_ADEPT,
                     MAX_MORTAL_LEVEL, R_STARTING_ROOM, TERMINAL_COLS)
 from info import print_practice_table
 from inventory import do_outfit
@@ -51,7 +51,7 @@ def do_train(player, args):
         if player["train"] < 1:
             chprintln(player, "You don't have enough training sessions.")
             return
-        stat_opts = [(k, lng) for k, lng in _TRAIN_STATS if player["perm_stat"][k] < MAX_STATS]
+        stat_opts = [(k, lng) for k, lng in _TRAIN_STATS if player["perm_stat"][k] < get_max_train(player, k)]
         vital_opts = [("max_hit", "hp"), ("max_mana", "mana")]
         all_opts = stat_opts + vital_opts
         # [PRIMESUD] Picker UI -- 1stMud prints "You can train: ..." then falls through
@@ -64,7 +64,7 @@ def do_train(player, args):
             if k in ("max_hit", "max_mana"):
                 names.append(lng + " (max: " + str(player[k]) + ")")
             else:
-                names.append(lng + " (" + str(player["perm_stat"][k]) + "/" + str(MAX_STATS) + ")")
+                names.append(lng + " (" + str(player["perm_stat"][k]) + "/" + str(get_max_train(player, k)) + ")")
         idx = pick_from("Train which?", names)
         if idx < 0:
             return
@@ -85,12 +85,12 @@ def do_train(player, args):
         if chosen_key is None:
             buf = "You can train:"
             for k, lng in _TRAIN_STATS:
-                if player["perm_stat"][k] < MAX_STATS:
+                if player["perm_stat"][k] < get_max_train(player, k):
                     buf = buf + " " + lng[:3]
             buf = buf + " hp mana."
             chprintln(player, buf)
             return
-        if chosen_key not in ("max_hit", "max_mana") and player["perm_stat"][chosen_key] >= MAX_STATS:
+        if chosen_key not in ("max_hit", "max_mana") and player["perm_stat"][chosen_key] >= get_max_train(player, chosen_key):
             act("Your $T is already at maximum.", player, None, chosen_lng, TO_CHAR)
             return
 

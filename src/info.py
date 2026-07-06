@@ -1115,43 +1115,58 @@ def do_map(player, args):
 def do_affects(player, args):
     """List all active player affects with name, location, modifier, duration (cf. 1stMud do_affects in act_info.c).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026] -- racial-ability and equipment-spell sections
-    not ported (see TODO below).
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
+    racial-ability section added and re-verified 06/07/2026] -- equipment-spells
+    section (act_info.c:2265ff) not ported.
 
     Args:
         player (dict): Player state dict.
         args (list): Unused.
     """
-    # -- Racial-ability and equipment-spell sections not ported (TODO) --
+    found = False
     affects = player.get("affect_list", [])
-    if not affects:
-        chprintln(player, "You are not affected by any spells.")
-        return
-    chprintln(player, "You are affected by the following spells:")
-    # cf. 1stMud: modifier/duration detail only at trust >= 20
-    show_detail = player.get("level", 1) >= 20
-    last_type = None
-    for aff in affects:
-        sn = aff.get("type")
-        if last_type is not None and sn == last_type:
-            # consecutive same-type affects: indented continuation
-            if not show_detail:
-                continue
-            line = " " * 26
-        else:
-            sk = SKILLS.get(sn)
-            name = sk["name"] if sk else "unknown"
-            line = "{xSpell: {c" + _pad_color(name, 19) + "{x"
-        if show_detail:
-            dur = aff["duration"]
-            line += (": modifies " + str(aff["location"])
-                     + " by " + str(aff["modifier"]) + " ")
-            if dur < 0:
-                line += "permanently"
+    if affects:
+        chprintln(player, "You are affected by the following spells:")
+        # cf. 1stMud: modifier/duration detail only at trust >= 20
+        show_detail = player.get("level", 1) >= 20
+        last_type = None
+        for aff in affects:
+            sn = aff.get("type")
+            if last_type is not None and sn == last_type:
+                # consecutive same-type affects: indented continuation
+                if not show_detail:
+                    continue
+                line = " " * 26
             else:
-                line += "for " + str(dur) + " hours"
-        chprintln(player, line)
-        last_type = sn
+                sk = SKILLS.get(sn)
+                name = sk["name"] if sk else "unknown"
+                line = "{xSpell: {c" + _pad_color(name, 19) + "{x"
+            if show_detail:
+                dur = aff["duration"]
+                line += (": modifies " + str(aff["location"])
+                         + " by " + str(aff["modifier"]) + " ")
+                if dur < 0:
+                    line += "permanently"
+                else:
+                    line += "for " + str(dur) + " hours"
+            chprintln(player, line)
+            last_type = sn
+        found = True
+        chprintln(player, "")
+    # cf. 1stMud do_affects racial-ability section (act_info.c:2249-2264);
+    # gated on the bits actually being set on the char (IsAffected).
+    from races import race_lookup, RACE_TABLE
+    _race = race_lookup(player.get("race", "Human")) or RACE_TABLE["Human"]
+    race_aff = _race.get("aff", {})
+    affected_by = player.get("affected_by", {})
+    if race_aff and any(affected_by.get(f) for f in race_aff):
+        chprintln(player, "You are affected by the following racial abilities:")
+        for flag_name in sorted(race_aff):
+            chprintln(player, "{xSpell: {c" + _pad_color(flag_name, 19) + "{x")
+        found = True
+        chprintln(player, "")
+    if not found:
+        chprintln(player, "You are not affected by any spells.")
 
 
 def do_credits(player, args):

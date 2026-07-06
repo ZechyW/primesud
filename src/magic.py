@@ -1249,7 +1249,8 @@ def spell_change_sex(sn, level, ch, vo, target):
         return False
     if saves_spell(level, vo, DAM_OTHER):
         return False
-    cur_sex = vo.get("sex", 0)
+    from config import SEX_VALUES
+    cur_sex = SEX_VALUES.index(vo["sex"]) if vo.get("sex") in SEX_VALUES else 0
     mod = 0
     while mod == 0:
         mod = randint(0, 2) - cur_sex

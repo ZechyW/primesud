@@ -4,12 +4,7 @@ Loose ends that don't belong in a specific plan file.
 
 ## Combat
 
-- **Race not persisted** — `create_char` now derives racial
-  aff/imm/res/vuln/stats/size/form/parts (06/07/2026), but `game_state.py`
-  has no `p.race` save key, so the load path always re-derives from
-  `_char_base`'s "Human". Harmless while only "Human" is selectable; when
-  race chargen lands, persist race and re-derive after load (cf. 1stMud
-  save.c:723ff re-deriving after fread).
+(nothing outstanding)
 
 ## Items
 

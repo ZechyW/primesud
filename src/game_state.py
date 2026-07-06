@@ -16,6 +16,7 @@ from mob import reset_area, create_area_states
 from player import create_char, reset_char, _EQUIP_SAVE_ORDER
 from picker import pick_from
 from classes import CLASS_TABLE
+from races import race_lookup, PC_RACE_ORDER, RACE_TABLE
 from skills_table import WEAPON_GSN_MAP
 from colors import capitalize
 
@@ -58,7 +59,8 @@ def _serialize_world():
     player = world.chars[1]
     gc_collect()
     lines = ["v=" + str(SAVE_VERSION)]
-    for key in ("name", "level", "xp", "xp_next",
+    for key in ("name", "race", "sex", "true_sex",
+                "level", "xp", "xp_next",
                 "hit", "mana", "move",
                 "perm_hit", "perm_mana", "perm_move",
                 "room", "trivia",
@@ -519,8 +521,9 @@ def _sanitize_name(raw):
 def new_game(game):
     """Create a new game world with a fresh player character. [PRIMESUD]
 
-    Mirrors 1stMud nanny.c chargen order: name (CON_GET_NAME) -> class
-    (CON_GET_NEW_CLASS) -> create_char (fixed stats/skill grants) -> alignment
+    Mirrors 1stMud nanny.c chargen order: name (CON_GET_NAME) -> race
+    (CON_GET_NEW_RACE) -> sex (CON_GET_NEW_SEX) -> class (CON_GET_NEW_CLASS)
+    -> create_char (fixed stats/skill grants) -> alignment
     (HANDLE_CON_GET_ALIGNMENT) -> weapon pick (send_weapon_info /
     HANDLE_CON_PICK_WEAPON) -> outfit -> newbie info (CON_READ_MOTD
     level==0 block) -> save. Deity/timezone/email/screen-size prompts are not
@@ -540,6 +543,17 @@ def new_game(game):
             break
         game.tr.print("Illegal name, try another.")
 
+    # Race choice (cf. 1stMud nanny.c CON_GET_NEW_RACE; [PRIMESUD] picker with
+    # one-line summaries instead of bare list + 'help <race>'). PC_RACE_ORDER,
+    # not RACE_TABLE.items() -- HP Prime dicts don't guarantee insertion order.
+    race_labels = [rn + " - " + RACE_TABLE[rn]["summary"] for rn in PC_RACE_ORDER]
+    race_idx = _pick_required("Choose your race:", race_labels)
+    race_name = PC_RACE_ORDER[race_idx]
+
+    # Sex choice (cf. 1stMud nanny.c CON_GET_NEW_SEX).
+    sex_idx = _pick_required("Choose your sex:", ["Male", "Female", "Neutral"])
+    sex_val = ("male", "female", "neutral")[sex_idx]
+
     # Class choice (cf. 1stMud nanny.c CON_GET_NEW_CLASS; [PRIMESUD] picker with
     # one-line summaries instead of a bare list + 'help <class>').
     labels = [c["names"][0] + " - " + c["summary"] for c in CLASS_TABLE]
@@ -547,8 +561,10 @@ def new_game(game):
     world.reset_lazy()
     world.areas = create_area_states()
     gq_reset()  # [PRIMESUD] fresh gquest schedule per game
-    player = create_char(idx)
+    player = create_char(idx, race_name)
     player["name"] = name
+    player["sex"] = sex_val
+    player["true_sex"] = sex_val
     player["_macros"] = _MACRO_SUBST
     world.chars[1] = player
 
@@ -604,6 +620,17 @@ def load_game(game):
     world._retry_pending_deltas()
     # Quest gear armor/dice overrides are regenerated, not saved [PRIMESUD]
     rescale_quest_gear(player)
+    # Race-derived fields (size, flags, form, parts) are not saved -- re-derive
+    # from the loaded race name before reset_char re-applies equipment/spell
+    # affects (cf. create_char race-merge block in player.py).
+    _race = race_lookup(player.get("race", "Human")) or RACE_TABLE["Human"]
+    player["size"] = _race.get("size", "medium")
+    player["affected_by"] = dict(_race.get("aff", {}))
+    player["imm_flags"] = dict(_race.get("imm", {}))
+    player["res_flags"] = dict(_race.get("res", {}))
+    player["vuln_flags"] = dict(_race.get("vuln", {}))
+    player["form_flags"] = dict(_race.get("form", {}))
+    player["part_flags"] = dict(_race.get("parts", {}))
     reset_char(player)
     return result
 

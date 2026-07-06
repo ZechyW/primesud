@@ -19,9 +19,9 @@ Pickers force numeric keyboard mode on entry (`picker.py:_force_numeric_keys`) s
 | Feature | Reason |
 |---|---|
 | Move / MV | No solo gameplay hook identified; omitted entirely |
-| Race system | Ported: RACE_TABLE in races.py, race defaults merged at mob creation, check_immune in combat. Chargen (name, class, alignment, weapon) exists but has no race-selection step; race stays at the fixed human default |
+| Race system | Ported: RACE_TABLE in races.py, race defaults merged at mob/player creation, check_immune in combat, race-aware stat caps (get_curr_stat/get_max_train in handler.py). Chargen: name, race, sex, class, alignment, weapon. Racial skills granted at creation. Creation-point group customisation not ported |
 | Class system | Ported: CLASS_TABLE (6 classes) in classes.py, remort/multiclass, chargen class picker, per-class THAC0 and HP/mana gain, skill groups + `gain`. Creation-point group customisation at chargen not ported |
-| Stat rolling | Fixed 13 across the board; no chargen reroll |
+| Stat rolling | Per-race base stats from RACE_TABLE; no chargen reroll |
 | Saving throws | `saving_throw = 0` baseline with `saves_spell`/`saves_dispel`/`check_dispel`; race/class modifiers and equipment bonuses deferred |
 | Alignment / deity | No solo gameplay hook identified |
 | Clan / rank | Multiplayer |

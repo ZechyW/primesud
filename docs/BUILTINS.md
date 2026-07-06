@@ -87,6 +87,12 @@ Features not supported by HP Prime's MicroPython (confirmed via `SyntaxError` at
 | `f"..."` f-strings | `"... %s ..." % x` — prefer `%` over `.format()` when colour codes are present, as `%` uses no `{` delimiters |
 | `next(iter, default)` 2-arg form | `try: v = next(iter)` / `except StopIteration: v = default` |
 
+Also note: `dict` iteration order is **not** guaranteed to match insertion
+order (MicroPython dicts are plain hash tables, unlike CPython 3.7+). Never
+rely on `dict.items()`/`keys()` order for user-facing output — keep an
+explicit ordering tuple alongside the dict (e.g. `PC_RACE_ORDER` in
+`races.py`) or `sorted()` the keys.
+
 ---
 
 ## OOP / subclassing (confirmed working)

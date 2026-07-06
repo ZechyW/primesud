@@ -5,12 +5,20 @@ Each entry maps race name -> race defaults dict.  Flag dicts use the
 same {flag_name: True} convention as PrimeSUD area mob templates.
 
 Bit-position decoding derived from 1stMud bits.h BIT_A..BIT_fx defines
-cross-referenced with tables.c flag table arrays."""
+cross-referenced with tables.c flag table arrays.
 
+"summary" entries are [PRIMESUD] one-liners for the chargen race picker
+(1stMud shows a bare race list + 'help <race>')."""
+
+# [PRIMESUD] Chargen display order for PC races (1stMud pc_race_table order).
+# HP Prime dicts don't guarantee insertion order, so RACE_TABLE.items() can't
+# be used for user-facing ordering (see docs/BUILTINS.md).
+PC_RACE_ORDER = ("Human", "Elf", "Dwarf", "Giant", "Dragon", "Orc")
 
 RACE_TABLE = {
     "Human": {
         "pc_race": True,
+        "summary": "Balanced stats; highest training caps",
         "act":  {},
         "aff":  {},
         "off":  {},
@@ -39,12 +47,13 @@ RACE_TABLE = {
         "stats":     (13, 13, 13, 13, 13),
         "max_stats": (18, 18, 18, 18, 18),
         "size": "medium",
-        "class_mult": (100, 100, 100, 100, 100, 100),  # [not ported] chargen creation points
+        "class_mult": (100, 100, 100, 100, 100, 100),  # XP multiplier per class (classes.class_mult)
         "points": 0,  # [not ported] chargen creation points
         "skills": [],
     },
     "Elf": {
         "pc_race": True,
+        "summary": "Agile and wise; charm resist, iron vuln",
         "act":  {},
         "aff":  {"infrared": True},
         "off":  {},
@@ -73,12 +82,13 @@ RACE_TABLE = {
         "stats":     (12, 14, 13, 15, 11),
         "max_stats": (16, 20, 18, 21, 15),
         "size": "small",
-        "class_mult": (100, 125, 100, 120, 125, 120),  # [not ported] chargen creation points
+        "class_mult": (100, 125, 100, 120, 125, 120),  # XP multiplier per class (classes.class_mult)
         "points": 5,  # [not ported] chargen creation points
-        "skills": ['sneak', 'hide'],  # [not ported] racial skills/groups
+        "skills": ['sneak', 'hide'],
     },
     "Dwarf": {
         "pc_race": True,
+        "summary": "Hardy; disease/poison resist, slow swim",
         "act":  {},
         "aff":  {"infrared": True},
         "off":  {},
@@ -107,12 +117,13 @@ RACE_TABLE = {
         "stats":     (14, 12, 14, 10, 15),
         "max_stats": (20, 16, 19, 14, 21),
         "size": "medium",
-        "class_mult": (150, 100, 125, 100, 100, 100),  # [not ported] chargen creation points
+        "class_mult": (150, 100, 125, 100, 100, 100),  # XP multiplier per class (classes.class_mult)
         "points": 8,  # [not ported] chargen creation points
-        "skills": ['berserk'],  # [not ported] racial skills/groups
+        "skills": ['berserk'],
     },
     "Giant": {
         "pc_race": True,
+        "summary": "Raw power; cold/fire resist, shock vuln",
         "act":  {},
         "aff":  {},
         "off":  {},
@@ -141,12 +152,13 @@ RACE_TABLE = {
         "stats":     (16, 11, 13, 11, 14),
         "max_stats": (22, 15, 18, 15, 20),
         "size": "large",
-        "class_mult": (200, 150, 150, 105, 150, 105),  # [not ported] chargen creation points
+        "class_mult": (200, 150, 150, 105, 150, 105),  # XP multiplier per class (classes.class_mult)
         "points": 6,  # [not ported] chargen creation points
-        "skills": ['bash', 'fast healing'],  # [not ported] racial skills/groups
+        "skills": ['bash', 'fast healing'],
     },
     "Dragon": {
         "pc_race": True,
+        "summary": "Mighty flyer; costly to advance",
         "act":  {},
         "aff":  {"flying": True, "infrared": True},
         "off":  {},
@@ -175,12 +187,13 @@ RACE_TABLE = {
         "stats":     (16, 13, 13, 10, 15),
         "max_stats": (22, 22, 22, 19, 22),
         "size": "huge",
-        "class_mult": (200, 200, 200, 200, 200, 200),  # [not ported] chargen creation points
+        "class_mult": (200, 200, 200, 200, 200, 200),  # XP multiplier per class (classes.class_mult)
         "points": 10,  # [not ported] chargen creation points
         "skills": [],
     },
     "Orc": {
         "pc_race": True,
+        "summary": "Tough and wise; disease resist, light vuln",
         "act":  {},
         "aff":  {"infrared": True},
         "off":  {},
@@ -214,9 +227,9 @@ RACE_TABLE = {
         "stats":     (16, 10, 11, 15, 14),
         "max_stats": (22, 18, 19, 22, 20),
         "size": "medium",
-        "class_mult": (200, 200, 100, 100, 180, 130),  # [not ported] chargen creation points
+        "class_mult": (200, 200, 100, 100, 180, 130),  # XP multiplier per class (classes.class_mult)
         "points": 7,  # [not ported] chargen creation points
-        "skills": ['kick'],  # [not ported] racial skills/groups
+        "skills": ['kick'],
     },
     "Bat": {
         "pc_race": False,

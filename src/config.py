@@ -222,8 +222,8 @@ MAX_REMORT = 2
 SKILL_ADEPT = 75  # 1stMud class_table[].skill_adept; all shipped classes use 75
 
 # -- Stat training cap -----------------------------------------------------------------
-# Revisit when races are added: 1stMud uses race.max_stats[stat] + 2 (or +3 for human
-# prime stats) via get_max_train() in handler.c; flat MAX_STATS until then.
+# race.max_stats[stat] + 2 (or +3 for human prime stats), capped at MAX_STATS;
+# see get_max_train() in handler.py.
 
 # -- Position order (cf. 1stMud position_t enum in defines.h) -------------------------
 POS_ORDER = {

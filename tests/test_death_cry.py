@@ -202,16 +202,8 @@ class TestPCRaceFormParts:
     part-drop logic as mobs. [PRIMESUD] regression test for TODO.md's
     "PC victims never drop body parts"."""
 
-    def test_create_char_populates_race_combat_defaults(self, monkeypatch):
-        import player as player_mod
-
-        def _elf_base():
-            ch = _char_base()
-            ch["race"] = "Elf"
-            return ch
-
-        monkeypatch.setattr(player_mod, "_char_base", _elf_base)
-        ch = create_char()
+    def test_create_char_populates_race_combat_defaults(self):
+        ch = create_char(race_name="Elf")
         elf = RACE_TABLE["Elf"]
         expected_stats = {
             "str": elf["stats"][0] + 3, "dex": elf["stats"][1],
