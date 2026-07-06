@@ -82,18 +82,6 @@ Loose ends that don't belong in a specific plan file.
 
 ## Platform
 
-- **Keypresses still dropped on physical Prime during long computations** —
-  suspect keys pressed while a long computation runs never make it into the
-  poll; investigate firmware polling methods further (buffering, more
-  frequent `keyboard()` sampling inside long loops, or an interrupt-style
-  check between work chunks).
 - **Fling-scroll glitch** — swiping to scroll misbehaves when flinging (lift
   off too quickly, then tap again: screen jumps). Investigate and implement
   phone-like easing/momentum with proper touch-cancel for good UX.
-- `tml.py` `read_key()` still uses `get_key()`, which has a firmware race that
-  swallowed keystrokes in the non-blocking path (see comment near
-  `tml_prime.py:poll_char`). If blocking input ever drops keystrokes, apply the
-  same `keyboard()`-polling fix via a `tml_prime` override.
-- **Validate on-device memory footprint** of `skills_table.py` (149 skills) +
-  `groups.py` + `classes.py` — flagged when the table grew from 6 to 149
-  entries; no HP Prime heap test on record.

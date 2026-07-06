@@ -154,19 +154,34 @@ class tml_prime(tml):
             char = self._input_replay[0]
             self._input_replay = self._input_replay[1:]
             return char
-        if code or self._hist_size == 0:
-            return super().read_key(code=code)
+        if code:
+            # Raw key-index path -- unused in PrimeSUD; base implementation.
+            return super().read_key(code=True)
 
+        # [PRIMESUD] Blocking read built on the same GETKEY pump as
+        # poll_char, replacing tml.read_key's keyboard()-edge + get_key()
+        # pair, whose firmware race could swallow keystrokes (see the
+        # _pump_keyboard note).
         while True:
-            char = super().read_key(code=False)
+            self._pump_keyboard()
+            event = self._dequeue_key()
+            if event is None:
+                ppleval("WAIT(0.005)")
+                continue
+            char = event[0]
             if char == _SB_UP and self._hist_count > 0:
                 result = self._scrollback()
                 # None  -> depth reached 0 (auto-exit); loop for next key
-                # other -> key forwarded from scrollback exit
-                if result is not None:
+                # other -> key forwarded from scrollback exit (int
+                #          sentinels dropped, same as below)
+                if result is not None and not isinstance(result, int):
                     return result
-            else:
-                return char
+                continue
+            if isinstance(char, int):
+                # Fn-key/history/scrollback sentinels are game-loop only;
+                # tml.input cannot consume ints -- drop in blocking reads.
+                continue
+            return char
 
     # ------------------------------------------------------------------
     # Non-blocking poll -- replaces the standalone _poll_char function
@@ -262,40 +277,36 @@ class tml_prime(tml):
         # from the pre-scrollback keyboard snapshot afterwards.
         return (char, None)
 
-    def _handle_key_release(self, bit):
-        """Update modifier hold state for released key. [PRIMESUD]"""
-        if bit == 36:
-            self.alpha_hold = False
-            self._refresh_indicators()
-        elif bit == 41:
-            self.shift_hold = False
-            self._refresh_indicators()
-
-    # [PRIMESUD] No get_key() (from `cas`) here, unlike a naive blocking-read
-    # port. Root cause of a former dropped-keystroke bug: get_key() blocks on
-    # the firmware's software key-event queue, which lags a poll behind
-    # keyboard()'s hardware bitmask read. Touch scrollback never populates
-    # that queue, so the first post-touch keypress would stall get_key()
-    # until the *next* keypress -- eating one char and offsetting the rest.
-    # keyboard() alone is race-free here. NOTE: base tml.read_key() still
-    # calls get_key() the same way; harmless there since a blocking read
-    # gives firmware time to queue first, but watch for the same bug if
-    # blocking-input keystrokes ever go missing.
+    # [PRIMESUD] Press events come from the firmware's key-event queue via
+    # PPL GETKEY, not from keyboard() bitmask edges. Probed on-device
+    # 2026-07-06 (debug/keydrop_probe.py): the firmware buffers presses in
+    # a 4-deep FIFO that survives long pure-Python computations (bitmask
+    # edges do not -- press+release inside a computation is invisible to
+    # keyboard()), GETKEY codes equal keyboard() bit indices, events are
+    # chronological (modifier combos like Shift+key arrive in order), no
+    # hold auto-repeat, and cas.get_key() reads the same queue. The
+    # bitmask is used only to reconcile modifier *hold* state: hold flags
+    # must track the live key state, since the release of a modifier
+    # tapped inside a computation never appears as an edge and would
+    # otherwise stick. NOTE: base tml.read_key() still pairs keyboard()
+    # edges with cas.get_key(), which lags a poll behind the bitmask and
+    # can swallow a keystroke; PrimeSUD never routes through it (see
+    # read_key above) -- watch for that race if it is ever reinstated.
     def _pump_keyboard(self, key_commands=None):
-        """Queue all visible press edges from current keyboard state. [PRIMESUD]"""
+        """Drain firmware key queue into the local queue; sync modifier holds. [PRIMESUD]"""
         cur = keyboard()
-        changed = cur ^ self.last_keyboard_state
-        if not changed:
-            return
         self.last_keyboard_state = cur
-        for bit in range(52):
-            mask = 1 << bit
-            if changed & mask and not (cur & mask):
-                self._handle_key_release(bit)
-        for bit in range(52):
-            mask = 1 << bit
-            if changed & mask and cur & mask:
-                self._queue_key(self._translate_key_press(bit, key_commands))
+        shift_held = bool(cur & (1 << 41))
+        alpha_held = bool(cur & (1 << 36))
+        if shift_held != self.shift_hold or alpha_held != self.alpha_hold:
+            self.shift_hold = shift_held
+            self.alpha_hold = alpha_held
+            self._refresh_indicators()
+        while True:
+            code = int(ppleval("GETKEY"))
+            if code < 0:
+                return
+            self._queue_key(self._translate_key_press(code, key_commands))
 
     def poll_char(self, key_commands=None):
         """Non-blocking: queue new key presses, return next queued event or None."""
@@ -334,6 +345,11 @@ class tml_prime(tml):
     def resync_keyboard(self):
         """Reset keyboard state after a blocking input section."""
         self.last_keyboard_state = keyboard()
+        # [PRIMESUD] flush the firmware key queue (4-deep) alongside the
+        # local one; bounded in case a firmware quirk never returns -1.
+        for _ in range(8):
+            if int(ppleval("GETKEY")) < 0:
+                break
         self.is_alpha = self.is_shift = self.alpha_hold = self.shift_hold = self.symb_hold = False
         self._clear_key_queue()
         self._refresh_indicators()

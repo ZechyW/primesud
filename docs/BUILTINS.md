@@ -123,3 +123,35 @@ at runtime: read it in one `f.read()` (or one `seek` + bounded read) and
 split/iterate in memory. Never loop `readline()` over more than a handful
 of lines. Watch heap size — bulk reads are fine for KB-scale files, not
 the 150KB help.dat.
+
+---
+
+## Keyboard input semantics (measured on-device)
+
+Probed 06 Jul 2026 on physical Prime G2 via `debug/keydrop_probe.py`
+(see git history for probe versions and raw logs):
+
+| Mechanism | Semantics |
+|:----------|:----------|
+| `hpprime.keyboard()` | Instantaneous hardware bitmask. A press+release entirely inside a long computation is **invisible** — edge-detection alone drops those keys. |
+| PPL `GETKEY` (via `hpprime.eval`) | Drains a firmware press-event FIFO: **depth 4, drops newest when full**, chronological (modifier combos like Shift-then-digit arrive in order), no hold auto-repeat, survives long pure-Python busy loops. Returns -1 when empty. **Codes equal `keyboard()` bit indices** (verified 10/10 across Esc/Enter/Bksp/arrows/Shift/Alpha/letter/digit/fn row). |
+| `cas.get_key()` | Reads the **same firmware queue** as GETKEY; returns instantly when an event is buffered, else blocks until the next press. Queue population lags one firmware poll behind the `keyboard()` bitmask — pairing bitmask edge-detect with `get_key()` (as base `tml.read_key` does) can swallow a keystroke. |
+
+`src/tml_prime.py` `_pump_keyboard` builds on this: presses from GETKEY
+drain, modifier hold state reconciled from the live bitmask (a modifier
+tapped inside a computation never produces a release edge and would
+otherwise stick).
+
+---
+
+## Heap size / module import cost (measured on-device)
+
+Measured 06 Jul 2026 via `debug/mem_footprint.py`, fresh Python session
+(imports are cached per session — a cached import costs ~0 and reports
+nothing useful):
+
+- Baseline `gc.mem_free()`: **~8.19 MB** — heap is far larger than early
+  estimates; KB-scale data tables are a non-issue.
+- Import costs: `config`+`races` 41 KB (109 ms), `skills_table` (149
+  skills) 58 KB (180 ms), `classes` 11 KB (28 ms), `groups` 9 KB (30 ms).
+  Total ~119 KB, leaving ~8.07 MB free.
