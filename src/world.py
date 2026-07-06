@@ -1,34 +1,36 @@
 """Mutable world catalog and state loaded from area data files."""
 
 # Well-known VNUMs referenced by game logic (cf. area_limbo, area_school).
-# These are literal constants so game modules can import them without
-# triggering a full area-data load.
+# Names match 1stMud's vnums.h (OBJ_VNUM_*) for easy comparison against the
+# original sources. These are literal constants so game modules can import
+# them without triggering a full area-data load.
 # -- area_limbo items --
-I_COIN_SILVER_GCASH        = 1
-I_COIN_GOLD_GCASH          = 2
-I_COINS_GOLD_GCASH         = 3
-I_COINS_SILVER_GCASH       = 4
-I_COINS_SILVER_GOLD_GCASH  = 5
-I_CORPSE                   = 10
-I_CORPSE_11                = 11
-I_MUSHROOM                 = 20
-I_BALL_LIGHT               = 21
-I_SPRING                   = 22
-I_DISC_DISK_FLOATING_BLACK = 23
-I_GATE_PORTAL              = 25   # cf. 1stMud OBJ_VNUM_PORTAL
+OBJ_VNUM_SILVER_ONE     = 1
+OBJ_VNUM_GOLD_ONE       = 2
+OBJ_VNUM_GOLD_SOME      = 3
+OBJ_VNUM_SILVER_SOME    = 4
+OBJ_VNUM_COINS          = 5
+OBJ_VNUM_CORPSE_NPC     = 10
+OBJ_VNUM_CORPSE_PC      = 11
+OBJ_VNUM_MUSHROOM       = 20
+OBJ_VNUM_LIGHT_BALL     = 21
+OBJ_VNUM_SPRING         = 22
+OBJ_VNUM_DISC           = 23
+OBJ_VNUM_PORTAL         = 25
 # -- area_school items --
-I_MACE_SUB_MERC            = 3700
-I_DAGGER_SUB_MERC          = 3701
-I_SWORD_SUB_MERC           = 3702
-I_VEST_SUB_MERC            = 3703
-I_SHIELD_SUB_MERC          = 3704
-I_DIPLOMA                  = 3715
-I_BANNER_WAR_MERC          = 3716
-I_SPEAR_SUB_MERC           = 3717
-I_AXE_SUB_MERC             = 3719
-I_FLAIL_SUB_MERC           = 3720
-I_WHIP_SUB_MERC            = 3721
-I_GLAIVE_SUB_MERC          = 3722
+OBJ_VNUM_SCHOOL_MACE    = 3700
+OBJ_VNUM_SCHOOL_DAGGER  = 3701
+OBJ_VNUM_SCHOOL_SWORD   = 3702
+OBJ_VNUM_SCHOOL_VEST    = 3703
+OBJ_VNUM_SCHOOL_SHIELD  = 3704
+OBJ_VNUM_DIPLOMA        = 3715  # [PRIMESUD] no vnums.h entry upstream
+OBJ_VNUM_SCHOOL_BANNER  = 3716
+OBJ_VNUM_SCHOOL_STAFF   = 3718  # weapon_table's spear-class item is the staff,
+                                # not 3717 (SCHOOL_SPEAR, unused upstream)
+OBJ_VNUM_SCHOOL_AXE     = 3719
+OBJ_VNUM_SCHOOL_FLAIL   = 3720
+OBJ_VNUM_SCHOOL_WHIP    = 3721
+OBJ_VNUM_SCHOOL_POLEARM = 3722
 
 # Area files: (filename, tag, display_name, vnum_lo, vnum_hi).
 # Ascending size order: small areas load while heap is fresh (lower ms/KB),

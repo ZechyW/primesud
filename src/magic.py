@@ -6,8 +6,8 @@ from handler import (is_name, is_affected, affect_to_char, affect_join, affect_s
                    unequip_char, tpl_flag_affects,
                    TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
                    is_good, is_evil, is_neutral)
-from world import (I_MUSHROOM, I_BALL_LIGHT, I_SPRING,
-                   I_DISC_DISK_FLOATING_BLACK, I_GATE_PORTAL)
+from world import (OBJ_VNUM_MUSHROOM, OBJ_VNUM_LIGHT_BALL, OBJ_VNUM_SPRING,
+                   OBJ_VNUM_DISC, OBJ_VNUM_PORTAL)
 from colors import upper
 from classes import has_spells
 from combat import (is_safe, is_safe_spell, check_immune, dice, number_fuzzy,
@@ -542,7 +542,8 @@ def spell_identify(sn, level, ch, vo, target):
     [Verified: 03/07/2026] -- drink liquid colour line, container capacity /
     weight multiplier, weapon flags line not ported (data not modeled);
     to_affects/immune/resist/vuln bitvector lines not ported (only
-    to_object bitvectors exist in PrimeSUD item affects)."""
+    to_object bitvectors exist in PrimeSUD item affects); weapon-type
+    wording matched and re-verified 07/07/2026."""
     tpl = ITEM_DEFS[obj_vnum(vo)]
     flags = item_extra_flags(vo, tpl)
     chprintln(ch, "Object '" + tpl.get("keywords", "") + "' is type " + tpl.get("type", "unknown")
@@ -565,7 +566,14 @@ def spell_identify(sn, level, ch, vo, target):
         chprintln(ch, "Maximum weight: " + str(tpl.get("container_max_weight", 0))
                   + "#  flags: " + (" ".join(sorted(tpl.get("container_flags", {}))) or "none"))
     elif tpl.get("type") == "weapon":
-        chprintln(ch, "Weapon type is " + tpl.get("weapon_type", "unknown") + ".")
+        # Per-class display names (magic.c:3244-3274); 1stMud's loader turns
+        # unknown weapon words into exotic before identify ever sees them.
+        wt = tpl.get("weapon_type", "")
+        if wt not in ("exotic", "sword", "dagger", "staff", "mace", "axe",
+                      "flail", "whip", "polearm"):
+            wt = "exotic"
+        wt = {"staff": "spear/staff", "mace": "mace/club"}.get(wt, wt)
+        chprintln(ch, "Weapon type is " + wt + ".")
         # 1stMud new_format: instance value[1]/[2] (quest gear scales dice)
         d = vo.get("dice") or tpl.get("dice", (0, 0, 0))
         chprintln(ch, "Damage is " + str(d[0]) + "d" + str(d[1])
@@ -1346,7 +1354,7 @@ def spell_continual_light(sn, level, ch, vo, target):
         set_item_extra_flag(obj, tpl, "glow", True)
         act("$p glows with a white light.", ch, obj, None, TO_ALL)
         return True
-    light = create_object(I_BALL_LIGHT)
+    light = create_object(OBJ_VNUM_LIGHT_BALL)
     rs = world.rooms[ch["room"]]
     rs.setdefault("items", []).append(light)
     act("$n twiddles $s thumbs and $p appears.", ch, light, None, TO_ROOM)
@@ -1357,7 +1365,7 @@ def spell_continual_light(sn, level, ch, vo, target):
 def spell_create_food(sn, level, ch, vo, target):
     """Create a mushroom (cf. 1stMud spell_create_food in magic.c).
     [Verified: 03/07/2026]"""
-    mushroom = create_object(I_MUSHROOM)
+    mushroom = create_object(OBJ_VNUM_MUSHROOM)
     mushroom["food_hours"] = level // 2  # value[0] (magic.c:1425)
     mushroom["food_hunger"] = level      # value[1]
     mushroom["timer"] = 24  # [PRIMESUD] decay so leftovers don't accumulate
@@ -1382,7 +1390,7 @@ def spell_create_rose(sn, level, ch, vo, target):
 def spell_create_spring(sn, level, ch, vo, target):
     """Create a magical spring (cf. 1stMud spell_create_spring in magic.c).
     [Verified: 03/07/2026]"""
-    spring = create_object(I_SPRING)
+    spring = create_object(OBJ_VNUM_SPRING)
     spring["timer"] = level
     rs = world.rooms[ch["room"]]
     rs.setdefault("items", []).append(spring)
@@ -1643,7 +1651,7 @@ def spell_floating_disc(sn, level, ch, vo, target):
             floating, ITEM_DEFS[obj_vnum(floating)]).get("noremove"):
         act("You can't remove $p.", ch, floating, None, TO_CHAR)
         return False
-    disc = create_object(I_DISC_DISK_FLOATING_BLACK)
+    disc = create_object(OBJ_VNUM_DISC)
     # value[0] capacity / value[3] max weight collapse into one field [PRIMESUD]
     disc["container_max_weight"] = ch.get("level", 1) * 10
     disc["timer"] = ch.get("level", 1) * 2 - randint(0, level // 2)
@@ -2669,7 +2677,7 @@ def _consume_warp_stone(ch):
 
 def _make_portal(room_vnum, to_vnum, timer):
     """Drop a portal object into a room. [PRIMESUD helper]"""
-    inst = create_object(I_GATE_PORTAL)
+    inst = create_object(OBJ_VNUM_PORTAL)
     inst["timer"] = timer
     inst["to_vnum"] = to_vnum
     world.rooms[room_vnum]["items"].append(inst)

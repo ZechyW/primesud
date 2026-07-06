@@ -108,27 +108,27 @@ def _clean_world_state():
     # area loading (world._LOADED_AREAS is process-global and can be left
     # stale by other tests' fresh_world fixture use -- pre-seeding sidesteps
     # that entirely). [PRIMESUD test]
-    ITEM_DEFS._data[world.I_COIN_SILVER_GCASH] = {
+    ITEM_DEFS._data[world.OBJ_VNUM_SILVER_ONE] = {
         "keywords": "coin silver gcash", "short_descr": "A silver coin",
         "type": "money", "wear_flags": {"take": True}, "level": 0,
         "weight": 10, "value": 0,
     }
-    ITEM_DEFS._data[world.I_COIN_GOLD_GCASH] = {
+    ITEM_DEFS._data[world.OBJ_VNUM_GOLD_ONE] = {
         "keywords": "coin gold gcash", "short_descr": "A gold coin",
         "type": "money", "wear_flags": {"take": True}, "level": 0,
         "weight": 10, "value": 0,
     }
-    ITEM_DEFS._data[world.I_COINS_GOLD_GCASH] = {
+    ITEM_DEFS._data[world.OBJ_VNUM_GOLD_SOME] = {
         "keywords": "coins gold gcash", "short_descr": "%d gold coins",
         "type": "money", "wear_flags": {"take": True}, "level": 0,
         "weight": 10, "value": 0,
     }
-    ITEM_DEFS._data[world.I_COINS_SILVER_GCASH] = {
+    ITEM_DEFS._data[world.OBJ_VNUM_SILVER_SOME] = {
         "keywords": "coins silver gcash", "short_descr": "%d silver coins",
         "type": "money", "wear_flags": {"take": True}, "level": 0,
         "weight": 10, "value": 0,
     }
-    ITEM_DEFS._data[world.I_COINS_SILVER_GOLD_GCASH] = {
+    ITEM_DEFS._data[world.OBJ_VNUM_COINS] = {
         "keywords": "coins silver gold gcash",
         "short_descr": "%d silver coins and %d gold coins",
         "type": "money", "wear_flags": {"take": True}, "level": 0,
@@ -190,7 +190,7 @@ def test_get_money_exempt_from_item_count_limit(out, monkeypatch):
     # carry_number, so a maxed-out item count still allows coin pickup.
     monkeypatch.setattr(inventory, "can_carry_n", lambda ch: 0)
     player = _make_player()
-    coin = {"vnum": world.I_COIN_GOLD_GCASH, "gold": 3, "silver": 0}
+    coin = {"vnum": world.OBJ_VNUM_GOLD_ONE, "gold": 3, "silver": 0}
     world.rooms[ROOM_VNUM]["items"].append(coin)
     inventory.do_get(player, ["gold"])
     assert not any("you can't carry that many items" in l for l in out)
@@ -321,7 +321,7 @@ def test_drop_gold_creates_room_pile(out):
 def test_drop_gold_merges_with_existing_pile(out):
     player = _make_player(gold=100, silver=0)
     world.rooms[ROOM_VNUM]["items"].append(
-        {"vnum": world.I_COIN_GOLD_GCASH, "gold": 1, "silver": 0})
+        {"vnum": world.OBJ_VNUM_GOLD_ONE, "gold": 1, "silver": 0})
     inventory.do_drop(player, ["9", "gold"])
     assert player["gold"] == 91
     money_items = [o for o in world.rooms[ROOM_VNUM]["items"]

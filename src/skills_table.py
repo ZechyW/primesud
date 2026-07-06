@@ -2156,6 +2156,11 @@ SKILL_TABLE = _SKILL_TABLE_RAW
 SKILLS = dict(SKILL_TABLE)
 
 # Maps item weapon_type string -> GSN (cf. 1stMud weapon_table in const.c).
+# Mirrors weapon_table names exactly: the data/UI word for the spear class is
+# "staff" (skill NAME stays 'spear', sn 105, per skills.dat). There is no
+# 'spear' key on purpose -- 1stMud's loader (weapon_class in handler.c) only
+# matches weapon_table names and falls back to exotic (sn -1) for anything
+# else, which .get(wtype, -1) reproduces.
 WEAPON_GSN_MAP = {
     'sword'   : GSN_SWORD,
     'axe'     : GSN_AXE,
@@ -2163,6 +2168,6 @@ WEAPON_GSN_MAP = {
     'flail'   : GSN_FLAIL,
     'mace'    : GSN_MACE,
     'polearm' : GSN_POLEARM,
-    'spear'   : GSN_SPEAR,
+    'staff'   : GSN_SPEAR,  # cf. 1stMud weapon_table: staff -> WEAPON_SPEAR
     'whip'    : GSN_WHIP,
 }

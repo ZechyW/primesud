@@ -352,7 +352,7 @@ class PrimeSud:
                 game.tr.print("")
 
             # [PRIMESUD] Preload limbo: it holds the morgue where corpses spawn
-            # (I_CORPSE), so a first mob kill would otherwise trigger its lazy
+            # (OBJ_VNUM_CORPSE_NPC), so a first mob kill would otherwise trigger its lazy
             # load mid-combat, printing "Loading area" into the kill sequence.
             # Its chapel-pulling sarcophagus reset is dropped at convert time
             # (patch_1stmud_deltas.py), so this stays self-contained. Idempotent

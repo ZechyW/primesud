@@ -2,12 +2,12 @@
 
 import world
 from world import (
-    I_CORPSE, I_CORPSE_11,
-    I_COIN_SILVER_GCASH,
-    I_COIN_GOLD_GCASH,
-    I_COINS_SILVER_GCASH,
-    I_COINS_GOLD_GCASH,
-    I_COINS_SILVER_GOLD_GCASH,
+    OBJ_VNUM_CORPSE_NPC, OBJ_VNUM_CORPSE_PC,
+    OBJ_VNUM_SILVER_ONE,
+    OBJ_VNUM_GOLD_ONE,
+    OBJ_VNUM_SILVER_SOME,
+    OBJ_VNUM_GOLD_SOME,
+    OBJ_VNUM_COINS,
 )
 from colors import upper
 from config import (
@@ -2189,7 +2189,7 @@ def _advance_target(player, mob_instances, room_state):
 
 # OBJ_VNUM_* body-part templates (area_limbo.txt #12-17; cf. 1stMud
 # vnums.h). Not exposed as named constants in world.py (only the corpse
-# vnums I_CORPSE/I_CORPSE_11 are), so defined locally here.
+# vnums OBJ_VNUM_CORPSE_NPC/OBJ_VNUM_CORPSE_PC are), so defined locally here.
 _OBJ_VNUM_SEVERED_HEAD = 12
 _OBJ_VNUM_TORN_HEART   = 13
 _OBJ_VNUM_SLICED_ARM   = 14
@@ -2309,19 +2309,19 @@ def create_money(gold, silver):
     gold = max(0, gold)
     silver = max(0, silver)
     if gold == 0 and silver == 1:
-        obj = create_object(I_COIN_SILVER_GCASH)
+        obj = create_object(OBJ_VNUM_SILVER_ONE)
         obj["silver"] = 1
         obj["gold"] = 0
         obj["cost"] = 1
         return obj
     if gold == 1 and silver == 0:
-        obj = create_object(I_COIN_GOLD_GCASH)
+        obj = create_object(OBJ_VNUM_GOLD_ONE)
         obj["silver"] = 0
         obj["gold"] = 1
         obj["cost"] = 100
         return obj
     if silver == 0:
-        obj = create_object(I_COINS_GOLD_GCASH)
+        obj = create_object(OBJ_VNUM_GOLD_SOME)
         obj["short_descr"] = str(gold) + " gold coins"
         obj["silver"] = 0
         obj["gold"] = gold
@@ -2329,13 +2329,13 @@ def create_money(gold, silver):
         obj["cost"] = gold
         return obj
     if gold == 0:
-        obj = create_object(I_COINS_SILVER_GCASH)
+        obj = create_object(OBJ_VNUM_SILVER_SOME)
         obj["short_descr"] = str(silver) + " silver coins"
         obj["silver"] = silver
         obj["gold"] = 0
         obj["cost"] = silver
         return obj
-    obj = create_object(I_COINS_SILVER_GOLD_GCASH)
+    obj = create_object(OBJ_VNUM_COINS)
     obj["short_descr"] = str(silver) + " silver coins and " + str(gold) + " gold coins"
     obj["silver"] = silver
     obj["gold"] = gold
@@ -2366,7 +2366,7 @@ def make_corpse(ch):
         # 1stMud: name = ch->short_descr;
         name = MOB_DEFS[ch["tpl"]]["short_descr"]
         # 1stMud: corpse = create_object(get_obj_index(OBJ_VNUM_CORPSE_NPC), 0);
-        corpse = create_object(I_CORPSE)
+        corpse = create_object(OBJ_VNUM_CORPSE_NPC)
         # 1stMud: corpse->timer = number_range(3, 6);
         corpse["timer"] = randint(3, 6)
         corpse["contents"] = []
@@ -2406,7 +2406,7 @@ def make_corpse(ch):
         # 1stMud: name = ch->name;
         name = ch.get("name", "someone")
         # 1stMud: corpse = create_object(get_obj_index(OBJ_VNUM_CORPSE_PC), 0);
-        corpse = create_object(I_CORPSE_11)
+        corpse = create_object(OBJ_VNUM_CORPSE_PC)
         # 1stMud: corpse->timer = number_range(25, 40);
         corpse["timer"] = randint(25, 40)
         # 1stMud: corpse->owner = str_dup(ch->name);

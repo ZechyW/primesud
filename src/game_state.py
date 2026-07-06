@@ -468,10 +468,10 @@ def init_game_state(game):
 # Weapon pick order for new_game (cf. 1stMud const.c weapon_table -- the
 # array order send_weapon_info/HANDLE_CON_PICK_WEAPON iterate in). MicroPython
 # dict iteration order is not guaranteed, so this explicit tuple stands in for
-# looping over weapon_table directly. 1stMud's 5th entry displays as "staff"
-# but resolves to gsn_spear; WEAPON_GSN_MAP (skills_table.py) has no "staff"
-# key, so "spear" (the underlying skill name) is used here instead.
-_WEAPON_PICK_ORDER = ("sword", "mace", "dagger", "axe", "spear", "flail",
+# looping over weapon_table directly. The 5th entry is "staff" (weapon_table's
+# name for the WEAPON_SPEAR class); it resolves to gsn_spear via
+# WEAPON_GSN_MAP, while the skill itself is still named 'spear'.
+_WEAPON_PICK_ORDER = ("sword", "mace", "dagger", "axe", "staff", "flail",
                       "whip", "polearm")
 
 

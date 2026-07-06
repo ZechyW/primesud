@@ -14,7 +14,7 @@ import handler
 import magic
 import movement
 import world
-from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, I_GATE_PORTAL
+from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, OBJ_VNUM_PORTAL
 
 MOB_TPL = 9401
 STONE_VNUM = 9420
@@ -68,7 +68,7 @@ def _clean_world_state(monkeypatch):
         "hp_dice": (1, 1, 10), "hitroll": 0, "damage": (1, 4, 0),
         "armor": (0, 0, 0, 0),
     }
-    ITEM_DEFS._data[I_GATE_PORTAL] = {
+    ITEM_DEFS._data[OBJ_VNUM_PORTAL] = {
         "keywords": "gate portal", "short_descr": "A shimmering gate",
         "description": "A shimmering black gate rises from the ground.",
         "type": "portal", "wear_flags": {},
@@ -127,7 +127,7 @@ def test_spell_portal_creates_portal(out):
     items = world.rooms._data[9001]["items"]
     assert len(items) == 1
     portal = items[0]
-    assert portal["vnum"] == I_GATE_PORTAL
+    assert portal["vnum"] == OBJ_VNUM_PORTAL
     assert portal["to_vnum"] == 9002
     assert portal["timer"] == 2 + 30 // 25
 
@@ -169,7 +169,7 @@ def test_spell_nexus_creates_both_ends(out):
 # -- do_enter ---------------------------------------------------------------------
 
 def _room_portal(room=9001, to_vnum=9002, **fields):
-    portal = {"vnum": I_GATE_PORTAL, "to_vnum": to_vnum}
+    portal = {"vnum": OBJ_VNUM_PORTAL, "to_vnum": to_vnum}
     portal.update(fields)
     world.rooms._data[room]["items"].append(portal)
     return portal

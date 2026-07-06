@@ -6,11 +6,11 @@ from handler import (get_curr_stat, is_name, equip_char, unequip_char, act,
                      affect_strip, affect_join, chprintln, chprintlnf,
                      is_good, is_evil, is_neutral,
                      TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT)
-from world import (I_BANNER_WAR_MERC,
-                   I_MACE_SUB_MERC, I_DAGGER_SUB_MERC, I_SWORD_SUB_MERC,
-                   I_VEST_SUB_MERC, I_SHIELD_SUB_MERC,
-                   I_SPEAR_SUB_MERC, I_AXE_SUB_MERC, I_FLAIL_SUB_MERC,
-                   I_WHIP_SUB_MERC, I_GLAIVE_SUB_MERC)
+from world import (OBJ_VNUM_SCHOOL_BANNER,
+                   OBJ_VNUM_SCHOOL_MACE, OBJ_VNUM_SCHOOL_DAGGER, OBJ_VNUM_SCHOOL_SWORD,
+                   OBJ_VNUM_SCHOOL_VEST, OBJ_VNUM_SCHOOL_SHIELD,
+                   OBJ_VNUM_SCHOOL_STAFF, OBJ_VNUM_SCHOOL_AXE, OBJ_VNUM_SCHOOL_FLAIL,
+                   OBJ_VNUM_SCHOOL_WHIP, OBJ_VNUM_SCHOOL_POLEARM)
 from combat import _get_weapon_skill, is_safe, multi_hit, number_fuzzy, create_money
 from comm import do_yell
 from skill_utils import WaitState, check_improve, get_skill
@@ -1657,13 +1657,13 @@ def do_zap(player, args):
 # Weapon choices for do_outfit; order mirrors 1stMud weapon_table (const.c); sword is
 # default/tie-winner and handled separately as the seed value.
 _WEAPON_OUTFIT_CHOICES = [
-    ("mace",    I_MACE_SUB_MERC),
-    ("dagger",  I_DAGGER_SUB_MERC),
-    ("axe",     I_AXE_SUB_MERC),
-    ("spear",   I_SPEAR_SUB_MERC),  # const.c entry displays as "staff" but maps to gsn_spear
-    ("flail",   I_FLAIL_SUB_MERC),
-    ("whip",    I_WHIP_SUB_MERC),
-    ("polearm", I_GLAIVE_SUB_MERC),
+    ("mace",    OBJ_VNUM_SCHOOL_MACE),
+    ("dagger",  OBJ_VNUM_SCHOOL_DAGGER),
+    ("axe",     OBJ_VNUM_SCHOOL_AXE),
+    ("staff",   OBJ_VNUM_SCHOOL_STAFF),  # weapon_table: "staff" -> SCHOOL_STAFF 3718, gsn_spear
+    ("flail",   OBJ_VNUM_SCHOOL_FLAIL),
+    ("whip",    OBJ_VNUM_SCHOOL_WHIP),
+    ("polearm", OBJ_VNUM_SCHOOL_POLEARM),
 ]
 
 
@@ -1695,11 +1695,11 @@ def do_outfit(player, args):
         player["inv"].append(obj)  # obj_to_char equivalent
         equip_char(player, obj, slot)
 
-    _equip("light", I_BANNER_WAR_MERC)
-    _equip("body",  I_VEST_SUB_MERC)
+    _equip("light", OBJ_VNUM_SCHOOL_BANNER)
+    _equip("body",  OBJ_VNUM_SCHOOL_VEST)
 
     if player["equip"].get("wield") is None:
-        wield_vnum = I_SWORD_SUB_MERC
+        wield_vnum = OBJ_VNUM_SCHOOL_SWORD
         best_pct = player["learned"].get(WEAPON_GSN_MAP.get("sword", -1), 0)
         for wtype, vnum in _WEAPON_OUTFIT_CHOICES:
             pct = player["learned"].get(WEAPON_GSN_MAP.get(wtype, -1), 0)
@@ -1710,7 +1710,7 @@ def do_outfit(player, args):
 
     wobj = player["equip"].get("wield")
     if not (wobj and ITEM_DEFS[wobj["vnum"]].get("weapon_flags", {}).get("two_hands")):
-        _equip("shield", I_SHIELD_SUB_MERC)
+        _equip("shield", OBJ_VNUM_SCHOOL_SHIELD)
 
     chprintln(player, "You have been equipped by the gods.")
 
