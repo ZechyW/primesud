@@ -376,37 +376,260 @@ def _debug_slay(player, args):
     do_slay(player, args)
 
 
+def _find_char_world(player, name):
+    """Find player or loaded mob by name/vnum (cf. 1stMud get_char_world). [PRIMESUD]"""
+    import world
+    from handler import is_name
+
+    if name in ("self", "me") or name == player.get("name", "").lower():
+        return player
+    if name.isdigit():
+        mid = int(name)
+        return world.chars.get(mid)
+    for mid in sorted(world.chars):
+        inst = world.chars[mid]
+        if not inst.get("is_npc"):
+            if name == inst.get("name", "").lower():
+                return inst
+            continue
+        tpl = world.MOB_DEFS[inst["tpl"]]
+        if is_name(name, tpl.get("keywords", "")):
+            return inst
+    return None
+
+
+def _debug_advance(player, args):
+    """Raise/lower the player to a level (cf. 1stMud do_advance in act_wiz.c). [PRIMESUD]"""
+    from combat import advance_level
+    from config import MAX_LEVEL
+    from classes import exp_per_level
+    from game_state import save_world
+
+    if len(args) < 2 or not _is_int(args[1]):
+        terminal.tr.print("Syntax: advance <char> <level>")
+        return
+    victim = _find_char_world(player, args[0])
+    if victim is None:
+        terminal.tr.print("That player is not here.")
+        return
+    if victim.get("is_npc"):
+        terminal.tr.print("Not on NPC's.")
+        return
+    level = int(args[1])
+    if level < 1 or level > MAX_LEVEL:
+        terminal.tr.print("Level must be 1 to " + str(MAX_LEVEL) + ".")
+        return
+
+    if level <= victim["level"]:
+        temp_prac = victim["practice"]
+        terminal.tr.print("Lowering a player's level!")
+        terminal.tr.print("**** OOOOHHHHHHHHHH  NNNNOOOO ****")
+        victim["level"] = 1
+        victim["xp"] = 0
+        victim["max_hit"] = victim["perm_hit"] = 10
+        victim["max_mana"] = victim["perm_mana"] = 100
+        victim["max_move"] = victim["perm_move"] = 100
+        victim["practice"] = 0
+        victim["hit"] = victim["max_hit"]
+        victim["mana"] = victim["max_mana"]
+        victim["move"] = victim["max_move"]
+        advance_level(victim)
+        victim["practice"] = temp_prac
+    else:
+        terminal.tr.print("Raising a player's level!")
+        terminal.tr.print("**** OOOOHHHHHHHHHH  YYYYEEEESSS ****")
+
+    while victim["level"] < level:
+        victim["level"] += 1
+        advance_level(victim)
+    victim["xp"] = 0
+    victim["xp_next"] = exp_per_level(victim)
+    terminal.tr.print("You are now level " + str(victim["level"]) + ".")
+    save_world(quiet=True)
+
+
+# 1stMud field name -> PrimeSUD dict key (cf. char_data_table/pcdata_data_table/
+# obj_data_table in data_table.c; prefix-matched like set_struct, no aliases).
+_SET_CHAR_KEYS = {
+    "name": "name",
+    "level": "level",
+    "hit": "hit",
+    "max_hit": "max_hit",
+    "mana": "mana",
+    "max_mana": "max_mana",
+    "move": "move",
+    "max_move": "max_move",
+    "gold": "gold",
+    "silver": "silver",
+    "practice": "practice",
+    "train": "train",
+    "alignment": "alignment",
+    "wimpy": "wimpy",
+    "exp": "xp",
+    "xp_next": "xp_next",  # [PRIMESUD] per-level xp model threshold
+}
+
+_SET_PC_KEYS = {
+    "played": "played",
+    "trivia": "trivia",
+    "quest.points": "quest_points",
+    "quest.time": "quest_time",
+}
+
+_SET_OBJ_KEYS = {
+    "owner": "owner",
+    "name": "keywords",  # 1stMud obj->name = keyword string
+    "short_descr": "short_descr",
+    "description": "description",
+    "weight": "weight",
+    "cost": "cost",
+    "level": "level",
+    "condition": "condition",
+    "timer": "timer",
+    "material": "material",
+}
+
+
+def _set_keys(keys):
+    out = []
+    for k in sorted(keys):
+        out.append(k)
+    terminal.tr.print(" ".join(out))
+
+
+def _is_int(s):
+    """True if s is a valid int literal (at most one leading '-'). [PRIMESUD]"""
+    if s.startswith("-"):
+        s = s[1:]
+    return s.isdigit()
+
+
+def _set_value(target, key, value):
+    # Existing field type wins: digits into a str field stay a string
+    # (e.g. "set char self name 123" must not make name an int).
+    cur = target.get(key)
+    if isinstance(cur, str):
+        target[key] = value
+    elif isinstance(cur, int):
+        if not _is_int(value):
+            terminal.tr.print("Value must be numeric.")
+            return False
+        target[key] = int(value)
+    elif _is_int(value):  # absent field: guess type from the value
+        target[key] = int(value)
+    else:
+        target[key] = value
+    return True
+
+
+def _debug_set_struct(table_name, target, keys, args):
+    if len(args) < 2:
+        _set_keys(keys)
+        terminal.tr.print("Syntax: set " + table_name + " <name> <option> <value>")
+        return
+    field = args[0]
+    value = " ".join(args[1:])
+    key = None
+    for candidate in sorted(keys):
+        if candidate.startswith(field):
+            key = keys[candidate]
+            break
+    if key is None:
+        _set_keys(keys)
+        return
+    if _set_value(target, key, value):
+        terminal.tr.print("Ok.")
+
+
+def _set_help():
+    """Print do_set syntax lines (cf. 1stMud do_set_help in act_wiz.c). [PRIMESUD]"""
+    terminal.tr.print("Syntax: set char <name> <option> <value>")
+    terminal.tr.print("Syntax: set player <name> <option> <value>")
+    terminal.tr.print("Syntax: set object <name> <option> <value>")
+
+
+def _debug_set(player, args):
+    """Set live character/player/object fields (cf. 1stMud do_set in act_wiz.c). [PRIMESUD]"""
+    if not args:
+        _set_help()
+        return
+    what = args[0]
+    if "character".startswith(what) or "mobile".startswith(what):
+        if len(args) < 2:
+            _set_keys(_SET_CHAR_KEYS)
+            terminal.tr.print("Syntax: set char <name> <option> <value>")
+            return
+        victim = _find_char_world(player, args[1])
+        if victim is None:
+            terminal.tr.print("There is no such character.")
+            return
+        _debug_set_struct("char", victim, _SET_CHAR_KEYS, args[2:])
+        return
+    if "player".startswith(what):
+        if len(args) < 2:
+            _set_keys(_SET_PC_KEYS)
+            terminal.tr.print("Syntax: set player <name> <option> <value>")
+            return
+        victim = _find_char_world(player, args[1])
+        if victim is None or victim.get("is_npc"):
+            terminal.tr.print("There is no such player.")
+            return
+        _debug_set_struct("player", victim, _SET_PC_KEYS, args[2:])
+        return
+    if "object".startswith(what):
+        if len(args) < 2:
+            _set_keys(_SET_OBJ_KEYS)
+            terminal.tr.print("Syntax: set object <name> <option> <value>")
+            return
+        from item import get_obj_here, promote_obj
+        obj = get_obj_here(player, args[1])
+        if obj is None:
+            terminal.tr.print("There is no such object.")
+            return
+        obj = promote_obj(player, obj)
+        _debug_set_struct("object", obj, _SET_OBJ_KEYS, args[2:])
+        return
+    _set_help()
+
+
 _SUBCMDS = (
-    ("stat",    _debug_stat),
-    ("slay",    _debug_slay),
-    ("goto",    _debug_goto),
-    ("load",    _debug_load),
-    ("purge",   _debug_purge),
-    ("restore", _debug_restore),
-    ("peace",   _debug_peace),
-    ("mwhere",  _debug_mwhere),
-    ("owhere",  _debug_owhere),
-    ("memory",  _debug_memory),
+    ("stat",    _debug_stat,    "dump player/mob/obj/room/area dict"),
+    ("slay",    _debug_slay,    "instant-kill a mob in the room"),
+    ("advance", _debug_advance, "raise/lower player to a level"),
+    ("set",     _debug_set,     "edit char/player/object fields"),
+    ("goto",    _debug_goto,    "teleport to room vnum or named mob"),
+    ("load",    _debug_load,    "spawn mob or object by vnum"),
+    ("purge",   _debug_purge,   "remove NPCs and objects in room"),
+    ("restore", _debug_restore, "heal and strip maladies room-wide"),
+    ("peace",   _debug_peace,   "stop all fighting in the room"),
+    ("mwhere",  _debug_mwhere,  "list spawned mobs matching name"),
+    ("owhere",  _debug_owhere,  "locate objects by name"),
+    ("memory",  _debug_memory,  "show heap usage and world counts"),
 )
 
 
 def do_debug(player, args):
     """Toggle debug channels or run imm-style debug subcommands. [PRIMESUD]"""
     if not args:
-        terminal.tr.print("Debug channels:")
+        # [PRIMESUD] help listing styled after do_commands (channels + subcommands)
+        from pager import tpage
+        lines = ["Debug channels (debug <name> toggles, debug all):"]
         for name in _CHANNELS:
             state = "{Gon{x" if name in DBG else "{Doff{x"
-            terminal.tr.print("  " + name + ": " + state)
-        terminal.tr.print("Also: debug " + " | ".join(s[0] for s in _SUBCMDS))
+            lines.append("  " + name + ": " + state)
+        lines.append("Subcommands:")
+        for sub in _SUBCMDS:
+            lines.append("{G%-8s{x %s" % (sub[0], sub[2]))
+        tpage(lines)
         return
     name = args[0]
     # Exact channel name always wins (e.g. "move" vs mwhere/memory prefix)
     if name in _CHANNELS:
         pass  # fall through to channel toggle below
     else:
-        for sub, fn in _SUBCMDS:
-            if sub.startswith(name):
-                fn(player, args[1:])
+        for sub in _SUBCMDS:
+            if sub[0].startswith(name):
+                sub[1](player, args[1:])
                 return
     if "all".startswith(name):
         if DBG.issuperset(_CHANNELS):

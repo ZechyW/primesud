@@ -294,3 +294,124 @@ def test_debug_slay(scene, out, monkeypatch):
     _run(scene["player"], "slay guard")
     assert 2 not in world.chars
     assert 2 not in scene["r1"]["mobs"]
+
+
+# -- advance / set ----------------------------------------------------------
+
+def test_advance_player_to_level(scene, out, monkeypatch):
+    import game_state
+    import handler
+    monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
+    monkeypatch.setattr(handler, "tprint", lambda s="", end="\n": out.append(s))
+    p = scene["player"]
+    p["level"] = 1
+    p["xp"] = 0
+    p["perm_hit"] = p["max_hit"]
+    p["perm_mana"] = p["max_mana"]
+    p["perm_move"] = p["max_move"]
+    p["practice"] = 0
+    p["train"] = 0
+    p["learned"] = {}
+    _run(p, "advance self 3")
+    assert p["level"] == 3
+    assert p["xp"] == 0
+    assert any("Raising a player's level!" in l for l in out)
+    assert "You are now level 3." in out
+
+
+def test_advance_demotes_and_rebuilds(scene, out, monkeypatch):
+    import game_state
+    import handler
+    monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
+    monkeypatch.setattr(handler, "tprint", lambda s="", end="\n": out.append(s))
+    p = scene["player"]
+    p["level"] = 1
+    p["xp"] = 0
+    p["perm_hit"] = p["max_hit"]
+    p["perm_mana"] = p["max_mana"]
+    p["perm_move"] = p["max_move"]
+    p["practice"] = 0
+    p["train"] = 0
+    p["learned"] = {}
+    _run(p, "advance self 5")
+    prac = p["practice"]
+    _run(p, "advance self 2")
+    assert p["level"] == 2
+    # 1stMud temp_prac: practices survive the demote (not reset with stats),
+    # then the raise loop grants more on top
+    assert p["practice"] >= prac
+    assert any("Lowering a player's level!" in l for l in out)
+    assert "You are now level 2." in out
+
+
+def test_advance_rejects_npc(scene, out):
+    _run(scene["player"], "advance guard 20")
+    assert "Not on NPC's." in out
+
+
+def test_set_char_resources_for_remort(scene, out):
+    p = scene["player"]
+    _run(p, "set char self level 49")
+    _run(p, "set char self gold 500000")
+    _run(p, "set player self quest.points 500")
+    assert p["level"] == 49
+    assert p["gold"] == 500000
+    assert p["quest_points"] == 500
+    assert out.count("Ok.") == 3
+
+
+def test_set_mobile_field(scene, out):
+    _run(scene["player"], "set mobile guard level 20")
+    assert scene["guard"]["level"] == 20
+    assert "Ok." in out
+
+
+def test_set_object_field(scene, out):
+    scene["player"]["inv"].append({"vnum": 8001, "cost": 0})
+    _run(scene["player"], "set object sword cost 123")
+    assert scene["player"]["inv"][0]["cost"] == 123
+    assert "Ok." in out
+
+
+def test_bare_debug_lists_subcommands(scene, out, monkeypatch):
+    import pager
+    pages = []
+    monkeypatch.setattr(pager, "tpage", lambda lines: pages.extend(lines))
+    _run(scene["player"], "")
+    joined = "\n".join(pages)
+    for sub in debug._SUBCMDS:
+        assert sub[0] in joined
+    assert "spawn" in joined  # channels listed too
+
+
+def test_set_str_field_keeps_digits_as_string(scene, out):
+    _run(scene["player"], "set char self name 123")
+    assert scene["player"]["name"] == "123"
+
+
+def test_set_rejects_malformed_int(scene, out):
+    p = scene["player"]
+    lvl = p["level"]
+    _run(p, "set char self level --3")
+    assert p["level"] == lvl
+    assert "Value must be numeric." in out
+    _run(p, "advance self --3")
+    assert "Syntax: advance <char> <level>" in out
+
+
+def test_set_prefix_matches_sorted_keys(scene, out):
+    p = scene["player"]
+    p["mana"] = p["max_hit"] = 1
+    _run(p, "set char self man 42")  # "man" -> mana, not max_*
+    assert p["mana"] == 42
+    assert p["max_hit"] == 1
+
+
+def test_set_bare_vnum_object_promotes_to_instance(scene, out):
+    from world import ITEM_DEFS
+    tpl_cost = ITEM_DEFS[8001].get("value", 0)
+    scene["player"]["inv"].append(8001)
+    _run(scene["player"], "set object sword cost 55")
+    inst = scene["player"]["inv"][0]
+    assert isinstance(inst, dict) and inst["cost"] == 55
+    assert ITEM_DEFS[8001].get("value", 0) == tpl_cost  # template untouched
