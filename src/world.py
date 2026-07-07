@@ -84,6 +84,60 @@ AREA_LEVELS = {
     "newthalos":  (10, 35),
 }
 
+# -- BEGIN GENERATED: tools/gen_area_adj.py (do not hand-edit) --
+# AREA_BUILDERS: {tag: builder name}, extracted from each area's credits
+# line (cf. info._extract_builder). AREA_ADJ: {tag: sorted tuple of
+# neighbor tags reachable via a room exit}, computed from ROOMS exits.
+# Lets do_areas/do_run consult builder/adjacency data without loading
+# area files at runtime. Regenerate with: python tools/gen_area_adj.py
+# [PRIMESUD]
+AREA_BUILDERS = {
+    "ofcol":      "Alfa",
+    "limbo":      "Diku",
+    "quest":      "1stMud",
+    "trollden":   "Merc",
+    "mobfact":    "PinkF",
+    "immort":     "ROM",
+    "grave":      "Alfa",
+    "marsh":      "Generic",
+    "arachnos":   "Mahatma",
+    "plains":     "Copper",
+    "chapel":     "Copper",
+    "mud_school": "Hatchet",
+    "shire":      "Poohb",
+    "haon":       "Diku",
+    "moria":      "Alfa",
+    "ofcol2":     "Hatchet",
+    "sewer":      "Diku",
+    "tohell":     "Strahd",
+    "midgaard":   "Diku",
+    "newthalos":  "Conner",
+}
+
+_AREA_ADJ = {
+    "ofcol":      ("ofcol2", "plains"),
+    "limbo":      ("midgaard",),
+    "quest":      ("midgaard",),
+    "trollden":   ("haon",),
+    "mobfact":    ("midgaard",),
+    "immort":     ("limbo", "midgaard"),
+    "grave":      ("chapel", "midgaard"),
+    "marsh":      ("haon",),
+    "arachnos":   ("haon",),
+    "plains":     ("moria", "ofcol"),
+    "chapel":     ("grave", "tohell"),
+    "mud_school": ("midgaard",),
+    "shire":      ("haon", "midgaard"),
+    "haon":       ("arachnos", "marsh", "midgaard", "newthalos", "shire", "trollden"),
+    "moria":      ("midgaard", "plains", "sewer"),
+    "ofcol2":     ("ofcol",),
+    "sewer":      ("midgaard",),
+    "tohell":     ("chapel",),
+    "midgaard":   ("grave", "haon", "immort", "limbo", "mobfact", "moria", "mud_school", "newthalos", "quest", "sewer"),
+    "newthalos":  ("haon", "midgaard"),
+}
+# -- END GENERATED --
+
 # -- Lazy loading state -------------------------------------------------------
 _LOADED_AREAS = set()
 _TAG_TO_FILE = {}

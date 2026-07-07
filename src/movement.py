@@ -11,7 +11,7 @@ from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
                     MOVEMENT_LOSS, POS_ORDER,
                     SECT_AIR, SECT_WATER_NOSWIM,
                     R_RECALL, PULSE_PER_SECOND)
-from info import do_look, find_area_paths
+from info import do_look, find_path_to_area
 from picker import pick_from
 from quest import quest_room_check
 from skills_table import (GSN_RECALL, GSN_PICK_LOCK, GSN_SNEAK, GSN_HIDE,
@@ -1423,8 +1423,12 @@ def do_run(player, args):
     (cf. 1stMud do_run in act_move.c).
 
     With args: parse speedwalk string (e.g. '3s2en', 'son2e').
-    Without args: [PRIMESUD] present picker of reachable areas from BFS
-    pathfinding, then store selected path.
+    Without args: [PRIMESUD] present picker of all other areas (static
+    tables only, no area loads to build the list), then lazily pathfind
+    to just the chosen one via info.find_path_to_area -- zero-load
+    area-graph BFS, then load only the areas on that chain, then a
+    restricted room-level BFS; falls back to loading every area only if
+    that restricted search can't complete the chain at room granularity.
 
     Steps are consumed one-per-pulse by run_buf_step() in game_loop
     (cf. 1stMud read_from_buffer consuming run_buf in comm.c).
@@ -1447,30 +1451,26 @@ def do_run(player, args):
         return
 
     if not args:
-        # [PRIMESUD] No-args picker: show reachable areas
+        # [PRIMESUD] No-args picker: list all other areas from the static
+        # tables (zero area loads), then pathfind lazily to just the one
+        # picked -- computing directions for every area up front is
+        # exactly the load-everything cost this is meant to avoid.
         # (1stMud prints "You run in place!" on no args)
-        tprint("{YLoading all area paths...{x")
-        paths = find_area_paths(player)
         source_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
-        sorted_areas = sorted(world.AREA_DEFS,
-                              key=lambda a: a.get("name", "").lower())
-        candidates = []
-        for area in sorted_areas:
-            tag = area["tag"]
-            if tag == source_area:
-                continue
-            path = paths.get(tag)
-            if not path:
-                continue
-            candidates.append((area.get("name", tag), path))
+        sorted_areas = sorted(world._AREA_FILES, key=lambda a: a[2].lower())
+        candidates = [(name, tag) for _fname, tag, name, _vlo, _vhi in sorted_areas
+                     if tag != source_area]
         if not candidates:
             chprintln(player, "No accessible areas from here.")
             return
-        labels = [str(c[0]) + " {D(" + c[1] + "){x" for c in candidates]
+        labels = [name for name, _tag in candidates]
         idx = pick_from("Run to which area?", labels)
         if idx < 0:
             return
-        buf = candidates[idx][1]
+        buf = find_path_to_area(player, candidates[idx][1])
+        if not buf:
+            chprintln(player, "You cannot get there from here.")
+            return
     else:
         buf = "".join(args)
 

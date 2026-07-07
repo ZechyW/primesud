@@ -1354,6 +1354,138 @@ def find_area_paths(ch):
     return found
 
 
+def _area_chain(source, target, adj):
+    """BFS the static area-adjacency graph for a chain of area tags. [PRIMESUD]
+
+    Pure helper for find_path_to_area's zero-load Stage 1: no ROOM_DEFS
+    access, so it never triggers an area load. Iterates each area's
+    neighbor tuple in the order given by `adj` for deterministic output.
+
+    Args:
+        source (str): Starting area tag.
+        target (str): Destination area tag.
+        adj (dict): {area_tag: tuple_of_neighbor_tags}, e.g. world._AREA_ADJ.
+
+    Returns:
+        list or None: Area tags from source to target inclusive (length 1
+            if source == target), or None if target is unreachable from
+            source via the adjacency graph.
+    """
+    if source == target:
+        return [source]
+    dist = {source: 0}
+    parent = {}
+    queue = [source]
+    qi = 0
+    while qi < len(queue):
+        cur = queue[qi]
+        qi += 1
+        for nb in adj.get(cur, ()):
+            if nb in dist:
+                continue
+            dist[nb] = dist[cur] + 1
+            parent[nb] = cur
+            queue.append(nb)
+    if target not in dist:
+        return None
+    chain = [target]
+    v = target
+    while v != source:
+        v = parent[v]
+        chain.append(v)
+    chain.reverse()
+    return chain
+
+
+def find_path_to_area(ch, target_tag):
+    """Lazy speedwalk pathfinder to a target area. [PRIMESUD]
+
+    Staged to minimize (ideally avoid) area loads, unlike find_area_paths
+    which always loads every area:
+
+    1. Zero-load BFS over the static area-adjacency graph
+       (world._AREA_ADJ, via _area_chain) from the player's current area
+       to target_tag. No chain -- e.g. the graph has no path, since it
+       only records edges into already-converted areas -- returns None
+       immediately without loading anything.
+    2. Load just the areas in that chain (world._ensure_area_by_tag;
+       each prints its own "[Loading area: X]" notice).
+    3. Restricted room-level BFS from the player's room, walking exits
+       exactly like find_area_paths but filtering each destination vnum
+       through world._vnum_to_tag (a static-range lookup, never a load)
+       *before* touching ROOM_DEFS for it. Destinations outside the
+       chain are skipped without ever probing ROOM_DEFS[to_vnum] --
+       touching it would trigger that area's load via the LazyDict trap.
+       Stops at the first room whose area is target_tag.
+    4. Fallback: if the area graph has a chain but the restricted BFS
+       can't complete it at room granularity (e.g. a one-way exit means
+       the reverse edge doesn't actually exist as a walkable exit),
+       print the loading notice and fall back to find_area_paths, which
+       loads every area but is guaranteed to find any reachable target.
+
+    Args:
+        ch (dict): Player state dict.
+        target_tag (str): Area tag to path to.
+
+    Returns:
+        str or None: Compressed speedwalk string (e.g. "3s2en"), or None
+            if unreachable. Also None if ch is already in target_tag --
+            callers exclude the current area from candidate lists anyway.
+    """
+    source_room = ch.get("room")
+    if source_room is None:
+        return None
+    # ch["room"] is always loaded (the player is standing there), so this
+    # is a safe, zero-load ROOM_DEFS access.
+    source_tag = ROOM_DEFS[source_room].get("area")
+    if source_tag is None or source_tag == target_tag:
+        return None
+
+    chain = _area_chain(source_tag, target_tag, world._AREA_ADJ)
+    if chain is None:
+        return None
+
+    for tag in chain:
+        world._ensure_area_by_tag(tag)
+    chain_set = set(chain)
+
+    dist = {source_room: 0}
+    parent = {}
+    queue = [source_room]
+    qi = 0
+    while qi < len(queue):
+        cur = queue[qi]
+        qi += 1
+        room = ROOM_DEFS.get(cur)
+        if room is None:
+            continue
+        for d in EXIT_ORDER:
+            ev = room.get("exits", {}).get(d)
+            if ev is None:
+                continue
+            to_vnum = ev.get("to") if isinstance(ev, dict) else ev
+            if to_vnum is None or to_vnum in dist:
+                continue
+            # Check ownership via the zero-load static range lookup
+            # BEFORE touching ROOM_DEFS[to_vnum] -- accessing it for a
+            # vnum outside the chain would load that area (LazyDict trap).
+            to_tag = world._vnum_to_tag(to_vnum)
+            if to_tag not in chain_set:
+                continue
+            dist[to_vnum] = dist[cur] + 1
+            parent[to_vnum] = (cur, d)
+            if to_tag == target_tag:
+                return _compress_path(parent, source_room, to_vnum)
+            queue.append(to_vnum)
+
+    # Stage 4 fallback: the area graph says target_tag is reachable via
+    # this chain, but the restricted room-level search never connected
+    # (e.g. a one-way exit makes the graph edge non-walkable in this
+    # direction at room granularity). Fall back to the exhaustive search.
+    chprintln(ch, "{YLoading all area paths...{x")
+    return find_area_paths(ch).get(target_tag)
+
+
 def _center_fill(text, width=0):
     """Center text with oO fill pattern (cf. 1stMud `do_areas` in db.c: center-fill with oO)."""
     if width <= 0:
@@ -1370,10 +1502,27 @@ def _center_fill(text, width=0):
 
 
 def do_areas(player, args):
-    """List areas with level ranges, authors, and directions (cf. 1stMud do_areas in db.c).
+    """List areas with level ranges and builders (cf. 1stMud do_areas in db.c).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026] -- clan restriction marker ("{G*") and its legend
-    line not ported (no clans).
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026; directions column dropped for lazy-load 08/07/2026
+    [PRIMESUD]] -- clan restriction marker ("{G*") and its legend line
+    not ported (no clans).
+
+    [PRIMESUD] 1stMud's stock layout appends a per-area path_to_area()
+    directions column; the codebase's own MudFlag(DISABLE_AREA_DIRECTIONS)
+    config switch drops it for an alternate layout ("%s{W[{B%-7s{W] {r%s
+    {C%s{x", no trailing "(dirs)" parenthetical) -- see 1stMud db.c
+    do_areas(). PrimeSUD always renders that alternate layout: computing
+    directions for every area (even lazily, one BFS per area or one
+    combined BFS) means touching enough of the room graph that most
+    areas end up loaded anyway, defeating the point of lazy loading.
+    Renders purely from the static tables (world._AREA_FILES,
+    world.AREA_LEVELS, world.AREA_BUILDERS) so listing areas never
+    triggers an area load itself. The leading marker column (1stMud:
+    clan-restriction "*") is repurposed [PRIMESUD] to flag the player's
+    current area instead, since there is no directions column left to
+    say "You are here."
     """
     lo_lv = 0
     hi_lv = 0
@@ -1392,37 +1541,30 @@ def do_areas(player, args):
 
     chprintln(player, "")
     chprintln(player, "{W" + _center_fill("[ {RAREAS ON PRIMESUD{W ]") + "{x")
-    chprintln(player, "{YLoading all area paths...{x")
 
-    paths = find_area_paths(player)
+    # Current room is always loaded, so this is a zero-load lookup.
     source_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
 
-    sorted_areas = sorted(world.AREA_DEFS, key=lambda a: a.get("name", "").lower())
+    sorted_areas = sorted(world._AREA_FILES, key=lambda a: a[2].lower())
 
     count = 0
-    for area in sorted_areas:
-        levels = area.get("levels", (1, MAX_LEVEL))
+    for _fname, tag, name, _vlo, _vhi in sorted_areas:
+        levels = world.AREA_LEVELS.get(tag, (1, MAX_LEVEL))
         lo = max(1, min(levels[0], MAX_LEVEL))
         hi = max(1, min(levels[1], MAX_LEVEL))
         if lo >= lo_lv and hi <= hi_lv:
             lvl_str = _print_area_levels((lo, hi))
-            builder = _extract_builder(area.get("credits", ""))
-            name = area.get("name", area["tag"])
-            tag = area["tag"]
-            if tag == source_area:
-                dirs = "You are here."
-            else:
-                # [PRIMESUD] 1stMud typo "Not accessable." fixed
-                dirs = paths.get(tag, "Not accessible.")
-            chprintln(player, " {W[{B%-7s{W] {r%-7s {C%-23s {W({M%s{W){x"
-                   % (lvl_str, builder, name, dirs))
+            builder = world.AREA_BUILDERS.get(tag, "")
+            # [PRIMESUD] "here" marker, see docstring.
+            here = "{G>{x" if tag == source_area else " "
+            chprintln(player, "%s{W[{B%-7s{W] {r%-7s {C%s{x"
+                   % (here, lvl_str, builder, name))
             count += 1
 
     if count == 0:
         chprintln(player, "{W" + _center_fill("[ {RNo areas meeting those criteria.{W ]") + "{x")
     else:
         chprintln(player, "{W" + _center_fill("[ {R" + str(count) + " areas found{W ]") + "{x")
-        chprintln(player, "All directions are from your current position.")
 
 
 def do_read(player, args):
