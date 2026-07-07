@@ -9,7 +9,7 @@ Runs in terminal-style text UI on calculator's 320x240 screen via custom text la
 ## Tech stack
 
 - **Language:** Python -- HP Prime's restricted MicroPython-like subset, not standard CPython
-- **Available modules:** `hpprime`, `uio`, `cas`, `math`, `utime`, `urandom`, `gc` -- ask user if unsure about others
+- **Available modules:** `hpprime`, `uio`, `cas`, `math`, `urandom`, `gc` -- ask user if unsure about others. `utime` is NOT importable on-device (confirmed 2026-07-07); use PPL `Ticks`/`WAIT` via `hpprime.eval`
 - **No package manager.** No pip, no pypi dependencies
 
 ## Architecture

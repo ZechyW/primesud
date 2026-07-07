@@ -138,6 +138,8 @@ class tml_prime(tml):
         self._key_queue_tail    = 0
         self._key_queue_count   = 0
         self._key_queue_drops   = 0  # debug counter; full queue drops newest event
+        self._drain_polls       = 0  # pending GETKEY drains (see _pump_keyboard)
+        self._last_pump_ticks   = 0  # Ticks at last pump; long gap = computation ran
         if scrollback_size > 0:
             dimgrob(hist_grob, self.width, scrollback_size * self.char_height, self.back_color)
             dimgrob(save_grob, self.width, self.height, self.back_color)
@@ -249,6 +251,19 @@ class tml_prime(tml):
         self._key_queue_count -= 1
         return event
 
+    def _touch_point(self):
+        """Current touch (x, y), or None when lifted. [PRIMESUD]
+
+        Filters the firmware latch artifact: a GETKEY call landing on a
+        touch-release leaves mouse() reporting (2147483647, 0) as a
+        "down" pointer for over a second (probed 2026-07-07,
+        debug/touch_probe.py; see docs/BUILTINS.md Touch input).
+        """
+        pt = mouse()[0]
+        if pt and 0 <= pt[0] < 1000:
+            return pt
+        return None
+
     def _clear_key_queue(self):
         """Discard queued key events after keyboard resync. [PRIMESUD]"""
         for i in range(_KEY_QUEUE_SIZE):
@@ -333,16 +348,41 @@ class tml_prime(tml):
     # edges with cas.get_key(), which lags a poll behind the bitmask and
     # can swallow a keystroke; PrimeSUD never routes through it (see
     # read_key above) -- watch for that race if it is ever reinstated.
+    #
+    # GETKEY cannot simply run every pump: a GETKEY landing on a
+    # touch-release latches mouse() into a garbage (2147483647, 0) "down"
+    # state for >1s, during which real touches go unseen (probed
+    # 2026-07-07, debug/touch_probe.py). So the drain is gated:
+    #   - bitmask activity (any key down, or an edge) drains now and for
+    #     the next few pumps -- FIFO population lags the bitmask by a
+    #     firmware poll, so a single edge-poll drain can race and miss;
+    #   - a long gap since the previous pump means a computation just ran
+    #     and may have buried a press+release in the FIFO with no visible
+    #     edge; drain once, unless a touch is live (the latch above).
+    # At the regular ~10ms poll cadence a press+release can never hide
+    # between two pumps, so the bitmask gate loses nothing there. A key
+    # pressed mid-touch still drains (bitmask gate) and can latch -- rare
+    # and self-recovering; accepted.
     def _pump_keyboard(self, key_commands=None):
         """Drain firmware key queue into the local queue; sync modifier holds. [PRIMESUD]"""
         cur = keyboard()
+        now = int(ppleval("Ticks"))
+        if cur or cur != self.last_keyboard_state:
+            self._drain_polls = 3
+        elif self._drain_polls == 0 and now - self._last_pump_ticks > 50:
+            if self._touch_point() is None:
+                self._drain_polls = 1
         self.last_keyboard_state = cur
+        self._last_pump_ticks = now
         shift_held = bool(cur & (1 << 41))
         alpha_held = bool(cur & (1 << 36))
         if shift_held != self.shift_hold or alpha_held != self.alpha_hold:
             self.shift_hold = shift_held
             self.alpha_hold = alpha_held
             self._refresh_indicators()
+        if self._drain_polls == 0:
+            return
+        self._drain_polls -= 1
         while True:
             code = int(ppleval("GETKEY"))
             if code < 0:
@@ -353,8 +393,8 @@ class tml_prime(tml):
         """Non-blocking: queue new key presses, return next queued event or None."""
         # -- touch entry into scrollback (game-loop path) --
         if self._hist_size > 0 and self._hist_count > 0 and not self._in_scrollback:
-            pt = mouse()[0]
-            if pt and pt[0] >= 0:
+            pt = self._touch_point()
+            if pt is not None:
                 if self._touch_release_seen:
                     # Finger is currently down
                     if self._touch_start_y is None:
@@ -391,9 +431,15 @@ class tml_prime(tml):
         self.last_keyboard_state = keyboard()
         # [PRIMESUD] flush the firmware key queue (4-deep) alongside the
         # local one; bounded in case a firmware quirk never returns -1.
-        for _ in range(8):
-            if int(ppleval("GETKEY")) < 0:
-                break
+        # Skipped while a touch is live: GETKEY on a touch-release latches
+        # mouse() into a garbage "down" state for >1s (see _pump_keyboard).
+        # Stale FIFO keys may then surface at the next drain as phantom
+        # presses -- rare (needs typing during a touch-exited scrollback)
+        # and preferable to >1s of dead touch input.
+        if self._touch_point() is None:
+            for _ in range(8):
+                if int(ppleval("GETKEY")) < 0:
+                    break
         self.is_alpha = self.is_shift = self.alpha_hold = self.shift_hold = self.symb_hold = False
         self._clear_key_queue()
         self._refresh_indicators()
@@ -416,13 +462,26 @@ class tml_prime(tml):
         t_velocity   = 0
         t_accum_px   = 0
         t_fling_ticks = 0
+        t_last_kb    = -1
         step_px      = self._touch_scroll_step * self.char_height
 
         self._in_scrollback = True
         try:
             while True:
-                # -- keyboard (non-blocking via poll_char; _in_scrollback prevents re-entry) --
-                kc = self.poll_char()
+                # -- keyboard (pump + dequeue; poll_char's touch entry is
+                # moot here since _in_scrollback prevents re-entry) --
+                # [PRIMESUD] _pump_keyboard costs >=1 ppleval("GETKEY")
+                # per call; at this loop's cadence that throttles mouse()
+                # sampling enough to gut drag/fling velocity. Only pump
+                # when the (cheap) bitmask shows a key down or an edge --
+                # this loop polls fast, so taps land on the bitmask; the
+                # firmware FIFO drain still happens on that hit, and
+                # resync_keyboard() flushes leftovers at exit.
+                kb = keyboard()
+                if kb or kb != t_last_kb:
+                    self._pump_keyboard()
+                t_last_kb = kb
+                kc = self._dequeue_key()
                 if kc is not None:
                     char, _ = kc
                     if char is None or char == '\SR':
@@ -440,8 +499,8 @@ class tml_prime(tml):
                         break
 
                 # -- touch (repeat scroll while dragging) --
-                pt = mouse()[0]
-                touching = pt and pt[0] >= 0
+                pt = self._touch_point()
+                touching = pt is not None
                 # Ticks is only needed while a gesture is live; skip the ppleval when idle.
                 now = int(ppleval("Ticks")) if touching or t_mode != "idle" else 0
                 if touching:
@@ -456,7 +515,16 @@ class tml_prime(tml):
                     else:
                         # Velocity EMA samples position/time as a pair; t_last_y advances
                         # only alongside t_last_ticks so dy and dt cover the same span.
-                        if now > t_last_ticks:
+                        # [PRIMESUD] Gate sampling to fling_frame_ms: the touch
+                        # controller reports new positions only every ~16ms
+                        # (60Hz, probed 2026-07-07, debug/touch_probe.py), but
+                        # this loop can iterate ~1ms. Sampling per iteration
+                        # decays the EMA to nothing between touch frames
+                        # (killing fling) and turns 1-3px jitter over 1ms into
+                        # +/-1000s px/s spikes (spurious reverse fling ->
+                        # instant depth-0 exit). Frame-gating makes velocity
+                        # independent of loop cadence.
+                        if now - t_last_ticks >= self._fling_frame_ms:
                             inst_v = (pt[1] - t_last_y) * 1000 // (now - t_last_ticks)
                             t_velocity = ((t_velocity * self._fling_smooth_num + inst_v)
                                           // (self._fling_smooth_num + 1))
@@ -499,7 +567,15 @@ class tml_prime(tml):
                 ppleval("WAIT(0.001)")
         finally:
             self._in_scrollback = False
-            self._touch_release_seen = False
+            # [PRIMESUD] Arm re-entry from the live touch state, not a
+            # blanket False: a fling exits with the finger already up, and
+            # if the next swipe touches down before the game loop gets a
+            # finger-up poll (fast swipe chains + game-loop blind windows),
+            # a hardcoded False leaves entry disarmed until a deliberate
+            # tap-and-release. Finger still down (drag exit) stays False so
+            # the same gesture can't immediately re-enter.
+            self._touch_release_seen = self._touch_point() is None
+            self._touch_start_y = None
 
         strblit2(0, 0, 0, self.width, self.height,
                  self._save_grob, 0, 0, self.width, self.height)

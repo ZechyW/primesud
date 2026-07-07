@@ -6,6 +6,8 @@ import time
 def eval(expr):
     if expr == "GETKEY":
         return -1  # empty firmware key queue (see src/tml_prime.py pump)
+    if expr == "Ticks":
+        return int(time.monotonic() * 1000)
     if expr.startswith("WAIT("):
         # Arg may be an expression like "1/1e3", not just a float literal
         # (float() on it raised, silently skipping the sleep -> busy wait).

@@ -150,6 +150,38 @@ otherwise stick).
 
 ---
 
+## Touch input semantics (measured on-device)
+
+Probed 07 Jul 2026 on physical Prime G2 via `debug/touch_probe.py`
+(v1-v3; see git history for probe versions and raw logs):
+
+- `hpprime.mouse()` returns `((x, y), ())` while touched, `((), ())`
+  when idle — test the first tuple for truthiness before indexing.
+  Second slot stayed empty (no second pointer observed).
+- Position updates only every **~16ms (60Hz)**, no matter how fast you
+  poll — consecutive `mouse()` reads within a frame return the same
+  coordinates. Anything derived from position deltas (e.g. swipe
+  velocity) must sample at frame cadence, not loop cadence: per-loop
+  sampling sees `dy=0` between frames and px-level jitter over ms-level
+  `dt` explodes into +/-1000s px/s spikes.
+- **GETKEY corrupts touch state**: a PPL `GETKEY` call landing on a
+  touch-release latches `mouse()` into a garbage down-state of
+  `(2147483647, 0)` (INT32_MAX) for **>1s**, during which real touches
+  do not register at all. Without GETKEY in the loop, lifts are clean
+  (no stale/garbage samples, no stuck pointer). Consequences:
+  - never call GETKEY unconditionally in a polling loop that coexists
+    with touch input — gate it on `keyboard()` bitmask activity
+    (`src/tml_prime.py` `_pump_keyboard`);
+  - filter `mouse()` reads through a sanity bound (`0 <= x < 1000`)
+    and treat the sentinel as lifted (`_touch_point`).
+- PPL `WAIT` per iteration is harmless to touch state.
+
+Per-call costs (same probe): `hpprime.eval` of `GETKEY`/`Ticks` ~0.3ms,
+`keyboard()`/`mouse()` ~0ms, `WAIT(0.001)` ~5ms actual. `utime` is NOT
+importable on-device despite older notes listing it.
+
+---
+
 ## Heap size / module import cost (measured on-device)
 
 Measured 06 Jul 2026 via `debug/mem_footprint.py`, fresh Python session

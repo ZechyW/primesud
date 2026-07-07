@@ -132,7 +132,8 @@ def test_scrollback_retouch_cancels_pending_fling(monkeypatch):
     tr.resync_keyboard = lambda: setattr(tr, "_resynced", tr._resynced + 1)
 
     keys = iter([None, None, None, None, ("x", None)])
-    tr.poll_char = lambda key_commands=None: next(keys)
+    tr._pump_keyboard = lambda key_commands=None: None
+    tr._dequeue_key = lambda: next(keys)
 
     points = iter([
         [(0, 50, 1)],    # touch down
@@ -140,7 +141,16 @@ def test_scrollback_retouch_cancels_pending_fling(monkeypatch):
         [(-1, 0, 0)],    # lift: fling becomes eligible
         [(0, 80, 1)],    # retouch: should cancel fling and start fresh drag
     ])
-    monkeypatch.setattr(_MOD, "mouse", lambda: next(points))
+
+    def _fake_mouse():
+        # Exit-path poll in _scrollback's finally runs after the scripted
+        # points are consumed; report finger lifted from then on.
+        try:
+            return next(points)
+        except StopIteration:
+            return [(-1, 0, 0)]
+
+    monkeypatch.setattr(_MOD, "mouse", _fake_mouse)
 
     ticks = iter([0, 20, 40, 50])
 
