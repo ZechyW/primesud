@@ -136,7 +136,7 @@ class Game:
         tr.print("{c      Based on MERC 2.1 code by Hatchet, Furey, and Kahn      {x")
         tr.print("{c      ROM 2.4 copyright (c) 1993-1998 Russ Taylor.            {x")
         tr.print("{c      1stMud Server copyright (c) 2001-2004, Markanth.        {x")
-        tr.input("                    [Press Enter to start]                    ",
+        tr.input("                    [Press Enter to start]                     ",
             alpha=False,
         )
 

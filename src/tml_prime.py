@@ -440,6 +440,7 @@ class tml_prime(tml):
             for _ in range(8):
                 if int(ppleval("GETKEY")) < 0:
                     break
+        self._drain_polls = 0  # cancel leftover drain tail; FIFO just flushed
         self.is_alpha = self.is_shift = self.alpha_hold = self.shift_hold = self.symb_hold = False
         self._clear_key_queue()
         self._refresh_indicators()
