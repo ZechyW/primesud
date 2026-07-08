@@ -6,7 +6,7 @@ Loose ends that don't belong in a specific plan file.
 
 Root-level `*_PLAN.md` files awaiting implementation; each carries its own
 dependency + completion notes in its header. Suggested order:
-`REGEN` -> `EXPLORED` -> `PETS_GROUPS` -> `MOBPROG`
+`EXPLORED` -> `PETS_GROUPS` -> `MOBPROG`
 (EXPLORED/MOBPROG are independent and can run in parallel sessions).
 `RESETS` and `DARKNESS` are done (08/07/2026). `OPUS_HANDOFF.md` carries
 ready-made session prompts for every stage. Strike this section when the

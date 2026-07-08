@@ -31,6 +31,7 @@ Pickers force numeric keyboard mode on entry (`picker.py:_force_numeric_keys`) s
 | Trivia economy | Ported (08/07/2026 audit): earn via gquest kills/quest bonus/trivia pill, spend via `do_tpspend` (quest.py). Skipped options documented in do_tpspend docstring: corpse retrieval, transfer, pretitle, PK flag |
 | Pkills / pdeaths | Single-player |
 | Per-mob kill/death stats | 1stMud writes back to `.are` on shutdown; PrimeSUD areas are static Python files |
+| Furniture mechanics | sit/rest/sleep AT/ON/IN targets, occupancy (`count_users`), and value[3]/value[4] regen multipliers omitted -- no content: every furniture-typed object in the loaded areas (and all 16 across stock QuickMUD) carries `0 0 0 0 0` values. do_sit/do_rest/do_sleep/do_stand ignore the furniture keyword. Inns already regen faster via room heal_rate 110. Revisit alongside authored furniture content; full source map in git history (REGEN_PLAN.md decision 3) |
 
 ---
 
