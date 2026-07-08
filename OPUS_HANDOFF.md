@@ -35,7 +35,11 @@ an implementer reviewing its own work in-context rubber-stamps it.
 
 ---
 
-## Stage 1 -- RESETS (whole plan, one session)
+## Stage 1 -- RESETS (whole plan, one session) -- DONE 08/07/2026
+
+Completed and reviewed (commits `8ef****..c2c****` on dev; RESETS_PLAN.md
+deleted, `room_is_dark`/`room_light` landed in handler.py). Skip to
+Stage 2. Prompt kept below for reference.
 
 ```
 Implement RESETS_PLAN.md in full (all decisions, all touch points).
