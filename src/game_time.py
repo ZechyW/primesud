@@ -245,6 +245,9 @@ def get_weather_echo(w):
 
 # do_weather message tables (cf. 1stMud preciptemp_msg/windtemp_msg/precip_msg/
 # wind_msg in const.c). Indexed [precip|wind][temp], 0..5.
+# [PRIMESUD] 1stMud spelling slips fixed: "searing" -> "searing" (x3),
+# "oppresive" -> "oppressive", "rythmically" -> "rhythmically",
+# "ciculates" -> "circulates". Everything else is verbatim.
 preciptemp_msg = [
     ["Frigid temperatures settle over the land",
      "It is bitterly cold",
@@ -257,7 +260,7 @@ preciptemp_msg = [
      "An occasional raindrop falls to the ground",
      "Mild drops of rain seep from the clouds",
      "It is very warm, and the sky is overcast",
-     "High humidity intensifies the seering heat"],
+     "High humidity intensifies the searing heat"],
     ["A brief snow squall dusts the earth",
      "A light flurry dusts the ground",
      "Light snow drifts down from the heavens",
@@ -269,13 +272,13 @@ preciptemp_msg = [
      "A brief shower moistens the crisp air",
      "A pleasant rain falls from the heavens",
      "The warm air is heavy with rain",
-     "A refreshing shower eases the oppresive heat"],
+     "A refreshing shower eases the oppressive heat"],
     ["Sleet falls in sheets through the frosty air",
      "Snow falls quickly, piling upon the cold earth",
      "Rain pelts the ground on this crisp day",
-     "Rain drums the ground rythmically",
+     "Rain drums the ground rhythmically",
      "A warm rain drums the ground loudly",
-     "Tropical rain showers pelt the seering ground"],
+     "Tropical rain showers pelt the searing ground"],
     ["A downpour of frozen rain covers the land in ice",
      "A blizzard blankets everything in pristine white",
      "Torrents of rain fall from a cool sky",
@@ -302,7 +305,7 @@ windtemp_msg = [
      "A lively breeze cools the area",
      "It is a temperate day, with a pleasant breeze",
      "Very warm breezes buffet the area",
-     "A breeze ciculates the sweltering air"],
+     "A breeze circulates the sweltering air"],
     ["Stiff gusts add cold to the frigid air",
      "The cold air is agitated by gusts of wind",
      "Wind blows in from the north, cooling the area",
@@ -314,7 +317,7 @@ windtemp_msg = [
      "Strong wind makes the cool air nip",
      "It is a pleasant day, with gusty winds",
      "Warm, gusty winds move through the area",
-     "Blustering winds punctuate the seering heat"],
+     "Blustering winds punctuate the searing heat"],
     ["A frigid gale sets bones shivering",
      "Howling gusts of wind cut the cold air",
      "An angry wind whips the air into a frenzy",

@@ -910,7 +910,7 @@ def do_time(player, args):
     creation percentage) have no single-player equivalent and are omitted.
     """
     from game_time import (time_info, day_name, month_name, ordinal_string,
-                           HOURS_IN_DAY)
+                           HOURS_IN_DAY, DAYS_IN_WEEK)
     hour = time_info["hour"]
     half = HOURS_IN_DAY // 2
     hour12 = half if hour % half == 0 else hour % half
@@ -920,7 +920,7 @@ def do_time(player, args):
     # is a slip -- rendered here as a single ordinal ("first", "21st", ...).
     chprintln(player,
               "It is " + str(hour12) + " o'clock " + ampm
-              + ", Day of " + day_name[(time_info["day"] + 1) % 7]
+              + ", Day of " + day_name[(time_info["day"] + 1) % DAYS_IN_WEEK]
               + ", " + ordinal_string(time_info["day"] + 1)
               + " the Month of " + month_name[time_info["month"]]
               + ", year " + str(time_info["year"]) + ".")
