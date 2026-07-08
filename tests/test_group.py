@@ -89,9 +89,7 @@ class TestRoster:
         do_group(player, [])
         out = capsys.readouterr().out
         assert "Tester's group:" in out
-        # player row: level, class tag (not "Mob"), name, hp/mana/mv/xp.
-        # The ~70-char line wraps on the 32-col screen (tml), so assert on
-        # fragments that don't straddle a wrap boundary.
+        # two-line member render: name/class line, then indented stats line
         assert "[20 Warr] Tester" in out
         assert "20/  20 hp" in out
         assert "mana" in out and "mv" in out
@@ -104,9 +102,8 @@ class TestRoster:
         pet["affected_by"]["charm"] = True
         do_group(player, [])
         out = capsys.readouterr().out
-        # NPC renders "Mob" for class and 0 xp
-        assert "[ 5 Mob]" in out
-        assert "A test dog" in out          # capitalized short_descr
+        # NPC renders "Mob" for class (padded) and 0 xp
+        assert "[ 5 Mob ] A test dog" in out   # capitalized short_descr
         assert "    0 xp" in out
 
     def test_ungrouped_mob_excluded(self, capsys):

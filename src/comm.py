@@ -471,9 +471,9 @@ def do_group(ch, args):
     [Verified: 08/07/2026]
 
     Solo value is pet/charmie status display. Iterates world.chars where
-    1stMud walks char_first. The roster line keeps 1stMud's exact format;
-    at ~70 chars it wraps on the narrow screen (tml handles the wrap) rather
-    than being split onto two lines. [PRIMESUD]
+    1stMud walks char_first. [PRIMESUD] 1stMud prints one ~70-char roster
+    line per member; that overflows the 64-col screen, so it is split into a
+    name/class line plus an indented stats line (see DESIGN.md).
 
     Args:
         ch (dict): Player state dict.
@@ -489,11 +489,14 @@ def do_group(ch, args):
         chprintln(ch, "%s's group:" % _pers(leader, ch))
         for gch in world.chars.values():
             if is_same_group(gch, ch):
+                # [PRIMESUD] two-line split: 1stMud's single "[%2d %s] %-16s
+                # %4ld/%4ld hp ... %5d xp" line is ~70 chars and wraps at 64.
+                chprintln(ch, "[%2d %-4s] %s" % (
+                    gch["level"],
+                    "Mob" if gch["is_npc"] else class_who(gch),
+                    capitalize(_pers(gch, ch))))
                 chprintln(ch,
-                    "[%2d %s] %-16s %4d/%4d hp %4d/%4d mana %4d/%4d mv %5d xp" % (
-                        gch["level"],
-                        "Mob" if gch["is_npc"] else class_who(gch),
-                        capitalize(_pers(gch, ch)),
+                    "     %4d/%4d hp %4d/%4d mana %4d/%4d mv %5d xp" % (
                         gch["hit"], gch["max_hit"],
                         gch["mana"], gch["max_mana"],
                         gch.get("move", 0), gch.get("max_move", 0),
