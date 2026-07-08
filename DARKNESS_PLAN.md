@@ -108,9 +108,15 @@ Scaffolding already in place -- do NOT rebuild these, extend them:
 
 ### Phase A -- core predicates
 
-- `handler.py`: new `room_is_dark(room_vnum)` + `room_light(room_vnum)`
-  helper (decision 1); extend `can_see` with the dark/infrared gate;
-  full `can_see_obj` port (decision + order above); `check_blind` port
+> **Already landed (08/07/2026, commit 8ef****):** `room_is_dark(room_vnum)`
+> and its `room_light(room_vnum)` helper (decision 1) shipped early in
+> `handler.py` so the RESETS pack could grant infrared to mobs spawned in
+> dark rooms. Extend these here -- do NOT rebuild them. Still outstanding
+> below: the `can_see` dark/infrared gate, `can_see_obj`, and `check_blind`.
+
+- `handler.py`: DONE `room_is_dark(room_vnum)` + `room_light(room_vnum)`
+  helper (decision 1). Still TODO: extend `can_see` with the dark/infrared
+  gate; full `can_see_obj` port (decision + order above); `check_blind` port
   (act_info.c:495) if not already present (info.py:453 says it is not).
 - `game_time.py`: nothing -- sunlight already correct. Verify SUN_SET is
   set at hour 18 and SUN_DARK at 20 against weather.c while there.

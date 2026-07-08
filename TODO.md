@@ -6,12 +6,13 @@ Loose ends that don't belong in a specific plan file.
 
 Root-level `*_PLAN.md` files awaiting implementation; each carries its own
 dependency + completion notes in its header. Suggested order:
-`RESETS` -> `DARKNESS` -> `REGEN` -> `EXPLORED` -> `PETS_GROUPS` -> `MOBPROG`
-(RESETS decision 6 wants DARKNESS Phase A's `room_is_dark` -- land that
-predicate early or gate it; DARKNESS/EXPLORED/MOBPROG are otherwise
-independent and can run in parallel sessions). `OPUS_HANDOFF.md` carries
-ready-made session prompts for every stage. Strike this section when
-the last plan is deleted.
+`DARKNESS` -> `REGEN` -> `EXPLORED` -> `PETS_GROUPS` -> `MOBPROG`
+(DARKNESS/EXPLORED/MOBPROG are independent and can run in parallel
+sessions). `RESETS` is done (08/07/2026); its Phase A dependency
+`room_is_dark`/`room_light` already landed in `handler.py`, so DARKNESS
+Phase A should extend those rather than rebuild them. `OPUS_HANDOFF.md`
+carries ready-made session prompts for every stage. Strike this section
+when the last plan is deleted.
 
 ## Combat
 
@@ -43,14 +44,13 @@ the last plan is deleted.
   converter; formerly `are_to_primesud_quickmud.py`, renamed after the
   1stMud-format converter was deleted) to a lossless schema; these emitted
   fields are captured in the `.txt` files but not yet consumed at runtime:
-  - E/G reset `limit` (raw arg2; >50 means legacy 6, <=0 unlimited) — resets
-    currently spawn without count enforcement
   - object `condition` (spawn wear-state), `light_hours` (light burnout),
     `no_sac`, container `container_max_item_weight` / `container_weight_mult`,
     food/drink `poisoned`
-  - mob `default_pos` (spawn `start_pos` IS consumed -- `mob.py` sets
-    initial position -- but nothing returns idle mobs to `default_pos`),
-    `group`, `material`, `mob_triggers`
+  - mob `default_pos` -- its only 1stMud runtime consumer is MOBPROG trigger
+    gating (update.c:444-462); there is no "return to default position"
+    mechanic, so `start_pos` (consumed at spawn) is enough until MOBPROG
+    lands. `group`, `material`, `mob_triggers`
   - room `heal_rate`/`mana_rate`, `owner`
   - object `values` raw value[0..4] fallback for item types with no
     dedicated decode (furniture max-occupants/position flags, key linked

@@ -468,12 +468,23 @@ RESETS = (
 | `"O"`   | `("O", item_vnum, room_vnum)`                            | Place one item copy in room; clears mob context |
 | `"E"`   | `("E", item_vnum, slot_name, limit)`                     | Equip item on last M mob; skipped if last M was capped |
 | `"G"`   | `("G", item_vnum, limit)`                                | Give item to last M mob's inventory; skipped if last M was capped |
-| `"P"`   | `("P", item_vnum, limit, container_vnum, max)`           | [PRIMESUD] deferred: no container system yet |
-| `"R"`   | `("R", room_vnum, num_dirs)`                             | [PRIMESUD] deferred: not enforced by runtime yet |
+| `"P"`   | `("P", item_vnum, limit, container_vnum, max)`           | Fill a container placed in the resetting room with up to `max` copies (capped by `limit`); restores the container's closed/locked state from its template |
+| `"R"`   | `("R", room_vnum, num_dirs)`                             | Shuffle the room's first `num_dirs` exits (Fisher-Yates over `n,e,s,w,u,d`); skipped if any affected exit is a door |
 
-**E/G `limit`** is the raw ROM reset-count field (cf. `db.c reset_room`): a value
-`> 50` is a legacy encoding meaning limit 6; `-1` (or `0`, for E/G specifically)
-means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
+**E/G/P `limit`** is the raw ROM reset-count field (cf. `db.c reset_room`): a value
+`> 50` is a legacy encoding meaning limit 6; `-1` means unlimited, and `0` also
+means unlimited for E/G specifically (not P). Enforced at runtime by
+`mob.reset_room`, which recomputes a per-template object-instance count each reset
+pass (`_object_count_map`) rather than tracking an incremental counter; for
+non-shopkeeper E/G an over-limit item still spawns on a 1-in-5 trickle
+(`number_range(0,4) == 0`), matching 1stMud. See DESIGN.md "Adjusted from
+1stMud" for the computed-count / room-restricted-P / door-skip-R rationale.
+
+The `("R", room_vnum, num_dirs)` shuffle mutates the loaded `ROOM_DEFS` exits in
+place (as 1stMud mutates its live exit array), so automap and `do_run`
+pathfinding see the shuffled graph once the room is loaded. The converter never
+emits the 1stMud `add_random_exit` variants (`arg3 == 1/2`); only the 2-tuple
+default-branch shuffle is supported.
 
 **D resets** are consumed at conversion time and baked into the room exits dict —
 they do not appear in `RESETS`. A `D` reset overwrites a door's `closed`/`locked`
