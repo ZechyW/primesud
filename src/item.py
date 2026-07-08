@@ -2,7 +2,7 @@
 
 import world
 from world import ITEM_DEFS, MOB_DEFS
-from handler import is_name, number_argument
+from handler import is_name, number_argument, can_see_obj
 
 # Item types that can hold contents, for loot/look-in purposes [PRIMESUD]:
 # matches 1stMud's do_get/get_obj_list acceptance of ITEM_CONTAINER plus
@@ -438,7 +438,7 @@ def parse_item_token(token):
     return obj
 
 
-def get_obj_list(fragment, item_list, templates):
+def get_obj_list(fragment, item_list, templates, viewer=None):
     """Find the Nth item in item_list whose keywords match fragment (cf. 1stMud get_obj_list in handler.c).
 
     Supports "2.sword" prefix syntax (cf. 1stMud number_argument in interp.c):
@@ -449,6 +449,10 @@ def get_obj_list(fragment, item_list, templates):
         fragment (str): Player-typed name fragment, optionally prefixed "N.".
         item_list (list): Ordered list of items (int or instance dict) to search.
         templates (dict): Item template dict mapping vnum -> template.
+        viewer (dict): Optional observer; when given, items it cannot see
+            (can_see_obj) are skipped, matching 1stMud get_obj_list's built-in
+            gate (handler.c:2007). [PRIMESUD] darkness gating is scoped to the
+            get/drop paths that pass a viewer; other callers leave it None.
 
     Returns:
         Item from item_list (int or dict), or None if not found.
@@ -457,6 +461,8 @@ def get_obj_list(fragment, item_list, templates):
     count = 0
     for item in item_list:
         vnum = obj_vnum(item)
+        if viewer is not None and not can_see_obj(viewer, item):
+            continue
         if is_name(fragment, templates[vnum].get("keywords", "")):
             count += 1
             if count == nth:

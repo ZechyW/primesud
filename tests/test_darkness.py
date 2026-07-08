@@ -194,3 +194,124 @@ class TestCheckBlind:
                             lambda ch, s="": lines.append(s))
         assert handler.check_blind(_char(1)) is True
         assert lines == []
+
+
+# ---------------------------------------------------------------------------
+# Phase B -- do_look / do_exits gating and aggro shielding
+# ---------------------------------------------------------------------------
+
+def _look_player(room):
+    from player import PLR_DEFAULTS
+    return {"id": 1, "name": "Tester", "room": room, "level": 10,
+            "flags": PLR_DEFAULTS & ~(PLR_DEFAULTS),  # 0: no automap/autoexit
+            "inv": [], "equip": {}, "affected_by": {}}
+
+
+@pytest.fixture
+def look_out(monkeypatch):
+    import info
+    import handler
+    lines = []
+    cap = lambda ch, s="": lines.append(s)
+    # do_look/do_exits print via info.chprintln; check_blind via handler's own
+    monkeypatch.setattr(info, "chprintln", cap)
+    monkeypatch.setattr(handler, "chprintln", cap)
+    return lines
+
+
+class TestLookDark:
+    def test_pitch_black_blocks_room(self, fresh_world, look_out):
+        import info
+        _room(1, flags={"dark": True})
+        ROOM_DEFS._data[1]["name"] = "Secret Vault"
+        info.do_look(_look_player(1), [])
+        assert look_out == ["It is pitch black ... "]
+
+    def test_infrared_unblocks_room(self, fresh_world, look_out):
+        import info
+        _room(1, flags={"dark": True})
+        ROOM_DEFS._data[1]["name"] = "Secret Vault"
+        p = _look_player(1)
+        p["affected_by"] = {"infrared": True}
+        info.do_look(p, [])
+        joined = " ".join(look_out)
+        assert "pitch black" not in joined
+        assert "Secret Vault" in joined
+
+    def test_targeted_look_also_pitch_black(self, fresh_world, look_out):
+        import info
+        _room(1, flags={"dark": True})
+        info.do_look(_look_player(1), ["sword"])
+        assert look_out == ["It is pitch black ... "]
+
+    def test_red_eyes_for_infrared_mob(self, fresh_world, look_out):
+        import info
+        _room(1, flags={"dark": True})
+        world.chars[2] = {"id": 2, "is_npc": True, "room": 1,
+                          "affected_by": {"infrared": True}}
+        world.rooms._data[1]["mobs"].append(2)
+        info.do_look(_look_player(1), [])
+        assert look_out == ["It is pitch black ... ",
+                            "You see glowing red eyes watching YOU!"]
+
+    def test_no_red_eyes_for_plain_mob(self, fresh_world, look_out):
+        import info
+        _room(1, flags={"dark": True})
+        world.chars[2] = {"id": 2, "is_npc": True, "room": 1,
+                          "affected_by": {}}
+        world.rooms._data[1]["mobs"].append(2)
+        info.do_look(_look_player(1), [])
+        assert look_out == ["It is pitch black ... "]
+
+    def test_blind_blocks_look(self, fresh_world, look_out):
+        import info
+        _room(1, sector="inside")
+        ROOM_DEFS._data[1]["name"] = "Bright Hall"
+        p = _look_player(1)
+        p["affected_by"] = {"blind": True}
+        info.do_look(p, [])
+        assert look_out == ["You can't see a thing!"]
+
+
+class TestExitsDark:
+    def test_dark_destination_hidden(self, fresh_world, look_out):
+        import info
+        _room(1, sector="city")
+        _room(2, flags={"dark": True})
+        ROOM_DEFS._data[2]["name"] = "Black Pit"
+        ROOM_DEFS._data[1]["exits"] = {"n": 2}
+        info.do_exits({"room": 1, "affected_by": {}}, [])
+        joined = " ".join(look_out)
+        assert "Too dark to tell" in joined
+        assert "Black Pit" not in joined
+
+    def test_lit_destination_named(self, fresh_world, look_out):
+        import info
+        _room(1, sector="city")
+        _room(2, sector="inside")
+        ROOM_DEFS._data[2]["name"] = "Marble Foyer"
+        ROOM_DEFS._data[1]["exits"] = {"n": 2}
+        info.do_exits({"room": 1, "affected_by": {}}, [])
+        joined = " ".join(look_out)
+        assert "Marble Foyer" in joined
+        assert "Too dark to tell" not in joined
+
+
+class TestAggroShield:
+    """A dark room shields an unlit player from a non-infrared aggressor;
+    an infrared mob still sees through it (mob aggro routes through can_see)."""
+
+    def test_non_infrared_mob_blinded_in_dark(self, fresh_world):
+        from handler import can_see
+        _room(1, flags={"dark": True})
+        mob = {"id": 2, "is_npc": True, "room": 1, "affected_by": {}}
+        player = {"id": 1, "room": 1, "affected_by": {}}
+        assert can_see(mob, player) is False
+
+    def test_infrared_mob_sees_in_dark(self, fresh_world):
+        from handler import can_see
+        _room(1, flags={"dark": True})
+        mob = {"id": 2, "is_npc": True, "room": 1,
+               "affected_by": {"infrared": True}}
+        player = {"id": 1, "room": 1, "affected_by": {}}
+        assert can_see(mob, player) is True

@@ -58,17 +58,22 @@ def _loot_container_picker(player, container):
     if not contents:
         chprintln(player, "It is empty.")
         return
+    # cf. 1stMud get_obj_list can_see_obj gate: dark/invis contents are hidden
+    visible = [c for c in contents if can_see_obj(player, c)]
+    if not visible:
+        chprintln(player, "It is empty.")
+        return
     names = []
-    for cobj in contents:
+    for cobj in visible:
         ctpl = ITEM_DEFS[obj_vnum(cobj)]
         names.append(cobj.get("short_descr") or ctpl["short_descr"])
-    if len(contents) > 1:
+    if len(visible) > 1:
         names.append("All")
     cidx = pick_from("Take what?", names)
     if cidx < 0:
         return
-    if cidx == len(contents):
-        for cobj in list(contents):
+    if cidx == len(visible):
+        for cobj in list(visible):
             ctpl = ITEM_DEFS[obj_vnum(cobj)]
             if not _check_carry_get(player, cobj, ctpl):
                 continue
@@ -78,7 +83,7 @@ def _loot_container_picker(player, container):
                 player["inv"].append(cobj)
                 quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
         return
-    cobj = contents[cidx]
+    cobj = visible[cidx]
     ctpl = ITEM_DEFS[obj_vnum(cobj)]
     if not _check_carry_get(player, cobj, ctpl):
         return
@@ -143,11 +148,15 @@ def do_get(player, args):
     """
     rs = world.rooms[player["room"]]
     if not args:
+        # cf. 1stMud get_obj_list can_see_obj gate: unseen (dark/invis/
+        # vis_death) room items drop out of the picker
         loose = [obj for obj in reversed(rs["items"])
                  if ITEM_DEFS[obj_vnum(obj)].get("type") not in _CONTAINER_TYPES
-                 and "take" in item_wear_flags(obj, ITEM_DEFS[obj_vnum(obj)])]
+                 and "take" in item_wear_flags(obj, ITEM_DEFS[obj_vnum(obj)])
+                 and can_see_obj(player, obj)]
         conts = [obj for obj in rs["items"]
-                 if ITEM_DEFS[obj_vnum(obj)].get("type") in _CONTAINER_TYPES]
+                 if ITEM_DEFS[obj_vnum(obj)].get("type") in _CONTAINER_TYPES
+                 and can_see_obj(player, obj)]
         if not loose and not conts:
             chprintln(player, "There is nothing here to pick up.")
             return
@@ -223,9 +232,9 @@ def do_get(player, args):
         return
     if len(args) >= 2:
         cont_arg = " ".join(args[1:])
-        cont_obj = get_obj_list(cont_arg, rs["items"], ITEM_DEFS)
+        cont_obj = get_obj_list(cont_arg, rs["items"], ITEM_DEFS, player)
         if cont_obj is None:
-            cont_obj = get_obj_list(cont_arg, player["inv"], ITEM_DEFS)
+            cont_obj = get_obj_list(cont_arg, player["inv"], ITEM_DEFS, player)
         if (cont_obj is not None and isinstance(cont_obj, dict)
                 and ITEM_DEFS[obj_vnum(cont_obj)].get("type") in _CONTAINER_TYPES):
             item_arg = args[0]
@@ -251,7 +260,7 @@ def do_get(player, args):
                             player["inv"].append(cobj)
                             quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
                 return
-            cobj = get_obj_list(item_arg, contents, ITEM_DEFS)
+            cobj = get_obj_list(item_arg, contents, ITEM_DEFS, player)
             if cobj is None:
                 chprintln(player, "I see nothing like that in the {}.".format(
                     cont_obj.get("short_descr") or cont_tpl["short_descr"]))
@@ -265,7 +274,7 @@ def do_get(player, args):
                 player["inv"].append(cobj)
                 quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
             return
-    obj = get_obj_list(arg, rs["items"], ITEM_DEFS)
+    obj = get_obj_list(arg, rs["items"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "I see no {} here.".format(arg))
         return
@@ -336,11 +345,16 @@ def do_drop(player, args):
         if not player["inv"]:
             chprintln(player, "You are not carrying anything.")
             return
-        names = [ITEM_DEFS[obj["vnum"]]["short_descr"] for obj in player["inv"]]
+        # cf. 1stMud get_obj_carry can_see_obj gate: can't drop what you can't see
+        visible = [obj for obj in player["inv"] if can_see_obj(player, obj)]
+        if not visible:
+            chprintln(player, "You are not carrying anything.")
+            return
+        names = [ITEM_DEFS[obj["vnum"]]["short_descr"] for obj in visible]
         idx = pick_from("Drop what?", names)
         if idx < 0:
             return
-        obj = player["inv"][idx]
+        obj = visible[idx]
         if not can_drop_obj(player, obj):
             chprintln(player, "You can't let go of it.")
             return
@@ -376,7 +390,7 @@ def do_drop(player, args):
             else:
                 chprintln(player, "You are not carrying anything.")
         return
-    obj = get_obj_list(arg, player["inv"], ITEM_DEFS)
+    obj = get_obj_list(arg, player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You do not have that item.")
         return

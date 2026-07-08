@@ -3,6 +3,7 @@
 import world
 from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
                     get_char_room, mob_condition, is_good, is_evil, can_see,
+                    can_see_obj, room_is_dark, check_blind,
                     act, chprintln, TO_CHAR,
                     number_argument as _number_argument, tpl_flag_affects)
 from automap import build_compact_lines, build_full_lines, COMPACT_W
@@ -402,14 +403,18 @@ def do_exits(player, args):
     """List obvious exits with destination room names (cf. 1stMud do_exits in act_info.c).
 
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; world.rooms->ROOM_DEFS crash fix re-verified 05/07/2026]
+    04/07/2026; world.rooms->ROOM_DEFS crash fix re-verified 05/07/2026;
+    check_blind gate + "Too dark to tell" dark-destination names added and
+    re-verified 08/07/2026]
 
     Args:
         player (dict): Player state dict.
         args (list): Parsed command arguments (unused).
     """
     # [PRIMESUD] "auto" form not ported (autoexit uses its own line in do_look);
-    # check_blind / can_see_room stubbed; immortal room-vnum suffix not ported
+    # can_see_room stubbed; immortal room-vnum suffix not ported
+    if not check_blind(player):   # cf. 1stMud do_exits act_info.c:1446
+        return
     chprintln(player, "Obvious exits:")
     found = False
     exits = ROOM_DEFS[player["room"]]["exits"]
@@ -426,9 +431,11 @@ def do_exits(player, args):
         if to not in ROOM_DEFS:
             continue
         found = True
-        # [PRIMESUD] room_is_dark not ported -- 1stMud shows "Too dark to tell"
         name = EXIT_NAMES.get(d, d)
-        chprintln(player, "%-5s - %s" % (upper(name), ROOM_DEFS[to]["name"]))
+        # cf. 1stMud do_exits act_info.c:1476 -- a dark destination hides its
+        # name (independent of the viewer's infrared, matching the source)
+        dest = "Too dark to tell" if room_is_dark(to) else ROOM_DEFS[to]["name"]
+        chprintln(player, "%-5s - %s" % (upper(name), dest))
     if not found:
         chprintln(player, "None.")
 
@@ -450,16 +457,32 @@ _POS_LINES = {
 def do_look(player, args):
     """Display the current room, examine a target, or look in a direction (cf. 1stMud do_look in act_info.c).
 
-    Position ("stars"/sleeping), check_blind, and room_is_dark gates not
-    ported -- blindness and darkness are not implemented yet; position is
-    gated by the command table.
+    Position ("stars"/sleeping) gates are handled by the command table; the
+    check_blind and pitch-black darkness gates below run before argument
+    parsing, so they apply to every look form (cf. act_info.c:1112-1121).
 
-    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check)]
+    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check); check_blind + pitch-black/red-eyes + can_see_obj room-item filter added and re-verified 08/07/2026]
 
     Args:
         player (dict): Player state dict.
         args (list): Parsed command arguments; non-empty triggers targeted look.
     """
+    # cf. 1stMud do_look act_info.c:1112 -- both gates precede argument parsing
+    if not check_blind(player):
+        return
+    if (player["room"] in ROOM_DEFS._data and room_is_dark(player["room"])
+            and not player.get("affected_by", {}).get("infrared")):
+        chprintln(player, "It is pitch black ... ")
+        # cf. 1stMud show_char_to_char red-eyes branch (act_info.c:486): a
+        # victim the viewer can't see but who has AFF_INFRARED in a dark room
+        # betrays glowing eyes. In pitch black the viewer lacks infrared, so
+        # can_see fails for every mob and only this branch can fire.
+        for mob_id in world.rooms[player["room"]]["mobs"]:
+            inst = world.chars.get(mob_id)
+            if (inst is not None and not can_see(player, inst)
+                    and inst.get("affected_by", {}).get("infrared")):
+                chprintln(player, "You see glowing red eyes watching YOU!")
+        return
     if args:
         if args[0] in ("in", "i", "on"):
             _look_in(player, args[1:])
@@ -573,6 +596,9 @@ def do_look(player, args):
     order = []
     p_aff = player.get("affected_by", {})
     for obj in rs["items"]:
+        # cf. 1stMud show_list_to_char: skip items the viewer can't see
+        if not can_see_obj(player, obj):
+            continue
         tpl = ITEM_DEFS[obj_vnum(obj)]
         flags = item_extra_flags(obj, tpl)
         # cf. 1stMud format_obj_to_char flag order (act_info.c:53-64)

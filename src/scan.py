@@ -2,7 +2,7 @@
 
 import world
 from config import DIR_ALIASES, EXIT_NAMES
-from handler import chprintln
+from handler import chprintln, can_see
 from world import ROOM_DEFS, MOB_DEFS
 
 _DISTANCE = (
@@ -30,7 +30,10 @@ def scan_list(room_vnum, ch, depth, door):
         return
     for mob_id in room_state.get("mobs", []):
         mob = world.chars.get(mob_id)
-        if mob is not None:
+        # cf. 1stMud scan_list (scan.c:99): skip chars the scanner can't see.
+        # can_see keys the dark gate off the scanner's OWN room, so a scanner
+        # in a lit room still sees into dark neighbours (1stMud behaviour).
+        if mob is not None and can_see(ch, mob):
             chprintln(ch, _scan_char_line(mob, depth, door))
 
 

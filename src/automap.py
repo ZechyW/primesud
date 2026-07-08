@@ -1,6 +1,7 @@
 """Room-neighborhood automap rendering helpers."""
 
 from config import MAP_HALF_W, MAP_HALF_H, FULL_MAP_HALF_W, FULL_MAP_HALF_H, COMPACT_MAP_DEPTH, FULL_MAP_DEPTH, SECTOR_COLORS, SECTOR_SYMBOLS
+from handler import room_is_dark
 
 # Compact automap (shown side-by-side with room description)
 GW = MAP_HALF_W * 2 + 1
@@ -64,8 +65,14 @@ def _room_color(room):
     return SECTOR_COLORS.get(room.get('sector', 'inside'), '')
 
 
-def _map_exits(rooms, start_vnum, grid, colors, start_gx, start_gy, max_depth):
-    """BFS exit traversal to populate map grid (cf. 1stMud `show_map` in automap.c: exit traversal)."""
+def _map_exits(rooms, start_vnum, grid, colors, start_gx, start_gy, max_depth,
+               infrared=False):
+    """BFS exit traversal to populate map grid (cf. 1stMud `show_map` in automap.c: exit traversal).
+
+    A dark destination (without observer infrared) is left blank and not
+    traversed, standing in for 1stMud's can_see_room gate (DARKNESS_PLAN
+    decision 3 -- can_see_room itself stays permissive elsewhere).
+    """
     gh = len(grid)
     gw = len(grid[0]) if gh else 0
     start_room = rooms.get(start_vnum)
@@ -81,7 +88,6 @@ def _map_exits(rooms, start_vnum, grid, colors, start_gx, start_gy, max_depth):
         room = rooms.get(vnum)
         if room is None:
             continue
-        # [TODO dark] 1stMud checks can_see_room(ch, pRoom) here -- add when room darkness is implemented
         for direction, exit_val in room["exits"].items():
             is_closed = isinstance(exit_val, dict) and exit_val.get("closed")
             dest_vnum = exit_val["to"] if isinstance(exit_val, dict) else exit_val
@@ -100,6 +106,11 @@ def _map_exits(rooms, start_vnum, grid, colors, start_gx, start_gy, max_depth):
                 grid[ey][ex] = _EXIT_CHAR_CLOSED[direction]
                 colors[ey][ex] = _room_color(dest_room)
                 continue
+            # cf. 1stMud show_map can_see_room gate (automap.c:167): skip a dark
+            # destination entirely -- no corridor drawn, cell stays blank, not
+            # traversed. dest_room is already loaded via .get() above.
+            if dest_room is not None and room_is_dark(dest_vnum) and not infrared:
+                continue
             rx, ry = gx + 2 * dx, gy + 2 * dy
             if not (0 <= rx < gw and 0 <= ry < gh):
                 continue
@@ -117,7 +128,9 @@ def _build_grid(player, rooms, half_w, half_h, max_depth):
     gh = half_h * 2 + 1
     grid = [[' '] * gw for _ in range(gh)]
     colors = [[''] * gw for _ in range(gh)]
-    _map_exits(rooms, player["room"], grid, colors, half_w, half_h, max_depth)
+    infrared = bool(player.get("affected_by", {}).get("infrared"))
+    _map_exits(rooms, player["room"], grid, colors, half_w, half_h, max_depth,
+               infrared)
     grid[half_h][half_w] = 'X'
     # colors[half_h][half_w] already set by _map_exits to current room's sector color
     return grid, colors
