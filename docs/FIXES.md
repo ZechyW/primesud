@@ -324,6 +324,45 @@ fighting).
 
 ---
 
+## continual light: the ball of light has 0 fuel and never illuminates
+
+**Upstream:** `reference/1stMud4.5.3/area/limbo.are`, object `#21` (ball of
+light); `reference/1stMud4.5.3/src/magic.c`, `spell_continual_light`, line 1344.
+
+### The bug
+
+`spell_continual_light` creates `OBJ_VNUM_LIGHT_BALL` (vnum 21) and drops it
+in the room; the help text promises a light that "runs indefinitely". But the
+ball template ships with `value[2]` (light fuel hours) == 0:
+
+```
+#21
+...
+light A A
+0 0 0 0 0     <- value[2] = 0
+```
+
+`create_object` only rewrites the infinite marker (`value[2] == 999 -> -1`,
+`db.c:2102`); 0 is left as-is. Every `room->light` path
+(`equip_char`/`char_to_room`, `handler.c:1319/1367/1576/1646`) and the
+`can_see_obj` lit-light branch (`handler.c:2470`) gate on `value[2] != 0`, so a
+0-fuel light never counts. The conjured ball is visible (it carries
+`ITEM_GLOW`) but does not light a dark room even when worn -- confirmed against
+a live 1stMud server. `value[2]` should be `-1` (infinite: `!= 0` so it counts,
+and never decrements).
+
+### PrimeSUD fix -- corrected in `areas/limbo.are` (converter source)
+
+Object 21's `value[2]` set to `-1` in our QuickMUD `.are` copy (`0 0 -1 0 0`),
+regenerated into `src/area_limbo.txt` as `"light_hours": -1`. PrimeSUD's
+`create_object` leaves negative fuel unseeded (infinite), and `room_light` /
+`can_see_obj` read `-1 != 0` as lit via the template fallback -- so a worn ball
+now illuminates and never burns out. Floor lights still do not light rooms
+(matches 1stMud: `obj_to_room` never touches `room->light`), so the ball only
+lights once picked up and worn, exactly as upstream intends.
+
+---
+
 ## magic: ventriloquate audible only to the char it impersonates
 
 **Upstream:** `reference/1stMud4.5.3/src/magic.c`, `spell_ventriloquate`, line 4290.

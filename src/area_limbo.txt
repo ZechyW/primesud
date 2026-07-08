@@ -233,7 +233,7 @@ OBJECTS = {
         "type": 'light',
         "wear_flags": {"take": True},
         "extra_flags": {"glow": True},
-        "light_hours": 0,
+        "light_hours": -1,
         "level": 0, "weight": 0, "value": 0,
     },
     22: {
