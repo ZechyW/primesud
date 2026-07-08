@@ -935,17 +935,36 @@ def act(format, ch, arg1=None, arg2=None, type=TO_CHAR):
     act_new(format, ch, arg1, arg2, type, "resting")
 
 
+def _is_lit_light(obj):
+    """True if obj (instance dict or bare VNUM) is a lit light source. [PRIMESUD]
+
+    Fuel is read from the instance, falling back to the template. Value[2]
+    semantics (cf. 1stMud): 0 = dead, absent/negative = infinite, positive =
+    hours left -- so a dead (0) light is not lit and everything else is.
+    """
+    tpl = ITEM_DEFS[obj["vnum"] if isinstance(obj, dict) else obj]
+    if tpl.get("type") != "light":
+        return False
+    fuel = obj.get("light_hours") if isinstance(obj, dict) else None
+    if fuel is None:
+        fuel = tpl.get("light_hours")
+    return fuel is None or fuel != 0
+
+
 def room_light(room_vnum):
-    """Count lit light sources held by characters in a room. [PRIMESUD]
+    """Count lit light sources in a room -- worn by occupants or on the floor. [PRIMESUD]
 
     1stMud maintains ``room->light`` incrementally in char_to_room /
     equip_char (handler.c:1321/1578); PrimeSUD computes it on demand instead
     -- extraction/removal paths are many and a persistent counter would drift
-    and need saving. Counts every character standing in the room (player and
-    mobs both live in ``world.chars``) wearing a light-slot item of item_type
-    ``light`` with nonzero fuel. Value[2] semantics (cf. 1stMud): 0 = dead,
-    absent/negative = infinite, positive = hours left. Floor lights do not
-    count, matching 1stMud fidelity. (cf. room->light in handler.c)
+    and need saving. Counts every character in the room (player and mobs both
+    live in ``world.chars``) wearing a lit light-slot item, plus [PRIMESUD]
+    any lit light lying on the room floor (``_is_lit_light``). Stock
+    ROM/1stMud count only worn lights (``room->light`` is bumped in
+    equip_char, never obj_to_room); the floor-light behaviour is an
+    intentional PrimeSUD deviation -- a dropped torch or a cast
+    continual-light ball illuminates the room. Items inside containers do not
+    count. (cf. room->light in handler.c; DESIGN.md "Adjusted from 1stMud")
 
     Args:
         room_vnum (int): Room VNUM.
@@ -958,16 +977,13 @@ def room_light(room_vnum):
         if ch.get("room") != room_vnum:
             continue
         eq = ch.get("equip", {}).get("light")
-        if eq is None:
-            continue
-        tpl = ITEM_DEFS[eq["vnum"] if isinstance(eq, dict) else eq]
-        if tpl.get("type") != "light":
-            continue
-        fuel = eq.get("light_hours") if isinstance(eq, dict) else None
-        if fuel is None:
-            fuel = tpl.get("light_hours")
-        if fuel is None or fuel != 0:
+        if eq is not None and _is_lit_light(eq):
             total += 1
+    rs = world.rooms._data.get(room_vnum)  # runtime state only; no lazy-load
+    if rs:
+        for obj in rs.get("items", []):  # [PRIMESUD] floor lights
+            if _is_lit_light(obj):
+                total += 1
     return total
 
 

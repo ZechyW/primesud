@@ -75,6 +75,25 @@ class TestRoomIsDark:
         finally:
             del world.chars[1]
 
+    def test_lit_floor_light_overrides_dark_flag(self, fresh_world):
+        # [PRIMESUD] a lit light lying on the floor lights the room, unlike
+        # stock ROM/1stMud which count only worn lights
+        from handler import room_is_dark
+        ITEM_DEFS._data[501] = {"type": "light", "light_hours": -1,
+                                "keywords": "torch", "short_descr": "a torch"}
+        _room(6, sector="field", flags={"dark": True})
+        world.rooms._data[6]["items"].append({"vnum": 501})
+        assert room_is_dark(6) is False
+
+    def test_dead_floor_light_stays_dark(self, fresh_world):
+        # a burnt-out (0 fuel) floor light does not illuminate
+        from handler import room_is_dark
+        ITEM_DEFS._data[502] = {"type": "light", "light_hours": 0,
+                                "keywords": "torch", "short_descr": "a torch"}
+        _room(7, sector="field", flags={"dark": True})
+        world.rooms._data[7]["items"].append({"vnum": 502})
+        assert room_is_dark(7) is True
+
 
 # ---------------------------------------------------------------------------
 # Phase A -- can_see dark / infrared gate
