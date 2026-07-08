@@ -18,10 +18,10 @@ programs (echo, load, force, damage, delay...). 1stMud sources:
 converter already handles them losslessly (`#MOBPROGS` section ->
 `MOBPROGS = {vnum: code}` per area file; mob `M <type> <vnum> <phrase>`
 trailers -> `mob["mob_triggers"]` tuples, are_to_primesud.py:153/480-528/
-1249/1638). So this plan buys an *engine* whose payoff is future content:
-QuickMUD stock areas that ship `#MOBPROGS` (verify which of the 31
-unconverted areas carry them before starting Phase D), or PrimeSUD-authored
-quest content. Build it engine-first, content-pilot last, and don't wire
+1249/1638). Surveyed 08/07/2026: **zero** stock QuickMUD areas
+(`reference/quickmud/area/*.are`) contain `#MOBPROGS` either, so the
+engine's only content path is PrimeSUD-authored progs (Phase D demo, then
+quest content). Build it engine-first, content-pilot last, and don't wire
 dead weight.
 
 ## Scope decisions
@@ -126,10 +126,9 @@ triggers roll `number_percent() < atoi(phrase)`.
 - **C -- combat triggers + commands:** fight, hpcnt, kill, death; the
   mp-command set (mload/oload/purge/transfer/force/damage/cast/
   remember/delay chains).
-- **D -- content pilot:** convert one QuickMUD area that ships
-  `#MOBPROGS` (survey `reference/quickmud/area/*.are` first; converter
-  already passes them through) OR write a small `[PRIMESUD]` demo prog on
-  a school/limbo mob; end-to-end validation on device (heap + timing).
+- **D -- content pilot:** write a small `[PRIMESUD]` demo prog on a
+  school/limbo mob (stock QuickMUD ships no `#MOBPROGS` -- surveyed
+  08/07/2026); end-to-end validation on device (heap + timing).
 - **E (optional, later) -- act trigger + exit/exall.**
 
 ## Verification
