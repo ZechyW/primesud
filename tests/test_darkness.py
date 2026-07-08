@@ -1,4 +1,4 @@
-"""Darkness / visibility predicate + gating tests (DARKNESS_PLAN Phases A+B).
+"""Darkness / visibility predicate + gating tests (darkness Phases A+B).
 
 Phase A: room_is_dark truth table, the can_see dark/infrared gate,
 can_see_obj, and check_blind.

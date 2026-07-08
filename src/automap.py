@@ -70,8 +70,8 @@ def _map_exits(rooms, start_vnum, grid, colors, start_gx, start_gy, max_depth,
     """BFS exit traversal to populate map grid (cf. 1stMud `show_map` in automap.c: exit traversal).
 
     A dark destination (without observer infrared) is left blank and not
-    traversed, standing in for 1stMud's can_see_room gate (DARKNESS_PLAN
-    decision 3 -- can_see_room itself stays permissive elsewhere).
+    traversed, standing in for 1stMud's can_see_room gate (can_see_room
+    itself stays permissive elsewhere -- DESIGN.md "can_see_room").
     """
     gh = len(grid)
     gw = len(grid[0]) if gh else 0

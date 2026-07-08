@@ -1,4 +1,4 @@
-"""Light-fuel burnout tests (DARKNESS_PLAN Phase C).
+"""Light-fuel burnout tests (darkness Phase C).
 
 create_object fuel seeding, char_update burnout (flicker / extract / infinite),
 and light_hours save round-trip.

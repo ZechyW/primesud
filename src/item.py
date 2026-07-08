@@ -45,8 +45,8 @@ def create_object(vnum):
     elif "charges" in tpl:
         obj["charges"] = tpl["charges"]
     if tpl.get("type") == "light":
-        # [PRIMESUD] Seed mutable fuel so char_update burnout can decrement it
-        # (DARKNESS_PLAN decision 4). Only positive fuel is seeded: absent /
+        # [PRIMESUD] Seed mutable fuel so char_update burnout can decrement it.
+        # Only positive fuel is seeded: absent /
         # negative (infinite) and 0 (dead) already read correctly from the
         # template via room_light / can_see_obj fallback, so leaving them
         # template-only keeps instances and save payloads small. value[2]

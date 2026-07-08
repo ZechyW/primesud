@@ -1,4 +1,4 @@
-"""Weather + time command tests (DARKNESS_PLAN Phase D).
+"""Weather + time command tests (darkness Phase D).
 
 Weather index/report helpers and do_time output format.
 """
