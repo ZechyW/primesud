@@ -750,7 +750,8 @@ def do_score(player, args):
     """Display the character score sheet (cf. 1stMud dlm_score in act_info.c).
 
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
-    header name+title (cf. dlm_score/set_title) added and re-verified 04/07/2026]
+    header name+title (cf. dlm_score/set_title) added and re-verified 04/07/2026;
+    explored line (cf. act_info.c:1841) added and re-verified 08/07/2026]
     -- data fields (age, hours, thac0, AC bars)
     verified; box layout adapted for the 64-col screen [PRIMESUD].
     """

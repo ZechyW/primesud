@@ -233,6 +233,9 @@ def do_explored(player, args):
             else:
                 chprintln(player, left)
     else:
-        chprintln(player, "        - show current area and world.")
-        chprintln(player, "list    - list percentages for all areas.")
-        chprintln(player, "reset   - reset explored rooms.")
+        # cf. 1stMud cmd_syntax(ch, NULL, n_fun, ...). [PRIMESUD] fixed
+        # "Syntax:" title (no randomised Usage/Type), plain text per the
+        # combat.py do_stance precedent; command name on each line as 1stMud.
+        chprintln(player, "Syntax: explored " + "        - show current area and world.")
+        chprintln(player, "        explored " + "list    - list percentages for all areas.")
+        chprintln(player, "        explored " + "reset   - reset explored rooms.")
