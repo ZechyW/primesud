@@ -27,6 +27,12 @@ when clearly net-gain. In practice that means: an Explore agent to pull
 together scattered 1stMud source blocks is fine; all edits happen in the
 main thread. Each prompt repeats this.
 
+**Verification.** Two extra prompts at the bottom: a stage-review prompt
+(run in a FRESH session after any stage; mandatory after the HARD stages
+and any stage whose diff you didn't read yourself) and a final audit
+prompt for after the whole queue. The reviewer session must be fresh --
+an implementer reviewing its own work in-context rubber-stamps it.
+
 ---
 
 ## Stage 1 -- RESETS (whole plan, one session)
@@ -344,4 +350,90 @@ scope decisions to DESIGN.md, strike TODO.md mob_triggers/default_pos
 bullets, delete the plan, update the TODO.md active-plans list, and
 delete this OPUS_HANDOFF.md -- it's a plan-class doc, same lifecycle).
 Device checklist: prog-heavy room idle CPU + heap on the calculator.
+```
+
+---
+
+## Review prompt -- run in a FRESH session after a stage
+
+Replace `<STAGE>` with the stage name and `<COMMITS>` with the commit
+range (e.g. `abc1234..def5678`, or the hashes from the stage's progress
+note / git log).
+
+```
+You are reviewing another session's implementation of the <STAGE> stage
+of a plan doc in this repo. Commits under review: <COMMITS>. You did not
+write this code; your job is to find where it deviates from the plan and
+from 1stMud, not to praise it. Do not trust the commit messages or the
+plan's progress notes -- verify against the diff and the sources.
+
+Read: the governing *_PLAN.md (if the stage completed a plan, it was
+deleted -- recover it with `git show <first-commit>^:<PLAN>.md`), the
+full diff (`git diff <COMMITS>`), and for every ported function the
+actual 1stMud source block it cites (reference/1stMud4.5.3/src/).
+
+Check, in order of importance:
+1. Plan coverage: walk the plan's decisions/phase bullets one by one;
+   for each, point to the diff hunk that implements it or flag it as
+   MISSING. Silent scope-skips are the #1 failure mode.
+2. 1stMud fidelity: for each ported function, compare logic flow, check
+   order, arithmetic (integer division direction!), and every player-
+   facing message character-for-character against the source. Flag typo
+   "fixes" that lack a [PRIMESUD] comment.
+3. Repo protocol: [Verified] functions edited only under the documented-
+   TODO exception with tags extended; [PRIMESUD] comments on deviations;
+   ASCII check passes (`python tools/check_ascii_py.py`); persisted
+   strings use str()+concat (docs/PRIME_STRING_FORMAT_BUG.md); no edits
+   to tml.
+4. Tests: do the new pytest cases assert the PLAN's expected values
+   (recompute them yourself from the 1stMud source) or just mirror the
+   implementation? Run the full suite; report the real output.
+5. Completion protocol: if this was a plan's final stage -- DESIGN.md
+   harvest present, TODO.md bullets struck, plan file deleted; if
+   mid-plan -- progress note accurate.
+
+Fix directly: mechanical, unambiguous deviations (wrong message string,
+missed TODO strike, missing [PRIMESUD] comment, tag not extended) --
+commit as fix(<area>) with the ASCII check re-run. Report only, do NOT
+fix: logic/structure findings, anything touching a [Verified] function
+beyond the above, anything where the plan itself seems wrong.
+
+End with: findings table (severity: BLOCKER / DEFECT / NIT), what you
+fixed vs what needs a follow-up session, and the pytest summary line.
+```
+
+## Final audit prompt -- run once after the whole queue
+
+```
+All six plan docs in this repo's 08/07/2026 planning queue (RESETS,
+DARKNESS, REGEN, EXPLORED, PETS_GROUPS, MOBPROG) have been implemented
+and their plan files deleted. Audit the end state; trust nothing that
+isn't verified in-session.
+
+1. Leftovers: grep the repo for plan-queue debris -- `*_PLAN.md` files,
+   OPUS_HANDOFF.md, "TODO dark", stale "not ported" comments the plans
+   scheduled for removal, TODO.md bullets that should be struck (E/G
+   limit, containers-P, R-reset, default_pos, mob_triggers, light_hours,
+   condition, group command), the TODO.md active-plans section itself.
+2. Doc consistency: DESIGN.md must contain the harvest rows each plan's
+   header promised (recover headers via git log on the deleted files:
+   `git log --diff-filter=D --name-only -- '*_PLAN.md'`). Explore
+   tracking row says Ported; furniture row exists; no doc references a
+   deleted plan.
+3. Cross-feature seams the plans coordinated: reset-time infrared grant
+   uses the real room_is_dark; buy-pet works end to end; explored marks
+   fire on mobprog-driven transfers (mpgoto/mptransfer move the player
+   without the normal movement path -- check the mark seam catches it);
+   light burnout extraction doesn't break the P-reset container counting
+   walk.
+4. Run the FULL pytest suite and `python tools/check_ascii_py.py`;
+   report real output.
+5. Sanity-read the three most complex diffs of the queue (git log since
+   the planning commits) for anything a stage-review missed.
+
+Fix mechanical findings directly (same rules as the stage-review prompt);
+produce a findings table for the rest. Finish with a consolidated
+device-test checklist merging every stage's deferred on-calculator
+checks, deduplicated, ordered by area so one walk of the world covers
+them all.
 ```
