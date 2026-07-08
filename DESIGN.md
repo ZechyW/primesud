@@ -28,7 +28,7 @@ Pickers force numeric keyboard mode on entry (`picker.py:_force_numeric_keys`) s
 | Hunger / thirst | No solo gameplay hook identified |
 | Age / hours played | HP Prime has no reliable RTC |
 | Explore tracking | Planned; placeholder in `do_score` |
-| Trivia economy | Counter and trivia pill retained for quest compatibility; shop/reward system later |
+| Trivia economy | Ported (08/07/2026 audit): earn via gquest kills/quest bonus/trivia pill, spend via `do_tpspend` (quest.py). Skipped options documented in do_tpspend docstring: corpse retrieval, transfer, pretitle, PK flag |
 | Pkills / pdeaths | Single-player |
 | Per-mob kill/death stats | 1stMud writes back to `.are` on shutdown; PrimeSUD areas are static Python files |
 
