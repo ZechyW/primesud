@@ -44,6 +44,16 @@ def create_object(vnum):
         obj["charges"] = tpl.get("charges", tpl["max_charges"])
     elif "charges" in tpl:
         obj["charges"] = tpl["charges"]
+    if tpl.get("type") == "light":
+        # [PRIMESUD] Seed mutable fuel so char_update burnout can decrement it
+        # (DARKNESS_PLAN decision 4). Only positive fuel is seeded: absent /
+        # negative (infinite) and 0 (dead) already read correctly from the
+        # template via room_light / can_see_obj fallback, so leaving them
+        # template-only keeps instances and save payloads small. value[2]
+        # semantics: 0 = dead, <0 = infinite, >0 = hours left.
+        lh = tpl.get("light_hours")
+        if lh is not None and lh > 0:
+            obj["light_hours"] = lh
     # [PRIMESUD] liquid fields stay on the template until first mutated
     # (inventory._set_liquid), keeping instances and save payloads small
     return obj
@@ -333,6 +343,8 @@ def serialize_item_token(obj):
             str(af.get("where", "")),
         ]
         fields.append("af:" + ",".join(parts))
+    if "light_hours" in obj:
+        fields.append("lh:" + str(obj["light_hours"]))
     if "timer" in obj:
         fields.append("ti:" + str(obj["timer"]))
     if "liquid_left" in obj:
@@ -375,6 +387,8 @@ def parse_item_token(token):
             obj["charges"] = int(value)
         elif key == "mx":
             obj["max_charges"] = int(value)
+        elif key == "lh":
+            obj["light_hours"] = int(value)
         elif key == "en":
             obj["enchanted"] = value == "1"
         elif key == "ef":

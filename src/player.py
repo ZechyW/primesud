@@ -9,7 +9,7 @@ from config import R_STARTING_ROOM
 from skills_table import SKILLS, GSN_RECALL
 from races import RACE_TABLE, race_lookup
 import world
-from world import ROOM_DEFS, AREA_DEFS
+from world import ROOM_DEFS, AREA_DEFS, ITEM_DEFS
 
 _EQUIP_SAVE_ORDER = (
     "light", "finger_l", "finger_r", "neck_1", "neck_2", "body", "head",
@@ -281,12 +281,50 @@ def tick_update(tr, player, room):
 
     _tick_affects(player, tr)
 
+    _light_burnout(tr, player)
+
     # Mob affects tick too (cf. 1stMud char_update iterating char_first;
     # wear-off messages are char-directed, so silent for mobs)
     import world as _world
     for _inst in list(_world.chars.values()):
         if _inst.get("is_npc") and _inst.get("affect_list"):
             _tick_affects(_inst, None)
+
+
+def _light_burnout(tr, player):
+    """Burn one hour of fuel from the player's equipped light (cf. 1stMud char_update light block in update.c:597-613).
+
+    Players only -- 1stMud gates the block on ``!IsNPC`` and level below
+    immortal, so NPC lights never burn. [PRIMESUD] the room light counter is
+    computed (room_light), so there is nothing to decrement there. An infinite
+    (absent/negative) or already-dead (0) light carries no instance
+    ``light_hours`` and is skipped by the ``> 0`` guard.
+
+    Args:
+        tr: Terminal for flicker / burnout messages.
+        player (dict): Player state dict.
+    """
+    from handler import act, unequip_char, TO_ROOM, TO_CHAR
+    light = (player.get("equip") or {}).get("light")
+    if not isinstance(light, dict):
+        return
+    if ITEM_DEFS[light["vnum"]].get("type") != "light":
+        return
+    fuel = light.get("light_hours")
+    if fuel is None or fuel <= 0:
+        return
+    fuel -= 1
+    light["light_hours"] = fuel
+    if fuel == 0:
+        act("$p goes out.", player, light, None, TO_ROOM)
+        act("$p flickers and goes out.", player, light, None, TO_CHAR)
+        # cf. 1stMud extract_obj: the dead light leaves the game entirely.
+        # unequip_char reverses its modifiers and returns it to inventory
+        # (mirrors update.py's decay extraction); then drop it for good.
+        unequip_char(player, "light")
+        player["inv"].remove(light)
+    elif fuel <= 5:
+        act("$p flickers.", player, light, None, TO_CHAR)
 
 
 def _tick_affects(ch, tr):
