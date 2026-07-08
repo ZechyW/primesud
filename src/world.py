@@ -317,6 +317,11 @@ def _load_area(tag):
             _cur_rvnum = _entry[3]
         elif _cmd == "O":
             _cur_rvnum = _entry[2]
+        elif _cmd == "R":
+            # 'R' attaches to its own arg1 room (cf. db.c load_resets:827);
+            # like M/O it sets the running room context.  Without this an 'R'
+            # that precedes any M/O (e.g. the daycare maze) would be dropped.
+            _cur_rvnum = _entry[1]
         if _cur_rvnum is None:
             continue
         if _cur_rvnum in _room_vnums:
@@ -355,7 +360,7 @@ def _load_area(tag):
 
 def _reset_loaded_area(tag, _adef, _room_vnums, _cross_area_rooms):
     """Reset a loaded area and apply pending deltas. [PRIMESUD]"""
-    from mob import reset_area, reset_room
+    from mob import reset_area, reset_room, _object_count_map
     reset_area(_adef)
 
     if _cross_area_rooms:
@@ -366,6 +371,8 @@ def _reset_loaded_area(tag, _adef, _room_vnums, _cross_area_rooms):
                 _cur_rvnum = _entry[3]
             elif _cmd == "O":
                 _cur_rvnum = _entry[2]
+            elif _cmd == "R":
+                _cur_rvnum = _entry[1]
             if _cur_rvnum is not None and _cur_rvnum in _cross_area_rooms:
                 if _cur_rvnum in ROOM_DEFS:
                     _rdef = ROOM_DEFS[_cur_rvnum]
@@ -373,9 +380,10 @@ def _reset_loaded_area(tag, _adef, _room_vnums, _cross_area_rooms):
                         _rdef["resets"] = []
                     _rdef["resets"].append(_entry)
         _next_id = max(chars, default=1) + 1
+        _obj_counts = _object_count_map()
         for _rv in _cross_area_rooms:
             if _rv in rooms:
-                reset_room(_rv, _next_id)
+                _next_id = reset_room(_rv, _next_id, _obj_counts)
 
     _apply_pending_deltas(tag, _room_vnums)
 

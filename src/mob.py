@@ -4,9 +4,9 @@ from urandom import randint
 
 from config import SIZE_RANK, POS_FROM_SHORT
 import world
-from world import ROOM_DEFS, MOB_DEFS, AREA_DEFS, DOOR_DEFS
+from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, AREA_DEFS, DOOR_DEFS
 from races import RACE_TABLE, race_lookup
-from handler import equip_char, act, _char_base, is_awake, TO_ROOM, can_see
+from handler import equip_char, act, _char_base, is_awake, TO_ROOM, can_see, room_is_dark
 from hunt import hunt_victim
 from item import create_object
 from special import SPEC_TABLE
@@ -223,15 +223,128 @@ def _tpl_room_count(mob_instances, room_vnum, tpl_vnum):
                if inst.get("is_npc") and inst["tpl"] == tpl_vnum and inst["room"] == room_vnum)
 
 
-def reset_room(vnum, next_id):
+def _decode_limit(arg2, zero_unlimited):
+    """Decode a raw ROM reset-count field into a spawn limit (cf. db.c reset_room). [PRIMESUD]
+
+    Shared by E/G (db.c:1660-1665) and P (db.c:1545-1550): arg2 > 50 is a
+    legacy encoding meaning limit 6; -1 always means unlimited (999); 0 means
+    unlimited only for E/G (``zero_unlimited=True``), never for P.
+
+    Args:
+        arg2 (int): Raw reset-count field.
+        zero_unlimited (bool): Treat 0 as unlimited (E/G) or literal (P).
+
+    Returns:
+        int: Decoded spawn limit.
+    """
+    if arg2 > 50:
+        return 6
+    if arg2 == -1 or (zero_unlimited and arg2 == 0):
+        return 999
+    return arg2
+
+
+def _object_count_map():
+    """Count live object instances per template across the loaded world. [PRIMESUD]
+
+    1stMud tracks ``pObjIndex->count`` incrementally at create/extract;
+    PrimeSUD computes it once per reset pass instead -- the many extraction
+    paths (sacrifice, quaff, corpse decay, future light burnout) would drift a
+    persistent counter and force it into the save file. Lazy loading makes the
+    computed count correct-by-construction: unloaded areas hold no instances.
+    Walks room floor items (plus one level of container ``contents`` -- enough
+    for stock P data), and every character's inventory and equipment (players
+    and mobs both live in ``world.chars``). Returns ``{tpl_vnum: count}``; the
+    reset pass then increments it locally as it spawns.
+
+    Returns:
+        dict: Mapping of item template VNUM to live instance count.
+    """
+    counts = {}
+
+    def _tally(item):
+        v = item["vnum"] if isinstance(item, dict) else item
+        counts[v] = counts.get(v, 0) + 1
+        if isinstance(item, dict):
+            for c in item.get("contents", []):
+                cv = c["vnum"] if isinstance(c, dict) else c
+                counts[cv] = counts.get(cv, 0) + 1
+
+    for rs in world.rooms.values():
+        for o in rs.get("items", []):
+            _tally(o)
+    for ch in world.chars.values():
+        for o in ch.get("inv", []):
+            _tally(o)
+        for e in ch.get("equip", {}).values():
+            if e is not None:
+                _tally(e)
+    return counts
+
+
+# Fixed 1stMud direction order for reset 'R' exit shuffling (n,e,s,w,u,d).
+_DIR_ORDER = ("n", "e", "s", "w", "u", "d")
+
+
+def _reset_randomize_exits(shuffle_vnum, num_dirs):
+    """Shuffle a room's first num_dirs exits (cf. 1stMud reset_room 'R', db.c:1700). [PRIMESUD]
+
+    Fisher-Yates over the fixed direction order (n,e,s,w,u,d); absent exits
+    shuffle as ``None``, exactly as 1stMud swaps NULL exit pointers. Mutates
+    the loaded ROOM_DEFS entry -- automap and do_run read these static exits,
+    so the room graph diverges from ROOM_DEFS after a shuffle, just as 1stMud
+    mutates its live exit array. Skips the shuffle if any affected exit is a
+    door: door reset state is keyed by (room, direction) in DOOR_DEFS and a
+    shuffle would desync it (stock shuffled carriers -- the daycare maze and
+    limbo -- carry no doors on shuffled exits). The ``arg3 == 1/2``
+    add_random_exit variants (db.c:1711-1716) are a 1stMud extension the
+    converter never emits (2-tuple R only), so only the default branch ports.
+
+    Args:
+        shuffle_vnum (int): Room whose exits are shuffled (reset arg1).
+        num_dirs (int): Number of leading directions to shuffle (reset arg2).
+    """
+    rdef = ROOM_DEFS[shuffle_vnum]
+    exits = rdef.get("exits")
+    if not exits:
+        return
+    n = min(num_dirs, len(_DIR_ORDER))
+    if n < 2:
+        return  # shuffle of 0 or 1 element is a no-op (e.g. limbo R 3 1)
+    dirs = _DIR_ORDER[:n]
+    room_doors = DOOR_DEFS.get(shuffle_vnum, {})
+    for d in dirs:
+        ev = exits.get(d)
+        if isinstance(ev, dict) and ev.get("isdoor"):
+            return
+        if d in room_doors:
+            return
+    vals = [exits.get(d) for d in dirs]
+    for i in range(n - 1):
+        j = randint(i, n - 1)
+        vals[i], vals[j] = vals[j], vals[i]
+    for idx, d in enumerate(dirs):
+        v = vals[idx]
+        if v is None:
+            if d in exits:
+                del exits[d]
+        else:
+            exits[d] = v
+
+
+def reset_room(vnum, next_id, obj_counts):
     """Reset one room's doors and process its resets (cf. 1stMud reset_room, db.c:1393).
 
     Resets door closed/locked state to initial values, then processes the
-    room's M/O/E/G/P reset commands with count-based dedup.
+    room's M/O/E/G/P/R reset commands with count-based limits. ``obj_counts``
+    is the shared per-template object-instance map from ``_object_count_map``;
+    it is mutated in place as items spawn so E/G/P limits stay live across the
+    whole area pass (cf. 1stMud pObjIndex->count).
 
     Args:
         vnum (int): Room VNUM.
         next_id (int): Next available mob instance ID.
+        obj_counts (dict): Live per-template object counts (mutated in place).
 
     Returns:
         int: Updated next_id after any mob spawns.
@@ -264,6 +377,15 @@ def reset_room(vnum, next_id):
             inst = create_mobile(tpl_vnum)
             inst["room"] = room_vnum
             inst["home_area"] = ROOM_DEFS[room_vnum].get("area")
+            # cf. db.c:1478 -- a dark spawn room grants the mob infrared
+            if room_is_dark(room_vnum):
+                inst["affected_by"]["infrared"] = True
+            # cf. db.c:1484 -- a mob spawned in the room after a pet-shop room
+            # (vnum - 1) is a pet.  Zero-load lookup via ROOM_DEFS._data avoids
+            # pulling a foreign area just to probe the boundary room. [PRIMESUD]
+            prev = ROOM_DEFS._data.get(room_vnum - 1)
+            if prev is not None and prev.get("flags", {}).get("pet_shop"):
+                inst["act_flags"]["pet"] = True
             inst["id"] = next_id
             world.chars[next_id] = inst
             world.rooms[room_vnum]["mobs"].append(next_id)
@@ -272,18 +394,30 @@ def reset_room(vnum, next_id):
             last_mob_id = next_id
             last_spawned = True
             next_id += 1
-        elif cmd == "E" and last_spawned:
+        elif (cmd == "E" or cmd == "G") and last_spawned:
             mob = world.chars[last_mob_id]
-            obj = create_object(entry[1])
+            item_vnum = entry[1]
             if MOB_DEFS[mob["tpl"]].get("shop"):
+                # cf. db.c:1600 -- shopkeeper: always spawn, flag ITEM_INVENTORY.
+                # The olevel table (db.c:1602-1649) applies only to old-format
+                # objects (new_format == false); converted stock data is all
+                # new-format, so olevel stays 0 and is skipped. [PRIMESUD]
+                obj = create_object(item_vnum)
                 obj.setdefault("extra_flags", {})["inventory"] = True
+            else:
+                # cf. db.c:1660 -- non-shop limit: spawn while under the
+                # template limit, else a 1-in-5 over-limit trickle.  E carries
+                # the count field in arg4 (entry[3]); G in arg2 (entry[2]).
+                arg2 = entry[3] if cmd == "E" else entry[2]
+                plimit = _decode_limit(arg2, True)
+                if obj_counts.get(item_vnum, 0) < plimit or randint(0, 4) == 0:
+                    obj = create_object(item_vnum)
+                else:
+                    continue  # over limit; skip this item (last stays set)
+            obj_counts[item_vnum] = obj_counts.get(item_vnum, 0) + 1
             mob["inv"].append(obj)
-            equip_char(mob, obj, entry[2])
-        elif cmd == "G" and last_spawned:
-            obj = create_object(entry[1])
-            if MOB_DEFS[world.chars[last_mob_id]["tpl"]].get("shop"):
-                obj.setdefault("extra_flags", {})["inventory"] = True
-            world.chars[last_mob_id]["inv"].append(obj)
+            if cmd == "E":
+                equip_char(mob, obj, entry[2])
         elif cmd == "O":
             # [PRIMESUD] nplayer check omitted -- single-player, no reset delay
             obj_tpl = entry[1]
@@ -298,11 +432,51 @@ def reset_room(vnum, next_id):
             obj = create_object(obj_tpl)
             obj["cost"] = 0  # cf. db.c:1527 -- O-placed items have zero cost
             rs["items"].append(obj)
+            obj_counts[obj_tpl] = obj_counts.get(obj_tpl, 0) + 1
             if "spawn" in DBG:  # [PRIMESUD]
                 dbg("spawn obj " + str(obj_tpl) + " @" + str(vnum))
             last_spawned = True
         elif cmd == "P":
-            last_spawned = False  # [PRIMESUD] containers not implemented
+            # cf. db.c:1532 -- fill a container in this room up to arg4 items.
+            item_vnum, arg2, cont_vnum, arg4 = entry[1], entry[2], entry[3], entry[4]
+            plimit = _decode_limit(arg2, False)  # P: only -1 unlimited, not 0
+            # [PRIMESUD] restrict the container search to this room's items:
+            # 1stMud get_obj_type scans the global object list, but converted
+            # stock P always targets a container O-placed in the same room, and
+            # a global scan would fight lazy loading.  Most-recent instance =
+            # last match (room items are appended newest-last).
+            container = None
+            for o in rs.get("items", []):
+                if isinstance(o, dict) and o["vnum"] == cont_vnum:
+                    container = o
+            if container is None:
+                last_spawned = False
+                continue
+            contents = container.setdefault("contents", [])
+            count = 0
+            for c in contents:
+                if (c["vnum"] if isinstance(c, dict) else c) == item_vnum:
+                    count += 1
+            if obj_counts.get(item_vnum, 0) >= plimit or count > arg4:
+                last_spawned = False
+                continue
+            while count < arg4:
+                obj = create_object(item_vnum)
+                contents.append(obj)
+                count += 1
+                obj_counts[item_vnum] = obj_counts.get(item_vnum, 0) + 1
+                if obj_counts.get(item_vnum, 0) >= plimit:
+                    break
+            # cf. db.c:1576 LastObj->value[1] = pIndexData->value[1] -- restore
+            # the container's closed/locked state from its template.
+            _tpl_cf = ITEM_DEFS[cont_vnum].get("container_flags")
+            if _tpl_cf:
+                container["container_flags"] = dict(_tpl_cf)
+            last_spawned = True
+        elif cmd == "R":
+            # cf. db.c:1688 -- shuffle the named room's exits; leaves the E/G
+            # "last" context untouched, matching 1stMud (no last= in this case).
+            _reset_randomize_exits(entry[1], entry[2])
     return next_id
 
 
@@ -315,10 +489,11 @@ def reset_area(pArea):
         pArea (dict): Area definition with 'room_vnums' key.
     """
     next_id = max(world.chars, default=1) + 1
+    obj_counts = _object_count_map()
     for vnum in pArea["room_vnums"]:
         if vnum not in world.rooms:
             world.rooms[vnum] = {"items": [], "mobs": []}
-        next_id = reset_room(vnum, next_id)
+        next_id = reset_room(vnum, next_id, obj_counts)
 
 
 def create_area_states():
@@ -384,6 +559,10 @@ def mobile_update(tr, player):
         if inst["fighting"] is not None:
             continue
         act_flags = tpl.get("act_flags", {})
+        # [PRIMESUD] TODO: ACT_SCAVENGER floor pickup (update.c:467-493) not
+        # ported -- scavenger mobs do not yet grab the best item off the ground
+        # before wandering. Wander gates below (sentinel / stay_area / no_mob /
+        # OUTDOORS / INDOORS) match update.c:499-506.
         if act_flags.get("sentinel"):
             continue
         if randint(0, 7) != 0:  # 1/8 chance -- matches number_bits(3)==0
