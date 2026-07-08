@@ -5,9 +5,9 @@ Loose ends that don't belong in a specific plan file.
 ## Active plan docs (08/07/2026)
 
 Root-level `*_PLAN.md` files awaiting implementation; each carries its own
-dependency + completion notes in its header. Suggested order:
-`PETS_GROUPS` -> `MOBPROG` (MOBPROG is independent, can run in parallel).
-`RESETS`, `DARKNESS`, and `EXPLORED` are done (08/07/2026). `OPUS_HANDOFF.md` carries
+dependency + completion notes in its header. `MOBPROG` is the last plan
+left (independent).
+`RESETS`, `DARKNESS`, `EXPLORED`, and `PETS_GROUPS` are done (08/07/2026). `OPUS_HANDOFF.md` carries
 ready-made session prompts for every stage. Strike this section when the
 last plan is deleted.
 
@@ -30,7 +30,7 @@ last plan is deleted.
 ## Commands
 
 - Genuinely still-deferred commands (commented-out rows in
-  `commands.py:_CMD_TABLE`): `gossip`, `shout`, `alias`/`unalias`, `group`,
+  `commands.py:_CMD_TABLE`): `gossip`, `shout`, `alias`/`unalias`,
   `bank`, `auction`, `path`, `play`, immortal commands. Port when/if a solo
   gameplay hook appears.
 
