@@ -1,0 +1,290 @@
+#AREA
+quest.are~
+Quest~
+{None } 1stMud  Quest~
+200 249
+
+#MOBILES
+#200
+Edurin Questmaster Questor~
+Edurin~
+Edurin the Questmaster is sitting at a table here.~
+~
+Elf~
+ABGLSVf DFHJ 0 0
+205 218 396d337+17149 285d13+97 32d14+278 smash
+-365 -365 -365 -335
+0 ACD B Z
+stand stand male 422
+ACHMV ABCDEFGHIJK medium unknown
+#201
+trivia shopkeeper~
+The Trivia Shopkeeper~
+The trivia shopkeeper is here, handing out prizes.~
+~
+Unique~
+ABGf DFHJ 0 0
+92 80 130d114+1899 96d10+95 11d13+94 smash
+-95 -95 -95 -85
+0 CD B Z
+stand stand male 122
+ACHMV ABCDEFGHIJK medium unknown
+#202
+Registrar gquest~
+The Registrar~
+A busy looking man is here, writing in a ledger.~
+~
+Elf~
+ABGLSVf DFHJ 0 0
+205 218 396d337+17149 285d13+97 32d14+278 smash
+-365 -365 -365 -335
+0 ACD B Z
+stand stand male 422
+ACHMV ABCDEFGHIJK medium unknown
+#0
+
+#OBJECTS
+#200
+trivia pill~
+A Trivia Pill~
+A trivia pill is here!~
+unknown~
+pill ABGSTYa AP
+100 'trivia pill' '' '' ''
+0 0 0 P
+#201
+quest aura sanctuary~
+An Aura of the Ancients~
+A red and yellow aura lies here.~
+unknown~
+jewelry ABGSYa APQ
+0 0 0 0 0
+0 1 -1 P
+A
+17 -100
+A
+18 50
+A
+19 50
+#203
+Sword Quest Ancient~
+A Sword of the Ancients~
+A red and yellow sword lies here.~
+adamantite~
+weapon ABYa ANP
+sword -1 -1 slice A
+0 35 -1 P
+#204
+breastplate quest ancient~
+A BreastPlate of the Ancients~
+Some red and yellow platemail was left here.~
+unknown~
+armor ABYa ADP
+0 1 1 0 0
+0 20 -1 P
+A
+1 1
+A
+2 1
+A
+4 1
+A
+3 1
+F A 0 0 k
+A
+14 125
+A
+12 125
+A
+13 125
+#205
+boots quest ancient~
+Boots of the Ancients~
+Some red and yellow boots were left here.~
+unknown~
+armor GYa AGP
+0 0 0 0 0
+0 8 -1 P
+A
+2 2
+F A 0 0 V
+#206
+gloves quest protection~
+Gloves of Protection~
+Some red and yellow gloves lie here.~
+unknown~
+armor GYa AHP
+0 0 0 0 0
+0 20 -1 P
+A
+20 -20
+A
+19 50
+A
+18 50
+A
+5 1
+A
+1 1
+F A 0 -1 N
+F A 0 -1 O
+#207
+flame quest ancients~
+Flame of the Ancients~
+A red and yellow flame burns here.~
+unknown~
+light AYa AOP
+0 0 0 0 0
+0 5 -1 P
+A
+3 1
+A
+4 1
+A
+23 -5
+A
+12 100
+F A 0 -1 U
+F A 0 -1 Z
+F A 0 -1 J
+A
+13 100
+A
+12 150
+#208
+quest helm true sight~
+A Helm of True Sight~
+A red and yellow helm lies here.~
+unknown~
+armor ABGYa AEP
+50 50 50 40 0
+0 10 -1 P
+F A 0 0 E
+F A 0 0 C
+F A 0 0 G
+F A 0 0 F
+F A 0 0 D
+#209
+bag quest ancient~
+Bag of the Ancients~
+A red and yellow bag lies here.~
+unknown~
+container AGSa APS
+5000 A 0 100000 20
+0 0 -1 P
+A
+17 -100
+F A 0 -1 i
+A
+14 200
+#210
+shield quest ancient~
+A Shield of the Ancients~
+A red and yellow shield lies here.~
+unknown~
+armor GYab AJP
+0 0 0 0 0
+0 20 -1 P
+A
+13 100
+F R 0 -1 D
+#211
+quest ring regeneration~
+A Ring of Regeneration~
+A red and yellow ring lies here.~
+unknown~
+jewelry ABYa ABP
+0 0 0 0 0
+0 3 -1 P
+F A 0 0 c
+#212
+quest ring invisibility~
+A Ring of Invisibility~
+A red and yellow ring was left here.~
+unknown~
+jewelry ABYa ABP
+0 0 0 0 0
+0 2 -1 P
+F A 0 0 B
+A
+17 -200
+#214
+dragon eye~
+A Dragon's Eye~
+A Dragon's Eye lies here.~
+unknown~
+trash Y AP
+0 0 0 0 0
+1 0 0 P
+#215
+eagle claw~
+An Eagles' Claw~
+An Eagle's Claw lies here.~
+unknown~
+trash Y AP
+0 0 0 0 0
+0 0 0 P
+#216
+rabbit foot~
+A Rabbit's Foot~
+A Rabbit's Foot lies here.~
+unknown~
+trash Y AP
+0 0 0 0 0
+0 0 0 P
+#217
+wolf tooth~
+A Wolves Tooth~
+A Wolves Tooth lies here.~
+unknown~
+trash Y AP
+0 0 0 0 0
+0 0 0 P
+#0
+
+#ROOMS
+#200
+The Questors Lounge~
+~
+0 0 0
+D3
+~
+~
+0 0 3001
+S
+#201
+The Registar's Office~
+~
+0 0 0
+D1
+~
+~
+0 0 3001
+S
+#202
+The Trivia Shop~
+~
+0 0 0
+D0
+~
+~
+0 0 3303
+S
+#0
+
+#RESETS
+M 0 200 1 200 1
+M 0 202 1 201 1
+M 0 201 1 202 1
+S
+
+#SHOPS
+0
+
+#SPECIALS
+M 200 spec_questmaster
+M 201 spec_triviamob
+M 202 spec_registar
+S
+
+#$

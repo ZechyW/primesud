@@ -1,0 +1,144 @@
+# fmt: off
+# Area: Ofcol
+# Source: QuickMUD/ROM 2.4
+# VNUM ranges: 5500-5599
+# Credits: { All } Alfa    Ofcol
+
+
+AREA = {
+    "name":     'Ofcol',
+    "builders": 'None',
+    "vnums":    (5500, 5599),
+    "credits":  '{ All } Alfa    Ofcol',
+    "lvl_comment": 'All',
+    "levels":   (1, 50),
+}
+
+# -- Mob templates --------------------------------------------------------------
+# hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
+# armor: (pierce, bash, slash, exotic), raw .are units
+# hitroll: from mob level line
+MOBILES = {
+}
+
+# -- Rooms ----------------------------------------------------------------------
+ROOMS = {
+    5550: {
+        "name": 'Village street',
+        "desc": 'You stand at the small village street in Ofcol.\nFrom here you see small houses and only few people.\nNorth of here the village street continues up to the small\nsquare where some people are gathered as always.',
+        "exits": {
+            "n": {"to": 5551, "desc": 'You look up the village street noticing nothing special at all.'},
+            "s": {"to": 314, "desc": 'The wide road leads south here towards the T-crossing.'},
+        },
+        "sector": 'city',
+    },
+    5551: {
+        "name": 'Village street',
+        "desc": 'You are standing on the village street of Ofcol.\nEast from here is a small alley and north you enter the village\nsquare. Towards the south you can leave Ofcol.',
+        "exits": {
+            "n": {"to": 5552, "desc": 'The village square is as usual not overcrowded.'},
+            "e": {"to": 5553, "desc": 'The small alley looks relative peaceful.'},
+            "s": {"to": 5550, "desc": 'You see the village street eventually becoming the wide road.'},
+        },
+        "sector": 'city',
+    },
+    5552: {
+        "name": 'Village square',
+        "desc": 'The village square is a place where inhabitants of Ofcol gather\nto talk, trade and sell items and just have a good time.\nYou see a small shop to the west and the local inn to the north.\nIf you leave south you go to village street.',
+        "exits": {
+            "n": {"to": 5556, "desc": "You see a local inn called 'The Ofcol Local Inn'. Looks nice."},
+            "s": {"to": 5551, "desc": 'You see the village street of Ofcol.'},
+            "w": {"to": 5555, "desc": "A small shop with the sign 'Luxan's Mixed goods' hanging in front of it."},
+        },
+        "sector": 'city',
+    },
+    5553: {
+        "name": 'The small alley',
+        "desc": 'You are in a small, quiet alley.  From here you see the village street\nto the west and a small room lies to the south.',
+        "exits": {
+            "e": {"to": 601, "desc": 'You see a big intersection.'},
+            "s": {"to": 5554, "desc": 'It looks like the future site of a training room.'},
+            "w": {"to": 5551, "desc": 'You notice nothing but the village street.'},
+        },
+        "sector": 'city',
+    },
+    5554: {
+        "name": 'The future training room',
+        "desc": 'This is the future site of a training room.  The only exit is north\nleading to the small alley.',
+        "exits": {
+            "n": {"to": 5553, "desc": 'You are able to see the small alley, really not very interesting.'},
+        },
+        "flags": {"indoors": True},
+        "sector": 'city',
+    },
+    5555: {
+        "name": "Luxan's mixed shop",
+        "desc": "You are standing in a small shop, filled with all kinds of goods.\nHere you might be able to find just the thing you're looking for.\nThe only exit is east to village square.",
+        "exits": {
+            "e": {"to": 5552, "desc": 'The village square is as usual not overcrowded.'},
+        },
+        "flags": {"indoors": True},
+        "sector": 'city',
+    },
+    5556: {
+        "name": 'The Local Inn',
+        "desc": "You are in the local inn, where the peaceful citizens of Ofcol\ngather to have a drink or 5 if they have dry throats.\nYou can't help thinking that Ofcol is a dry city, when you see the\nmany people here.\nThe only exit is south to the village square.",
+        "exits": {
+            "s": {"to": 5552, "desc": 'The village square is as usual not overcrowded.'},
+        },
+        "flags": {"indoors": True},
+        "sector": 'city',
+    },
+    5577: {
+        "name": "Ravan's hideout",
+        "desc": 'This place is a small, cosy place where no one disturbs you all\nthe time. The room has little decoration except for some pictures\non the wall.\nYou notice that there are no exits from this room.',
+        "exits": {
+        },
+        "flags": {"no_mob": True},
+        "sector": 'inside',
+        "extra_descs": [('friend friends', 'The list include such prominent names as : God, Lottie, Kurgan,\nEzzard, Mike, Sprocket and Stormbringer.'), ('foe foes enemies', 'There is only one picture yet... Dim.\nIt pictures him hanging from a gallow, north of the town.\nIt has the letters R.I.P. inscripted underneath.'), ('pictures picture decoration', "These pictures show the friend's and foe's of Ravan.\nThey are easy to separate, as most of the foe's have the letters\nR.I.P. inscripted underneath them.")],
+    },
+}
+
+# -- Item templates -------------------------------------------------------------
+OBJECTS = {
+}
+
+# -- Resets ---------------------------------------------------------------------
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          -- place one item copy in room
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G/P limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 means unlimited, and 0
+# also means unlimited for E/G specifically (not P). Enforced at runtime.
+# ("P", item_vnum, limit, container_vnum, max)         -- fill container in room up to max (capped by limit)
+# ("R", room_vnum, num_dirs)                           -- shuffle first num_dirs exits (skipped on doors)
+# D resets are baked into room exit flags at conversion time
+RESETS = (
+    ("M", 303, 5, 5556, 3),
+    ("M", 303, 5, 5550, 3),
+    ("M", 304, 5, 5553, 3),
+    ("M", 304, 5, 5552, 3),
+    ("E", 3020, "wield", 99),
+    ("M", 306, 1, 5555, 1),
+    ("G", 304, 100),
+    ("G", 3030, 100),
+    ("M", 308, 1, 5556, 1),
+    ("G", 3000, 100),
+    ("G", 3001, 100),
+    ("M", 350, 1, 5577, 1),
+)
+
+# -- Helps ---------------------------------------------------------------------
+HELPS = (
+)
+
+# -- Socials -------------------------------------------------------------------
+SOCIALS = (
+)
+
+# -- MobProgs ------------------------------------------------------------------
+# (vnum, code) -- mob program code blocks, referenced by mob triggers
+MOBPROGS = {
+}

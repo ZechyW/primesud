@@ -1,99 +1,74 @@
-# PrimeSUD — Design Decisions
+# PrimeSUD - Design Decisions
 
-General mechanics and gameplay feel are inspired by, and sometimes ported directly from, 1stmud (`reference/1stMud4.5.3`).
-This doc lists intentional deviations from 1stMud and design choices made for PrimeSUD.
-Reference this before porting a new mechanic to avoid re-litigating settled decisions.
+Intentional deviations from 1stMud and design choices made for PrimeSUD. Read before porting a new mechanic to avoid re-litigating settled decisions. Features not listed here: assume 1stMud behaviour unless code says otherwise.
+
+**Guiding principle:** PrimeSUD is single-player. Multiplayer mechanics are excluded unless they add meaningful solo gameplay value. Mechanics with no current content hook are deferred, not eliminated.
 
 ---
 
-## HP Prime runtime constraints
+## HP Prime runtime
 
-- HP Prime Python appears to load all `.py` files in the app before `primesud.py`
-  can run benchmark code. Startup-time measurements taken inside `primesud.py`
-  therefore miss some app-load cost, and lazy `import` patterns may not reduce
-  first-launch wait if the source file is still packaged in the app. Prefer lazy
-  runtime initialisation when the goal is heap stability: avoid duplicate merged
-  catalogs, bulk mutable state, and all-world resets until data is actually
-  needed.
+HP Prime Python appears to load all `.py` files in the app before `primesud.py` runs. Lazy `import` patterns may not reduce first-launch wait if the source file is still packaged. Prefer lazy runtime initialisation for heap stability: avoid duplicate merged catalogs, bulk mutable state, and all-world resets until data is actually needed.
+
+Pickers force numeric keyboard mode on entry (`picker.py:_force_numeric_keys`) so stale alpha/shift-lock state doesn't eat digit selections.
 
 ---
 
 ## Not ported
 
-| Feature | Decision | Reason |
-|---|---|---|
-| Intercardinal directions (NE/NW/SE/SW) | **Removed** | 1stMud has no diagonal movement (`MAX_DIR = 6`: N E S W U D). Intercardinals were briefly added as a d-pad experiment but no world areas use them; removed for simplicity |
-| Move / MV | **Not ported** | No gameplay value in a single-player calculator game; MV drain/regen omitted entirely |
-| Race system | **Deferred** | All characters use human baseline stats (13 flat, max 18). Add when content justifies it |
-| Class system | **Deferred** | Classless for now; THAC0 curve uses a balanced midpoint. Add when skill trees justify it |
-| Stat rolling | **Deferred** | Fixed 13 across the board; no chargen reroll screen |
-| AC types (Pierce/Bash/Slash/Exotic) | **Deferred** | 1stMud `one_hit` (`fight.c`) selects one of four `armor[]` buckets (pierce/bash/slash/exotic) based on `dam_class`; `GetArmor` then adds the DEX defensive bonus. PrimeSUD keeps a single `AC` field. `ATTACK_TABLE` already carries the correct `dam_class` per weapon — expand to per-bucket AC (and then to res/imm/vuln flag checks) when the content warrants it |
-| Mob THAC0 by act type | **Deferred** | 1stMud `one_hit` uses per-class curves for NPCs: warrior `thac0_32 = -10`, thief `-4`, cleric `+2`, mage `+6`, default `-4`. PrimeSUD uses the single classless plateau (`THAC0_MIN = -2`) for both players and mobs. Port when NPC class diversity is needed for balance |
-| Saving throws | **Not ported** | Not implemented; add alongside spell effects if/when needed |
-| Alignment / deity | **Not ported** | Multiplayer/world-state concepts with no single-player hook |
-| Clan / rank / trivia | **Not ported** | Multiplayer concepts |
-| Hunger / thirst | **Not ported** | No meaningful single-player gameplay hook |
-| Age / hours played | **Not ported** | No persistent wall-clock; calculator has no reliable RTC |
-| Gold / silver | **Not yet** | Planned; placeholder slot exists in `do_score` right-column bottom |
-| Explore tracking | **Not yet** | Planned; placeholder exists in `do_score` footer area |
-| Pkills / pdeaths | **Not ported** | Single-player |
-| Per-mob `S kills deaths` stats | **Not ported** | 1stMud writes cumulative kill/death counts per mob prototype back to the `.are` file on shutdown (`fight.c:update_death`, `db2.c:load_mobiles`).  PrimeSUD area modules are static Python files — no write-back mechanism, and no analytics use for the data in a single-player game |
-| Stance system | **Not ported** | 1stMud-specific combat extension; out of scope |
+| Feature | Reason |
+|---|---|
+| Move / MV | No solo gameplay hook identified; omitted entirely |
+| Race system | Ported: RACE_TABLE in races.py, race defaults merged at mob/player creation, check_immune in combat, race-aware stat caps (get_curr_stat/get_max_train in handler.py). Chargen: name, race, sex, class, alignment, weapon. Racial skills granted at creation. Creation-point group customisation not ported |
+| Class system | Ported: CLASS_TABLE (6 classes) in classes.py, remort/multiclass, chargen class picker, per-class THAC0 and HP/mana gain, skill groups + `gain`. Creation-point group customisation at chargen not ported |
+| Stat rolling | Per-race base stats from RACE_TABLE; no chargen reroll |
+| Saving throws | `saving_throw = 0` baseline with `saves_spell`/`saves_dispel`/`check_dispel`; race/class modifiers and equipment bonuses deferred |
+| Alignment / deity | No solo gameplay hook identified |
+| Clan / rank | Multiplayer |
+| Hunger / thirst | No solo gameplay hook identified |
+| Age / hours played | HP Prime has no reliable RTC |
+| Explore tracking | Ported (08/07/2026): per-room bitmask, `explored` command, `do_score` line (`explored.py`) |
+| Trivia economy | Ported (08/07/2026 audit): earn via gquest kills/quest bonus/trivia pill, spend via `do_tpspend` (quest.py). Skipped options documented in do_tpspend docstring: corpse retrieval, transfer, pretitle, PK flag |
+| Pkills / pdeaths | Single-player |
+| Per-mob kill/death stats | 1stMud writes back to `.are` on shutdown; PrimeSUD areas are static Python files |
+| Furniture mechanics | sit/rest/sleep AT/ON/IN targets, occupancy (`count_users`), and value[3]/value[4] regen multipliers omitted -- no content: every furniture-typed object in the loaded areas (and all 16 across stock QuickMUD) carries `0 0 0 0 0` values. do_sit/do_rest/do_sleep/do_stand ignore the furniture keyword. Inns already regen faster via room heal_rate 110. Revisit alongside authored furniture content; full source map in git history (REGEN_PLAN.md decision 3) |
 
 ---
 
-## Simplified or adjusted
+## Adjusted from 1stMud
 
 | Feature | 1stMud | PrimeSUD | Reason |
 |---|---|---|---|
-| EXP per level | `exp_per_level(ch, points)` — scales with creation points and race/class mult | Flat **1000 XP / level** | Equivalent to 1stMud formula at 40 creation points, human race (100% mult) |
-| Class HP die | Per-class `hp_min`/`hp_max` (Warrior 11–15, Mage 6–8, …) | **7–10** (Cleric/Paladin midpoint) | Classless placeholder; change when classes are added |
-| Level-up heal | Adds gains to `max_hit`/`max_mana` only; current HP/MP unchanged | **[PRIMESUD]** fully restores current HP and MP | Quality-of-life: eliminates "levelled at 1 HP mid-fight" awkwardness |
-| Pulse timing | `PULSE_VIOLENCE = 3×PPS`, `PULSE_MOBILE = 4×PPS`, `PULSE_TICK = 45×PPS` | **`2×PPS`, `5×PPS`, `30×PPS`** | Faster combat and regen ticks for single-player UX; slower mob wander |
-| Trainer mechanic | `do_train` / `do_practice` commands at trainer NPCs | **Implemented** | Stat cap in `TRAIN_STAT_CAP` (config.py, revisit for races); `train hp`/`mana` each +10; `do_train` no-arg shows picker [PRIMESUD] |
-| Stats display | `[perm/curr]` where curr includes active affects | `[val/val]` (identical until affect system added) | Slot is future-proofed in `do_score` — expand when affects are implemented |
-| Score layout | 75-col three-column box | **64-col two-column box** | HP Prime font gives 64 columns; two-column fits all relevant fields |
+| EXP per level | `exp_per_level()` -- scales with creation points and race/class mult | Flat 1000 XP / level | Equivalent at 40 creation points, human baseline |
+| Level-up heal | Adds gains to `max_hit`/`max_mana`; current HP/MP unchanged | Fully restores current HP and MP | Eliminates "levelled at 1 HP mid-fight" |
+| Remort progression | `lvl_bonus` multiplier against 1stMud's economy | Same formula against PrimeSUD's flatter economy (20 HP at creation) -- first remort lands ~6000 HP/mana/move, 300 trains, 420 practices | Accepted 03/07/2026 as an NG+-style feature; revisit after playtest |
+| Guild rooms | Single class per guild room; midgaard has no paladin/ranger guilds | Paladin shares the Cleric guild rooms, Ranger shares the Warrior's; all four midgaard GMs are gain-capable (`patch_1stmud_deltas.py`) | Every class must be gain/remort-capable within the loaded-area set |
+| Pulse timing | `PULSE_VIOLENCE = 3xPPS`, `PULSE_MOBILE = 4xPPS`, `PULSE_TICK = 45xPPS` | `2xPPS`, `5xPPS`, `30xPPS` | Faster combat/regen; slower mob wander |
+| Gquest joining | 3-min GQUEST_WAITING window to gather joiners via `gquest join`; cancels with "Not enough people" if none join; ends running quest when last player leaves | No window -- quest starts running at announcement with the player auto-joined (same gates as manual join: no regular quest, level in range); auto-quest level band clamped to always include the player; runs until time expires; `gquest quit`/`join` still allow opt-out/rejoin (e.g. join after wrapping up a regular quest) | Single player -- window was dead time (kills don't credit until RUNNING), "not enough players" can't be a failure mode, joining has no penalty, and an unjoinable quest is dead content |
+| World-reset object counts | Incremental `pObjIndex->count` bumped at create/extract | Recomputed once per reset pass (`mob._object_count_map`) from the loaded world -- room floor items + one level of container `contents` + every char's inventory/equipment -- then incremented locally as the pass spawns | Sacrifice/quaff/decay/burnout extraction paths would drift a persistent counter and force it into the save file; lazy loading makes the computed count correct-by-construction (unloaded areas hold no instances) |
+| P-reset container target | `get_obj_type` scans the global object list for the most recent container instance | Most-recent instance of the container template found in the *resetting room's* floor items only | Converted stock P always fills a container O-placed in the same room; a global scan would fight lazy loading |
+| R-reset exit shuffle | Fisher-Yates over the live exit array, doors included | Same shuffle over the first N of the fixed `n,e,s,w,u,d` order, but skipped entirely if any affected exit is a door | Door reset state is keyed by (room, direction) in `DOOR_DEFS`; shuffling a door would desync it. Stock shuffled carriers (daycare maze, limbo) carry no doors on shuffled exits. Automap/`do_run` read the mutated static exits, diverging from ROOM_DEFS exactly as 1stMud mutates its live exits |
+| Room light counter | `room->light` bumped incrementally in `char_to_room`/`equip_char` | Computed on demand: `room_light(vnum)` counts lit lights worn by the room's occupants **and lying on its floor** | The many extraction/removal paths would drift a persistent counter and force it into the save. Floor lights also illuminate ([PRIMESUD], unlike stock ROM/1stMud which count only worn lights -- `room->light` is never touched by `obj_to_room`): a dropped torch or a cast continual-light ball lighting the room is the intuitive behaviour. Lights inside containers do not count |
+| `can_see_room` | Gates immortal / clan / owner room flags | Always permissive | Single-player: no immortals or clans, and the only room-flag carrier (`area_immort`) is already unreachable |
+| Explore-bit mark point | `StrSetBit` in `char_to_room` (handler.c:1360) -- one choke point on every room entry | `mark_explored(player)` called once per command dispatch (`commands.interpret`) and once per update tick (`update.update_handler`), setting the bit when the player's room differs from a cached `_last_marked_room` | PrimeSUD has no `char_to_room` choke point -- room assignment is scattered across movement/magic/combat/training/debug/load. The command seam catches player moves; the tick seam catches mob-initiated drags (summon). Per-area room counts baked at generation time (`AREA_ROOM_COUNTS`) so `arearooms`/score never load an area |
+| Weather model | Per-area temp/precip/wind vector sim seeded from each area's climate | Same engine, climate baked to a neutral `2 2 2` for every area; integer-only, and the change echo is computed for the player's area alone | Loaded area files all carry `Climate 2 2 2`, so climate 2 zeroes the climate-pull term (no floats on-device), and 1stMud never displays a non-player area's echo |
+| `do_time` | Calendar line plus boot/copyover/timezone/connected/creation lines | Calendar line + hours played only | The server/multiplayer state has no single-player equivalent |
+| `do_group` roster | One `[%2d %s] %-16s %4ld/%4ld hp ... %5d xp` line per member (~70 chars) | Two lines per member: `[%2d %-4s] <name>` then an indented, column-aligned `hp/mana/mv/xp` stats line | The single line overflows the 64-col screen and wraps mid-value; the split fields stay vertically aligned down the list |
 
 ---
 
-## Area file system
+## Area files
 
-See **[AREA_FILES.md](AREA_FILES.md)** for the full format reference — module layout,
-section order, field schemas for rooms/mobs/items/resets, and conventions.
+Generated `.txt` files (`area_<name>.txt`, Python source) instead of parsed `.are` files -- runtime text parsing too memory-intensive. See **[docs/AREA_FILES.md](docs/AREA_FILES.md)** for full format reference.
 
-Key design decisions summarised here for completeness:
-
-- Areas are Python modules (`area_<name>.py`) rather than parsed `.are` text files —
-  runtime text parsing would be memory-intensive and slow on the HP Prime.
-- Mob reset limits (`global_limit`, `room_limit`) are dropped: each `RESETS` entry owns
-  exactly one fixed slot; `revive_dead_mobs()` enforces this implicitly.
-- `#SPECIALS` adapted: `"special"` string key in `MOBILES`, resolved to a Python
-  function at load time in `world.py`.
-- `#SHOPS` is deferred until economy is implemented.
-- `P` resets (container contents) and `R` resets (randomize exits) are stored as
-  deferred tuples in `RESETS`; no runtime handler yet.
-- `E`/`G` resets (mob equipment/inventory) and `F`/`D` resets (door state) are
-  fully implemented.
-- `#MOBPROGS / #OBJPROGS / #ROOMPROGS` skipped — full scripting VM, no equivalent
-  planned.
-- `SKILL_TABLE` and `SKILLS` stay in `world.py` — skills are global, not per-area.
-- Cross-area VNUMs hardcoded in game logic belong in `world_consts.py`.
-- Stat tables (`STR_APP_TOHIT`, etc.) and THAC0 constants are in `config.py` — game
-  mechanics, not world data.
+Single ROM 2.4 (QuickMUD-dialect) pipeline: `areas/*.are` are editable working copies (pristine upstream originals kept under `reference/`), converted by the sole `tools/are_to_primesud.py`. The old 1stMud-format converter is retired; 1stMud-only areas (`limbo`, `quest`) were converted once to ROM 2.4 so every area shares one format and one converter. `#SPECIALS`/`#SHOPS` are baked into each mob's `MOBILES` entry (`spec_fun`/`shop` keys) at conversion time rather than merged at load; a special/shop referencing a mob vnum outside its own file is a hard conversion error. A handful of 1stMud flag-bit extensions absent from stock QuickMUD `merc.h` (item `extra_flags` bits 17/26, room flag bits 4/5/20-22) are treated as canonical since the runtime is 1stMud-ported. Generated data files (`area_*.txt`, `help.txt`, `mob_index.txt`) use `.txt` rather than `.dat` so tooling doesn't mistake them for binary. The converter fails loudly (`ValueError`) on any construct it doesn't handle -- unknown sections (`#AREADATA`, `#MOBOLD`/`#OBJOLD`), unrecognized trailer/reset/special letters, truncated payloads, `spec_fun` names missing from `src/special.py` `SPEC_TABLE` -- mirroring QuickMUD's own `bug()`+`exit(1)` loader; verified 2026-07-05 against all 53 stock QuickMUD areas (52 convert clean; `hood.are` correctly rejected for unimplemented specs).
 
 ---
 
-## Explicitly kept from 1stMud
+## Lazy area loading
 
-- `{X` colour-code syntax — identical to 1stMud (see *Colour codes* in CLAUDE.md)
-- THAC0 combat curve — formula `thac0_00 + (thac0_32 - thac0_00) * level / 32` from `interpolate()` in `fight.c`; [PRIMESUD] `THAC0_MIN = -2` (classless midpoint; see *Mob THAC0 by act type* above)
-- `advance_level` HP/MP formulas: `(CON_APP_HITP[con] + hp_roll) * 9/10`, min 2; two-step HP roll mirrors `get_hp_gain` in `multiclass.c`
-- MP formula: `randint(2, (2*INT + WIS) // 5) * 9/10`, min 2
-- `WIS_APP_PRACTICE` table for per-level practice gains
-- `CON_APP_HITP`, `STR_APP_TOHIT/TODAM`, `DEX_APP_DEF`, `INT_APP_LEARN` stat application tables (indices 0–25; 1stMud goes to 30 but stats are capped at 25)
-- Pulse rate: 4 pulses/sec (see *Pulse timing* above for per-pulse adjustments)
-- `check_improve` skill improvement mechanic
-- AC soft cap: `if victim_ac < -15: victim_ac = (victim_ac + 15) / 5 - 15` (both `one_hit` paths)
-- Multi-hit combat structure (`one_hit` → `multi_hit`)
-- Flee mechanic (random exit, up to 6 attempts)
-- Level-up message style: `"You raise a level!!"` then `"You gain N hit points, N mana, and N practices."`
+`world.py`'s `ROOM_DEFS`/`MOB_DEFS`/`ITEM_DEFS` are `LazyDict`s: any `[vnum]`/`.get(vnum)`/`vnum in ...` access loads that vnum's whole area file. This is cheap per-area but easy to trip accidentally -- any code that walks "all areas" (e.g. picking a destination, listing the world) ends up loading every area on the map, which is slow and heap-hungry on the calculator. `world._AREA_FILES`/`AREA_LEVELS`/`AREA_BUILDERS`/`_AREA_ADJ` are static tables (filename/tag/display-name/vnum-range, level range, builder, directed area-graph adjacency) generated by `tools/gen_area_adj.py` so area-level metadata and routing can be consulted without touching `ROOM_DEFS`. `world._vnum_to_tag(vnum)` (static-range lookup) and `world._ensure_area_by_tag(tag)` are the zero-load / single-area-load primitives built on top.
+
+`do_areas` (`src/info.py`) renders entirely from those static tables -- no area load, ever. 1stMud's stock `do_areas` (db.c) appends a per-area `path_to_area()` directions column by default, but the same function also implements an alternate layout gated by `MudFlag(DISABLE_AREA_DIRECTIONS)` that drops the column entirely (`"%s{W[{B%-7s{W] {r%s {C%s{x"`, no trailing `(dirs)`). PrimeSUD always renders that alternate layout: computing directions for every area (even lazily) still touches enough of the room graph that most areas end up loaded, defeating the purpose. The leading marker column (1stMud: clan-restriction `*`, not ported -- no clans) is repurposed to flag the player's current area instead, since there's no directions column left to say "You are here."
+
+`do_run` with no args (`src/movement.py`) picks a destination area from the same static area list (zero loads to build the picker), then pathfinds lazily via `info.find_path_to_area`: (1) zero-load BFS over the static area-adjacency graph to find a chain of areas from here to there; (2) load just the areas on that chain; (3) a *restricted* room-level BFS from the player's room that filters every candidate destination room through `world._vnum_to_tag` (zero-load) before ever touching `ROOM_DEFS` for it, so it can't accidentally load an area outside the chain; (4) if that restricted search can't complete the chain at room granularity (e.g. a one-way exit means the graph edge isn't walkable in this direction), fall back to the old exhaustive `find_area_paths`, which loads every area but is guaranteed to find any reachable target. `find_area_paths`/`_compress_path` are unchanged and remain as that fallback.

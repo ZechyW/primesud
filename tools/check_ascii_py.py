@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-DEFAULT_PATHS = ("primesud.hpappdir", "tools")
+DEFAULT_PATHS = ("src", "tools")
 SKIP_PARTS = {".git", "__pycache__"}
 BOM = b"\xef\xbb\xbf"
 
