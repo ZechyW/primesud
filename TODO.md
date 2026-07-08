@@ -6,13 +6,11 @@ Loose ends that don't belong in a specific plan file.
 
 Root-level `*_PLAN.md` files awaiting implementation; each carries its own
 dependency + completion notes in its header. Suggested order:
-`DARKNESS` -> `REGEN` -> `EXPLORED` -> `PETS_GROUPS` -> `MOBPROG`
-(DARKNESS/EXPLORED/MOBPROG are independent and can run in parallel
-sessions). `RESETS` is done (08/07/2026); its Phase A dependency
-`room_is_dark`/`room_light` already landed in `handler.py`, so DARKNESS
-Phase A should extend those rather than rebuild them. `OPUS_HANDOFF.md`
-carries ready-made session prompts for every stage. Strike this section
-when the last plan is deleted.
+`REGEN` -> `EXPLORED` -> `PETS_GROUPS` -> `MOBPROG`
+(EXPLORED/MOBPROG are independent and can run in parallel sessions).
+`RESETS` and `DARKNESS` are done (08/07/2026). `OPUS_HANDOFF.md` carries
+ready-made session prompts for every stage. Strike this section when the
+last plan is deleted.
 
 ## Combat
 
@@ -44,9 +42,9 @@ when the last plan is deleted.
   converter; formerly `are_to_primesud_quickmud.py`, renamed after the
   1stMud-format converter was deleted) to a lossless schema; these emitted
   fields are captured in the `.txt` files but not yet consumed at runtime:
-  - object `condition` (spawn wear-state), `light_hours` (light burnout),
-    `no_sac`, container `container_max_item_weight` / `container_weight_mult`,
-    food/drink `poisoned`
+  - object `condition` (spawn wear-state), `no_sac`, container
+    `container_max_item_weight` / `container_weight_mult`, food/drink
+    `poisoned` (`light_hours` now consumed -- see DARKNESS light burnout)
   - mob `default_pos` -- its only 1stMud runtime consumer is MOBPROG trigger
     gating (update.c:444-462); there is no "return to default position"
     mechanic, so `start_pos` (consumed at spawn) is enough until MOBPROG
