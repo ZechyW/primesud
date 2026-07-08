@@ -188,6 +188,11 @@ class tml_prime(tml):
         """
         self._input_replay = default
         try:
+            if prompt:
+                self.print(prompt, end='')
+                while self.cursor_y >= self.rows:
+                    self._scroll_up()
+                prompt = None
             return tml.input(self, prompt, length, alpha, shift, new_line)
         finally:
             self._input_replay = ''

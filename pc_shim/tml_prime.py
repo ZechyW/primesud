@@ -74,11 +74,14 @@ class tml_prime:
     def clear(self):
         os.system('cls' if os.name == 'nt' else 'clear')
 
-    def input(self, prompt=None, alpha=True, shift=False, new_line=True, length=0):
+    def input(self, prompt=None, alpha=True, shift=False, new_line=True, length=0, default=''):
         if prompt:
             sys.stdout.write('\n' + prompt)
             sys.stdout.flush()
-        result = []
+        result = list(default)
+        if default:
+            sys.stdout.write(default)
+            sys.stdout.flush()
         while True:
             try:
                 c = _q.get(timeout=0.05)

@@ -105,6 +105,35 @@ def test_poll_char_release_guard_blocks_immediate_reentry(monkeypatch):
     assert tr._queued == []
 
 
+def test_input_scrolls_prompt_off_separator_before_editing(monkeypatch):
+    tr = object.__new__(tml_prime)
+    tr.cursor_y = 22
+    tr.rows = 22
+    tr._input_replay = ""
+    tr.printed = []
+    tr.scrolled = 0
+
+    tr.print = lambda *args, **kwargs: tr.printed.append((args, kwargs))
+
+    def _scroll_up():
+        tr.scrolled += 1
+        tr.cursor_y -= 1
+
+    tr._scroll_up = _scroll_up
+
+    def _base_input(self, prompt, length, alpha, shift, new_line):
+        assert prompt is None
+        assert self.cursor_y == self.rows - 1
+        return "Hero"
+
+    monkeypatch.setattr(_MOD, "tml", types.SimpleNamespace(input=_base_input))
+
+    assert tr.input("Name?\n", default="Hero") == "Hero"
+    assert tr.printed == [(("Name?\n",), {"end": ""})]
+    assert tr.scrolled == 1
+    assert tr._input_replay == ""
+
+
 def test_scrollback_retouch_cancels_pending_fling(monkeypatch):
     tr = object.__new__(tml_prime)
     tr.width = 320
