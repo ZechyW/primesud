@@ -77,6 +77,7 @@ def main():
 
     builders = {}
     lvl_comments = {}
+    room_counts = {}
     adjacency = dict((tag, set()) for tag in tags)
     mismatches = []
     blind_exit_count = 0
@@ -100,6 +101,11 @@ def main():
         builders[tag] = extract_builder(area.get("credits", ""))
         if area.get("lvl_comment"):
             lvl_comments[tag] = area["lvl_comment"]
+
+        # Explorable room count (cf. 1stMud arearooms/top_explored). No
+        # PrimeSUD room carries ROOM_NOEXPLORE (verified 08/07/2026), so every
+        # room in the range counts.
+        room_counts[tag] = len(ns["ROOMS"])
 
         for rvnum, room in ns["ROOMS"].items():
             for _d, ev in room.get("exits", {}).items():
@@ -132,6 +138,7 @@ def main():
 
     builder_items = [(tag, builders[tag]) for tag in tags]
     adj_items = [(tag, tuple(sorted(adjacency[tag]))) for tag in tags]
+    room_count_items = [(tag, room_counts[tag]) for tag in tags]
 
     comment_items = [(tag, lvl_comments[tag]) for tag in tags
                      if tag in lvl_comments]
@@ -144,7 +151,9 @@ def main():
     block_lines.append("# 1stMud lvl_comment). AREA_ADJ: {tag: sorted tuple of neighbor tags")
     block_lines.append("# reachable via a room exit}, computed from ROOMS exits. Lets")
     block_lines.append("# do_areas/do_run consult this data without loading area files at")
-    block_lines.append("# runtime. Regenerate with: python tools/gen_area_adj.py")
+    block_lines.append("# runtime. AREA_ROOM_COUNTS: {tag: explorable room count} for")
+    block_lines.append("# do_explored/score (cf. 1stMud arearooms/top_explored); world total")
+    block_lines.append("# = sum of values. Regenerate with: python tools/gen_area_adj.py")
     block_lines.append("# [PRIMESUD]")
     block_lines.extend(format_dict_block(
         "AREA_BUILDERS", builder_items, lambda v: '"%s"' % v))
@@ -155,6 +164,9 @@ def main():
     block_lines.extend(format_dict_block(
         "_AREA_ADJ", adj_items,
         lambda v: "(" + ", ".join('"%s"' % t for t in v) + (",)" if len(v) == 1 else ")")))
+    block_lines.append("")
+    block_lines.extend(format_dict_block(
+        "AREA_ROOM_COUNTS", room_count_items, lambda v: str(v)))
     block_lines.append(END)
     new_block = "\n".join(block_lines)
 
@@ -191,6 +203,8 @@ def main():
     print()
     print("Areas: %d" % len(tags))
     print("Blind exits (\"to\": None): %d" % blind_exit_count)
+    print("Total explorable rooms (top_explored): %d"
+          % sum(room_counts.values()))
 
     if unclaimed_exits:
         print()

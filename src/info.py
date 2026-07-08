@@ -28,6 +28,7 @@ from urandom import randint
 from util import free_mem, gc_collect
 from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
 from debug import DBG, dbg  # [PRIMESUD]
+from explored import roomcount, TOP_EXPLORED, _pct2
 from prime_platform import ticks  # [PRIMESUD] 'debug time' channel timings
 
 
@@ -807,6 +808,17 @@ def do_score(player, args):
     name_col = "{c" + title_raw + "{x"
     mem_col  = ' ' * (_hdr_w - len(title_raw) - color_len(mem_str)) + mem_str
 
+    # cf. 1stMud act_info.c:1841 "Explored : %.0f of %d rooms (%.2f%% of the
+    # world)" -- rendered as a centered full-width box row [PRIMESUD].
+    _rcnt = roomcount(p)
+    _expl_txt = ("{cExplored : {w" + str(_rcnt) + "{c of {w" + str(TOP_EXPLORED)
+                 + "{c rooms ({w" + _pct2(_rcnt, TOP_EXPLORED)
+                 + "%{c of the world){x")
+    _ev = color_len(_expl_txt)
+    _elp = max(0, (_SCORE_INNER - _ev) // 2)
+    _erp = max(0, _SCORE_INNER - _ev - _elp)
+    expl_row = "{W|{x" + " " * _elp + _expl_txt + " " * _erp + "{W|{x"
+
     total_played = p.get('played', 0)
     hours = total_played // 3600            # cf. 1stMud act_info.c: played/HOUR
     age   = 17 + total_played // 72000      # cf. 1stMud act_info.c: 17 + played/(20*HOUR)
@@ -882,6 +894,8 @@ def do_score(player, args):
         _ac_row("Bash", get_armor(p, AC_BASH)),
         _ac_row("Slash", get_armor(p, AC_SLASH)),
         _ac_row("Exotic", get_armor(p, AC_EXOTIC)),
+        _SCORE_SEP_OUTER,
+        expl_row,
         _SCORE_SEP_OUTER,
     ]
     for line in lines:

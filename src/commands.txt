@@ -43,6 +43,7 @@ equipment|show what you are wearing and wielding
 envenom|coat an edged weapon or food with poison (thief)
 examine|look closely at an item or container
 exits|show obvious exits from this room
+explored|show how much of the world you have explored
 fill|fill a container from a fountain
 flee|run away from a fight
 follow|follow a character (or yourself to stop)

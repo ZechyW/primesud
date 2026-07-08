@@ -19,6 +19,7 @@ from classes import CLASS_TABLE
 from races import race_lookup, PC_RACE_ORDER, RACE_TABLE
 from skills_table import WEAPON_GSN_MAP
 from colors import capitalize
+from explored import encode_rle, decode_rle
 
 
 # -- Save format version --------------------------------------------------------
@@ -31,7 +32,7 @@ from colors import capitalize
 #
 # Skill numeric IDs (GSN_*) are permanent once assigned: recycling an ID for a
 # different skill would cause old saves to corrupt the new skill's learned %.
-SAVE_VERSION = 8  # v8: item light_hours token (lh:); full temp/precip/wind weather per area
+SAVE_VERSION = 9  # v9: p.explored RLE mask (explore tracking); v8: item lh: token, per-area weather
 
 # Per-area weather save keys -> weather-dict fields (cf. game_time weather model).
 # [PRIMESUD] Persisted only-when-present; missing fields keep their freshly
@@ -116,6 +117,8 @@ def _serialize_world():
     for sk in sorted(player["learned"]):
         learned_parts.append(str(sk) + ":" + str(player["learned"][sk]))
     lines.append("p.learned=" + "|".join(learned_parts))
+    # cf. 1stMud write_rle (explored.c) -- RLE run-length string, str()+concat
+    lines.append("p.explored=" + encode_rle(player))
     af_parts = []
     for af in player.get("affect_list", []):
         af_parts.append(
@@ -347,6 +350,8 @@ def load_world():
                         player["learned"][int(sk_str)] = int(pct_str)
                     except ValueError:
                         pass
+        elif key == "p.explored":
+            decode_rle(player, val)  # cf. 1stMud read_rle (explored.c)
         elif key == "p.armor":
             parts = val.split("|")
             if len(parts) == 4:

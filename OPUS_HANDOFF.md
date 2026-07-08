@@ -154,7 +154,7 @@ active-plans list). Device checklist at the end (school banner burnout
 pacing, weather message cadence).
 ```
 
-## Stage 4 -- REGEN (whole plan, one session)
+## Stage 4 -- REGEN (whole plan, one session) -- DONE 08/07/2026
 
 ```
 Implement REGEN_PLAN.md in full (player gain modifiers + mob hp regen;
@@ -184,7 +184,7 @@ active-plans list). Device checklist: idle tick cost with a full
 midgaard loaded.
 ```
 
-## Stage 5 -- EXPLORED (whole plan, one session)
+## Stage 5 -- EXPLORED (whole plan, one session) -- DONE 08/07/2026
 
 ```
 Implement EXPLORED_PLAN.md in full.

@@ -18,6 +18,7 @@ from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
                        do_sacrifice, do_compare, do_steal, do_give,
                        do_drink, do_fill, do_pour, do_envenom)
+from explored import do_explored, mark_explored
 from gquest import do_gquest
 from handler import chprintln
 from healer import do_heal
@@ -271,7 +272,7 @@ _CMD_TABLE = [
     # ("compress",  do_compress,   "dead",     False),  # #176
     ("remort",     do_remort,     "standing", True),   # #177 noprefix
     ("gquest",    do_gquest,     "resting",  False),  # #178
-    # ("explored",  do_explored,   "sleeping", False),  # #179
+    ("explored",   do_explored,   "sleeping", False),  # #179
     # --- Immortal commands #180-#252 ---
     # ("advance",   do_advance,    "dead",     False),  # #180 imm lvl 60
     # ("announce",  do_announce,   "dead",     False),  # #181 imm lvl 53
@@ -567,4 +568,10 @@ def interpret(raw, player):
         return None
 
     args = split_args(argument)
-    return fn(player, args)
+    result = fn(player, args)
+    # [PRIMESUD] mark the room the command left us in as explored. 1stMud does
+    # this in char_to_room; PrimeSUD has no such choke point, so mark_explored
+    # compares against a cached vnum here (player moves) and in the update tick
+    # (mob-initiated drags). See explored.py module docstring.
+    mark_explored(player)
+    return result

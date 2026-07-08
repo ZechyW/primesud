@@ -19,6 +19,7 @@ from player import tick_update
 from quest import quest_update
 from gquest import gquest_update
 from stances import first_stance_tip  # [PRIMESUD]
+from explored import mark_explored  # [PRIMESUD]
 from debug import DBG, dbg  # [PRIMESUD]
 
 # -- Return flags for update_handler (cf. 1stMud update.c) --------------------
@@ -91,6 +92,12 @@ def update_handler():
     if fired & UPD_VIOLENCE and player["fighting"] is None:
         first_stance_tip(player)  # [PRIMESUD] one-time post-first-battle hint
         aggr_update(tr, player)
+
+    # [PRIMESUD] mark seam for room changes that skip interpret's per-command
+    # mark: speedwalk/run steps (run_buf_step fires each pulse just before this)
+    # and mob-initiated drags (summon). Runs every pulse; cheap cached-vnum
+    # compare. See explored.py module docstring.
+    mark_explored(player)
 
     return fired
 

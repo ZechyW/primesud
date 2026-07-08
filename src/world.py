@@ -93,7 +93,9 @@ AREA_LEVELS = {
 # 1stMud lvl_comment). AREA_ADJ: {tag: sorted tuple of neighbor tags
 # reachable via a room exit}, computed from ROOMS exits. Lets
 # do_areas/do_run consult this data without loading area files at
-# runtime. Regenerate with: python tools/gen_area_adj.py
+# runtime. AREA_ROOM_COUNTS: {tag: explorable room count} for
+# do_explored/score (cf. 1stMud arearooms/top_explored); world total
+# = sum of values. Regenerate with: python tools/gen_area_adj.py
 # [PRIMESUD]
 AREA_BUILDERS = {
     "ofcol":      "Alfa",
@@ -146,6 +148,29 @@ _AREA_ADJ = {
     "tohell":     ("chapel",),
     "midgaard":   ("grave", "haon", "immort", "limbo", "mobfact", "moria", "mud_school", "newthalos", "quest", "sewer"),
     "newthalos":  ("haon", "midgaard"),
+}
+
+AREA_ROOM_COUNTS = {
+    "ofcol":      8,
+    "limbo":      3,
+    "quest":      3,
+    "trollden":   5,
+    "mobfact":    25,
+    "immort":     22,
+    "grave":      33,
+    "marsh":      18,
+    "arachnos":   56,
+    "plains":     44,
+    "chapel":     67,
+    "mud_school": 59,
+    "shire":      58,
+    "haon":       71,
+    "moria":      121,
+    "ofcol2":     100,
+    "sewer":      177,
+    "tohell":     141,
+    "midgaard":   143,
+    "newthalos":  257,
 }
 # -- END GENERATED --
 
