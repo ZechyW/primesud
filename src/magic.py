@@ -33,6 +33,7 @@ from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
 from skills_table import SKILLS, SKILL_TABLE
 from terminal import tprint
 from urandom import randint
+from game_time import init_weather, RAND_FACTOR, MAX_VECTOR
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 
 TARGET_NONE = "none"
@@ -474,29 +475,34 @@ def spell_locate_object(sn, level, ch, vo, target):
 
 
 def spell_control_weather(sn, level, ch, vo, target):
-    """Adjust simplified interim weather state (cf. 1stMud spell_control_weather in magic.c).
-    [Verified: 03/07/2026] -- [PRIMESUD] interim model: precip only, vector
-    clamp +/-3 vs mud_info.max_vector, change formula rescaled to match."""
+    """Nudge the current area's weather vectors (cf. 1stMud spell_control_weather in magic.c).
+    [Verified: 03/07/2026; upgraded from the interim precip-only model to the
+    full temp/precip/wind vectors and re-verified 08/07/2026]"""
     arg = ch.get("_target_name", "")
     area = _area_state_for_room(ch["room"])
     if area is None:
         chprintln(ch, "The weather is altered by your magic.")
         return True
-    weather = area.setdefault("weather", {"precip": 0, "precip_vector": 0})
-    change = randint(-1, 1) + max(1, (level * 3) // 20)
-    if arg == "wetter":
-        weather["precip_vector"] += change
+    weather = area.setdefault("weather", init_weather())
+    change = randint(-RAND_FACTOR, RAND_FACTOR) + (level * 3) // (2 * MAX_VECTOR)
+    if arg == "warmer":
+        weather["temp_vector"] = weather.get("temp_vector", 0) + change
+    elif arg == "colder":
+        weather["temp_vector"] = weather.get("temp_vector", 0) - change
+    elif arg == "wetter":
+        weather["precip_vector"] = weather.get("precip_vector", 0) + change
     elif arg == "drier":
-        weather["precip_vector"] -= change
-    elif arg in ("warmer", "colder", "windier", "calmer"):
-        pass  # [PRIMESUD] interim model stores only precipitation.
+        weather["precip_vector"] = weather.get("precip_vector", 0) - change
+    elif arg == "windier":
+        weather["wind_vector"] = weather.get("wind_vector", 0) + change
+    elif arg == "calmer":
+        weather["wind_vector"] = weather.get("wind_vector", 0) - change
     else:
         chprintln(ch, "Do you want it to get warmer, colder, wetter, drier, windier, or calmer?")
         return False
-    if weather["precip_vector"] < -3:
-        weather["precip_vector"] = -3
-    elif weather["precip_vector"] > 3:
-        weather["precip_vector"] = 3
+    for k in ("temp_vector", "precip_vector", "wind_vector"):
+        if k in weather:
+            weather[k] = max(-MAX_VECTOR, min(weather[k], MAX_VECTOR))
     chprintln(ch, "The weather is altered by your magic.")
     return True
 

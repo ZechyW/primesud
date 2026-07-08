@@ -31,7 +31,16 @@ from colors import capitalize
 #
 # Skill numeric IDs (GSN_*) are permanent once assigned: recycling an ID for a
 # different skill would cause old saves to corrupt the new skill's learned %.
-SAVE_VERSION = 7  # v7: skill groups -- p.groups field; learned granted via groups, not grant-all
+SAVE_VERSION = 8  # v8: item light_hours token (lh:); full temp/precip/wind weather per area
+
+# Per-area weather save keys -> weather-dict fields (cf. game_time weather model).
+# [PRIMESUD] Persisted only-when-present; missing fields keep their freshly
+# seeded random value on load, and a SAVE_VERSION mismatch discards old saves.
+_WEATHER_SAVE_FIELDS = {
+    "temp": "temp", "tempv": "temp_vector",
+    "precip": "precip", "precipv": "precip_vector",
+    "wind": "wind", "windv": "wind_vector",
+}
 
 # -- Persistence ---------------------------------------------------------------
 # Dual-save strategy:
@@ -150,8 +159,9 @@ def _serialize_world():
         lines.append("a." + str(_as["tag"]) + ".age=" + str(_as["age"]))
         weather = _as.get("weather")
         if weather is not None:
-            lines.append("a." + str(_as["tag"]) + ".precip=" + str(weather.get("precip", 0)))
-            lines.append("a." + str(_as["tag"]) + ".precipv=" + str(weather.get("precip_vector", 0)))
+            _wtag = str(_as["tag"])
+            for _skey, _wfld in _WEATHER_SAVE_FIELDS.items():
+                lines.append("a." + _wtag + "." + _skey + "=" + str(weather.get(_wfld, 0)))
     lines.append("g.time=" + str(time_info["hour"]) + "|" + str(time_info["day"]) + "|" + str(time_info["month"]) + "|" + str(time_info["year"]))
     for _gql in gq_save_lines():  # [PRIMESUD] gquest state
         lines.append(_gql)
@@ -375,16 +385,11 @@ def load_world():
             tag = key[2:-4]
             if tag in _area_by_tag:
                 _area_by_tag[tag]["age"] = int(val)
-        elif key.startswith("a.") and key.endswith(".precip"):
-            tag = key[2:-7]
+        elif key.startswith("a.") and key.rpartition(".")[2] in _WEATHER_SAVE_FIELDS:
+            tag, _, fld = key[2:].rpartition(".")  # area tags carry no dots
             if tag in _area_by_tag:
-                _area_by_tag[tag].setdefault("weather", {})
-                _area_by_tag[tag]["weather"]["precip"] = int(val)
-        elif key.startswith("a.") and key.endswith(".precipv"):
-            tag = key[2:-8]
-            if tag in _area_by_tag:
-                _area_by_tag[tag].setdefault("weather", {})
-                _area_by_tag[tag]["weather"]["precip_vector"] = int(val)
+                w = _area_by_tag[tag].setdefault("weather", {})
+                w[_WEATHER_SAVE_FIELDS[fld]] = int(val)
         elif key.startswith("g.gq") and gq_load_line(key, val):  # [PRIMESUD]
             pass
         elif key == "g.time":

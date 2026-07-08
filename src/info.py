@@ -902,6 +902,57 @@ def do_worth(player, args):
            + " and " + _intstr(player.get("trivia", 0), "trivia point") + ".")
 
 
+def do_time(player, args):
+    """Show the game calendar and time played (cf. 1stMud do_time in act_info.c:2348).
+
+    [PRIMESUD] Only the calendar line and played-time line are ported; 1stMud's
+    server/multiplayer lines (boot/copyover time, timezones, connected-at,
+    creation percentage) have no single-player equivalent and are omitted.
+    """
+    from game_time import (time_info, day_name, month_name, ordinal_string,
+                           HOURS_IN_DAY)
+    hour = time_info["hour"]
+    half = HOURS_IN_DAY // 2
+    hour12 = half if hour % half == 0 else hour % half
+    ampm = "pm" if hour >= half else "am"
+    # [PRIMESUD] 1stMud's format string carries a leftover "%d%s" from ROM's
+    # (day+1, suffix) pair but passes only ordinal_string(day+1); the stray %d
+    # is a slip -- rendered here as a single ordinal ("first", "21st", ...).
+    chprintln(player,
+              "It is " + str(hour12) + " o'clock " + ampm
+              + ", Day of " + day_name[(time_info["day"] + 1) % 7]
+              + ", " + ordinal_string(time_info["day"] + 1)
+              + " the Month of " + month_name[time_info["month"]]
+              + ", year " + str(time_info["year"]) + ".")
+    # cf. 1stMud (pcdata->played + elapsed) / HOUR . ((.../36) % 100);
+    # PrimeSUD tracks played in real seconds (update.py), HOUR = 3600.
+    played = player.get("played", 0)
+    cents = (played // 36) % 100
+    cs = str(cents) if cents >= 10 else "0" + str(cents)
+    chprintln(player, "You have played approximately "
+              + str(played // 3600) + "." + cs + " hours.")
+
+
+def do_weather(player, args):
+    """Report the current weather to an outdoor player (cf. 1stMud do_weather in act_info.c:2470)."""
+    from game_time import weather_report_line
+    room = ROOM_DEFS[player["room"]]
+    # IsOutside (cf. 1stMud macro.h): a room not flagged indoors.
+    if room.get("flags", {}).get("indoors"):
+        chprintln(player, "You can't see the sky from here.")
+        return
+    tag = room.get("area")
+    weather = None
+    for a in world.areas:
+        if a.get("tag") == tag:
+            weather = a.get("weather")
+            break
+    if weather is None:
+        chprintln(player, "You can't see the sky from here.")
+        return
+    chprintln(player, "{B" + weather_report_line(weather) + "{x")
+
+
 def _parse_skill_range(player, args):
     """Parse level range arguments for spell/skill list commands. [PRIMESUD]"""
     if not args:

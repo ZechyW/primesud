@@ -109,6 +109,7 @@ surrender|give up and hope for mercy
 take|pick up an item (alias for get)
 tap|sacrifice an item (alias for sacrifice)
 tell|send a private message to a mob
+time|show the game time, date, and hours played
 tpspend|spend trivia points on rewards
 train|convert sessions into stats at a trainer
 trip|trip an opponent off its feet
@@ -118,6 +119,7 @@ value|ask a shopkeeper what an item is worth
 visible|step out of hiding / cancel invisibility
 wake|wake up (yourself)
 wear|wear armor or clothing from your inventory
+weather|show the current weather (must be outdoors)
 west|move west
 where|show area info, or find mobs: where <name>
 wield|wield a weapon (alias for wear)

@@ -9,6 +9,7 @@ from races import RACE_TABLE, race_lookup
 from handler import equip_char, act, _char_base, is_awake, TO_ROOM, can_see, room_is_dark
 from hunt import hunt_victim
 from item import create_object
+from game_time import init_weather, advance_weather, adjust_vectors, get_weather_echo
 from special import SPEC_TABLE
 from debug import DBG, dbg  # [PRIMESUD]
 
@@ -504,15 +505,13 @@ def create_area_states():
     """
     states = []
     for d in AREA_DEFS:
-        # [PRIMESUD] Simplified interim weather model for spell gating. This
-        # keeps only precipitation and its drift, not full 1stMud weather.c.
+        # [PRIMESUD] Full per-area temp/precip/wind weather (cf. 1stMud
+        # init_area_weather); climate baked to a neutral 2 2 2. Ticked by
+        # weather_update on PULSE_TICK.
         entry = {
             "tag": d["tag"],
             "age": 0,
-            "weather": {
-                "precip": randint(-2, 2),
-                "precip_vector": randint(-1, 1),
-            },
+            "weather": init_weather(),
         }
         if "room_vnums" in d:
             entry["room_vnums"] = d["room_vnums"]
@@ -670,23 +669,8 @@ def area_update(tr, player):
         tr: Terminal for reset messages.
         player (dict): Player state dict.
     """
+    # Weather now ticks in weather_update on PULSE_TICK (cf. 1stMud), not here.
     for area in world.areas:
-        weather = area.get("weather")
-        if weather is not None:
-            weather["precip"] += weather.get("precip_vector", 0)
-            if weather["precip"] < -3:
-                weather["precip"] = -3
-            elif weather["precip"] > 3:
-                weather["precip"] = 3
-            weather["precip_vector"] += randint(-1, 1)
-            if weather["precip"] <= -3 and weather["precip_vector"] < 0:
-                weather["precip_vector"] = 0
-            elif weather["precip"] >= 3 and weather["precip_vector"] > 0:
-                weather["precip_vector"] = 0
-            if weather["precip_vector"] < -1:
-                weather["precip_vector"] = -1
-            elif weather["precip_vector"] > 1:
-                weather["precip_vector"] = 1
         area["age"] += 1
         if area["age"] >= _AREA_AGE_MIN and area["age"] >= _AREA_AGE_RESET:
             if "room_vnums" not in area:
@@ -702,3 +686,36 @@ def area_update(tr, player):
                 # School area is intentionally silent (cf. db.c:1335 else-if excludes it).
                 if ROOM_DEFS[player["room"]].get("area") == area["tag"]:
                     tr.print("{D" + _RESET_MSGS[randint(0, len(_RESET_MSGS) - 1)] + "{x")
+
+
+def weather_update(tr, player):
+    """Advance per-area weather and echo changes to the player (cf. 1stMud weather_update in weather.c). [PRIMESUD]
+
+    Every loaded area's temp/precip/wind drift each tick, so weather differs as
+    the player transits areas. [PRIMESUD] optimization: only the player's
+    current area computes an echo message -- 1stMud recomputes the echo for all
+    areas but only ever displays the player's, and the echo is not stored
+    between ticks, so skipping the non-player echoes is observationally
+    identical. The echo is taken before adjust_vectors (matching 1stMud's
+    loop order: get_weather_echo reads the pre-adjust vectors).
+
+    Args:
+        tr: Terminal for the weather-change echo.
+        player (dict): Player state dict.
+    """
+    proom = ROOM_DEFS[player["room"]] if player["room"] in ROOM_DEFS._data else None
+    ptag = proom.get("area") if proom is not None else None
+    # IsOutside (cf. 1stMud macro.h): not flagged indoors; and awake.
+    outdoor_awake = (proom is not None
+                     and not proom.get("flags", {}).get("indoors")
+                     and is_awake(player))
+    for area in world.areas:
+        w = area.get("weather")
+        if w is None:
+            continue
+        advance_weather(w)
+        if outdoor_awake and area.get("tag") == ptag:
+            msg, color = get_weather_echo(w)
+            if msg:
+                tr.print(color + msg + "{x")
+        adjust_vectors(w)

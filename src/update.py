@@ -14,7 +14,7 @@ from config import (
 )
 from combat import update_mob_timers, violence_update
 from game_time import time_update
-from mob import mobile_update, aggr_update, area_update
+from mob import mobile_update, aggr_update, area_update, weather_update
 from player import tick_update
 from quest import quest_update
 from gquest import gquest_update
@@ -77,7 +77,7 @@ def update_handler():
         _pulse_tick = PULSE_TICK
         if "tick" in DBG:  # [PRIMESUD]
             dbg("pulse tick")
-        # weather_update()  # not yet ported
+        weather_update(tr, player)
         time_update()
         player["played"] = player.get("played", 0) + TICK_SECS
         tick_update(tr, player, ROOM_DEFS[player["room"]])
