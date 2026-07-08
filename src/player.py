@@ -1,12 +1,14 @@
 """Player creation, progression, and prompt."""
 
-from classes import CLASS_TABLE, CLASS_WARRIOR, exp_per_level
+from classes import CLASS_TABLE, CLASS_WARRIOR, exp_per_level, has_spells
 from colors import color_len
 import terminal
 from terminal import tprint
 from config import TERMINAL_COLS
 from config import R_STARTING_ROOM
-from skills_table import SKILLS, GSN_RECALL
+from config import POS_ORDER
+from skills_table import SKILLS, GSN_RECALL, GSN_FAST_HEALING, GSN_MEDITATION
+from urandom import randint
 from races import RACE_TABLE, race_lookup
 import world
 from world import ROOM_DEFS, AREA_DEFS, ITEM_DEFS
@@ -217,6 +219,33 @@ def reset_char(player):
 
 # -- Tick regen ---------------------------------------------------------------
 
+def _regen_tail(gain, char, rate):
+    """Room-rate multiply then affect divisors on a regen gain. [PRIMESUD]
+
+    Shared tail of 1stMud hit_gain/mana_gain/move_gain (update.c:226-238):
+    room heal/mana rate, then poison /4, plague /8, haste|slow /2. Furniture
+    value[3]/value[4] multipliers skipped -- no furniture content (DESIGN.md).
+    Integer math only.
+
+    Args:
+        gain (int): Pre-tail regen amount.
+        char (dict): Player or mob instance (supplies affected_by).
+        rate (int): Room heal_rate (hp/mv) or mana_rate (mp), percent.
+
+    Returns:
+        int: Adjusted gain.
+    """
+    gain = gain * rate // 100
+    aff = char.get("affected_by", {})
+    if aff.get("poison"):
+        gain //= 4
+    if aff.get("plague"):
+        gain //= 8
+    if aff.get("haste") or aff.get("slow"):
+        gain //= 2
+    return gain
+
+
 def tick_update(tr, player, room):
     """Regenerate HP and MP once per world tick (cf. 1stMud hit_gain/mana_gain in update.c).
 
@@ -229,6 +258,8 @@ def tick_update(tr, player, room):
 
     Uses imported world module for player stat lookups.
     """
+    # deferred: player -> skill_utils -> handler load-order
+    from skill_utils import get_skill, check_improve
     con  = get_curr_stat(player, "con")
     int_ = get_curr_stat(player, "int")
     wis  = get_curr_stat(player, "wis")
@@ -236,9 +267,14 @@ def tick_update(tr, player, room):
 
     pos = player.get("pos", "standing")
 
-    # HP (cf. 1stMud hit_gain in update.c)
+    # HP (cf. 1stMud hit_gain in update.c:191-201)
     hp_gain = max(3, con - 3 + level // 2) + (player["max_hit"] - 10)
-    # TODO: fast_healing bonus -- if roll < skill%, gain += roll * gain / 100
+    # fast healing bonus (cf. update.c:195-201): roll == skill% is a miss (<)
+    roll = randint(1, 100)
+    if roll < get_skill(player, GSN_FAST_HEALING):
+        hp_gain += roll * hp_gain // 100
+        if player["hit"] < player["max_hit"]:
+            check_improve(player, GSN_FAST_HEALING, True, 8)
     # Position divisors: sleeping /1, resting /2, fighting /6, other /4
     if pos == "resting":
         hp_gain //= 2
@@ -247,21 +283,26 @@ def tick_update(tr, player, room):
     elif pos != "sleeping":
         hp_gain //= 4
     # Hunger/thirst omitted [PRIMESUD]
-    hp_gain = hp_gain * room.get("heal_rate", 100) // 100
-    # TODO: poison /4, plague /8, haste/slow /2
-    hp_gain = max(1, hp_gain)
+    hp_gain = _regen_tail(hp_gain, player, room.get("heal_rate", 100))
 
-    # MP (cf. 1stMud mana_gain in update.c) -- base (WIS+INT+level)/2, same divisors
+    # MP (cf. 1stMud mana_gain in update.c:269-297) -- base (WIS+INT+level)/2
     mp_gain = (int_ + wis + level) // 2
+    # meditation bonus (cf. update.c:274-280), same roll shape as fast healing
+    roll = randint(1, 100)
+    if roll < get_skill(player, GSN_MEDITATION):
+        mp_gain += roll * mp_gain // 100
+        if player["mana"] < player["max_mana"]:
+            check_improve(player, GSN_MEDITATION, True, 8)
+    # non-casters regen mana at half (cf. update.c:281-282)
+    if not has_spells(player):
+        mp_gain //= 2
     if pos == "resting":
         mp_gain //= 2
     elif pos == "fighting":
         mp_gain //= 6
     elif pos != "sleeping":
         mp_gain //= 4
-    mp_gain = mp_gain * room.get("mana_rate", 100) // 100
-    # TODO: poison /4, plague /8, haste/slow /2
-    mp_gain = max(1, mp_gain)
+    mp_gain = _regen_tail(mp_gain, player, room.get("mana_rate", 100))
 
     # MV (cf. 1stMud move_gain in update.c) -- base max(15, level);
     # sleeping +DEX, resting +DEX/2
@@ -271,9 +312,7 @@ def tick_update(tr, player, room):
         mv_gain += dex
     elif pos == "resting":
         mv_gain += dex // 2
-    mv_gain = mv_gain * room.get("heal_rate", 100) // 100
-    # TODO: poison /4, plague /8, haste/slow /2
-    mv_gain = max(1, mv_gain)
+    mv_gain = _regen_tail(mv_gain, player, room.get("heal_rate", 100))
 
     player["hit"] = min(player["max_hit"], player["hit"] + hp_gain)
     player["mana"] = min(player["max_mana"], player["mana"] + mp_gain)
