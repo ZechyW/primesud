@@ -1,5 +1,10 @@
 # DARKNESS_PLAN.md -- Room darkness / visibility / light system port from 1stMud
 
+> **Progress: Phases A + B done 08/07/2026** -- commit e11**** (A: can_see
+> dark gate, can_see_obj port, check_blind) and b4a**** (B: look/exits/automap/
+> scan/get-drop-picker gating). Phases C (light fuel) and D (time + weather
+> commands) remain -- do NOT run the completion/harvest block below yet.
+
 > 1stMud sources: `reference/1stMud4.5.3/src/`. Depends on: nothing.
 > RESETS_PLAN decision 6 consumes Phase A's `room_is_dark` -- land Phase A
 > first if both plans run, else gate (see that plan).
