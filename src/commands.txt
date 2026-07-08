@@ -49,6 +49,7 @@ flee|run away from a fight
 follow|follow a character (or yourself to stop)
 gain|learn or improve skill groups at a trainer
 get|pick up an item: get <item> [container]
+group|show your group's status, or 'group where' for locations
 give|give an item or coins to a character
 gquest|global quest status and commands
 go|step through a portal object (same as enter)

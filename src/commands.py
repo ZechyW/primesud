@@ -5,7 +5,7 @@ from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
                     do_rescue, do_disarm, do_surrender,
                     do_sskill, do_stance, do_autostance, do_consider)
 from comm import (do_say, do_tell, do_reply, do_follow, do_ditch, do_order,
-                  do_yell, do_emote)
+                  do_group, do_yell, do_emote)
 from config import POS_ORDER
 from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_help, do_affects, do_credits, do_areas, do_map, do_automap,
@@ -107,7 +107,7 @@ _CMD_TABLE = [
     ("exits",      do_exits,      "resting",  False),  # #12
     ("get",        do_get,        "resting",  False),  # #13
     # ("goto",      do_goto,       "dead",     False),  # #14 imm lvl 52
-    # ("group",     do_group,      "sleeping", False),  # #15
+    ("group",      do_group,      "sleeping", False),  # #15
     # ("guild",     do_guild,      "dead",     False),  # #16 imm lvl 56
     ("hit",        do_kill,       "fighting", False),  # #17
     ("inventory",  do_inventory,  "dead",     False),  # #18

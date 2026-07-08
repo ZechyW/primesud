@@ -300,6 +300,23 @@ def class_name(ch, cl):
     return CLASS_TABLE[cl]["names"][max(0, tier)]
 
 
+def class_who(ch):
+    """Short who-list class tag (cf. 1stMud class_who in multiclass.c).
+
+    'Mob' for NPCs; for a remort, the 2-char prime class name plus '+<remort
+    count>'; otherwise the 4-char prime class name.
+    """
+    if ch.get("is_npc"):
+        return "Mob"
+    classes = char_classes(ch)
+    if not classes:
+        return "Mob"
+    name = class_name(ch, prime_class(ch))
+    if len(classes) > 1:
+        return name[:2] + "+" + str(len(classes) - 1)
+    return name[:4]
+
+
 def class_long(ch):
     """Slash-joined full class names at current remort tier
     (cf. 1stMud class_long in multiclass.c)."""

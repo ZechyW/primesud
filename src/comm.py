@@ -2,8 +2,10 @@
 
 import world
 from handler import (act, chprintln, chprintlnf, is_name, get_char_room,
-                   affect_strip, can_see,
+                   affect_strip, can_see, _pers,
                    TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ZONE)
+from colors import capitalize
+from classes import class_who
 from skill_utils import WaitState
 from skills_table import GSN_CHARM_PERSON
 from config import PULSE_VIOLENCE
@@ -462,3 +464,92 @@ def do_order(ch, args):
         chprintln(ch, "Ok.")
     else:
         chprintln(ch, "You have no followers here.")
+
+
+def do_group(ch, args):
+    """Show group roster / locations, or add/remove a member (cf. 1stMud do_group in act_comm.c).
+    [Verified: 08/07/2026]
+
+    Solo value is pet/charmie status display. Iterates world.chars where
+    1stMud walks char_first. The roster line keeps 1stMud's exact format;
+    at ~70 chars it wraps on the narrow screen (tml handles the wrap) rather
+    than being split onto two lines. [PRIMESUD]
+
+    Args:
+        ch (dict): Player state dict.
+        args (list): Empty (roster), ['where'] (locations), or a member keyword.
+    """
+    from combat import is_same_group  # lazy import (cycle)
+
+    leader = ch
+    if ch.get("leader") is not None:
+        leader = world.chars.get(ch["leader"], ch)
+
+    if not args:
+        chprintln(ch, "%s's group:" % _pers(leader, ch))
+        for gch in world.chars.values():
+            if is_same_group(gch, ch):
+                chprintln(ch,
+                    "[%2d %s] %-16s %4d/%4d hp %4d/%4d mana %4d/%4d mv %5d xp" % (
+                        gch["level"],
+                        "Mob" if gch["is_npc"] else class_who(gch),
+                        capitalize(_pers(gch, ch)),
+                        gch["hit"], gch["max_hit"],
+                        gch["mana"], gch["max_mana"],
+                        gch.get("move", 0), gch.get("max_move", 0),
+                        0 if gch["is_npc"] else gch.get("xp", 0)))
+        chprintln(ch, "Type 'group where' to view group member locations.")
+        return
+
+    # 1stMud one_argument: only the first word matters
+    if args[0] == "where":
+        chprintln(ch, "{W%s's group:{x" % _pers(leader, ch))
+        for gch in world.chars.values():
+            if is_same_group(gch, ch):
+                rs = world.rooms.get(gch.get("room"))
+                room_name = rs["name"] if rs else "somewhere"
+                tag = (world.ROOM_DEFS[gch["room"]].get("area")
+                       if gch.get("room") is not None else None)
+                area_name = world._TAG_TO_NAME.get(tag, tag) if tag else ""
+                chprintln(ch, "{W%s is in %s the general area of %s.{x" % (
+                    _pers(gch, ch), room_name, area_name))
+        return
+
+    rs = world.rooms.get(ch.get("room"))
+    mob_id = get_char_room(args[0], rs["mobs"], world.chars, ch) if rs else None
+    if mob_id is None:
+        chprintln(ch, "They aren't here.")
+        return
+    victim = world.chars[mob_id]
+
+    if ch.get("master") is not None or (ch.get("leader") is not None
+                                        and ch.get("leader") != ch["id"]):
+        chprintln(ch, "But you are following someone else!")
+        return
+
+    # get_char_room is mob-only, so victim is never ch -- the 1stMud ch==victim
+    # self-group branches are unreachable. [PRIMESUD]
+    if victim.get("master") != ch["id"]:
+        act("$N isn't following you.", ch, None, victim, TO_CHAR)
+        return
+
+    if victim.get("affected_by", {}).get("charm"):
+        chprintln(ch, "You can't remove charmed mobs from your group.")
+        return
+
+    if ch.get("affected_by", {}).get("charm"):
+        act("You like your master too much to leave $m!", ch, None,
+            victim, TO_VICT)
+        return
+
+    if is_same_group(victim, ch):
+        victim["leader"] = None
+        act("$n removes $N from $s group.", ch, None, victim, TO_NOTVICT)
+        act("$n removes you from $s group.", ch, None, victim, TO_VICT)
+        act("You remove $N from your group.", ch, None, victim, TO_CHAR)
+        return
+
+    victim["leader"] = ch["id"]
+    act("$N joins $n's group.", ch, None, victim, TO_NOTVICT)
+    act("You join $n's group.", ch, None, victim, TO_VICT)
+    act("$N joins your group.", ch, None, victim, TO_CHAR)
