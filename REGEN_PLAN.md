@@ -15,11 +15,18 @@ Close the gaps in `player.py tick_update` (cf. 1stMud `hit_gain` /
   meditation, poison/plague/haste-slow penalties -- not ported.
 - `has_spells` mana halving (update.c:281): not ported; helper already
   exists (classes.py:203).
-- **Mobs never regen hp/mana at all.** tick_update's `world.chars` loop
-  (player.py:284+) only ticks affects; 1stMud's NPC branch
-  (update.c:169-190, 251-267) is absent. Gameplay impact: fled-from mobs
+- **Mobs never regen hp at all.** 1stMud `char_update` loops every char
+  (update.c:528) and applies the gains to anyone `position >= POS_STUNNED`
+  (update.c:538, 550-563); `hit_gain`'s `IsNPC` branch is update.c:169-190.
+  PrimeSUD ported the adjacent despawn block from that same loop
+  (mob.py:366 cites update.c:541-547) but not the regen below it --
+  accidental omission, not a deviation. tick_update's `world.chars` loop
+  (player.py:284+) only ticks affects. Gameplay impact: fled-from mobs
   stay wounded forever; troll `regeneration` racial and the quest
   regeneration ring (area_quest.txt:307) are dead keys.
+- Mob instances track `hit`/`max_hit` and `pos` only (mob.py:136/155) --
+  no mana/move pools (templates carry `mana_dice`; `create_mobile`
+  ignores it). Mob regen is therefore hp-only; see decision 2.
 - Furniture (`ch->on`, sit/rest/sleep targets, value[3]/value[4] regen
   multipliers): not ported, and **content is dead everywhere** -- the 7
   furniture-typed items in loaded areas are signs/letters/junk with zero
@@ -49,21 +56,25 @@ Close the gaps in `player.py tick_update` (cf. 1stMud `hit_gain` /
      rely on the min-with-max clamp to match upstream exactly, or keep the
      floor with a [PRIMESUD] comment; decide against the source when
      editing, don't leave it ambiguous.
-2. **Mob regen -- port the NPC branch** into the existing mob loop in
+2. **Mob regen -- port the NPC hp branch** into the existing mob loop in
    tick_update (player.py:284+), same tick cadence as the player:
+   - Gate on `position >= POS_STUNNED` (update.c:538) -- i.e. skip mobs
+     in mortal/incap positions; map to PrimeSUD's `pos` string ladder
+     (verify the spellings combat's update_pos uses before branching).
    - hp (update.c:171-188): `gain = 5 + level`; `affected_by.regeneration`
      -> `gain *= 2`; position: sleeping -> `3 * gain // 2`, resting ->
      unchanged, fighting -> `//= 3`, anything else -> `//= 2`.
-   - mana (update.c:253-267): same minus the regeneration doubling.
-   - Then the shared tail: room heal_rate/mana_rate (mob's own room, not
-     the player's -- resolve `world.rooms[mob["room"]]`... via ROOM_DEFS
-     for the rates) and the poison/plague/haste/slow divisors. Factor the
-     tail as one small shared helper [PRIMESUD] rather than duplicating.
-   - Clamp to max_hit/max_mana. Verify the mob dict's position key and
-     value spellings (mob.py sets start_pos at spawn) before branching.
+   - Then the shared tail: room heal_rate (mob's own room via
+     ROOM_DEFS[mob["room"]], not the player's) and the
+     poison/plague/haste/slow divisors. Factor the tail as one small
+     shared helper [PRIMESUD] rather than duplicating.
+   - Clamp to max_hit. Mob mana/move regen (update.c:253-267, 331-333):
+     skip -- instances carry no mana/move pools (create_mobile never
+     seeds them; spec casters cast without mana) -- inline [PRIMESUD]
+     note, don't add the pools.
    - Heap/CPU note: loop already exists and iterates loaded mobs only;
      the added work is integer arithmetic, no new allocations. Skip mobs
-     already at full hp AND full mana early.
+     already at full hp early.
 3. **Furniture: skip (default).** No object in loaded areas or anywhere in
    stock QuickMUD carries furniture flags/occupancy/heal values -- an
    engine port would be 100% dead code until PrimeSUD authors its own
