@@ -79,7 +79,7 @@ DARKNESS_PLAN.md's Phase A that room_is_dark/room_light already landed
 final "device checklist" message.
 ```
 
-## Stage 2 -- DARKNESS part 1: Phases A + B (HARD)
+## Stage 2 -- DARKNESS part 1: Phases A + B (HARD) -- DONE 08/07/2026
 
 ```
 Implement DARKNESS_PLAN.md Phases A and B (core predicates + command/UI
@@ -117,7 +117,7 @@ completion block -- Phases C/D remain. End with the device checklist
 (automap rendering in a dark room, red-eyes on physical screen).
 ```
 
-## Stage 3 -- DARKNESS part 2: Phases C + D
+## Stage 3 -- DARKNESS part 2: Phases C + D -- DONE 08/07/2026
 
 ```
 Implement DARKNESS_PLAN.md Phases C and D (light fuel + do_time /
