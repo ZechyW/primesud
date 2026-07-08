@@ -1256,8 +1256,13 @@ def _convert_level(arg):
     return 0
 
 
-def _print_area_levels(levels):
-    """Format area level range for display (cf. 1stMud print_area_levels in db.c). [Verified: 03/07/2026]"""
+def _print_area_levels(levels, comment=None):
+    """Format area level range for display (cf. 1stMud print_area_levels in db.c). [Verified: 03/07/2026; lvl_comment branch added and re-verified 08/07/2026]"""
+    if comment:
+        # Non-numeric credits token ("All", "None") shown verbatim,
+        # centered in the 7-wide slot (1stMud: str_align(7, Center,
+        # lvl_comment); caller's %-7s supplies the right fill).
+        return " " * ((7 - len(comment)) // 2) + comment
     lo, hi = levels
     if lo >= MAX_MORTAL_LEVEL and hi >= MAX_MORTAL_LEVEL:
         return " HERO+ "
@@ -1553,7 +1558,8 @@ def do_areas(player, args):
         lo = max(1, min(levels[0], MAX_LEVEL))
         hi = max(1, min(levels[1], MAX_LEVEL))
         if lo >= lo_lv and hi <= hi_lv:
-            lvl_str = _print_area_levels((lo, hi))
+            lvl_str = _print_area_levels((lo, hi),
+                                         world.AREA_LVL_COMMENTS.get(tag))
             builder = world.AREA_BUILDERS.get(tag, "")
             # [PRIMESUD] "here" marker, see docstring.
             here = "{G>{x" if tag == source_area else " "

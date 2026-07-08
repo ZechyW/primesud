@@ -58,13 +58,14 @@ _AREA_FILES = [
     ("area_newthalos.txt", "newthalos", "New Thalos", 9500, 9799),    # 265007 bytes
 ]
 
-# Area level ranges, duplicated from each .dat AREA["levels"] so quest
-# target selection can filter areas without triggering their load.
-# Keep in sync with the .dat files. [PRIMESUD]
+# Area level ranges, duplicated from each area file's AREA["levels"] so
+# quest target selection can filter areas without triggering their load.
+# Keep in sync with the area files -- tools/gen_area_adj.py cross-checks
+# and exits nonzero on drift. [PRIMESUD]
 AREA_LEVELS = {
     "ofcol":      (1, 50),
-    "limbo":      (1, 10),
-    "quest":      (1, 10),
+    "limbo":      (1, 60),
+    "quest":      (1, 60),
     "immort":     (51, 60),
     "mobfact":    (5, 15),
     "grave":      (5, 10),
@@ -86,10 +87,13 @@ AREA_LEVELS = {
 
 # -- BEGIN GENERATED: tools/gen_area_adj.py (do not hand-edit) --
 # AREA_BUILDERS: {tag: builder name}, extracted from each area's credits
-# line (cf. info._extract_builder). AREA_ADJ: {tag: sorted tuple of
-# neighbor tags reachable via a room exit}, computed from ROOMS exits.
-# Lets do_areas/do_run consult builder/adjacency data without loading
-# area files at runtime. Regenerate with: python tools/gen_area_adj.py
+# line (cf. info._extract_builder). AREA_LVL_COMMENTS: {tag: level
+# comment} for areas whose credits carry a non-numeric level token
+# ("All", "None"), shown verbatim in the do_areas level slot (cf.
+# 1stMud lvl_comment). AREA_ADJ: {tag: sorted tuple of neighbor tags
+# reachable via a room exit}, computed from ROOMS exits. Lets
+# do_areas/do_run consult this data without loading area files at
+# runtime. Regenerate with: python tools/gen_area_adj.py
 # [PRIMESUD]
 AREA_BUILDERS = {
     "ofcol":      "Alfa",
@@ -112,6 +116,13 @@ AREA_BUILDERS = {
     "tohell":     "Strahd",
     "midgaard":   "Diku",
     "newthalos":  "Conner",
+}
+
+AREA_LVL_COMMENTS = {
+    "ofcol":    "All",
+    "limbo":    "None",
+    "quest":    "None",
+    "midgaard": "All",
 }
 
 _AREA_ADJ = {

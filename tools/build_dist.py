@@ -51,7 +51,8 @@ def _is_area_data(path):
 
 
 def preflight():
-    """Regenerate all derived data (areas, mob index, help + index).
+    """Regenerate all derived data (areas, world static tables, mob index,
+    help + index).
 
     Order matters: mob_index.txt is built from the area .txt files.
     Regen writes into SRC_DIR, so a dirty git tree afterwards means the
@@ -67,6 +68,9 @@ def preflight():
         sys.exit("Preflight needs bash (git-bash) on PATH")
     steps = [
         [bash, "tools/regen_areas.sh"],
+        # Regenerates world.py's static AREA_BUILDERS/_AREA_ADJ tables from
+        # the area .txt files; also fails on AREA_LEVELS drift.
+        [sys.executable, "tools/gen_area_adj.py"],
         [sys.executable, "tools/build_mob_index.py"],
         [sys.executable, "tools/help_to_primesud.py"],
     ]

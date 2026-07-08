@@ -10,6 +10,7 @@ AREA = {
     "builders": 'None',
     "vnums":    (200, 249),
     "credits":  '{None } 1stMud  Quest',
+    "lvl_comment": 'None',
     "levels":   (1, 60),
 }
 

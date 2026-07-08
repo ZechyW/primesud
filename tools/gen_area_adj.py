@@ -76,6 +76,7 @@ def main():
         return None
 
     builders = {}
+    lvl_comments = {}
     adjacency = dict((tag, set()) for tag in tags)
     mismatches = []
     blind_exit_count = 0
@@ -97,6 +98,8 @@ def main():
             mismatches.append((tag, world_levels, file_levels))
 
         builders[tag] = extract_builder(area.get("credits", ""))
+        if area.get("lvl_comment"):
+            lvl_comments[tag] = area["lvl_comment"]
 
         for rvnum, room in ns["ROOMS"].items():
             for _d, ev in room.get("exits", {}).items():
@@ -130,15 +133,24 @@ def main():
     builder_items = [(tag, builders[tag]) for tag in tags]
     adj_items = [(tag, tuple(sorted(adjacency[tag]))) for tag in tags]
 
+    comment_items = [(tag, lvl_comments[tag]) for tag in tags
+                     if tag in lvl_comments]
+
     block_lines = [BEGIN]
     block_lines.append("# AREA_BUILDERS: {tag: builder name}, extracted from each area's credits")
-    block_lines.append("# line (cf. info._extract_builder). AREA_ADJ: {tag: sorted tuple of")
-    block_lines.append("# neighbor tags reachable via a room exit}, computed from ROOMS exits.")
-    block_lines.append("# Lets do_areas/do_run consult builder/adjacency data without loading")
-    block_lines.append("# area files at runtime. Regenerate with: python tools/gen_area_adj.py")
+    block_lines.append("# line (cf. info._extract_builder). AREA_LVL_COMMENTS: {tag: level")
+    block_lines.append("# comment} for areas whose credits carry a non-numeric level token")
+    block_lines.append('# ("All", "None"), shown verbatim in the do_areas level slot (cf.')
+    block_lines.append("# 1stMud lvl_comment). AREA_ADJ: {tag: sorted tuple of neighbor tags")
+    block_lines.append("# reachable via a room exit}, computed from ROOMS exits. Lets")
+    block_lines.append("# do_areas/do_run consult this data without loading area files at")
+    block_lines.append("# runtime. Regenerate with: python tools/gen_area_adj.py")
     block_lines.append("# [PRIMESUD]")
     block_lines.extend(format_dict_block(
         "AREA_BUILDERS", builder_items, lambda v: '"%s"' % v))
+    block_lines.append("")
+    block_lines.extend(format_dict_block(
+        "AREA_LVL_COMMENTS", comment_items, lambda v: '"%s"' % v))
     block_lines.append("")
     block_lines.extend(format_dict_block(
         "_AREA_ADJ", adj_items,
@@ -192,6 +204,12 @@ def main():
     print("AREA_BUILDERS:")
     for tag, builder in builder_items:
         print("  %-12s %s" % (tag, builder))
+
+    if comment_items:
+        print()
+        print("AREA_LVL_COMMENTS:")
+        for tag, comment in comment_items:
+            print("  %-12s %s" % (tag, comment))
 
     print()
     print("_AREA_ADJ:")

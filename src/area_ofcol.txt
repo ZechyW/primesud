@@ -10,6 +10,7 @@ AREA = {
     "builders": 'None',
     "vnums":    (5500, 5599),
     "credits":  '{ All } Alfa    Ofcol',
+    "lvl_comment": 'All',
     "levels":   (1, 50),
 }
 

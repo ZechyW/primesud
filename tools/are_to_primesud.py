@@ -384,9 +384,17 @@ def parse_area_old(lines):
         if m:
             area["min_level"] = int(m.group(1))
             area["max_level"] = int(m.group(2))
-        elif "All" in credits:
-            area["min_level"] = 1
-            area["max_level"] = 50
+        else:
+            # Non-numeric single brace token ("All", "None") is a level
+            # comment displayed verbatim by do_areas/do_where (cf. 1stMud
+            # convert_area_credits in db2.c: "{ %[^} ] } %s" fallback
+            # sets lvl_comment). Levels below stay a [PRIMESUD] heuristic.
+            m = re.match(r"\{\s*([^}\s]+)\s*\}", credits)
+            if m:
+                area["lvl_comment"] = m.group(1)
+            if "All" in credits:
+                area["min_level"] = 1
+                area["max_level"] = 50
     if i < len(lines):
         vn = lines[i].split()
         if len(vn) < 2:
@@ -1306,6 +1314,11 @@ def emit(area_data, rooms, mobs, objs, resets, helps, socials,
     w(f'    "builders": {pyrepr("None")},')
     w(f'    "vnums":    {pyrepr(vnums)},')
     w(f'    "credits":  {pyrepr(credits)},')
+    if "lvl_comment" in area_data:
+        # Non-numeric brace token from the credits line, displayed verbatim
+        # in the do_areas/do_where level slot (cf. 1stMud lvl_comment,
+        # convert_area_credits in db2.c).
+        w(f'    "lvl_comment": {pyrepr(area_data["lvl_comment"])},')
     # [PRIMESUD] heuristic parsed from the credits text; ROM derives no
     # level range for old-style areas.
     w(f'    "levels":   ({min_lvl}, {max_lvl}),')

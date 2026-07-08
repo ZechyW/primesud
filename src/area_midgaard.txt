@@ -10,6 +10,7 @@ AREA = {
     "builders": 'None',
     "vnums":    (3000, 3399),
     "credits":  '{ All } Diku    Midgaard',
+    "lvl_comment": 'All',
     "levels":   (1, 50),
 }
 

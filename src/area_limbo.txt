@@ -10,6 +10,7 @@ AREA = {
     "builders": 'None',
     "vnums":    (1, 99),
     "credits":  '{None } Diku    Limbo',
+    "lvl_comment": 'None',
     "levels":   (1, 60),
 }
 

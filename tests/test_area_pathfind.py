@@ -127,6 +127,40 @@ class TestDoAreasZeroLoad:
         assert "{G>{x" not in beta_line
 
 
+# ===== level-comment areas ("All"/"None") ===================================
+
+class TestAreaLevelComments:
+    """Areas with a non-numeric credits token show it verbatim in the level
+    slot (cf. 1stMud print_area_levels lvl_comment branch in db.c)."""
+
+    def test_print_area_levels_comment_centered_in_7(self):
+        # 1stMud str_align(7, Center, ...): left pad (7-len)//2, right
+        # fill comes from the caller's %-7s.
+        assert info._print_area_levels((1, 60), "None") == " None"
+        assert info._print_area_levels((1, 50), "All") == "  All"
+
+    def test_print_area_levels_no_comment_unchanged(self):
+        assert info._print_area_levels((1, 10)) == "001 010"
+
+    def test_do_areas_shows_comment_token(self, fresh_world, monkeypatch):
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}}})
+        fw.setup()
+        monkeypatch.setattr(world, "AREA_LEVELS", {"alpha": (1, 60)})
+        monkeypatch.setattr(world, "AREA_BUILDERS", {"alpha": "Bob"})
+        monkeypatch.setattr(world, "AREA_LVL_COMMENTS", {"alpha": "None"})
+
+        player = _char_base()
+        lines = []
+        monkeypatch.setattr(info, "chprintln", lambda p, s="": lines.append(s))
+        do_areas(player, [])
+
+        alpha_line = next(l for l in lines if "alpha" in l)
+        assert "None" in alpha_line
+        assert "001" not in alpha_line
+
+
 # ===== find_path_to_area: synthetic fallback ================================
 
 class TestFindPathToAreaFallback:
