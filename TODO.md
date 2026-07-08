@@ -6,7 +6,7 @@ Loose ends that don't belong in a specific plan file.
 
 Root-level `*_PLAN.md` files awaiting implementation; each carries its own
 dependency + completion notes in its header. Suggested order:
-`RESETS` -> `DARKNESS` -> `EXPLORED` -> `PETS_GROUPS` -> `MOBPROG`
+`RESETS` -> `DARKNESS` -> `REGEN` -> `EXPLORED` -> `PETS_GROUPS` -> `MOBPROG`
 (RESETS decision 6 wants DARKNESS Phase A's `room_is_dark` -- land that
 predicate early or gate it; DARKNESS/EXPLORED/MOBPROG are otherwise
 independent and can run in parallel sessions). Strike this section when
