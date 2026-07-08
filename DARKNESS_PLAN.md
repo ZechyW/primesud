@@ -1,9 +1,11 @@
 # DARKNESS_PLAN.md -- Room darkness / visibility / light system port from 1stMud
 
 > **Progress: Phases A + B done 08/07/2026** -- commit e11**** (A: can_see
-> dark gate, can_see_obj port, check_blind) and b4a**** (B: look/exits/automap/
-> scan/get-drop-picker gating). Phases C (light fuel) and D (time + weather
-> commands) remain -- do NOT run the completion/harvest block below yet.
+> dark gate, can_see_obj port, check_blind), b4a**** (B: look/exits/automap/
+> scan/get-drop-picker gating), and d81**** (review fix: infrared reveals
+> chars in the dark, not the room desc -- see corrected Look-gating bullet).
+> Phases C (light fuel) and D (time + weather commands) remain -- do NOT run
+> the completion/harvest block below yet.
 
 > 1stMud sources: `reference/1stMud4.5.3/src/`. Depends on: nothing.
 > RESETS_PLAN decision 6 consumes Phase A's `room_is_dark` -- land Phase A
@@ -89,10 +91,15 @@ Scaffolding already in place -- do NOT rebuild these, extend them:
   AFF_DARK_VISION -> False; else True. `dark_vision` is an affect flag only
   (tables.c:200, no spell/race grant) -- support the key, nothing grants it
   yet.
-- **Look gating** (act_info.c:1110-1125): `do_look` with no arg in a dark
-  room without infrared prints exactly `"It is pitch black ... "` and shows
-  nothing (room name/desc/contents/chars all suppressed). check_blind
-  (act_info.c:495) gates first: `"You can't see a thing!"`.
+- **Look gating** (act_info.c:1110-1125): `do_look` in a dark room prints
+  exactly `"It is pitch black ... "` then `show_char_to_char` and returns --
+  room name/desc/contents suppressed. The gate keys on `room_is_dark` ALONE:
+  infrared does NOT lift it (room_is_dark ignores infrared). Infrared instead
+  reveals living things via `show_char_to_char` (can_see-visible chars get a
+  full line; a dark-room char with AFF_INFRARED shows "glowing red eyes").
+  So an infrared viewer still sees "pitch black" + the char list, never the
+  room description. check_blind (act_info.c:495) gates first:
+  `"You can't see a thing!"`.
 - **Red eyes** (act_info.c:486): in show_char_to_char, a victim who fails
   can_see but has AFF_INFRARED in a dark room prints
   `"You see glowing red eyes watching YOU!"` instead of being hidden.
