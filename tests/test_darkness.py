@@ -227,16 +227,26 @@ class TestLookDark:
         info.do_look(_look_player(1), [])
         assert look_out == ["It is pitch black ... "]
 
-    def test_infrared_unblocks_room(self, fresh_world, look_out):
+    def test_infrared_shows_chars_not_room(self, fresh_world, look_out):
+        # cf. 1stMud act_info.c:1114 -- infrared does NOT lift the pitch-black
+        # gate: room name/desc stay hidden, but living things (heat) show.
         import info
         _room(1, flags={"dark": True})
         ROOM_DEFS._data[1]["name"] = "Secret Vault"
+        MOB_DEFS._data[900] = {"short_descr": "a cave bat",
+                               "long_descr": "A cave bat flaps here.",
+                               "start_pos": "stand"}
+        world.chars[2] = {"id": 2, "is_npc": True, "tpl": 900, "room": 1,
+                          "pos": "standing", "fighting": None,
+                          "affected_by": {}}
+        world.rooms._data[1]["mobs"].append(2)
         p = _look_player(1)
         p["affected_by"] = {"infrared": True}
         info.do_look(p, [])
         joined = " ".join(look_out)
-        assert "pitch black" not in joined
-        assert "Secret Vault" in joined
+        assert "It is pitch black ... " in joined  # room desc still gated
+        assert "Secret Vault" not in joined         # room name never revealed
+        assert "cave bat" in joined                 # infrared reveals the mob
 
     def test_targeted_look_also_pitch_black(self, fresh_world, look_out):
         import info

@@ -454,14 +454,89 @@ _POS_LINES = {
 }
 
 
+def _show_char_to_char(player, mob_ids):
+    """List room chars to player; red-eyes fallback in the dark (cf. 1stMud show_char_to_char in act_info.c:470).
+
+    Each char the viewer can_see renders a full line (show_char_to_char_0); a
+    char the viewer cannot see but who carries AFF_INFRARED in a dark room
+    betrays "glowing red eyes" instead. Infrared thus reveals living things,
+    never the room description -- both the pitch-black branch and the normal
+    room render call this, matching 1stMud's single shared function.
+
+    Args:
+        player (dict): Observer.
+        mob_ids (list): Room's live mob instance ids.
+    """
+    p_aff = player.get("affected_by", {})
+    show_vnums = "vnum" in DBG  # [PRIMESUD] debug vnum visibility toggle
+    dark = (player["room"] in ROOM_DEFS._data and room_is_dark(player["room"]))
+    for mob_id in mob_ids:
+        inst = world.chars.get(mob_id)
+        if inst is None:
+            continue
+        # cf. 1stMud show_char_to_char (act_info.c:481): can_see -> full line;
+        # else a dark-room char with AFF_INFRARED shows glowing eyes
+        if not can_see(player, inst):
+            if dark and inst.get("affected_by", {}).get("infrared"):
+                chprintln(player, "You see glowing red eyes watching YOU!")
+            continue
+        tpl = MOB_DEFS[inst["tpl"]]
+        # Build AFF prefix string (cf. 1stMud show_char_to_char_0, act_info.c:191-214)
+        # Race defaults merged into inst at create_mobile; dynamic spell AFF bits
+        # from inst["affects"] are not yet tracked here.
+        aff = inst.get("affected_by", {})
+        prefix = ""
+        if aff.get("invisible"):    prefix += "({cInvis{x) "
+        if aff.get("hide"):         prefix += "({DHide{x) "
+        if aff.get("charm"):        prefix += "({MCharmed{x) "
+        if aff.get("pass_door"):    prefix += "({cTranslucent{x) "
+        if aff.get("faerie_fire"):  prefix += "({MPink Aura{x) "
+        if is_evil(inst) and p_aff.get("detect_evil"):   prefix += "({RRed Aura{x) "
+        if is_good(inst) and p_aff.get("detect_good"):   prefix += "({YGolden Aura{x) "
+        if aff.get("sanctuary"):    prefix += "({WWhite Aura{x) "
+        # cf. 1stMud act_info.c:219 quest target marker; [PRIMESUD] vnum match
+        if is_quester(player) and inst["tpl"] == player.get("quest_mob", 0):
+            prefix += "{r[{RTARGET{r] {x"
+        # cf. 1stMud act_info.c:223 gquest target marker
+        if gq_is_player_target(inst["tpl"]):
+            prefix += "{Y({RGquest{Y) {x"
+        # cf. 1stMud: long_descr only when mob is at its start_pos
+        pos = inst.get("pos", "standing")
+        start_pos = POS_FROM_SHORT.get(tpl.get("start_pos", "stand"), "standing")
+        if pos == start_pos and inst["fighting"] is None and tpl.get("long_descr"):
+            line = tpl["long_descr"]
+        else:
+            name = tpl["short_descr"]
+            name = upper(name) if name else name
+            if inst["fighting"] is not None or pos == "fighting":
+                if inst["fighting"] == player["id"]:
+                    line = "%s is here, fighting YOU!" % name
+                else:
+                    # [PRIMESUD] 1stMud shows the target's name; mobs only
+                    # fight the player or each other's ids -- resolve if present
+                    tgt = world.chars.get(inst["fighting"])
+                    if tgt is None:
+                        line = "%s is here, fighting thin air??" % name
+                    else:
+                        line = "%s is here, fighting %s." % (
+                            name, MOB_DEFS[tgt["tpl"]]["short_descr"])
+            else:
+                line = name + _POS_LINES.get(pos, " is here.")
+        if show_vnums:  # [PRIMESUD] template vnum; instance id via debug stat mob
+            line += " {D[" + str(inst["tpl"]) + "]"
+        chprintln(player, "%s{M%s{x" % (prefix, line))
+
+
 def do_look(player, args):
     """Display the current room, examine a target, or look in a direction (cf. 1stMud do_look in act_info.c).
 
     Position ("stars"/sleeping) gates are handled by the command table; the
     check_blind and pitch-black darkness gates below run before argument
-    parsing, so they apply to every look form (cf. act_info.c:1112-1121).
+    parsing, so they apply to every look form (cf. act_info.c:1112-1121). The
+    pitch-black gate ignores infrared (matching the source): infrared reveals
+    living things via _show_char_to_char, not the room description.
 
-    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check); check_blind + pitch-black/red-eyes + can_see_obj room-item filter added and re-verified 08/07/2026]
+    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check); check_blind + pitch-black/red-eyes + can_see_obj room-item filter added and re-verified 08/07/2026; pitch-black infrared gate dropped + char-list shared via _show_char_to_char to match act_info.c:1114 (infrared shows chars not room desc), re-verified 08/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -470,18 +545,13 @@ def do_look(player, args):
     # cf. 1stMud do_look act_info.c:1112 -- both gates precede argument parsing
     if not check_blind(player):
         return
-    if (player["room"] in ROOM_DEFS._data and room_is_dark(player["room"])
-            and not player.get("affected_by", {}).get("infrared")):
+    # cf. 1stMud act_info.c:1114 -- infrared does NOT lift this gate: it reveals
+    # living things (via show_char_to_char, which can_see-passes for an infrared
+    # viewer), never the room name/desc/items. room_is_dark itself ignores
+    # infrared, so a dark room stays "pitch black" for infrared and unlit alike.
+    if player["room"] in ROOM_DEFS._data and room_is_dark(player["room"]):
         chprintln(player, "It is pitch black ... ")
-        # cf. 1stMud show_char_to_char red-eyes branch (act_info.c:486): a
-        # victim the viewer can't see but who has AFF_INFRARED in a dark room
-        # betrays glowing eyes. In pitch black the viewer lacks infrared, so
-        # can_see fails for every mob and only this branch can fire.
-        for mob_id in world.rooms[player["room"]]["mobs"]:
-            inst = world.chars.get(mob_id)
-            if (inst is not None and not can_see(player, inst)
-                    and inst.get("affected_by", {}).get("infrared")):
-                chprintln(player, "You see glowing red eyes watching YOU!")
+        _show_char_to_char(player, world.rooms[player["room"]]["mobs"])
         return
     if args:
         if args[0] in ("in", "i", "on"):
@@ -628,57 +698,8 @@ def do_look(player, args):
         n = seen[line]
         stack_prefix = "(%2d) " % n if n > 1 else "     "
         chprintln(player, stack_prefix + line)
-    # Mobs: one per line, long_descr at idle or constructed position string (cf. 1stMud show_char_to_char_0 in act_info.c)
-    for mob_id in live_mobs:
-        inst = world.chars[mob_id]
-        # cf. 1stMud show_char_to_char: skip chars the viewer can't see
-        if not can_see(player, inst):
-            continue
-        tpl = MOB_DEFS[inst["tpl"]]
-        # Build AFF prefix string (cf. 1stMud show_char_to_char_0, act_info.c:191-214)
-        # Race defaults merged into inst at create_mobile; dynamic spell AFF bits
-        # from inst["affects"] are not yet tracked here.
-        aff = inst.get("affected_by", {})
-        prefix = ""
-        if aff.get("invisible"):    prefix += "({cInvis{x) "
-        if aff.get("hide"):         prefix += "({DHide{x) "
-        if aff.get("charm"):        prefix += "({MCharmed{x) "
-        if aff.get("pass_door"):    prefix += "({cTranslucent{x) "
-        if aff.get("faerie_fire"):  prefix += "({MPink Aura{x) "
-        if is_evil(inst) and p_aff.get("detect_evil"):   prefix += "({RRed Aura{x) "
-        if is_good(inst) and p_aff.get("detect_good"):   prefix += "({YGolden Aura{x) "
-        if aff.get("sanctuary"):    prefix += "({WWhite Aura{x) "
-        # cf. 1stMud act_info.c:219 quest target marker; [PRIMESUD] vnum match
-        if is_quester(player) and inst["tpl"] == player.get("quest_mob", 0):
-            prefix += "{r[{RTARGET{r] {x"
-        # cf. 1stMud act_info.c:223 gquest target marker
-        if gq_is_player_target(inst["tpl"]):
-            prefix += "{Y({RGquest{Y) {x"
-        # cf. 1stMud: long_descr only when mob is at its start_pos
-        pos = inst.get("pos", "standing")
-        start_pos = POS_FROM_SHORT.get(tpl.get("start_pos", "stand"), "standing")
-        if pos == start_pos and inst["fighting"] is None and tpl.get("long_descr"):
-            line = tpl["long_descr"]
-        else:
-            name = tpl["short_descr"]
-            name = upper(name) if name else name
-            if inst["fighting"] is not None or pos == "fighting":
-                if inst["fighting"] == player["id"]:
-                    line = "%s is here, fighting YOU!" % name
-                else:
-                    # [PRIMESUD] 1stMud shows the target's name; mobs only
-                    # fight the player or each other's ids -- resolve if present
-                    tgt = world.chars.get(inst["fighting"])
-                    if tgt is None:
-                        line = "%s is here, fighting thin air??" % name
-                    else:
-                        line = "%s is here, fighting %s." % (
-                            name, MOB_DEFS[tgt["tpl"]]["short_descr"])
-            else:
-                line = name + _POS_LINES.get(pos, " is here.")
-        if show_vnums:  # [PRIMESUD] template vnum; instance id via debug stat mob
-            line += " {D[" + str(inst["tpl"]) + "]"
-        chprintln(player, "%s{M%s{x" % (prefix, line))
+    # Mobs: one per line (cf. 1stMud show_char_to_char in act_info.c)
+    _show_char_to_char(player, live_mobs)
 
 
 _SCORE_INNER = TERMINAL_COLS - 2
