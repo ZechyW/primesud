@@ -9,7 +9,8 @@ dependency + completion notes in its header. Suggested order:
 `RESETS` -> `DARKNESS` -> `REGEN` -> `EXPLORED` -> `PETS_GROUPS` -> `MOBPROG`
 (RESETS decision 6 wants DARKNESS Phase A's `room_is_dark` -- land that
 predicate early or gate it; DARKNESS/EXPLORED/MOBPROG are otherwise
-independent and can run in parallel sessions). Strike this section when
+independent and can run in parallel sessions). `OPUS_HANDOFF.md` carries
+ready-made session prompts for every stage. Strike this section when
 the last plan is deleted.
 
 ## Combat
