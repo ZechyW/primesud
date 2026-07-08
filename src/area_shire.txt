@@ -1521,11 +1521,11 @@ OBJECTS = {
 # ("O", item_vnum, room_vnum)                          -- place one item copy in room
 # ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
 # ("G", item_vnum, limit)                              -- give item to last M mob inventory
-# E/G limit: raw ROM reset-count field (cf. db.c reset_room): a value
-# > 50 is a legacy encoding meaning limit 6; -1 (or 0, for E/G specifically)
-# means unlimited. Runtime enforcement of this limit is deferred [PRIMESUD].
-# ("P", item_vnum, limit, container_vnum, max)         -- [PRIMESUD] deferred: no containers
-# ("R", room_vnum, num_dirs)                           -- [PRIMESUD] deferred: not enforced by runtime yet
+# E/G/P limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 means unlimited, and 0
+# also means unlimited for E/G specifically (not P). Enforced at runtime.
+# ("P", item_vnum, limit, container_vnum, max)         -- fill container in room up to max (capped by limit)
+# ("R", room_vnum, num_dirs)                           -- shuffle first num_dirs exits (skipped on doors)
 # D resets are baked into room exit flags at conversion time
 RESETS = (
     ("O", 1102, 1103),
