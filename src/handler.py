@@ -10,7 +10,8 @@ from races import race_lookup, RACE_TABLE
 from terminal import tprint
 from urandom import randint
 import world
-from world import ITEM_DEFS, MOB_DEFS
+from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
+from game_time import time_info, SUN_SET, SUN_DARK
 
 # -- Alignment helpers (cf. 1stMud IsGood/IsEvil/IsNeutral in macro.h) ----------------
 
@@ -932,6 +933,68 @@ def act(format, ch, arg1=None, arg2=None, type=TO_CHAR):
     if not format:
         return
     act_new(format, ch, arg1, arg2, type, "resting")
+
+
+def room_light(room_vnum):
+    """Count lit light sources held by characters in a room. [PRIMESUD]
+
+    1stMud maintains ``room->light`` incrementally in char_to_room /
+    equip_char (handler.c:1321/1578); PrimeSUD computes it on demand instead
+    -- extraction/removal paths are many and a persistent counter would drift
+    and need saving. Counts every character standing in the room (player and
+    mobs both live in ``world.chars``) wearing a light-slot item of item_type
+    ``light`` with nonzero fuel. Value[2] semantics (cf. 1stMud): 0 = dead,
+    absent/negative = infinite, positive = hours left. Floor lights do not
+    count, matching 1stMud fidelity. (cf. room->light in handler.c)
+
+    Args:
+        room_vnum (int): Room VNUM.
+
+    Returns:
+        int: Number of lit light sources in the room.
+    """
+    total = 0
+    for ch in world.chars.values():
+        if ch.get("room") != room_vnum:
+            continue
+        eq = ch.get("equip", {}).get("light")
+        if eq is None:
+            continue
+        tpl = ITEM_DEFS[eq["vnum"] if isinstance(eq, dict) else eq]
+        if tpl.get("type") != "light":
+            continue
+        fuel = eq.get("light_hours") if isinstance(eq, dict) else None
+        if fuel is None:
+            fuel = tpl.get("light_hours")
+        if fuel is None or fuel != 0:
+            total += 1
+    return total
+
+
+def room_is_dark(room_vnum):
+    """True if a room is unlit (cf. 1stMud room_is_dark in handler.c:2308). [PRIMESUD]
+
+    Order matches the source: a lit light source overrides everything; then a
+    set ROOM_DARK flag forces dark; inside/city sectors are always lit;
+    finally an outdoors room goes dark at SUN_SET / SUN_DARK.
+
+    Args:
+        room_vnum (int): Room VNUM.
+
+    Returns:
+        bool: True if the room is dark.
+    """
+    if room_light(room_vnum) > 0:
+        return False
+    rdef = ROOM_DEFS[room_vnum]
+    if rdef.get("flags", {}).get("dark"):
+        return True
+    sector = rdef.get("sector", "inside")
+    if sector == "inside" or sector == "city":
+        return False
+    if time_info["sunlight"] == SUN_SET or time_info["sunlight"] == SUN_DARK:
+        return True
+    return False
 
 
 def can_see_room(ch, room_vnum):
