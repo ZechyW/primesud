@@ -246,6 +246,43 @@ def _regen_tail(gain, char, rate):
     return gain
 
 
+def _mob_hp_regen(mob):
+    """Regenerate one tick of hp for a mob (cf. 1stMud hit_gain IsNPC branch,
+    update.c:169-190, gated by char_update at update.c:538/550-553). [PRIMESUD]
+
+    Hp only: mob instances carry no mana/move pools (create_mobile never seeds
+    them; spec casters cast without mana), so mana_gain/move_gain
+    (update.c:253-267, 331-333) are not ported. Integer math only; no
+    allocations.
+
+    Args:
+        mob (dict): NPC instance dict (hit/max_hit/pos/level/room/affected_by).
+    """
+    # char_update gate: skip mortal/incap/dead (position < POS_STUNNED)
+    if POS_ORDER.get(mob.get("pos", "standing"), 8) < POS_ORDER["stunned"]:
+        return
+    hit = mob.get("hit", 0)
+    max_hit = mob.get("max_hit", 0)
+    if hit >= max_hit:  # already full -- early out
+        return
+    gain = 5 + mob.get("level", 1)
+    if mob.get("affected_by", {}).get("regeneration"):
+        gain *= 2
+    pos = mob.get("pos", "standing")
+    if pos == "sleeping":
+        gain = 3 * gain // 2
+    elif pos == "resting":
+        pass
+    elif pos == "fighting":
+        gain //= 3
+    else:
+        gain //= 2
+    rdef = ROOM_DEFS.get(mob.get("room"))
+    rate = rdef.get("heal_rate", 100) if rdef else 100
+    gain = _regen_tail(gain, mob, rate)
+    mob["hit"] = min(max_hit, hit + gain)
+
+
 def tick_update(tr, player, room):
     """Regenerate HP and MP once per world tick (cf. 1stMud hit_gain/mana_gain in update.c).
 
@@ -322,12 +359,16 @@ def tick_update(tr, player, room):
 
     _light_burnout(tr, player)
 
-    # Mob affects tick too (cf. 1stMud char_update iterating char_first;
-    # wear-off messages are char-directed, so silent for mobs)
+    # Mobs tick affects + regen hp too (cf. 1stMud char_update iterating
+    # char_first, update.c:528). Wear-off messages are char-directed, so
+    # silent for mobs.
     import world as _world
     for _inst in list(_world.chars.values()):
-        if _inst.get("is_npc") and _inst.get("affect_list"):
+        if not _inst.get("is_npc"):
+            continue
+        if _inst.get("affect_list"):
             _tick_affects(_inst, None)
+        _mob_hp_regen(_inst)
 
 
 def _light_burnout(tr, player):

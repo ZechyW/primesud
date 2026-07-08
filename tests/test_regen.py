@@ -12,8 +12,25 @@ sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
 import player as player_mod
 import skill_utils
+import world
 from handler import _char_base
+from world import ROOM_DEFS
 from skills_table import GSN_FAST_HEALING
+
+
+@pytest.fixture
+def isolate():
+    """Snapshot/restore world.chars + ROOM_DEFS for a test room."""
+    old_chars = dict(world.chars)
+    old_rooms = dict(ROOM_DEFS._data)
+    world.chars.clear()
+    ROOM_DEFS._data[3001] = {"name": "T", "heal_rate": 100, "mana_rate": 100,
+                             "area": "test"}
+    yield
+    world.chars.clear()
+    world.chars.update(old_chars)
+    ROOM_DEFS._data.clear()
+    ROOM_DEFS._data.update(old_rooms)
 
 
 def _full_player():
@@ -98,3 +115,73 @@ class TestPlayerGains:
         mage = create_char(classes.CLASS_MAGE, "Human")
         assert classes.has_spells(warrior) is False
         assert classes.has_spells(mage) is True
+
+
+# -- Mob hp regen -------------------------------------------------------------
+
+class TestMobRegen:
+    def _mob(self, **kw):
+        m = _char_base()
+        m.update({"is_npc": True, "id": 2, "room": 3001, "level": 10,
+                  "hit": 1, "max_hit": 100, "pos": "resting"})
+        m.update(kw)
+        world.chars[2] = m
+        return m
+
+    def _tick(self):
+        player_mod.tick_update(None, _full_player(),
+                               {"heal_rate": 100, "mana_rate": 100})
+
+    def test_resting_base(self, isolate):
+        m = self._mob(pos="resting")  # gain = 5 + level = 15, unchanged
+        self._tick()
+        assert m["hit"] == 1 + 15
+
+    def test_position_ordering(self, isolate):
+        gains = {}
+        for pos in ("sleeping", "resting", "fighting", "standing"):
+            m = self._mob(pos=pos)
+            self._tick()
+            gains[pos] = m["hit"] - 1
+        # sleeping 3*15//2=22, resting 15, standing(other) //2=7, fighting //3=5
+        assert gains["sleeping"] == 22
+        assert gains["resting"] == 15
+        assert gains["standing"] == 7
+        assert gains["fighting"] == 5
+
+    def test_regeneration_doubles(self, isolate):
+        m = self._mob(pos="resting", affected_by={"regeneration": True})
+        self._tick()
+        assert m["hit"] == 1 + 30  # (5+10)*2
+
+    def test_full_hp_early_out(self, isolate):
+        m = self._mob(pos="resting", hit=100, max_hit=100)
+        self._tick()
+        assert m["hit"] == 100
+
+    def test_stunned_gate_blocks_incap(self, isolate):
+        # position < POS_STUNNED (incap/mortal/dead) does not regen
+        m = self._mob(pos="incap")
+        self._tick()
+        assert m["hit"] == 1
+
+    def test_stunned_regens(self, isolate):
+        m = self._mob(pos="stunned")  # other -> gain //2
+        self._tick()
+        assert m["hit"] == 1 + 7
+
+    def test_heal_rate_scales(self, isolate):
+        ROOM_DEFS._data[3001]["heal_rate"] = 200
+        m = self._mob(pos="resting")
+        self._tick()
+        assert m["hit"] == 1 + 30  # 15 * 200 // 100
+
+    def test_poison_divides(self, isolate):
+        m = self._mob(pos="resting", affected_by={"poison": True})
+        self._tick()
+        assert m["hit"] == 1 + 3  # 15 // 4
+
+    def test_clamp_to_max_hit(self, isolate):
+        m = self._mob(pos="sleeping", hit=95, max_hit=100)
+        self._tick()
+        assert m["hit"] == 100
