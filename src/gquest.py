@@ -382,8 +382,9 @@ def _target_lines(player, vnums):
         tag = world._vnum_to_tag(vnum)
         adef = quest_area_def(tag) if tag else None
         area_name = adef.get("name", tag) if adef else "?"
-        chprintlnf(player, "%2d) [%-20s] %-30s (level %3d)", count,
-                   area_name, tpl["short_descr"], tpl.get("level", 1))
+        # [PRIMESUD] columns narrowed/truncated to fit the calculator screen
+        chprintlnf(player, "%2d) [%-16s] %-25s (level %3d)", count,
+                   area_name[:16], tpl["short_descr"][:25], tpl.get("level", 1))
 
 
 def do_gquest(player, args):
