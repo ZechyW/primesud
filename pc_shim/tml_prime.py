@@ -113,6 +113,9 @@ class tml_prime:
     def resync_keyboard(self):
         pass
 
+    def has_queued_keys(self):
+        return not _q.empty()
+
     def read_key(self, code=False):
         """Blocking single-key read (pager etc.); esc arrives as '\\e'."""
         while True:
