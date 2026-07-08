@@ -101,7 +101,7 @@ def pick_from(title, options):
                     break
             elif char is None:
                 pass
-            elif char.isdigit():
+            elif isinstance(char, str) and char.isdigit():
                 page_idx = (int(char) - 1) % 10  # '1'->0 ... '9'->8, '0'->9
                 tprint(char, end="")
                 while True:  # CONFIRM
