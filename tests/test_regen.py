@@ -80,17 +80,16 @@ class TestPlayerGains:
         return p["hit"] - 1
 
     def test_fast_healing_roll_boundary(self, monkeypatch):
-        # roll == skill% is a MISS (strict <), roll below skill% hits.
-        miss = self._hp_gain(monkeypatch, roll=50, skill=50)
-        hit = self._hp_gain(monkeypatch, roll=49, skill=50)
-        assert hit > miss
+        # base 105 = max(3, con13-3+5) + (100-10); standing -> //4.
+        # roll == skill% is a MISS (strict <): 105//4 = 26.
+        # roll < skill%: bonus 49*105//100 before //4 -> (105+51)//4 = 39.
+        assert self._hp_gain(monkeypatch, roll=50, skill=50) == 26
+        assert self._hp_gain(monkeypatch, roll=49, skill=50) == 39
 
     def test_fast_healing_bonus_math(self, monkeypatch):
-        # base (standing): max(3, con-3+5) + (100-10), /4. With roll<skill the
-        # bonus roll*gain//100 applies BEFORE the position divisor.
-        no_skill = self._hp_gain(monkeypatch, roll=49, skill=0)
-        with_skill = self._hp_gain(monkeypatch, roll=49, skill=50)
-        assert with_skill > no_skill
+        # Bonus roll*gain//100 applies BEFORE the position divisor.
+        assert self._hp_gain(monkeypatch, roll=49, skill=0) == 26   # 105//4
+        assert self._hp_gain(monkeypatch, roll=49, skill=50) == 39  # (105+51)//4
 
     def test_has_spells_halves_mana(self, monkeypatch):
         # roll high -> no meditation bonus; isolate the has_spells branch.
@@ -106,7 +105,10 @@ class TestPlayerGains:
             player_mod.tick_update(None, p, room)
             return p["mana"] - 1
 
-        assert gain(True) == gain(False) * 2
+        # mana base (int13+wis13+level10)//2 = 18; standing -> //4.
+        # caster: 18//4 = 4. non-caster: 18//2=9 then //4 = 2.
+        assert gain(True) == 4
+        assert gain(False) == 2
 
     def test_real_has_spells_warrior_vs_mage(self):
         import classes
