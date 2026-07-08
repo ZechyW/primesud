@@ -1019,10 +1019,10 @@ def can_see_room(ch, room_vnum):
 def can_see(ch, victim):
     """Check if ch can see victim (cf. 1stMud can_see in handler.c).
 
-    Checks AFF_BLIND, AFF_INVISIBLE vs detect_invis, AFF_SNEAK skill
-    contest, and AFF_HIDE vs detect_hidden.
-    [PRIMESUD] invis_level/incog/holylight/arena/quest/gquest and
-    room_is_dark/infrared not ported.
+    Checks AFF_BLIND, room darkness vs AFF_INFRARED, AFF_INVISIBLE vs
+    detect_invis, AFF_SNEAK skill contest, and AFF_HIDE vs detect_hidden.
+    [PRIMESUD] invis_level/incog/holylight/arena and the quest/gquest target
+    overrides not ported.
 
     Args:
         ch (dict): Observer (player or mob instance).
@@ -1038,6 +1038,22 @@ def can_see(ch, victim):
     v_aff = victim.get("affected_by", {})
 
     if ch_aff.get("blind"):
+        return False
+
+    # cf. 1stMud can_see dark gate (handler.c:2428): a dark room hides the
+    # victim from a viewer without infrared. In 1stMud the quest / gquest
+    # target overrides (handler.c:2421-2426) precede this, so a quester keeps
+    # sight of their target in the dark; PrimeSUD has no can_see quest override
+    # yet [TODO quest-override]. Observer room resolves from ch["room"] for
+    # both players and mobs -- mob aggro routes through can_see, so a dark room
+    # shields an unlit player from non-infrared aggressors (1stMud-correct).
+    # Membership tests _data (already-loaded rooms) not ROOM_DEFS: a plain
+    # `in ROOM_DEFS` would fire LazyDict's on-demand area load. The observer is
+    # always standing in a loaded room, so _data is sufficient and side-effect
+    # free; an unknown/stray room vnum just skips the gate (treated as lit).
+    ch_room = ch.get("room")
+    if (ch_room in ROOM_DEFS._data and room_is_dark(ch_room)
+            and not ch_aff.get("infrared")):
         return False
 
     if v_aff.get("invisible") and not ch_aff.get("detect_invis"):
@@ -1063,20 +1079,81 @@ def can_see(ch, victim):
 
 
 def can_see_obj(ch, obj):
-    """Check if ch can see obj (cf. 1stMud can_see_obj in handler.c).
+    """Check if ch can see obj (cf. 1stMud can_see_obj in handler.c:2456).
 
-    [PRIMESUD] Stub -- always returns True. Real checks (AFF_BLIND,
-    ITEM_VIS_DEATH, ITEM_INVIS, ITEM_GLOW/room_is_dark) to be added
-    when those systems are ported.
+    Check order matches the source: ITEM_VIS_DEATH, blindness (potions
+    exempt), a lit light source, ITEM_INVIS vs detect_invis, ITEM_GLOW, then a
+    dark room vs dark_vision. [PRIMESUD] HOLYLIGHT gate omitted (no immortals).
+    The quest-object override (handler.c:2461) is not ported [TODO
+    quest-override]: quest.py tracks the target obj by vnum, but wiring it here
+    would couple handler to quest, and quest items carry no invis/vis_death
+    flags, so the gap is harmless for now.
 
     Args:
         ch (dict): Observer (player or mob instance).
-        obj (dict): Target object instance.
+        obj (dict): Target object instance, or a plain VNUM int.
 
     Returns:
         bool: True if ch can see obj.
     """
-    # [PRIMESUD] stub: fill in when item visibility flags ported
+    vnum = obj["vnum"] if isinstance(obj, dict) else obj
+    tpl = ITEM_DEFS[vnum]
+    if isinstance(obj, dict) and "extra_flags" in obj:
+        flags = obj["extra_flags"]
+    else:
+        flags = tpl.get("extra_flags", {})
+    if isinstance(obj, dict) and "type" in obj:
+        otype = obj["type"]
+    else:
+        otype = tpl.get("type")
+
+    ch_aff = ch.get("affected_by", {})
+
+    if flags.get("vis_death"):
+        return False
+
+    if ch_aff.get("blind") and otype != "potion":
+        return False
+
+    # A lit light source is visible even in the dark. Value[2] semantics
+    # (cf. 1stMud): 0 = dead (fall through), absent/negative = infinite,
+    # positive = hours left.
+    if otype == "light":
+        fuel = obj.get("light_hours") if isinstance(obj, dict) else None
+        if fuel is None:
+            fuel = tpl.get("light_hours")
+        if fuel is None or fuel != 0:
+            return True
+
+    if flags.get("invis") and not ch_aff.get("detect_invis"):
+        return False
+
+    if flags.get("glow"):
+        return True
+
+    ch_room = ch.get("room")  # _data, not ROOM_DEFS: avoid a lazy area load
+    if (ch_room in ROOM_DEFS._data and room_is_dark(ch_room)
+            and not ch_aff.get("dark_vision")):
+        return False
+
+    return True
+
+
+def check_blind(ch):
+    """True unless ch is blinded, printing the failure line (cf. 1stMud check_blind in act_info.c:495).
+
+    [PRIMESUD] HOLYLIGHT short-circuit omitted (no immortals).
+
+    Args:
+        ch (dict): Observer whose sight is being tested.
+
+    Returns:
+        bool: True if ch can see; False (after printing "You can't see a
+        thing!") if blinded.
+    """
+    if ch.get("affected_by", {}).get("blind"):
+        chprintln(ch, "You can't see a thing!")
+        return False
     return True
 
 
