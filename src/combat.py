@@ -893,8 +893,9 @@ def _randomize_damage(dam, roll):
 
 def is_safe(ch, victim):
     """Check if ch is prevented from attacking victim (cf. 1stMud is_safe in fight.c).
-    [Verified: 02/07/2026; quest-target check added and re-verified 03/07/2026]
-    -- ROOM_SAFE, ACT_PET, and PvP branches not ported (noted inline);
+    [Verified: 02/07/2026; quest-target check added and re-verified 03/07/2026;
+    ROOM_SAFE/ACT_PET added and re-verified 08/07/2026]
+    -- PvP branches not ported (single-player, noted inline);
     "$g" deity rendered as "the gods".
 
     Returns True (and prints a message) if the attack should be blocked.
@@ -913,8 +914,10 @@ def is_safe(ch, victim):
     # [PRIMESUD] immortal check skipped -- single-player, no immortals
 
     if victim["is_npc"]:
-        # [PRIMESUD] ROOM_SAFE not ported -- room_flags not on rooms yet
-        # if room has "safe" flag: chprintln(ch, "Not in this room."); return True
+        # 1stMud: IsSet(victim->in_room->room_flags, ROOM_SAFE)
+        if ROOM_DEFS.get(victim.get("room"), {}).get("flags", {}).get("safe"):
+            chprintln(ch, "Not in this room.")
+            return True
 
         if MOB_DEFS[victim["tpl"]].get("shop"):
             chprintln(ch, "The shopkeeper wouldn't like that.")
@@ -928,10 +931,9 @@ def is_safe(ch, victim):
             return True
 
         if not ch["is_npc"]:
-            # [PRIMESUD] ACT_PET not ported -- no pet flag on mobs yet
-            # if act_f.get("pet"):
-            #     act("But $N looks so cute and cuddly...", ch, arg2=victim)
-            #     return True
+            if act_f.get("pet"):
+                act("But $N looks so cute and cuddly...", ch, None, victim, TO_CHAR)
+                return True
 
             if (victim.get("affected_by", {}).get("charm")
                     and ch.get("id") != victim.get("master")):
@@ -951,7 +953,10 @@ def is_safe(ch, victim):
     else:
         # 1stMud: player victim
         if ch["is_npc"]:
-            # [PRIMESUD] ROOM_SAFE not ported -- room_flags not on rooms yet
+            # 1stMud: IsSet(victim->in_room->room_flags, ROOM_SAFE)
+            if ROOM_DEFS.get(victim.get("room"), {}).get("flags", {}).get("safe"):
+                chprintln(ch, "Not in this room.")
+                return True
             master = world.chars.get(ch["master"]) if ch.get("master") is not None else None
             if (ch.get("affected_by", {}).get("charm") and master is not None
                     and master.get("fighting") != victim.get("id")):
@@ -963,8 +968,9 @@ def is_safe(ch, victim):
 
 def is_safe_spell(ch, victim, area):
     """Silent safety check for spell targeting (cf. 1stMud is_safe_spell in fight.c).
-    [Verified: 02/07/2026; quest-target check added and re-verified 03/07/2026]
-    -- ROOM_SAFE, ACT_PET, immortal, and PvP branches not ported (noted inline).
+    [Verified: 02/07/2026; quest-target check added and re-verified 03/07/2026;
+    ROOM_SAFE/ACT_PET added and re-verified 08/07/2026]
+    -- immortal and PvP branches not ported (single-player, noted inline).
 
     Returns True if victim should NOT be hit. Unlike is_safe, prints no
     messages.
@@ -982,7 +988,9 @@ def is_safe_spell(ch, victim, area):
     if victim.get("fighting") == ch.get("id") or victim is ch:
         return False
     if victim["is_npc"]:
-        # [PRIMESUD] ROOM_SAFE not ported -- room_flags not on rooms yet
+        # 1stMud: IsSet(victim->in_room->room_flags, ROOM_SAFE)
+        if ROOM_DEFS.get(victim.get("room"), {}).get("flags", {}).get("safe"):
+            return True
         if MOB_DEFS[victim["tpl"]].get("shop"):
             return True
         act = victim.get("act_flags", {})
@@ -990,7 +998,8 @@ def is_safe_spell(ch, victim, area):
                 or act.get("healer") or act.get("changer")):
             return True
         if not ch["is_npc"]:
-            # [PRIMESUD] ACT_PET not ported
+            if act.get("pet"):
+                return True
             if (victim.get("affected_by", {}).get("charm")
                     and (area or ch.get("id") != victim.get("master"))):
                 return True
@@ -1016,7 +1025,9 @@ def is_safe_spell(ch, victim, area):
             if (ch.get("affected_by", {}).get("charm") and master is not None
                     and master.get("fighting") != victim.get("id")):
                 return True
-            # [PRIMESUD] ROOM_SAFE not ported -- room_flags not on rooms yet
+            # 1stMud: IsSet(victim->in_room->room_flags, ROOM_SAFE)
+            if ROOM_DEFS.get(victim.get("room"), {}).get("flags", {}).get("safe"):
+                return True
             if (ch.get("fighting") is not None
                     and not is_same_group(world.chars.get(ch["fighting"]), victim)):
                 return True
