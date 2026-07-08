@@ -511,8 +511,7 @@ def do_group(ch, args):
             if is_same_group(gch, ch):
                 rs = world.rooms.get(gch.get("room"))
                 room_name = rs["name"] if rs else "somewhere"
-                tag = (world.ROOM_DEFS[gch["room"]].get("area")
-                       if gch.get("room") is not None else None)
+                tag = world.ROOM_DEFS.get(gch.get("room"), {}).get("area")
                 area_name = world._TAG_TO_NAME.get(tag, tag) if tag else ""
                 chprintln(ch, "{W%s is in %s the general area of %s.{x" % (
                     _pers(gch, ch), room_name, area_name))
