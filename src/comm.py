@@ -112,7 +112,7 @@ def do_yell(ch, argument):
     act("$n yells '$t'", ch, text, None, TO_ZONE)
 
 
-def do_tell(ch, args):
+def do_tell(ch, argument):
     """Tell something to a character in the room (cf. 1stMud do_tell in act_comm.c).
 
     [PRIMESUD] Simplified for single-player: target must be in same room.
@@ -162,7 +162,7 @@ def do_tell(ch, args):
 
 # -- do_reply (cf. 1stMud do_reply in act_comm.c) ----------------------------
 
-def do_reply(ch, args):
+def do_reply(ch, argument):
     """Reply to last character who told you something (cf. 1stMud do_reply in act_comm.c).
 
     [PRIMESUD] Simplified for single-player: no COMM_NOTELL/DEAF/linkdead checks.
