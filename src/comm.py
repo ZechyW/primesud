@@ -53,18 +53,17 @@ def say_verb(text, form):
 
 # -- do_say (cf. 1stMud do_say in act_comm.c) --------------------------------
 
-def do_say(ch, args):
+def do_say(ch, argument):
     """Say something to the room (cf. 1stMud do_say in act_comm.c).
 
     Args:
         ch (dict): Speaking character (player or mob instance).
-        args (list): Words to say.
+        argument (str): Verbatim message tail (case and colour codes intact).
     """
-    if not args:
+    if not argument:
         chprintln(ch, "Say what?")
         return
 
-    argument = " ".join(args)
     verb_room = say_verb(argument, 1)
     verb_self = say_verb(argument, 0)
     act("{g$n $t '{G$T{g'{x", ch, verb_room, argument, TO_ROOM)
@@ -74,28 +73,28 @@ def do_say(ch, args):
 
 # -- do_emote (cf. 1stMud do_emote in act_comm.c) ----------------------------
 
-def do_emote(ch, args):
+def do_emote(ch, argument):
     """Act out a free-form emote (cf. 1stMud do_emote in act_comm.c).
-    [Verified: 04/07/2026] -- COMM_NOEMOTE check not ported (comm flags /
+    [Verified: 04/07/2026; free-text tail signature (verbatim argument, cf.
+    1stMud do_fun) 09/07/2026] -- COMM_NOEMOTE check not ported (comm flags /
     channel penalties do not exist); MOBtrigger guard not ported (mobprogs
     not ported).
 
     Args:
         ch (dict): Acting character (player or mob instance).
-        args (list): Emote text words.
+        argument (str): Verbatim emote text (case and colour codes intact).
     """
-    if not args:
+    if not argument:
         chprintln(ch, "Emote what?")
         return
 
-    argument = " ".join(args)
     act("$n $T", ch, None, argument, TO_ROOM)
     act("$n $T", ch, None, argument, TO_CHAR)
 
 
 # -- do_tell (cf. 1stMud do_tell in act_comm.c) ------------------------------
 
-def do_yell(ch, args):
+def do_yell(ch, argument):
     """Yell to everyone in the area (cf. 1stMud do_yell in act_comm.c).
 
     [PRIMESUD] COMM_NOSHOUT, swearcheck, channel-ignore, and COMM_QUIET
@@ -103,12 +102,12 @@ def do_yell(ch, args):
 
     Args:
         ch (dict): Speaker (player or mob instance).
-        args (list): Words to yell.
+        argument (str): Verbatim text to yell (case and colour codes intact).
     """
-    if not args:
+    if not argument:
         chprintln(ch, "Yell what?")
         return
-    text = " ".join(args)
+    text = argument
     act("You yell '$t'", ch, text, None, TO_CHAR)
     act("$n yells '$t'", ch, text, None, TO_ZONE)
 
@@ -122,14 +121,15 @@ def do_tell(ch, args):
 
     Args:
         ch (dict): Speaking character (player or mob instance).
-        args (list): [target_name, ...message_words].
+        argument (str): "<target> <verbatim message>".
     """
-    if len(args) < 2:
+    parts = argument.split(None, 1)
+    if len(parts) < 2 or not parts[1]:
         chprintln(ch, "Tell whom what?")
         return
 
-    target = args[0]
-    argument = " ".join(args[1:])
+    target = parts[0]  # matched case-insensitively by is_name/get_char_room
+    argument = parts[1]  # verbatim message tail
 
     rs = world.rooms.get(ch.get("room"))
     if rs is None:
@@ -169,7 +169,7 @@ def do_reply(ch, args):
 
     Args:
         ch (dict): Speaking character.
-        args (list): Words to reply.
+        argument (str): Verbatim reply text (case and colour codes intact).
     """
     # [PRIMESUD] reply stored as id; extracted (dead) targets resolve to None,
     # matching 1stMud's extract_char nulling wch->reply
@@ -178,11 +178,10 @@ def do_reply(ch, args):
         chprintln(ch, "They aren't here.")
         return
 
-    if not args:
+    if not argument:
         chprintln(ch, "Reply what?")
         return
 
-    argument = " ".join(args)
     ch_name = ch.get("name", "someone")
     victim_name = victim.get("name", "someone")
     chprintlnf(ch, "{cYou tell %s '{C%s{c'{x", victim_name, argument)
@@ -197,10 +196,12 @@ def do_function(ch, cmd_fn, argument):
 
     Args:
         ch (dict): Character executing the command.
-        cmd_fn (callable): Command function (e.g. do_say).
-        argument (str): Raw argument string.
+        cmd_fn (callable): Free-text command function (e.g. do_say/do_emote)
+            that takes a verbatim argument string -- NOT a split_args token
+            handler.  All current callers pass free-text commands.
+        argument (str): Raw argument string, forwarded verbatim.
     """
-    cmd_fn(ch, argument.split())
+    cmd_fn(ch, argument)
 
 
 # -- Followers (cf. 1stMud add_follower..do_order in act_comm.c) --------------

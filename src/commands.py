@@ -448,6 +448,16 @@ _CMD_TABLE = [
     ("debug",      do_debug,      "dead",     False),  # [PRIMESUD] #350
 ]
 
+# [PRIMESUD] Free-text commands receive the verbatim argument tail -- like
+# 1stMud's do_fun(ch, argument) -- instead of a lowercased split_args token
+# list, so message text and {C colour codes survive.  They lowercase only the
+# head words they extract themselves (target/keyword), matching 1stMud's
+# per-token tolower.  Every other command keeps the split_args token list.
+# ponytail: do_order excluded -- it relays only an NPC-safe combat subset
+# (keyword targets, case-insensitive), emits no free-text; add it here if the
+# ordered subset ever grows to include say/emote.
+_FREETEXT_FUNS = (do_say, do_emote, do_tell, do_reply, do_yell)
+
 
 # -- Interpreter ---------------------------------------------------------------
 
@@ -570,8 +580,13 @@ def interpret(raw, player):
         chprintln(player, _POS_MSG.get(pos, ""))
         return None
 
-    args = split_args(argument)
-    result = fn(player, args)
+    if fn in _FREETEXT_FUNS:
+        # Verbatim tail (cf. 1stMud do_fun(ch, argument)) -- preserves case and
+        # colour codes for say/emote/tell/reply/yell message text.
+        result = fn(player, argument)
+    else:
+        args = split_args(argument)
+        result = fn(player, args)
     # [PRIMESUD] mark the room the command left us in as explored. 1stMud does
     # this in char_to_room; PrimeSUD has no such choke point, so mark_explored
     # compares against a cached vnum here (player moves) and in the update tick

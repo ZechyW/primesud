@@ -988,7 +988,7 @@ def do_steal(player, args):
         if not is_awake(victim):
             victim["pos"] = "standing"  # cf. do_wake on victim
         if is_awake(victim):
-            do_yell(victim, yells[randint(0, 3)].split())
+            do_yell(victim, yells[randint(0, 3)])
         check_improve(player, GSN_STEAL, False, 2)
         multi_hit(victim, player, TYPE_UNDEFINED)
         return

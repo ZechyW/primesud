@@ -121,7 +121,7 @@ class TestTargeting:
         import comm
         monkeypatch.setattr(handler, "_player_char", lambda: scene)
         scene["area"] = None  # act TO_ZONE uses room area lookup
-        comm.do_yell(world.chars[2], ["Stop", "thief!"])
+        comm.do_yell(world.chars[2], "Stop thief!")
         assert any("yells 'Stop thief!'" in l for l in out)
 
 

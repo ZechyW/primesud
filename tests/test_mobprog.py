@@ -332,10 +332,10 @@ def spike_world(monkeypatch):
 def test_spike_mob_say(spike_world):
     player, mob, out = spike_world
     mobprog.program_flow(1, "say Hello There", mob, player)
-    # act() TO_ROOM reaches the player; the arg is lowercased by interpret()'s
-    # one_argument (documented prog-safety finding).  The {G..{g wrapping is
-    # from do_say's own template, not the mob text.
-    assert any("says" in l and "hello there" in l for l in out)
+    # act() TO_ROOM reaches the player.  Free-text tail is verbatim now (only
+    # the command word is lowercased), so the case survives.  The {G..{g
+    # wrapping is from do_say's own template, not the mob text.
+    assert any("says" in l and "Hello There" in l for l in out)
     # TO_CHAR (the mob's own line) must NOT leak to the player
     assert not any("You say" in l for l in out)
 
@@ -345,6 +345,27 @@ def test_spike_mob_emote(spike_world):
     mobprog.program_flow(1, "emote waves happily.", mob, player)
     # act $n renders the actor's *name* ("Guard"), not the short_descr
     assert any("Guard waves happily." in l for l in out)
+
+
+def test_player_say_preserves_case_and_colour(spike_world):
+    """say passes its tail verbatim: case and {C colour codes survive."""
+    player, mob, out = spike_world
+    from commands import interpret
+    del out[:]
+    interpret("say Hello {CWorld", player)
+    assert any("Hello {CWorld" in l for l in out)
+    # command word still case-insensitive
+    del out[:]
+    interpret("SAY Bye {RNow", player)
+    assert any("Bye {RNow" in l for l in out)
+
+
+def test_player_emote_preserves_case_and_colour(spike_world):
+    player, mob, out = spike_world
+    from commands import interpret
+    del out[:]
+    interpret("emote Waves {Rwildly", player)
+    assert any("Waves {Rwildly" in l for l in out)
 
 
 def test_spike_mob_walks_north(spike_world):
@@ -361,6 +382,6 @@ def test_spike_full_prog_chain(spike_world):
     player, mob, out = spike_world
     prog = "\n".join(["say hi $n", "emote nods.", "north"])
     mobprog.program_flow(1, prog, mob, player)
-    assert any("says" in l and "hi tester" in l for l in out)
+    assert any("says" in l and "hi Tester" in l for l in out)
     assert any("nods." in l for l in out)
     assert mob["room"] == 9002

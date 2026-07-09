@@ -168,11 +168,9 @@ def hunt_victim(ch):
     victim = world.chars.get(ch["hunting"])
     if victim is None or not can_see(ch, victim):
         from comm import do_say
-        # do_say(ch, args) rejoins args with " ".join -- splitting on the
-        # literal separator " " (not whitespace-collapsing .split()) round
-        # trips exactly, preserving the double space in "Damn!  My" that
-        # hunt.c's literal C string has.
-        do_say(ch, "Damn!  My prey is gone!!".split(" "))
+        # do_say takes the verbatim message string; the double space in
+        # "Damn!  My" (from hunt.c's literal C string) is preserved as-is.
+        do_say(ch, "Damn!  My prey is gone!!")
         ch["hunting"] = None
         return
 

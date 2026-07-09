@@ -77,21 +77,21 @@ def out(monkeypatch):
 
 def test_player_emote_shows_to_self(out):
     player = _make_char()
-    do_emote(player, ["grins", "wickedly."])
+    do_emote(player, "grins wickedly.")
     # TO_CHAR: actor sees "$n $T" with their own name
     assert any("Tester grins wickedly." in l for l in out)
 
 
 def test_player_emote_no_args(out):
     player = _make_char()
-    do_emote(player, [])
+    do_emote(player, "")
     assert "Emote what?" in out
 
 
 def test_npc_emote_visible_to_player(out):
     _make_char()  # player, same room
     npc = _make_char(2, npc=True)
-    do_emote(npc, ["screams", "and", "attacks!"])
+    do_emote(npc, "screams and attacks!")
     # TO_ROOM from the NPC reaches the player; NPC's own TO_CHAR must not
     assert sum(1 for l in out if "screams and attacks!" in l) == 1
     assert any("A test mob screams and attacks!" in l for l in out)

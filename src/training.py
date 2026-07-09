@@ -399,7 +399,7 @@ def do_gain(player, args):
         args = args[1:]
 
     if not args:
-        do_say(trainer, ["Pardon", "me?"])
+        do_say(trainer, "Pardon me?")
         return
 
     arg = " ".join(args)

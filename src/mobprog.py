@@ -42,11 +42,12 @@ which command categories are prog-safe:
       actor produces no stray output to the player.
 
   ASSUMES A PLAYER -- guard or avoid (failure modes actually hit / reasoned):
-    * ARGUMENT CASE: fixed 2026-07-09 -- one_argument() now lowercases only the
-      command word (matching 1stMud's tolower on arg_first) and returns the
-      remainder verbatim, so a bare say/emote through interpret() preserves its
-      text and colour codes ("{G" stays "{G").  The Phase-C ``mob echo`` family
-      remains available for output that must bypass the interpreter entirely.
+    * ARGUMENT CASE: fixed 2026-07-09 -- interpret() dispatches the free-text
+      commands (say/emote/tell/reply/yell, see commands._FREETEXT_FUNS) with the
+      verbatim argument tail instead of a lowercased split_args token list, so a
+      mob say/emote through interpret() preserves its text and colour codes
+      ("{G" stays "{G").  The Phase-C ``mob echo`` family remains available for
+      output that must bypass the interpreter entirely.
     * mark_explored(): interpret() marks the actor's room explored, allocating
       a ~2KB per-mob mask.  Guarded now -- mark_explored early-returns on
       is_npc (explored maps are a PC-only concept).
