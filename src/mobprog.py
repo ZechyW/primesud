@@ -339,7 +339,10 @@ def speech_trigger(argument, speaker):
         return
     for mid in list(rs.get("mobs", [])):
         mob = world.chars.get(mid)
-        if mob is not None and mob is not speaker and mob.get("is_npc"):
+        # 1stMud do_say gates the mob speech trigger on position == default_pos
+        # (a fighting/knocked-down mob does not react); do_tell does not.
+        if (mob is not None and mob is not speaker and mob.get("is_npc")
+                and _at_default_pos(mob)):
             act_trigger(argument, mob, speaker, None, None, "speech")
 
 
