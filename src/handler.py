@@ -956,11 +956,15 @@ def _act_trigger_mobs(format, ch, arg1, arg2, type):
     if not mobprog.MOBtrigger:
         return
     import world
+    has_trigger = mobprog.has_trigger
     vch = arg2 if isinstance(arg2, dict) and "room" in arg2 else None
+    # Collect only the NPC recipients that actually carry an act trigger, so a
+    # populated but trigger-less room costs one has_trigger check per mob and
+    # never flips the latch or renders a buffer.
     recips = []
-    if (type & TO_CHAR) and isinstance(ch, dict) and ch.get("is_npc"):
+    if (type & TO_CHAR) and isinstance(ch, dict) and ch.get("is_npc") and has_trigger(ch, "act"):
         recips.append(ch)
-    if (type & TO_VICT) and vch is not None and vch is not ch and vch.get("is_npc"):
+    if (type & TO_VICT) and vch is not None and vch is not ch and vch.get("is_npc") and has_trigger(vch, "act"):
         recips.append(vch)
     if type & (TO_ROOM | TO_NOTVICT):
         room = _act_room(ch, arg1, arg2)
@@ -972,14 +976,18 @@ def _act_trigger_mobs(format, ch, arg1, arg2, type):
                     continue
                 if (type & TO_NOTVICT) and mob is vch:
                     continue
-                recips.append(mob)
+                if has_trigger(mob, "act"):
+                    recips.append(mob)
     if not recips:
         return
     saved = mobprog.MOBtrigger
     mobprog.MOBtrigger = False
     try:
         for mob in recips:
-            if not mobprog.has_trigger(mob, "act"):
+            # an earlier recipient's prog may have extracted a later one
+            # (mppurge / mpdamage); skip a mob that is no longer resident.
+            mid = mob.get("id")
+            if mid is not None and world.chars.get(mid) is not mob:
                 continue
             buf = _render_act(format, ch, arg1, arg2, type, mob)
             mobprog.act_trigger(buf, mob, ch, arg1, arg2, "act")

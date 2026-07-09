@@ -980,6 +980,27 @@ def test_act_trigger_latch_bounds_reentry(mp_world):
     assert not any("SECOND ORDER" in l for l in out)      # B suppressed by the latch
 
 
+def test_act_trigger_skips_extracted_recipient(mp_world):
+    """A prog that purges a later act-trigger recipient must not fire it (extraction guard)."""
+    player, mob, out = mp_world
+    # mob A (id 2, tpl 9405): on "coughs", purges the victim mob
+    MOB_DEFS._data[9405]["mob_triggers"] += (("act", 6050, "coughs"),)
+    MOBPROGS[6050] = "mob purge victim"
+    # mob B (id 3, tpl 9406, keyword "victim") would shout on the same act
+    MOB_DEFS._data[9406] = dict(MOB_DEFS._data[9405])
+    MOB_DEFS._data[9406]["keywords"] = "victim"
+    MOB_DEFS._data[9406]["mob_triggers"] = (("act", 6051, "coughs"),)
+    MOBPROGS[6051] = "say B FIRED"
+    b = _char_base()
+    b.update(id=3, is_npc=True, tpl=9406, name="victim", short_descr="a hapless victim",
+             keywords="victim", room=9001, pos="standing", mprog_target=None)
+    world.chars[3] = b
+    world.rooms._data[9001]["mobs"].append(3)
+    handler.act("$n coughs.", player, None, None, handler.TO_ROOM)
+    assert 3 not in world.chars                     # B purged by A's prog
+    assert not any("B FIRED" in l for l in out)     # never fired on the dead ref
+
+
 def test_exit_trigger_fires_and_aborts_move(mp_world):
     """An exit trigger on the matching door number fires and cancels the move."""
     player, mob, out = mp_world
