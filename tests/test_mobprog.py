@@ -527,6 +527,13 @@ def test_speech_trigger_no_match(mp_world):
     assert not any("Greetings" in l for l in out)
 
 
+def test_speech_trigger_via_do_tell(mp_world):
+    player, mob, out = mp_world
+    from comm import do_tell
+    do_tell(player, "guard hello there")   # PC tells the NPC -> speech fires
+    assert any("Greetings, Tester." in l for l in out)
+
+
 def test_greet_trigger_on_player_arrival(mp_world):
     player, mob, out = mp_world
     # player starts in 9001 with the mob; move away then back to trigger greet

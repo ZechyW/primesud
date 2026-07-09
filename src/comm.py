@@ -159,7 +159,11 @@ def do_tell(ch, argument):
     chprintlnf(victim, "{c%s tells you '{C%s{c'{x", ch_name, argument)
 
     victim["reply"] = ch["id"]  # [PRIMESUD] stored as id, not dict ref (see _char_base)
-    # [PRIMESUD] TRIG_SPEECH not ported
+    # TRIG_SPEECH: PC telling an NPC fires its speech prog (cf. do_tell, act_comm.c:624)
+    if not ch.get("is_npc") and victim.get("is_npc"):
+        from mobprog import has_trigger, act_trigger
+        if has_trigger(victim, "speech"):
+            act_trigger(argument, victim, ch, None, None, "speech")
 
 
 # -- do_reply (cf. 1stMud do_reply in act_comm.c) ----------------------------

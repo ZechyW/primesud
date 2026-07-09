@@ -73,7 +73,7 @@ programs (echo, load, force, damage, delay...). 1stMud sources:
 `cmd_eval_mob` if-checks + `expand_arg_mob` $-expansion) and `prog_cmds.c`
 (2679 lines: the `mob <subcmd>` / `do_mp*` command set). Author-facing
 spec (trigger semantics, if-check table, MOBcommand syntax, $-codes):
-`reference/1stMud4.5.3/doc/MPDocs/Programs.doc` -- read for Phase B/C.
+`reference/1stMud4.5.3/doc/MPDocs/Programs.doc`.
 
 **Content reality check (drives scope):** no loaded PrimeSUD area contains
 `mob_triggers` -- stock 1stMud/converted data has zero mobprogs. The
