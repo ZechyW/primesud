@@ -502,6 +502,9 @@ def mp_world(monkeypatch):
 
     out = []
     monkeypatch.setattr(handler, "tprint", lambda s="", end="\n": out.append(s))
+    # deterministic percent roll: phrase-"100" triggers roll 1stMud's
+    # number_percent() < 100, a real 1% miss that flakes the suite
+    monkeypatch.setattr(mobprog, "_number_percent", lambda: 1)
 
     yield player, mob, out
 
