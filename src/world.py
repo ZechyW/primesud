@@ -328,6 +328,9 @@ def _load_area(tag):
                 }
     MOB_DEFS.update(_ns["MOBILES"])
     ITEM_DEFS.update(_ns["OBJECTS"])
+    # MOBPROGS is optional (synthetic test areas omit it); real area files
+    # always emit it, empty for stock data. [PRIMESUD]
+    MOBPROGS.update(_ns.get("MOBPROGS", {}))
     # Partition resets to per-room lists (cf. 1stMud pRoom->reset_first).
     # Cross-area resets (target room in a different area) are deferred to
     # avoid the cascade-load race: accessing ROOM_DEFS[cross_vnum] via
@@ -508,6 +511,9 @@ MOB_DEFS = LazyDict(load_all_on_iter=True)
 ITEM_DEFS = LazyDict(load_all_on_iter=True)
 AREA_DEFS = []
 DOOR_DEFS = {}
+# Mob program code blocks by vnum, merged from each area's MOBPROGS dict as it
+# loads (like MOB_DEFS -- heap cost only for loaded areas). [PRIMESUD]
+MOBPROGS = {}
 _WORLD_READY = False
 
 # -- Mutable runtime state (mutated by reset_area / game functions) ------------
@@ -529,6 +535,7 @@ def reset_lazy():
     MOB_DEFS._data.clear()
     ITEM_DEFS._data.clear()
     DOOR_DEFS.clear()
+    MOBPROGS.clear()
     del AREA_DEFS[:]
     for _, _tag, _, _, _ in _AREA_FILES:
         AREA_DEFS.append({"tag": _tag, "resets": []})

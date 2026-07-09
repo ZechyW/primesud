@@ -514,7 +514,10 @@ def interpret(raw, player):
     argument = raw.strip()
     if not argument:
         return None
-    tprint("")
+    # Blank separator line echoes the player's own input; a mob acting through
+    # the interpreter (mobprog command actor) must not emit it. [PRIMESUD]
+    if not player.get("is_npc"):
+        tprint("")
 
     # RemBit(ch->affected_by, AFF_HIDE)
     aff = player.get("affected_by")

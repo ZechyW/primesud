@@ -75,6 +75,11 @@ def mark_explored(player):
     (cf. 1stMud StrSetBit(ch->pcdata->explored, vnum) in char_to_room,
     handler.c:1360). [PRIMESUD] cached-vnum seam -- see module docstring.
     """
+    # NPCs have no explored map (1stMud tracks it in pcdata only); skip before
+    # get_mask allocates a ~2KB mask on a mob acting via the interpreter
+    # (mobprog command actor). [PRIMESUD]
+    if player.get("is_npc"):
+        return
     room = player.get("room")
     if room is None or room > _MAX_VNUM or room < 0:
         return
