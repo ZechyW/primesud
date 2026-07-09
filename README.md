@@ -1,22 +1,19 @@
 # PrimeSUD
 
-Single-player MUD for the HP Prime graphing calculator.
+Single-player MUD experience for the HP Prime graphing calculator.
 
-A port of 1stMud (a ROM 2.4 DikuMUD), running in a text UI on the calculator's 320x240 screen. Classes, races, spells, skills, quests, and shops; multiplayer mechanics are cut or reworked for solo play.
+A port of 1stMud (based on ROM 2.4), running in a text UI on the calculator's 320x240 screen. Classes, races, spells, skills, quests, and shops; multiplayer mechanics are cut or reworked for solo play.
 
 ![PrimeSUD greeting screen](docs/img/greeting.png)
 
-*Greeting screen, drawn with the on-device 5x10 font. Rebuild with `python tools/render_greeting.py`.*
-
 ## Features
 
-- Combat with stances, full spell and skill tables, six classes with remort and multiclassing, races with per-race stat caps and skills, groups, healers, shops, training and practising. Ported functions are checked against 1stMud and dated in their docstrings.
-- Quests and gquests. No gquest join window; auto-joined when one starts (see `DESIGN.md`).
-- Stock ROM 2.4 area files load unmodified via `tools/are_to_primesud.py`: rooms, mobs, objects, resets, shops, specials. 22 areas bundled (Midgaard, Moria, the Shire, New Thalos, and others).
+- Six classes with remort and multiclassing, races, full spell and skill tables.
+- Combat stances.
+- Quests, gquests, and trivia points system.
+- Stock ROM 2.4 area files load unmodified after preparation via `tools/are_to_primesud.py`. ~22 areas bundled (Midgaard, Moria, the Shire, New Thalos, and others).
 - Automap and per-room exploration tracking (`explored` command).
-- Deviations from 1stMud documented in `DESIGN.md`.
-- Build step minifies source to save space on the calculator, verifying no symbols or area data change.
-- Runs on PC. Shims in `pc_shim/` replace the Prime's `hpprime`, `urandom`, and text layer, so plain CPython suffices.
+- PC mode. Shims in `pc_shim/` replace the Prime's `hpprime`, `urandom`, and text layer, so plain CPython suffices.
 
 ## Requirements
 
