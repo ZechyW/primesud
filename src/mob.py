@@ -555,6 +555,11 @@ def mobile_update(tr, player):
             spec = SPEC_TABLE.get(spec_name)
             if spec is not None and spec(inst):
                 continue
+        # [PRIMESUD] random/delay mobprog pulse (cf. char_update, update.c:444-462);
+        # gated on position == default_pos, so fighting/knocked-down mobs skip it.
+        from mobprog import pulse_mob
+        if pulse_mob(inst):
+            continue
         if inst["fighting"] is not None:
             continue
         act_flags = tpl.get("act_flags", {})

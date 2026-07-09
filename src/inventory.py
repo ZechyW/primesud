@@ -506,6 +506,12 @@ def _give_coins(player, amount, coin, rest):
     act("$n gives $N some coins.", player, None, victim, TO_NOTVICT)
     act("You give $N %d %s." % (amount, wallet), player, None, victim, TO_CHAR)
 
+    # TRIG_BRIBE: amount normalised to silver (cf. p_bribe_trigger, act_obj.c:710)
+    if victim.get("is_npc"):
+        from mobprog import has_trigger, bribe_trigger
+        if has_trigger(victim, "bribe"):
+            bribe_trigger(victim, player, amount if silver else amount * 100)
+
     # Money changer (cf. 1stMud ACT_IS_CHANGER branch)
     if victim.get("act_flags", {}).get("changer"):
         change = (95 * amount // 100 // 100) if silver else (95 * amount)
@@ -617,7 +623,11 @@ def do_give(player, args):
     act("$n gives $p to $N.", player, obj, victim, TO_NOTVICT)
     act("$n gives you $p.", player, obj, victim, TO_VICT)
     act("You give $p to $N.", player, obj, victim, TO_CHAR)
-    # 1stMud: TRIG_GIVE obj/room/mob triggers -- [PRIMESUD] mob progs not ported
+    # TRIG_GIVE: mob reacts to the received object (cf. do_give, act_obj.c:856)
+    if victim.get("is_npc"):
+        from mobprog import has_trigger, give_trigger
+        if has_trigger(victim, "give"):
+            give_trigger(victim, player, obj)
 
 
 def _obj_flags(tpl):

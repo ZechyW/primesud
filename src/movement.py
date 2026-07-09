@@ -96,9 +96,10 @@ def move_char(ch, direction):
 
     [Verified: 03/07/2026; quest_room_check moved after follower loop to
     match 1stMud order and re-verified same day; [PRIMESUD] auto-door
-    added 04/07/2026, auto-unlock with key added 05/07/2026] --
-    private-room / area-closed checks, area entry
-    sound, and exit/entry/greet progs not ported (see comments).
+    added 04/07/2026, auto-unlock with key added 05/07/2026; entry/greet
+    mobprogs wired after the follower loop and re-verified 09/07/2026] --
+    private-room / area-closed checks, area entry sound, and the p_exit_trigger
+    (Phase E) not ported (see comments).
 
     Args:
         ch (dict): Moving character (player or mob instance).
@@ -304,9 +305,14 @@ def move_char(ch, direction):
     # [PRIMESUD] re-close an auto-opened door once followers are through
     _close_auto_door(ch, auto_door)
 
-    # cf. 1stMud move_char act_move.c:266: quest check runs after the
-    # follower loop (entry/greet progs, also there, not ported)
-    if not is_npc:
+    # cf. 1stMud move_char act_move.c:259-266: entry (NPC self-move) and greet
+    # (player arrival) mobprogs, then the quest check, all after the follower loop
+    from mobprog import has_trigger, entry_trigger, greet_trigger
+    if is_npc:
+        if has_trigger(ch, "entry"):
+            entry_trigger(ch)
+    else:
+        greet_trigger(ch)
         quest_room_check(ch)
 
 
@@ -413,8 +419,8 @@ def get_random_room(ch):
 
 def do_enter(ch, args):
     """Enter a portal object in the room (cf. 1stMud do_enter in act_enter.c).
-    [Verified: 04/07/2026] -- IsTrusted immortal bypasses and mob entry/greet
-    triggers not ported.
+    [Verified: 04/07/2026; entry/greet mobprogs wired after arrival and
+    re-verified 09/07/2026] -- IsTrusted immortal bypasses not ported.
 
     Args:
         ch (dict): Character entering (player or follower mob).
@@ -542,8 +548,14 @@ def do_enter(ch, args):
             if portal in items:
                 items.remove(portal)
                 break
-    # 1stMud runs entry/greet mobprogs here (not ported); no quest room
-    # check in do_enter -- that is a move_char-only mechanic
+    # cf. 1stMud act_enter.c: entry (NPC) / greet (player) mobprogs run after
+    # arrival; no quest room check in do_enter -- that is a move_char mechanic
+    from mobprog import has_trigger, entry_trigger, greet_trigger
+    if ch["is_npc"]:
+        if has_trigger(ch, "entry"):
+            entry_trigger(ch)
+    else:
+        greet_trigger(ch)
 
 
 def _find_door(player, arg, exits):

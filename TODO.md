@@ -44,10 +44,9 @@ last plan is deleted.
   - object `condition` (spawn wear-state), `no_sac`, container
     `container_max_item_weight` / `container_weight_mult`, food/drink
     `poisoned` (`light_hours` now consumed -- see DARKNESS light burnout)
-  - mob `default_pos` -- its only 1stMud runtime consumer is MOBPROG trigger
-    gating (update.c:444-462); there is no "return to default position"
-    mechanic, so `start_pos` (consumed at spawn) is enough until MOBPROG
-    lands. `group`, `material`, `mob_triggers`
+  - mob `group`, `material` (`default_pos` now consumed -- MOBPROG random/delay
+    pulse + greet gating, update.c:444-462; `mob_triggers` now consumed by the
+    MOBPROG trigger engine, mobprog.py)
   - room `heal_rate`/`mana_rate`, `owner`
   - object `values` raw value[0..4] fallback for item types with no
     dedicated decode (furniture max-occupants/position flags, key linked

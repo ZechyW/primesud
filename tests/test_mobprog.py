@@ -170,7 +170,7 @@ def dispatched(monkeypatch):
     """Capture dispatched command lines instead of running the interpreter."""
     calls = []
     monkeypatch.setattr(mobprog, "_dispatch",
-                        lambda pv, mob, ctrl, expanded: calls.append(expanded))
+                        lambda pv, mob, ctrl, expanded, cl=0: calls.append(expanded))
     return calls
 
 
@@ -260,7 +260,7 @@ def flow_errors(monkeypatch):
     calls = []
     errs = []
     monkeypatch.setattr(mobprog, "_dispatch",
-                        lambda pv, mob, ctrl, expanded: calls.append(expanded))
+                        lambda pv, mob, ctrl, expanded, cl=0: calls.append(expanded))
     monkeypatch.setattr(mobprog, "dbg", lambda m: errs.append(m))
     return calls, errs
 
@@ -407,3 +407,182 @@ def test_spike_full_prog_chain(spike_world):
     assert any("says" in l and "hi Tester" in l for l in out)
     assert any("nods." in l for l in out)
     assert mob["room"] == 9002
+
+
+# -- Phase B: trigger firing ---------------------------------------------------
+
+from world import ITEM_DEFS, MOBPROGS
+from item import create_object
+
+
+def test_percent_trigger_roll_boundary(monkeypatch):
+    """percent_trigger fires when number_percent() < atoi(phrase) (cf. p_percent_trigger)."""
+    MOB_DEFS._data[9500] = {"short_descr": "a test mob", "keywords": "mob",
+                            "level": 1, "mob_triggers": (("random", 9500, "50"),)}
+    MOBPROGS[9500] = "* noop"
+    fired = []
+    monkeypatch.setattr(mobprog, "_run_prog",
+                        lambda mob, pv, ch, a1, a2: fired.append(pv))
+    mob = {"tpl": 9500}
+    try:
+        monkeypatch.setattr(mobprog, "_number_percent", lambda: 49)   # 49 < 50 -> fire
+        assert mobprog.percent_trigger(mob, None, None, None, "random") is True
+        assert fired == [9500]
+        del fired[:]
+        monkeypatch.setattr(mobprog, "_number_percent", lambda: 50)   # 50 < 50 -> no
+        assert mobprog.percent_trigger(mob, None, None, None, "random") is False
+        assert fired == []
+    finally:
+        MOB_DEFS._data.pop(9500, None)
+        MOBPROGS.pop(9500, None)
+
+
+def test_has_trigger_empty_shortcircuit():
+    MOB_DEFS._data[9501] = {"short_descr": "x", "keywords": "x", "level": 1}
+    try:
+        assert mobprog.has_trigger({"tpl": 9501}, "random") is False
+        MOB_DEFS._data[9501]["mob_triggers"] = (("speech", 1, "hi"),)
+        assert mobprog.has_trigger({"tpl": 9501}, "speech") is True
+        assert mobprog.has_trigger({"tpl": 9501}, "random") is False
+    finally:
+        MOB_DEFS._data.pop(9501, None)
+
+
+@pytest.fixture
+def mp_world(monkeypatch):
+    """A room with a player and a trigger-carrying mob; captured act() output."""
+    old_rd = dict(ROOM_DEFS._data); old_wr = dict(world.rooms._data)
+    old_ch = dict(world.chars); old_md = dict(MOB_DEFS._data)
+    old_id = dict(ITEM_DEFS._data); old_mp = dict(MOBPROGS)
+
+    def _room(vnum, exits):
+        r = {"name": "Room %d" % vnum, "desc": "x", "exits": exits,
+             "items": [], "mobs": [], "area": "test", "flags": {}, "sector": "inside"}
+        ROOM_DEFS._data[vnum] = r
+        world.rooms._data[vnum] = r
+        return r
+
+    _room(9001, {"n": {"to": 9002}})
+    _room(9002, {"s": {"to": 9001}})
+    MOB_DEFS._data[9405] = {
+        "short_descr": "a test guard", "keywords": "guard", "level": 10,
+        "default_pos": "stand",
+        "mob_triggers": (("speech", 6001, "hello"), ("give", 6002, "all"),
+                         ("delay", 6003, "100"), ("greet", 6004, "100"),
+                         ("bribe", 6006, "50")),
+    }
+    MOBPROGS[6001] = "say Greetings, $n."
+    MOBPROGS[6002] = "\n".join(["mob delay 2", "say Thank you for $O."])
+    MOBPROGS[6003] = "say The magic happens now."
+    MOBPROGS[6004] = "say Welcome, $n."
+    MOBPROGS[6006] = "say Bribe taken."
+    ITEM_DEFS._data[9100] = {"short_descr": "a gold ring", "keywords": "ring gold",
+                             "type": "treasure", "weight": 1, "value": 0,
+                             "wear_flags": {"take": True}, "extra_flags": {}}
+
+    player = _char_base()
+    player.update(id=1, is_npc=False, name="Tester", room=9001, pos="standing")
+    world.chars[1] = player
+
+    mob = _char_base()
+    mob.update(id=2, is_npc=True, tpl=9405, name="guard",
+               short_descr="a test guard", room=9001, pos="standing",
+               mprog_target=None)
+    world.chars[2] = mob
+    world.rooms._data[9001]["mobs"].append(2)
+
+    out = []
+    monkeypatch.setattr(handler, "tprint", lambda s="", end="\n": out.append(s))
+
+    yield player, mob, out
+
+    ROOM_DEFS._data.clear(); ROOM_DEFS._data.update(old_rd)
+    world.rooms._data.clear(); world.rooms._data.update(old_wr)
+    world.chars.clear(); world.chars.update(old_ch)
+    MOB_DEFS._data.clear(); MOB_DEFS._data.update(old_md)
+    ITEM_DEFS._data.clear(); ITEM_DEFS._data.update(old_id)
+    MOBPROGS.clear(); MOBPROGS.update(old_mp)
+
+
+def test_speech_trigger_via_do_say(mp_world):
+    player, mob, out = mp_world
+    from comm import do_say
+    do_say(player, "well hello there")   # phrase "hello" is a substring
+    assert any("Greetings, Tester." in l for l in out)
+
+
+def test_speech_trigger_no_match(mp_world):
+    player, mob, out = mp_world
+    from comm import do_say
+    do_say(player, "goodbye")
+    assert not any("Greetings" in l for l in out)
+
+
+def test_greet_trigger_on_player_arrival(mp_world):
+    player, mob, out = mp_world
+    # player starts in 9001 with the mob; move away then back to trigger greet
+    from movement import move_char
+    move_char(player, "n")          # to 9002 (no mob there)
+    del out[:]
+    move_char(player, "s")          # back to 9001 -> greet fires
+    assert any("Welcome, Tester." in l for l in out)
+
+
+def test_greet_trigger_gated_on_default_pos(mp_world):
+    player, mob, out = mp_world
+    mob["pos"] = "sitting"          # not default_pos -> greet suppressed
+    from movement import move_char
+    move_char(player, "n")
+    del out[:]
+    move_char(player, "s")
+    assert not any("Welcome" in l for l in out)
+
+
+def test_speech_give_delay_chain(mp_world):
+    """Scripted integration: say -> give -> delay follow-up (MOBPROG_PLAN verification)."""
+    player, mob, out = mp_world
+    from comm import do_say
+    from inventory import do_give
+    from mobprog import pulse_mob
+
+    # 1) speech
+    do_say(player, "hello guard")
+    assert any("Greetings, Tester." in l for l in out)
+
+    # 2) give -> give prog arms a 2-tick delay and thanks the player
+    ring = create_object(9100)
+    player["inv"].append(ring)
+    del out[:]
+    do_give(player, ["ring", "guard"])
+    assert any("Thank you for a gold ring." in l for l in out)
+    assert mob["mprog_delay"] == 2         # "mob delay 2" ran
+
+    # 3) delay counts down over pulses; fires the follow-up at zero
+    del out[:]
+    assert pulse_mob(mob) is False         # 2 -> 1, not yet
+    assert mob["mprog_delay"] == 1
+    assert pulse_mob(mob) is True          # 1 -> 0, delay prog fires
+    assert any("The magic happens now." in l for l in out)
+
+
+def test_bribe_trigger_via_do_give(mp_world):
+    player, mob, out = mp_world
+    player["gold"] = 100
+    from inventory import do_give
+    do_give(player, ["50", "gold", "guard"])   # 50 gold = 5000 silver >= 50
+    assert any("Bribe taken." in l for l in out)
+
+
+def test_random_pulse_fires_at_default_pos(mp_world):
+    player, mob, out = mp_world
+    # add a random trigger (phrase 100 always rolls < 100) to the template
+    MOB_DEFS._data[9405]["mob_triggers"] += (("random", 6005, "100"),)
+    MOBPROGS[6005] = "say I wander idly."
+    from mobprog import pulse_mob
+    assert pulse_mob(mob) is True
+    assert any("I wander idly." in l for l in out)
+    # not at default position -> pulse is skipped entirely
+    mob["pos"] = "sitting"
+    del out[:]
+    assert pulse_mob(mob) is False
+    assert out == []

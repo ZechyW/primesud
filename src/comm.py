@@ -68,7 +68,9 @@ def do_say(ch, argument):
     verb_self = say_verb(argument, 0)
     act("{g$n $t '{G$T{g'{x", ch, verb_room, argument, TO_ROOM)
     act("{gYou $t '{G$T{g'{x", ch, verb_self, argument, TO_CHAR)
-    # [PRIMESUD] TRIG_SPEECH (mob/obj/room speech triggers) not ported
+    # TRIG_SPEECH: room NPCs react to the raw message (cf. do_say, act_comm.c:376)
+    from mobprog import speech_trigger
+    speech_trigger(argument, ch)
 
 
 # -- do_emote (cf. 1stMud do_emote in act_comm.c) ----------------------------
