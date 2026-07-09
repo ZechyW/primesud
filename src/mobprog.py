@@ -331,7 +331,10 @@ def speech_trigger(argument, speaker):
 
     [PRIMESUD] The speaker itself is skipped: unlike 1stMud (which relies on the
     global MOBtrigger latch), excluding self is the simplest guard against a
-    mob's speech prog re-triggering itself into unbounded recursion.
+    mob's speech prog re-triggering itself into unbounded recursion.  Residual
+    gap: two *different* speech-trigger mobs whose progs echo each other's
+    phrase can still mutually recurse -- the MOBtrigger latch that closes this
+    is deferred to Phase E (see MOBPROG_PLAN.md).
     """
     import world
     rs = _room_of(speaker)

@@ -191,7 +191,14 @@ triggers roll `number_percent() < atoi(phrase)`.
 - **D -- content pilot:** write a small `[PRIMESUD]` demo prog on a
   school/limbo mob (stock QuickMUD ships no `#MOBPROGS` -- surveyed
   08/07/2026); end-to-end validation on device (heap + timing).
-- **E (optional, later) -- act trigger + exit/exall.**
+- **E (optional, later) -- act trigger + exit/exall.** Port the global
+  `MOBtrigger` latch here (1stMud sets it false around prog-emitted `act()`
+  output so scripted speech/acts do not re-trigger). Until then a known gap
+  exists: a mob's prog `say` fires *other* room mobs' speech triggers
+  (`speech_trigger` only self-excludes), so two speech-trigger mobs whose
+  phrases match each other's output can mutually recurse. Harmless while no
+  content ships (Phase D authors the first prog); the act trigger is the
+  widest re-entrancy surface, so the latch lands with it.
 
 ## Verification
 
