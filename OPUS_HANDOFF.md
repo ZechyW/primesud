@@ -218,7 +218,7 @@ active-plans list). Device checklist: gc.mem_free before/after mask
 alloc + save.
 ```
 
-## Stage 6 -- PETS_GROUPS (whole plan, one session)
+## Stage 6 -- PETS_GROUPS (whole plan, one session) -- DONE 08/07/2026
 
 ```
 Implement PETS_GROUPS_PLAN.md in full. Prerequisite: the RESETS stage
@@ -251,7 +251,7 @@ cleanup, DESIGN.md row if the wrap concession was taken, strike TODO.md
 group bullet, delete the plan, update TODO.md active-plans list).
 ```
 
-## Stage 7 -- MOBPROG part 1: Phase A (HARD)
+## Stage 7 -- MOBPROG part 1: Phase A (HARD) -- DONE 09/07/2026
 
 ```
 Implement MOBPROG_PLAN.md Phase A only: the interpreter core + the

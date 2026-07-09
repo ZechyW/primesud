@@ -47,7 +47,9 @@ Scripted mob behaviour: triggers on mobs fire small line-interpreted
 programs (echo, load, force, damage, delay...). 1stMud sources:
 `programs.c` (3008 lines: trigger dispatch + `program_flow` interpreter +
 `cmd_eval_mob` if-checks + `expand_arg_mob` $-expansion) and `prog_cmds.c`
-(2679 lines: the `mob <subcmd>` / `do_mp*` command set).
+(2679 lines: the `mob <subcmd>` / `do_mp*` command set). Author-facing
+spec (trigger semantics, if-check table, MOBcommand syntax, $-codes):
+`reference/1stMud4.5.3/doc/MPDocs/Programs.doc` -- read for Phase B/C.
 
 **Content reality check (drives scope):** no loaded PrimeSUD area contains
 `mob_triggers` -- stock 1stMud/converted data has zero mobprogs. The
