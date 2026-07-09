@@ -7,9 +7,9 @@
 > `expand_arg` ($-codes verbatim from programs.c), `num_eval`, `has_trigger`
 > (empty-tuple early-out). Lazy per-area `MOBPROGS` registry wired into
 > `world._load_area` (+ `reset_lazy` clear). Tests in
-> `tests/test_mobprog.py` (26): if/else nesting, or/and, num_eval, expand_arg
+> `tests/test_mobprog.py`: if/else nesting, or/and, num_eval, expand_arg
 > codes, buggy-prog aborts, and the say/emote/north spike. Full suite green
-> (783).
+> (792, after the interpret free-text follow-ups below).
 >
 > **Spike findings -- which commands are prog-safe for a mob actor** (drove
 > decision 6; full detail in mobprog.py module docstring):
@@ -17,11 +17,15 @@
 >   through `act()`/`move_char`, which are already actor-generic; the mob is
 >   the actor and the player sees only the TO_ROOM view. `move_char`'s NPC
 >   branch handles leave/arrive acts + room mob-list bookkeeping.
-> - ASSUMES A PLAYER (guard/avoid): (1) `interpret()` lowercases the *entire*
->   argument, so a bare verb through the interpreter lowercases its text AND
->   colour codes (`{G`->`{g`) -- coloured/cased mob output must use the
->   Phase C `mob echo` family (case-preserving mp-table), never bare
->   say/emote. (2) `mark_explored` allocated a ~2KB explored mask per mob --
+> - ASSUMES A PLAYER (guard/avoid): (1) ARGUMENT CASE -- originally
+>   `interpret()`/`one_argument()` lowercased the *entire* argument, mangling
+>   say/emote text and colour codes (`{G`->`{g`). FIXED 09/07/2026 (commits
+>   630****, 8bb****): `one_argument` lowercases only the command word, and
+>   `interpret` dispatches the free-text set (`_FREETEXT_FUNS` =
+>   say/emote/tell/reply/yell) with the verbatim argument tail, so a bare
+>   say/emote through the interpreter now preserves case and colour codes. The
+>   Phase C `mob echo` family stays available for output that must bypass the
+>   interpreter entirely. (2) `mark_explored` allocated a ~2KB explored mask per mob --
 >   now guarded (is_npc early-return). (3) `interpret`'s blank separator line
 >   -- now guarded for NPC actors. (4) picker/`tprint`/pcdata commands
 >   (train, score, quest, save, shop pickers...) assume the local player;
