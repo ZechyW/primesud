@@ -1,5 +1,29 @@
 # MOBPROG_PLAN.md -- MOBprogram engine port from 1stMud (programs.c / prog_cmds.c)
 
+> **Progress -- Phases B + C DONE (09/07/2026, commits a38**** + 4bd****).**
+> Phase B (a38****): trigger firing wired into every engine seam --
+> `pulse_mob` random/delay in `mobile_update` gated on `position ==
+> default_pos` (consumes the template `default_pos`; TODO.md bullet struck),
+> `speech_trigger` in `do_say`, `greet_trigger`/`entry_trigger` in `move_char`
+> + `do_enter`, `give_trigger`/`bribe_trigger` in `do_give`. New in mobprog.py:
+> `percent_trigger`/`act_trigger` primitives + the per-trigger entry points, and
+> the `mob_interpret` + `MP_COMMANDS` dispatch (the give->delay chain drives
+> `mob delay`, so the command table lands here).
+> Phase C (4bd****): combat triggers wired into fight.c's seams --
+> `fight_trigger` (fight + hpcnt) in `violence_update`, `kill_trigger` /
+> `death_trigger` in `damage()` (all inside [Verified] functions, tags
+> extended). mpdamage uses the self-attacker no-retaliation path
+> (`damage(v, v, ...)`). Skipped per decision 5: mpgtransfer/mpgforce/mpvforce
+> (group/mass) -> logged `_mp_skip` stubs. Exit/exall + act triggers remain
+> Phase E.
+> Tests (tests/test_mobprog.py): percent-roll boundary, has_trigger
+> short-circuit, speech/greet (default_pos gating), the scripted
+> speech+give+delay integration chain, bribe, random pulse; per-mp-command
+> units (mload/oload/purge/transfer/damage/force/remember/delay/call/junk +
+> skip/unknown logs); combat integration (kill/death via damage(), fight/hpcnt
+> via violence_update). Full suite green (818). Remaining: Phase D content
+> pilot, Phase E (act + exit/exall).
+>
 > **Progress -- Phase A DONE (09/07/2026, commit 07a****).**
 > `src/mobprog.py` shipped: `program_flow` (iterative state/cond stack,
 > buggy-prog abort -> `dbg()`), `cmd_eval` (representative check subset;
