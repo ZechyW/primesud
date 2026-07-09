@@ -114,6 +114,12 @@ KNOWN_CHECKS = frozenset((
 # word.  Mapped for the ``sex`` numeric if-check.
 _SEX_NUM = {"neutral": 0, "either": 0, "male": 1, "female": 2}
 
+# Global act-trigger latch (cf. 1stMud MOBtrigger).  handler.act() fires
+# TRIG_ACT on NPC recipients only while this is True; act output that must not
+# spawn act triggers (an emote, an mpasound, or -- [PRIMESUD] -- anything a
+# prog itself emits while its own act triggers are dispatching) clears it.
+MOBtrigger = True
+
 
 # -- small helpers -------------------------------------------------------------
 
@@ -326,15 +332,55 @@ def greet_trigger(ch):
             percent_trigger(mob, ch, None, None, "grall")
 
 
+def exit_trigger(ch, direction):
+    """Fire an EXIT/EXALL trigger when *ch* leaves a room (cf. p_exit_trigger, programs.c:2965).
+
+    Walks the NPC mobs in *ch*'s room; the trigger phrase is the door number
+    (0=N..5=D, matching ``EXIT_ORDER``).  EXIT fires only if the mob is at its
+    default position and can see *ch*; EXALL fires regardless.  Only MOB progs
+    are ported (obj/room progs skipped -- MOBPROG_PLAN decision 1).
+
+    Args:
+        ch (dict): The leaving character.
+        direction (str): Single-char direction key (n/e/s/w/u/d).
+
+    Returns:
+        bool: True if a program fired (caller aborts the move, as in 1stMud).
+    """
+    import world
+    from config import EXIT_ORDER
+    try:
+        dnum = EXIT_ORDER.index(direction)
+    except ValueError:
+        return False
+    rs = _room_of(ch)
+    if rs is None:
+        return False
+    for mid in list(rs.get("mobs", [])):
+        mob = world.chars.get(mid)
+        if mob is None or not mob.get("is_npc"):
+            continue
+        trigs = _mob_trigs(mob)
+        if not trigs:
+            continue
+        for t in trigs:
+            if t[0] == "exit" and _atoi(t[2]) == dnum and _at_default_pos(mob) and can_see(mob, ch):
+                _run_prog(mob, t[1], ch, None, None)
+                return True
+            if t[0] == "exall" and _atoi(t[2]) == dnum:
+                _run_prog(mob, t[1], ch, None, None)
+                return True
+    return False
+
+
 def speech_trigger(argument, speaker):
     """Fire SPEECH triggers on every other NPC in the speaker's room (cf. do_say, act_comm.c:376).
 
-    [PRIMESUD] The speaker itself is skipped: unlike 1stMud (which relies on the
-    global MOBtrigger latch), excluding self is the simplest guard against a
-    mob's speech prog re-triggering itself into unbounded recursion.  Residual
-    gap: two *different* speech-trigger mobs whose progs echo each other's
-    phrase can still mutually recurse -- the MOBtrigger latch that closes this
-    is deferred to Phase E (see MOBPROG_PLAN.md).
+    The caller (do_say) invokes this only for a *player* speaker, mirroring
+    1stMud's ``if (!IsNPC(ch))`` gate (act_comm.c:371): a mob's prog ``say``
+    fires no speech triggers, which is what bounds mob-to-mob speech recursion.
+    The self-skip below is then belt-and-braces (the speaker is never an NPC in
+    the loop anyway).
     """
     import world
     rs = _room_of(speaker)
@@ -1264,13 +1310,21 @@ def _mp_asound(mob, args, pv, cl):
     in_room = world.ROOM_DEFS._data.get(was)
     if in_room is None:
         return
-    for _d, ev in in_room.get("exits", {}).items():
-        dest = ev.get("to") if isinstance(ev, dict) else ev
-        if dest is None or dest == was:
-            continue
-        mob["room"] = dest
-        act(args, mob, None, None, TO_ROOM)
-    mob["room"] = was
+    # cf. do_mpasound: MOBtrigger off so the relayed sound does not fire act
+    # triggers in the adjacent rooms.
+    global MOBtrigger
+    saved = MOBtrigger
+    MOBtrigger = False
+    try:
+        for _d, ev in in_room.get("exits", {}).items():
+            dest = ev.get("to") if isinstance(ev, dict) else ev
+            if dest is None or dest == was:
+                continue
+            mob["room"] = dest
+            act(args, mob, None, None, TO_ROOM)
+    finally:
+        mob["room"] = was
+        MOBtrigger = saved
 
 
 # -- combat / targeting --------------------------------------------------------

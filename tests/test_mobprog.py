@@ -881,3 +881,126 @@ def test_idle_triggerless_mob_short_circuits(monkeypatch):
         assert ran == []                                 # no prog ever fetched/run
     finally:
         MOB_DEFS._data.pop(9600, None)
+
+
+# -- Phase E: act trigger + exit/exall triggers + MOBtrigger latch --------------
+
+
+def test_mob_speaker_fires_no_speech_trigger(mp_world):
+    """A mob's say fires no speech triggers (1stMud !IsNPC gate) -> no mob-mob recursion."""
+    player, mob, out = mp_world
+    from comm import do_say
+    b = _char_base()
+    b.update(id=3, is_npc=True, tpl=9405, name="guard", short_descr="a test guard",
+             room=9001, pos="standing", mprog_target=None)
+    world.chars[3] = b
+    world.rooms._data[9001]["mobs"].append(3)
+    do_say(mob, "hello there")             # mob A speaks -> phrase "hello" ignored
+    assert not any("Greetings" in l for l in out)
+    # sanity: the same words from the player still fire the speech trigger
+    do_say(player, "hello there")
+    assert any("Greetings, Tester." in l for l in out)
+
+
+def test_act_trigger_fires_on_room_text(mp_world):
+    """A room mob reacts to act() text whose phrase it carries (cf. TRIG_ACT)."""
+    player, mob, out = mp_world
+    MOB_DEFS._data[9405]["mob_triggers"] += (("act", 6020, "dances"),)
+    MOBPROGS[6020] = "say I see you dancing!"
+    handler.act("$n dances a jig.", player, None, None, handler.TO_ROOM)
+    assert any("I see you dancing!" in l for l in out)
+
+
+def test_act_trigger_no_phrase_match(mp_world):
+    player, mob, out = mp_world
+    MOB_DEFS._data[9405]["mob_triggers"] += (("act", 6020, "dances"),)
+    MOBPROGS[6020] = "say I see you dancing!"
+    handler.act("$n sits down quietly.", player, None, None, handler.TO_ROOM)
+    assert not any("dancing" in l for l in out)
+
+
+def test_act_trigger_excludes_the_actor(mp_world):
+    """A mob's own act output must not fire its own act trigger (actor skipped)."""
+    player, mob, out = mp_world
+    MOB_DEFS._data[9405]["mob_triggers"] += (("act", 6020, "dances"),)
+    MOBPROGS[6020] = "say self loop!"
+    handler.act("$n dances.", mob, None, None, handler.TO_ROOM)   # mob is subject
+    assert not any("self loop!" in l for l in out)
+
+
+def test_emote_does_not_fire_act_trigger(mp_world):
+    """do_emote latches MOBtrigger off: player emote text can't trip mob progs."""
+    player, mob, out = mp_world
+    MOB_DEFS._data[9405]["mob_triggers"] += (("act", 6020, "waves"),)
+    MOBPROGS[6020] = "say caught the wave!"
+    from comm import do_emote
+    do_emote(player, "waves grandly")
+    assert not any("caught the wave!" in l for l in out)
+
+
+def test_act_trigger_latch_bounds_reentry(mp_world):
+    """A prog fired by an act trigger cannot fire a second-order act trigger.
+
+    The latch is held off for the whole dispatch, a hard recursion bound
+    (stricter than 1stMud) suited to the Prime's small stack.
+    """
+    player, mob, out = mp_world
+    # guard A (tpl 9405) reacts to "coughs" by relaying a line...
+    MOB_DEFS._data[9405]["mob_triggers"] += (("act", 6020, "coughs"),)
+    MOBPROGS[6020] = "say aaah relayed"
+    # ...guard B (tpl 9406) would catch A's "relayed" -- but the latch suppresses it.
+    MOB_DEFS._data[9406] = dict(MOB_DEFS._data[9405])
+    MOB_DEFS._data[9406]["mob_triggers"] = (("act", 6021, "relayed"),)
+    MOBPROGS[6021] = "say SECOND ORDER"
+    b = _char_base()
+    b.update(id=3, is_npc=True, tpl=9406, name="guard", short_descr="a test guard",
+             room=9001, pos="standing", mprog_target=None)
+    world.chars[3] = b
+    world.rooms._data[9001]["mobs"].append(3)
+    handler.act("$n coughs loudly.", player, None, None, handler.TO_ROOM)
+    assert any("aaah relayed" in l for l in out)          # A fired
+    assert not any("SECOND ORDER" in l for l in out)      # B suppressed by the latch
+
+
+def test_exit_trigger_fires_and_aborts_move(mp_world):
+    """An exit trigger on the matching door number fires and cancels the move."""
+    player, mob, out = mp_world
+    MOB_DEFS._data[9405]["mob_triggers"] += (("exit", 6030, "0"),)   # 0 = north
+    MOBPROGS[6030] = "say Halt!  You shall not pass north."
+    from movement import move_char
+    move_char(player, "n")
+    assert any("Halt!  You shall not pass north." in l for l in out)
+    assert player["room"] == 9001                         # move aborted
+
+
+def test_exit_trigger_wrong_direction_allows_move(mp_world):
+    player, mob, out = mp_world
+    MOB_DEFS._data[9405]["mob_triggers"] += (("exit", 6030, "1"),)   # east only
+    MOBPROGS[6030] = "say wrong way"
+    from movement import move_char
+    move_char(player, "n")                                # north != east
+    assert not any("wrong way" in l for l in out)
+    assert player["room"] == 9002
+
+
+def test_exit_trigger_gated_on_pos_and_sight(mp_world):
+    """A non-default-position mob does not fire exit (unlike exall)."""
+    player, mob, out = mp_world
+    MOB_DEFS._data[9405]["mob_triggers"] += (("exit", 6030, "0"),)
+    MOBPROGS[6030] = "say blocked"
+    mob["pos"] = "sitting"                                # not default_pos
+    from movement import move_char
+    move_char(player, "n")
+    assert not any("blocked" in l for l in out)
+    assert player["room"] == 9002                         # move proceeds
+
+
+def test_exall_trigger_fires_regardless_of_pos(mp_world):
+    player, mob, out = mp_world
+    MOB_DEFS._data[9405]["mob_triggers"] += (("exall", 6031, "0"),)
+    MOBPROGS[6031] = "say All shall be stopped."
+    mob["pos"] = "sitting"                                # exall ignores pos + sight
+    from movement import move_char
+    move_char(player, "n")
+    assert any("All shall be stopped." in l for l in out)
+    assert player["room"] == 9001                         # aborted

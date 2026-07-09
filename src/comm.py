@@ -68,9 +68,13 @@ def do_say(ch, argument):
     verb_self = say_verb(argument, 0)
     act("{g$n $t '{G$T{g'{x", ch, verb_room, argument, TO_ROOM)
     act("{gYou $t '{G$T{g'{x", ch, verb_self, argument, TO_CHAR)
-    # TRIG_SPEECH: room NPCs react to the raw message (cf. do_say, act_comm.c:376)
-    from mobprog import speech_trigger
-    speech_trigger(argument, ch)
+    # TRIG_SPEECH: room NPCs react to a *player's* speech (cf. do_say gate,
+    # act_comm.c:371 `if (!IsNPC(ch))`).  Restricting to a player speaker is
+    # 1stMud's guard against a mob's prog `say` re-triggering other room mobs
+    # into mutual speech recursion, so a mob speaker fires no speech triggers.
+    if not ch.get("is_npc"):
+        from mobprog import speech_trigger
+        speech_trigger(argument, ch)
 
 
 # -- do_emote (cf. 1stMud do_emote in act_comm.c) ----------------------------
@@ -78,9 +82,9 @@ def do_say(ch, argument):
 def do_emote(ch, argument):
     """Act out a free-form emote (cf. 1stMud do_emote in act_comm.c).
     [Verified: 04/07/2026; free-text tail signature (verbatim argument, cf.
-    1stMud do_fun) 09/07/2026] -- COMM_NOEMOTE check not ported (comm flags /
-    channel penalties do not exist); MOBtrigger guard not ported (mobprogs
-    not ported).
+    1stMud do_fun) 09/07/2026; MOBtrigger guard wired 10/07/2026] --
+    COMM_NOEMOTE check not ported (comm flags / channel penalties do not
+    exist).
 
     Args:
         ch (dict): Acting character (player or mob instance).
@@ -90,8 +94,16 @@ def do_emote(ch, argument):
         chprintln(ch, "Emote what?")
         return
 
-    act("$n $T", ch, None, argument, TO_ROOM)
-    act("$n $T", ch, None, argument, TO_CHAR)
+    # cf. do_emote: MOBtrigger off so free-form emote text can't fire mob act
+    # triggers (a player could otherwise trip any prog by typing its phrase).
+    import mobprog
+    saved = mobprog.MOBtrigger
+    mobprog.MOBtrigger = False
+    try:
+        act("$n $T", ch, None, argument, TO_ROOM)
+        act("$n $T", ch, None, argument, TO_CHAR)
+    finally:
+        mobprog.MOBtrigger = saved
 
 
 # -- do_tell (cf. 1stMud do_tell in act_comm.c) ------------------------------

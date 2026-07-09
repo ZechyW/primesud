@@ -97,15 +97,21 @@ def move_char(ch, direction):
     [Verified: 03/07/2026; quest_room_check moved after follower loop to
     match 1stMud order and re-verified same day; [PRIMESUD] auto-door
     added 04/07/2026, auto-unlock with key added 05/07/2026; entry/greet
-    mobprogs wired after the follower loop and re-verified 09/07/2026] --
-    private-room / area-closed checks, area entry sound, and the p_exit_trigger
-    (Phase E) not ported (see comments).
+    mobprogs wired after the follower loop and re-verified 09/07/2026;
+    exit/exall mobprog trigger wired at entry and re-verified 10/07/2026] --
+    private-room / area-closed checks and area entry sound not ported (see
+    comments).
 
     Args:
         ch (dict): Moving character (player or mob instance).
         direction (str): Single-char direction key (n/e/s/w/u/d).
     """
-    # -- p_exit_trigger (mob/obj/room progs) not ported --
+    # -- exit/exall mobprog trigger (cf. p_exit_trigger, act_move.c:57): a room
+    # mob may react to (and abort) a player's departure. MOB progs only.
+    if not ch.get("is_npc", False):
+        from mobprog import exit_trigger
+        if exit_trigger(ch, direction):
+            return
 
     in_room = ROOM_DEFS[ch["room"]]
     exits = in_room.get("exits", {})

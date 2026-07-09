@@ -796,19 +796,13 @@ def _act_code(code, ch, arg1, arg2, to, type):
     return "<@@@>"
 
 
-def _perform_act(format, ch, arg1, arg2, type, to):
-    """Format and deliver one act message (cf. 1stMud perform_act in comm.c).
+def _render_act(format, ch, arg1, arg2, type, to):
+    """Substitute $-codes for one recipient and return the rendered line (cf. 1stMud perform_act buf).
 
-    Substitutes $-codes, appends {x color reset, capitalizes first visible
-    char (skipping color codes), then sends to the terminal.
-
-    Args:
-        format (str): Act format string with $-codes.
-        ch (dict): Subject character.
-        arg1: Object argument (object dict or string).
-        arg2: Target argument (victim dict, object dict, or string).
-        type (int): Bitmask of TO_* flags.
-        to (dict): Recipient character (always the player in PrimeSUD).
+    Substitutes $-codes as seen by *to*, appends {x color reset, capitalizes
+    the first visible char (skipping color codes).  Split out from
+    _perform_act so act triggers can render the mob-recipient buffer without
+    printing it ([PRIMESUD] Phase E). (cf. perform_act in comm.c)
     """
     out = []
     # [PRIMESUD] TO_SOCIALS color prefix not ported -- needs CTAG(_SOCIALS)
@@ -829,7 +823,21 @@ def _perform_act(format, ch, arg1, arg2, type, to):
             out.append(_act_code(code, ch, arg1, arg2, to, type))
         i += 1
     out.append("{x")
-    tprint(upper("".join(out)))
+    return upper("".join(out))
+
+
+def _perform_act(format, ch, arg1, arg2, type, to):
+    """Format and deliver one act message to the player (cf. 1stMud perform_act in comm.c).
+
+    Args:
+        format (str): Act format string with $-codes.
+        ch (dict): Subject character.
+        arg1: Object argument (object dict or string).
+        arg2: Target argument (victim dict, object dict, or string).
+        type (int): Bitmask of TO_* flags.
+        to (dict): Recipient character (always the player in PrimeSUD).
+    """
+    tprint(_render_act(format, ch, arg1, arg2, type, to))
 
 
 def _sendok(ch, min_pos="resting"):
@@ -869,7 +877,20 @@ def act_new(format, ch, arg1, arg2, type, min_pos):
     """
     if not format:
         return
+    _act_to_player(format, ch, arg1, arg2, type, min_pos)
+    # [PRIMESUD] Phase E: fire TRIG_ACT on NPC recipients of this act.  1stMud
+    # does this inside perform_act's per-recipient loop (comm.c:2041); the
+    # PrimeSUD player-only delivery above never visits mobs, so it is a
+    # separate room-mob pass here, gated by the MOBtrigger latch.
+    _act_trigger_mobs(format, ch, arg1, arg2, type)
 
+
+def _act_to_player(format, ch, arg1, arg2, type, min_pos):
+    """Deliver an act message to the solo player, if the player qualifies. [PRIMESUD]
+
+    The recipient-selection half of act_new (cf. act_new in comm.c); split out
+    so act-trigger firing runs regardless of which delivery branch matched.
+    """
     player = _player_char()
     if player is None:
         return
@@ -915,6 +936,55 @@ def act_new(format, ch, arg1, arg2, type, min_pos):
                 if player is not arg2:
                     _perform_act(format, ch, arg1, arg2, type, player)
                     return
+
+
+def _act_trigger_mobs(format, ch, arg1, arg2, type):
+    """Fire TRIG_ACT on the NPC recipients of an act (cf. perform_act tail, comm.c:2041). [PRIMESUD]
+
+    Mirrors act_new's recipient selection: TO_CHAR -> ch, TO_VICT -> the
+    victim, TO_ROOM/TO_NOTVICT -> every room NPC except ch (and the victim for
+    NOTVICT).  TO_ALL/TO_ZONE reach only descriptors (players) in 1stMud, so no
+    mob recipients.  The trigger phrase is matched against the line as rendered
+    for that mob.
+
+    The MOBtrigger latch is held off for the whole dispatch -- [PRIMESUD]
+    stricter than 1stMud (which latches only emote/asound): a prog fired here
+    must not have its own act output recursively fire further act triggers, a
+    hard recursion bound for the Prime's small stack.
+    """
+    import mobprog
+    if not mobprog.MOBtrigger:
+        return
+    import world
+    vch = arg2 if isinstance(arg2, dict) and "room" in arg2 else None
+    recips = []
+    if (type & TO_CHAR) and isinstance(ch, dict) and ch.get("is_npc"):
+        recips.append(ch)
+    if (type & TO_VICT) and vch is not None and vch is not ch and vch.get("is_npc"):
+        recips.append(vch)
+    if type & (TO_ROOM | TO_NOTVICT):
+        room = _act_room(ch, arg1, arg2)
+        rs = world.rooms._data.get(room) if room is not None else None
+        if rs is not None:
+            for mid in list(rs.get("mobs", [])):
+                mob = world.chars.get(mid)
+                if mob is None or mob is ch or not mob.get("is_npc"):
+                    continue
+                if (type & TO_NOTVICT) and mob is vch:
+                    continue
+                recips.append(mob)
+    if not recips:
+        return
+    saved = mobprog.MOBtrigger
+    mobprog.MOBtrigger = False
+    try:
+        for mob in recips:
+            if not mobprog.has_trigger(mob, "act"):
+                continue
+            buf = _render_act(format, ch, arg1, arg2, type, mob)
+            mobprog.act_trigger(buf, mob, ch, arg1, arg2, "act")
+    finally:
+        mobprog.MOBtrigger = saved
 
 
 def act(format, ch, arg1=None, arg2=None, type=TO_CHAR):
