@@ -466,7 +466,11 @@ def mp_world(monkeypatch):
     _room(9002, {"s": {"to": 9001}})
     MOB_DEFS._data[9405] = {
         "short_descr": "a test guard", "keywords": "guard", "level": 10,
-        "default_pos": "stand",
+        "default_pos": "stand", "start_pos": "stand",
+        # create_mobile inputs (for mpmload)
+        "hp_dice": (1, 1, 20), "damage": (1, 4, 2), "armor": (5, 5, 5, 5),
+        "hitroll": 5, "race": "Human", "sex": "male", "alignment": 0,
+        "size": "medium", "wealth": 0,
         "mob_triggers": (("speech", 6001, "hello"), ("give", 6002, "all"),
                          ("delay", 6003, "100"), ("greet", 6004, "100"),
                          ("bribe", 6006, "50")),
@@ -479,9 +483,14 @@ def mp_world(monkeypatch):
     ITEM_DEFS._data[9100] = {"short_descr": "a gold ring", "keywords": "ring gold",
                              "type": "treasure", "weight": 1, "value": 0,
                              "wear_flags": {"take": True}, "extra_flags": {}}
+    # corpse template (OBJ_VNUM_CORPSE_NPC) so a death-trigger test can raw_kill
+    ITEM_DEFS._data[10] = {"short_descr": "corpse", "keywords": "corpse",
+                           "type": "corpse_npc", "weight": 0, "value": 0,
+                           "extra_flags": {}}
 
     player = _char_base()
-    player.update(id=1, is_npc=False, name="Tester", room=9001, pos="standing")
+    player.update(id=1, is_npc=False, name="Tester", room=9001, pos="standing",
+                  learned={})   # pcdata field the combat path reads directly
     world.chars[1] = player
 
     mob = _char_base()
@@ -586,3 +595,153 @@ def test_random_pulse_fires_at_default_pos(mp_world):
     del out[:]
     assert pulse_mob(mob) is False
     assert out == []
+
+
+# -- Phase C: mp-command set ---------------------------------------------------
+
+from mobprog import mob_interpret
+
+
+def test_mp_mload(mp_world):
+    player, mob, out = mp_world
+    before = sum(1 for c in world.chars.values()
+                 if c.get("is_npc") and c.get("tpl") == 9405)
+    mob_interpret(mob, "mload 9405")
+    after = sum(1 for c in world.chars.values()
+                if c.get("is_npc") and c.get("tpl") == 9405)
+    assert after == before + 1
+    # the new mob is in the mob's room
+    assert len(world.rooms._data[9001]["mobs"]) == 2
+
+
+def test_mp_oload_to_char_and_room(mp_world):
+    player, mob, out = mp_world
+    mob_interpret(mob, "oload 9100")          # takeable -> mob inventory
+    assert any(o.get("vnum") == 9100 for o in mob["inv"])
+    mob_interpret(mob, "oload 9100 0 R")      # forced to the room floor
+    assert any(o.get("vnum") == 9100 for o in world.rooms._data[9001]["items"])
+
+
+def test_mp_purge_room(mp_world):
+    player, mob, out = mp_world
+    # a second mob and a floor object to purge
+    mob_interpret(mob, "mload 9405")
+    world.rooms._data[9001]["items"].append(create_object(9100))
+    assert len(world.rooms._data[9001]["mobs"]) == 2
+    mob_interpret(mob, "purge")               # bare purge: other mobs + objects
+    assert world.rooms._data[9001]["mobs"] == [2]   # only the acting mob remains
+    assert world.rooms._data[9001]["items"] == []
+
+
+def test_mp_transfer_player(mp_world):
+    player, mob, out = mp_world
+    player["room"] = 9002                       # move the player away
+    mob_interpret(mob, "transfer Tester")       # no location -> mob's room
+    assert player["room"] == 9001
+
+
+def test_mp_damage_no_retaliation(mp_world):
+    player, mob, out = mp_world
+    start = player["hit"]
+    mob_interpret(mob, "damage Tester 5 5")
+    assert player["hit"] < start                # damage applied (amount randomized)
+    assert player["fighting"] is None           # self-attacker path: no retaliation
+    assert mob["fighting"] is None
+
+
+def test_mp_force(mp_world):
+    player, mob, out = mp_world
+    mob_interpret(mob, "force Tester say obey")
+    assert any("obey" in l for l in out)        # player was forced to say it
+
+
+def test_mp_remember_forget(mp_world):
+    player, mob, out = mp_world
+    mob_interpret(mob, "remember Tester")
+    assert mob["mprog_target"] == 1             # stored as char id
+    mob_interpret(mob, "forget")
+    assert mob["mprog_target"] is None
+
+
+def test_mp_delay_cancel(mp_world):
+    player, mob, out = mp_world
+    mob_interpret(mob, "delay 5")
+    assert mob["mprog_delay"] == 5
+    mob_interpret(mob, "cancel")
+    assert mob["mprog_delay"] == -1
+
+
+def test_mp_call_runs_another_prog(mp_world):
+    player, mob, out = mp_world
+    MOBPROGS[6003] = "say called prog ran."
+    mob_interpret(mob, "call 6003")
+    assert any("called prog ran." in l for l in out)
+
+
+def test_mp_junk(mp_world):
+    player, mob, out = mp_world
+    mob["inv"].append(create_object(9100))
+    mob["inv"].append(create_object(9100))
+    mob_interpret(mob, "junk all")
+    assert mob["inv"] == []
+
+
+def test_mp_skipped_command_logs(monkeypatch, mp_world):
+    player, mob, out = mp_world
+    logged = []
+    monkeypatch.setattr(mobprog, "dbg", lambda m: logged.append(m))
+    mob_interpret(mob, "gforce Tester say hi")   # skipped group command
+    assert any("skipped" in m for m in logged)
+
+
+def test_mp_unknown_command_logs(monkeypatch, mp_world):
+    player, mob, out = mp_world
+    logged = []
+    monkeypatch.setattr(mobprog, "dbg", lambda m: logged.append(m))
+    mob_interpret(mob, "bogus arg")
+    assert any("invalid cmd" in m for m in logged)
+
+
+# -- Phase C: combat triggers --------------------------------------------------
+
+def test_combat_kill_and_death_triggers(mp_world):
+    player, mob, out = mp_world
+    MOB_DEFS._data[9405]["mob_triggers"] += (("kill", 6010, "100"),
+                                             ("death", 6011, "100"))
+    MOBPROGS[6010] = "say You dare attack me!"
+    MOBPROGS[6011] = "say I am slain!"
+    # An NPC attacker (create_mobile) keeps the death path off player pcdata/XP
+    # (gain_exp early-returns for NPC killers).  It is never itself the victim,
+    # so its own kill/death triggers never fire.
+    from mob import create_mobile
+    attacker = create_mobile(9405)
+    attacker["id"] = 3
+    attacker["room"] = 9001
+    world.chars[3] = attacker
+    world.rooms._data[9001]["mobs"].append(3)
+    from combat import damage, DAM_NONE
+    from config import TYPE_UNDEFINED
+    mob["hit"] = 100; mob["max_hit"] = 100
+    # KILL: victim engages when first attacked
+    damage(attacker, mob, 5, TYPE_UNDEFINED, DAM_NONE, False)
+    assert any("You dare attack me!" in l for l in out)
+    # DEATH: lethal blow fires the death prog before extraction
+    del out[:]
+    damage(attacker, mob, 1000, TYPE_UNDEFINED, DAM_NONE, False)
+    assert any("I am slain!" in l for l in out)
+
+
+def test_combat_fight_and_hpcnt_triggers(mp_world):
+    player, mob, out = mp_world
+    MOB_DEFS._data[9405]["mob_triggers"] += (("fight", 6012, "100"),
+                                             ("hpcnt", 6013, "50"))
+    MOBPROGS[6012] = "say Feel my wrath!"
+    MOBPROGS[6013] = "say I am wounded!"
+    from combat import set_fighting, violence_update
+    player["hit"] = 500; player["max_hit"] = 500
+    mob["hit"] = 40; mob["max_hit"] = 100        # 40% < 50 -> hpcnt fires
+    set_fighting(mob, player)
+    set_fighting(player, mob)
+    violence_update(player)
+    assert any("Feel my wrath!" in l for l in out)
+    assert any("I am wounded!" in l for l in out)

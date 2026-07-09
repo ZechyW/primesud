@@ -86,8 +86,9 @@ from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 
 def violence_update(player):
     """One combat pulse: all chars with a fight target attack (cf. 1stMud violence_update in fight.c).
-    [Verified: 02/07/2026; hunt_victim wired and re-verified 04/07/2026] --
-    mobprog/objprog/roomprog TRIG_FIGHT still not ported (see TODOs).
+    [Verified: 02/07/2026; hunt_victim wired and re-verified 04/07/2026; mob
+    TRIG_FIGHT/TRIG_HPCNT wired and re-verified 09/07/2026] -- obj/room prog
+    TRIG_FIGHT out of scope (converter emits neither).
 
     Args:
         player (dict): Player state dict.
@@ -125,9 +126,11 @@ def violence_update(player):
         # 1stMud: check_assist(ch, victim)
         check_assist(ch, victim)
 
-        # TODO: mob TRIG_FIGHT / TRIG_HPCNT triggers not ported
-        # TODO: obj worn-item TRIG_FIGHT triggers not ported
-        # TODO: room TRIG_FIGHT trigger not ported
+        # mob TRIG_FIGHT / TRIG_HPCNT (cf. fight.c:91-98); opponent = victim
+        if ch["is_npc"]:
+            from mobprog import fight_trigger
+            fight_trigger(ch, victim)
+        # obj worn-item / room TRIG_FIGHT are obj/room progs -- out of scope
 
 
 def check_assist(ch, victim):
@@ -1090,8 +1093,9 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
     (cf. 1stMud damage in fight.c).
     [Verified: 02/07/2026; stance re-checks and stop_follower added and
     re-verified 03/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- force/static/flame shields, drunk reduction,
-    arena/war, PvP, mobprogs, and wiznet not ported (noted inline);
+    04/07/2026; TRIG_KILL/TRIG_DEATH mobprogs wired and re-verified
+    09/07/2026] -- force/static/flame shields, drunk reduction,
+    arena/war, PvP, and wiznet not ported (noted inline);
     autoloot/autogold/autosac inlined instead of do_get/do_sacrifice
     dispatch; randomize_damage applied (1stMud discards it -- see FIXES.md).
 
@@ -1134,8 +1138,12 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         if POS_ORDER[victim["pos"]] > POS_ORDER["stunned"]:
             if victim["fighting"] is None:
                 set_fighting(victim, ch)
-                # 1stMud: if (IsNPC(victim) && HasTriggerMob(victim,TRIG_KILL)) p_percent_trigger(...)
-                # [PRIMESUD] skip TRIG_KILL (not ported) - mobprogs
+                # TRIG_KILL: NPC victim joining combat reacts to attacker
+                # (cf. fight.c:920); named "kill" upstream but fires on engage.
+                if victim["is_npc"]:
+                    from mobprog import has_trigger, kill_trigger
+                    if has_trigger(victim, "kill"):
+                        kill_trigger(victim, ch)
             # 1stMud: if (victim->timer <= 4) victim->position = POS_FIGHTING;
             # [PRIMESUD] timer is connection idle counter -- always 0 in single-player, so always true
             victim["pos"] = "fighting"
@@ -1319,8 +1327,12 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         # 1stMud: new_wiznet / announce
         # [PRIMESUD] skip wiznet/announce (not ported)
 
-        # 1stMud: if (IsNPC(victim) && HasTriggerMob(victim, TRIG_DEATH)) p_percent_trigger(...)
-        # [PRIMESUD] skip TRIG_DEATH (not ported)
+        # TRIG_DEATH: NPC victim's death prog runs before extraction, restored
+        # to standing so it can act (cf. fight.c:1141)
+        if victim["is_npc"]:
+            from mobprog import has_trigger, death_trigger
+            if has_trigger(victim, "death"):
+                death_trigger(victim, ch)
 
         # 1stMud: update_death(victim, ch)
         # [PRIMESUD] skip update_death (not ported)
