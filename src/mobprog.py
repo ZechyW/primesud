@@ -42,11 +42,11 @@ which command categories are prog-safe:
       actor produces no stray output to the player.
 
   ASSUMES A PLAYER -- guard or avoid (failure modes actually hit / reasoned):
-    * ARGUMENT CASE: PrimeSUD one_argument() lowercases the *entire* argument
-      (not just the command word, unlike 1stMud), so a bare verb dispatched
-      through interpret() lowercases its text AND colour codes ("{G" -> "{g").
-      => Coloured / cased mob output must use the Phase-C ``mob echo`` family
-         (mp-table, case-preserving), never a bare say/emote through interpret.
+    * ARGUMENT CASE: fixed 2026-07-09 -- one_argument() now lowercases only the
+      command word (matching 1stMud's tolower on arg_first) and returns the
+      remainder verbatim, so a bare say/emote through interpret() preserves its
+      text and colour codes ("{G" stays "{G").  The Phase-C ``mob echo`` family
+      remains available for output that must bypass the interpreter entirely.
     * mark_explored(): interpret() marks the actor's room explored, allocating
       a ~2KB per-mob mask.  Guarded now -- mark_explored early-returns on
       is_npc (explored maps are a PC-only concept).

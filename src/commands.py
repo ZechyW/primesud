@@ -466,12 +466,12 @@ _HUH_MESSAGES = [
 def one_argument(argument):
     """Extract one argument from *argument*, returning (word, rest) (cf. 1stMud one_argument in interp.c).
 
-    Handles single/double-quote grouping.  Both the extracted word and the
-    remainder are lowercased to match 1stMud's ``tolower`` inside
-    ``one_argument``.
+    Handles single/double-quote grouping.  Only the extracted word is
+    lowercased, matching 1stMud's ``tolower`` on ``arg_first``; the remainder
+    is returned verbatim (case preserved) so ``say``/``emote`` text and colour
+    codes like ``{C`` survive intact.
     """
     i = 0
-    argument = argument.strip().lower()
     length = len(argument)
     while i < length and argument[i].isspace():
         i += 1
@@ -488,10 +488,10 @@ def one_argument(argument):
     else:
         while i < length and argument[i] != end:
             i += 1
-    word = argument[start:i]
+    word = argument[start:i].lower()
     if i < length and argument[i] == end:
         i += 1
-    rest = argument[i:].strip()
+    rest = argument[i:].lstrip()
     return (word, rest)
 
 
