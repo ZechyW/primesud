@@ -419,3 +419,20 @@ you` names the triggering player rather than the random bystander it picked.
 The `'R'` branch renders `rch` (`_char_short(rch)`), matching `$r`/`$J`/`$K`/
 `$L` and the `rch` visibility guard. The site carries a `[PRIMESUD]` comment
 referencing this entry.
+
+## mobprog: get_random_char candidate pool narrowed to visible non-self chars
+
+### 1stMud bug (programs.c:208-246)
+
+For a mob caller the loop's first branch correctly restricts candidates to
+visible players other than the mob -- but any occupant that FAILS those
+conditions falls through to a bare `else if (number_percent() > highest)`,
+which happily rolls for the mob itself, other NPCs, and invisible chars.
+So the restriction only weights the odds; it doesn't restrict the pool, and
+a prog can pick the acting mob as its own "random bystander".
+
+### PrimeSUD deviation -- implemented in `get_random_char` in `mobprog.py`
+
+Candidates are visible characters other than the acting mob, which is the
+behaviour the $-codes ($r/$R "random char here") plainly intend. Marked
+[PRIMESUD] at the site.

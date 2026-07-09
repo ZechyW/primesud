@@ -153,7 +153,11 @@ def _number_percent():
 
 
 def _is_number(s):
-    """C is_number: whole string is an integer, optional single sign (cf. 1stMud is_number). [PRIMESUD]"""
+    """C is_number: whole string is an integer, optional single sign (cf. 1stMud is_number). [PRIMESUD]
+
+    Deviation: a lone "+"/"-" is False here; 1stMud's loop quirk returns true
+    for it (the stripped-empty string never fails the digit walk).
+    """
     s = s.strip()
     if not s:
         return False
