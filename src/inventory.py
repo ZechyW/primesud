@@ -620,9 +620,19 @@ def do_give(player, args):
 
     player["inv"].remove(obj)
     victim["inv"].append(obj)
-    act("$n gives $p to $N.", player, obj, victim, TO_NOTVICT)
-    act("$n gives you $p.", player, obj, victim, TO_VICT)
-    act("You give $p to $N.", player, obj, victim, TO_CHAR)
+    # cf. do_give (act_obj.c:845): MOBtrigger off around the give announcement
+    # so the "gives you" text can't fire the recipient's act trigger -- the
+    # give trigger below is the intended reaction.  (1stMud does not latch the
+    # coin/quest give paths, so those stay unlatched too.)
+    import mobprog
+    saved = mobprog.MOBtrigger
+    mobprog.MOBtrigger = False
+    try:
+        act("$n gives $p to $N.", player, obj, victim, TO_NOTVICT)
+        act("$n gives you $p.", player, obj, victim, TO_VICT)
+        act("You give $p to $N.", player, obj, victim, TO_CHAR)
+    finally:
+        mobprog.MOBtrigger = saved
     # TRIG_GIVE: mob reacts to the received object (cf. do_give, act_obj.c:856)
     if victim.get("is_npc"):
         from mobprog import has_trigger, give_trigger

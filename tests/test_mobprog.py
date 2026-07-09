@@ -902,6 +902,24 @@ def test_mob_speaker_fires_no_speech_trigger(mp_world):
     assert any("Greetings, Tester." in l for l in out)
 
 
+def test_give_announce_does_not_fire_act_trigger(mp_world):
+    """do_give latches MOBtrigger off: the 'gives you' text can't trip an act trigger.
+
+    The mob still reacts through its give trigger -- only the spurious act-on-
+    announce path is suppressed (cf. do_give latch, act_obj.c:845).
+    """
+    player, mob, out = mp_world
+    # act phrase "gives" would match the give announcement text if unlatched
+    MOB_DEFS._data[9405]["mob_triggers"] += (("act", 6040, "gives"),)
+    MOBPROGS[6040] = "say ACT ON GIVE"
+    from inventory import do_give
+    ring = create_object(9100)
+    player["inv"].append(ring)
+    do_give(player, ["ring", "guard"])
+    assert not any("ACT ON GIVE" in l for l in out)        # announce latched off
+    assert any("Thank you for a gold ring." in l for l in out)   # give trigger fired
+
+
 def test_act_trigger_fires_on_room_text(mp_world):
     """A room mob reacts to act() text whose phrase it carries (cf. TRIG_ACT)."""
     player, mob, out = mp_world
