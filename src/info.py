@@ -346,14 +346,16 @@ def _look_in(player, args):
 
 
 def _show_container(player, obj, tpl):
-    """Print container contents (cf. 1stMud do_look 'in' case in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
+    """Print container contents (cf. 1stMud do_look 'in' case in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; can_see_obj content filter added and re-verified 10/07/2026]"""
     obj_name = (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]
     chprintln(player, "{} holds:".format(obj_name))
     contents = isinstance(obj, dict) and obj.get("contents", [])
-    if not contents:
+    # cf. show_list_to_char's can_see_obj filter (invisible contents hidden)
+    visible = [c for c in contents or [] if can_see_obj(player, c)]
+    if not visible:
         chprintln(player, "  Nothing.")
         return
-    for cobj in contents:
+    for cobj in visible:
         ctpl = ITEM_DEFS[obj_vnum(cobj)]
         chprintln(player, "  " + (cobj.get("short_descr") or ctpl["short_descr"]))
 
@@ -361,12 +363,15 @@ def _show_container(player, obj, tpl):
 def _look_scan_items(player, target, number, count, items):
     """Scan an item list for extra_desc or name match (cf. 1stMud `do_look` in act_info.c: item scan loop).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; instance extra_descs check added and re-verified 05/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; instance extra_descs check added and re-verified 05/07/2026; can_see_obj gate added and re-verified 10/07/2026]
 
     Returns:
         tuple: (found, count) where found is True if the Nth match was displayed.
     """
     for obj in items:
+        # cf. act_info.c:1234/1263 -- both look-item loops gate on can_see_obj
+        if not can_see_obj(player, obj):
+            continue
         vnum = obj_vnum(obj)
         tpl = ITEM_DEFS[vnum]
         # Check instance extra_descs first (cf. 1stMud obj->ed_first, act_info.c:1248)
@@ -1697,18 +1702,20 @@ def do_read(player, args):
 def do_examine(player, args):
     """Examine an object: look at it, then show contents or coin count (cf. 1stMud do_examine in act_info.c).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; picker visibility filter added 10/07/2026]
 
     Args:
         player (dict): Player state dict.
         args (list): Parsed command arguments.
     """
     if not args:
-        # [PRIMESUD] picker menu when no args (1stMud prints "Examine what?" and stops)
+        # [PRIMESUD] picker menu when no args (1stMud prints "Examine what?" and
+        # stops); hidden/invisible entries filtered like the get/drop pickers
         rs = world.rooms[player["room"]]
         equipped = [o for o in player["equip"].values() if o is not None]
-        mobs = list(rs["mobs"])
-        objs = list(rs["items"]) + player["inv"] + equipped
+        mobs = [i for i in rs["mobs"] if can_see(player, world.chars[i])]
+        objs = [o for o in (list(rs["items"]) + player["inv"] + equipped)
+                if can_see_obj(player, o)]
         labels = [MOB_DEFS[world.chars[i]["tpl"]]["short_descr"] for i in mobs]
         for o in objs:
             labels.append((isinstance(o, dict) and o.get("short_descr"))

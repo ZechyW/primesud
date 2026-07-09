@@ -487,10 +487,14 @@ def get_obj_list(fragment, item_list, templates, viewer=None):
 
 
 def get_obj_here(player, arg):
-    """Find obj in room, inventory, or equipped (cf. 1stMud get_obj_here in handler.c).
+    """Find a visible obj in room, inventory, or equipped (cf. 1stMud get_obj_here in handler.c:2063).
+
+    The can_see_obj gate is baked in, as in the source (its room scan runs
+    through the gated get_obj_list, carry/wear through get_obj_carry /
+    get_obj_wear which gate likewise).
 
     Args:
-        player (dict): Player state dict.
+        player (dict): Observer state dict (player or mob).
         arg (str): Player-typed name fragment.
 
     Returns:

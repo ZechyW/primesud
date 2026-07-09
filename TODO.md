@@ -20,6 +20,16 @@ Loose ends that don't belong in a specific plan file.
 
 ## Commands
 
+- **Own-inventory object lookups skip the can_see_obj gate** — ~28
+  `get_obj_list(...)` calls without `viewer=` (inventory.py put/wear/quaff/
+  sacrifice/compare/etc., magic.py cast-at-obj, shop.py sell/value, quest.py,
+  movement.py portal). 1stMud gates these via `get_obj_carry`/`get_obj_list`,
+  so e.g. `wear armor` fails in an unlit dark room and invisible carried items
+  are unfindable without detect invis. Deliberately NOT swept during the
+  10/07/2026 final audit: authentic but harsh on-device (few light sources);
+  decide fidelity vs playability before wiring. `get_obj_here` (look/examine/
+  get/drop paths) is already gated.
+
 - Genuinely still-deferred commands (commented-out rows in
   `commands.py:_CMD_TABLE`): `gossip`, `shout`, `alias`/`unalias`,
   `bank`, `auction`, `path`, `play`, immortal commands. Port when/if a solo
@@ -68,3 +78,17 @@ Loose ends that don't belong in a specific plan file.
   uses row-step fling easing with touch-cancel/release guard
   (`tml_prime.py`, 06/07/2026). Re-tune thresholds/decay on device if it
   still feels jumpy or too eager.
+- **On-calculator checklist from the 08/07 planning queue** (consolidated
+  final audit 10/07/2026; one walk of the world covers all, ordered by area):
+  - *Mud School*: acolyte demo prog end to end (`say help`, give any item,
+    delay follow-up); prog-room idle CPU/heap vs an empty room
+    (`gc.mem_free`, act-heavy room); school banner light burnout pacing
+    (flicker at <=5 hours, both goes-out messages)
+  - *Midgaard*: idle tick cost with the full area loaded (regen + weather +
+    mobprog pulse); weather message cadence over several ticks; buy + name a
+    pet at the pet shop, `group` rendering on the 64-col screen
+  - *Any dark room (e.g. caves/sewers)*: automap rendering while dark;
+    "It is pitch black ... " + glowing red eyes on the physical screen;
+    light a torch and re-look
+  - *Anywhere*: `explored`/`score` permille after the walk; `gc.mem_free`
+    before/after the ~2KB explored-mask alloc and a save/load round-trip

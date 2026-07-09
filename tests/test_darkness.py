@@ -488,3 +488,57 @@ class TestHolylight:
         finally:
             debug.DBG.discard("holylight")
             debug.DBG.difference_update(debug._CHANNELS)
+
+
+class TestObjectVisibilityGates:
+    """can_see_obj baked into get_obj_here / look-item scan / container list
+    (cf. handler.c:2063, act_info.c:1234-1300, show_list_to_char)."""
+
+    def _invis_item(self, vnum):
+        ITEM_DEFS._data[vnum] = {"type": "trash", "keywords": "bauble",
+                                 "short_descr": "a shimmering bauble",
+                                 "extra_flags": {"invis": True}}
+        return vnum
+
+    def _actor(self, room, **aff):
+        p = _char(room, **aff)
+        p.update(inv=[], equip={})
+        return p
+
+    def test_get_obj_here_skips_invisible(self, fresh_world):
+        from item import get_obj_here
+        _room(1, sector="inside")
+        v = self._invis_item(620)
+        world.rooms._data[1]["items"].append(v)
+        assert get_obj_here(self._actor(1), "bauble") is None
+        assert get_obj_here(self._actor(1, detect_invis=True), "bauble") == v
+
+    def test_look_scan_skips_invisible(self, fresh_world):
+        import info
+        v = self._invis_item(621)
+        _room(1, sector="inside")
+        found, count = info._look_scan_items(self._actor(1), "bauble", 1, 0, [v])
+        assert found is False
+        found, count = info._look_scan_items(
+            self._actor(1, detect_invis=True), "bauble", 1, 0, [v])
+        assert found is True
+
+    def test_container_hides_invisible_contents(self, fresh_world, look_out):
+        import info
+        _room(1, sector="inside")
+        self._invis_item(622)
+        ITEM_DEFS._data[623] = {"type": "container", "keywords": "chest",
+                                "short_descr": "a chest", "extra_flags": {}}
+        chest = {"vnum": 623, "contents": [622]}
+        info._show_container(self._actor(1), chest, ITEM_DEFS._data[623])
+        assert look_out == ["a chest holds:", "  Nothing."]
+
+
+class TestDoMapBlind:
+    def test_blind_refuses_map(self, fresh_world, look_out):
+        import info
+        _room(1, sector="inside")
+        p = _look_player(1)
+        p["affected_by"] = {"blind": True}
+        info.do_map(p, [])
+        assert look_out == ["You can't see a thing!"]
