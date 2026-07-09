@@ -330,6 +330,10 @@ def expand_arg(fmt, mob, ch, arg1, arg2, rch):
                 rch = get_random_char(mob)
             piece = _cap(_first(rch.get("name", ""))) if (rch is not None and can_see(mob, rch)) else someone
         elif code == "R":
+            # [PRIMESUD] Source (programs.c case 'R') reads `ch` here, not
+            # `rch` -- a copy-paste bug that makes $R render the triggering
+            # char instead of the random one. We use rch (the intended random
+            # char), matching every other $r/$R/$J/$K/$L branch.
             if rch is None:
                 rch = get_random_char(mob)
             piece = _char_short(rch) if (rch is not None and can_see(mob, rch)) else someone
