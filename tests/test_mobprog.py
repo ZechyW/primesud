@@ -132,6 +132,49 @@ def test_cmd_eval_flag_check():
     assert not mobprog.cmd_eval("name", "$n mary", mob, pc, None, None, None, 1)
 
 
+def test_cmd_eval_world_presence_checks(mp_world):
+    """mobhere/objhere by vnum or name; mobexists/objexists (programs.c:448-461)."""
+    player, mob, out = mp_world
+    def ce(check, args):
+        return mobprog.cmd_eval(check, args, mob, player, None, None, None, 1)
+    assert ce("mobhere", "9405")            # own template counts (NPC in room)
+    assert not ce("mobhere", "9999")
+    assert ce("mobhere", "guard")
+    assert ce("mobhere", "tester")          # PCs match the name form
+    assert not ce("mobhere", "dragon")
+    assert ce("mobexists", "tester")
+    assert not ce("mobexists", "dragon")
+    # a ring on this room's floor, then on a remote floor
+    world.rooms._data[9001]["items"].append(9100)
+    assert ce("objhere", "9100")
+    assert ce("objhere", "ring")
+    world.rooms._data[9001]["items"].remove(9100)
+    assert not ce("objhere", "ring")
+    world.rooms._data[9002]["items"].append(9100)
+    assert ce("objexists", "ring")
+    world.rooms._data[9002]["items"].remove(9100)
+    assert not ce("objexists", "ring")
+
+
+def test_get_char_room_self_and_can_see_gate(mp_world):
+    """'self' resolves to the acting mob; invisible chars are skipped (handler.c:1886)."""
+    player, mob, out = mp_world
+    assert mobprog._get_char_room(mob, "self") is mob
+    assert mobprog._get_char_room(mob, "tester") is player
+    player["affected_by"]["invisible"] = True
+    assert mobprog._get_char_room(mob, "tester") is None
+    assert mobprog._get_char_world(mob, "tester") is None
+    del player["affected_by"]["invisible"]
+
+
+def test_find_location_world_wide(mp_world):
+    """A char name anywhere in the loaded world resolves to its room (act_wiz.c:721)."""
+    player, mob, out = mp_world
+    player["room"] = 9002
+    assert mobprog._find_location(mob, "tester") == 9002
+    player["room"] = 9001
+
+
 def test_cmd_eval_unported_check_logs_false(monkeypatch):
     logged = []
     monkeypatch.setattr(mobprog, "dbg", lambda m: logged.append(m))
@@ -291,9 +334,30 @@ def test_abort_unknown_if_check(flow_errors):
 
 def test_abort_max_call_level(flow_errors):
     calls, errs = flow_errors
-    mobprog.program_flow(1, "say x", _mob(), None,
-                         call_level=mobprog.MAX_CALL_LEVEL)
+    mobprog._call_depth = mobprog.MAX_CALL_LEVEL
+    try:
+        mobprog.program_flow(1, "say x", _mob(), None)
+    finally:
+        mobprog._call_depth = 0
     assert calls == []
+    assert any("max call level" in m for m in errs)
+
+
+def test_trigger_cascade_bounded(monkeypatch):
+    """Reentrant trigger cascades (not via 'mob call') hit the global depth cap."""
+    errs = []
+    entries = []
+    monkeypatch.setattr(mobprog, "dbg", lambda m: errs.append(m))
+
+    # _dispatch that simulates a prog command synchronously firing another prog
+    def reenter(prog_vnum, mob, ctrl, expanded):
+        entries.append(prog_vnum)
+        mobprog.program_flow(prog_vnum + 1, "say again", mob, None)
+    monkeypatch.setattr(mobprog, "_dispatch", reenter)
+
+    mobprog.program_flow(1, "say x", _mob(), None)
+    assert mobprog._call_depth == 0                     # counter unwound
+    assert len(entries) == mobprog.MAX_CALL_LEVEL       # bounded, not infinite
     assert any("max call level" in m for m in errs)
 
 

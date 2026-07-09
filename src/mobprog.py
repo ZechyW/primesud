@@ -120,6 +120,12 @@ _SEX_NUM = {"neutral": 0, "either": 0, "male": 1, "female": 2}
 # prog itself emits while its own act triggers are dispatching) clears it.
 MOBtrigger = True
 
+# Global program_flow depth (cf. 1stMud's static call_level, programs.c:2452):
+# bumped on every entry, so ANY reentrant prog cascade -- mob call, or a prog
+# whose commands synchronously fire another trigger -- is bounded by
+# MAX_CALL_LEVEL, exactly as in the source.
+_call_depth = 0
+
 
 # -- small helpers -------------------------------------------------------------
 
@@ -449,6 +455,9 @@ def _hpcnt_trigger(mob, victim):
     if not trigs:
         return
     # [PRIMESUD] max(1, ...) guards div-by-zero; 1stMud divides by max_hit raw.
+    # ponytail: // floors where C truncates toward zero -- differs only for a
+    # negative-hp mob on a non-exact division, off by one pct point (same
+    # accepted divergence as _char_num_lval's hpcnt).
     pct = (100 * mob.get("hit", 0)) // max(1, mob.get("max_hit", 1))
     for t in trigs:
         if t[0] == "hpcnt" and pct < _atoi(t[2]):
@@ -909,6 +918,27 @@ def cmd_eval(check, line, mob, ch, arg1, arg2, rch, prog_vnum):
     if check == "rand":
         return _number_percent() < _atoi(buf)
 
+    # -- world presence checks: bare vnum or name (programs.c:448-461) --
+    if check == "mobhere":
+        if _is_number(buf):
+            v = _atoi(buf)
+            return any(c.get("is_npc") and c.get("tpl") == v
+                       for c in _room_persons(mob))
+        return _get_char_room(mob, buf) is not None
+    if check == "objhere":
+        if _is_number(buf):
+            v = _atoi(buf)
+            from item import obj_vnum
+            rs = _room_of(mob)
+            return any(obj_vnum(it) == v
+                       for it in (rs.get("items", []) if rs else []))
+        from item import get_obj_here
+        return get_obj_here(mob, buf) is not None
+    if check == "mobexists":
+        return _get_char_world(mob, buf) is not None
+    if check == "objexists":
+        return _get_obj_world(mob, buf) is not None
+
     # -- room population counts: "<check> <op> <n>" --
     if check in _COUNT_FLAG:
         lval = _count_people_room(mob, _COUNT_FLAG[check])
@@ -1025,9 +1055,16 @@ def program_flow(prog_vnum, code, mob, ch, arg1=None, arg2=None, call_level=0):
         ch (dict or None): Triggering character.
         arg1: Object argument.
         arg2: Target character or object.
-        call_level (int): mpcall recursion depth (Phase C); capped here.
+        call_level (int): Unused legacy parameter; depth is tracked by the
+            module-global counter below.
     """
-    if call_level >= MAX_CALL_LEVEL:
+    # cf. programs.c:2452 (++call_level > MAX_CALL_LEVEL): the counter is
+    # GLOBAL, bumped on every program_flow entry -- it bounds not just "mob
+    # call" nesting but any reentrant trigger cascade (a prog's kill firing
+    # another mob's fight/death prog, act triggers, ...).  Critical on the
+    # HP Prime's small stack.
+    global _call_depth
+    if _call_depth >= MAX_CALL_LEVEL:
         dbg("prog " + str(prog_vnum) + " exceeded max call level")
         return
     mvnum = mob.get("tpl") if mob else 0
@@ -1035,6 +1072,16 @@ def program_flow(prog_vnum, code, mob, ch, arg1=None, arg2=None, call_level=0):
     cond = [True] * MAX_NESTED_LEVEL
     level = 0
 
+    _call_depth += 1
+    try:
+        _run_flow(prog_vnum, code, mob, ch, arg1, arg2,
+                  mvnum, state, cond, level)
+    finally:
+        _call_depth -= 1
+
+
+def _run_flow(prog_vnum, code, mob, ch, arg1, arg2, mvnum, state, cond, level):
+    """program_flow body, split out so the depth counter always unwinds. [PRIMESUD]"""
     for raw in code.split("\n"):
         buf, ctrl, data = _parse_line(raw)
         if buf == "":            # NullStr(buf) -> end of program
@@ -1115,7 +1162,7 @@ def program_flow(prog_vnum, code, mob, ch, arg1=None, arg2=None, call_level=0):
         elif (level == 0 or cond[level] is True):
             state[level] = IN_BLOCK
             expanded = expand_arg(buf, mob, ch, arg1, arg2, None)
-            _dispatch(prog_vnum, mob, ctrl, expanded, call_level)
+            _dispatch(prog_vnum, mob, ctrl, expanded)
 
 
 # -- mp-command set (cf. prog_cmds.c mob_cmd_table) ----------------------------
@@ -1148,18 +1195,22 @@ def _char_kw(c):
     """Name-match keywords for a char (mob keywords / player name). [PRIMESUD]"""
     import world
     if c.get("is_npc"):
-        return c.get("keywords") or world.MOB_DEFS[c["tpl"]].get("keywords", "")
+        tpl = world.MOB_DEFS._data.get(c.get("tpl"))
+        return c.get("keywords") or (tpl.get("keywords", "") if tpl else "")
     return c.get("name", "")
 
 
 def _get_char_room(mob, arg):
-    """Find a char in *mob*'s room by name; N. counted syntax (cf. get_char_room). [PRIMESUD]"""
+    """Find a visible char in *mob*'s room by name; "self" and N. counted
+    syntax (cf. get_char_room, handler.c:1886). [PRIMESUD]"""
     if not arg:
         return None
     number, name = number_argument(arg)
+    if name == "self":
+        return mob
     count = 0
     for c in _room_persons(mob):
-        if not is_name(name, _char_kw(c)):
+        if not can_see(mob, c) or not is_name(name, _char_kw(c)):
             continue
         count += 1
         if count == number:
@@ -1168,18 +1219,73 @@ def _get_char_room(mob, arg):
 
 
 def _get_char_world(mob, arg):
-    """Find any char in the world by name (cf. get_char_world). [PRIMESUD]"""
+    """Find any visible char, own room first then the loaded world
+    (cf. get_char_world, handler.c:1920). [PRIMESUD]"""
     if not arg:
         return None
+    c = _get_char_room(mob, arg)
+    if c is not None:
+        return c
     import world
     number, name = number_argument(arg)
     count = 0
     for c in world.chars.values():
-        if not is_name(name, _char_kw(c)):
+        if (c.get("room") is None or not can_see(mob, c)
+                or not is_name(name, _char_kw(c))):
             continue
         count += 1
         if count == number:
             return c
+    return None
+
+
+def _get_obj_world(mob, arg):
+    """Find any visible obj, nearby first then the loaded world
+    (cf. get_obj_world, handler.c:2104). [PRIMESUD]
+
+    There is no global object list; scans loaded rooms' floors (one container
+    level deep, like the reset count map) plus every char's inventory and
+    equipment.  Unloaded areas hold no instances, matching lazy loading.
+    """
+    if not arg:
+        return None
+    from item import get_obj_here, obj_vnum
+    obj = get_obj_here(mob, arg)
+    if obj is not None:
+        return obj
+    import world
+    from handler import can_see_obj
+
+    def _kw(it):
+        tpl = world.ITEM_DEFS._data.get(obj_vnum(it))
+        kw = it.get("keywords") if isinstance(it, dict) else None
+        return kw or (tpl.get("keywords", "") if tpl else "")
+
+    def _all_objs():
+        for rs in world.rooms._data.values():
+            for it in rs.get("items", []):
+                yield it
+                if isinstance(it, dict):
+                    for sub in it.get("contents", []):
+                        yield sub
+        for c in world.chars.values():
+            for it in c.get("inv", []):
+                yield it
+                if isinstance(it, dict):
+                    for sub in it.get("contents", []):
+                        yield sub
+            for it in (c.get("equip") or {}).values():
+                if it is not None:
+                    yield it
+
+    number, name = number_argument(arg)
+    count = 0
+    for it in _all_objs():
+        if not is_name(name, _kw(it)) or not can_see_obj(mob, it):
+            continue
+        count += 1
+        if count == number:
+            return it
     return None
 
 
@@ -1206,17 +1312,17 @@ def _char_to_room(ch, room_vnum):
 
 
 def _find_location(mob, arg):
-    """Resolve a location arg to a room vnum (cf. find_location). [PRIMESUD]
+    """Resolve a location arg to a room vnum (cf. find_location, act_wiz.c:721). [PRIMESUD]
 
-    Accepts a numeric room vnum (must be a known/resident room) or the name of a
-    char in the mob's room (returns that char's room).  1stMud also resolves
-    world-wide char/object locations; stock progs use vnums.
+    Accepts a numeric room vnum (must be a known/resident room) or the name of
+    a char anywhere in the loaded world (returns that char's room).  1stMud's
+    area-name and world-object fallbacks are not ported; stock progs use vnums.
     """
     import world
     if _is_number(arg):
         v = _atoi(arg)
         return v if v in world.ROOM_DEFS._data else None
-    c = _get_char_room(mob, arg)
+    c = _get_char_world(mob, arg)
     return c.get("room") if c is not None else None
 
 
@@ -1766,7 +1872,8 @@ def _mp_call(mob, args, pv, cl):
     from item import get_obj_here
     obj1 = get_obj_here(mob, parts[2]) if len(parts) > 2 and parts[2] else None
     obj2 = get_obj_here(mob, parts[3]) if len(parts) > 3 and parts[3] else None
-    program_flow(prog_vnum, code, mob, vch, obj1, obj2, call_level=cl + 1)
+    # nested program_flow entry bumps the global _call_depth itself
+    program_flow(prog_vnum, code, mob, vch, obj1, obj2)
 
 
 def _mp_skip(mob, args, pv, cl):
