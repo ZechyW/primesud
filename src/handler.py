@@ -1114,11 +1114,12 @@ def can_see_room(ch, room_vnum):
 def can_see(ch, victim):
     """Check if ch can see victim (cf. 1stMud can_see in handler.c).
 
-    Checks AFF_BLIND, room darkness vs AFF_INFRARED, AFF_INVISIBLE vs
-    detect_invis, AFF_SNEAK skill contest, and AFF_HIDE vs detect_hidden.
+    Checks AFF_BLIND, quest/gquest target overrides, room darkness vs
+    AFF_INFRARED, AFF_INVISIBLE vs detect_invis, AFF_SNEAK skill contest,
+    and AFF_HIDE vs detect_hidden.
     PLR_HOLYLIGHT (handler.c:2403) maps to the [PRIMESUD] "debug holylight"
     toggle (imm sight for playtesting). [PRIMESUD] invis_level/incog/arena
-    and the quest/gquest target overrides not ported.
+    not ported.
 
     Args:
         ch (dict): Observer (player or mob instance).
@@ -1140,13 +1141,26 @@ def can_see(ch, victim):
     if ch_aff.get("blind"):
         return False
 
+    # cf. handler.c:2421-2426 -- a quester keeps sight of their quest-target
+    # mob, and a gquester of any still-unkilled gquest target, through
+    # darkness/invis/hide. [PRIMESUD] quest_mob is a template vnum, so any
+    # live instance matches (same semantics as quest.py kill credit); plain
+    # dict reads + a lazy gquest import keep handler decoupled from quest.
+    if not ch.get("is_npc") and victim.get("is_npc"):
+        tpl = victim.get("tpl", 0)
+        if tpl:
+            if ch.get("quest_status") and tpl == ch.get("quest_mob", 0):
+                return True
+            from gquest import gquest_info, GQUEST_RUNNING, gq_is_player_target
+            if (gquest_info["running"] == GQUEST_RUNNING
+                    and gq_is_player_target(tpl)):
+                return True
+
     # cf. 1stMud can_see dark gate (handler.c:2428): a dark room hides the
-    # victim from a viewer without infrared. In 1stMud the quest / gquest
-    # target overrides (handler.c:2421-2426) precede this, so a quester keeps
-    # sight of their target in the dark; PrimeSUD has no can_see quest override
-    # yet [TODO quest-override]. Observer room resolves from ch["room"] for
-    # both players and mobs -- mob aggro routes through can_see, so a dark room
-    # shields an unlit player from non-infrared aggressors (1stMud-correct).
+    # victim from a viewer without infrared. Observer room resolves from
+    # ch["room"] for both players and mobs -- mob aggro routes through
+    # can_see, so a dark room shields an unlit player from non-infrared
+    # aggressors (1stMud-correct).
     # Membership tests _data (already-loaded rooms) not ROOM_DEFS: a plain
     # `in ROOM_DEFS` would fire LazyDict's on-demand area load. The observer is
     # always standing in a loaded room, so _data is sufficient and side-effect
@@ -1182,13 +1196,9 @@ def can_see_obj(ch, obj):
     """Check if ch can see obj (cf. 1stMud can_see_obj in handler.c:2456).
 
     Check order matches the source: HOLYLIGHT (mapped to the [PRIMESUD]
-    "debug holylight" toggle), ITEM_VIS_DEATH, blindness (potions exempt), a
-    lit light source, ITEM_INVIS vs detect_invis, ITEM_GLOW, then a dark room
-    vs dark_vision.
-    The quest-object override (handler.c:2461) is not ported [TODO
-    quest-override]: quest.py tracks the target obj by vnum, but wiring it here
-    would couple handler to quest, and quest items carry no invis/vis_death
-    flags, so the gap is harmless for now.
+    "debug holylight" toggle), quest-object override, ITEM_VIS_DEATH,
+    blindness (potions exempt), a lit light source, ITEM_INVIS vs
+    detect_invis, ITEM_GLOW, then a dark room vs dark_vision.
 
     Args:
         ch (dict): Observer (player or mob instance).
@@ -1213,6 +1223,12 @@ def can_see_obj(ch, obj):
         return True
 
     ch_aff = ch.get("affected_by", {})
+
+    # cf. handler.c:2461 -- a quester always sees their quest object (so a
+    # retrieve token in a dark room stays visible). [PRIMESUD] matched by
+    # template vnum, same semantics as quest.py quest_obj_check.
+    if ch.get("quest_status") and vnum and vnum == ch.get("quest_obj", 0):
+        return True
 
     if flags.get("vis_death"):
         return False

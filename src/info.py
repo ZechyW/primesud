@@ -1222,7 +1222,8 @@ def do_map(player, args):
     Args:
         player (dict): Player state dict.
     """
-    # [TODO blind] 1stMud checks check_blind(ch) here and refuses if AFF_BLIND -- add when blindness is implemented
+    if not check_blind(player):   # cf. 1stMud do_map automap.c:567
+        return
     for line in build_full_lines(player, ROOM_DEFS):
         chprintln(player, line)
 

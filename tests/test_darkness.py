@@ -126,6 +126,62 @@ class TestCanSeeDark:
 
 
 # ---------------------------------------------------------------------------
+# Quest / gquest target sight overrides (handler.c:2421-2426, 2461)
+# ---------------------------------------------------------------------------
+
+class TestQuestSight:
+    def test_quester_sees_target_mob_in_dark(self, fresh_world):
+        from handler import can_see
+        _room(1, flags={"dark": True})
+        ch = _char(1)
+        ch.update(quest_status=1, quest_mob=9405)
+        victim = _char(1)
+        victim.update(is_npc=True, tpl=9405)
+        assert can_see(ch, victim) is True
+
+    def test_quester_other_mob_still_hidden(self, fresh_world):
+        from handler import can_see
+        _room(1, flags={"dark": True})
+        ch = _char(1)
+        ch.update(quest_status=1, quest_mob=9405)
+        victim = _char(1)
+        victim.update(is_npc=True, tpl=9999)
+        assert can_see(ch, victim) is False
+
+    def test_gquester_sees_remaining_target_in_dark(self, fresh_world):
+        from handler import can_see
+        from gquest import gquest_info, GQUEST_RUNNING, GQUEST_OFF
+        _room(1, flags={"dark": True})
+        ch = _char(1)
+        victim = _char(1)
+        victim.update(is_npc=True, tpl=9405)
+        old = (gquest_info["running"], gquest_info["joined"],
+               list(gquest_info["pmobs"]))
+        try:
+            gquest_info["running"] = GQUEST_RUNNING
+            gquest_info["joined"] = True
+            gquest_info["pmobs"] = [9405]
+            assert can_see(ch, victim) is True
+            gquest_info["pmobs"] = [-1]          # already killed -> no override
+            assert can_see(ch, victim) is False
+        finally:
+            (gquest_info["running"], gquest_info["joined"],
+             gquest_info["pmobs"]) = old
+
+    def test_quester_sees_quest_obj_in_dark(self, fresh_world):
+        from handler import can_see_obj
+        _room(1, flags={"dark": True})
+        ITEM_DEFS._data[214] = {"type": "gem", "keywords": "token",
+                                "short_descr": "a quest token",
+                                "extra_flags": {}}
+        ch = _char(1)
+        ch.update(quest_status=2, quest_obj=214)
+        assert can_see_obj(ch, {"vnum": 214}) is True
+        ch["quest_obj"] = 215
+        assert can_see_obj(ch, {"vnum": 214}) is False
+
+
+# ---------------------------------------------------------------------------
 # Phase A -- can_see_obj full port
 # ---------------------------------------------------------------------------
 
