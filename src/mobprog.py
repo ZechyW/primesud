@@ -196,6 +196,23 @@ def _room_of(mob):
     return world.rooms._data.get(mob.get("room")) if mob else None
 
 
+def _target_of(mob):
+    """Resolve a mob's mprog_target id to its char instance, or None. [PRIMESUD]
+
+    mprog_target is stored as a char id (like ``master``/``reply``, per
+    MOBPROG_PLAN decision 3), not a dict ref: an extracted target drops out of
+    ``world.chars`` and resolves to None, matching 1stMud nulling the pointer
+    in extract_char -- no explicit clear-on-extract hook needed.
+    """
+    if mob is None:
+        return None
+    tid = mob.get("mprog_target")
+    if tid is None:
+        return None
+    import world
+    return world.chars.get(tid)
+
+
 def get_random_char(mob):
     """Random visible character in the mob's room (cf. get_random_char, programs.c:208).
 
@@ -294,7 +311,7 @@ def expand_arg(fmt, mob, ch, arg1, arg2, rch):
     vch = arg2 if isinstance(arg2, dict) else None
     obj1 = arg1
     obj2 = arg2 if not isinstance(arg2, dict) else None
-    tgt = mob.get("mprog_target") if mob else None
+    tgt = _target_of(mob)
 
     def sex_of(c, table, dflt):
         return table.get((c or {}).get("sex", "neutral"), dflt)
@@ -331,9 +348,9 @@ def expand_arg(fmt, mob, ch, arg1, arg2, rch):
             piece = _cap(_first(rch.get("name", ""))) if (rch is not None and can_see(mob, rch)) else someone
         elif code == "R":
             # [PRIMESUD] Source (programs.c case 'R') reads `ch` here, not
-            # `rch` -- a copy-paste bug that makes $R render the triggering
+            # `rch` -- a copy-paste slip that makes $R render the triggering
             # char instead of the random one. We use rch (the intended random
-            # char), matching every other $r/$R/$J/$K/$L branch.
+            # char), matching $r/$J/$K/$L. See docs/FIXES.md "mobprog: $R".
             if rch is None:
                 rch = get_random_char(mob)
             piece = _char_short(rch) if (rch is not None and can_see(mob, rch)) else someone
@@ -464,7 +481,7 @@ def _resolve_target(code, mob, ch, arg1, arg2):
     if code == "r":
         return get_random_char(mob), None
     if code == "q":
-        return (mob.get("mprog_target") if mob else None), None
+        return _target_of(mob), None
     if code == "o":
         return None, arg1
     if code == "p":
@@ -483,6 +500,10 @@ def _char_num_lval(check, lval_char, lval_obj):
     if lval_char is None:
         return 0
     if check == "hpcnt":
+        # ponytail: floor // vs 1stMud's trunc-toward-zero / diverges only for
+        # negative hit (dying mob mid-check) with a non-divisible remainder,
+        # where the < phrase boolean almost never flips. Use trunc in Phase C
+        # if an hpcnt trigger ever misfires on a sub-zero mob.
         return (lval_char.get("hit", 0) * 100) // max(1, lval_char.get("max_hit", 1))
     if check == "room":
         return lval_char.get("room", 0)
@@ -530,10 +551,11 @@ def _eval_char_bool(check, code, lval_char, lval_obj, mob):
     if check == "hastarget":
         if c is None:
             return False
-        tgt = c.get("mprog_target")
+        tgt = _target_of(c)
         return tgt is not None and tgt.get("room") == c.get("room")
     if check == "istarget":
-        return c is not None and mob.get("mprog_target") is c
+        tid = mob.get("mprog_target")
+        return c is not None and tid is not None and tid == c.get("id")
     return False
 
 
@@ -575,11 +597,17 @@ def cmd_eval(check, line, mob, ch, arg1, arg2, rch, prog_vnum):
     Returns:
         bool: The check result.
     """
+    # ponytail: unlike 1stMud one_argument (per-token tolower), we don't
+    # lowercase the extracted $-code / flag word / operator here. Real prog
+    # data is lowercase by convention and stock data ships zero mobprogs, so an
+    # uppercase flag arg ("if pos Standing") or $-code ("if isnpc $N") is the
+    # only miss. Lowercase toks in Phase C when real flag/numeric checks land.
     toks = line.split()
     if not toks or mob is None:
         return False
-    if mob.get("mprog_target") is None:
-        mob["mprog_target"] = ch
+    if mob.get("mprog_target") is None and ch is not None:
+        # [PRIMESUD] stored as char id, not a dict ref (see _target_of).
+        mob["mprog_target"] = ch.get("id")
     buf = toks[0]
 
     # -- rand: percent roll --

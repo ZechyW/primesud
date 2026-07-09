@@ -141,6 +141,28 @@ def test_cmd_eval_unported_check_logs_false(monkeypatch):
     assert any("not ported" in m for m in logged)
 
 
+def test_mprog_target_stored_as_id_and_resolved():
+    """cmd_eval records the trigger char's id; $q/istarget resolve it back."""
+    mob = _mob(mprog_target=None)
+    pc = _pc(id=7, room=5)
+    mob["room"] = 5
+    world.chars[7] = pc
+    try:
+        # first if-check binds mob->mprog_target = ch (as 1stMud does)
+        mobprog.cmd_eval("ispc", "$n", mob, pc, None, None, None, 1)
+        assert mob["mprog_target"] == 7          # id, not the dict
+        assert mobprog._target_of(mob) is pc     # resolves back to the char
+        # istarget compares by id
+        assert mobprog.cmd_eval("istarget", "$n", mob, pc, None, None, None, 1)
+        # $q expands the resolved target's name
+        assert mobprog.expand_arg("$q", mob, pc, None, None, None) == "John"
+        # extracted target (dropped from world.chars) resolves to None
+        del world.chars[7]
+        assert mobprog._target_of(mob) is None
+    finally:
+        world.chars.pop(7, None)
+
+
 # -- program_flow control flow -------------------------------------------------
 
 @pytest.fixture
