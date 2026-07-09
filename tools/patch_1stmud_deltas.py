@@ -54,6 +54,36 @@ ROOM_GUILDS = {
     },
 }
 
+# {area_name: {mob_vnum: (mob_trigger tuple, ...)}} and the matching prog
+# code. [PRIMESUD] Phase D content pilot (MOBPROG_PLAN.md): stock QuickMUD
+# ships zero #MOBPROGS, so the mobprog engine's first content is authored
+# here. The Mud School acolyte (3700) greets on the "help" keyword, rewards
+# any gift with a school diploma (obj 3715), and -- after a 2-tick delay --
+# sends the remembered giver off with a parting line. Exercises speech/give
+# triggers, $-expansion ($n/$O/$q), the mp-command set (remember/oload/delay),
+# and the delay pulse. Emitted in the exact converter format (are_to_primesud
+# emit()): mob_triggers tuple on the mob + a MOBPROGS dict entry per prog.
+MOB_TRIGGERS = {
+    "school": {
+        3700: (
+            ("speech", 3790, "help"),
+            ("give", 3791, "all"),
+            ("delay", 3792, "100"),   # percent phrase: 100 -> fires each armed pulse
+        ),
+    },
+}
+
+MOB_PROGS = {
+    "school": {
+        3790: "say Welcome to Mud School, $n.  Bring me a gift and I shall reward you.\n",
+        3791: ("say Ah, $O.  Many thanks, $n.  Take this token of the school.\n"
+               "mob remember $n\n"
+               "mob oload 3715 0 R\n"
+               "mob delay 2\n"),
+        3792: "say May your studies serve you well, $q.\n",
+    },
+}
+
 # {(src_area, dst_area): (reset_line, ...)} -- resets in src whose target
 # room lives in dst. Left in src they force dst (and its own cross-area
 # pulls) to load the moment src loads; moved to dst they run when dst
@@ -333,6 +363,80 @@ def patch_drop_resets(base):
             print(f"  {area_name}: {dropped} reset(s) dropped", file=sys.stderr)
 
 
+def patch_mobprogs(area_name, filepath):
+    """Inject [PRIMESUD] demo mob_triggers + MOBPROGS entries. Idempotent."""
+    triggers = MOB_TRIGGERS.get(area_name)
+    progs = MOB_PROGS.get(area_name)
+    if not triggers and not progs:
+        return False
+
+    lines = Path(filepath).read_text(encoding="utf-8").split("\n")
+    modified = False
+
+    # -- mob_triggers tuples: inserted after the mob's "size": line, matching
+    #    the converter's emit() position (are_to_primesud.py:1372). --
+    for vnum, trigs in sorted((triggers or {}).items()):
+        mob_pattern = f"    {vnum}: {{"
+        mob_start = None
+        for idx in range(len(lines)):
+            if lines[idx].startswith(mob_pattern):
+                mob_start = idx
+                break
+        if mob_start is None:
+            print(f"  WARNING: mob block for {vnum} not found", file=sys.stderr)
+            continue
+        size_idx = mtrig_idx = None
+        for idx in range(mob_start, min(mob_start + 40, len(lines))):
+            if '"mob_triggers"' in lines[idx]:
+                mtrig_idx = idx
+                break
+            if lines[idx].lstrip().startswith('"size":'):
+                size_idx = idx
+        if mtrig_idx is not None:
+            continue  # already patched
+        if size_idx is None:
+            print(f"  WARNING: size line for mob {vnum} not found", file=sys.stderr)
+            continue
+        block = ['        "mob_triggers": (']
+        for trig_type, mpv, phrase in trigs:
+            block.append(f"            ({trig_type!r}, {mpv}, {phrase!r}),")
+        block.append("        ),")
+        lines[size_idx + 1:size_idx + 1] = block
+        modified = True
+        print(f"  mob {vnum}: +{len(trigs)} trigger(s)", file=sys.stderr)
+
+    # -- MOBPROGS dict entries: inserted before the closing "}" of the
+    #    (converter always emits an empty) MOBPROGS = { block. --
+    if progs:
+        mp_start = None
+        for idx in range(len(lines)):
+            if lines[idx].startswith("MOBPROGS = {"):
+                mp_start = idx
+                break
+        if mp_start is None:
+            print("  WARNING: MOBPROGS block not found", file=sys.stderr)
+        else:
+            mp_end = None
+            for idx in range(mp_start + 1, len(lines)):
+                if lines[idx] == "}":
+                    mp_end = idx
+                    break
+            body = lines[mp_start + 1:mp_end]
+            added = []
+            for mpv, code in sorted(progs.items()):
+                if any(line.lstrip().startswith(f"{mpv}:") for line in body):
+                    continue  # already patched
+                added.append(f"    {mpv}: {ascii(code)},  # [PRIMESUD] demo")
+            if added:
+                lines[mp_end:mp_end] = added
+                modified = True
+                print(f"  MOBPROGS: +{len(added)} prog(s)", file=sys.stderr)
+
+    if modified:
+        Path(filepath).write_text("\n".join(lines), encoding="utf-8", newline="\n")
+    return modified
+
+
 if __name__ == "__main__":
     if "-h" in sys.argv or "--help" in sys.argv:
         print(__doc__.strip())
@@ -340,13 +444,15 @@ if __name__ == "__main__":
     base = Path(__file__).resolve().parent.parent / "src"
     # All patches are idempotent: safe to re-run on already-patched files.
     for area_name in sorted(set(CROSS_AREA_EXITS) | set(MOB_ACT_FLAGS)
-                            | set(ROOM_GUILDS)):
+                            | set(ROOM_GUILDS) | set(MOB_TRIGGERS)
+                            | set(MOB_PROGS)):
         filepath = base / f"area_{area_name}.txt"
         if filepath.exists():
             print(f"==> {area_name}", file=sys.stderr)
             patch_area(area_name, filepath)
             patch_mob_flags(area_name, filepath)
             patch_room_guilds(area_name, filepath)
+            patch_mobprogs(area_name, filepath)
         else:
             print(f"  SKIP: {filepath} not found", file=sys.stderr)
     print("==> reset moves/drops", file=sys.stderr)

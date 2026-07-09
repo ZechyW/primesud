@@ -41,6 +41,11 @@ MOBILES = {
         "sex":    'male',
         "wealth": 0,
         "size":   'medium',
+        "mob_triggers": (
+            ('speech', 3790, 'help'),
+            ('give', 3791, 'all'),
+            ('delay', 3792, '100'),
+        ),
     },
     3701: {
         "keywords":    'blob',
@@ -1540,4 +1545,7 @@ SOCIALS = (
 # -- MobProgs ------------------------------------------------------------------
 # (vnum, code) -- mob program code blocks, referenced by mob triggers
 MOBPROGS = {
+    3790: 'say Welcome to Mud School, $n.  Bring me a gift and I shall reward you.\n',  # [PRIMESUD] demo
+    3791: 'say Ah, $O.  Many thanks, $n.  Take this token of the school.\nmob remember $n\nmob oload 3715 0 R\nmob delay 2\n',  # [PRIMESUD] demo
+    3792: 'say May your studies serve you well, $q.\n',  # [PRIMESUD] demo
 }

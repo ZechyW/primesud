@@ -752,3 +752,132 @@ def test_combat_fight_and_hpcnt_triggers(mp_world):
     violence_update(player)
     assert any("Feel my wrath!" in l for l in out)
     assert any("I am wounded!" in l for l in out)
+
+
+# -- Phase D: content pilot (the authored Mud School acolyte demo prog) ---------
+#
+# End-to-end validation of the [PRIMESUD] demo content patched into
+# src/area_school.txt by tools/patch_1stmud_deltas.py (patch_mobprogs): the
+# acolyte of Zump (mob 3700) greets on the "help" keyword, rewards any gift with
+# a diploma, and follows up after a delay.  Loads the *real* area file so the
+# mob_triggers tuple + MOBPROGS dict are exercised exactly as world.py loads
+# them; the actors are staged in a synthetic room to stay isolated.
+
+
+@pytest.fixture
+def school_world(monkeypatch):
+    """Real school area data loaded; acolyte 3700 + a player staged in one room."""
+    snap = {
+        "chars": dict(world.chars), "rooms": dict(world.rooms._data),
+        "loaded": set(world._LOADED_AREAS), "room_defs": dict(ROOM_DEFS._data),
+        "mob_defs": dict(MOB_DEFS._data), "item_defs": dict(ITEM_DEFS._data),
+        "door_defs": dict(world.DOOR_DEFS), "areas": list(world.areas),
+        "area_defs": list(world.AREA_DEFS), "vnum_ranges": list(world._VNUM_RANGES),
+        "tag_to_file": dict(world._TAG_TO_FILE), "tag_to_name": dict(world._TAG_TO_NAME),
+        "ready": world._WORLD_READY, "mobprogs": dict(MOBPROGS),
+    }
+    world.init_world()
+    monkeypatch.chdir(os.path.join(ROOT, _SRC))
+    _ = MOB_DEFS[3700]          # lazy-load Mud School -> MOBILES/OBJECTS/MOBPROGS
+
+    # synthetic single-room stage (avoids pulling school's whole room graph)
+    room = {"name": "Test Yard", "desc": "x", "exits": {}, "items": [],
+            "mobs": [], "area": "mud_school", "flags": {}, "sector": "inside"}
+    ROOM_DEFS._data[9001] = room
+    world.rooms._data[9001] = room
+    # a gift item for the give trigger
+    ITEM_DEFS._data[9100] = {"short_descr": "a gold ring", "keywords": "ring gold",
+                             "type": "treasure", "weight": 1, "value": 0,
+                             "wear_flags": {"take": True}, "extra_flags": {}}
+
+    player = _char_base()
+    player.update(id=1, is_npc=False, name="Tester", room=9001, pos="standing",
+                  learned={})
+    world.chars[1] = player
+
+    from mob import create_mobile
+    mob = create_mobile(3700)
+    mob.update(id=2, room=9001, mprog_target=None)
+    world.chars[2] = mob
+    room["mobs"].append(2)
+
+    # deterministic percent roll so the delay trigger (phrase "100") fires
+    monkeypatch.setattr(mobprog, "_number_percent", lambda: 1)
+    out = []
+    monkeypatch.setattr(handler, "tprint", lambda s="", end="\n": out.append(s))
+
+    yield player, mob, out
+
+    world.chars.clear(); world.chars.update(snap["chars"])
+    world.rooms._data.clear(); world.rooms._data.update(snap["rooms"])
+    world._LOADED_AREAS.clear(); world._LOADED_AREAS.update(snap["loaded"])
+    ROOM_DEFS._data.clear(); ROOM_DEFS._data.update(snap["room_defs"])
+    MOB_DEFS._data.clear(); MOB_DEFS._data.update(snap["mob_defs"])
+    ITEM_DEFS._data.clear(); ITEM_DEFS._data.update(snap["item_defs"])
+    world.DOOR_DEFS.clear(); world.DOOR_DEFS.update(snap["door_defs"])
+    world.areas = snap["areas"]; world.AREA_DEFS[:] = snap["area_defs"]
+    world._VNUM_RANGES[:] = snap["vnum_ranges"]
+    world._TAG_TO_FILE.clear(); world._TAG_TO_FILE.update(snap["tag_to_file"])
+    world._TAG_TO_NAME.clear(); world._TAG_TO_NAME.update(snap["tag_to_name"])
+    world._WORLD_READY = snap["ready"]
+    MOBPROGS.clear(); MOBPROGS.update(snap["mobprogs"])
+
+
+def test_school_demo_data_loaded(school_world):
+    """The authored triggers + progs ride the real area file as world loads it."""
+    trigs = MOB_DEFS[3700].get("mob_triggers")
+    assert ("speech", 3790, "help") in trigs
+    assert ("give", 3791, "all") in trigs
+    assert ("delay", 3792, "100") in trigs
+    assert MOBPROGS.get(3790) and MOBPROGS.get(3791) and MOBPROGS.get(3792)
+
+
+def test_school_demo_full_interaction(school_world):
+    """say help -> greet; give gift -> thanks + diploma + delay armed; delay -> parting."""
+    player, mob, out = school_world
+    from comm import do_say
+    from inventory import do_give
+    from mobprog import pulse_mob
+
+    # 1) speech: "help" keyword substring-matches the phrase
+    do_say(player, "can you help me")
+    assert any("Welcome to Mud School, Tester." in l for l in out)
+
+    # 2) give: prog thanks the player ($O/$n), remembers them, loads the diploma
+    #    reward (obj 3715) to the room, and arms a 2-tick delay.
+    ring = create_object(9100)
+    player["inv"].append(ring)
+    del out[:]
+    do_give(player, ["ring", "acolyte"])
+    assert any("Ah, a gold ring.  Many thanks, Tester." in l for l in out)
+    assert mob["mprog_delay"] == 2
+    assert mob["mprog_target"] == 1                     # "mob remember $n"
+    assert any(o.get("vnum") == 3715 for o in world.rooms._data[9001]["items"])
+
+    # 3) delay: counts down over pulses, then the follow-up fires with $q
+    #    resolving the remembered target.
+    del out[:]
+    assert pulse_mob(mob) is False                      # 2 -> 1
+    assert pulse_mob(mob) is True                       # 1 -> 0, prog 3792 fires
+    assert any("May your studies serve you well, Tester." in l for l in out)
+
+
+def test_idle_triggerless_mob_short_circuits(monkeypatch):
+    """A room of trigger-less mobs never reaches prog execution on the pulse.
+
+    has_trigger's empty-tuple early-out is the guard that keeps the 99% of
+    mobs with no triggers cheap; assert the pulse touches no program at all.
+    """
+    MOB_DEFS._data[9600] = {"short_descr": "a plain rat", "keywords": "rat",
+                            "level": 1, "default_pos": "stand"}
+    ran = []
+    monkeypatch.setattr(mobprog, "_run_prog",
+                        lambda mob, pv, ch, a1, a2: ran.append(pv))
+    try:
+        mobs = [{"tpl": 9600, "pos": "standing", "mprog_delay": 0}
+                for _ in range(50)]
+        for m in mobs:
+            assert mobprog.pulse_mob(m) is False
+        assert ran == []                                 # no prog ever fetched/run
+    finally:
+        MOB_DEFS._data.pop(9600, None)

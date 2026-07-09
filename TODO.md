@@ -2,15 +2,6 @@
 
 Loose ends that don't belong in a specific plan file.
 
-## Active plan docs (08/07/2026)
-
-Root-level `*_PLAN.md` files awaiting implementation; each carries its own
-dependency + completion notes in its header. `MOBPROG` is the last plan
-left (independent).
-`RESETS`, `DARKNESS`, `EXPLORED`, and `PETS_GROUPS` are done (08/07/2026). `OPUS_HANDOFF.md` carries
-ready-made session prompts for every stage. Strike this section when the
-last plan is deleted.
-
 ## Combat
 
 (nothing outstanding)
@@ -34,6 +25,18 @@ last plan is deleted.
   `bank`, `auction`, `path`, `play`, immortal commands. Port when/if a solo
   gameplay hook appears.
 
+## MOBprograms
+
+- **Phase E (deferred):** `act` trigger + `exit`/`exall` triggers, and the
+  global MOBtrigger re-entrancy latch (1stMud sets it false around
+  prog-emitted `act()` so scripted speech/acts don't re-trigger). Not needed
+  until content ships two speech/act-trigger mobs whose output can match each
+  other's phrase (current demo is a single acolyte -- no mutual recursion).
+  Engine core, all other triggers, and the mp-command set are done
+  (`mobprog.py`); see the `MOBPROG_PLAN.md` header + Phase-E note in git
+  history. `mobprog.py` `speech_trigger` self-excludes the speaker as the
+  interim guard.
+
 ## Area data
 
 - **Deferred runtime hooks for converter-emitted fields** — the 2026-07
@@ -44,9 +47,7 @@ last plan is deleted.
   - object `condition` (spawn wear-state), `no_sac`, container
     `container_max_item_weight` / `container_weight_mult`, food/drink
     `poisoned` (`light_hours` now consumed -- see DARKNESS light burnout)
-  - mob `group`, `material` (`default_pos` now consumed -- MOBPROG random/delay
-    pulse + greet gating, update.c:444-462; `mob_triggers` now consumed by the
-    MOBPROG trigger engine, mobprog.py)
+  - mob `group`, `material`
   - room `heal_rate`/`mana_rate`, `owner`
   - object `values` raw value[0..4] fallback for item types with no
     dedicated decode (furniture max-occupants/position flags, key linked
