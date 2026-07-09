@@ -386,3 +386,36 @@ single-player PrimeSUD that made the spell a complete no-op.
 Restored ROM behaviour: every room occupant whose name does not match the
 spoken name (including the caster) receives the line, with a successful
 save revealing "Someone makes X say ...".
+
+---
+
+## mobprog: $R expansion renders the triggering char, not the random one
+
+**Upstream:** `reference/1stMud4.5.3/src/programs.c`, `expand_arg_mob()`,
+case `'R'`, lines 1512-1520.
+
+### The bug
+
+Every random-char $-code resolves `rch` (the picked random char) except `$R`,
+whose display expression reads `ch` (the triggering char) instead:
+
+```c
+case 'R':
+    if (rch == NULL)
+        rch = get_random_char(mob, NULL, NULL);
+    i = (rch != NULL && can_see(mob, rch))
+        ? (IsNPC(ch) ? ch->short_descr : ch->name)   /* ch, should be rch */
+        : someone;
+    break;
+```
+
+The guard tests `rch` for visibility, then renders `ch` -- a copy-paste slip
+from the `$N` case just above. `$r` (lowercase, name form) is correct; only
+`$R` (short-descr form) is affected. A prog line like `mob echo $R glares at
+you` names the triggering player rather than the random bystander it picked.
+
+### PrimeSUD fix -- implemented in `expand_arg` in `mobprog.py`
+
+The `'R'` branch renders `rch` (`_char_short(rch)`), matching `$r`/`$J`/`$K`/
+`$L` and the `rch` visibility guard. The site carries a `[PRIMESUD]` comment
+referencing this entry.
