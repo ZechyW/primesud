@@ -1,5 +1,37 @@
 # MOBPROG_PLAN.md -- MOBprogram engine port from 1stMud (programs.c / prog_cmds.c)
 
+> **Progress -- Phase A DONE (09/07/2026, commit 07a****).**
+> `src/mobprog.py` shipped: `program_flow` (iterative state/cond stack,
+> buggy-prog abort -> `dbg()`), `cmd_eval` (representative check subset;
+> valid-but-unported check = log + false; unknown keyword = buggy abort),
+> `expand_arg` ($-codes verbatim from programs.c), `num_eval`, `has_trigger`
+> (empty-tuple early-out). Lazy per-area `MOBPROGS` registry wired into
+> `world._load_area` (+ `reset_lazy` clear). Tests in
+> `tests/test_mobprog.py` (26): if/else nesting, or/and, num_eval, expand_arg
+> codes, buggy-prog aborts, and the say/emote/north spike. Full suite green
+> (783).
+>
+> **Spike findings -- which commands are prog-safe for a mob actor** (drove
+> decision 6; full detail in mobprog.py module docstring):
+> - PROG-SAFE: `say`/`'`, `emote`/`,`, movement (`north`..`down`). All route
+>   through `act()`/`move_char`, which are already actor-generic; the mob is
+>   the actor and the player sees only the TO_ROOM view. `move_char`'s NPC
+>   branch handles leave/arrive acts + room mob-list bookkeeping.
+> - ASSUMES A PLAYER (guard/avoid): (1) `interpret()` lowercases the *entire*
+>   argument, so a bare verb through the interpreter lowercases its text AND
+>   colour codes (`{G`->`{g`) -- coloured/cased mob output must use the
+>   Phase C `mob echo` family (case-preserving mp-table), never bare
+>   say/emote. (2) `mark_explored` allocated a ~2KB explored mask per mob --
+>   now guarded (is_npc early-return). (3) `interpret`'s blank separator line
+>   -- now guarded for NPC actors. (4) picker/`tprint`/pcdata commands
+>   (train, score, quest, save, shop pickers...) assume the local player;
+>   progs must not invoke them, mirroring `comm._order_interpret`'s NPC-safe
+>   hand-dispatch stance.
+>
+> Not done here (later phases): trigger wiring (B), the `mob <subcmd>`
+> command set + combat triggers (C), content pilot (D).
+
+
 > 1stMud sources: `reference/1stMud4.5.3/src/`. Depends on: nothing hard;
 > do last -- RESETS_PLAN decision 7 (default_pos annotation) and the other
 > plans' combat/movement seams should settle first.
