@@ -399,6 +399,7 @@ def _hpcnt_trigger(mob, victim):
     trigs = _mob_trigs(mob)
     if not trigs:
         return
+    # [PRIMESUD] max(1, ...) guards div-by-zero; 1stMud divides by max_hit raw.
     pct = (100 * mob.get("hit", 0)) // max(1, mob.get("max_hit", 1))
     for t in trigs:
         if t[0] == "hpcnt" and pct < _atoi(t[2]):
@@ -1317,7 +1318,7 @@ def _mp_damage(mob, args, pv, cl):
         return
     low, high = _atoi(minv), _atoi(maxv)
     if high < low:
-        high = low
+        high = low   # [PRIMESUD] clamp; 1stMud passes low>high to number_range unchecked
     fkill = len(parts) > 3 and bool(parts[3])
     from combat import damage, DAM_NONE
     from config import TYPE_UNDEFINED
@@ -1648,6 +1649,8 @@ def _mp_force(mob, args, pv, cl):
     arg, rest = parts[0], parts[1]
     from commands import interpret
     if arg == "all":
+        # [PRIMESUD] 1stMud also filters get_trust(vch) < get_trust(ch); no trust
+        # system ported, so a prog can force the player (the intended use).
         for c in list(_room_persons(mob)):
             if c is not mob and can_see(mob, c):
                 interpret(rest, c)
