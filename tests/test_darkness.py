@@ -396,3 +396,39 @@ class TestHolylight:
         joined = " ".join(look_out)
         assert "Secret Vault" in joined
         assert "pitch black" not in joined
+
+    def test_toggle_messages(self, fresh_world, monkeypatch):
+        # cf. 1stMud do_holylight set_on_off messages (act_wiz.c:2946)
+        import debug
+        lines = []
+
+        class _TR:
+            print = staticmethod(lambda s: lines.append(s))
+        monkeypatch.setattr(debug.terminal, "tr", _TR)
+        debug.DBG.discard("holylight")
+        try:
+            debug._debug_holylight(None, [])
+            assert "holylight" in debug.DBG
+            debug._debug_holylight(None, [])
+            assert "holylight" not in debug.DBG
+            assert lines == ["Holy light mode on.", "Holy light mode off."]
+        finally:
+            debug.DBG.discard("holylight")
+
+    def test_debug_all_leaves_holylight_alone(self, fresh_world, monkeypatch):
+        import debug
+        lines = []
+
+        class _TR:
+            print = staticmethod(lambda s: lines.append(s))
+        monkeypatch.setattr(debug.terminal, "tr", _TR)
+        debug.DBG.add("holylight")
+        try:
+            debug.do_debug(None, ["all"])   # all channels on
+            assert "holylight" in debug.DBG
+            debug.do_debug(None, ["all"])   # all channels off
+            assert "holylight" in debug.DBG
+            assert not debug.DBG.intersection(debug._CHANNELS)
+        finally:
+            debug.DBG.discard("holylight")
+            debug.DBG.difference_update(debug._CHANNELS)

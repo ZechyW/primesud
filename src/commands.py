@@ -310,7 +310,7 @@ _CMD_TABLE = [
     # ("poofin",    do_bamfin,     "dead",     False),  # #213 imm lvl 52
     # ("poofout",   do_bamfout,    "dead",     False),  # #214 imm lvl 52
     # ("gecho",     do_echo,       "dead",     False),  # #215 imm lvl 56
-    # ("holylight", do_holylight,  "dead",     False),  # #216 imm lvl 52
+    # ("holylight", do_holylight,  "dead",     False),  # #216 imm lvl 52 -- [PRIMESUD] moved to 'debug holylight'
     # ("incognito", do_incognito,  "dead",     False),  # #217 imm lvl 52
     # ("invis",     do_invis,      "dead",     False),  # #218 imm lvl 52
     # ("log",       do_log,        "dead",     False),  # #219 imm lvl 59

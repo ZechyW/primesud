@@ -12,7 +12,7 @@ from urandom import randint
 import world
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 from game_time import time_info, SUN_SET, SUN_DARK
-from debug import DBG  # [PRIMESUD] "holylight" channel = 1stMud PLR_HOLYLIGHT
+from debug import DBG  # [PRIMESUD] "holylight" debug toggle = 1stMud PLR_HOLYLIGHT
 
 # -- Alignment helpers (cf. 1stMud IsGood/IsEvil/IsNeutral in macro.h) ----------------
 
@@ -1116,8 +1116,8 @@ def can_see(ch, victim):
 
     Checks AFF_BLIND, room darkness vs AFF_INFRARED, AFF_INVISIBLE vs
     detect_invis, AFF_SNEAK skill contest, and AFF_HIDE vs detect_hidden.
-    PLR_HOLYLIGHT (handler.c:2403) maps to the [PRIMESUD] "holylight" debug
-    channel (imm sight for playtesting). [PRIMESUD] invis_level/incog/arena
+    PLR_HOLYLIGHT (handler.c:2403) maps to the [PRIMESUD] "debug holylight"
+    toggle (imm sight for playtesting). [PRIMESUD] invis_level/incog/arena
     and the quest/gquest target overrides not ported.
 
     Args:
@@ -1130,7 +1130,7 @@ def can_see(ch, victim):
     if ch is victim:
         return True
 
-    # cf. 1stMud PLR_HOLYLIGHT (handler.c:2403) -- [PRIMESUD] debug channel
+    # cf. 1stMud PLR_HOLYLIGHT (handler.c:2403) -- [PRIMESUD] debug toggle
     if not ch.get("is_npc") and "holylight" in DBG:
         return True
 
@@ -1182,7 +1182,7 @@ def can_see_obj(ch, obj):
     """Check if ch can see obj (cf. 1stMud can_see_obj in handler.c:2456).
 
     Check order matches the source: HOLYLIGHT (mapped to the [PRIMESUD]
-    "holylight" debug channel), ITEM_VIS_DEATH, blindness (potions exempt), a
+    "debug holylight" toggle), ITEM_VIS_DEATH, blindness (potions exempt), a
     lit light source, ITEM_INVIS vs detect_invis, ITEM_GLOW, then a dark room
     vs dark_vision.
     The quest-object override (handler.c:2461) is not ported [TODO
@@ -1208,7 +1208,7 @@ def can_see_obj(ch, obj):
     else:
         otype = tpl.get("type")
 
-    # cf. 1stMud PLR_HOLYLIGHT (handler.c:2458) -- [PRIMESUD] debug channel
+    # cf. 1stMud PLR_HOLYLIGHT (handler.c:2458) -- [PRIMESUD] debug toggle
     if not ch.get("is_npc") and "holylight" in DBG:
         return True
 
@@ -1248,7 +1248,7 @@ def check_blind(ch):
     """True unless ch is blinded, printing the failure line (cf. 1stMud check_blind in act_info.c:495).
 
     HOLYLIGHT short-circuit (act_info.c:498) maps to the [PRIMESUD]
-    "holylight" debug channel.
+    "debug holylight" toggle.
 
     Args:
         ch (dict): Observer whose sight is being tested.

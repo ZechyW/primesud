@@ -7,11 +7,7 @@ import terminal
 # call sites are in per-mob per-pulse loops.
 DBG = set()
 
-# "holylight" = 1stMud PLR_HOLYLIGHT imm sight (can_see / can_see_obj /
-# check_blind / do_look pitch-black short-circuits), cf. do_holylight in
-# act_wiz.c:2941; the rest are PrimeSUD-only log channels.
-_CHANNELS = ("spawn", "move", "tick", "reset", "vnum", "save", "time",
-             "holylight")
+_CHANNELS = ("spawn", "move", "tick", "reset", "vnum", "save", "time")
 
 
 def dbg(msg):
@@ -596,6 +592,22 @@ def _debug_set(player, args):
     _set_help()
 
 
+def _debug_holylight(player, args):
+    """Toggle imm sight (cf. 1stMud do_holylight in act_wiz.c:2941).
+
+    Not a log channel: flips gameplay visibility. Stored in DBG so the
+    handler.py sight predicates (can_see, can_see_obj, check_blind) and the
+    do_look pitch-black gate can short-circuit on "holylight" in DBG, the
+    PLR_HOLYLIGHT equivalent. Excluded from "debug all".
+    """
+    if "holylight" in DBG:
+        DBG.discard("holylight")
+        terminal.tr.print("Holy light mode off.")
+    else:
+        DBG.add("holylight")
+        terminal.tr.print("Holy light mode on.")
+
+
 _SUBCMDS = (
     ("stat",    _debug_stat,    "dump player/mob/obj/room/area dict"),
     ("slay",    _debug_slay,    "instant-kill a mob in the room"),
@@ -609,6 +621,7 @@ _SUBCMDS = (
     ("mwhere",  _debug_mwhere,  "list spawned mobs matching name"),
     ("owhere",  _debug_owhere,  "locate objects by name"),
     ("memory",  _debug_memory,  "show heap usage and world counts"),
+    ("holylight", _debug_holylight, "toggle imm sight (PLR_HOLYLIGHT)"),
 )
 
 
@@ -637,7 +650,9 @@ def do_debug(player, args):
                 return
     if "all".startswith(name):
         if DBG.issuperset(_CHANNELS):
-            DBG.clear()
+            # difference_update, not clear: holylight is a mode toggle
+            # (debug holylight), not a log channel -- "all" leaves it alone
+            DBG.difference_update(_CHANNELS)
             terminal.tr.print("All debug channels off.")
         else:
             DBG.update(_CHANNELS)

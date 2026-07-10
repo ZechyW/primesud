@@ -550,7 +550,7 @@ def do_look(player, args):
     # living things (via show_char_to_char, which can_see-passes for an infrared
     # viewer), never the room name/desc/items. room_is_dark itself ignores
     # infrared, so a dark room stays "pitch black" for infrared and unlit alike.
-    # PLR_HOLYLIGHT in the source condition maps to the [PRIMESUD] debug channel.
+    # PLR_HOLYLIGHT in the source condition maps to the [PRIMESUD] debug toggle.
     if ("holylight" not in DBG
             and player["room"] in ROOM_DEFS._data and room_is_dark(player["room"])):
         chprintln(player, "It is pitch black ... ")
