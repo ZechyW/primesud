@@ -293,8 +293,8 @@ OBJECTS = {
 # D resets are baked into room exit flags at conversion time
 RESETS = (
     ("M", 1200, 1, 1221, 1),
-    ("O", 3135, 1200),  # [PRIMESUD] moved from midgaard (defer cross-area load)
-    ("O", 3200, 1200),  # [PRIMESUD] moved from midgaard (defer cross-area load)
+    ("O", 3135, 1200),
+    ("O", 3200, 1200),
 )
 
 # -- Helps ---------------------------------------------------------------------

@@ -119,6 +119,7 @@ ROOMS = {
 | `extra_descs`| list      | no       | `(keyword, desc)` tuples from `E` room trailers |
 | `clan`       | str       | no       | ROM `C` room trailer (clan name) |
 | `owner`      | str       | no       | ROM `O` room trailer (owner name) |
+| `guild`      | tuple     | no       | `G` room trailer(s) -- tuple of class indices (0 mage, 1 cleric, 2 thief, 3 warrior, 4 paladin, 5 ranger). [PRIMESUD] dialect extension: repeated `G` lines accumulate into the tuple; 1stMud's own `db.c load_rooms` allows only one `G` per room (`bug ("Duplicate guild."); exit(1);` on a second) |
 
 A destination of `None` means the exit exists (and is listed by `exits`/automap
 data) but doesn't lead anywhere — ROM keeps such exits examinable but
@@ -648,6 +649,60 @@ Mob templates reference programs via `mob_triggers` in their `MOBILES` entry:
   original `.are` file. Preserve them; do not add new ones manually. Known
   carriers: stock quest.are sets ACT bits 11/31 and AFF bits 34/36, which are
   undefined even in 1stMud's own `bits.h` — no runtime meaning.
+
+---
+
+## Deviations from stock QuickMUD in `areas/*.are`
+
+`areas/*.are` are PrimeSUD-owned, editable copies of the QuickMUD-dialect
+sources (pristine upstream originals: `reference/quickmud/area/`; the
+1stMud-dialect equivalents PrimeSUD is ported from live under
+`reference/1stMud4.5.3/area/`). Historically these deltas were applied as a
+post-conversion patch step (`tools/patch_1stmud_deltas.py`, now deleted);
+they are now real `.are` content, so a plain
+`diff areas/<name>.are reference/quickmud/area/<name>.are` is the audit
+trail for every row below (plus a `* [PRIMESUD]` comment at each edit site
+in the `.are` source itself, except where the format has no comment
+support -- noted per row).
+
+| Delta | `.are` file | Vnums | Provenance |
+|-------|-------------|-------|------------|
+| Cross-area exits: room 3001 `e`->200, `w`->201 (quest area) | `midgaard.are` | room 3001 | 1stMud-faithful -- `reference/1stMud4.5.3/area/midgaard.are` room 3001 has these exact `D1`/`D3` exits (empty desc/keyword, matching upstream) |
+| Cross-area exit: room 3054 `d`->3 (limbo) | `midgaard.are` | room 3054 | 1stMud-faithful -- same reference room's `D5` exit |
+| Cross-area exit: room 3303 `s`->202 (quest trivia shop) | `midgaard.are` | room 3303 | 1stMud-faithful -- same reference room's `D2` exit |
+| Guildmaster `train`+`gain` act flags | `midgaard.are` | mobs 3020 (mage), 3023 (warrior) | 1stMud-faithful -- reference `midgaard.are`'s `+Y/n` bitstrings for 3020/3023 have bits 9 (train) and 27 (gain) set |
+| Guildmaster `gain` act flag (no `train`) | `midgaard.are` | mobs 3021 (cleric), 3022 (thief) | [PRIMESUD] -- upstream 1stMud has neither bit set for these two; added so every class is gain/remort-capable within midgaard (`CLASS_PLAN.md` Phase D) |
+| Room guild: mage | `midgaard.are` | rooms 3018, 3019 -> `(0,)` | 1stMud-faithful -- reference rooms carry a single `G 0` each |
+| Room guild: cleric | `midgaard.are` | rooms 3002, 3003 -> `(1,` | 1stMud-faithful (base) -- reference rooms carry a single `G 1` each |
+| Room guild: paladin sharing cleric rooms | `midgaard.are` | rooms 3002, 3003 -> `4)` | [PRIMESUD] -- second `G 4` line added per room; upstream has no paladin guild in midgaard |
+| Room guild: thief | `midgaard.are` | rooms 3028, 3029 -> `(2,)` | 1stMud-faithful -- reference rooms carry a single `G 2` each |
+| Room guild: warrior | `midgaard.are` | rooms 3022, 3023 -> `(3,` | 1stMud-faithful (base) -- reference rooms carry a single `G 3` each |
+| Room guild: ranger sharing warrior rooms | `midgaard.are` | rooms 3022, 3023 -> `5)` | [PRIMESUD] -- second `G 5` line added per room; upstream has no ranger guild in midgaard |
+| Acolyte demo mobprog (greet/give/delay) | `school.are` | mob 3700 (`M` trailers), progs 3790/3791/3792 (`#MOBPROGS`) | [PRIMESUD] -- stock QuickMUD ships zero `#MOBPROGS` entries anywhere; this is the mobprog engine's first content pilot (`MOBPROG_PLAN.md` Phase D content pilot). `.are` source has no per-entry comment support inside `#MOBPROGS`/mob trailers, so provenance lives here instead |
+| Moved reset: juke (obj 3200) -> room 1116 (The Ivy Bush) | removed from `midgaard.are`, added to `shire.are` | obj 3200, room 1116 | [PRIMESUD] defer-load optimization; same world state either way. `* [PRIMESUD] ... moved from/to midgaard` comment at both the removal and addition sites |
+| Moved reset: juke (obj 3200) -> room 1144 (The Green Dragon) | removed from `midgaard.are`, added to `shire.are` | obj 3200, room 1144 | [PRIMESUD] defer-load optimization; comment at both sites as above |
+| Moved reset: fountain (obj 3135) -> room 1200 (The Chat Room) | removed from `midgaard.are`, added to `immort.are` | obj 3135, room 1200 | [PRIMESUD] defer-load optimization; comment at both sites as above |
+| Moved reset: juke (obj 3200) -> room 1200 (The Chat Room) | removed from `midgaard.are`, added to `immort.are` | obj 3200, room 1200 | [PRIMESUD] defer-load optimization; comment at both sites as above |
+| Dropped reset: sarcophagus (obj 3415, chapel-owned) in room 3 (The Morgue) | `limbo.are` | obj 3415, room 3 | [PRIMESUD] -- would force all of chapel to load the moment limbo loads; limbo is preloaded at session start for corpse storage (`primesud.py`) and must stay self-contained. `*`-commented in place, not moved (no PrimeSUD room needs it) |
+| Dropped reset: Kate's Diner pipeweed bread (obj 1103, shire-owned) `G` reset | `midgaard.are` | obj 1103, room 3150 (Kate's Diner) | [PRIMESUD] -- would force shire (and via shire's shiriff gear, ofcol2) to load at game start; still sold in shire itself. `*`-commented in place between its sibling `G` lines under mob 3150 (Esme) |
+
+See `docs/CROSS_RESETS.md` for the full generated cross-area-reset inventory
+(including the rows above, now attributed to their new source `.are` file)
+and `DESIGN.md` "Adjusted from 1stMud" for the guild-room design rationale.
+
+### Converter extension: room `G` (guild) trailer
+
+`tools/are_to_primesud.py`'s room parser gained explicit support for the
+`G` room trailer (previously unhandled -- any `G` line would have hit the
+"trailer letter not DESHMCO" hard error). Mirrors 1stMud's own
+`reference/1stMud4.5.3/src/db.c` `load_rooms` `'G'` case
+(`pRoomIndex->guild = read_number(fp)`), except upstream allows only a
+**single** `G` per room (a second one is a hard `bug()`+`exit(1)`,
+`"Duplicate guild."`). PrimeSUD's dialect extension lets a room carry
+**repeated** `G` lines, accumulated in file order into a `"guild"` tuple on
+the room dict -- this is what lets the cleric/paladin and warrior/ranger
+rooms above share a single room. Emitted as `"guild": (class_idx, ...),`
+in the room dict (see the `ROOMS` key table above).
 
 ---
 

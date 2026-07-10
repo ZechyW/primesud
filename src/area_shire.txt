@@ -1670,8 +1670,8 @@ RESETS = (
     ("E", 616, "body", 100),
     ("M", 1128, 4, 1154, 1),
     ("M", 1128, 4, 1155, 1),
-    ("O", 3200, 1116),  # [PRIMESUD] moved from midgaard (defer cross-area load)
-    ("O", 3200, 1144),  # [PRIMESUD] moved from midgaard (defer cross-area load)
+    ("O", 3200, 1116),
+    ("O", 3200, 1144),
 )
 
 # -- Helps ---------------------------------------------------------------------

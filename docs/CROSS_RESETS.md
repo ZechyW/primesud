@@ -3,21 +3,20 @@
 Resets that reference mobs, items, or rooms defined in a different area.
 Generated from area data files (src/area_*.txt).
 
-Note: patch_1stmud_deltas.py (MOVE_RESETS/DROP_RESETS) defers the
-midgaard start-load cascade: the juke resets into shire rooms 1116/1144
-and the fountain/juke into immort room 1200 now live in the target
-area's RESETS, and Kate's Diner `G 1103` (pipeweed bread, shire def) is
-dropped. New game loads mud_school+midgaard only instead of also
-pulling shire, ofcol2, and immort. Limbo's `O 3415` (stone sarcophagus,
-chapel def, The Morgue) is likewise dropped -- limbo is preloaded at
-session start for corpse storage (primesud.py) and must not cascade
-into chapel; the morgue simply has no sarcophagus.
-
-## limbo
-
-| Cmd | Vnum | Description | Def Area | Room | Room Name | Room Area |
-|-----|------|-------------|----------|------|-----------|-----------|
-| O | 3415 | `a stone sarcophagus` | chapel | 3 | `The Morgue` | limbo |
+Note: to defer the midgaard start-load cascade, areas/midgaard.are's own
+`#RESETS` places the juke resets directly in areas/shire.are (rooms
+1116/1144) and the fountain/juke directly in areas/immort.are (room
+1200) -- see the `## shire` / `## immort` sections below (each line
+carries a `* [PRIMESUD] ... moved from midgaard` comment in the source
+`.are`). Kate's Diner `G 1103` (pipeweed bread, shire def) is dropped
+outright (comment left in areas/midgaard.are #RESETS). New game loads
+mud_school+midgaard only instead of also pulling shire, ofcol2, and
+immort. Limbo's `O 3415` (stone sarcophagus, chapel def, The Morgue) is
+likewise dropped outright (comment left in areas/limbo.are #RESETS) --
+limbo is preloaded at session start for corpse storage (primesud.py) and
+must not cascade into chapel; the morgue simply has no sarcophagus. See
+docs/AREA_FILES.md "Deviations from stock QuickMUD" for the full
+provenance table.
 
 ## mud_school
 
@@ -52,6 +51,8 @@ into chapel; the morgue simply has no sarcophagus.
 | E | 616 | `a leather vest` | ofcol2 | 1153 | `Shiriff Post of the Lower Shire` | shire |
 | E | 616 | `a leather vest` | ofcol2 | 1153 | `Shiriff Post of the Lower Shire` | shire |
 | E | 616 | `a leather vest` | ofcol2 | 1153 | `Shiriff Post of the Lower Shire` | shire |
+| O | 3200 | `the juke` | midgaard | 1116 | `The Ivy Bush` | shire |
+| O | 3200 | `the juke` | midgaard | 1144 | `The Green Dragon` | shire |
 
 ## haon
 
@@ -62,15 +63,12 @@ into chapel; the morgue simply has no sarcophagus.
 | M | 309 | `the cute rabbit` | plains | 6017 | `A small path in the dense forest` | haon |
 | M | 309 | `the cute rabbit` | plains | 6019 | `A small path in the dense forest` | haon |
 
-## midgaard
+## immort
 
 | Cmd | Vnum | Description | Def Area | Room | Room Name | Room Area |
 |-----|------|-------------|----------|------|-----------|-----------|
-| G | 1103 | `a pipeweed bread` | shire | 3150 | `Kate's Diner` | midgaard |
 | O | 3135 | `a fountain` | midgaard | 1200 | `The Chat Room` | immort |
 | O | 3200 | `the juke` | midgaard | 1200 | `The Chat Room` | immort |
-| O | 3200 | `the juke` | midgaard | 1116 | `The Ivy Bush` | shire |
-| O | 3200 | `the juke` | midgaard | 1144 | `The Green Dragon` | shire |
 
 ## arachnos
 

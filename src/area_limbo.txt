@@ -306,7 +306,6 @@ OBJECTS = {
 # ("R", room_vnum, num_dirs)                           -- shuffle first num_dirs exits (skipped on doors)
 # D resets are baked into room exit flags at conversion time
 RESETS = (
-    # [PRIMESUD] dropped ("O", 3415, 3) (defer cross-area load)
     ("R", 3, 1),
 )
 

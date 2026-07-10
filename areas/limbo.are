@@ -216,7 +216,9 @@ S
 #0
 
 #RESETS
-O 0 3415 0 3
+* [PRIMESUD] dropped O 3415 3 (sarcophagus, chapel-owned obj would force
+* chapel load; limbo is preloaded at session start for corpse storage --
+* see docs/CROSS_RESETS.md)
 R 0 3 1 0
 S
 

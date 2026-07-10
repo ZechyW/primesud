@@ -14,11 +14,6 @@ for area in $AREAS; do
         "src/area_${area}.txt"
 done
 
-# Wire in 1stMud-only deltas (not in quickmud .are files): cross-area
-# exits, guildmaster act flags
-echo "==> 1stMud deltas"
-uv run tools/patch_1stmud_deltas.py
-
 # Rebuild mob_index.txt (spec_fun/portal/summon target lookup) -- must be
 # regenerated after any area regen since it derives from RESETS/MOBILES.
 echo "==> mob_index"

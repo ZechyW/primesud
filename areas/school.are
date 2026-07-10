@@ -19,6 +19,9 @@ ABGQTV CH 1000 0
 ACEFHIKN ABCD 0 0
 stand stand male 0
 0 0 medium 0
+M speech 3790 help~
+M give 3791 all~
+M delay 3792 100~
 #3701
 blob~
 the blob~
@@ -2172,5 +2175,20 @@ M 3707 spec_cast_adept     	* the adept of Satin
 M 3708 spec_cast_adept     	* the adept of Alander
 M 3714 spec_fido           	* the beast
 S
+
+#MOBPROGS
+#3790
+say Welcome to Mud School, $n.  Bring me a gift and I shall reward you.
+~
+#3791
+say Ah, $O.  Many thanks, $n.  Take this token of the school.
+mob remember $n
+mob oload 3715 0 R
+mob delay 2
+~
+#3792
+say May your studies serve you well, $q.
+~
+#0
 
 #$

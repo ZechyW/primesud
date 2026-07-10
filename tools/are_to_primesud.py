@@ -898,6 +898,7 @@ def parse_rooms(lines):
             room_flags["law"] = True
         clan  = ""
         owner = ""
+        guild_classes = []
 
         while i < len(lines):
             tline = lines[i].strip()
@@ -988,13 +989,33 @@ def parse_rooms(lines):
                 # owner: 'O' letter, then a tilde string that may continue on
                 # the same line (cf. db.c load_rooms: fread_string(fp))
                 owner, i = read_tilde_string_inline(tline[1:], lines, i + 1)
+            elif tline[0] == "G":
+                # guild: 'G' letter, then a class-index number (cf.
+                # reference/1stMud4.5.3/src/db.c load_rooms 'G' case:
+                # pRoomIndex->guild = read_number(fp), guarded by "if
+                # (pRoomIndex->guild > -1 && ... ) bug (\"Duplicate
+                # guild.\"); exit (1);" -- upstream allows only ONE G per
+                # room. [PRIMESUD] dialect extension: this converter allows
+                # repeated G lines on the same room and accumulates them
+                # into a "guild" tuple, so a room can serve more than one
+                # class (e.g. cleric rooms shared with paladins). Class
+                # indices per classes.py CLASS_TABLE: 0 mage, 1 cleric,
+                # 2 thief, 3 warrior, 4 paladin, 5 ranger.
+                gparts = tline.split()
+                if len(gparts) < 2:
+                    raise ValueError(
+                        "room " + str(vnum) +
+                        " has malformed 'G' (guild) trailer: " + repr(tline)
+                    )
+                guild_classes.append(int(gparts[1]))
+                i += 1
             else:
                 # cf. db.c load_rooms: "bug (...vnum %d has flag not
                 # 'DES'...); exit (1);" -- fail loud on any unrecognized
                 # non-blank trailer line rather than silently eating it.
                 raise ValueError(
                     "room " + str(vnum) +
-                    " has trailer letter not DESHMCO: " + repr(tline)
+                    " has trailer letter not DESHMCOG: " + repr(tline)
                 )
 
         room = {
@@ -1013,6 +1034,8 @@ def parse_rooms(lines):
             room["clan"] = clan
         if owner:
             room["owner"] = owner
+        if guild_classes:
+            room["guild"] = tuple(guild_classes)
         rooms.append((vnum, room))
     return rooms
 
@@ -1471,6 +1494,13 @@ def emit(area_data, rooms, mobs, objs, resets, helps, socials,
             w(f'        "clan": {pyrepr(room["clan"])},')
         if room.get("owner"):
             w(f'        "owner": {pyrepr(room["owner"])},')
+        if room.get("guild"):
+            # [PRIMESUD] cf. 1stMud db.c load_rooms 'G' field (room->guild);
+            # this converter's dialect extension allows repeated 'G' lines
+            # to accumulate a tuple of class indices instead of upstream's
+            # single-value guild int. Class indices: 0 mage, 1 cleric,
+            # 2 thief, 3 warrior, 4 paladin, 5 ranger.
+            w(f'        "guild": {pyrepr(room["guild"])},')
         w("    },")
     w("}")
     w("")
