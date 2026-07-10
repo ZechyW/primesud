@@ -213,6 +213,8 @@ def do_get(player, args):
                 continue
             if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
                 continue
+            if not can_see_obj(player, obj):  # cf. 1stMud do_get all loop, act_obj.c:230
+                continue
             found = True
             if "take" not in item_wear_flags(obj, tpl):
                 chprintln(player, "You can't take that.")
@@ -252,6 +254,8 @@ def do_get(player, args):
                 else:
                     for cobj in list(contents):
                         ctpl = ITEM_DEFS[obj_vnum(cobj)]
+                        if not can_see_obj(player, cobj):  # cf. 1stMud do_get all-from-container loop, act_obj.c:311
+                            continue
                         if not _check_carry_get(player, cobj, ctpl, cont_carried):
                             continue
                         cont_obj["contents"].remove(cobj)
@@ -375,6 +379,8 @@ def do_drop(player, args):
             tpl = ITEM_DEFS[obj["vnum"]]
             if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
                 continue
+            if not can_see_obj(player, obj):  # cf. 1stMud do_drop all loop, act_obj.c:602
+                continue
             if not can_drop_obj(player, obj):
                 continue
             found = True
@@ -425,9 +431,9 @@ def do_put(player, args):
         return
     cont_arg = " ".join(rest)
     rs = world.rooms[player["room"]]
-    cont_obj = get_obj_list(cont_arg, rs["items"], ITEM_DEFS)
+    cont_obj = get_obj_list(cont_arg, rs["items"], ITEM_DEFS, player)
     if cont_obj is None:
-        cont_obj = get_obj_list(cont_arg, player["inv"], ITEM_DEFS)
+        cont_obj = get_obj_list(cont_arg, player["inv"], ITEM_DEFS, player)
     if cont_obj is None:
         chprintln(player, "I see no {} here.".format(cont_arg))
         return
@@ -440,7 +446,7 @@ def do_put(player, args):
         kw = cont_tpl.get("keywords", cont_tpl["short_descr"])
         act("The $d is closed.", player, None, kw, TO_CHAR)
         return
-    obj = get_obj_list(item_arg, player["inv"], ITEM_DEFS)
+    obj = get_obj_list(item_arg, player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You do not have that item.")
         return
@@ -550,7 +556,7 @@ def do_give(player, args):
         _give_coins(player, int(arg1), args[1].lower(), args[2:])
         return
 
-    obj = get_obj_list(arg1, player["inv"], ITEM_DEFS)
+    obj = get_obj_list(arg1, player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You do not have that item.")
         return
@@ -853,6 +859,8 @@ def do_wear(player, args):
     if not args:
         equippable = []
         for obj in player["inv"]:
+            if not can_see_obj(player, obj):  # cf. 1stMud get_obj_carry can_see_obj gate
+                continue
             tpl = ITEM_DEFS[obj["vnum"]]
             if tpl.get("type") == "light":
                 slot = "light"
@@ -882,9 +890,11 @@ def do_wear(player, args):
         return "wear " + tpl.get("keywords", tpl["short_descr"]).split()[0]
     if args[0] == "all":
         for obj in list(player["inv"]):
+            if not can_see_obj(player, obj):  # cf. 1stMud do_wear all loop, act_obj.c:1724
+                continue
             wear_obj(player, obj, False)
         return
-    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS)
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You do not have that item.")
         return
@@ -899,7 +909,9 @@ def do_remove(player, args):
         args (list): Parsed command arguments; first token may be "all".
     """
     if not args:
-        worn = [(slot, obj) for slot, obj in player["equip"].items() if obj is not None]
+        # cf. 1stMud get_obj_wear can_see_obj gate: can't remove what you can't see
+        worn = [(slot, obj) for slot, obj in player["equip"].items()
+                if obj is not None and can_see_obj(player, obj)]
         if not worn:
             chprintln(player, "You aren't wearing anything.")
             return
@@ -918,12 +930,14 @@ def do_remove(player, args):
         return "remove " + ITEM_DEFS[obj["vnum"]].get("keywords", ITEM_DEFS[obj["vnum"]]["short_descr"]).split()[0]
     if args[0] == "all":
         for slot, obj in list(player["equip"].items()):
-            if obj is not None:
+            if obj is not None and can_see_obj(player, obj):  # cf. 1stMud do_remove all loop, act_obj.c:1763
                 remove_obj(player, slot, True)
         return
     target = " ".join(args)
+    # cf. 1stMud get_obj_wear (handler.c:2052) -- worn lookup gates on can_see_obj
     for slot, obj in player["equip"].items():
-        if obj is not None and is_name(target, ITEM_DEFS[obj["vnum"]].get("keywords", "")):
+        if (obj is not None and can_see_obj(player, obj)
+                and is_name(target, ITEM_DEFS[obj["vnum"]].get("keywords", ""))):
             remove_obj(player, slot, True)
             return
     chprintln(player, "You do not have that item.")
@@ -1033,7 +1047,8 @@ def do_steal(player, args):
         check_improve(player, GSN_STEAL, True, 2)
         return
 
-    obj = get_obj_list(what, victim.get("inv", []), ITEM_DEFS)
+    # cf. 1stMud act_obj.c:2324 -- thief is the viewer, not the victim
+    obj = get_obj_list(what, victim.get("inv", []), ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You can't find it.")
         return
@@ -1072,7 +1087,7 @@ def do_compare(player, args):
         return
 
     carried = player["inv"] + [o for o in player["equip"].values() if o is not None]
-    obj1 = get_obj_list(args[0], carried, ITEM_DEFS)
+    obj1 = get_obj_list(args[0], carried, ITEM_DEFS, player)
     if obj1 is None:
         chprintln(player, "You do not have that item.")
         return
@@ -1094,7 +1109,7 @@ def do_compare(player, args):
             chprintln(player, "You aren't wearing anything comparable.")
             return
     else:
-        obj2 = get_obj_list(args[1], carried, ITEM_DEFS)
+        obj2 = get_obj_list(args[1], carried, ITEM_DEFS, player)
         if obj2 is None:
             chprintln(player, "You do not have that item.")
             return
@@ -1142,7 +1157,7 @@ def do_second(player, args):
     if not args:
         chprintln(player, "Wear which weapon in your off-hand?")
         return
-    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS)
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You have no such thing in your backpack.")
         return
@@ -1178,7 +1193,7 @@ def do_quaff(player, args):
     if not args:
         chprintln(player, "Quaff what?")
         return
-    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS)
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You do not have that potion.")
         return
@@ -1199,7 +1214,8 @@ def do_quaff(player, args):
 def do_envenom(player, args):
     """Coat a weapon or food/drink with poison (cf. 1stMud do_envenom in act_obj.c).
     [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
-    instance type override added and re-verified 06/07/2026]
+    instance type override added and re-verified 06/07/2026; get_obj_list
+    can_see_obj viewer gate added and re-verified 10/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -1211,7 +1227,7 @@ def do_envenom(player, args):
 
     # 1stMud: get_obj_list(ch, argument, ch->carrying_first) -- carried + worn
     equipped = [o for o in player["equip"].values() if o is not None]
-    obj = get_obj_list(" ".join(args), player["inv"] + equipped, ITEM_DEFS)
+    obj = get_obj_list(" ".join(args), player["inv"] + equipped, ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You don't have that item.")
         return
@@ -1288,7 +1304,7 @@ def do_eat(player, args):
     if not args:
         chprintln(player, "Eat what?")
         return
-    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS)
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You do not have that item.")
         return
@@ -1445,7 +1461,7 @@ def do_fill(player, args):
     if not args:
         chprintln(player, "Fill what?")
         return
-    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS)
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You do not have that item.")
         return
@@ -1485,7 +1501,7 @@ def do_pour(player, args):
     if len(args) < 2:
         chprintln(player, "Pour what into what?")
         return
-    out = get_obj_list(args[0], player["inv"], ITEM_DEFS)
+    out = get_obj_list(args[0], player["inv"], ITEM_DEFS, player)
     if out is None:
         chprintln(player, "You don't have that item.")
         return
@@ -1566,7 +1582,7 @@ def do_recite(player, args):
     """Recite a scroll (cf. 1stMud do_recite in act_obj.c)."""
     arg1 = args[0] if args else ""
     arg2 = " ".join(args[1:]) if len(args) > 1 else ""
-    scroll = get_obj_list(arg1, player["inv"], ITEM_DEFS)
+    scroll = get_obj_list(arg1, player["inv"], ITEM_DEFS, player)
     if scroll is None:
         chprintln(player, "You do not have that scroll.")
         return
@@ -1805,11 +1821,14 @@ def do_sacrifice(player, args):
     arg = " ".join(args)
 
     if arg == "all":
+        # cf. 1stMud do_sacrifice all (act_obj.c:1811) -- recurses per obj name,
+        # so unseen objects fail the gated get_obj_list and are skipped
         for obj in list(rs["items"]):
-            _sacrifice_one(player, obj, rs)
+            if can_see_obj(player, obj):
+                _sacrifice_one(player, obj, rs)
         return
 
-    obj = get_obj_list(arg, rs["items"], ITEM_DEFS)
+    obj = get_obj_list(arg, rs["items"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You can't find it.")
         return

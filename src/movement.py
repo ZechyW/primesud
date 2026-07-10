@@ -426,7 +426,8 @@ def get_random_room(ch):
 def do_enter(ch, args):
     """Enter a portal object in the room (cf. 1stMud do_enter in act_enter.c).
     [Verified: 04/07/2026; entry/greet mobprogs wired after arrival and
-    re-verified 09/07/2026] -- IsTrusted immortal bypasses not ported.
+    re-verified 09/07/2026; get_obj_list can_see_obj viewer gate added and
+    re-verified 10/07/2026] -- IsTrusted immortal bypasses not ported.
 
     Args:
         ch (dict): Character entering (player or follower mob).
@@ -440,7 +441,7 @@ def do_enter(ch, args):
 
     old_vnum = ch["room"]
     rs = world.rooms[old_vnum]
-    portal = get_obj_list(" ".join(args), rs["items"], ITEM_DEFS)
+    portal = get_obj_list(" ".join(args), rs["items"], ITEM_DEFS, ch)
     if portal is None:
         chprintln(ch, "You don't see that here.")
         return

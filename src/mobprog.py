@@ -1569,11 +1569,13 @@ def _mp_junk(mob, args, pv, cl):
     import world
     al = arg.lower()
     if al != "all" and not al.startswith("all."):
+        # cf. 1stMud do_mpjunk single-item path gates on the mob's own sight
+        # (get_obj_wear ch/true + get_obj_carry ch/ch, prog_cmds.c:344-350)
         for slot, o in list(mob.get("equip", {}).items()):
-            if o is not None and is_name(arg, _obj_keywords(o)):
+            if o is not None and _can_see_obj(mob, o) and is_name(arg, _obj_keywords(o)):
                 mob["equip"][slot] = None
                 return
-        o = get_obj_list(arg, mob.get("inv", []), world.ITEM_DEFS)
+        o = get_obj_list(arg, mob.get("inv", []), world.ITEM_DEFS, mob)
         if o is None:
             return
         mob["inv"].remove(o)

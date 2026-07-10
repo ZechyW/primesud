@@ -932,7 +932,7 @@ def do_quest(player, args):
         if arg2 == "":
             chprintln(player, "To sell an item, type 'quest sell <item>'.")
             return
-        obj = get_obj_list(arg2, player["inv"], ITEM_DEFS)
+        obj = get_obj_list(arg2, player["inv"], ITEM_DEFS, player)
         if obj is None:
             chprintln(player, "Which item is that?")
             return

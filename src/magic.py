@@ -1345,10 +1345,11 @@ def spell_color_spray(sn, level, ch, vo, target):
 
 def spell_continual_light(sn, level, ch, vo, target):
     """Create light ball or make carried item glow (cf. 1stMud spell_continual_light in magic.c).
-    [Verified: 03/07/2026]"""
+    [Verified: 03/07/2026; get_obj_list can_see_obj viewer gate added and
+    re-verified 10/07/2026]"""
     tail = ch.get("_target_name", "")
     if tail:
-        obj = get_obj_list(tail, ch["inv"], ITEM_DEFS)
+        obj = get_obj_list(tail, ch["inv"], ITEM_DEFS, ch)
         if obj is None:
             chprintln(ch, "You don't see that here.")
             return False
@@ -3343,7 +3344,7 @@ def _resolve_target(player, sn, target_name):
         if not arg2:
             chprintln(player, "What should the spell be cast upon?")
             return (None, TARGET_NONE, None, False)
-        obj = get_obj_list(target_name, player["inv"], ITEM_DEFS)
+        obj = get_obj_list(target_name, player["inv"], ITEM_DEFS, player)
         if obj is None:
             chprintln(player, "You are not carrying that.")
             return (None, TARGET_NONE, None, False)
@@ -3362,7 +3363,7 @@ def _resolve_target(player, sn, target_name):
         if victim_id is not None:
             return (world.chars[victim_id], TARGET_CHAR, victim_id, True)
         rs = _room_state(player)
-        obj = get_obj_list(target_name, rs["items"], ITEM_DEFS)
+        obj = get_obj_list(target_name, rs["items"], ITEM_DEFS, player)
         if obj is not None:
             # [PRIMESUD] spells mutate obj state; plain vnums need instances
             return (promote_obj(player, obj), TARGET_OBJ, None, True)
@@ -3375,7 +3376,7 @@ def _resolve_target(player, sn, target_name):
         victim = _find_room_char(player, target_name)
         if victim is not None:
             return (victim, TARGET_CHAR, None, True)
-        obj = get_obj_list(target_name, player["inv"], ITEM_DEFS)
+        obj = get_obj_list(target_name, player["inv"], ITEM_DEFS, player)
         if obj is not None:
             # [PRIMESUD] spells mutate obj state; plain vnums need instances
             return (promote_obj(player, obj), TARGET_OBJ, None, True)

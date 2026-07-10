@@ -427,7 +427,7 @@ def do_sell(player, args):
     if keeper is None:
         return
 
-    obj = get_obj_list(args[0], player["inv"], ITEM_DEFS)
+    obj = get_obj_list(args[0], player["inv"], ITEM_DEFS, player)
     if obj is None:
         act("$n tells you 'You don't have that item'.", keeper, None, player, TO_VICT)
         player["reply"] = keeper["id"]
@@ -496,7 +496,7 @@ def do_value(player, args):
     if keeper is None:
         return
 
-    obj = get_obj_list(args[0], player["inv"], ITEM_DEFS)
+    obj = get_obj_list(args[0], player["inv"], ITEM_DEFS, player)
     if obj is None:
         act("$n tells you 'You don't have that item'.", keeper, None, player, TO_VICT)
         player["reply"] = keeper["id"]

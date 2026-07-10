@@ -463,10 +463,12 @@ def get_obj_list(fragment, item_list, templates, viewer=None):
         fragment (str): Player-typed name fragment, optionally prefixed "N.".
         item_list (list): Ordered list of items (int or instance dict) to search.
         templates (dict): Item template dict mapping vnum -> template.
-        viewer (dict): Optional observer; when given, items it cannot see
+        viewer (dict): Observer; when given, items it cannot see
             (can_see_obj) are skipped, matching 1stMud get_obj_list's built-in
-            gate (handler.c:2007). [PRIMESUD] darkness gating is scoped to the
-            get/drop paths that pass a viewer; other callers leave it None.
+            gate (handler.c:2007). Every player-facing 1stMud lookup gates
+            (get_obj_carry/get_obj_wear pass ch), so command callers must pass
+            the acting char; None is reserved for internal machinery matching
+            1stMud's NULL-viewer/false-character calls (e.g. programs.c:962).
 
     Returns:
         Item from item_list (int or dict), or None if not found.
@@ -495,14 +497,14 @@ def get_obj_here(player, arg):
         Item (int or dict), or None if not found.
     """
     rs = world.rooms[player["room"]]
-    obj = get_obj_list(arg, rs["items"], ITEM_DEFS)
+    obj = get_obj_list(arg, rs["items"], ITEM_DEFS, player)
     if obj is not None:
         return obj
-    obj = get_obj_list(arg, player["inv"], ITEM_DEFS)
+    obj = get_obj_list(arg, player["inv"], ITEM_DEFS, player)
     if obj is not None:
         return obj
     equipped = [it for it in player["equip"].values() if it is not None]
-    return get_obj_list(arg, equipped, ITEM_DEFS)
+    return get_obj_list(arg, equipped, ITEM_DEFS, player)
 
 
 def apply_money_pickup(player, obj, tpl):
