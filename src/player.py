@@ -84,6 +84,10 @@ def create_char(class_idx=CLASS_WARRIOR, race_name="Human"):
         "played":   0,
         # cf. 1stMud pcdata->group_known; filled by gn_add below.
         "groups":  [],
+        # cf. 1stMud pcdata->alias[]/alias_sub[] parallel arrays; PrimeSUD
+        # uses a single list of [name, sub] pairs, order preserved (see
+        # aliases.py substitute_alias / do_alias).
+        "aliases": [],
         # cf. 1stMud nanny default path: "rom basics" + class basics +
         # class default groups, recall 50. The weapon pick's Max(40, learned)
         # floor (nanny.c HANDLE_CON_PICK_WEAPON) is applied by game_state.py

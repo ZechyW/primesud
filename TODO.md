@@ -21,9 +21,9 @@ Loose ends that don't belong in a specific plan file.
 ## Commands
 
 - Genuinely still-deferred commands (commented-out rows in
-  `commands.py:_CMD_TABLE`): `gossip`, `shout`, `alias`/`unalias`,
-  `bank`, `auction`, `path`, `play`, immortal commands. Port when/if a solo
-  gameplay hook appears.
+  `commands.py:_CMD_TABLE`): `gossip`, `shout`, `bank`, `auction`, `path`,
+  `play`, immortal commands. Port when/if a solo gameplay hook appears.
+  (`alias`/`unalias` and socials ported 10/07/2026.)
 
 ## Area data
 

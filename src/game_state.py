@@ -157,6 +157,10 @@ def _serialize_world():
     _mk_str = sorted(k for k in player["_macros"] if isinstance(k, str))
     for k in _mk_int + _mk_str:
         lines.append("p.macro." + str(FNKEY_NAMES.get(k, k)) + "=" + str(player["_macros"][k]))
+    # cf. 1stMud pcdata->alias[]/alias_sub[] (fwrite_char); one line per
+    # alias, order preserved (do_alias/do_unalias keep the list compact).
+    for _al_name, _al_sub in player.get("aliases", []):
+        lines.append("p.alias." + _al_name + "=" + _al_sub)
     for _as in world.areas:
         # HP Prime G1 has unstable percent-format strings in save payloads.
         lines.append("a." + str(_as["tag"]) + ".age=" + str(_as["age"]))
@@ -311,6 +315,7 @@ def load_world():
 
     if player["_macros"] is not None:
         player["_macros"].clear()
+    player["aliases"] = []
 
     _area_by_tag = {s["tag"]: s for s in world.areas} if world.areas is not None else {}
     mob_saves = {}  # tpl_vnum -> [room, room, ...]
@@ -377,6 +382,8 @@ def load_world():
         elif key.startswith("p.macro.") and player["_macros"] is not None:
             raw = key[8:]
             player["_macros"][_name_to_fn.get(raw, raw)] = val
+        elif key.startswith("p.alias."):
+            player["aliases"].append([key[8:], val])
         elif key.startswith("p."):
             pkey = key[2:]
             if pkey in _STAT_KEYS:

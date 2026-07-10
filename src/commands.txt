@@ -2,6 +2,7 @@
 ,|act out an action or feeling (alias for emote)
 /|return to the recall point (alias for recall)
 affects|list active spells and effects on you
+alias|define or list command shortcuts: alias <name> <command>
 appraise|ask a shopkeeper the sell value of an item
 areas|list the areas of the world
 autoassist|toggle auto-assisting group members in combat
@@ -115,6 +116,7 @@ time|show the game time, date, and hours played
 tpspend|spend trivia points on rewards
 train|convert sessions into stats at a trainer
 trip|trip an opponent off its feet
+unalias|remove a defined alias
 unlock|unlock a door or container (needs the key)
 up|move up
 value|ask a shopkeeper what an item is worth

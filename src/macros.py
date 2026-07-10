@@ -107,6 +107,11 @@ def do_macro(player, args):
             tprint("No macro on {}.".format(label))
     else:
         cmd = " ".join(args[1:])
+        # [PRIMESUD] '~' is the save-payload line separator (game_state.py);
+        # a macro containing it would corrupt the save on the next write.
+        if "~" in cmd:
+            tprint("Macro text may not contain '~'.")
+            return None
         _MACRO_SUBST[target] = cmd
         tprint("{R%s{x mapped to '%s'." % (label, cmd))
     return None

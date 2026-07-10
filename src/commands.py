@@ -1,5 +1,6 @@
 """Command dispatcher, command table, and position gates (cf. 1stMud interpret in interp.c)."""
 
+from aliases import do_alias, do_unalias, substitute_alias
 from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
                     do_berserk, do_bash, do_dirt, do_trip, do_flee,
                     do_rescue, do_disarm, do_surrender,
@@ -154,7 +155,7 @@ _CMD_TABLE = [
     # ("whois",     do_whois,      "dead",     False),  # #59
     # ("wizlist",   do_wizlist,    "dead",     False),  # #60
     ("worth",      do_worth,      "sleeping", False),  # #61
-    # ("alias",     do_alias,      "dead",     True),   # #62 noprefix
+    ("alias",      do_alias,      "dead",     True),   # #62 noprefix
     ("autolist",   do_autolist,   "dead",     False),  # #63
     ("autoassist", do_autoassist, "dead",     False),  # #64
     ("autoexit",   do_autoexit,   "dead",     False),  # #65
@@ -177,7 +178,7 @@ _CMD_TABLE = [
     # ("prompt",    do_prompt,     "dead",     False),  # #82
     # ("screen",    do_screen,     "dead",     False),  # #83
     # ("title",     do_title,      "dead",     False),  # #84
-    # ("unalias",   do_unalias,    "dead",     False),  # #85
+    ("unalias",    do_unalias,    "dead",     False),  # #85
     ("wimpy",      do_wimpy,      "dead",     False),  # #86
     # ("info",      do_info,       "dead",     False),  # #87
     # ("afk",       do_afk,        "sleeping", False),  # #88
@@ -456,7 +457,7 @@ _CMD_TABLE = [
 # ponytail: do_order excluded -- it relays only an NPC-safe combat subset
 # (keyword targets, case-insensitive), emits no free-text; add it here if the
 # ordered subset ever grows to include say/emote.
-_FREETEXT_FUNS = (do_say, do_emote, do_tell, do_reply, do_yell)
+_FREETEXT_FUNS = (do_say, do_emote, do_tell, do_reply, do_yell, do_alias)
 
 
 # -- Interpreter ---------------------------------------------------------------
@@ -529,6 +530,14 @@ def interpret(raw, player):
     if not player.get("is_npc"):
         tprint("")
 
+    # [PRIMESUD] Alias substitution (cf. 1stMud substitute_alias in alias.c,
+    # normally invoked from the descriptor input handler before interpret()
+    # is ever called). PrimeSUD has no separate descriptor-level input hook,
+    # so it is folded into the top of interpret() instead; substitute_alias
+    # itself is a no-op for NPCs / players with no aliases / "alias"/"una"
+    # input, and runs at most once (never recursive).
+    argument = substitute_alias(player, argument)
+
     # RemBit(ch->affected_by, AFF_HIDE)
     aff = player.get("affected_by")
     if aff:
@@ -562,7 +571,9 @@ def interpret(raw, player):
 
     # -- No match: check_social fallback, then huh message
     if not cmd:
-        # check_social: not yet ported
+        from socials import check_social  # late import: socials imports commands
+        if check_social(player, command, argument):
+            return None
         msg = _HUH_MESSAGES[randint(0, len(_HUH_MESSAGES) - 1)]
         if "%s" in msg:
             chprintln(player, msg % command)
