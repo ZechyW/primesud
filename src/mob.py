@@ -8,7 +8,7 @@ from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, AREA_DEFS, DOOR_DEFS
 from races import RACE_TABLE, race_lookup
 from handler import equip_char, act, _char_base, is_awake, TO_ROOM, can_see, room_is_dark
 from hunt import hunt_victim
-from item import create_object
+from item import create_object, item_wear_flags
 from game_time import init_weather, advance_weather, adjust_vectors, get_weather_echo
 from special import SPEC_TABLE
 from debug import DBG, dbg  # [PRIMESUD]
@@ -563,10 +563,24 @@ def mobile_update(tr, player):
         if inst["fighting"] is not None:
             continue
         act_flags = tpl.get("act_flags", {})
-        # [PRIMESUD] TODO: ACT_SCAVENGER floor pickup (update.c:467-493) not
-        # ported -- scavenger mobs do not yet grab the best item off the ground
-        # before wandering. Wander gates below (sentinel / stay_area / no_mob /
-        # OUTDOORS / INDOORS) match update.c:499-506.
+        # Scavenger floor pickup (cf. 1stMud char_update, update.c:467-493).
+        room_items = world.rooms[inst["room"]].get("items", [])
+        if act_flags.get("scavenger") and room_items and randint(0, 63) == 0:  # cf. number_bits(6) == 0
+            obj_best = None
+            best_cost = 1
+            for obj in room_items:
+                obj_tpl = ITEM_DEFS[obj["vnum"]]
+                cost = obj.get("cost", 0)
+                # can_loot(ch, obj) always true here: an NPC looter against an
+                # unowned floor item short-circuits true (cf. 1stMud can_loot,
+                # act_obj.c:43-71) -- floor items never carry an owner tag.
+                if item_wear_flags(obj, obj_tpl).get("take") and cost > best_cost and cost > 0:
+                    obj_best = obj
+                    best_cost = cost
+            if obj_best is not None:
+                room_items.remove(obj_best)
+                inst.setdefault("inv", []).append(obj_best)
+                act("$n gets $p.", inst, obj_best, None, TO_ROOM)
         if act_flags.get("sentinel"):
             continue
         if randint(0, 7) != 0:  # 1/8 chance -- matches number_bits(3)==0

@@ -3,15 +3,16 @@
 import world
 from handler import (is_name, is_affected, affect_to_char, affect_join, affect_strip, is_awake,
                    can_see_room, act, chprintln, get_char_room, equip_char,
-                   unequip_char, tpl_flag_affects,
+                   unequip_char, tpl_flag_affects, get_curr_stat,
                    TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
                    is_good, is_evil, is_neutral)
 from world import (OBJ_VNUM_MUSHROOM, OBJ_VNUM_LIGHT_BALL, OBJ_VNUM_SPRING,
-                   OBJ_VNUM_DISC, OBJ_VNUM_PORTAL)
+                   OBJ_VNUM_DISC, OBJ_VNUM_PORTAL, OBJ_VNUM_ROSE)
 from colors import upper
 from classes import has_spells
 from combat import (is_safe, is_safe_spell, check_immune, dice, number_fuzzy,
-                    multi_hit, damage, stop_fighting, update_pos, is_same_group)
+                    multi_hit, damage, stop_fighting, update_pos, is_same_group,
+                    gain_exp)
 from effects import acid_effect, fire_effect, cold_effect, poison_effect, shock_effect
 from skill_utils import WaitState, check_improve, get_skill
 from config import (POS_ORDER, DAM_ACID, DAM_BASH, DAM_CHARM, DAM_COLD,
@@ -25,7 +26,7 @@ from item import (get_obj_list, obj_vnum, item_spell_level,
                   item_current_charges, item_affect_list,
                   item_affect_find, item_affect_remove, item_affect_to_obj,
                   set_item_extra_flag, create_object, promote_obj,
-                  item_weapon_flags)
+                  item_weapon_flags, can_drop_obj)
 from movement import perform_recall, get_random_room
 from picker import pick_from
 from scan import do_scan
@@ -850,7 +851,8 @@ def spell_shield(sn, level, ch, vo, target):
 
 def spell_bless(sn, level, ch, vo, target):
     """Bless character and object paths (cf. 1stMud spell_bless in magic.c).
-    [Verified: 03/07/2026]"""
+    [Verified: 03/07/2026; caster saving_throw adjust for worn blessed items
+    added and re-verified 10/07/2026]"""
     if target == TARGET_OBJ:
         tpl = ITEM_DEFS[obj_vnum(vo)]
         flags = item_extra_flags(vo, tpl)
@@ -869,7 +871,11 @@ def spell_bless(sn, level, ch, vo, target):
             return False
         item_affect_to_obj(vo, _new_obj_affect(sn, level, 6 + level, "saves", -1, "bless"), tpl)
         chprintln(ch, _item_name(vo) + " glows with a holy aura.")
-        # TODO [PRIMESUD] saving_throw adjust for worn blessed items
+        if any(vo is e for e in ch.get("equip", {}).values()):
+            # cf. 1stMud: if (obj->wear_loc != WEAR_NONE) ch->saving_throw -= 1
+            # (magic.c:758-759) -- note this adjusts the CASTER's saving throw,
+            # not the wearer's, exactly as upstream.
+            ch["saving_throw"] = ch.get("saving_throw", 0) - 1
         return True
     if vo.get("pos") == "fighting" or is_affected(vo, sn):
         if vo is ch:
@@ -979,7 +985,8 @@ def spell_poison(sn, level, ch, vo, target):
 
 def spell_curse(sn, level, ch, vo, target):
     """Curse character and object paths (cf. 1stMud spell_curse in magic.c).
-    [Verified: 03/07/2026]"""
+    [Verified: 03/07/2026; caster saving_throw adjust for worn cursed items
+    added and re-verified 10/07/2026]"""
     if target == TARGET_OBJ:
         tpl = ITEM_DEFS[obj_vnum(vo)]
         flags = item_extra_flags(vo, tpl)
@@ -998,7 +1005,11 @@ def spell_curse(sn, level, ch, vo, target):
             return False
         item_affect_to_obj(vo, _new_obj_affect(sn, level, 2 * level, "saves", 1, "evil"), tpl)
         chprintln(ch, _item_name(vo) + " glows with a malevolent aura.")
-        # TODO [PRIMESUD] saving_throw adjust for worn cursed items
+        if any(vo is e for e in ch.get("equip", {}).values()):
+            # cf. 1stMud: if (obj->wear_loc != WEAR_NONE) ch->saving_throw += 1
+            # (magic.c:1668-1669) -- adjusts the CASTER's saving throw, not the
+            # wearer's, exactly as upstream.
+            ch["saving_throw"] = ch.get("saving_throw", 0) + 1
         return True
     if vo.get("affected_by", {}).get("curse") or saves_spell(level, vo, DAM_NEGATIVE):
         return False
@@ -1385,12 +1396,12 @@ def spell_create_food(sn, level, ch, vo, target):
 
 def spell_create_rose(sn, level, ch, vo, target):
     """Create a rose (cf. 1stMud spell_create_rose in magic.c).
-
-    TODO: OBJ_VNUM_ROSE template not yet defined in area data.
-    """
-    # TODO [PRIMESUD] need rose item template
-    act("$n has created a beautiful red rose.", ch, None, None, TO_ROOM)
+    [Verified: 10/07/2026; OBJ_VNUM_ROSE template added to area_limbo and
+    object creation wired up]"""
+    rose = create_object(OBJ_VNUM_ROSE)
+    act("$n has created a beautiful red rose.", ch, rose, None, TO_ROOM)
     chprintln(ch, "You create a beautiful red rose.")
+    ch.setdefault("inv", []).append(rose)
     return True
 
 
@@ -1576,7 +1587,7 @@ def spell_dispel_good(sn, level, ch, vo, target):
 def spell_energy_drain(sn, level, ch, vo, target):
     """Energy drain (cf. 1stMud spell_energy_drain in magic.c).
     [Verified: 03/07/2026; low-level branch fixed to victim hp 03/07/2026
-    [PRIMESUD], see FIXES.md]"""
+    [PRIMESUD], see FIXES.md; gain_exp call added and re-verified 10/07/2026]"""
     victim = vo
     if victim is not ch:
         ch["alignment"] = max(-1000, ch.get("alignment", 0) - 50)
@@ -1588,7 +1599,10 @@ def spell_energy_drain(sn, level, ch, vo, target):
         # the intent is a guaranteed kill on the low-level victim.
         dam = victim.get("hit", 1) + 1
     else:
-        # TODO [PRIMESUD] gain_exp not yet ported
+        # gain_exp guards is_npc internally (combat.py:2629); victims are
+        # always NPCs in single-player PrimeSUD, so this is a no-op here,
+        # same as it would be a no-op for a PC-less mob-only world upstream.
+        gain_exp(victim, 0 - randint(level // 2, 3 * level // 2))
         victim["mana"] = victim.get("mana", 0) // 2
         victim["move"] = victim.get("move", 0) // 2
         dam = dice(1, level)
@@ -1834,22 +1848,107 @@ def spell_haste(sn, level, ch, vo, target):
 
 
 def spell_heat_metal(sn, level, ch, vo, target):
-    """Heat metal (cf. 1stMud spell_heat_metal in magic.c).
-
-    TODO: equipment drop/sear mechanic requires full equipment iteration.
-    Simplified to flat damage based on level.
-    """
+    """Heat metal: sear or drop victim's metal armor/weapons (cf. 1stMud
+    spell_heat_metal in magic.c).
+    [Verified: 10/07/2026; full equipment drop/sear mechanic ported]"""
     victim = vo
     if saves_spell(level + 2, victim, DAM_FIRE) or victim.get("imm_flags", {}).get("fire"):
         chprintln(ch, "Your spell had no effect.")
         chprintln(victim, "You feel momentarily warmer.")
         return False
-    dam = dice(level // 2, 8)
+
+    dam = 0
+    fail = True
+    from inventory import remove_obj  # lazy import to avoid circular dependency
+
+    # Snapshot both lists before mutating -- dropped items move inv<->room
+    # in place. slot is None for carried (unworn) items (cf. 1stMud's single
+    # carrying_first walk, split here into inv/equip per PrimeSUD's
+    # separate carried/worn structures).
+    targets = [(o, None) for o in list(victim.get("inv", []))]
+    targets += [(o, slot) for slot, o in list(victim.get("equip", {}).items())
+                if o is not None]
+
+    for obj_lose, slot in targets:
+        tpl = ITEM_DEFS[obj_vnum(obj_lose)]
+        obj_level = obj_lose.get("level", tpl.get("level", 0))
+        if not (randint(1, 2 * level) > obj_level
+                and not saves_spell(level, victim, DAM_FIRE)
+                and not item_extra_flags(obj_lose, tpl).get("nonmetal")
+                and not item_extra_flags(obj_lose, tpl).get("burn_proof")):
+            continue
+        # cf. 1stMud number_range(1, obj->level): an inverted range returns
+        # `from` (db.c:2682), but Python randint(1, 0) raises ValueError --
+        # clamp level-0 items to the same result of 1. [PRIMESUD]
+        sear_max = obj_level if obj_level > 1 else 1
+        itype = tpl.get("type")
+        if itype == "armor":
+            if slot is not None:
+                if (can_drop_obj(victim, obj_lose)
+                        and (tpl.get("weight", 0) // 10) < randint(1, 2 * get_curr_stat(victim, "dex"))
+                        and remove_obj(victim, slot, True)):
+                    act("$n yelps and throws $p to the ground!", victim, obj_lose, None, TO_ROOM)
+                    act("You remove and drop $p before it burns you.", victim, obj_lose, None, TO_CHAR)
+                    dam += randint(1, sear_max) // 3
+                    victim["inv"].remove(obj_lose)
+                    world.rooms[victim["room"]]["items"].append(obj_lose)
+                    fail = False
+                else:
+                    act("Your skin is seared by $p!", victim, obj_lose, None, TO_CHAR)
+                    dam += randint(1, sear_max)
+                    fail = False
+            else:
+                if can_drop_obj(victim, obj_lose):
+                    act("$n yelps and throws $p to the ground!", victim, obj_lose, None, TO_ROOM)
+                    # [PRIMESUD] 1stMud text is "You and drop $p before it
+                    # burns you." (missing verb, magic.c:3011/3065) -- typo fix.
+                    act("You drop $p before it burns you.", victim, obj_lose, None, TO_CHAR)
+                    dam += randint(1, sear_max) // 6
+                    victim["inv"].remove(obj_lose)
+                    world.rooms[victim["room"]]["items"].append(obj_lose)
+                    fail = False
+                else:
+                    act("Your skin is seared by $p!", victim, obj_lose, None, TO_CHAR)
+                    dam += randint(1, sear_max) // 2
+                    fail = False
+        elif itype == "weapon":
+            if slot is not None:
+                if item_weapon_flags(obj_lose, tpl).get("flaming"):
+                    continue  # cf. IsWeaponStat(obj_lose, WEAPON_FLAMING) -> continue
+                if can_drop_obj(victim, obj_lose) and remove_obj(victim, slot, True):
+                    act("$n is burned by $p, and throws it to the ground.", victim, obj_lose, None, TO_ROOM)
+                    chprintln(victim, "You throw your red-hot weapon to the ground!")
+                    dam += 1
+                    victim["inv"].remove(obj_lose)
+                    world.rooms[victim["room"]]["items"].append(obj_lose)
+                    fail = False
+                else:
+                    chprintln(victim, "Your weapon sears your flesh!")
+                    dam += randint(1, sear_max)
+                    fail = False
+            else:
+                if can_drop_obj(victim, obj_lose):
+                    act("$n throws a burning hot $p to the ground!", victim, obj_lose, None, TO_ROOM)
+                    # [PRIMESUD] typo fix, see armor branch above.
+                    act("You drop $p before it burns you.", victim, obj_lose, None, TO_CHAR)
+                    dam += randint(1, sear_max) // 6
+                    victim["inv"].remove(obj_lose)
+                    world.rooms[victim["room"]]["items"].append(obj_lose)
+                    fail = False
+                else:
+                    act("Your skin is seared by $p!", victim, obj_lose, None, TO_CHAR)
+                    dam += randint(1, sear_max) // 2
+                    fail = False
+
+    if fail:
+        chprintln(ch, "Your spell had no effect.")
+        chprintln(victim, "You feel momentarily warmer.")
+        return False
+
     if saves_spell(level, victim, DAM_FIRE):
         dam = 2 * dam // 3
-    act("You sear $N with heat!", ch, None, victim, TO_CHAR)  # [PRIMESUD] simplified stub
-    # TODO [PRIMESUD] full equipment iteration and drop/sear mechanic
-    return damage(ch, victim, dam, sn, DAM_FIRE, True)
+    damage(ch, victim, dam, sn, DAM_FIRE, True)
+    return True
 
 
 def spell_holy_word(sn, level, ch, vo, target):

@@ -17,6 +17,10 @@ OBJ_VNUM_LIGHT_BALL     = 21
 OBJ_VNUM_SPRING         = 22
 OBJ_VNUM_DISC           = 23
 OBJ_VNUM_PORTAL         = 25
+# [PRIMESUD] 1stMud uses vnum 1001 (vnums.h); the rose object's canonical
+# vnum sits outside limbo's 1-99 range, so it is remapped here instead of
+# added at 1001 (which would spill into a different area's vnum span).
+OBJ_VNUM_ROSE           = 26
 # -- area_school items --
 OBJ_VNUM_SCHOOL_MACE    = 3700
 OBJ_VNUM_SCHOOL_DAGGER  = 3701

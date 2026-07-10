@@ -272,6 +272,17 @@ OBJECTS = {
         "extra_flags": {"magic": True, "nopurge": True, "nolocate": True},
         "level": 0, "weight": 0, "value": 0,
     },
+    26: {
+        "keywords":    'rose',
+        "short_descr": 'a red rose',
+        "description": 'A red rose is lying on the ground.',
+        "material":    'oldstyle',
+        "type": 'treasure',
+        "wear_flags": {"take": True, "head": True},
+        "values": (6, 0, 0, 0, 0),
+        "level": 0, "weight": 80, "value": 0,
+        "extra_descs": [('rose', "It's a beautiful red rose, with a soft and romantic fragrance.")],
+    },
     30: {
         "keywords":    'dummy object',
         "short_descr": 'A dummy object',
