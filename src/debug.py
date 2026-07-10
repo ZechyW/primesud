@@ -636,7 +636,12 @@ def do_debug(player, args):
             lines.append("  " + name + ": " + state)
         lines.append("Subcommands:")
         for sub in _SUBCMDS:
-            lines.append("{G%-8s{x %s" % (sub[0], sub[2]))
+            desc = sub[2]
+            # cf. 1stMud score "Holy Light: on/off" (act_info.c:2127) --
+            # the toggle's state must be visible somewhere
+            if sub[0] == "holylight":
+                desc += ": " + ("{Gon{x" if "holylight" in DBG else "{Doff{x")
+            lines.append("{G%-9s{x %s" % (sub[0], desc))
         tpage(lines)
         return
     name = args[0]
