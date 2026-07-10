@@ -30,18 +30,25 @@ Loose ends that don't belong in a specific plan file.
 - **Deferred runtime hooks for converter-emitted fields** — the 2026-07
   converter audit brought `are_to_primesud.py` (the single ROM 2.4
   converter; formerly `are_to_primesud_quickmud.py`, renamed after the
-  1stMud-format converter was deleted) to a lossless schema; these emitted
-  fields are captured in the `.txt` files but not yet consumed at runtime:
-  - object `condition` (spawn wear-state), `no_sac`, container
-    `container_max_item_weight` / `container_weight_mult`, food/drink
-    `poisoned` (`light_hours` now consumed -- see DARKNESS light burnout)
-  - mob `group`, `material`
-  - room `heal_rate`/`mana_rate`, `owner`
+  1stMud-format converter was deleted) to a lossless schema. Re-audited
+  2026-07-10: `no_sac`, container `container_max_item_weight` /
+  `container_weight_mult`, food/drink `poisoned`, mob `group` (assist),
+  room `heal_rate`/`mana_rate` (regen), and `light_hours` are all consumed
+  now; room `owner` is settled (can_see_room always-permissive, see
+  DESIGN.md). Still unconsumed:
+  - object `condition` (spawn wear-state) — item condition/wear not
+    modeled at all (see quest.py reward note)
+  - mob `material` — only in-scope 1stMud consumer is the death_cry
+    case-1 guard (`material == 0` falls through to guts); no-op for stock
+    data since every stock mob is material `'0'`. Cheap fidelity fix via
+    `MOB_DEFS[tpl].get("material")` if ever wanted — see comment at
+    `combat.py:_DEATH_CRY_CASES`
   - object `values` raw value[0..4] fallback for item types with no
     dedicated decode (furniture max-occupants/position flags, key linked
     vnum, map, portal, jukebox, ...) — emitted only when nonzero
     (2026-07-05 audit); runtime reads via `obj.get("values", ...)` when a
-    consumer (e.g. furniture occupancy) gets ported
+    consumer (e.g. furniture occupancy, see DESIGN.md furniture row) gets
+    ported
 - **No `fix_exits` equivalent at world load** — QuickMUD's post-boot pass
   (db.c fix_exits) nulls exits whose destination room doesn't exist and
   auto-sets `no_mob` on rooms with zero resolvable exits. The per-file
@@ -54,9 +61,6 @@ Loose ends that don't belong in a specific plan file.
   carried by the Limbo Morgue room (vnum 3, `areas/limbo.are`); investigate
   how 1stMud uses it (room contents persisting across reboot/reset) before
   porting.
-- **`_unknown_bits` in quest.are** — stock 1stMud data sets ACT bits 11/31 and
-  AFF bits 34/36 that are undefined even in 1stMud's own `bits.h`; preserved
-  losslessly under `_unknown_bits`, no runtime meaning.
 
 ## Tests
 

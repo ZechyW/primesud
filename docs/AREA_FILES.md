@@ -645,7 +645,9 @@ Mob templates reference programs via `mob_triggers` in their `MOBILES` entry:
 - **`# fmt: off` is mandatory.** The aligned column style in mob/item/room dicts
   would be destroyed by an auto-formatter. Do not remove it.
 - **`_unknown_bits`** keys in flag dicts record uninterpreted bit positions from the
-  original `.are` file. Preserve them; do not add new ones manually.
+  original `.are` file. Preserve them; do not add new ones manually. Known
+  carriers: stock quest.are sets ACT bits 11/31 and AFF bits 34/36, which are
+  undefined even in 1stMud's own `bits.h` — no runtime meaning.
 
 ---
 
