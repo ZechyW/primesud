@@ -20,16 +20,6 @@ Loose ends that don't belong in a specific plan file.
 
 ## Commands
 
-- **Own-inventory object lookups skip the can_see_obj gate** — ~28
-  `get_obj_list(...)` calls without `viewer=` (inventory.py put/wear/quaff/
-  sacrifice/compare/etc., magic.py cast-at-obj, shop.py sell/value, quest.py,
-  movement.py portal). 1stMud gates these via `get_obj_carry`/`get_obj_list`,
-  so e.g. `wear armor` fails in an unlit dark room and invisible carried items
-  are unfindable without detect invis. Deliberately NOT swept during the
-  10/07/2026 final audit: authentic but harsh on-device (few light sources);
-  decide fidelity vs playability before wiring. `get_obj_here` (look/examine/
-  get/drop paths) is already gated.
-
 - Genuinely still-deferred commands (commented-out rows in
   `commands.py:_CMD_TABLE`): `gossip`, `shout`, `alias`/`unalias`,
   `bank`, `auction`, `path`, `play`, immortal commands. Port when/if a solo
