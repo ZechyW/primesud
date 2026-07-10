@@ -26,7 +26,8 @@ CLASS_RANGER  = 5
 # "weapon" = starting weapon type ([PRIMESUD] type string; 1stMud stores the
 #            school item vnum -- 3700 mace / 3701 dagger / 3702 sword).
 # Guild membership lives on rooms as a "guild" field (cf. 1stMud room->guild
-# from area-file G fields; patched into area data by patch_1stmud_deltas.py).
+# from area-file G room trailers; areas/midgaard.are, converted by
+# are_to_primesud.py).
 # "summary" = [PRIMESUD] one-line blurb for the chargen picker.
 # "base_group"/"default_group" = groups.py names (cf. classes.dat fields);
 #                 granted at creation/remort by add_base/default_groups.

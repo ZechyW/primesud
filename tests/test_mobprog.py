@@ -823,8 +823,8 @@ def test_combat_fight_and_hpcnt_triggers(mp_world):
 
 # -- Phase D: content pilot (the authored Mud School acolyte demo prog) ---------
 #
-# End-to-end validation of the [PRIMESUD] demo content patched into
-# src/area_school.txt by tools/patch_1stmud_deltas.py (patch_mobprogs): the
+# End-to-end validation of the [PRIMESUD] demo content authored in
+# areas/school.are (M mob trailers + #MOBPROGS section): the
 # acolyte of Zump (mob 3700) greets on the "help" keyword, rewards any gift with
 # a diploma, and follows up after a delay.  Loads the *real* area file so the
 # mob_triggers tuple + MOBPROGS dict are exercised exactly as world.py loads

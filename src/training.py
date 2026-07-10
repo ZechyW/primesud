@@ -219,7 +219,7 @@ def do_remort(player, args):
         args (list): Any argument cancels a pending confirm.
     """
     rs = world.rooms[player["room"]]
-    # "guild" tuple patched onto rooms by patch_1stmud_deltas.py
+    # "guild" tuple from G room trailers (areas/midgaard.are)
     allowed = rs.get("guild", ())
     member = False
     for cl in allowed:

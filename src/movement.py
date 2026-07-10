@@ -172,7 +172,7 @@ def move_char(ch, direction):
 
     if not is_npc:
         # -- Guild room (cf. 1stMud act_move.c: to_room->guild + is_class) --
-        # "guild" tuple patched onto rooms by patch_1stmud_deltas.py;
+        # "guild" tuple from G room trailers (areas/midgaard.are);
         # Paladin/Ranger share the Cleric/Warrior guilds (CLASS_PLAN.md).
         allowed = to_room.get("guild")
         if allowed is not None:

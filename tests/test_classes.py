@@ -179,8 +179,8 @@ class TestGuildRooms:
             world.chars.pop(1, None)
 
     def test_paladin_shares_cleric_guild(self):
-        # "guild" fields are patched into the generated area data by
-        # patch_1stmud_deltas; check the artifact without booting the world
+        # "guild" fields come from G room trailers in areas/midgaard.are;
+        # check the generated artifact without booting the world
         path = os.path.join(ROOT, _SRC, "area_midgaard.txt")
         with open(path) as f:
             text = f.read()
