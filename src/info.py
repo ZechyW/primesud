@@ -537,7 +537,7 @@ def do_look(player, args):
     pitch-black gate ignores infrared (matching the source): infrared reveals
     living things via _show_char_to_char, not the room description.
 
-    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check); check_blind + pitch-black/red-eyes + can_see_obj room-item filter added and re-verified 08/07/2026; pitch-black infrared gate dropped + char-list shared via _show_char_to_char to match act_info.c:1114 (infrared shows chars not room desc), re-verified 08/07/2026]
+    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check); check_blind + pitch-black/red-eyes + can_see_obj room-item filter added and re-verified 08/07/2026; pitch-black infrared gate dropped + char-list shared via _show_char_to_char to match act_info.c:1114 (infrared shows chars not room desc), re-verified 08/07/2026; PLR_HOLYLIGHT leg of the act_info.c:1115 condition added as debug channel and re-verified 10/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -550,7 +550,9 @@ def do_look(player, args):
     # living things (via show_char_to_char, which can_see-passes for an infrared
     # viewer), never the room name/desc/items. room_is_dark itself ignores
     # infrared, so a dark room stays "pitch black" for infrared and unlit alike.
-    if player["room"] in ROOM_DEFS._data and room_is_dark(player["room"]):
+    # PLR_HOLYLIGHT in the source condition maps to the [PRIMESUD] debug channel.
+    if ("holylight" not in DBG
+            and player["room"] in ROOM_DEFS._data and room_is_dark(player["room"])):
         chprintln(player, "It is pitch black ... ")
         _show_char_to_char(player, world.rooms[player["room"]]["mobs"])
         return

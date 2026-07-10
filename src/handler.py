@@ -12,6 +12,7 @@ from urandom import randint
 import world
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 from game_time import time_info, SUN_SET, SUN_DARK
+from debug import DBG  # [PRIMESUD] "holylight" channel = 1stMud PLR_HOLYLIGHT
 
 # -- Alignment helpers (cf. 1stMud IsGood/IsEvil/IsNeutral in macro.h) ----------------
 
@@ -1115,8 +1116,9 @@ def can_see(ch, victim):
 
     Checks AFF_BLIND, room darkness vs AFF_INFRARED, AFF_INVISIBLE vs
     detect_invis, AFF_SNEAK skill contest, and AFF_HIDE vs detect_hidden.
-    [PRIMESUD] invis_level/incog/holylight/arena and the quest/gquest target
-    overrides not ported.
+    PLR_HOLYLIGHT (handler.c:2403) maps to the [PRIMESUD] "holylight" debug
+    channel (imm sight for playtesting). [PRIMESUD] invis_level/incog/arena
+    and the quest/gquest target overrides not ported.
 
     Args:
         ch (dict): Observer (player or mob instance).
@@ -1126,6 +1128,10 @@ def can_see(ch, victim):
         bool: True if ch can see victim.
     """
     if ch is victim:
+        return True
+
+    # cf. 1stMud PLR_HOLYLIGHT (handler.c:2403) -- [PRIMESUD] debug channel
+    if not ch.get("is_npc") and "holylight" in DBG:
         return True
 
     ch_aff = ch.get("affected_by", {})
@@ -1175,9 +1181,10 @@ def can_see(ch, victim):
 def can_see_obj(ch, obj):
     """Check if ch can see obj (cf. 1stMud can_see_obj in handler.c:2456).
 
-    Check order matches the source: ITEM_VIS_DEATH, blindness (potions
-    exempt), a lit light source, ITEM_INVIS vs detect_invis, ITEM_GLOW, then a
-    dark room vs dark_vision. [PRIMESUD] HOLYLIGHT gate omitted (no immortals).
+    Check order matches the source: HOLYLIGHT (mapped to the [PRIMESUD]
+    "holylight" debug channel), ITEM_VIS_DEATH, blindness (potions exempt), a
+    lit light source, ITEM_INVIS vs detect_invis, ITEM_GLOW, then a dark room
+    vs dark_vision.
     The quest-object override (handler.c:2461) is not ported [TODO
     quest-override]: quest.py tracks the target obj by vnum, but wiring it here
     would couple handler to quest, and quest items carry no invis/vis_death
@@ -1200,6 +1207,10 @@ def can_see_obj(ch, obj):
         otype = obj["type"]
     else:
         otype = tpl.get("type")
+
+    # cf. 1stMud PLR_HOLYLIGHT (handler.c:2458) -- [PRIMESUD] debug channel
+    if not ch.get("is_npc") and "holylight" in DBG:
+        return True
 
     ch_aff = ch.get("affected_by", {})
 
@@ -1236,7 +1247,8 @@ def can_see_obj(ch, obj):
 def check_blind(ch):
     """True unless ch is blinded, printing the failure line (cf. 1stMud check_blind in act_info.c:495).
 
-    [PRIMESUD] HOLYLIGHT short-circuit omitted (no immortals).
+    HOLYLIGHT short-circuit (act_info.c:498) maps to the [PRIMESUD]
+    "holylight" debug channel.
 
     Args:
         ch (dict): Observer whose sight is being tested.
@@ -1245,6 +1257,8 @@ def check_blind(ch):
         bool: True if ch can see; False (after printing "You can't see a
         thing!") if blinded.
     """
+    if not ch.get("is_npc") and "holylight" in DBG:
+        return True
     if ch.get("affected_by", {}).get("blind"):
         chprintln(ch, "You can't see a thing!")
         return False

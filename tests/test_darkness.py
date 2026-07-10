@@ -344,3 +344,55 @@ class TestAggroShield:
                "affected_by": {"infrared": True}}
         player = {"id": 1, "room": 1, "affected_by": {}}
         assert can_see(mob, player) is True
+
+
+# ---------------------------------------------------------------------------
+# [PRIMESUD] "holylight" debug channel = 1stMud PLR_HOLYLIGHT imm sight
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def holylight():
+    from debug import DBG
+    DBG.add("holylight")
+    yield
+    DBG.discard("holylight")
+
+
+class TestHolylight:
+    def test_can_see_ignores_dark(self, fresh_world, holylight):
+        from handler import can_see
+        _room(1, flags={"dark": True})
+        assert can_see(_char(1), _char(1)) is True
+
+    def test_can_see_obj_ignores_dark_and_blind(self, fresh_world, holylight):
+        from handler import can_see_obj
+        _room(1, flags={"dark": True})
+        ITEM_DEFS._data[610] = {"type": "trash", "keywords": "thing",
+                                "short_descr": "a thing", "extra_flags": {}}
+        assert can_see_obj(_char(1), 610) is True
+        assert can_see_obj(_char(1, blind=True), 610) is True
+
+    def test_npc_observer_not_holylit(self, fresh_world, holylight):
+        # cf. handler.c:2403/2458 -- the PLR_HOLYLIGHT leg is !IsNPC only
+        from handler import can_see
+        _room(1, flags={"dark": True})
+        mob = {"id": 2, "is_npc": True, "room": 1, "affected_by": {}}
+        player = {"id": 1, "room": 1, "affected_by": {}}
+        assert can_see(mob, player) is False
+
+    def test_check_blind_passes(self, fresh_world, holylight, monkeypatch):
+        import handler
+        lines = []
+        monkeypatch.setattr(handler, "chprintln",
+                            lambda ch, s="": lines.append(s))
+        assert handler.check_blind(_char(1, blind=True)) is True
+        assert lines == []
+
+    def test_look_shows_dark_room(self, fresh_world, holylight, look_out):
+        import info
+        _room(1, flags={"dark": True})
+        ROOM_DEFS._data[1]["name"] = "Secret Vault"
+        info.do_look(_look_player(1), [])
+        joined = " ".join(look_out)
+        assert "Secret Vault" in joined
+        assert "pitch black" not in joined

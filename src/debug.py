@@ -7,7 +7,11 @@ import terminal
 # call sites are in per-mob per-pulse loops.
 DBG = set()
 
-_CHANNELS = ("spawn", "move", "tick", "reset", "vnum", "save", "time")
+# "holylight" = 1stMud PLR_HOLYLIGHT imm sight (can_see / can_see_obj /
+# check_blind / do_look pitch-black short-circuits), cf. do_holylight in
+# act_wiz.c:2941; the rest are PrimeSUD-only log channels.
+_CHANNELS = ("spawn", "move", "tick", "reset", "vnum", "save", "time",
+             "holylight")
 
 
 def dbg(msg):
