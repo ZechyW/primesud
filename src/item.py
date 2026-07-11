@@ -62,8 +62,9 @@ def create_object(vnum):
 def promote_obj(player, obj):
     """Swap a plain-vnum item for a mutable instance dict in place. [PRIMESUD]
 
-    Area resets and pickups keep items as plain ints; state mutation and
-    act() $p rendering need instance dicts. Replaces the first matching
+    Defensive shim: create_object returns dicts on every current spawn path,
+    so live items are always instance dicts; this only fires if a plain int
+    vnum ever appears (legacy/synthetic data). Replaces the first matching
     vnum in inventory, room, or equipment (identical plain vnums are
     indistinguishable, so first-match is safe).
     """

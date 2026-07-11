@@ -18,7 +18,7 @@ Pickers force numeric keyboard mode on entry (`picker.py:_force_numeric_keys`) s
 
 | Feature | Reason |
 |---|---|
-| Move / MV | No solo gameplay hook identified; omitted entirely |
+| Move / MV | Ported (row was stale, corrected 11/07/2026): sector-based `movement_loss` costs deducted in move_char (movement.py), flying/water halving/doubling, regen, train/restore paths |
 | Race system | Ported: RACE_TABLE in races.py, race defaults merged at mob/player creation, check_immune in combat, race-aware stat caps (get_curr_stat/get_max_train in handler.py). Chargen: name, race, sex, class, alignment, weapon. Racial skills granted at creation. Creation-point group customisation not ported |
 | Class system | Ported: CLASS_TABLE (6 classes) in classes.py, remort/multiclass, chargen class picker, per-class THAC0 and HP/mana gain, skill groups + `gain`. Creation-point group customisation at chargen not ported |
 | Stat rolling | Per-race base stats from RACE_TABLE; no chargen reroll |

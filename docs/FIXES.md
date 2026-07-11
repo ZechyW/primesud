@@ -95,12 +95,12 @@ The malformed dice values are the sole source of the damage spike.
 The offhand strike is gated before `one_hit` is called:
 
 ```python
-offhand = player["equip"].get("offhand")
-if offhand is not None and ITEM_TEMPLATES[offhand["vnum"]].get("type") == "weapon":
-    one_hit(tr, player, target_inst, slot="offhand")
+secondary_obj = ch["equip"].get("secondary")
+if secondary_obj is not None and ITEM_DEFS[secondary_obj["vnum"]].get("type") == "weapon":
+    one_hit(ch, victim, dt=dt, secondary=True)
 ```
 
-Only a confirmed weapon item proceeds to the hit; non-weapons in the offhand slot
+Only a confirmed weapon item proceeds to the hit; non-weapons in the secondary slot
 are silently skipped rather than producing undefined dice behaviour inside `one_hit`.
 
 ---

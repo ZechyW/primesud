@@ -62,13 +62,15 @@ Exception: targeted edits that resolve a documented TODO / "not ported" note tow
 
 Code with no 1stMud equivalent or intentional deviation marked `# [PRIMESUD]`. When porting from 1stMud, don't overwrite tagged items without checking if Prime variant differs on purpose.
 
+When shipping a notable player-facing `[PRIMESUD]` feature or deviation (new system, balance change, UX behaviour -- not micro-fixes), add a one-liner to the matching section of root `FEATURES.md` in the same commit.
+
 ## Docstrings
 
 Google-style: one-line summary, then `Args:` / `Returns:` / `Raises:` as needed; omit empty sections. For ported functions append `(cf. 1stMud <symbol> in <file>)` to summary (exact name + source file, e.g. `fight.c`); PrimeSUD-only functions and helpers should be explicitly marked [PRIMESUD].
 
 ## Documentation map
 
-Root: `README.md`, `CLAUDE.md`, `DESIGN.md` (intentional deviations + settled decisions), `TODO.md` (loose ends). Everything else lives in `docs/`:
+Root: `README.md`, `CLAUDE.md`, `DESIGN.md` (intentional deviations + settled decisions), `FEATURES.md` (curated what's-different-from-1stMud index for readers -- one-liners pointing at DESIGN.md/docs; add a line when shipping a notable [PRIMESUD] feature), `TODO.md` (loose ends). Everything else lives in `docs/`:
 
 - 1stMud reference: `REFERENCE.md`, `COMMANDS.md`, `SKILLS.md`
 - Device limits/perf: `BUILTINS.md`, `PRIME_STRING_FORMAT_BUG.md`, `PRIME_COLOURS.md`
