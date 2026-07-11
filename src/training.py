@@ -340,8 +340,8 @@ def _apply_remort_race(player, race_name):
     stat perk survives; flag dicts replaced rather than OR'd with the old
     race's (nanny.c:529-532) -- they re-derive from the race name on load,
     so OR'd leftovers could never survive a save anyway; lock message names
-    the new race (upstream prints the old race's name -- slip); sex
-    re-prompt and creation points not ported.
+    the new race (upstream prints the old race's name -- see docs/FIXES.md);
+    sex re-prompt and creation points not ported.
 
     Args:
         player (dict): Player state dict.
@@ -429,10 +429,10 @@ def finish_remort(player, new_class, new_race=None):
     nuke_pets(player)
 
     # cf. 1stMud finish_remort learned loop: in-progress (<100) skills reset
-    # to 1%, mastered (100) skills kept. [PRIMESUD] upstream zeroes current-
-    # race skills when the race prompt ran but the same race was kept
-    # (multiclass.c:217, likely a slip); here race skills reset to 1% like
-    # everything else (new-race skills were granted in _apply_remort_race).
+    # to 1%, mastered (100) skills kept. [PRIMESUD] upstream zeroes kept-race
+    # skills here (multiclass.c:217, inverted condition -- see docs/FIXES.md);
+    # race skills reset to 1% like everything else (new-race skills were
+    # granted in _apply_remort_race).
     learned = player["learned"]
     for sn in list(learned):
         if 0 < learned[sn] < 100:

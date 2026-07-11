@@ -95,10 +95,10 @@ same race) resets perm stats to the race base as upstream, losing trained
 stats and the chargen prime +3; `+tier` is re-added so the tier stat perk
 survives ([PRIMESUD]). Race flag dicts are replaced, not OR'd with the old
 race's as nanny.c does -- they re-derive from the race name on load, so OR'd
-leftovers could never survive a save. New race skills granted at 1%; old
-race skills fall through the normal remort skill reset (upstream zeroes
-kept-race skills at multiclass.c:217 -- treated as a slip). Sex re-prompt
-and creation points not ported.
+leftovers could never survive a save. New race skills granted at 1%. Sex
+re-prompt and creation points not ported. Two upstream slips corrected (lock
+message names the old race; kept-race skills zeroed) -- see docs/FIXES.md
+multiclass entries.
 
 ---
 

@@ -420,6 +420,72 @@ The `'R'` branch renders `rch` (`_char_short(rch)`), matching `$r`/`$J`/`$K`/
 `$L` and the `rch` visibility guard. The site carries a `[PRIMESUD]` comment
 referencing this entry.
 
+## multiclass: remort race lock message names the old race
+
+**Upstream:** `reference/1stMud4.5.3/src/nanny.c`, `HANDLE_CON_GET_NEW_RACE`,
+lines 519-525.
+
+### The bug
+
+When a remorting character picks a different race, the lock message prints
+before the new race is assigned, using the still-current pointer:
+
+```c
+if (IsRemort(ch) && ch->race != race)
+{
+    d_printlnf(d, "{cYou are now a {R%s{c forever.{x", ch->race->name);
+    ch->pcdata->stay_race = true;   /* ch->race still the OLD race here */
+}
+ch->race = race;                    /* assigned only afterwards */
+```
+
+An elf remorting into a dwarf is told "You are now a Elf forever." -- the
+race being left behind (and with the wrong article).
+
+### PrimeSUD fix -- implemented in `_apply_remort_race` in `training.py`
+
+The message names the chosen race with a correct a/an article:
+"You are now a Dwarf forever."
+
+---
+
+## multiclass: finish_remort zeroes race skills when the race is kept
+
+**Upstream:** `reference/1stMud4.5.3/src/multiclass.c`, `finish_remort`,
+lines 213-222.
+
+### The bug
+
+The remort skill-reset loop special-cases race skills on the `stay_race`
+flag:
+
+```c
+if (ch->pcdata->learned[sn] > 0 && ch->pcdata->learned[sn] < 100)
+{
+    if (is_race_skill(ch, sn) && !ch->pcdata->stay_race)
+        ch->pcdata->learned[sn] = 0;    /* forgotten entirely */
+    else
+        ch->pcdata->learned[sn] = 1;
+}
+```
+
+`stay_race` is only set when a remort picks a *different* race
+(nanny.c:519-523), so `!stay_race` here means the player went through the
+race prompt and **kept** their race. Their own racial skills are zeroed to
+unknown -- and the `group_add` re-grant in `HANDLE_CON_GET_NEW_RACE` ran
+*earlier* in the flow, so nothing restores them. Changing race (the case
+the special-case presumably meant to handle, dropping the old race's
+skills) instead leaves the old race's skills at 1% via the generic branch.
+The condition appears inverted.
+
+### PrimeSUD fix -- implemented in `finish_remort` in `training.py`
+
+No race special-case: in-progress race skills reset to 1% like every other
+skill, and the new race's skills are granted at 1% by `_apply_remort_race`.
+Old-race skills at 1% match upstream's (accidental) race-change behaviour.
+
+---
+
 ## mobprog: get_random_char candidate pool narrowed to visible non-self chars
 
 ### 1stMud bug (programs.c:208-246)
