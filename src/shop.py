@@ -197,7 +197,7 @@ def _buy_pet(player, args):
     """
     from mob import spawn_pet  # lazy import to avoid circular dependency
 
-    # 1stMud: special case vnum 9621 -> 9706 (area not present; not ported)
+    # TODO: 1stMud/QuickMUD special case vnum 9621 -> 9706 not ported.
     next_vnum = player["room"] + 1
     if next_vnum not in ROOM_DEFS or next_vnum not in world.rooms:
         # 1stMud: bugf("Do_buy: bad pet shop at vnum %ld.")
@@ -350,7 +350,7 @@ def do_list(player, args):
     """Display shopkeeper's or pet shop's stock (cf. 1stMud do_list in act_obj.c)."""
     # -- Pet shop (cf. 1stMud ROOM_PET_SHOP branch)
     if ROOM_DEFS[player["room"]].get("flags", {}).get("pet_shop"):
-        # 1stMud: special case vnum 9621 -> 9706 (area not present; not ported)
+        # TODO: 1stMud/QuickMUD special case vnum 9621 -> 9706 not ported.
         next_vnum = player["room"] + 1
         if next_vnum not in ROOM_DEFS or next_vnum not in world.rooms:
             # 1stMud: bugf("Do_list: bad pet shop at vnum %ld.")

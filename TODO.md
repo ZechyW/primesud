@@ -28,6 +28,12 @@ Loose ends that don't belong in a specific plan file.
 
 ## Area data
 
+- **New Thalos remote pet-shop stock room** -- QuickMUD special-cases shop
+  room 9621 to list/buy pets from room 9706 instead of the normal `vnum + 1`.
+  Both rooms and the eagle/lion/tiger cross-area resets are present, but
+  PrimeSUD has not ported that mapping (`shop.py`), so Nabil's stock is
+  currently inaccessible.
+
 - **Deferred runtime hooks for converter-emitted fields** — the 2026-07
   converter audit brought `are_to_primesud.py` (the single ROM 2.4
   converter; formerly `are_to_primesud_quickmud.py`, renamed after the

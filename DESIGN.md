@@ -94,8 +94,12 @@ invalid and missing targets leave the current form intact.  Evolution
 adopts the target template's form and combat attributes while preserving the
 custom name and ownership.  Temporary pet affects are cleared on either reset.
 Midgaard supplies puppy -> beagle -> rottweiler -> wolf and kitten -> lion
-chains; the tiger and other unlinked pets still receive stat scaling.  This intentionally
-deviates from 1stMud, which purges pets during remort.
+chains; the tiger and other unlinked pets still receive stat scaling.  Pet
+saves retain template VNUM, current/max HP, custom name, and timed affects;
+max HP is re-derived from owner level/tier on load (the saved field remains
+for old-save compatibility), while inventory, money, XP, and comm flags are
+not persisted.  This intentionally deviates from 1stMud, which purges pets
+during remort.
 
 **Race + sex re-pick on remort** (added 11/07/2026, revised same day):
 remorting is conceptually re-creating a new mortal char, so every remort --

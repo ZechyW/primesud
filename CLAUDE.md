@@ -74,7 +74,7 @@ Root: `README.md`, `CLAUDE.md`, `DESIGN.md` (intentional deviations + settled de
 
 - 1stMud reference: `REFERENCE.md`, `COMMANDS.md`, `SKILLS.md`
 - Device limits/perf: `BUILTINS.md`, `PRIME_STRING_FORMAT_BUG.md`, `PRIME_COLOURS.md`
-- PrimeSUD systems: `AREA_FILES.md`, `PRIME_UX.md`, `FIXES.md`, `SHOP_DEVIATIONS.md`, `CROSS_RESETS.md`
+- PrimeSUD systems: `AREA_FILES.md`, `PRIME_UX.md`, `FIXES.md`, `CROSS_RESETS.md`
 
 Completed plan documents are deleted, not archived -- durable decisions get harvested into `DESIGN.md`/`TODO.md` first; full text stays in git history.
 
