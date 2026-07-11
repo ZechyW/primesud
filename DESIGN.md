@@ -86,6 +86,17 @@ Level caps, `lvl_bonus`, and the `LEVEL_IMMORTAL` 52 sentinel are untouched.
 Display: `score` Tier cell (only when tier > 0), `class_who` `*<tier>` suffix.
 Save line `p.tier` (absent in old saves -> defaults 0, no version bump).
 
+Owned pets share the player's progression instead of keeping NPC XP: they
+rescale whenever the player levels, survive ordinary remorts at the player's
+new level 1, and gain five effective scaling levels per prestige tier.  A tier
+reset follows at most one optional mob-template `E <vnum>` evolution link;
+invalid and missing targets leave the current form intact.  Evolution
+adopts the target template's form and combat attributes while preserving the
+custom name and ownership.  Temporary pet affects are cleared on either reset.
+Midgaard supplies puppy -> beagle -> rottweiler -> wolf and kitten -> lion
+chains; the tiger and other unlinked pets still receive stat scaling.  This intentionally
+deviates from 1stMud, which purges pets during remort.
+
 **Race + sex re-pick on remort** (added 11/07/2026, revised same day):
 remorting is conceptually re-creating a new mortal char, so every remort --
 stock or tier reset -- re-runs the race and sex pickers before the class

@@ -18,6 +18,9 @@ Things with no upstream equivalent.
   near-fresh with one class and permanent per-tier perks (kept masteries,
   +tier stats/pools, skill floors, raised practice ceiling). Full spec in
   DESIGN.md "Multiclass prestige tiering".
+- **Growing and evolving pets** -- pets scale with player levels, survive
+  remorts, and optionally evolve through area-authored forms on tier resets
+  (DESIGN.md "Multiclass prestige tiering").
 - **Race and sex re-pick on every remort** -- remorting re-runs the race/sex/
   class creation prompts; upstream's `stay_race` "that race FOREVER" lock is
   deliberately not ported (DESIGN.md).

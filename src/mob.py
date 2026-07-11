@@ -6,7 +6,8 @@ from config import SIZE_RANK, POS_FROM_SHORT
 import world
 from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, AREA_DEFS, DOOR_DEFS
 from races import RACE_TABLE, race_lookup
-from handler import equip_char, act, _char_base, is_awake, TO_ROOM, can_see, room_is_dark
+from handler import (equip_char, act, chprintln, _char_base, is_awake,
+                     TO_ROOM, can_see, room_is_dark)
 from hunt import hunt_victim
 from item import create_object, item_wear_flags
 from game_time import init_weather, advance_weather, adjust_vectors, get_weather_echo
@@ -210,6 +211,72 @@ def spawn_pet(tpl_vnum, owner, name_arg=None, hp=None, announce=True):
         pet["master"] = owner["id"]
     pet["leader"] = owner["id"]
     owner["pet"] = next_id
+    scale_pet(owner)
+    if hp is not None:
+        pet["hit"] = max(1, min(int(hp), pet["max_hit"]))
+    return pet
+
+
+def scale_pet(owner, evolve=False, reset=False):
+    """Scale an owned pet with its player, optionally evolving it. [PRIMESUD]
+
+    Args:
+        owner (dict): Pet owner.
+        evolve (bool): Follow one valid ``evolves_to`` template link.
+        reset (bool): Clear temporary affects as part of remort/tier reset.
+
+    Returns:
+        dict or None: Scaled pet, or None when the owner has no live pet.
+    """
+    pet_id = owner.get("pet")
+    pet = world.chars.get(pet_id) if pet_id is not None else None
+    if pet is None:
+        return None
+
+    if reset:
+        from handler import affect_remove
+        for af in list(pet.get("affect_list", [])):
+            affect_remove(pet, af)
+        pet.setdefault("affected_by", {})["charm"] = True
+
+    old_tpl = MOB_DEFS[pet["tpl"]]
+    target = old_tpl.get("evolves_to") if evolve else None
+    if target is not None:
+        target_tpl = MOB_DEFS.get(target)
+        if target_tpl is not None:
+            fresh = create_mobile(target)
+            for key in ("level", "sex", "race", "alignment", "size", "hitroll",
+                        "damroll", "armor", "perm_stat", "act_flags", "off_flags",
+                        "affected_by", "imm_flags", "res_flags", "vuln_flags",
+                        "form_flags", "part_flags", "pos"):
+                pet[key] = fresh[key]
+            pet["tpl"] = target
+            old_tpl = target_tpl
+            pet["name"] = target_tpl["short_descr"]
+            pname = pet.get("pet_name")
+            pet["keywords"] = target_tpl.get("keywords", "") + ((" " + pname) if pname else "")
+            desc = target_tpl.get("description", "")
+            if desc and not desc.endswith("\n"):
+                desc += "\n"
+            pet["description"] = desc + "A neck tag says 'I belong to " + str(owner.get("name", "")) + "'."
+            # Evolution metadata authorizes an ordinary mob template as a pet
+            # form; pet-shop stock often gains ACT_PET dynamically from its room.
+            pet["act_flags"]["pet"] = True
+            pet["affected_by"]["charm"] = True
+            chprintln(owner, "Your pet evolves into " + target_tpl["short_descr"] + "!")
+
+    tpl_level = max(1, old_tpl.get("level", 1))
+    level = max(1, owner.get("level", 1))
+    effective = level + 5 * owner.get("tier", 0)
+    n, sides, bonus = old_tpl["hp_dice"]
+    base_hp = max(1, bonus + n * (sides + 1) // 2)
+    pet["level"] = level
+    pet["max_hit"] = max(1, base_hp * effective // tpl_level)
+    pet["hit"] = pet["max_hit"]
+    delta = effective - tpl_level
+    pet["hitroll"] = old_tpl.get("hitroll", 0) + delta
+    pet["damroll"] = old_tpl["damage"][2] + delta // 2
+    pet["armor"] = tuple(v * 10 - 2 * delta for v in old_tpl["armor"])
     return pet
 
 

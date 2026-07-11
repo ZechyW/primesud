@@ -83,7 +83,7 @@ class TestTierReset:
         # in-progress skill above the floor, one below, one mastered
         player["learned"][WEAPON_GSN_MAP["sword"]] = 100   # mastered, kept
         player["learned"][GSN_BASH] = 60                   # floors to 10
-        # pets do not survive (cf. 1stMud finish_remort nuke_pets)
+        # [PRIMESUD] pets survive and share the owner's tier reset
         from mob import spawn_pet
         pet = spawn_pet(9900, player, announce=False)
         try:
@@ -121,9 +121,8 @@ class TestTierReset:
             assert calc_max_level(player) == 49
             assert player["room"] != 3022  # moved to school
             assert player["confirm_remort"] is False
-            # pet extracted (cf. 1stMud multiclass.c:207 nuke_pets)
-            assert player["pet"] is None
-            assert pet["id"] not in world.chars
+            assert player["pet"] == pet["id"]
+            assert world.chars[pet["id"]]["level"] == 1
         finally:
             _teardown()
 

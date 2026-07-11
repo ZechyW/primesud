@@ -247,7 +247,7 @@ class TestRemort:
         import game_state
         monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
         player = self._hero(monkeypatch, pick=0)  # first available = Mage
-        # pets do not survive a remort (cf. 1stMud multiclass.c:207 nuke_pets)
+        # [PRIMESUD] pets survive and share the owner's level reset
         from mob import spawn_pet
         pet = spawn_pet(9900, player, announce=False)
         try:
@@ -276,8 +276,8 @@ class TestRemort:
             assert player["learned"][WEAPON_GSN_MAP["sword"]] == 1
             assert player["room"] == 3700 or player["room"] != 3022  # moved to school
             import world
-            assert player["pet"] is None
-            assert pet["id"] not in world.chars
+            assert player["pet"] == pet["id"]
+            assert world.chars[pet["id"]]["level"] == 1
         finally:
             self._teardown()
 

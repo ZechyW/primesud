@@ -251,9 +251,23 @@ MOBILES = {
 | `wealth`       | int   | yes      | Gold carried (unused until economy is implemented) |
 | `size`         | str   | yes      | `"tiny"`..`"huge"` etc. |
 | `mob_triggers` | tuple | no       | `(trig_type, mprog_vnum, trig_phrase)` — see MOBPROGS below; omitted if empty |
+| `evolves_to`  | int   | no       | [PRIMESUD] Target pet-template VNUM for one evolution step on the owner's next tier reset; emitted from an `E <vnum>` mob trailer |
 | `flag_removes` | tuple | no       | `(canonical_field, flag_names)` — `F`-trailer bit removals applied after race-merge at runtime (cf. `mob.py create_mobile`, ROM `db2.c` `REMOVE_BIT`) |
 | `spec_fun`     | str   | no       | See SPECIALS below |
 | `shop`         | dict  | no       | See SHOPS below |
+
+### Pet evolution trailer `[PRIMESUD]`
+
+An optional `E <vnum>` line after a mob's standard fields links that pet form
+to its next prestige form.  The target may live in another area and is resolved
+through the lazy VNUM catalog.  The evolved instance receives the `pet` act
+flag because stock pet-shop forms often gain it dynamically from room placement;
+missing or invalid targets safely leave the current form unchanged.  Stock ROM areas
+need no trailer and convert unchanged.
+
+```text
+E 3092
+```
 
 ### `act_flags`
 

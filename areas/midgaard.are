@@ -620,6 +620,7 @@ ABU 0 400 0
 0 0 C 0
 stand stand either 0
 0 0 tiny 0
+E 3096
 #3091
 puppy dog pet~
 the puppy~
@@ -634,6 +635,7 @@ ABU F 400 0
 N 0 C 0
 stand stand either 0
 0 Q small 0
+E 3092
 #3092
 beagle dog pet~
 the beagle~
@@ -648,6 +650,7 @@ ABU F 400 0
 N 0 C 0
 stand stand either 0
 0 Q small 0
+E 3093
 #3093
 rottweiler dog pet~
 the rottweiler~
@@ -662,6 +665,7 @@ ABU F 400 0
 CDL 0 C 0
 stand stand either 0
 0 0 medium 0
+E 3094
 #3094
 wolf pet~
 the wolf~

@@ -4,7 +4,7 @@
 
 1. ~~**No time system (open/close hours)**~~ **RESOLVED** -- `game_time.py` ports `time_info` + `time_update`. `find_keeper` now checks `open_hour`/`close_hour` against `time_info["hour"]`.
 
-2. ~~**No pet shop**~~ **RESOLVED** -- pet-shop branch of `do_buy`/`do_list` ported (`pet_shop` room flag; stock lives in room vnum + 1). Deviations: 1stMud's vnum 9621 -> 9706 special case not ported (area absent); pet `comm` flags (NOTELL etc.) not ported; pet persistence saves `p.pet=tpl|hp|max_hp|name` plus timed affects (`p.pet.affects`); other write_pet fields (exp, gold, inventory, comm bits) respawn from the template since PrimeSUD pets cannot accumulate them.
+2. ~~**No pet shop**~~ **RESOLVED** -- pet-shop branch of `do_buy`/`do_list` ported (`pet_shop` room flag; stock lives in room vnum + 1). Deviations: 1stMud's vnum 9621 -> 9706 special case not ported (area absent); pet `comm` flags (NOTELL etc.) not ported; pet persistence saves `p.pet=tpl|hp|max_hp|name` plus timed affects (`p.pet.affects`), with max HP now derived from owner level/tier (`max_hp` remains for old-save compatibility); other write_pet fields (exp, gold, inventory, comm bits) respawn from the template. Unlike 1stMud, pets survive remort, scale with their owner, and may follow an optional area-authored evolution link on tier reset (DESIGN.md).
 
 3. ~~**No carry weight/count limits**~~ **RESOLVED** -- `can_carry_n()` / `can_carry_w()` / `get_obj_weight()` ported in `item.py`. `do_buy` checks both before purchase.
 

@@ -10,7 +10,7 @@ from config import (INT_APP_LEARN, MAX_MORTAL_LEVEL, REMORT_POWER_DIV,
 from info import print_practice_table
 from inventory import do_outfit
 from picker import pick_from
-from comm import do_say, nuke_pets
+from comm import do_say
 from races import RACE_TABLE, PC_RACE_ORDER
 from groups import GROUP_TABLE, gn_add, group_lookup, group_rating
 from skill_utils import (can_use_skill_spell, find_skill_spell, skill_level,
@@ -425,8 +425,9 @@ def finish_remort(player, new_class, new_race=None, new_sex=None):
     player["xp_next"] = exp_per_level(player)  # class_mult may change with new class
     reset_char(player)
 
-    # cf. 1stMud finish_remort: pets do not survive a remort (multiclass.c:207)
-    nuke_pets(player)
+    # [PRIMESUD] Pets share their owner's prestige reset instead of being purged.
+    from mob import scale_pet
+    scale_pet(player, reset=True)
 
     # cf. 1stMud finish_remort learned loop: in-progress (<100) skills reset
     # to 1%, mastered (100) skills kept. [PRIMESUD] upstream zeroes kept-race
@@ -521,8 +522,9 @@ def finish_tier_reset(player, new_class, new_race=None, new_sex=None):
     player["xp_next"] = exp_per_level(player)  # class_mult follows the new class
     reset_char(player)
 
-    # pets do not survive a remort (cf. 1stMud finish_remort, multiclass.c:207)
-    nuke_pets(player)
+    # [PRIMESUD] One optional evolution step per tier; unlinked pets still scale.
+    from mob import scale_pet
+    scale_pet(player, evolve=True, reset=True)
 
     # mastered (100) skills kept as in finish_remort; in-progress skills
     # floor at 10*tier instead of 1

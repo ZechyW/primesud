@@ -1044,6 +1044,7 @@ MOBILES = {
         "sex":    'either',
         "wealth": 0,
         "size":   'tiny',
+        "evolves_to": 3096,
     },
     3091: {
         "keywords":    'puppy dog pet',
@@ -1069,6 +1070,7 @@ MOBILES = {
         "sex":    'either',
         "wealth": 0,
         "size":   'small',
+        "evolves_to": 3092,
     },
     3092: {
         "keywords":    'beagle dog pet',
@@ -1094,6 +1096,7 @@ MOBILES = {
         "sex":    'either',
         "wealth": 0,
         "size":   'small',
+        "evolves_to": 3093,
     },
     3093: {
         "keywords":    'rottweiler dog pet',
@@ -1118,6 +1121,7 @@ MOBILES = {
         "sex":    'either',
         "wealth": 0,
         "size":   'medium',
+        "evolves_to": 3094,
     },
     3094: {
         "keywords":    'wolf pet',

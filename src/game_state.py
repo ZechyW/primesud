@@ -451,9 +451,8 @@ def load_world():
             _pname = parts[3] if len(parts) > 3 and parts[3] else None
             player["pet"] = None
             _pet = spawn_pet(_tpl, player, name_arg=_pname, announce=False)
-            # max_hit rerolls in create_mobile; restore the saved roll
-            if _max is not None:
-                _pet["max_hit"] = _max
+            # [PRIMESUD] max_hit is derived from owner level/tier; _max remains
+            # in the save line for backward compatibility with older saves.
             if _hp is not None:
                 _pet["hit"] = max(1, min(_hp, _pet["max_hit"]))
             # Re-apply saved affects (cf. 1stMud fread_pet "Affc" entries)

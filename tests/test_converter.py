@@ -132,6 +132,10 @@ there~
         trig = ns["MOBILES"][8000]["mob_triggers"][0]
         assert tuple(trig) == ("speech", 8050, "hello\nthere")
 
+    def test_optional_pet_evolution_trailer(self, tmp_path):
+        ns = convert_str(tmp_path, "#MOBILES\n" + MOB_8000 + "E 8001\n#0\n")
+        assert ns["MOBILES"][8000]["evolves_to"] == 8001
+
 
 MOB_HEADER_WRAP = "#MOBILES\n" + MOB_8000 + "#0\n"
 

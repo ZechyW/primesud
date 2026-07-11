@@ -2550,7 +2550,8 @@ def _extract_char(ch, pull=True):
 
 def advance_level(player):
     """Roll HP/MP gains, grant practice and train (cf. 1stMud advance_level in update.c).
-    [Verified: 02/07/2026; update_all_qobjs added and re-verified 03/07/2026]
+    [Verified: 02/07/2026; update_all_qobjs added and re-verified 03/07/2026;
+    pet scaling added and re-verified 11/07/2026]
     -- last_level play-time stamp not ported; [PRIMESUD] full heal/restore
     on level.
 
@@ -2599,6 +2600,9 @@ def advance_level(player):
     # cf. 1stMud advance_level: quest gear rescales to the new level
     from quest import update_all_qobjs
     update_all_qobjs(player)
+    # [PRIMESUD] Owned pets grow with their player; no separate pet XP track.
+    from mob import scale_pet
+    scale_pet(player)
 
     chprintlnf(player, "You gain %d hit %s, %d mana, %d move, and %d %s.",
         add_hp,  "point" if add_hp  == 1 else "points",

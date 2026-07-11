@@ -474,15 +474,24 @@ def parse_mobiles(lines):
         size     = parts[2] if len(parts) > 2 else "medium"
         material = parts[3] if len(parts) > 3 else ""
 
-        # optional trailer lines: F (flag remove) or M (mobprog trigger)
+        # optional trailer lines: E (pet evolution), F (flag remove), or M (mobprog trigger)
         # F lines REMOVE bits inherited from race table (cf. db2.c:307-335)
         f_removes = []
         mob_triggers = []
+        evolves_to = None
         while i < len(lines):
             tline = lines[i].strip()
             if tline.startswith("#") or tline == "":
                 break
-            if tline and tline[0] == "F":
+            if tline and tline[0] == "E":
+                eparts = tline.split()
+                if len(eparts) != 2 or not eparts[1].isdigit():
+                    raise ValueError(
+                        "mob trailer 'E' needs one target vnum: " + repr(tline)
+                    )
+                evolves_to = int(eparts[1])
+                i += 1
+            elif tline and tline[0] == "F":
                 # db2.c:307-313 reads word/vector via whitespace-skipping
                 # freads, so the payload may spill onto the next line(s)
                 # (mirrors the OBJECTS 'F' trailer handling below).
@@ -616,6 +625,8 @@ def parse_mobiles(lines):
             "size":        size,
             "mob_triggers": mob_triggers,
         }
+        if evolves_to is not None:
+            mob["evolves_to"] = evolves_to
         if f_removes:
             mob["flag_removes"] = tuple(flag_removes)
         mobs.append((vnum, mob))
@@ -1397,6 +1408,8 @@ def emit(area_data, rooms, mobs, objs, resets, helps, socials,
             for trig_type, mpv, phrase in mob["mob_triggers"]:
                 w(f'            ({pyrepr(trig_type)}, {mpv}, {pyrepr(phrase)}),')
             w(f'        ),')
+        if mob.get("evolves_to") is not None:
+            w(f'        "evolves_to": {mob["evolves_to"]},')
         if mob.get("flag_removes"):
             # F-line flag removals, applied after race-merge at runtime
             # (cf. mob.py create_mobile; QuickMUD db2.c REMOVE_BIT).
