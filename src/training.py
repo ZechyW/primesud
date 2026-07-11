@@ -10,7 +10,7 @@ from config import (INT_APP_LEARN, MAX_MORTAL_LEVEL, REMORT_POWER_DIV,
 from info import print_practice_table
 from inventory import do_outfit
 from picker import pick_from
-from comm import do_say
+from comm import do_say, nuke_pets
 from groups import GROUP_TABLE, gn_add, group_lookup, group_rating
 from skill_utils import (can_use_skill_spell, find_skill_spell, skill_level,
                          skill_rating)
@@ -350,6 +350,9 @@ def finish_remort(player, new_class):
     player["xp_next"] = exp_per_level(player)  # class_mult may change with new class
     reset_char(player)
 
+    # cf. 1stMud finish_remort: pets do not survive a remort (multiclass.c:207)
+    nuke_pets(player)
+
     # cf. 1stMud finish_remort learned loop: in-progress (<100) skills reset
     # to 1%, mastered (100) skills kept; race skills kept (stay_race path).
     learned = player["learned"]
@@ -426,6 +429,9 @@ def finish_tier_reset(player, new_class):
             player["perm_stat"][st] += 1
     player["xp_next"] = exp_per_level(player)  # class_mult follows the new class
     reset_char(player)
+
+    # pets do not survive a remort (cf. 1stMud finish_remort, multiclass.c:207)
+    nuke_pets(player)
 
     # mastered (100) skills kept as in finish_remort; in-progress skills
     # floor at 10*tier instead of 1

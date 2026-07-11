@@ -65,7 +65,9 @@ def test_random_quest_mob_valid(fresh):
     assert picked is not None
     mvnum, rvnum, adef = picked
     tpl = MOB_DEFS[mvnum]
-    assert abs(tpl["level"] - fresh["level"]) <= 10
+    # band = 10 + lvl_bonus(ch) either side (cf. 1stMud quest.c:1025)
+    from classes import lvl_bonus
+    assert abs(tpl["level"] - fresh["level"]) <= 10 + lvl_bonus(fresh)
     assert not tpl.get("shop")
     assert adef["tag"] not in ("limbo", "quest", "immort")
     assert rvnum in ROOM_DEFS._data
@@ -477,3 +479,17 @@ def test_gquest_save_roundtrip(fresh):
         assert gq_load_line(key, val)
     for k in snapshot:
         assert gquest_info[k] == snapshot[k], k
+
+
+def test_quest_level_diff_widens_with_lvl_bonus():
+    """Band = 10 + lvl_bonus(ch) either side (cf. 1stMud quest.c:1025)."""
+    from quest import quest_level_diff
+    from classes import lvl_bonus
+    fresh = {"is_npc": False, "level": 1, "classes": [3], "race": "Human"}
+    assert lvl_bonus(fresh) == 1          # bonus 11
+    assert quest_level_diff(fresh, 12)
+    assert not quest_level_diff(fresh, 13)
+    hero = {"is_npc": False, "level": 50, "classes": [3, 0], "race": "Human"}
+    b = 10 + lvl_bonus(hero)              # ~72: high-level remorts quest anything
+    assert quest_level_diff(hero, 50 + b)
+    assert not quest_level_diff(hero, 50 + b + 1)

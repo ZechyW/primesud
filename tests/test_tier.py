@@ -30,9 +30,14 @@ def _hero(monkeypatch, pick=0, classes=(CLASS_WARRIOR, CLASS_MAGE)):
             "guild": (CLASS_WARRIOR,)}
     ROOM_DEFS._data[3022] = room
     world.rooms._data[3022] = room
+    # dice/combat fields present so create_mobile can spawn a pet from it
     MOB_DEFS._data[9900] = {"short_descr": "the guildmaster", "level": 60,
-                            "act_flags": {"train": True}}
-    world.chars[2] = {"is_npc": True, "id": 2, "tpl": 9900, "room": 3022}
+                            "act_flags": {"train": True},
+                            "hp_dice": (1, 1, 100), "hitroll": 0,
+                            "damage": (1, 4, 0), "armor": (0, 0, 0, 0)}
+    # "fighting" present: stop_fighting(both=True) indexes it on every char
+    world.chars[2] = {"is_npc": True, "id": 2, "tpl": 9900, "room": 3022,
+                      "fighting": None}
 
     player = create_char(CLASS_WARRIOR)
     player["classes"] = list(classes)
@@ -76,6 +81,9 @@ class TestTierReset:
         # in-progress skill above the floor, one below, one mastered
         player["learned"][WEAPON_GSN_MAP["sword"]] = 100   # mastered, kept
         player["learned"][GSN_BASH] = 60                   # floors to 10
+        # pets do not survive (cf. 1stMud finish_remort nuke_pets)
+        from mob import spawn_pet
+        pet = spawn_pet(9900, player, announce=False)
         try:
             training.do_remort(player, [])          # confirm prompt
             assert player["confirm_remort"] is True
@@ -108,6 +116,9 @@ class TestTierReset:
             assert calc_max_level(player) == 49
             assert player["room"] != 3022  # moved to school
             assert player["confirm_remort"] is False
+            # pet extracted (cf. 1stMud multiclass.c:207 nuke_pets)
+            assert player["pet"] is None
+            assert pet["id"] not in world.chars
         finally:
             _teardown()
 

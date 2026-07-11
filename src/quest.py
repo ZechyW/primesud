@@ -152,9 +152,14 @@ def end_quest(player, time):
 
 
 def quest_level_diff(player, mob_level):
-    """True if mob level is within questing range of player (cf. 1stMud quest_level_diff in quest.c)."""
-    # 1stMud: bonus = 10 + lvl_bonus(ch) -- [PRIMESUD] remort lvl_bonus not ported
-    bonus = 10
+    """True if mob level is within questing range of player (cf. 1stMud quest_level_diff in quest.c).
+
+    Band is 10 + lvl_bonus(ch) either side (quest.c:1025), so remorts quest
+    against a wider level range. [PRIMESUD] IsImmortal short-circuit omitted
+    (no immortals).
+    """
+    from classes import lvl_bonus
+    bonus = 10 + lvl_bonus(player)
     return (mob_level - bonus) <= player["level"] <= (mob_level + bonus)
 
 
