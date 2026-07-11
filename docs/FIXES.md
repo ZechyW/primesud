@@ -420,35 +420,6 @@ The `'R'` branch renders `rch` (`_char_short(rch)`), matching `$r`/`$J`/`$K`/
 `$L` and the `rch` visibility guard. The site carries a `[PRIMESUD]` comment
 referencing this entry.
 
-## multiclass: remort race lock message names the old race
-
-**Upstream:** `reference/1stMud4.5.3/src/nanny.c`, `HANDLE_CON_GET_NEW_RACE`,
-lines 519-525.
-
-### The bug
-
-When a remorting character picks a different race, the lock message prints
-before the new race is assigned, using the still-current pointer:
-
-```c
-if (IsRemort(ch) && ch->race != race)
-{
-    d_printlnf(d, "{cYou are now a {R%s{c forever.{x", ch->race->name);
-    ch->pcdata->stay_race = true;   /* ch->race still the OLD race here */
-}
-ch->race = race;                    /* assigned only afterwards */
-```
-
-An elf remorting into a dwarf is told "You are now a Elf forever." -- the
-race being left behind (and with the wrong article).
-
-### PrimeSUD fix -- implemented in `_apply_remort_race` in `training.py`
-
-The message names the chosen race with a correct a/an article:
-"You are now a Dwarf forever."
-
----
-
 ## multiclass: finish_remort zeroes race skills when the race is kept
 
 **Upstream:** `reference/1stMud4.5.3/src/multiclass.c`, `finish_remort`,

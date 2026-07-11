@@ -84,21 +84,23 @@ trains `5+tier`, practices `7+tier` -- with permanent perks per tier:
 
 Level caps, `lvl_bonus`, and the `LEVEL_IMMORTAL` 52 sentinel are untouched.
 Display: `score` Tier cell (only when tier > 0), `class_who` `*<tier>` suffix.
-Save lines `p.tier`/`p.stay_race` (absent in old saves -> default 0, no
-version bump).
+Save line `p.tier` (absent in old saves -> defaults 0, no version bump).
 
-**Race re-pick on remort** (added 11/07/2026, cf. 1stMud nanny.c
-`HANDLE_CON_GET_NEW_RACE`): every remort -- stock or tier reset -- offers a
-race picker until a *different* race is chosen once; that sets `stay_race`
-and locks race forever (1stMud rule). Any race prompt (even re-picking the
-same race) resets perm stats to the race base as upstream, losing trained
-stats and the chargen prime +3; `+tier` is re-added so the tier stat perk
-survives ([PRIMESUD]). Race flag dicts are replaced, not OR'd with the old
-race's as nanny.c does -- they re-derive from the race name on load, so OR'd
-leftovers could never survive a save. New race skills granted at 1%. Sex
-re-prompt and creation points not ported. Two upstream slips corrected (lock
-message names the old race; kept-race skills zeroed) -- see docs/FIXES.md
-multiclass entries.
+**Race + sex re-pick on remort** (added 11/07/2026, revised same day):
+remorting is conceptually re-creating a new mortal char, so every remort --
+stock or tier reset -- re-runs the race and sex pickers before the class
+picker (cf. 1stMud nanny.c CON_GET_NEW_RACE/CON_GET_NEW_SEX). [PRIMESUD]
+deviation: upstream locks race after one change (`stay_race`, "that race
+FOREVER"); not ported -- race is re-pickable on every remort, more
+flexibility for a single-player game. Any race prompt (even re-picking the
+same race) resets perm stats to the race base as upstream (nanny.c:527),
+losing trained stats and the chargen prime +3; `+tier` is re-added so the
+tier stat perk survives ([PRIMESUD] -- this is also how the "+1 all perm
+stats per tier" perk is realised, since the prompt always runs). Race flag
+dicts are replaced, not OR'd with the old race's as nanny.c does -- they
+re-derive from the race name on load, so OR'd leftovers could never survive
+a save. New race skills granted at 1%; upstream's kept-race skill zeroing
+corrected (see docs/FIXES.md). Creation points not ported.
 
 ---
 

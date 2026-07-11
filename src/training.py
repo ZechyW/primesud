@@ -217,10 +217,10 @@ def do_remort(player, args):
     Requirements: at own class guild with a trainer/gainer mob present, at
     calc_max_level, REMORT_GOLD gold.
     Two-step confirm as in 1stMud (type remort twice; remort <arg> cancels).
-    [PRIMESUD] nanny.c re-creation flow replaced by race + class pickers; no
-    immortal backup/wiznet, no sex re-prompt. Race may be re-picked each
-    remort until a different race is chosen once -- then stay_race locks it
-    forever (cf. nanny.c HANDLE_CON_GET_NEW_RACE).
+    [PRIMESUD] nanny.c re-creation flow replaced by race + sex + class
+    pickers; no immortal backup/wiznet. Race is re-pickable on EVERY remort
+    -- upstream's stay_race lock (one change, then forever) is deliberately
+    not ported; single-player flexibility (see DESIGN.md).
     [PRIMESUD] At MAX_REMORT classes, 1stMud's "You can't remort any more!"
     refusal becomes a prestige tier reset instead (see finish_tier_reset).
 
@@ -275,17 +275,11 @@ def do_remort(player, args):
         if args:
             chprintln(player, "Just type remort.  No argument.")
             return
-        # transient UI string: % ok here (see CLAUDE.md colour codes)
-        # [PRIMESUD] upstream fmt "{Cclass%s" lacks the space before "and"
-        chprintlnf(player, "{RTyping {Gremort{R with an argument will undo remort"
-                   " status.  Remorting is {Wnot reversable{R; make sure you know"
-                   " what {Cclass%s{R you want to remort into."
-                   "  Type {Gremort{R again to confirm.{x",
-                   "" if player.get("stay_race") else " and {Brace")
-        if not player.get("stay_race"):
-            # cf. 1stMud do_remort stay_race warning (flash code {f dropped)
-            chprintln(player, "{WWARNING{R: IF YOU CHOOSE A RACE DIFFERENT FROM"
-                      " YOUR RACE NOW YOU WILL BE THAT RACE {WFOREVER{R.{x")
+        # [PRIMESUD] no stay_race FOREVER warning -- race never locks here
+        chprintln(player, "{RTyping {Gremort{R with an argument will undo remort"
+                  " status.  Remorting is {Wnot reversable{R; make sure you know"
+                  " what {Cclass{R and {Brace{R you want to remort into."
+                  "  Type {Gremort{R again to confirm.{x")
         if tier_reset:
             # [PRIMESUD] extra warning: this one is a prestige tier reset
             chprintln(player, "{RThis remort will {Wraise your tier{R: you"
@@ -299,20 +293,22 @@ def do_remort(player, args):
         player["confirm_remort"] = False
         return
 
-    # [PRIMESUD] race picker instead of nanny CON_GET_NEW_RACE (only until a
-    # different race is chosen once -- stay_race); Esc aborts (confirm stays
-    # pending, type remort again).
-    new_race = None
-    if not player.get("stay_race"):
-        race_labels = [rn + " - " + RACE_TABLE[rn]["summary"]
-                       for rn in PC_RACE_ORDER]
-        ridx = pick_from("What is your race?", race_labels)
-        if ridx < 0:
-            return
-        new_race = PC_RACE_ORDER[ridx]
+    # [PRIMESUD] re-creation pickers instead of nanny CON_GET_NEW_RACE /
+    # CON_GET_NEW_SEX / CON_GET_NEW_CLASS; Esc at any aborts (confirm stays
+    # pending, type remort again). Race offered every remort -- upstream's
+    # stay_race one-change lock deliberately not ported.
+    race_labels = [rn + " - " + RACE_TABLE[rn]["summary"]
+                   for rn in PC_RACE_ORDER]
+    ridx = pick_from("What is your race?", race_labels)
+    if ridx < 0:
+        return
+    new_race = PC_RACE_ORDER[ridx]
 
-    # [PRIMESUD] class picker instead of nanny CON_GET_NEW_CLASS; Esc aborts
-    # (confirm stays pending, type remort again).
+    sidx = pick_from("What is your sex?", ["Male", "Female", "Neutral"])
+    if sidx < 0:
+        return
+    new_sex = ("male", "female", "neutral")[sidx]
+
     if tier_reset:
         # tier reset restarts with any single class, repeats allowed
         avail = list(range(len(CLASS_TABLE)))
@@ -324,34 +320,33 @@ def do_remort(player, args):
     if idx < 0:
         return
     if tier_reset:
-        finish_tier_reset(player, avail[idx], new_race)
+        finish_tier_reset(player, avail[idx], new_race, new_sex)
     else:
-        finish_remort(player, avail[idx], new_race)
+        finish_remort(player, avail[idx], new_race, new_sex)
 
 
 def _apply_remort_race(player, race_name):
     """Apply the remort race pick (cf. 1stMud HANDLE_CON_GET_NEW_RACE in nanny.c).
 
-    A different race sets stay_race permanently (nanny.c:519). Either way
-    perm stats reset to the race base (nanny.c:527 -- trained stats and the
+    Perm stats reset to the race base (nanny.c:527 -- trained stats and the
     chargen prime +3 are lost, as upstream), race-derived fields re-derive,
     and racial skills are granted at 1%.
-    [PRIMESUD] Deviations: +tier re-added to the reset stats so the tier
-    stat perk survives; flag dicts replaced rather than OR'd with the old
-    race's (nanny.c:529-532) -- they re-derive from the race name on load,
-    so OR'd leftovers could never survive a save anyway; lock message names
-    the new race (upstream prints the old race's name -- see docs/FIXES.md);
-    sex re-prompt and creation points not ported.
+    [PRIMESUD] Deviations: upstream's stay_race lock (a different race is
+    forever) not ported -- race is re-pickable every remort; +tier re-added
+    to the reset stats so the tier stat perk survives; flag dicts replaced
+    rather than OR'd with the old race's (nanny.c:529-532) -- they re-derive
+    from the race name on load, so OR'd leftovers could never survive a
+    save anyway; creation points not ported.
 
     Args:
         player (dict): Player state dict.
         race_name (str): Chosen PC race name (RACE_TABLE key).
     """
     if race_name != player["race"]:
-        player["stay_race"] = 1
+        # cf. nanny.c:546 "You are now a %s." ([PRIMESUD] article fixed;
+        # printed only on an actual change, upstream echoes every pick)
         art = "an" if race_name[0] in "AEIOU" else "a"
-        chprintln(player, "{RYou are now " + art + " {W" + race_name
-                  + "{R forever.{x")
+        chprintln(player, "{cYou are now " + art + " {W" + race_name + "{c.{x")
     player["race"] = race_name
     race = RACE_TABLE[race_name]
     stats = race.get("stats", (13, 13, 13, 13, 13))
@@ -378,15 +373,17 @@ def _apply_remort_race(player, race_name):
             player["learned"][sn] = 1
 
 
-def finish_remort(player, new_class, new_race=None):
+def finish_remort(player, new_class, new_race=None, new_sex=None):
     """Apply the remort: level 1 restart with an added class
     (cf. 1stMud finish_remort in multiclass.c).
 
     Args:
         player (dict): Player state dict (at max level, requirements checked).
         new_class (int): Class index to append.
-        new_race (str or None): Race pick when the prompt ran (stay_race
-            unset); None keeps the current race untouched.
+        new_race (str or None): Race pick from the remort prompts; None
+            keeps the current race untouched.
+        new_sex (str or None): Sex pick ("male"/"female"/"neutral"); None
+            keeps the current sex.
     """
     from player import reset_char
 
@@ -408,6 +405,9 @@ def finish_remort(player, new_class, new_race=None):
     player["quest_points"] = player.get("quest_points", 0) - 500  # cf. 1stMud finish_remort
     if new_race is not None:
         _apply_remort_race(player, new_race)  # before xp_next: race class_mult
+    if new_sex is not None:
+        # cf. nanny.c CON_GET_NEW_SEX (remort re-asks sex like creation)
+        player["sex"] = player["true_sex"] = new_sex
     # 1stMud assigns mana=max_move / move=max_mana (swapped) -- harmless
     # upstream since all three are 100*b; PrimeSUD assigns straight.
     # [PRIMESUD] Stock grants (100*b vitals, 5*b trains, 7*b practices,
@@ -459,7 +459,7 @@ def finish_remort(player, new_class, new_race=None):
     save_world(quiet=True)
 
 
-def finish_tier_reset(player, new_class, new_race=None):
+def finish_tier_reset(player, new_class, new_race=None, new_sex=None):
     """Apply a prestige tier reset: restart with a single class and permanent
     tier perks. [PRIMESUD] -- no 1stMud equivalent; mirrors finish_remort's
     sequence but restarts near-fresh instead of the 100*lvl_bonus power dump.
@@ -473,8 +473,10 @@ def finish_tier_reset(player, new_class, new_race=None):
     Args:
         player (dict): Player state dict (at max level/classes, gates checked).
         new_class (int): Class index to restart with (repeats allowed).
-        new_race (str or None): Race pick when the prompt ran (stay_race
-            unset); None keeps the current race untouched.
+        new_race (str or None): Race pick from the remort prompts; None
+            keeps the current race untouched.
+        new_sex (str or None): Sex pick ("male"/"female"/"neutral"); None
+            keeps the current sex.
     """
     from player import reset_char
 
@@ -504,14 +506,18 @@ def finish_tier_reset(player, new_class, new_race=None):
     player["train"] = 5 + tier
     player["practice"] = 7 + tier
     if new_race is not None:
-        # race prompt ran: stats reset to race base + tier (this tier's +1
-        # folded into _apply_remort_race's +tier)
+        # stats reset to race base + tier: the tier stat perk lives in
+        # _apply_remort_race's +tier (race prompt runs on every remort)
         _apply_remort_race(player, new_race)
     else:
-        # +1 all perm stats, capped at the (tier-raised) trainable maximum
+        # direct-call fallback (do_remort always passes a race): +1 all perm
+        # stats, capped at the (tier-raised) trainable maximum
         for st in ("str", "dex", "int", "wis", "con"):
             if player["perm_stat"][st] < get_max_train(player, st):
                 player["perm_stat"][st] += 1
+    if new_sex is not None:
+        # cf. nanny.c CON_GET_NEW_SEX (remort re-asks sex like creation)
+        player["sex"] = player["true_sex"] = new_sex
     player["xp_next"] = exp_per_level(player)  # class_mult follows the new class
     reset_char(player)
 

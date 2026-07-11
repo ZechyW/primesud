@@ -221,9 +221,10 @@ class TestRemort:
         world.chars[1] = player
 
         import training
-        # remort now runs two pickers: race ("What is your race?") then class
-        monkeypatch.setattr(training, "pick_from",
-                            lambda t, o: race_pick if "race" in t else pick)
+        # remort runs three pickers: race, sex, then class -- route on title
+        monkeypatch.setattr(
+            training, "pick_from",
+            lambda t, o: race_pick if "race" in t else (0 if "sex" in t else pick))
         monkeypatch.setattr(training, "save_world", lambda quiet=False: True,
                             raising=False)
         # school outfit items not loaded in the test world
@@ -280,9 +281,10 @@ class TestRemort:
         finally:
             self._teardown()
 
-    def test_remort_race_change_locks_forever(self, monkeypatch):
+    def test_remort_race_change(self, monkeypatch):
         # Elf pick (PC_RACE_ORDER[1]): stats reset to Elf base, fields and
-        # racial skills re-derived, stay_race set (cf. nanny.c:519-544)
+        # racial skills re-derived (cf. nanny.c:525-544); [PRIMESUD] no
+        # stay_race lock -- race is re-pickable on every remort
         import training
         import game_state
         monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
@@ -292,7 +294,6 @@ class TestRemort:
             training.do_remort(player, [])
             training.do_remort(player, [])
             assert player["race"] == "Elf"
-            assert player["stay_race"] == 1
             stats = RACE_TABLE["Elf"]["stats"]
             for i, st in enumerate(("str", "dex", "int", "wis", "con")):
                 assert player["perm_stat"][st] == stats[i]
@@ -303,37 +304,23 @@ class TestRemort:
         finally:
             self._teardown()
 
-    def test_remort_same_race_resets_stats_no_lock(self, monkeypatch):
+    def test_remort_same_race_still_resets_stats(self, monkeypatch):
         # keeping the race still resets stats to base (nanny.c:527 runs on
-        # every race prompt) but does not set stay_race
+        # every race prompt); sex re-picked too (remort = re-creation)
         import training
         import game_state
         monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
         player = self._hero(monkeypatch, pick=0, race_pick=0)  # Human again
+        player["sex"] = player["true_sex"] = "female"
         try:
             training.do_remort(player, [])
             training.do_remort(player, [])
             assert player["race"] == "Human"
-            assert player["stay_race"] == 0
             # Human base 13s; the chargen prime +3 is lost, as upstream
             for st in ("str", "dex", "int", "wis", "con"):
                 assert player["perm_stat"][st] == 13
-        finally:
-            self._teardown()
-
-    def test_remort_locked_race_skips_prompt(self, monkeypatch):
-        # stay_race set: no race prompt (race_pick sentinel would IndexError)
-        import training
-        import game_state
-        monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
-        player = self._hero(monkeypatch, pick=0, race_pick=99)
-        player["stay_race"] = 1
-        old_str = player["perm_stat"]["str"]
-        try:
-            training.do_remort(player, [])
-            training.do_remort(player, [])
-            assert player["race"] == "Human"
-            assert player["perm_stat"]["str"] == old_str  # stats untouched
+            # sex picker returned Male (index 0)
+            assert player["sex"] == player["true_sex"] == "male"
         finally:
             self._teardown()
 
