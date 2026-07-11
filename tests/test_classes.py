@@ -192,7 +192,7 @@ class TestGuildRooms:
 class TestRemort:
     """do_remort / finish_remort (cf. 1stMud multiclass.c)."""
 
-    def _hero(self, monkeypatch, pick=0):
+    def _hero(self, monkeypatch, pick=0, race_pick=0):
         """Max-level warrior in his guild with a trainer, rich, at 3022."""
         import world
         from world import ROOM_DEFS, MOB_DEFS
@@ -221,7 +221,9 @@ class TestRemort:
         world.chars[1] = player
 
         import training
-        monkeypatch.setattr(training, "pick_from", lambda t, o: pick)
+        # remort now runs two pickers: race ("What is your race?") then class
+        monkeypatch.setattr(training, "pick_from",
+                            lambda t, o: race_pick if "race" in t else pick)
         monkeypatch.setattr(training, "save_world", lambda quiet=False: True,
                             raising=False)
         # school outfit items not loaded in the test world
@@ -275,6 +277,63 @@ class TestRemort:
             import world
             assert player["pet"] is None
             assert pet["id"] not in world.chars
+        finally:
+            self._teardown()
+
+    def test_remort_race_change_locks_forever(self, monkeypatch):
+        # Elf pick (PC_RACE_ORDER[1]): stats reset to Elf base, fields and
+        # racial skills re-derived, stay_race set (cf. nanny.c:519-544)
+        import training
+        import game_state
+        monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
+        from races import RACE_TABLE
+        player = self._hero(monkeypatch, pick=0, race_pick=1)
+        try:
+            training.do_remort(player, [])
+            training.do_remort(player, [])
+            assert player["race"] == "Elf"
+            assert player["stay_race"] == 1
+            stats = RACE_TABLE["Elf"]["stats"]
+            for i, st in enumerate(("str", "dex", "int", "wis", "con")):
+                assert player["perm_stat"][st] == stats[i]
+            assert player["vuln_flags"].get("iron")
+            assert player["size"] == "small"
+            from magic import _skill_lookup
+            assert player["learned"].get(_skill_lookup("sneak"), 0) >= 1
+        finally:
+            self._teardown()
+
+    def test_remort_same_race_resets_stats_no_lock(self, monkeypatch):
+        # keeping the race still resets stats to base (nanny.c:527 runs on
+        # every race prompt) but does not set stay_race
+        import training
+        import game_state
+        monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
+        player = self._hero(monkeypatch, pick=0, race_pick=0)  # Human again
+        try:
+            training.do_remort(player, [])
+            training.do_remort(player, [])
+            assert player["race"] == "Human"
+            assert player["stay_race"] == 0
+            # Human base 13s; the chargen prime +3 is lost, as upstream
+            for st in ("str", "dex", "int", "wis", "con"):
+                assert player["perm_stat"][st] == 13
+        finally:
+            self._teardown()
+
+    def test_remort_locked_race_skips_prompt(self, monkeypatch):
+        # stay_race set: no race prompt (race_pick sentinel would IndexError)
+        import training
+        import game_state
+        monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
+        player = self._hero(monkeypatch, pick=0, race_pick=99)
+        player["stay_race"] = 1
+        old_str = player["perm_stat"]["str"]
+        try:
+            training.do_remort(player, [])
+            training.do_remort(player, [])
+            assert player["race"] == "Human"
+            assert player["perm_stat"]["str"] == old_str  # stats untouched
         finally:
             self._teardown()
 

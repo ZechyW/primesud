@@ -68,6 +68,10 @@ def create_char(class_idx=CLASS_WARRIOR, race_name="Human"):
         # [PRIMESUD] prestige tier counter; bumped by finish_tier_reset
         # (training.py). See DESIGN.md multiclass tiering.
         "tier":        0,
+        # cf. 1stMud pcdata->stay_race: set (permanently) once a remort
+        # changes race; blocks the race prompt on later remorts. 0/1 int
+        # for the save format (see game_state.py).
+        "stay_race":   0,
         # pcdata fields (cf. 1stMud PcData in structs.h):
         "practice": 5,
         "train":    3,

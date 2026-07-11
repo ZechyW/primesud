@@ -21,7 +21,7 @@ from player import create_char
 from skills_table import SKILLS, GSN_BASH, GSN_RECALL, WEAPON_GSN_MAP
 
 
-def _hero(monkeypatch, pick=0, classes=(CLASS_WARRIOR, CLASS_MAGE)):
+def _hero(monkeypatch, pick=0, classes=(CLASS_WARRIOR, CLASS_MAGE), race_pick=0):
     """Max-level multiclass hero in his guild with a trainer, rich, at 3022."""
     from world import ROOM_DEFS, MOB_DEFS
 
@@ -54,7 +54,9 @@ def _hero(monkeypatch, pick=0, classes=(CLASS_WARRIOR, CLASS_MAGE)):
     gquest_info["joined"] = False
 
     import training
-    monkeypatch.setattr(training, "pick_from", lambda t, o: pick)
+    # remort now runs two pickers: race ("What is your race?") then class
+    monkeypatch.setattr(training, "pick_from",
+                        lambda t, o: race_pick if "race" in t else pick)
     monkeypatch.setattr(training, "save_world", lambda quiet=False: True,
                         raising=False)
     monkeypatch.setattr(training, "do_outfit", lambda p, a: None)
@@ -77,7 +79,6 @@ class TestTierReset:
         import training
         # avail = all 6 classes on a tier reset; pick=1 -> Cleric
         player = _hero(monkeypatch, pick=CLASS_CLERIC)
-        old_stats = dict(player["perm_stat"])
         # in-progress skill above the floor, one below, one mastered
         player["learned"][WEAPON_GSN_MAP["sword"]] = 100   # mastered, kept
         player["learned"][GSN_BASH] = 60                   # floors to 10
@@ -103,9 +104,11 @@ class TestTierReset:
             assert player["wimpy"] == 20
             assert player["train"] == 6
             assert player["practice"] == 8
-            # +1 all perm stats
+            # race prompt ran (Human kept): stats reset to race base + tier
+            # (chargen prime +3 lost, cf. nanny.c:527); same race -> no lock
             for st in ("str", "dex", "int", "wis", "con"):
-                assert player["perm_stat"][st] == old_stats[st] + 1
+                assert player["perm_stat"][st] == 13 + 1
+            assert player["stay_race"] == 0
             # mastered kept; in-progress floored at 10*tier
             assert player["learned"][WEAPON_GSN_MAP["sword"]] == 100
             assert player["learned"][GSN_BASH] == 10
@@ -156,6 +159,44 @@ class TestTierReset:
             training.do_remort(player, [])
             assert player["classes"] == [CLASS_WARRIOR]
             assert player["tier"] == 1
+        finally:
+            _teardown()
+
+    def test_race_change_on_reset(self, monkeypatch):
+        # Dwarf pick (PC_RACE_ORDER[2]): stats reset to Dwarf base + tier,
+        # race locked forever, race fields/skills re-derived
+        import training
+        from races import RACE_TABLE
+        player = _hero(monkeypatch, pick=CLASS_WARRIOR, race_pick=2)
+        try:
+            training.do_remort(player, [])
+            training.do_remort(player, [])
+            assert player["race"] == "Dwarf"
+            assert player["stay_race"] == 1
+            stats = RACE_TABLE["Dwarf"]["stats"]
+            for i, st in enumerate(("str", "dex", "int", "wis", "con")):
+                assert player["perm_stat"][st] == stats[i] + 1  # + tier perk
+            assert player["res_flags"].get("poison")
+            assert player["vuln_flags"].get("drowning")
+            # dwarven berserk granted at 1%
+            from magic import _skill_lookup
+            assert player["learned"].get(_skill_lookup("berserk"), 0) >= 1
+        finally:
+            _teardown()
+
+    def test_locked_race_keeps_plus_one_perk(self, monkeypatch):
+        # stay_race set: no race prompt, stats keep accumulating +1 per tier
+        import training
+        player = _hero(monkeypatch, pick=CLASS_MAGE,
+                       race_pick=99)  # picker must not ask for race
+        player["stay_race"] = 1
+        old_stats = dict(player["perm_stat"])
+        try:
+            training.do_remort(player, [])
+            training.do_remort(player, [])
+            assert player["race"] == "Human"
+            for st in ("str", "dex", "int", "wis", "con"):
+                assert player["perm_stat"][st] == old_stats[st] + 1
         finally:
             _teardown()
 
@@ -242,6 +283,7 @@ class TestTierSaveLoad:
         player["room"] = 9001
         player["_macros"] = {}
         player["tier"] = 3
+        player["stay_race"] = 1
         world.chars[1] = player
         game_state._serialize_world()
 
@@ -253,7 +295,10 @@ class TestTierSaveLoad:
         world.chars[1] = player2
         assert game_state.load_world() == "file"
         assert player2["tier"] == 3
+        assert player2["stay_race"] == 1
 
     def test_fresh_char_defaults_tier_zero(self):
-        # old saves carry no p.tier line; the create_char default must hold
-        assert create_char()["tier"] == 0
+        # old saves carry no p.tier/p.stay_race lines; create_char defaults hold
+        ch = create_char()
+        assert ch["tier"] == 0
+        assert ch["stay_race"] == 0

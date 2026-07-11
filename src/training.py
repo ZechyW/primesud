@@ -11,6 +11,7 @@ from info import print_practice_table
 from inventory import do_outfit
 from picker import pick_from
 from comm import do_say, nuke_pets
+from races import RACE_TABLE, PC_RACE_ORDER
 from groups import GROUP_TABLE, gn_add, group_lookup, group_rating
 from skill_utils import (can_use_skill_spell, find_skill_spell, skill_level,
                          skill_rating)
@@ -216,8 +217,10 @@ def do_remort(player, args):
     Requirements: at own class guild with a trainer/gainer mob present, at
     calc_max_level, REMORT_GOLD gold.
     Two-step confirm as in 1stMud (type remort twice; remort <arg> cancels).
-    [PRIMESUD] nanny.c re-creation flow replaced by a class picker; race is
-    always kept (1stMud stay_race path); no immortal backup/wiznet.
+    [PRIMESUD] nanny.c re-creation flow replaced by race + class pickers; no
+    immortal backup/wiznet, no sex re-prompt. Race may be re-picked each
+    remort until a different race is chosen once -- then stay_race locks it
+    forever (cf. nanny.c HANDLE_CON_GET_NEW_RACE).
     [PRIMESUD] At MAX_REMORT classes, 1stMud's "You can't remort any more!"
     refusal becomes a prestige tier reset instead (see finish_tier_reset).
 
@@ -272,10 +275,17 @@ def do_remort(player, args):
         if args:
             chprintln(player, "Just type remort.  No argument.")
             return
-        chprintln(player, "{RTyping {Gremort{R with an argument will undo remort"
-                  " status.  Remorting is {Wnot reversable{R; make sure you know"
-                  " what {Cclass{R you want to remort into."
-                  "  Type {Gremort{R again to confirm.{x")
+        # transient UI string: % ok here (see CLAUDE.md colour codes)
+        # [PRIMESUD] upstream fmt "{Cclass%s" lacks the space before "and"
+        chprintlnf(player, "{RTyping {Gremort{R with an argument will undo remort"
+                   " status.  Remorting is {Wnot reversable{R; make sure you know"
+                   " what {Cclass%s{R you want to remort into."
+                   "  Type {Gremort{R again to confirm.{x",
+                   "" if player.get("stay_race") else " and {Brace")
+        if not player.get("stay_race"):
+            # cf. 1stMud do_remort stay_race warning (flash code {f dropped)
+            chprintln(player, "{WWARNING{R: IF YOU CHOOSE A RACE DIFFERENT FROM"
+                      " YOUR RACE NOW YOU WILL BE THAT RACE {WFOREVER{R.{x")
         if tier_reset:
             # [PRIMESUD] extra warning: this one is a prestige tier reset
             chprintln(player, "{RThis remort will {Wraise your tier{R: you"
@@ -288,6 +298,18 @@ def do_remort(player, args):
         chprintln(player, "Remort status removed.")
         player["confirm_remort"] = False
         return
+
+    # [PRIMESUD] race picker instead of nanny CON_GET_NEW_RACE (only until a
+    # different race is chosen once -- stay_race); Esc aborts (confirm stays
+    # pending, type remort again).
+    new_race = None
+    if not player.get("stay_race"):
+        race_labels = [rn + " - " + RACE_TABLE[rn]["summary"]
+                       for rn in PC_RACE_ORDER]
+        ridx = pick_from("What is your race?", race_labels)
+        if ridx < 0:
+            return
+        new_race = PC_RACE_ORDER[ridx]
 
     # [PRIMESUD] class picker instead of nanny CON_GET_NEW_CLASS; Esc aborts
     # (confirm stays pending, type remort again).
@@ -302,18 +324,69 @@ def do_remort(player, args):
     if idx < 0:
         return
     if tier_reset:
-        finish_tier_reset(player, avail[idx])
+        finish_tier_reset(player, avail[idx], new_race)
     else:
-        finish_remort(player, avail[idx])
+        finish_remort(player, avail[idx], new_race)
 
 
-def finish_remort(player, new_class):
+def _apply_remort_race(player, race_name):
+    """Apply the remort race pick (cf. 1stMud HANDLE_CON_GET_NEW_RACE in nanny.c).
+
+    A different race sets stay_race permanently (nanny.c:519). Either way
+    perm stats reset to the race base (nanny.c:527 -- trained stats and the
+    chargen prime +3 are lost, as upstream), race-derived fields re-derive,
+    and racial skills are granted at 1%.
+    [PRIMESUD] Deviations: +tier re-added to the reset stats so the tier
+    stat perk survives; flag dicts replaced rather than OR'd with the old
+    race's (nanny.c:529-532) -- they re-derive from the race name on load,
+    so OR'd leftovers could never survive a save anyway; lock message names
+    the new race (upstream prints the old race's name -- slip); sex
+    re-prompt and creation points not ported.
+
+    Args:
+        player (dict): Player state dict.
+        race_name (str): Chosen PC race name (RACE_TABLE key).
+    """
+    if race_name != player["race"]:
+        player["stay_race"] = 1
+        art = "an" if race_name[0] in "AEIOU" else "a"
+        chprintln(player, "{RYou are now " + art + " {W" + race_name
+                  + "{R forever.{x")
+    player["race"] = race_name
+    race = RACE_TABLE[race_name]
+    stats = race.get("stats", (13, 13, 13, 13, 13))
+    tier = player.get("tier", 0)
+    names = ("str", "dex", "int", "wis", "con")
+    for i in range(5):
+        player["perm_stat"][names[i]] = stats[i]
+    for st in names:
+        player["perm_stat"][st] = min(player["perm_stat"][st] + tier,
+                                      get_max_train(player, st))
+    # race-derived fields, as create_char / load_game re-derivation
+    player["size"] = race.get("size", "medium")
+    player["affected_by"] = dict(race.get("aff", {}))
+    player["imm_flags"] = dict(race.get("imm", {}))
+    player["res_flags"] = dict(race.get("res", {}))
+    player["vuln_flags"] = dict(race.get("vuln", {}))
+    player["form_flags"] = dict(race.get("form", {}))
+    player["part_flags"] = dict(race.get("parts", {}))
+    # racial skills at 1% (cf. nanny.c:536-541 group_add loop)
+    from magic import _skill_lookup  # deferred: training -> magic cycle risk
+    for rsk_name in race.get("skills", ()):
+        sn = _skill_lookup(rsk_name)
+        if sn is not None and player["learned"].get(sn, 0) == 0:
+            player["learned"][sn] = 1
+
+
+def finish_remort(player, new_class, new_race=None):
     """Apply the remort: level 1 restart with an added class
     (cf. 1stMud finish_remort in multiclass.c).
 
     Args:
         player (dict): Player state dict (at max level, requirements checked).
         new_class (int): Class index to append.
+        new_race (str or None): Race pick when the prompt ran (stay_race
+            unset); None keeps the current race untouched.
     """
     from player import reset_char
 
@@ -333,6 +406,8 @@ def finish_remort(player, new_class):
     player["xp"] = 0
     player["gold"] -= REMORT_GOLD
     player["quest_points"] = player.get("quest_points", 0) - 500  # cf. 1stMud finish_remort
+    if new_race is not None:
+        _apply_remort_race(player, new_race)  # before xp_next: race class_mult
     # 1stMud assigns mana=max_move / move=max_mana (swapped) -- harmless
     # upstream since all three are 100*b; PrimeSUD assigns straight.
     # [PRIMESUD] Stock grants (100*b vitals, 5*b trains, 7*b practices,
@@ -354,7 +429,10 @@ def finish_remort(player, new_class):
     nuke_pets(player)
 
     # cf. 1stMud finish_remort learned loop: in-progress (<100) skills reset
-    # to 1%, mastered (100) skills kept; race skills kept (stay_race path).
+    # to 1%, mastered (100) skills kept. [PRIMESUD] upstream zeroes current-
+    # race skills when the race prompt ran but the same race was kept
+    # (multiclass.c:217, likely a slip); here race skills reset to 1% like
+    # everything else (new-race skills were granted in _apply_remort_race).
     learned = player["learned"]
     for sn in list(learned):
         if 0 < learned[sn] < 100:
@@ -381,7 +459,7 @@ def finish_remort(player, new_class):
     save_world(quiet=True)
 
 
-def finish_tier_reset(player, new_class):
+def finish_tier_reset(player, new_class, new_race=None):
     """Apply a prestige tier reset: restart with a single class and permanent
     tier perks. [PRIMESUD] -- no 1stMud equivalent; mirrors finish_remort's
     sequence but restarts near-fresh instead of the 100*lvl_bonus power dump.
@@ -395,6 +473,8 @@ def finish_tier_reset(player, new_class):
     Args:
         player (dict): Player state dict (at max level/classes, gates checked).
         new_class (int): Class index to restart with (repeats allowed).
+        new_race (str or None): Race pick when the prompt ran (stay_race
+            unset); None keeps the current race untouched.
     """
     from player import reset_char
 
@@ -423,10 +503,15 @@ def finish_tier_reset(player, new_class):
     player["wimpy"] = player["max_hit"] // 5
     player["train"] = 5 + tier
     player["practice"] = 7 + tier
-    # +1 all perm stats, capped at the (tier-raised) trainable maximum
-    for st in ("str", "dex", "int", "wis", "con"):
-        if player["perm_stat"][st] < get_max_train(player, st):
-            player["perm_stat"][st] += 1
+    if new_race is not None:
+        # race prompt ran: stats reset to race base + tier (this tier's +1
+        # folded into _apply_remort_race's +tier)
+        _apply_remort_race(player, new_race)
+    else:
+        # +1 all perm stats, capped at the (tier-raised) trainable maximum
+        for st in ("str", "dex", "int", "wis", "con"):
+            if player["perm_stat"][st] < get_max_train(player, st):
+                player["perm_stat"][st] += 1
     player["xp_next"] = exp_per_level(player)  # class_mult follows the new class
     reset_char(player)
 

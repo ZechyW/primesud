@@ -84,7 +84,21 @@ trains `5+tier`, practices `7+tier` -- with permanent perks per tier:
 
 Level caps, `lvl_bonus`, and the `LEVEL_IMMORTAL` 52 sentinel are untouched.
 Display: `score` Tier cell (only when tier > 0), `class_who` `*<tier>` suffix.
-Save line `p.tier` (absent in old saves -> defaults 0, no version bump).
+Save lines `p.tier`/`p.stay_race` (absent in old saves -> default 0, no
+version bump).
+
+**Race re-pick on remort** (added 11/07/2026, cf. 1stMud nanny.c
+`HANDLE_CON_GET_NEW_RACE`): every remort -- stock or tier reset -- offers a
+race picker until a *different* race is chosen once; that sets `stay_race`
+and locks race forever (1stMud rule). Any race prompt (even re-picking the
+same race) resets perm stats to the race base as upstream, losing trained
+stats and the chargen prime +3; `+tier` is re-added so the tier stat perk
+survives ([PRIMESUD]). Race flag dicts are replaced, not OR'd with the old
+race's as nanny.c does -- they re-derive from the race name on load, so OR'd
+leftovers could never survive a save. New race skills granted at 1%; old
+race skills fall through the normal remort skill reset (upstream zeroes
+kept-race skills at multiclass.c:217 -- treated as a slip). Sex re-prompt
+and creation points not ported.
 
 ---
 
