@@ -742,8 +742,9 @@ def remove_obj(player, slot, fReplace):
     if item_extra_flags(obj, tpl).get("noremove"):
         chprintln(player, "You can't remove {}.".format(tpl["short_descr"]))
         return False
-    chprintln(player, "You stop using {}.".format(tpl["short_descr"]))
     unequip_char(player, slot)
+    act("$n stops using $p.", player, obj, None, TO_ROOM)
+    act("You stop using $p.", player, obj, None, TO_CHAR)
     return True
 
 
