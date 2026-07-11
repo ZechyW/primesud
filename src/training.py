@@ -5,8 +5,8 @@ from classes import (CLASS_TABLE, MAX_REMORT, calc_max_level,
                      exp_per_level, is_class, lvl_bonus, skill_adept_cap)
 from handler import (get_curr_stat, get_max_train, act, chprintln, chprintlnf,
                    TO_CHAR, TO_ROOM, affect_remove, unequip_char)
-from config import (INT_APP_LEARN,
-                    MAX_MORTAL_LEVEL, R_STARTING_ROOM, TERMINAL_COLS)
+from config import (INT_APP_LEARN, MAX_MORTAL_LEVEL, REMORT_POWER_DIV,
+                    R_STARTING_ROOM, TERMINAL_COLS)
 from info import print_practice_table
 from inventory import do_outfit
 from picker import pick_from
@@ -335,15 +335,18 @@ def finish_remort(player, new_class):
     player["quest_points"] = player.get("quest_points", 0) - 500  # cf. 1stMud finish_remort
     # 1stMud assigns mana=max_move / move=max_mana (swapped) -- harmless
     # upstream since all three are 100*b; PrimeSUD assigns straight.
-    player["max_hit"]  = player["perm_hit"]  = 100 * b
-    player["max_mana"] = player["perm_mana"] = 100 * b
-    player["max_move"] = player["perm_move"] = 100 * b
+    # [PRIMESUD] Stock grants (100*b vitals, 5*b trains, 7*b practices,
+    # ~6000/300/420 at first remort) scaled down by REMORT_POWER_DIV
+    # (config.py) -- ~500/25/35 at the default 12; 1 restores stock.
+    player["max_hit"]  = player["perm_hit"]  = 100 * b // REMORT_POWER_DIV
+    player["max_mana"] = player["perm_mana"] = 100 * b // REMORT_POWER_DIV
+    player["max_move"] = player["perm_move"] = 100 * b // REMORT_POWER_DIV
     player["hit"]  = player["max_hit"]
     player["mana"] = player["max_mana"]
     player["move"] = player["max_move"]
     player["wimpy"] = player["max_hit"] // 5
-    player["train"] = 5 * b
-    player["practice"] = 7 * b
+    player["train"] = 5 * b // REMORT_POWER_DIV
+    player["practice"] = 7 * b // REMORT_POWER_DIV
     player["xp_next"] = exp_per_level(player)  # class_mult may change with new class
     reset_char(player)
 

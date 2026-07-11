@@ -219,6 +219,14 @@ LEVEL_HERO = 49  # calc_max_level base: mortals cap at HERO + remort count.
 #    level bounds, debug setlevel, corpse-gold split, info.py display clamps).
 MAX_REMORT = 2
 
+# [PRIMESUD] Remort power divisor. Stock 1stMud finish_remort grants
+# 100*lvl_bonus hp/mana/move, 5*lvl_bonus trains, 7*lvl_bonus practices --
+# ~6000 hp / 300 trains / 420 practices at first remort, absurd against
+# PrimeSUD's flatter economy (fresh char: 50 hp / 3 trains / 5 practices).
+# All three grants are divided by this; 12 lands ~500 hp / 25 / 35.
+# Set to 1 for stock 1stMud behaviour.
+REMORT_POWER_DIV = 12
+
 # -- Practice cap ----------------------------------------------------------------------
 SKILL_ADEPT = 75  # 1stMud class_table[].skill_adept; all shipped classes use 75
 # [PRIMESUD] Effective practice ceiling is skill_adept_cap() in classes.py:

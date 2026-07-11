@@ -250,10 +250,12 @@ class TestRemort:
             assert player["xp"] == 0
             # b = lvl_bonus at level 49 with the new class already appended
             # (2 classes): 2 + 48*.9 + inclev sums = 60.194 -> 60 (cf. 1stMud
-            # nanny appends class before finish_remort computes b)
-            assert player["max_hit"] == player["perm_hit"] == 6000
-            assert player["train"] == 5 * (player["max_hit"] // 100)
-            assert player["practice"] == 7 * (player["max_hit"] // 100)
+            # nanny appends class before finish_remort computes b).
+            # [PRIMESUD] stock 100*b/5*b/7*b scaled by REMORT_POWER_DIV=12:
+            # 6000 -> 500 hp, 300 -> 25 trains, 420 -> 35 practices
+            assert player["max_hit"] == player["perm_hit"] == 500
+            assert player["train"] == 25
+            assert player["practice"] == 35
             # level cap grew by one
             assert calc_max_level(player) == old_cap + 1
             # mage skills granted at 1%
