@@ -2,10 +2,10 @@
 
 import world
 from classes import (CLASS_TABLE, MAX_REMORT, calc_max_level,
-                     exp_per_level, is_class, lvl_bonus)
+                     exp_per_level, is_class, lvl_bonus, skill_adept_cap)
 from handler import (get_curr_stat, get_max_train, act, chprintln, chprintlnf,
                    TO_CHAR, TO_ROOM, affect_remove, unequip_char)
-from config import (INT_APP_LEARN, SKILL_ADEPT,
+from config import (INT_APP_LEARN,
                     MAX_MORTAL_LEVEL, R_STARTING_ROOM, TERMINAL_COLS)
 from info import print_practice_table
 from inventory import do_outfit
@@ -147,9 +147,11 @@ def do_practice(player, args):
             return
         # [PRIMESUD] Picker UI for practicing skills
         learned = player["learned"]
+        # [PRIMESUD] skill_adept_cap: SKILL_ADEPT + prestige tier bonus
+        _adept = skill_adept_cap(player)
         practicable = [(sn, learned[sn]) for sn, sk in SKILL_TABLE
                        if (sn in learned
-                           and 0 < learned[sn] < SKILL_ADEPT
+                           and 0 < learned[sn] < _adept
                            and can_use_skill_spell(player, sn)
                            and skill_rating(player, sn) > 0)]
         if not practicable:
@@ -175,7 +177,8 @@ def do_practice(player, args):
                 or skill_rating(player, sk_vnum) == 0):
             chprintln(player, "You can't practice that.")
             return
-        if player["learned"][sk_vnum] >= SKILL_ADEPT:
+        # [PRIMESUD] skill_adept_cap: SKILL_ADEPT + prestige tier bonus
+        if player["learned"][sk_vnum] >= skill_adept_cap(player):
             chprintlnf(player, "You are already learned at %s.",
                         SKILLS[sk_vnum]["name"])
             return
@@ -187,9 +190,11 @@ def do_practice(player, args):
         return
     gain = INT_APP_LEARN[int_val] // sk_rating
     player["practice"] -= 1
-    new_pct = min(SKILL_ADEPT, player["learned"][sk_vnum] + gain)
+    # [PRIMESUD] skill_adept_cap: SKILL_ADEPT + prestige tier bonus
+    _adept = skill_adept_cap(player)
+    new_pct = min(_adept, player["learned"][sk_vnum] + gain)
     player["learned"][sk_vnum] = new_pct
-    if new_pct >= SKILL_ADEPT:
+    if new_pct >= _adept:
         act("You are now learned at $T.", player, None,
             SKILLS[sk_vnum]["name"], TO_CHAR)
         act("$n is now learned at $T.", player, None,
@@ -209,10 +214,12 @@ def do_remort(player, args):
     """Remort into an additional class at max level (cf. 1stMud do_remort in multiclass.c).
 
     Requirements: at own class guild with a trainer/gainer mob present, at
-    calc_max_level, fewer than MAX_REMORT classes, REMORT_GOLD gold.
+    calc_max_level, REMORT_GOLD gold.
     Two-step confirm as in 1stMud (type remort twice; remort <arg> cancels).
     [PRIMESUD] nanny.c re-creation flow replaced by a class picker; race is
     always kept (1stMud stay_race path); no immortal backup/wiznet.
+    [PRIMESUD] At MAX_REMORT classes, 1stMud's "You can't remort any more!"
+    refusal becomes a prestige tier reset instead (see finish_tier_reset).
 
     Args:
         player (dict): Player state dict.
@@ -247,9 +254,9 @@ def do_remort(player, args):
         chprintlnf(player, "You must be level %d to remort.", calc_max_level(player))
         return
 
-    if len(player["classes"]) >= MAX_REMORT:
-        chprintln(player, "You can't remort any more!")
-        return
+    # [PRIMESUD] At full class count the remort becomes a prestige tier
+    # reset (1stMud refuses here: "You can't remort any more!").
+    tier_reset = len(player["classes"]) >= MAX_REMORT
 
     from quest import is_quester
     from gquest import gquester
@@ -269,6 +276,11 @@ def do_remort(player, args):
                   " status.  Remorting is {Wnot reversable{R; make sure you know"
                   " what {Cclass{R you want to remort into."
                   "  Type {Gremort{R again to confirm.{x")
+        if tier_reset:
+            # [PRIMESUD] extra warning: this one is a prestige tier reset
+            chprintln(player, "{RThis remort will {Wraise your tier{R: you"
+                      " restart with a {Wsingle{R class, keeping only mastered"
+                      " skills and permanent tier bonuses.{x")
         player["confirm_remort"] = True
         return
 
@@ -279,13 +291,20 @@ def do_remort(player, args):
 
     # [PRIMESUD] class picker instead of nanny CON_GET_NEW_CLASS; Esc aborts
     # (confirm stays pending, type remort again).
-    avail = [i for i in range(len(CLASS_TABLE)) if i not in player["classes"]]
+    if tier_reset:
+        # tier reset restarts with any single class, repeats allowed
+        avail = list(range(len(CLASS_TABLE)))
+    else:
+        avail = [i for i in range(len(CLASS_TABLE)) if i not in player["classes"]]
     labels = [CLASS_TABLE[i]["names"][0] + " - " + CLASS_TABLE[i]["summary"]
               for i in avail]
     idx = pick_from("What is your next class?", labels)
     if idx < 0:
         return
-    finish_remort(player, avail[idx])
+    if tier_reset:
+        finish_tier_reset(player, avail[idx])
+    else:
+        finish_remort(player, avail[idx])
 
 
 def finish_remort(player, new_class):
@@ -351,6 +370,81 @@ def finish_remort(player, new_class):
     player["room"] = R_STARTING_ROOM  # cf. 1stMud char_to_room(ROOM_VNUM_SCHOOL)
     chprintln(player,
               "You are brought back to reality, and you feel quite different now...")
+    do_outfit(player, "")
+    from game_state import save_world
+    save_world(quiet=True)
+
+
+def finish_tier_reset(player, new_class):
+    """Apply a prestige tier reset: restart with a single class and permanent
+    tier perks. [PRIMESUD] -- no 1stMud equivalent; mirrors finish_remort's
+    sequence but restarts near-fresh instead of the 100*lvl_bonus power dump.
+
+    Perks per tier: +50 hp/mana/move base, +1 train/practice grants, +1 all
+    perm stats (get_max_train cap rises with tier), non-mastered skills floor
+    at 10*tier instead of 1%, practice ceiling +5 (skill_adept_cap), mastered
+    skills kept (dormant until a learning class is held again -- skill_level
+    semantics unchanged). See DESIGN.md multiclass tiering.
+
+    Args:
+        player (dict): Player state dict (at max level/classes, gates checked).
+        new_class (int): Class index to restart with (repeats allowed).
+    """
+    from player import reset_char
+
+    tier = player.get("tier", 0) + 1
+    player["tier"] = tier
+
+    for af in list(player.get("affect_list", [])):
+        affect_remove(player, af)
+    for slot in player["equip"]:
+        if player["equip"][slot] is not None:
+            unequip_char(player, slot)
+
+    player["classes"] = [new_class]
+    player["prime_class"] = 0
+    player["level"] = 1
+    player["xp"] = 0
+    player["gold"] -= REMORT_GOLD
+    player["quest_points"] = player.get("quest_points", 0) - 500
+    # near-fresh pools: create_char baselines (50/100/100) + 50 per tier
+    player["max_hit"]  = player["perm_hit"]  = 50 + 50 * tier
+    player["max_mana"] = player["perm_mana"] = 100 + 50 * tier
+    player["max_move"] = player["perm_move"] = 100 + 50 * tier
+    player["hit"]  = player["max_hit"]
+    player["mana"] = player["max_mana"]
+    player["move"] = player["max_move"]
+    player["wimpy"] = player["max_hit"] // 5
+    player["train"] = 5 + tier
+    player["practice"] = 7 + tier
+    # +1 all perm stats, capped at the (tier-raised) trainable maximum
+    for st in ("str", "dex", "int", "wis", "con"):
+        if player["perm_stat"][st] < get_max_train(player, st):
+            player["perm_stat"][st] += 1
+    player["xp_next"] = exp_per_level(player)  # class_mult follows the new class
+    reset_char(player)
+
+    # mastered (100) skills kept as in finish_remort; in-progress skills
+    # floor at 10*tier instead of 1
+    learned = player["learned"]
+    floor = 10 * tier
+    for sn in list(learned):
+        if 0 < learned[sn] < 100:
+            learned[sn] = max(1, min(learned[sn], floor))
+    from player import group_add_basics_and_defaults
+    group_add_basics_and_defaults(player)
+    # same weapon-40 / recall-50 kindness floors as finish_remort
+    wgsn = WEAPON_GSN_MAP[CLASS_TABLE[new_class]["weapon"]]
+    if learned.get(wgsn, 0) < 40:
+        learned[wgsn] = 40
+    if learned.get(GSN_RECALL, 0) < 50:
+        learned[GSN_RECALL] = 50
+
+    player["confirm_remort"] = False
+    player["room"] = R_STARTING_ROOM
+    chprintln(player,
+              "The world unravels and reforms around you; you begin anew,"
+              " yet something of your old self remains...")
     do_outfit(player, "")
     from game_state import save_world
     save_world(quiet=True)

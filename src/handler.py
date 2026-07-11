@@ -210,6 +210,9 @@ def get_max_train(ch, stat):
             cap += 3
         else:
             cap += 2
+    # [PRIMESUD] prestige tier perk: +1 trainable cap per tier (see
+    # finish_tier_reset in training.py), still clamped at MAX_STATS.
+    cap += ch.get("tier", 0)
     return min(cap, MAX_STATS)
 
 

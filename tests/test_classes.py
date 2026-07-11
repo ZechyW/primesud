@@ -294,13 +294,17 @@ class TestRemort:
             world.rooms._data.pop(3001, None)
             self._teardown()
 
-    def test_remort_cap(self, monkeypatch):
+    def test_remort_at_max_classes_needs_max_level(self, monkeypatch):
+        # [PRIMESUD] 1stMud's "You can't remort any more!" refusal is now a
+        # prestige tier reset (test_tier.py); the level gate still applies:
+        # a 2-class char below the raised cap (50) gets nothing.
         import training
         player = self._hero(monkeypatch)
-        player["classes"] = [CLASS_WARRIOR, CLASS_MAGE]
+        player["classes"] = [CLASS_WARRIOR, CLASS_MAGE]  # cap now 50, level 49
         try:
             training.do_remort(player, [])
             assert not player.get("confirm_remort")
             assert len(player["classes"]) == 2
+            assert player.get("tier", 0) == 0
         finally:
             self._teardown()

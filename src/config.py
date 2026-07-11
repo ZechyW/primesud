@@ -205,8 +205,9 @@ MAX_MORTAL_LEVEL = 51  # 1stMud do_skills/do_spells display/filter cap.
 LEVEL_IMMORTAL = 52  # skill_level() sentinel for skills no held class learns.
 LEVEL_HERO = 49  # calc_max_level base: mortals cap at HERO + remort count.
 
-# Class-count cap (cf. 1stMud MAX_REMORT in defines.h); do_remort in training.py
-# refuses once len(classes) == MAX_REMORT. Stock = 2 (1 remort). classes.py's
+# Class-count cap (cf. 1stMud MAX_REMORT in defines.h). Stock = 2 (1 remort).
+# [PRIMESUD] At len(classes) == MAX_REMORT, do_remort in training.py offers a
+# prestige tier reset (finish_tier_reset) instead of 1stMud's refusal. classes.py's
 # calc_max_level() combines this with LEVEL_HERO/MAX_MORTAL_LEVEL above, so a
 # different remort count needs ALL of the following changed together:
 #  - MAX_REMORT here (how many classes/remorts are allowed)
@@ -220,6 +221,8 @@ MAX_REMORT = 2
 
 # -- Practice cap ----------------------------------------------------------------------
 SKILL_ADEPT = 75  # 1stMud class_table[].skill_adept; all shipped classes use 75
+# [PRIMESUD] Effective practice ceiling is skill_adept_cap() in classes.py:
+# SKILL_ADEPT + 5 per prestige tier, max 95.
 
 # -- Stat training cap -----------------------------------------------------------------
 # race.max_stats[stat] + 2 (or +3 for human prime stats), capped at MAX_STATS;

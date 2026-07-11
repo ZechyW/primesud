@@ -758,7 +758,8 @@ def do_score(player, args):
 
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
     header name+title (cf. dlm_score/set_title) added and re-verified 04/07/2026;
-    explored line (cf. act_info.c:1841) added and re-verified 08/07/2026]
+    explored line (cf. act_info.c:1841) added and re-verified 08/07/2026;
+    [PRIMESUD] Tier cell (approved) added 11/07/2026]
     -- data fields (age, hours, thac0, AC bars)
     verified; box layout adapted for the 64-col screen [PRIMESUD].
     """
@@ -895,7 +896,8 @@ def do_score(player, args):
         ),
         _row(
             _val_l("Gold", p["gold"], bright=True),
-            ""
+            # [PRIMESUD] prestige tier (empty cell when tier 0, stock look)
+            _val_r("Tier", p.get("tier", 0), bright=True) if p.get("tier", 0) else ""
         ),
         _SCORE_SEP_OUTER,
         _ac_row("Pierce", get_armor(p, AC_PIERCE)),

@@ -65,6 +65,9 @@ def create_char(class_idx=CLASS_WARRIOR, race_name="Human"):
         # cf. 1stMud ch->Class[] array in multiclass.c; grows on remort.
         "classes":     [class_idx],
         "prime_class": 0,  # slot index into classes (cf. pcdata->prime_class)
+        # [PRIMESUD] prestige tier counter; bumped by finish_tier_reset
+        # (training.py). See DESIGN.md multiclass tiering.
+        "tier":        0,
         # pcdata fields (cf. 1stMud PcData in structs.h):
         "practice": 5,
         "train":    3,

@@ -16,7 +16,8 @@ Loose ends that don't belong in a specific plan file.
 
 ## Classes
 
-- Full multiclassing (allowing remorts on the same char into all available classes), possibly tiering (start back with 1 class, but with perm bonuses, e.g. to starting skill proficiencies/stats/etc.)
+(nothing outstanding -- prestige tiering shipped 11/07/2026, see DESIGN.md
+"Multiclass prestige tiering")
 
 ## Commands
 

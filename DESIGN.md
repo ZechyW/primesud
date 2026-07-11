@@ -58,6 +58,36 @@ Pickers force numeric keyboard mode on entry (`picker.py:_force_numeric_keys`) s
 
 ---
 
+## Multiclass prestige tiering [PRIMESUD]
+
+Settled 11/07/2026; no 1stMud equivalent (stock `MAX_REMORT=2` hard-refuses a
+second remort). Within a tier, play is faithful 1stMud multiclass: start with
+one class, remort at level 49 appends a second (with the stock `lvl_bonus`
+power dump), cap 50. At `MAX_REMORT` classes and max level, `remort` becomes a
+**tier reset** (`finish_tier_reset` in training.py) instead of refusing: same
+gates/costs (guild + trainer, 500k gold + 500 qp, two-step confirm), class
+picker over **all** classes (repeats allowed), then `classes=[pick]`,
+`tier+=1`, level 1, back to school.
+
+A reset restarts **near-fresh** -- hp `50+50*tier`, mana/move `100+50*tier`,
+trains `5+tier`, practices `7+tier` -- with permanent perks per tier:
+
+- **Mastered skills kept** (100% survives, as in stock remort) but **dormant
+  until re-held**: `skill_level()` semantics unchanged, so a mastered skill
+  from a dropped class is unusable until a class that learns it is held again.
+- **+1 all perm stats** per reset; `get_max_train` cap `+tier` (clamped at
+  MAX_STATS).
+- **Proficiency floor**: non-mastered skills reset to `min(old, 10*tier)`
+  instead of 1%.
+- **Practice ceiling** `skill_adept_cap()` = `SKILL_ADEPT + 5*tier`, max 95
+  (use-based `check_improve` still runs to 100 independently).
+
+Level caps, `lvl_bonus`, and the `LEVEL_IMMORTAL` 52 sentinel are untouched.
+Display: `score` Tier cell (only when tier > 0), `class_who` `*<tier>` suffix.
+Save line `p.tier` (absent in old saves -> defaults 0, no version bump).
+
+---
+
 ## Area files
 
 Generated `.txt` files (`area_<name>.txt`, Python source) instead of parsed `.are` files -- runtime text parsing too memory-intensive. See **[docs/AREA_FILES.md](docs/AREA_FILES.md)** for full format reference.

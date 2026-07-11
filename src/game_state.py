@@ -75,6 +75,7 @@ def _serialize_world():
                 "perm_hit", "perm_mana", "perm_move",
                 "room", "trivia",
                 "practice", "train", "flags", "played", "alignment",
+                "tier",  # [PRIMESUD] prestige tier (see training.py finish_tier_reset)
                 "gold", "silver", "wimpy",
                 # cf. 1stMud fwrite_char QuestPnts/QuestNext; PrimeSUD also
                 # persists the active quest (vnum-based, see quest.py)
@@ -308,7 +309,7 @@ def load_world():
                 "hit", "mana", "move",
                 "perm_hit", "perm_mana", "perm_move",
                 "room", "alignment", "prime_class",
-                "practice", "train", "flags", "played",
+                "practice", "train", "flags", "played", "tier",
                 "gold", "silver", "wimpy",
                 "quest_points", "quest_status", "quest_time",
                 "quest_mob", "quest_obj", "quest_room", "quest_giver"}

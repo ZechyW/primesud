@@ -7,7 +7,7 @@ NPCs have no "classes" key.
 """
 
 from config import (LEVEL_HERO, LEVEL_IMMORTAL, MAX_LEVEL, MAX_MORTAL_LEVEL,
-                     MAX_REMORT)
+                     MAX_REMORT, SKILL_ADEPT)
 from races import RACE_TABLE, race_lookup
 from skills_table import SKILLS
 from urandom import randint
@@ -280,6 +280,15 @@ def get_hp_gain(ch):
     return randint(gain, gain + count)
 
 
+def skill_adept_cap(ch):
+    """Practice ceiling: SKILL_ADEPT + 5 per prestige tier, max 95. [PRIMESUD]
+
+    Tier perk (see finish_tier_reset in training.py); use-based improvement
+    (check_improve) still runs to 100 independently of this cap.
+    """
+    return min(95, SKILL_ADEPT + 5 * ch.get("tier", 0))
+
+
 def lvl_bonus(ch):
     """Remort progression multiplier (cf. 1stMud lvl_bonus in multiclass.c).
 
@@ -314,8 +323,14 @@ def class_who(ch):
         return "Mob"
     name = class_name(ch, prime_class(ch))
     if len(classes) > 1:
-        return name[:2] + "+" + str(len(classes) - 1)
-    return name[:4]
+        name = name[:2] + "+" + str(len(classes) - 1)
+    else:
+        name = name[:4]
+    # [PRIMESUD] prestige tier suffix (see finish_tier_reset in training.py)
+    tier = ch.get("tier", 0)
+    if tier:
+        name = name + "*" + str(tier)
+    return name
 
 
 def class_long(ch):
