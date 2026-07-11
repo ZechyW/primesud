@@ -486,7 +486,7 @@ def do_put(player, args):
 def _give_coins(player, amount, coin, rest):
     """Coin branch of do_give (cf. 1stMud do_give money path in act_obj.c:655).
 
-    [PRIMESUD] Bribe mob-trigger skipped (no mob progs).  The changer's
+    Fires TRIG_BRIBE on the recipient (see below). [PRIMESUD] The changer's
     change comes straight from thin air like 1stMud's till top-up.
     """
     if amount <= 0 or coin not in ("coins", "coin", "gold", "silver"):

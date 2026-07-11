@@ -415,9 +415,7 @@ def _poison_obj(obj, level, dam, container):
 
     obj = _promote_in_place(obj, container)
     obj["poisoned"] = True
-    # [PRIMESUD] do_eat (inventory.py) does not check the poisoned flag on
-    # food yet -- see TODO.md. Set here for 1stMud fidelity; poisoning a
-    # food item currently has no gameplay effect until that is ported.
+    # Consumed by do_eat / do_drink poison branches (inventory.py).
 
 
 def poison_effect(vo, level, dam, target):
