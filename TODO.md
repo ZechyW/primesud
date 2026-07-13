@@ -93,11 +93,11 @@ Loose ends that don't belong in a specific plan file.
     light a torch and re-look
   - *Anywhere*: `explored`/`score` permille after the walk; `gc.mem_free`
     before/after the ~2KB explored-mask alloc and a save/load round-trip
-- **Far-area eviction: device validation (13/07/2026)** -- eviction shipped
-  (DESIGN.md "Far-area eviction") after `debug heapmap` measured 5875 kB /
-  948 kB free for the full world and an idle session MemoryError'd in
-  `reset_room`. Validate on hardware: long wander crossing >12 areas, then
-  `gc.mem_free` + `debug heapmap` preloaded markers to confirm far areas
-  actually unloaded; revisit an evicted area and spot-check dropped floor
-  items/mob positions survived. The 1 MB stock-heap device remains
-  unsupported (keep-set floor ~12 areas exceeds it).
+- **Far-area eviction: validated on device 14/07/2026** via the (since
+  deleted) `debug evicttest` command -- all checks passed: load-all, evict
+  to keep-set, far-area unload, dropped-item round-trip through
+  `_pending_room_items`, recovery via `get`. Remaining spot-check during
+  the on-calculator walk above: long natural wander crossing >12 areas
+  (evicttest forced `AREA_CACHE_MAX = 1`; stock cap 12 untested in play).
+  The 1 MB stock-heap device remains unsupported (keep-set floor ~12 areas
+  exceeds it).
