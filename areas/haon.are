@@ -2517,6 +2517,15 @@ O 0 6106   4 6104	* a toadstool
 O 0 6106   4 6111	* a toadstool
 O 0 6106   4 6122	* a toadstool
 O 0 6107   4 6119	* a toadstool
+* [PRIMESUD] moved from arachnos.are: room 6134 belongs to Haon Dor, and
+* placement entries live with the room's owning area (mob/object templates
+* 63xx stay defined in arachnos -- they cascade-load on demand).
+M 0 6319   1 6134  1	* the Queen Spider
+G 1 6308   1     	*   a big pile of coins
+G 1 6309  -1     	*   a blue potion
+M 0 6318   3 6134  3	* the huge, poisonous spider
+M 0 6318   3 6134  3	* the huge, poisonous spider
+M 0 6318   3 6134  3	* the huge, poisonous spider
 S
 
 #SHOPS
