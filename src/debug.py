@@ -412,6 +412,123 @@ def _debug_heapmap(player, args):
     terminal.tr.print("(* = already loaded before heapmap)")
 
 
+def _debug_evicttest(player, args):
+    """Automated on-device eviction round-trip test. [PRIMESUD] (TEMPORARY)
+
+    Drives the real paths end to end: player actions dispatch through
+    commands.interpret (as if typed) and area transitions are detected by
+    real update_handler pulses.  Sequence: load all areas (heapmap), goto
+    a far area, drop a rose there, pulse (evicts around the far area),
+    goto home, pulse (evicts the far area), verify the rose round-trips
+    through _pending_room_items, goto back and pick it up via 'get'.
+
+    AREA_CACHE_MAX is forced to 1 for the duration (restored on exit) so
+    each transition deterministically evicts everything outside the
+    keep-set -- at the stock cap, LRU order protects the just-visited
+    marker area and the test would be order-dependent.
+
+    Do not run while fighting (pulses fire real combat rounds).  Delete
+    this command once eviction is validated on hardware.
+    """
+    import gc
+    import config
+    import world
+    from world import OBJ_VNUM_ROSE
+    from commands import interpret
+    from update import update_handler
+
+    def _free():
+        gc.collect()
+        try:
+            return gc.mem_free()
+        except AttributeError:
+            return -1
+
+    def _loaded():
+        n = 0
+        for a in world.AREA_DEFS:
+            if world.is_area_loaded(a["tag"]):
+                n += 1
+        return n
+
+    def _say(msg):
+        terminal.tr.print("{Y[evicttest]{x " + msg)
+
+    fails = []
+
+    def _check(name, ok):
+        _say(("{GPASS{x " if ok else "{RFAIL{x ") + name)
+        if not ok:
+            fails.append(name)
+
+    home = player["room"]
+    home_tag = world._vnum_to_tag(home)
+    keep = set(world._PINNED)
+    keep.add(home_tag)
+    keep.update(world._AREA_ADJ.get(home_tag, ()))
+    far_tag = None
+    for _, tag, _, _, _ in world._AREA_FILES:
+        if tag not in keep:
+            far_tag = tag
+            break
+    if far_tag is None:
+        _say("no evictable area from here; aborting")
+        return
+
+    _say("baseline: free " + str(_free()) + ", loaded " + str(_loaded()))
+    _say("loading all areas (heapmap)...")
+    interpret("debug heapmap", player)
+    total = len(world.AREA_DEFS)
+    _check("all areas loaded", _loaded() == total)
+    _say("full world: free " + str(_free()))
+
+    saved_cap = config.AREA_CACHE_MAX
+    config.AREA_CACHE_MAX = 1
+    try:
+        rv = None
+        for a in world.AREA_DEFS:
+            if a["tag"] == far_tag:
+                rv = a["room_vnums"][0]
+                break
+        _say("marker: rose in room " + str(rv) + " (" + far_tag + ")")
+        interpret("debug goto " + str(rv), player)
+        interpret("debug load obj " + str(OBJ_VNUM_ROSE), player)
+        interpret("drop rose", player)
+        _check("rose on floor",
+               any(o.get("vnum") == OBJ_VNUM_ROSE
+                   for o in world.rooms._data.get(rv, {}).get("items", ())))
+
+        update_handler()  # pulse: transition into far area -> evict round 1
+        _check("evicted to keep-set", _loaded() < total)
+        _say("after evict 1: free " + str(_free())
+             + ", loaded " + str(_loaded()))
+
+        interpret("debug goto " + str(home), player)
+        update_handler()  # pulse: transition home -> evict far area
+        _check("far area unloaded", not world.is_area_loaded(far_tag))
+        _tok = world._pending_room_items.get(rv, "")
+        _check("rose buffered", "v:" + str(OBJ_VNUM_ROSE) in _tok)
+        _say("after evict 2: free " + str(_free())
+             + ", loaded " + str(_loaded()))
+
+        interpret("debug goto " + str(rv), player)  # reloads far area
+        interpret("get rose", player)
+        _check("rose recovered via get",
+               any(o.get("vnum") == OBJ_VNUM_ROSE for o in player["inv"]))
+        _check("pending consumed", rv not in world._pending_room_items)
+        interpret("sacrifice rose", player)
+        interpret("debug goto " + str(home), player)
+    finally:
+        config.AREA_CACHE_MAX = saved_cap
+    update_handler()  # settle back home at the restored cap
+
+    _say("final: free " + str(_free()) + ", loaded " + str(_loaded()))
+    if fails:
+        _say("{R" + str(len(fails)) + " FAILED:{x " + ", ".join(fails))
+    else:
+        _say("{Gall checks passed{x")
+
+
 def _debug_slay(player, args):
     """Instant-kill a mob in the room (cf. 1stMud do_slay in fight.c). [PRIMESUD]
 
@@ -668,6 +785,7 @@ _SUBCMDS = (
     ("owhere",  _debug_owhere,  "locate objects by name"),
     ("memory",  _debug_memory,  "show heap usage and world counts"),
     ("heapmap", _debug_heapmap, "load all areas, per-area heap cost"),
+    ("evicttest", _debug_evicttest, "TEMP: automated eviction round-trip"),
     ("holylight", _debug_holylight, "toggle imm sight (PLR_HOLYLIGHT)"),
 )
 
