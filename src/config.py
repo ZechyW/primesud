@@ -22,6 +22,11 @@ TICK_SECS        = PULSE_TICK // PULSE_PER_SECOND  # seconds elapsed per world t
 # PULSE_AREA     = 120 * PULSE_PER_SECOND     # area reset
 PULSE_AREA       = 30 * PULSE_PER_SECOND      # Quicker age ticks for better UX
 POLL_MS          = 10                         # keyboard polling interval (ms)
+# [PRIMESUD] Max loaded areas before world.maybe_evict unloads far ones.
+# The keep-set (current area + neighbours + pinned limbo + follower/combat
+# areas) is immune, so the effective floor is ~12 around the Midgaard hub;
+# lower this for smaller-heap devices only alongside a smaller world.
+AREA_CACHE_MAX   = 12
 AUTOSAVE_TICKS   = 4                          # autosave every N world ticks
 DEATH_MSG_DELAY  = 3                          # seconds between death flavour lines
 

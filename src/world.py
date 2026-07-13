@@ -334,6 +334,11 @@ _pending_room_items = {}   # {rvnum: "raw|token|string"} from save data
 _reset_queue = []          # iterative drain prevents stack overflow
 _draining = False
 _LOADING_ALL = False
+# -- Far-area eviction state (see maybe_evict) [PRIMESUD] -----------------------
+_PINNED = ("limbo",)       # corpse/coin/portal templates spawn on every kill
+_player_room = None        # maybe_evict fast path: room unchanged -> no work
+_area_seq = {}             # tag -> visit counter (LRU eviction order)
+_seq_counter = 0
 
 
 class LazyDict:
@@ -466,7 +471,7 @@ def _load_area(tag):
     _room_vnums = []
     for _vnum, _room in _ns["ROOMS"].items():
         _room["area"] = tag
-        ROOM_DEFS[_vnum] = _room
+        ROOM_DEFS._data[_vnum] = _room
         _room_vnums.append(_vnum)
         for _d, _ev in _room.get("exits", {}).items():
             if isinstance(_ev, dict) and _ev.get("isdoor"):
@@ -512,6 +517,30 @@ def _load_area(tag):
             # partition after own reset so target's first reset sees them.
             _cross_area_rooms.add(_cur_rvnum)
 
+    # Pull cross-area resets that other loaded areas own targeting our
+    # rooms.  The owner appends its cross-entries only into rooms that were
+    # resident at its load (see _reset_loaded_area); if we load (or reload
+    # after eviction) later, we pull them here instead.  The two paths are
+    # disjoint by construction -- appending in both would duplicate resets.
+    _rvs = set(_room_vnums)
+    for _oa in AREA_DEFS:
+        if _oa["tag"] == tag or _oa["tag"] not in _LOADED_AREAS:
+            continue
+        _cur_rvnum = None
+        for _entry in _oa["resets"]:
+            _cmd = _entry[0]
+            if _cmd == "M":
+                _cur_rvnum = _entry[3]
+            elif _cmd == "O":
+                _cur_rvnum = _entry[2]
+            elif _cmd == "R":
+                _cur_rvnum = _entry[1]
+            if _cur_rvnum is not None and _cur_rvnum in _rvs:
+                _rdef = ROOM_DEFS._data[_cur_rvnum]
+                if "resets" not in _rdef:
+                    _rdef["resets"] = []
+                _rdef["resets"].append(_entry)
+
     # Update AREA_DEFS entry with full metadata
     _adef = None
     for _a in AREA_DEFS:
@@ -542,6 +571,13 @@ def _reset_loaded_area(tag, _adef, _room_vnums, _cross_area_rooms):
     reset_area(_adef)
 
     if _cross_area_rooms:
+        # Split targets by residency BEFORE any LazyDict access: rooms
+        # already resident get our entries appended (and reset) here;
+        # unloaded targets are only touched to trigger their load --
+        # their _load_area pulls our entries from _adef["resets"] itself.
+        # Appending here AND letting the pull run would duplicate resets.
+        _preloaded = set(_rv for _rv in _cross_area_rooms
+                         if _rv in ROOM_DEFS._data)
         _cur_rvnum = None
         for _entry in _adef["resets"]:
             _cmd = _entry[0]
@@ -551,15 +587,17 @@ def _reset_loaded_area(tag, _adef, _room_vnums, _cross_area_rooms):
                 _cur_rvnum = _entry[2]
             elif _cmd == "R":
                 _cur_rvnum = _entry[1]
-            if _cur_rvnum is not None and _cur_rvnum in _cross_area_rooms:
-                if _cur_rvnum in ROOM_DEFS:
-                    _rdef = ROOM_DEFS[_cur_rvnum]
-                    if "resets" not in _rdef:
-                        _rdef["resets"] = []
-                    _rdef["resets"].append(_entry)
+            if _cur_rvnum is not None and _cur_rvnum in _preloaded:
+                _rdef = ROOM_DEFS._data[_cur_rvnum]
+                if "resets" not in _rdef:
+                    _rdef["resets"] = []
+                _rdef["resets"].append(_entry)
+        for _rv in _cross_area_rooms:
+            if _rv not in _preloaded:
+                _ensure_area(_rv)
         _next_id = max(chars, default=1) + 1
         _obj_counts = _object_count_map()
-        for _rv in _cross_area_rooms:
+        for _rv in _preloaded:
             if _rv in rooms:
                 _next_id = reset_room(_rv, _next_id, _obj_counts)
 
@@ -650,6 +688,165 @@ def _retry_pending_deltas():
             _apply_pending_deltas(_a["tag"], _a["room_vnums"])
 
 
+def _unload_area(tag):
+    """Evict one loaded area: buffer live state as save deltas, drop defs. [PRIMESUD]
+
+    Inverse of _load_area.  Mob positions and floor items are written to
+    _pending_mob_saves / _pending_room_items in the exact shape the save
+    system uses, so reload replays them through _apply_pending_deltas just
+    like a game load.  Dropped without recording (same as save/load):
+    live door state (rebuilt from area file), mob hp/inventory (fresh from
+    template on reset), and foreign-template wanderers standing in evicted
+    rooms (respawn at home on their area's next reset).
+
+    Caller must guarantee the area holds nothing player-critical (the pet,
+    combatants, the player itself) -- maybe_evict's keep-set does.
+    """
+    _adef = None
+    for _a in AREA_DEFS:
+        if _a["tag"] == tag:
+            _adef = _a
+            break
+    if _adef is None or "room_vnums" not in _adef:
+        return
+    _room_vnums = _adef["room_vnums"]
+    _rvnum_set = set(_room_vnums)
+    _lo = _hi = None
+    for _l, _h, _t in _VNUM_RANGES:
+        if _t == tag:
+            _lo, _hi = _l, _h
+            break
+
+    # Remove our cross-area reset entries from resident foreign rooms, or
+    # reload would append them a second time (duplicate mobs/objects).
+    _cur_rvnum = None
+    for _entry in _adef["resets"]:
+        _cmd = _entry[0]
+        if _cmd == "M":
+            _cur_rvnum = _entry[3]
+        elif _cmd == "O":
+            _cur_rvnum = _entry[2]
+        elif _cmd == "R":
+            _cur_rvnum = _entry[1]
+        if _cur_rvnum is not None and _cur_rvnum not in _rvnum_set:
+            _rdef = ROOM_DEFS._data.get(_cur_rvnum)
+            if _rdef and "resets" in _rdef:
+                try:
+                    _rdef["resets"].remove(_entry)
+                except ValueError:
+                    pass
+
+    # Buffer mob positions: our templates wherever they stand (mirrors the
+    # m.<tpl>= save lines; sorted ids match _apply_pending_deltas), then
+    # delete them plus foreign wanderers standing in our rooms.  The pet is
+    # excluded like the save path (persisted via p.pet).
+    _pet = chars[1].get("pet") if 1 in chars else None
+    _tpl_rooms = {}
+    _dead = []
+    for _mid in sorted(chars):
+        _inst = chars[_mid]
+        if not _inst.get("is_npc") or _mid == _pet:
+            continue
+        _tpl = _inst["tpl"]
+        if _lo is not None and _lo <= _tpl <= _hi:
+            _tpl_rooms.setdefault(_tpl, []).append(_inst["room"])
+            _dead.append(_mid)
+        elif _inst["room"] in _rvnum_set:
+            _dead.append(_mid)
+    for _tpl in _tpl_rooms:
+        # Overwrites any deferred pending entry for this template --
+        # deferred moves into still-unloaded areas are dropped, matching
+        # the documented wanderer-position-loss semantics.
+        _pending_mob_saves[_tpl] = _tpl_rooms[_tpl]
+    _dead_set = set(_dead)
+    for _mid in _dead:
+        _rv = chars[_mid]["room"]
+        if _rv in rooms._data and _rv not in _rvnum_set:
+            _ml = rooms._data[_rv]["mobs"]
+            if _mid in _ml:
+                _ml.remove(_mid)
+        del chars[_mid]
+    if _dead_set:
+        for _inst in chars.values():
+            if _inst.get("fighting") in _dead_set:
+                _inst["fighting"] = None
+
+    # Buffer floor items (mirrors the r.<vnum>.items= save lines).
+    from item import serialize_item_token
+    for _rv in _room_vnums:
+        _rs = rooms._data.get(_rv)
+        if _rs and _rs["items"]:
+            _toks = []
+            for _o in _rs["items"]:
+                _toks.append(serialize_item_token(_o))
+            _pending_room_items[_rv] = "|".join(_toks)
+
+    # Drop definitions and runtime state.
+    for _rv in _room_vnums:
+        ROOM_DEFS._data.pop(_rv, None)
+        rooms._data.pop(_rv, None)
+        DOOR_DEFS.pop(_rv, None)
+    if _lo is not None:
+        for _k in [k for k in MOB_DEFS._data if _lo <= k <= _hi]:
+            del MOB_DEFS._data[_k]
+        for _k in [k for k in ITEM_DEFS._data if _lo <= k <= _hi]:
+            del ITEM_DEFS._data[_k]
+        for _k in [k for k in MOBPROGS if _lo <= k <= _hi]:
+            del MOBPROGS[_k]
+    _adef["resets"] = []
+    _adef.pop("room_vnums", None)
+    for _s in areas:
+        if _s["tag"] == tag:
+            _s.pop("room_vnums", None)  # area_update skips it while evicted
+            break
+    _LOADED_AREAS.discard(tag)
+
+
+def maybe_evict(player):
+    """Evict far areas when over the cache cap; call every pulse. [PRIMESUD]
+
+    Fast path is one int compare (player's room unchanged).  On area
+    transition, builds a keep-set -- current area, its static neighbours,
+    pinned areas, and any area owning or hosting a follower or combatant --
+    and evicts the rest, least-recently-visited first, until at
+    AREA_CACHE_MAX loaded areas.
+    """
+    global _player_room, _seq_counter
+    _rv = player["room"]
+    if _rv == _player_room:
+        return
+    _player_room = _rv
+    _tag = _vnum_to_tag(_rv)
+    if _tag is None or _area_seq.get(_tag) == _seq_counter:
+        return
+    _seq_counter += 1
+    _area_seq[_tag] = _seq_counter
+    from config import AREA_CACHE_MAX
+    if len(_LOADED_AREAS) <= AREA_CACHE_MAX:
+        return
+    _keep = set(_PINNED)
+    _keep.add(_tag)
+    _keep.update(_AREA_ADJ.get(_tag, ()))
+    _target = player.get("fighting")
+    for _i, _inst in chars.items():
+        if not _inst.get("is_npc"):
+            continue
+        if (_inst.get("master") is not None
+                or _inst.get("fighting") == 1
+                or _i == _target):
+            _keep.add(_vnum_to_tag(_inst["tpl"]))
+            _keep.add(_vnum_to_tag(_inst["room"]))
+    _victims = [t for t in _LOADED_AREAS if t not in _keep]
+    _victims.sort(key=lambda t: _area_seq.get(t, 0))
+    _evicted = False
+    while _victims and len(_LOADED_AREAS) > AREA_CACHE_MAX:
+        _unload_area(_victims.pop(0))
+        _evicted = True
+    if _evicted:
+        import gc
+        gc.collect()
+
+
 def is_area_loaded(tag):
     """Check whether an area has been loaded. [PRIMESUD]"""
     return tag in _LOADED_AREAS
@@ -675,6 +872,10 @@ save_pending = False
 
 def reset_lazy():
     """Reset mutable state and lazy loading for new/load game. [PRIMESUD]"""
+    global _player_room, _seq_counter
+    _player_room = None
+    _seq_counter = 0
+    _area_seq.clear()
     rooms._data.clear()
     chars.clear()
     _LOADED_AREAS.clear()

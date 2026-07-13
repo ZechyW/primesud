@@ -93,15 +93,11 @@ Loose ends that don't belong in a specific plan file.
     light a torch and re-look
   - *Anywhere*: `explored`/`score` permille after the walk; `gc.mem_free`
     before/after the ~2KB explored-mask alloc and a save/load round-trip
-- **Full-world heap verdict (13/07/2026)** -- with all 49 QuickMUD areas
-  wired, run `debug heapmap` on device (loads every area, prints per-area
-  heap deltas). Desktop CPython tracemalloc: 18.4 MB for the full world;
-  MicroPython is typically 2.5-4x leaner, so estimate ~5-8 MB -- tight
-  against an 8 MB heap, impossible at the 1 MB stock default. If the
-  measured number crowds the heap (or tick CPU lags with ~2100 live
-  mobs), build far-area eviction: serialize an area's mob/room-item state
-  back into `_pending_mob_saves`/`_pending_room_items` (the exact buffers
-  `_apply_pending_deltas` replays on reload), drop its defs + live state,
-  `gc.collect()`; trigger on area transition, keep the player's area +
-  `_AREA_ADJ` neighbours resident, skip areas holding pets/followers or
-  the fight opponent.
+- **Far-area eviction: device validation (13/07/2026)** -- eviction shipped
+  (DESIGN.md "Far-area eviction") after `debug heapmap` measured 5875 kB /
+  948 kB free for the full world and an idle session MemoryError'd in
+  `reset_room`. Validate on hardware: long wander crossing >12 areas, then
+  `gc.mem_free` + `debug heapmap` preloaded markers to confirm far areas
+  actually unloaded; revisit an evicted area and spot-check dropped floor
+  items/mob positions survived. The 1 MB stock-heap device remains
+  unsupported (keep-set floor ~12 areas exceeds it).

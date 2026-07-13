@@ -46,6 +46,10 @@ def update_handler():
     player = world.chars[1]
     fired = 0
 
+    # [PRIMESUD] Far-area eviction; fast no-op unless the player moved.
+    # Runs before area_update so resets happen after the heap is trimmed.
+    world.maybe_evict(player)
+
     _pulse_area -= 1
     if _pulse_area <= 0:
         _pulse_area = PULSE_AREA

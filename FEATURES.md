@@ -74,6 +74,10 @@ worth trusting -- the engineering layer.
   static metadata tables let `areas` and `where` answer with zero loads, and
   `run` pick a destination without loading, then load only the areas along
   the path (DESIGN.md "Lazy area loading").
+- **Far-area eviction** -- when more than a dozen areas are loaded, the
+  least-recently-visited are unloaded again, buffering mob positions and
+  floor items exactly like a save; areas holding your pet, followers, or
+  combatants are never evicted (DESIGN.md "Far-area eviction").
 - **Minimal item instances** -- an object instance carries only its vnum and
   the fields that have diverged; everything else reads through to the
   template, and saves serialize just the divergent fields as compact tokens

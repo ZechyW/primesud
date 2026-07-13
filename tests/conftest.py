@@ -78,6 +78,9 @@ def fresh_world(tmp_path):
     world.chars.clear()
     world.areas = []
     world._WORLD_READY = False
+    world._area_seq.clear()
+    world._player_room = None
+    world._seq_counter = 0
 
     _area_entries = []
 
@@ -132,6 +135,9 @@ def fresh_world(tmp_path):
     world.rooms._data.clear()
     world.rooms._data.update(old_state["rooms"])
     world.areas = old_state["areas"]
+    world._area_seq.clear()
+    world._player_room = None
+    world._seq_counter = 0
     # Restored tables make the snapshotted value safe again: if it was True,
     # lazy loading keeps working for later tests; if False, the next
     # init_world() rebuilds as usual.
