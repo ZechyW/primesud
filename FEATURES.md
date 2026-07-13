@@ -69,7 +69,8 @@ worth trusting -- the engineering layer.
 - **Generated Python area files** -- areas ship as offline-converted Python
   source, not runtime-parsed `.are` text (DESIGN.md "Area files",
   docs/AREA_FILES.md).
-- **Lazy world loading** -- an area's rooms/mobs/objects load on first touch;
+- **Lazy world loading** -- the full stock QuickMUD world ships (49 areas,
+  3130 rooms), but an area's rooms/mobs/objects load only on first touch;
   static metadata tables let `areas` and `where` answer with zero loads, and
   `run` pick a destination without loading, then load only the areas along
   the path (DESIGN.md "Lazy area loading").

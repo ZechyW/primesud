@@ -1,0 +1,563 @@
+# fmt: off
+# Area: In the Air
+# Source: QuickMUD/ROM 2.4
+# VNUM ranges: 1000-1099
+# Credits: { 5 10} Copper  In the Air
+
+
+AREA = {
+    "name":     'In the Air',
+    "builders": 'None',
+    "vnums":    (1000, 1099),
+    "credits":  '{ 5 10} Copper  In the Air',
+    "levels":   (5, 10),
+}
+
+# -- Mob templates --------------------------------------------------------------
+# hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
+# armor: (pierce, bash, slash, exotic), raw .are units
+# hitroll: from mob level line
+MOBILES = {
+    1000: {
+        "keywords":    'oldstyle fairy dragon',
+        "short_descr": 'A fairy dragon',
+        "long_descr":  'A fairy dragon is fluttering around here looking for something to do...',
+        "description": "It's a cute little multi-colored dragon...about 2 foot long.\nIt gracefully dances around your head.",
+        "race":        'human',
+        "act_flags": {"stay_area": True, "mage": True},
+        "affected_by": {"detect_invis": True, "detect_magic": True},
+        "alignment": 500,
+        "level":     5,
+        "hitroll":   0,
+        "hp_dice":   (2, 7, 46),
+        "mana_dice": (5, 9, 100),
+        "damage":    (1, 5, 0),  "dam_type": 'none',
+        "armor":     (6, 6, 6, 8),
+        "off_flags": {"dodge": True, "assist_vnum": True},
+        "start_pos":   'stand',
+        "default_pos": 'stand',
+        "material": '0',
+        "sex":    'none',
+        "wealth": 1,
+        "size":   'medium',
+        "spec_fun": 'spec_cast_mage',
+    },
+    1001: {
+        "keywords":    'oldstyle griffin',
+        "short_descr": 'A griffin',
+        "long_descr":  'A large black winged griffin swoops into an attack.',
+        "description": "Golden maned and black all over.  It's quite a beautiful creature if not\nfor the fact it is hungry and is attacking you!",
+        "race":        'human',
+        "act_flags": {"aggressive": True, "stay_area": True},
+        "alignment": 300,
+        "level":     8,
+        "hitroll":   0,
+        "hp_dice":   (2, 7, 96),
+        "mana_dice": (4, 9, 100),
+        "damage":    (1, 7, 2),  "dam_type": 'none',
+        "armor":     (3, 3, 3, 9),
+        "off_flags": {"disarm": True, "dodge": True, "trip": True, "assist_vnum": True},
+        "start_pos":   'stand',
+        "default_pos": 'stand',
+        "material": '0',
+        "sex":    'male',
+        "wealth": 25,
+        "size":   'medium',
+    },
+}
+
+# -- Rooms ----------------------------------------------------------------------
+ROOMS = {
+    1001: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above the ground north of the city.\nIt seems like you can see forever!',
+        "exits": {
+            "e": {"to": 1006, "desc": 'More of the same.'},
+            "s": {"to": 1002, "desc": 'More of the same.'},
+            "u": {"to": 1021, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1002: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 20 meters above the inside wall of West Midgaard.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1001, "desc": 'More of the same.'},
+            "e": {"to": 1007, "desc": 'More of the same.'},
+            "s": {"to": 1003, "desc": 'More of the same.'},
+            "u": {"to": 1022, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1003: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 20 meters above the west gate of Midgaard.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1002, "desc": 'More of the same.'},
+            "e": {"to": 1008, "desc": 'More of the same.'},
+            "s": {"to": 1004, "desc": 'More of the same.'},
+            "u": {"to": 1023, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1004: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above Wall Road.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1003, "desc": 'More of the same.'},
+            "e": {"to": 1009, "desc": 'More of the same.'},
+            "s": {"to": 1005, "desc": 'More of the same.'},
+            "u": {"to": 1024, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1005: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above Wall Road.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1004, "desc": 'More of the same.'},
+            "e": {"to": 1010, "desc": 'More of the same.'},
+            "u": {"to": 1025, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1006: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above the ground north of Midgaard.\nIt seems like you can see forever!',
+        "exits": {
+            "e": {"to": 1011, "desc": 'More of the same.'},
+            "s": {"to": 1007, "desc": 'More of the same.'},
+            "w": {"to": 1001, "desc": 'More of the same.'},
+            "u": {"to": 1026, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1007: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 20 meters above the magic shop.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1006, "desc": 'More of the same.'},
+            "e": {"to": 1012, "desc": 'More of the same.'},
+            "s": {"to": 1008, "desc": 'More of the same.'},
+            "w": {"to": 1002, "desc": 'More of the same.'},
+            "u": {"to": 1027, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1008: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above Main Street.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1007, "desc": 'More of the same.'},
+            "e": {"to": 1013, "desc": 'More of the same.'},
+            "s": {"to": 1009, "desc": 'More of the same.'},
+            "w": {"to": 1003, "desc": 'More of the same.'},
+            "u": {"to": 1028, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1009: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 20 meters above the Mage Guild Hall.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1008, "desc": 'More of the same.'},
+            "e": {"to": 1014, "desc": 'More of the same.'},
+            "s": {"to": 1010, "desc": 'More of the same.'},
+            "w": {"to": 1004, "desc": 'More of the same.'},
+            "u": {"to": 1029, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1010: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above Poor Alley.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1009, "desc": 'More of the same.'},
+            "e": {"to": 1015, "desc": 'More of the same.'},
+            "w": {"to": 1005, "desc": 'More of the same.'},
+            "u": {"to": 1030, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1011: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above the ground north of Midgaard.\nIt seems like you can see forever!',
+        "exits": {
+            "e": {"to": 1016, "desc": 'More of the same.'},
+            "s": {"to": 1012, "desc": 'More of the same.'},
+            "w": {"to": 1006, "desc": 'More of the same.'},
+            "u": {"to": 1031, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1012: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 20 meters above the bakery.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1011, "desc": 'More of the same.'},
+            "e": {"to": 1017, "desc": 'More of the same.'},
+            "s": {"to": 1013, "desc": 'More of the same.'},
+            "w": {"to": 1007, "desc": 'More of the same.'},
+            "u": {"to": 1032, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1013: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above Main Street.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1012, "desc": 'More of the same.'},
+            "e": {"to": 1018, "desc": 'More of the same.'},
+            "s": {"to": 1014, "desc": 'More of the same.'},
+            "w": {"to": 1008, "desc": 'More of the same.'},
+            "u": {"to": 1033, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1014: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 20 meters above Armoury.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1013, "desc": 'More of the same.'},
+            "e": {"to": 1019, "desc": 'More of the same.'},
+            "s": {"to": 1015, "desc": 'More of the same.'},
+            "w": {"to": 1009, "desc": 'More of the same.'},
+            "u": {"to": 1034, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1015: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above Poor Alley.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1014, "desc": 'More of the same.'},
+            "e": {"to": 1020, "desc": 'More of the same.'},
+            "w": {"to": 1010, "desc": 'More of the same.'},
+            "u": {"to": 1035, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1016: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 10 meters above the temple spire of Midgaard\nIt seems like you can see forever!',
+        "exits": {
+            "s": {"to": 1017, "desc": 'More of the same.'},
+            "w": {"to": 1011, "desc": 'More of the same.'},
+            "u": {"to": 1036, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1017: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above the Temple Square.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1016, "desc": 'More of the same.'},
+            "s": {"to": 1018, "desc": 'More of the same.'},
+            "w": {"to": 1012, "desc": 'More of the same.'},
+            "u": {"to": 1037, "desc": 'More of the same.'},
+            "d": {"to": 3057, "desc": 'More of the same'},
+        },
+        "sector": 'air',
+    },
+    1018: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above Market Square.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1017, "desc": 'More of the same.'},
+            "s": {"to": 1019, "desc": 'More of the same.'},
+            "w": {"to": 1013, "desc": 'More of the same.'},
+            "u": {"to": 1038, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1019: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above Market and Commons.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1018, "desc": 'More of the same.'},
+            "s": {"to": 1020, "desc": 'More of the same.'},
+            "w": {"to": 1014, "desc": 'More of the same.'},
+            "u": {"to": 1039, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1020: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above ground, overlooking the Common Square.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1019, "desc": 'More of the same.'},
+            "w": {"to": 1015, "desc": 'More of the same.'},
+            "u": {"to": 1040, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1021: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 60 meters above the ground just north of Midgaard.\nIt seems like you can see forever!',
+        "exits": {
+            "e": {"to": 1026, "desc": 'More of the same.'},
+            "s": {"to": 1022, "desc": 'More of the same.'},
+            "d": {"to": 1001, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1022: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above the west gate of Midgaard.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1021, "desc": 'More of the same.'},
+            "e": {"to": 1027, "desc": 'More of the same.'},
+            "s": {"to": 1023, "desc": 'More of the same.'},
+            "d": {"to": 1002, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1023: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 60 meters above west gate of Midgaard.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1022, "desc": 'More of the same.'},
+            "e": {"to": 1028, "desc": 'More of the same.'},
+            "s": {"to": 1024, "desc": 'More of the same.'},
+            "d": {"to": 1003, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1024: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 60 meters above wall road.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1023, "desc": 'More of the same.'},
+            "e": {"to": 1029, "desc": 'More of the same.'},
+            "s": {"to": 1025, "desc": 'More of the same.'},
+            "d": {"to": 1004, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1025: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 60 meters above wall road.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1024, "desc": 'More of the same.'},
+            "e": {"to": 1030, "desc": 'More of the same.'},
+            "d": {"to": 1005, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1026: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 60 meters above the ground north of Midgaard.\nIt seems like you can see forever!',
+        "exits": {
+            "e": {"to": 1031, "desc": 'More of the same.'},
+            "s": {"to": 1027, "desc": 'More of the same.'},
+            "w": {"to": 1021, "desc": 'More of the same.'},
+            "d": {"to": 1006, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1027: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above the magic shop.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1026, "desc": 'More of the same.'},
+            "e": {"to": 1032, "desc": 'More of the same.'},
+            "s": {"to": 1028, "desc": 'More of the same.'},
+            "w": {"to": 1022, "desc": 'More of the same.'},
+            "d": {"to": 1007, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1028: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 60 meters above main street.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1027, "desc": 'More of the same.'},
+            "e": {"to": 1033, "desc": 'More of the same.'},
+            "s": {"to": 1029, "desc": 'More of the same.'},
+            "w": {"to": 1023, "desc": 'More of the same.'},
+            "d": {"to": 1008, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1029: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above the mage guild.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1028, "desc": 'More of the same.'},
+            "e": {"to": 1034, "desc": 'More of the same.'},
+            "s": {"to": 1030, "desc": 'More of the same.'},
+            "w": {"to": 1024, "desc": 'More of the same.'},
+            "d": {"to": 1009, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1030: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 60 meters above poor alley.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1029, "desc": 'More of the same.'},
+            "e": {"to": 1035, "desc": 'More of the same.'},
+            "w": {"to": 1025, "desc": 'More of the same.'},
+            "d": {"to": 1010, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1031: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 60 meters above the ground north of Midgaard.\nIt seems like you can see forever!',
+        "exits": {
+            "e": {"to": 1036, "desc": 'More of the same.'},
+            "s": {"to": 1032, "desc": 'More of the same.'},
+            "w": {"to": 1026, "desc": 'More of the same.'},
+            "d": {"to": 1011, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1032: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above bakery and cleric guild.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1031, "desc": 'More of the same.'},
+            "e": {"to": 1037, "desc": 'More of the same.'},
+            "s": {"to": 1033, "desc": 'More of the same.'},
+            "w": {"to": 1027, "desc": 'More of the same.'},
+            "d": {"to": 1012, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1033: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 60 meters above main street.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1032, "desc": 'More of the same.'},
+            "e": {"to": 1038, "desc": 'More of the same.'},
+            "s": {"to": 1034, "desc": 'More of the same.'},
+            "w": {"to": 1028, "desc": 'More of the same.'},
+            "d": {"to": 1013, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1034: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 40 meters above the armoury.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1033, "desc": 'More of the same.'},
+            "e": {"to": 1039, "desc": 'More of the same.'},
+            "s": {"to": 1035, "desc": 'More of the same.'},
+            "w": {"to": 1029, "desc": 'More of the same.'},
+            "d": {"to": 1014, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1035: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 60 meters above poor alley.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1034, "desc": 'More of the same.'},
+            "e": {"to": 1040, "desc": 'More of the same.'},
+            "w": {"to": 1030, "desc": 'More of the same.'},
+            "d": {"to": 1015, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1036: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 30 meters above the temple spire.\nIt seems like you can see forever!',
+        "exits": {
+            "s": {"to": 1037, "desc": 'More of the same.'},
+            "w": {"to": 1031, "desc": 'More of the same.'},
+            "u": {"to": 7700, "desc": 'The rainbow leads onward and upward into the sky.\nIt looks safe to travel on.'},
+            "d": {"to": 1016, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1037: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 60 meters above the temple square.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1036, "desc": 'More of the same.'},
+            "s": {"to": 1038, "desc": 'More of the same.'},
+            "w": {"to": 1032, "desc": 'More of the same.'},
+            "d": {"to": 1017, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1038: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 60 meters above market square.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1037, "desc": 'More of the same.'},
+            "s": {"to": 1039, "desc": 'More of the same.'},
+            "w": {"to": 1033, "desc": 'More of the same.'},
+            "d": {"to": 1018, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1039: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 60 meters above market square and commons square.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1038, "desc": 'More of the same.'},
+            "s": {"to": 1040, "desc": 'More of the same.'},
+            "w": {"to": 1034, "desc": 'More of the same.'},
+            "d": {"to": 1019, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+    1040: {
+        "name": 'In the air ...',
+        "desc": 'You are flying!\nCurrently you are about 60 meters above commoners square and the dump.\nIt seems like you can see forever!',
+        "exits": {
+            "n": {"to": 1039, "desc": 'More of the same.'},
+            "w": {"to": 1035, "desc": 'More of the same.'},
+            "d": {"to": 1020, "desc": 'More of the same.'},
+        },
+        "sector": 'air',
+    },
+}
+
+# -- Item templates -------------------------------------------------------------
+OBJECTS = {
+    1001: {
+        "keywords":    'rose',
+        "short_descr": 'a red rose',
+        "description": 'A red rose is lying on the ground.',
+        "material":    'oldstyle',
+        "type": 'treasure',
+        "wear_flags": {"take": True, "head": True},
+        "values": (6, 0, 0, 0, 0),
+        "level": 0, "weight": 80, "value": 0,
+        "extra_descs": [('rose', "It's a beautiful red rose, with a soft and romantic fragrance.")],
+    },
+}
+
+# -- Resets ---------------------------------------------------------------------
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          -- place one item copy in room
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G/P limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 means unlimited, and 0
+# also means unlimited for E/G specifically (not P). Enforced at runtime.
+# ("P", item_vnum, limit, container_vnum, max)         -- fill container in room up to max (capped by limit)
+# ("R", room_vnum, num_dirs)                           -- shuffle first num_dirs exits (skipped on doors)
+# D resets are baked into room exit flags at conversion time
+RESETS = (
+    ("M", 1000, 10, 1005, 4),
+    ("M", 1000, 10, 1022, 4),
+    ("M", 1000, 10, 1019, 4),
+    ("M", 1001, 3, 1034, 3),
+)
+
+# -- Helps ---------------------------------------------------------------------
+HELPS = (
+)
+
+# -- Socials -------------------------------------------------------------------
+SOCIALS = (
+)
+
+# -- MobProgs ------------------------------------------------------------------
+# (vnum, code) -- mob program code blocks, referenced by mob triggers
+MOBPROGS = {
+}

@@ -259,3 +259,79 @@ def test_cast_undead_picks_level_spell(low_rolls, cast_log):
     player["fighting"] = 2
     assert special.spec_cast_undead(undead) is True
     assert cast_log == [("curse", player)]  # roll 0 -> curse
+
+
+# ---------------------------------------------------------------------------
+# Gangland: spec_troll_member / spec_ogre_member / spec_patrolman
+# ---------------------------------------------------------------------------
+
+TROLL_TPL = 9403
+OGRE_TPL = 9404
+
+
+def _stub_gang_tpls():
+    MOB_DEFS._data[TROLL_TPL] = {
+        "short_descr": "a troll gangster", "level": 20,
+        "group": special.MOB_VNUM_GROUP_TROLLS,
+    }
+    MOB_DEFS._data[OGRE_TPL] = {
+        "short_descr": "an ogre gangster", "level": 20,
+        "group": special.MOB_VNUM_GROUP_OGRES,
+    }
+    MOB_DEFS._data[special.MOB_VNUM_PATROLMAN] = {
+        "short_descr": "a patrolman", "level": 25,
+        "spec_fun": "spec_patrolman",
+    }
+
+
+def test_troll_member_attacks_ogre(low_rolls, monkeypatch):
+    _stub_gang_tpls()
+    troll = _make_mob(2, tpl=TROLL_TPL)
+    ogre = _make_mob(3, tpl=OGRE_TPL)
+    hits = []
+    monkeypatch.setattr(combat, "multi_hit",
+                        lambda ch, victim, dt: hits.append((ch, victim)))
+    assert special.spec_troll_member(troll) is True
+    assert hits == [(troll, ogre)]
+
+
+def test_gang_member_stands_down_near_patrolman(low_rolls, monkeypatch):
+    _stub_gang_tpls()
+    ogre = _make_mob(2, tpl=OGRE_TPL)
+    _make_mob(3, tpl=special.MOB_VNUM_PATROLMAN)
+    _make_mob(4, tpl=TROLL_TPL)
+    monkeypatch.setattr(combat, "multi_hit",
+                        lambda ch, victim, dt: pytest.fail("should not attack"))
+    assert special.spec_ogre_member(ogre) is False
+
+
+def test_gang_member_idle_without_rivals(low_rolls, monkeypatch):
+    _stub_gang_tpls()
+    troll = _make_mob(2, tpl=TROLL_TPL)
+    _make_mob(3, tpl=TROLL_TPL)  # same gang, not a target
+    monkeypatch.setattr(combat, "multi_hit",
+                        lambda ch, victim, dt: pytest.fail("should not attack"))
+    assert special.spec_troll_member(troll) is False
+
+
+def test_patrolman_attacks_higher_level_fighter(low_rolls, monkeypatch):
+    _stub_gang_tpls()
+    patrolman = _make_mob(2, tpl=special.MOB_VNUM_PATROLMAN, level=25)
+    brawler_hi = _make_mob(3, tpl=TROLL_TPL, level=22)
+    brawler_lo = _make_mob(4, tpl=OGRE_TPL, level=18)
+    brawler_hi["fighting"] = 4
+    brawler_lo["fighting"] = 3
+    hits = []
+    monkeypatch.setattr(combat, "multi_hit",
+                        lambda ch, victim, dt: hits.append((ch, victim)))
+    assert special.spec_patrolman(patrolman) is True
+    assert hits == [(patrolman, brawler_hi)]
+
+
+def test_patrolman_ignores_peaceful_room(low_rolls, monkeypatch):
+    _stub_gang_tpls()
+    patrolman = _make_mob(2, tpl=special.MOB_VNUM_PATROLMAN)
+    _make_mob(3, tpl=TROLL_TPL)
+    monkeypatch.setattr(combat, "multi_hit",
+                        lambda ch, victim, dt: pytest.fail("should not attack"))
+    assert special.spec_patrolman(patrolman) is False

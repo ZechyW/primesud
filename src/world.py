@@ -41,23 +41,52 @@ OBJ_VNUM_SCHOOL_POLEARM = 3722
 # big areas load last where heap pressure is unavoidable anyway.
 _AREA_FILES = [
     ("area_ofcol.txt", "ofcol", "Ofcol", 5500, 5599),                 # 7084 bytes
+    ("area_quifael.txt", "quifael", "Quifael's", 6900, 6999),         # 7443 bytes
     ("area_limbo.txt", "limbo", "Limbo", 1, 99),                      # 9466 bytes
     ("area_quest.txt", "quest", "Quest", 200, 249),                   # 12528 bytes
     ("area_trollden.txt", "trollden", "Troll Den", 2800, 2899),       # 19073 bytes
+    ("area_redferne.txt", "redferne", "Redferne's", 7900, 7999),      # 20405 bytes
+    ("area_daycare.txt", "daycare", "Day Care", 6600, 6699),          # 23024 bytes
+    ("area_air.txt", "air", "In the Air", 1000, 1099),                # 24083 bytes
     ("area_mobfact.txt", "mobfact", "Mob Factory", 9400, 9499),       # 24889 bytes
     ("area_immort.txt", "immort", "Valhalla", 1200, 1299),            # 26758 bytes
+    ("area_smurf.txt", "smurf", "Smurfville", 100, 199),              # 32221 bytes
     ("area_grave.txt", "grave", "Graveyard", 3600, 3699),             # 32513 bytes
     ("area_marsh.txt", "marsh", "Marsh", 8300, 8399),                 # 35321 bytes
+    ("area_dream.txt", "dream", "Machine Dreams", 8600, 8699),        # 35713 bytes
+    ("area_mega1.txt", "mega1", "Mega City One", 8000, 8099),         # 39140 bytes
+    ("area_grove.txt", "grove", "Holy Grove", 8900, 8999),            # 41050 bytes
+    ("area_drow.txt", "drow", "Drow City", 5100, 5199),               # 42409 bytes
+    ("area_midennir.txt", "midennir", "Miden'nir", 3500, 3599),       # 43104 bytes
     ("area_arachnos.txt", "arachnos", "Arachnos", 6200, 6399),        # 44543 bytes
+    ("area_nirvana.txt", "nirvana", "Nirvana", 9000, 9099),           # 45281 bytes
     ("area_plains.txt", "plains", "Plains", 300, 399),                # 45308 bytes
+    ("area_dwarven.txt", "dwarven", "Dwarven Kingdom", 6500, 6599),   # 49806 bytes
+    ("area_dylan.txt", "dylan", "Dylan's Area", 9100, 9199),          # 51484 bytes
+    ("area_eastern.txt", "eastern", "Sands of Sorrow", 5000, 5099),   # 52160 bytes
+    ("area_hood.txt", "hood", "Gangland", 2100, 2199),                # 55546 bytes
+    ("area_catacomb.txt", "catacomb", "Catacombs", 2000, 2099),       # 60170 bytes
+    ("area_draconia.txt", "draconia", "Dragon Tower", 2200, 2299),    # 64023 bytes
+    ("area_olympus.txt", "olympus", "Olympus", 900, 999),             # 65354 bytes
+    ("area_wyvern.txt", "wyvern", "Wyvern's Tower", 1600, 1799),      # 67450 bytes
+    ("area_valley.txt", "valley", "Valley of the Elves", 7800, 7899), # 70719 bytes
     ("area_chapel.txt", "chapel", "Chapel", 3400, 3499),              # 71267 bytes
+    ("area_thalos.txt", "thalos", "Thalos", 5200, 5299),              # 72345 bytes
+    ("area_gnome.txt", "gnome", "Gnome Village", 1500, 1599),         # 74271 bytes
+    ("area_galaxy.txt", "galaxy", "Galaxy", 9300, 9399),              # 74643 bytes
     ("area_school.txt", "mud_school", "Mud School", 3700, 3799),      # 76023 bytes
     ("area_shire.txt", "shire", "Shire", 1100, 1199),                 # 79009 bytes
+    ("area_canyon.txt", "canyon", "Elemental Canyon", 9200, 9299),    # 79432 bytes
+    ("area_pyramid.txt", "pyramid", "Pyramid", 8700, 8799),           # 85380 bytes
     ("area_haon.txt", "haon", "Haon Dor", 6000, 6199),                # 85969 bytes
     ("area_moria.txt", "moria", "Moria", 3900, 4199),                 # 98773 bytes
+    ("area_mirror.txt", "mirror", "Old Thalos", 5300, 5399),          # 110420 bytes
+    ("area_astral.txt", "astral", "Astral Plane", 7700, 7799),        # 112453 bytes
     ("area_ofcol2.txt", "ofcol2", "New Ofcol", 600, 699),             # 126239 bytes
+    ("area_mahntor.txt", "mahntor", "Mahn-Tor", 2300, 2399),          # 140720 bytes
     ("area_sewer.txt", "sewer", "Sewers", 7000, 7499),                # 158284 bytes
     ("area_tohell.txt", "tohell", "Hell", 10400, 10599),              # 195277 bytes
+    ("area_hitower.txt", "hitower", "High Tower", 1300, 1499),        # 204451 bytes
     ("area_midgaard.txt", "midgaard", "Midgaard", 3000, 3399),        # 259207 bytes
     ("area_newthalos.txt", "newthalos", "New Thalos", 9500, 9799),    # 265007 bytes
 ]
@@ -87,6 +116,35 @@ AREA_LEVELS = {
     "sewer":      (5, 30),
     "tohell":     (32, 51),
     "newthalos":  (10, 35),
+    "air":        (5, 10),
+    "astral":     (10, 35),
+    "canyon":     (5, 30),
+    "catacomb":   (10, 20),
+    "daycare":    (1, 5),
+    "draconia":   (5, 30),
+    "dream":      (1, 5),
+    "drow":       (15, 25),
+    "dwarven":    (10, 25),
+    "dylan":      (15, 25),
+    "eastern":    (10, 20),
+    "galaxy":     (20, 30),
+    "gnome":      (5, 15),
+    "grove":      (5, 20),
+    "hitower":    (10, 30),
+    "hood":       (5, 15),
+    "mahntor":    (5, 35),
+    "mega1":      (5, 35),
+    "midennir":   (5, 15),
+    "mirror":     (1, 30),
+    "nirvana":    (30, 35),
+    "olympus":    (5, 50),
+    "pyramid":    (1, 60),  # credits carry "5-50" (unparsed -> converter default)
+    "quifael":    (31, 35),
+    "redferne":   (20, 30),
+    "smurf":      (1, 10),
+    "thalos":     (10, 25),
+    "valley":     (5, 20),
+    "wyvern":     (5, 30),
 }
 
 # -- BEGIN GENERATED: tools/gen_area_adj.py (do not hand-edit) --
@@ -103,23 +161,52 @@ AREA_LEVELS = {
 # [PRIMESUD]
 AREA_BUILDERS = {
     "ofcol":      "Alfa",
+    "quifael":    "Quifael",
     "limbo":      "Diku",
     "quest":      "1stMud",
     "trollden":   "Merc",
+    "redferne":   "Diku",
+    "daycare":    "Sandman",
+    "air":        "Copper",
     "mobfact":    "PinkF",
     "immort":     "ROM",
+    "smurf":      "Generic",
     "grave":      "Alfa",
     "marsh":      "Generic",
+    "dream":      "Furey",
+    "mega1":      "Glop",
+    "grove":      "Alfa",
+    "drow":       "Drkside",
+    "midennir":   "Copper",
     "arachnos":   "Mahatma",
+    "nirvana":    "Fstall",
     "plains":     "Copper",
+    "dwarven":    "Anon",
+    "dylan":      "Dylan",
+    "eastern":    "Anon",
+    "hood":       "Raff",
+    "catacomb":   "Raff",
+    "draconia":   "Wench",
+    "olympus":    "Generic",
+    "wyvern":     "Tyrst",
+    "valley":     "Hatchet",
     "chapel":     "Copper",
+    "thalos":     "Drkside",
+    "gnome":      "Vougon",
+    "galaxy":     "Doctor",
     "mud_school": "Hatchet",
     "shire":      "Poohb",
+    "canyon":     "Raff",
+    "pyramid":    "Andersen",
     "haon":       "Diku",
     "moria":      "Alfa",
+    "mirror":     "Kahn",
+    "astral":     "Andersen",
     "ofcol2":     "Hatchet",
+    "mahntor":    "Chris",
     "sewer":      "Diku",
     "tohell":     "Strahd",
+    "hitower":    "Skylar",
     "midgaard":   "Diku",
     "newthalos":  "Conner",
 }
@@ -128,51 +215,110 @@ AREA_LVL_COMMENTS = {
     "ofcol":    "All",
     "limbo":    "None",
     "quest":    "None",
+    "pyramid":  "5-50",
     "midgaard": "All",
 }
 
 _AREA_ADJ = {
     "ofcol":      ("ofcol2", "plains"),
+    "quifael":    ("midgaard",),
     "limbo":      ("midgaard",),
     "quest":      ("midgaard",),
     "trollden":   ("haon",),
+    "redferne":   ("dylan", "midgaard"),
+    "daycare":    ("dwarven",),
+    "air":        ("astral", "midgaard"),
     "mobfact":    ("midgaard",),
     "immort":     ("limbo", "midgaard"),
+    "smurf":      ("midennir",),
     "grave":      ("chapel", "midgaard"),
     "marsh":      ("haon",),
+    "dream":      ("midgaard",),
+    "mega1":      ("eastern",),
+    "grove":      ("midennir", "mirror", "nirvana"),
+    "drow":       ("thalos",),
+    "midennir":   ("gnome", "grove", "midgaard", "moria", "newthalos", "smurf", "thalos"),
     "arachnos":   ("haon",),
-    "plains":     ("moria", "ofcol"),
+    "nirvana":    ("grove",),
+    "plains":     ("moria", "ofcol", "olympus", "valley"),
+    "dwarven":    ("catacomb", "daycare", "moria"),
+    "dylan":      ("midgaard", "redferne"),
+    "eastern":    ("mega1", "midgaard", "pyramid"),
+    "hood":       ("midgaard",),
+    "catacomb":   ("dwarven",),
+    "draconia":   ("hitower",),
+    "olympus":    ("plains",),
+    "wyvern":     ("thalos",),
+    "valley":     ("plains",),
     "chapel":     ("grave", "tohell"),
+    "thalos":     ("canyon", "drow", "mahntor", "midennir", "wyvern"),
+    "gnome":      ("midennir",),
+    "galaxy":     ("hitower", "thalos"),
     "mud_school": ("midgaard",),
     "shire":      ("haon", "midgaard"),
-    "haon":       ("arachnos", "marsh", "midgaard", "newthalos", "shire", "trollden"),
-    "moria":      ("midgaard", "plains", "sewer"),
+    "canyon":     ("thalos",),
+    "pyramid":    ("eastern",),
+    "haon":       ("arachnos", "hitower", "marsh", "midgaard", "newthalos", "shire", "trollden"),
+    "moria":      ("dwarven", "midennir", "midgaard", "plains", "sewer"),
+    "mirror":     ("grove",),
+    "astral":     ("air",),
     "ofcol2":     ("ofcol",),
+    "mahntor":    ("thalos",),
     "sewer":      ("midgaard",),
     "tohell":     ("chapel",),
-    "midgaard":   ("grave", "haon", "immort", "limbo", "mobfact", "moria", "mud_school", "newthalos", "quest", "sewer"),
-    "newthalos":  ("haon", "midgaard"),
+    "hitower":    ("chapel", "draconia", "drow", "dylan", "galaxy", "haon", "midgaard", "olympus", "sewer"),
+    "midgaard":   ("air", "dream", "eastern", "grave", "haon", "hood", "immort", "limbo", "midennir", "mobfact", "moria", "mud_school", "newthalos", "quest", "redferne", "sewer"),
+    "newthalos":  ("haon", "midennir", "midgaard"),
 }
 
 AREA_ROOM_COUNTS = {
     "ofcol":      8,
+    "quifael":    6,
     "limbo":      3,
     "quest":      3,
     "trollden":   5,
+    "redferne":   17,
+    "daycare":    19,
+    "air":        40,
     "mobfact":    25,
     "immort":     22,
+    "smurf":      29,
     "grave":      33,
     "marsh":      18,
+    "dream":      36,
+    "mega1":      28,
+    "grove":      22,
+    "drow":       51,
+    "midennir":   52,
     "arachnos":   56,
+    "nirvana":    60,
     "plains":     44,
+    "dwarven":    51,
+    "dylan":      88,
+    "eastern":    47,
+    "hood":       70,
+    "catacomb":   69,
+    "draconia":   44,
+    "olympus":    50,
+    "wyvern":     61,
+    "valley":     84,
     "chapel":     67,
+    "thalos":     81,
+    "gnome":      89,
+    "galaxy":     61,
     "mud_school": 59,
     "shire":      58,
+    "canyon":     55,
+    "pyramid":    60,
     "haon":       71,
     "moria":      121,
+    "mirror":     86,
+    "astral":     80,
     "ofcol2":     100,
+    "mahntor":    100,
     "sewer":      177,
     "tohell":     141,
+    "hitower":    183,
     "midgaard":   143,
     "newthalos":  257,
 }

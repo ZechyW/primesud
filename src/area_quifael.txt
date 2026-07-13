@@ -1,0 +1,119 @@
+# fmt: off
+# Area: Quifael's
+# Source: QuickMUD/ROM 2.4
+# VNUM ranges: 6900-6999
+# Credits: {31 35} Quifael Quifael's Area
+
+
+AREA = {
+    "name":     "Quifael's",
+    "builders": 'None',
+    "vnums":    (6900, 6999),
+    "credits":  "{31 35} Quifael Quifael's Area",
+    "levels":   (31, 35),
+}
+
+# -- Mob templates --------------------------------------------------------------
+# hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
+# armor: (pierce, bash, slash, exotic), raw .are units
+# hitroll: from mob level line
+MOBILES = {
+}
+
+# -- Rooms ----------------------------------------------------------------------
+ROOMS = {
+    6900: {
+        "name": "Quifael's monster pen",
+        "desc": 'You are in a big, subterranean room with heavy massive stone walls and no\nwindows whatsoever.  A virtual ladder leads upwards.',
+        "exits": {
+            "u": {"to": 6902, "desc": 'The ladder leads to the laboratory.'},
+        },
+        "flags": {"indoors": True, "private": True},
+        "sector": 'inside',
+    },
+    6901: {
+        "name": "Quifael's study",
+        "desc": 'You are in a small, comfortable study room.  The walls are lined with\nbookcases filled with dusty volumes of all sizes.  In the fireplace burns a\ncrackling fire that makes the room warm and cosy, and in front of an oakwood\nreading desk is a large old-fashioned chair.',
+        "exits": {
+            "s": {"to": 6904, "desc": 'The corridor leads south to the hall.'},
+        },
+        "flags": {"no_mob": True, "indoors": True, "private": True},
+        "sector": 'inside',
+        "extra_descs": [('chair', 'It is big and old-fashioned, but quite comfortable nevertheless.'), ('desk', 'It is very massive and but seems worn from many years of use.'), ('fireplace', "The fireplace isn't particularly big, but the fire crackles merrily in it."), ('bookcase bookcases volume volumes book books', 'Most of the books are heavy, leatherbound and covered in a thin layer of dust.\nThere are many titles on necromancy, conjuring and other spheres of Magick,\nbut also some on computer science (although these seem to be VERY dusty\nindeed) and a fair collection of horror literature, ranging from Bram Stoker\nand H. P. Lovecraft to Anne Rice and Stephen King.')],
+    },
+    6902: {
+        "name": "Quifael's laboratory",
+        "desc": 'You are in a room filled with shelves containing all sorts of weird equipment.\nThe walls are lined with numerous shelves and a massive working desk is by\nthe north wall.  The air smells of rare chemicals and spices.\nA virtual ladder leads downwards.\nA magical portal is hovering in the air just in front of the east wall.',
+        "exits": {
+            "e": {"to": 6903, "desc": 'To the east is the magical portal.'},
+            "w": {"to": 6904, "desc": 'To the west is the hall.'},
+            "d": {"to": 6900, "desc": 'The virtual ladder leads down to the monster pen.'},
+        },
+        "flags": {"no_mob": True, "indoors": True, "private": True},
+        "sector": 'inside',
+        "extra_descs": [('desk', "On the desk is a peculiar apparatus of glass bottles and globes connected by\nsmall pipelines.  The green liquid inside the apparatus' globes and pipelines\nis bubbling steadily."), ('shelves', "The shelves contain a mass of bottles, jars and boxes of different shapes and\nsizes, of which some contain powders and liquids in various colours.  Others\ncontain dragon's claws, giant's eyes, rabbit's ears and other body parts of\ndifferent monsters.")],
+    },
+    6903: {
+        "name": "Quifael's virtual balcony",
+        "desc": 'You are on a transparent balcony hanging in mid-air.  You notice a faint blue\nglow surrounding everything, even yourself, making it seem as transparent as\nthe balcony itself.  From here, you have a terrific view of the whole Forest\nof Haon-Dor.\nA transparent bronze plate has been bolted to the balcony railing.\nA magical portal is hovering in the air to the west.',
+        "exits": {
+            "w": {"to": 6902, "desc": 'The magical portal is to the west.'},
+        },
+        "flags": {"indoors": True, "private": True},
+        "sector": 'inside',
+        "extra_descs": [('forest Haon-Dor view', 'Through the tree crowns, you see fellow adventurers walking around in the\nforest, gathering mushrooms, eating blackberries, committing rabbit genocide\nand generally having a good time.'), ('plate', "The transparent bronze plate looks quite strange, but the engraved letters are\nquite easy to read, nevertheless :-\n\n              Quifael's Virtual Balcony\n\n                   Do not lean out!\n\n  Please do not try to attract the attention of any\n      adventurers in the forest, as you are not\n         really in existence at the moment.\n\n        (This could possibly mess up Reality,\n      and we wouldn't want to do that, would we?)"), ('balcony railing', 'Quite transparent, but visible anyway, because of the blue glow that surrounds\nthe whole place.')],
+    },
+    6904: {
+        "name": "Quifael's hall",
+        "desc": 'You are in sparsely decorated and quite dusty hall.  Old wooden doors lead\nnorth, east and south and to the west is the front door.\nAn old mirror hangs on the wall.',
+        "exits": {
+            "n": {"to": 6901, "desc": 'The study is to the north.'},
+            "e": {"to": 6902, "desc": 'The laboratory is to the east.'},
+            "s": {"to": 6905, "desc": 'The kitchen is to the south.'},
+            "w": {"to": 3126, "desc": 'The front door leads to Park Road.', "keyword": 'door', "isdoor": True, "pickproof": True, "key": 3301},
+        },
+        "flags": {"indoors": True, "private": True},
+        "sector": 'inside',
+        "extra_descs": [('mirror', 'You see yourself looking back at you.')],
+    },
+    6905: {
+        "name": "Quifael's kitchen",
+        "desc": 'You are in an old-fashioned kitchen.',
+        "exits": {
+            "n": {"to": 6904, "desc": 'The hall is to the north.'},
+        },
+        "flags": {"indoors": True, "private": True},
+        "sector": 'inside',
+    },
+}
+
+# -- Item templates -------------------------------------------------------------
+OBJECTS = {
+}
+
+# -- Resets ---------------------------------------------------------------------
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          -- place one item copy in room
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G/P limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 means unlimited, and 0
+# also means unlimited for E/G specifically (not P). Enforced at runtime.
+# ("P", item_vnum, limit, container_vnum, max)         -- fill container in room up to max (capped by limit)
+# ("R", room_vnum, num_dirs)                           -- shuffle first num_dirs exits (skipped on doors)
+# D resets are baked into room exit flags at conversion time
+RESETS = (
+)
+
+# -- Helps ---------------------------------------------------------------------
+HELPS = (
+)
+
+# -- Socials -------------------------------------------------------------------
+SOCIALS = (
+)
+
+# -- MobProgs ------------------------------------------------------------------
+# (vnum, code) -- mob program code blocks, referenced by mob triggers
+MOBPROGS = {
+}

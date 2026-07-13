@@ -291,7 +291,7 @@ class TestTierSaveLoad:
         world.areas = []
         player = create_char()
         player["name"] = "Tester"
-        player["room"] = 9001
+        player["room"] = 9901  # vnum owned by no area (9000-9099 is nirvana's now)
         player["_macros"] = {}
         player["tier"] = 3
         world.chars[1] = player
@@ -300,7 +300,7 @@ class TestTierSaveLoad:
         world.chars.clear()
         player2 = create_char()
         player2["name"] = "Tester"
-        player2["room"] = 9001
+        player2["room"] = 9901
         player2["_macros"] = {}
         world.chars[1] = player2
         assert game_state.load_world() == "file"

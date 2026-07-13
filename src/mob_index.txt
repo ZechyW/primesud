@@ -10,6 +10,18 @@ trollden|2805|oldstyle large troll female
 trollden|2806|oldstyle fat worm
 trollden|2807|oldstyle roving beast
 trollden|2808|oldstyle medium troll
+redferne|7900|oldstyle grand knight paladin
+daycare|6607|guard
+daycare|6608|brat spoiled
+daycare|6600|youth dwarven dwarf
+daycare|6601|teddy bear
+daycare|6606|nanny
+daycare|6602|doll raggedy anne
+daycare|6605|doll old
+daycare|6603|soldier toy
+daycare|6604|bear ugly
+air|1000|oldstyle fairy dragon
+air|1001|oldstyle griffin
 mobfact|9405|oldstyle toxic slime
 mobfact|9401|oldstyle fido mutant dog
 mobfact|9402|oldstyle foreman floyd
@@ -18,6 +30,18 @@ mobfact|9407|oldstyle worker
 mobfact|9404|oldstyle revolving drunk
 mobfact|9406|oldstyle worker
 immort|1200|Heimdall
+smurf|102|oldstyle smurf
+smurf|101|oldstyle smurf
+smurf|103|oldstyle brainy smurf
+smurf|104|oldstyle handy smurf
+smurf|105|oldstyle sleepy smurf
+smurf|106|oldstyle hefty smurf
+smurf|107|oldstyle grumpy smurf
+smurf|108|oldstyle jokey smurf
+smurf|109|oldstyle smurfette
+smurf|110|oldstyle papa smurf
+smurf|111|oldstyle gargamel
+smurf|112|oldstyle azreal cat
 grave|3603|oldstyle skeleton
 grave|3600|oldstyle henry gardener
 grave|3602|oldstyle ghoul
@@ -40,6 +64,49 @@ marsh|8314|oldstyle wolf
 marsh|8318|oldstyle mound shambling
 marsh|8321|oldstyle gargoyle
 marsh|8320|oldstyle giant
+dream|8600|oldstyle keeper
+mega1|8000|oldstyle juve
+mega1|8001|oldstyle punk
+mega1|8003|oldstyle Citi-Def Militiaman
+mega1|8002|oldstyle Futsie
+mega1|8004|oldstyle dunk
+mega1|8005|oldstyle tap
+mega1|8006|oldstyle rookie judge
+mega1|8007|oldstyle Wallaby Gleep
+mega1|8009|oldstyle Ernie Ramirez
+mega1|8010|oldstyle Judge Eckersely
+mega1|8011|oldstyle Judge Beddows
+mega1|8012|oldstyle bite fighter
+mega1|8008|oldstyle Pinkerton Throt
+grove|8900|oldstyle hierophant
+grove|8901|oldstyle hierophant
+grove|8902|oldstyle elder druid
+grove|8903|oldstyle elder druidess
+grove|8904|oldstyle doe
+grove|8905|oldstyle deer
+grove|8906|oldstyle stag deer large
+grove|8907|oldstyle bunny rabbit
+grove|8908|oldstyle snake
+grove|8909|oldstyle druid
+grove|8910|oldstyle druidess
+drow|5100|oldstyle goblin slave
+drow|5101|oldstyle drow commoner
+drow|5102|oldstyle drow noble warrior
+drow|5103|oldstyle drow noble mage
+drow|5104|oldstyle drow priestess
+drow|5105|oldstyle drow master
+drow|5106|oldstyle drow weapons master
+drow|5107|oldstyle drow matron mother
+drow|5108|oldstyle drow matron mother
+drow|5109|oldstyle yochlol
+midennir|3500|wyvern
+midennir|3501|goblin mountain
+midennir|3506|goblin lieutenant
+midennir|3507|goblin leader
+midennir|3502|boy small
+midennir|3503|innkeeper
+midennir|3504|bard
+midennir|3505|horseman dark
 arachnos|6319|oldstyle queen spider
 arachnos|6318|oldstyle spider poisonous
 arachnos|6301|oldstyle spider young
@@ -59,10 +126,177 @@ arachnos|6313|oldstyle guardian
 arachnos|6302|oldstyle dragon Yevaud
 arachnos|6316|oldstyle dragon wormkin young
 arachnos|6317|oldstyle dragon wormkin medium
+nirvana|9000|tridrone
+nirvana|9001|quadrone
+nirvana|9002|pentadrone
+nirvana|9003|decaton
+nirvana|9004|nonaton
+nirvana|9005|octon
+nirvana|9006|septon
+nirvana|9007|hexton
+nirvana|9008|quinton
+nirvana|9009|tertian
+nirvana|9010|secundus
+nirvana|9011|Primus
 plains|305|oldstyle worm Shudde-M'ell
 plains|309|oldstyle rabbit
 plains|300|oldstyle druid Aruncus
 plains|301|oldstyle hermit sorbus
+dwarven|6500|oldstyle dwarf guard
+dwarven|6501|oldstyle dwarf worker miner
+dwarven|6502|oldstyle wraith
+dwarven|6503|oldstyle storekeeper
+dwarven|6504|oldstyle baker
+dwarven|6505|oldstyle lizard
+dwarven|6506|oldstyle giant
+dwarven|6507|oldstyle dwarf miner
+dwarven|6508|oldstyle dwarf leader
+dwarven|6510|oldstyle dwarf peon
+dwarven|6514|oldstyle dwarf guard
+dwarven|6511|oldstyle dwarf
+dwarven|6512|oldstyle dwarf son
+dwarven|6513|oldstyle dwarf daughter
+dwarven|6515|oldstyle man
+dwarven|6509|oldstyle dwarf doctor
+dwarven|6516|oldstyle mazekeeper
+dwarven|6517|oldstyle snake
+dylan|9101|oldstyle harpy
+dylan|9102|oldstyle harpy leader
+dylan|9103|oldstyle air elemental
+dylan|9104|oldstyle mysterious efreeti
+dylan|9105|oldstyle roc
+dylan|9106|oldstyle roc
+dylan|9107|oldstyle wicked witch
+eastern|5015|oldstyle dustdigger
+eastern|5000|oldstyle dervish raggity
+eastern|5001|oldstyle dervish large
+eastern|5002|oldstyle snake coral
+eastern|5003|oldstyle scorpion small
+eastern|5004|oldstyle worm giant purple
+eastern|5005|oldstyle dragon brass
+eastern|5017|oldstyle camel
+eastern|5006|oldstyle nomad leader
+eastern|5007|oldstyle nomad commander
+eastern|5008|oldstyle nomad warrior
+eastern|5009|oldstyle slave young
+eastern|5010|oldstyle dracolich lich
+eastern|5011|oldstyle drider drow
+eastern|5012|oldstyle duergar dwarf
+eastern|5013|oldstyle myconoid
+eastern|5014|oldstyle myconoid shaman
+hood|2103|gang leader troll
+hood|2108|dog pit bull pitbull
+hood|2104|bruiser troll
+hood|2109|punk troll
+hood|2101|troll gang member
+hood|2110|gang leader ogre
+hood|2111|thug
+hood|2107|vandal ogre
+hood|2102|ogre gang member
+hood|2105|gang doll
+hood|2106|patrolman patrol man
+catacomb|2001|oldstyle bat
+catacomb|2013|oldstyle bat vampire
+catacomb|2002|oldstyle page templar
+catacomb|2003|oldstyle spelunker explorer
+catacomb|2004|oldstyle gravedigger digger robber graverobber
+catacomb|2006|oldstyle
+catacomb|2007|oldstyle skeleton skeletal soldier
+catacomb|2008|oldstyle templar
+catacomb|2009|oldstyle wraith
+catacomb|2010|oldstyle officer templar
+catacomb|2011|oldstyle zombie mage
+catacomb|2012|oldstyle shadow shadows
+catacomb|2014|oldstyle necromancer necro cleric
+catacomb|2015|oldstyle grand templar leader
+catacomb|2016|oldstyle prism dragon prismdragon
+catacomb|2017|oldstyle darken dark beast darkenbeast
+catacomb|2005|oldstyle mist swirling
+draconia|2200|oldstyle hatchling dragon baby
+draconia|2201|oldstyle draconian
+draconia|2227|oldstyle slave human
+draconia|2226|oldstyle hydra
+draconia|2207|oldstyle bodyguard draconian
+draconia|2206|oldstyle concubine draconian
+draconia|2203|oldstyle man mage wizard
+draconia|2242|oldstyle fool draconian
+draconia|2204|oldstyle cleric draconian
+draconia|2205|oldstyle king draconian
+draconia|2243|oldstyle queen draconian
+draconia|2241|oldstyle dragon phase
+draconia|2240|oldstyle zombie draconian
+draconia|2223|oldstyle dragon white
+draconia|2222|oldstyle dragon black
+draconia|2202|oldstyle lord crypt master
+draconia|2221|oldstyle dragon red
+draconia|2225|oldstyle dragon green
+draconia|2220|oldstyle tiamat dragon
+olympus|915|oldstyle grocer greengrocer julius
+olympus|916|oldstyle alchemist
+olympus|917|oldstyle clive
+olympus|918|oldstyle armourer samuel
+olympus|914|oldstyle Odin
+olympus|901|oldstyle zeus god
+olympus|902|oldstyle prometheus
+olympus|920|oldstyle chimera
+olympus|907|oldstyle athena
+olympus|905|oldstyle apollo
+olympus|923|oldstyle citizen resident
+olympus|925|oldstyle cook
+olympus|926|oldstyle jailer
+olympus|912|oldstyle boy serving servant
+olympus|911|oldstyle musician apprentice
+olympus|919|oldstyle ra sun god
+olympus|922|oldstyle roc
+olympus|924|oldstyle pegasus horse
+olympus|908|oldstyle hephaestus smith
+olympus|909|oldstyle handmaid golden
+olympus|906|oldstyle ares
+olympus|910|oldstyle soldier
+olympus|921|oldstyle hera
+olympus|904|oldstyle poseidon
+olympus|903|oldstyle hermes
+olympus|913|oldstyle hound dog war
+wyvern|1601|oldstyle killer frog
+wyvern|1602|oldstyle stone gargoyle
+wyvern|1603|oldstyle angry gargoyle
+wyvern|1604|oldstyle elite gargoyle
+wyvern|1605|oldstyle gargoyle shaman
+wyvern|1606|oldstyle carnivorous plant
+wyvern|1607|oldstyle gruesome ogre
+wyvern|1608|oldstyle shadow
+wyvern|1609|oldstyle evil wight
+wyvern|1610|oldstyle burly minotaur
+wyvern|1612|oldstyle savage minotaur
+wyvern|1613|oldstyle minotaur captain
+wyvern|1614|oldstyle black pudding
+wyvern|1615|oldstyle lesser golem
+wyvern|1616|oldstyle ancient wyvern
+wyvern|1617|oldstyle spectre
+wyvern|1702|oldstyle trapper
+wyvern|1704|oldstyle hunter
+wyvern|1706|oldstyle ranger
+wyvern|1710|oldstyle male centaur
+wyvern|1711|oldstyle female centaur
+wyvern|1712|oldstyle old centaur
+wyvern|1714|oldstyle centaur elder
+wyvern|1715|oldstyle centaur guard
+wyvern|1716|oldstyle centaur chief
+valley|7800|oldstyle dog cooshee
+valley|7801|oldstyle elf valley
+valley|7802|oldstyle elf valley
+valley|7803|oldstyle elf sentry valley
+valley|7804|oldstyle elf sentry valley
+valley|7805|oldstyle elf scout valley
+valley|7806|oldstyle elf valley
+valley|7807|oldstyle elf elder valley
+valley|7808|oldstyle elf elder valley
+valley|7809|oldstyle pyrohydra pyro hydra
+valley|7810|oldstyle hermit man old
+valley|7811|oldstyle talemon wizard mage
+valley|7812|oldstyle guardian daemon
+valley|7813|oldstyle wolf
+valley|7814|oldstyle antelope
 chapel|3405|oldstyle priest
 chapel|3400|oldstyle skeleton bony
 chapel|3401|oldstyle undead zombie
@@ -80,6 +314,71 @@ chapel|3413|oldstyle rock slug
 chapel|3414|oldstyle etcher
 chapel|3415|oldstyle wife ghost specter
 chapel|3416|oldstyle body
+thalos|5200|oldstyle beholder
+thalos|5201|oldstyle lamia beast
+thalos|5202|oldstyle mimic chest
+thalos|5203|oldstyle mimic boulder
+thalos|5204|oldstyle mimic floor
+thalos|5205|oldstyle mimic pottery
+thalos|5206|oldstyle mimic planks
+thalos|5207|oldstyle lizard horned
+thalos|5208|oldstyle golem stone
+gnome|1502|oldstyle man gnome
+gnome|1500|oldstyle child gnome
+gnome|1501|oldstyle woman gnome
+gnome|1503|oldstyle scientist gnome
+gnome|1504|oldstyle guard gnome
+gnome|1508|oldstyle mouse field
+gnome|1507|oldstyle troll small
+gnome|1509|oldstyle rat
+gnome|1510|oldstyle rat large
+gnome|1511|oldstyle rat giant
+gnome|1512|oldstyle troll
+gnome|1513|oldstyle bat black
+gnome|1514|oldstyle zombie gnome
+gnome|1515|oldstyle bat fire
+gnome|1505|oldstyle chief gnome
+gnome|1520|oldstyle miner hobgoblin
+gnome|1518|oldstyle bodyguard hobgoblin
+gnome|1519|oldstyle king hobgoblin
+gnome|1521|oldstyle treasurer hobgoblin
+gnome|1517|oldstyle soldier hobgoblin
+gnome|1522|oldstyle prisoner gnome
+gnome|1523|oldstyle prisoner human
+gnome|1526|oldstyle cook hobgoblin
+gnome|1524|oldstyle hermit crab
+galaxy|9301|oldstyle poor mudder
+galaxy|9302|oldstyle star
+galaxy|9303|oldstyle nebula young
+galaxy|9304|oldstyle comet speedy
+galaxy|9305|oldstyle red supergiant
+galaxy|9306|oldstyle white dwarf
+galaxy|9307|oldstyle horsehead nebula
+galaxy|9308|oldstyle andromeda
+galaxy|9309|oldstyle hercules
+galaxy|9310|oldstyle pegasus
+galaxy|9311|oldstyle orion
+galaxy|9312|oldstyle pleiades
+galaxy|9313|oldstyle draco head
+galaxy|9314|oldstyle draco baby
+galaxy|9315|oldstyle aries
+galaxy|9316|oldstyle taurus
+galaxy|9317|oldstyle gemini
+galaxy|9318|oldstyle gemini
+galaxy|9319|oldstyle cancer
+galaxy|9320|oldstyle leo
+galaxy|9321|oldstyle virgo
+galaxy|9322|oldstyle libra
+galaxy|9323|oldstyle scorpio
+galaxy|9324|oldstyle sagittarius
+galaxy|9325|oldstyle capricorn
+galaxy|9326|oldstyle aquarius
+galaxy|9327|oldstyle pisces mermaid
+galaxy|9328|oldstyle pisces fish
+galaxy|9329|oldstyle bear ursa major
+galaxy|9330|oldstyle cassiopeia queen
+galaxy|9331|oldstyle cepheus king
+galaxy|9332|oldstyle polaris polar star
 mud_school|3720|diploma beast
 mud_school|3700|acolyte cleric
 mud_school|3701|blob
@@ -132,6 +431,60 @@ shire|1109|oldstyle horse
 shire|1107|oldstyle chicken
 shire|1130|oldstyle innkeeper
 shire|1131|oldstyle receptionist
+canyon|9201|mountain climber mountainclimber
+canyon|9238|oldstyle vendor
+canyon|9202|cyclops
+canyon|9204|oldstyle elemental guardian
+canyon|9208|oldstyle earth elemental ruler
+canyon|9209|oldstyle fire elemental ruler
+canyon|9210|oldstyle air elemental ruler
+canyon|9211|oldstyle lightning elemental ruler
+canyon|9212|oldstyle water elemental ruler
+canyon|9203|oldstyle tiny elemental
+canyon|9205|oldstyle small elemental
+canyon|9206|oldstyle medium elemental
+canyon|9207|oldstyle large elemental
+canyon|9226|oldstyle blue flame
+canyon|9227|oldstyle magneto
+canyon|9228|oldstyle ice bandit
+canyon|9229|oldstyle rock monster
+canyon|9230|oldstyle hurricane
+canyon|9231|oldstyle magician
+canyon|9232|oldstyle rainbow warrior
+canyon|9233|oldstyle illusionist
+canyon|9234|oldstyle alchemist
+canyon|9235|oldstyle baby rainbow dragon
+canyon|9236|oldstyle imp
+canyon|9214|oldstyle water puddle elemental
+canyon|9215|oldstyle fire flame elemental
+canyon|9217|oldstyle pebble rock earth stone elemental
+canyon|9218|oldstyle spark lightning energy elemental
+canyon|9225|oldstyle eddie elemental
+canyon|9219|oldstyle acid blob elemental
+canyon|9216|oldstyle snowflake snow flake ice elemental
+canyon|9220|oldstyle lava elemental
+canyon|9221|oldstyle mud elemental
+canyon|9222|oldstyle mist elemental
+canyon|9223|oldstyle particle elemental
+canyon|9224|oldstyle dust elemental
+pyramid|8700|oldstyle asp snake
+pyramid|8701|oldstyle cobra snake
+pyramid|8702|oldstyle mongoose
+pyramid|8703|oldstyle pyramid watcher
+pyramid|8704|oldstyle thief tomb
+pyramid|8705|oldstyle ali baba thief
+pyramid|8706|oldstyle magic carpet
+pyramid|8707|oldstyle mummy corpse
+pyramid|8708|oldstyle sand man sandman
+pyramid|8709|oldstyle efreeti efreet
+pyramid|8710|oldstyle caryatid column
+pyramid|8711|oldstyle djinn genie
+pyramid|8712|oldstyle hieracosphinx sphinx
+pyramid|8713|oldstyle gynosphinx sphinx
+pyramid|8714|oldstyle criosphinx sphinx
+pyramid|8715|oldstyle androsphinx sphinx
+pyramid|8716|oldstyle great sphinx
+pyramid|8717|oldstyle ramses mummy
 haon|6000|oldstyle john lumberjack
 haon|6002|oldstyle bear
 haon|6004|oldstyle deer
@@ -177,6 +530,61 @@ moria|4157|mage
 moria|4158|snake
 moria|4159|troll
 moria|4160|orc
+mirror|5306|oldstyle priest
+mirror|5305|oldstyle gordon defender
+mirror|5300|oldstyle baby beholder
+mirror|5307|oldstyle priest
+mirror|5301|oldstyle lamia pet
+mirror|5330|oldstyle musician bard
+mirror|5329|oldstyle musician bard
+mirror|5316|oldstyle scholar boy
+mirror|5315|oldstyle librarian
+mirror|5319|oldstyle bather man
+mirror|5318|oldstyle masseuse woman
+mirror|5308|oldstyle golem stone
+mirror|5311|oldstyle george butcher
+mirror|5312|oldstyle farmer betty
+mirror|5313|oldstyle thaellor dwarf
+mirror|5310|oldstyle dan barkeep
+mirror|5314|oldstyle ben smith
+mirror|5317|oldstyle wizard
+mirror|5309|oldstyle mayor
+mirror|5320|oldstyle guard imperial cityguard
+mirror|5321|oldstyle guard cityguard
+mirror|5303|oldstyle guard imperial cityguard
+mirror|5304|oldstyle citizen woman female
+mirror|5302|oldstyle citizen man
+mirror|5327|oldstyle druid
+mirror|5328|oldstyle druidess
+mirror|5322|oldstyle doe
+mirror|5323|oldstyle deer
+mirror|5324|oldstyle stag deer
+mirror|5325|oldstyle bunny rabbit
+mirror|5326|oldstyle snake
+mirror|5334|oldstyle cityguard guard
+mirror|5331|oldstyle cityguard guard
+mirror|5332|oldstyle janitor
+mirror|5333|oldstyle fido dog
+astral|7700|oldstyle astral guardian
+astral|7701|oldstyle nightmare
+astral|7702|oldstyle night hag
+astral|7703|oldstyle stalker invisible
+astral|7704|oldstyle soulless one
+astral|7705|oldstyle githyanki hunter
+astral|7706|oldstyle githyanki warrior
+astral|7708|oldstyle githyanki knight
+astral|7710|oldstyle githyanki gish
+astral|7715|oldstyle ghost
+astral|7707|oldstyle githyanki guardian
+astral|7711|oldstyle githyanki gish
+astral|7712|oldstyle githyanki warlock
+astral|7716|oldstyle githzerai prisoner
+astral|7717|oldstyle mindflayer prisoner
+astral|7718|oldstyle dragon red slave
+astral|7719|oldstyle fire furnace flame
+astral|7709|oldstyle githyanki protector
+astral|7713|oldstyle githyanki lich queen
+astral|7714|oldstyle lord gith
 ofcol2|600|oldstyle cityguard guard
 ofcol2|601|oldstyle marshall diana
 ofcol2|602|oldstyle derrick captain guard cityguard
@@ -212,6 +620,40 @@ ofcol2|630|oldstyle dragonlord lord dragon
 ofcol2|631|oldstyle dragon gold
 ofcol2|632|oldstyle attendant
 ofcol2|633|oldstyle dragonknight knight dragon
+mahntor|2300|oldstyle knight ethereal dark
+mahntor|2301|oldstyle treant tree
+mahntor|2302|oldstyle dweller cave creature
+mahntor|2303|oldstyle toad rock
+mahntor|2304|oldstyle weeping willow tree
+mahntor|2305|oldstyle mist mistling
+mahntor|2306|oldstyle swamp wraith
+mahntor|2307|oldstyle ogre villager
+mahntor|2308|oldstyle warrior ogre
+mahntor|2309|oldstyle guard ogre
+mahntor|2310|oldstyle shaman ogre
+mahntor|2311|oldstyle chief chieftain ogre
+mahntor|2312|oldstyle barbarian
+mahntor|2313|oldstyle yeti white
+mahntor|2314|oldstyle worm ice iceworm
+mahntor|2315|oldstyle citizen minotaur
+mahntor|2316|oldstyle guard minotaur
+mahntor|2317|oldstyle warrior minotaur
+mahntor|2318|oldstyle minotaur gatekeeper
+mahntor|2319|oldstyle minotaur high guard
+mahntor|2320|oldstyle minotaur royal guard
+mahntor|2321|oldstyle guard minotaur elite
+mahntor|2322|oldstyle girl haremgirl harem slave
+mahntor|2323|oldstyle butler minotaur
+mahntor|2324|oldstyle keeper minotaur ring-keeper
+mahntor|2325|oldstyle gorak minotaur warrior master
+mahntor|2326|oldstyle darkoth minotaur anti-paladin master
+mahntor|2327|oldstyle tyrgoth minotaur paladin master
+mahntor|2328|oldstyle amyrok minotaur mage master
+mahntor|2329|oldstyle sumaron minotaur cleric master
+mahntor|2330|oldstyle nasturn minotaur druid master
+mahntor|2331|oldstyle belrak minotaur ranger master
+mahntor|2332|oldstyle dorgar minotaur thief master
+mahntor|2333|oldstyle mahn-tor minotaur grand master
 sewer|7001|oldstyle bat
 sewer|7002|oldstyle rat
 sewer|7003|oldstyle spider
@@ -306,6 +748,71 @@ tohell|10466|oldstyle radiation
 tohell|10465|oldstyle stray proton
 tohell|10467|oldstyle chief engineer hell
 tohell|10470|oldstyle guard dog
+hitower|1300|oldstyle shadow guardian
+hitower|1301|oldstyle adventurer
+hitower|1302|oldstyle edgar
+hitower|1303|oldstyle diamond golem
+hitower|1304|oldstyle mage young
+hitower|1305|oldstyle strick bartender
+hitower|1306|oldstyle tatorious wizard
+hitower|1307|oldstyle ezmerelda cook
+hitower|1308|oldstyle assistant mage
+hitower|1309|oldstyle prisoner
+hitower|1310|oldstyle jailor mage
+hitower|1311|oldstyle broom
+hitower|1312|oldstyle lesser guardian hands
+hitower|1313|oldstyle guardian greater eyes
+hitower|1314|oldstyle mage visitor
+hitower|1315|oldstyle apprentice young
+hitower|1316|oldstyle apprentice young
+hitower|1317|oldstyle apprentice young
+hitower|1318|oldstyle apprentice young
+hitower|1319|oldstyle kitten
+hitower|1320|oldstyle student
+hitower|1321|oldstyle instructor teacher mage
+hitower|1322|oldstyle student
+hitower|1323|oldstyle teacher mage
+hitower|1324|oldstyle student
+hitower|1325|oldstyle wizard speaker mage
+hitower|1326|oldstyle mage young
+hitower|1327|oldstyle mistress battle
+hitower|1328|oldstyle mage teacher
+hitower|1329|oldstyle wizard
+hitower|1330|oldstyle scribe mage
+hitower|1339|oldstyle golem wooden
+hitower|1331|oldstyle scribe mage
+hitower|1332|oldstyle master scribe
+hitower|1333|oldstyle assistant scribe
+hitower|1334|oldstyle master enchanter mage
+hitower|1335|oldstyle sword dancing
+hitower|1336|oldstyle alchemist
+hitower|1337|oldstyle master summoner
+hitower|1338|oldstyle master charmer
+hitower|1340|oldstyle master binder
+hitower|1341|oldstyle master maker
+hitower|1342|oldstyle golem granite
+hitower|1345|oldstyle golem cloth
+hitower|1343|oldstyle golem bronze
+hitower|1344|oldstyle golem flesh
+hitower|1346|oldstyle golem adamantite
+hitower|1347|oldstyle golem clay
+hitower|1348|oldstyle master illusionist mage
+hitower|1349|oldstyle necromancer master
+hitower|1350|oldstyle skeleton undead
+hitower|1351|oldstyle undead giant
+hitower|1352|oldstyle witch hag
+hitower|1353|oldstyle librarian mage
+hitower|1354|oldstyle apprentice
+hitower|1355|oldstyle cat grey familiar
+hitower|1356|oldstyle master guildmaster grey
+hitower|1357|oldstyle apprentice black
+hitower|1358|oldstyle cat black familiar
+hitower|1359|oldstyle master guildmaster black
+hitower|1360|oldstyle apprentice white
+hitower|1361|oldstyle cat white familiar
+hitower|1362|oldstyle master guildmaster white
+hitower|1363|oldstyle cat calico familiar
+hitower|1364|oldstyle guildmaster grand mistress
 midgaard|3011|Hassan
 midgaard|3000|wizard
 midgaard|3003|weaponsmith

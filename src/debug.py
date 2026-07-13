@@ -366,6 +366,47 @@ def _debug_memory(player, args):
                       + str(len(world.rooms._data)) + " active")
 
 
+def _debug_heapmap(player, args):
+    """Load every area one by one, printing per-area heap cost. [PRIMESUD]
+
+    Measures the true incremental footprint of each area (defs + live
+    room/mob state from its reset) via gc.mem_alloc deltas. Loads in
+    _AREA_FILES order (ascending file size). Areas already loaded report
+    0 and are marked with '*'. Desktop CPython has no mem_alloc; deltas
+    print as n/a there but the load-all still runs.
+    """
+    import gc
+    import world
+
+    def _alloc():
+        gc.collect()
+        try:
+            return gc.mem_alloc()
+        except AttributeError:
+            return None
+
+    start = _alloc()
+    total = 0
+    terminal.tr.print("{Warea             kB   cum-kB{x")
+    for _, tag, name, _, _ in world._AREA_FILES:
+        pre_loaded = world.is_area_loaded(tag)
+        before = _alloc()
+        if not pre_loaded:
+            world._ensure_area_by_tag(tag)
+        after = _alloc()
+        if before is None or after is None:
+            terminal.tr.print("%-14s  n/a" % tag)
+            continue
+        delta = after - before
+        total += delta
+        terminal.tr.print("%-14s %5d %8d%s"
+                          % (tag, delta // 1024, total // 1024,
+                             " *" if pre_loaded else ""))
+    if start is not None:
+        terminal.tr.print("Free: " + str(gc.mem_free()))
+    terminal.tr.print("(* = already loaded before heapmap)")
+
+
 def _debug_slay(player, args):
     """Instant-kill a mob in the room (cf. 1stMud do_slay in fight.c). [PRIMESUD]
 
@@ -621,6 +662,7 @@ _SUBCMDS = (
     ("mwhere",  _debug_mwhere,  "list spawned mobs matching name"),
     ("owhere",  _debug_owhere,  "locate objects by name"),
     ("memory",  _debug_memory,  "show heap usage and world counts"),
+    ("heapmap", _debug_heapmap, "load all areas, per-area heap cost"),
     ("holylight", _debug_holylight, "toggle imm sight (PLR_HOLYLIGHT)"),
 )
 

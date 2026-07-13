@@ -7,8 +7,8 @@ from urandom import randint
 
 import world
 from config import TYPE_UNDEFINED
-from handler import (act, is_awake, can_see,
-                     TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT)
+from handler import (act, chprintln, is_awake, can_see,
+                     TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL)
 from item import obj_vnum, item_wear_flags
 from world import ITEM_DEFS
 
@@ -338,6 +338,135 @@ def spec_janitor(ch):
     return False
 
 
+# Gangland vnums (cf. 1stMud vnums.h; all live in hood.are's 2100-2199 range)
+MOB_VNUM_GROUP_TROLLS = 2100
+MOB_VNUM_GROUP_OGRES = 2101
+MOB_VNUM_PATROLMAN = 2106
+OBJ_VNUM_WHISTLE = 2116
+
+# Shared taunts for the troll/ogre gang wars (cf. 1stMud spec_troll_member /
+# spec_ogre_member switch blocks; index = number_range(0,6)). Slot 2 differs
+# per gang and is filled in by the caller.
+_GANG_TAUNTS = (
+    "$n yells 'I've been looking for you, punk!'",
+    # [PRIMESUD] 1stMud's ogre variant carries a stray trailing apostrophe
+    "With a scream of rage, $n attacks $N.",
+    None,
+    "$n cracks his knuckles and says 'Do ya feel lucky?'",
+    "$n says 'There's no cops to save you this time!'",
+    "$n says 'Time to join your brother, spud.'",
+    "$n says 'Let's rock.'",
+)
+
+
+def _spec_gang_member(ch, rival_group, rival_taunt):
+    """Attack a rival gang member in the room (cf. 1stMud spec_troll_member/spec_ogre_member in special.c)."""
+    aff = ch.get("affected_by", {})
+    if (not is_awake(ch) or aff.get("calm") or aff.get("charm")
+            or ch.get("fighting") is not None):
+        return False
+    from combat import is_safe, multi_hit
+    victim = None
+    count = 0
+    for vch in _room_persons(ch):
+        if not vch.get("is_npc") or vch is ch:
+            continue
+        if vch["tpl"] == MOB_VNUM_PATROLMAN:
+            return False
+        if (world.MOB_DEFS.get(vch["tpl"], {}).get("group") == rival_group
+                and ch["level"] > vch["level"] - 2
+                and not is_safe(ch, vch)):
+            if randint(0, count) == 0:
+                victim = vch
+            count += 1
+    if victim is None:
+        return False
+
+    message = _GANG_TAUNTS[randint(0, 6)]
+    if message is None:
+        message = rival_taunt
+    act(message, ch, None, victim, TO_ALL)
+    multi_hit(ch, victim, TYPE_UNDEFINED)
+    return True
+
+
+def spec_troll_member(ch):
+    """Troll gangster attacks ogre gangsters (cf. 1stMud spec_troll_member in special.c)."""
+    return _spec_gang_member(
+        ch, MOB_VNUM_GROUP_OGRES,
+        "$n says 'What's slimy Ogre trash like you doing around here?'")
+
+
+def spec_ogre_member(ch):
+    """Ogre gangster attacks troll gangsters (cf. 1stMud spec_ogre_member in special.c)."""
+    return _spec_gang_member(
+        ch, MOB_VNUM_GROUP_TROLLS,
+        "$n says 'What's Troll filth like you doing around here?'")
+
+
+def spec_patrolman(ch):
+    """Break up fights, whistling for backup (cf. 1stMud spec_patrolman in special.c)."""
+    aff = ch.get("affected_by", {})
+    if (not is_awake(ch) or aff.get("calm") or aff.get("charm")
+            or ch.get("fighting") is not None):
+        return False
+    victim = None
+    count = 0
+    for vch in _room_persons(ch):
+        if vch is ch:
+            continue
+        if vch.get("fighting") is not None:
+            opp = world.chars.get(vch["fighting"])
+            if opp is None:
+                continue
+            if randint(0, count) == 0:
+                victim = vch if vch["level"] > opp["level"] else opp
+            count += 1
+    if victim is None or (victim.get("is_npc")
+                          and world.MOB_DEFS.get(victim["tpl"], {}).get("spec_fun")
+                          == world.MOB_DEFS.get(ch["tpl"], {}).get("spec_fun")):
+        return False
+
+    eq = ch.get("equip", {})
+    whistle = None
+    for slot in ("neck_1", "neck_2"):
+        obj = eq.get(slot)
+        if obj is not None and obj_vnum(obj) == OBJ_VNUM_WHISTLE:
+            whistle = obj
+            break
+    if whistle is not None:
+        act("You blow down hard on $p.", ch, whistle, None, TO_CHAR)
+        act("$n blows on $p, ***WHEEEEEEEEEEEET***", ch, whistle, None, TO_ROOM)
+        # Same-area broadcast, excluding ch's room (cf. 1stMud char_first walk)
+        player = world.chars.get(1)
+        if player is not None and player["room"] != ch["room"]:
+            from world import ROOM_DEFS
+            ch_area = ROOM_DEFS.get(ch["room"], {}).get("area")
+            pl_area = ROOM_DEFS.get(player["room"], {}).get("area")
+            if ch_area is not None and ch_area == pl_area:
+                chprintln(player, "You hear a shrill whistling sound.")
+
+    roll = randint(0, 6)
+    if roll == 0:
+        message = "$n yells 'All roit! All roit! break it up!'"
+    elif roll == 1:
+        message = "$n says 'Society's to blame, but what's a bloke to do?'"
+    elif roll == 2:
+        message = "$n mumbles 'bloody kids will be the death of us all.'"
+    elif roll == 3:
+        message = "$n shouts 'Stop that! Stop that!' and attacks."
+    elif roll == 4:
+        message = "$n pulls out his billy and goes to work."
+    elif roll == 5:
+        message = "$n sighs in resignation and proceeds to break up the fight."
+    else:
+        message = "$n says 'Settle down, you hooligans!'"
+    act(message, ch, None, None, TO_ALL)
+    from combat import multi_hit
+    multi_hit(ch, victim, TYPE_UNDEFINED)
+    return True
+
+
 def spec_mayor(ch):
     """Mayor's scripted gate walk (cf. 1stMud spec_mayor in special.c)."""
     if ch.get("fighting") is not None:
@@ -421,9 +550,12 @@ SPEC_TABLE = {
     "spec_janitor": spec_janitor,
     "spec_mayor": spec_mayor,
     "spec_nasty": spec_nasty,
+    "spec_ogre_member": spec_ogre_member,
+    "spec_patrolman": spec_patrolman,
     "spec_poison": spec_poison,
     "spec_questmaster": spec_questmaster,
     "spec_registar": spec_registar,
     "spec_thief": spec_thief,
     "spec_triviamob": spec_triviamob,
+    "spec_troll_member": spec_troll_member,
 }
