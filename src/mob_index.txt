@@ -1,3 +1,8 @@
+ofcol|303|oldstyle citizen
+ofcol|304|oldstyle citizen
+ofcol|306|oldstyle luxan shopkeeper
+ofcol|308|oldstyle keeper innkeeper
+ofcol|350|oldstyle dragon pet
 quest|200|Edurin Questmaster Questor
 quest|202|Registrar gquest
 quest|201|trivia shopkeeper
@@ -107,8 +112,6 @@ midennir|3502|boy small
 midennir|3503|innkeeper
 midennir|3504|bard
 midennir|3505|horseman dark
-arachnos|6319|oldstyle queen spider
-arachnos|6318|oldstyle spider poisonous
 arachnos|6301|oldstyle spider young
 arachnos|6305|oldstyle wasp queen
 arachnos|6310|oldstyle spider bird
@@ -323,6 +326,8 @@ thalos|5205|oldstyle mimic pottery
 thalos|5206|oldstyle mimic planks
 thalos|5207|oldstyle lizard horned
 thalos|5208|oldstyle golem stone
+thalos|5110|oldstyle drow guard
+thalos|5111|oldstyle drow scout
 gnome|1502|oldstyle man gnome
 gnome|1500|oldstyle child gnome
 gnome|1501|oldstyle woman gnome
@@ -486,6 +491,7 @@ pyramid|8715|oldstyle androsphinx sphinx
 pyramid|8716|oldstyle great sphinx
 pyramid|8717|oldstyle ramses mummy
 haon|6000|oldstyle john lumberjack
+haon|309|oldstyle rabbit
 haon|6002|oldstyle bear
 haon|6004|oldstyle deer
 haon|6005|oldstyle fox
@@ -496,6 +502,8 @@ haon|6103|oldstyle wolf black
 haon|6112|oldstyle dragon green
 haon|6115|oldstyle shargugh brownie
 haon|6116|oldstyle elder druid
+haon|6319|oldstyle queen spider
+haon|6318|oldstyle spider poisonous
 moria|4000|python snake
 moria|4001|garter snake
 moria|4002|centipede
@@ -923,6 +931,9 @@ newthalos|9527|oldstyle statue
 newthalos|9526|oldstyle statue
 newthalos|9525|oldstyle statue
 newthalos|9512|oldstyle Nabil shopkeeper
+newthalos|3097|tiger pet
+newthalos|3096|lion pet
+newthalos|3095|eagle bird pet
 newthalos|9515|oldstyle butch
 newthalos|9579|oldstyle elvira
 newthalos|9580|oldstyle braheem

@@ -19,12 +19,20 @@ import world
 
 
 def main():
-    lines = []
+    # Two passes: an M-reset may spawn a template defined in another file
+    # (haon.are places arachnos-defined spiders in room 6134), so template
+    # lookup must span all areas. The emitted tag stays the reset-owning
+    # area -- that's the load that makes the instance exist.
+    areas = []
+    all_mobiles = {}
     for fname, tag, _name, _lo, _hi in world._AREA_FILES:
         ns = {}
         with open(os.path.join(APPDIR, fname)) as f:
             exec(f.read(), ns)
-        mobiles = ns["MOBILES"]
+        areas.append((tag, ns))
+        all_mobiles.update(ns["MOBILES"])
+    lines = []
+    for tag, ns in areas:
         seen = set()
         for reset in ns.get("RESETS", ()):
             if reset[0] != "M" or reset[1] in seen:
@@ -32,7 +40,7 @@ def main():
             seen.add(reset[1])
             # flatten whitespace: some source keywords carry stray newlines
             # (e.g. quest.are mob 202)
-            kw = " ".join(mobiles.get(reset[1], {}).get("keywords", "").split())
+            kw = " ".join(all_mobiles.get(reset[1], {}).get("keywords", "").split())
             assert "|" not in kw, "pipe in keywords of mob %d" % reset[1]
             if kw:
                 lines.append(tag + "|" + str(reset[1]) + "|" + kw)
