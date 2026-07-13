@@ -388,20 +388,25 @@ def _debug_heapmap(player, args):
     start = _alloc()
     total = 0
     terminal.tr.print("{Warea             kB   cum-kB{x")
-    for _, tag, name, _, _ in world._AREA_FILES:
-        pre_loaded = world.is_area_loaded(tag)
-        before = _alloc()
-        if not pre_loaded:
-            world._ensure_area_by_tag(tag)
-        after = _alloc()
-        if before is None or after is None:
-            terminal.tr.print("%-14s  n/a" % tag)
-            continue
-        delta = after - before
-        total += delta
-        terminal.tr.print("%-14s %5d %8d%s"
-                          % (tag, delta // 1024, total // 1024,
-                             " *" if pre_loaded else ""))
+    # Suppress per-area "[Loading area: ...]" notices between table rows
+    world._LOADING_ALL = True
+    try:
+        for _, tag, name, _, _ in world._AREA_FILES:
+            pre_loaded = world.is_area_loaded(tag)
+            before = _alloc()
+            if not pre_loaded:
+                world._ensure_area_by_tag(tag)
+            after = _alloc()
+            if before is None or after is None:
+                terminal.tr.print("%-14s  n/a" % tag)
+                continue
+            delta = after - before
+            total += delta
+            terminal.tr.print("%-14s %5d %8d%s"
+                              % (tag, delta // 1024, total // 1024,
+                                 " *" if pre_loaded else ""))
+    finally:
+        world._LOADING_ALL = False
     if start is not None:
         terminal.tr.print("Free: " + str(gc.mem_free()))
     terminal.tr.print("(* = already loaded before heapmap)")
