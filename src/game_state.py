@@ -34,14 +34,13 @@ from explored import encode_rle, decode_rle
 # different skill would cause old saves to corrupt the new skill's learned %.
 SAVE_VERSION = 9  # v9: p.explored RLE mask (explore tracking); v8: item lh: token, per-area weather
 
-# Per-area weather save keys -> weather-dict fields (cf. game_time weather model).
-# [PRIMESUD] Persisted only-when-present; missing fields keep their freshly
-# seeded random value on load, and a SAVE_VERSION mismatch discards old saves.
-_WEATHER_SAVE_FIELDS = {
-    "temp": "temp", "tempv": "temp_vector",
-    "precip": "precip", "precipv": "precip_vector",
-    "wind": "wind", "windv": "wind_vector",
-}
+# Per-area weather packed save line: a.<tag>.w=<temp>|<tv>|<precip>|<pv>|<wind>|<wv>
+# (cf. game_time weather model). [PRIMESUD] One line per area instead of six
+# (~6 kB -> ~1.3 kB of payload for 49 areas). Missing/short lines keep the
+# freshly seeded random values on load; pre-pack saves' a.<tag>.temp=-style
+# lines fall through as ignored unknown keys (one-time weather reroll).
+_WEATHER_PACK_FIELDS = ("temp", "temp_vector", "precip", "precip_vector",
+                        "wind", "wind_vector")
 
 # -- Persistence ---------------------------------------------------------------
 # Dual-save strategy:
@@ -167,9 +166,10 @@ def _serialize_world():
         lines.append("a." + str(_as["tag"]) + ".age=" + str(_as["age"]))
         weather = _as.get("weather")
         if weather is not None:
-            _wtag = str(_as["tag"])
-            for _skey, _wfld in _WEATHER_SAVE_FIELDS.items():
-                lines.append("a." + _wtag + "." + _skey + "=" + str(weather.get(_wfld, 0)))
+            _wparts = []
+            for _wfld in _WEATHER_PACK_FIELDS:
+                _wparts.append(str(weather.get(_wfld, 0)))
+            lines.append("a." + str(_as["tag"]) + ".w=" + "|".join(_wparts))
     lines.append("g.time=" + str(time_info["hour"]) + "|" + str(time_info["day"]) + "|" + str(time_info["month"]) + "|" + str(time_info["year"]))
     for _gql in gq_save_lines():  # [PRIMESUD] gquest state
         lines.append(_gql)
@@ -398,11 +398,14 @@ def load_world():
             tag = key[2:-4]
             if tag in _area_by_tag:
                 _area_by_tag[tag]["age"] = int(val)
-        elif key.startswith("a.") and key.rpartition(".")[2] in _WEATHER_SAVE_FIELDS:
-            tag, _, fld = key[2:].rpartition(".")  # area tags carry no dots
+        elif key.startswith("a.") and key.endswith(".w"):
+            tag = key[2:-2]
             if tag in _area_by_tag:
-                w = _area_by_tag[tag].setdefault("weather", {})
-                w[_WEATHER_SAVE_FIELDS[fld]] = int(val)
+                parts = val.split("|")
+                if len(parts) == len(_WEATHER_PACK_FIELDS):
+                    w = _area_by_tag[tag].setdefault("weather", {})
+                    for i in range(len(parts)):
+                        w[_WEATHER_PACK_FIELDS[i]] = int(parts[i])
         elif key.startswith("g.gq") and gq_load_line(key, val):  # [PRIMESUD]
             pass
         elif key == "g.time":

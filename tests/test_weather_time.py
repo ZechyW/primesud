@@ -46,6 +46,43 @@ class TestWeatherHelpers:
 
 
 # ---------------------------------------------------------------------------
+# Packed per-area weather save line
+# ---------------------------------------------------------------------------
+
+class TestWeatherPersistence:
+    def test_packed_roundtrip(self, tmp_path, monkeypatch):
+        import game_state
+        from player import create_char
+        # loading the player's room area opens area_*.txt relative to src
+        monkeypatch.chdir(os.path.join(ROOT, _SRC))
+        monkeypatch.setattr(game_state, "SAVE_FILE", str(tmp_path / "t.sav"))
+        old_areas, old_chars = world.areas, dict(world.chars)
+        wdict = {"temp": -12, "temp_vector": 3, "precip": 5,
+                 "precip_vector": -2, "wind": 30, "wind_vector": 1}
+        try:
+            player = create_char()
+            player["name"] = "Tester"
+            player["room"] = 3001
+            player["_macros"] = {}
+            world.chars.clear()
+            world.chars[1] = player
+            world.areas = [{"tag": "midgaard", "age": 3,
+                            "weather": dict(wdict)}]
+            game_state._serialize_world()
+            with open(str(tmp_path / "t.sav")) as f:
+                payload = f.read()
+            assert "a.midgaard.w=-12|3|5|-2|30|1" in payload
+
+            world.areas[0]["weather"] = {}
+            assert game_state.load_world() == "file"
+            assert world.areas[0]["weather"] == wdict
+        finally:
+            world.areas = old_areas
+            world.chars.clear()
+            world.chars.update(old_chars)
+
+
+# ---------------------------------------------------------------------------
 # do_time output format
 # ---------------------------------------------------------------------------
 
