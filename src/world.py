@@ -465,8 +465,17 @@ def _load_area(tag):
     """
     global _draining
     _loading_notice(tag)
+    # Explicit close: MicroPython has no refcounting, so open().read()
+    # leaks the handle until (if ever) GC finalization -- the Prime's FD
+    # table is small and repeated loads exhaust it (OSError: 0 on open).
+    _f = open(_TAG_TO_FILE[tag])
+    try:
+        _src = _f.read()
+    finally:
+        _f.close()
     _ns = {}
-    exec(open(_TAG_TO_FILE[tag]).read(), _ns)
+    exec(_src, _ns)
+    _src = None  # release before the merge allocations below
 
     _room_vnums = []
     for _vnum, _room in _ns["ROOMS"].items():
