@@ -495,7 +495,7 @@ class tml_prime(tml):
                 kc = self._dequeue_key()
                 if kc is not None:
                     char, _ = kc
-                    if char is None or char == '\SR':
+                    if char is None or char == '\\SR':
                         pass
                     elif char == _SB_UP or char == '-':
                         depth = min(depth + self._scroll_step, self._hist_count)
