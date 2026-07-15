@@ -85,8 +85,9 @@ worth trusting -- the engineering layer.
 - **Save system** -- autosave to the calculator's HVar store every ~2 minutes
   and after every kill; compact line format; saved deltas for unloaded areas
   are buffered and replayed when the area loads (game_state.py, world.py).
-- **Keypad UX** -- D-pad keys move directly, digit keys are rebindable command
-  macros, Symb/Help step command history, Shift-minus or a touch swipe opens
+- **Keypad UX** -- D-pad keys move directly, digit keys plus two function-key
+  rows (sin..log, x2..comma) are rebindable command macros, Symb/Help step
+  command history, Shift-minus or a touch swipe opens
   a 250-row scrollback, and a persistent status bar shows hp/mana/xp plus the
   live input buffer (docs/PRIME_UX.md).
 - **Firmware workarounds** -- a hand-rolled key queue drains the 4-deep GETKEY

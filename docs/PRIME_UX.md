@@ -26,36 +26,55 @@ bit indices may differ between hardware revisions.
 
 ---
 
-## Digit macros
+## Digit and function-key macros
 
-Digit keys `0`–`9` act as one-key shortcuts that load a command into the input
-buffer (not auto-submitted — the player still presses Enter, allowing arguments
-to be appended first).
+Digit keys `0`–`9` and nine function keys act as one-key shortcuts that load a
+command into the input buffer when it is empty (not auto-submitted — the player
+still presses Enter, allowing arguments to be appended first).  With a
+non-empty buffer, digits type normally, so numeric arguments still work.
 
-Default bindings (`config.py:DEFAULT_MACROS`):
+Default digit bindings (`config.py:DEFAULT_MACROS`):
 
 | Key | Command   |
 |-----|-----------|
 | 7   | `kill`    |
 | 8   | `flee`    |
+| 9   | `cast`    |
 | 4   | `open`    |
 | 5   | `get`     |
-| 6   | `wear`    |
+| 6   | `drop`    |
 | 1   | `score`   |
 | 2   | `practice`|
 | 3   | `train`   |
 | 0   | `macro`   |
 
+Default function-key bindings (`config.py:FNKEY_TABLE`; the two key rows above
+the numpad):
+
+| Key | Name  | Command     |
+|-----|-------|-------------|
+| sin | `sin` | `look`      |
+| cos | `cos` | `rest`      |
+| tan | `tan` | `stand`     |
+| ln  | `ln`  | `recall`    |
+| log | `log` | `sac`       |
+| x²  | `x2`  | `inventory` |
+| +/- | `pm`  | `equip`     |
+| ( ) | `()`  | `wear`      |
+| ,   | `,`   | `remove`    |
+
 Bindings are live-editable with the `macro` command:
 
 ```
-macro               — show current bindings in a grid layout
-macro <digit> <cmd> — bind digit to command
-macro <digit>       — clear binding
+macro             — show current bindings in a grid layout
+macro <key> <cmd> — bind key (digit or fn-key name) to command
+macro <key>       — clear binding
+macro default     — restore all defaults
 ```
 
-The mapping lives in `commands.py:_MACRO_SUBST` (initialised from
-`DEFAULT_MACROS`).  Changes are session-only; defaults are restored on restart.
+The mapping lives in `macros.py:_MACRO_SUBST` (initialised from
+`DEFAULT_MACROS` + `DEFAULT_FNKEY_MACROS`) and persists in the save file
+(`p.macro.*` lines in game_state.py).
 
 ---
 

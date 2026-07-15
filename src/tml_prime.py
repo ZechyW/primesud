@@ -10,10 +10,15 @@ _SB_DN = 11   # shift++ : scroll down (within scrollback)
 _HIST_UP = 12   # symb key (index 1) -- recall older command
 _HIST_DN = 13   # help key (index 3) -- recall newer command
 
-_FN_X2    = 14  # x2 key -- index 26, row above numpad
-_FN_PM    = 15  # +/- key -- index 27
-_FN_PAREN = 16  # ()  key -- index 28
-_FN_COMMA = 17  # ,   key -- index 29
+_FN_SIN   = 14  # sin key -- index 21, two rows above numpad
+_FN_COS   = 15  # cos key -- index 22
+_FN_TAN   = 16  # tan key -- index 23
+_FN_LN    = 17  # ln  key -- index 24
+_FN_LOG   = 18  # log key -- index 25
+_FN_X2    = 19  # x2 key -- index 26, row above numpad
+_FN_PM    = 20  # +/- key -- index 27
+_FN_PAREN = 21  # ()  key -- index 28
+_FN_COMMA = 22  # ,   key -- index 29
 
 _KEY_QUEUE_SIZE = 16
 
@@ -86,11 +91,11 @@ class tml_prime(tml):
             18: [None,'e',None,'E'],
             19: ['\b','\b','\b','\b'],
             20: ['^','f',None,'F'],
-            21: [None,'g',None,'G'],
-            22: [None,'h',None,'H'],
-            23: [None,'i',None,'I'],
-            24: [None,'j',None,'J'],
-            25: [None,'k',None,'K'],
+            21: [_FN_SIN,'g',None,'G'],
+            22: [_FN_COS,'h',None,'H'],
+            23: [_FN_TAN,'i',None,'I'],
+            24: [_FN_LN,'j',None,'J'],
+            25: [_FN_LOG,'k',None,'K'],
             26: [_FN_X2,'l',None,'L'],
             27: [_FN_PM,'m','|','M'],
             28: [_FN_PAREN,'n',"'",'N'],
