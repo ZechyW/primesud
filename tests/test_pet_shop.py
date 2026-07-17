@@ -165,6 +165,41 @@ class TestBuyPet:
         assert "out of pets" in out
 
 
+class TestNewThalosStockRoom:
+    """New Thalos shop 9621 stocks from 9706, not 9622 (ROM 'new thalos' hack)."""
+
+    def _setup_new_thalos(self):
+        _stub_room(9621, flags={"pet_shop": True, "indoors": True})
+        _stub_room(9622)   # The Butchary -- vnum+1 decoy, must NOT be used
+        _stub_room(9706)
+
+    def _stock_9706(self, mid=2):
+        pet = create_mobile(PET_TPL)
+        pet["id"] = mid
+        pet["room"] = 9706
+        pet["home_area"] = "test"
+        world.chars[mid] = pet
+        world.rooms._data[9706]["mobs"].append(mid)
+        return pet
+
+    def test_list_reads_9706(self, capsys):
+        self._setup_new_thalos()
+        player = _make_player(room=9621)
+        self._stock_9706()
+        do_list(player, [])
+        out = capsys.readouterr().out
+        assert "Pets for sale:" in out
+        assert "a fat beagle" in out
+
+    def test_buy_reads_9706(self):
+        self._setup_new_thalos()
+        player = _make_player(room=9621)
+        self._stock_9706()
+        do_buy(player, ["beagle"])
+        assert player["pet"] is not None
+        assert world.chars[player["pet"]]["room"] == 9621
+
+
 class TestPetPersistence:
     def _full_player(self):
         from player import create_char

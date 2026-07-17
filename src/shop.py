@@ -193,12 +193,16 @@ def _mult_argument(argument):
 def _buy_pet(player, args):
     """Buy a pet from a pet shop (cf. 1stMud do_buy ROOM_PET_SHOP branch in act_obj.c).
 
-    Pets live in the room after the shop room (vnum + 1).
+    Pets live in the room after the shop room (vnum + 1), except New Thalos
+    (9621), whose stock room is 9706.
     """
     from mob import spawn_pet  # lazy import to avoid circular dependency
 
-    # TODO: 1stMud/QuickMUD special case vnum 9621 -> 9706 not ported.
-    next_vnum = player["room"] + 1
+    # hack to make new thalos pets work (cf. 1stMud/QuickMUD vnum 9621 -> 9706)
+    if player["room"] == 9621:
+        next_vnum = 9706
+    else:
+        next_vnum = player["room"] + 1
     if next_vnum not in ROOM_DEFS or next_vnum not in world.rooms:
         # 1stMud: bugf("Do_buy: bad pet shop at vnum %ld.")
         chprintln(player, "Sorry, you can't buy that here.")
@@ -350,8 +354,11 @@ def do_list(player, args):
     """Display shopkeeper's or pet shop's stock (cf. 1stMud do_list in act_obj.c)."""
     # -- Pet shop (cf. 1stMud ROOM_PET_SHOP branch)
     if ROOM_DEFS[player["room"]].get("flags", {}).get("pet_shop"):
-        # TODO: 1stMud/QuickMUD special case vnum 9621 -> 9706 not ported.
-        next_vnum = player["room"] + 1
+        # hack to make new thalos pets work (cf. 1stMud/QuickMUD vnum 9621 -> 9706)
+        if player["room"] == 9621:
+            next_vnum = 9706
+        else:
+            next_vnum = player["room"] + 1
         if next_vnum not in ROOM_DEFS or next_vnum not in world.rooms:
             # 1stMud: bugf("Do_list: bad pet shop at vnum %ld.")
             chprintln(player, "You can't do that here.")
