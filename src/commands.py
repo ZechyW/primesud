@@ -516,15 +516,35 @@ def split_args(argument):
     return args
 
 
+# Last raw player input line, for the '!' repeat shortcut (cf. 1stMud
+# d->inlast in comm.c). Session-only, never persisted.
+_inlast = ""
+
+
 def interpret(raw, player):
     """Main command interpreter (cf. 1stMud interpret in interp.c).
 
     Flow mirrors 1stMud: strip input, remove AFF_HIDE, extract command word
     (handling non-alpha first chars), look up command, check position, execute.
     """
+    global _inlast
     argument = raw.strip()
     if not argument:
         return None
+
+    # '!' repeats the last raw input line (cf. 1stMud read_from_buffer in
+    # comm.c: descriptor-level swap before alias substitution; folded here
+    # like substitute_alias since PrimeSUD has no descriptor layer). Prefix
+    # match per upstream -- anything after the '!' is discarded. The raw
+    # pre-alias line is stored, so aliases re-expand on repeat. NPC actors
+    # (mobprog command path) never touch it.
+    if not player.get("is_npc"):
+        if argument[0] == "!":
+            argument = _inlast
+            if not argument:
+                return None
+        else:
+            _inlast = argument
     # Blank separator line echoes the player's own input; a mob acting through
     # the interpreter (mobprog command actor) must not emit it. [PRIMESUD]
     if not player.get("is_npc"):

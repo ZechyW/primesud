@@ -273,6 +273,65 @@ class TestInterpretSubstitution:
 
 
 # ---------------------------------------------------------------------------
+# '!' repeat shortcut (cf. 1stMud read_from_buffer in comm.c)
+# ---------------------------------------------------------------------------
+
+class TestBangRepeat:
+    @pytest.fixture(autouse=True)
+    def _reset_inlast(self):
+        commands._inlast = ""
+        yield
+        commands._inlast = ""
+
+    def test_bang_repeats_last_command(self, out):
+        player = _make_char()
+        commands.interpret("say hello", player)
+        del out[:]
+        commands.interpret("!", player)
+        assert _has(out, "hello")
+
+    def test_bang_prefix_discards_remainder(self, out):
+        player = _make_char()
+        commands.interpret("say hello", player)
+        del out[:]
+        commands.interpret("!say goodbye", player)
+        assert _has(out, "hello")
+        assert not _has(out, "goodbye")
+
+    def test_bang_with_no_history_is_noop(self, out):
+        player = _make_char()
+        commands.interpret("!", player)
+        assert not _has(out, "?")   # no huh message
+
+    def test_bang_not_stored_as_last(self, out):
+        player = _make_char()
+        commands.interpret("say hello", player)
+        commands.interpret("!", player)
+        del out[:]
+        commands.interpret("!", player)
+        assert _has(out, "hello")
+
+    def test_bang_reexpands_alias(self, out):
+        """Raw pre-alias line is stored, so a redefined alias re-expands."""
+        player = _make_char()
+        do_alias(player, "gc say hello")
+        commands.interpret("gc", player)
+        player["aliases"] = [("gc", "say goodbye")]
+        del out[:]
+        commands.interpret("!", player)
+        assert _has(out, "goodbye")
+
+    def test_npc_actor_does_not_disturb_history(self, out):
+        player = _make_char()
+        mob = _make_char(cid=2, npc=True)
+        commands.interpret("say hello", player)
+        commands.interpret("say mobline", mob)
+        del out[:]
+        commands.interpret("!", player)
+        assert _has(out, "hello")
+
+
+# ---------------------------------------------------------------------------
 # Save/load round trip
 # ---------------------------------------------------------------------------
 
