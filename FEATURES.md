@@ -136,6 +136,9 @@ Deliberate gameplay tweaks; each is a settled decision in DESIGN.md or a
   counter").
 - **No hunger or thirst** -- condition tracking isn't implemented; conjured
   food decays after a day so it doesn't pile up instead.
+- **Per-word spell abbreviation** -- `cast`, `practice`, and `train` match
+  skill names word by word (`c 'cu li'`, even `c 'c l w'`, finds cure light
+  wounds); upstream only prefix-matches the whole string (skill_utils.py).
 
 ## Upstream bugs fixed
 
