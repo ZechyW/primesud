@@ -81,9 +81,9 @@ class tml_prime(tml):
         # [PRIMESUD] Rebuild key_map: G2 Prime's MicroPython corrupts
         # inherited dicts from super()/tml.__init__() -- missing keys.
         self.key_map = {
-            4: ['\e','\e','\e','\e'],
-            7: ['\L','\L','\L','\L'],
-            8: ['\R','\R','\R','\R'],
+            4: ['\\e','\\e','\\e','\\e'],
+            7: ['\\L','\\L','\\L','\\L'],
+            8: ['\\R','\\R','\\R','\\R'],
             14: [None,'a',None,'A'],
             15: [None,'b',None,'B'],
             16: [None,'c',None,'C'],
