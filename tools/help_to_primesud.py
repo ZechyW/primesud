@@ -145,7 +145,13 @@ def main():
         if out[-1] == "":
             out.pop()
 
-    data = "\n".join(out) + "\n"
+    # "# " (hash-space) header: entry markers are always "#<level-digit>",
+    # so build_index and the do_help "#" entry-terminator can't confuse it.
+    # Dead bytes at runtime -- help.idx offsets simply start after it.
+    header = ("# '#<level>|<keywords>' marker line then text lines per entry;"
+              " read via byte offsets in help.idx -- built by"
+              " tools/help_to_primesud.py, do not edit\n")
+    data = header + "\n".join(out) + "\n"
     assert all(ord(c) < 128 for c in data), "non-ASCII output"
     DST.write_bytes(data.encode("ascii"))
     print("Wrote %s: %d/%d entries, %d bytes"
@@ -167,6 +173,8 @@ def build_index():
     with open(DST, "rb") as f:
         for line in f:
             pos += len(line)
+            if line.startswith(b"# "):
+                continue  # header comment, not an entry marker
             if line.startswith(b"#"):
                 level_s, kw = line[1:].rstrip(b"\n").split(b"|", 1)
                 idx_lines.append(level_s + b"|" + b"%d" % pos + b"|" + kw)

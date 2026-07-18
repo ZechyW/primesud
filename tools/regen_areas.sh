@@ -14,9 +14,9 @@ for area in $AREAS; do
         "src/area_${area}.txt"
 done
 
-# Rebuild mob_index.txt (spec_fun/portal/summon target lookup) -- must be
+# Rebuild mobs.idx (spec_fun/portal/summon target lookup) -- must be
 # regenerated after any area regen since it derives from RESETS/MOBILES.
-echo "==> mob_index"
+echo "==> mobs.idx"
 uv run tools/build_mob_index.py
 
 # Verify ASCII safety

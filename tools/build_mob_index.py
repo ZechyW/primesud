@@ -1,4 +1,4 @@
-"""Build mob_index.txt: "tag|vnum|keywords" per line for every M-reset mob.
+"""Build mobs.idx: "tag|vnum|keywords" per line for every M-reset mob.
 
 Feeds _find_unloaded_mob (magic.py) so portal/nexus/gate/summon can target
 mobs in areas that are not loaded yet. Line order follows _AREA_FILES
@@ -44,9 +44,11 @@ def main():
             assert "|" not in kw, "pipe in keywords of mob %d" % reset[1]
             if kw:
                 lines.append(tag + "|" + str(reset[1]) + "|" + kw)
-    out_path = os.path.join(APPDIR, "mob_index.txt")
+    out_path = os.path.join(APPDIR, "mobs.idx")
+    header = ("# tag|vnum|keywords per M-reset mob, areas ascending by size"
+              " -- built by tools/build_mob_index.py, do not edit\n")
     with open(out_path, "w", newline="\n") as f:
-        f.write("\n".join(lines) + "\n")
+        f.write(header + "\n".join(lines) + "\n")
     print("Wrote", out_path, "-", len(lines), "mobs")
 
 

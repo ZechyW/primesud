@@ -69,18 +69,14 @@ def do_commands(player, args):
         args (list): Parsed command arguments.
     """
     descs = {}
-    try:
-        f = open(CMD_DESC_FILE)
-        while True:
-            line = f.readline()
-            if not line:
-                break
-            if "|" in line:
-                name, desc = line.split("|", 1)
-                descs[name] = desc.rstrip()  # CRLF-safe
-        f.close()
-    except OSError:
-        pass  # missing file: names-only listing
+    with open(CMD_DESC_FILE) as f:
+        data = f.read()  # one read; looped readline() ~20ms/call on-device
+    for line in data.split("\n"):
+        if not line or line[0] == "#":
+            continue  # header comment
+        if "|" in line:
+            name, desc = line.split("|", 1)
+            descs[name] = desc.rstrip()  # CRLF-safe
     # cf. cmd_first_sorted -- alphabetical listing
     lines = []
     for name in sorted(e[0] for e in _CMD_TABLE):

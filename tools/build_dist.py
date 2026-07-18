@@ -54,7 +54,7 @@ def preflight():
     """Regenerate all derived data (areas, world static tables, mob index,
     help + index).
 
-    Order matters: mob_index.txt is built from the area .txt files.
+    Order matters: mobs.idx is built from the area .txt files.
     Regen writes into SRC_DIR, so a dirty git tree afterwards means the
     checked-in data had drifted from the generators -- inspect before
     copying to the calculator.
@@ -117,7 +117,7 @@ def main():
 
         # area_*.txt are Python source exec'd by world.py -- minify like
         # .py. Other .txt stay verbatim: help.txt's index is byte-offset
-        # based; mob_index.txt/commands.txt are custom line formats.
+        # based; mobs.idx/commands.txt are custom line formats.
         if src_file.suffix != ".py" and not _is_area_data(src_file):
             shutil.copy2(src_file, dst_file)
             continue

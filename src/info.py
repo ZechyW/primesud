@@ -1153,9 +1153,8 @@ def do_help(player, args):
     # Substring pre-filter: any _help_is_name match needs the first target
     # word to prefix some keyword, so its uppercase form must appear in the
     # index line -- skips split/int/is_name work on non-candidates.
-    f = open(HELP_INDEX)
-    data = f.read()
-    f.close()
+    with open(HELP_INDEX) as f:
+        data = f.read()
     words = target.split()
     q = words[0].strip("'\"").upper() if words else ""
     for line in data.split("\n"):
@@ -1182,14 +1181,13 @@ def do_help(player, args):
         # [PRIMESUD] read body before printing so 'debug time' can split
         # file-read cost from terminal-render cost
         body = []
-        f = open(HELP_FILE)
-        f.seek(show[1])
-        while True:
-            line = f.readline()
-            if not line or line[0] == "#":
-                break
-            body.append(line.rstrip("\n"))
-        f.close()
+        with open(HELP_FILE) as f:
+            f.seek(show[1])
+            while True:
+                line = f.readline()
+                if not line or line[0] == "#":
+                    break
+                body.append(line.rstrip("\n"))
         t2 = ticks()
         chprintln(player, sep)
         chprintln(player, "Help Keywords : %s" % show[0])

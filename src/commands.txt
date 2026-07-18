@@ -1,3 +1,5 @@
+# name|description per command, shown by do_commands -- hand-maintained;
+# every _CMD_TABLE entry needs a line (enforced by tests/test_pager.py)
 '|say something (alias for say)
 ,|act out an action or feeling (alias for emote)
 /|return to the recall point (alias for recall)

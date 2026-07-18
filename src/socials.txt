@@ -1,5 +1,6 @@
+# 7 lines per social (char_no_arg, others_no_arg, char_found, others_found, vict_found, char_auto, others_auto); blank = unset field.  Read via byte offsets in socials.idx -- built by tools/socials_to_primesud.py, do not edit
 AAAAAARRRRRRGGGGGGHHHHHH!!!!!!
-$n throws back $s head and howls in prothers_found frustration!
+$n throws back $s head and howls in profound frustration!
 You scream your frustration and grab for $S throat with both hands!
 $n howls in frustration, and leaps for $N, trying to throttle $M!
 $n grabs for your throat with two hands, howling in frustration!

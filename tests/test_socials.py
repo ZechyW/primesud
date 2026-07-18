@@ -119,21 +119,20 @@ class TestConverterOutput:
         assert all(b < 128 for b in data)
         assert b"\r\n" not in data
 
-    def test_aargh_garbled_text_preserved(self, real_files):
-        # Known upstream data quirk: "others_no_arg" for "aargh" has
-        # "others_found" spliced mid-word ("prothers_found frustration").
-        # Preserved verbatim -- not a PrimeSUD conversion bug.
-        f = open(SOCIALS_IDX)
-        idx = f.read()
-        f.close()
+    def test_aargh_garbled_text_fixed(self, real_files):
+        # [PRIMESUD] upstream 1stMud data quirk: "others_no_arg" for "aargh"
+        # corrupted QuickMUD's "profound" into the spliced field tag
+        # "prothers_found".  Converter TYPO_FIXES restores the original.
+        with open(SOCIALS_IDX) as f:
+            idx = f.read()
         line = next(l for l in idx.split("\n") if l.split("|", 2)[-1] == "aargh")
         off_s, len_s, _ = line.split("|", 2)
-        f = open(SOCIALS_TXT)
-        f.seek(int(off_s))
-        chunk = f.read(int(len_s))
-        f.close()
+        with open(SOCIALS_TXT) as f:
+            f.seek(int(off_s))
+            chunk = f.read(int(len_s))
         others_no_arg = chunk.split("\n")[1]
-        assert "prothers_found frustration" in others_no_arg
+        assert "profound frustration" in others_no_arg
+        assert "prothers_found" not in others_no_arg
 
 
 # ---------------------------------------------------------------------------

@@ -47,12 +47,16 @@ EMIT_KEYS = ["char_no_arg", "others_no_arg", "char_found", "others_found",
 # cp1252/latin-1 punctuation -> ASCII (cf. help_to_primesud.py CP1252_FIXES)
 CP1252_FIXES = {"\x91": "'", "\x92": "'", "\x93": '"', "\x94": '"', "\x96": "-"}
 
-# [PRIMESUD] linguistic slips in upstream social text -- NONE identified.
+# [PRIMESUD] linguistic slips in upstream social text.
 # An automated scan for common misspellings/grammar slips (recieve,
 # beleive, seperate, "a outlaw"-style article errors, etc.) found no hits
-# across all 244 stock entries, so this table is empty.  Not an exhaustive
-# manual read of every field; flag any further ones found on review.
-TYPO_FIXES = {}
+# across all 244 stock entries.  Not an exhaustive manual read of every
+# field; flag any further ones found on review.
+TYPO_FIXES = {
+    # aargh.others_no_arg: 1stMud corrupted QuickMUD's "profound" (cf.
+    # reference/quickmud/area/social.are) into the field tag "others_found"
+    "prothers_found": "profound",
+}
 
 
 def parse_records(raw):
@@ -108,9 +112,15 @@ def main():
 
     entries.sort(key=lambda r: r[0].lower())
 
+    # Header is dead bytes at runtime: check_social reads by socials.idx
+    # byte offset/length only, so it just shifts every offset.
+    header = ("# 7 lines per social (char_no_arg, others_no_arg, char_found,"
+              " others_found, vict_found, char_auto, others_auto); blank ="
+              " unset field.  Read via byte offsets in socials.idx -- built"
+              " by tools/socials_to_primesud.py, do not edit\n")
     lines = []
     idx_lines = []
-    pos = 0
+    pos = len(header)
     for name, values in entries:
         idx_lines.append("%d|%d|%s" % (pos, sum(len(v) + 1 for v in values), name))
         for v in values:
@@ -118,7 +128,7 @@ def main():
             lines.append(v)
             pos += len(v) + 1  # +1 for the "\n" this line will be written with
 
-    data = "\n".join(lines) + "\n"
+    data = header + "\n".join(lines) + "\n"
     assert all(ord(c) < 128 for c in data), "non-ASCII output"
     with open(DST, "w", newline="\n", encoding="ascii") as f:
         f.write(data)

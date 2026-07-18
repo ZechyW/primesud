@@ -2650,7 +2650,7 @@ def spell_high_explosive(sn, level, ch, vo, target):
 # -- magic2.c spells --
 
 
-MOB_INDEX_FILE = "mob_index.txt"  # [PRIMESUD] "tag|vnum|keywords" per line
+MOB_INDEX_FILE = "mobs.idx"  # [PRIMESUD] "tag|vnum|keywords" per line
 
 
 def _find_unloaded_mob(tail):
@@ -2668,40 +2668,34 @@ def _find_unloaded_mob(tail):
     Returns:
         tuple: (char_id, char) of the spawned instance, or (None, None).
     """
-    try:
-        f = open(MOB_INDEX_FILE)
-    except OSError:
-        return None, None  # no index shipped: loaded-world search only
     loads = 0
-    try:
-        while True:
-            line = f.readline()
-            if not line:
-                break
-            parts = line.rstrip().split("|", 2)
-            if len(parts) < 3:
+    with open(MOB_INDEX_FILE) as f:
+        data = f.read()  # one ~32KB read; looped readline() ~20ms/call on-device
+    for line in data.split("\n"):
+        if not line or line[0] == "#":
+            continue  # blank / header comment
+        parts = line.split("|", 2)
+        if len(parts) < 3:
+            continue
+        tag, _vnum, keywords = parts
+        if tag in world._LOADED_AREAS:
+            continue  # already covered by the world.chars scan
+        if not is_name(tail, keywords):
+            continue
+        world._ensure_area_by_tag(tag)
+        # Re-scan chars by keywords (not just this line's vnum): the
+        # load spawned ALL of the area's mobs, and its remaining index
+        # lines are skipped by the _LOADED_AREAS guard above.
+        for _cid, _c in world.chars.items():
+            if not _c.get("is_npc"):
                 continue
-            tag, _vnum, keywords = parts
-            if tag in world._LOADED_AREAS:
-                continue  # already covered by the world.chars scan
-            if not is_name(tail, keywords):
-                continue
-            world._ensure_area_by_tag(tag)
-            # Re-scan chars by keywords (not just this line's vnum): the
-            # load spawned ALL of the area's mobs, and its remaining index
-            # lines are skipped by the _LOADED_AREAS guard above.
-            for _cid, _c in world.chars.items():
-                if not _c.get("is_npc"):
-                    continue
-                _tpl = MOB_DEFS.get(_c.get("tpl"), {})
-                if is_name(tail, _tpl.get("keywords", "")):
-                    return _cid, _c
-            # area loaded but no matching instance spawned (dead / limit 0)
-            loads += 1
-            if loads >= 2:  # ponytail: cap heap growth per cast
-                break
-    finally:
-        f.close()
+            _tpl = MOB_DEFS.get(_c.get("tpl"), {})
+            if is_name(tail, _tpl.get("keywords", "")):
+                return _cid, _c
+        # area loaded but no matching instance spawned (dead / limit 0)
+        loads += 1
+        if loads >= 2:  # ponytail: cap heap growth per cast
+            break
     return None, None
 
 

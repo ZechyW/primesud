@@ -1,3 +1,4 @@
+# '#<level>|<keywords>' marker line then text lines per entry; read via byte offsets in help.idx -- built by tools/help_to_primesud.py, do not edit
 #0|!
 Syntax: !
 

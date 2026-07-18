@@ -30,9 +30,8 @@ def find_social(command):
     """
     if not command:
         return None
-    f = open(SOCIALS_IDX)
-    data = f.read()
-    f.close()
+    with open(SOCIALS_IDX) as f:
+        data = f.read()
     for line in data.split("\n"):
         if not line:
             continue
@@ -111,10 +110,9 @@ def check_social(player, command, argument):
         chprintln(player, "In your dreams, or what?")
         return True
 
-    f = open(SOCIALS_FILE)
-    f.seek(offset)
-    data = f.read(length)
-    f.close()
+    with open(SOCIALS_FILE) as f:
+        f.seek(offset)
+        data = f.read(length)
     (char_no_arg, others_no_arg, char_found, others_found, vict_found,
      char_auto, others_auto) = data.split("\n")[:7]
 
