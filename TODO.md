@@ -87,6 +87,12 @@ Loose ends that don't belong in a specific plan file.
     light a torch and re-look
   - *Anywhere*: `explored`/`score` permille after the walk; `gc.mem_free`
     before/after the ~2KB explored-mask alloc and a save/load round-trip
+  - *Autoskill (18/07/2026)*: idle-fight CPU/`gc.mem_free` with autoskill on
+    during a long fight in a mobprog-heavy room (rotation scan runs per
+    violence pulse); message volume on the 64-col screen (one auto action
+    per ~2s round plus combat spam -- confirm readable); `autoskill edit`
+    on hardware -- navpad sentinel remap via `poll_char(dict)`, status-line
+    cursor legibility, `*` toggle feel
 - **Far-area eviction: validated on device 14/07/2026** via the (since
   deleted) `debug evicttest` command -- all checks passed: load-all, evict
   to keep-set, far-area unload, dropped-item round-trip through

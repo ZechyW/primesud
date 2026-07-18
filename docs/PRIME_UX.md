@@ -188,6 +188,34 @@ Implemented in `picker.py:pick_from`; blocks until a valid choice is made.
 
 ---
 
+## Autoskill rotation editor
+
+`autoskill edit` opens a blocking editor for the automatic combat rotation
+(see DESIGN.md "Autoskill combat automation" for the engine policy):
+
+```
+Autoskill rotation
+[Up/Dn] sel  [+/-] move  [*] on/off  [Enter] save  [Esc] cancel
+  1) blindness 75%
+  2) fireball 52% (off)
+  3) bash 100%
+  4) trip 88% (new)
+```
+
+The list prints once through the normal scroll path; the cursor lives in the
+status line (`> 2) fireball (off)  [2/4]`), updated in place, so navpad
+navigation produces zero scroll spam — only reordering (`+`/`-`) and
+include/exclude toggling (`*`) reprint the list.  Digits jump to a row
+(picker-style 1–9 then 0, per block of ten).  Enter saves the custom
+rotation; Esc discards.  `(off)` marks excluded entries, `(new)` marks
+newly learned entries not yet in a saved rotation.
+
+The navpad Up/Down keys (bits 2/12, normally n/s movement in the game loop)
+are remapped for the editor by passing a private `key_commands` dict to
+`tml_prime.poll_char` — no changes to the tml key map.
+
+---
+
 ## Autosave
 
 The player's state is saved automatically every 4 world ticks (≈ 2 minutes at

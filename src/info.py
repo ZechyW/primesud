@@ -16,8 +16,8 @@ from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, POS_FROM_SHORT, SECTO
                     WEAR_LABELS)
 from item import get_obj_here, obj_vnum, item_extra_flags, item_container_flags
 from picker import pick_from
-from player import (PLR_AUTOMAP, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
-                    PLR_AUTOSPLIT, PLR_AUTOASSIST, PLR_AUTOEXIT,
+from player import (PLR_AUTOMAP, PLR_AUTOSKILL, PLR_AUTOLOOT, PLR_AUTOSAC,
+                    PLR_AUTOGOLD, PLR_AUTOSPLIT, PLR_AUTOASSIST, PLR_AUTOEXIT,
                     PLR_AUTODAMAGE, PLR_DEFAULTS, _EQUIP_SAVE_ORDER)
 from gquest import gq_is_player_target
 from quest import is_quester, _intstr
@@ -121,6 +121,7 @@ _FLAG_TABLE = (
     (PLR_AUTOGOLD, "autogold", "Automatically loots gold from corpses."),
     (PLR_AUTOLOOT, "autoloot", "Automatically loots objects from corpses."),
     (PLR_AUTOSAC, "autosac", "Automatically sacrifices corpses."),
+    (PLR_AUTOSKILL, "autoskill", "Automatically attacks with skills and spells."),  # [PRIMESUD]
     (PLR_AUTOSPLIT, "autosplit", "Automatically splits gold between group members."),
     # PLR_AUTOPROMPT "autoprompt": [PRIMESUD] not ported -- the status bar
     # is the prompt and is always visible, so selective display is moot

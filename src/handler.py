@@ -43,6 +43,7 @@ TO_SOCIALS = 128  # BIT_H
 # Defined here (not player.py) because player.py imports handler; player.py
 # re-exports them, so import from either.
 PLR_AUTOMAP = 1
+PLR_AUTOSKILL = 2   # [PRIMESUD] autoskill combat automation
 PLR_AUTOASSIST = 4   # BIT_C
 PLR_AUTOEXIT = 8     # BIT_D
 PLR_AUTOLOOT = 16    # BIT_E

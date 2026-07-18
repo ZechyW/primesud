@@ -13,6 +13,7 @@ autolist|show your auto-action toggle settings
 autoloot|toggle auto looting of corpses
 automap|toggle the mini-map beside room descriptions
 autosac|toggle auto sacrifice of empty corpses
+autoskill|auto combat actions: autoskill [edit|list|reset]
 autosplit|toggle auto gold splitting (group)
 autostance|set the stance to enter when combat starts
 backstab|attack from the shadows for heavy damage

@@ -1,6 +1,7 @@
 """Command dispatcher, command table, and position gates (cf. 1stMud interpret in interp.c)."""
 
 from aliases import do_alias, do_unalias, substitute_alias
+from autoskill import do_autoskill  # [PRIMESUD]
 from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
                     do_berserk, do_bash, do_dirt, do_trip, do_flee,
                     do_rescue, do_disarm, do_surrender,
@@ -447,6 +448,7 @@ _CMD_TABLE = [
     # --- [PRIMESUD] extensions (after 1stMud table) ---
     ("macro",      do_macro,      "dead",     False),  # [PRIMESUD] #349
     ("debug",      do_debug,      "dead",     False),  # [PRIMESUD] #350
+    ("autoskill",  do_autoskill,  "dead",     False),  # [PRIMESUD] #351
 ]
 
 # [PRIMESUD] Free-text commands receive the verbatim argument tail -- like

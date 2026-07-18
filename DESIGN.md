@@ -119,6 +119,45 @@ corrected (see docs/FIXES.md). Creation points not ported.
 
 ---
 
+## Autoskill combat automation [PRIMESUD]
+
+Settled 18/07/2026; no 1stMud equivalent. `autoskill` fires one offensive
+action per combat round on the player's behalf -- debuffs, offensive spells,
+physical skills -- through the normal `do_cast`/`do_bash`/... handlers, so
+mana, `WaitState` lag, fizzle, `check_improve`, and retaliation all run at
+full normal cost. The engine acts only when `player["wait"] == 0`
+(self-throttles to a fast typist's cadence) and yields the round whenever a
+manual command is queued (`_cmd_queued`, set by the game loop).
+
+Decisions and why:
+
+- **Offense only -- no survival automation.** No auto-heal (with PrimeSUD's
+  lenient death penalty it would make the player effectively unkillable
+  while mana lasts), no auto-quaff, no flee logic; `wimpy` stays the safety
+  net.
+- **No buffs.** Only haste/berserk are even castable at `pos=fighting`, and
+  buffs have a different lifecycle (cast, watch duration, recast on drop) --
+  they belong in a possible future `autobuff` command that also covers
+  non-combat buffs so they don't drop unnoticed.
+- **Flat player-editable rotation** (`autoskill edit|list|reset`; see
+  docs/PRIME_UX.md "Autoskill rotation editor"). Default order: debuffs
+  (blindness, weaken, curse) -> offensive spells by class level descending
+  -> bash/trip/dirt/disarm/kick. First eligible entry fires; eligibility
+  re-checks each round (debuff not already on victim, mana reserve, cheap
+  mirrors of each skill handler's static early-outs).
+- **Learned floor 75 shapes defaults only.** Below-75 spells default to
+  excluded (fizzle costs half mana plus a lag round), but an explicitly
+  kept entry fires regardless -- explicit inclusion is informed consent;
+  the floor protects the autopilot, not the player's judgement.
+- **25% max-mana reserve** on auto casts so the player can always still
+  choose to heal manually.
+- Custom rotation persists as one save line (`p.autoskill_rot`, comma
+  list, `!` prefix = excluded); absent key = pure heuristic. Newly learned
+  spells auto-append to a custom rotation at the end in heuristic order,
+  so saved lists never go stale.
+
+---
+
 ## Area files
 
 Generated `.txt` files (`area_<name>.txt`, Python source) instead of parsed `.are` files -- runtime text parsing too memory-intensive. See **[docs/AREA_FILES.md](docs/AREA_FILES.md)** for full format reference.

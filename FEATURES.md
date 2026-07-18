@@ -36,6 +36,11 @@ Things with no upstream equivalent.
 - **Gquest countdowns** -- global quests self-schedule on a real-minute timer
   and announce "a global quest will begin in about N minutes" beforehand
   (gquest.py).
+- **Autoskill combat automation** -- `autoskill` fires one offensive debuff,
+  spell, or skill per combat round through the normal handlers at full
+  mana/lag/fizzle cost; rotation is player-editable via a navpad-driven
+  blocking editor (`autoskill edit`). Survival (heal, quaff, flee) stays
+  manual (autoskill.py; DESIGN.md "Autoskill combat automation").
 
 ## Reimagined for one player
 

@@ -117,6 +117,10 @@ def _serialize_world():
     for sk in sorted(player["learned"]):
         learned_parts.append(str(sk) + ":" + str(player["learned"][sk]))
     lines.append("p.learned=" + "|".join(learned_parts))
+    # [PRIMESUD] autoskill rotation -- custom order/exclusions only; absent
+    # key means pure heuristic default (see autoskill.py)
+    if "autoskill_rot" in player:
+        lines.append("p.autoskill_rot=" + ",".join(player["autoskill_rot"]))
     # cf. 1stMud write_rle (explored.c) -- RLE run-length string, str()+concat
     lines.append("p.explored=" + encode_rle(player))
     af_parts = []
@@ -356,6 +360,8 @@ def load_world():
                         player["learned"][int(sk_str)] = int(pct_str)
                     except ValueError:
                         pass
+        elif key == "p.autoskill_rot":  # [PRIMESUD] autoskill rotation
+            player["autoskill_rot"] = val.split(",") if val else []
         elif key == "p.explored":
             decode_rle(player, val)  # cf. 1stMud read_rle (explored.c)
         elif key == "p.armor":

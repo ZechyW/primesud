@@ -87,8 +87,9 @@ from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 def violence_update(player):
     """One combat pulse: all chars with a fight target attack (cf. 1stMud violence_update in fight.c).
     [Verified: 02/07/2026; hunt_victim wired and re-verified 04/07/2026; mob
-    TRIG_FIGHT/TRIG_HPCNT wired and re-verified 09/07/2026] -- obj/room prog
-    TRIG_FIGHT out of scope (converter emits neither).
+    TRIG_FIGHT/TRIG_HPCNT wired and re-verified 09/07/2026; [PRIMESUD]
+    autoskill hook added 18/07/2026] -- obj/room prog TRIG_FIGHT out of scope
+    (converter emits neither).
 
     Args:
         player (dict): Player state dict.
@@ -130,6 +131,11 @@ def violence_update(player):
         if ch["is_npc"]:
             from mobprog import fight_trigger
             fight_trigger(ch, victim)
+        else:
+            # [PRIMESUD] autoskill: player fires one auto combat action per
+            # round, mirroring where mobs fire their specials
+            from autoskill import auto_skill_round
+            auto_skill_round(ch)
         # obj worn-item / room TRIG_FIGHT are obj/room progs -- out of scope
 
 

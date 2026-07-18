@@ -285,6 +285,7 @@ class Game:
                         break
                     show_prompt(player, self.input_buf)
 
+                player["_cmd_queued"] = self._pending_cmd is not None  # [PRIMESUD] autoskill: manual input wins the round
                 fired = update_handler()
 
                 # [PRIMESUD] display follows -- not part of 1stMud update_handler

@@ -21,9 +21,9 @@ _EQUIP_SAVE_ORDER = (
 
 # Player flag bits live in handler.py (import-cycle: player -> handler);
 # re-exported here so callers can import from either module.
-from handler import (PLR_AUTOMAP, PLR_AUTOASSIST, PLR_AUTOEXIT, PLR_AUTOLOOT,
-                     PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOSPLIT, PLR_AUTODAMAGE,
-                     PLR_DEFAULTS)
+from handler import (PLR_AUTOMAP, PLR_AUTOSKILL, PLR_AUTOASSIST, PLR_AUTOEXIT,
+                     PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOSPLIT,
+                     PLR_AUTODAMAGE, PLR_DEFAULTS)
 
 # -- Player model --------------------------------------------------------------
 
