@@ -71,6 +71,14 @@ def test_level_filter(help_out):
     assert not any("No help found" in ln for ln in help_out)
 
 
+def test_motd_entry(help_out):
+    # [PRIMESUD] single-user MOTD rewrite; also what do_motd shows
+    info.do_help(PLAYER, ["motd"])
+    text = "\n".join(help_out)
+    assert "PrimeSUD" in text
+    assert "No help found" not in text
+
+
 def test_last_entry_prints_to_eof(help_out):
     # last entry's body terminates on EOF, not a following '#' header
     info.do_help(PLAYER, ["worship"])

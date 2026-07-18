@@ -20,6 +20,7 @@ Originally part of tools/help_to_primesud.py, the one-shot converter
 from 1stMud help.dat (see git history).
 """
 
+import sys
 from pathlib import Path
 
 SRC = Path("src/help.txt")
@@ -29,14 +30,26 @@ IDX = Path("src/help.idx")
 def main():
     pos = 0
     idx_lines = []
+    lineno = 0
     with open(SRC, "rb") as f:
         for line in f:
+            lineno += 1
             pos += len(line)
             assert not line.rstrip(b"\n").endswith(b"\r"), "CRLF in help.txt"
-            if line.startswith(b"# "):
-                continue  # header comment, not an entry marker
+            if lineno == 1:
+                if not line.startswith(b"# "):
+                    sys.exit("Line 1 must be the '# ' header comment")
+                continue
             if line.startswith(b"#"):
-                level_s, kw = line[1:].rstrip(b"\n").split(b"|", 1)
+                # Must be a '#<level>|<keywords>' marker: do_help ends an
+                # entry body at any '#' line, so '#' text lines (or stray
+                # '# ' comments past line 1) would truncate entries.
+                try:
+                    level_s, kw = line[1:].rstrip(b"\n").split(b"|", 1)
+                    int(level_s)
+                except ValueError:
+                    sys.exit("Line %d: expected '#<level>|<keywords>'"
+                             " marker, got %r" % (lineno, line))
                 idx_lines.append(level_s + b"|" + b"%d" % pos + b"|" + kw)
     IDX.write_bytes(b"\n".join(idx_lines) + b"\n")
     print("Wrote %s: %d entries" % (IDX, len(idx_lines)))
