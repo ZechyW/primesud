@@ -18,14 +18,14 @@ from config import (
     CMD_HISTORY_MAX,
     FNKEY_SENTINELS,
 )
-from util import free_mem, gc_collect
+from util import gc_collect
 import world
 from world import MOB_DEFS, init_world
 from handler import mob_condition
 from player import show_prompt
 from update import update_handler, UPD_VIOLENCE, UPD_TICK
 from commands import interpret
-from info import do_look
+from info import do_look, show_greeting
 from movement import run_buf_step, free_runbuf
 from macros import _MACRO_SUBST
 import terminal
@@ -107,40 +107,6 @@ class Game:
         free_runbuf(player)
         self.tr.print("")
         self.tr.print("You stop running.")
-
-    def show_greeting(self):
-        tr = self.tr
-        tr.clear()
-
-        mem_part = "{G(Mem. free: %s)" % free_mem()
-        pad = 64 - 23 - len(mem_part) - 1
-        _first = '{C 8888888b.          d8b' + ' ' * pad + mem_part + '{x'
-        tr.print(_first)
-        tr.print("{C 888   Y88b         Y8P                                       {x")
-        tr.print("{C 888    888                                                   {x")
-        tr.print("{C 888   d88P 888d888 888 88888b.d88b.   .d88b.                 {x")
-        tr.print('{C 8888888P"  888P"   888 888 "888 "88b d8P  Y8b                {x')
-        tr.print("{C 888        888     888 888  888  888 88888888                {x")
-        tr.print("{C 888        888     888 888  888  888 Y8b.                    {x")
-        tr.print('{C 888        888     888 888  888  888  "Y8888                 {x')
-        tr.print("{C                             .d8888b.  888     888 8888888b.  {x")
-        tr.print('{C                            d88P  Y88b 888     888 888  "Y88b {x')
-        tr.print("{C                            Y88b.      888     888 888    888 {x")
-        tr.print('{C                             "Y888b.   888     888 888    888 {x')
-        tr.print('{C                                "Y88b. 888     888 888    888 {x')
-        tr.print('{C                                  "888 888     888 888    888 {x')
-        tr.print("{C                            Y88b  d88P Y88b. .d88P 888  .d88P {x")
-        tr.print('{C                             "Y8888P"   "Y88888P"  8888888P"  {x')
-        tr.print("{c      Original DikuMUD by Hans Staerfeldt, Katja Nyboe,       {x")
-        tr.print("{c      Tom Madsen, Michael Seifert, and Sebastian Hammer       {x")
-        tr.print("{c      Based on MERC 2.1 code by Hatchet, Furey, and Kahn      {x")
-        tr.print("{c      ROM 2.4 copyright (c) 1993-1998 Russ Taylor.            {x")
-        tr.print("{c      1stMud Server copyright (c) 2001-2004, Markanth.        {x")
-        tr.input("                    [Press Enter to start]                     ",
-            alpha=False,
-        )
-
-        tr.print()
 
     def game_loop(self):
         tr = self.tr
@@ -334,7 +300,7 @@ class PrimeSud:
         with self:
             game = self.game
 
-            game.show_greeting()
+            show_greeting()
 
             result = load_game(game)
             if result is None:          # version mismatch

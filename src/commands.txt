@@ -72,6 +72,7 @@ lock|lock a door or container (needs the key)
 look|look at the room, a mob, or an item
 macro|bind command shortcuts to keys
 map|show the area map
+motd|show the message of the day
 murder|attack without mercy (no prefix matching)
 north|move north
 open|open a door or container

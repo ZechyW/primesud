@@ -14,7 +14,7 @@ from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_autolist, do_autoloot, do_autogold, do_autosac,
                   do_autosplit, do_autoassist, do_autoexit, do_autodamage,
                   do_wimpy, do_exits, do_worth, do_where, do_clear,
-                  do_time, do_weather)
+                  do_time, do_weather, do_motd)
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
@@ -135,7 +135,7 @@ _CMD_TABLE = [
     ("equipment",  do_equipment,  "dead",     False),  # #42
     ("examine",    do_examine,    "resting",  False),  # #43
     ("help",       do_help,       "dead",     False),  # #44
-    # ("motd",      do_motd,       "dead",     False),  # #45
+    ("motd",       do_motd,       "dead",     False),  # #45
     ("read",       do_read,       "resting",  False),  # #46
     # ("report",    do_report,     "resting",  False),  # #47
     # ("rules",     do_rules,      "dead",     False),  # #48
