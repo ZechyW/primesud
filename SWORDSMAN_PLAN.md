@@ -2,6 +2,10 @@
 
 Plan doc; delete after completion (harvest durable decisions into DESIGN.md / FEATURES.md first).
 
+**Gated: content track.** Implementation starts only after the engine 1.0
+tag (see TODO.md "Roadmap" -- 1stMud-parity release precedes content
+additions).
+
 Whole class is `[PRIMESUD]` -- no 1stMud equivalent. Inspired by Taijijian (太极剑)
 sword forms; flavour condensed from the 20 classical techniques into three skills
 plus cosmetic combat flourishes.
