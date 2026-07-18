@@ -1,4 +1,4 @@
-# '#<level>|<keywords>' marker line then text lines per entry; read via byte offsets in help.idx -- built by tools/help_to_primesud.py, do not edit
+# Canonical help source: '#<level>|<keywords>' marker line then text lines per entry, ASCII + LF only. Edit directly, then run: python tools/build_help_idx.py
 #0|!
 Syntax: !
 
@@ -2037,12 +2037,23 @@ This means that anything that can happen during normal walking
 can also happen while running.  All rooms are shown in brief
 mode while running.
 #0|KEYS KEYPAD CALCULATOR
-HP Prime keypad quick reference:
+PrimeSUD adapts the HP Prime's physical keys as game shortcuts:
 
-Move: 2/8=n/s  4/6=w/e  7/9=u/d (or n/s/e/w/u/d)
-5=look  i=inv  wear  remove  eat  quaff  recite  zap
-brandish  st=stats  sk=skills  k/kill=fight  kick
-cast <spell>  flee  save  credits  q=quit
+Movement (runs immediately):
+  Nav-pad          north / south / west / east
+  Plot / View      up / down
+
+Input line:
+  Enter            submit command
+  Symb / Help      command history: older / newer
+  Shift+Minus      enter scrollback / scroll up
+  Shift+Plus       scroll down (auto-exits at bottom)
+  touch drag       also scrolls the screen
+  On               exit the game (progress is saved)
+
+The digit and function-row keys load a command into an EMPTY
+input line -- Enter runs it, or keep typing to add arguments.
+Type 'macro' to view, rebind, or reset the bindings.
 #-1|KICK
 Kicking allows the adventurer to receive an extra attack in
 combat, a powerful kick. However, a failed kick may throw an
@@ -2243,16 +2254,13 @@ Creations     - Goblins, Orks, Slaad.
 Honored title -Arioch (lion of). Largest temple - Living fortress in Talgarten-Yerus.
 Domains       - Death, Fire, Strength, War.
 #-1|MOTD
-{W* {cYou are responsible for knowing the {Crules{c (type 'rules').  Ignorance of
-  the rules is no excuse.
-{W* {cImportant commands: help, commands, board, who, rules
-{W* {cUse the delete command to erase unwanted characters
-{W* {cCheck out the 1stMud Server Homepage @ {Chttp://www.firstmud.com/
-{W* {CNOTE:{c You must be level {C2{c to save.
-  {cUse the DELETE command to erase unwanted characters.
-{W* {cRemember to read the {RAnnounce{c board for the latest game info.
-
-  [Hit Return to continue]{x
+{W* {cWelcome to {WPrimeSUD{c, a single-player MUD for the HP Prime.
+{W* {cImportant commands: {Chelp{c, {Ccommands{c, {Cscore{c, {Csave{c
+{W* {cType {Chelp keys{c for the keypad quick reference.
+{W* {cThe game autosaves; {Cquit{c or the {COn{c key saves and exits.
+{W* {cType {Cautolist{c to review auto-settings, {Cmacro{c to bind
+  command shortcuts to keys.
+{W* {cType {Cmotd{c to see this message again.{x
 #0|NAME 'NAME POLICY'
 {c{CNAME POLICY:{c
 In order to create a role-playing and adventure atmosphere throughout the

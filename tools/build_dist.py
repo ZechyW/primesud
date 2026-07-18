@@ -72,7 +72,8 @@ def preflight():
         # the area .txt files; also fails on AREA_LEVELS drift.
         [sys.executable, "tools/gen_area_adj.py"],
         [sys.executable, "tools/build_mob_index.py"],
-        [sys.executable, "tools/help_to_primesud.py"],
+        [sys.executable, "tools/build_help_idx.py"],
+        [sys.executable, "tools/build_socials_idx.py"],
     ]
     for cmd in steps:
         print("==> preflight: %s" % cmd[-1])
