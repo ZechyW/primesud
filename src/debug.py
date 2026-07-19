@@ -1,6 +1,16 @@
 """Debug channel toggles for playtesting. [PRIMESUD]"""
 
 import terminal
+import world
+from classes import exp_per_level
+from config import MAX_LEVEL
+from pager import tpage
+from skills_table import (GSN_PLAGUE, GSN_POISON, GSN_BLINDNESS, GSN_CURSE,
+                          GSN_SLEEP)
+
+# Game-module imports (combat, handler, item, info, mob, game_state) stay
+# function-local throughout this file: handler/info/mob/update import debug
+# at top for the DBG toggle and dbg(), so top-level backrefs would cycle.
 
 # Active debug channels.  Callers must guard with `if "x" in DBG:` BEFORE
 # building the message string -- concat costs even when discarded, and some
@@ -37,7 +47,6 @@ def _debug_stat(player, args):
     entities are plain dicts, so we dump the dict itself -- same information,
     no per-field porting.
     """
-    import world
     from handler import get_char_room
     from item import get_obj_here, obj_vnum
 
@@ -111,7 +120,6 @@ def _debug_goto(player, args):
     Private-room / bamfin / bamfout / invis_level checks not ported
     (single-player).  Pet moves along, as in perform_recall.
     """
-    import world
     from handler import is_name
     from info import do_look
     from combat import stop_fighting
@@ -157,7 +165,6 @@ def _debug_load(player, args):
     oload's optional level argument not ported -- PrimeSUD create_object
     has no level parameter.
     """
-    import world
 
     if len(args) < 2 or not args[1].isdigit():
         terminal.tr.print("debug load mob|obj <vnum>")
@@ -200,7 +207,6 @@ def _debug_purge(player, args):
     pet also survives (1stMud purges it) -- debug convenience.
     Purge-by-target-name variant not ported.
     """
-    import world
     from combat import _extract_char
     from item import obj_vnum, item_extra_flags
 
@@ -226,11 +232,8 @@ def _debug_restore(player, args):
     Always the no-arg "room" form; "all" / by-name variants not ported
     (single-player).
     """
-    import world
     from handler import affect_strip
     from combat import update_pos
-    from skills_table import (GSN_PLAGUE, GSN_POISON, GSN_BLINDNESS,
-                              GSN_SLEEP, GSN_CURSE)
 
     targets = [player] + [world.chars[mid]
                           for mid in world.rooms[player["room"]]["mobs"]
@@ -247,7 +250,6 @@ def _debug_restore(player, args):
 
 def _debug_peace(player, args):
     """Stop all fighting in the room, strip aggressive flag (cf. 1stMud do_peace in act_wiz.c). [PRIMESUD]"""
-    import world
     from combat import stop_fighting
 
     if player["fighting"] is not None:
@@ -269,7 +271,6 @@ def _debug_mwhere(player, args):
     Only instances in loaded areas are listed.  No-arg player listing not
     ported (single-player).
     """
-    import world
     from handler import is_name
 
     if not args:
@@ -298,7 +299,6 @@ def _debug_owhere(player, args):
     Searches loaded rooms (one container level deep), player inventory,
     and equipment.  Level / visibility filters not ported.
     """
-    import world
     from handler import is_name
     from item import obj_vnum
 
@@ -345,7 +345,6 @@ def _debug_memory(player, args):
     desktop CPython, printed as n/a there.
     """
     import gc
-    import world
 
     gc.collect()
     try:
@@ -376,7 +375,6 @@ def _debug_heapmap(player, args):
     print as n/a there but the load-all still runs.
     """
     import gc
-    import world
 
     def _alloc():
         gc.collect()
@@ -424,7 +422,6 @@ def _debug_slay(player, args):
 
 def _find_char_world(player, name):
     """Find player or loaded mob by name/vnum (cf. 1stMud get_char_world). [PRIMESUD]"""
-    import world
     from handler import is_name
 
     if name in ("self", "me") or name == player.get("name", "").lower():
@@ -447,8 +444,6 @@ def _find_char_world(player, name):
 def _debug_advance(player, args):
     """Raise/lower the player to a level (cf. 1stMud do_advance in act_wiz.c). [PRIMESUD]"""
     from combat import advance_level
-    from config import MAX_LEVEL
-    from classes import exp_per_level
     from game_state import save_world
 
     if len(args) < 2 or not _is_int(args[1]):
@@ -676,7 +671,6 @@ def do_debug(player, args):
     """Toggle debug channels or run imm-style debug subcommands. [PRIMESUD]"""
     if not args:
         # [PRIMESUD] help listing styled after do_commands (channels + subcommands)
-        from pager import tpage
         lines = ["Debug channels (debug <name> toggles, debug all):"]
         for name in _CHANNELS:
             state = "{Gon{x" if name in DBG else "{Doff{x"

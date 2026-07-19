@@ -1,6 +1,8 @@
 """In-game world time system (cf. 1stMud time_info in weather.c / update.c)."""
 
 from urandom import randint
+import world
+from world import ROOM_DEFS
 
 # -- Constants (cf. 1stMud defines.h) ------------------------------------------
 HOURS_IN_DAY = 24
@@ -114,9 +116,7 @@ def _echo_time_of_day(tr, player, hour):
         player (dict): Player state dict.
         hour (int): The just-advanced hour -- one of 5, 6, 12, 19, 20.
     """
-    from handler import is_awake
-    import world
-    from world import ROOM_DEFS
+    from handler import is_awake  # deferred: handler imports game_time
 
     proom = ROOM_DEFS[player["room"]] if player["room"] in ROOM_DEFS._data else None
     if (proom is None or proom.get("flags", {}).get("indoors")

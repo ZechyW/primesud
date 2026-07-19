@@ -10,6 +10,7 @@ from world import (
     OBJ_VNUM_COINS,
 )
 from colors import upper
+from comm import die_follower, do_emote, do_function, nuke_pets, stop_follower
 from config import (
     LEVEL_HERO,
     MAX_MORTAL_LEVEL,
@@ -56,9 +57,12 @@ from effects import TARGET_CHAR, fire_effect, cold_effect, shock_effect
 from item import (create_object, item_extra_flags,
                   set_item_extra_flag, get_obj_list, obj_vnum,
                   apply_money_pickup, item_weapon_flags, item_affect_find)
+from gquest import gq_kill_check
 from picker import pick_from
-from player import (PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOASSIST,
+from player import (reset_char, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOASSIST,
                     PLR_AUTODAMAGE, PLR_DEFAULTS)
+from quest import (QUEST_DELIVER, QUEST_FINDMOB, is_quester, quest_kill_check,
+                   update_all_qobjs)
 from races import RACE_TABLE, race_lookup
 from skill_utils import get_skill, check_improve, skill_level, WaitState, DazeState
 from stances import (STANCE_TABLE, MAX_STANCE,
@@ -129,12 +133,12 @@ def violence_update(player):
 
         # mob TRIG_FIGHT / TRIG_HPCNT (cf. fight.c:91-98); opponent = victim
         if ch["is_npc"]:
-            from mobprog import fight_trigger
+            from mobprog import fight_trigger  # deferred: keep mobprog off the boot path
             fight_trigger(ch, victim)
         else:
             # [PRIMESUD] autoskill: player fires one auto combat action per
             # round, mirroring where mobs fire their specials
-            from autoskill import auto_skill_round
+            from autoskill import auto_skill_round  # deferred: autoskill imports combat
             auto_skill_round(ch)
         # obj worn-item / room TRIG_FIGHT are obj/room progs -- out of scope
 
@@ -173,7 +177,6 @@ def check_assist(ch, victim):
         # Case 1: mob with assist_players aids player against victim
         if not ch["is_npc"]:
             if off.get("assist_players") and rch["level"] + 6 > victim["level"]:
-                from comm import do_function, do_emote
                 do_function(rch, do_emote, "screams and attacks!")
                 multi_hit(rch, victim)
                 continue
@@ -209,7 +212,6 @@ def check_assist(ch, victim):
         # [PRIMESUD] Single-player: victim's group = victim only; target is always victim.
         if not can_see(rch, victim):
             continue
-        from comm import do_function, do_emote
         do_function(rch, do_emote, "screams and attacks!")
         multi_hit(rch, victim)
 
@@ -951,7 +953,6 @@ def is_safe(ch, victim):
 
             # 1stMud: quest deliver/findmob target protected;
             # [PRIMESUD] vnum match instead of instance pointer
-            from quest import QUEST_DELIVER, QUEST_FINDMOB
             if (ch.get("quest_status") in (QUEST_DELIVER, QUEST_FINDMOB)
                     and victim.get("tpl") == ch.get("quest_mob", 0)):
                 # 1stMud: "You are supposed to deliver $p to $N, not kill $M."
@@ -1018,7 +1019,6 @@ def is_safe_spell(ch, victim, area):
                 return True
             # 1stMud: quest deliver/findmob target protected;
             # [PRIMESUD] vnum match instead of instance pointer
-            from quest import QUEST_DELIVER, QUEST_FINDMOB
             if (ch.get("quest_status") in (QUEST_DELIVER, QUEST_FINDMOB)
                     and victim.get("tpl") == ch.get("quest_mob", 0)):
                 return True
@@ -1147,7 +1147,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                 # TRIG_KILL: NPC victim joining combat reacts to attacker
                 # (cf. fight.c:920); named "kill" upstream but fires on engage.
                 if victim["is_npc"]:
-                    from mobprog import has_trigger, kill_trigger
+                    from mobprog import has_trigger, kill_trigger  # deferred: keep mobprog off the boot path
                     if has_trigger(victim, "kill"):
                         kill_trigger(victim, ch)
             # 1stMud: if (victim->timer <= 4) victim->position = POS_FIGHTING;
@@ -1162,7 +1162,6 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
 
         # 1stMud: if (victim->master == ch) stop_follower(victim);
         if victim.get("master") == ch.get("id"):
-            from comm import stop_follower  # lazy import to avoid circular dependency
             stop_follower(victim)
 
     # 1stMud: if (IsAffected(ch, AFF_INVISIBLE)) { affect_strip invis + mass invis;
@@ -1324,7 +1323,6 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         # C division truncates toward zero.
         # 1stMud: no XP penalty when a quester dies to their own quest mob;
         # [PRIMESUD] vnum match instead of instance pointer
-        from quest import is_quester
         if (not victim["is_npc"] and victim.get("xp", 0) > 0
                 and not (is_quester(victim)
                          and ch.get("tpl") == victim.get("quest_mob", 0))):
@@ -1336,7 +1334,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         # TRIG_DEATH: NPC victim's death prog runs before extraction, restored
         # to standing so it can act (cf. fight.c:1141)
         if victim["is_npc"]:
-            from mobprog import has_trigger, death_trigger
+            from mobprog import has_trigger, death_trigger  # deferred: keep mobprog off the boot path
             if has_trigger(victim, "death"):
                 death_trigger(victim, ch)
 
@@ -2509,7 +2507,6 @@ def raw_kill(victim, killer):
     # their gear on respawn (see make_corpse), so re-derive equipment-granted
     # armor, stats, and affect bits. affect_list is empty after the strip
     # above, so no spell affects re-apply.
-    from player import reset_char  # deferred: player -> magic -> combat cycle
     reset_char(victim)
     # 1stMud: victim->position = POS_RESTING
     victim["pos"] = "resting"
@@ -2542,7 +2539,6 @@ def _extract_char(ch, pull=True):
         pull (bool): True = fully remove (NPC death), False = teleport to altar (PC death).
     """
     # 1stMud extract_char: nuke_pets always; die_follower only on fPull
-    from comm import nuke_pets, die_follower  # lazy import to avoid circular dependency
     nuke_pets(ch)
     ch["pet"] = None
     if pull:
@@ -2613,10 +2609,9 @@ def advance_level(player):
     player["train"]    += 1
 
     # cf. 1stMud advance_level: quest gear rescales to the new level
-    from quest import update_all_qobjs
     update_all_qobjs(player)
     # [PRIMESUD] Owned pets grow with their player; no separate pet XP track.
-    from mob import scale_pet
+    from mob import scale_pet  # deferred: mob imports combat
     scale_pet(player)
 
     chprintlnf(player, "You gain %d hit %s, %d mana, %d move, and %d %s.",
@@ -2767,10 +2762,8 @@ def group_gain(ch, victim):
 
         # 1stMud: quest mob check (IsQuester && quest.mob == victim);
         # [PRIMESUD] vnum match inside quest_kill_check
-        from quest import quest_kill_check
         quest_kill_check(gch, victim)
         # 1stMud: gquest target check (is_gqmob)
-        from gquest import gq_kill_check
         gq_kill_check(gch, victim)
 
         # 1stMud: worn anti-align items zap after the kill's alignment shift
@@ -3586,7 +3579,7 @@ def do_surrender(ch, args):
     # the upstream condition (cf. mobprog.py kill_trigger/death_trigger for
     # the same call convention).
     if not ch["is_npc"] and mob["is_npc"]:
-        from mobprog import percent_trigger
+        from mobprog import percent_trigger  # deferred: keep mobprog off the boot path
         if not percent_trigger(mob, ch, None, None, "surr"):
             act("$N seems to ignore your cowardly act!", ch, None, mob, TO_CHAR)
             multi_hit(mob, ch)

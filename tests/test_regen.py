@@ -70,7 +70,7 @@ class TestRegenTail:
 class TestPlayerGains:
     def _hp_gain(self, monkeypatch, roll, skill):
         monkeypatch.setattr(player_mod, "randint", lambda a, b: roll)
-        monkeypatch.setattr(skill_utils, "get_skill",
+        monkeypatch.setattr(player_mod, "get_skill",
                             lambda e, sn, is_mob=False:
                             skill if sn == GSN_FAST_HEALING else 0)
         p = _full_player()
@@ -94,7 +94,7 @@ class TestPlayerGains:
     def test_has_spells_halves_mana(self, monkeypatch):
         # roll high -> no meditation bonus; isolate the has_spells branch.
         monkeypatch.setattr(player_mod, "randint", lambda a, b: 100)
-        monkeypatch.setattr(skill_utils, "get_skill",
+        monkeypatch.setattr(player_mod, "get_skill",
                             lambda e, sn, is_mob=False: 0)
         room = {"heal_rate": 100, "mana_rate": 100}
 

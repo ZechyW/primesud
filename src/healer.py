@@ -5,6 +5,8 @@ from combat import dice
 from handler import act, chprintln, chprintlnf, TO_CHAR, TO_ROOM
 from config import PULSE_VIOLENCE
 from skill_utils import WaitState
+from magic import SPELL_FUNS, TARGET_CHAR, _skill_lookup
+from skills_table import SKILLS
 from shop import check_worth, deduct_cost, add_cost
 
 # (name, descr, spell name for _skill_lookup or None=mana, words, cost in gold)
@@ -25,8 +27,6 @@ _HEALER_TABLE = (
 
 def do_heal(player, args):
     """Buy a healing spell from a healer NPC in the room (cf. 1stMud do_heal in healer.c)."""
-    from magic import SPELL_FUNS, TARGET_CHAR, _skill_lookup
-    from skills_table import SKILLS
 
     mob = None
     for mid in world.rooms[player["room"]]["mobs"]:

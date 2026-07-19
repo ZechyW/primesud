@@ -26,7 +26,10 @@ player dict for save simplicity:
 import world
 from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, AREA_DEFS, AREA_LEVELS
 from world import _ensure_area_by_tag
+from classes import lvl_bonus
+from comm import do_function, do_say
 from config import MAX_LEVEL, mins_to_ticks, ticks_to_mins, on_minute
+from races import RACE_TABLE, race_lookup
 from handler import (chprintln, chprintlnf, act, is_evil, is_good, is_name,
                      unequip_char, equip_char, TO_CHAR, TO_ROOM, TO_VICT,
                      TO_NOTVICT)
@@ -158,7 +161,6 @@ def quest_level_diff(player, mob_level):
     against a wider level range. [PRIMESUD] IsImmortal short-circuit omitted
     (no immortals).
     """
-    from classes import lvl_bonus
     bonus = 10 + lvl_bonus(player)
     return (mob_level - bonus) <= player["level"] <= (mob_level + bonus)
 
@@ -205,7 +207,6 @@ def quest_area_def(tag):
 def _merged_act_flags(tpl):
     """Race act flags merged under template act_flags, as create_mobile
     does at spawn (cf. 1stMud db2.c:88-136). [PRIMESUD] helper."""
-    from races import RACE_TABLE, race_lookup
     race = race_lookup(tpl.get("race", "Human")) or RACE_TABLE["Human"]
     merged = dict(race.get("act", {}))
     merged.update(tpl.get("act_flags", {}))
@@ -725,7 +726,6 @@ def quest_room_check(player):
         return
 
     if status == QUEST_FINDMOB:
-        from comm import do_function, do_say
         do_function(victim, do_say,
                     "Excellent! You have found me. Good job!")
         chprintln(player, "{RYou have almost completed your QUEST!{x")
@@ -972,7 +972,7 @@ def do_quest(player, args):
             return
         update_questobj(player, obj)
         act("$p costs $T.", player, obj, _intstr(cost, "questpoint"), TO_CHAR)
-        from magic import spell_identify
+        from magic import spell_identify  # deferred: magic imports quest
         # cf. 1stMud spell_identify(0, ch->level, ch, obj, TAR_OBJ_INV)
         spell_identify(0, player["level"], player, obj, None)
         # temp object discarded (cf. 1stMud extract_obj)

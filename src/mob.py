@@ -6,9 +6,12 @@ from config import SIZE_RANK, POS_FROM_SHORT
 import world
 from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, AREA_DEFS, DOOR_DEFS
 from races import RACE_TABLE, race_lookup
-from handler import (equip_char, act, chprintln, _char_base, is_awake,
+from handler import (affect_remove, equip_char, act, chprintln, _char_base, is_awake,
                      TO_ROOM, can_see, room_is_dark)
 from hunt import hunt_victim
+from combat import multi_hit
+from comm import add_follower
+from movement import move_char
 from item import create_object, item_wear_flags
 from game_time import init_weather, advance_weather, adjust_vectors, get_weather_echo
 from special import SPEC_TABLE
@@ -205,7 +208,6 @@ def spawn_pet(tpl_vnum, owner, name_arg=None, hp=None, announce=True):
     world.rooms[room_vnum]["mobs"].append(next_id)
 
     if announce:
-        from comm import add_follower  # lazy import to avoid circular dependency
         add_follower(pet, owner)
     else:
         pet["master"] = owner["id"]
@@ -234,7 +236,6 @@ def scale_pet(owner, evolve=False, reset=False):
         return None
 
     if reset:
-        from handler import affect_remove
         for af in list(pet.get("affect_list", [])):
             affect_remove(pet, af)
         pet.setdefault("affected_by", {})["charm"] = True
@@ -631,7 +632,7 @@ def mobile_update(tr, player):
                 inst["silver"] += wealth * randint(1, 20) // 50000
         # [PRIMESUD] random/delay mobprog pulse (cf. char_update, update.c:444-462);
         # gated on position == default_pos, so fighting/knocked-down mobs skip it.
-        from mobprog import pulse_mob
+        from mobprog import pulse_mob  # deferred: keep mobprog off the boot path
         if pulse_mob(inst):
             continue
         if inst["fighting"] is not None:
@@ -687,7 +688,6 @@ def mobile_update(tr, player):
         # Wander via move_char so leave/arrive acts fire and followers are
         # dragged along (cf. 1stMud mobile_update move_char(ch, door, false),
         # update.c:503)
-        from movement import move_char  # lazy import to avoid circular dependency
         move_char(inst, direction)
         if "move" in DBG and inst["room"] != old_room:  # [PRIMESUD]
             dbg("move " + inst["name"] + " " + str(old_room) + ">" + str(inst["room"]))
@@ -710,7 +710,6 @@ def aggr_update(tr, player):
         tr: Terminal for printing combat messages.
         player (dict): Player state dict.
     """
-    from combat import multi_hit
 
     # cf. update.c:951 -- immortal / empty area / ROOM_SAFE early-outs
     room_vnum = player["room"]

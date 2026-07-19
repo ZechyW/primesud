@@ -4,7 +4,7 @@ from classes import is_class
 from handler import (can_see_room, chprintln, act, TO_CHAR, TO_ROOM, TO_VICT,
                      get_char_room, is_awake, is_name, affect_strip,
                      affect_to_char)
-from combat import stop_fighting
+from combat import stop_fighting, do_stance
 from skill_utils import WaitState, check_improve, get_skill
 from stances import valid_stance, get_stance, STANCE_CURRENT
 from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
@@ -61,7 +61,6 @@ def _has_boat(ch):
     Direct children only -- matches 1stMud carrying_first (act_move.c:131),
     which does not recurse into containers.
     """
-    from world import ITEM_DEFS
     for obj in ch.get("inv", []):
         vnum = obj.get("vnum") if isinstance(obj, dict) else obj
         if ITEM_DEFS.get(vnum, {}).get("type") == "boat":
@@ -109,7 +108,7 @@ def move_char(ch, direction):
     # -- exit/exall mobprog trigger (cf. p_exit_trigger, act_move.c:57): a room
     # mob may react to (and abort) a player's departure. MOB progs only.
     if not ch.get("is_npc", False):
-        from mobprog import exit_trigger
+        from mobprog import exit_trigger  # deferred: keep mobprog off the boot path
         if exit_trigger(ch, direction):
             return
 
@@ -239,7 +238,6 @@ def move_char(ch, direction):
     # [PRIMESUD] 1stMud passed "" (bare toggle); bare stance is now a
     # status screen, so relax explicitly via 'none'
     if valid_stance(get_stance(ch, STANCE_CURRENT)):
-        from combat import do_stance  # lazy import (combat imports movement targets)
         do_stance(ch, ["none"])
 
     # -- Leave message (1stMud: act("$n leaves $T.", ch, NULL, dir_name[door], TO_ROOM))
@@ -313,7 +311,7 @@ def move_char(ch, direction):
 
     # cf. 1stMud move_char act_move.c:259-266: entry (NPC self-move) and greet
     # (player arrival) mobprogs, then the quest check, all after the follower loop
-    from mobprog import has_trigger, entry_trigger, greet_trigger
+    from mobprog import has_trigger, entry_trigger, greet_trigger  # deferred: keep mobprog off the boot path
     if is_npc:
         if has_trigger(ch, "entry"):
             entry_trigger(ch)
@@ -557,7 +555,7 @@ def do_enter(ch, args):
                 break
     # cf. 1stMud act_enter.c: entry (NPC) / greet (player) mobprogs run after
     # arrival; no quest room check in do_enter -- that is a move_char mechanic
-    from mobprog import has_trigger, entry_trigger, greet_trigger
+    from mobprog import has_trigger, entry_trigger, greet_trigger  # deferred: keep mobprog off the boot path
     if ch["is_npc"]:
         if has_trigger(ch, "entry"):
             entry_trigger(ch)
@@ -872,7 +870,6 @@ def do_close(player, args):
 
 def _has_key(ch, key_vnum):
     """True if ch carries the key item (cf. 1stMud has_key in act_move.c). [Verified: 03/07/2026]"""
-    from item import obj_vnum
     for obj in ch["inv"] + [o for o in ch["equip"].values() if o is not None]:
         if obj_vnum(obj) == key_vnum:
             return True

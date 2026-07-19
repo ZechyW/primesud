@@ -76,12 +76,24 @@ is engine-supported.
 
 from urandom import randint
 
+import world
+from combat import damage, multi_hit, stop_fighting, _extract_char, DAM_NONE
+from commands import interpret
+from config import EXIT_ORDER, POS_FROM_SHORT, POS_ORDER, TYPE_UNDEFINED
 from debug import dbg
 from game_time import time_info
 from handler import (
-    act, can_see, is_name, number_argument, _HE_SHE, _HIM_HER, _HIS_HER,
-    TO_ROOM, TO_CHAR, TO_VICT, TO_NOTVICT,
+    act, can_see, can_see_obj, chprintln, is_name, number_argument,
+    _HE_SHE, _HIM_HER, _HIS_HER, TO_ROOM, TO_CHAR, TO_VICT, TO_NOTVICT,
 )
+from inventory import wear_obj
+from item import (
+    create_object, get_obj_here, get_obj_list, item_wear_flags, obj_vnum,
+)
+from magic import _skill_lookup, SPELL_FUNS, TARGET_CHAR, TARGET_OBJ, TARGET_NONE
+from mob import create_mobile
+from movement import do_look, move_char
+from skills_table import SKILLS
 
 # -- Interpreter limits (cf. programs.c:1942/1950) -----------------------------
 MAX_NESTED_LEVEL = 12
@@ -212,7 +224,6 @@ def has_trigger(mob, ttype):
     Returns:
         bool: True if a matching trigger exists.
     """
-    import world
     tpl = world.MOB_DEFS.get(mob.get("tpl")) if mob else None
     if tpl is None:
         return False
@@ -229,14 +240,12 @@ def has_trigger(mob, ttype):
 
 def _mob_trigs(mob):
     """Template mob_triggers list for *mob*, or None. [PRIMESUD]"""
-    import world
     tpl = world.MOB_DEFS.get(mob.get("tpl")) if mob else None
     return tpl.get("mob_triggers") if tpl else None
 
 
 def _run_prog(mob, prog_vnum, ch, arg1, arg2):
     """Fetch a program's source and run it (cf. the program_flow call sites). [PRIMESUD]"""
-    import world
     code = world.MOBPROGS.get(prog_vnum)
     if code is None:
         dbg("mobprog: missing prog " + str(prog_vnum))
@@ -285,11 +294,9 @@ def _at_default_pos(mob):
     Consumes the template ``default_pos`` field (a short word like ``stand``);
     the mob's runtime ``pos`` is the long form (``standing``).
     """
-    import world
     tpl = world.MOB_DEFS.get(mob.get("tpl")) if mob else None
     if tpl is None:
         return False
-    from config import POS_FROM_SHORT
     dpos = POS_FROM_SHORT.get(tpl.get("default_pos", "stand"), "standing")
     return mob.get("pos") == dpos
 
@@ -328,7 +335,6 @@ def greet_trigger(ch):
     GREET fires only if the mob is at its default position and can see *ch*;
     GRALL fires regardless.  GREET takes precedence over GRALL on the same mob.
     """
-    import world
     rs = _room_of(ch)
     if rs is None:
         return
@@ -357,8 +363,6 @@ def exit_trigger(ch, direction):
     Returns:
         bool: True if a program fired (caller aborts the move, as in 1stMud).
     """
-    import world
-    from config import EXIT_ORDER
     try:
         dnum = EXIT_ORDER.index(direction)
     except ValueError:
@@ -392,7 +396,6 @@ def speech_trigger(argument, speaker):
     The self-skip below is then belt-and-braces (the speaker is never an NPC in
     the loop anyway).
     """
-    import world
     rs = _room_of(speaker)
     if rs is None:
         return
@@ -424,7 +427,6 @@ def give_trigger(mob, ch, obj):
     trigs = _mob_trigs(mob)
     if not trigs:
         return
-    from item import obj_vnum
     ovnum = obj_vnum(obj)
     kw = _obj_keywords(obj)
     for t in trigs:
@@ -486,7 +488,6 @@ def death_trigger(mob, ch):
 # -- $-code expansion (cf. expand_arg_mob, programs.c:1433) --------------------
 
 def _room_of(mob):
-    import world
     return world.rooms._data.get(mob.get("room")) if mob else None
 
 
@@ -503,7 +504,6 @@ def _target_of(mob):
     tid = mob.get("mprog_target")
     if tid is None:
         return None
-    import world
     return world.chars.get(tid)
 
 
@@ -519,7 +519,6 @@ def get_random_char(mob):
     Returns:
         dict or None: Chosen character, or None if the room is empty of others.
     """
-    import world
     rs = _room_of(mob)
     if rs is None:
         return None
@@ -552,7 +551,6 @@ def _obj_name(obj):
         vnum = obj.get("vnum")
     else:
         vnum = obj
-    import world
     tpl = world.ITEM_DEFS.get(vnum)
     return _first(tpl.get("keywords", "")) if tpl else "something"
 
@@ -566,7 +564,6 @@ def _obj_keywords(obj):
         vnum = obj.get("vnum")
     else:
         vnum = obj
-    import world
     tpl = world.ITEM_DEFS.get(vnum)
     return tpl.get("keywords", "") if tpl else ""
 
@@ -580,7 +577,6 @@ def _obj_short(obj):
         vnum = obj.get("vnum")
     else:
         vnum = obj
-    import world
     tpl = world.ITEM_DEFS.get(vnum)
     return tpl.get("short_descr", "something") if tpl else "something"
 
@@ -724,7 +720,6 @@ def expand_arg(fmt, mob, ch, arg1, arg2, rch):
 def _can_see_obj(mob, obj):
     """Object visibility, tolerant of Phase A fabricated objects. [PRIMESUD]"""
     try:
-        from handler import can_see_obj
         return can_see_obj(mob, obj)
     except Exception:
         return True
@@ -748,7 +743,6 @@ _CHAR_FLAG = frozenset(("name", "pos", "act", "affected"))
 
 def _count_people_room(mob, iflag):
     """Count characters in the mob's room by class (cf. count_people_room)."""
-    import world
     rs = _room_of(mob)
     if rs is None:
         return 0
@@ -844,11 +838,9 @@ def _eval_char_bool(check, code, lval_char, lval_obj, mob):
     if check == "isfollow":
         if c is None or c.get("master") is None:
             return False
-        import world
         master = world.chars.get(c.get("master"))
         return master is not None and master.get("room") == c.get("room")
     if check == "isactive":
-        from config import POS_ORDER
         return c is not None and POS_ORDER.get(c.get("pos", "standing"), 0) > POS_ORDER.get("sleeping", 0)
     if check == "isdelay":
         return c is not None and c.get("mprog_delay", 0) > 0
@@ -932,11 +924,9 @@ def cmd_eval(check, line, mob, ch, arg1, arg2, rch, prog_vnum):
     if check == "objhere":
         if _is_number(buf):
             v = _atoi(buf)
-            from item import obj_vnum
             rs = _room_of(mob)
             return any(obj_vnum(it) == v
                        for it in (rs.get("items", []) if rs else []))
-        from item import get_obj_here
         return get_obj_here(mob, buf) is not None
     if check == "mobexists":
         return _get_char_world(mob, buf) is not None
@@ -1039,7 +1029,6 @@ def _dispatch(prog_vnum, mob, ctrl, expanded, call_level=0):
         # bug ("obj command in non MOBprog") -- log and skip.
         dbg("prog " + str(prog_vnum) + " '" + ctrl + "' command in MOBprog")
         return
-    from commands import interpret
     interpret(expanded, mob)
 
 
@@ -1180,7 +1169,6 @@ def _run_flow(prog_vnum, code, mob, ch, arg1, arg2, mvnum, state, cond, level):
 
 def _room_persons(mob):
     """Player + all mobs in *mob*'s room (cf. in_room->person_first walk). [PRIMESUD]"""
-    import world
     rs = _room_of(mob)
     if rs is None:
         return []
@@ -1197,7 +1185,6 @@ def _room_persons(mob):
 
 def _char_kw(c):
     """Name-match keywords for a char (mob keywords / player name). [PRIMESUD]"""
-    import world
     if c.get("is_npc"):
         tpl = world.MOB_DEFS._data.get(c.get("tpl"))
         return c.get("keywords") or (tpl.get("keywords", "") if tpl else "")
@@ -1230,7 +1217,6 @@ def _get_char_world(mob, arg):
     c = _get_char_room(mob, arg)
     if c is not None:
         return c
-    import world
     number, name = number_argument(arg)
     count = 0
     for c in world.chars.values():
@@ -1253,12 +1239,9 @@ def _get_obj_world(mob, arg):
     """
     if not arg:
         return None
-    from item import get_obj_here, obj_vnum
     obj = get_obj_here(mob, arg)
     if obj is not None:
         return obj
-    import world
-    from handler import can_see_obj
 
     def _kw(it):
         tpl = world.ITEM_DEFS._data.get(obj_vnum(it))
@@ -1295,7 +1278,6 @@ def _get_obj_world(mob, arg):
 
 def _char_from_room(ch):
     """Detach a char from its room; NPCs leave the room mob-list. [PRIMESUD]"""
-    import world
     if ch.get("is_npc"):
         rs = world.rooms._data.get(ch.get("room"))
         if rs is not None and ch["id"] in rs["mobs"]:
@@ -1304,7 +1286,6 @@ def _char_from_room(ch):
 
 def _char_to_room(ch, room_vnum):
     """Place a char into a room; NPCs join the room mob-list. [PRIMESUD]"""
-    import world
     ch["room"] = room_vnum
     if ch.get("is_npc"):
         rs = world.rooms.get(room_vnum)
@@ -1322,7 +1303,6 @@ def _find_location(mob, arg):
     a char anywhere in the loaded world (returns that char's room).  1stMud's
     area-name and world-object fallbacks are not ported; stock progs use vnums.
     """
-    import world
     if _is_number(arg):
         v = _atoi(arg)
         return v if v in world.ROOM_DEFS._data else None
@@ -1347,8 +1327,6 @@ def _detach_obj(mob, obj):
 
 def _obj_has_nopurge(obj):
     """True if *obj* carries the nopurge extra flag (kept by a room purge). [PRIMESUD]"""
-    from item import obj_vnum
-    import world
     if isinstance(obj, dict) and "extra_flags" in obj:
         ef = obj["extra_flags"]
     else:
@@ -1389,8 +1367,6 @@ def _mp_gecho(mob, args, pv, cl):
     """Global echo (cf. do_mpgecho).  [PRIMESUD] single-player: to the one player."""
     if not args:
         return
-    import world
-    from handler import chprintln
     p = world.chars.get(1)
     if p is not None:
         chprintln(p, args)
@@ -1400,8 +1376,6 @@ def _mp_zecho(mob, args, pv, cl):
     """Zone echo (cf. do_mpzecho).  [PRIMESUD] to the player if in the mob's area."""
     if not args:
         return
-    import world
-    from handler import chprintln
     p = world.chars.get(1)
     if p is None:
         return
@@ -1415,7 +1389,6 @@ def _mp_asound(mob, args, pv, cl):
     """Sound heard from every adjacent room (cf. do_mpasound)."""
     if not args:
         return
-    import world
     was = mob.get("room")
     in_room = world.ROOM_DEFS._data.get(was)
     if in_room is None:
@@ -1451,7 +1424,6 @@ def _mp_kill(mob, args, pv, cl):
     if mob.get("affected_by", {}).get("charm") and mob.get("master") == victim.get("id"):
         dbg("mobprog: charmed mob attacking master, mob " + str(mob.get("tpl", 0)))
         return
-    from combat import multi_hit
     multi_hit(mob, victim)
 
 
@@ -1464,11 +1436,9 @@ def _mp_assist(mob, args, pv, cl):
         return
     if victim.get("fighting") is None:
         return
-    import world
     target = world.chars.get(victim["fighting"])
     if target is None:
         return
-    from combat import multi_hit
     multi_hit(mob, target)
 
 
@@ -1487,8 +1457,6 @@ def _mp_damage(mob, args, pv, cl):
     if high < low:
         high = low   # [PRIMESUD] clamp; 1stMud passes low>high to number_range unchecked
     fkill = len(parts) > 3 and bool(parts[3])
-    from combat import damage, DAM_NONE
-    from config import TYPE_UNDEFINED
 
     def _hit(v):
         amt = randint(low, high)
@@ -1516,8 +1484,6 @@ def _mp_cast(mob, args, pv, cl):
     if not spell:
         dbg("mobprog: mpcast bad syntax")
         return
-    from magic import _skill_lookup, SPELL_FUNS, TARGET_CHAR, TARGET_OBJ, TARGET_NONE
-    from skills_table import SKILLS
     sn = _skill_lookup(spell)
     if sn is None:
         dbg("mobprog: mpcast no such spell '" + spell + "'")
@@ -1526,7 +1492,6 @@ def _mp_cast(mob, args, pv, cl):
     if sk is None:
         return
     vch = _get_char_room(mob, target_name) if target_name else None
-    from item import get_obj_here
     obj = get_obj_here(mob, target_name) if target_name else None
     tgt = sk.get("target")
     if tgt == "ignore":
@@ -1552,7 +1517,6 @@ def _mp_cast(mob, args, pv, cl):
 
 
 def _mp_peace(mob, args, pv, cl):
-    from combat import stop_fighting
     for c in list(_room_persons(mob)):
         if c.get("fighting") is not None:
             stop_fighting(c, both=True)
@@ -1563,7 +1527,6 @@ def _mp_peace(mob, args, pv, cl):
 def _mp_flee(mob, args, pv, cl):
     if mob.get("fighting") is not None:
         return
-    import world
     was = mob.get("room")
     in_room = world.ROOM_DEFS._data.get(was)
     if in_room is None:
@@ -1573,7 +1536,6 @@ def _mp_flee(mob, args, pv, cl):
     for i in range(len(order) - 1, 0, -1):    # Fisher-Yates (cf. number_door attempts)
         j = randint(0, i)
         order[i], order[j] = order[j], order[i]
-    from movement import move_char
     for d in order:
         ev = exits[d]
         if isinstance(ev, dict) and ev.get("closed"):
@@ -1593,12 +1555,10 @@ def _mp_mload(mob, args, pv, cl):
     arg = _first(args)
     if not arg or not _is_number(arg):
         return
-    import world
     vnum = _atoi(arg)
     if vnum not in world.MOB_DEFS:
         dbg("mobprog: mpmload bad mob " + str(vnum))
         return
-    from mob import create_mobile
     victim = create_mobile(vnum)
     room = mob.get("room")
     victim["room"] = room
@@ -1614,7 +1574,6 @@ def _mp_oload(mob, args, pv, cl):
     if not parts or not _is_number(parts[0]):
         dbg("mobprog: mpoload bad syntax")
         return
-    import world
     vnum = _atoi(parts[0])
     if vnum not in world.ITEM_DEFS:
         dbg("mobprog: mpoload bad obj " + str(vnum))
@@ -1626,7 +1585,6 @@ def _mp_oload(mob, args, pv, cl):
     if arg2 and not _is_number(arg2):
         dbg("mobprog: mpoload bad level")
         return
-    from item import create_object, item_wear_flags
     obj = create_object(vnum)
     to_room = arg3[:1] in ("R", "r")
     to_wear = arg3[:1] in ("W", "w")
@@ -1634,20 +1592,17 @@ def _mp_oload(mob, args, pv, cl):
     if (to_wear or not to_room) and can_take:
         mob["inv"].append(obj)
         if to_wear:
-            from inventory import wear_obj
             wear_obj(mob, obj, True)
     else:
         world.rooms[mob["room"]]["items"].append(obj)
 
 
 def _mp_purge(mob, args, pv, cl):
-    import world
     rs = _room_of(mob)
     arg = _first(args)
     if not arg:
         if rs is None:
             return
-        from combat import _extract_char
         for mid in list(rs.get("mobs", [])):
             v = world.chars.get(mid)
             if (v is not None and v is not mob and v.get("is_npc")
@@ -1657,7 +1612,6 @@ def _mp_purge(mob, args, pv, cl):
         return
     victim = _get_char_room(mob, arg)
     if victim is None:
-        from item import get_obj_here
         obj = get_obj_here(mob, arg)
         if obj is not None:
             _detach_obj(mob, obj)
@@ -1667,7 +1621,6 @@ def _mp_purge(mob, args, pv, cl):
     if not victim.get("is_npc"):
         dbg("mobprog: mppurge PC, mob " + str(mob.get("tpl", 0)))
         return
-    from combat import _extract_char
     _extract_char(victim, pull=True)
 
 
@@ -1675,8 +1628,6 @@ def _mp_junk(mob, args, pv, cl):
     arg = _first(args)
     if not arg:
         return
-    from item import get_obj_list
-    import world
     al = arg.lower()
     if al != "all" and not al.startswith("all."):
         # cf. 1stMud do_mpjunk single-item path gates on the mob's own sight
@@ -1708,12 +1659,10 @@ def _mp_otransfer(mob, args, pv, cl):
     if loc is None:
         dbg("mobprog: mpotransfer no location")
         return
-    from item import get_obj_here
     obj = get_obj_here(mob, parts[0])
     if obj is None:
         return
     _detach_obj(mob, obj)
-    import world
     world.rooms[loc]["items"].append(obj)
 
 
@@ -1729,7 +1678,6 @@ def _mp_remove(mob, args, pv, cl):
     if not fall and not _is_number(spec):
         dbg("mobprog: mpremove invalid object, mob " + str(mob.get("tpl", 0)))
         return
-    from item import obj_vnum
     vnum = _atoi(spec) if _is_number(spec) else 0
     for o in list(victim.get("inv", [])):
         if fall or obj_vnum(o) == vnum:
@@ -1751,7 +1699,6 @@ def _mp_goto(mob, args, pv, cl):
         dbg("mobprog: mpgoto no location")
         return
     if mob.get("fighting") is not None:
-        from combat import stop_fighting
         stop_fighting(mob, both=True)
     _char_from_room(mob)
     _char_to_room(mob, loc)
@@ -1766,11 +1713,9 @@ def _mp_at(mob, args, pv, cl):
     if loc is None:
         dbg("mobprog: mpat no location")
         return
-    import world
     original = mob.get("room")
     _char_from_room(mob)
     _char_to_room(mob, loc)
-    from commands import interpret
     interpret(parts[1], mob)
     if world.chars.get(mob.get("id")) is mob:   # command may have moved/killed the mob
         _char_from_room(mob)
@@ -1800,12 +1745,10 @@ def _mp_transfer(mob, args, pv, cl):
     if victim is None or victim.get("room") is None:
         return
     if victim.get("fighting") is not None:
-        from combat import stop_fighting
         stop_fighting(victim, both=True)
     _char_from_room(victim)
     _char_to_room(victim, loc)
     if not victim.get("is_npc"):
-        from movement import do_look
         do_look(victim, [])
         greet_trigger(victim)
 
@@ -1816,7 +1759,6 @@ def _mp_force(mob, args, pv, cl):
         dbg("mobprog: mpforce bad syntax")
         return
     arg, rest = parts[0], parts[1]
-    from commands import interpret
     if arg == "all":
         # [PRIMESUD] 1stMud also filters get_trust(vch) < get_trust(ch); no trust
         # system ported, so a prog can force the player (the intended use).
@@ -1866,14 +1808,12 @@ def _mp_call(mob, args, pv, cl):
     if not _is_number(parts[0]):
         dbg("mobprog: mpcall invalid prog")
         return
-    import world
     prog_vnum = _atoi(parts[0])
     code = world.MOBPROGS.get(prog_vnum)
     if code is None:
         dbg("mobprog: mpcall invalid prog " + str(prog_vnum))
         return
     vch = _get_char_room(mob, parts[1]) if len(parts) > 1 and parts[1] else None
-    from item import get_obj_here
     obj1 = get_obj_here(mob, parts[2]) if len(parts) > 2 and parts[2] else None
     obj2 = get_obj_here(mob, parts[3]) if len(parts) > 3 and parts[3] else None
     # nested program_flow entry bumps the global _call_depth itself

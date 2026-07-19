@@ -14,6 +14,7 @@ from world import (OBJ_VNUM_SCHOOL_BANNER,
 from combat import (_get_weapon_skill, is_safe, multi_hit, number_fuzzy,
                     create_money, _get_size)
 from comm import do_yell
+from debug import DBG  # [PRIMESUD] debug vnum visibility toggle
 from skill_utils import WaitState, check_improve, get_skill
 from config import (STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS,
                     MAX_LEVEL, MAX_MORTAL_LEVEL, TYPE_UNDEFINED,
@@ -32,7 +33,7 @@ from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   liquid_type as _liquid_type,
                   set_liquid as _set_liquid,
                   liq_sip as _liq_sip)
-from magic import (cast_item_spells, validate_item_spell_payload,
+from magic import (_skill_lookup, cast_item_spells, validate_item_spell_payload,
                    _new_affect, _skill_lookup)
 from picker import pick_from
 from quest import (quest_obj_check, is_quester, QUEST_DELIVER,
@@ -520,7 +521,7 @@ def _give_coins(player, amount, coin, rest):
 
     # TRIG_BRIBE: amount normalised to silver (cf. p_bribe_trigger, act_obj.c:710)
     if victim.get("is_npc"):
-        from mobprog import has_trigger, bribe_trigger
+        from mobprog import has_trigger, bribe_trigger  # deferred: keep mobprog off the boot path
         if has_trigger(victim, "bribe"):
             bribe_trigger(victim, player, amount if silver else amount * 100)
 
@@ -636,7 +637,7 @@ def do_give(player, args):
     # so the "gives you" text can't fire the recipient's act trigger -- the
     # give trigger below is the intended reaction.  (1stMud does not latch the
     # coin/quest give paths, so those stay unlatched too.)
-    import mobprog
+    import mobprog  # deferred: keep mobprog off the boot path
     saved = mobprog.MOBtrigger
     mobprog.MOBtrigger = False
     try:
@@ -647,7 +648,7 @@ def do_give(player, args):
         mobprog.MOBtrigger = saved
     # TRIG_GIVE: mob reacts to the received object (cf. do_give, act_obj.c:856)
     if victim.get("is_npc"):
-        from mobprog import has_trigger, give_trigger
+        from mobprog import has_trigger, give_trigger  # deferred: keep mobprog off the boot path
         if has_trigger(victim, "give"):
             give_trigger(victim, player, obj)
 
@@ -675,7 +676,6 @@ def do_inventory(player, args):
     for obj in player["inv"]:
         v = obj["vnum"]
         counts[v] = counts.get(v, 0) + 1
-    from debug import DBG  # [PRIMESUD] debug vnum visibility toggle
     show_vnums = "vnum" in DBG
     for v, n in counts.items():
         tpl = ITEM_DEFS[v]
@@ -977,7 +977,6 @@ def do_equipment(player, args):
         args (list): Parsed command arguments (unused).
     """
     chprintln(player, "You are wearing:")
-    from debug import DBG  # [PRIMESUD] debug vnum visibility toggle
     show_vnums = "vnum" in DBG
     for slot, label in WEAR_LABELS:
         obj = player["equip"].get(slot)
@@ -1618,7 +1617,6 @@ def do_brandish(player, args):
     _level, payload = parsed
     sn_target = None
     if payload:
-        from magic import _skill_lookup
         sn_target = _skill_lookup(payload[0])
     WaitState(player, 2 * PULSE_VIOLENCE)
     if staff.get("charges", tpl.get("charges", tpl.get("max_charges", 0))) > 0:

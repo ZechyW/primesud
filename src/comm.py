@@ -73,7 +73,7 @@ def do_say(ch, argument):
     # 1stMud's guard against a mob's prog `say` re-triggering other room mobs
     # into mutual speech recursion, so a mob speaker fires no speech triggers.
     if not ch.get("is_npc"):
-        from mobprog import speech_trigger
+        from mobprog import speech_trigger  # deferred: keep mobprog off the boot path
         speech_trigger(argument, ch)
 
 
@@ -96,7 +96,7 @@ def do_emote(ch, argument):
 
     # cf. do_emote: MOBtrigger off so free-form emote text can't fire mob act
     # triggers (a player could otherwise trip any prog by typing its phrase).
-    import mobprog
+    import mobprog  # deferred: keep mobprog off the boot path
     saved = mobprog.MOBtrigger
     mobprog.MOBtrigger = False
     try:
@@ -173,7 +173,7 @@ def do_tell(ch, argument):
     victim["reply"] = ch["id"]  # [PRIMESUD] stored as id, not dict ref (see _char_base)
     # TRIG_SPEECH: PC telling an NPC fires its speech prog (cf. do_tell, act_comm.c:624)
     if not ch.get("is_npc") and victim.get("is_npc"):
-        from mobprog import has_trigger, act_trigger
+        from mobprog import has_trigger, act_trigger  # deferred: keep mobprog off the boot path
         if has_trigger(victim, "speech"):
             act_trigger(argument, victim, ch, None, None, "speech")
 

@@ -85,9 +85,8 @@ class TestPromptName:
 
 class TestDoRename:
     def _msgs(self, monkeypatch):
-        import handler
         out = []
-        monkeypatch.setattr(handler, "chprintln",
+        monkeypatch.setattr(game_state, "chprintln",
                             lambda ch, msg: out.append(msg))
         return out
 

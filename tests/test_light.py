@@ -67,7 +67,7 @@ class TestBurnout:
         p = {"id": 1, "name": "T", "room": 1, "inv": [],
              "equip": {"light": light}, "affected_by": {}}
         msgs = []
-        monkeypatch.setattr(handler, "act",
+        monkeypatch.setattr(player, "act",
                             lambda m, ch, o, v, t: msgs.append(m))
         player._light_burnout(None, p)
         return p, light, msgs

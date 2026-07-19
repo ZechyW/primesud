@@ -10,6 +10,7 @@ from world import (OBJ_VNUM_MUSHROOM, OBJ_VNUM_LIGHT_BALL, OBJ_VNUM_SPRING,
                    OBJ_VNUM_DISC, OBJ_VNUM_PORTAL, OBJ_VNUM_ROSE)
 from colors import upper
 from classes import has_spells
+from comm import add_follower, stop_follower
 from combat import (is_safe, is_safe_spell, check_immune, dice, number_fuzzy,
                     multi_hit, damage, stop_fighting, update_pos, is_same_group,
                     gain_exp)
@@ -20,7 +21,9 @@ from config import (POS_ORDER, DAM_ACID, DAM_BASH, DAM_CHARM, DAM_COLD,
                     DAM_HARM, DAM_HOLY, DAM_LIGHT, DAM_LIGHTNING,
                     DAM_NEGATIVE, DAM_NONE, DAM_OTHER, DAM_PIERCE, DAM_POISON,
                     DAM_SLASH, IS_IMMUNE, IS_RESISTANT, IS_VULNERABLE)
-from config import R_RECALL, MAX_MORTAL_LEVEL
+from config import R_RECALL, MAX_MORTAL_LEVEL, SEX_VALUES
+from gquest import gq_is_target
+from info import do_look
 from item import (get_obj_list, obj_vnum, item_spell_level,
                   item_spells, item_spell_name, item_extra_flags,
                   item_current_charges, item_affect_list,
@@ -29,6 +32,7 @@ from item import (get_obj_list, obj_vnum, item_spell_level,
                   item_weapon_flags, can_drop_obj)
 from movement import perform_recall, get_random_room
 from picker import pick_from
+from quest import is_quester
 from scan import do_scan
 from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
 from skills_table import SKILLS, SKILL_TABLE
@@ -396,8 +400,6 @@ def spell_teleport(sn, level, ch, vo, target):
     if victim is not ch:
         chprintln(victim, "You have been teleported!")
     act("$n vanishes!", victim, None, None, TO_ROOM)
-    if victim is ch:
-        from info import do_look
     act("$n slowly fades into existence.", victim, None, None, TO_ROOM)
     if victim is ch:
         do_look(victim, [])
@@ -1286,7 +1288,6 @@ def spell_change_sex(sn, level, ch, vo, target):
         return False
     if saves_spell(level, vo, DAM_OTHER):
         return False
-    from config import SEX_VALUES
     cur_sex = SEX_VALUES.index(vo["sex"]) if vo.get("sex") in SEX_VALUES else 0
     mod = 0
     while mod == 0:
@@ -1316,7 +1317,6 @@ def spell_charm_person(sn, level, ch, vo, target):
     if room and room.get("flags", {}).get("law"):
         chprintln(ch, "The mayor does not allow charming in the city limits.")
         return False
-    from comm import add_follower, stop_follower  # lazy import to avoid circular dependency
     if victim.get("master") is not None:
         stop_follower(victim)
     add_follower(victim, ch)
@@ -1771,8 +1771,6 @@ def spell_gate(sn, level, ch, vo, target):
     src_flags = ROOM_DEFS.get(ch.get("room"), {}).get("flags", {})
     dst_flags = ROOM_DEFS.get(victim_vnum, {}).get("flags", {})
 
-    from quest import is_quester
-    from gquest import gq_is_target
     if (not can_see_room(ch, victim_vnum)
             or dst_flags.get("safe")
             # TODO [PRIMESUD] arena flag not yet implemented
@@ -1803,7 +1801,6 @@ def spell_gate(sn, level, ch, vo, target):
     old_room = ch["room"]
     ch["room"] = victim_vnum
     # act("$n has arrived through a gate.", ..., TO_ROOM) omitted -- single-player
-    from info import do_look
     do_look(ch, [])
 
     if gate_pet:
@@ -2404,8 +2401,6 @@ def spell_summon(sn, level, ch, vo, target):
     dst_flags = ROOM_DEFS.get(victim.get("room"), {}).get("flags", {})
     tpl = MOB_DEFS.get(victim.get("tpl"), {})
 
-    from quest import is_quester
-    from gquest import gq_is_target
     if (src_flags.get("safe")
             or dst_flags.get("safe")
             or dst_flags.get("private")
@@ -2734,8 +2729,6 @@ def _warp_victim(level, ch, check_from=False):
     src_flags = ROOM_DEFS.get(ch.get("room"), {}).get("flags", {})
     dst_flags = ROOM_DEFS.get(dst, {}).get("flags", {})
 
-    from quest import is_quester
-    from gquest import gq_is_target
     if (not can_see_room(ch, dst)
             or dst_flags.get("safe")
             or dst_flags.get("private")

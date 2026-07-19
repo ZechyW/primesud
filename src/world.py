@@ -1,5 +1,8 @@
 """Mutable world catalog and state loaded from area data files."""
 
+import terminal
+import config
+
 # Well-known VNUMs referenced by game logic (cf. area_limbo, area_school).
 # Names match 1stMud's vnums.h (OBJ_VNUM_*) for easy comparison against the
 # original sources. These are literal constants so game modules can import
@@ -445,7 +448,6 @@ def _loading_notice(tag):
     if _LOADING_ALL:
         return
     try:
-        import terminal
         if terminal.tr is not None:
             terminal.tprint("{D[Loading area: " + _TAG_TO_NAME.get(tag, tag) + "]{x")
     except Exception:
@@ -568,7 +570,7 @@ def _load_area(tag):
 
 def _reset_loaded_area(tag, _adef, _room_vnums, _cross_area_rooms):
     """Reset a loaded area and apply pending deltas. [PRIMESUD]"""
-    from mob import reset_area, reset_room, _object_count_map
+    from mob import reset_area, reset_room, _object_count_map  # deferred: mob imports world
     reset_area(_adef)
 
     if _cross_area_rooms:
@@ -667,7 +669,7 @@ def _apply_pending_deltas(tag, room_vnums):
         else:
             del _pending_mob_saves[_tpl]
 
-    from item import parse_item_token
+    from item import parse_item_token  # deferred: item imports world
     for _rv in list(_pending_room_items):
         if _rv not in _rvnum_set:
             continue
@@ -773,7 +775,7 @@ def _unload_area(tag):
                 _inst["fighting"] = None
 
     # Buffer floor items (mirrors the r.<vnum>.items= save lines).
-    from item import serialize_item_token
+    from item import serialize_item_token  # deferred: item imports world
     for _rv in _room_vnums:
         _rs = rooms._data.get(_rv)
         if _rs and _rs["items"]:
@@ -822,8 +824,7 @@ def maybe_evict(player):
         return
     _seq_counter += 1
     _area_seq[_tag] = _seq_counter
-    from config import AREA_CACHE_MAX
-    if len(_LOADED_AREAS) <= AREA_CACHE_MAX:
+    if len(_LOADED_AREAS) <= config.AREA_CACHE_MAX:
         return
     _keep = set(_PINNED)
     _keep.add(_tag)
@@ -840,7 +841,7 @@ def maybe_evict(player):
     _victims = [t for t in _LOADED_AREAS if t not in _keep]
     _victims.sort(key=lambda t: _area_seq.get(t, 0))
     _evicted = False
-    while _victims and len(_LOADED_AREAS) > AREA_CACHE_MAX:
+    while _victims and len(_LOADED_AREAS) > config.AREA_CACHE_MAX:
         _unload_area(_victims.pop(0))
         _evicted = True
     if _evicted:

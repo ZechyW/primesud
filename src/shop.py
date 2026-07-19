@@ -7,6 +7,8 @@ from handler import (act, chprintln, chprintlnf, is_name, can_see, can_see_obj,
 from skill_utils import get_skill, check_improve
 from comm import do_function, do_say
 from game_time import time_info
+from magic import spell_identify
+from mob import spawn_pet
 from item import (get_obj_list, obj_vnum, create_object, item_extra_flags,
                   ensure_item_extra_flags, can_drop_obj, can_carry_n,
                   can_carry_w, get_obj_weight)
@@ -196,7 +198,6 @@ def _buy_pet(player, args):
     Pets live in the room after the shop room (vnum + 1), except New Thalos
     (9621), whose stock room is 9706.
     """
-    from mob import spawn_pet  # lazy import to avoid circular dependency
 
     # hack to make new thalos pets work (cf. 1stMud/QuickMUD vnum 9621 -> 9706)
     if player["room"] == 9621:
@@ -547,5 +548,4 @@ def do_appraise(player, args):
         player["reply"] = keeper["id"]
         return
 
-    from magic import spell_identify
     spell_identify(0, player["level"], player, obj, "obj")

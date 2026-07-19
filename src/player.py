@@ -7,6 +7,10 @@ from terminal import tprint
 from config import TERMINAL_COLS
 from config import R_STARTING_ROOM
 from config import POS_ORDER
+from config import DAM_DISEASE, DAM_NONE, DAM_POISON, TYPE_UNDEFINED
+from groups import add_base_groups, add_default_groups, gn_add, group_lookup
+from skill_utils import check_improve, get_skill
+from stances import STANCE_CURRENT, STANCE_AUTODROP, STANCE_NONE
 from skills_table import (SKILLS, GSN_RECALL, GSN_FAST_HEALING, GSN_MEDITATION,
                          GSN_PLAGUE, GSN_POISON)
 from urandom import randint
@@ -143,7 +147,6 @@ def create_char(class_idx=CLASS_WARRIOR, race_name="Human"):
     # stance[] leaves new chars silently in the normal stance). First combat
     # then triggers the one-time stance pick in autodrop() -- surfaces the
     # stance system to new players.
-    from stances import STANCE_CURRENT, STANCE_AUTODROP, STANCE_NONE
     ch["stance"][STANCE_CURRENT] = STANCE_NONE
     ch["stance"][STANCE_AUTODROP] = STANCE_NONE
     # cf. 1stMud nanny.c CON_ROLL_STATS 'y' + add_default_groups ('N' path)
@@ -157,7 +160,6 @@ def create_char(class_idx=CLASS_WARRIOR, race_name="Human"):
 def group_add_basics_and_defaults(ch):
     """Grant "rom basics" + base + default groups for all held classes
     (cf. 1stMud nanny.c creation/remort grants). [PRIMESUD] helper."""
-    from groups import add_base_groups, add_default_groups, gn_add, group_lookup
     gn_add(ch, group_lookup("rom basics"))
     add_base_groups(ch)
     add_default_groups(ch)
@@ -167,7 +169,9 @@ def group_add_basics_and_defaults(ch):
 
 import handler
 from handler import (get_curr_stat, affect_remove, affect_modify, _char_base,
-                   _apply_item_modifiers, _item_armor_runtime)
+                   _apply_item_modifiers, _item_armor_runtime,
+                   act, affect_find, affect_join, chprintln, is_affected,
+                   unequip_char, TO_CHAR, TO_ROOM)
 from world import ITEM_DEFS
 
 
@@ -317,11 +321,8 @@ def _char_disease_tick(ch):
     Args:
         ch (dict): Character state dict (player or mob instance).
     """
-    from handler import is_affected, affect_find, affect_join, act, chprintln, TO_ROOM
-    from combat import damage
-    from magic import saves_spell, _new_affect
-    from config import TYPE_UNDEFINED, DAM_NONE, DAM_DISEASE, DAM_POISON
-    import world as _world
+    from combat import damage  # deferred: combat imports player
+    from magic import saves_spell, _new_affect  # deferred: magic -> combat -> player cycle
 
     if is_affected(ch, GSN_PLAGUE):
         if ch.get("room") is None:
@@ -339,17 +340,17 @@ def _char_disease_tick(ch):
         # cf. update.c:697-703 -- new contagion affect, one level weaker
         plague = _new_affect(GSN_PLAGUE, plague_level,
                              randint(1, 2 * plague_level), "str", -5, "plague")
-        room = _world.rooms.get(ch["room"])
+        room = world.rooms.get(ch["room"])
         if room is not None:
             # Room occupants: NPCs in the room + the player if present (mobs
             # are tracked per-room; the player is not -- movement.py).
             occupant_ids = list(room.get("mobs", []))
-            _player = _world.chars.get(1)
+            _player = world.chars.get(1)
             if (_player is not None and _player.get("room") == ch["room"]
                     and 1 not in occupant_ids):
                 occupant_ids.append(1)
             for vid in occupant_ids:
-                vch = _world.chars.get(vid)
+                vch = world.chars.get(vid)
                 if vch is None:
                     continue
                 if (not saves_spell(plague["level"] - 2, vch, DAM_DISEASE)
@@ -410,7 +411,6 @@ def tick_update(tr, player, room):
     Uses imported world module for player stat lookups.
     """
     # deferred: player -> skill_utils -> handler load-order
-    from skill_utils import get_skill, check_improve
     con  = get_curr_stat(player, "con")
     int_ = get_curr_stat(player, "int")
     wis  = get_curr_stat(player, "wis")
@@ -477,7 +477,7 @@ def tick_update(tr, player, room):
     # player who regens above 0 hp has no recovery path: the interpreter
     # blocks all commands below sleeping)
     if player.get("pos") == "stunned":
-        from combat import update_pos
+        from combat import update_pos  # deferred: combat imports player
         update_pos(player)
 
     _tick_affects(player, tr)
@@ -494,8 +494,7 @@ def tick_update(tr, player, room):
     # docstring), but plague/poison still tick for mobs, so a plagued or
     # poisoned NPC keeps taking damage and can still spread/catch plague from
     # the room.
-    import world as _world
-    for _inst in list(_world.chars.values()):
+    for _inst in list(world.chars.values()):
         if not _inst.get("is_npc"):
             continue
         if _inst.get("affect_list"):
@@ -517,7 +516,6 @@ def _light_burnout(tr, player):
         tr: Terminal for flicker / burnout messages.
         player (dict): Player state dict.
     """
-    from handler import act, unequip_char, TO_ROOM, TO_CHAR
     light = (player.get("equip") or {}).get("light")
     if not isinstance(light, dict):
         return

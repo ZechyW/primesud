@@ -8,10 +8,14 @@ from urandom import randint
 import world
 from config import TYPE_UNDEFINED, POS_ORDER
 from game_time import time_info
+from combat import do_backstab, do_flee, do_murder, is_safe, multi_hit
+from magic import SPELL_FUNS, TARGET_CHAR, _skill_lookup
+from movement import move_char, do_open, do_close
+from skills_table import SKILLS
 from handler import (act, chprintln, is_awake, can_see,
                      TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL)
 from item import obj_vnum, item_wear_flags
-from world import ITEM_DEFS
+from world import ITEM_DEFS, ROOM_DEFS
 
 
 def _spec_find_player(ch):
@@ -82,11 +86,9 @@ def _find_combat_victim(ch, chance=4):
 
 def _cast_spell(ch, spell_name, victim):
     """Look up spell_name and invoke its spell_fun at ch's level (cf. 1stMud skill_lookup + spell_fun call in special.c)."""
-    from magic import _skill_lookup, SPELL_FUNS, TARGET_CHAR
     sn = _skill_lookup(spell_name)
     if sn is None:
         return False
-    from skills_table import SKILLS
     sk = SKILLS.get(sn)
     if sk is None:
         return False
@@ -302,7 +304,6 @@ def spec_guard(ch):
     if ech is not None:
         # [PRIMESUD] added missing closing quote
         act("$n screams 'PROTECT THE INNOCENT!!  BANZAI!!'", ch, None, None, TO_ROOM)
-        from combat import multi_hit
         multi_hit(ch, ech, TYPE_UNDEFINED)
         return True
     return False
@@ -366,7 +367,6 @@ def _spec_gang_member(ch, rival_group, rival_taunt):
     if (not is_awake(ch) or aff.get("calm") or aff.get("charm")
             or ch.get("fighting") is not None):
         return False
-    from combat import is_safe, multi_hit
     victim = None
     count = 0
     for vch in _room_persons(ch):
@@ -441,7 +441,6 @@ def spec_patrolman(ch):
         # Same-area broadcast, excluding ch's room (cf. 1stMud char_first walk)
         player = world.chars.get(1)
         if player is not None and player["room"] != ch["room"]:
-            from world import ROOM_DEFS
             ch_area = ROOM_DEFS.get(ch["room"], {}).get("area")
             pl_area = ROOM_DEFS.get(player["room"], {}).get("area")
             if ch_area is not None and ch_area == pl_area:
@@ -463,7 +462,6 @@ def spec_patrolman(ch):
     else:
         message = "$n says 'Settle down, you hooligans!'"
     act(message, ch, None, None, TO_ALL)
-    from combat import multi_hit
     multi_hit(ch, victim, TYPE_UNDEFINED)
     return True
 
@@ -517,7 +515,6 @@ def spec_mayor(ch):
 
     token = _mayor_path[_mayor_pos]
     if token in "0123":
-        from movement import move_char
         move_char(ch, "nesw"[int(token)])
     elif token == "W":
         ch["pos"] = "standing"
@@ -542,10 +539,8 @@ def spec_mayor(ch):
         act("$n says 'I hereby declare the city of Midgaard closed!'",
             ch, None, None, TO_ROOM)
     elif token == "O":
-        from movement import do_open
         do_open(ch, ["gate"])
     elif token == "C":
-        from movement import do_close
         do_close(ch, ["gate"])
     elif token == ".":
         _mayor_move = False
@@ -565,7 +560,6 @@ def spec_nasty(ch):
         victim = _spec_find_player(ch)
         if (victim is not None and victim["level"] > ch["level"]
                 and victim["level"] < ch["level"] + 10):
-            from combat import do_backstab, do_murder
             do_backstab(ch, [], victim=victim)
             if ch.get("pos") != "fighting":
                 do_murder(ch, [], victim=victim)
@@ -587,7 +581,6 @@ def spec_nasty(ch):
         ch["gold"] = ch.get("gold", 0) + gold
         return True
     if roll == 1:
-        from combat import do_flee
         do_flee(ch, [])
         return True
     return False

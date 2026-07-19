@@ -300,8 +300,8 @@ class TestNewPlayerDefaults:
         assert get_stance(ch, STANCE_AUTODROP) == STANCE_NONE
 
     def test_first_combat_runs_stance_pick(self, monkeypatch, capsys):
-        import picker
-        monkeypatch.setattr(picker, "pick_from", lambda title, opts: 0)  # viper
+        import stances
+        monkeypatch.setattr(stances, "pick_from", lambda title, opts: 0)  # viper
         from player import create_char
         ch = create_char()
         ch["id"] = 1

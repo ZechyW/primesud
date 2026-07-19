@@ -592,7 +592,7 @@ def interpret(raw, player):
 
     # -- No match: check_social fallback, then huh message
     if not cmd:
-        from socials import check_social  # late import: socials imports commands
+        from socials import check_social  # deferred: keep socials off the boot path
         if check_social(player, command, argument):
             return None
         msg = _HUH_MESSAGES[randint(0, len(_HUH_MESSAGES) - 1)]

@@ -22,7 +22,7 @@ def is_runtime_spell(sn):
     if fun == "spell_null":
         return False
     try:
-        from magic import SPELL_FUNS
+        from magic import SPELL_FUNS  # deferred: magic imports skill_utils
         return fun in SPELL_FUNS
     except ImportError:
         return False

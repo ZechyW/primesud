@@ -1,5 +1,6 @@
 """Information and room-view command handlers."""
 
+import terminal
 import world
 from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
                     get_char_room, mob_condition, is_good, is_evil, can_see,
@@ -10,6 +11,9 @@ from automap import build_compact_lines, build_full_lines, COMPACT_W
 from classes import class_long, class_short, class_name
 from colors import color_len, upper, draw_line
 from combat import get_thac0
+from game_time import (time_info, day_name, month_name, ordinal_string,
+                       weather_report_line, DAYS_IN_WEEK, HOURS_IN_DAY)
+from races import RACE_TABLE, race_lookup
 from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, POS_FROM_SHORT, SECTOR_COLORS,
                     MAX_MORTAL_LEVEL, MAX_LEVEL, DIR_ALIASES,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC,
@@ -231,7 +235,6 @@ def do_clear(player, args):
     1stMud clear_screen sends VT100 erase codes; [PRIMESUD] the tml layer
     clears the LCD directly.
     """
-    import terminal
     terminal.tr.clear()
 
 
@@ -241,7 +244,6 @@ def show_greeting():
     Blocks on tr.input until Enter is pressed.  Called at startup
     (primesud.py).
     """
-    import terminal
     tr = terminal.tr
     tr.clear()
 
@@ -1003,8 +1005,6 @@ def do_time(player, args):
     server/multiplayer lines (boot/copyover time, timezones, connected-at,
     creation percentage) have no single-player equivalent and are omitted.
     """
-    from game_time import (time_info, day_name, month_name, ordinal_string,
-                           HOURS_IN_DAY, DAYS_IN_WEEK)
     hour = time_info["hour"]
     half = HOURS_IN_DAY // 2
     hour12 = half if hour % half == 0 else hour % half
@@ -1029,7 +1029,6 @@ def do_time(player, args):
 
 def do_weather(player, args):
     """Report the current weather to an outdoor player (cf. 1stMud do_weather in act_info.c:2470)."""
-    from game_time import weather_report_line
     room = ROOM_DEFS[player["room"]]
     # IsOutside (cf. 1stMud macro.h): a room not flagged indoors.
     if room.get("flags", {}).get("indoors"):
@@ -1346,7 +1345,6 @@ def do_affects(player, args):
         chprintln(player, "")
     # cf. 1stMud do_affects racial-ability section (act_info.c:2249-2264);
     # gated on the bits actually being set on the char (IsAffected).
-    from races import race_lookup, RACE_TABLE
     _race = race_lookup(player.get("race", "Human")) or RACE_TABLE["Human"]
     race_aff = _race.get("aff", {})
     affected_by = player.get("affected_by", {})

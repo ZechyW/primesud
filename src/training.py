@@ -11,6 +11,12 @@ from info import print_practice_table
 from inventory import do_outfit
 from picker import pick_from
 from comm import do_say
+from game_state import save_world
+from gquest import gquester
+from magic import _skill_lookup
+from mob import scale_pet
+from player import group_add_basics_and_defaults, reset_char
+from quest import is_quester
 from races import RACE_TABLE, PC_RACE_ORDER
 from groups import GROUP_TABLE, gn_add, group_lookup, group_rating
 from skill_utils import (can_use_skill_spell, find_skill_spell, skill_level,
@@ -261,8 +267,6 @@ def do_remort(player, args):
     # reset (1stMud refuses here: "You can't remort any more!").
     tier_reset = len(player["classes"]) >= MAX_REMORT
 
-    from quest import is_quester
-    from gquest import gquester
     if is_quester(player) or gquester(player):
         chprintln(player, "Don't you want to finish your quest first?")
         return
@@ -366,7 +370,6 @@ def _apply_remort_race(player, race_name):
     player["form_flags"] = dict(race.get("form", {}))
     player["part_flags"] = dict(race.get("parts", {}))
     # racial skills at 1% (cf. nanny.c:536-541 group_add loop)
-    from magic import _skill_lookup  # deferred: training -> magic cycle risk
     for rsk_name in race.get("skills", ()):
         sn = _skill_lookup(rsk_name)
         if sn is not None and player["learned"].get(sn, 0) == 0:
@@ -385,7 +388,6 @@ def finish_remort(player, new_class, new_race=None, new_sex=None):
         new_sex (str or None): Sex pick ("male"/"female"/"neutral"); None
             keeps the current sex.
     """
-    from player import reset_char
 
     # cf. 1stMud: nanny appends the new class (CON_GET_NEW_CLASS) before
     # finish_remort computes b, and the level reset happens after -- so
@@ -426,7 +428,6 @@ def finish_remort(player, new_class, new_race=None, new_sex=None):
     reset_char(player)
 
     # [PRIMESUD] Pets share their owner's prestige reset instead of being purged.
-    from mob import scale_pet
     scale_pet(player, reset=True)
 
     # cf. 1stMud finish_remort learned loop: in-progress (<100) skills reset
@@ -440,7 +441,6 @@ def finish_remort(player, new_class, new_race=None, new_sex=None):
             learned[sn] = 1
     # cf. 1stMud nanny remort flow: re-grants "rom basics" + base + default
     # groups for ALL held classes (CON_ROLL_STATS 'y' + add_default_groups).
-    from player import group_add_basics_and_defaults
     group_add_basics_and_defaults(player)
     # [PRIMESUD] Upstream sets weapon 40 / recall 50 BEFORE the reset loop,
     # so a 1stMud remort actually restarts them at 1%. Kinder here: set
@@ -456,7 +456,6 @@ def finish_remort(player, new_class, new_race=None, new_sex=None):
     chprintln(player,
               "You are brought back to reality, and you feel quite different now...")
     do_outfit(player, "")
-    from game_state import save_world
     save_world(quiet=True)
 
 
@@ -479,7 +478,6 @@ def finish_tier_reset(player, new_class, new_race=None, new_sex=None):
         new_sex (str or None): Sex pick ("male"/"female"/"neutral"); None
             keeps the current sex.
     """
-    from player import reset_char
 
     tier = player.get("tier", 0) + 1
     player["tier"] = tier
@@ -523,7 +521,6 @@ def finish_tier_reset(player, new_class, new_race=None, new_sex=None):
     reset_char(player)
 
     # [PRIMESUD] One optional evolution step per tier; unlinked pets still scale.
-    from mob import scale_pet
     scale_pet(player, evolve=True, reset=True)
 
     # mastered (100) skills kept as in finish_remort; in-progress skills
@@ -533,7 +530,6 @@ def finish_tier_reset(player, new_class, new_race=None, new_sex=None):
     for sn in list(learned):
         if 0 < learned[sn] < 100:
             learned[sn] = max(1, min(learned[sn], floor))
-    from player import group_add_basics_and_defaults
     group_add_basics_and_defaults(player)
     # same weapon-40 / recall-50 kindness floors as finish_remort
     wgsn = WEAPON_GSN_MAP[CLASS_TABLE[new_class]["weapon"]]
@@ -548,7 +544,6 @@ def finish_tier_reset(player, new_class, new_race=None, new_sex=None):
               "The world unravels and reforms around you; you begin anew,"
               " yet something of your old self remains...")
     do_outfit(player, "")
-    from game_state import save_world
     save_world(quiet=True)
 
 

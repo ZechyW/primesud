@@ -3,6 +3,7 @@
 import world
 from world import ITEM_DEFS, ROOM_DEFS
 from item import obj_vnum, item_affect_remove
+from handler import unequip_char
 from urandom import randint
 import terminal
 from config import (
@@ -238,7 +239,6 @@ def obj_update(tr, player):
         timer -= 1
         obj["timer"] = timer
         if timer == 0:
-            from handler import unequip_char
             tr.print(_decay_message(obj))
             # Floating equipped container: spill contents to room
             # (cf. 1stMud update.c:910-913)

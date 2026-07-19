@@ -2,7 +2,8 @@
 
 import world
 from world import ITEM_DEFS, MOB_DEFS
-from handler import is_name, number_argument, can_see_obj
+from config import STR_APP_CARRY
+from handler import is_name, number_argument, can_see_obj, get_curr_stat
 
 # Item types that can hold contents, for loot/look-in purposes [PRIMESUD]:
 # matches 1stMud's do_get/get_obj_list acceptance of ITEM_CONTAINER plus
@@ -644,14 +645,11 @@ def can_drop_obj(ch, obj):
 
 def can_carry_n(ch):
     """Max number of items ch can carry (cf. 1stMud can_carry_n in handler.c)."""
-    from handler import get_curr_stat
     return 20 + 2 * get_curr_stat(ch, "dex") + ch["level"]
 
 
 def can_carry_w(ch):
     """Max carry weight for ch in tenths of lbs (cf. 1stMud can_carry_w in handler.c)."""
-    from handler import get_curr_stat
-    from config import STR_APP_CARRY
     return STR_APP_CARRY[get_curr_stat(ch, "str")] * 10 + ch["level"] * 25
 
 

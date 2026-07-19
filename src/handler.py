@@ -7,6 +7,7 @@ from config import (LEVEL_IMMORTAL, MAX_STATS,
                     STR_APP_WIELD, POS_ORDER,
                     SEX_VALUES)
 from races import race_lookup, RACE_TABLE
+from skills_table import GSN_SNEAK
 from terminal import tprint
 from urandom import randint
 import world
@@ -599,7 +600,6 @@ def equip_char(char, obj, slot):
 
 def _player_char():
     """Return the runtime player character, if present. [PRIMESUD]"""
-    import world
     return world.chars.get(1)
 
 
@@ -922,7 +922,6 @@ def _act_to_player(format, ch, arg1, arg2, type, min_pos):
                 return
             # TO_ZONE: same area check
             if isinstance(ch, dict) and ch.get("room") is not None:
-                from world import ROOM_DEFS
                 ch_area = ROOM_DEFS.get(ch["room"], {}).get("area")
                 pl_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
                 if ch_area is not None and ch_area == pl_area:
@@ -957,10 +956,9 @@ def _act_trigger_mobs(format, ch, arg1, arg2, type):
     must not have its own act output recursively fire further act triggers, a
     hard recursion bound for the Prime's small stack.
     """
-    import mobprog
+    import mobprog  # deferred: keep mobprog off the boot path
     if not mobprog.MOBtrigger:
         return
-    import world
     has_trigger = mobprog.has_trigger
     vch = arg2 if isinstance(arg2, dict) and "room" in arg2 else None
     # Collect only the NPC recipients that actually carry an act trigger, so a
@@ -1155,7 +1153,7 @@ def can_see(ch, victim):
         if tpl:
             if ch.get("quest_status") and tpl == ch.get("quest_mob", 0):
                 return True
-            from gquest import gquest_info, GQUEST_RUNNING, gq_is_player_target
+            from gquest import gquest_info, GQUEST_RUNNING, gq_is_player_target  # deferred: gquest imports handler
             if (gquest_info["running"] == GQUEST_RUNNING
                     and gq_is_player_target(tpl)):
                 return True
@@ -1179,8 +1177,7 @@ def can_see(ch, victim):
 
     if (v_aff.get("sneak") and not ch_aff.get("detect_hidden")
             and victim.get("fighting") is None):
-        from skill_utils import get_skill
-        from skills_table import GSN_SNEAK
+        from skill_utils import get_skill  # deferred: skill_utils imports handler
         chance = get_skill(victim, GSN_SNEAK,
                            is_mob=bool(victim.get("is_npc")))
         chance += get_curr_stat(victim, "dex") * 3 // 2

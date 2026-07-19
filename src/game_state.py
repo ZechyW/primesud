@@ -3,23 +3,26 @@
 from util import gc_collect
 from prime_platform import hvars_get, hvars_set
 from config import SAVE_VAR, FNKEY_NAMES, R_STARTING_ROOM
-from game_time import time_info
+from game_time import time_info, SUN_DARK, SUN_RISE, SUN_LIGHT, SUN_SET
 from item import serialize_item_token, parse_item_token
 import terminal
 from terminal import tprint
 import world
-from world import ROOM_DEFS, AREA_DEFS
+from world import ROOM_DEFS, AREA_DEFS, MOB_DEFS
 from inventory import do_outfit
 from macros import _MACRO_SUBST
 from quest import rescale_quest_gear
 from gquest import gq_save_lines, gq_load_line, gq_reset
-from mob import reset_area, create_area_states
+from mob import reset_area, create_area_states, spawn_pet
 from player import create_char, reset_char, _EQUIP_SAVE_ORDER
 from picker import pick_from
 from classes import CLASS_TABLE
 from races import race_lookup, PC_RACE_ORDER, RACE_TABLE
 from skills_table import WEAPON_GSN_MAP
 from colors import capitalize
+from debug import DBG, dbg
+from handler import affect_to_char, chprintln
+from info import do_help
 from explored import encode_rle, decode_rle
 
 
@@ -37,7 +40,7 @@ SAVE_VERSION = 9  # v9: p.explored RLE mask (explore tracking); v8: item lh: tok
 
 # Per-area weather packed save line: a.<tag>.w=<temp>|<tv>|<precip>|<pv>|<wind>|<wv>
 # (cf. game_time weather model). [PRIMESUD] One line per area instead of six
-# (~6 kB -> ~1.3 kB of payload for 49 areas). Missing/short lines keep the
+# (~6 kB -> ~1.3 kB of payload for 48 areas). Missing/short lines keep the
 # freshly seeded random values on load; pre-pack saves' a.<tag>.temp=-style
 # lines fall through as ignored unknown keys (one-time weather reroll).
 _WEATHER_PACK_FIELDS = ("temp", "temp_vector", "precip", "precip_vector",
@@ -252,7 +255,6 @@ def save_world(quiet=False):
             tprint("Saved.")
         else:
             # [PRIMESUD] 'debug save' channel makes silent autosaves visible
-            from debug import DBG, dbg
             if "save" in DBG:
                 dbg("autosave")
         return True
@@ -422,7 +424,6 @@ def load_world():
                 time_info["day"] = int(parts[1])
                 time_info["month"] = int(parts[2])
                 time_info["year"] = int(parts[3])
-                from game_time import SUN_DARK, SUN_RISE, SUN_LIGHT, SUN_SET
                 h = time_info["hour"]
                 if h < 5 or h >= 20:
                     time_info["sunlight"] = SUN_DARK
@@ -446,14 +447,12 @@ def load_world():
 
     # Restore pet in the player's room (cf. 1stMud fread_pet in save.c)
     if _pet_save:
-        from world import MOB_DEFS
         parts = _pet_save.split("|")
         try:
             _tpl = int(parts[0])
         except ValueError:
             _tpl = None
         if _tpl is not None and _tpl in MOB_DEFS:
-            from mob import spawn_pet
             _hp = (int(parts[1]) if len(parts) > 1
                    and parts[1].lstrip("-").isdigit() else None)
             _max = (int(parts[2]) if len(parts) > 2
@@ -467,7 +466,6 @@ def load_world():
                 _pet["hit"] = max(1, min(_hp, _pet["max_hit"]))
             # Re-apply saved affects (cf. 1stMud fread_pet "Affc" entries)
             if _pet_affects:
-                from handler import affect_to_char
                 for entry in _pet_affects.split("|"):
                     if not entry:
                         continue
@@ -563,7 +561,7 @@ def _prompt_name(default="Hero", allow_cancel=False):
     Returns:
         str or None: Sanitized 2-12 letter name, or None if cancelled.
     """
-    from namegen import random_name
+    from namegen import random_name  # deferred: keep namegen off the boot path
     names = [random_name() for _ in range(6)]
     while True:
         idx = pick_from("By what name do you wish to be known?",
@@ -599,7 +597,6 @@ def do_rename(ch, args):
         ch (dict): Acting character.
         args (list): Optional [new_name].
     """
-    from handler import chprintln  # late import: handler pulls in game deps
     if args:
         name = _sanitize_name(args[0])
         if not name:
@@ -687,7 +684,6 @@ def new_game(game):
     # Newbie info help (cf. 1stMud nanny.c CON_READ_MOTD level==0 block:
     # do_function(ch, &nanny_help, "newbie info")). Local import: matches this
     # module's existing lazy-import style for less-frequently-used deps.
-    from info import do_help
     do_help(player, ["newbie", "info"])
 
     save_game(game, quiet=True)

@@ -374,9 +374,8 @@ def test_set_object_field(scene, out):
 
 
 def test_bare_debug_lists_subcommands(scene, out, monkeypatch):
-    import pager
     pages = []
-    monkeypatch.setattr(pager, "tpage", lambda lines: pages.extend(lines))
+    monkeypatch.setattr(debug, "tpage", lambda lines: pages.extend(lines))
     _run(scene["player"], "")
     joined = "\n".join(pages)
     for sub in debug._SUBCMDS:

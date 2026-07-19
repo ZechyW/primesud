@@ -4,6 +4,7 @@ import world
 from handler import act, chprintln, get_char_room, is_awake, is_name, \
     TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT
 from urandom import randint
+from commands import one_argument
 
 SOCIALS_FILE = "socials.txt"  # [PRIMESUD] canonical source; idx via tools/build_socials_idx.py
 SOCIALS_IDX = "socials.idx"   # [PRIMESUD] '<offset>|<length>|<name>' per entry, sorted by name
@@ -118,7 +119,6 @@ def check_social(player, command, argument):
 
     # late import: commands.py imports socials [PRIMESUD] (cf. info.py's
     # _help_is_name late-import of commands.split_args for the same reason)
-    from commands import one_argument
     arg, _rest = one_argument(argument)
 
     if not arg:
