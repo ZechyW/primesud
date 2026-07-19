@@ -41,7 +41,6 @@ OBJ_VNUM_SCHOOL_POLEARM = 3722
 # big areas load last where heap pressure is unavoidable anyway.
 _AREA_FILES = [
     ("area_ofcol.txt", "ofcol", "Ofcol", 5500, 5599),                 # 7084 bytes
-    ("area_quifael.txt", "quifael", "Quifael's", 6900, 6999),         # 7443 bytes
     ("area_limbo.txt", "limbo", "Limbo", 1, 99),                      # 9466 bytes
     ("area_quest.txt", "quest", "Quest", 200, 249),                   # 12528 bytes
     ("area_trollden.txt", "trollden", "Troll Den", 2800, 2899),       # 19073 bytes
@@ -139,7 +138,6 @@ AREA_LEVELS = {
     "nirvana":    (30, 35),
     "olympus":    (5, 50),
     "pyramid":    (1, 60),  # credits carry "5-50" (unparsed -> converter default)
-    "quifael":    (31, 35),
     "redferne":   (20, 30),
     "smurf":      (1, 10),
     "thalos":     (10, 25),
@@ -161,7 +159,6 @@ AREA_LEVELS = {
 # [PRIMESUD]
 AREA_BUILDERS = {
     "ofcol":      "Alfa",
-    "quifael":    "Quifael",
     "limbo":      "Diku",
     "quest":      "1stMud",
     "trollden":   "Merc",
@@ -221,7 +218,6 @@ AREA_LVL_COMMENTS = {
 
 _AREA_ADJ = {
     "ofcol":      ("ofcol2", "plains"),
-    "quifael":    ("midgaard",),
     "limbo":      ("midgaard",),
     "quest":      ("midgaard",),
     "trollden":   ("haon",),
@@ -273,7 +269,6 @@ _AREA_ADJ = {
 
 AREA_ROOM_COUNTS = {
     "ofcol":      8,
-    "quifael":    6,
     "limbo":      3,
     "quest":      3,
     "trollden":   5,
