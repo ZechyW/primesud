@@ -622,6 +622,13 @@ def mobile_update(tr, player):
             spec = SPEC_TABLE.get(spec_name)
             if spec is not None and spec(inst):
                 continue
+        # Shopkeeper wealth top-up (cf. 1stMud update.c:435-442).
+        shop = tpl.get("shop")
+        if shop is not None:
+            wealth = tpl.get("wealth", 0)
+            if inst["gold"] * 100 + inst["silver"] < wealth:
+                inst["gold"] += wealth * randint(1, 20) // 5000000
+                inst["silver"] += wealth * randint(1, 20) // 50000
         # [PRIMESUD] random/delay mobprog pulse (cf. char_update, update.c:444-462);
         # gated on position == default_pos, so fighting/knocked-down mobs skip it.
         from mobprog import pulse_mob

@@ -23,21 +23,31 @@ time_info = {
 }
 
 
-def time_update():
-    """Advance game clock by one hour (cf. 1stMud time_update in weather.c).
+def time_update(tr, player):
+    """Advance game clock by one hour and echo time-of-day changes
+    (cf. 1stMud time_update in weather.c:648-681).
 
     Called once per PULSE_TICK from update_handler.
+
+    Args:
+        tr: Terminal for the time-of-day echo.
+        player (dict): Player state dict.
     """
     time_info["hour"] += 1
+    hour = time_info["hour"]
 
-    if time_info["hour"] == 5:
+    if hour == 5:
         time_info["sunlight"] = SUN_RISE
-    elif time_info["hour"] == 6:
+    elif hour == 6:
         time_info["sunlight"] = SUN_LIGHT
-    elif time_info["hour"] == 18:
+    elif hour == 19:
         time_info["sunlight"] = SUN_SET
-    elif time_info["hour"] == 20:
+    elif hour == 20:
         time_info["sunlight"] = SUN_DARK
+
+    # cf. 1stMud time_update switch(++hour): echo cases are 5, 6, 12, 19, 20
+    if hour in (5, 6, 12, 19, 20):
+        _echo_time_of_day(tr, player, hour)
 
     if time_info["hour"] >= HOURS_IN_DAY:
         time_info["hour"] = 0
@@ -50,6 +60,99 @@ def time_update():
     if time_info["month"] >= MONTHS_IN_YEAR:
         time_info["month"] = 0
         time_info["year"] += 1
+
+
+# -- Time-of-day echoes (cf. 1stMud get_time_echo in weather.c:413-516) --------
+_DAY_BEGUN_MSGS = [
+    "The day has begun.",
+    "The day has begun.",
+    "The sky slowly begins to glow.",
+    "The sun slowly embarks upon a new day.",
+]
+
+_SUNRISE_MSGS = [
+    "The sun rises in the east.",
+    "The sun rises in the east.",
+    "The hazy sun rises over the horizon.",
+    "Day breaks as the sun lifts into the sky.",
+]
+
+_NOON_MSGS = [
+    "The intensity of the sun heralds the noon hour.",
+    "The sun's bright rays beat down upon your shoulders.",
+]
+
+_SUNSET_MSGS = [
+    "The sun slowly disappears in the west.",
+    "The reddish sun sets past the horizon.",
+    "The sky turns a reddish orange as the sun ends its journey.",
+    "The sun's radiance dims as it sinks in the sky.",
+]
+
+_NIGHT_CLOUDY_MSGS = [
+    "The night begins.",
+    "Twilight descends around you.",
+]
+
+_NIGHT_CLEAR_MSGS = [
+    "The moon's gentle glow diffuses through the night sky.",
+    "The night sky gleams with glittering starlight.",
+]
+
+
+def _echo_time_of_day(tr, player, hour):
+    """Print a time-of-day echo to the player (cf. 1stMud get_time_echo in
+    weather.c:413-516, called from time_update's hour switch). [PRIMESUD]
+
+    1stMud sends the echo to every awake, outdoor descriptor; PrimeSUD is
+    single-player, so this only ever addresses ``player``, and only when
+    outdoors and awake (cf. mob.py weather_update's ``outdoor_awake`` check,
+    reused here in the same shape).
+
+    Args:
+        tr: Terminal for the echo.
+        player (dict): Player state dict.
+        hour (int): The just-advanced hour -- one of 5, 6, 12, 19, 20.
+    """
+    from handler import is_awake
+    import world
+    from world import ROOM_DEFS
+
+    proom = ROOM_DEFS[player["room"]] if player["room"] in ROOM_DEFS._data else None
+    if (proom is None or proom.get("flags", {}).get("indoors")
+            or not is_awake(player)):
+        return
+
+    ptag = proom.get("area")
+    w = None
+    for area in world.areas:
+        if area.get("tag") == ptag:
+            w = area.get("weather")
+            break
+    if w is None:
+        return
+
+    pindex = _weather_index(w.get("precip", 0))
+    n = randint(0, 3)  # cf. 1stMud number_bits(2)
+
+    if hour == 5:
+        msg, color = _DAY_BEGUN_MSGS[n], "{Y"
+    elif hour == 6:
+        msg, color = _SUNRISE_MSGS[n], "{y"
+    elif hour == 12:
+        if pindex > 0:
+            msg, color = "It's noon.", "{W"
+        else:
+            msg, color = _NOON_MSGS[n % 2], "{W"
+    elif hour == 19:
+        msg, color = _SUNSET_MSGS[n], "{R"
+    else:  # hour == 20
+        if pindex > 0:
+            msg, color = _NIGHT_CLOUDY_MSGS[n % 2], "{b"
+        else:
+            msg, color = _NIGHT_CLEAR_MSGS[n % 2], "{b"
+
+    tr.print(color + msg + "{x")
 
 
 # -- Calendar names (cf. 1stMud day_name / month_name in const.c) --------------

@@ -36,6 +36,7 @@ from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
 from scan import do_scan
 from shop import do_buy, do_sell, do_list, do_value, do_appraise
 from system_cmds import do_save, do_quit
+from game_state import do_rename
 from debug import do_debug
 from pager import tpage
 from terminal import tprint
@@ -271,7 +272,9 @@ _CMD_TABLE = [
     ("remort",     do_remort,     "standing", True),   # #177 noprefix
     ("gquest",    do_gquest,     "resting",  False),  # #178
     ("explored",   do_explored,   "sleeping", False),  # #179
-    # --- Immortal commands #180-#252 ---
+    # --- 1stMud ordinals #180-#252 (band label only: mostly immortal
+    # commands, but #203 `prime` is a mortal multiclass command -- see
+    # docs/PARITY.md port-candidates) ---
     # ("advance",   do_advance,    "dead",     False),  # #180 imm lvl 60
     # ("announce",  do_announce,   "dead",     False),  # #181 imm lvl 53
     # ("trust",     do_trust,      "dead",     False),  # #182 imm lvl 60
@@ -433,7 +436,7 @@ _CMD_TABLE = [
     # ("version",   do_version,    "dead",     False),  # #338
     # ("sshow",     do_sshow,      "sleeping", False),  # #339
     ("appraise",  do_appraise,   "standing", False),  # #340
-    # ("rename",    do_rename,     "dead",     True),   # #341 noprefix, imm lvl 59
+    ("rename",    do_rename,     "resting",  True),   # #341 noprefix; [PRIMESUD] mortal self-rename (upstream imm rename-others in act_wiz.c not ported)
     # ("path",      do_path,       "resting",  False),  # #342
     # ("nopretitles", do_nopretitles, "sleeping", False), # #343
     ("suicide",    do_suicide,    "resting",  True),   # #344 noprefix

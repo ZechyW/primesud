@@ -14,7 +14,9 @@ from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, POS_FROM_SHORT, SECTO
                     MAX_MORTAL_LEVEL, MAX_LEVEL, DIR_ALIASES,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC,
                     WEAR_LABELS)
-from item import get_obj_here, obj_vnum, item_extra_flags, item_container_flags
+from item import (get_obj_here, obj_vnum, item_extra_flags,
+                  item_container_flags, liquid_color, liquid_left,
+                  liquid_total, liquid_type)
 from picker import pick_from
 from player import (PLR_AUTOMAP, PLR_AUTOSKILL, PLR_AUTOLOOT, PLR_AUTOSAC,
                     PLR_AUTOGOLD, PLR_AUTOSPLIT, PLR_AUTOASSIST, PLR_AUTOEXIT,
@@ -125,10 +127,14 @@ _FLAG_TABLE = (
     (PLR_AUTOSPLIT, "autosplit", "Automatically splits gold between group members."),
     # PLR_AUTOPROMPT "autoprompt": [PRIMESUD] not ported -- the status bar
     # is the prompt and is always visible, so selective display is moot
-    # TODO: COMM_COMPACT "compact" - compact output (comm flags)
-    # TODO: COMM_PROMPT "prompt" - prompt display (comm flags)
-    # TODO: COMM_GPROMPT "gprompt" - group prompt (comm flags)
-    # TODO: COMM_COMBINE "combine" - combine duplicate objects (comm flags)
+    # TODO: COMM_COMPACT "compact" - compact output (comm flags; port-candidate,
+    # see docs/PARITY.md)
+    # COMM_PROMPT/COMM_GPROMPT "prompt"/"gprompt": [PRIMESUD] not ported --
+    # superseded by the always-visible status bar, same reasoning as
+    # autoprompt above (closed 19/07/2026 parity sweep)
+    # COMM_COMBINE "combine": [PRIMESUD] not ported -- inventory display is
+    # already always-combined and a long-form toggle is moot on the 320x240
+    # screen (closed 19/07/2026 parity sweep)
     # TODO: PLR_CANLOOT "noloot" - prevent corpse looting (inverted flag)
     # TODO: PLR_NOSUMMON "nosummon" - block summoning
     # TODO: PLR_NOFOLLOW "nofollow" - block following
@@ -367,10 +373,9 @@ _CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
 def _look_in(player, args):
     """Show contents of a container in room or inventory (cf. 1stMud do_look 'in' case in act_info.c).
 
-    ITEM_DRINK_CON branch not ported -- drink containers don't exist yet
-    [PRIMESUD].
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; closed-container check added and re-verified 05/07/2026]
+    04/07/2026; closed-container check added and re-verified 05/07/2026;
+    ITEM_DRINK_CON branch added and re-verified 19/07/2026]
     """
     if not args:
         chprintln(player, "Look in what?")
@@ -381,6 +386,24 @@ def _look_in(player, args):
         chprintln(player, "You do not see that here.")
         return
     tpl = ITEM_DEFS[obj_vnum(obj)]
+    if tpl.get("type") == "drink":
+        # cf. 1stMud do_look 'in' ITEM_DRINK_CON case, act_info.c:1205-1220
+        left = liquid_left(obj, tpl)
+        if left <= 0:
+            chprintln(player, "It is empty.")
+            return
+        total = liquid_total(obj, tpl)
+        if left < total // 4:
+            frac = "less than half-"
+        elif left < 3 * total // 4:
+            frac = "about half-"
+        else:
+            frac = "more than half-"
+        # [PRIMESUD] transient UI string -- % formatting ok per CLAUDE.md;
+        # double space after "with" matches upstream's format string exactly
+        chprintln(player, "It's %sfilled with  a %s liquid." %
+                  (frac, liquid_color(liquid_type(obj, tpl))))
+        return
     if tpl.get("type") not in _CONTAINER_TYPES:
         chprintln(player, "That is not a container.")
         return

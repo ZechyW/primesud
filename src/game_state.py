@@ -5,6 +5,7 @@ from prime_platform import hvars_get, hvars_set
 from config import SAVE_VAR, FNKEY_NAMES, R_STARTING_ROOM
 from game_time import time_info
 from item import serialize_item_token, parse_item_token
+import terminal
 from terminal import tprint
 import world
 from world import ROOM_DEFS, AREA_DEFS
@@ -544,6 +545,74 @@ def _sanitize_name(raw):
     return capitalize("".join(letters))
 
 
+def _prompt_name(default="Hero", allow_cancel=False):
+    """Name picker: generated suggestions, reroll, or typed entry. [PRIMESUD]
+
+    Replaces 1stMud's typed-only CON_GET_NAME with a pick_from list of
+    namegen suggestions (cf. get_random_name in namegen.c) -- typing a name
+    on the calculator keyboard is painful. "Type my own..." drops to the
+    original tr.input flow with *default* pre-filled.
+
+    Args:
+        default (str): Pre-filled name for the typed-entry path.
+        allow_cancel (bool): If True, Esc returns None (rename command);
+            if False, Esc re-shows the same picker (a fat-fingered Esc in
+            chargen must not dump the player into typed entry -- cf.
+            _pick_required).
+
+    Returns:
+        str or None: Sanitized 2-12 letter name, or None if cancelled.
+    """
+    from namegen import random_name
+    names = [random_name() for _ in range(6)]
+    while True:
+        idx = pick_from("By what name do you wish to be known?",
+                        names + ["More names...", "Type my own..."])
+        if 0 <= idx < 6:
+            return names[idx]
+        if idx == 6:
+            names = [random_name() for _ in range(6)]  # reroll
+            continue
+        if idx < 0:  # Esc
+            if allow_cancel:
+                return None
+            continue  # re-show same suggestions
+        while True:  # "Type my own..." chosen explicitly
+            raw = terminal.tr.input("By what name do you wish to be known?\n",
+                                    default=default)
+            name = _sanitize_name(raw)
+            if name:
+                return name
+            tprint("Illegal name, try another.")
+
+
+def do_rename(ch, args):
+    """Change your character's name at any time. [PRIMESUD]
+
+    Solo game: no player roster or other players, and the save file name is
+    fixed, so renaming is free and consequence-free. Upstream do_rename
+    (act_wiz.c:4284, imm renames another player) is not ported. With an
+    argument renames directly (same 2-12 letter rules as chargen); with no
+    argument opens the chargen name picker (Esc cancels).
+
+    Args:
+        ch (dict): Acting character.
+        args (list): Optional [new_name].
+    """
+    from handler import chprintln  # late import: handler pulls in game deps
+    if args:
+        name = _sanitize_name(args[0])
+        if not name:
+            chprintln(ch, "Illegal name, try another.")
+            return
+    else:
+        name = _prompt_name(default=ch.get("name", "Hero"), allow_cancel=True)
+        if name is None:
+            return
+    ch["name"] = name
+    chprintln(ch, "You are now known as " + name + ".")
+
+
 def new_game(game):
     """Create a new game world with a fresh player character. [PRIMESUD]
 
@@ -558,16 +627,10 @@ def new_game(game):
     Args:
         game: Game instance (supplies the terminal for prompts).
     """
-    # Name prompt (cf. 1stMud nanny.c CON_GET_NAME). [PRIMESUD] "Hero" is
-    # pre-filled on the input line -- bare Enter accepts it, backspace to
-    # replace; invalid entries re-prompt like nanny's illegal-name path.
-    while True:
-        raw_name = game.tr.input("By what name do you wish to be known?\n",
-                                 default="Hero")
-        name = _sanitize_name(raw_name)
-        if name:
-            break
-        game.tr.print("Illegal name, try another.")
+    # Name prompt (cf. 1stMud nanny.c CON_GET_NAME). [PRIMESUD] picker of
+    # namegen suggestions; "Type my own..." path keeps "Hero" pre-filled
+    # and re-prompts on invalid entry like nanny's illegal-name path.
+    name = _prompt_name()
 
     # Race choice (cf. 1stMud nanny.c CON_GET_NEW_RACE; [PRIMESUD] picker with
     # one-line summaries instead of bare list + 'help <race>'). PC_RACE_ORDER,

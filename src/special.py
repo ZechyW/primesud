@@ -6,7 +6,8 @@ Signature: spec_fun(ch) -> bool, matching 1stMud Spec_Fun macro.
 from urandom import randint
 
 import world
-from config import TYPE_UNDEFINED
+from config import TYPE_UNDEFINED, POS_ORDER
+from game_time import time_info
 from handler import (act, chprintln, is_awake, can_see,
                      TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL)
 from item import obj_vnum, item_wear_flags
@@ -467,21 +468,108 @@ def spec_patrolman(ch):
     return True
 
 
+# Mayor's scripted gate-walk path strings (cf. 1stMud spec_mayor open_path/
+# close_path in special.c). Digits 0-3 step n/e/s/w; letters speak/wake/
+# sleep; 'O'/'C' open/close the "gate"-keyworded exit in the mayor's current
+# room (only Midgaard's west and east gates carry that keyword -- north and
+# south never had one upstream either, so the mayor never touches them,
+# matching 1stMud exactly); '.' ends the walk.
+_MAYOR_OPEN_PATH = "W3a3003b33000c111d0d111Oe333333Oe22c222112212111a1S."
+_MAYOR_CLOSE_PATH = "W3a3003b33000c111d0d111CE333333CE22c222112212111a1S."
+
+# [PRIMESUD] module-level state mirrors 1stMud's `static` locals in
+# spec_mayor (special.c:1006-1008): they persist for the process lifetime,
+# shared across every mob using this spec_fun. Stock Midgaard has exactly
+# one mayor, so a single-slot latch here is equivalent.
+_mayor_path = None
+_mayor_pos = 0
+_mayor_move = False
+
+
 def spec_mayor(ch):
-    """Mayor's scripted gate walk (cf. 1stMud spec_mayor in special.c)."""
+    """Mayor's scripted day/night gate walk (cf. 1stMud spec_mayor in special.c).
+
+    Fights like a mage if attacked; otherwise advances one token of the
+    open/close path per call once the path is latched at 6am/8pm.
+
+    Returns:
+        bool: Always False -- the walk never consumes the mob's normal turn
+            (cf. 1stMud spec_mayor: every path branch falls through to the
+            trailing ``return false``).
+    """
+    global _mayor_path, _mayor_pos, _mayor_move
+
+    if not _mayor_move:
+        if time_info["hour"] == 6:
+            _mayor_path = _MAYOR_OPEN_PATH
+            _mayor_move = True
+            _mayor_pos = 0
+        if time_info["hour"] == 20:
+            _mayor_path = _MAYOR_CLOSE_PATH
+            _mayor_move = True
+            _mayor_pos = 0
+
     if ch.get("fighting") is not None:
         return spec_cast_mage(ch)
-    # [PRIMESUD] TODO stub -- scripted open/close gate path walk not ported
+
+    if not _mayor_move or POS_ORDER[ch["pos"]] < POS_ORDER["sleeping"]:
+        return False
+
+    token = _mayor_path[_mayor_pos]
+    if token in "0123":
+        from movement import move_char
+        move_char(ch, "nesw"[int(token)])
+    elif token == "W":
+        ch["pos"] = "standing"
+        act("$n awakens and groans loudly.", ch, None, None, TO_ROOM)
+    elif token == "S":
+        ch["pos"] = "sleeping"
+        act("$n lies down and falls asleep.", ch, None, None, TO_ROOM)
+    elif token == "a":
+        act("$n says 'Hello Honey!'", ch, None, None, TO_ROOM)
+    elif token == "b":
+        act("$n says 'What a view!  I must do something about that dump!'",
+            ch, None, None, TO_ROOM)
+    elif token == "c":
+        act("$n says 'Vandals!  Youngsters have no respect for anything!'",
+            ch, None, None, TO_ROOM)
+    elif token == "d":
+        act("$n says 'Good day, citizens!'", ch, None, None, TO_ROOM)
+    elif token == "e":
+        act("$n says 'I hereby declare the city of Midgaard open!'",
+            ch, None, None, TO_ROOM)
+    elif token == "E":
+        act("$n says 'I hereby declare the city of Midgaard closed!'",
+            ch, None, None, TO_ROOM)
+    elif token == "O":
+        from movement import do_open
+        do_open(ch, ["gate"])
+    elif token == "C":
+        from movement import do_close
+        do_close(ch, ["gate"])
+    elif token == ".":
+        _mayor_move = False
+
+    _mayor_pos += 1
     return False
 
 
 def spec_nasty(ch):
-    """Rob players in combat: purse-slash or flee (cf. 1stMud spec_nasty in special.c)."""
+    """Ambush a wealthy-looking player, then rob or flee once fighting (cf. 1stMud spec_nasty in special.c)."""
     if not is_awake(ch):
         return False
     if ch.get("pos") != "fighting":
-        # [PRIMESUD] TODO backstab/murder opener not ported (do_backstab
-        # cannot target the player); in-combat behaviour below works
+        # 1stMud walks all room persons for a victim whose level is above
+        # ch's but within 10; the player is the only non-NPC candidate
+        # [PRIMESUD]
+        victim = _spec_find_player(ch)
+        if (victim is not None and victim["level"] > ch["level"]
+                and victim["level"] < ch["level"] + 10):
+            from combat import do_backstab, do_murder
+            do_backstab(ch, [], victim=victim)
+            if ch.get("pos") != "fighting":
+                do_murder(ch, [], victim=victim)
+            return True
         return False
     victim = world.chars.get(ch.get("fighting"))
     if victim is None:
@@ -527,8 +615,28 @@ def spec_registar(ch):
 
 
 def spec_fido(ch):
-    """Eat corpses in room (cf. 1stMud spec_fido in special.c)."""
-    # [PRIMESUD] stub -- corpse system not yet ported
+    """Devour the first NPC corpse in the room (cf. 1stMud spec_fido in special.c).
+
+    Corpse contents spill onto the room floor and the corpse is removed,
+    matching 1stMud's obj_from_obj/obj_to_room + extract_obj sequence.
+
+    Returns:
+        bool: True if a corpse was eaten (mob's turn is consumed).
+    """
+    if not is_awake(ch):
+        return False
+    rs = world.rooms.get(ch["room"])
+    if rs is None:
+        return False
+    for corpse in list(rs.get("items", [])):
+        tpl = ITEM_DEFS[obj_vnum(corpse)]
+        if tpl.get("type") != "npc_corpse":
+            continue
+        act("$n savagely devours a corpse.", ch, None, None, TO_ROOM)
+        for inner in corpse.get("contents", []):
+            rs["items"].append(inner)
+        rs["items"].remove(corpse)
+        return True
     return False
 
 

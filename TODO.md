@@ -36,8 +36,21 @@ Two-track release plan:
 
 - Genuinely still-deferred commands (commented-out rows in
   `commands.py:_CMD_TABLE`): `gossip`, `shout`, `bank`, `auction`, `path`,
-  `play`, immortal commands. Port when/if a solo gameplay hook appears.
-  (`alias`/`unalias` and socials ported 10/07/2026.)
+  immortal commands. Port when/if a solo gameplay hook appears.
+  (`alias`/`unalias` and socials ported 10/07/2026. `play` re-bucketed
+  19/07/2026: it is NOT multiplayer-only -- Midgaard ships a jukebox
+  object -- solo port-candidate, see docs/PARITY.md.)
+
+## Housing
+
+- **Player housing (homes.c) — discussion deferred (19/07/2026).** Not a
+  parity item: no stock area carries `AREA_PLAYER_HOMES`, so the system is
+  inert even upstream without imm-built content, and the faithful port
+  needs runtime room creation + world-state persistence (our save surface
+  is player-only). Possible middle ground for 1.0: ship it as a [PRIMESUD]
+  feature adapted to our context — pre-built home area in area data,
+  `home` command subset (buy/recall/describe/furnish), home state saved as
+  a player-owned blob — rather than full OLC. Decide before the 1.0 gate.
 
 ## Area data
 
@@ -72,9 +85,9 @@ Two-track release plan:
   future area with a dangling exit would surface it. Belongs in world.py
   after-load if ever needed.
 - **Room flag `save_objs` (bit 22, 1stMud extension) has no runtime reader** —
-  carried by the Limbo Morgue room (vnum 3, `areas/limbo.are`); investigate
-  how 1stMud uses it (room contents persisting across reboot/reset) before
-  porting.
+  resolved 19/07/2026 (parity sweep): its only stock use is player-home
+  floor persistence (homes.c:313); the home system is unported, so the
+  flag is N/A. No runtime reader needed.
 
 ## Tests
 

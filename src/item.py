@@ -145,6 +145,103 @@ def set_item_container_flag(obj, tpl, flag, enabled):
     return flags
 
 
+def liquid_left(obj, tpl):
+    """Return current liquid units for a drink object. [PRIMESUD]"""
+    if isinstance(obj, dict) and "liquid_left" in obj:
+        return obj["liquid_left"]
+    return tpl.get("liquid_left", 0)
+
+
+def liquid_total(obj, tpl):
+    """Return liquid capacity for a drink object. [PRIMESUD]"""
+    if isinstance(obj, dict) and "liquid_total" in obj:
+        return obj["liquid_total"]
+    return tpl.get("liquid_total", 0)
+
+
+def liquid_type(obj, tpl):
+    """Return current liquid type for a drink object. [PRIMESUD]"""
+    if isinstance(obj, dict) and "liquid_type" in obj:
+        return obj["liquid_type"]
+    return tpl.get("liquid_type", "water")
+
+
+def set_liquid(obj, tpl, left, liq):
+    """Persist mutable liquid state onto an item instance. [PRIMESUD]"""
+    obj["liquid_total"] = liquid_total(obj, tpl)
+    obj["liquid_left"] = left
+    obj["liquid_type"] = liq
+
+
+# Full liquid table name -> (color, sip), cf. 1stMud liq_table in const.c.
+# liq_color is liq_table[].liq_color; sip is liq_affect[4]. Unlisted
+# liquids fall back to water. [PRIMESUD] proof/full/thirst/food values
+# (liq_affect[0..3]) are dropped -- hunger/thirst/drunk condition tracking
+# is intentionally unported (see do_drink docstring in inventory.py).
+LIQ_TABLE = {
+    "water":             ("clear",         16),
+    "beer":               ("amber",         12),
+    "red wine":           ("burgundy",       5),
+    "ale":                ("brown",         12),
+    "dark ale":           ("dark",          12),
+    "whisky":             ("golden",         2),
+    "lemonade":           ("pink",          12),
+    "firebreather":       ("boiling",        2),
+    "local specialty":    ("clear",          2),
+    "slime mold juice":   ("green",          2),
+    "milk":               ("white",         12),
+    "tea":                ("tan",            6),
+    "coffee":             ("black",          6),
+    "blood":              ("red",            6),
+    "salt water":         ("clear",          1),
+    "coke":               ("brown",         12),
+    "root beer":          ("brown",         12),
+    "elvish wine":        ("green",          5),
+    "white wine":         ("golden",         5),
+    "champagne":          ("golden",         5),
+    "mead":               ("honey-colored", 12),
+    "rose wine":          ("pink",           5),
+    "benedictine wine":   ("burgundy",       5),
+    "vodka":              ("clear",          2),
+    "cranberry juice":    ("red",           12),
+    "orange juice":       ("orange",        12),
+    "absinthe":           ("green",          2),
+    "brandy":             ("golden",         4),
+    "aquavit":            ("clear",          2),
+    "schnapps":           ("clear",          2),
+    "icewine":            ("purple",         5),
+    "amontillado":        ("burgundy",       5),
+    "sherry":             ("red",            5),
+    "framboise":          ("red",            5),
+    "rum":                ("amber",          2),
+    "cordial":            ("clear",          2),
+}
+
+
+def liquid_color(liq):
+    """Return liq_table color name for a liquid, defaulting to water's. [PRIMESUD]
+
+    Args:
+        liq (str): Liquid type name.
+
+    Returns:
+        str: Colour name (cf. 1stMud liq_table[].liq_color in const.c).
+    """
+    return LIQ_TABLE.get(liq, LIQ_TABLE["water"])[0]
+
+
+def liq_sip(liq):
+    """Return liq_table sip size for a liquid, defaulting to water's. [PRIMESUD]
+
+    Args:
+        liq (str): Liquid type name.
+
+    Returns:
+        int: Sip amount (cf. 1stMud liq_table[].liq_affect[4] in const.c).
+    """
+    return LIQ_TABLE.get(liq, LIQ_TABLE["water"])[1]
+
+
 def item_affect_list(obj):
     """Return runtime object affects list, defaulting to empty list. [PRIMESUD]"""
     if isinstance(obj, dict):

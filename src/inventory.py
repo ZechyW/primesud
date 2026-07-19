@@ -11,12 +11,13 @@ from world import (OBJ_VNUM_SCHOOL_BANNER,
                    OBJ_VNUM_SCHOOL_VEST, OBJ_VNUM_SCHOOL_SHIELD,
                    OBJ_VNUM_SCHOOL_STAFF, OBJ_VNUM_SCHOOL_AXE, OBJ_VNUM_SCHOOL_FLAIL,
                    OBJ_VNUM_SCHOOL_WHIP, OBJ_VNUM_SCHOOL_POLEARM)
-from combat import _get_weapon_skill, is_safe, multi_hit, number_fuzzy, create_money
+from combat import (_get_weapon_skill, is_safe, multi_hit, number_fuzzy,
+                    create_money, _get_size)
 from comm import do_yell
 from skill_utils import WaitState, check_improve, get_skill
 from config import (STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS,
                     MAX_LEVEL, MAX_MORTAL_LEVEL, TYPE_UNDEFINED,
-                    ATTACK_TABLE, DAM_BASH)
+                    ATTACK_TABLE, DAM_BASH, SIZE_RANK)
 from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   item_extra_flags, item_wear_flags, apply_money_pickup,
                   can_drop_obj, can_carry_n, can_carry_w, get_obj_weight,
@@ -25,7 +26,12 @@ from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   item_container_flags, set_item_container_flag,
                   CONTAINER_TYPES,
                   item_type as _item_type,
-                  promote_obj as _promote_obj)
+                  promote_obj as _promote_obj,
+                  liquid_left as _liquid_left,
+                  liquid_total as _liquid_total,
+                  liquid_type as _liquid_type,
+                  set_liquid as _set_liquid,
+                  liq_sip as _liq_sip)
 from magic import (cast_item_spells, validate_item_spell_payload,
                    _new_affect, _skill_lookup)
 from picker import pick_from
@@ -833,6 +839,25 @@ def wear_obj(player, obj, fReplace):
         if tpl.get("weight", 0) > wield_limit * 10:
             chprintln(player, "It is too heavy for you to wield.")
             return
+        # cf. 1stMud wear_obj wield-vs-shield two-hand check, act_obj.c:1631-1637
+        if (_get_size(player) < SIZE_RANK["large"]
+                and item_weapon_flags(obj, tpl).get("two_hands")
+                and player["equip"].get("shield") is not None):
+            chprintln(player, "You need two hands free for that weapon.")
+            return
+    elif slot == "shield":
+        # cf. 1stMud wear_obj shield-vs-dual-wield check, act_obj.c:1593-1597
+        if player["equip"].get("secondary") is not None:
+            chprintln(player, "You cannot use a shield while using 2 weapons.")
+            return
+        # cf. 1stMud wear_obj shield-vs-two-hand-weapon check, act_obj.c:1602-1608
+        wobj = player["equip"].get("wield")
+        if wobj is not None:
+            wtpl = ITEM_DEFS[wobj["vnum"]]
+            if (_get_size(player) < SIZE_RANK["large"]
+                    and item_weapon_flags(wobj, wtpl).get("two_hands")):
+                chprintln(player, "Your hands are tied up with your weapon!")
+                return
 
     chprintln(player, _WEAR_MSG[slot].format(tpl["short_descr"]))
     if _zap_anti_align(player, obj, tpl):
@@ -1340,34 +1365,6 @@ def do_eat(player, args):
                                         None, 0, "poison"))
 
 
-def _liquid_left(obj, tpl):
-    """Return current liquid units for a drink object. [PRIMESUD]"""
-    if isinstance(obj, dict) and "liquid_left" in obj:
-        return obj["liquid_left"]
-    return tpl.get("liquid_left", 0)
-
-
-def _liquid_total(obj, tpl):
-    """Return liquid capacity for a drink object. [PRIMESUD]"""
-    if isinstance(obj, dict) and "liquid_total" in obj:
-        return obj["liquid_total"]
-    return tpl.get("liquid_total", 0)
-
-
-def _liquid_type(obj, tpl):
-    """Return current liquid type for a drink object. [PRIMESUD]"""
-    if isinstance(obj, dict) and "liquid_type" in obj:
-        return obj["liquid_type"]
-    return tpl.get("liquid_type", "water")
-
-
-def _set_liquid(obj, tpl, left, liq):
-    """Persist mutable liquid state onto an item instance. [PRIMESUD]"""
-    obj["liquid_total"] = _liquid_total(obj, tpl)
-    obj["liquid_left"] = left
-    obj["liquid_type"] = liq
-
-
 def _is_poisoned_drink(obj, tpl):
     """Return True if drink object/template is poisoned. [PRIMESUD]
 
@@ -1388,15 +1385,6 @@ def _is_poisoned_food(obj, tpl):
     if isinstance(obj, dict) and "poisoned" in obj:
         return obj["poisoned"]
     return tpl.get("poisoned")
-
-
-# Sip sizes for liquids used in area data, from 1stMud liq_table
-# liq_affect[4] (cf. const.c); unlisted liquids fall back to water.
-_LIQ_SIP = {
-    "water": 16, "beer": 12, "red wine": 5, "ale": 12, "dark ale": 12,
-    "whisky": 2, "firebreather": 2, "local specialty": 2, "milk": 12,
-    "tea": 6, "coffee": 6, "blood": 6,
-}
 
 
 def _first_room_fountain(player):
@@ -1427,13 +1415,13 @@ def do_drink(player, args):
     otype = tpl.get("type")
     if otype == "fountain":
         liq = _liquid_type(obj, tpl)
-        amount = _LIQ_SIP.get(liq, _LIQ_SIP["water"]) * 3
+        amount = _liq_sip(liq) * 3
     elif otype == "drink":
         if _liquid_left(obj, tpl) <= 0:
             chprintln(player, "It is already empty.")
             return
         liq = _liquid_type(obj, tpl)
-        amount = min(_LIQ_SIP.get(liq, _LIQ_SIP["water"]), _liquid_left(obj, tpl))
+        amount = min(_liq_sip(liq), _liquid_left(obj, tpl))
     else:
         chprintln(player, "You can't drink from that.")
         return

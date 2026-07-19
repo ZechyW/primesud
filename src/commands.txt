@@ -90,6 +90,7 @@ recall|pray for transport to the recall point
 recite|recite a magical scroll at a target
 remort|be reborn into a new class at max level
 remove|take off a worn or wielded item
+rename|change your name: rename <new> or bare for suggestions
 reply|answer the last mob that spoke to you
 rescue|pull a friend out of combat
 rest|sit down and rest to recover faster

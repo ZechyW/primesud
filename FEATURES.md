@@ -50,6 +50,10 @@ that into features rather than holes.
 - **Pickers replace typing** -- `kill`, `get`, `wear`, `cast`, `practice`,
   `train`, `examine`, `open`/`unlock`, remort, chargen: given no argument,
   each opens a numbered target menu instead of failing (docs/PRIME_UX.md).
+- **Name picker and free rename** -- chargen offers six generated fantasy
+  names (1stMud's namegen syllable pools) with reroll and typed-entry
+  options, and `rename` changes your name anytime -- no roster, no
+  consequences (namegen.py, game_state.py).
 - **The `debug` command** -- one player-facing command consolidates ROM's
   immortal staff kit: stat, goto, load, purge, restore, slay, advance, set,
   mwhere/owhere, plus holylight and vnum-display toggles (debug.py).

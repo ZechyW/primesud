@@ -83,7 +83,7 @@ def update_handler():
         if "tick" in DBG:  # [PRIMESUD]
             dbg("pulse tick")
         weather_update(tr, player)
-        time_update()
+        time_update(tr, player)
         player["played"] = player.get("played", 0) + TICK_SECS
         tick_update(tr, player, ROOM_DEFS[player["room"]])
         obj_update(tr, player)

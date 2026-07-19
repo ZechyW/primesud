@@ -545,7 +545,8 @@ file's `MOBILES` section is a conversion error, not a silently dropped entry.
 | `open_hour`   | int     | Game hour the shop opens (0-23) |
 | `close_hour`  | int     | Game hour the shop closes (0-23) |
 
-[PRIMESUD] deferred: buy/sell commands not yet implemented.
+Consumed by `shop.py` (`buy`/`sell`/`list`/`value`, open/close hours,
+profit margins). (Stale "deferred" note removed 19/07/2026.)
 
 ---
 
@@ -602,7 +603,8 @@ him/her/it, `$s`/`$S` = his/her/its. `None` = no message for that case.
 Socials are global (not per-area) in ROM. The converter preserves them per-file;
 `world.py` merges all `SOCIALS` tuples into one table at load time.
 
-[PRIMESUD] deferred: social commands not yet implemented.
+Consumed by the social command dispatch (ported 10/07/2026; see
+`socials.py`). (Stale "deferred" note removed 19/07/2026.)
 
 ---
 
@@ -651,7 +653,8 @@ Mob templates reference programs via `mob_triggers` in their `MOBILES` entry:
 | `delay`      | After a programmed delay |
 | `surrender`  | Mob surrenders |
 
-[PRIMESUD] deferred: mob_prog interpreter not yet implemented.
+Consumed by `mobprog.py` (ported 10/07/2026; `surr` trigger wired
+19/07/2026). (Stale "deferred" note removed 19/07/2026.)
 
 ---
 

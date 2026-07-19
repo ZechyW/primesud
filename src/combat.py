@@ -1692,21 +1692,29 @@ def do_kick(ch, args):
     return None
 
 
-def do_backstab(ch, args):
+def do_backstab(ch, args, victim=None):
     """Backstab a target from behind (cf. 1stMud do_backstab in fight.c).
     [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- check_killer not ported.
+    04/07/2026; direct-victim parameter added and re-verified 19/07/2026]
+    -- check_killer not ported.
 
     Args:
         ch (dict): Acting character (player or mob instance).
-        args (list): Command arguments -- target keyword.
+        args (list): Command arguments -- target keyword.  Ignored when
+            `victim` is given.
+        victim (dict, optional): Pre-resolved target. [PRIMESUD] 1stMud
+            resolves the target by name via a room person list that holds
+            both players and NPCs; our `get_char_room` only searches NPC
+            instances (players aren't modeled as mob instances), so callers
+            that already know the target -- e.g. a mob attacking the player
+            in special.py -- pass it directly instead of a name fragment.
     """
     # [PRIMESUD] explicit gate; 1stMud lets it through but get_skill returns 0 -> guaranteed miss + lag
     if not ch["is_npc"] and GSN_BACKSTAB not in ch["learned"]:
         chprintln(ch, "You don't know how to backstab.")
         return None
 
-    if not args:
+    if victim is None and not args:
         chprintln(ch, "Backstab whom?")
         return None
 
@@ -1714,13 +1722,14 @@ def do_backstab(ch, args):
         chprintln(ch, "You're facing the wrong end.")
         return None
 
-    rs = world.rooms[ch["room"]]
-    target_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
-    if target_id is None:
-        chprintln(ch, "They aren't here.")
-        return None
+    if victim is None:
+        rs = world.rooms[ch["room"]]
+        target_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
+        if target_id is None:
+            chprintln(ch, "They aren't here.")
+            return None
+        victim = world.chars[target_id]
 
-    victim = world.chars[target_id]
     if victim is ch:
         chprintln(ch, "How can you sneak up on yourself?")
         return None
@@ -2809,7 +2818,7 @@ def _exit_to(exit_val):
 
 # -- Do_Fun ports from fight.c ------------------------------------------------
 
-def do_murder(ch, args):
+def do_murder(ch, args, victim=None):
     """Attack a target with a yell for help (cf. 1stMud do_murder in fight.c).
 
     In ROM/Merc MUDs, ``kill`` was the normal PvE command while ``murder``
@@ -2818,13 +2827,18 @@ def do_murder(ch, args):
     so the practical difference is just the yell broadcast and the noprefix
     flag (can't trigger by abbreviation).
     [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- check_killer not ported; yell rendered locally.
+    04/07/2026; direct-victim parameter added and re-verified 19/07/2026]
+    -- check_killer not ported; yell rendered locally.
 
     Args:
         ch (dict): Acting character.
-        args (list): Target keyword.
+        args (list): Target keyword.  Ignored when `victim` is given.
+        victim (dict, optional): Pre-resolved target, for callers that
+            already know it (e.g. a mob attacking the player in
+            special.py) -- see do_backstab's `victim` param for why
+            name-based lookup can't reach the player. [PRIMESUD]
     """
-    if not args:
+    if victim is None and not args:
         chprintln(ch, "Murder whom?")
         return None
 
@@ -2832,13 +2846,14 @@ def do_murder(ch, args):
     if ch.get("affected_by", {}).get("charm"):
         return None
 
-    rs = world.rooms[ch["room"]]
-    mob_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
-    if mob_id is None:
-        chprintln(ch, "They aren't here.")
-        return None
+    if victim is None:
+        rs = world.rooms[ch["room"]]
+        mob_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
+        if mob_id is None:
+            chprintln(ch, "They aren't here.")
+            return None
+        victim = world.chars[mob_id]
 
-    victim = world.chars[mob_id]
     if victim is ch:
         chprintln(ch, "Suicide is a mortal sin.")
         return None
@@ -3541,7 +3556,7 @@ def do_disarm(ch, args):
 def do_surrender(ch, args):
     """Surrender to current opponent (cf. 1stMud do_surrender in fight.c).
     [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- TRIG_SURR mobprog not ported (mob always resumes).
+    04/07/2026; TRIG_SURR mobprog trigger added and re-verified 19/07/2026].
 
     Args:
         ch (dict): Acting character.
@@ -3560,14 +3575,21 @@ def do_surrender(ch, args):
 
     act("You surrender to $N!", ch, None, mob, TO_CHAR)
     act("$n surrenders to you!", ch, None, mob, TO_VICT)
+    act("$n tries to surrender to $N!", ch, None, mob, TO_NOTVICT)
 
     stop_fighting(ch, both=True)
 
-    # 1stMud: if (!IsNPC(ch) && IsNPC(mob) && no TRIG_SURR) mob resumes attack
+    # 1stMud: if (!IsNPC(ch) && IsNPC(mob) && (!HasTriggerMob(mob, TRIG_SURR)
+    # || !p_percent_trigger(mob, NULL, NULL, ch, NULL, NULL, TRIG_SURR)))
+    # mob resumes attack. percent_trigger() already returns False when the
+    # mob carries no "surr" trigger, so a single call covers both halves of
+    # the upstream condition (cf. mobprog.py kill_trigger/death_trigger for
+    # the same call convention).
     if not ch["is_npc"] and mob["is_npc"]:
-        # [PRIMESUD] TRIG_SURR not ported; mob always ignores surrender
-        act("$N seems to ignore your cowardly act!", ch, None, mob, TO_CHAR)
-        multi_hit(mob, ch)
+        from mobprog import percent_trigger
+        if not percent_trigger(mob, ch, None, None, "surr"):
+            act("$N seems to ignore your cowardly act!", ch, None, mob, TO_CHAR)
+            multi_hit(mob, ch)
     return None
 
 
