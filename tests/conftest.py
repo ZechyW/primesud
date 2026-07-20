@@ -13,6 +13,20 @@ init_terminal()
 import world
 
 
+@pytest.fixture(autouse=True)
+def isolate_persistence(tmp_path, monkeypatch):
+    """Keep tests away from the PC player's real save files."""
+    import game_state
+    import prime_platform
+
+    monkeypatch.setattr(prime_platform, "_HVARS_FILE",
+                        str(tmp_path / "hvars.json"))
+    monkeypatch.setattr(game_state, "SAVE_FILE",
+                        str(tmp_path / "primesud.sav"))
+    monkeypatch.setattr(game_state, "BACKUP_FILE",
+                        str(tmp_path / "primesud_backup.sav"))
+
+
 def _write_area_txt(path, rooms, mobiles=None, objects=None, resets=None,
                area=None, mobprogs=None, objprogs=None, roomprogs=None):
     """Write a synthetic area .txt data file for testing.
