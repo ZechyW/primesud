@@ -92,6 +92,7 @@ Remaining open candidates:
 | areadeaths / areakills | M | act_info.c:4139-4251 | per-area tallies; same new-counter plumbing |
 | objprog/roomprog engine | L | programs.c; db2.c #OBJPROGS/#ROOMPROGS | reopened 20/07/2026 (was closed as excluded); scope upgraded same day to FULL engine (user decision): all obj/room triggers (12/9), op/rp command tables (24/23), cmd_eval_obj/_room ifcheck subsets, plus mobprog completion (23 remaining ifchecks, gtransfer/gforce/vforce). Phase 0 completed 20/07/2026: converter/world data plumbing and the 2 originally dropped Midgaard progs restored (obj 3005 `O DROP 100`, room 3054 `R GRALL 100`); no behavior yet. Phased plan: PROGS_PLAN.md |
 | bank / balance | L | economy.c:36-140 | shares minigame; TODO.md already defers. Stock lore (midgaard.are vnum 3140 liquidation notice) says bank defunct + no death-gold-loss, so solo value dubious — lean drop |
+| locate object: unloaded areas | M | magic.c:3523 (obj_first is world-global) | spell_locate_object scans loaded areas only (noted in its docstring 20/07/2026). objs.idx could name areas whose templates match, but live floor/carried state of unloaded areas sits in pending-save buffers — needs design before porting |
 
 ### Debug-toolkit candidates (imm commands with solo debug value)
 

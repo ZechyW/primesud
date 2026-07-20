@@ -2,7 +2,7 @@
 
 import world
 from handler import (is_name, is_affected, affect_to_char, affect_join, affect_strip, is_awake,
-                   can_see, can_see_room, act, chprintln, get_char_room, equip_char,
+                   can_see, can_see_obj, can_see_room, act, chprintln, get_char_room, equip_char,
                    unequip_char, tpl_flag_affects, get_curr_stat,
                    TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
                    is_good, is_evil, is_neutral)
@@ -425,8 +425,11 @@ def _collect_objs_recursive(obj_list, location, out):
 
 def spell_locate_object(sn, level, ch, vo, target):
     """Locate object by name fragment (cf. 1stMud spell_locate_object in magic.c).
-    [Verified: 03/07/2026] -- immortal branches and can_see checks not
-    ported; "carried by you" instead of player name is [PRIMESUD].
+    [Verified: 03/07/2026; can_see_obj filter and invisible-carrier
+    "somewhere" branch added and re-verified 20/07/2026] -- immortal
+    branches not ported; "carried by you" instead of player name is
+    [PRIMESUD]. [PRIMESUD] scans loaded areas only (1stMud obj_first is
+    world-global); unloaded-area coverage tracked in docs/PARITY.md.
 
     Recurses into container contents to match 1stMud's flat obj_first
     iteration (magic.c:3523).
@@ -450,7 +453,12 @@ def spell_locate_object(sn, level, ch, vo, target):
     for cid, mob in world.chars.items():
         if not mob.get("is_npc"):
             continue
-        mloc = "one is carried by " + MOB_DEFS[mob["tpl"]]["short_descr"]
+        if can_see(ch, mob):
+            mloc = "one is carried by " + MOB_DEFS[mob["tpl"]]["short_descr"]
+        else:
+            # invisible carrier: upstream falls to the room branch, and a
+            # carried obj has no room (magic.c:3536-3549)
+            mloc = "one is in somewhere"
         _collect_objs_recursive(mob.get("inv", []), mloc, world_objs)
         for obj in mob.get("equip", {}).values():
             if obj is not None:
@@ -458,6 +466,8 @@ def spell_locate_object(sn, level, ch, vo, target):
                 _collect_objs_recursive(obj.get("contents", []), mloc, world_objs)
     for obj, line in world_objs:
         tpl = ITEM_DEFS[obj_vnum(obj)]
+        if not can_see_obj(ch, obj):
+            continue
         if not is_name(wanted, tpl.get("keywords", "")):
             continue
         if item_extra_flags(obj, tpl).get("no_locate"):
