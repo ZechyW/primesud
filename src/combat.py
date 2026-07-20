@@ -3292,7 +3292,8 @@ def do_trip(ch, args):
 def do_flee(ch, args):
     """Attempt to flee from combat (cf. 1stMud do_flee in fight.c).
     [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- arena check not ported; [PRIMESUD] auto-look
+    04/07/2026; flee-look switched to "auto" arg and re-verified
+    20/07/2026] -- arena check not ported; [PRIMESUD] auto-look
     after fleeing.
 
     Works for both players and NPCs.
@@ -3363,7 +3364,7 @@ def do_flee(ch, args):
 
         stop_fighting(ch, both=True)
         if not is_npc:
-            do_look(ch, [])
+            do_look(ch, ["auto"])  # [PRIMESUD] flee-look; "auto" so brief mode applies
         return None
 
     chprintln(ch, "PANIC! You couldn't escape!")
