@@ -935,18 +935,81 @@ def _debug_clone(player, args):
                          or world.ITEM_DEFS[obj["vnum"]].get("short_descr", "it")))
 
 
-def _debug_pstat(player, args):
-    """Show a mob's prog triggers and live prog state (cf. 1stMud do_pstat in
-    programs.c). [PRIMESUD]
+def _pstat_trigs(trigs):
+    """Shared pstat trigger-table printer. [PRIMESUD]"""
+    if not trigs:
+        terminal.tr.print("[No programs set]")
+        return
+    i = 0
+    for t in trigs:
+        i += 1
+        terminal.tr.print("[%2d] Trigger [%-8s] Program [%4d] Phrase [%s]"
+                          % (i, t[0], t[1], t[2]))
 
-    Mob half only (obj/room progs not ported). Takes a room mob name or a
-    template vnum.
+
+def _debug_pstat(player, args):
+    """Show prog triggers and live prog state for a mob, obj, or room
+    (cf. 1stMud do_pstat in programs.c). [PRIMESUD]
+
+    ``pstat <mob|vnum>`` (mob form, default), ``pstat room [vnum]``,
+    ``pstat obj <name|vnum>``.  The room form defaults to the current room;
+    the obj name form finds a world instance (live oprog delay/target), the
+    vnum forms show the template's trigger table only.
     """
     from handler import get_char_room
 
     if not args:
-        terminal.tr.print("debug pstat <mob|vnum>")
+        terminal.tr.print("debug pstat <mob|vnum> | room [vnum] | obj <name|vnum>")
         return
+    sub = args[0].lower()
+    rest = args[1:]
+    if "room".startswith(sub):
+        if not rest:
+            vnum = player["room"]
+        elif rest[0].isdigit():
+            vnum = int(rest[0])
+        else:
+            terminal.tr.print("You must provide a number.")
+            return
+        tpl = world.ROOM_DEFS._data.get(vnum)
+        if tpl is None:
+            terminal.tr.print("No such room.")
+            return
+        terminal.tr.print("Room #%-6d [%s]" % (vnum, tpl.get("name", "")))
+        rs = world.rooms._data.get(vnum) or {}
+        tgt = rs.get("rprog_target")
+        terminal.tr.print("Delay   %-6d [%s]"
+                          % (rs.get("rprog_delay", 0),
+                             "No target" if tgt is None else str(tgt)))
+        _pstat_trigs(tpl.get("room_triggers"))
+        return
+    if "object".startswith(sub):
+        if not rest:
+            terminal.tr.print("No such object.")
+            return
+        obj = None
+        if rest[0].isdigit():
+            vnum = int(rest[0])
+        else:
+            import mobprog  # deferred: keep mobprog off the boot path
+            obj = mobprog._get_obj_world(player, rest[0])
+            if obj is None or not isinstance(obj, dict):
+                terminal.tr.print("No such object.")
+                return
+            vnum = obj["vnum"]
+        tpl = world.ITEM_DEFS.get(vnum)
+        if tpl is None:
+            terminal.tr.print("No such object.")
+            return
+        terminal.tr.print("Object #%-6d [%s]" % (vnum, tpl.get("short_descr", "")))
+        tgt = obj.get("oprog_target") if obj is not None else None
+        terminal.tr.print("Delay   %-6d [%s]"
+                          % ((obj or {}).get("oprog_delay", 0),
+                             "No target" if tgt is None else str(tgt)))
+        _pstat_trigs(tpl.get("obj_triggers"))
+        return
+    if "mobile".startswith(sub) and rest:
+        args = rest  # explicit mob form: shift to the default handling below
     inst = None
     if args[0].isdigit():
         vnum = int(args[0])
@@ -967,29 +1030,24 @@ def _debug_pstat(player, args):
         terminal.tr.print("Delay   %-6d [%s]"
                           % (inst.get("mprog_delay", 0),
                              "No target" if tgt is None else str(tgt)))
-    trigs = tpl.get("mob_triggers")
-    if not trigs:
-        terminal.tr.print("[No programs set]")
-        return
-    i = 0
-    for t in trigs:
-        i += 1
-        terminal.tr.print("[%2d] Trigger [%-8s] Program [%4d] Phrase [%s]"
-                          % (i, t[0], t[1], t[2]))
+    _pstat_trigs(tpl.get("mob_triggers"))
 
 
 def _debug_pdump(player, args):
-    """Page a mobprog's source by vnum (cf. 1stMud do_pdump in programs.c). [PRIMESUD]
+    """Page a program's source by vnum (cf. 1stMud do_pdump in programs.c). [PRIMESUD]
 
-    Mob half only. Progs merge into world.MOBPROGS as their area loads, so
-    an unloaded area's progs are not visible yet.
+    Upstream keeps one global prog list shared by all three origins; here the
+    vnum is looked up across MOBPROGS, OBJPROGS, and ROOMPROGS.  Progs merge
+    in as their area loads, so an unloaded area's progs are not visible yet.
     """
     if not args or not args[0].isdigit():
         terminal.tr.print("debug pdump <vnum>")
         return
-    code = world.MOBPROGS.get(int(args[0]))
+    v = int(args[0])
+    code = (world.MOBPROGS.get(v) or world.OBJPROGS.get(v)
+            or world.ROOMPROGS.get(v))
     if code is None:
-        terminal.tr.print("No such MOBprogram.")
+        terminal.tr.print("No such program.")
         return
     tpage(code.split("\n"))
 
@@ -1014,8 +1072,8 @@ _SUBCMDS = (
     ("force",   _debug_force,   "make a character run a command"),
     ("spellup", _debug_spellup, "cast all qspell buffs on a char"),
     ("clone",   _debug_clone,   "duplicate mob/object with live state"),
-    ("pstat",   _debug_pstat,   "list a mob's prog triggers"),
-    ("pdump",   _debug_pdump,   "print a mobprog's source by vnum"),
+    ("pstat",   _debug_pstat,   "list mob/obj/room prog triggers"),
+    ("pdump",   _debug_pdump,   "print a program's source by vnum"),
 )
 
 

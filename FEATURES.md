@@ -36,6 +36,12 @@ Things with no upstream equivalent.
 - **Gquest countdowns** -- global quests self-schedule on a real-minute timer
   and announce "a global quest will begin in about N minutes" beforehand
   (gquest.py).
+- **Obj/room progs in the QuickMUD area format** -- the full 1stMud prog
+  engine (mob, object, and room programs: every trigger, `obj`/`room`
+  command table, and ifcheck) is authorable straight in the `.are` files
+  via `O`/`R` trailers plus `#OBJPROGS`/`#ROOMPROGS` sections, a [PRIMESUD]
+  dialect extension to the QuickMUD format 1stMud never had (docs/
+  AREA_FILES.md; DESIGN.md "MOBprograms").
 - **Autoskill combat automation** -- `autoskill` fires one offensive debuff,
   spell, or skill per combat round through the normal handlers at full
   mana/lag/fizzle cost; rotation is player-editable via a navpad-driven
@@ -192,5 +198,4 @@ Recorded decisions, not gaps (DESIGN.md "Not ported" has the reasons):
 - Saving-throw race/class/equipment modifiers -- flat 0 baseline for now.
 - Furniture mechanics -- every furniture object in stock content has all-zero
   values; nothing to sit on yet.
-- Object and room mobprogs -- mob progs only; no stock content uses the rest.
 - Item condition/wear -- parsed by the converter, unmodeled at runtime.

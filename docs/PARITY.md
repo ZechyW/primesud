@@ -93,7 +93,6 @@ Remaining open candidates:
 | index | M | act_info.c:2672 | help category index; needs category metadata in help.txt + build_help_idx.py |
 | mobdeaths / mobkills | M | act_info.c:3909-4020 | solo bestiary stats; needs per-template counters. NB upstream naming inverted (fight.c:1941/1968: area->kills = PC deaths) |
 | areadeaths / areakills | M | act_info.c:4139-4251 | per-area tallies; same new-counter plumbing |
-| objprog/roomprog engine | L | programs.c; db2.c #OBJPROGS/#ROOMPROGS | reopened 20/07/2026 (was closed as excluded); scope upgraded same day to FULL engine (user decision): all obj/room triggers (12/9), op/rp command tables (24/23), cmd_eval_obj/_room ifcheck subsets, plus mobprog completion (23 remaining ifchecks, gtransfer/gforce/vforce). Phase 0 completed 20/07/2026: converter/world data plumbing and the 2 originally dropped Midgaard progs restored (obj 3005 `O DROP 100`, room 3054 `R GRALL 100`); no behavior yet. Phased plan: PROGS_PLAN.md |
 | bank / balance | L | economy.c:36-140 | shares minigame; TODO.md already defers. Stock lore (midgaard.are vnum 3140 liquidation notice) says bank defunct + no death-gold-loss, so solo value dubious — lean drop |
 | locate object: unloaded areas | M | magic.c:3523 (obj_first is world-global) | spell_locate_object scans loaded areas only (noted in its docstring 20/07/2026). objs.idx could name areas whose templates match, but live floor/carried state of unloaded areas sits in pending-save buffers — needs design before porting |
 
@@ -127,9 +126,11 @@ PrimeSUD doesn't have, by design):
   a buggy prog re-firing forever. PrimeSUD aborts print via dbg() at the
   moment they happen and the fix is editing the area file; the disable
   state would be dead weight.
-- Obj/room progs were excluded engine-wide at audit time (reopened
-  20/07/2026 as a port-candidate; revisit pstat/pdump coverage if that
-  lands), so 2/3 of every 1:1 listing loop would have been N/A.
+- Obj/room progs shipped 21/07/2026 (full tri-mode engine, PROGS_PLAN
+  phases 1-4; see DESIGN.md MOBprograms row); `debug pstat` covers all
+  three origins (`pstat <mob>`, `pstat room`, `pstat obj`) and `debug
+  pdump` looks a vnum up across MOBPROGS/OBJPROGS/ROOMPROGS, matching
+  upstream's single shared prog list.
 
 ## Systems parity
 
@@ -196,8 +197,9 @@ All resolved or closed 19/07/2026:
   v4 line cannot silently mis-parse. If a v4 area is ever imported, apply
   spawn variance per db.c:1788-1791.
 - Upstream stock areas contain no mobprogs (school.are's are [PRIMESUD]
-  demo additions); midgaard has 1 objprog + 1 roomprog — obj/room prog
-  engine reopened 20/07/2026 as a port-candidate (see table above).
+  demo additions); midgaard has 1 objprog + 1 roomprog — both live since
+  the full obj/room prog engine shipped 21/07/2026 (PROGS_PLAN phases;
+  DESIGN.md MOBprograms row).
 - missing.c is libc portability shims; zero game logic.
 - hunt_victim: absent from ROM 2.4/quickmud entirely (no hunt.c, no
   ACT_HUNTER); 1stMud wires calls (fight.c:72, update.c:423) but nothing
