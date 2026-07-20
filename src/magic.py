@@ -1736,7 +1736,8 @@ def spell_gate(sn, level, ch, vo, target):
     """Gate to another character's location (cf. 1stMud spell_gate in magic.c).
     [Verified: 03/07/2026; pet gate added and re-verified 03/07/2026;
     unloaded-area target fallback (get_char_world fidelity) added and
-    re-verified 04/07/2026]"""
+    re-verified 04/07/2026; look "auto" arg added and re-verified
+    20/07/2026]"""
     tail = ch.get("_target_name", "")
     if not tail:
         chprintln(ch, "You failed.")
@@ -1801,7 +1802,7 @@ def spell_gate(sn, level, ch, vo, target):
     old_room = ch["room"]
     ch["room"] = victim_vnum
     # act("$n has arrived through a gate.", ..., TO_ROOM) omitted -- single-player
-    do_look(ch, [])
+    do_look(ch, ["auto"])  # 1stMud: do_function(ch, &do_look, "auto")
 
     if gate_pet:
         if pet_id in world.rooms.get(old_room, {}).get("mobs", []):
