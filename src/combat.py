@@ -93,7 +93,8 @@ def violence_update(player):
     [Verified: 02/07/2026; hunt_victim wired and re-verified 04/07/2026; mob
     TRIG_FIGHT/TRIG_HPCNT wired and re-verified 09/07/2026; [PRIMESUD]
     autoskill hook added 18/07/2026; worn-obj + room TRIG_FIGHT wired and
-    re-verified 20/07/2026]
+    re-verified 20/07/2026; post-multi_hit victim re-fetch (fight.c:86) fixed
+    and re-verified 21/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -126,7 +127,10 @@ def violence_update(player):
             stop_fighting(ch, both=False)
 
         # 1stMud: victim = ch->fighting; if victim == NULL: continue
-        if ch["fighting"] is None:
+        # (fight.c:86 re-fetches: multi_hit may have killed and retargeted,
+        # leaving the old local victim pointing at an extracted char)
+        victim = chars.get(ch["fighting"]) if ch["fighting"] is not None else None
+        if victim is None:
             continue
 
         # 1stMud: check_assist(ch, victim)
