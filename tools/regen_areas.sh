@@ -19,6 +19,11 @@ done
 echo "==> mobs.idx"
 uv run tools/build_mob_index.py
 
+# Rebuild paths.idx (path/run border-graph routing) -- must be
+# regenerated after any area regen since it derives from room exits.
+echo "==> paths.idx"
+uv run tools/build_path_index.py
+
 # Verify ASCII safety
 echo "==> ASCII check"
 uv run tools/check_ascii_py.py
