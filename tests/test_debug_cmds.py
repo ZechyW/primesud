@@ -416,7 +416,7 @@ def test_set_bare_vnum_object_promotes_to_instance(scene, out):
     assert ITEM_DEFS[8001].get("value", 0) == tpl_cost  # template untouched
 
 
-# -- find (do_vnum) ---------------------------------------------------------
+# -- vnum (do_vnum) ---------------------------------------------------------
 
 @pytest.fixture
 def paged(monkeypatch):
@@ -425,39 +425,46 @@ def paged(monkeypatch):
     return lines
 
 
-def test_find_loaded_template(scene, out, paged):
-    _run(scene["player"], "find mob guard")
+def test_vnum_loaded_template(scene, out, paged):
+    _run(scene["player"], "vnum mob guard")
     assert any("9001" in l and "a guard" in l for l in paged)
 
 
-def test_find_unloaded_via_idx(scene, out, paged, monkeypatch, tmp_path):
+def test_vnum_unloaded_via_idx(scene, out, paged, monkeypatch, tmp_path):
     idx = tmp_path / "mobs.idx"
     idx.write_text("# header\nfaraway|9500|red dragon\n")
     monkeypatch.setattr(debug, "MOBS_IDX", str(idx))
-    _run(scene["player"], "find mob dragon")
+    _run(scene["player"], "vnum mob dragon")
     assert any("9500" in l and "faraway, unloaded" in l for l in paged)
 
 
-def test_find_idx_skips_loaded_areas(scene, out, paged, monkeypatch, tmp_path):
+def test_vnum_idx_skips_loaded_areas(scene, out, paged, monkeypatch, tmp_path):
     # nonsense keyword so real loaded-area defs can't match either
     idx = tmp_path / "mobs.idx"
     idx.write_text("loadedtag|9500|qqxzdragon\n")
     monkeypatch.setattr(debug, "MOBS_IDX", str(idx))
     world._LOADED_AREAS.add("loadedtag")
     try:
-        _run(scene["player"], "find mob qqxzdragon")
+        _run(scene["player"], "vnum mob qqxzdragon")
     finally:
         world._LOADED_AREAS.discard("loadedtag")
     assert "No mobiles by that name." in paged
 
 
-def test_find_untyped_searches_both(scene, out, paged, monkeypatch, tmp_path):
+def test_vnum_untyped_searches_both(scene, out, paged, monkeypatch, tmp_path):
     for name in ("mobs.idx", "objs.idx"):
         (tmp_path / name).write_text("")
     monkeypatch.setattr(debug, "MOBS_IDX", str(tmp_path / "mobs.idx"))
     monkeypatch.setattr(debug, "OBJS_IDX", str(tmp_path / "objs.idx"))
-    _run(scene["player"], "find sword")
+    _run(scene["player"], "vnum sword")
     assert any("8001" in l and "a test sword" in l for l in paged)
+
+
+def test_vnum_is_subcommand_not_channel(scene, out):
+    # display overlay folded into holylight; "vnum" must dispatch as lookup
+    assert "vnum" not in debug._CHANNELS
+    _run(scene["player"], "vnum")
+    assert "debug vnum [mob|obj] <name>" in out
 
 
 # -- flag ------------------------------------------------------------------

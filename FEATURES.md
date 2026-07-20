@@ -56,9 +56,9 @@ that into features rather than holes.
   consequences (namegen.py, game_state.py).
 - **The `debug` command** -- one player-facing command consolidates ROM's
   immortal staff kit: stat, goto, load, purge, restore, slay, advance, set,
-  mwhere/owhere, find, flag, force, spellup, clone, mobprog inspection
-  (pstat/pdump + live fire trace), plus holylight and vnum-display toggles
-  (debug.py).
+  mwhere/owhere, vnum, flag, force, spellup, clone, mobprog inspection
+  (pstat/pdump + live fire trace), plus holylight (imm sight with vnum
+  overlay, as upstream) (debug.py).
 - **Gquests just happen** -- auto-scheduled and auto-joined with a level band
   clamped to always include you; no 3-minute join window, no "not enough
   people" cancel (DESIGN.md "Gquest joining").

@@ -546,7 +546,8 @@ def _show_char_to_char(player, mob_ids):
         mob_ids (list): Room's live mob instance ids.
     """
     p_aff = player.get("affected_by", {})
-    show_vnums = "vnum" in DBG  # [PRIMESUD] debug vnum visibility toggle
+    # [PRIMESUD] mob vnum overlay under holylight (upstream imms use stat)
+    show_vnums = "holylight" in DBG
     dark = (player["room"] in ROOM_DEFS._data and room_is_dark(player["room"]))
     for mob_id in mob_ids:
         inst = world.chars.get(mob_id)
@@ -709,7 +710,9 @@ def do_look(player, args):
     automap_on = player.get("flags", PLR_DEFAULTS) & PLR_AUTOMAP
     text_w = TERMINAL_COLS - COMPACT_W - 1 if automap_on else TERMINAL_COLS
 
-    show_vnums = "vnum" in DBG  # [PRIMESUD] debug vnum visibility toggle
+    # Room vnum in title under holylight, cf. 1stMud PLR_HOLYLIGHT gate
+    # (act_info.c:1136-1139)
+    show_vnums = "holylight" in DBG
     if show_vnums:
         chprintln(player, "{Y" + room["name"] + " {D[" + str(player["room"]) + "]{x")
     else:

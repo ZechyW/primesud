@@ -85,7 +85,7 @@ All resolved 20/07/2026 as `debug` subcommands (debug.py):
 
 | cmd | evidence | resolution (20/07/2026) |
 |---|---|---|
-| vnum | act_wiz.c:988 | PORTED as `debug find [mob\|obj] <name>` ("vnum" name owned by the vnum display channel). Loaded areas answer from defs in memory; unloaded areas via keyword indices (mobs.idx + new objs.idx, built by tools/build_mob_index.py) -- no area load forced. Skill branch (do_slookup) N/A: skills are name-keyed |
+| vnum | act_wiz.c:988 | PORTED as `debug vnum [mob\|obj] <name>` (the old vnum display channel folded into holylight, matching upstream's PLR_HOLYLIGHT room-vnum gate, act_info.c:1136; mob/obj vnum overlay kept as [PRIMESUD] superset). Loaded areas answer from defs in memory; unloaded areas via keyword indices (mobs.idx + new objs.idx, built by tools/build_mob_index.py) -- no area load forced. Skill branch (do_slookup) N/A: skills are name-keyed |
 | flag | flags.c:35 | PORTED as `debug flag`; dict-key bits, +/-/=/toggle as upstream; plr/comm fields N/A (no player-flag/comm systems); no flag-name table at runtime, so result set is echoed instead of validated |
 | force | act_wiz.c:2720 | PORTED as `debug force <char> <cmd>`; all/players/gods sweeps + trust gates N/A solo |
 | switch/return | act_wiz.c:1609,1680 | CLOSED covered-by-force: upstream switch swaps the descriptor into the mob to issue commands as it; PrimeSUD has no descriptor layer and the whole command surface assumes the player dict. `debug force <mob> <cmd>` gives the same test lever (mob's own say doesn't fire speech triggers upstream either -- NPC gate) |

@@ -17,7 +17,7 @@ from skills_table import (GSN_PLAGUE, GSN_POISON, GSN_BLINDNESS, GSN_CURSE,
 # call sites are in per-mob per-pulse loops.
 DBG = set()
 
-_CHANNELS = ("spawn", "move", "tick", "reset", "vnum", "save", "time", "prog")
+_CHANNELS = ("spawn", "move", "tick", "reset", "save", "time", "prog")
 
 
 def dbg(msg):
@@ -640,6 +640,11 @@ def _debug_holylight(player, args):
     handler.py sight predicates (can_see, can_see_obj, check_blind) and the
     do_look pitch-black gate can short-circuit on "holylight" in DBG, the
     PLR_HOLYLIGHT equivalent. Excluded from "debug all".
+
+    Also gates the vnum display overlay: room vnum in the look title as
+    upstream (act_info.c:1136-1139); mob vnums in the room list and obj
+    vnums in inventory/equipment are a [PRIMESUD] superset (upstream imms
+    use stat for those).
     """
     if "holylight" in DBG:
         DBG.discard("holylight")
@@ -679,7 +684,7 @@ def _find_idx(frag, idx_file, lines):
             lines.append("[%5s] %s (%s, unloaded)" % (parts[1], parts[2], parts[0]))
 
 
-def _debug_find(player, args):
+def _debug_vnum(player, args):
     """Find mob/obj template vnums by name, world-wide (cf. 1stMud do_vnum /
     do_mfind / do_ofind in act_wiz.c). [PRIMESUD]
 
@@ -693,7 +698,7 @@ def _debug_find(player, args):
     from handler import is_name
 
     if not args:
-        terminal.tr.print("debug find [mob|obj] <name>")
+        terminal.tr.print("debug vnum [mob|obj] <name>")
         return
     # cf. do_vnum: exact type word, else fall through searching both
     if args[0] in ("mob", "char") and len(args) > 1:
@@ -984,9 +989,8 @@ _SUBCMDS = (
     ("owhere",  _debug_owhere,  "locate objects by name"),
     ("memory",  _debug_memory,  "show heap usage and world counts"),
     ("heapmap", _debug_heapmap, "load all areas, per-area heap cost"),
-    ("holylight", _debug_holylight, "toggle imm sight (PLR_HOLYLIGHT)"),
-    # "find", not "vnum": the vnum display channel owns that name exactly
-    ("find",    _debug_find,    "name->vnum lookup world-wide (mob/obj)"),
+    ("holylight", _debug_holylight, "toggle imm sight + vnum overlay"),
+    ("vnum",    _debug_vnum,    "name->vnum lookup world-wide (mob/obj)"),
     ("flag",    _debug_flag,    "toggle bit-flags on char or object"),
     ("force",   _debug_force,   "make a character run a command"),
     ("spellup", _debug_spellup, "cast all qspell buffs on a char"),

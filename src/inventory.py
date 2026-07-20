@@ -14,7 +14,7 @@ from world import (OBJ_VNUM_SCHOOL_BANNER,
 from combat import (_get_weapon_skill, is_safe, multi_hit, number_fuzzy,
                     create_money, _get_size)
 from comm import do_yell
-from debug import DBG  # [PRIMESUD] debug vnum visibility toggle
+from debug import DBG  # [PRIMESUD] holylight vnum overlay
 from skill_utils import WaitState, check_improve, get_skill
 from config import (STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS,
                     MAX_LEVEL, MAX_MORTAL_LEVEL, TYPE_UNDEFINED,
@@ -676,7 +676,8 @@ def do_inventory(player, args):
     for obj in player["inv"]:
         v = obj["vnum"]
         counts[v] = counts.get(v, 0) + 1
-    show_vnums = "vnum" in DBG
+    # [PRIMESUD] obj vnum overlay under holylight (upstream imms use stat)
+    show_vnums = "holylight" in DBG
     for v, n in counts.items():
         tpl = ITEM_DEFS[v]
         flags = _obj_flags(tpl)
@@ -977,7 +978,8 @@ def do_equipment(player, args):
         args (list): Parsed command arguments (unused).
     """
     chprintln(player, "You are wearing:")
-    show_vnums = "vnum" in DBG
+    # [PRIMESUD] obj vnum overlay under holylight (upstream imms use stat)
+    show_vnums = "holylight" in DBG
     for slot, label in WEAR_LABELS:
         obj = player["equip"].get(slot)
         if obj is not None:
