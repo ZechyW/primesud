@@ -58,8 +58,10 @@ get|pick up an item: get <item> [container]
 group|show your group's status, or 'group where' for locations
 give|give an item or coins to a character
 gquest|global quest status and commands
+grlist|list skill groups: known, available, by class/group/skill
 go|step through a portal object (same as enter)
 heal|buy healing services from a healer NPC
+heel|call your pet to your room
 hunt|track a mob in the current area (skill)
 help|read a help entry: help <topic>
 hide|hide from view

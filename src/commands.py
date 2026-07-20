@@ -23,6 +23,7 @@ from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_drink, do_fill, do_pour, do_envenom)
 from explored import do_explored, mark_explored
 from gquest import do_gquest
+from groups import do_grlist
 from handler import chprintln
 from healer import do_heal
 from hunt import do_hunt
@@ -34,7 +35,7 @@ from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
                       do_open, do_close, do_recall, do_run,
                       do_stand, do_rest, do_sit, do_sleep, do_wake,
                       do_lock, do_unlock, do_pick,
-                      do_hide, do_sneak, do_visible, do_enter)
+                      do_hide, do_sneak, do_visible, do_enter, do_heel)
 from scan import do_scan
 from shop import do_buy, do_sell, do_list, do_value, do_appraise
 from socials import do_socials, do_sshow, check_social
@@ -406,7 +407,7 @@ _CMD_TABLE = [
     ("stance",     do_stance,     "standing", False),  # #305
     ("autostance", do_autostance, "sleeping", False),  # #306
     # ("ignore",    do_ignore,     "sleeping", False),  # #307
-    # ("grlist",    do_grlist,     "sleeping", False),  # #308
+    ("grlist",     do_grlist,     "sleeping", False),  # #308
     # ("programs",  do_programs,   "dead",     False),  # #309 imm lvl 58
     # ("subscribe", do_subscribe,  "dead",     False),  # #310
     # ("barter",    do_barter,     "dead",     False),  # #311
@@ -422,7 +423,7 @@ _CMD_TABLE = [
     # ("client",    do_client,     "dead",     False),  # #321
     # ("backup",    do_backup,     "sleeping", True),   # #322 noprefix
     # ("system",    do_system,     "dead",     True),   # #323 noprefix, imm lvl 60
-    # ("heel",      do_heel,       "resting",  False),  # #324
+    ("heel",       do_heel,       "resting",  False),  # #324
     # ("whisper",   do_whisper,    "resting",  False),  # #325
     # ("sooc",      do_sooc,       "resting",  False),  # #326
     # ("helpcheck", do_helpcheck,  "dead",     False),  # #327 imm lvl 54

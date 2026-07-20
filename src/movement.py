@@ -568,6 +568,34 @@ def do_enter(ch, args):
         greet_trigger(ch)
 
 
+def do_heel(player, args):
+    """Call your pet to your room (cf. 1stMud do_heel in act_enter.c).
+
+    [PRIMESUD] ROOM_ARENA check not ported -- no arena system, matching the
+    rest of the codebase (e.g. combat.py, magic.py).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Unused.
+    """
+    pet_id = player.get("pet")
+    pet = world.chars.get(pet_id) if pet_id is not None else None
+    if pet is None:
+        chprintln(player, "You don't have a pet!")
+        return
+
+    from_vnum = pet.get("room")
+    to_vnum = player["room"]
+    if from_vnum in world.rooms and to_vnum in world.rooms:
+        if pet["id"] in world.rooms[from_vnum]["mobs"]:
+            world.rooms[from_vnum]["mobs"].remove(pet["id"])
+        pet["room"] = to_vnum
+        world.rooms[to_vnum]["mobs"].append(pet["id"])
+
+    act("$n lets out a loud whistle and $N comes running.", player, None, pet, TO_ROOM)
+    act("You let out a loud whistle and $N comes running.", player, None, pet, TO_CHAR)
+
+
 def _find_door(player, arg, exits):
     """Resolve a direction word or door keyword to a door exit
     (cf. 1stMud find_door in act_move.c).

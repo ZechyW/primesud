@@ -9,11 +9,13 @@ _SRC = os.environ.get("PRIMESUD_SRC", "src")
 sys.path.insert(0, os.path.join(ROOT, _SRC))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
+import handler
 from handler import _char_base
 from comm import (add_follower, stop_follower, nuke_pets, die_follower,
                   do_follow, do_ditch, do_order)
 import combat
 import magic
+from movement import do_heel
 import world
 from world import ROOM_DEFS, MOB_DEFS
 
@@ -381,3 +383,55 @@ class TestCharmIntegration:
         mob_mod.mobile_update(None, player)
         assert 2 in world.chars
         assert pet["room"] == 9001
+
+
+# ===========================================================================
+# do_heel (cf. 1stMud do_heel in act_enter.c)
+# ===========================================================================
+
+class TestDoHeel:
+    @pytest.fixture
+    def out(self, monkeypatch):
+        lines = []
+        monkeypatch.setattr(handler, "tprint", lambda s="", end="\n": lines.append(s))
+        return lines
+
+    def test_no_pet_refused(self, out):
+        player = _make_player()
+        do_heel(player, [])
+        assert any("You don't have a pet!" in l for l in out)
+
+    def test_pet_elsewhere_comes_running(self, out):
+        player = _make_player(room=9001)
+        pet = _make_mob(2, room=9002)
+        player["pet"] = 2
+        do_heel(player, [])
+        assert pet["room"] == 9001
+        assert 2 in world.rooms._data[9001]["mobs"]
+        assert 2 not in world.rooms._data[9002]["mobs"]
+        # act TO_ROOM never reaches the solo player (player is ch); only the
+        # TO_CHAR line is visible.
+        assert len(out) == 1
+        assert "comes running" in out[0]
+        assert "a test dog" in out[0]
+
+    def test_pet_already_here_still_whistles(self, out):
+        player = _make_player(room=9001)
+        pet = _make_mob(2, room=9001)
+        player["pet"] = 2
+        do_heel(player, [])
+        assert pet["room"] == 9001
+        assert world.rooms._data[9001]["mobs"].count(2) == 1
+        assert len(out) == 1
+        assert "comes running" in out[0]
+
+    def test_no_arena_guard_ported(self, out):
+        # [PRIMESUD] ROOM_ARENA is not ported anywhere in PrimeSUD (no arena
+        # system); heel always succeeds regardless of room flags.
+        player = _make_player(room=9001)
+        ROOM_DEFS._data[9001]["flags"]["arena"] = True
+        pet = _make_mob(2, room=9002)
+        player["pet"] = 2
+        do_heel(player, [])
+        assert pet["room"] == 9001
+        assert "comes running" in out[0]
