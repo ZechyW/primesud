@@ -394,8 +394,10 @@ def do_prime(player, args):
 
     player["prime_class"] = islot
     player["trivia"] -= 5
+    # [PRIMESUD] upstream (multiclass.c:735) drops the "you": "and are {R5{x
+    # trivia points lighter" -- grammar slip fixed per CLAUDE.md.
     chprintlnf(player,
-              "Your prime class is now %s, and are {R5{x trivia points lighter.",
+              "Your prime class is now %s, and you are {R5{x trivia points lighter.",
               class_name(player, iclass))
 
 
