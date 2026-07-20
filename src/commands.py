@@ -27,6 +27,7 @@ from healer import do_heal
 from hunt import do_hunt
 from macros import do_macro
 from magic import do_cast
+from music import do_play
 from quest import do_quest, do_tpspend
 from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
                       do_open, do_close, do_recall, do_run,
@@ -253,7 +254,7 @@ _CMD_TABLE = [
     ("gain",       do_gain,       "standing", False),  # #158
     ("go",         do_enter,      "standing", False),  # #159
     ("hide",       do_hide,       "resting",  False),  # #160
-    # ("play",      do_play,       "resting",  False),  # #161
+    ("play",       do_play,       "resting",  False),  # #161
     ("quit",       do_quit,       "dead",     True),   # #162 noprefix
     ("recall",     do_recall,     "fighting", False),  # #163
     ("/",          do_recall,     "fighting", False),  # #164

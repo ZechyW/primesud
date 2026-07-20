@@ -9,6 +9,7 @@ import terminal
 from config import (
     PULSE_VIOLENCE,
     PULSE_MOBILE,
+    PULSE_MUSIC,
     PULSE_TICK,
     PULSE_AREA,
     TICK_SECS,
@@ -16,6 +17,7 @@ from config import (
 from combat import update_mob_timers, violence_update
 from game_time import time_update
 from mob import mobile_update, aggr_update, area_update, weather_update
+from music import song_update
 from player import tick_update
 from quest import quest_update
 from gquest import gquest_update
@@ -30,6 +32,7 @@ UPD_TICK     = 2
 # -- Countdown timers (cf. 1stMud static locals in update_handler) -------------
 _pulse_area     = 0
 _pulse_mobile   = 0
+_pulse_music    = 0
 _pulse_violence = 0
 _pulse_tick     = 0
 
@@ -41,7 +44,7 @@ def update_handler():
     static locals.  Returns bitmask of UPD_* flags so caller can handle
     PrimeSUD-specific display.
     """
-    global _pulse_area, _pulse_mobile, _pulse_violence, _pulse_tick
+    global _pulse_area, _pulse_mobile, _pulse_music, _pulse_violence, _pulse_tick
 
     tr = terminal.tr
     player = world.chars[1]
@@ -58,7 +61,12 @@ def update_handler():
             dbg("pulse area")
         area_update(tr, player)
 
-    # pulse_music -- not yet ported
+    _pulse_music -= 1
+    if _pulse_music <= 0:
+        _pulse_music = PULSE_MUSIC
+        if "tick" in DBG:  # [PRIMESUD]
+            dbg("pulse music")
+        song_update()
 
     _pulse_mobile -= 1
     if _pulse_mobile <= 0:

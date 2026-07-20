@@ -79,6 +79,7 @@ open|open a door or container
 order|command a charmed follower or pet
 outfit|receive a free set of basic equipment
 pick|pick a lock (thief skill)
+play|play a song on a jukebox
 pour|pour liquid between containers, or out
 practice|practice skills and spells at a trainer
 put|put an item into a container

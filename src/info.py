@@ -21,6 +21,7 @@ from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, POS_FROM_SHORT, SECTO
 from item import (get_obj_here, obj_vnum, item_extra_flags,
                   item_container_flags, liquid_color, liquid_left,
                   liquid_total, liquid_type)
+from music import do_play
 from picker import pick_from
 from player import (PLR_AUTOMAP, PLR_AUTOSKILL, PLR_AUTOLOOT, PLR_AUTOSAC,
                     PLR_AUTOGOLD, PLR_AUTOSPLIT, PLR_AUTOASSIST, PLR_AUTOEXIT,
@@ -1820,7 +1821,8 @@ def _examine_extras(player, obj):
 
     [PRIMESUD] Container contents shown from the resolved obj directly; 1stMud
     re-resolves via do_look "in <arg>", which can match a different object.
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026; jukebox do_play "list" branch added and re-verified 20/07/2026]
     """
     tpl = ITEM_DEFS[obj_vnum(obj)]
     obj_type = tpl.get("type")
@@ -1843,4 +1845,8 @@ def _examine_extras(player, obj):
             chprintln(player, "There are " + str(gold) + " gold and " + str(silver) + " silver coins in the pile.")
     elif obj_type in _CONTAINER_TYPES:
         _show_container(player, obj, tpl)
-    # 1stMud: ITEM_JUKEBOX -> do_play "list" -- not yet ported
+    elif obj_type == "jukebox":
+        # cf. 1stMud do_function(ch, &do_play, "list") -- re-resolves the
+        # jukebox from scratch rather than reusing the already-matched obj,
+        # same as upstream.
+        do_play(player, ["list"])
