@@ -114,6 +114,11 @@ Two-track release plan:
     light a torch and re-look
   - *Anywhere*: `explored`/`score` permille after the walk; `gc.mem_free`
     before/after the ~2KB explored-mask alloc and a save/load round-trip
+  - *Path/run border graph (20/07/2026)*: `path midgaard` from a far area
+    and `run` picker to a multi-area destination on hardware -- route
+    correctness (walk it), plus latency/`gc.mem_free` around the
+    per-command paths.idx parse (~780 records, one f.read + transient
+    dicts per `path`/no-arg `run`)
   - *Autoskill (18/07/2026)*: idle-fight CPU/`gc.mem_free` with autoskill on
     during a long fight in a mobprog-heavy room (rotation scan runs per
     violence pulse); message volume on the 64-col screen (one auto action

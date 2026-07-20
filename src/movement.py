@@ -19,7 +19,6 @@ from skills_table import (GSN_RECALL, GSN_PICK_LOCK, GSN_SNEAK, GSN_HIDE,
 from item import (get_obj_list, get_obj_here, create_object, obj_vnum,
                   item_container_flags, set_item_container_flag,
                   promote_obj, item_type as _item_type)
-from terminal import tprint
 from urandom import randint
 import world
 from world import ROOM_DEFS, ITEM_DEFS

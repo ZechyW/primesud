@@ -71,7 +71,11 @@ def preflight():
         # Regenerates world.py's static AREA_BUILDERS/_AREA_ADJ tables from
         # the area .txt files; also fails on AREA_LEVELS drift.
         [sys.executable, "tools/gen_area_adj.py"],
+        # mobs.idx/paths.idx run again after gen_area_adj: regen_areas.sh
+        # builds them too, but from world.py's pre-refresh static tables --
+        # a just-added area would otherwise be missing from the indexes.
         [sys.executable, "tools/build_mob_index.py"],
+        [sys.executable, "tools/build_path_index.py"],
         [sys.executable, "tools/build_help_idx.py"],
         [sys.executable, "tools/build_socials_idx.py"],
     ]
