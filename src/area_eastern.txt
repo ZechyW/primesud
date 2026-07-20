@@ -1353,3 +1353,13 @@ SOCIALS = (
 # (vnum, code) -- mob program code blocks, referenced by mob triggers
 MOBPROGS = {
 }
+
+# -- ObjProgs ------------------------------------------------------------------
+# (vnum, code) -- object program code blocks, referenced by object triggers
+OBJPROGS = {
+}
+
+# -- RoomProgs -----------------------------------------------------------------
+# (vnum, code) -- room program code blocks, referenced by room triggers
+ROOMPROGS = {
+}

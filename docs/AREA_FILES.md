@@ -13,9 +13,10 @@ HP Prime. The structure mirrors ROM 2.4's `#SECTION` layout.
 > `areas/*.are` are editable working copies; pristine upstream originals remain under
 > `reference/`.
 
-`world.py` loads every area module and merges `ROOMS`, `MOBILES`, `OBJECTS`, and
-`RESETS` into the game-wide tables. `SKILL_TABLE` and `SKILLS` live in `world.py`
-directly — skills are global, not per-area.
+`world.py` loads area modules on demand and merges `ROOMS`, `MOBILES`, `OBJECTS`,
+`MOBPROGS`, `OBJPROGS`, and `ROOMPROGS` into game-wide tables; `RESETS` are
+partitioned onto their target rooms. `SKILL_TABLE` and `SKILLS` live in
+`world.py` directly — skills are global, not per-area.
 
 Cross-area VNUM constants that game logic needs to hardcode (e.g. respawn room, skill
 IDs) go in `world_consts.py`.
@@ -33,7 +34,8 @@ or truncated payloads, out-of-range exit/reset directions, and `spec_fun` names
 not present in `src/special.py`'s `SPEC_TABLE` all raise `ValueError` rather
 than silently dropping data. Trailer payloads split across physical lines
 (legal under ROM's whitespace-skipping readers) are handled for object `A`/`F`
-and mob `F` lines.
+and mob `F` lines. Object/room program trigger words are validated against
+1stMud's `oprog_flags`/`rprog_flags` tables and invalid values also fail loudly.
 
 ---
 
@@ -70,6 +72,12 @@ SOCIALS = ( ... )
 
 # -- MobProgs --
 MOBPROGS = { ... }
+
+# -- ObjProgs --
+OBJPROGS = { ... }
+
+# -- RoomProgs --
+ROOMPROGS = { ... }
 ```
 
 ---
@@ -120,6 +128,7 @@ ROOMS = {
 | `clan`       | str       | no       | ROM `C` room trailer (clan name) |
 | `owner`      | str       | no       | ROM `O` room trailer (owner name) |
 | `guild`      | tuple     | no       | `G` room trailer(s) -- tuple of class indices (0 mage, 1 cleric, 2 thief, 3 warrior, 4 paladin, 5 ranger). [PRIMESUD] dialect extension: repeated `G` lines accumulate into the tuple; 1stMud's own `db.c load_rooms` allows only one `G` per room (`bug ("Duplicate guild."); exit(1);` on a second) |
+| `room_triggers` | tuple  | no       | `(trig_type, rprog_vnum, trig_phrase)` from `R` room trailers; see ROOMPROGS below; omitted if empty |
 
 A destination of `None` means the exit exists (and is listed by `exits`/automap
 data) but doesn't lead anywhere — ROM keeps such exits examinable but
@@ -388,6 +397,7 @@ OBJECTS = {
 | `extra_descs`  | list       | no           | `(keyword, desc)` tuples; omitted if empty |
 | `stat_bonuses` | dict       | no           | `{apply_loc_name: modifier}` from `.are` `A`-trailers |
 | `flag_affects` | tuple      | no           | `.are` `F`-trailers — see below |
+| `obj_triggers` | tuple      | no           | `(trig_type, oprog_vnum, trig_phrase)` from `O` object trailers; see OBJPROGS below; omitted if empty |
 
 ### Type-specific keys
 
@@ -658,6 +668,26 @@ Consumed by `mobprog.py` (ported 10/07/2026; `surr` trigger wired
 
 ---
 
+## `OBJPROGS` and `ROOMPROGS`
+
+These code dictionaries have the same `vnum -> source string` shape as
+`MOBPROGS`. Object templates reference `OBJPROGS` through `obj_triggers` from
+an `O <trigger> <program-vnum> <phrase>~` trailer; rooms reference `ROOMPROGS`
+through `room_triggers` from an equivalent `R` trailer. These are [PRIMESUD]
+dialect extensions to the editable QuickMUD-format `.are` sources, preserving
+1stMud's `db2.c`/`db.c` loaders.
+
+Valid object triggers are `act`, `fight`, `give`, `greet`, `grall`, `random`,
+`speech`, `exall`, `delay`, `drop`, `get`, and `sit`. Valid room triggers are
+`act`, `fight`, `drop`, `greet`, `grall`, `random`, `speech`, `exall`, and
+`delay`.
+
+`world.py` loads and evicts both program tables with their owning area. Phase 0
+only preserves this data; interpreter and trigger dispatch are added by later
+phases of `PROGS_PLAN.md`.
+
+---
+
 ## Conventions
 
 - **`# fmt: off` is mandatory.** The aligned column style in mob/item/room dicts
@@ -696,6 +726,7 @@ support -- noted per row).
 | Room guild: warrior | `midgaard.are` | rooms 3022, 3023 -> `(3,` | 1stMud-faithful (base) -- reference rooms carry a single `G 3` each |
 | Room guild: ranger sharing warrior rooms | `midgaard.are` | rooms 3022, 3023 -> `5)` | [PRIMESUD] -- second `G 5` line added per room; upstream has no ranger guild in midgaard |
 | Acolyte demo mobprog (greet/give/delay) | `school.are` | mob 3700 (`M` trailers), progs 3790/3791/3792 (`#MOBPROGS`) | [PRIMESUD] -- stock QuickMUD ships zero `#MOBPROGS` entries anywhere; this is the mobprog engine's first content pilot (`MOBPROG_PLAN.md` Phase D content pilot). `.are` source has no per-entry comment support inside `#MOBPROGS`/mob trailers, so provenance lives here instead |
+| Recovered 1stMud object/room programs | `midgaard.are` | object 3005 (`O DROP 3005 100`), room 3054 (`R GRALL 3054 100`), matching `#OBJPROGS`/`#ROOMPROGS` code | 1stMud-faithful -- the original conversion to QuickMUD format dropped both trailers and code sections; restored verbatim from `reference/1stMud4.5.3/area/midgaard.are`. The `.are` format has no per-entry comment seam, so provenance lives here |
 | Moved reset: juke (obj 3200) -> room 1116 (The Ivy Bush) | removed from `midgaard.are`, added to `shire.are` | obj 3200, room 1116 | [PRIMESUD] defer-load optimization; same world state either way. `* [PRIMESUD] ... moved from/to midgaard` comment at both the removal and addition sites |
 | Moved reset: juke (obj 3200) -> room 1144 (The Green Dragon) | removed from `midgaard.are`, added to `shire.are` | obj 3200, room 1144 | [PRIMESUD] defer-load optimization; comment at both sites as above |
 | Moved reset: fountain (obj 3135) -> room 1200 (The Chat Room) | removed from `midgaard.are`, added to `immort.are` | obj 3135, room 1200 | [PRIMESUD] defer-load optimization; comment at both sites as above |

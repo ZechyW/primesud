@@ -1014,6 +1014,7 @@ It is quite heavy.  The blade is made of some metal that you can't even
 spell.  The edge of the blade looks as if it could cut through anything
 or anyone.
 ~
+O DROP 3005 100~
 #3006
 stone~
 A Clan Stone~
@@ -4205,6 +4206,7 @@ altar~
 Even though the altar is more than ten feet long it appears to be made from a
 single block of white virgin marble.
 ~
+R GRALL 3054 100~
 S
 #3056
 The Fountain of Youth Apothecary~
@@ -6513,5 +6515,17 @@ M 3120 spec_cast_cleric    	* the sexton
 M 3143 spec_mayor          	* the mayor
 M 3163 spec_nasty          	* the thief
 S
+
+#OBJPROGS
+#3005
+obj echo Don't drop me!
+~
+#0
+
+#ROOMPROGS
+#3054
+room echo {`You enter a room of sanctuary and peace.{x
+~
+#0
 
 #$

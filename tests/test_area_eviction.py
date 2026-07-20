@@ -59,6 +59,27 @@ def _add_player(room):
 
 class TestUnloadArea:
 
+    def test_program_tables_follow_area_lifetime(self, fresh_world):
+        fw = fresh_world
+        fw.register_area(
+            "alpha", 100, 199,
+            rooms={100: {"name": "R100", "exits": {}}},
+            mobprogs={150: "mob echo test"},
+            objprogs={151: "obj echo test"},
+            roomprogs={152: "room echo test"},
+        )
+        fw.setup()
+
+        _load_area("alpha")
+        assert world.MOBPROGS[150] == "mob echo test"
+        assert world.OBJPROGS[151] == "obj echo test"
+        assert world.ROOMPROGS[152] == "room echo test"
+
+        _unload_area("alpha")
+        assert 150 not in world.MOBPROGS
+        assert 151 not in world.OBJPROGS
+        assert 152 not in world.ROOMPROGS
+
     def test_buffers_mob_positions_and_drops_defs(self, fresh_world):
         fw = fresh_world
         fw.register_area("alpha", 100, 199,

@@ -82,7 +82,7 @@ Remaining open candidates:
 | index | M | act_info.c:2672 | help category index; needs category metadata in help.txt + build_help_idx.py |
 | mobdeaths / mobkills | M | act_info.c:3909-4020 | solo bestiary stats; needs per-template counters. NB upstream naming inverted (fight.c:1941/1968: area->kills = PC deaths) |
 | areadeaths / areakills | M | act_info.c:4139-4251 | per-area tallies; same new-counter plumbing |
-| objprog/roomprog engine | L | programs.c; db2.c #OBJPROGS/#ROOMPROGS | reopened 20/07/2026 (was closed as excluded); scope upgraded same day to FULL engine (user decision): all obj/room triggers (12/9), op/rp command tables (24/23), cmd_eval_obj/_room ifcheck subsets, plus mobprog completion (23 remaining ifchecks, gtransfer/gforce/vforce). Shipped content = 2 midgaard progs (obj 3005 `O DROP 100`, room 3054 `R GRALL 100`), dropped in the original area conversion -- re-add. Phased plan: PROGS_PLAN.md |
+| objprog/roomprog engine | L | programs.c; db2.c #OBJPROGS/#ROOMPROGS | reopened 20/07/2026 (was closed as excluded); scope upgraded same day to FULL engine (user decision): all obj/room triggers (12/9), op/rp command tables (24/23), cmd_eval_obj/_room ifcheck subsets, plus mobprog completion (23 remaining ifchecks, gtransfer/gforce/vforce). Phase 0 completed 20/07/2026: converter/world data plumbing and the 2 originally dropped Midgaard progs restored (obj 3005 `O DROP 100`, room 3054 `R GRALL 100`); no behavior yet. Phased plan: PROGS_PLAN.md |
 | bank / balance | L | economy.c:36-140 | shares minigame; TODO.md already defers. Stock lore (midgaard.are vnum 3140 liquidation notice) says bank defunct + no death-gold-loss, so solo value dubious — lean drop |
 
 ### Debug-toolkit candidates (imm commands with solo debug value)

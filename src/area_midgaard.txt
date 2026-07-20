@@ -2164,6 +2164,9 @@ ROOMS = {
         "heal_rate": 110,
         "mana_rate": 110,
         "extra_descs": [('statue Mota king god', 'The statue represents the Great God Mota, holding a staff.  He has long, grey\nhair and beard and a kindly look on his face.  His staff is topped by a painted\ncube, the 6 faces of which represent the 6 aspects of his power.'), ('altar', 'Even though the altar is more than ten feet long it appears to be made from a\nsingle block of white virgin marble.')],
+        "room_triggers": (
+            ('grall', 3054, '100'),
+        ),
     },
     3056: {
         "name": 'The Fountain of Youth Apothecary',
@@ -3212,6 +3215,9 @@ OBJECTS = {
         "extra_flags": {"hum": True, "bless": True},
         "weapon_type": 'sword', "dam_type": 'cleave', "dice": (4, 10, 0),
         "weapon_flags": {"vorpal": True, "two_hands": True},
+        "obj_triggers": (
+            ('drop', 3005, '100'),
+        ),
         "level": 42, "weight": 450, "value": 5600,
         "extra_descs": [('scimitar blade', "It is quite heavy.  The blade is made of some metal that you can't even\nspell.  The edge of the blade looks as if it could cut through anything\nor anyone.")],
     },
@@ -5350,4 +5356,16 @@ SOCIALS = (
 # -- MobProgs ------------------------------------------------------------------
 # (vnum, code) -- mob program code blocks, referenced by mob triggers
 MOBPROGS = {
+}
+
+# -- ObjProgs ------------------------------------------------------------------
+# (vnum, code) -- object program code blocks, referenced by object triggers
+OBJPROGS = {
+    3005: "obj echo Don't drop me!",
+}
+
+# -- RoomProgs -----------------------------------------------------------------
+# (vnum, code) -- room program code blocks, referenced by room triggers
+ROOMPROGS = {
+    3054: 'room echo {`You enter a room of sanctuary and peace.{x',
 }

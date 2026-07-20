@@ -79,7 +79,7 @@ vnum) -- implement per prog_cmds.c.
 
 ## Phases (each independently shippable; tests + `python -m pytest -q` + `python tools/check_ascii_py.py` per phase)
 
-### Phase 0 -- data pipeline (no behaviour change)
+### Phase 0 -- data pipeline (completed 20/07/2026; no behaviour change)
 
 - tools/are_to_primesud.py: parse `#OBJPROGS`/`#ROOMPROGS` sections, `O`
   trailer in #OBJECTS, `R` trailer in #ROOMS -- [PRIMESUD] dialect

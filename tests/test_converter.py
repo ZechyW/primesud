@@ -50,6 +50,22 @@ def convert_str(tmp_path, body):
 
 
 class TestHappyPath:
+    def test_shipped_midgaard_object_and_room_programs(self, tmp_path):
+        root = Path(__file__).resolve().parents[1]
+        code = conv.convert(
+            str(root / "areas" / "midgaard.are"),
+            str(tmp_path / "area_midgaard.txt"),
+        )
+        ns = {}
+        exec(code, ns)
+
+        assert ns["OBJECTS"][3005]["obj_triggers"] == (("drop", 3005, "100"),)
+        assert ns["ROOMS"][3054]["room_triggers"] == (("grall", 3054, "100"),)
+        assert ns["OBJPROGS"][3005] == "obj echo Don't drop me!"
+        assert ns["ROOMPROGS"][3054] == (
+            "room echo {`You enter a room of sanctuary and peace.{x"
+        )
+
     def test_two_line_f_trailer_and_a_trailer(self, tmp_path):
         # The shipped One Ring bug: F alone on one line, payload on the
         # next (areas/shire.are #1105); A-trailer payload on its own line.
@@ -136,6 +152,46 @@ there~
         ns = convert_str(tmp_path, "#MOBILES\n" + MOB_8000 + "E 8001\n#0\n")
         assert ns["MOBILES"][8000]["evolves_to"] == 8001
 
+    def test_object_and_room_program_data(self, tmp_path):
+        ns = convert_str(tmp_path, """#OBJECTS
+#8010
+bell test~
+a test bell~
+A test bell is here.~
+brass~
+treasure 0 A
+0 0 0 0 0
+1 10 0 P
+O DROP 8050 100~
+#0
+
+#ROOMS
+#8020
+Test Room~
+A bare test room.
+~
+0 0 0
+R GRALL 8060 100~
+S
+#0
+
+#OBJPROGS
+#8050
+obj echo Don't drop me!
+~
+#0
+
+#ROOMPROGS
+#8060
+room echo Peace and quiet.
+~
+#0
+""")
+        assert ns["OBJECTS"][8010]["obj_triggers"] == (("drop", 8050, "100"),)
+        assert ns["ROOMS"][8020]["room_triggers"] == (("grall", 8060, "100"),)
+        assert ns["OBJPROGS"][8050] == "obj echo Don't drop me!"
+        assert ns["ROOMPROGS"][8060] == "room echo Peace and quiet."
+
 
 MOB_HEADER_WRAP = "#MOBILES\n" + MOB_8000 + "#0\n"
 
@@ -219,3 +275,29 @@ A
             tmp_path,
             "#MOBILES\n" + MOB_8000 + "M bogus 1 x~\n#0\n",
             "invalid trigger type")
+
+    def test_object_invalid_trigger_type(self, tmp_path):
+        self.check_raises(tmp_path, """#OBJECTS
+#8010
+bell test~
+a test bell~
+A test bell is here.~
+brass~
+treasure 0 A
+0 0 0 0 0
+1 10 0 P
+O BOGUS 8050 100~
+#0
+""", "invalid trigger type")
+
+    def test_room_invalid_trigger_type(self, tmp_path):
+        self.check_raises(tmp_path, """#ROOMS
+#8020
+Test Room~
+A bare test room.
+~
+0 0 0
+R BOGUS 8060 100~
+S
+#0
+""", "invalid trigger type")

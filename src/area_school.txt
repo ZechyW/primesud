@@ -1549,3 +1549,13 @@ MOBPROGS = {
     3791: 'say Ah, $O.  Many thanks, $n.  Take this token of the school.\nmob remember $n\nmob oload 3715 0 R\nmob delay 2',
     3792: 'say May your studies serve you well, $q.',
 }
+
+# -- ObjProgs ------------------------------------------------------------------
+# (vnum, code) -- object program code blocks, referenced by object triggers
+OBJPROGS = {
+}
+
+# -- RoomProgs -----------------------------------------------------------------
+# (vnum, code) -- room program code blocks, referenced by room triggers
+ROOMPROGS = {
+}

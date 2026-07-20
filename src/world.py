@@ -486,9 +486,12 @@ def _load_area(tag):
                 }
     MOB_DEFS.update(_ns["MOBILES"])
     ITEM_DEFS.update(_ns["OBJECTS"])
-    # MOBPROGS is optional (synthetic test areas omit it); real area files
-    # always emit it, empty for stock data. [PRIMESUD]
+    # Program tables are optional so synthetic/older generated area files
+    # remain loadable. Real area files emit all three, empty when unused.
+    # [PRIMESUD]
     MOBPROGS.update(_ns.get("MOBPROGS", {}))
+    OBJPROGS.update(_ns.get("OBJPROGS", {}))
+    ROOMPROGS.update(_ns.get("ROOMPROGS", {}))
     # Partition resets to per-room lists (cf. 1stMud pRoom->reset_first).
     # Cross-area resets (target room in a different area) are deferred to
     # avoid the cascade-load race: accessing ROOM_DEFS[cross_vnum] via
@@ -796,6 +799,10 @@ def _unload_area(tag):
             del ITEM_DEFS._data[_k]
         for _k in [k for k in MOBPROGS if _lo <= k <= _hi]:
             del MOBPROGS[_k]
+        for _k in [k for k in OBJPROGS if _lo <= k <= _hi]:
+            del OBJPROGS[_k]
+        for _k in [k for k in ROOMPROGS if _lo <= k <= _hi]:
+            del ROOMPROGS[_k]
     _adef["resets"] = []
     _adef.pop("room_vnums", None)
     for _s in areas:
@@ -860,9 +867,11 @@ MOB_DEFS = LazyDict(load_all_on_iter=True)
 ITEM_DEFS = LazyDict(load_all_on_iter=True)
 AREA_DEFS = []
 DOOR_DEFS = {}
-# Mob program code blocks by vnum, merged from each area's MOBPROGS dict as it
-# loads (like MOB_DEFS -- heap cost only for loaded areas). [PRIMESUD]
+# Program code blocks by vnum, merged from each area's corresponding dict as
+# it loads (like MOB_DEFS -- heap cost only for loaded areas). [PRIMESUD]
 MOBPROGS = {}
+OBJPROGS = {}
+ROOMPROGS = {}
 _WORLD_READY = False
 
 # -- Mutable runtime state (mutated by reset_area / game functions) ------------
@@ -889,6 +898,8 @@ def reset_lazy():
     ITEM_DEFS._data.clear()
     DOOR_DEFS.clear()
     MOBPROGS.clear()
+    OBJPROGS.clear()
+    ROOMPROGS.clear()
     del AREA_DEFS[:]
     for _, _tag, _, _, _ in _AREA_FILES:
         AREA_DEFS.append({"tag": _tag, "resets": []})
