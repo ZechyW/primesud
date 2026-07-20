@@ -98,6 +98,7 @@ def move_char(ch, direction):
     mobprogs wired after the follower loop and re-verified 09/07/2026;
     exit/exall mobprog trigger wired at entry and re-verified 10/07/2026;
     do_look("auto") now passed post-move so COMM_BRIEF gates the room desc,
+    re-verified 20/07/2026; obj/room exit + greet prog passes added and
     re-verified 20/07/2026] --
     private-room / area-closed checks and area entry sound not ported (see
     comments).
@@ -106,11 +107,13 @@ def move_char(ch, direction):
         ch (dict): Moving character (player or mob instance).
         direction (str): Single-char direction key (n/e/s/w/u/d).
     """
-    # -- exit/exall mobprog trigger (cf. p_exit_trigger, act_move.c:57): a room
-    # mob may react to (and abort) a player's departure. MOB progs only.
+    # -- exit/exall prog triggers (cf. p_exit_trigger, act_move.c:56-60): a
+    # room mob, obj, or the room itself may react to (and abort) a player's
+    # departure; mob pass first, then obj, then room, as upstream.
     if not ch.get("is_npc", False):
-        from mobprog import exit_trigger  # deferred: keep mobprog off the boot path
-        if exit_trigger(ch, direction):
+        from mobprog import exit_trigger, oexit_trigger, rexit_trigger  # deferred: keep mobprog off the boot path
+        if (exit_trigger(ch, direction) or oexit_trigger(ch, direction)
+                or rexit_trigger(ch, direction)):
             return
 
     in_room = ROOM_DEFS[ch["room"]]
@@ -311,14 +314,17 @@ def move_char(ch, direction):
     # [PRIMESUD] re-close an auto-opened door once followers are through
     _close_auto_door(ch, auto_door)
 
-    # cf. 1stMud move_char act_move.c:259-266: entry (NPC self-move) and greet
-    # (player arrival) mobprogs, then the quest check, all after the follower loop
-    from mobprog import has_trigger, entry_trigger, greet_trigger  # deferred: keep mobprog off the boot path
+    # cf. 1stMud move_char act_move.c:259-267: entry (NPC self-move) and the
+    # three greet passes (player arrival: mob, obj, room), then the quest
+    # check, all after the follower loop
+    from mobprog import has_trigger, entry_trigger, greet_trigger, ogreet_trigger, rgreet_trigger  # deferred: keep mobprog off the boot path
     if is_npc:
         if has_trigger(ch, "entry"):
             entry_trigger(ch)
     else:
         greet_trigger(ch)
+        ogreet_trigger(ch)
+        rgreet_trigger(ch)
         quest_room_check(ch)
 
 
@@ -557,14 +563,17 @@ def do_enter(ch, args):
             if portal in items:
                 items.remove(portal)
                 break
-    # cf. 1stMud act_enter.c: entry (NPC) / greet (player) mobprogs run after
-    # arrival; no quest room check in do_enter -- that is a move_char mechanic
-    from mobprog import has_trigger, entry_trigger, greet_trigger  # deferred: keep mobprog off the boot path
+    # cf. 1stMud act_enter.c:206-212: entry (NPC) / the three greet passes
+    # (player: mob, obj, room) run after arrival; no quest room check in
+    # do_enter -- that is a move_char mechanic
+    from mobprog import has_trigger, entry_trigger, greet_trigger, ogreet_trigger, rgreet_trigger  # deferred: keep mobprog off the boot path
     if ch["is_npc"]:
         if has_trigger(ch, "entry"):
             entry_trigger(ch)
     else:
         greet_trigger(ch)
+        ogreet_trigger(ch)
+        rgreet_trigger(ch)
 
 
 def do_heel(player, args):
@@ -1086,7 +1095,9 @@ def do_pick(player, args):
 # -- Position commands ---------------------------------------------------------
 # [PRIMESUD] ITEM_FURNITURE branches (stand/rest/sit/sleep at/on/in objects,
 # count_users, ch->on) not ported in all five commands below -- few furniture
-# items in current areas.  Revisit if furniture matters later.
+# items in current areas.  Revisit if furniture matters later.  Obj TRIG_SIT
+# (act_move.c:1042/1164/1303/1439, fired on the furniture object) is unported
+# for the same reason -- it needs these seams to exist.
 
 def do_stand(player, args):
     """Stand up, waking first if asleep (cf. 1stMud do_stand in act_move.c). [Verified: 03/07/2026; do_look("auto") on wake (act_move.c:1080) so COMM_BRIEF gates the room desc, re-verified 20/07/2026]

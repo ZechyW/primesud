@@ -107,11 +107,17 @@ vnum) -- implement per prog_cmds.c.
   `rprog_delay`/`rprog_target` on runtime room dicts. Transient by design
   -- save surface is player-only, world rebuilds each boot.
 
-### Phase 2 -- fire seams
+### Phase 2 -- fire seams (completed 20/07/2026)
 
 Hook every row of the fire-site table. Preserve upstream firing ORDER
 (e.g. fight: mob prog, then objs, then room; exit before greet on move).
-act() extension honours the MOBtrigger latch for obj/room recipients.
+NOTE (verified against comm.c:2036-2073): the act() obj/room block is NOT
+gated on the MOBtrigger latch (only the mob-recipient branch is), runs once
+per TO_ROOM/TO_NOTVICT recipient, and passes the unrendered format string --
+ported faithfully.  TRIG_SIT has no seam (furniture unported; comment at
+movement.py position commands).  Obj random/delay pulse ported intent-parity
+(upstream block sits behind the decay-timer gate, update.c:819 -- see
+mobprog.pulse_obj).
 
 ### Phase 3 -- mobprog completion (tri-mode aware)
 

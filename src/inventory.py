@@ -88,6 +88,7 @@ def _loot_container_picker(player, container):
             chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
             if not apply_money_pickup(player, cobj, ctpl):
                 player["inv"].append(cobj)
+                _get_triggers(player, cobj)
                 quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
         return
     cobj = visible[cidx]
@@ -98,6 +99,7 @@ def _loot_container_picker(player, container):
     chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
     if not apply_money_pickup(player, cobj, ctpl):
         player["inv"].append(cobj)
+        _get_triggers(player, cobj)
         quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
 
 
@@ -144,6 +146,30 @@ def _check_carry_get(player, obj, tpl, from_carried=False):
         act("$d: you can't carry that much weight.", player, None, kw, TO_CHAR)
         return False
     return True
+
+
+def _get_triggers(player, obj):
+    """Obj then room TRIG_GET after a successful pickup (cf. get_obj,
+    act_obj.c:165-168). [PRIMESUD] shared by every do_get pickup path."""
+    import mobprog  # deferred: keep mobprog off the boot path
+    if mobprog.has_otrigger(obj, "get"):
+        mobprog.ogive_trigger(
+            {"obj": obj, "room": player["room"], "carrier": player},
+            player, "get")
+    if mobprog.has_rtrigger(player["room"], "get"):
+        mobprog.rgive_trigger(player["room"], player, obj, "get")
+
+
+def _drop_triggers(player, obj):
+    """Obj then room TRIG_DROP after a drop (cf. do_drop, act_obj.c:581-584).
+    [PRIMESUD] shared by every do_drop path."""
+    import mobprog  # deferred: keep mobprog off the boot path
+    if mobprog.has_otrigger(obj, "drop"):
+        mobprog.ogive_trigger(
+            {"obj": obj, "room": player["room"], "carrier": None},
+            player, "drop")
+    if mobprog.has_rtrigger(player["room"], "drop"):
+        mobprog.rgive_trigger(player["room"], player, obj, "drop")
 
 
 def do_get(player, args):
@@ -194,6 +220,7 @@ def do_get(player, args):
             if apply_money_pickup(player, obj, tpl):
                 return
             player["inv"].append(obj)
+            _get_triggers(player, obj)
             quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
             return "get " + tpl.get("keywords", tpl["short_descr"]).split()[0]
         if has_all and idx == len(loose):
@@ -206,6 +233,7 @@ def do_get(player, args):
                     (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
                 if not apply_money_pickup(player, obj, tpl):
                     player["inv"].append(obj)
+                    _get_triggers(player, obj)
                     quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
             return
         _loot_container_picker(player, conts[idx - cont_start])
@@ -232,6 +260,7 @@ def do_get(player, args):
             chprintln(player, "You get {}.".format(tpl["short_descr"]))
             if not apply_money_pickup(player, obj, tpl):
                 player["inv"].append(obj)
+                _get_triggers(player, obj)
                 quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
         if not found:
             if filter_kw:
@@ -269,6 +298,7 @@ def do_get(player, args):
                         chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
                         if not apply_money_pickup(player, cobj, ctpl):
                             player["inv"].append(cobj)
+                            _get_triggers(player, cobj)
                             quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
                 return
             cobj = get_obj_list(item_arg, contents, ITEM_DEFS, player)
@@ -283,6 +313,7 @@ def do_get(player, args):
             chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
             if not apply_money_pickup(player, cobj, ctpl):
                 player["inv"].append(cobj)
+                _get_triggers(player, cobj)
                 quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
             return
     obj = get_obj_list(arg, rs["items"], ITEM_DEFS, player)
@@ -299,6 +330,7 @@ def do_get(player, args):
     chprintln(player, "You get {}.".format((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
     if not apply_money_pickup(player, obj, tpl):
         player["inv"].append(obj)
+        _get_triggers(player, obj)
         quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
 
 
@@ -371,10 +403,14 @@ def do_drop(player, args):
             return
         tpl = ITEM_DEFS[obj["vnum"]]
         player["inv"].remove(obj)
-        world.rooms[player["room"]]["items"].append(obj)
+        ritems = world.rooms[player["room"]]["items"]
+        ritems.append(obj)
         chprintln(player, "You drop {}.".format(tpl["short_descr"]))
-        if item_extra_flags(obj, tpl).get("melt_drop"):
-            world.rooms[player["room"]]["items"].remove(obj)
+        _drop_triggers(player, obj)
+        # cf. act_obj.c:586 `if (obj && ...)`: a drop prog may have purged or
+        # moved the obj -- melt only if it still lies here
+        if obj in ritems and item_extra_flags(obj, tpl).get("melt_drop"):
+            ritems.remove(obj)
             chprintln(player, "{} dissolves into smoke.".format(tpl["short_descr"]))
             return
         return "drop " + tpl.get("keywords", tpl["short_descr"]).split()[0]
@@ -392,10 +428,13 @@ def do_drop(player, args):
                 continue
             found = True
             player["inv"].remove(obj)
-            world.rooms[player["room"]]["items"].append(obj)
+            ritems = world.rooms[player["room"]]["items"]
+            ritems.append(obj)
             chprintln(player, "You drop {}.".format(tpl["short_descr"]))
-            if item_extra_flags(obj, tpl).get("melt_drop"):
-                world.rooms[player["room"]]["items"].remove(obj)
+            _drop_triggers(player, obj)
+            # cf. act_obj.c:616 `if (obj && ...)`: prog may have moved it
+            if obj in ritems and item_extra_flags(obj, tpl).get("melt_drop"):
+                ritems.remove(obj)
                 chprintln(player, "{} dissolves into smoke.".format(tpl["short_descr"]))
         if not found:
             if filter_kw:
@@ -412,10 +451,13 @@ def do_drop(player, args):
         return
     tpl = ITEM_DEFS[obj["vnum"]]
     player["inv"].remove(obj)
-    world.rooms[player["room"]]["items"].append(obj)
+    ritems = world.rooms[player["room"]]["items"]
+    ritems.append(obj)
     chprintln(player, "You drop {}.".format(tpl["short_descr"]))
-    if item_extra_flags(obj, tpl).get("melt_drop"):
-        world.rooms[player["room"]]["items"].remove(obj)
+    _drop_triggers(player, obj)
+    # cf. act_obj.c:586 `if (obj && ...)`: prog may have moved it
+    if obj in ritems and item_extra_flags(obj, tpl).get("melt_drop"):
+        ritems.remove(obj)
         chprintln(player, "{} dissolves into smoke.".format(tpl["short_descr"]))
 
 
@@ -646,11 +688,20 @@ def do_give(player, args):
         act("You give $p to $N.", player, obj, victim, TO_CHAR)
     finally:
         mobprog.MOBtrigger = saved
+    # TRIG_GIVE: obj then room react before the mob (cf. do_give,
+    # act_obj.c:851-854); the room "give" pass is unreachable upstream (the
+    # room trigger vocabulary lacks "give", so HasTriggerRoom is always
+    # false) -- mirrored anyway
+    if mobprog.has_otrigger(obj, "give"):
+        mobprog.ogive_trigger(
+            {"obj": obj, "room": player["room"], "carrier": victim},
+            player, "give")
+    if mobprog.has_rtrigger(player["room"], "give"):
+        mobprog.rgive_trigger(player["room"], player, obj, "give")
     # TRIG_GIVE: mob reacts to the received object (cf. do_give, act_obj.c:856)
     if victim.get("is_npc"):
-        from mobprog import has_trigger, give_trigger  # deferred: keep mobprog off the boot path
-        if has_trigger(victim, "give"):
-            give_trigger(victim, player, obj)
+        if mobprog.has_trigger(victim, "give"):
+            mobprog.give_trigger(victim, player, obj)
 
 
 def _obj_flags(tpl):

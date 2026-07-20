@@ -174,17 +174,29 @@ def obj_update(tr, player):
     Iterates room items, NPC inventories, and player inventory/equipment.
     Recurses into container contents to match 1stMud's flat global object
     list iteration.  Affects tick first (duration--, 20%% level fade, remove
-    expired), then timer countdown and decay handling.
+    expired), then the random/delay objprog pulse (cf. update.c:822-835;
+    container contents are excluded, matching the upstream located-only gate
+    -- see mobprog.pulse_obj for the intent-parity note), then timer
+    countdown and decay handling.
 
     Args:
         tr: Terminal for decay messages.
         player (dict): Player state.
     """
+    oprogs = bool(world.OBJPROGS)  # ponytail: no obj progs -> skip per-obj pulse
+    if oprogs:
+        import mobprog  # deferred: keep mobprog off the boot path
+        ptag = ROOM_DEFS[player["room"]].get("area")  # non-empty area = the player's
+
     # -- Room items --
     for rvnum, room in world.rooms.items():
         for obj in list(room.get("items", [])):
             _tick_contents(obj.get("contents", []))
             _obj_affect_update(obj)
+            if (oprogs and mobprog.pulse_obj(
+                    obj, rvnum, None, ROOM_DEFS[rvnum].get("area") == ptag)
+                    and obj not in room["items"]):
+                continue  # the prog purged/moved it; nothing left to tick
             timer = obj.get("timer", -1)
             if timer <= 0:
                 continue
@@ -205,6 +217,9 @@ def obj_update(tr, player):
         for obj in list(ch.get("inv", [])):
             _tick_contents(obj.get("contents", []))
             _obj_affect_update(obj)
+            if (oprogs and mobprog.pulse_obj(obj, ch["room"], ch, True)
+                    and obj not in ch["inv"]):
+                continue
             timer = obj.get("timer", -1)
             if timer <= 0:
                 continue
@@ -220,6 +235,9 @@ def obj_update(tr, player):
     for obj in list(player.get("inv", [])):
         _tick_contents(obj.get("contents", []))
         _obj_affect_update(obj)
+        if (oprogs and mobprog.pulse_obj(obj, player["room"], player, True)
+                and obj not in player["inv"]):
+            continue
         timer = obj.get("timer", -1)
         if timer <= 0:
             continue
@@ -241,6 +259,9 @@ def obj_update(tr, player):
             continue
         _tick_contents(obj.get("contents", []))
         _obj_affect_update(obj)
+        if (oprogs and mobprog.pulse_obj(obj, player["room"], player, True)
+                and player["equip"].get(slot) is not obj):
+            continue
         timer = obj.get("timer", -1)
         if timer <= 0:
             continue

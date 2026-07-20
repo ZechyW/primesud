@@ -779,6 +779,18 @@ def area_update(tr, player):
                 if ROOM_DEFS[player["room"]].get("area") == area["tag"]:
                     tr.print("{D" + _RESET_MSGS[randint(0, len(_RESET_MSGS) - 1)] + "{x")
 
+    # random/delay roomprog pulse (cf. area_update tail, db.c:1374-1389):
+    # upstream skips rooms in empty areas; single-player, only the player's
+    # area is non-empty, so only its rooms are swept
+    if world.ROOMPROGS:  # ponytail: no room progs -> skip the sweep
+        from mobprog import pulse_room  # deferred: keep mobprog off the boot path
+        ptag = ROOM_DEFS[player["room"]].get("area")
+        for area in world.areas:
+            if area["tag"] == ptag and "room_vnums" in area:
+                for v in area["room_vnums"]:
+                    pulse_room(v)
+                break
+
 
 def weather_update(tr, player):
     """Advance per-area weather and echo changes to the player (cf. 1stMud weather_update in weather.c). [PRIMESUD]

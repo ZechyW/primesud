@@ -86,7 +86,12 @@ is player-only; world rebuilds each boot).
 
 Trigger word ``surr`` is rejected upstream (the converter accepts it but the
 mechanic is unported); every other trigger word is engine-supported.  Obj/room
-trigger *firing* (the seams) lands in PROGS_PLAN Phase 2.
+trigger firing (PROGS_PLAN Phase 2): has_otrigger/has_rtrigger walk the
+template ``obj_triggers``/``room_triggers`` tuples; the o*/r* trigger
+functions below build the obj context at fire time and are wired into the
+same seams as their mob counterparts (get/drop/give, move exit/greet, say,
+act, the violence round, and the obj/room random-delay pulses).  Obj TRIG_SIT
+has no seam -- furniture is not ported (see movement.py).
 """
 
 from urandom import randint
@@ -406,7 +411,9 @@ def exit_trigger(ch, direction):
 
 
 def speech_trigger(argument, speaker):
-    """Fire SPEECH triggers on every other NPC in the speaker's room (cf. do_say, act_comm.c:376).
+    """Fire SPEECH triggers for a player's say: per room person the mob check
+    then that person's carried objects (the speaker's own included), then
+    floor objects, then the room (cf. do_say, act_comm.c:371-403).
 
     The caller (do_say) invokes this only for a *player* speaker, mirroring
     1stMud's ``if (!IsNPC(ch))`` gate (act_comm.c:371): a mob's prog ``say``
@@ -414,16 +421,27 @@ def speech_trigger(argument, speaker):
     The self-skip below is then belt-and-braces (the speaker is never an NPC in
     the loop anyway).
     """
-    rs = _room_of(speaker)
+    rvnum = speaker.get("room")
+    rs = world.rooms._data.get(rvnum)
     if rs is None:
         return
-    for mid in list(rs.get("mobs", [])):
-        mob = world.chars.get(mid)
+    for person in list(_persons_at(rvnum)):
         # 1stMud do_say gates the mob speech trigger on position == default_pos
         # (a fighting/knocked-down mob does not react); do_tell does not.
-        if (mob is not None and mob is not speaker and mob.get("is_npc")
-                and _at_default_pos(mob)):
-            act_trigger(argument, mob, speaker, None, None, "speech")
+        if (person is not speaker and person.get("is_npc")
+                and _at_default_pos(person)):
+            act_trigger(argument, person, speaker, None, None, "speech")
+        for o in _carried_objs(person):
+            if has_otrigger(o, "speech"):
+                oact_trigger(argument,
+                             {"obj": o, "room": rvnum, "carrier": person},
+                             speaker, "speech")
+    for o in list(rs.get("items", [])):
+        if has_otrigger(o, "speech"):
+            oact_trigger(argument, {"obj": o, "room": rvnum, "carrier": None},
+                         speaker, "speech")
+    if has_rtrigger(rvnum, "speech"):
+        ract_trigger(argument, rvnum, speaker, "speech")
 
 
 def bribe_trigger(mob, ch, amount):
@@ -501,6 +519,361 @@ def death_trigger(mob, ch):
     """
     mob["pos"] = "standing"
     percent_trigger(mob, ch, None, None, "death")
+
+
+# -- obj/room trigger firing (cf. programs.c tri-mode p_*_trigger branches) ----
+
+def _obj_trigs(obj):
+    """Template obj_triggers tuple for *obj* (instance dict or vnum), or None. [PRIMESUD]"""
+    tpl = world.ITEM_DEFS.get(obj_vnum(obj)) if obj is not None else None
+    return tpl.get("obj_triggers") if tpl else None
+
+
+def has_otrigger(obj, ttype):
+    """True if *obj*'s template has a trigger of *ttype* (cf. 1stMud HasTriggerObj)."""
+    trigs = _obj_trigs(obj)
+    if not trigs:  # empty tuple / absent -- cheap short-circuit
+        return False
+    for t in trigs:
+        if t[0] == ttype:
+            return True
+    return False
+
+
+def _room_trigs(rvnum):
+    """Template room_triggers tuple for room *rvnum*, or None. [PRIMESUD]
+
+    ._data lookup: fire sites only concern already-resident rooms; a prog must
+    never pull a foreign area into the heap.
+    """
+    tpl = world.ROOM_DEFS._data.get(rvnum) if rvnum is not None else None
+    return tpl.get("room_triggers") if tpl else None
+
+
+def has_rtrigger(rvnum, ttype):
+    """True if room *rvnum*'s template has a trigger of *ttype* (cf. 1stMud HasTriggerRoom)."""
+    trigs = _room_trigs(rvnum)
+    if not trigs:
+        return False
+    for t in trigs:
+        if t[0] == ttype:
+            return True
+    return False
+
+
+def _run_oprog(octx, prog_vnum, ch, arg1, arg2):
+    """Fetch an obj program's source and run it (cf. the OPROG program_flow call sites). [PRIMESUD]"""
+    code = world.OBJPROGS.get(prog_vnum)
+    if code is None:
+        dbg("mobprog: missing objprog " + str(prog_vnum))
+        return
+    if "prog" in DBG:  # live trigger-fire trace (cf. 1stMud ptrace ring buffer)
+        dbg("objprog " + str(prog_vnum) + " fires, obj "
+            + str(obj_vnum(octx["obj"])) + " room " + str(_octx_room(octx)))
+    program_flow(prog_vnum, code, None, ch, arg1, arg2, obj=octx)
+
+
+def _run_rprog(rvnum, prog_vnum, ch, arg1, arg2):
+    """Fetch a room program's source and run it (cf. the RPROG program_flow call sites). [PRIMESUD]"""
+    code = world.ROOMPROGS.get(prog_vnum)
+    if code is None:
+        dbg("mobprog: missing roomprog " + str(prog_vnum))
+        return
+    if "prog" in DBG:
+        dbg("roomprog " + str(prog_vnum) + " fires, room " + str(rvnum))
+    program_flow(prog_vnum, code, None, ch, arg1, arg2, room=rvnum)
+
+
+def opercent_trigger(octx, ch, arg1, arg2, ttype):
+    """Percent-type trigger on an obj (cf. p_percent_trigger obj branch, programs.c:2919).
+
+    Returns:
+        bool: True if a program ran.
+    """
+    trigs = _obj_trigs(octx["obj"])
+    if not trigs:
+        return False
+    for t in trigs:
+        if t[0] == ttype and _number_percent() < _atoi(t[2]):
+            _run_oprog(octx, t[1], ch, arg1, arg2)
+            return True
+    return False
+
+
+def rpercent_trigger(rvnum, ch, arg1, arg2, ttype):
+    """Percent-type trigger on a room (cf. p_percent_trigger room branch, programs.c:2931).
+
+    Returns:
+        bool: True if a program ran.
+    """
+    trigs = _room_trigs(rvnum)
+    if not trigs:
+        return False
+    for t in trigs:
+        if t[0] == ttype and _number_percent() < _atoi(t[2]):
+            _run_rprog(rvnum, t[1], ch, arg1, arg2)
+            return True
+    return False
+
+
+def oact_trigger(argument, octx, ch, ttype):
+    """First *ttype* obj trigger whose phrase is a substring of *argument*
+    (cf. p_act_trigger obj branch, programs.c:2865).  Every upstream obj/room
+    act/speech call site passes NULL arg1/arg2, so they are omitted here."""
+    trigs = _obj_trigs(octx["obj"])
+    if not trigs:
+        return
+    for t in trigs:
+        if t[0] == ttype and t[2] in argument:
+            _run_oprog(octx, t[1], ch, None, None)
+            return
+
+
+def ract_trigger(argument, rvnum, ch, ttype):
+    """First *ttype* room trigger whose phrase is a substring of *argument*
+    (cf. p_act_trigger room branch, programs.c:2877)."""
+    trigs = _room_trigs(rvnum)
+    if not trigs:
+        return
+    for t in trigs:
+        if t[0] == ttype and t[2] in argument:
+            _run_rprog(rvnum, t[1], ch, None, None)
+            return
+
+
+def ogive_trigger(octx, ch, ttype):
+    """GIVE/GET/DROP-family trigger on the obj itself (cf. p_give_trigger obj
+    branch, programs.c:3110): no phrase match -- the first program of *ttype*
+    fires, with the obj itself as arg1 (the prog sees it as $o)."""
+    trigs = _obj_trigs(octx["obj"])
+    if not trigs:
+        return
+    for t in trigs:
+        if t[0] == ttype:
+            _run_oprog(octx, t[1], ch, octx["obj"], None)
+            return
+
+
+def rgive_trigger(rvnum, ch, dropped, ttype):
+    """GIVE/GET/DROP-family trigger on a room, phrase-matched against *dropped*
+    by vnum, keyword, or ``all`` (cf. p_give_trigger room branch, programs.c:3119).
+
+    The moved object is passed as arg1 ($o)."""
+    trigs = _room_trigs(rvnum)
+    if not trigs:
+        return
+    dvnum = obj_vnum(dropped)
+    kw = _obj_keywords(dropped)
+    for t in trigs:
+        if t[0] != ttype:
+            continue
+        phrase = t[2]
+        if _is_number(phrase):
+            if dvnum == _atoi(phrase):
+                _run_rprog(rvnum, t[1], ch, dropped, None)
+                return
+        else:
+            for word in phrase.split():
+                if word == "all" or is_name(word, kw):
+                    _run_rprog(rvnum, t[1], ch, dropped, None)
+                    return
+
+
+def _carried_objs(c):
+    """Every object *c* carries, worn included (cf. carrying_first walk). [PRIMESUD]"""
+    objs = list(c.get("inv", []))
+    for o in (c.get("equip") or {}).values():
+        if o is not None:
+            objs.append(o)
+    return objs
+
+
+def oexit_trigger(ch, direction):
+    """EXALL objprog check when *ch* leaves a room (cf. p_exit_trigger
+    PRG_OPROG, programs.c:3002).
+
+    Floor objects first, then every room person's carried objects.  The obj
+    trigger vocabulary has no "exit" word, so only EXALL exists.
+
+    Returns:
+        bool: True if a program fired (caller aborts the move, as in 1stMud).
+    """
+    if not world.OBJPROGS:  # ponytail: no obj progs loaded -> skip the scan
+        return False
+    try:
+        dnum = EXIT_ORDER.index(direction)
+    except ValueError:
+        return False
+    rvnum = ch.get("room")
+    rs = world.rooms._data.get(rvnum)
+    if rs is None:
+        return False
+    for o in list(rs.get("items", [])):
+        trigs = _obj_trigs(o)
+        if not trigs:
+            continue
+        for t in trigs:
+            if t[0] == "exall" and _atoi(t[2]) == dnum:
+                _run_oprog({"obj": o, "room": rvnum, "carrier": None},
+                           t[1], ch, None, None)
+                return True
+    for person in list(_persons_at(rvnum)):
+        for o in _carried_objs(person):
+            trigs = _obj_trigs(o)
+            if not trigs:
+                continue
+            for t in trigs:
+                if t[0] == "exall" and _atoi(t[2]) == dnum:
+                    _run_oprog({"obj": o, "room": rvnum, "carrier": person},
+                               t[1], ch, None, None)
+                    return True
+    return False
+
+
+def rexit_trigger(ch, direction):
+    """EXALL roomprog check when *ch* leaves (cf. p_exit_trigger PRG_RPROG,
+    programs.c:3042).  The room trigger vocabulary has no "exit" word either.
+
+    Returns:
+        bool: True if a program fired (caller aborts the move, as in 1stMud).
+    """
+    try:
+        dnum = EXIT_ORDER.index(direction)
+    except ValueError:
+        return False
+    rvnum = ch.get("room")
+    trigs = _room_trigs(rvnum)
+    if not trigs:
+        return False
+    for t in trigs:
+        if t[0] == "exall" and _atoi(t[2]) == dnum:
+            _run_rprog(rvnum, t[1], ch, None, None)
+            return True
+    return False
+
+
+def ogreet_trigger(ch):
+    """GRALL objprog check when a player arrives (cf. p_greet_trigger
+    PRG_OPROG, programs.c:3181).
+
+    The first floor object carrying a GRALL trigger rolls and ends the scan
+    (upstream returns whether or not the percent roll passes); failing that,
+    the first such carried object of any room person.  "greet" is dead
+    vocabulary for objs -- only GRALL fires.
+    """
+    if not world.OBJPROGS:  # ponytail: no obj progs loaded -> skip the scan
+        return
+    rvnum = ch.get("room")
+    rs = world.rooms._data.get(rvnum)
+    if rs is None:
+        return
+    for o in list(rs.get("items", [])):
+        if has_otrigger(o, "grall"):
+            opercent_trigger({"obj": o, "room": rvnum, "carrier": None},
+                             ch, None, None, "grall")
+            return
+    for person in list(_persons_at(rvnum)):
+        for o in _carried_objs(person):
+            if has_otrigger(o, "grall"):
+                opercent_trigger({"obj": o, "room": rvnum, "carrier": person},
+                                 ch, None, None, "grall")
+                return
+
+
+def rgreet_trigger(ch):
+    """GRALL roomprog check when a player arrives (cf. p_greet_trigger
+    PRG_RPROG, programs.c:3207)."""
+    rvnum = ch.get("room")
+    if has_rtrigger(rvnum, "grall"):
+        rpercent_trigger(rvnum, ch, None, None, "grall")
+
+
+def act_trigger_objs_room(argument, ch):
+    """One pass of the obj/room TRIG_ACT block (cf. perform_act, comm.c:2049-2072).
+
+    Floor objects, then carried objects, then the room.  Upstream's carried
+    sweep starts its person walk AT *ch* (``for (tch = ch; ...)``), covering
+    only ch and persons after it in the room list; [PRIMESUD] there is no
+    room-list order here, so ch's objects sweep first, then every other
+    person's.  *argument* is the UNRENDERED act format string (upstream
+    passes ``orig``, $-codes intact).
+    """
+    rvnum = ch.get("room")
+    rs = world.rooms._data.get(rvnum)
+    if rs is None:
+        return
+    for o in list(rs.get("items", [])):
+        if has_otrigger(o, "act"):
+            oact_trigger(argument, {"obj": o, "room": rvnum, "carrier": None},
+                         ch, "act")
+    persons = [ch] + [p for p in _persons_at(rvnum) if p is not ch]
+    for person in persons:
+        for o in _carried_objs(person):
+            if has_otrigger(o, "act"):
+                oact_trigger(argument,
+                             {"obj": o, "room": rvnum, "carrier": person},
+                             ch, "act")
+    if has_rtrigger(rvnum, "act"):
+        ract_trigger(argument, rvnum, ch, "act")
+
+
+def pulse_obj(obj, rvnum, carrier, random_ok):
+    """Random/delay objprog pulse for one located object (cf. obj_update,
+    update.c:822-835).
+
+    [PRIMESUD] intent-parity: upstream's trigger block sits behind the
+    decay-timer expiry gate (update.c:819), which would fire obj random/delay
+    only on the tick an object crumbles -- contradicting the ``obj delay``/
+    ``cancel`` command surface and the room analogue (db.c:1380).  Ported as a
+    per-tick pulse like the room one; the branch logic inside matches upstream.
+
+    Args:
+        obj (dict): Object instance.
+        rvnum (int): Room the object (or its carrier) is in.
+        carrier (dict or None): Carrying character, if any.
+        random_ok (bool): TRIG_RANDOM eligibility -- carried, or on the floor
+            of a non-empty (player-occupied) area (cf. update.c:832).
+
+    Returns:
+        bool: True if a program ran (the caller re-checks the obj's residence
+        before touching it further).
+    """
+    if not _obj_trigs(obj):  # one template lookup per obj per tick, then out
+        return False
+    if has_otrigger(obj, "delay") and obj.get("oprog_delay", 0) > 0:
+        obj["oprog_delay"] = obj["oprog_delay"] - 1
+        if obj["oprog_delay"] <= 0:
+            return opercent_trigger(
+                {"obj": obj, "room": rvnum, "carrier": carrier},
+                None, None, None, "delay")
+    elif random_ok and has_otrigger(obj, "random"):
+        return opercent_trigger(
+            {"obj": obj, "room": rvnum, "carrier": carrier},
+            None, None, None, "random")
+    return False
+
+
+def pulse_room(rvnum):
+    """Random/delay roomprog pulse for one room (cf. area_update tail,
+    db.c:1374-1389).  The caller restricts the sweep to the player's area,
+    matching the upstream ``room->area->empty`` skip (single-player: every
+    other area is empty).
+
+    Returns:
+        bool: True if a program ran.
+    """
+    if not _room_trigs(rvnum):
+        return False
+    rs = world.rooms._data.get(rvnum)
+    if rs is None:
+        return False
+    if has_rtrigger(rvnum, "delay") and rs.get("rprog_delay", 0) > 0:
+        rs["rprog_delay"] = rs["rprog_delay"] - 1
+        if rs["rprog_delay"] <= 0:
+            return rpercent_trigger(rvnum, None, None, None, "delay")
+    elif has_rtrigger(rvnum, "random"):
+        return rpercent_trigger(rvnum, None, None, None, "random")
+    return False
 
 
 # -- $-code expansion (cf. expand_arg_mob, programs.c:1433) --------------------
@@ -2253,8 +2626,8 @@ def _mp_transfer(mob, args, pv, cl):
 
 
 def _transfer_char_to(victim, loc):
-    """The mp/op/rp transfer tail: stop fighting, move, look + greet for a
-    player. [PRIMESUD]"""
+    """The mp/op/rp transfer tail: stop fighting, move, look + the three greet
+    passes for a player (cf. prog_cmds.c:697-707). [PRIMESUD]"""
     if victim.get("fighting") is not None:
         stop_fighting(victim, both=True)
     _char_from_room(victim)
@@ -2262,6 +2635,8 @@ def _transfer_char_to(victim, loc):
     if not victim.get("is_npc"):
         do_look(victim, [])
         greet_trigger(victim)
+        ogreet_trigger(victim)
+        rgreet_trigger(victim)
 
 
 def _mp_force(mob, args, pv, cl):

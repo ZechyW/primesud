@@ -900,6 +900,9 @@ def act_new(format, ch, arg1, arg2, type, min_pos):
     # PrimeSUD player-only delivery above never visits mobs, so it is a
     # separate room-mob pass here, gated by the MOBtrigger latch.
     _act_trigger_mobs(format, ch, arg1, arg2, type)
+    # obj/room TRIG_ACT pass (cf. perform_act tail, comm.c:2044-2073) --
+    # deliberately NOT gated by the MOBtrigger latch, matching upstream
+    _act_trigger_objs_rooms(format, ch, arg1, arg2, type)
 
 
 def _act_to_player(format, ch, arg1, arg2, type, min_pos):
@@ -1008,6 +1011,54 @@ def _act_trigger_mobs(format, ch, arg1, arg2, type):
             mobprog.act_trigger(buf, mob, ch, arg1, arg2, "act")
     finally:
         mobprog.MOBtrigger = saved
+
+
+def _act_trigger_objs_rooms(format, ch, arg1, arg2, type):
+    """Fire TRIG_ACT on room objs, carried objs, and the room (cf. perform_act
+    tail, comm.c:2044-2073). [PRIMESUD]
+
+    Upstream this block runs inside perform_act -- once per qualifying
+    TO_ROOM/TO_NOTVICT recipient -- and is NOT gated on the MOBtrigger latch
+    (only the mob-recipient branch is): an emote or a latched give still fires
+    obj/room act triggers.  Recursion is bounded by mobprog's global
+    program_flow call-depth counter.  The trigger text is the unrendered
+    format string (upstream passes ``orig``).  As in _act_trigger_mobs, the
+    SENDOK position gate on recipients is not mirrored.
+    """
+    if not (type & (TO_ROOM | TO_NOTVICT)):
+        return
+    # ponytail: no obj/room progs loaded -> skip the per-act room scan; a
+    # per-room trigger cache is the upgrade path if this shows on-device
+    if not world.OBJPROGS and not world.ROOMPROGS:
+        return
+    if not isinstance(ch, dict) or ch.get("room") is None:
+        return
+    rs = world.rooms._data.get(ch["room"])
+    if rs is None:
+        return
+    vch = arg2 if isinstance(arg2, dict) and "room" in arg2 else None
+    # one firing pass per qualifying recipient, as upstream's per-recipient
+    # perform_act calls repeat the whole block
+    persons = []
+    player = _player_char()
+    if player is not None and player.get("room") == ch["room"]:
+        persons.append(player)
+    for mid in list(rs.get("mobs", [])):
+        m = world.chars.get(mid)
+        if m is not None:
+            persons.append(m)
+    recips = 0
+    for p in persons:
+        if p is ch:
+            continue
+        if (type & TO_NOTVICT) and p is vch:
+            continue
+        recips += 1
+    if recips == 0:
+        return
+    import mobprog  # deferred: keep mobprog off the boot path
+    for _i in range(recips):
+        mobprog.act_trigger_objs_room(format, ch)
 
 
 def act(format, ch, arg1=None, arg2=None, type=TO_CHAR):

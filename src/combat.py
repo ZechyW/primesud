@@ -92,14 +92,15 @@ def violence_update(player):
     """One combat pulse: all chars with a fight target attack (cf. 1stMud violence_update in fight.c).
     [Verified: 02/07/2026; hunt_victim wired and re-verified 04/07/2026; mob
     TRIG_FIGHT/TRIG_HPCNT wired and re-verified 09/07/2026; [PRIMESUD]
-    autoskill hook added 18/07/2026] -- obj/room prog TRIG_FIGHT out of scope
-    (converter emits neither).
+    autoskill hook added 18/07/2026; worn-obj + room TRIG_FIGHT wired and
+    re-verified 20/07/2026]
 
     Args:
         player (dict): Player state dict.
     """
     chars = world.chars
 
+    room_trig = False  # room TRIG_FIGHT at most once per pulse (cf. fight.c:65)
     # Need to copy to list first as chars could get modified during iteration (on deaths)
     for ch in [chars[k] for k in sorted(chars)]:
         # 1stMud: IsNPC(ch) && ch->fighting == NULL && IsAwake(ch) && ch->hunting != NULL
@@ -140,7 +141,17 @@ def violence_update(player):
             # round, mirroring where mobs fire their specials
             from autoskill import auto_skill_round  # deferred: autoskill imports combat
             auto_skill_round(ch)
-        # obj worn-item / room TRIG_FIGHT are obj/room progs -- out of scope
+        # worn-item then room TRIG_FIGHT, the room at most once per pulse;
+        # the prog's triggering char is ch's opponent (cf. fight.c:99-113)
+        import mobprog  # deferred: keep mobprog off the boot path
+        for obj in (ch.get("equip") or {}).values():
+            if obj is not None and mobprog.has_otrigger(obj, "fight"):
+                mobprog.opercent_trigger(
+                    {"obj": obj, "room": ch["room"], "carrier": ch},
+                    victim, None, None, "fight")
+        if not room_trig and mobprog.has_rtrigger(ch["room"], "fight"):
+            room_trig = True
+            mobprog.rpercent_trigger(ch["room"], victim, None, None, "fight")
 
 
 def check_assist(ch, victim):

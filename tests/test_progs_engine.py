@@ -364,3 +364,166 @@ def test_rp_asound_heard_in_adjacent_room(prog_world):
     player["room"] = 9002
     mobprog.room_interpret(9001, "asound A low rumble echoes.")
     assert any("A low rumble echoes." in l for l in out)
+
+
+# -- fire seams (PROGS_PLAN Phase 2) -------------------------------------------
+
+def test_get_fires_obj_and_room_get_triggers(prog_world):
+    import inventory
+    player, mob, sword, out = prog_world
+    ITEM_DEFS._data[9100]["obj_triggers"] = (("get", 9308, "100"),)
+    OBJPROGS[9308] = "obj echo You feel a hum."
+    world.rooms._data[9001]["room_triggers"] = (("get", 9309, "all"),)
+    ROOMPROGS[9309] = "room echo The room hums too."
+    inventory.do_get(player, ["sword"])
+    assert sword in player["inv"]
+    assert any("You feel a hum." in l for l in out)
+    assert any("The room hums too." in l for l in out)
+
+
+def test_drop_fires_obj_and_room_drop_triggers(prog_world):
+    import inventory
+    player, mob, sword, out = prog_world
+    world.rooms._data[9001]["items"].remove(sword)
+    player["inv"].append(sword)
+    ITEM_DEFS._data[9100]["obj_triggers"] = (("drop", 9310, "100"),)
+    OBJPROGS[9310] = "obj echo Do not drop me!"
+    world.rooms._data[9001]["room_triggers"] = (("drop", 9311, "sword"),)
+    ROOMPROGS[9311] = "room echo Clatter."
+    inventory.do_drop(player, ["sword"])
+    assert sword in world.rooms._data[9001]["items"]
+    assert any("Do not drop me!" in l for l in out)
+    assert any("Clatter." in l for l in out)
+
+
+def test_drop_prog_moving_obj_skips_melt(prog_world):
+    import inventory
+    player, mob, sword, out = prog_world
+    world.rooms._data[9001]["items"].remove(sword)
+    player["inv"].append(sword)
+    ITEM_DEFS._data[9100]["extra_flags"] = {"melt_drop": True}
+    ITEM_DEFS._data[9100]["obj_triggers"] = (("drop", 9312, "100"),)
+    OBJPROGS[9312] = "obj goto 9002"
+    inventory.do_drop(player, ["sword"])
+    # the prog relocated the obj; the melt_drop branch must not fire
+    assert sword in world.rooms._data[9002]["items"]
+    assert not any("dissolves" in l for l in out)
+
+
+def test_give_fires_obj_give_with_obj_as_arg1(prog_world):
+    import inventory
+    player, mob, sword, out = prog_world
+    world.rooms._data[9001]["items"].remove(sword)
+    player["inv"].append(sword)
+    ITEM_DEFS._data[9100]["obj_triggers"] = (("give", 9307, "100"),)
+    OBJPROGS[9307] = "obj echo Given: $o"
+    inventory.do_give(player, ["sword", "guard"])
+    assert sword in mob["inv"]
+    assert any("Given: sword" in l for l in out)
+
+
+def test_exall_objprog_aborts_move(prog_world):
+    import movement
+    player, mob, sword, out = prog_world
+    ITEM_DEFS._data[9100]["obj_triggers"] = (("exall", 9301, "0"),)
+    OBJPROGS[9301] = "obj echo A force stops you."
+    movement.move_char(player, "n")
+    assert player["room"] == 9001
+    assert any("A force stops you." in l for l in out)
+
+
+def test_exall_roomprog_aborts_move(prog_world):
+    import movement
+    player, mob, sword, out = prog_world
+    world.rooms._data[9001]["room_triggers"] = (("exall", 9302, "0"),)
+    ROOMPROGS[9302] = "room echo The room bars your way."
+    movement.move_char(player, "n")
+    assert player["room"] == 9001
+    assert any("The room bars your way." in l for l in out)
+
+
+def test_grall_roomprog_fires_on_entry(prog_world):
+    import movement
+    player, mob, sword, out = prog_world
+    world.rooms._data[9002]["room_triggers"] = (("grall", 9303, "100"),)
+    ROOMPROGS[9303] = "room echo You feel at peace."
+    movement.move_char(player, "n")
+    assert player["room"] == 9002
+    assert any("You feel at peace." in l for l in out)
+
+
+def test_grall_objprog_fires_on_entry(prog_world):
+    import movement
+    player, mob, sword, out = prog_world
+    world.rooms._data[9001]["items"].remove(sword)
+    world.rooms._data[9002]["items"].append(sword)
+    ITEM_DEFS._data[9100]["obj_triggers"] = (("grall", 9304, "100"),)
+    OBJPROGS[9304] = "obj echo The sword glints at you."
+    movement.move_char(player, "n")
+    assert player["room"] == 9002
+    assert any("The sword glints at you." in l for l in out)
+
+
+def test_speech_fires_carried_obj_and_room(prog_world):
+    import comm
+    player, mob, sword, out = prog_world
+    world.rooms._data[9001]["items"].remove(sword)
+    player["inv"].append(sword)  # the speaker's OWN carried obj must react
+    ITEM_DEFS._data[9100]["obj_triggers"] = (("speech", 9305, "hello"),)
+    OBJPROGS[9305] = "obj echo The sword vibrates."
+    world.rooms._data[9001]["room_triggers"] = (("speech", 9306, ""),)
+    ROOMPROGS[9306] = "room echo The walls listen."
+    comm.do_say(player, "why hello")
+    assert any("The sword vibrates." in l for l in out)
+    assert any("The walls listen." in l for l in out)
+
+
+def test_act_room_trigger_fires_once_per_recipient(prog_world):
+    player, mob, sword, out = prog_world
+    mob2 = _char_base()
+    mob2.update(id=3, is_npc=True, tpl=9405, name="guard",
+                short_descr="a test guard", room=9001, pos="standing")
+    world.chars[3] = mob2
+    world.rooms._data[9001]["mobs"].append(3)
+    world.rooms._data[9001]["room_triggers"] = (("act", 9300, "waves"),)
+    ROOMPROGS[9300] = "room echo Someone gestures."
+    handler.act("$n waves.", player, None, None, handler.TO_ROOM)
+    # two qualifying recipients (both guards) -> the upstream per-recipient
+    # perform_act block runs twice
+    assert sum(1 for l in out if "Someone gestures." in l) == 2
+
+
+def test_fight_fires_worn_obj_and_room_once(prog_world):
+    import combat
+    player, mob, sword, out = prog_world
+    worn = {"vnum": 9100}
+    player["equip"]["hold"] = worn
+    ITEM_DEFS._data[9100]["obj_triggers"] = (("fight", 9313, "100"),)
+    OBJPROGS[9313] = "obj echo The sword thirsts."
+    world.rooms._data[9001]["room_triggers"] = (("fight", 9314, "100"),)
+    ROOMPROGS[9314] = "room echo The room trembles."
+    player["fighting"] = 2
+    mob["fighting"] = 1
+    combat.violence_update(player)
+    assert sum(1 for l in out if "The sword thirsts." in l) == 1
+    # both combatants are in 9001; the room fires at most once per pulse
+    assert sum(1 for l in out if "The room trembles." in l) == 1
+
+
+def test_pulse_obj_delay_counts_down_then_fires(prog_world):
+    player, mob, sword, out = prog_world
+    ITEM_DEFS._data[9100]["obj_triggers"] = (("delay", 9315, "100"),)
+    OBJPROGS[9315] = "obj echo Tick."
+    sword["oprog_delay"] = 2
+    assert mobprog.pulse_obj(sword, 9001, None, True) is False
+    assert not any("Tick." in l for l in out)
+    assert mobprog.pulse_obj(sword, 9001, None, True) is True
+    assert any("Tick." in l for l in out)
+
+
+def test_pulse_room_random_fires(prog_world):
+    player, mob, sword, out = prog_world
+    world.rooms._data[9001]["room_triggers"] = (("random", 9316, "50"),)
+    ROOMPROGS[9316] = "room echo Creak."
+    assert mobprog.pulse_room(9001) is True
+    assert any("Creak." in l for l in out)

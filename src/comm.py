@@ -68,7 +68,8 @@ def do_say(ch, argument):
     verb_self = say_verb(argument, 0)
     act("{g$n $t '{G$T{g'{x", ch, verb_room, argument, TO_ROOM)
     act("{gYou $t '{G$T{g'{x", ch, verb_self, argument, TO_CHAR)
-    # TRIG_SPEECH: room NPCs react to a *player's* speech (cf. do_say gate,
+    # TRIG_SPEECH: room NPCs, carried objs (the speaker's own included),
+    # floor objs, and the room react to a *player's* speech (cf. do_say gate,
     # act_comm.c:371 `if (!IsNPC(ch))`).  Restricting to a player speaker is
     # 1stMud's guard against a mob's prog `say` re-triggering other room mobs
     # into mutual speech recursion, so a mob speaker fires no speech triggers.
