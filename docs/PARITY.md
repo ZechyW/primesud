@@ -77,6 +77,7 @@ the only risk class is *wrong* exclusions, audited below.
 | index | M | act_info.c:2672 | help category index; needs category metadata in help.txt + build_help_idx.py |
 | mobdeaths / mobkills | M | act_info.c:3909-4020 | solo bestiary stats; needs per-template counters. NB upstream naming inverted (fight.c:1941/1968: area->kills = PC deaths) |
 | areadeaths / areakills | M | act_info.c:4139-4251 | per-area tallies; same new-counter plumbing |
+| objprog/roomprog engine | M | programs.c; db2.c #OBJPROGS/#ROOMPROGS | reopened 20/07/2026 (was closed as excluded): engine capability for custom area flavour. Shipped content = 2 progs, both midgaard: obj 3005 `O DROP 100` ("Don't drop me!"), room 3054 `R GRALL 100` (sanctuary echo); all other stock sections empty. Scope per mobprog precedent: implement used triggers fully, recognize full trigger vocab as no-ops. Needs converter sections + O/R trigger lines, template storage, mobprog.py actor-binding generalization, drop/room-entry hooks |
 | bank / balance | L | economy.c:36-140 | shares minigame; TODO.md already defers. Stock lore (midgaard.are vnum 3140 liquidation notice) says bank defunct + no death-gold-loss, so solo value dubious — lean drop |
 
 ### Debug-toolkit candidates (imm commands with solo debug value)
@@ -109,8 +110,9 @@ PrimeSUD doesn't have, by design):
   a buggy prog re-firing forever. PrimeSUD aborts print via dbg() at the
   moment they happen and the fix is editing the area file; the disable
   state would be dead weight.
-- Obj/room progs are excluded engine-wide, so 2/3 of every 1:1 listing
-  loop would be N/A anyway.
+- Obj/room progs were excluded engine-wide at audit time (reopened
+  20/07/2026 as a port-candidate; revisit pstat/pdump coverage if that
+  lands), so 2/3 of every 1:1 listing loop would have been N/A.
 
 ## Systems parity
 
@@ -167,12 +169,21 @@ All resolved or closed 19/07/2026:
 
 ### Closed questions (verified, no action)
 
-- Mob `random` level-variance field: zero nonzero values in all stock
-  areas; converter drop has no impact.
+- Mob `random` level-variance field: 1stMud v4-area-format-only
+  (db2.c:101-105, gated `version >= 4`); the ROM/QuickMUD format the
+  converter ingests has no such field, so future stock-ROM imports cannot
+  carry it, and all shipped 1stMud sources have zero values. Converter now
+  hard-errors on over-long mob stat lines (20/07/2026) so a hand-converted
+  v4 line cannot silently mis-parse. If a v4 area is ever imported, apply
+  spawn variance per db.c:1788-1791.
 - Upstream stock areas contain no mobprogs (school.are's are [PRIMESUD]
-  demo additions); midgaard has 1 objprog + 1 roomprog, both in the
-  documented obj/room-prog exclusion.
+  demo additions); midgaard has 1 objprog + 1 roomprog — obj/room prog
+  engine reopened 20/07/2026 as a port-candidate (see table above).
 - missing.c is libc portability shims; zero game logic.
-- hunt_victim mob-chase AI is inert upstream too — not a gap.
+- hunt_victim: absent from ROM 2.4/quickmud entirely (no hunt.c, no
+  ACT_HUNTER); 1stMud wires calls (fight.c:72, update.c:423) but nothing
+  ever sets `->hunting` (NULL assignments only, incl. the programs.c:551
+  ifcheck — always false) — dead-wired, cannot fire. PrimeSUD's dormant
+  port is faithful; not a gap.
 - economy.c contains no dynamic shop-pricing simulation; no shop parity
   gap implied.

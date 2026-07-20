@@ -441,6 +441,17 @@ def parse_mobiles(lines):
 
         # level  hitroll  hp_dice  mana_dice  dam_dice  dam_type  (all one line in ROM)
         parts = lines[i].split(); i += 1
+        if len(parts) > 6:
+            # ROM format is exactly 6 tokens; 8 tokens is the signature of a
+            # 1stMud v4 line (level random autoset hitroll ..., db2.c:101-105)
+            # which would otherwise silently mis-parse (random read as
+            # hitroll, hitroll fed to parse_dice's (1,1,0) fallback).
+            raise ValueError(
+                "mob #" + str(vnum) + " stat line has " + str(len(parts)) +
+                " tokens (expected 6): " + repr(lines[i - 1]) +
+                " -- 1stMud v4 layout with random/autoset fields? Strip them "
+                "or add v4 support (db2.c:101-105) before converting."
+            )
         level   = int(parts[0]) if parts else 0
         hitroll = int(parts[1]) if len(parts) > 1 else 0
         hp_dice   = parse_dice(parts[2]) if len(parts) > 2 else (1, 1, 0)
