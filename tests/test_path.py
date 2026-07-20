@@ -60,7 +60,7 @@ def test_mob_path_uses_index_fallback_and_actual_room(fresh_world, monkeypatch):
                 "room": 201, "level": 10})
     calls = []
 
-    def find_mob(argument):
+    def find_mob(argument, _ch):
         calls.append(argument)
         world._ensure_area_by_tag("beta")
         MOB_DEFS._data[250] = {"keywords": "red dragon",
@@ -148,6 +148,33 @@ def test_mob_path_within_current_area(fresh_world, monkeypatch):
     path_cmd.do_path(player, ["dragon"])
 
     assert out == ["Shortest path to a red dragon is 1 steps: n."]
+
+
+def test_mob_path_invisible_mob_hidden_without_detect(fresh_world, monkeypatch):
+    _setup_chain(fresh_world, monkeypatch, ("alpha",))
+    player = _player()
+    _ = ROOM_DEFS[100]
+    MOB_DEFS._data[150] = {"keywords": "red dragon",
+                           "short_descr": "a red dragon"}
+    mob = _char_base()
+    mob.update({"id": 2, "is_npc": True, "tpl": 150, "room": 100,
+                "level": 10, "affected_by": {"invisible": True}})
+    world.chars[2] = mob
+    monkeypatch.setattr(path_cmd, "_find_unloaded_mob",
+                        lambda _arg, _ch: (None, None))
+    monkeypatch.setattr(path_cmd, "saves_spell", lambda *args: False)
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    path_cmd.do_path(player, ["dragon"])
+    assert out == ["No such destination."]
+
+    # detect invis restores get_char_world visibility
+    player["affected_by"] = {"detect_invis": True}
+    out[:] = []
+    path_cmd.do_path(player, ["dragon"])
+    assert out == ["No need to walk to get there!"]
 
 
 def test_area_path_unreachable_chain_reports_no_path(fresh_world, monkeypatch):

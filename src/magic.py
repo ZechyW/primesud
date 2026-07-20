@@ -2,7 +2,7 @@
 
 import world
 from handler import (is_name, is_affected, affect_to_char, affect_join, affect_strip, is_awake,
-                   can_see_room, act, chprintln, get_char_room, equip_char,
+                   can_see, can_see_room, act, chprintln, get_char_room, equip_char,
                    unequip_char, tpl_flag_affects, get_curr_stat,
                    TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
                    is_good, is_evil, is_neutral)
@@ -1737,6 +1737,7 @@ def spell_gate(sn, level, ch, vo, target):
     [Verified: 03/07/2026; pet gate added and re-verified 03/07/2026;
     unloaded-area target fallback (get_char_world fidelity) added and
     re-verified 04/07/2026; look "auto" arg added and re-verified
+    20/07/2026; get_char_world can_see filter added and re-verified
     20/07/2026]"""
     tail = ch.get("_target_name", "")
     if not tail:
@@ -1754,11 +1755,11 @@ def spell_gate(sn, level, ch, vo, target):
                 continue
             if _c.get("is_npc"):
                 _tpl = MOB_DEFS.get(_c.get("tpl"), {})
-                if is_name(tail, _tpl.get("keywords", "")):
+                if is_name(tail, _tpl.get("keywords", "")) and can_see(ch, _c):
                     victim = _c
                     break
         if victim is None:
-            victim = _find_unloaded_mob(tail)[1]
+            victim = _find_unloaded_mob(tail, ch)[1]
 
     if victim is None or victim is ch:
         chprintln(ch, "You failed.")
@@ -2374,7 +2375,8 @@ def spell_stone_skin(sn, level, ch, vo, target):
 def spell_summon(sn, level, ch, vo, target):
     """Summon (cf. 1stMud spell_summon in magic.c).
     [Verified: 03/07/2026; unloaded-area target fallback (get_char_world
-    fidelity) added and re-verified 04/07/2026] -- LEVEL_IMMORTAL /
+    fidelity) added and re-verified 04/07/2026; get_char_world can_see
+    filter added and re-verified 20/07/2026] -- LEVEL_IMMORTAL /
     PLR_NOSUMMON PC checks and AREA_CLOSED flag not ported (no other PCs;
     area flags not modeled)."""
     tail = ch.get("_target_name", "")
@@ -2387,12 +2389,12 @@ def spell_summon(sn, level, ch, vo, target):
             if _c is ch or not _c.get("is_npc"):
                 continue
             _tpl = MOB_DEFS.get(_c.get("tpl"), {})
-            if is_name(tail, _tpl.get("keywords", "")):
+            if is_name(tail, _tpl.get("keywords", "")) and can_see(ch, _c):
                 victim = _c
                 victim_id = _cid
                 break
         if victim is None:
-            victim_id, victim = _find_unloaded_mob(tail)
+            victim_id, victim = _find_unloaded_mob(tail, ch)
 
     if victim is None or victim.get("room") is None:
         chprintln(ch, "You failed.")
@@ -2649,7 +2651,7 @@ def spell_high_explosive(sn, level, ch, vo, target):
 MOB_INDEX_FILE = "mobs.idx"  # [PRIMESUD] "tag|vnum|keywords" per line
 
 
-def _find_unloaded_mob(tail):
+def _find_unloaded_mob(tail, ch):
     """Locate a name-matched mob in an unloaded area and load that area. [PRIMESUD]
 
     1stMud get_char_world sees every mob in the world; PrimeSUD only
@@ -2660,6 +2662,8 @@ def _find_unloaded_mob(tail):
 
     Args:
         tail (str): Target name words.
+        ch (dict): Observer; spawned candidates are filtered through
+            can_see, matching get_char_world (handler.c:1934).
 
     Returns:
         tuple: (char_id, char) of the spawned instance, or (None, None).
@@ -2686,7 +2690,7 @@ def _find_unloaded_mob(tail):
             if not _c.get("is_npc"):
                 continue
             _tpl = MOB_DEFS.get(_c.get("tpl"), {})
-            if is_name(tail, _tpl.get("keywords", "")):
+            if is_name(tail, _tpl.get("keywords", "")) and can_see(ch, _c):
                 return _cid, _c
         # area loaded but no matching instance spawned (dead / limit 0)
         loads += 1
@@ -2716,11 +2720,11 @@ def _warp_victim(level, ch, check_from=False):
         if _c is ch or not _c.get("is_npc"):
             continue
         _tpl = MOB_DEFS.get(_c.get("tpl"), {})
-        if is_name(tail, _tpl.get("keywords", "")):
+        if is_name(tail, _tpl.get("keywords", "")) and can_see(ch, _c):
             victim = _c
             break
     if victim is None:
-        victim = _find_unloaded_mob(tail)[1]
+        victim = _find_unloaded_mob(tail, ch)[1]
     if victim is None:
         return None
 

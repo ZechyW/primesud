@@ -3,7 +3,7 @@
 import world
 from config import DAM_OTHER, EXIT_ORDER, MAX_MORTAL_LEVEL
 from gquest import gq_is_target
-from handler import can_see_room, chprintln, is_name
+from handler import can_see, can_see_room, chprintln, is_name
 from info import _area_chain, _compress_path
 from magic import _find_unloaded_mob, saves_spell
 from quest import is_quester
@@ -25,7 +25,7 @@ def _loaded_mob(argument, player):
         if mob is player or not mob.get("is_npc"):
             continue
         tpl = MOB_DEFS.get(mob.get("tpl"), {})
-        if is_name(argument, tpl.get("keywords", "")):
+        if is_name(argument, tpl.get("keywords", "")) and can_see(player, mob):
             return mob
     return None
 
@@ -132,7 +132,7 @@ def do_path(player, args):
         if target_tag is None:
             mob = _loaded_mob(argument, player)
             if mob is None:
-                mob = _find_unloaded_mob(argument)[1]
+                mob = _find_unloaded_mob(argument, player)[1]
             target_room = _mob_destination(player, mob)
             if target_room is None:
                 chprintln(player, "No such destination.")

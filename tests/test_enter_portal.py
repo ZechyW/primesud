@@ -242,7 +242,7 @@ def test_portal_targets_unloaded_area_mob(out, monkeypatch, tmp_path):
 def test_find_unloaded_mob_second_mob_same_area(monkeypatch, tmp_path):
     # first index hit has no instance; sibling mob spawned by the same
     # area load must still be found (later same-tag lines get skipped)
-    _make_player(9001)
+    player = _make_player(9001)
     idx = tmp_path / "mobs.idx"
     idx.write_text("testarea|9402|red dragon\n"
                    "testarea|9403|blue dragon\n")
@@ -256,16 +256,40 @@ def test_find_unloaded_mob_second_mob_same_area(monkeypatch, tmp_path):
         world._LOADED_AREAS.add(tag)
     monkeypatch.setattr(world, "_ensure_area_by_tag", fake_load)
     monkeypatch.setattr(world, "_LOADED_AREAS", set())
-    cid, mob = magic._find_unloaded_mob("dragon")
+    cid, mob = magic._find_unloaded_mob("dragon", player)
     assert cid == 3
     assert mob["tpl"] == 9403
 
 
+def test_find_unloaded_mob_skips_invisible_spawn(monkeypatch, tmp_path):
+    # get_char_world can_see fidelity: invisible spawn stays unfound
+    player = _make_player(9001)
+    idx = tmp_path / "mobs.idx"
+    idx.write_text("testarea|9402|red dragon\n")
+    monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
+
+    def fake_load(tag):
+        MOB_DEFS._data[9402] = {"keywords": "red dragon",
+                                "short_descr": "a red dragon", "level": 10}
+        _make_mob(3, room=9002, tpl=9402)
+        world.chars[3]["affected_by"] = {"invisible": True}
+        world._LOADED_AREAS.add(tag)
+    monkeypatch.setattr(world, "_ensure_area_by_tag", fake_load)
+    monkeypatch.setattr(world, "_LOADED_AREAS", set())
+    assert magic._find_unloaded_mob("dragon", player) == (None, None)
+
+    player["affected_by"] = {"detect_invis": True}
+    monkeypatch.setattr(world, "_LOADED_AREAS", set())
+    cid, mob = magic._find_unloaded_mob("dragon", player)
+    assert cid == 3
+
+
 def test_find_unloaded_mob_edge_cases(monkeypatch, tmp_path):
+    player = _make_player(9001)
     # missing index file: fail loud (index always shipped in a dist)
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(tmp_path / "absent.dat"))
     with pytest.raises(OSError):
-        magic._find_unloaded_mob("dragon")
+        magic._find_unloaded_mob("dragon", player)
     # loaded areas skipped; header comment ignored; no-spawn load capped at 2
     idx = tmp_path / "mobs.idx"
     idx.write_text("# tag|vnum|keywords header\n"
@@ -277,7 +301,7 @@ def test_find_unloaded_mob_edge_cases(monkeypatch, tmp_path):
     monkeypatch.setattr(world, "_LOADED_AREAS", {"loadedarea"})
     loaded = []
     monkeypatch.setattr(world, "_ensure_area_by_tag", loaded.append)
-    assert magic._find_unloaded_mob("dragon") == (None, None)
+    assert magic._find_unloaded_mob("dragon", player) == (None, None)
     assert loaded == ["ghost1", "ghost2"]
 
 
