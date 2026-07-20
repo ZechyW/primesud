@@ -9,7 +9,7 @@ Runs in terminal-style text UI on calculator's 320x240 screen via custom text la
 ## Tech stack
 
 - **Language:** Python -- HP Prime's restricted MicroPython-like subset, not standard CPython
-- **Available modules:** `hpprime`, `uio`, `cas`, `math`, `urandom`, `gc` -- ask user if unsure about others. `utime` is NOT importable on-device (confirmed 2026-07-07); use PPL `Ticks`/`WAIT` via `hpprime.eval`
+- **Available modules:** `hpprime`, `uio`, `cas`, `math`, `urandom`, `gc`. `utime` is NOT importable on-device (confirmed 2026-07-07); use PPL `Ticks`/`WAIT` via `hpprime.eval`
 - **No package manager.** No pip, no pypi dependencies
 
 ## Architecture
@@ -30,7 +30,7 @@ Reusable terminal abstraction by Piotr Kowalewski (komame). Renders chars onto H
 
 5. **`KeyboardInterrupt` is exit signal.** On key raises it. `PrimeSUD.__exit__` handles it -- don't swallow elsewhere.
 
-6. **Python source must be ASCII-only and BOM-free.** HP Prime's Python loader can misparse UTF-8 BOM or non-ASCII bytes, even in comments. Prefer `apply_patch` for `.py` edits; do not rewrite Python files with PowerShell `Set-Content`, `Out-File`, or redirection unless explicitly writing bytes / UTF-8 without BOM. After editing Python files, run:
+6. **Python source must be ASCII-only and BOM-free.** HP Prime's Python loader can misparse UTF-8 BOM or non-ASCII bytes, even in comments. Use surgical edit tools for `.py` changes; do not rewrite Python files with PowerShell `Set-Content`, `Out-File`, or redirection unless explicitly writing bytes / UTF-8 without BOM. After editing Python files, run:
 
 ```
 python tools/check_ascii_py.py
@@ -42,13 +42,13 @@ python tools/check_ascii_py.py
 
 ## Colour codes
 
-Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` -- handled by `colors.py`. For transient UI-only strings, `%` (`"{G%s{x" % name`, `"hp: %d" % hp`) avoids `.format()` conflicts with `{X` colour delimiters. For persisted/serialized strings, do **not** use `%`; use explicit `str()` plus concatenation. Concatenation (`"{G" + name + "{x"`) works but verbose. Full table in docs/REFERENCE.md sec. Colour codes.
+Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` -- handled by `colors.py`. For transient UI-only strings, `%` (`"{G%s{x" % name`, `"hp: %d" % hp`) avoids `.format()` conflicts with `{X` colour delimiters. For persisted/serialized strings, no `%` -- see pitfall 8 (str() + concat). Full table in docs/REFERENCE.md sec. Colour codes.
 
 When porting 1stMud code using `CTAG(_CONSTANT)` (e.g. `CTAG(_MOBILES)`), default colour per constant documented in docs/REFERENCE.md sec. CTAG colour scheme. Use that table to pick equivalent `{X` code.
 
 ## Porting from 1stmud
 
-When porting features from 1stmud, aim for full fidelity. In particular, match 1stmud's function signatures, logic flow, and output messages. Match data and naming conventions wherever possible. Add inline comments for features that aren't available yet or that are PRIMESUD specific, so that these are easy to find/validate/address later.
+When porting features from 1stmud, aim for full fidelity. In particular, match 1stmud's function signatures, logic flow, and output messages. Match data and naming conventions wherever possible. Add inline comments for features that aren't available yet or that are `[PRIMESUD]`-specific, so that these are easy to find/validate/address later.
 
 Exception: fix typos, grammatical errors, and other linguistic slips in 1stmud output text where appropriate (e.g. "does" used for first person, "a outlaw", "beleive"); mark such fixes with a `[PRIMESUD]` comment.
 
@@ -77,6 +77,7 @@ Root: `README.md`, `CLAUDE.md`, `DESIGN.md` (intentional deviations + settled de
 - 1stMud reference: `REFERENCE.md`, `COMMANDS.md`, `SKILLS.md`
 - Device limits/perf: `BUILTINS.md`, `PRIME_STRING_FORMAT_BUG.md`, `PRIME_COLOURS.md`
 - PrimeSUD systems: `AREA_FILES.md`, `PRIME_UX.md`, `FIXES.md`, `CROSS_RESETS.md`
+- Status/audits: `PARITY.md` (1stMud parity sweep; engine 1.0 release-gate checklist)
 
 Completed plan documents are deleted, not archived -- durable decisions get harvested into `DESIGN.md`/`TODO.md` first; full text stays in git history.
 
@@ -85,4 +86,6 @@ Completed plan documents are deleted, not archived -- durable decisions get harv
 - Read `DESIGN.md`, and relevant reference docs before porting behavior from 1stMud.
 - Provide sanity check and brief explanation of key decisions -- especially HP Prime constraints or PPL interop -- before complex coding.
 - Minimal targeted changes. No surrounding refactor unless it is substantially cleaner or better; if so, raise for review.
+- After code changes, run the desktop test suite: `python -m pytest -q` (CPython via `pc_shim/` device shims), plus `python tools/check_ascii_py.py` per pitfall 6.
+- Commit messages: Conventional Commits (`feat(scope): ...`, `fix:`, `docs:`, ...).
 - Unsure if Python feature is available on HP Prime? Ask for human check.
