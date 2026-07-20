@@ -527,3 +527,164 @@ def test_pulse_room_random_fires(prog_world):
     ROOMPROGS[9316] = "room echo Creak."
     assert mobprog.pulse_room(9001) is True
     assert any("Creak." in l for l in out)
+
+
+# -- ifcheck completion (PROGS_PLAN Phase 3) -----------------------------------
+
+def _ce(mob_, check, line, ch=None, arg1=None, arg2=None):
+    return mobprog.cmd_eval(check, line, mob_, ch, arg1, arg2, None, 0)
+
+
+def test_ifcheck_isimmort(prog_world):
+    player, mob, sword, out = prog_world
+    assert _ce(mob, "isimmort", "$n", ch=player) is False
+    mob["level"] = 52
+    assert _ce(mob, "isimmort", "$i") is True
+
+
+def test_ifcheck_carries_and_wears(prog_world):
+    player, mob, sword, out = prog_world
+    world.rooms._data[9001]["items"].remove(sword)
+    player["inv"].append(sword)
+    assert _ce(mob, "carries", "$n 9100", ch=player) is True
+    assert _ce(mob, "carries", "$n sword", ch=player) is True
+    assert _ce(mob, "carries", "$n 9101", ch=player) is False
+    assert _ce(mob, "wears", "$n 9100", ch=player) is False
+    player["inv"].remove(sword)
+    player["equip"]["hold"] = sword
+    # worn: has_item counts it for the number form, get_obj_carry (name form,
+    # unworn inventory only) does not
+    assert _ce(mob, "wears", "$n 9100", ch=player) is True
+    assert _ce(mob, "wears", "$n sword", ch=player) is True
+    assert _ce(mob, "carries", "$n 9100", ch=player) is True
+    assert _ce(mob, "carries", "$n sword", ch=player) is False
+
+
+def test_ifcheck_has_and_uses(prog_world):
+    player, mob, sword, out = prog_world
+    world.rooms._data[9001]["items"].remove(sword)
+    player["inv"].append(sword)
+    assert _ce(mob, "has", "$n weapon", ch=player) is True
+    assert _ce(mob, "uses", "$n weapon", ch=player) is False
+    player["inv"].remove(sword)
+    player["equip"]["hold"] = sword
+    assert _ce(mob, "uses", "$n weapon", ch=player) is True
+
+
+def test_ifcheck_objval_weapon_and_attrib_override(prog_world):
+    player, mob, sword, out = prog_world
+    ITEM_DEFS._data[9100]["weapon_type"] = "sword"
+    ITEM_DEFS._data[9100]["dice"] = (2, 5, 0)
+    assert _ce(mob, "objval0", "$o == 1", ch=player, arg1=sword) is True
+    assert _ce(mob, "objval1", "$o == 2", ch=player, arg1=sword) is True
+    assert _ce(mob, "objval2", "$o == 5", ch=player, arg1=sword) is True
+    # an `obj attrib` write to the instance values tuple wins outright
+    sword["values"] = (9, 8, 7, 6, 5)
+    assert _ce(mob, "objval0", "$o == 9", ch=player, arg1=sword) is True
+
+
+def test_ifcheck_objval_in_objprog(prog_world):
+    player, mob, sword, out = prog_world
+    ITEM_DEFS._data[9100]["dice"] = (3, 4, 0)
+    assert mobprog._cmd_eval_other(
+        "objval1", "$i == 3", "obj", _octx(sword), player, None, None,
+        None, 0) is True
+
+
+def test_ifcheck_grpsize_and_order(prog_world):
+    player, mob, sword, out = prog_world
+    mob["leader"] = 1  # guard grouped under the player
+    assert _ce(mob, "grpsize", "$n == 1", ch=player) is True
+    mob2 = _char_base()
+    mob2.update(id=3, is_npc=True, tpl=9405, name="guard",
+                short_descr="a test guard", room=9001, pos="standing")
+    world.chars[3] = mob2
+    world.rooms._data[9001]["mobs"].append(3)
+    # mob2 is the second same-vnum NPC in the room walk
+    assert _ce(mob2, "order", "== 1") is True
+    assert _ce(mob, "order", "== 0") is True
+
+
+def test_ifcheck_race_class_plr_imm_off(prog_world):
+    from classes import CLASS_TABLE
+    player, mob, sword, out = prog_world
+    assert _ce(mob, "race", "$i human") is True
+    assert _ce(mob, "race", "$i troll") is False
+    cls_name = CLASS_TABLE[0]["names"][0].lower()
+    player["classes"] = [0]
+    player["prime_class"] = 0
+    assert _ce(mob, "class", "$n " + cls_name, ch=player) is True
+    assert _ce(mob, "class", "$i " + cls_name) is False  # NPCs have no class
+    player["flags"] = handler.PLR_AUTOLOOT
+    assert _ce(mob, "plr", "$n autoloot", ch=player) is True
+    assert _ce(mob, "plr", "$n autosac", ch=player) is False
+    mob["imm_flags"] = {"fire": True}
+    mob["off_flags"] = {"dodge": True}
+    assert _ce(mob, "imm", "$i fire") is True
+    assert _ce(mob, "off", "$i dodge") is True
+    assert _ce(mob, "off", "$i berserk") is False
+
+
+def test_ifcheck_weight_onquest_clan_hunter(prog_world):
+    player, mob, sword, out = prog_world
+    world.rooms._data[9001]["items"].remove(sword)
+    player["inv"].append(sword)
+    assert _ce(mob, "weight", "$n > 0", ch=player) is True
+    assert _ce(mob, "onquest", "$n", ch=player) is False
+    player["quest_status"] = 1
+    assert _ce(mob, "onquest", "$n", ch=player) is True
+    assert _ce(mob, "clan", "$n whatever", ch=player) is False
+    assert _ce(mob, "hunter", "$n", ch=player) is False
+
+
+def test_ifcheck_objtype_and_skill(prog_world):
+    player, mob, sword, out = prog_world
+    assert _ce(mob, "objtype", "$o weapon", ch=player, arg1=sword) is True
+    assert _ce(mob, "objtype", "$o potion", ch=player, arg1=sword) is False
+    # learned=0 (no class access) -> below any positive minimum
+    assert _ce(mob, "skill", "$n sword 10", ch=player) is False
+    assert _ce(mob, "skill", "$i sword 10") is False  # NPCs never pass
+
+
+# -- gtransfer / gforce / vforce (PROGS_PLAN Phase 3) --------------------------
+
+def test_mp_gforce_forces_victims_group(prog_world):
+    player, mob, sword, out = prog_world
+    mob["leader"] = 1  # guard grouped under the player
+    mob2 = _char_base()
+    mob2.update(id=3, is_npc=True, tpl=9405, name="guard",
+                short_descr="a test guard", room=9001, pos="standing")
+    world.chars[3] = mob2
+    world.rooms._data[9001]["mobs"].append(3)
+    mobprog._mp_gforce(mob2, "tester say banzai", 0, 0)
+    # player and grouped guard both say it; ungrouped mob2 does not
+    assert sum(1 for l in out if "banzai" in l) == 2
+
+
+def test_vforce_self_exclusion_mob_vs_obj(prog_world):
+    player, mob, sword, out = prog_world
+    mob2 = _char_base()
+    mob2.update(id=3, is_npc=True, tpl=9405, name="guard",
+                short_descr="a test guard", room=9001, pos="standing")
+    world.chars[3] = mob2
+    world.rooms._data[9001]["mobs"].append(3)
+    mobprog._mp_vforce(mob, "9405 say vfmob", 0, 0)
+    assert sum(1 for l in out if "vfmob" in l) == 1  # mob excludes itself
+    del out[:]
+    mobprog._op_vforce(_octx(sword), "9405 say vfobj", 0)
+    assert sum(1 for l in out if "vfobj" in l) == 2  # obj forces both
+
+
+def test_rp_gtransfer_moves_group(prog_world):
+    player, mob, sword, out = prog_world
+    mob["leader"] = 1
+    mob2 = _char_base()
+    mob2.update(id=3, is_npc=True, tpl=9405, name="wanderer",
+                keywords="wanderer", short_descr="a wanderer", room=9001,
+                pos="standing")
+    world.chars[3] = mob2
+    world.rooms._data[9001]["mobs"].append(3)
+    mobprog._rp_gtransfer(9001, "tester 9002", 0)
+    assert player["room"] == 9002
+    assert mob["room"] == 9002
+    assert mob2["room"] == 9001

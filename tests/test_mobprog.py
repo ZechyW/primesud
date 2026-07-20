@@ -175,13 +175,11 @@ def test_find_location_world_wide(mp_world):
     player["room"] = 9001
 
 
-def test_cmd_eval_unported_check_logs_false(monkeypatch):
-    logged = []
-    monkeypatch.setattr(mobprog, "dbg", lambda m: logged.append(m))
+def test_cmd_eval_clan_is_faithfully_false():
+    # 'clan' is implemented (PROGS_PLAN Phase 3) as faithful-False: no clan
+    # system is ported, so no char can ever match one
     mob = _mob()
-    # 'clan' is valid 1stMud vocab but outside the Phase A subset
-    assert mobprog.cmd_eval("clan", "$n", mob, _pc(), None, None, None, 1) is False
-    assert any("not ported" in m for m in logged)
+    assert mobprog.cmd_eval("clan", "$n whatever", mob, _pc(), None, None, None, 1) is False
 
 
 def test_mprog_target_stored_as_id_and_resolved():
@@ -760,12 +758,12 @@ def test_mp_junk(mp_world):
     assert mob["inv"] == []
 
 
-def test_mp_skipped_command_logs(monkeypatch, mp_world):
+def test_mp_gforce_reaches_group(mp_world):
+    # gforce is implemented (PROGS_PLAN Phase 3): the victim's whole group
+    # acts; a solo player is a group of one
     player, mob, out = mp_world
-    logged = []
-    monkeypatch.setattr(mobprog, "dbg", lambda m: logged.append(m))
-    mob_interpret(mob, "gforce Tester say hi")   # skipped group command
-    assert any("skipped" in m for m in logged)
+    mob_interpret(mob, "gforce Tester say hi")
+    assert any("hi" in l for l in out)
 
 
 def test_mp_unknown_command_logs(monkeypatch, mp_world):

@@ -97,7 +97,10 @@ has no seam -- furniture is not ported (see movement.py).
 from urandom import randint
 
 import world
-from combat import damage, multi_hit, stop_fighting, _extract_char, DAM_NONE
+from classes import class_lookup, prime_class
+from combat import (
+    damage, is_same_group, multi_hit, stop_fighting, _extract_char, DAM_NONE,
+)
 from commands import interpret
 from config import EXIT_ORDER, POS_FROM_SHORT, POS_ORDER, TYPE_UNDEFINED
 from debug import DBG, dbg
@@ -105,14 +108,20 @@ from game_time import time_info
 from handler import (
     act, can_see, can_see_obj, chprintln, is_name, number_argument,
     _HE_SHE, _HIM_HER, _HIS_HER, TO_ROOM, TO_CHAR, TO_VICT, TO_NOTVICT,
+    PLR_AUTOMAP, PLR_AUTOSKILL, PLR_AUTOASSIST, PLR_AUTOEXIT, PLR_AUTOLOOT,
+    PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOSPLIT, PLR_AUTODAMAGE,
 )
 from inventory import wear_obj
 from item import (
-    create_object, get_obj_here, get_obj_list, item_wear_flags, obj_vnum,
+    create_object, get_carry_weight, get_obj_here, get_obj_list,
+    item_wear_flags, obj_vnum, prog_obj_value,
 )
 from magic import _skill_lookup, SPELL_FUNS, TARGET_CHAR, TARGET_OBJ, TARGET_NONE
 from mob import create_mobile
 from movement import do_look, move_char
+from quest import is_quester
+from races import race_lookup
+from skill_utils import get_skill
 from skills_table import SKILLS
 
 # -- Interpreter limits (cf. programs.c:1942/1950) -----------------------------
@@ -1125,11 +1134,37 @@ _COUNT_FLAG = {"people": 0, "players": 1, "mobs": 2, "clones": 3}
 _CHAR_BOOL = frozenset((
     "ispc", "isnpc", "isgood", "isevil", "isneutral", "ischarm", "isfollow",
     "isactive", "isdelay", "isvisible", "hastarget", "istarget",
+    "isimmort", "onquest", "hunter",
 ))
 _CHAR_NUM = frozenset((
     "level", "align", "money", "hpcnt", "vnum", "room", "sex",
+    "weight", "grpsize", "objval0", "objval1", "objval2", "objval3",
+    "objval4",
 ))
-_CHAR_FLAG = frozenset(("name", "pos", "act", "affected"))
+_CHAR_FLAG = frozenset((
+    "name", "pos", "act", "affected",
+    "plr", "imm", "off", "carries", "wears", "has", "uses", "skill",
+    "clan", "race", "class", "objtype",
+))
+
+# cf. 1stMud LEVEL_IMMORTAL (defines.h:134, MAX_LEVEL 60 - 8); no trust
+# system ported, so level stands in for get_trust
+LEVEL_IMMORTAL = 52
+
+# Upstream plr_flags names (tables.c:84) for the PLR_* bits PrimeSUD ports;
+# unported names (pk, holylight, can_loot, nosummon, ...) miss the dict and
+# evaluate False, like a flag_value NO_FLAG
+_PLR_WORD = {
+    "automap": PLR_AUTOMAP,
+    "autoskill": PLR_AUTOSKILL,  # [PRIMESUD]
+    "autoassist": PLR_AUTOASSIST,
+    "autoexit": PLR_AUTOEXIT,
+    "autoloot": PLR_AUTOLOOT,
+    "autosac": PLR_AUTOSAC,
+    "autogold": PLR_AUTOGOLD,
+    "autosplit": PLR_AUTOSPLIT,
+    "autodamage": PLR_AUTODAMAGE,
+}
 
 
 def _count_people_room(mob, iflag):
@@ -1158,9 +1193,44 @@ def _count_people_room(mob, iflag):
             continue
         if iflag == 3 and not (is_npc and c.get("tpl") == my_tpl):
             continue
+        if iflag == 4 and not is_same_group(mob, c):
+            continue
         if can_see(mob, c):
             count += 1
     return count
+
+
+def _get_order_mob(mob):
+    """Index of *mob* among same-vnum NPCs in its room, walk order
+    (cf. get_order, programs.c:298: the char branch)."""
+    if not mob.get("is_npc"):
+        return 0
+    i = 0
+    for c in _room_persons(mob):
+        if c is mob:
+            return i
+        if c.get("is_npc") and c.get("tpl") == mob.get("tpl"):
+            i += 1
+    return 0
+
+
+def _get_order_obj(octx):
+    """Index of the origin obj among same-vnum floor objects in its room
+    (cf. get_order, programs.c:298: the obj branch).  A carried origin walks
+    the carrier's room floor and is never found -> 0, as upstream."""
+    obj = octx["obj"]
+    rvnum = _octx_room(octx)
+    rs = world.rooms._data.get(rvnum) if rvnum is not None else None
+    if rs is None:
+        return 0
+    i = 0
+    v = obj_vnum(obj)
+    for it in rs.get("items", []):
+        if it is obj:
+            return i
+        if obj_vnum(it) == v:
+            i += 1
+    return 0
 
 
 def _resolve_target(code, mob, ch, arg1, arg2):
@@ -1190,6 +1260,11 @@ def _char_num_lval(check, lval_char, lval_obj):
         if lval_char is not None and lval_char.get("is_npc"):
             return lval_char.get("tpl", 0)
         return 0
+    if check.startswith("objval"):
+        # cf. CHK_OBJVAL0-4: lval stays 0 without an obj lvalue
+        if lval_obj is not None:
+            return prog_obj_value(lval_obj, int(check[6]))
+        return 0
     if lval_char is None:
         return 0
     if check == "hpcnt":
@@ -1208,6 +1283,12 @@ def _char_num_lval(check, lval_char, lval_obj):
         return lval_char.get("alignment", 0)
     if check == "money":
         return lval_char.get("gold", 0)
+    if check == "weight":
+        return get_carry_weight(lval_char)
+    if check == "grpsize":
+        # cf. count_people_room(lval_char, ..., 4): visible group members in
+        # lval_char's room, excluding lval_char itself
+        return _count_people_room(lval_char, 4)
     return 0
 
 
@@ -1247,11 +1328,27 @@ def _eval_char_bool(check, code, lval_char, lval_obj, mob):
     if check == "istarget":
         tid = mob.get("mprog_target")
         return c is not None and tid is not None and tid == c.get("id")
+    if check == "isimmort":
+        # cf. IsImmortal (macro.h:266): get_trust >= LEVEL_IMMORTAL; no trust
+        # system ported, so raw level stands in
+        return c is not None and c.get("level", 0) >= LEVEL_IMMORTAL
+    if check == "onquest":
+        return c is not None and is_quester(c)
+    if check == "hunter":
+        # cf. CHK_HUNTER (lval_char->hunting == mob): dead-wired upstream --
+        # hunt.c only ever NULLs ->hunting, nothing sets it -- so the check
+        # can never be true; faithfully False
+        return False
     return False
 
 
-def _eval_char_flag(check, word, lval_char, lval_obj):
-    """Flag/word char if-check (cf. cmd_eval_mob, programs.c:589)."""
+def _eval_char_flag(check, word, lval_char, lval_obj, rest=""):
+    """Flag/word char if-check (cf. cmd_eval_mob, programs.c:589).
+
+    Flag words match exact dict keys (the same stance as Phase A act/affected:
+    no flag_value prefix walk).  *rest* is the remainder after the flag word;
+    only the skill check consumes it (its minimum percentage).
+    """
     c = lval_char
     if check == "name":
         if lval_obj is not None:
@@ -1264,7 +1361,87 @@ def _eval_char_flag(check, word, lval_char, lval_obj):
         return c is not None and bool(c.get("is_npc")) and bool(c.get("act_flags", {}).get(word))
     if check == "affected":
         return c is not None and bool(c.get("affected_by", {}).get(word))
+    if check == "plr":
+        # cf. CHK_PLR: player act-field bits; PrimeSUD keeps them in the
+        # player-only "flags" bitmask (see handler.py PLR_*)
+        bit = _PLR_WORD.get(word)
+        return (c is not None and not c.get("is_npc") and bit is not None
+                and bool(c.get("flags", 0) & bit))
+    if check == "imm":
+        return c is not None and bool(c.get("imm_flags", {}).get(word))
+    if check == "off":
+        return c is not None and bool(c.get("off_flags", {}).get(word))
+    if check == "carries":
+        # number -> any carried (worn included, cf. has_item); name -> unworn
+        # inventory by keyword, self-visibility gated (cf. get_obj_carry)
+        if c is None:
+            return False
+        if _is_number(word):
+            v = _atoi(word)
+            return any(obj_vnum(o) == v for o in _carried_objs(c))
+        return any(is_name(word, _obj_keywords(o)) and _can_see_obj(c, o)
+                   for o in c.get("inv", []))
+    if check == "wears":
+        # number -> worn vnum (cf. has_item fWear); name -> worn by keyword
+        # (cf. get_obj_wear; the obj-origin eval skips its can_see_obj gate --
+        # self-viewer visibility applied uniformly here)
+        if c is None:
+            return False
+        worn = [o for o in (c.get("equip") or {}).values() if o is not None]
+        if _is_number(word):
+            v = _atoi(word)
+            return any(obj_vnum(o) == v for o in worn)
+        return any(is_name(word, _obj_keywords(o)) and _can_see_obj(c, o)
+                   for o in worn)
+    if check == "has":
+        # word is an item-type name in PrimeSUD's type vocabulary (which
+        # splits 1stMud's container into corpse types, [PRIMESUD])
+        return c is not None and any(_obj_type(o) == word
+                                     for o in _carried_objs(c))
+    if check == "uses":
+        worn = [o for o in ((c or {}).get("equip") or {}).values()
+                if o is not None]
+        return c is not None and any(_obj_type(o) == word for o in worn)
+    if check == "skill":
+        # cf. CHK_SKILL: players only; "<skill> <min%>".  Prefix lookup like
+        # upstream skill_lookup (multi-word names arrive truncated to one
+        # token, e.g. "magic" for magic missile)
+        if c is None or c.get("is_npc"):
+            return False
+        sn = _skill_prefix_lookup(word)
+        return sn is not None and get_skill(c, sn) >= _atoi(rest)
+    if check == "clan":
+        # cf. CHK_CLAN: no clan system ported -- faithfully False
+        return False
+    if check == "race":
+        rd = race_lookup(word)
+        return (c is not None and rd is not None
+                and race_lookup(c.get("race", "")) is rd)
+    if check == "class":
+        # cf. CHK_CLASS prime_class(lval_char): NPCs have no classes
+        # (prime_class -> -1, never equal to a real class index)
+        cl = class_lookup(word)
+        return c is not None and cl != -1 and prime_class(c) == cl
+    if check == "objtype":
+        return (lval_obj is not None and _obj_type(lval_obj) == word)
     return False
+
+
+def _obj_type(obj):
+    """Template item-type word for an obj (instance dict or vnum). [PRIMESUD]"""
+    tpl = world.ITEM_DEFS.get(obj_vnum(obj))
+    return tpl.get("type", "") if tpl else ""
+
+
+def _skill_prefix_lookup(word):
+    """First skill sn whose name starts with *word*, table order (cf. 1stMud
+    skill_lookup's str_prefix walk; magic._skill_lookup is exact-only). [PRIMESUD]"""
+    if not word:
+        return None
+    for sn in sorted(SKILLS):
+        if SKILLS[sn].get("name", "").startswith(word):
+            return sn
+    return None
 
 
 def cmd_eval(check, line, mob, ch, arg1, arg2, rch, prog_vnum):
@@ -1331,6 +1508,11 @@ def cmd_eval(check, line, mob, ch, arg1, arg2, rch, prog_vnum):
             dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
             return False
         return num_eval(lval, toks[0], _atoi(toks[1]))
+    if check == "order":
+        if len(toks) < 2 or toks[0] not in _EVAL_OPS:
+            dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+            return False
+        return num_eval(_get_order_mob(mob), toks[0], _atoi(toks[1]))
     if check == "hour":
         if len(toks) < 2 or toks[0] not in _EVAL_OPS:
             dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
@@ -1357,7 +1539,8 @@ def cmd_eval(check, line, mob, ch, arg1, arg2, rch, prog_vnum):
     if check in _CHAR_FLAG:
         if len(toks) < 2:
             return False
-        return _eval_char_flag(check, toks[1], lval_char, lval_obj)
+        return _eval_char_flag(check, toks[1], lval_char, lval_obj,
+                               toks[2] if len(toks) > 2 else "")
 
     if check in _CHAR_NUM:
         if len(toks) < 3 or toks[1] not in _EVAL_OPS:
@@ -1366,8 +1549,8 @@ def cmd_eval(check, line, mob, ch, arg1, arg2, rch, prog_vnum):
         lval = _char_num_lval(check, lval_char, lval_obj)
         return num_eval(lval, toks[1], _atoi(toks[2]))
 
-    # Valid 1stMud check, not in the Phase A subset (obj/item/skill/clan/
-    # group-order checks land in Phase B/C).
+    # Unreachable for well-formed KNOWN_CHECKS vocabulary (all checks are
+    # implemented as of PROGS_PLAN Phase 3); kept as a guard.
     dbg("prog " + str(prog_vnum) + " check '" + check + "' not ported")
     return False
 
@@ -1552,6 +1735,15 @@ def _cmd_eval_other(check, line, kind, origin, ch, arg1, arg2, rch, prog_vnum):
             dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
             return False
         return num_eval(lval, toks[0], _atoi(toks[1]))
+    if check == "order":
+        if kind == "room":
+            # cf. cmd_eval_room "received CHK_ORDER." bug -> false
+            dbg("prog " + str(prog_vnum) + " order check in roomprog")
+            return False
+        if len(toks) < 2 or toks[0] not in _EVAL_OPS:
+            dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+            return False
+        return num_eval(_get_order_obj(origin), toks[0], _atoi(toks[1]))
     if check == "hour":
         if len(toks) < 2 or toks[0] not in _EVAL_OPS:
             dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
@@ -1601,10 +1793,16 @@ def _cmd_eval_other(check, line, kind, origin, ch, arg1, arg2, rch, prog_vnum):
         return _eval_char_bool(check, code, lval_char, lval_obj,
                                {"mprog_target": st.get(tkey)})
 
+    if check == "hunter":
+        # absent from cmd_eval_obj/_room: the keyword falls through their
+        # switches to the numeric section and bugs out false
+        dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+        return False
     if check in _CHAR_FLAG:
         if len(toks) < 2:
             return False
-        return _eval_char_flag(check, toks[1], lval_char, lval_obj)
+        return _eval_char_flag(check, toks[1], lval_char, lval_obj,
+                               toks[2] if len(toks) > 2 else "")
 
     if check in _CHAR_NUM:
         if len(toks) < 3 or toks[1] not in _EVAL_OPS:
@@ -1620,8 +1818,8 @@ def _cmd_eval_other(check, line, kind, origin, ch, arg1, arg2, rch, prog_vnum):
             lval = _char_num_lval(check, lval_char, lval_obj)
         return num_eval(lval, toks[1], _atoi(toks[2]))
 
-    # Valid 1stMud check outside the ported subset (Phase 3 fills these in;
-    # room-origin order stays a bug-false per upstream)
+    # Unreachable for well-formed KNOWN_CHECKS vocabulary (all checks are
+    # implemented as of PROGS_PLAN Phase 3); kept as a guard.
     dbg("prog " + str(prog_vnum) + " check '" + check + "' not ported")
     return False
 
@@ -2706,10 +2904,58 @@ def _mp_call(mob, args, pv, cl):
     program_flow(prog_vnum, code, mob, vch, obj1, obj2)
 
 
-def _mp_skip(mob, args, pv, cl):
-    # [PRIMESUD] mpgtransfer / mpgforce / mpvforce skipped -- group / mass
-    # multiplayer commands with no single-player meaning (MOBPROG_PLAN dec. 5).
-    dbg("mobprog: group/mass mp-command skipped (not ported)")
+def _mp_gtransfer(mob, args, pv, cl):
+    """Transfer a char's whole group (cf. do_mpgtransfer, prog_cmds.c:711).
+
+    ``gtransfer <who> [location]``: every room person grouped with *who*
+    (who included) is re-dispatched through mptransfer by name, as upstream.
+    """
+    parts = args.split()
+    if not parts:
+        dbg("mobprog: mpgtransfer bad syntax")
+        return
+    who = _get_char_room(mob, parts[0])
+    if who is None:
+        return
+    arg2 = parts[1] if len(parts) > 1 else ""
+    for victim in list(_room_persons(mob)):
+        if is_same_group(who, victim):
+            _mp_transfer(mob, _first(_char_kw(victim))
+                         + ((" " + arg2) if arg2 else ""), pv, cl)
+
+
+def _mp_gforce(mob, args, pv, cl):
+    """Force a char's whole group to act (cf. do_mpgforce, prog_cmds.c:743).
+
+    ``gforce <who> <command>``; the mob cannot gforce itself.
+    """
+    parts = args.split(None, 1)
+    if len(parts) < 2 or not parts[1]:
+        dbg("mobprog: mpgforce bad syntax")
+        return
+    victim = _get_char_room(mob, parts[0])
+    if victim is None or victim is mob:
+        return
+    for vch in list(_persons_at(victim.get("room"))):
+        if is_same_group(victim, vch):
+            interpret(parts[1], vch)
+
+
+def _mp_vforce(mob, args, pv, cl):
+    """Force every non-fighting NPC of a vnum, worldwide (cf. do_mpvforce,
+    prog_cmds.c:775).  ``vforce <vnum> <command>``; the mob itself is skipped."""
+    parts = args.split(None, 1)
+    if len(parts) < 2 or not parts[1]:
+        dbg("mobprog: mpvforce bad syntax")
+        return
+    if not _is_number(parts[0]):
+        dbg("mobprog: mpvforce non-number arg")
+        return
+    v = _atoi(parts[0])
+    for victim in list(world.chars.values()):
+        if (victim.get("is_npc") and victim.get("tpl") == v
+                and victim is not mob and victim.get("fighting") is None):
+            interpret(parts[1], victim)
 
 
 # Table order matches 1stMud mob_cmd_table (prog_cmds.c:43); dispatch is a
@@ -2730,11 +2976,11 @@ MP_COMMANDS = (
     ("goto", _mp_goto),
     ("at", _mp_at),
     ("transfer", _mp_transfer),
-    ("gtransfer", _mp_skip),
+    ("gtransfer", _mp_gtransfer),
     ("otransfer", _mp_otransfer),
     ("force", _mp_force),
-    ("gforce", _mp_skip),
-    ("vforce", _mp_skip),
+    ("gforce", _mp_gforce),
+    ("vforce", _mp_vforce),
     ("cast", _mp_cast),
     ("damage", _mp_damage),
     ("remember", _mp_remember),
@@ -3219,10 +3465,53 @@ def _op_peace(octx, args, pv):
     _peace_room(_octx_room(octx))
 
 
-def _op_skip(octx, args, pv):
-    # [PRIMESUD] opgtransfer / opgforce / opvforce -- group/mass commands,
-    # implemented alongside the mob ones in PROGS_PLAN Phase 3.
-    dbg("objprog: group/mass op-command skipped (not ported)")
+def _op_gtransfer(octx, args, pv):
+    """Transfer a char's whole group (cf. do_opgtransfer, prog_cmds.c:1590)."""
+    parts = args.split()
+    if not parts:
+        dbg("objprog: opgtransfer bad syntax")
+        return
+    rvnum = _octx_room(octx)
+    who = _char_at(rvnum, parts[0])
+    if who is None:
+        return
+    arg2 = parts[1] if len(parts) > 1 else ""
+    for victim in list(_persons_at(rvnum)):
+        if is_same_group(who, victim):
+            _op_transfer(octx, _first(_char_kw(victim))
+                         + ((" " + arg2) if arg2 else ""), pv)
+
+
+def _op_gforce(octx, args, pv):
+    """Force a char's whole group to act (cf. do_opgforce, prog_cmds.c:1687).
+    Unlike the mob variant there is no self-exclusion (an obj is not a char)."""
+    parts = args.split(None, 1)
+    if len(parts) < 2 or not parts[1]:
+        dbg("objprog: opgforce bad syntax")
+        return
+    victim = _char_at(_octx_room(octx), parts[0])
+    if victim is None:
+        return
+    for vch in list(_persons_at(victim.get("room"))):
+        if is_same_group(victim, vch):
+            interpret(parts[1], vch)
+
+
+def _op_vforce(octx, args, pv):
+    """Force every non-fighting NPC of a vnum, worldwide (cf. do_opvforce,
+    prog_cmds.c:1719).  No self-exclusion, as upstream."""
+    parts = args.split(None, 1)
+    if len(parts) < 2 or not parts[1]:
+        dbg("objprog: opvforce bad syntax")
+        return
+    if not _is_number(parts[0]):
+        dbg("objprog: opvforce non-number arg")
+        return
+    v = _atoi(parts[0])
+    for victim in list(world.chars.values()):
+        if (victim.get("is_npc") and victim.get("tpl") == v
+                and victim.get("fighting") is None):
+            interpret(parts[1], victim)
 
 
 # Table order matches 1stMud obj_cmd_table (prog_cmds.c:77); dispatch is a
@@ -3238,11 +3527,11 @@ OP_COMMANDS = (
     ("purge", _op_purge),
     ("goto", _op_goto),
     ("transfer", _op_transfer),
-    ("gtransfer", _op_skip),
+    ("gtransfer", _op_gtransfer),
     ("otransfer", _op_otransfer),
     ("force", _op_force),
-    ("gforce", _op_skip),
-    ("vforce", _op_skip),
+    ("gforce", _op_gforce),
+    ("vforce", _op_vforce),
     ("damage", _op_damage),
     ("remember", _op_remember),
     ("forget", _op_forget),
@@ -3578,10 +3867,51 @@ def _rp_peace(rvnum, args, pv):
     _peace_room(rvnum)
 
 
-def _rp_skip(rvnum, args, pv):
-    # [PRIMESUD] rpgtransfer / rpgforce / rpvforce -- group/mass commands,
-    # implemented alongside the mob ones in PROGS_PLAN Phase 3.
-    dbg("roomprog: group/mass rp-command skipped (not ported)")
+def _rp_gtransfer(rvnum, args, pv):
+    """Transfer a char's whole group (cf. do_rpgtransfer, prog_cmds.c:2752)."""
+    parts = args.split()
+    if not parts:
+        dbg("roomprog: rpgtransfer bad syntax")
+        return
+    who = _char_at(rvnum, parts[0])
+    if who is None:
+        return
+    arg2 = parts[1] if len(parts) > 1 else ""
+    for victim in list(_persons_at(rvnum)):
+        if is_same_group(who, victim):
+            _rp_transfer(rvnum, _first(_char_kw(victim))
+                         + ((" " + arg2) if arg2 else ""), pv)
+
+
+def _rp_gforce(rvnum, args, pv):
+    """Force a char's whole group to act (cf. do_rpgforce, prog_cmds.c:2821)."""
+    parts = args.split(None, 1)
+    if len(parts) < 2 or not parts[1]:
+        dbg("roomprog: rpgforce bad syntax")
+        return
+    victim = _char_at(rvnum, parts[0])
+    if victim is None:
+        return
+    for vch in list(_persons_at(victim.get("room"))):
+        if is_same_group(victim, vch):
+            interpret(parts[1], vch)
+
+
+def _rp_vforce(rvnum, args, pv):
+    """Force every non-fighting NPC of a vnum, worldwide (cf. do_rpvforce,
+    prog_cmds.c:2847)."""
+    parts = args.split(None, 1)
+    if len(parts) < 2 or not parts[1]:
+        dbg("roomprog: rpvforce bad syntax")
+        return
+    if not _is_number(parts[0]):
+        dbg("roomprog: rpvforce non-number arg")
+        return
+    v = _atoi(parts[0])
+    for victim in list(world.chars.values()):
+        if (victim.get("is_npc") and victim.get("tpl") == v
+                and victim.get("fighting") is None):
+            interpret(parts[1], victim)
 
 
 # Table order matches 1stMud room_cmd_table (prog_cmds.c:105); dispatch is a
@@ -3597,11 +3927,11 @@ RP_COMMANDS = (
     ("oload", _rp_oload),
     ("purge", _rp_purge),
     ("transfer", _rp_transfer),
-    ("gtransfer", _rp_skip),
+    ("gtransfer", _rp_gtransfer),
     ("otransfer", _rp_otransfer),
     ("force", _rp_force),
-    ("gforce", _rp_skip),
-    ("vforce", _rp_skip),
+    ("gforce", _rp_gforce),
+    ("vforce", _rp_vforce),
     ("damage", _rp_damage),
     ("remember", _rp_remember),
     ("forget", _rp_forget),

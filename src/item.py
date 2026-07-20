@@ -674,3 +674,101 @@ def get_carry_weight(ch):
             w += get_obj_weight(e)
     return w + ch.get("silver", 0) // 10 + ch.get("gold", 0) * 2 // 5
 
+
+# cf. 1stMud weapon_t enum order, defines.h:392 (exotic=0 .. polearm=8)
+_WEAPON_CLASS_NUM = {"exotic": 0, "sword": 1, "dagger": 2, "spear": 3,
+                     "mace": 4, "axe": 5, "flail": 6, "whip": 7, "polearm": 8}
+# cf. 1stMud WEAPON_* flag bits, bits.h:389-396 (BIT_A..BIT_H)
+_WEAPON_FLAG_BIT = {"flaming": 1, "frost": 2, "vampiric": 4, "sharp": 8,
+                    "vorpal": 16, "two_hands": 32, "shocking": 64,
+                    "poison": 128}
+
+
+def prog_obj_value(obj, idx):
+    """Upstream ``obj->value[idx]`` reconstructed from PrimeSUD's typed
+    fields, for the prog objval0-4 if-checks (cf. 1stMud ObjData.value[] and
+    db2.c load_objects; reverse of tools/are_to_primesud.py's per-type
+    mapping). [PRIMESUD]
+
+    An instance ``values`` 5-tuple (written by ``obj attrib v0..v4``) wins
+    outright, then instance field overrides, then the template.  Index spaces
+    PrimeSUD stores as words with no stable int mapping (weapon damage-type
+    and liquid-type: attack/liq table positions) return 0.
+
+    Args:
+        obj: Item instance dict or bare vnum.
+        idx (int): value[] slot, 0-4.
+
+    Returns:
+        int: The reconstructed value (0 for unknown/absent).
+    """
+    tpl = ITEM_DEFS.get(obj_vnum(obj), {})
+    inst = obj if isinstance(obj, dict) else {}
+    if "values" in inst:
+        return inst["values"][idx]
+
+    def f(field, dflt=0):
+        return inst.get(field, tpl.get(field, dflt))
+
+    itype = tpl.get("type", "")
+    if itype == "weapon":
+        if idx == 0:
+            return _WEAPON_CLASS_NUM.get(tpl.get("weapon_type", ""), 0)
+        if idx in (1, 2):
+            return f("dice", (0, 0, 0))[idx - 1]
+        if idx == 4:
+            bits = 0
+            for word, bit in _WEAPON_FLAG_BIT.items():
+                if f("weapon_flags", {}).get(word):
+                    bits |= bit
+            return bits
+        return 0  # value[3]: damage-type word -- attack-table index unported
+    if itype == "armor":
+        arm = tpl.get("armor", (0, 0, 0, 0))
+        return arm[idx] if idx < len(arm) else 0
+    if itype in ("potion", "pill", "scroll"):
+        if idx == 0:
+            return f("spell_level")
+        from magic import _skill_lookup  # deferred: magic imports item
+        spells = f("spells", ())
+        sn = _skill_lookup(spells[idx - 1]) if idx - 1 < len(spells) else None
+        return sn if sn is not None else 0
+    if itype in ("wand", "staff"):
+        if idx == 0:
+            return f("spell_level")
+        if idx == 1:
+            return f("max_charges")
+        if idx == 2:
+            return f("charges")
+        if idx == 3:
+            from magic import _skill_lookup  # deferred: magic imports item
+            sn = _skill_lookup(f("spell", ""))
+            return sn if sn is not None else 0
+        return 0
+    if itype == "light":
+        return f("light_hours") if idx == 2 else 0
+    if itype == "container":
+        return (f("container_max_weight"), f("container_flags"),
+                f("container_key"), f("container_max_item_weight"),
+                f("container_weight_mult", 100))[idx]
+    if itype in ("drink", "fountain"):
+        if idx == 0:
+            return f("liquid_total")
+        if idx == 1:
+            return f("liquid_left")
+        if idx == 3:
+            return 1 if f("poisoned") else 0
+        return 0  # value[2]: liquid-type word -- liq-table index unported
+    if itype == "food":
+        if idx == 0:
+            return f("food_hours")
+        if idx == 1:
+            return f("food_hunger")
+        if idx == 3:
+            return 1 if f("poisoned") else 0
+        return 0
+    if itype == "money":
+        return f("silver") if idx == 0 else (f("gold") if idx == 1 else 0)
+    # default branch: raw value[] survives as the "values" tuple
+    return f("values", (0, 0, 0, 0, 0))[idx]
+

@@ -119,10 +119,17 @@ movement.py position commands).  Obj random/delay pulse ported intent-parity
 (upstream block sits behind the decay-timer gate, update.c:819 -- see
 mobprog.pulse_obj).
 
-### Phase 3 -- mobprog completion (tri-mode aware)
+### Phase 3 -- mobprog completion (tri-mode aware) (completed 21/07/2026)
 
 - 23 ifchecks per gap list; each lands in the right cmd_eval_* subset(s).
-- gtransfer/gforce/vforce.
+  clan/hunter/plr notes: clan + hunter faithfully False (no clan system;
+  hunter dead-wired upstream), but plr IS implemented -- PrimeSUD ports the
+  PLR_AUTO* bits in the player "flags" bitmask, contra the gap list's "no
+  player-flag system" claim.  objval0-4 via item.prog_obj_value (weapon
+  damage-type and liquid-type index spaces return 0 -- word-keyed in
+  PrimeSUD).
+- gtransfer/gforce/vforce (mp + op + rp variants; self-exclusion quirks
+  mirrored: mob vforce/gforce skip self, obj/room do not).
 
 ### Phase 4 -- debug toolkit + docs
 
