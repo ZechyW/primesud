@@ -7,10 +7,13 @@ harvested into DESIGN.md first).
 ## Where we are
 
 Branch `dev`. The `path` command port was reviewed, then a 5-phase fix
-plan was approved by the user. Phases 1-3 committed and green; phase 4
-was ~30% done by a subagent when this PC's network proxy (McAfee Web
-Gateway) killed the API session. Partial phase-4 work is committed as a
-WIP commit (unreviewed — treat accordingly).
+plan was approved by the user. Phases 1-4 committed and green; only
+phase 5 remains. Phase 4 (border graph) completed 20/07/2026: index
+verified (deterministic, 637 S records = all 680 entry-x-exit pairs
+minus 43 genuinely intra-area-unreachable ones), `_route()` rewritten
+as index Dijkstra + two live BFS legs, synthetic + real-world tests
+added (steps == unrestricted full-world BFS on 8 sample pairs incl.
+catacomb->midgaard and limbo 2->olympus), docs updated.
 
 - `388****` feat(path): port + phase 1 (NPC-gated quest checks in
   `_mob_destination`, message-edge tests in tests/test_path.py)
@@ -47,7 +50,7 @@ unrestricted BFS over all 3124 source rooms x 48 target areas):
   which survives via a load-all fallback (the 5.9MB behaviour far-area
   eviction exists to prevent) and silently walks overlong routes.
 
-## Phase 4 — border graph (in progress)
+## Phase 4 — border graph (DONE 20/07/2026; spec kept for phase-5 reference)
 
 Design (user-approved): precompute a static border graph offline; at
 runtime Dijkstra over it + two live BFS legs inside already-loaded

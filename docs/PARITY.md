@@ -75,9 +75,12 @@ flee-look for brief-mode consistency (commits 4b4****, 65d****, 7cb****).
 
 `path` ported 20/07/2026 with intent parity for the upstream inverted mob
 condition: area-first lookup, gate-style mob restrictions, live-room targets,
-and `mobs.idx` fallback. Its room BFS is [PRIMESUD]-bounded to one lazily
-loaded area corridor with no load-all fallback, followed by forced cache
-eviction (path.py).
+and `mobs.idx` fallback. Routing is [PRIMESUD] border-graph Dijkstra over
+the precomputed `paths.idx` (exact shortest routes, zero area loads at
+routing time, verified against unrestricted full-world BFS in
+tests/test_path_realworld.py), followed by forced cache eviction (path.py).
+Step counts match upstream `path_to_area`; the chosen equal-length route
+may differ.
 
 `slist` ported 20/07/2026: class views retain the upstream level-grouped,
 two-column layout; skill/spell views show all six classes across two lines

@@ -1,4 +1,7 @@
-"""Tests for bounded lazy path routing. [PRIMESUD]"""
+"""Tests for border-graph path routing. [PRIMESUD]"""
+
+import os
+import sys
 
 import config
 import path as path_cmd
@@ -6,18 +9,35 @@ import world
 from handler import _char_base
 from world import MOB_DEFS, ROOM_DEFS
 
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
+from build_path_index import build_records
+
+
+def _write_index(tmp_path, monkeypatch, rooms_data):
+    """Build a border-graph index from raw room dicts and point path at it.
+
+    rooms_data mirrors ROOM_DEFS._data shape: {vnum: {"area": tag,
+    "exits": {dir: to_vnum}}}. Pure build_records call -- no area loads,
+    so _LOADED_AREAS assertions in tests stay meaningful.
+    """
+    lines = build_records(rooms_data)
+    idx = tmp_path / "paths.idx"
+    idx.write_text("# test index\n" + "\n".join(lines) + "\n")
+    monkeypatch.setattr(path_cmd, "PATH_INDEX_FILE", str(idx))
+
 
 def _setup_chain(fw, monkeypatch, tags):
+    """Register a linear n-exit chain of single-room areas + its index."""
+    rooms_data = {}
     for i, tag in enumerate(tags):
         vnum = (i + 1) * 100
         exits = {"n": vnum + 100} if i + 1 < len(tags) else {}
         fw.register_area(tag, vnum, vnum + 99,
                          rooms={vnum: {"name": tag, "exits": exits}})
+        rooms_data[vnum] = {"area": tag, "exits": exits}
     fw.setup()
-    monkeypatch.setattr(world, "_AREA_ADJ", {
-        tag: ((tags[i + 1],) if i + 1 < len(tags) else ())
-        for i, tag in enumerate(tags)
-    })
+    _write_index(fw.tmp_path, monkeypatch, rooms_data)
 
 
 def _player(room=100, level=20):
@@ -27,8 +47,7 @@ def _player(room=100, level=20):
     return player
 
 
-def test_area_path_loads_one_corridor_then_evicts_remote_area(
-        fresh_world, monkeypatch):
+def test_area_path_loads_nothing_beyond_source_area(fresh_world, monkeypatch):
     _setup_chain(fresh_world, monkeypatch, ("alpha", "beta", "gamma"))
     monkeypatch.setattr(config, "AREA_CACHE_MAX", 2)
     player = _player()
@@ -40,7 +59,7 @@ def test_area_path_loads_one_corridor_then_evicts_remote_area(
     path_cmd.do_path(player, ["gam"])
 
     assert out == ["Shortest path to gamma is 2 steps: 2n."]
-    assert world._LOADED_AREAS == {"alpha", "beta"}
+    assert world._LOADED_AREAS == {"alpha"}
 
 
 def test_mob_path_uses_index_fallback_and_actual_room(fresh_world, monkeypatch):
@@ -51,8 +70,11 @@ def test_mob_path_uses_index_fallback_and_actual_room(fresh_world, monkeypatch):
                      rooms={200: {"name": "beta", "exits": {"e": 201}},
                             201: {"name": "lair", "exits": {}}})
     fw.setup()
-    monkeypatch.setattr(world, "_AREA_ADJ",
-                        {"alpha": ("beta",), "beta": ()})
+    _write_index(fw.tmp_path, monkeypatch, {
+        100: {"area": "alpha", "exits": {"n": 200}},
+        200: {"area": "beta", "exits": {"e": 201}},
+        201: {"area": "beta", "exits": {}},
+    })
     player = _player()
     _ = ROOM_DEFS[100]
     mob = _char_base()
@@ -131,7 +153,10 @@ def test_mob_path_within_current_area(fresh_world, monkeypatch):
                      rooms={100: {"name": "alpha", "exits": {"n": 101}},
                             101: {"name": "lair", "exits": {}}})
     fw.setup()
-    monkeypatch.setattr(world, "_AREA_ADJ", {"alpha": ()})
+    _write_index(fw.tmp_path, monkeypatch, {
+        100: {"area": "alpha", "exits": {"n": 101}},
+        101: {"area": "alpha", "exits": {}},
+    })
     player = _player()
     _ = ROOM_DEFS[100]
     MOB_DEFS._data[150] = {"keywords": "red dragon",
@@ -177,14 +202,17 @@ def test_mob_path_invisible_mob_hidden_without_detect(fresh_world, monkeypatch):
     assert out == ["No need to walk to get there!"]
 
 
-def test_area_path_unreachable_chain_reports_no_path(fresh_world, monkeypatch):
+def test_area_path_unreachable_reports_no_path(fresh_world, monkeypatch):
     fw = fresh_world
     fw.register_area("alpha", 100, 199,
                      rooms={100: {"name": "alpha", "exits": {}}})
     fw.register_area("beta", 200, 299,
                      rooms={200: {"name": "beta", "exits": {}}})
     fw.setup()
-    monkeypatch.setattr(world, "_AREA_ADJ", {"alpha": (), "beta": ()})
+    _write_index(fw.tmp_path, monkeypatch, {
+        100: {"area": "alpha", "exits": {}},
+        200: {"area": "beta", "exits": {}},
+    })
     player = _player()
     _ = ROOM_DEFS[100]
     out = []
@@ -215,3 +243,97 @@ def test_mob_path_applies_fixed_level_restriction(fresh_world, monkeypatch):
     path_cmd.do_path(player, ["dragon"])
 
     assert out == ["No such destination."]
+
+
+def _register_partitioned_world(fw, monkeypatch):
+    """Areas where B is internally split: a1 -> b1, b2 -> c1, and the only
+    b1 -> b2 link detours through D (b1 -> d1 -> b2). The old area-level
+    corridor found no route; the border graph must find a1-b1-d1-b2-c1."""
+    layout = {
+        100: ("aye", {"n": 200}),
+        200: ("bee", {"e": 400}),
+        201: ("bee", {"s": 300}),
+        300: ("cee", {}),
+        400: ("dee", {"w": 201}),
+    }
+    bounds = {"aye": (100, 199), "bee": (200, 299),
+              "cee": (300, 399), "dee": (400, 499)}
+    by_area = {}
+    rooms_data = {}
+    for vnum, (tag, exits) in layout.items():
+        by_area.setdefault(tag, {})[vnum] = {"name": tag, "exits": exits}
+        rooms_data[vnum] = {"area": tag, "exits": exits}
+    for tag, rooms in by_area.items():
+        lo, hi = bounds[tag]
+        fw.register_area(tag, lo, hi, rooms=rooms)
+    fw.setup()
+    _write_index(fw.tmp_path, monkeypatch, rooms_data)
+
+
+def test_area_path_through_partitioned_area(fresh_world, monkeypatch):
+    _register_partitioned_world(fresh_world, monkeypatch)
+    player = _player()
+    _ = ROOM_DEFS[100]
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    path_cmd.do_path(player, ["cee"])
+
+    assert out == ["Shortest path to cee is 4 steps: news."]
+
+
+def test_mob_path_through_partitioned_area(fresh_world, monkeypatch):
+    _register_partitioned_world(fresh_world, monkeypatch)
+    player = _player()
+    _ = ROOM_DEFS[100]
+    world._ensure_area_by_tag("cee")
+    MOB_DEFS._data[350] = {"keywords": "red dragon",
+                           "short_descr": "a red dragon"}
+    mob = _char_base()
+    mob.update({"id": 2, "is_npc": True, "tpl": 350,
+                "room": 300, "level": 10})
+    world.chars[2] = mob
+    monkeypatch.setattr(path_cmd, "saves_spell", lambda *args: False)
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    path_cmd.do_path(player, ["dragon"])
+
+    assert out == ["Shortest path to a red dragon is 4 steps: news."]
+
+
+def test_route_merges_direction_runs_across_boundaries(
+        fresh_world, monkeypatch):
+    fw = fresh_world
+    fw.register_area("alpha", 100, 199,
+                     rooms={100: {"name": "a1", "exits": {"n": 101}},
+                            101: {"name": "a2", "exits": {"n": 102}},
+                            102: {"name": "a3", "exits": {"n": 200}}})
+    fw.register_area("beta", 200, 299,
+                     rooms={200: {"name": "beta", "exits": {}}})
+    fw.setup()
+    _write_index(fw.tmp_path, monkeypatch, {
+        100: {"area": "alpha", "exits": {"n": 101}},
+        101: {"area": "alpha", "exits": {"n": 102}},
+        102: {"area": "alpha", "exits": {"n": 200}},
+        200: {"area": "beta", "exits": {}},
+    })
+    player = _player()
+    _ = ROOM_DEFS[100]
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    path_cmd.do_path(player, ["bet"])
+
+    # source leg "2n" + cross-area "n" merge into a single "3n" run
+    assert out == ["Shortest path to beta is 3 steps: 3n."]
+
+
+def test_merge_runs_unit():
+    assert path_cmd._merge_runs(["2n", "n"]) == "3n"
+    assert path_cmd._merge_runs(["3n2e", "2e", "s"]) == "3n4es"
+    assert path_cmd._merge_runs(["", "n", ""]) == "n"
+    assert path_cmd._merge_runs([]) == ""
