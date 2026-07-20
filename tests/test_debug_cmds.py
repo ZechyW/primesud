@@ -1,4 +1,5 @@
-"""Tests for debug subcommands (goto/load/purge/restore/peace/mwhere/owhere/memory)."""
+"""Tests for debug subcommands (goto/load/purge/restore/peace/mwhere/owhere/
+memory/advance/set/vnum/flag/force/spellup/clone/pstat/pdump)."""
 import os
 import sys
 
@@ -493,6 +494,18 @@ def test_flag_obj_extra_instance_override(scene, out):
 def test_flag_bad_field(scene, out):
     _run(scene["player"], "flag mob guard bogus + glow")
     assert "That's not an acceptable flag." in out
+
+
+def test_flag_npc_only_fields_refuse_player(scene, out):
+    # player PLR_* bits are an int bitmask ("flags"); act_flags stays inert
+    _run(scene["player"], "flag char self act + wimpy")
+    assert "Can't be set on PCs." in out
+    assert scene["player"]["act_flags"] == {}
+
+
+def test_flag_shared_field_works_on_player(scene, out):
+    _run(scene["player"], "flag char self imm + fire")
+    assert scene["player"]["imm_flags"].get("fire")
 
 
 # -- force -----------------------------------------------------------------

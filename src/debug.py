@@ -701,10 +701,16 @@ def _debug_vnum(player, args):
         terminal.tr.print("debug vnum [mob|obj] <name>")
         return
     # cf. do_vnum: exact type word, else fall through searching both
-    if args[0] in ("mob", "char") and len(args) > 1:
+    if args[0] in ("mob", "char"):
+        if len(args) < 2:  # cf. do_mfind NullStr gate
+            terminal.tr.print("Find whom?")
+            return
         kinds = ("mob",)
         frag = " ".join(args[1:])
-    elif args[0] == "obj" and len(args) > 1:
+    elif args[0] == "obj":
+        if len(args) < 2:  # cf. do_ofind NullStr gate
+            terminal.tr.print("Find what?")
+            return
         kinds = ("obj",)
         frag = " ".join(args[1:])
     else:
@@ -726,12 +732,17 @@ def _debug_vnum(player, args):
 
 
 # Field-name prefix -> instance dict key (cf. do_flag's arg3 chain, flags.c:96).
-# plr/comm not ported (no player-flag / comm systems).
+# plr/comm not ported: player PLR_* bits are an int bitmask (player.py
+# "flags", managed by the auto* commands), and there is no comm system.
 _FLAG_CHAR_FIELDS = (
     ("act", "act_flags"), ("affected", "affected_by"), ("off", "off_flags"),
     ("immunity", "imm_flags"), ("resist", "res_flags"), ("vuln", "vuln_flags"),
     ("form", "form_flags"), ("parts", "part_flags"),
 )
+# NPC-only fields (cf. flags.c NPC guards on act/form/parts; off is
+# [PRIMESUD]-grouped here -- mob offense bits are meaningless on a player,
+# whose act bits live in the int bitmask, not act_flags).
+_FLAG_NPC_ONLY = ("act_flags", "off_flags", "form_flags", "part_flags")
 
 
 def _debug_flag(player, args):
@@ -760,6 +771,11 @@ def _debug_flag(player, args):
             return
         for prefix, key in _FLAG_CHAR_FIELDS:
             if prefix.startswith(field):
+                if key in _FLAG_NPC_ONLY and not victim.get("is_npc"):
+                    # cf. flags.c "Use plr for PCs." / "can't be set on PCs";
+                    # player PLR_* bits live in the auto* commands
+                    terminal.tr.print("Can't be set on PCs.")
+                    return
                 target = victim.setdefault(key, {})
                 break
     elif "object".startswith(what):
