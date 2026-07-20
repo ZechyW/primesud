@@ -52,6 +52,8 @@ When porting features from 1stmud, aim for full fidelity. In particular, match 1
 
 Exception: fix typos, grammatical errors, and other linguistic slips in 1stmud output text where appropriate (e.g. "does" used for first person, "a outlaw", "beleive"); mark such fixes with a `[PRIMESUD]` comment.
 
+Exception: intent-parity over bug-parity, narrowly. Where 1stMud's code contradicts its own documented intent (help text, syntax lines, comments) and the bug merely makes the feature unreachable or inert (e.g. do_flag's help lists `off` but its dispatch chain has no `off` branch, so off_flags can never be edited), port the documented intent and mark with a `[PRIMESUD]` comment citing the upstream contradiction. This does NOT license fixing behaviour quirks: anything balance-affecting or player-observable at runtime stays bug-faithful (e.g. mobdeaths/mobkills inverted naming); when unsure, keep the bug and note it.
+
 ## Verified port
 
 If a given function is marked as being verified against 1stmud in its docstring (`[Verified: <date>]`), NEVER edit it without asking for explicit permission first.

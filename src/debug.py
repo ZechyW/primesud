@@ -734,6 +734,8 @@ def _debug_vnum(player, args):
 # Field-name prefix -> instance dict key (cf. do_flag's arg3 chain, flags.c:96).
 # plr/comm not ported: player PLR_* bits are an int bitmask (player.py
 # "flags", managed by the auto* commands), and there is no comm system.
+# [PRIMESUD] "off" is intent-parity: flags.c:61 help advertises it but the
+# dispatch chain has no off branch, so upstream can never edit off_flags.
 _FLAG_CHAR_FIELDS = (
     ("act", "act_flags"), ("affected", "affected_by"), ("off", "off_flags"),
     ("immunity", "imm_flags"), ("resist", "res_flags"), ("vuln", "vuln_flags"),
