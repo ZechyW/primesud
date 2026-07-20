@@ -21,7 +21,6 @@ KEY_VNUM = 8100
 def out(monkeypatch):
     lines = []
     cap = lambda s="", end="\n": lines.append(s)
-    monkeypatch.setattr(movement, "tprint", cap)
     monkeypatch.setattr(movement, "do_look", lambda ch, args: None)
     import handler
     monkeypatch.setattr(handler, "tprint", cap)

@@ -104,7 +104,6 @@ def out(monkeypatch):
     lines = []
     capture = lambda *a, **kw: lines.append(" ".join(str(x) for x in a))
     monkeypatch.setattr(handler, "tprint", capture)
-    monkeypatch.setattr(movement, "tprint", capture)
     return lines
 
 

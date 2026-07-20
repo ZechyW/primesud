@@ -22,7 +22,6 @@ from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 def out(monkeypatch):
     lines = []
     cap = lambda s="", end="\n": lines.append(s)
-    monkeypatch.setattr(movement, "tprint", cap)
     monkeypatch.setattr(inventory, "tprint", cap)
     monkeypatch.setattr(handler, "tprint", cap)
     return lines
