@@ -156,7 +156,8 @@ def _debug_goto(player, args):
             world.rooms[from_vnum]["mobs"].remove(pet["id"])
         pet["room"] = location
         world.rooms[location]["mobs"].append(pet["id"])
-    do_look(player, [])
+    # cf. 1stMud do_goto act_wiz.c:927: do_look "auto" -- COMM_BRIEF gate
+    do_look(player, ["auto"])
 
 
 def _debug_load(player, args):

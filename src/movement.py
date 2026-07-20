@@ -1090,7 +1090,7 @@ def do_pick(player, args):
 # items in current areas.  Revisit if furniture matters later.
 
 def do_stand(player, args):
-    """Stand up, waking first if asleep (cf. 1stMud do_stand in act_move.c). [Verified: 03/07/2026]
+    """Stand up, waking first if asleep (cf. 1stMud do_stand in act_move.c). [Verified: 03/07/2026; do_look("auto") on wake (act_move.c:1080) so COMM_BRIEF gates the room desc, re-verified 20/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -1104,7 +1104,8 @@ def do_stand(player, args):
         chprintln(player, "You wake and stand up.")
         act("$n wakes and stands up.", player, None, None, TO_ROOM)
         player["pos"] = "standing"
-        do_look(player, [])
+        # 1stMud: do_function(ch, &do_look, "auto") -- COMM_BRIEF gate
+        do_look(player, ["auto"])
     elif pos in ("resting", "sitting"):
         chprintln(player, "You stand up.")
         act("$n stands up.", player, None, None, TO_ROOM)
@@ -1306,7 +1307,7 @@ def perform_recall(player, location, what="recall"):
     "$n disappears." / "$n appears in the room." room acts are not ported
     (single-player, no arena). [PRIMESUD]
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; do_look("auto") post-recall (act_move.c:1631) so COMM_BRIEF gates the room desc, re-verified 20/07/2026]
     """
     room = ROOM_DEFS[player["room"]]
 
@@ -1348,7 +1349,8 @@ def perform_recall(player, location, what="recall"):
         pet["room"] = location
         world.rooms[location]["mobs"].append(pet["id"])
 
-    do_look(player, [])
+    # 1stMud: do_function(ch, &do_look, "auto") -- COMM_BRIEF gate
+    do_look(player, ["auto"])
     return True
 
 

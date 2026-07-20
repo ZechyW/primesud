@@ -120,7 +120,8 @@ class Game:
 
         tr.resync_keyboard()
         show_prompt(player, self.input_buf)
-        do_look(player, [])
+        # cf. 1stMud nanny.c:1276 (enter-game): do_look "auto" -- COMM_BRIEF gate
+        do_look(player, ["auto"])
 
         while True:
             result = tr.poll_char(_KEY_COMMANDS)
