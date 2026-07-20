@@ -12,13 +12,13 @@ characters never exceed the flat exp rate, so it has no observable effect
 single-player. group_add's deduct flag is dropped with it.
 """
 
-from classes import CLASS_TABLE, char_classes, class_lookup
+from classes import CLASS_TABLE, char_classes, class_lookup, class_name
 from colors import draw_line
 from config import MAX_MORTAL_LEVEL
 from handler import chprintln
 from pager import tpage
 from skill_utils import skill_level
-from skills_table import SKILLS
+from skills_table import SKILL_TABLE, SKILLS
 
 # Ported verbatim from 1stMud data/groups.dat. Rating 6-tuple order matches
 # CLASS_TABLE (mage, cleric, thief, warrior, paladin, ranger); -1 = not
@@ -222,10 +222,57 @@ def _skill_lookup_prefix(name):
     """
     if not name:
         return -1
-    for sn, sk in SKILLS.items():
+    for sn, sk in SKILL_TABLE:
         if sk["name"].startswith(name):
             return sn
     return -1
+
+
+def do_slist(player, args):
+    """List skills by class and level, or one skill across all classes
+    (cf. 1stMud do_slist in skills.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Skill/spell or class name.
+    """
+    argument = " ".join(args)
+    cl = class_lookup(argument)
+    if cl != -1:
+        # Single-pass level buckets like upstream's skill_list[level].
+        buckets = {}
+        for sn, sk in SKILL_TABLE:
+            level = sk["skill_level"][cl]
+            if level <= MAX_MORTAL_LEVEL:
+                buckets.setdefault(level, []).append(sk["name"])
+        lines = []
+        for level in range(MAX_MORTAL_LEVEL + 1):
+            names = buckets.get(level, [])
+            for i in range(0, len(names), 2):
+                prefix = "{cLevel {W%3d{c: " % level if i == 0 else "{x           "
+                lines.append(prefix + "".join("{c%-18s      " % name
+                                               for name in names[i:i + 2]) + "{x")
+        tpage(lines)
+        return
+
+    sn = _skill_lookup_prefix(argument)
+    if sn != -1:
+        fields = []
+        for cl in range(len(CLASS_TABLE)):
+            level = SKILLS[sn]["skill_level"][cl]
+            fields.append("{W%3s: %3s{c  " %
+                          (class_name(player, cl)[:3],
+                           "n/a" if level > MAX_MORTAL_LEVEL else "%03d" % level))
+        name = SKILLS[sn]["name"].capitalize()
+        # [PRIMESUD] Upstream's six-class line is wider than the 64-col screen.
+        chprintln(player, "{c" + name + ": [ " + "".join(fields[:3]) + "{x")
+        chprintln(player, "{c" + " " * (len(name) + 4) +
+                  "".join(fields[3:]) + "]{x")
+        return
+
+    chprintln(player, "Syntax: slist <skill>")
+    chprintln(player, "        slist <spell>")
+    chprintln(player, "        slist <class>")
 
 
 def _grlist_known(player):
