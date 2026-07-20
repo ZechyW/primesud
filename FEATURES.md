@@ -88,6 +88,10 @@ worth trusting -- the engineering layer.
   static metadata tables let `areas` and `where` answer with zero loads, and
   `run` pick a destination without loading, then load only the areas along
   the path (DESIGN.md "Lazy area loading").
+- **Bounded world paths** -- `path <area or mob>` reports a speedwalk without
+  moving; mob lookup uses the off-heap index and exact live room, while route
+  search loads one area corridor and never the whole world (DESIGN.md "Lazy
+  area loading").
 - **Far-area eviction** -- when more than a dozen areas are loaded, the
   least-recently-visited are unloaded again, buffering mob positions and
   floor items exactly like a save; areas holding your pet, followers, or

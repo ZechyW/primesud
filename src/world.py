@@ -812,25 +812,34 @@ def _unload_area(tag):
     _LOADED_AREAS.discard(tag)
 
 
-def maybe_evict(player):
+def maybe_evict(player, force=False):
     """Evict far areas when over the cache cap; call every pulse. [PRIMESUD]
 
     Fast path is one int compare (player's room unchanged).  On area
     transition, builds a keep-set -- current area, its static neighbours,
     pinned areas, and any area owning or hosting a follower or combatant --
     and evicts the rest, least-recently-visited first, until at
-    AREA_CACHE_MAX loaded areas.
+    AREA_CACHE_MAX loaded areas. ``force`` lets non-moving remote lookups
+    enforce the cap immediately.
+
+    Args:
+        player (dict): Player state dict.
+        force (bool): Check the cap even if the player's room did not change.
     """
     global _player_room, _seq_counter
     _rv = player["room"]
-    if _rv == _player_room:
+    if _rv == _player_room and not force:
         return
+    _moved = _rv != _player_room
     _player_room = _rv
     _tag = _vnum_to_tag(_rv)
-    if _tag is None or _area_seq.get(_tag) == _seq_counter:
+    if _tag is None:
         return
-    _seq_counter += 1
-    _area_seq[_tag] = _seq_counter
+    if _moved:
+        if _area_seq.get(_tag) == _seq_counter:
+            return
+        _seq_counter += 1
+        _area_seq[_tag] = _seq_counter
     if len(_LOADED_AREAS) <= config.AREA_CACHE_MAX:
         return
     _keep = set(_PINNED)

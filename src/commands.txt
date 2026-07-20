@@ -83,6 +83,7 @@ north|move north
 open|open a door or container
 order|command a charmed follower or pet
 outfit|receive a free set of basic equipment
+path|show the shortest route to an area or mob
 pick|pick a lock (thief skill)
 play|play a song on a jukebox
 pour|pour liquid between containers, or out
@@ -112,6 +113,7 @@ sell|sell an item to a shop
 show|toggle affects display in score
 sit|sit down
 skills|list the skills you know
+slist|show skill levels for a class or skill
 sleep|go to sleep to recover fastest
 sneak|move silently between rooms
 socials|list social commands: smile, nod, wave, ...

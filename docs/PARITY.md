@@ -9,7 +9,7 @@ checklist for the engine 1.0 parity tag; strike items as they are resolved.
 ## Command parity
 
 All 348 `commands.dat` commands are accounted for in `src/commands.py`
-(145 active since the 20/07/2026 S-effort batch below, 203 commented with
+(147 active since the 20/07/2026 parity ports below, 201 commented with
 reasons); PrimeSUD-only additions are
 `autoskill`, `debug`, `macro` (all `[PRIMESUD]`). Nothing was forgotten;
 the only risk class is *wrong* exclusions, audited below.
@@ -73,12 +73,20 @@ is an explicit message (no per-command level field). Follow-up resolved
 (stand, recall, gate, debug goto, boot look), plus the [PRIMESUD]
 flee-look for brief-mode consistency (commits 4b4****, 65d****, 7cb****).
 
+`path` ported 20/07/2026 with intent parity for the upstream inverted mob
+condition: area-first lookup, gate-style mob restrictions, live-room targets,
+and `mobs.idx` fallback. Its room BFS is [PRIMESUD]-bounded to one lazily
+loaded area corridor with no load-all fallback, followed by forced cache
+eviction (path.py).
+
+`slist` ported 20/07/2026: class views retain the upstream level-grouped,
+two-column layout; skill/spell views show all six classes across two lines
+to fit the Prime's 64-column screen.
+
 Remaining open candidates:
 
 | cmd | effort | evidence | value |
 |---|---|---|---|
-| slist | M | skills.c:956 | class x level skill reference table; multiclass planning value |
-| path | M | act_enter.c:416 | route to mob/area; reuse hunt.py:50-92 BFS; pairs with automap |
 | index | M | act_info.c:2672 | help category index; needs category metadata in help.txt + build_help_idx.py |
 | mobdeaths / mobkills | M | act_info.c:3909-4020 | solo bestiary stats; needs per-template counters. NB upstream naming inverted (fight.c:1941/1968: area->kills = PC deaths) |
 | areadeaths / areakills | M | act_info.c:4139-4251 | per-area tallies; same new-counter plumbing |

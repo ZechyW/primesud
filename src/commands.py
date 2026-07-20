@@ -16,6 +16,7 @@ from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_wimpy, do_exits, do_worth, do_where, do_clear,
                   do_time, do_weather, do_motd, do_version,
                   do_brief, do_compact, do_show, do_title)
+from path import do_path
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
@@ -23,7 +24,7 @@ from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_drink, do_fill, do_pour, do_envenom)
 from explored import do_explored, mark_explored
 from gquest import do_gquest
-from groups import do_grlist
+from groups import do_grlist, do_slist
 from handler import chprintln
 from healer import do_heal
 from hunt import do_hunt
@@ -375,7 +376,7 @@ _CMD_TABLE = [
     # ("clanadmin", do_clanadmin,  "sleeping", False),  # #273
     # ("rpedit",    do_rpedit,     "dead",     False),  # #274 imm lvl 55
     # ("opedit",    do_opedit,     "dead",     False),  # #275 imm lvl 55
-    # ("slist",     do_slist,      "dead",     False),  # #276
+    ("slist",      do_slist,      "dead",     False),  # #276
     # ("worship",   do_worship,    "resting",  False),  # #277
     # ("dedit",     do_dedit,      "dead",     False),  # #278 imm lvl 55
     # ("nogocial",  do_nogocial,   "sleeping", False),  # #279
@@ -441,7 +442,7 @@ _CMD_TABLE = [
     ("sshow",      do_sshow,      "sleeping", False),  # #339
     ("appraise",  do_appraise,   "standing", False),  # #340
     ("rename",    do_rename,     "resting",  True),   # #341 noprefix; [PRIMESUD] mortal self-rename (upstream imm rename-others in act_wiz.c not ported)
-    # ("path",      do_path,       "resting",  False),  # #342
+    ("path",       do_path,       "resting",  False),  # #342
     # ("nopretitles", do_nopretitles, "sleeping", False), # #343
     ("suicide",    do_suicide,    "resting",  True),   # #344 noprefix
     # ("changes",   do_changes,    "dead",     False),  # #345 imm lvl 59

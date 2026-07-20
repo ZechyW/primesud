@@ -2454,6 +2454,13 @@ charmed).
 
 If your charmed creature engages in combat, that will break the
 charm.
+#0|PATH
+Syntax: path <destination mob or area>
+
+PATH shows the shortest walking route to an area or mob without
+moving you. Mob destinations cannot be quest targets, protected by
+summoning immunity, in a restricted room, or three or more levels
+above you.
 #0|OUTFIT
 The outfit command, usable by levels 5 and below, equips your
 character with a new set of sub issue gear (banner, weapon,
