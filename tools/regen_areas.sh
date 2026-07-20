@@ -14,6 +14,13 @@ for area in $AREAS; do
         "src/area_${area}.txt"
 done
 
+# Refresh world.py's static tables (AREA_BUILDERS/_AREA_ADJ; fails on
+# AREA_LEVELS drift) BEFORE the index builds below -- both bootstrap the
+# world from those tables, so a just-added area would otherwise be
+# missing from the indexes.
+echo "==> world.py static tables"
+uv run tools/gen_area_adj.py
+
 # Rebuild mobs.idx (spec_fun/portal/summon target lookup) -- must be
 # regenerated after any area regen since it derives from RESETS/MOBILES.
 echo "==> mobs.idx"
