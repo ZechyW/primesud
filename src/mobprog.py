@@ -68,10 +68,25 @@ which command categories are prog-safe:
       table.  This is the same stance as comm._order_interpret, which
       hand-dispatches an NPC-safe subset rather than calling interpret().
 
-Only MOB programs are supported (obj/room progs are out of scope -- the
-converter emits neither).  Trigger word ``surr`` is rejected upstream (the
-converter accepts it but the mechanic is unported); every other trigger word
-is engine-supported.
+-- Tri-modal interpreter (PROGS_PLAN Phase 1) --
+
+program_flow runs MOB, OBJ, and ROOM programs (cf. programs.c) -- exactly one
+origin per run.  A mob origin is the mob dict; an obj origin is a mutable
+context dict ``{"obj": obj_dict, "room": room_vnum, "carrier": char_or_None}``
+(PrimeSUD objects carry no location back-pointer, so fire sites supply it;
+``obj goto``/``otransfer`` update it in place); a room origin is its vnum.
+Obj/room progs may only issue control lines and ``obj <cmd>`` /
+``room <cmd>`` lines (obj_interpret / room_interpret over OP_COMMANDS /
+RP_COMMANDS); a raw command line outside a MOBprog is a bug() skip, exactly
+as upstream (programs.c:2782-2828).  If-checks route to _cmd_eval_other and
+$-expansion to expand_arg_other for obj/room origins.  Per-instance state:
+``oprog_delay``/``oprog_target`` on obj dicts, ``rprog_delay``/
+``rprog_target`` on runtime room dicts -- transient by design (save surface
+is player-only; world rebuilds each boot).
+
+Trigger word ``surr`` is rejected upstream (the converter accepts it but the
+mechanic is unported); every other trigger word is engine-supported.  Obj/room
+trigger *firing* (the seams) lands in PROGS_PLAN Phase 2.
 """
 
 from urandom import randint
@@ -867,8 +882,8 @@ def _eval_char_flag(check, word, lval_char, lval_obj):
     c = lval_char
     if check == "name":
         if lval_obj is not None:
-            kw = lval_obj.get("keywords", "") if isinstance(lval_obj, dict) else ""
-            return is_name(word, kw)
+            # instance keywords, falling back to the template (cf. obj->name)
+            return is_name(word, _obj_keywords(lval_obj))
         return c is not None and is_name(word, c.get("name", ""))
     if check == "pos":
         return c is not None and c.get("pos") == word
@@ -984,6 +999,398 @@ def cmd_eval(check, line, mob, ch, arg1, arg2, rch, prog_vnum):
     return False
 
 
+# -- obj/room origin helpers (NULL-viewer lookups) -----------------------------
+#
+# Upstream obj/room prog code passes a NULL char to get_char_room /
+# get_char_world / get_obj_here / get_random_char / count_people_room: no
+# visibility filtering, no self-exclusion.  These variants mirror that.
+
+
+def _octx_room(octx):
+    """Current room vnum of an obj-origin context (carrier's room wins). [PRIMESUD]"""
+    c = octx.get("carrier")
+    return c.get("room") if c is not None else octx.get("room")
+
+
+def _origin_state(kind, origin):
+    """Dict holding the origin's prog target/delay fields: the obj dict for an
+    obj origin, the runtime room state for a room origin. [PRIMESUD]"""
+    if kind == "obj":
+        return origin["obj"]
+    return world.rooms._data.get(origin)
+
+
+def _char_at(rvnum, arg):
+    """Char in room *rvnum* by name, N. counted (cf. get_char_room(NULL, room, arg)):
+    no visibility filter, no "self". [PRIMESUD]"""
+    if not arg:
+        return None
+    number, name = number_argument(arg)
+    count = 0
+    for c in _persons_at(rvnum):
+        if not is_name(name, _char_kw(c)):
+            continue
+        count += 1
+        if count == number:
+            return c
+    return None
+
+
+def _char_world_nv(arg):
+    """Any char in the loaded world by name (cf. get_char_world(NULL, arg)):
+    no visibility filter. [PRIMESUD]"""
+    if not arg:
+        return None
+    number, name = number_argument(arg)
+    count = 0
+    for c in world.chars.values():
+        if c.get("room") is None or not is_name(name, _char_kw(c)):
+            continue
+        count += 1
+        if count == number:
+            return c
+    return None
+
+
+def _obj_at(rvnum, arg):
+    """Obj on room *rvnum*'s floor by name (cf. get_obj_here(NULL, room, arg)):
+    floor only, no visibility filter. [PRIMESUD]"""
+    if not arg:
+        return None
+    rs = world.rooms._data.get(rvnum) if rvnum is not None else None
+    if rs is None:
+        return None
+    number, name = number_argument(arg)
+    count = 0
+    for it in rs.get("items", []):
+        if not is_name(name, _obj_keywords(it)):
+            continue
+        count += 1
+        if count == number:
+            return it
+    return None
+
+
+def _find_location_nv(arg):
+    """find_location with a NULL viewer: numeric room vnum or the name of a
+    char anywhere in the loaded world (cf. _find_location). [PRIMESUD]"""
+    if _is_number(arg):
+        v = _atoi(arg)
+        return v if v in world.ROOM_DEFS._data else None
+    c = _char_world_nv(arg)
+    return c.get("room") if c is not None else None
+
+
+def _random_char_at(rvnum):
+    """Random character in a room for an obj/room prog (cf. get_random_char
+    else-branch, programs.c:239): no visibility gate, no self-exclusion."""
+    best = None
+    highest = 0
+    for c in _persons_at(rvnum):
+        n = _number_percent()
+        if n > highest:
+            highest = n
+            best = c
+    return best
+
+
+def _count_people_other(rvnum, iflag):
+    """count_people_room for an obj/room origin (cf. programs.c:287): only the
+    people/players/mobs classes, no visibility filter, no self-skip."""
+    count = 0
+    for c in _persons_at(rvnum):
+        is_npc = bool(c.get("is_npc"))
+        if iflag == 1 and is_npc:
+            continue
+        if iflag == 2 and not is_npc:
+            continue
+        count += 1
+    return count
+
+
+# -- obj/room if-check evaluation (cf. cmd_eval_obj/_room, programs.c:762/1101)
+
+
+def _cmd_eval_other(check, line, kind, origin, ch, arg1, arg2, rch, prog_vnum):
+    """Evaluate one if-check for an obj/room prog (cf. cmd_eval_obj,
+    programs.c:762 and cmd_eval_room, programs.c:1101).
+
+    The two upstream functions are near-identical; *kind* ("obj"/"room")
+    covers the differences: $i resolution (the obj itself / a bug for rooms),
+    the $q/istarget target holder, the origin room, and the clones/order
+    checks.  Checks outside the ported subset return False with a dbg() note,
+    as in the mob cmd_eval.
+
+    Args:
+        check (str): If-check keyword (guaranteed in KNOWN_CHECKS).
+        line (str): Arguments after the keyword.
+        kind (str): "obj" or "room".
+        origin: Obj context dict or room vnum.
+        ch (dict or None): Triggering character.
+        arg1: Object argument.
+        arg2: Target character or object.
+        rch (dict or None): Preselected random char.
+        prog_vnum (int): Program vnum, for diagnostics.
+
+    Returns:
+        bool: The check result.
+    """
+    toks = line.split()
+    if not toks:
+        return False
+    st = _origin_state(kind, origin)
+    if st is None:
+        return False
+    rvnum = _octx_room(origin) if kind == "obj" else origin
+    tkey = "oprog_target" if kind == "obj" else "rprog_target"
+    if st.get(tkey) is None and ch is not None:
+        # [PRIMESUD] stored as char id, not a dict ref (see _target_of)
+        st[tkey] = ch.get("id")
+    buf = toks[0]
+
+    if check == "rand":
+        return _number_percent() < _atoi(buf)
+
+    if check == "mobhere":
+        if _is_number(buf):
+            v = _atoi(buf)
+            return any(c.get("is_npc") and c.get("tpl") == v
+                       for c in _persons_at(rvnum))
+        return _char_at(rvnum, buf) is not None
+    if check == "objhere":
+        if _is_number(buf):
+            v = _atoi(buf)
+            rs = world.rooms._data.get(rvnum) if rvnum is not None else None
+            return any(obj_vnum(it) == v
+                       for it in (rs.get("items", []) if rs else []))
+        return _obj_at(rvnum, buf) is not None
+    if check == "mobexists":
+        return _char_world_nv(buf) is not None
+    if check == "objexists":
+        return _get_obj_world(None, buf) is not None
+
+    if check in _COUNT_FLAG:
+        if check == "clones":
+            # cf. cmd_eval_obj/_room "received CHK_CLONES" bug -> false
+            dbg("prog " + str(prog_vnum) + " clones check in " + kind + "prog")
+            return False
+        lval = _count_people_other(rvnum, _COUNT_FLAG[check])
+        if len(toks) < 2 or toks[0] not in _EVAL_OPS:
+            dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+            return False
+        return num_eval(lval, toks[0], _atoi(toks[1]))
+    if check == "hour":
+        if len(toks) < 2 or toks[0] not in _EVAL_OPS:
+            dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+            return False
+        return num_eval(time_info["hour"], toks[0], _atoi(toks[1]))
+
+    # -- everything else needs a $-code target --
+    if len(buf) < 2 or buf[0] != "$":
+        dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+        return False
+    code = buf[1]
+    lval_char = None
+    lval_obj = None
+    if code == "i":
+        if kind == "obj":
+            lval_obj = origin["obj"]
+        else:
+            # cf. cmd_eval_room "received code case 'i'." -> both lvals NULL
+            dbg("prog " + str(prog_vnum) + " $i in roomprog")
+            return False
+    elif code == "n":
+        lval_char = ch
+    elif code == "t":
+        lval_char = arg2 if isinstance(arg2, dict) else None
+    elif code == "r":
+        lval_char = rch if rch is not None else _random_char_at(rvnum)
+    elif code == "o":
+        lval_obj = arg1
+    elif code == "p":
+        lval_obj = arg2 if not isinstance(arg2, dict) else None
+    elif code == "q":
+        tid = st.get(tkey)
+        lval_char = world.chars.get(tid) if tid is not None else None
+    else:
+        dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+        return False
+    if lval_char is None and lval_obj is None:
+        return False
+
+    if check == "isvisible":
+        # upstream cmd_eval_obj/_room have no CHK_ISVISIBLE case; the keyword
+        # falls through to the numeric section and bugs out false
+        dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+        return False
+    if check in _CHAR_BOOL:
+        # istarget reads mob.get("mprog_target"); shim the origin's target in
+        return _eval_char_bool(check, code, lval_char, lval_obj,
+                               {"mprog_target": st.get(tkey)})
+
+    if check in _CHAR_FLAG:
+        if len(toks) < 2:
+            return False
+        return _eval_char_flag(check, toks[1], lval_char, lval_obj)
+
+    if check in _CHAR_NUM:
+        if len(toks) < 3 or toks[1] not in _EVAL_OPS:
+            dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+            return False
+        if check == "room" and lval_char is None and lval_obj is not None:
+            # upstream reads lval_obj->in_room/carried_by; PrimeSUD objects
+            # have no location back-pointer, so only the prog's own obj ($i)
+            # is resolvable -- other obj args compare as 0
+            lval = rvnum if (kind == "obj" and lval_obj is origin["obj"]
+                             and rvnum is not None) else 0
+        else:
+            lval = _char_num_lval(check, lval_char, lval_obj)
+        return num_eval(lval, toks[1], _atoi(toks[2]))
+
+    # Valid 1stMud check outside the ported subset (Phase 3 fills these in;
+    # room-origin order stays a bug-false per upstream)
+    dbg("prog " + str(prog_vnum) + " check '" + check + "' not ported")
+    return False
+
+
+# -- obj/room $-code expansion (cf. expand_arg_other, programs.c:1664) ---------
+
+
+def expand_arg_other(fmt, kind, origin, ch, arg1, arg2, rch):
+    """Expand $-codes for an obj/room prog (cf. expand_arg_other, programs.c:1664).
+
+    Differences from the mob expand_arg, all upstream-faithful: no visibility
+    gating (there is no viewing mob), $j/$k/$l are invalid (the origin has no
+    sex), $q/$Q/$X/$Y/$Z read the origin's oprog/rprog target, $o/$O/$p/$P
+    have no can_see_obj gate, and $J does not lazily pick a random char (only
+    $r/$R/$K/$L do).
+
+    [PRIMESUD] $R renders the random char; upstream reads ``ch`` -- the same
+    copy-paste slip as expand_arg_mob's $R (see docs/FIXES.md "mobprog: $R").
+
+    Args:
+        fmt (str): Format string.
+        kind (str): "obj" or "room".
+        origin: Obj context dict or room vnum.
+        ch (dict or None): Triggering character.
+        arg1: Object argument.
+        arg2: Target character or object.
+        rch (dict or None): Preselected random char, or None to pick lazily.
+
+    Returns:
+        str: Expanded string.
+    """
+    if not fmt:
+        return ""
+    someone = "someone"
+    something = "something"
+    someones = "someone's"
+    vch = arg2 if isinstance(arg2, dict) else None
+    obj1 = arg1
+    obj2 = arg2 if not isinstance(arg2, dict) else None
+    o = origin["obj"] if kind == "obj" else None
+    rvnum = _octx_room(origin) if kind == "obj" else origin
+    st = _origin_state(kind, origin)
+    tid = st.get("oprog_target" if kind == "obj" else "rprog_target") if st else None
+    tgt = world.chars.get(tid) if tid is not None else None
+
+    def sex_of(c, table, dflt):
+        return table.get((c or {}).get("sex", "neutral"), dflt)
+
+    out = []
+    i = 0
+    n = len(fmt)
+    while i < n:
+        ch0 = fmt[i]
+        if ch0 != "$":
+            out.append(ch0)
+            i += 1
+            continue
+        i += 1
+        if i >= n:
+            break
+        code = fmt[i]
+        i += 1
+        if code == "i":
+            if o is not None:
+                piece = _obj_name(o)
+            else:
+                dbg("expand_arg_other: room had an 'i' case")
+                piece = "<@@@>"
+        elif code == "I":
+            if o is not None:
+                piece = _obj_short(o)
+            else:
+                dbg("expand_arg_other: room had an 'I' case")
+                piece = "<@@@>"
+        elif code == "n":
+            piece = _cap(_first(ch.get("name", ""))) if ch is not None else someone
+        elif code == "N":
+            piece = _char_short(ch) if ch is not None else someone
+        elif code == "t":
+            piece = _cap(_first(vch.get("name", ""))) if vch is not None else someone
+        elif code == "T":
+            piece = _char_short(vch) if vch is not None else someone
+        elif code == "r":
+            if rch is None:
+                rch = _random_char_at(rvnum)
+            piece = _cap(_first(rch.get("name", ""))) if rch is not None else someone
+        elif code == "R":
+            if rch is None:
+                rch = _random_char_at(rvnum)
+            piece = _char_short(rch) if rch is not None else someone
+        elif code == "q":
+            piece = _cap(_first(tgt.get("name", ""))) if tgt is not None else someone
+        elif code == "Q":
+            piece = _char_short(tgt) if tgt is not None else someone
+        elif code in ("j", "k", "l"):
+            # cf. expand_arg_other cases 'j'/'k'/'l': origin has no pronouns
+            dbg("expand_arg_other: received case '" + code + "'")
+            piece = "<@@@>"
+        elif code == "e":
+            piece = sex_of(ch, _HE_SHE, "it") if ch is not None else someone
+        elif code == "E":
+            piece = sex_of(vch, _HE_SHE, "it") if vch is not None else someone
+        elif code == "J":
+            # no lazy random pick here, per upstream (only $r/$R/$K/$L pick)
+            piece = sex_of(rch, _HE_SHE, "it") if rch is not None else someone
+        elif code == "X":
+            piece = sex_of(tgt, _HE_SHE, "it") if tgt is not None else someone
+        elif code == "m":
+            piece = sex_of(ch, _HIM_HER, "it") if ch is not None else someone
+        elif code == "M":
+            piece = sex_of(vch, _HIM_HER, "it") if vch is not None else someone
+        elif code == "K":
+            if rch is None:
+                rch = _random_char_at(rvnum)
+            piece = sex_of(rch, _HIM_HER, "it") if rch is not None else someone
+        elif code == "Y":
+            piece = sex_of(tgt, _HIM_HER, "it") if tgt is not None else someone
+        elif code == "s":
+            piece = sex_of(ch, _HIS_HER, "its") if ch is not None else someones
+        elif code == "S":
+            piece = sex_of(vch, _HIS_HER, "its") if vch is not None else someones
+        elif code == "L":
+            if rch is None:
+                rch = _random_char_at(rvnum)
+            piece = sex_of(rch, _HIS_HER, "its") if rch is not None else someones
+        elif code == "Z":
+            piece = sex_of(tgt, _HIS_HER, "its") if tgt is not None else someones
+        elif code == "o":
+            piece = _obj_name(obj1) if obj1 is not None else something
+        elif code == "O":
+            piece = _obj_short(obj1) if obj1 is not None else something
+        elif code == "p":
+            piece = _obj_name(obj2) if obj2 is not None else something
+        elif code == "P":
+            piece = _obj_short(obj2) if obj2 is not None else something
+        else:
+            dbg("expand_arg_other: bad code '" + code + "'")
+            piece = "<@@@>"
+        out.append(piece)
+    return "".join(out)
+
+
 # -- program flow (cf. program_flow, programs.c:2495) --------------------------
 
 def _parse_line(raw):
@@ -1015,44 +1422,74 @@ def _split_first(data):
     return (parts[0].lower(), parts[1] if len(parts) > 1 else "")
 
 
-def _buggy(prog_vnum, mvnum, msg):
+def _buggy(prog_vnum, kind, ovnum, msg):
     """Report a malformed program and abort it (cf. buggy_prog, programs.c)."""
-    dbg("mobprog: " + msg + ", mob " + str(mvnum) + " prog " + str(prog_vnum))
+    dbg("mobprog: " + msg + ", " + str(kind) + " " + str(ovnum)
+        + " prog " + str(prog_vnum))
 
 
-def _dispatch(prog_vnum, mob, ctrl, expanded, call_level=0):
-    """Route an expanded command line (cf. program_flow tail, programs.c:2793)."""
+def _dispatch(prog_vnum, mob, ctrl, expanded, call_level=0, obj=None, room=None):
+    """Route an expanded command line (cf. program_flow tail, programs.c:2793).
+
+    ``mob``/``obj``/``room`` keyword lines dispatch to the matching command
+    table only when the program's origin matches; a mismatch is a bug() skip,
+    as is a raw command line in a non-MOBprog.
+    """
     if ctrl == "mob":
         # strip the leading "mob" token; dispatch the rest to the mp-command set
         parts = expanded.split(None, 1)
-        mob_interpret(mob, parts[1] if len(parts) > 1 else "", prog_vnum, call_level)
+        rest = parts[1] if len(parts) > 1 else ""
+        if mob is None:
+            dbg("prog " + str(prog_vnum) + " mob command in non MOBprog")
+            return
+        mob_interpret(mob, rest, prog_vnum, call_level)
         return
-    if ctrl == "obj" or ctrl == "room":
-        # obj/room progs are out of scope; such a line in a MOBprog is a 1stMud
-        # bug ("obj command in non MOBprog") -- log and skip.
-        dbg("prog " + str(prog_vnum) + " '" + ctrl + "' command in MOBprog")
+    if ctrl == "obj":
+        parts = expanded.split(None, 1)
+        rest = parts[1] if len(parts) > 1 else ""
+        if obj is None:
+            dbg("prog " + str(prog_vnum) + " obj command in non OBJprog")
+            return
+        obj_interpret(obj, rest, prog_vnum)
+        return
+    if ctrl == "room":
+        parts = expanded.split(None, 1)
+        rest = parts[1] if len(parts) > 1 else ""
+        if room is None:
+            dbg("prog " + str(prog_vnum) + " room command in non ROOMprog")
+            return
+        room_interpret(room, rest, prog_vnum)
+        return
+    if mob is None:
+        dbg("prog " + str(prog_vnum) + " normal mud command in non-MOBprog")
         return
     interpret(expanded, mob)
 
 
-def program_flow(prog_vnum, code, mob, ch, arg1=None, arg2=None, call_level=0):
-    """Run one mob program (cf. program_flow, programs.c:2495).
+def program_flow(prog_vnum, code, mob, ch, arg1=None, arg2=None, call_level=0,
+                 obj=None, room=None):
+    """Run one program (cf. program_flow, programs.c:2495).
 
     Iterative line loop over a fixed state/cond stack.  Control keywords
     (if/or/and/else/endif, ``*`` comment, break/end) drive the stack; any other
-    line is $-expanded then dispatched (``mob <subcmd>`` -> mp-table in Phase C,
-    else through the real interpreter as the mob).  A malformed program aborts
-    via dbg(), as in 1stMud's buggy_prog.
+    line is $-expanded then dispatched (``mob``/``obj``/``room`` <subcmd> ->
+    the matching command table, else through the real interpreter as the mob;
+    raw commands in non-mobprogs bug-skip).  A malformed program aborts via
+    dbg(), as in 1stMud's buggy_prog.
 
     Args:
-        prog_vnum (int): Program vnum (for the MOBPROGS lookup / diagnostics).
+        prog_vnum (int): Program vnum (for diagnostics).
         code (str): The program source lines.
-        mob (dict): The acting mob instance.
+        mob (dict or None): The acting mob instance (mob origin).
         ch (dict or None): Triggering character.
         arg1: Object argument.
         arg2: Target character or object.
         call_level (int): Unused legacy parameter; depth is tracked by the
             module-global counter below.
+        obj (dict or None): Obj-origin context {"obj", "room", "carrier"}.
+        room (int or None): Room-origin vnum.
+
+    Exactly one of mob/obj/room must be non-None.
     """
     # cf. programs.c:2452 (++call_level > MAX_CALL_LEVEL): the counter is
     # GLOBAL, bumped on every program_flow entry -- it bounds not just "mob
@@ -1063,7 +1500,18 @@ def program_flow(prog_vnum, code, mob, ch, arg1=None, arg2=None, call_level=0):
     if _call_depth >= MAX_CALL_LEVEL:
         dbg("prog " + str(prog_vnum) + " exceeded max call level")
         return
-    mvnum = mob.get("tpl") if mob else 0
+    origins = (mob is not None) + (obj is not None) + (room is not None)
+    if origins != 1:
+        # cf. p_act_trigger "Multiple program types" bug guard
+        dbg("prog " + str(prog_vnum) + " has " + str(origins)
+            + " origins (need exactly 1)")
+        return
+    if mob is not None:
+        kind, ovnum = "mob", mob.get("tpl", 0)
+    elif obj is not None:
+        kind, ovnum = "obj", obj_vnum(obj["obj"])
+    else:
+        kind, ovnum = "room", room
     state = [IN_BLOCK] * MAX_NESTED_LEVEL
     cond = [True] * MAX_NESTED_LEVEL
     level = 0
@@ -1071,13 +1519,22 @@ def program_flow(prog_vnum, code, mob, ch, arg1=None, arg2=None, call_level=0):
     _call_depth += 1
     try:
         _run_flow(prog_vnum, code, mob, ch, arg1, arg2,
-                  mvnum, state, cond, level)
+                  kind, ovnum, obj, room, state, cond, level)
     finally:
         _call_depth -= 1
 
 
-def _run_flow(prog_vnum, code, mob, ch, arg1, arg2, mvnum, state, cond, level):
+def _run_flow(prog_vnum, code, mob, ch, arg1, arg2, kind, ovnum, obj, room,
+              state, cond, level):
     """program_flow body, split out so the depth counter always unwinds. [PRIMESUD]"""
+
+    def _eval(checkname, rest):
+        if mob is not None:
+            return cmd_eval(checkname, rest, mob, ch, arg1, arg2, None, prog_vnum)
+        origin = obj if kind == "obj" else room
+        return _cmd_eval_other(checkname, rest, kind, origin, ch, arg1, arg2,
+                               None, prog_vnum)
+
     for raw in code.split("\n"):
         buf, ctrl, data = _parse_line(raw)
         if buf == "":            # NullStr(buf) -> end of program
@@ -1087,56 +1544,56 @@ def _run_flow(prog_vnum, code, mob, ch, arg1, arg2, mvnum, state, cond, level):
 
         if ctrl == "if":
             if state[level] == BEGIN_BLOCK:
-                _buggy(prog_vnum, mvnum, "misplaced if statement")
+                _buggy(prog_vnum, kind, ovnum, "misplaced if statement")
                 return
             state[level] = BEGIN_BLOCK
             level += 1
             if level >= MAX_NESTED_LEVEL:
-                _buggy(prog_vnum, mvnum, "Max nested level exceeded")
+                _buggy(prog_vnum, kind, ovnum, "Max nested level exceeded")
                 return
             if cond[level - 1] is False:
                 cond[level] = False
                 continue
             checkname, rest = _split_first(data)
             if checkname in KNOWN_CHECKS:
-                cond[level] = cmd_eval(checkname, rest, mob, ch, arg1, arg2, None, prog_vnum)
+                cond[level] = _eval(checkname, rest)
             else:
-                _buggy(prog_vnum, mvnum, "invalid if_check (if)")
+                _buggy(prog_vnum, kind, ovnum, "invalid if_check (if)")
                 return
             state[level] = END_BLOCK
 
         elif ctrl == "or":
             if level == 0 or state[level - 1] != BEGIN_BLOCK:
-                _buggy(prog_vnum, mvnum, "or without if")
+                _buggy(prog_vnum, kind, ovnum, "or without if")
                 return
             if cond[level - 1] is False:
                 continue
             checkname, rest = _split_first(data)
             if checkname in KNOWN_CHECKS:
-                ev = cmd_eval(checkname, rest, mob, ch, arg1, arg2, None, prog_vnum)
+                ev = _eval(checkname, rest)
             else:
-                _buggy(prog_vnum, mvnum, "invalid if_check (or)")
+                _buggy(prog_vnum, kind, ovnum, "invalid if_check (or)")
                 return
             if ev:
                 cond[level] = True
 
         elif ctrl == "and":
             if level == 0 or state[level - 1] != BEGIN_BLOCK:
-                _buggy(prog_vnum, mvnum, "and without if")
+                _buggy(prog_vnum, kind, ovnum, "and without if")
                 return
             if cond[level - 1] is False:
                 continue
             checkname, rest = _split_first(data)
             if checkname in KNOWN_CHECKS:
-                ev = cmd_eval(checkname, rest, mob, ch, arg1, arg2, None, prog_vnum)
+                ev = _eval(checkname, rest)
             else:
-                _buggy(prog_vnum, mvnum, "invalid if_check (and)")
+                _buggy(prog_vnum, kind, ovnum, "invalid if_check (and)")
                 return
             cond[level] = bool(cond[level]) and bool(ev)
 
         elif ctrl == "endif":
             if level == 0 or state[level - 1] != BEGIN_BLOCK:
-                _buggy(prog_vnum, mvnum, "endif without if")
+                _buggy(prog_vnum, kind, ovnum, "endif without if")
                 return
             cond[level] = True
             state[level] = IN_BLOCK
@@ -1145,7 +1602,7 @@ def _run_flow(prog_vnum, code, mob, ch, arg1, arg2, mvnum, state, cond, level):
 
         elif ctrl == "else":
             if level == 0 or state[level - 1] != BEGIN_BLOCK:
-                _buggy(prog_vnum, mvnum, "else without if")
+                _buggy(prog_vnum, kind, ovnum, "else without if")
                 return
             if cond[level - 1] is False:
                 continue
@@ -1157,8 +1614,14 @@ def _run_flow(prog_vnum, code, mob, ch, arg1, arg2, mvnum, state, cond, level):
 
         elif (level == 0 or cond[level] is True):
             state[level] = IN_BLOCK
-            expanded = expand_arg(buf, mob, ch, arg1, arg2, None)
-            _dispatch(prog_vnum, mob, ctrl, expanded)
+            if mob is not None:
+                expanded = expand_arg(buf, mob, ch, arg1, arg2, None)
+                # mob-origin call keeps the legacy 4-arg shape
+                _dispatch(prog_vnum, mob, ctrl, expanded)
+            else:
+                origin = obj if kind == "obj" else room
+                expanded = expand_arg_other(buf, kind, origin, ch, arg1, arg2, None)
+                _dispatch(prog_vnum, None, ctrl, expanded, 0, obj, room)
 
 
 # -- mp-command set (cf. prog_cmds.c mob_cmd_table) ----------------------------
@@ -1170,20 +1633,25 @@ def _run_flow(prog_vnum, code, mob, ch, arg1, arg2, mvnum, state, cond, level):
 # avoid a circular import (combat/magic/movement all reach back into mobprog).
 
 
-def _room_persons(mob):
-    """Player + all mobs in *mob*'s room (cf. in_room->person_first walk). [PRIMESUD]"""
-    rs = _room_of(mob)
+def _persons_at(rvnum):
+    """Player + all mobs in room *rvnum* (cf. room->person_first walk). [PRIMESUD]"""
+    rs = world.rooms._data.get(rvnum) if rvnum is not None else None
     if rs is None:
         return []
     persons = []
     p = world.chars.get(1)
-    if p is not None and p.get("room") == mob.get("room"):
+    if p is not None and p.get("room") == rvnum:
         persons.append(p)
     for mid in rs.get("mobs", []):
         c = world.chars.get(mid)
         if c is not None:
             persons.append(c)
     return persons
+
+
+def _room_persons(mob):
+    """Player + all mobs in *mob*'s room (cf. in_room->person_first walk). [PRIMESUD]"""
+    return _persons_at(mob.get("room")) if mob is not None else []
 
 
 def _char_kw(c):
@@ -1239,10 +1707,12 @@ def _get_obj_world(mob, arg):
     There is no global object list; scans loaded rooms' floors (one container
     level deep, like the reset count map) plus every char's inventory and
     equipment.  Unloaded areas hold no instances, matching lazy loading.
+    A None *mob* means a NULL viewer (cf. get_obj_world(NULL, ...) in the
+    obj/room prog paths): no here-first pass, no visibility filter.
     """
     if not arg:
         return None
-    obj = get_obj_here(mob, arg)
+    obj = get_obj_here(mob, arg) if mob is not None else None
     if obj is not None:
         return obj
 
@@ -1271,7 +1741,8 @@ def _get_obj_world(mob, arg):
     number, name = number_argument(arg)
     count = 0
     for it in _all_objs():
-        if not is_name(name, _kw(it)) or not can_see_obj(mob, it):
+        if not is_name(name, _kw(it)) or (mob is not None
+                                          and not can_see_obj(mob, it)):
             continue
         count += 1
         if count == number:
@@ -1445,39 +1916,53 @@ def _mp_assist(mob, args, pv, cl):
     multi_hit(mob, target)
 
 
-def _mp_damage(mob, args, pv, cl):
-    parts = args.split()
+def _parse_damage_args(parts, label):
+    """target/min/max/kill parse shared by the mp/op/rp damage commands. [PRIMESUD]
+
+    Returns:
+        tuple or None: (target, low, high, fkill), or None on bad syntax.
+    """
     if not parts:
-        dbg("mobprog: mpdamage bad syntax")
-        return
-    target = parts[0]
+        dbg(label + " bad syntax")
+        return None
     minv = parts[1] if len(parts) > 1 else ""
     maxv = parts[2] if len(parts) > 2 else ""
     if not _is_number(minv) or not _is_number(maxv):
-        dbg("mobprog: mpdamage bad range")
-        return
+        dbg(label + " bad range")
+        return None
     low, high = _atoi(minv), _atoi(maxv)
     if high < low:
         high = low   # [PRIMESUD] clamp; 1stMud passes low>high to number_range unchecked
     fkill = len(parts) > 3 and bool(parts[3])
+    return parts[0], low, high, fkill
 
-    def _hit(v):
-        amt = randint(low, high)
-        if not fkill:
-            amt = min(v.get("hit", 0), amt)
-        # attacker == victim -> no retaliation / no TRIG_KILL (cf. do_mpdamage,
-        # fight.c: damage(victim, victim, ...); victim != ch is false).
-        damage(v, v, amt, TYPE_UNDEFINED, DAM_NONE, False)
 
+def _prog_damage(v, low, high, fkill):
+    """One prog damage hit (the mp/op/rp damage tail). [PRIMESUD]
+
+    attacker == victim -> no retaliation / no TRIG_KILL (cf. do_mpdamage:
+    damage(victim, victim, ...); victim != ch is false).
+    """
+    amt = randint(low, high)
+    if not fkill:
+        amt = min(v.get("hit", 0), amt)
+    damage(v, v, amt, TYPE_UNDEFINED, DAM_NONE, False)
+
+
+def _mp_damage(mob, args, pv, cl):
+    parsed = _parse_damage_args(args.split(), "mobprog: mpdamage")
+    if parsed is None:
+        return
+    target, low, high, fkill = parsed
     if target == "all":
         for c in list(_room_persons(mob)):
             if c is not mob:
-                _hit(c)
+                _prog_damage(c, low, high, fkill)
     else:
         v = _get_char_room(mob, target)
         if v is None:
             return
-        _hit(v)
+        _prog_damage(v, low, high, fkill)
 
 
 def _mp_cast(mob, args, pv, cl):
@@ -1519,12 +2004,18 @@ def _mp_cast(mob, args, pv, cl):
     fun(sn, mob.get("level", 1), mob, victim, tconst)
 
 
-def _mp_peace(mob, args, pv, cl):
-    for c in list(_room_persons(mob)):
+def _peace_room(rvnum):
+    """Stop all fights and clear aggression in a room (the mp/op/rp peace
+    tail). [PRIMESUD]"""
+    for c in list(_persons_at(rvnum)):
         if c.get("fighting") is not None:
             stop_fighting(c, both=True)
         if c.get("is_npc") and c.get("act_flags", {}).get("aggressive"):
             c["act_flags"]["aggressive"] = False
+
+
+def _mp_peace(mob, args, pv, cl):
+    _peace_room(mob.get("room"))
 
 
 def _mp_flee(mob, args, pv, cl):
@@ -1554,6 +2045,18 @@ def _mp_flee(mob, args, pv, cl):
 
 # -- loading / purging / moving objects ----------------------------------------
 
+def _spawn_mob_at(vnum, rvnum):
+    """Create a mob instance in room *rvnum* (the mp/op/rp mload tail). [PRIMESUD]"""
+    victim = create_mobile(vnum)
+    victim["room"] = rvnum
+    victim["home_area"] = world.ROOM_DEFS[rvnum].get("area")
+    nid = max(world.chars, default=1) + 1
+    victim["id"] = nid
+    world.chars[nid] = victim
+    world.rooms[rvnum]["mobs"].append(nid)
+    return victim
+
+
 def _mp_mload(mob, args, pv, cl):
     arg = _first(args)
     if not arg or not _is_number(arg):
@@ -1562,14 +2065,7 @@ def _mp_mload(mob, args, pv, cl):
     if vnum not in world.MOB_DEFS:
         dbg("mobprog: mpmload bad mob " + str(vnum))
         return
-    victim = create_mobile(vnum)
-    room = mob.get("room")
-    victim["room"] = room
-    victim["home_area"] = world.ROOM_DEFS[room].get("area")
-    nid = max(world.chars, default=1) + 1
-    victim["id"] = nid
-    world.chars[nid] = victim
-    world.rooms[room]["mobs"].append(nid)
+    _spawn_mob_at(vnum, mob.get("room"))
 
 
 def _mp_oload(mob, args, pv, cl):
@@ -1669,17 +2165,12 @@ def _mp_otransfer(mob, args, pv, cl):
     world.rooms[loc]["items"].append(obj)
 
 
-def _mp_remove(mob, args, pv, cl):
-    parts = args.split()
-    if not parts:
-        return
-    victim = _get_char_room(mob, parts[0])
-    if victim is None:
-        return
-    spec = parts[1] if len(parts) > 1 else ""
+def _remove_objs(victim, spec, label):
+    """Strip and extract objects from a char by vnum or ``all`` (the mp/op/rp
+    remove tail). [PRIMESUD]"""
     fall = (spec == "all")
     if not fall and not _is_number(spec):
-        dbg("mobprog: mpremove invalid object, mob " + str(mob.get("tpl", 0)))
+        dbg(label)
         return
     vnum = _atoi(spec) if _is_number(spec) else 0
     for o in list(victim.get("inv", [])):
@@ -1688,6 +2179,17 @@ def _mp_remove(mob, args, pv, cl):
     for slot, o in list(victim.get("equip", {}).items()):
         if o is not None and (fall or obj_vnum(o) == vnum):
             victim["equip"][slot] = None
+
+
+def _mp_remove(mob, args, pv, cl):
+    parts = args.split()
+    if not parts:
+        return
+    victim = _get_char_room(mob, parts[0])
+    if victim is None:
+        return
+    _remove_objs(victim, parts[1] if len(parts) > 1 else "",
+                 "mobprog: mpremove invalid object, mob " + str(mob.get("tpl", 0)))
 
 
 # -- movement / redirection ----------------------------------------------------
@@ -1747,6 +2249,12 @@ def _mp_transfer(mob, args, pv, cl):
     victim = _get_char_world(mob, arg1)
     if victim is None or victim.get("room") is None:
         return
+    _transfer_char_to(victim, loc)
+
+
+def _transfer_char_to(victim, loc):
+    """The mp/op/rp transfer tail: stop fighting, move, look + greet for a
+    player. [PRIMESUD]"""
     if victim.get("fighting") is not None:
         stop_fighting(victim, both=True)
     _char_from_room(victim)
@@ -1882,3 +2390,867 @@ def mob_interpret(mob, argument, prog_vnum=0, call_level=0):
             fn(mob, rest, prog_vnum, call_level)
             return
     dbg("mobprog: invalid cmd '" + command + "' from mob " + str(mob.get("tpl", 0)))
+
+
+# -- op-command set (cf. prog_cmds.c obj_cmd_table) ----------------------------
+#
+# Every function takes (octx, args, pv); *octx* is the obj-origin context dict
+# {"obj", "room", "carrier"} (see program_flow), *args* the already-$-expanded
+# remainder of the line.  Upstream lookups here pass a NULL viewer -- the _at/
+# _nv helpers above mirror that (no visibility filtering).
+
+
+def _obj_level(obj):
+    """Object level, instance override then template (cf. obj->level). [PRIMESUD]"""
+    if isinstance(obj, dict) and "level" in obj:
+        return obj["level"]
+    tpl = world.ITEM_DEFS.get(obj_vnum(obj))
+    return tpl.get("level", 0) if tpl else 0
+
+
+def _echo_actor(rvnum, carrier=None):
+    """Carrier, else first person in the room -- the actor upstream hangs an
+    actor-less obj/room act() on (cf. do_opecho/do_rpecho). [PRIMESUD]"""
+    if carrier is not None:
+        return carrier
+    persons = _persons_at(rvnum)
+    return persons[0] if persons else None
+
+
+def _octx_detach(octx):
+    """Remove the origin obj from its floor spot or carrier. [PRIMESUD]"""
+    o = octx["obj"]
+    c = octx.get("carrier")
+    if c is not None:
+        if o in c.get("inv", []):
+            c["inv"].remove(o)
+        else:
+            for slot, it in list(c.get("equip", {}).items()):
+                if it is o:
+                    c["equip"][slot] = None
+    else:
+        rs = world.rooms._data.get(octx.get("room"))
+        if rs is not None and o in rs.get("items", []):
+            rs["items"].remove(o)
+
+
+def _op_gecho(octx, args, pv):
+    """Global echo (cf. do_opgecho).  [PRIMESUD] single-player: to the one player."""
+    if not args:
+        dbg("objprog: opgecho missing argument")
+        return
+    p = world.chars.get(1)
+    if p is not None:
+        chprintln(p, args)
+
+
+def _op_zecho(octx, args, pv):
+    """Zone echo (cf. do_opzecho).  [PRIMESUD] to the player if in the obj's area."""
+    if not args:
+        dbg("objprog: opzecho missing argument")
+        return
+    rvnum = _octx_room(octx)
+    p = world.chars.get(1)
+    if rvnum is None or p is None:
+        return
+    proom = world.ROOM_DEFS._data.get(p.get("room"))
+    oroom = world.ROOM_DEFS._data.get(rvnum)
+    if proom is not None and oroom is not None and proom.get("area") == oroom.get("area"):
+        chprintln(p, args)
+
+
+def _op_echo(octx, args, pv):
+    """Room echo from an object (cf. do_opecho): everyone in the room sees it."""
+    if not args:
+        return
+    actor = _echo_actor(_octx_room(octx), octx.get("carrier"))
+    if actor is None:
+        return
+    act(args, actor, None, None, TO_ROOM)
+    act(args, actor, None, None, TO_CHAR)
+
+
+def _op_echoaround(octx, args, pv):
+    """Echo to everyone but one char (cf. do_opechoaround: raw chprint per
+    non-victim, not act())."""
+    parts = args.split(None, 1)
+    if not parts:
+        return
+    rvnum = _octx_room(octx)
+    victim = _char_at(rvnum, parts[0])
+    if victim is None:
+        return
+    msg = parts[1] if len(parts) > 1 else ""
+    for c in _persons_at(rvnum):
+        if c is not victim:
+            chprintln(c, msg)
+
+
+def _op_echoat(octx, args, pv):
+    """Echo to one char (cf. do_opechoat)."""
+    parts = args.split(None, 1)
+    if len(parts) < 2 or not parts[1]:
+        return
+    rvnum = _octx_room(octx)
+    victim = _char_at(rvnum, parts[0])
+    if victim is None:
+        return
+    actor = _echo_actor(rvnum, octx.get("carrier"))
+    if actor is None:
+        return
+    act(parts[1], actor, octx["obj"], victim, TO_VICT)
+
+
+def _op_mload(octx, args, pv):
+    """Load a mob into the obj's room (cf. do_opmload)."""
+    arg = _first(args)
+    rvnum = _octx_room(octx)
+    if rvnum is None or not arg or not _is_number(arg):
+        return
+    vnum = _atoi(arg)
+    if vnum not in world.MOB_DEFS:
+        dbg("objprog: opmload bad mob " + str(vnum))
+        return
+    _spawn_mob_at(vnum, rvnum)
+
+
+def _op_oload(octx, args, pv):
+    """Load an obj onto the obj's room floor (cf. do_opoload).
+
+    The optional level arg is validated (numeric, 0..obj level) then ignored
+    ([PRIMESUD] no per-load level scaling, as mpoload).
+    """
+    parts = args.split()
+    if not parts or not _is_number(parts[0]):
+        dbg("objprog: opoload bad syntax")
+        return
+    arg2 = parts[1] if len(parts) > 1 else ""
+    if arg2:
+        if not _is_number(arg2):
+            dbg("objprog: opoload bad syntax")
+            return
+        lv = _atoi(arg2)
+        if lv < 0 or lv > _obj_level(octx["obj"]):
+            dbg("objprog: opoload bad level")
+            return
+    vnum = _atoi(parts[0])
+    if vnum not in world.ITEM_DEFS:
+        dbg("objprog: opoload bad obj " + str(vnum))
+        return
+    rvnum = _octx_room(octx)
+    if rvnum is None:
+        return
+    world.rooms[rvnum]["items"].append(create_object(vnum))
+
+
+def _op_purge(octx, args, pv):
+    """Purge the room or one target (cf. do_oppurge).
+
+    The no-arg sweep spares only nopurge items and the prog's own obj; a named
+    target resolves char-in-room, floor obj, then the carrier's inventory and
+    equipment, as upstream.
+    """
+    rvnum = _octx_room(octx)
+    rs = world.rooms._data.get(rvnum) if rvnum is not None else None
+    o = octx["obj"]
+    arg = _first(args)
+    if not arg:
+        if rs is None:
+            return
+        for c in list(_persons_at(rvnum)):
+            if c.get("is_npc") and not c.get("act_flags", {}).get("nopurge"):
+                _extract_char(c, pull=True)
+        rs["items"] = [it for it in rs.get("items", [])
+                       if _obj_has_nopurge(it) or it is o]
+        return
+    victim = _char_at(rvnum, arg)
+    if victim is None:
+        vobj = _obj_at(rvnum, arg)
+        if vobj is not None:
+            if rs is not None and vobj in rs.get("items", []):
+                rs["items"].remove(vobj)
+            return
+        carrier = octx.get("carrier")
+        if carrier is not None:
+            vobj = get_obj_list(arg, carrier.get("inv", []), world.ITEM_DEFS, carrier)
+            if vobj is not None:
+                carrier["inv"].remove(vobj)
+                return
+            for slot, it in list(carrier.get("equip", {}).items()):
+                if it is not None and is_name(arg, _obj_keywords(it)):
+                    carrier["equip"][slot] = None
+                    return
+        dbg("objprog: oppurge bad argument from obj " + str(obj_vnum(o)))
+        return
+    if not victim.get("is_npc"):
+        dbg("objprog: oppurge PC from obj " + str(obj_vnum(o)))
+        return
+    _extract_char(victim, pull=True)
+
+
+def _op_goto(octx, args, pv):
+    """Move the object itself (cf. do_opgoto): room vnum or char name.
+    [PRIMESUD] world-object location fallback not ported (as _find_location)."""
+    arg = _first(args)
+    if not arg:
+        dbg("objprog: opgoto no argument")
+        return
+    loc = _find_location_nv(arg)
+    if loc is None:
+        dbg("objprog: opgoto no such location")
+        return
+    _octx_detach(octx)
+    world.rooms[loc]["items"].append(octx["obj"])
+    octx["room"] = loc
+    octx["carrier"] = None
+
+
+def _op_transfer(octx, args, pv):
+    """Transfer a char (or all players) to a location (cf. do_optransfer)."""
+    parts = args.split()
+    if not parts:
+        dbg("objprog: optransfer bad syntax")
+        return
+    arg1 = parts[0]
+    arg2 = parts[1] if len(parts) > 1 else ""
+    rvnum = _octx_room(octx)
+    if arg1 == "all":
+        for c in list(_persons_at(rvnum)):
+            if not c.get("is_npc"):
+                _op_transfer(octx, c.get("name", "") + ((" " + arg2) if arg2 else ""), pv)
+        return
+    if not arg2:
+        loc = rvnum
+    else:
+        loc = _find_location_nv(arg2)
+        if loc is None:
+            dbg("objprog: optransfer no such location")
+            return
+    if loc is None:
+        return
+    victim = _char_world_nv(arg1)
+    if victim is None or victim.get("room") is None:
+        return
+    _transfer_char_to(victim, loc)
+
+
+def _op_force(octx, args, pv):
+    """Force chars in the obj's room to act (cf. do_opforce).
+
+    [PRIMESUD] the upstream ``all`` filter is get_trust(vch) < obj level; with
+    no trust system, char level stands in for trust.
+    """
+    parts = args.split(None, 1)
+    if len(parts) < 2 or not parts[1]:
+        dbg("objprog: opforce bad syntax")
+        return
+    arg, rest = parts[0], parts[1]
+    rvnum = _octx_room(octx)
+    if arg == "all":
+        olev = _obj_level(octx["obj"])
+        for c in list(_persons_at(rvnum)):
+            if c.get("level", 0) < olev:
+                interpret(rest, c)
+    else:
+        victim = _char_at(rvnum, arg)
+        if victim is None:
+            return
+        interpret(rest, victim)
+
+
+def _op_damage(octx, args, pv):
+    """Prog damage (cf. do_opdamage).
+
+    Bug-faithful: the ``all`` branch damages only when the obj has a carrier,
+    and spares the carrier (upstream's ``obj->carried_by && victim !=
+    obj->carried_by`` gate makes a floor obj's ``damage all`` a no-op).
+    """
+    parsed = _parse_damage_args(args.split(), "objprog: opdamage")
+    if parsed is None:
+        return
+    target, low, high, fkill = parsed
+    rvnum = _octx_room(octx)
+    carrier = octx.get("carrier")
+    if target == "all":
+        for c in list(_persons_at(rvnum)):
+            if carrier is not None and c is not carrier:
+                _prog_damage(c, low, high, fkill)
+    else:
+        v = _char_at(rvnum, target)
+        if v is None:
+            return
+        _prog_damage(v, low, high, fkill)
+
+
+def _op_remember(octx, args, pv):
+    arg = _first(args)
+    if not arg:
+        dbg("objprog: opremember missing argument")
+        return
+    victim = _char_world_nv(arg)
+    # [PRIMESUD] stored as char id (see _target_of), not a dict ref
+    octx["obj"]["oprog_target"] = victim.get("id") if victim is not None else None
+
+
+def _op_forget(octx, args, pv):
+    octx["obj"]["oprog_target"] = None
+
+
+def _op_delay(octx, args, pv):
+    arg = _first(args)
+    if not _is_number(arg):
+        dbg("objprog: opdelay invalid argument")
+        return
+    octx["obj"]["oprog_delay"] = _atoi(arg)
+
+
+def _op_cancel(octx, args, pv):
+    octx["obj"]["oprog_delay"] = -1
+
+
+def _op_call(octx, args, pv):
+    """Run another OBJprog on this object (cf. do_opcall)."""
+    parts = args.split()
+    if not parts:
+        dbg("objprog: opcall missing arguments")
+        return
+    if not _is_number(parts[0]):
+        dbg("objprog: opcall invalid prog")
+        return
+    prog_vnum = _atoi(parts[0])
+    code = world.OBJPROGS.get(prog_vnum)
+    if code is None:
+        dbg("objprog: opcall invalid prog " + str(prog_vnum))
+        return
+    rvnum = _octx_room(octx)
+    vch = _char_at(rvnum, parts[1]) if len(parts) > 1 and parts[1] else None
+    obj1 = _obj_at(rvnum, parts[2]) if len(parts) > 2 and parts[2] else None
+    obj2 = _obj_at(rvnum, parts[3]) if len(parts) > 3 and parts[3] else None
+    # nested program_flow entry bumps the global _call_depth itself
+    program_flow(prog_vnum, code, None, vch, obj1, obj2, obj=octx)
+
+
+def _op_otransfer(octx, args, pv):
+    """Move a floor object to a location (cf. do_opotransfer)."""
+    parts = args.split()
+    if not parts:
+        dbg("objprog: opotransfer missing argument")
+        return
+    loc = _find_location_nv(parts[1] if len(parts) > 1 else "")
+    if loc is None:
+        dbg("objprog: opotransfer no such location")
+        return
+    rvnum = _octx_room(octx)
+    vobj = _obj_at(rvnum, parts[0])
+    if vobj is None:
+        return
+    rs = world.rooms._data.get(rvnum)
+    if rs is not None and vobj in rs.get("items", []):
+        rs["items"].remove(vobj)
+    world.rooms[loc]["items"].append(vobj)
+
+
+def _op_remove(octx, args, pv):
+    """Strip and extract objects from a char (cf. do_opremove)."""
+    parts = args.split()
+    if not parts:
+        return
+    victim = _char_at(_octx_room(octx), parts[0])
+    if victim is None:
+        return
+    _remove_objs(victim, parts[1] if len(parts) > 1 else "",
+                 "objprog: opremove invalid object from obj "
+                 + str(obj_vnum(octx["obj"])))
+
+
+def _attrib_num(spec, cur, chlev, label):
+    """One do_opattrib slot: a literal, ``none`` (keep current), or a +-*/N
+    modifier applied to the target char's level (cf. do_opattrib).
+
+    Returns:
+        int or None: The slot value; None aborts the whole command.
+    """
+    if spec == "none":
+        return cur
+    if spec and not spec[0].isdigit():
+        mod = spec[0]
+        num = spec[1:]
+        if not _is_number(num):
+            dbg(label + " non-number argument")
+            return None
+        n = _atoi(num)
+        if mod == "+":
+            return chlev + n
+        if mod == "-":
+            return chlev - n
+        if mod == "*":
+            return chlev * n
+        if mod == "/":
+            if n == 0:   # [PRIMESUD] guard; upstream divides by zero
+                dbg(label + " division by zero")
+                return None
+            return chlev // n
+        dbg(label + " invalid modifier")
+        return None
+    if _is_number(spec):
+        return _atoi(spec)
+    dbg(label + " non-number argument")
+    return None
+
+
+def _op_attrib(octx, args, pv):
+    """Set the obj's level/condition/value[0..4] (cf. do_opattrib).
+
+    Slots: ``target level condition v0 v1 v2 v3 v4``; target ``worn`` means
+    the carrier.  All-or-nothing: any bad slot aborts with no writes, as
+    upstream.  [PRIMESUD] values land on the instance dict ("level",
+    "condition", "values" 5-tuple); runtime consumers arrive with the objval
+    if-checks in Phase 3.
+    """
+    parts = args.split()
+    o = octx["obj"]
+    target = parts[0] if parts else ""
+    if target == "worn":
+        chv = octx.get("carrier")
+        if chv is None:
+            return
+    else:
+        chv = _char_at(_octx_room(octx), target)
+        if chv is None:
+            return
+    label = "objprog: opattrib obj " + str(obj_vnum(o))
+    chlev = chv.get("level", 0)
+    tpl = world.ITEM_DEFS.get(obj_vnum(o)) or {}
+    cur_vals = list(o.get("values", tpl.get("values", (0, 0, 0, 0, 0))))
+    while len(cur_vals) < 5:
+        cur_vals.append(0)
+    specs = list(parts[1:8])
+    while len(specs) < 7:
+        specs.append("")
+    curs = [_obj_level(o), o.get("condition", tpl.get("condition", 0))] + cur_vals[:5]
+    new = []
+    for spec, cur in zip(specs, curs):
+        v = _attrib_num(spec, cur, chlev, label)
+        if v is None:
+            return
+        new.append(v)
+    o["level"] = new[0]
+    o["condition"] = new[1]
+    o["values"] = (new[2], new[3], new[4], new[5], new[6])
+
+
+def _op_peace(octx, args, pv):
+    """(cf. do_oppeace)"""
+    _peace_room(_octx_room(octx))
+
+
+def _op_skip(octx, args, pv):
+    # [PRIMESUD] opgtransfer / opgforce / opvforce -- group/mass commands,
+    # implemented alongside the mob ones in PROGS_PLAN Phase 3.
+    dbg("objprog: group/mass op-command skipped (not ported)")
+
+
+# Table order matches 1stMud obj_cmd_table (prog_cmds.c:77); dispatch is a
+# case-insensitive prefix match in this order (first match wins).
+OP_COMMANDS = (
+    ("gecho", _op_gecho),
+    ("zecho", _op_zecho),
+    ("echo", _op_echo),
+    ("echoaround", _op_echoaround),
+    ("echoat", _op_echoat),
+    ("mload", _op_mload),
+    ("oload", _op_oload),
+    ("purge", _op_purge),
+    ("goto", _op_goto),
+    ("transfer", _op_transfer),
+    ("gtransfer", _op_skip),
+    ("otransfer", _op_otransfer),
+    ("force", _op_force),
+    ("gforce", _op_skip),
+    ("vforce", _op_skip),
+    ("damage", _op_damage),
+    ("remember", _op_remember),
+    ("forget", _op_forget),
+    ("delay", _op_delay),
+    ("cancel", _op_cancel),
+    ("call", _op_call),
+    ("remove", _op_remove),
+    ("attrib", _op_attrib),
+    ("peace", _op_peace),
+)
+
+
+def obj_interpret(octx, argument, prog_vnum=0):
+    """Dispatch an ``obj <subcmd>`` prog command (cf. obj_interpret, prog_cmds.c:1168).
+
+    Prefix-matched against OP_COMMANDS in table order (first match wins).  An
+    unknown subcommand logs a bug and is skipped.
+    """
+    parts = argument.split(None, 1)
+    if not parts:
+        return
+    command = parts[0].lower()
+    rest = parts[1] if len(parts) > 1 else ""
+    for name, fn in OP_COMMANDS:
+        if name[0] == command[0] and name.startswith(command):
+            fn(octx, rest, prog_vnum)
+            return
+    dbg("objprog: invalid cmd '" + command + "' from obj "
+        + str(obj_vnum(octx["obj"])))
+
+
+# -- rp-command set (cf. prog_cmds.c room_cmd_table) ---------------------------
+#
+# Every function takes (rvnum, args, pv); *rvnum* is the room-origin vnum.
+
+
+def _rp_state(rvnum):
+    """Runtime room state dict for *rvnum*, or None if unloaded. [PRIMESUD]"""
+    return world.rooms._data.get(rvnum)
+
+
+def _rp_gecho(rvnum, args, pv):
+    """Global echo (cf. do_rpgecho).  [PRIMESUD] single-player: to the one player."""
+    if not args:
+        dbg("roomprog: rpgecho missing argument")
+        return
+    p = world.chars.get(1)
+    if p is not None:
+        chprintln(p, args)
+
+
+def _rp_zecho(rvnum, args, pv):
+    """Zone echo (cf. do_rpzecho).  [PRIMESUD] to the player if in the room's area."""
+    if not args:
+        dbg("roomprog: rpzecho missing argument")
+        return
+    p = world.chars.get(1)
+    if p is None:
+        return
+    proom = world.ROOM_DEFS._data.get(p.get("room"))
+    rroom = world.ROOM_DEFS._data.get(rvnum)
+    if proom is not None and rroom is not None and proom.get("area") == rroom.get("area"):
+        chprintln(p, args)
+
+
+def _rp_asound(rvnum, args, pv):
+    """Sound heard in every adjacent room (cf. do_rpasound).
+
+    Unlike mob asound, upstream does not latch MOBtrigger off here -- kept
+    bug-faithful.
+    """
+    if not args:
+        return
+    in_room = world.ROOM_DEFS._data.get(rvnum)
+    if in_room is None:
+        return
+    for _d, ev in in_room.get("exits", {}).items():
+        dest = ev.get("to") if isinstance(ev, dict) else ev
+        if dest is None or dest == rvnum:
+            continue
+        persons = _persons_at(dest)
+        if not persons:
+            continue
+        act(args, persons[0], None, None, TO_ROOM)
+        act(args, persons[0], None, None, TO_CHAR)
+
+
+def _rp_echoaround(rvnum, args, pv):
+    """Echo to everyone but one char (cf. do_rpechoaround)."""
+    parts = args.split(None, 1)
+    if not parts:
+        return
+    victim = _char_at(rvnum, parts[0])
+    if victim is None:
+        return
+    act(parts[1] if len(parts) > 1 else "", victim, None, victim, TO_NOTVICT)
+
+
+def _rp_echoat(rvnum, args, pv):
+    """Echo to one char (cf. do_rpechoat)."""
+    parts = args.split(None, 1)
+    if len(parts) < 2 or not parts[1]:
+        return
+    victim = _char_at(rvnum, parts[0])
+    if victim is None:
+        return
+    act(parts[1], victim, None, None, TO_CHAR)
+
+
+def _rp_echo(rvnum, args, pv):
+    """Room echo (cf. do_rpecho): everyone in the room sees it."""
+    if not args:
+        return
+    persons = _persons_at(rvnum)
+    if not persons:
+        return
+    act(args, persons[0], None, None, TO_ROOM)
+    act(args, persons[0], None, None, TO_CHAR)
+
+
+def _rp_mload(rvnum, args, pv):
+    """Load a mob into the room (cf. do_rpmload)."""
+    arg = _first(args)
+    if not arg or not _is_number(arg):
+        return
+    vnum = _atoi(arg)
+    if vnum not in world.MOB_DEFS:
+        dbg("roomprog: rpmload bad mob " + str(vnum))
+        return
+    _spawn_mob_at(vnum, rvnum)
+
+
+def _rp_oload(rvnum, args, pv):
+    """Load an obj onto the room floor (cf. do_rpoload).
+
+    The level arg is mandatory here, validated (numeric, non-negative) then
+    ignored ([PRIMESUD] no per-load level scaling; upstream's LEVEL_IMMORTAL
+    upper bound has no PrimeSUD equivalent).
+    """
+    parts = args.split()
+    if len(parts) < 2 or not _is_number(parts[0]) or not _is_number(parts[1]):
+        dbg("roomprog: rpoload bad syntax")
+        return
+    if _atoi(parts[1]) < 0:
+        dbg("roomprog: rpoload bad level")
+        return
+    vnum = _atoi(parts[0])
+    if vnum not in world.ITEM_DEFS:
+        dbg("roomprog: rpoload bad obj " + str(vnum))
+        return
+    world.rooms[rvnum]["items"].append(create_object(vnum))
+
+
+def _rp_purge(rvnum, args, pv):
+    """Purge the room or one target (cf. do_rppurge)."""
+    rs = _rp_state(rvnum)
+    if rs is None:
+        return
+    arg = _first(args)
+    if not arg:
+        for c in list(_persons_at(rvnum)):
+            if c.get("is_npc") and not c.get("act_flags", {}).get("nopurge"):
+                _extract_char(c, pull=True)
+        rs["items"] = [it for it in rs.get("items", []) if _obj_has_nopurge(it)]
+        return
+    victim = _char_at(rvnum, arg)
+    if victim is None:
+        vobj = _obj_at(rvnum, arg)
+        if vobj is not None:
+            if vobj in rs.get("items", []):
+                rs["items"].remove(vobj)
+        else:
+            dbg("roomprog: rppurge bad argument from room " + str(rvnum))
+        return
+    if not victim.get("is_npc"):
+        dbg("roomprog: rppurge PC from room " + str(rvnum))
+        return
+    _extract_char(victim, pull=True)
+
+
+def _rp_transfer(rvnum, args, pv):
+    """Transfer a char (or all players) to a location (cf. do_rptransfer)."""
+    parts = args.split()
+    if not parts:
+        dbg("roomprog: rptransfer bad syntax")
+        return
+    arg1 = parts[0]
+    arg2 = parts[1] if len(parts) > 1 else ""
+    if arg1 == "all":
+        for c in list(_persons_at(rvnum)):
+            if not c.get("is_npc"):
+                _rp_transfer(rvnum, c.get("name", "") + ((" " + arg2) if arg2 else ""), pv)
+        return
+    if not arg2:
+        loc = rvnum
+    else:
+        loc = _find_location_nv(arg2)
+        if loc is None:
+            dbg("roomprog: rptransfer no such location")
+            return
+    victim = _char_world_nv(arg1)
+    if victim is None or victim.get("room") is None:
+        return
+    _transfer_char_to(victim, loc)
+
+
+def _rp_force(rvnum, args, pv):
+    """Force chars in the room to act (cf. do_rpforce).
+
+    [PRIMESUD] upstream's ``all`` branch skips immortals; no immortals in
+    PrimeSUD, so everyone in the room is forced.
+    """
+    parts = args.split(None, 1)
+    if len(parts) < 2 or not parts[1]:
+        dbg("roomprog: rpforce bad syntax")
+        return
+    arg, rest = parts[0], parts[1]
+    if arg == "all":
+        for c in list(_persons_at(rvnum)):
+            interpret(rest, c)
+    else:
+        victim = _char_at(rvnum, arg)
+        if victim is None:
+            return
+        interpret(rest, victim)
+
+
+def _rp_damage(rvnum, args, pv):
+    """Prog damage (cf. do_rpdamage); ``all`` hits everyone in the room."""
+    parsed = _parse_damage_args(args.split(), "roomprog: rpdamage")
+    if parsed is None:
+        return
+    target, low, high, fkill = parsed
+    if target == "all":
+        for c in list(_persons_at(rvnum)):
+            _prog_damage(c, low, high, fkill)
+    else:
+        v = _char_at(rvnum, target)
+        if v is None:
+            return
+        _prog_damage(v, low, high, fkill)
+
+
+def _rp_remember(rvnum, args, pv):
+    rs = _rp_state(rvnum)
+    arg = _first(args)
+    if not arg:
+        dbg("roomprog: rpremember missing argument")
+        return
+    if rs is None:
+        return
+    victim = _char_world_nv(arg)
+    # [PRIMESUD] stored as char id (see _target_of), not a dict ref
+    rs["rprog_target"] = victim.get("id") if victim is not None else None
+
+
+def _rp_forget(rvnum, args, pv):
+    rs = _rp_state(rvnum)
+    if rs is not None:
+        rs["rprog_target"] = None
+
+
+def _rp_delay(rvnum, args, pv):
+    arg = _first(args)
+    if not _is_number(arg):
+        dbg("roomprog: rpdelay invalid argument")
+        return
+    rs = _rp_state(rvnum)
+    if rs is not None:
+        rs["rprog_delay"] = _atoi(arg)
+
+
+def _rp_cancel(rvnum, args, pv):
+    rs = _rp_state(rvnum)
+    if rs is not None:
+        rs["rprog_delay"] = -1
+
+
+def _rp_call(rvnum, args, pv):
+    """Run another ROOMprog on this room (cf. do_rpcall)."""
+    parts = args.split()
+    if not parts:
+        dbg("roomprog: rpcall missing arguments")
+        return
+    if not _is_number(parts[0]):
+        dbg("roomprog: rpcall invalid prog")
+        return
+    prog_vnum = _atoi(parts[0])
+    code = world.ROOMPROGS.get(prog_vnum)
+    if code is None:
+        dbg("roomprog: rpcall invalid prog " + str(prog_vnum))
+        return
+    vch = _char_at(rvnum, parts[1]) if len(parts) > 1 and parts[1] else None
+    obj1 = _obj_at(rvnum, parts[2]) if len(parts) > 2 and parts[2] else None
+    obj2 = _obj_at(rvnum, parts[3]) if len(parts) > 3 and parts[3] else None
+    # nested program_flow entry bumps the global _call_depth itself
+    program_flow(prog_vnum, code, None, vch, obj1, obj2, room=rvnum)
+
+
+def _rp_otransfer(rvnum, args, pv):
+    """Move a floor object to a location (cf. do_rpotransfer)."""
+    parts = args.split()
+    if not parts:
+        dbg("roomprog: rpotransfer missing argument")
+        return
+    loc = _find_location_nv(parts[1] if len(parts) > 1 else "")
+    if loc is None:
+        dbg("roomprog: rpotransfer no such location")
+        return
+    vobj = _obj_at(rvnum, parts[0])
+    if vobj is None:
+        return
+    rs = _rp_state(rvnum)
+    if rs is not None and vobj in rs.get("items", []):
+        rs["items"].remove(vobj)
+    world.rooms[loc]["items"].append(vobj)
+
+
+def _rp_remove(rvnum, args, pv):
+    """Strip and extract objects from a char (cf. do_rpremove)."""
+    parts = args.split()
+    if not parts:
+        return
+    victim = _char_at(rvnum, parts[0])
+    if victim is None:
+        return
+    _remove_objs(victim, parts[1] if len(parts) > 1 else "",
+                 "roomprog: rpremove invalid object from room " + str(rvnum))
+
+
+def _rp_peace(rvnum, args, pv):
+    """(cf. do_rppeace)"""
+    _peace_room(rvnum)
+
+
+def _rp_skip(rvnum, args, pv):
+    # [PRIMESUD] rpgtransfer / rpgforce / rpvforce -- group/mass commands,
+    # implemented alongside the mob ones in PROGS_PLAN Phase 3.
+    dbg("roomprog: group/mass rp-command skipped (not ported)")
+
+
+# Table order matches 1stMud room_cmd_table (prog_cmds.c:105); dispatch is a
+# case-insensitive prefix match in this order (first match wins).
+RP_COMMANDS = (
+    ("asound", _rp_asound),
+    ("gecho", _rp_gecho),
+    ("zecho", _rp_zecho),
+    ("echo", _rp_echo),
+    ("echoaround", _rp_echoaround),
+    ("echoat", _rp_echoat),
+    ("mload", _rp_mload),
+    ("oload", _rp_oload),
+    ("purge", _rp_purge),
+    ("transfer", _rp_transfer),
+    ("gtransfer", _rp_skip),
+    ("otransfer", _rp_otransfer),
+    ("force", _rp_force),
+    ("gforce", _rp_skip),
+    ("vforce", _rp_skip),
+    ("damage", _rp_damage),
+    ("remember", _rp_remember),
+    ("forget", _rp_forget),
+    ("delay", _rp_delay),
+    ("cancel", _rp_cancel),
+    ("call", _rp_call),
+    ("remove", _rp_remove),
+    ("peace", _rp_peace),
+)
+
+
+def room_interpret(rvnum, argument, prog_vnum=0):
+    """Dispatch a ``room <subcmd>`` prog command (cf. room_interpret, prog_cmds.c:2427).
+
+    Prefix-matched against RP_COMMANDS in table order (first match wins).  An
+    unknown subcommand logs a bug and is skipped.
+    """
+    parts = argument.split(None, 1)
+    if not parts:
+        return
+    command = parts[0].lower()
+    rest = parts[1] if len(parts) > 1 else ""
+    for name, fn in RP_COMMANDS:
+        if name[0] == command[0] and name.startswith(command):
+            fn(rvnum, rest, prog_vnum)
+            return
+    dbg("roomprog: invalid cmd '" + command + "' from room " + str(rvnum))

@@ -94,7 +94,7 @@ vnum) -- implement per prog_cmds.c.
   path (converter + mobs.idx + ascii check).
 - docs/AREA_FILES.md: document the dialect.
 
-### Phase 1 -- interpreter tri-mode
+### Phase 1 -- interpreter tri-mode (completed 20/07/2026)
 
 - mobprog.py program_flow/cmd_eval/expand_arg grow (mob|obj|room) origin
   exactly as programs.c: cmd_eval_obj/_room subsets, expand_arg_other
