@@ -67,6 +67,9 @@ that into features rather than holes.
 - **Comm channels collapsed** -- `tell` is room-local (`yell` keeps its
   upstream area scope); gossip, shout, auction, and the comm-flag toggles
   (QUIET/DEAF/NOTELL) aren't ported.
+- **`play loud` sings to you anywhere** -- the mud-wide MUSIC channel
+  collapses to the solo player: loud jukebox songs follow you from room to
+  room, non-loud ones stay with the jukebox (music.py).
 - **Quest anti-theft dropped** -- quest tokens carry no owner tag; nobody else
   could steal them (quest.py).
 - **Trivia spends trimmed** -- `tpspend` omits corpse retrieval, TP transfer,
@@ -95,7 +98,9 @@ worth trusting -- the engineering layer.
   -- the core memory/save-size strategy (item.py).
 - **Save system** -- autosave to the calculator's HVar store every ~2 minutes
   and after every kill; compact line format; saved deltas for unloaded areas
-  are buffered and replayed when the area loads (game_state.py, world.py).
+  are buffered and replayed when the area loads; `backup` writes a manual
+  second slot, restored by renaming the file in the calculator's file
+  manager (game_state.py, world.py).
 - **Keypad UX** -- D-pad keys move directly, digit keys plus two function-key
   rows (sin..log, x2..comma) are rebindable command macros, Symb/Help step
   command history, Shift-minus or a touch swipe opens

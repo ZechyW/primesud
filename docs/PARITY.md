@@ -9,7 +9,7 @@ checklist for the engine 1.0 parity tag; strike items as they are resolved.
 ## Command parity
 
 All 348 `commands.dat` commands are accounted for in `src/commands.py`
-(133 active since the 19/07/2026 `rename` port, 215 commented with
+(145 active since the 20/07/2026 S-effort batch below, 203 commented with
 reasons); PrimeSUD-only additions are
 `autoskill`, `debug`, `macro` (all `[PRIMESUD]`). Nothing was forgotten;
 the only risk class is *wrong* exclusions, audited below.
@@ -57,21 +57,26 @@ the only risk class is *wrong* exclusions, audited below.
 
 ### Port-candidates (player-facing; need go/no-go)
 
+All 12 S-effort rows resolved 20/07/2026 (commits `58e****`..`193****`):
+**socials, sshow, brief, compact, title, show, version, play, heel,
+backup, prime, grlist** ported per the evidence rows below (genname had
+already resolved 19/07/2026 via the chargen picker + `rename`). Notable
+adaptations, all `[PRIMESUD]`-commented at the code sites: `play loud`
+collapses the mud-wide MUSIC channel to always-echo-to-the-solo-player
+(music.py; music.dat ported verbatim to src/music.txt + seek-index);
+`compact` flips its flag only (status-bar prompt has no blank-line seam);
+brief/compact/show COMM_ bits share the persisted player flags int;
+`backup` restore = rename primesud_backup.sav via the calculator file
+manager (upstream has no player restore either); `prime`'s level-51 gate
+is an explicit message (no per-command level field). Known follow-up:
+do_stand and perform_recall still call full `do_look` where upstream
+passes "auto" (brief gate) -- both are [Verified] without a documented
+TODO, so the fix needs explicit permission (see review notes 20/07/2026).
+
+Remaining open candidates:
+
 | cmd | effort | evidence | value |
 |---|---|---|---|
-| socials | S | act_info.c:618 | list social names; socials.idx already sorted |
-| sshow | S | act_info.c:640 | preview one social; pairs with socials |
-| brief | S | act_info.c:853 | room-desc suppression; movement.py:262 admits gap; help.txt documents it |
-| compact | S | act_info.c:860 | blank-line toggle; info.py:128 TODO already exists |
-| title | S | act_info.c:3516 | score title; info.py:853 admits gap |
-| show | S | act_info.c:866 | score appends affects (COMM_SHOW_AFFECTS) |
-| version | S | act_info.c:3898 | no build string exists anywhere; debugging value |
-| play | S | music.c:156-230 | Midgaard bar jukebox (midgaard.are:2375) ships today but is inert; info.py:1822 TODO. Channel half stays excluded |
-| heel | S | act_enter.c:281 | call pet to room; pet system exists |
-| genname | S | namegen.c:162 | ~~random name toy~~ superseded 19/07/2026: namegen.py ported, surfaced via chargen picker + `rename` (G10); list-60-names command itself not wanted |
-| backup | S | act_comm.c:995 | manual second save slot; safety net for single flash save file |
-| prime | S | multiclass.c:695 | mortal multiclass command mis-swept as imm: prime_class getter exists (classes.py:120), slot forced 0, no setter command. Real gap in shipped multiclass system |
-| grlist | S | skills.c:1051 | read-only skill-group listing |
 | slist | M | skills.c:956 | class x level skill reference table; multiclass planning value |
 | path | M | act_enter.c:416 | route to mob/area; reuse hunt.py:50-92 BFS; pairs with automap |
 | index | M | act_info.c:2672 | help category index; needs category metadata in help.txt + build_help_idx.py |
@@ -165,8 +170,9 @@ All resolved or closed 19/07/2026:
   homes.c:313 — N/A); `play` re-bucketed out of the MP-only list.
 - info.py: prompt/gprompt TODOs closed as superseded (status bar), combine
   TODO closed as moot; compact TODO kept (port-candidate).
-- commands.py: imm band comment reworded (ordinal band, #203 `prime` is
-  mortal).
+- commands.py: imm band comment reworded (ordinal band; `prime` noted as
+  mortal -- its ordinal, misrecorded here as #203, was corrected to #317
+  when `prime` was ported 20/07/2026).
 
 ### Closed questions (verified, no action)
 

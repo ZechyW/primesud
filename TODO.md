@@ -37,9 +37,10 @@ Two-track release plan:
 - Genuinely still-deferred commands (commented-out rows in
   `commands.py:_CMD_TABLE`): `gossip`, `shout`, `bank`, `auction`, `path`,
   immortal commands. Port when/if a solo gameplay hook appears.
-  (`alias`/`unalias` and socials ported 10/07/2026. `play` re-bucketed
-  19/07/2026: it is NOT multiplayer-only -- Midgaard ships a jukebox
-  object -- solo port-candidate, see docs/PARITY.md.)
+  (`alias`/`unalias` and social actions ported 10/07/2026; the 20/07/2026
+  S-effort batch ported `play`, `socials`, `sshow`, `brief`, `compact`,
+  `show`, `title`, `version`, `heel`, `grlist`, `backup`, `prime` -- see
+  docs/PARITY.md.)
 
 ## Housing
 
