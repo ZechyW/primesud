@@ -62,13 +62,27 @@ _WEATHER_PACK_FIELDS = ("temp", "temp_vector", "precip", "precip_vector",
 SAVE_FILE = "primesud.sav"
 
 
-def _serialize_world():
+def _serialize_world(hvar_name=None, file_name=None):
     """Serialise world state to a PPL HVars variable (cf. 1stMud save_char_obj in save.c).
+
+    Args:
+        hvar_name (str or None): HVar name to write; None (default) resolves
+            to module-global SAVE_VAR at call time -- not a bound default
+            argument, so tests/callers that patch game_state.SAVE_VAR still
+            take effect. backup_world passes BACKUP_VAR for the manual
+            second save slot.
+        file_name (str or None): File path to write; None (default) resolves
+            to module-global SAVE_FILE at call time, same reasoning.
+            backup_world passes BACKUP_FILE.
 
     Raises:
         Exception: If the PPL write fails, readback does not match the written
             payload, or the save-file mirror cannot be written.
     """
+    if hvar_name is None:
+        hvar_name = SAVE_VAR
+    if file_name is None:
+        file_name = SAVE_FILE
     player = world.chars[1]
     gc_collect()
     lines = ["v=" + str(SAVE_VERSION)]
@@ -77,7 +91,7 @@ def _serialize_world():
                 "hit", "mana", "move",
                 "perm_hit", "perm_mana", "perm_move",
                 "room", "trivia",
-                "practice", "train", "flags", "played", "alignment",
+                "practice", "train", "flags", "played", "backup", "alignment",
                 "tier",  # [PRIMESUD] prestige tier (see training.py finish_tier_reset)
                 "gold", "silver", "wimpy",
                 # cf. 1stMud fwrite_char QuestPnts/QuestNext; PrimeSUD also
@@ -239,12 +253,46 @@ def _serialize_world():
         if not isinstance(lines[i], str):
             raise Exception("non-str save line %s" % i)
     payload = "~".join(lines)
-    hvars_set(SAVE_VAR, payload)
-    saved = hvars_get(SAVE_VAR)
+    hvars_set(hvar_name, payload)
+    saved = hvars_get(hvar_name)
     if saved != payload:
         raise Exception("save verification failed (readback mismatch)")
-    with open(SAVE_FILE, "w") as f:
+    with open(file_name, "w") as f:
         f.write(payload)
+
+
+# -- Manual backup slot (cf. 1stMud do_backup/backup_char_obj in
+# act_comm.c/save.c) -----------------------------------------------------------
+# Distinct from SAVE_VAR + "_bak" above, which load_world writes as an
+# automatic pre-migration snapshot on a SAVE_VERSION mismatch: that one is a
+# machine-written safety net, this one is the player-triggered `backup` slot.
+BACKUP_VAR = SAVE_VAR + "_backup"
+BACKUP_FILE = "primesud_backup.sav"
+
+
+def backup_world():
+    """Save world state to the manual backup slot. [PRIMESUD] (cf. 1stMud
+    do_backup/backup_char_obj in act_comm.c/save.c)
+
+    Same write path as save_world (HVar + file, with HVar readback
+    verification) but targets BACKUP_VAR/BACKUP_FILE instead of SAVE_VAR/
+    SAVE_FILE, so the primary save slot is untouched.
+
+    Upstream has no player-facing restore command -- backup_char_obj's only
+    other caller is the immortal-only rename_char cleanup (act_wiz.c).
+    Restoring a PrimeSUD backup is a manual step: rename
+    primesud_backup.sav to primesud.sav via the calculator's file manager
+    (same "calculator file manager covers it" precedent as PARITY.md's
+    `delete` entry).
+
+    Returns:
+        bool: True on success, False if the write failed.
+    """
+    try:
+        _serialize_world(BACKUP_VAR, BACKUP_FILE)
+        return True
+    except Exception:
+        return False
 
 
 def save_world(quiet=False):
@@ -316,7 +364,7 @@ def load_world():
                 "hit", "mana", "move",
                 "perm_hit", "perm_mana", "perm_move",
                 "room", "alignment", "prime_class",
-                "practice", "train", "flags", "played", "tier",
+                "practice", "train", "flags", "played", "backup", "tier",
                 "gold", "silver", "wimpy",
                 "quest_points", "quest_status", "quest_time",
                 "quest_mob", "quest_obj", "quest_room", "quest_giver"}

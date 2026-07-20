@@ -107,6 +107,9 @@ def create_char(class_idx=CLASS_WARRIOR, race_name="Human"):
         "quest_area_name": "",
         "flags":    PLR_DEFAULTS,  # PLR_* bits; [DEVIATION] separate from act_flags
         "played":   0,
+        # cf. 1stMud pcdata->backup; played-time (seconds) at the last
+        # `backup` command, 0 = never backed up (see system_cmds.do_backup).
+        "backup":   0,
         # cf. 1stMud pcdata->group_known; filled by gn_add below.
         "groups":  [],
         # cf. 1stMud pcdata->alias[]/alias_sub[] parallel arrays; PrimeSUD

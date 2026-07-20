@@ -2,6 +2,7 @@
 
 import world
 from classes import (CLASS_TABLE, MAX_REMORT, calc_max_level,
+                     char_classes, class_lookup, class_name,
                      exp_per_level, is_class, lvl_bonus, skill_adept_cap)
 from handler import (get_curr_stat, get_max_train, act, chprintln, chprintlnf,
                    TO_CHAR, TO_ROOM, affect_remove, unequip_char)
@@ -327,6 +328,75 @@ def do_remort(player, args):
         finish_tier_reset(player, avail[idx], new_race, new_sex)
     else:
         finish_remort(player, avail[idx], new_race, new_sex)
+
+
+def do_prime(player, args):
+    """Set your prime class among the classes you currently hold (cf. 1stMud
+    do_prime in multiclass.c).
+
+    Costs 5 trivia points. The prime class is a slot index into
+    player["classes"] (classes.prime_class getter) -- this reassigns which
+    held class is "prime" without reordering the classes list itself, same
+    as upstream's ch->pcdata->prime_class = iSlot (multiclass.c:732). The
+    only PrimeSUD consumer of the getter is classes.class_who() (the 2-4
+    char classes tag in who-list/score); nothing else keys off list order,
+    so this reassignment is safe (see docs/PARITY.md prime port-candidate
+    note).
+
+    [PRIMESUD] Upstream gates this at commands.dat level 51 (=
+    MAX_MORTAL_LEVEL) via the interpreter's per-command dispatch level check
+    (interp.c cmd_level_ok) -- below that level the command is invisible,
+    producing the same random "Huh?" reply as an unrecognized command.
+    PrimeSUD's command table has no per-command level field, so the gate is
+    enforced here instead with an explicit denial message (matching
+    do_remort's style above) rather than faking command-invisibility.
+
+    Args:
+        player (dict): Player state dict.
+        args (list): [<class name>].
+    """
+    if player.get("level", 1) < MAX_MORTAL_LEVEL:
+        chprintlnf(player, "You must be level %d to set your prime class.",
+                  MAX_MORTAL_LEVEL)
+        return
+
+    if not args:
+        chprintln(player, "Syntax: prime <class>")
+        chprintln(player, "It costs {R5{x trivia points to change your prime class.")
+        # 1stMud do_prime (multiclass.c:699-704) omits `return` here and
+        # falls through into class_lookup("") -- every other cmd_syntax()
+        # call in 1stMud returns immediately after, so this looks like a
+        # copy-paste slip. Kept bug-faithful per CLAUDE.md "unsure -> keep
+        # the bug, note it". The outcome matches upstream exactly: 1stMud's
+        # class_lookup (handler.c:165) first-char check rejects "" (tolower
+        # of NUL never equals a class initial), and classes.class_lookup("")
+        # guards empty to -1 here, so both print "No such class!" after the
+        # syntax banner.
+
+    iclass = class_lookup(args[0]) if args else -1
+    if iclass == -1:
+        chprintln(player, "No such class!")
+        return
+
+    classes = char_classes(player)
+    islot = classes.index(iclass) if iclass in classes else -1  # cf. 1stMud class_slot in multiclass.c
+    if islot == -1:
+        chprintlnf(player, "You aren't part %s!", class_name(player, iclass))
+        return
+
+    if islot == player.get("prime_class", 0):
+        chprintlnf(player, "Your prime class is already %s.", class_name(player, iclass))
+        return
+
+    if player.get("trivia", 0) < 5:
+        chprintln(player, "It costs {R5{x trivia points to change your prime class.")
+        return
+
+    player["prime_class"] = islot
+    player["trivia"] -= 5
+    chprintlnf(player,
+              "Your prime class is now %s, and are {R5{x trivia points lighter.",
+              class_name(player, iclass))
 
 
 def _apply_remort_race(player, race_name):

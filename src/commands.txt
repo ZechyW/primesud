@@ -18,6 +18,7 @@ autosac|toggle auto sacrifice of empty corpses
 autoskill|auto combat actions: autoskill [edit|list|reset]
 autosplit|toggle auto gold splitting (group)
 autostance|set the stance to enter when combat starts
+backup|save your character to a second backup slot
 backstab|attack from the shadows for heavy damage
 bash|slam into an opponent to knock it down
 berserk|fly into a rage: more damage, less defense
@@ -86,6 +87,7 @@ pick|pick a lock (thief skill)
 play|play a song on a jukebox
 pour|pour liquid between containers, or out
 practice|practice skills and spells at a trainer
+prime|set your prime class: prime <class> (costs 5 trivia)
 put|put an item into a container
 quaff|drink a magical potion
 quest|personal quest status and commands

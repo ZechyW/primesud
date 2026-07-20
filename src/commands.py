@@ -39,12 +39,12 @@ from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
 from scan import do_scan
 from shop import do_buy, do_sell, do_list, do_value, do_appraise
 from socials import do_socials, do_sshow, check_social
-from system_cmds import do_save, do_quit
+from system_cmds import do_save, do_backup, do_quit
 from game_state import do_rename
 from debug import do_debug
 from pager import tpage
 from terminal import tprint
-from training import do_train, do_practice, do_remort, do_gain
+from training import do_train, do_practice, do_remort, do_gain, do_prime
 from urandom import randint
 
 _POS_MSG = {
@@ -276,9 +276,9 @@ _CMD_TABLE = [
     ("remort",     do_remort,     "standing", True),   # #177 noprefix
     ("gquest",    do_gquest,     "resting",  False),  # #178
     ("explored",   do_explored,   "sleeping", False),  # #179
-    # --- 1stMud ordinals #180-#252 (band label only: mostly immortal
-    # commands, but #203 `prime` is a mortal multiclass command -- see
-    # docs/PARITY.md port-candidates) ---
+    # --- 1stMud ordinals #180-#252 (band label only: all immortal
+    # commands in this range; `prime` -- previously mis-swept as imm here --
+    # is actually ordinal #317, mortal, see below) ---
     # ("advance",   do_advance,    "dead",     False),  # #180 imm lvl 60
     # ("announce",  do_announce,   "dead",     False),  # #181 imm lvl 53
     # ("trust",     do_trust,      "dead",     False),  # #182 imm lvl 60
@@ -416,12 +416,12 @@ _CMD_TABLE = [
     # ("gprompt",   do_gprompt,    "dead",     False),  # #314
     # ("bonus",     do_bonus,      "dead",     False),  # #315 imm lvl 56
     # ("sendstats", do_sendstat,   "dead",     False),  # #316 imm lvl 60
-    # ("prime",     do_prime,      "sleeping", True),   # #317 noprefix, imm lvl 51
+    ("prime",      do_prime,      "sleeping", True),   # #317 noprefix; mortal (level-gated internally, see do_prime)
     # ("ring",      do_ring,       "resting",  False),  # #318
     # ("genname",   do_genname,    "sleeping", False),  # #319
     # ("index",     do_index,      "dead",     False),  # #320
     # ("client",    do_client,     "dead",     False),  # #321
-    # ("backup",    do_backup,     "sleeping", True),   # #322 noprefix
+    ("backup",     do_backup,     "sleeping", True),   # #322 noprefix
     # ("system",    do_system,     "dead",     True),   # #323 noprefix, imm lvl 60
     ("heel",       do_heel,       "resting",  False),  # #324
     # ("whisper",   do_whisper,    "resting",  False),  # #325
