@@ -86,8 +86,8 @@ worth trusting -- the engineering layer.
 - **Lazy world loading** -- the full stock QuickMUD world ships (48 areas,
   3124 rooms), but an area's rooms/mobs/objects load only on first touch;
   static metadata tables let `areas` and `where` answer with zero loads, and
-  `run` pick a destination without loading, then load only the areas along
-  the path (DESIGN.md "Lazy area loading").
+  `run` route to a destination with zero loads (border graph), areas loading
+  lazily as the run walks into them (DESIGN.md "Lazy area loading").
 - **Bounded world paths** -- `path <area or mob>` reports a speedwalk without
   moving; mob lookup uses the off-heap index and exact live room, while route
   search Dijkstras a precomputed border graph (`paths.idx`) for exact

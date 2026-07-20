@@ -4,6 +4,7 @@ import os
 import sys
 
 import config
+import info
 import path as path_cmd
 import world
 from handler import _char_base
@@ -24,7 +25,7 @@ def _write_index(tmp_path, monkeypatch, rooms_data):
     lines = build_records(rooms_data)
     idx = tmp_path / "paths.idx"
     idx.write_text("# test index\n" + "\n".join(lines) + "\n")
-    monkeypatch.setattr(path_cmd, "PATH_INDEX_FILE", str(idx))
+    monkeypatch.setattr(info, "PATH_INDEX_FILE", str(idx))
 
 
 def _setup_chain(fw, monkeypatch, tags):
@@ -333,7 +334,7 @@ def test_route_merges_direction_runs_across_boundaries(
 
 
 def test_merge_runs_unit():
-    assert path_cmd._merge_runs(["2n", "n"]) == "3n"
-    assert path_cmd._merge_runs(["3n2e", "2e", "s"]) == "3n4es"
-    assert path_cmd._merge_runs(["", "n", ""]) == "n"
-    assert path_cmd._merge_runs([]) == ""
+    assert info._merge_runs(["2n", "n"]) == "3n"
+    assert info._merge_runs(["3n2e", "2e", "s"]) == "3n4es"
+    assert info._merge_runs(["", "n", ""]) == "n"
+    assert info._merge_runs([]) == ""

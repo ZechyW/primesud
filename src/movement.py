@@ -1475,11 +1475,11 @@ def do_run(player, args):
 
     With args: parse speedwalk string (e.g. '3s2en', 'son2e').
     Without args: [PRIMESUD] present picker of all other areas (static
-    tables only, no area loads to build the list), then lazily pathfind
-    to just the chosen one via info.find_path_to_area -- zero-load
-    area-graph BFS, then load only the areas on that chain, then a
-    restricted room-level BFS; falls back to loading every area only if
-    that restricted search can't complete the chain at room granularity.
+    tables only, no area loads to build the list), then pathfind to just
+    the chosen one via info.find_path_to_area -- exact shortest route
+    over the precomputed border graph (paths.idx), zero area loads at
+    routing time; areas along the walk load lazily as the run enters
+    them, and far-area eviction trims behind per pulse.
 
     Steps are consumed one-per-pulse by run_buf_step() in game_loop
     (cf. 1stMud read_from_buffer consuming run_buf in comm.c).
@@ -1503,8 +1503,8 @@ def do_run(player, args):
 
     if not args:
         # [PRIMESUD] No-args picker: list all other areas from the static
-        # tables (zero area loads), then pathfind lazily to just the one
-        # picked -- computing directions for every area up front is
+        # tables (zero area loads), then border-graph route to just the
+        # one picked -- computing directions for every area up front is
         # exactly the load-everything cost this is meant to avoid.
         # (1stMud prints "You run in place!" on no args)
         source_area = ROOM_DEFS.get(player.get("room"), {}).get("area")

@@ -12,7 +12,7 @@ import sys
 
 import pytest
 
-import path as path_cmd
+import info
 import world
 from config import EXIT_ORDER
 
@@ -57,7 +57,7 @@ def real_world(tmp_path, monkeypatch):
     lines = build_records(world.ROOM_DEFS._data)
     idx = tmp_path / "paths.idx"
     idx.write_text("# realworld test index\n" + "\n".join(lines) + "\n")
-    monkeypatch.setattr(path_cmd, "PATH_INDEX_FILE", str(idx))
+    monkeypatch.setattr(info, "PATH_INDEX_FILE", str(idx))
 
     yield world.ROOM_DEFS._data
 
@@ -159,7 +159,7 @@ def test_routes_match_unrestricted_bfs(real_world):
     for src, tag, room in pairs:
         label = "%s -> %s/%s" % (src, tag, room)
         oracle = _global_bfs(data, src, tag, room)
-        route, steps = path_cmd._route({"room": src}, tag, room)
+        route, steps = info._route({"room": src}, tag, room)
         if oracle is None:
             assert route is None, label
             continue

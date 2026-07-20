@@ -1601,120 +1601,209 @@ def _compress_path(parent, source, target):
     return "".join(parts)
 
 
-def find_area_paths(ch):
-    """Single BFS from player room to all areas (cf. 1stMud path_to_area in act_enter.c).
+# Precomputed border-graph index (tools/build_path_index.py); cwd is src/
+# both on-device and at runtime. Tests monkeypatch this to a tmp file.
+PATH_INDEX_FILE = "paths.idx"
 
-    [PRIMESUD] One BFS for all areas (1stMud re-runs per area).
-    [Verified: 03/07/2026]
+
+def _parse_index():
+    """Read paths.idx in one f.read() and parse both record types. [PRIMESUD]
 
     Returns:
-        dict: Mapping of area_tag -> compressed direction string.
+        tuple: (segs, xedges) where segs maps entry vnum ->
+            [(exit_vnum, dist, dirs), ...] intra-area segments and xedges
+            maps exit vnum -> [(dir, to_vnum), ...] cross-area exits.
     """
-    source = ch.get("room")
-    if source is None:
-        return {}
-    source_room = ROOM_DEFS.get(source)
-    if source_room is None:
-        return {}
-    source_area = source_room.get("area")
-    found = {}
-    dist = {source: 0}
+    segs = {}
+    xedges = {}
+    with open(PATH_INDEX_FILE) as f:
+        data = f.read()
+    for line in data.split("\n"):
+        if not line or line[0] == "#":
+            continue
+        parts = line.split("|")
+        if parts[0] == "S":
+            segs.setdefault(int(parts[1]), []).append(
+                (int(parts[2]), int(parts[3]), parts[4]))
+        elif parts[0] == "X":
+            xedges.setdefault(int(parts[1]), []).append(
+                (parts[2], int(parts[3])))
+    return segs, xedges
+
+
+def _bfs_leg(start, tag):
+    """BFS from start over one already-loaded area's rooms only. [PRIMESUD]
+
+    Returns:
+        tuple: (dist, parent) dicts; parent chains feed _compress_path.
+    """
+    dist = {start: 0}
     parent = {}
-    queue = [source]
+    queue = [start]
     qi = 0
     while qi < len(queue):
         cur = queue[qi]
         qi += 1
-        room = ROOM_DEFS.get(cur)
+        room = ROOM_DEFS._data.get(cur)
         if room is None:
             continue
-        for d in EXIT_ORDER:
-            ev = room.get("exits", {}).get(d)
-            if ev is None:
+        for direction in EXIT_ORDER:
+            exit_val = room.get("exits", {}).get(direction)
+            if exit_val is None:
                 continue
-            to_vnum = ev.get("to") if isinstance(ev, dict) else ev
-            if to_vnum is None or to_vnum in dist:
+            to = exit_val.get("to") if isinstance(exit_val, dict) else exit_val
+            if to is None or to in dist:
                 continue
-            to_room = ROOM_DEFS.get(to_vnum)
-            if to_room is None:
+            to_room = ROOM_DEFS._data.get(to)
+            if to_room is None or to_room.get("area") != tag:
                 continue
-            dist[to_vnum] = dist[cur] + 1
-            parent[to_vnum] = (cur, d)
-            tag = to_room.get("area")
-            if tag and tag != source_area and tag not in found:
-                found[tag] = _compress_path(parent, source, to_vnum)
-            queue.append(to_vnum)
-    return found
+            dist[to] = dist[cur] + 1
+            parent[to] = (cur, direction)
+            queue.append(to)
+    return dist, parent
 
 
-def _area_chain(source, target, adj):
-    """BFS the static area-adjacency graph for a chain of area tags. [PRIMESUD]
+def _merge_runs(parts):
+    """Concatenate compressed direction strings, merging boundary runs.
 
-    Pure helper for find_path_to_area's zero-load Stage 1: no ROOM_DEFS
-    access, so it never triggers an area load. Iterates each area's
-    neighbor tuple in the order given by `adj` for deterministic output.
+    "3n" + "2n" -> "5n"; format is count-then-dir with count omitted when
+    1, matching _compress_path / do_run's parser. [PRIMESUD]
+    """
+    runs = []  # [dir, count] pairs
+    for s in parts:
+        i = 0
+        n = len(s)
+        while i < n:
+            j = i
+            while "0" <= s[j] <= "9":
+                j += 1
+            count = int(s[i:j]) if j > i else 1
+            d = s[j]
+            i = j + 1
+            if runs and runs[-1][0] == d:
+                runs[-1][1] += count
+            else:
+                runs.append([d, count])
+    out = []
+    for d, count in runs:
+        if count > 1:
+            out.append(str(count))
+        out.append(d)
+    return "".join(out)
 
-    Args:
-        source (str): Starting area tag.
-        target (str): Destination area tag.
-        adj (dict): {area_tag: tuple_of_neighbor_tags}, e.g. world._AREA_ADJ.
+
+def _route(player, target_tag, target_room=None):
+    """Exact shortest route via the precomputed border graph. [PRIMESUD]
+
+    Dijkstra over paths.idx segments plus two live BFS legs inside
+    already-loaded areas (source area; target area for mob targets, loaded
+    by the mob lookup). Loads no areas at routing time. Step count matches
+    an unrestricted full-world BFS; the chosen equal-length route may
+    differ from upstream's.
 
     Returns:
-        list or None: Area tags from source to target inclusive (length 1
-            if source == target), or None if target is unreachable from
-            source via the adjacency graph.
+        tuple: ("", 0) no walk needed; (route, steps) compressed route;
+            (None, 0) unreachable.
     """
-    if source == target:
-        return [source]
-    dist = {source: 0}
-    parent = {}
-    queue = [source]
-    qi = 0
-    while qi < len(queue):
-        cur = queue[qi]
-        qi += 1
-        for nb in adj.get(cur, ()):
-            if nb in dist:
-                continue
-            dist[nb] = dist[cur] + 1
-            parent[nb] = cur
-            queue.append(nb)
-    if target not in dist:
-        return None
-    chain = [target]
-    v = target
-    while v != source:
-        v = parent[v]
-        chain.append(v)
-    chain.reverse()
-    return chain
+    source = player.get("room")
+    if source is None:
+        return None, 0
+    source_tag = ROOM_DEFS[source].get("area")
+    if source_tag == target_tag:
+        if target_room is None or source == target_room:
+            return "", 0
+
+    segs, xedges = _parse_index()
+    START = -1
+    GOAL = -2
+
+    # Source leg: virtual start -> each source-area exit room; plus a
+    # direct edge to the goal for a same-area mob target (the graph still
+    # considers leave-and-re-enter routes alongside it).
+    sdist, sparent = _bfs_leg(source, source_tag)
+    start_edges = []
+    for room in sdist:
+        if room in xedges:
+            start_edges.append(
+                (room, sdist[room], _compress_path(sparent, source, room)))
+    if target_room is not None and target_room in sdist:
+        start_edges.append((GOAL, sdist[target_room],
+                            _compress_path(sparent, source, target_room)))
+
+    # Target leg (mob targets): each entry room of the target area -> the
+    # mob's room, BFS inside the target area (loaded by the mob lookup).
+    tgt_entry = {}
+    if target_room is not None:
+        entries = set()
+        for xlist in xedges.values():
+            for _direction, to in xlist:
+                if world._vnum_to_tag(to) == target_tag:
+                    entries.add(to)
+        for entry in entries:
+            tdist, tparent = _bfs_leg(entry, target_tag)
+            if target_room in tdist:
+                tgt_entry[entry] = (tdist[target_room],
+                                    _compress_path(tparent, entry,
+                                                   target_room))
+
+    # Dijkstra, integer weights, O(V^2) linear-min (no heapq: device
+    # availability unverified).
+    dist = {START: 0}
+    prev = {}
+    settled = set()
+    goal_node = None
+    while goal_node is None:
+        u = None
+        du = 0
+        for node in dist:
+            if node not in settled and (u is None or dist[node] < du):
+                u = node
+                du = dist[node]
+        if u is None:
+            return None, 0
+        settled.add(u)
+        if target_room is None:
+            # Area target: done on first arrival inside the target area
+            # (upstream path_to_area stops at the first such room).
+            if u >= 0 and world._vnum_to_tag(u) == target_tag:
+                goal_node = u
+                break
+        elif u == GOAL:
+            goal_node = u
+            break
+        if u == START:
+            edges = start_edges
+        else:
+            edges = [(to, w, dirs) for to, w, dirs in segs.get(u, ())]
+            for direction, to in xedges.get(u, ()):
+                edges.append((to, 1, direction))
+            if target_room is not None and u in tgt_entry:
+                w, dirs = tgt_entry[u]
+                edges.append((GOAL, w, dirs))
+        for to, w, dirs in edges:
+            nd = du + w
+            if to not in dist or nd < dist[to]:
+                dist[to] = nd
+                prev[to] = (u, dirs)
+
+    parts = []
+    node = goal_node
+    while node != START:
+        node, dirs = prev[node]
+        parts.append(dirs)
+    parts.reverse()
+    return _merge_runs(parts), dist[goal_node]
 
 
 def find_path_to_area(ch, target_tag):
-    """Lazy speedwalk pathfinder to a target area. [PRIMESUD]
+    """Speedwalk to a target area via the border graph. [PRIMESUD]
 
-    Staged to minimize (ideally avoid) area loads, unlike find_area_paths
-    which always loads every area:
-
-    1. Zero-load BFS over the static area-adjacency graph
-       (world._AREA_ADJ, via _area_chain) from the player's current area
-       to target_tag. No chain -- e.g. the graph has no path, since it
-       only records edges into already-converted areas -- returns None
-       immediately without loading anything.
-    2. Load just the areas in that chain (world._ensure_area_by_tag;
-       each prints its own "[Loading area: X]" notice).
-    3. Restricted room-level BFS from the player's room, walking exits
-       exactly like find_area_paths but filtering each destination vnum
-       through world._vnum_to_tag (a static-range lookup, never a load)
-       *before* touching ROOM_DEFS for it. Destinations outside the
-       chain are skipped without ever probing ROOM_DEFS[to_vnum] --
-       touching it would trigger that area's load via the LazyDict trap.
-       Stops at the first room whose area is target_tag.
-    4. Fallback: if the area graph has a chain but the restricted BFS
-       can't complete it at room granularity (e.g. a one-way exit means
-       the reverse edge doesn't actually exist as a walkable exit),
-       print the loading notice and fall back to find_area_paths, which
-       loads every area but is guaranteed to find any reachable target.
+    Thin wrapper over _route: exact shortest route, zero area loads at
+    routing time. Replaces the earlier staged corridor pathfinder and its
+    load-all find_area_paths fallback -- the corridor's area-level chains
+    assumed any entry of an area reaches any exit, which internally
+    partitioned areas break constantly (silent 3-4x overlong walks, or a
+    full ~5.9MB world load when the restricted BFS dead-ended).
 
     Args:
         ch (dict): Player state dict.
@@ -1725,58 +1814,8 @@ def find_path_to_area(ch, target_tag):
             if unreachable. Also None if ch is already in target_tag --
             callers exclude the current area from candidate lists anyway.
     """
-    source_room = ch.get("room")
-    if source_room is None:
-        return None
-    # ch["room"] is always loaded (the player is standing there), so this
-    # is a safe, zero-load ROOM_DEFS access.
-    source_tag = ROOM_DEFS[source_room].get("area")
-    if source_tag is None or source_tag == target_tag:
-        return None
-
-    chain = _area_chain(source_tag, target_tag, world._AREA_ADJ)
-    if chain is None:
-        return None
-
-    for tag in chain:
-        world._ensure_area_by_tag(tag)
-    chain_set = set(chain)
-
-    dist = {source_room: 0}
-    parent = {}
-    queue = [source_room]
-    qi = 0
-    while qi < len(queue):
-        cur = queue[qi]
-        qi += 1
-        room = ROOM_DEFS.get(cur)
-        if room is None:
-            continue
-        for d in EXIT_ORDER:
-            ev = room.get("exits", {}).get(d)
-            if ev is None:
-                continue
-            to_vnum = ev.get("to") if isinstance(ev, dict) else ev
-            if to_vnum is None or to_vnum in dist:
-                continue
-            # Check ownership via the zero-load static range lookup
-            # BEFORE touching ROOM_DEFS[to_vnum] -- accessing it for a
-            # vnum outside the chain would load that area (LazyDict trap).
-            to_tag = world._vnum_to_tag(to_vnum)
-            if to_tag not in chain_set:
-                continue
-            dist[to_vnum] = dist[cur] + 1
-            parent[to_vnum] = (cur, d)
-            if to_tag == target_tag:
-                return _compress_path(parent, source_room, to_vnum)
-            queue.append(to_vnum)
-
-    # Stage 4 fallback: the area graph says target_tag is reachable via
-    # this chain, but the restricted room-level search never connected
-    # (e.g. a one-way exit makes the graph edge non-walkable in this
-    # direction at room granularity). Fall back to the exhaustive search.
-    chprintln(ch, "{YLoading all area paths...{x")
-    return find_area_paths(ch).get(target_tag)
+    route, _steps = _route(ch, target_tag)
+    return route or None
 
 
 def _center_fill(text, width=0):
