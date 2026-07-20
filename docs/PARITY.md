@@ -68,10 +68,10 @@ collapses the mud-wide MUSIC channel to always-echo-to-the-solo-player
 brief/compact/show COMM_ bits share the persisted player flags int;
 `backup` restore = rename primesud_backup.sav via the calculator file
 manager (upstream has no player restore either); `prime`'s level-51 gate
-is an explicit message (no per-command level field). Known follow-up:
-do_stand and perform_recall still call full `do_look` where upstream
-passes "auto" (brief gate) -- both are [Verified] without a documented
-TODO, so the fix needs explicit permission (see review notes 20/07/2026).
+is an explicit message (no per-command level field). Follow-up resolved
+20/07/2026: all `do_look` call sites now pass "auto" where upstream does
+(stand, recall, gate, debug goto, boot look), plus the [PRIMESUD]
+flee-look for brief-mode consistency (commits 4b4****, 65d****, 7cb****).
 
 Remaining open candidates:
 
