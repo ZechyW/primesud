@@ -22,6 +22,7 @@ backstab|attack from the shadows for heavy damage
 bash|slam into an opponent to knock it down
 berserk|fly into a rage: more damage, less defense
 brandish|invoke a held magical staff
+brief|toggle room descriptions on movement
 bs|backstab, the short form
 buy|purchase an item (or pet) from a shop
 cast|cast a spell: cast <spell> [target]
@@ -29,6 +30,7 @@ clear|clear the screen
 close|close a door or container
 cls|clear the screen (alias for clear)
 commands|this list
+compact|toggle compact mode
 compare|compare an item with what you have equipped
 consider|judge how dangerous a mob is to fight
 credits|the people behind the game
@@ -103,6 +105,7 @@ scan|look for mobs in adjacent rooms
 score|show your character sheet
 second|wield a second weapon in your off hand
 sell|sell an item to a shop
+show|toggle affects display in score
 sit|sit down
 skills|list the skills you know
 sleep|go to sleep to recover fastest
@@ -119,6 +122,7 @@ take|pick up an item (alias for get)
 tap|sacrifice an item (alias for sacrifice)
 tell|send a private message to a mob
 time|show the game time, date, and hours played
+title|set your score title: title <text>
 tpspend|spend trivia points on rewards
 train|convert sessions into stats at a trainer
 trip|trip an opponent off its feet

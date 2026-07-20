@@ -8,7 +8,7 @@ from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name
                     act, chprintln, TO_CHAR,
                     number_argument as _number_argument, tpl_flag_affects)
 from automap import build_compact_lines, build_full_lines, COMPACT_W
-from classes import class_long, class_short, class_name
+from classes import class_long, class_short
 from colors import color_len, upper, draw_line
 from combat import get_thac0
 from game_time import (time_info, day_name, month_name, ordinal_string,
@@ -25,7 +25,8 @@ from music import do_play
 from picker import pick_from
 from player import (PLR_AUTOMAP, PLR_AUTOSKILL, PLR_AUTOLOOT, PLR_AUTOSAC,
                     PLR_AUTOGOLD, PLR_AUTOSPLIT, PLR_AUTOASSIST, PLR_AUTOEXIT,
-                    PLR_AUTODAMAGE, PLR_DEFAULTS, _EQUIP_SAVE_ORDER)
+                    PLR_AUTODAMAGE, PLR_DEFAULTS, _EQUIP_SAVE_ORDER,
+                    COMM_BRIEF, COMM_COMPACT, COMM_SHOW_AFFECTS, set_title)
 from gquest import gq_is_player_target
 from quest import is_quester, _intstr
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
@@ -132,8 +133,7 @@ _FLAG_TABLE = (
     (PLR_AUTOSPLIT, "autosplit", "Automatically splits gold between group members."),
     # PLR_AUTOPROMPT "autoprompt": [PRIMESUD] not ported -- the status bar
     # is the prompt and is always visible, so selective display is moot
-    # TODO: COMM_COMPACT "compact" - compact output (comm flags; port-candidate,
-    # see docs/PARITY.md)
+    (COMM_COMPACT, "compact", "Compacts mud output."),
     # COMM_PROMPT/COMM_GPROMPT "prompt"/"gprompt": [PRIMESUD] not ported --
     # superseded by the always-visible status bar, same reasoning as
     # autoprompt above (closed 19/07/2026 parity sweep)
@@ -217,6 +217,45 @@ def do_autoexit(player, args):
         chprintln(player, "Exits will now be displayed.")
     else:
         chprintln(player, "Exits will no longer be displayed.")
+
+
+def do_brief(player, args):
+    """Toggle room-description suppression on movement (cf. 1stMud do_brief in act_info.c).
+
+    Brief mode only affects the "auto" look triggered by movement (see
+    do_look's "auto" branch below); an explicit `look` always shows the full
+    room description regardless of this flag (cf. act_info.c:1144).
+    """
+    player["flags"] = player.get("flags", PLR_DEFAULTS) ^ COMM_BRIEF
+    if player["flags"] & COMM_BRIEF:
+        chprintln(player, "You no longer see room descriptions.")
+    else:
+        chprintln(player, "You now see room descriptions.")
+
+
+def do_compact(player, args):
+    """Toggle compact mode (cf. 1stMud do_compact in act_info.c).
+
+    [PRIMESUD] 1stMud's compact mode suppresses the blank line normally
+    printed before an inline telnet prompt (comm.c:1467). PrimeSUD's prompt
+    is a persistent status bar (never printed inline), so there is no
+    equivalent blank-line seam to gate -- this toggle only flips the flag
+    (visible via `autolist`) with no other behavioural effect.
+    """
+    player["flags"] = player.get("flags", PLR_DEFAULTS) ^ COMM_COMPACT
+    if player["flags"] & COMM_COMPACT:
+        chprintln(player, "Compact mode set.")
+    else:
+        chprintln(player, "Compact mode removed.")
+
+
+def do_show(player, args):
+    """Toggle affects display in the score sheet (cf. 1stMud do_show in act_info.c)."""
+    player["flags"] = player.get("flags", PLR_DEFAULTS) ^ COMM_SHOW_AFFECTS
+    if player["flags"] & COMM_SHOW_AFFECTS:
+        chprintln(player, "Affects will now be shown in score.")
+    else:
+        chprintln(player, "Affects will no longer be shown in score.")
 
 
 def do_autolist(player, args):
@@ -616,15 +655,26 @@ def do_look(player, args):
     pitch-black gate ignores infrared (matching the source): infrared reveals
     living things via _show_char_to_char, not the room description.
 
-    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check); check_blind + pitch-black/red-eyes + can_see_obj room-item filter added and re-verified 08/07/2026; pitch-black infrared gate dropped + char-list shared via _show_char_to_char to match act_info.c:1114 (infrared shows chars not room desc), re-verified 08/07/2026; PLR_HOLYLIGHT leg of the act_info.c:1115 condition added as debug channel and re-verified 10/07/2026]
+    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check); check_blind + pitch-black/red-eyes + can_see_obj room-item filter added and re-verified 08/07/2026; pitch-black infrared gate dropped + char-list shared via _show_char_to_char to match act_info.c:1114 (infrared shows chars not room desc), re-verified 08/07/2026; PLR_HOLYLIGHT leg of the act_info.c:1115 condition added as debug channel and re-verified 10/07/2026; COMM_BRIEF "auto" gate added and re-verified 20/07/2026]
 
     Args:
         player (dict): Player state dict.
-        args (list): Parsed command arguments; non-empty triggers targeted look.
+        args (list): Parsed command arguments; non-empty triggers targeted
+            look, except the single sentinel "auto" (cf. 1stMud
+            do_function(ch, &do_look, "auto") from move_char) which requests
+            the brief-mode-gated room display used after movement.
     """
     # cf. 1stMud do_look act_info.c:1112 -- both gates precede argument parsing
     if not check_blind(player):
         return
+    # cf. 1stMud do_look act_info.c:1128 -- "auto" (movement) shows the room
+    # description unless COMM_BRIEF is set; explicit `look` (empty args)
+    # always shows it. Falls through to the same full-room-display branch
+    # as bare `look` below; only desc_lines' visibility differs.
+    show_desc = True
+    if args and args[0] == "auto":
+        show_desc = not (player.get("flags", PLR_DEFAULTS) & COMM_BRIEF)
+        args = []
     # cf. 1stMud act_info.c:1114 -- infrared does NOT lift this gate: it reveals
     # living things (via show_char_to_char, which can_see-passes for an infrared
     # viewer), never the room name/desc/items. room_is_dark itself ignores
@@ -719,19 +769,23 @@ def do_look(player, args):
     else:
         chprintln(player, "{Y" + room["name"] + "{x")
 
-    color = SECTOR_COLORS.get(room.get("sector", "inside"), "")
-    desc_lines = _wrap_paragraphs(room["desc"], text_w)
+    # cf. 1stMud act_info.c:1144-1171 -- the description (and, nested inside
+    # the same gate upstream, the automap draw) is skipped entirely under
+    # COMM_BRIEF; exits/items/mobs below are not gated (act_info.c:1173-1180).
+    if show_desc:
+        color = SECTOR_COLORS.get(room.get("sector", "inside"), "")
+        desc_lines = _wrap_paragraphs(room["desc"], text_w)
 
-    if automap_on:
-        map_lines = build_compact_lines(player, ROOM_DEFS)
-        n = max(len(map_lines), len(desc_lines))
-        for i in range(n):
-            ml = map_lines[i] if i < len(map_lines) else ' ' * COMPACT_W
-            tl = desc_lines[i] if i < len(desc_lines) else ''
-            chprintln(player, ml + ' ' + color + tl)
-    else:
-        for tl in desc_lines:
-            chprintln(player, color + tl)
+        if automap_on:
+            map_lines = build_compact_lines(player, ROOM_DEFS)
+            n = max(len(map_lines), len(desc_lines))
+            for i in range(n):
+                ml = map_lines[i] if i < len(map_lines) else ' ' * COMPACT_W
+                tl = desc_lines[i] if i < len(desc_lines) else ''
+                chprintln(player, ml + ' ' + color + tl)
+        else:
+            for tl in desc_lines:
+                chprintln(player, color + tl)
 
     # cf. 1stMud do_look: exits only shown with PLR_AUTOEXIT (do_exits "auto")
     if player.get("flags", PLR_DEFAULTS) & PLR_AUTOEXIT:
@@ -835,7 +889,9 @@ def do_score(player, args):
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
     header name+title (cf. dlm_score/set_title) added and re-verified 04/07/2026;
     explored line (cf. act_info.c:1841) added and re-verified 08/07/2026;
-    [PRIMESUD] Tier cell (approved) added 11/07/2026]
+    [PRIMESUD] Tier cell (approved) added 11/07/2026; real player["title"]
+    field (set_title/do_title) wired into the header and COMM_SHOW_AFFECTS
+    do_affects tail added, re-verified 20/07/2026]
     -- data fields (age, hours, thac0, AC bars)
     verified; box layout adapted for the 64-col screen [PRIMESUD].
     """
@@ -877,16 +933,10 @@ def do_score(player, args):
         cls_name = class_short(p)
     mem_str = _free_mem()
     name_raw = p.get('name', '???')
-    # cf. 1stMud dlm_score header "<name><title>"; the initial title set at
-    # creation is "the <race> <ClassName(prime)>" (nanny.c set_title).
-    # [PRIMESUD] No title field or 'title' command, so derive that initial
-    # title on the fly; fall back to the bare name if it would not fit.
-    classes = p.get("classes")
-    if classes:
-        title_raw = (name_raw + " the " + str(p.get("race", "Human")) + " "
-                     + class_name(p, classes[p.get("prime_class", 0)]))
-    else:
-        title_raw = name_raw
+    # cf. 1stMud dlm_score header "<name><title>" (ch->name + ch->pcdata->title;
+    # the title already carries its own leading space -- see set_title).
+    # Falls back to the bare name if the combination would not fit the header.
+    title_raw = name_raw + p.get("title", "")
     _hdr_w = _SCORE_LEFT + 3 + _SCORE_RIGHT
     if len(title_raw) + color_len(mem_str) + 1 > _hdr_w:
         title_raw = name_raw
@@ -986,6 +1036,34 @@ def do_score(player, args):
     ]
     for line in lines:
         chprintln(player, line)
+
+    # cf. 1stMud act_info.c:2182 -- COMM_SHOW_AFFECTS appends do_affects.
+    if p.get("flags", PLR_DEFAULTS) & COMM_SHOW_AFFECTS:
+        do_affects(player, [])
+
+
+def do_title(player, argument):
+    """Set the player's score title (cf. 1stMud do_title in act_info.c).
+
+    Args:
+        player (dict): Player state dict.
+        argument (str): Raw command tail -- the title text, case and spacing
+            preserved (cf. 1stMud do_fun(ch, argument), not a lowercased
+            token list).
+    """
+    if not argument:
+        chprintln(player, "Change your title to what?")
+        return
+    title = argument[:45]  # cf. 1stMud act_info.c:3531 -- 45-char cap
+    # [PRIMESUD] save-payload safety (game_state.py _serialize_world): '~' is
+    # the save-line separator and '"' would break the PPL string literal --
+    # neither is guarded upstream (raw C string), but both would corrupt the
+    # next save here.
+    if "~" in title or '"' in title:
+        chprintln(player, "Titles may not contain '~' or '\"'.")
+        return
+    set_title(player, title)
+    chprintln(player, "Ok.")
 
 
 def do_worth(player, args):

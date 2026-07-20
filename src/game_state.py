@@ -72,7 +72,7 @@ def _serialize_world():
     player = world.chars[1]
     gc_collect()
     lines = ["v=" + str(SAVE_VERSION)]
-    for key in ("name", "race", "sex", "true_sex",
+    for key in ("name", "title", "race", "sex", "true_sex",
                 "level", "xp", "xp_next",
                 "hit", "mana", "move",
                 "perm_hit", "perm_mana", "perm_move",

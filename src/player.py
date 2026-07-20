@@ -1,6 +1,6 @@
 """Player creation, progression, and prompt."""
 
-from classes import CLASS_TABLE, CLASS_WARRIOR, exp_per_level, has_spells
+from classes import CLASS_TABLE, CLASS_WARRIOR, exp_per_level, has_spells, class_name
 from colors import color_len
 import terminal
 from terminal import tprint
@@ -28,9 +28,26 @@ _EQUIP_SAVE_ORDER = (
 # re-exported here so callers can import from either module.
 from handler import (PLR_AUTOMAP, PLR_AUTOSKILL, PLR_AUTOASSIST, PLR_AUTOEXIT,
                      PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOSPLIT,
-                     PLR_AUTODAMAGE, PLR_DEFAULTS)
+                     PLR_AUTODAMAGE, PLR_DEFAULTS,
+                     COMM_BRIEF, COMM_COMPACT, COMM_SHOW_AFFECTS)
 
 # -- Player model --------------------------------------------------------------
+
+
+def set_title(ch, title):
+    """Set the player's score title (cf. 1stMud set_title in act_info.c).
+
+    Prepends a leading space unless *title* already starts with sentence-final
+    punctuation (matching 1stMud so the stored title concatenates directly
+    onto the player's name for display, cf. do_score's name+title header).
+
+    Args:
+        ch (dict): Player state dict.
+        title (str): New title text (already length-capped by the caller).
+    """
+    if title[:1] not in (".", ",", "!", "?"):
+        title = " " + title
+    ch["title"] = title
 
 
 def create_char(class_idx=CLASS_WARRIOR, race_name="Human"):
@@ -154,6 +171,15 @@ def create_char(class_idx=CLASS_WARRIOR, race_name="Human"):
     ch["learned"][GSN_RECALL] = 50  # cf. nanny.c: learned[gsn_recall] = 50
     # cf. 1stMud exp_per_level in skills.c (race class_mult scaling)
     ch["xp_next"] = exp_per_level(ch)
+    # cf. 1stMud nanny.c CON_READ_MOTD: sprintf(buf, "the %s %s", race->name,
+    # ClassName(prime_class)); set_title(ch, buf) -- default score title.
+    # [PRIMESUD] Saves from before the title field existed have no "p.title"
+    # save line, so a loaded old character keeps this freshly-derived title
+    # (computed from create_char's placeholder class/race, not the loaded
+    # ones) until `title` is used to set a new one -- cosmetic only, same
+    # "left at create_char() defaults" precedent as any other additive save
+    # field (see game_state.py SAVE_VERSION comment).
+    set_title(ch, "the " + race_name + " " + class_name(ch, class_idx))
     return ch
 
 

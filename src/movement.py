@@ -97,7 +97,9 @@ def move_char(ch, direction):
     match 1stMud order and re-verified same day; [PRIMESUD] auto-door
     added 04/07/2026, auto-unlock with key added 05/07/2026; entry/greet
     mobprogs wired after the follower loop and re-verified 09/07/2026;
-    exit/exall mobprog trigger wired at entry and re-verified 10/07/2026] --
+    exit/exall mobprog trigger wired at entry and re-verified 10/07/2026;
+    do_look("auto") now passed post-move so COMM_BRIEF gates the room desc,
+    re-verified 20/07/2026] --
     private-room / area-closed checks and area entry sound not ported (see
     comments).
 
@@ -257,14 +259,15 @@ def move_char(ch, direction):
         if not aff.get("sneak"):
             act("$n has arrived.", ch, type=TO_ROOM)
     else:
-        # 1stMud: do_function(ch, &do_look, "auto") -- "auto" triggers brief mode;
-        # PrimeSUD has no brief mode, so empty args shows full room.
+        # 1stMud: do_function(ch, &do_look, "auto") -- "auto" triggers the
+        # COMM_BRIEF gate on the room description (see do_look's "auto"
+        # branch in info.py).
         # [PRIMESUD] During speedwalk, intermediate rooms get brief one-liners.
         run_buf = ch.get("run_buf")
         if run_buf and any(a == "move" for a, _ in run_buf):
             _brief_room_line(ch)
         else:
-            do_look(ch, [])
+            do_look(ch, ["auto"])
 
     # cf. 1stMud move_char: exit looping back to the same room skips
     # followers and quest checks
@@ -425,7 +428,8 @@ def do_enter(ch, args):
     """Enter a portal object in the room (cf. 1stMud do_enter in act_enter.c).
     [Verified: 04/07/2026; entry/greet mobprogs wired after arrival and
     re-verified 09/07/2026; get_obj_list can_see_obj viewer gate added and
-    re-verified 10/07/2026] -- IsTrusted immortal bypasses not ported.
+    re-verified 10/07/2026; do_look("auto") now gated by COMM_BRIEF and
+    re-verified 20/07/2026] -- IsTrusted immortal bypasses not ported.
 
     Args:
         ch (dict): Character entering (player or follower mob).
@@ -510,8 +514,9 @@ def do_enter(ch, args):
         act("$n has arrived through $p.", ch, portal, None, TO_ROOM)
 
     if not ch["is_npc"]:
-        # 1stMud: do_function(ch, &do_look, "auto") -- no brief mode here
-        do_look(ch, [])
+        # 1stMud: do_function(ch, &do_look, "auto") -- COMM_BRIEF gate (see
+        # do_look's "auto" branch in info.py).
+        do_look(ch, ["auto"])
 
     # 1stMud value[0]: charges > 0 count down; 0 -> -1 marks it spent
     charges = portal.get("charges")

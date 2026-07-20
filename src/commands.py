@@ -14,7 +14,8 @@ from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_autolist, do_autoloot, do_autogold, do_autosac,
                   do_autosplit, do_autoassist, do_autoexit, do_autodamage,
                   do_wimpy, do_exits, do_worth, do_where, do_clear,
-                  do_time, do_weather, do_motd)
+                  do_time, do_weather, do_motd,
+                  do_brief, do_compact, do_show, do_title)
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
@@ -144,7 +145,7 @@ _CMD_TABLE = [
     ("score",      do_score,      "dead",     False),  # #49
     ("skills",     do_skills,     "dead",     False),  # #50
     # ("socials",   do_socials,    "dead",     False),  # #51
-    # ("show",      do_show,       "dead",     False),  # #52
+    ("show",       do_show,       "dead",     False),  # #52
     ("spells",     do_spells,     "dead",     False),  # #53
     # ("story",     do_story,      "dead",     False),  # #54
     ("time",       do_time,       "dead",     False),  # #55
@@ -162,11 +163,11 @@ _CMD_TABLE = [
     ("autoloot",   do_autoloot,   "dead",     False),  # #67
     ("autosac",    do_autosac,    "dead",     False),  # #68
     ("autosplit",  do_autosplit,  "dead",     False),  # #69
-    # ("brief",     do_brief,      "dead",     False),  # #70
+    ("brief",      do_brief,      "dead",     False),  # #70
     # ("colour",    do_color,      "dead",     False),  # #71
     # ("color",     do_color,      "dead",     False),  # #72
     # ("combine",   do_combine,    "dead",     False),  # #73
-    # ("compact",   do_compact,    "dead",     False),  # #74
+    ("compact",    do_compact,    "dead",     False),  # #74
     # ("description", do_description, "dead",  False),  # #75
     # ("delete",    do_delete,     "standing", True),   # #76 noprefix
     # ("nofollow",  do_nofollow,   "dead",     False),  # #77
@@ -176,7 +177,7 @@ _CMD_TABLE = [
     # ("password",  do_password,   "dead",     False),  # #81
     # ("prompt",    do_prompt,     "dead",     False),  # #82
     # ("screen",    do_screen,     "dead",     False),  # #83
-    # ("title",     do_title,      "dead",     False),  # #84
+    ("title",      do_title,      "dead",     False),  # #84
     ("unalias",    do_unalias,    "dead",     False),  # #85
     ("wimpy",      do_wimpy,      "dead",     False),  # #86
     # ("info",      do_info,       "dead",     False),  # #87
@@ -459,7 +460,7 @@ _CMD_TABLE = [
 # ponytail: do_order excluded -- it relays only an NPC-safe combat subset
 # (keyword targets, case-insensitive), emits no free-text; add it here if the
 # ordered subset ever grows to include say/emote.
-_FREETEXT_FUNS = (do_say, do_emote, do_tell, do_reply, do_yell, do_alias)
+_FREETEXT_FUNS = (do_say, do_emote, do_tell, do_reply, do_yell, do_alias, do_title)
 
 
 # -- Interpreter ---------------------------------------------------------------

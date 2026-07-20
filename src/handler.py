@@ -56,6 +56,18 @@ PLR_AUTODAMAGE = 1024  # BIT_K
 PLR_DEFAULTS = (PLR_AUTOMAP | PLR_AUTOASSIST | PLR_AUTOEXIT | PLR_AUTOLOOT
                 | PLR_AUTOSAC | PLR_AUTOGOLD | PLR_AUTOSPLIT | PLR_AUTODAMAGE)
 
+# -- Comm bits (cf. 1stMud COMM_* in bits.h) -----------------------------------
+# 1stMud keeps these on a separate ch->comm bitfield; PrimeSUD has only one
+# player "flags" field (already persisted -- see game_state._serialize_world),
+# so they share it with the PLR_* bits above rather than adding a parallel
+# field. New bits, not a continuation of the PLR_* numbering.
+COMM_BRIEF = 2048         # 1stMud BIT_M
+COMM_COMPACT = 4096       # 1stMud BIT_L
+COMM_SHOW_AFFECTS = 8192  # 1stMud BIT_Q
+# None of the three are on by default (cf. 1stMud save.c:691 pload_default:
+# ch->comm = COMM_COMBINE | COMM_PROMPT -- neither COMBINE nor PROMPT is
+# ported, and brief/compact/show_affects aren't in that default set anyway).
+
 AFF_TO_WHERE = {
     "to_affects": "affected_by",
     "to_immune": "imm_flags",
