@@ -1,0 +1,1284 @@
+# tag|vnum|keywords per object template, areas ascending by size -- built by tools/build_mob_index.py, do not edit
+limbo|1|coin silver gcash
+limbo|2|coin gold gcash
+limbo|3|coins gold gcash
+limbo|4|coins silver gcash
+limbo|5|coins silver gold gcash
+limbo|10|corpse
+limbo|11|corpse
+limbo|12|head
+limbo|13|heart
+limbo|14|arm
+limbo|15|leg
+limbo|16|guts entrails
+limbo|17|brains brain
+limbo|20|mushroom
+limbo|21|ball light
+limbo|22|spring
+limbo|23|disc disk floating black
+limbo|25|gate portal
+limbo|26|rose
+limbo|30|dummy object
+quest|200|trivia pill
+quest|201|quest aura sanctuary
+quest|203|Sword Quest Ancient
+quest|204|breastplate quest ancient
+quest|205|boots quest ancient
+quest|206|gloves quest protection
+quest|207|flame quest ancients
+quest|208|quest helm true sight
+quest|209|bag quest ancient
+quest|210|shield quest ancient
+quest|211|quest ring regeneration
+quest|212|quest ring invisibility
+quest|214|dragon eye
+quest|215|eagle claw
+quest|216|rabbit foot
+quest|217|wolf tooth
+trollden|2800|corpse cadaver
+trollden|2801|pile rotting heap bed
+trollden|2802|trollskin troll skin
+trollden|2803|ring opal
+trollden|2804|leather belt
+trollden|2805|bone cracked
+redferne|7909|treasure coins
+redferne|7910|chest
+redferne|7911|key
+daycare|6600|axe toy
+daycare|6601|ring pink ice
+daycare|6621|robe linen
+daycare|6622|broom
+daycare|6644|meat steak
+daycare|6645|steak rotten
+daycare|6646|potion amber
+daycare|6647|gun toy
+air|1001|rose
+smurf|100|bunch berries smurfberries
+smurf|101|glasses
+smurf|102|smurf hat
+smurf|103|axe small
+smurf|104|necklace
+smurf|105|pink potion
+smurf|106|wand
+smurf|107|key
+smurf|108|well
+smurf|109|key
+grave|3600|candlestick
+grave|3601|brandy bottle
+grave|3602|brandy bottle
+grave|3603|wheelbarrow
+grave|3604|shovel
+grave|3605|rake
+grave|3610|skeleton
+grave|3611|amethyst gem
+grave|3612|pendant silver
+grave|3613|dagger silver
+marsh|8301|spear long two-handed
+marsh|8302|horned helmet
+marsh|8303|chain mail chainmail
+marsh|8306|scythe
+marsh|8307|green potion
+marsh|8308|claymore rusty sword
+dream|8600|bells morris leggings
+dream|8601|handkerchief hankie kerchief morris
+dream|8602|sash morris white
+dream|8603|staff morris
+mega1|8000|spitgun spit gun
+mega1|8001|knee pads
+mega1|8002|stooky gland
+mega1|8003|lawgiver
+mega1|8004|safe
+mega1|8005|code box
+mega1|8006|bashball bat two-handed
+mega1|8007|vibroblade
+mega1|8008|vacuum cleaner two-handed
+mega1|8009|knife
+mega1|8010|wet noodle
+mega1|8011|judge club
+mega1|8012|vault key
+mega1|8013|key card
+mega1|8014|judge club
+mega1|8015|club electric shock
+mega1|8016|stunner police stick
+grove|8901|closet
+grove|8902|jar
+grove|8903|powder black
+grove|8904|kernel kernels
+grove|8905|paper wad
+grove|8910|staff wooden
+grove|8911|robe brown cloth
+grove|8913|bluish herbs
+grove|8914|purplish herbs
+grove|8915|blackish herbs
+grove|8916|grayish herbs
+grove|8917|reddish herbs
+grove|8918|orangish herbs
+grove|8919|pinkish herbs
+drow|5100|longsword commoner
+drow|5101|longsword noble
+drow|5102|whip snake two-headed
+drow|5103|whip snake three-headed
+drow|5104|whip snake four-headed
+drow|5105|longsword black
+drow|5106|whip snake five-headed
+drow|5107|whip snake six-headed
+drow|5108|bracer iron
+drow|5109|gauntlets iron
+drow|5110|wand blue silver
+drow|5111|helmet helm
+drow|5112|ring ruby
+drow|5113|dagger sacrificial
+drow|5114|hat green
+midennir|3500|sword short
+midennir|3501|spear long
+midennir|3502|helmet horned black
+midennir|3503|cloak stained
+midennir|3504|bracer leather enchanted
+midennir|3505|knife dagger
+arachnos|6303|headdress pontiff's
+arachnos|6304|visor black knight's
+arachnos|6308|coins silver gold
+arachnos|6309|potion blue
+nirvana|9000|sword long the
+nirvana|9001|moonstone moon stone white
+plains|300|herbs herb timian
+plains|301|herbs herb gyvel
+plains|302|plant ivy
+plains|303|blood jar
+plains|304|wild flowers
+plains|307|amulet
+plains|308|staff stick
+plains|309|rabbit roast wabbit
+plains|310|template scroll
+plains|311|potion clear
+plains|312|scroll jhyfrdow
+dwarven|6502|key green
+dwarven|6504|dwarven hammer
+dwarven|6505|dwarven plate
+dwarven|6506|stick
+dwarven|6507|stick
+dwarven|6508|club
+dwarven|6509|two-handed dwarven axe
+dwarven|6510|helmet
+dwarven|6511|ring golden dwarven
+dwarven|6512|gloves
+dwarven|6513|note
+dwarven|6514|castle key
+dwarven|6516|key mine
+dwarven|6517|coal
+dwarven|6518|pick
+dwarven|6519|pills
+dwarven|6520|map castle strangelove
+dylan|9101|winged boots
+dylan|9102|bronze bracer
+dylan|9103|ornate brooch
+dylan|9104|magenta potion
+dylan|9105|ancient parchment
+eastern|5000|pick
+eastern|5001|banded mail
+eastern|5002|halberd
+eastern|5003|amulet
+eastern|5005|bone
+eastern|5006|cactus
+eastern|5007|basket
+eastern|5008|basket
+eastern|5009|basket
+eastern|5010|basket
+eastern|5011|rope
+eastern|5012|stakes
+eastern|5013|map
+eastern|5014|turban
+eastern|5015|coins
+eastern|5016|sabre
+eastern|5017|scimitar
+eastern|5018|cutlass
+eastern|5019|potion pink
+eastern|5020|wand platinum
+eastern|5021|bow energy strange
+eastern|5022|scroll encrypted
+eastern|5023|chest
+eastern|5024|key golden
+eastern|5025|bracelet copper
+eastern|5026|gem ruby
+eastern|5027|gem diamond glittering
+eastern|5028|gem sapphire
+eastern|5029|gem lapis
+eastern|5030|jewel tiger
+eastern|5031|jewel red-eyed
+eastern|5032|gem emerald
+hood|2101|troll jacket
+hood|2102|ogre jacket
+hood|2103|chain
+hood|2104|metal cover shield
+hood|2105|spray paint can
+hood|2106|stiletto
+hood|2107|spiked heel boots
+hood|2108|mirror
+hood|2109|gloves
+hood|2110|patrol club
+hood|2111|signet ring
+hood|2112|knuckles brass
+hood|2113|pipe lead length
+hood|2114|troll jacket studded
+hood|2115|ogre jacket studded
+hood|2116|whistle steel police
+hood|2117|pants black leather
+hood|2118|switchblade knife
+hood|2119|bottle broken
+catacomb|2001|glowing key
+catacomb|2002|granite plate mail platemail
+catacomb|2003|onyx ring
+catacomb|2004|neutralizer sword
+catacomb|2005|sword excalibur
+catacomb|2006|crown
+catacomb|2007|stone
+catacomb|2008|holy water flask
+catacomb|2009|chainmail chain mail suit
+catacomb|2010|white cape
+catacomb|2011|shield defense
+catacomb|2012|scale shield dragonscale
+catacomb|2013|prism wand
+catacomb|2014|shadow cloak
+catacomb|2015|misty potion
+catacomb|2016|templar templars sword wooden
+draconia|2200|spear jagged
+draconia|2201|dagger silver
+draconia|2202|knife tooth dragon
+draconia|2203|bracelet dragon
+draconia|2204|belt silk black
+draconia|2210|belt silk white
+draconia|2211|bracelet platinum
+draconia|2220|symbol holy
+draconia|2221|robe black
+draconia|2222|sword emerald
+draconia|2223|club stone
+draconia|2224|ring diamond
+draconia|2230|ring copper
+draconia|2231|key steel
+draconia|2232|key ruby
+draconia|2233|key white
+draconia|2234|key grey
+draconia|2237|key stone
+draconia|2240|key black
+draconia|2241|key platinum
+draconia|2242|shield crested
+draconia|2243|wand golden
+draconia|2244|staff silver
+draconia|2245|staff dragon
+draconia|2246|mail scale
+draconia|2250|staff black
+draconia|2251|potion cyan
+draconia|2252|potion magenta
+draconia|2254|gauntlets spiked
+draconia|2260|scimitar golden
+draconia|2261|brooch diamond
+draconia|2270|scroll
+draconia|2271|gloves dragon
+draconia|2275|helm dragon
+draconia|2276|fur cloak
+draconia|2280|leggings dragon scale
+draconia|2281|sleeves dragon scale
+draconia|2285|whip dragon tail
+draconia|2286|hammer copper
+draconia|2287|dagger silver
+draconia|2299|key gold tarnished
+olympus|900|aegis plate
+olympus|901|hammer thunder bolt thunderbolt
+olympus|902|helmet winged
+olympus|903|spear ares
+olympus|904|sandals winged
+olympus|905|staff ivory
+olympus|906|trident poseidon
+olympus|907|bow silver
+olympus|908|gauntlets flaming
+olympus|909|vial potion ambrosia
+olympus|910|necklace glowing
+olympus|911|ring sapphire
+olympus|912|shield glowing
+olympus|913|axe notched
+olympus|914|grapes
+olympus|915|fan
+olympus|916|lute
+olympus|917|nugget gold
+olympus|918|apple
+olympus|919|pear
+olympus|920|orange
+olympus|921|kiwi
+olympus|922|amulet
+olympus|923|sun sword
+olympus|924|robe blue
+olympus|925|hat
+olympus|926|nectar
+olympus|927|key cell
+olympus|928|map olympus secret
+wyvern|1601|rusty cleaver
+wyvern|1602|fine mace
+wyvern|1603|elven dagger
+wyvern|1604|steel broad sword
+wyvern|1605|steel broad sword
+wyvern|1606|rod might
+wyvern|1612|black kite shield
+wyvern|1614|helm
+wyvern|1615|bracer
+wyvern|1616|dark blue cloak
+wyvern|1621|dark red potion
+wyvern|1651|bronze chest
+wyvern|1652|ale barrel
+wyvern|1691|key twin towers
+wyvern|1692|strange key
+wyvern|1701|short bow
+wyvern|1702|long bow
+wyvern|1704|ancient sword
+wyvern|1711|fur cap
+wyvern|1712|travelling boots
+wyvern|1713|bronze ring
+valley|7800|chainmail elven chain mail
+valley|7801|boots elven
+valley|7802|longsword elven sword long
+valley|7803|cloak brown
+valley|7804|key
+valley|7805|key
+valley|7806|ring gold
+valley|7807|quarterstaff staff two-handed
+valley|7808|potion
+valley|7809|potion
+valley|7810|potion
+valley|7811|potion
+valley|7812|potion
+valley|7813|potion
+valley|7814|potion
+valley|7815|potion
+valley|7816|potion
+valley|7817|scroll
+valley|7818|scroll
+valley|7819|scroll
+valley|7820|scroll
+valley|7821|scroll
+valley|7822|scroll
+valley|7823|scroll
+valley|7824|rod light
+valley|7825|quarterstaff staff two-handed
+chapel|3400|candlestick
+chapel|3402|tickler
+chapel|3403|plasma webbing
+chapel|3410|rod key
+chapel|3411|large black dirty key
+chapel|3412|head jubal mummy
+chapel|3413|ring black marble
+chapel|3414|rapier thin
+chapel|3415|sarcophagus coffin
+chapel|3416|iron heavy key
+chapel|3417|flask wineflask
+chapel|3418|coins
+chapel|3419|key
+chapel|3420|rathcor
+chapel|3421|rusty sword curved scimitar
+chapel|3422|piece slime
+chapel|3423|smock
+chapel|3424|scroll tightly rolled
+chapel|3425|auburn orb
+chapel|3426|bar gold
+chapel|3427|cape dark black
+chapel|3428|flaming black sword long longsword
+chapel|3429|breast plate dented worn
+chapel|3430|key silver
+thalos|5200|mithril vest
+thalos|5201|helm mithril
+thalos|5202|gauntlets mithril
+thalos|5203|sleeves mithril
+thalos|5204|boots mithril
+thalos|5205|leggings mithril
+thalos|5206|girth mithril
+thalos|5207|breast plate iron
+thalos|5208|shield iron
+thalos|5210|potion black
+thalos|5211|potion orange
+thalos|5214|ball quartz
+thalos|5215|scroll tattered
+thalos|5216|scroll bound
+thalos|5217|flute silver
+thalos|5218|talisman demon
+thalos|5219|venison chunk
+thalos|5220|fountain water
+thalos|5221|two-handed two sword
+thalos|5222|robe black silk
+thalos|5223|cloak green
+thalos|5224|seal ebony
+thalos|5225|desk curved
+thalos|5226|seal ivory
+thalos|5227|cabinet glass
+thalos|5228|arm rotted
+thalos|5230|stone pale blue
+thalos|5231|stone scarlet blue
+thalos|5232|stone blue incandescent
+thalos|5233|stone red deep
+thalos|5234|stone pink
+thalos|5235|stone pearly white
+thalos|5237|stone lavender green
+thalos|5239|stone grey dull
+thalos|5241|stone pink green
+thalos|5243|stone clear
+thalos|5250|mandolin
+thalos|5251|harp golden
+thalos|5252|long dagger slim
+gnome|1500|key bloody
+gnome|1501|key dirty
+gnome|1502|toy boomerang
+gnome|1503|staff gnarled
+gnome|1504|sword gnome
+gnome|1505|shield studded
+gnome|1506|potion bloody
+gnome|1507|cloak bloody
+gnome|1508|ring bat
+gnome|1509|necklace bead
+gnome|1510|sword electrum
+gnome|1511|basket wicker
+gnome|1512|peanuts
+gnome|1513|grain
+gnome|1514|skiff
+gnome|1515|boots gnome
+gnome|1516|coins
+gnome|1517|coins
+gnome|1519|shield stone
+gnome|1520|mail heavy banded
+gnome|1521|club large two-handed
+gnome|1522|banana
+gnome|1523|life potion
+gnome|1524|club wooden
+galaxy|9301|comet's tail
+galaxy|9302|arm hercules
+galaxy|9304|belt orion
+galaxy|9305|skull draco
+galaxy|9306|fleece aries
+galaxy|9307|hoof taurus
+galaxy|9308|mask gemini
+galaxy|9309|shell cancer
+galaxy|9310|skin leo
+galaxy|9311|bracelet virgo
+galaxy|9312|scale libra
+galaxy|9313|scale libra
+galaxy|9314|sting scorpio
+galaxy|9315|arrow sagittarius
+galaxy|9316|bow sagittarius
+galaxy|9317|horns capricon
+galaxy|9318|vessel aquarius
+galaxy|9319|tail pisces
+galaxy|9320|ring dignity
+galaxy|9321|sceptre might
+galaxy|9322|ring universe
+galaxy|9323|great dipper
+galaxy|9324|spring shoot
+galaxy|9325|summer flower
+galaxy|9326|autumn leaf
+galaxy|9327|winter branch
+galaxy|9328|chains andromeda
+mud_school|3700|mace sub merc
+mud_school|3701|dagger sub merc
+mud_school|3702|sword sub merc
+mud_school|3703|vest sub merc
+mud_school|3704|shield sub merc
+mud_school|3705|cloak sub merc
+mud_school|3706|helmet sub merc
+mud_school|3707|leggings sub merc
+mud_school|3708|boots sub merc
+mud_school|3709|gloves sub merc
+mud_school|3710|sleeves sub merc
+mud_school|3711|cape sub merc
+mud_school|3712|belt sub merc
+mud_school|3713|bracer sub merc
+mud_school|3714|key
+mud_school|3715|diploma
+mud_school|3716|banner war merc
+mud_school|3717|spear sub merc
+mud_school|3718|staff sub merc
+mud_school|3719|axe sub merc
+mud_school|3720|flail sub merc
+mud_school|3721|whip sub merc
+mud_school|3722|glaive sub merc
+shire|1100|rainbow staff
+shire|1101|sting
+shire|1102|sign
+shire|1103|pipeweed bread
+shire|1104|silvery cloak
+shire|1105|one ring
+shire|1106|elven spear
+shire|1107|mithril axe
+shire|1108|thain girth
+shire|1109|tiny dagger
+shire|1110|egg
+shire|1111|bag
+shire|1112|lantern
+shire|1113|bardiche
+shire|1114|flail
+shire|1115|wooden bardiche
+shire|1116|dagger shiriff
+shire|1117|club heavy
+canyon|9201|ring earth
+canyon|9202|breastplate stoney breast plate
+canyon|9203|dagger fiery
+canyon|9204|cape flame flaming red
+canyon|9205|boots wind
+canyon|9206|helmet hurricane
+canyon|9207|sword lightning bolt
+canyon|9208|shield electric
+canyon|9209|girth icy
+canyon|9210|cloak waterfall
+canyon|9211|amulet elemental
+canyon|9212|bracelet elemental
+canyon|9213|armband platinum band
+canyon|9214|legbands platinum bands
+canyon|9215|wand
+canyon|9216|staff ice
+canyon|9217|rod earthquake
+canyon|9218|wand air wind
+canyon|9219|wand
+canyon|9220|stone club two-handed
+canyon|9221|lode load lodestone loadstone stone
+canyon|9222|lava lamp
+canyon|9223|energy scroll
+canyon|9224|water jug
+canyon|9225|dust
+canyon|9226|flame lance
+canyon|9227|icicle dagger ice
+canyon|9228|avalanche
+canyon|9229|star morning
+canyon|9230|shock whip
+canyon|9231|elixir anti
+pyramid|8700|egyptian mace
+pyramid|8701|sand robes
+pyramid|8702|obsidian dirk
+pyramid|8703|cloth turban
+pyramid|8704|cloth wrappings
+pyramid|8705|bottle fluid
+pyramid|8706|jar formaldehyde
+pyramid|8707|ball fire
+pyramid|8708|stone scimitar
+pyramid|8709|stone key
+pyramid|8710|stone sarcophagus
+pyramid|8711|dust
+pyramid|8712|scarab
+pyramid|8713|lamp
+pyramid|8714|ankh
+pyramid|8715|book riddles
+pyramid|8716|lion paw
+pyramid|8717|answer
+pyramid|8718|treasure
+pyramid|8719|pile sand
+pyramid|8720|curse mummy
+pyramid|8721|small elixir
+pyramid|8722|golden mask
+pyramid|8723|diamond
+pyramid|8724|sun wand
+pyramid|8725|sandy ring
+pyramid|8726|golden sphinx
+pyramid|8727|spinhxian leggings
+haon|6000|axe lumber two-handed
+haon|6001|shirt
+haon|6002|boots
+haon|6003|fireplace
+haon|6005|chest
+haon|6006|key
+haon|6007|coins silver
+haon|6010|blackberries
+haon|6011|mushroom
+haon|6013|water barrel
+haon|6102|tree opening
+haon|6103|branch
+haon|6104|branch
+haon|6105|branch
+haon|6106|toadstool
+haon|6107|toadstool
+haon|6110|potion yellow
+haon|6111|shield large
+haon|6112|crown iron
+haon|6114|ring iron
+haon|6155|morning-star star morning
+moria|4000|ring yellow green
+moria|4001|corpse
+moria|4002|coins
+moria|4003|dagger rusty
+moria|4004|bullwhip whip
+moria|4005|club tree huge
+moria|4006|furs smelly
+moria|4050|potion purple
+moria|4051|helmet metal
+moria|4052|mushroom
+moria|4053|dirk
+moria|4054|axe war
+moria|4055|sword broad
+moria|4056|flail two two-headed
+moria|4057|mace heavy
+moria|4058|falchion sword
+moria|4059|voulge polearm
+moria|4100|blade black demon
+moria|4101|gloves
+moria|4102|scroll ysafg
+moria|4103|slime mold
+moria|4104|slime mold
+moria|4105|staff iron iron-shod
+moria|4150|black potion
+moria|4151|staff oak
+moria|4152|dagger light silver
+moria|4153|star morning morningstar
+moria|4154|map moria second
+moria|4155|map moria third
+mirror|5300|collar
+mirror|5301|breast plate iron
+mirror|5302|staff serpentine
+mirror|5304|scroll magic
+mirror|5305|scroll bound
+mirror|5306|fountain
+mirror|5307|desk
+mirror|5308|cabinet
+mirror|5309|mandolin
+mirror|5310|harp golden
+mirror|5311|flute silver
+mirror|5312|potion green
+mirror|5313|bluish herbs
+mirror|5314|purplish herbs
+mirror|5315|grayish herbs
+mirror|5316|orangish herbs
+mirror|5317|sword
+mirror|5318|mace
+mirror|5319|chest plate
+mirror|5320|shield
+mirror|5321|cloak
+mirror|5322|helm
+mirror|5323|plate leggings
+mirror|5324|plate boots
+mirror|5325|plate gloves
+mirror|5326|plate sleeves
+mirror|5327|cape
+mirror|5328|belt
+mirror|5329|metal bracer
+mirror|5330|ring signet
+mirror|5331|imperial banner
+mirror|5332|two-handed two sword
+astral|7700|hammer sledge grey
+astral|7701|scroll violet
+astral|7702|tablet scroll black
+astral|7703|scroll githyanki
+astral|7704|amulet demon
+astral|7705|talisman devilish
+astral|7706|knife silvery
+astral|7707|dagger silvery
+astral|7708|sword thin
+astral|7709|sword thin two two-handed
+astral|7710|sword silvery two-handed
+astral|7711|flail barbed iron
+astral|7712|sword gith two-handed
+astral|7713|stone flame
+astral|7714|powder astral
+astral|7715|vest splint
+astral|7716|skirt splint
+astral|7717|sleeves splint
+astral|7718|gauntlets ornate
+astral|7719|vest cracked leather
+astral|7720|potion violet
+astral|7721|potion vial murky
+astral|7722|potion silvery
+astral|7723|mint chocolate
+astral|7724|pentagram
+astral|7725|pouch rotting
+ofcol2|600|axe hand
+ofcol2|601|meat cleaver
+ofcol2|602|side meat beef
+ofcol2|603|side meat pork
+ofcol2|604|side meat horse
+ofcol2|605|meat chicken
+ofcol2|606|emerald ring
+ofcol2|607|glass trinket
+ofcol2|608|golden necklace
+ofcol2|609|cabbage
+ofcol2|610|lettuce
+ofcol2|611|milk bottle
+ofcol2|612|apple
+ofcol2|613|corn
+ofcol2|614|hay pile
+ofcol2|615|pitchfork fork
+ofcol2|616|vest
+ofcol2|617|sleeves
+ofcol2|618|leggings
+ofcol2|619|boots
+ofcol2|620|signet ring
+ofcol2|621|plate brass
+ofcol2|622|helm brass
+ofcol2|623|leggings brass
+ofcol2|624|boots brass
+ofcol2|625|gauntlets brass
+ofcol2|626|sleeves brass
+ofcol2|627|shield brass
+ofcol2|628|girth brass
+ofcol2|629|bracer brass
+ofcol2|630|claymore sword
+ofcol2|631|plate silver
+ofcol2|632|helm silver
+ofcol2|633|leggings silver
+ofcol2|634|boots silver
+ofcol2|635|gauntlets silver
+ofcol2|636|sleeves silver
+ofcol2|637|shield silver
+ofcol2|638|girth silver
+ofcol2|639|plate platinum
+ofcol2|640|helmet platinum
+ofcol2|641|leggings platinum
+ofcol2|642|boots platinum
+ofcol2|643|gauntlets platinum
+ofcol2|644|sleeves platinum
+ofcol2|645|shield spiked platinum
+ofcol2|646|girth platinum
+ofcol2|647|avenger holy sword
+ofcol2|648|whiskey shot
+ofcol2|649|ale quart
+ofcol2|650|port brew quart
+ofcol2|651|key citadel
+ofcol2|652|symbol holy
+ofcol2|653|ranseur polearm
+ofcol2|654|torso dragonscale golden
+ofcol2|655|dragonhelm golden
+ofcol2|656|leggings golden
+ofcol2|657|boots golden
+ofcol2|658|gauntlets golden
+ofcol2|659|sleeves golden
+ofcol2|660|shield golden
+ofcol2|661|girth golden
+ofcol2|662|claw golden
+ofcol2|663|orb dragonorb
+ofcol2|664|robe golden
+ofcol2|665|house key
+ofcol2|666|broom
+ofcol2|667|chest
+ofcol2|668|claw golden
+ofcol2|669|claw golden
+mahntor|2300|gloves combat
+mahntor|2301|spiked armor garde
+mahntor|2302|greaves black
+mahntor|2303|vambraces black
+mahntor|2304|rod weaponry
+mahntor|2305|cloak pitch black
+mahntor|2306|neckguard neck guard black plate
+mahntor|2307|spiked gauntlets
+mahntor|2308|shield shadow
+mahntor|2309|nightbringer short sword shortsword
+mahntor|2310|visor helm golden
+mahntor|2311|breast plate gilded gold
+mahntor|2312|cape white billowing silk
+mahntor|2313|shield huge tower
+mahntor|2314|dawnbringer mace huge two-handed
+mahntor|2315|spectacles wire rimmed
+mahntor|2316|ring banded
+mahntor|2317|globe minor
+mahntor|2318|staff gnarled magius
+mahntor|2319|girdle pouches many
+mahntor|2320|robe heavy woolen
+mahntor|2321|brooch ivory
+mahntor|2322|manual arts healing book
+mahntor|2323|mace huge mithril
+mahntor|2324|symbol holy golden
+mahntor|2325|ring marble thick
+mahntor|2326|bracelet thick marble
+mahntor|2327|boots striding
+mahntor|2328|cloak icy white
+mahntor|2329|staff ice
+mahntor|2330|ring carved wooden
+mahntor|2331|horn life
+mahntor|2332|belt life
+mahntor|2333|stone blood red
+mahntor|2334|crossbow huge
+mahntor|2335|pack leather small
+mahntor|2336|hood black leather
+mahntor|2337|sleeves black leather
+mahntor|2338|pants black leather
+mahntor|2339|sword wicked short shortsword
+mahntor|2340|globe major
+mahntor|2341|chain chainmail black suit
+mahntor|2342|buckler spiked
+mahntor|2343|ring studded
+mahntor|2344|helm horned
+mahntor|2345|axe great
+mahntor|2346|plate ethereal suit
+mahntor|2347|helm ethereal
+mahntor|2348|blade ethereal
+mahntor|2349|branch willow
+mahntor|2350|key keep
+mahntor|2351|key red
+mahntor|2352|key black
+mahntor|2353|key white
+mahntor|2354|key brown
+mahntor|2355|key yellow
+mahntor|2356|key maroon
+mahntor|2357|key green
+mahntor|2358|key grey
+mahntor|2359|key runed
+mahntor|2360|boots fur lined
+mahntor|2361|pelt yeti white
+mahntor|2362|sword kopesh
+mahntor|2363|vambraces steel
+mahntor|2364|greaves steel
+mahntor|2365|axe battle battleaxe
+mahntor|2366|plate steel breast
+mahntor|2367|helm steel
+mahntor|2368|halberd huge two-handed
+mahntor|2369|visor blue steel helm
+mahntor|2370|greaves blue steel
+mahntor|2371|vambraces blue steel
+mahntor|2372|sword two two-handed
+mahntor|2373|visor helm steel red
+mahntor|2374|greaves red steel
+mahntor|2375|vambraces red steel
+mahntor|2376|glaive
+mahntor|2377|visor helm crimson steel
+mahntor|2378|greaves crimson steel
+mahntor|2379|vambraces crimson steel
+mahntor|2380|star morning morningstar
+mahntor|2381|spiked brass knuckles
+mahntor|2382|ring key multi colored multi-colored
+mahntor|2383|maul huge wooden
+mahntor|2384|potion misty
+mahntor|2385|pouch belt
+mahntor|2386|spear ogre
+mahntor|2387|club ogre war
+mahntor|2388|cloak bear skin bearskin
+mahntor|2389|ear ring earring feathered
+mahntor|2390|gauntlets ogre power
+mahntor|2391|club massive
+mahntor|2392|cape thick fur
+mahntor|2393|tunic fur lined
+sewer|7190|ring silver
+sewer|7200|rod devil
+sewer|7201|mace large
+sewer|7202|mace small
+sewer|7203|cloak purple
+sewer|7204|potion neon blue
+sewer|7205|key black
+sewer|7206|skull white
+sewer|7208|stick small light
+sewer|7209|boots muddy
+sewer|7210|treasure coins
+sewer|7211|sword short
+sewer|7216|claw red redclaw
+sewer|7217|plate breast silvery
+sewer|7218|plates leg silvery
+sewer|7219|gloves silvery
+sewer|7220|helmet silvery
+sewer|7221|shield
+sewer|7222|boots silvery
+sewer|7223|plates arm silvery
+sewer|7224|cloak white
+sewer|7298|treasure coins
+sewer|7299|sword short
+sewer|7300|backpack pack back
+sewer|7301|beltpouch pouch
+sewer|7303|orb dragonorb
+sewer|7304|red torso
+sewer|7305|leggings red
+sewer|7306|claws dragonclaws red
+sewer|7307|skull dragonhelm red
+sewer|7308|shield red
+sewer|7309|greaves red
+sewer|7310|arm guards red
+tohell|10401|wicked trident two-handed
+tohell|10402|black leather whip
+tohell|10403|hickey maker
+tohell|10404|sword farslayer two-handed
+tohell|10405|angel's skull
+tohell|10406|rotting flesh
+tohell|10407|sword vorpal blade two-handed
+tohell|10408|flaming claw
+tohell|10409|demonskin
+tohell|10410|demon teeth
+tohell|10411|burning flesh
+tohell|10412|rivet gun
+tohell|10413|circular saw
+tohell|10414|box matches
+tohell|10415|bloody black talon
+tohell|10416|jar of blood
+tohell|10417|hell hound teeth
+tohell|10418|icy bottle
+tohell|10419|ice spear two-handed
+tohell|10420|large meat hook two-handed
+tohell|10421|meat
+tohell|10422|blueprint
+tohell|10423|electric eraser
+tohell|10424|spectacles
+tohell|10425|unholy symbol
+tohell|10426|unholy robes pile cloth
+tohell|10427|sharp teeth lawyer
+tohell|10428|golden ring
+tohell|10429|engagement ring
+tohell|10430|prenuptual agreement
+tohell|10431|ionic torque wrench
+tohell|10432|figurine horse
+tohell|10433|figurine winged horse pegasus
+tohell|10434|figurine dark horse nightmare
+tohell|10435|figurine black dragon
+tohell|10436|figurine red dragon
+tohell|10437|figurine white dragon
+tohell|10438|figurine green dragon
+tohell|10439|figurine blue dragon
+tohell|10440|geiger counter
+tohell|10441|photon displacement matrix
+tohell|10442|black jumpsuit
+tohell|10443|antacid pill
+tohell|10444|manes claws
+tohell|10445|welding torch
+tohell|10446|blond wig
+tohell|10447|yellow jumpsuit nuclear symbol
+tohell|10448|cleaver
+tohell|10449|fire opal gem
+tohell|10450|hellstone hell stone
+hitower|1301|oven black
+hitower|1302|locker
+hitower|1304|pizza slice
+hitower|1305|chunk meat
+hitower|1306|sandwich
+hitower|1307|broom straw
+hitower|1308|machine coffee
+hitower|1309|cabinet
+hitower|1310|bar silver
+hitower|1311|bar gold
+hitower|1312|bar mithril
+hitower|1313|bar adamantite
+hitower|1314|hammer mithril
+hitower|1315|chest
+hitower|1316|key
+hitower|1317|long sword
+hitower|1318|dagger silver
+hitower|1319|scimitar
+hitower|1320|staff wooden
+hitower|1321|cabinet silver
+hitower|1322|cabinet silver
+hitower|1323|key old
+hitower|1324|silvery key
+hitower|1325|silvery key
+hitower|1326|staff red white
+hitower|1327|staff burnt
+hitower|1328|rod black
+hitower|1329|wand wooden
+hitower|1330|wand metal
+hitower|1331|cauldron black
+hitower|1332|wings
+hitower|1333|eye eyeball
+hitower|1334|book tome
+hitower|1335|spectacles glasses
+hitower|1336|altar
+hitower|1337|medallion heart
+hitower|1338|chest
+hitower|1339|key intricate
+hitower|1340|a pile of coins
+hitower|1341|cloak brown
+hitower|1342|chameleon poncho
+hitower|1343|boots worn
+hitower|1344|ring seashell
+hitower|1345|backpack leather
+hitower|1351|cup brew herbal
+hitower|1352|waybread
+hitower|1355|cleaver
+hitower|1356|shackles chain
+hitower|1357|dagger silvery
+hitower|1359|scroll
+hitower|1360|scroll bound
+hitower|1361|tube
+hitower|1362|scroll old
+hitower|1363|scroll blue
+hitower|1364|pouch leather
+hitower|1365|spoon silver
+hitower|1366|potion blue
+hitower|1367|potion red
+hitower|1368|potion green
+hitower|1369|potion effervescent
+hitower|1370|white milky potion
+hitower|1371|staff black
+hitower|1372|flute golden
+hitower|1373|figurine
+hitower|1374|belt holster
+hitower|1375|wand
+hitower|1376|chisel runed
+hitower|1377|pouch belt beltpouch
+hitower|1378|dust
+hitower|1379|cowl dark
+hitower|1380|wand ashen
+hitower|1381|club
+hitower|1382|robe grey
+hitower|1383|cloak grey
+hitower|1384|bracelet silver
+hitower|1385|staff
+hitower|1386|minor ward cube clear
+hitower|1387|robe black
+hitower|1388|bracelet onyx
+hitower|1389|cloak black dark
+hitower|1390|shard black obsidian
+hitower|1391|robe white
+hitower|1392|bracelet white gold
+hitower|1393|cloak white
+hitower|1394|ivory dagger
+hitower|1395|collar spiked
+hitower|1396|cloak shimmering
+hitower|1397|emerald ring
+hitower|1398|bracelet emerald
+hitower|1399|ward major clear crystal
+hitower|1400|ebony kris
+hitower|1401|green scale shirt
+hitower|1402|fridge refrigerator
+hitower|1403|bottle vodka
+hitower|1404|juice bottle
+midgaard|3000|barrel beer
+midgaard|3001|bottle beer
+midgaard|3002|bottle ale
+midgaard|3003|bottle firebreather
+midgaard|3004|bottle local
+midgaard|3005|scimitar blade
+midgaard|3006|stone
+midgaard|3009|potpie pot pie
+midgaard|3010|pit
+midgaard|3011|bread
+midgaard|3012|cinnamon roll
+midgaard|3013|cookies
+midgaard|3014|danish blueberry
+midgaard|3020|dagger
+midgaard|3021|sword small
+midgaard|3022|sword long
+midgaard|3023|club
+midgaard|3024|mace heavy
+midgaard|3025|axe hand
+midgaard|3026|axe battle
+midgaard|3027|spear
+midgaard|3028|staff
+midgaard|3029|flail
+midgaard|3030|torch
+midgaard|3031|lantern
+midgaard|3032|bag
+midgaard|3033|box
+midgaard|3039|scroll cancellation
+midgaard|3040|scroll identify
+midgaard|3041|potion yellow
+midgaard|3042|scroll recall
+midgaard|3043|ring protection
+midgaard|3044|wand magic missile missiles
+midgaard|3045|jacket scale mail
+midgaard|3046|bronze breast plate
+midgaard|3047|bronze breast plate
+midgaard|3050|raft
+midgaard|3051|canoe
+midgaard|3052|bracer strong leather
+midgaard|3053|belt leather
+midgaard|3054|girdle leather
+midgaard|3060|jerkin leather
+midgaard|3061|cap leather
+midgaard|3062|pants leather
+midgaard|3063|boots leather
+midgaard|3064|gloves leather
+midgaard|3065|sleeves leather
+midgaard|3066|jerkin hard leather
+midgaard|3067|cap hard leather
+midgaard|3068|pants hard leather
+midgaard|3069|boots hard leather
+midgaard|3070|gloves hard leather
+midgaard|3071|sleeves hard leather
+midgaard|3072|jerkin scale mail
+midgaard|3073|coif scale mail
+midgaard|3074|skirt scale mail
+midgaard|3075|boots reinforced
+midgaard|3076|gloves reinforced
+midgaard|3077|sleeves scale mail
+midgaard|3080|potion heal healing
+midgaard|3081|potion sanct sanctuary
+midgaard|3082|potion divine
+midgaard|3083|potion cure light
+midgaard|3084|potion cure serious
+midgaard|3085|potion cure critical critic
+midgaard|3086|potion antidote bottle
+midgaard|3087|potion cure blindness
+midgaard|3088|vial holy water
+midgaard|3089|potion armor
+midgaard|3090|potion negation
+midgaard|3091|potion fly flying
+midgaard|3092|potion true sight
+midgaard|3097|shield small metal
+midgaard|3100|tea cup
+midgaard|3101|coffee cup
+midgaard|3102|water cup
+midgaard|3105|bracer bronze
+midgaard|3106|bracer iron
+midgaard|3110|shirt chain mail
+midgaard|3111|coif chain mail
+midgaard|3112|skirt chain mail
+midgaard|3113|boots ironbound
+midgaard|3114|gauntlets chain mail
+midgaard|3115|sleeves chain mail
+midgaard|3116|shield large metal
+midgaard|3117|shield small wooden
+midgaard|3120|key iron
+midgaard|3121|key rusty
+midgaard|3122|key wooden
+midgaard|3123|key brass
+midgaard|3124|sword long
+midgaard|3129|hand cuffs
+midgaard|3130|desk drawer
+midgaard|3131|safe
+midgaard|3132|silver coins
+midgaard|3133|city key
+midgaard|3134|bench
+midgaard|3135|fountain water
+midgaard|3136|coins
+midgaard|3137|key steel
+midgaard|3138|skin water buffalo
+midgaard|3139|letter resignation
+midgaard|3140|notice liquidation bank
+midgaard|3150|coffee cup cinnamon
+midgaard|3151|soup bowl
+midgaard|3152|bowl beef stew
+midgaard|3153|biscuit
+midgaard|3154|beer bottle killian irish red
+midgaard|3161|key white
+midgaard|3162|map midgaard
+midgaard|3163|map thera
+midgaard|3164|map southern midgaard
+midgaard|3165|map dwarven kingdom dwarf
+midgaard|3166|map moria first
+midgaard|3167|map new thalos
+midgaard|3168|map olympus
+midgaard|3200|juke box music
+midgaard|3237|pit
+midgaard|3238|skin water buffalo
+midgaard|3240|scroll identify
+midgaard|3241|potion yellow
+midgaard|3242|scroll recall
+midgaard|3280|potion heal healing
+midgaard|3281|potion sanct sanctuary
+midgaard|3282|potion divine
+midgaard|3283|potion cure light
+midgaard|3284|potion cure serious
+midgaard|3285|potion cure critical critic
+midgaard|3286|potion antidote bottle
+midgaard|3287|potion cure blindness
+midgaard|3288|vial holy water
+midgaard|3289|potion armor
+midgaard|3290|potion negation
+midgaard|3291|potion fly flying
+midgaard|3292|potion true sight
+midgaard|3349|long sword
+midgaard|3350|sword standard merc
+midgaard|3351|dagger standard merc
+midgaard|3352|mace standard merc
+midgaard|3353|vest standard merc
+midgaard|3354|shield standard merc
+midgaard|3355|cloak standard merc
+midgaard|3356|helmet standard merc
+midgaard|3357|leggings standard merc
+midgaard|3358|boots standard merc
+midgaard|3359|gloves standard merc
+midgaard|3360|sleeves standard merc
+midgaard|3361|cape standard merc
+midgaard|3362|belt standard merc
+midgaard|3363|bracer standard merc
+midgaard|3364|ring signet
+midgaard|3365|banner war merc
+midgaard|3371|ring diamond wedding
+midgaard|3372|band gold wedding
+midgaard|3373|pearl
+midgaard|3374|garnet gem
+midgaard|3375|emerald gem
+midgaard|3376|ruby gem
+midgaard|3377|diamond gem
+midgaard|3378|opal
+newthalos|9500|palace key
+newthalos|9501|city key
+newthalos|9503|morning star morningstar
+newthalos|9504|awl pike awl-pike
+newthalos|9505|bardiche
+newthalos|9506|bec corbin
+newthalos|9507|bill guisarme
+newthalos|9508|fauchard
+newthalos|9509|glaive
+newthalos|9510|guisarme
+newthalos|9511|sickle
+newthalos|9512|bastard two sword
+newthalos|9513|scimitar
+newthalos|9514|rapier
+newthalos|9515|banded mail suit
+newthalos|9516|brigandine suit
+newthalos|9517|field plate suit
+newthalos|9518|ringmail ring mail suit
+newthalos|9519|splintmail splint mail suit
+newthalos|9520|wooden shield
+newthalos|9521|splinted shield
+newthalos|9522|buckler shield
+newthalos|9523|jacket leather
+newthalos|9524|sleeves leather
+newthalos|9525|cap leather
+newthalos|9526|leather pants
+newthalos|9527|leather gloves
+newthalos|9528|padded leather boots
+newthalos|9529|studded leather jacket
+newthalos|9530|studded leather sleeves
+newthalos|9531|studded leather pants
+newthalos|9532|studded leather gloves
+newthalos|9533|leather shield
+newthalos|9534|sack
+newthalos|9535|oil lamp oillamp
+newthalos|9536|backpack back pack
+newthalos|9537|basket
+newthalos|9538|belt pouch
+newthalos|9539|candle
+newthalos|9540|cheese
+newthalos|9541|bread
+newthalos|9542|dry rations
+newthalos|9543|iron rations
+newthalos|9545|nuts
+newthalos|9546|belt
+newthalos|9547|hiking boots
+newthalos|9548|fur cloak
+newthalos|9549|girdle
+newthalos|9550|hose
+newthalos|9551|common robe
+newthalos|9552|embroidered robe
+newthalos|9553|sandles
+newthalos|9554|sash
+newthalos|9555|silk jacket
+newthalos|9556|egg
+newthalos|9557|carrot
+newthalos|9558|tomato
+newthalos|9559|fig
+newthalos|9560|dates
+newthalos|9561|leg lamb
+newthalos|9562|side beef
+newthalos|9563|whole chicken
+newthalos|9564|herring salted
+newthalos|9565|mussel
+newthalos|9567|liquor glass blue oasis
+newthalos|9568|wine glass
+newthalos|9569|bottle grog
+newthalos|9570|glowing vial blue
+newthalos|9571|potion green
+newthalos|9572|potion crystal clear
+newthalos|9573|white potion
+newthalos|9574|potion dark blue
+newthalos|9575|beer bottle scorpion flaming
+newthalos|9576|barrel beer
+newthalos|9577|whisky shot
+newthalos|9578|scroll recall
+newthalos|9579|wand call lightning
+newthalos|9580|wand detect invis
+newthalos|9581|wand armor
+newthalos|9582|wand faerie fire
+newthalos|9583|sewing shears
+newthalos|9584|meat cleaver
+newthalos|9585|fountain pen
+newthalos|9586|sledge hammer
+newthalos|9587|horse shoe
+newthalos|9588|saddle
+newthalos|9589|crop riding
+newthalos|9590|chessboard
+newthalos|9591|sesame seed
+newthalos|9592|something
+newthalos|9593|key
+newthalos|9594|key
+newthalos|9595|shirt tie dye
+newthalos|9596|bugle boy jeans
+newthalos|9597|sneakers reeboks reebok pumps
+newthalos|9598|daemon claw
+newthalos|9599|wolverine claw
+newthalos|9600|halberd
+newthalos|9601|fountain water
+newthalos|9602|pearl

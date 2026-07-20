@@ -80,7 +80,7 @@ import world
 from combat import damage, multi_hit, stop_fighting, _extract_char, DAM_NONE
 from commands import interpret
 from config import EXIT_ORDER, POS_FROM_SHORT, POS_ORDER, TYPE_UNDEFINED
-from debug import dbg
+from debug import DBG, dbg
 from game_time import time_info
 from handler import (
     act, can_see, can_see_obj, chprintln, is_name, number_argument,
@@ -250,6 +250,9 @@ def _run_prog(mob, prog_vnum, ch, arg1, arg2):
     if code is None:
         dbg("mobprog: missing prog " + str(prog_vnum))
         return
+    if "prog" in DBG:  # live trigger-fire trace (cf. 1stMud ptrace ring buffer)
+        dbg("prog " + str(prog_vnum) + " fires, mob " + str(mob.get("tpl", 0))
+            + " room " + str(mob.get("room", 0)))
     program_flow(prog_vnum, code, mob, ch, arg1, arg2)
 
 

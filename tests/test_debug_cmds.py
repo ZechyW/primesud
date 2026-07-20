@@ -414,3 +414,164 @@ def test_set_bare_vnum_object_promotes_to_instance(scene, out):
     inst = scene["player"]["inv"][0]
     assert isinstance(inst, dict) and inst["cost"] == 55
     assert ITEM_DEFS[8001].get("value", 0) == tpl_cost  # template untouched
+
+
+# -- find (do_vnum) ---------------------------------------------------------
+
+@pytest.fixture
+def paged(monkeypatch):
+    lines = []
+    monkeypatch.setattr(debug, "tpage", lambda ls: lines.extend(ls))
+    return lines
+
+
+def test_find_loaded_template(scene, out, paged):
+    _run(scene["player"], "find mob guard")
+    assert any("9001" in l and "a guard" in l for l in paged)
+
+
+def test_find_unloaded_via_idx(scene, out, paged, monkeypatch, tmp_path):
+    idx = tmp_path / "mobs.idx"
+    idx.write_text("# header\nfaraway|9500|red dragon\n")
+    monkeypatch.setattr(debug, "MOBS_IDX", str(idx))
+    _run(scene["player"], "find mob dragon")
+    assert any("9500" in l and "faraway, unloaded" in l for l in paged)
+
+
+def test_find_idx_skips_loaded_areas(scene, out, paged, monkeypatch, tmp_path):
+    # nonsense keyword so real loaded-area defs can't match either
+    idx = tmp_path / "mobs.idx"
+    idx.write_text("loadedtag|9500|qqxzdragon\n")
+    monkeypatch.setattr(debug, "MOBS_IDX", str(idx))
+    world._LOADED_AREAS.add("loadedtag")
+    try:
+        _run(scene["player"], "find mob qqxzdragon")
+    finally:
+        world._LOADED_AREAS.discard("loadedtag")
+    assert "No mobiles by that name." in paged
+
+
+def test_find_untyped_searches_both(scene, out, paged, monkeypatch, tmp_path):
+    for name in ("mobs.idx", "objs.idx"):
+        (tmp_path / name).write_text("")
+    monkeypatch.setattr(debug, "MOBS_IDX", str(tmp_path / "mobs.idx"))
+    monkeypatch.setattr(debug, "OBJS_IDX", str(tmp_path / "objs.idx"))
+    _run(scene["player"], "find sword")
+    assert any("8001" in l and "a test sword" in l for l in paged)
+
+
+# -- flag ------------------------------------------------------------------
+
+def test_flag_toggle_and_ops(scene, out):
+    g = scene["guard"]
+    _run(scene["player"], "flag mob guard act aggressive")     # toggle off
+    assert "aggressive" not in g["act_flags"]
+    _run(scene["player"], "flag mob guard act + sentinel")     # add
+    assert g["act_flags"].get("sentinel")
+    _run(scene["player"], "flag mob guard act = wimpy")        # set equal
+    assert g["act_flags"] == {"wimpy": True}
+    _run(scene["player"], "flag mob guard act -wimpy")         # fused remove
+    assert g["act_flags"] == {}
+
+
+def test_flag_obj_extra_instance_override(scene, out):
+    from world import ITEM_DEFS
+    scene["player"]["inv"].append({"vnum": 8001, "cost": 0})
+    _run(scene["player"], "flag obj sword extra + glow")
+    inst = scene["player"]["inv"][0]
+    assert inst["extra_flags"].get("glow")
+    assert not ITEM_DEFS[8001].get("extra_flags", {}).get("glow")
+
+
+def test_flag_bad_field(scene, out):
+    _run(scene["player"], "flag mob guard bogus + glow")
+    assert "That's not an acceptable flag." in out
+
+
+# -- force -----------------------------------------------------------------
+
+def test_force_self(scene, out):
+    _run(scene["player"], "force self smile")
+    assert "Aye aye, right away!" in out
+
+
+def test_force_mob_runs_command(scene, out, monkeypatch):
+    import handler
+    monkeypatch.setattr(handler, "tprint", lambda s="", end="\n": out.append(s))
+    _run(scene["player"], "force guard say hello")
+    assert "Ok." in out
+    assert any("hello" in l for l in out)  # guard's say echoed to the room
+
+
+# -- spellup ---------------------------------------------------------------
+
+def test_spellup_self_applies_buffs(scene, out, monkeypatch):
+    import handler
+    monkeypatch.setattr(handler, "tprint", lambda s="", end="\n": out.append(s))
+    from handler import is_affected
+    from magic import _skill_lookup
+    p = scene["player"]
+    _run(p, "spellup")
+    assert "OK." in out
+    for name in ("armor", "sanctuary", "shield"):
+        assert is_affected(p, _skill_lookup(name)), name
+
+
+# -- clone -----------------------------------------------------------------
+
+def test_clone_mob_independent_copy(scene, out):
+    scene["guard"]["hit"] = 17
+    _run(scene["player"], "clone guard")
+    clones = [world.chars[i] for i in scene["r1"]["mobs"]
+              if world.chars[i]["tpl"] == 9001]
+    assert len(clones) == 2
+    a, b = clones
+    assert a["id"] != b["id"]
+    assert b["hit"] == 17  # live state copied
+    a["act_flags"]["sentinel"] = True
+    assert "sentinel" not in b["act_flags"]  # deep copy, not aliased
+
+
+def test_clone_carried_obj_goes_to_inv(scene, out):
+    scene["player"]["inv"].append({"vnum": 8001, "cost": 7})
+    _run(scene["player"], "clone sword")
+    swords = [o for o in scene["player"]["inv"] if o["vnum"] == 8001]
+    assert len(swords) == 2
+    assert swords[1]["cost"] == 7
+    assert swords[0] is not swords[1]
+
+
+# -- pstat / pdump / prog channel ------------------------------------------
+
+def test_pstat_lists_triggers(scene, out):
+    MOB_DEFS._data[9001]["mob_triggers"] = [("speech", 9901, "hello")]
+    _run(scene["player"], "pstat guard")
+    assert any("speech" in l and "9901" in l and "hello" in l for l in out)
+
+
+def test_pstat_no_progs(scene, out):
+    _run(scene["player"], "pstat 9002")
+    assert "[No programs set]" in out
+
+
+def test_pdump_prints_source(scene, out, paged):
+    world.MOBPROGS[9901] = "say hi\nmob echo done"
+    try:
+        _run(scene["player"], "pdump 9901")
+    finally:
+        del world.MOBPROGS[9901]
+    assert "say hi" in paged and "mob echo done" in paged
+
+
+def test_prog_channel_traces_fire(scene, out, monkeypatch):
+    import handler
+    import mobprog
+    monkeypatch.setattr(handler, "tprint", lambda s="", end="\n": out.append(s))
+    world.MOBPROGS[9901] = "say hi"
+    debug.DBG.add("prog")
+    try:
+        mobprog._run_prog(scene["guard"], 9901, scene["player"], None, None)
+    finally:
+        debug.DBG.discard("prog")
+        del world.MOBPROGS[9901]
+    assert any("prog 9901 fires" in l for l in out)

@@ -1,8 +1,14 @@
-"""Build mobs.idx: "tag|vnum|keywords" per line for every M-reset mob.
+"""Build mobs.idx and objs.idx: "tag|vnum|keywords" per line.
 
-Feeds _find_unloaded_mob (magic.py) so portal/nexus/gate/summon can target
-mobs in areas that are not loaded yet. Line order follows _AREA_FILES
-(ascending size), so ambiguous names resolve to the cheapest area load.
+mobs.idx (every M-reset mob) feeds _find_unloaded_mob (magic.py) so
+portal/nexus/gate/summon can target mobs in areas that are not loaded yet;
+it also feeds `debug find`. Line order follows _AREA_FILES (ascending
+size), so ambiguous names resolve to the cheapest area load.
+
+objs.idx (every object template) feeds `debug find` name->vnum lookups
+across unloaded areas (debug.py). It lists all templates, not just reset
+ones, because `debug load obj` can spawn any template.
+
 Re-run after re-converting any area:
 
     python tools/build_mob_index.py
@@ -50,6 +56,20 @@ def main():
     with open(out_path, "w", newline="\n") as f:
         f.write(header + "\n".join(lines) + "\n")
     print("Wrote", out_path, "-", len(lines), "mobs")
+
+    obj_lines = []
+    for tag, ns in areas:
+        for vnum in sorted(ns.get("OBJECTS", {})):
+            kw = " ".join(ns["OBJECTS"][vnum].get("keywords", "").split())
+            assert "|" not in kw, "pipe in keywords of obj %d" % vnum
+            if kw:
+                obj_lines.append(tag + "|" + str(vnum) + "|" + kw)
+    out_path = os.path.join(APPDIR, "objs.idx")
+    header = ("# tag|vnum|keywords per object template, areas ascending by"
+              " size -- built by tools/build_mob_index.py, do not edit\n")
+    with open(out_path, "w", newline="\n") as f:
+        f.write(header + "\n".join(obj_lines) + "\n")
+    print("Wrote", out_path, "-", len(obj_lines), "objects")
 
 
 if __name__ == "__main__":

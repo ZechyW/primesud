@@ -81,15 +81,36 @@ the only risk class is *wrong* exclusions, audited below.
 
 ### Debug-toolkit candidates (imm commands with solo debug value)
 
-| cmd | evidence | gap it fills |
+All resolved 20/07/2026 as `debug` subcommands (debug.py):
+
+| cmd | evidence | resolution (20/07/2026) |
 |---|---|---|
-| vnum | act_wiz.c:988 | name->vnum lookup world-wide (debug load needs known vnum; debug stat is in-room only) |
-| flag | flags.c:35 | toggle bit-flags on live instance; debug set only does scalars |
-| force | act_wiz.c:2720 | make any char run a command; test receiving side of skills/AI |
-| switch/return | act_wiz.c:1609,1680 | puppet an NPC; test mob-only paths, speech triggers |
-| spellup | act_wiz.c:3238 | instant full-buff test state (autobuff deferred) |
-| clone | act_wiz.c:1742 | duplicate live instance with current state (minor) |
-| programs | programs.c:2315 | mobprog trigger-fired visibility; lightweight equivalent, not 1:1 |
+| vnum | act_wiz.c:988 | PORTED as `debug find [mob\|obj] <name>` ("vnum" name owned by the vnum display channel). Loaded areas answer from defs in memory; unloaded areas via keyword indices (mobs.idx + new objs.idx, built by tools/build_mob_index.py) -- no area load forced. Skill branch (do_slookup) N/A: skills are name-keyed |
+| flag | flags.c:35 | PORTED as `debug flag`; dict-key bits, +/-/=/toggle as upstream; plr/comm fields N/A (no player-flag/comm systems); no flag-name table at runtime, so result set is echoed instead of validated |
+| force | act_wiz.c:2720 | PORTED as `debug force <char> <cmd>`; all/players/gods sweeps + trust gates N/A solo |
+| switch/return | act_wiz.c:1609,1680 | CLOSED covered-by-force: upstream switch swaps the descriptor into the mob to issue commands as it; PrimeSUD has no descriptor layer and the whole command surface assumes the player dict. `debug force <mob> <cmd>` gives the same test lever (mob's own say doesn't fire speech triggers upstream either -- NPC gate) |
+| spellup | act_wiz.c:3238 | PORTED as `debug spellup [<char>]` (default self); full 14-spell qspell_table at MAX_LEVEL; all/room variants N/A solo |
+| clone | act_wiz.c:1742 | PORTED as `debug clone <name>`; deep-copies the live instance dict (contents clone along, cf. recursive_clone); obj_check trust gates N/A solo |
+| programs | programs.c:2315 | PORTED lightweight: `debug pstat` (trigger listing), `debug pdump` (prog source), `debug prog` channel (live fire trace). trace/reset/info not 1:1 -- see below |
+
+`programs` deliberately not 1:1 (three of five subcommands service infra
+PrimeSUD doesn't have, by design):
+
+- `trace`: a 500-entry timestamped ring buffer, valuable on a multiplayer
+  server where progs fire from other players' actions while the imm is
+  elsewhere. Solo, every prog fires from the player's own action in the
+  player's room -- the `debug prog` channel prints the same fact live, with
+  zero retained heap and no wall-clock source (no utime on-device).
+- `reset`: exists because 1stMud's global C callstack can wedge after a
+  mid-prog longjmp/crash. mobprog.py decrements `_call_depth` in a
+  try/finally, so it cannot wedge -- nothing to reset.
+- `info`: abort history + the buggy_prog disable machinery (persist a
+  forensic text, keep the prog disabled) that protects a 24/7 server from
+  a buggy prog re-firing forever. PrimeSUD aborts print via dbg() at the
+  moment they happen and the fix is editing the area file; the disable
+  state would be dead weight.
+- Obj/room progs are excluded engine-wide, so 2/3 of every 1:1 listing
+  loop would be N/A anyway.
 
 ## Systems parity
 

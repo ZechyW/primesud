@@ -17,7 +17,7 @@ from skills_table import (GSN_PLAGUE, GSN_POISON, GSN_BLINDNESS, GSN_CURSE,
 # call sites are in per-mob per-pulse loops.
 DBG = set()
 
-_CHANNELS = ("spawn", "move", "tick", "reset", "vnum", "save", "time")
+_CHANNELS = ("spawn", "move", "tick", "reset", "vnum", "save", "time", "prog")
 
 
 def dbg(msg):
@@ -649,6 +649,327 @@ def _debug_holylight(player, args):
         terminal.tr.print("Holy light mode on.")
 
 
+# Keyword index files (built by tools/build_mob_index.py). Module constants
+# so desktop tests can point them at synthetic files.
+MOBS_IDX = "mobs.idx"
+OBJS_IDX = "objs.idx"
+
+
+def _find_idx(frag, idx_file, lines):
+    """Append "[vnum] keywords (tag, unloaded)" rows for unloaded-area matches. [PRIMESUD]
+
+    One f.read() per call (looped readline() ~20ms/call on-device); nothing
+    is retained, so no area load and no lasting heap cost. Missing index
+    file (desktop dev runs) degrades to loaded-area results only.
+    """
+    from handler import is_name
+
+    try:
+        with open(idx_file) as f:
+            data = f.read()
+    except OSError:
+        return
+    for line in data.split("\n"):
+        if not line or line[0] == "#":
+            continue
+        parts = line.split("|", 2)
+        if len(parts) < 3 or parts[0] in world._LOADED_AREAS:
+            continue
+        if is_name(frag, parts[2]):
+            lines.append("[%5s] %s (%s, unloaded)" % (parts[1], parts[2], parts[0]))
+
+
+def _debug_find(player, args):
+    """Find mob/obj template vnums by name, world-wide (cf. 1stMud do_vnum /
+    do_mfind / do_ofind in act_wiz.c). [PRIMESUD]
+
+    Loaded areas answer from MOB_DEFS/ITEM_DEFS in memory (short_descr
+    shown); unloaded areas via the keyword indices mobs.idx / objs.idx
+    (keywords shown), so no area load is forced. mobs.idx lists only
+    M-reset mobs, so a reset-less template in an unloaded area is missed.
+    do_vnum's skill branch (do_slookup) not ported -- PrimeSUD skills are
+    name-keyed (skills_table.py), there is no sn to look up.
+    """
+    from handler import is_name
+
+    if not args:
+        terminal.tr.print("debug find [mob|obj] <name>")
+        return
+    # cf. do_vnum: exact type word, else fall through searching both
+    if args[0] in ("mob", "char") and len(args) > 1:
+        kinds = ("mob",)
+        frag = " ".join(args[1:])
+    elif args[0] == "obj" and len(args) > 1:
+        kinds = ("obj",)
+        frag = " ".join(args[1:])
+    else:
+        kinds = ("mob", "obj")
+        frag = " ".join(args)
+    lines = []
+    for kind in kinds:
+        defs = world.MOB_DEFS if kind == "mob" else world.ITEM_DEFS
+        start = len(lines)
+        # ._data scan: loaded areas only, never triggers a load
+        for vnum in sorted(defs._data):
+            if is_name(frag, defs._data[vnum].get("keywords", "")):
+                lines.append("[%5d] %s" % (vnum, defs._data[vnum].get("short_descr", "")))
+        _find_idx(frag, MOBS_IDX if kind == "mob" else OBJS_IDX, lines)
+        if len(lines) == start:
+            lines.append("No %s by that name."
+                         % ("mobiles" if kind == "mob" else "objects"))
+    tpage(lines)
+
+
+# Field-name prefix -> instance dict key (cf. do_flag's arg3 chain, flags.c:96).
+# plr/comm not ported (no player-flag / comm systems).
+_FLAG_CHAR_FIELDS = (
+    ("act", "act_flags"), ("affected", "affected_by"), ("off", "off_flags"),
+    ("immunity", "imm_flags"), ("resist", "res_flags"), ("vuln", "vuln_flags"),
+    ("form", "form_flags"), ("parts", "part_flags"),
+)
+
+
+def _debug_flag(player, args):
+    """Toggle/add/remove/set flag bits on a live char or object (cf. 1stMud
+    do_flag in flags.c). [PRIMESUD]
+
+    PrimeSUD flags are dicts of True bits, so a "bit" is a dict key. Flag
+    names are not validated against a table (there is none at runtime); an
+    unknown name creates an inert key, so the resulting flag set is echoed
+    to make typos visible.
+    """
+    if len(args) < 4:
+        terminal.tr.print("debug flag mob|char <name> <field> [+|-|=] <flags>")
+        terminal.tr.print("debug flag obj <name> <field> [+|-|=] <flags>")
+        terminal.tr.print("  char fields: act aff off imm res vuln form parts")
+        terminal.tr.print("  obj fields: extra wear")
+        terminal.tr.print("  +: add flag, -: remove flag, = set equal to")
+        terminal.tr.print("  otherwise flag toggles the flags listed.")
+        return
+    what, name, field = args[0], args[1], args[2]
+    target = None
+    if "mobile".startswith(what) or "character".startswith(what):
+        victim = _find_char_world(player, name)
+        if victim is None:
+            terminal.tr.print("You can't find them.")
+            return
+        for prefix, key in _FLAG_CHAR_FIELDS:
+            if prefix.startswith(field):
+                target = victim.setdefault(key, {})
+                break
+    elif "object".startswith(what):
+        from item import get_obj_here, promote_obj, ensure_item_extra_flags
+        obj = get_obj_here(player, name)
+        if obj is None:
+            terminal.tr.print("You can't find that object.")
+            return
+        obj = promote_obj(player, obj)
+        tpl = world.ITEM_DEFS[obj["vnum"]]
+        if "extra".startswith(field):
+            target = ensure_item_extra_flags(obj, tpl)
+        elif "wear".startswith(field):
+            if "wear_flags" not in obj:  # instance override, cf. item_wear_flags
+                obj["wear_flags"] = dict(tpl.get("wear_flags", {}))
+            target = obj["wear_flags"]
+    else:
+        _debug_flag(player, [])
+        return
+    if target is None:
+        terminal.tr.print("That's not an acceptable flag.")
+        return
+    words = args[3:]
+    op = ""
+    if words[0][0] in "+-=":
+        op = words[0][0]
+        words = ([words[0][1:]] if len(words[0]) > 1 else []) + words[1:]
+        if not words:
+            terminal.tr.print("Which flags do you wish to change?")
+            return
+    if op == "=":
+        target.clear()
+    for word in words:
+        w = word.lower()
+        if op in ("+", "="):
+            target[w] = True
+        elif op == "-":
+            target.pop(w, None)
+        elif w in target:
+            del target[w]
+        else:
+            target[w] = True
+    terminal.tr.print(" ".join(sorted(target)) if target else "(none)")
+
+
+def _debug_force(player, args):
+    """Make a character run a command (cf. 1stMud do_force in act_wiz.c). [PRIMESUD]
+
+    all/players/gods sweeps and trust gates not ported (single-player).
+    The "force <vic> delete|mob" refusal is moot: neither is in the player
+    command table ("mob" prog commands dispatch only inside mobprogs).
+    The "$n forces you to ..." act line is skipped -- NPC-directed output
+    is discarded in PrimeSUD.
+    """
+    from commands import interpret
+
+    if len(args) < 2:
+        terminal.tr.print("Force whom to do what?")
+        return
+    victim = _find_char_world(player, args[0])
+    if victim is None:
+        terminal.tr.print("They aren't here.")
+        return
+    if victim is player:
+        terminal.tr.print("Aye aye, right away!")
+        return
+    interpret(" ".join(args[1:]), victim)
+    terminal.tr.print("Ok.")
+
+
+# Buff spells in qspell_table order (act_wiz.c:3219), by skill name.
+_QSPELLS = ("bless", "giant strength", "haste", "frenzy", "shield", "armor",
+            "sanctuary", "detect hidden", "detect invis", "stone skin",
+            "bark skin", "forceshield", "staticshield", "flameshield")
+
+
+def _debug_spellup(player, args):
+    """Cast every qspell buff on a character (cf. 1stMud do_spellup in act_wiz.c). [PRIMESUD]
+
+    all/room variants not ported (single-player); no-arg defaults to self.
+    Cast at MAX_LEVEL (the imm get_trust equivalent); already-affected
+    spells are skipped, as upstream.
+    """
+    from handler import is_affected
+    from magic import SPELL_FUNS, TARGET_CHAR, _skill_lookup
+    from skills_table import SKILLS
+
+    victim = _find_char_world(player, args[0]) if args else player
+    if victim is None:
+        terminal.tr.print("They aren't here.")
+        return
+    for name in _QSPELLS:
+        sn = _skill_lookup(name)
+        if sn is None or is_affected(victim, sn):
+            continue
+        fun = SPELL_FUNS.get(SKILLS[sn].get("spell_fun", ""))
+        if fun is not None:
+            fun(sn, MAX_LEVEL, player, victim, TARGET_CHAR)
+    terminal.tr.print("OK.")
+
+
+def _deep_copy(v):
+    """Recursive dict/list copy for instance dicts (no copy module on-device). [PRIMESUD]"""
+    if isinstance(v, dict):
+        out = {}
+        for k in v:
+            out[k] = _deep_copy(v[k])
+        return out
+    if isinstance(v, list):
+        return [_deep_copy(x) for x in v]
+    return v  # scalars and tuples (immutable) share safely
+
+
+def _debug_clone(player, args):
+    """Duplicate a room mob or an object here with its live state (cf. 1stMud
+    do_clone in act_wiz.c). [PRIMESUD]
+
+    Trust/level gates (obj_check) not ported (imm trust N/A solo).
+    Container contents clone along via the deep copy, cf. recursive_clone.
+    """
+    from handler import get_char_room
+    from item import get_obj_here, promote_obj
+
+    if not args:
+        terminal.tr.print("Clone what?")
+        return
+    name = " ".join(args)
+    mob_id = get_char_room(name, world.rooms[player["room"]]["mobs"], world.chars)
+    if mob_id is not None:
+        inst = _deep_copy(world.chars[mob_id])
+        next_id = max(world.chars, default=1) + 1
+        inst["id"] = next_id
+        inst["fighting"] = None
+        world.chars[next_id] = inst
+        world.rooms[player["room"]]["mobs"].append(next_id)
+        terminal.tr.print("You clone %s."
+                          % world.MOB_DEFS[inst["tpl"]].get("short_descr", "it"))
+        return
+    obj = get_obj_here(player, name)
+    if obj is None:
+        terminal.tr.print("You don't see that here.")
+        return
+    obj = promote_obj(player, obj)
+    clone = _deep_copy(obj)
+    # cf. do_clone: carried source -> to char, else to room
+    carried = (any(o is obj for o in player["inv"])
+               or any(player["equip"][s] is obj for s in player["equip"]))
+    if carried:
+        player["inv"].append(clone)
+    else:
+        world.rooms[player["room"]]["items"].append(clone)
+    terminal.tr.print("You clone %s."
+                      % (obj.get("short_descr")
+                         or world.ITEM_DEFS[obj["vnum"]].get("short_descr", "it")))
+
+
+def _debug_pstat(player, args):
+    """Show a mob's prog triggers and live prog state (cf. 1stMud do_pstat in
+    programs.c). [PRIMESUD]
+
+    Mob half only (obj/room progs not ported). Takes a room mob name or a
+    template vnum.
+    """
+    from handler import get_char_room
+
+    if not args:
+        terminal.tr.print("debug pstat <mob|vnum>")
+        return
+    inst = None
+    if args[0].isdigit():
+        vnum = int(args[0])
+    else:
+        mob_id = get_char_room(args[0], world.rooms[player["room"]]["mobs"], world.chars)
+        if mob_id is None:
+            terminal.tr.print("No such creature.")
+            return
+        inst = world.chars[mob_id]
+        vnum = inst["tpl"]
+    tpl = world.MOB_DEFS.get(vnum)
+    if tpl is None:
+        terminal.tr.print("No mob template " + str(vnum) + ".")
+        return
+    terminal.tr.print("Mobile #%-6d [%s]" % (vnum, tpl.get("short_descr", "")))
+    if inst is not None:
+        tgt = inst.get("mprog_target")
+        terminal.tr.print("Delay   %-6d [%s]"
+                          % (inst.get("mprog_delay", 0),
+                             "No target" if tgt is None else str(tgt)))
+    trigs = tpl.get("mob_triggers")
+    if not trigs:
+        terminal.tr.print("[No programs set]")
+        return
+    i = 0
+    for t in trigs:
+        i += 1
+        terminal.tr.print("[%2d] Trigger [%-8s] Program [%4d] Phrase [%s]"
+                          % (i, t[0], t[1], t[2]))
+
+
+def _debug_pdump(player, args):
+    """Page a mobprog's source by vnum (cf. 1stMud do_pdump in programs.c). [PRIMESUD]
+
+    Mob half only. Progs merge into world.MOBPROGS as their area loads, so
+    an unloaded area's progs are not visible yet.
+    """
+    if not args or not args[0].isdigit():
+        terminal.tr.print("debug pdump <vnum>")
+        return
+    code = world.MOBPROGS.get(int(args[0]))
+    if code is None:
+        terminal.tr.print("No such MOBprogram.")
+        return
+    tpage(code.split("\n"))
+
+
 _SUBCMDS = (
     ("stat",    _debug_stat,    "dump player/mob/obj/room/area dict"),
     ("slay",    _debug_slay,    "instant-kill a mob in the room"),
@@ -664,6 +985,14 @@ _SUBCMDS = (
     ("memory",  _debug_memory,  "show heap usage and world counts"),
     ("heapmap", _debug_heapmap, "load all areas, per-area heap cost"),
     ("holylight", _debug_holylight, "toggle imm sight (PLR_HOLYLIGHT)"),
+    # "find", not "vnum": the vnum display channel owns that name exactly
+    ("find",    _debug_find,    "name->vnum lookup world-wide (mob/obj)"),
+    ("flag",    _debug_flag,    "toggle bit-flags on char or object"),
+    ("force",   _debug_force,   "make a character run a command"),
+    ("spellup", _debug_spellup, "cast all qspell buffs on a char"),
+    ("clone",   _debug_clone,   "duplicate mob/object with live state"),
+    ("pstat",   _debug_pstat,   "list a mob's prog triggers"),
+    ("pdump",   _debug_pdump,   "print a mobprog's source by vnum"),
 )
 
 
