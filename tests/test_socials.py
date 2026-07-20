@@ -308,6 +308,47 @@ class TestEmptyMessageSkipped:
 # interpret() fallback wiring
 # ---------------------------------------------------------------------------
 
+class TestDoSocials:
+    def test_listing_includes_known_names_via_pager(self, real_files, monkeypatch):
+        captured = []
+        monkeypatch.setattr(socials, "tpage", lambda lines: captured.extend(lines))
+        socials.do_socials({}, [])
+        assert captured  # non-empty
+        assert any("smile" in l for l in captured)
+        assert any("wave" in l for l in captured)
+        assert captured[-1] == "Use the 'sshow' command to display a social's text."
+
+    def test_rows_are_five_columns_of_twelve(self, real_files, monkeypatch):
+        captured = []
+        monkeypatch.setattr(socials, "tpage", lambda lines: captured.extend(lines))
+        socials.do_socials({}, [])
+        # every row but the trailing hint line and a possibly-short final
+        # row of names is exactly 5*12 == 60 chars wide [PRIMESUD]
+        rows = captured[:-1]
+        assert len(rows) > 1
+        for row in rows[:-1]:
+            assert len(row) == 60
+
+
+class TestDoSshow:
+    def test_known_social_shows_message_lines(self, real_files, out):
+        player = _make_char(1, npc=False, name="Tester")
+        socials.do_sshow(player, ["smile"])
+        assert _has(out, "Social: smile")
+        assert _has(out, "You smile happily.")
+        assert _has(out, "smiles happily")  # others_no_arg, $n -> reversed name
+
+    def test_unknown_social_prints_not_found(self, real_files, out):
+        player = _make_char(1, npc=False, name="Tester")
+        socials.do_sshow(player, ["xyzzyzzy"])
+        assert out == ["No such social. Type 'socials' for a list."]
+
+    def test_no_arg_prints_not_found(self, real_files, out):
+        player = _make_char(1, npc=False, name="Tester")
+        socials.do_sshow(player, [])
+        assert out == ["No such social. Type 'socials' for a list."]
+
+
 class TestInterpretFallback:
     def test_unknown_command_falls_back_to_social(self, real_files, out, monkeypatch):
         player = _make_char(1, npc=False, name="Tester")

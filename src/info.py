@@ -17,7 +17,7 @@ from races import RACE_TABLE, race_lookup
 from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, POS_FROM_SHORT, SECTOR_COLORS,
                     MAX_MORTAL_LEVEL, MAX_LEVEL, DIR_ALIASES,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC,
-                    WEAR_LABELS)
+                    WEAR_LABELS, VERSION)
 from item import (get_obj_here, obj_vnum, item_extra_flags,
                   item_container_flags, liquid_color, liquid_left,
                   liquid_total, liquid_type)
@@ -321,6 +321,23 @@ def show_greeting():
 def do_motd(player, args):
     """Show the message of the day help entry (cf. 1stMud do_motd in act_info.c)."""
     do_help(player, ["motd"])
+
+
+def do_version(player, args):
+    """Show the server version and build info (cf. 1stMud do_version in act_info.c).
+
+    [PRIMESUD] Upstream prints "<mudname> is running <mudstring>." plus a
+    "Compiled at <date> at <time>." line from C preprocessor macros;
+    PrimeSUD has no build/compile step (interpreted on-device, cf.
+    docs/PARITY.md), so the version line is adapted to name PrimeSUD's own
+    VERSION and 1stMud/ROM lineage, and the compile-timestamp line is
+    dropped (no equivalent exists).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Parsed command arguments (unused).
+    """
+    chprintln(player, "PrimeSUD is running PrimeSUD %s, based on 1stMud 4.5.3 / ROM 2.4 beta." % VERSION)
 
 
 def do_wimpy(player, args):

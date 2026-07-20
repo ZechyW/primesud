@@ -1,6 +1,8 @@
 # fmt: off
 """Game configuration constants, key maps, and stat tables."""
 
+VERSION = "0.9.0-dev"  # [PRIMESUD] shown by do_version; upstream has no PrimeSUD-side equivalent
+
 # -- Display ---------------------------------------------------------------------------
 DARK_MODE     = True
 FONT          = "std5x10"

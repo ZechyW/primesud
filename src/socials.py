@@ -3,11 +3,14 @@
 import world
 from handler import act, chprintln, get_char_room, is_awake, is_name, \
     TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT
+from pager import tpage
 from urandom import randint
-from commands import one_argument
 
 SOCIALS_FILE = "socials.txt"  # [PRIMESUD] canonical source; idx via tools/build_socials_idx.py
 SOCIALS_IDX = "socials.idx"   # [PRIMESUD] '<offset>|<length>|<name>' per entry, sorted by name
+SOCIALS_COLS = 5              # [PRIMESUD] upstream do_socials uses 6 cols of %-12s
+                               # against its ~72-col default; the Prime screen
+                               # is 64 cols, so 64 // 12 = 5 columns instead.
 
 
 def find_social(command):
@@ -42,6 +45,76 @@ def find_social(command):
         if name > command:
             break  # sorted index: no further line can be a prefix match
     return None
+
+
+def do_socials(player, args):
+    """List all social command names in columns (cf. 1stMud do_socials in act_info.c).
+
+    [PRIMESUD] Reads SOCIALS_IDX once and splits in memory (pitfall 7) --
+    social message bodies are never loaded just to list names. Upstream
+    prints 6 columns of %-12s against its ~72-col default; adapted to
+    SOCIALS_COLS (5) to fit the Prime's 64-col screen. Output goes
+    through the tpage pager, matching upstream sendpage.
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Parsed command arguments (unused).
+    """
+    with open(SOCIALS_IDX) as f:
+        data = f.read()
+    names = [line.split("|", 2)[2] for line in data.split("\n") if line]
+    lines = []
+    for i in range(0, len(names), SOCIALS_COLS):
+        row = names[i:i + SOCIALS_COLS]
+        lines.append("".join("%-12s" % n for n in row))
+    lines.append("Use the 'sshow' command to display a social's text.")
+    tpage(lines)
+
+
+def do_sshow(player, args):
+    """Preview one social's message set without performing it (cf. 1stMud do_sshow in act_info.c).
+
+    [PRIMESUD] Upstream spawns a throwaway MOB_VNUM_DUMMY mobile named
+    after the player's own name reversed and capitalized, purely so the
+    $N/$M/$S codes in the victim-found lines have something to
+    substitute; no dummy-mob system exists here, so a minimal placeholder
+    dict fills the same role (act() only reads name/sex/room/affected_by
+    off it). act() already no-ops on an empty format string (cf.
+    check_social above), so blank social fields need no extra guarding.
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Parsed command words; args[0] is the social name.
+    """
+    arg = args[0] if args else ""
+    hit = find_social(arg)
+    if hit is None:
+        chprintln(player, "No such social. Type 'socials' for a list.")
+        return
+    name, offset, length = hit
+
+    with open(SOCIALS_FILE) as f:
+        f.seek(offset)
+        data = f.read(length)
+    (char_no_arg, others_no_arg, char_found, others_found, vict_found,
+     char_auto, others_auto) = data.split("\n")[:7]
+
+    victim = {
+        "name": (player.get("name", "") or "")[::-1].capitalize(),
+        "is_npc": True, "room": None, "sex": "neutral",
+        "affected_by": {}, "fighting": None,
+    }
+
+    chprintln(player, "Social: %s" % name)
+    act(char_no_arg, player, None, None, TO_CHAR)
+    act(others_no_arg, player, None, None, TO_CHAR)
+
+    act(char_found, player, None, victim, TO_CHAR)
+    act(others_found, player, None, victim, TO_CHAR)
+    act(vict_found, player, None, victim, TO_CHAR)
+
+    act(char_auto, player, None, player, TO_CHAR)
+    act(others_auto, player, None, player, TO_CHAR)
 
 
 def _find_victim(player, arg):
@@ -117,8 +190,11 @@ def check_social(player, command, argument):
     (char_no_arg, others_no_arg, char_found, others_found, vict_found,
      char_auto, others_auto) = data.split("\n")[:7]
 
-    # late import: commands.py imports socials [PRIMESUD] (cf. info.py's
-    # _help_is_name late-import of commands.split_args for the same reason)
+    # late import: commands.py now imports socials at module level (for
+    # do_socials/do_sshow), so a top-level import here would be circular
+    # [PRIMESUD] (cf. info.py's _help_is_name late-import of
+    # commands.split_args for the same reason)
+    from commands import one_argument
     arg, _rest = one_argument(argument)
 
     if not arg:

@@ -225,6 +225,16 @@ def test_do_title_rejects_tilde_and_quote(out):
     assert any("may not contain" in l for l in out)
 
 
+# -- version --------------------------------------------------------------------
+
+def test_do_version_prints_version_constant(out):
+    from config import VERSION
+    player = _make_player()
+    info.do_version(player, [])
+    assert any(VERSION in l for l in out)
+    assert any("PrimeSUD" in l and "1stMud" in l for l in out)
+
+
 # -- persistence round trip ----------------------------------------------------
 
 class TestSaveLoad:

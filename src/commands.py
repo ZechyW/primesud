@@ -14,7 +14,7 @@ from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_autolist, do_autoloot, do_autogold, do_autosac,
                   do_autosplit, do_autoassist, do_autoexit, do_autodamage,
                   do_wimpy, do_exits, do_worth, do_where, do_clear,
-                  do_time, do_weather, do_motd,
+                  do_time, do_weather, do_motd, do_version,
                   do_brief, do_compact, do_show, do_title)
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
@@ -37,6 +37,7 @@ from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
                       do_hide, do_sneak, do_visible, do_enter)
 from scan import do_scan
 from shop import do_buy, do_sell, do_list, do_value, do_appraise
+from socials import do_socials, do_sshow, check_social
 from system_cmds import do_save, do_quit
 from game_state import do_rename
 from debug import do_debug
@@ -144,7 +145,7 @@ _CMD_TABLE = [
     # ("rules",     do_rules,      "dead",     False),  # #48
     ("score",      do_score,      "dead",     False),  # #49
     ("skills",     do_skills,     "dead",     False),  # #50
-    # ("socials",   do_socials,    "dead",     False),  # #51
+    ("socials",    do_socials,    "dead",     False),  # #51
     ("show",       do_show,       "dead",     False),  # #52
     ("spells",     do_spells,     "dead",     False),  # #53
     # ("story",     do_story,      "dead",     False),  # #54
@@ -435,8 +436,8 @@ _CMD_TABLE = [
     # ("mobkills",  do_mobkills,   "sleeping", False),  # #335
     # ("areakills", do_areakills,  "sleeping", False),  # #336
     # ("areadeaths", do_areadeaths, "sleeping", False), # #337
-    # ("version",   do_version,    "dead",     False),  # #338
-    # ("sshow",     do_sshow,      "sleeping", False),  # #339
+    ("version",    do_version,    "dead",     False),  # #338
+    ("sshow",      do_sshow,      "sleeping", False),  # #339
     ("appraise",  do_appraise,   "standing", False),  # #340
     ("rename",    do_rename,     "resting",  True),   # #341 noprefix; [PRIMESUD] mortal self-rename (upstream imm rename-others in act_wiz.c not ported)
     # ("path",      do_path,       "resting",  False),  # #342
@@ -594,7 +595,8 @@ def interpret(raw, player):
 
     # -- No match: check_social fallback, then huh message
     if not cmd:
-        from socials import check_social  # deferred: keep socials off the boot path
+        # socials now imported at module level (do_socials/do_sshow are
+        # command-table entries) [PRIMESUD]
         if check_social(player, command, argument):
             return None
         msg = _HUH_MESSAGES[randint(0, len(_HUH_MESSAGES) - 1)]

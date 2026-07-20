@@ -110,8 +110,10 @@ sit|sit down
 skills|list the skills you know
 sleep|go to sleep to recover fastest
 sneak|move silently between rooms
+socials|list social commands: smile, nod, wave, ...
 south|move south
 spells|list the spells you know
+sshow|preview a social's messages without performing it
 sskill|show stance skill ratings
 stance|enter a combat stance: stance <name>
 stand|stand up
@@ -130,6 +132,7 @@ unalias|remove a defined alias
 unlock|unlock a door or container (needs the key)
 up|move up
 value|ask a shopkeeper what an item is worth
+version|show the game version
 visible|step out of hiding / cancel invisibility
 wake|wake up (yourself)
 wear|wear armor or clothing from your inventory
