@@ -77,7 +77,7 @@ the only risk class is *wrong* exclusions, audited below.
 | index | M | act_info.c:2672 | help category index; needs category metadata in help.txt + build_help_idx.py |
 | mobdeaths / mobkills | M | act_info.c:3909-4020 | solo bestiary stats; needs per-template counters. NB upstream naming inverted (fight.c:1941/1968: area->kills = PC deaths) |
 | areadeaths / areakills | M | act_info.c:4139-4251 | per-area tallies; same new-counter plumbing |
-| objprog/roomprog engine | M | programs.c; db2.c #OBJPROGS/#ROOMPROGS | reopened 20/07/2026 (was closed as excluded): engine capability for custom area flavour. Shipped content = 2 progs, both midgaard: obj 3005 `O DROP 100` ("Don't drop me!"), room 3054 `R GRALL 100` (sanctuary echo); all other stock sections empty. Scope per mobprog precedent: implement used triggers fully, recognize full trigger vocab as no-ops. Needs converter sections + O/R trigger lines, template storage, mobprog.py actor-binding generalization, drop/room-entry hooks |
+| objprog/roomprog engine | L | programs.c; db2.c #OBJPROGS/#ROOMPROGS | reopened 20/07/2026 (was closed as excluded); scope upgraded same day to FULL engine (user decision): all obj/room triggers (12/9), op/rp command tables (24/23), cmd_eval_obj/_room ifcheck subsets, plus mobprog completion (23 remaining ifchecks, gtransfer/gforce/vforce). Shipped content = 2 midgaard progs (obj 3005 `O DROP 100`, room 3054 `R GRALL 100`), dropped in the original area conversion -- re-add. Phased plan: PROGS_PLAN.md |
 | bank / balance | L | economy.c:36-140 | shares minigame; TODO.md already defers. Stock lore (midgaard.are vnum 3140 liquidation notice) says bank defunct + no death-gold-loss, so solo value dubious — lean drop |
 
 ### Debug-toolkit candidates (imm commands with solo debug value)
@@ -128,9 +128,10 @@ create_mobile stat/wealth rolls, weather engine, effects (acid/fire/cold/
 poison/shock), obj decay/corpse spill, aggr_update, spec_funs (25/26;
 spec_warmaster N/A — its only user is the unshipped war PK area), hunt
 (incl. dormant-upstream hunt_victim), mobprog engine (16/16 triggers,
-27/30 mob commands — 3 MP-only stubs, 33/56 ifchecks — all unimplemented
-ones unused by any shipped content and recognized as vocabulary so they
-no-op rather than abort).
+27/30 mob commands, 33/56 ifchecks — all unimplemented ones unused by any
+shipped content and recognized as vocabulary so they no-op rather than
+abort; the 3 stubbed commands (gtransfer/gforce/vforce) are solo-meaningful
+after all — completion scoped in PROGS_PLAN.md).
 
 ### Confirmed gaps (fidelity; spot-checked against source)
 
