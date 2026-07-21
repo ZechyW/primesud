@@ -1410,6 +1410,9 @@ def emit(area_data, rooms, mobs, objs, resets, helps, socials,
     credits  = area_data.get("credits", "Unknown")
 
     w("# fmt: off")
+    w("# GENERATED FILE -- do not edit by hand.")
+    w("# Regenerated from areas/*.are by tools/are_to_primesud.py")
+    w("# (run via tools/regen_areas.py); fix the .are or the converter.")
     w(f"# Area: {asciitext(aname)}")
     w(f"# Source: QuickMUD/ROM 2.4")
     w(f"# VNUM ranges: {vnums[0]}-{vnums[1]}")

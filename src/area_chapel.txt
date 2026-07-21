@@ -1,4 +1,7 @@
 # fmt: off
+# GENERATED FILE -- do not edit by hand.
+# Regenerated from areas/*.are by tools/are_to_primesud.py
+# (run via tools/regen_areas.py); fix the .are or the converter.
 # Area: Chapel
 # Source: QuickMUD/ROM 2.4
 # VNUM ranges: 3400-3499
