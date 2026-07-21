@@ -15,6 +15,13 @@ Blit-only = the single scratch->screen blit re-timed alone.  With
 offscreen compose the screen stays unchanged while the batch composes
 (total = batched ms), then updates in one blit -- so blit-only IS the
 perceived transition time; there is no char-by-char fill-in to eyeball.
+
+Noblit = batched pass with strblit2/pixon/dimgrob no-op'd inside
+terminal: the pure Python side (wrap + group + compose loop).  Blit
+share of a batch = batched - noblit.  Raw strblit2/pixon = tight
+constant-arg loops, the true native per-call cost with zero Python
+allocation -- run standalone AND with the full dist to expose how much
+of the per-call cost scales with live heap.
 """
 import gc
 from hpprime import eval as ppleval, strblit2
@@ -77,6 +84,49 @@ def main():
         batched()
         b.append(ticks() - t0)
 
+    # Batched-noblit: no-op the draw primitives inside terminal, re-run
+    # the batched pass -- isolates the Python side (wrap + group + loop)
+    # from the blit calls.  Blit share = batched - noblit.
+    # hasattr: pc_shim's terminal has no draw primitives (blits no-op
+    # there anyway, the unpatched pass measures the same thing).
+    _prims = hasattr(terminal, "strblit2")
+    if _prims:
+        _real_sb = terminal.strblit2
+        _real_px = terminal.pixon
+        _real_dg = terminal.dimgrob
+        _noop = lambda *a: None
+        terminal.strblit2 = _noop
+        terminal.pixon = _noop
+        terminal.dimgrob = _noop
+    c = []
+    for _ in range(N):
+        tr.clear()
+        gc.collect()
+        t0 = ticks()
+        batched()
+        c.append(ticks() - t0)
+    if _prims:
+        terminal.strblit2 = _real_sb
+        terminal.pixon = _real_px
+        terminal.dimgrob = _real_dg
+
+    # Raw per-call cost of the draw primitives: tight loops, constant
+    # args, no Python allocation -- what does one native call cost?
+    from hpprime import pixon
+    n_raw = 500
+    cw = getattr(tr, "char_width", 5)
+    chh = getattr(tr, "char_height", 10)
+    gc.collect()
+    t0 = ticks()
+    for _ in range(n_raw):
+        strblit2(SCRATCH_GROB, 0, 0, cw, chh, 9, 0, 0, cw, chh)
+    raw_sb = ticks() - t0
+    gc.collect()
+    t0 = ticks()
+    for _ in range(n_raw):
+        pixon(SCRATCH_GROB, 0, 0, 0)
+    raw_px = ticks() - t0
+
     # Blit-only: SCRATCH_GROB still holds the last composed batch; re-time
     # just the scratch->screen blit (Ticks is 1ms-grained, so loop it).
     n_blit = 20
@@ -93,11 +143,18 @@ def main():
     out.append("render_bench: " + str(len(LINES)) + " lines x " + str(N) + " passes")
     out.append(_fmt("per-line", a))
     out.append(_fmt("batched ", b))
+    out.append(_fmt("noblit  ", c))
+    out.append("raw strblit2 char-size x" + str(n_raw) + ": "
+               + str(raw_sb) + "ms = " + str(raw_sb * 1000 // n_raw)
+               + "us/call")
+    out.append("raw pixon x" + str(n_raw) + ": " + str(raw_px)
+               + "ms = " + str(raw_px * 1000 // n_raw) + "us/call")
     out.append("blit-only: " + str(blit_total) + "ms / " + str(n_blit)
                + " blits = ~" + str(blit_total // n_blit)
                + "ms perceived transition")
     out.append("raw per-line: " + _raw(a))
     out.append("raw batched : " + _raw(b))
+    out.append("raw noblit  : " + _raw(c))
 
     # str()+concat payload throughout, then joined -- pitfall 8 safe
     with open("renderbench.log", "w") as f:
