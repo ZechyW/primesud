@@ -148,6 +148,31 @@ class tml_prime(tml):
         if scrollback_size > 0:
             dimgrob(hist_grob, self.width, scrollback_size * self.char_height, self.back_color)
             dimgrob(save_grob, self.width, self.height, self.back_color)
+        # [PRIMESUD] int-keyed glyph x-offsets for the alloc-free
+        # print_xy override below.
+        self._glyph_x = {}
+        for _c, _i in self.char_map.items():
+            self._glyph_x[ord(_c)] = _i * self.char_width
+
+    # ------------------------------------------------------------------
+    # Override: alloc-free glyph draw -- bytes iteration yields ints, so
+    # no per-char str allocs (a small alloc costs ~0.5ms at full game
+    # heap; docs/BUILTINS.md sec. Text rendering performance).
+    # ------------------------------------------------------------------
+
+    def print_xy(self, x, y, text):
+        gmap = self._glyph_x
+        cw = self.char_width
+        chh = self.char_height
+        px = x * cw
+        py = y * chh
+        grob = self.grob
+        _sb = strblit2
+        for b in text.encode():
+            fx = gmap.get(b, -1)
+            if fx >= 0:
+                _sb(0, px, py, cw, chh, grob, fx, 0, cw, chh)
+            px += cw
 
     # ------------------------------------------------------------------
     # Override: capture the row about to scroll off before shifting G0

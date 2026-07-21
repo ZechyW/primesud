@@ -55,7 +55,6 @@ def install_color_print(tr):
         current_fg[0] = None
         strblit2(FONT_GROB, 0, 0, font_w, font_h, COLOR_GROB, 0, 0, font_w, font_h)
 
-    orig_print = tr.print
     cols = TERMINAL_COLS
     # Closure-captured for faster lookup than globals in the hot print path.
     _CC = COLOR_CODE
@@ -118,6 +117,25 @@ def install_color_print(tr):
                 groups[current].append((x, seg))
                 x += len(seg)
         return colour_order, groups
+
+    def _draw_run(s):
+        """Draw s at the cursor with _put_char wrap semantics, one
+        print_xy call per row instead of one draw per char. [PRIMESUD]"""
+        while True:
+            while tr.cursor_y >= tr.rows:
+                tr._scroll_up()
+            space = cols - tr.cursor_x
+            if len(s) <= space:
+                _pxy(tr.cursor_x, tr.cursor_y, s)
+                tr.cursor_x += len(s)
+                if tr.cursor_x >= cols:
+                    tr.cursor_x = 0
+                    tr.cursor_y += 1
+                return
+            _pxy(tr.cursor_x, tr.cursor_y, s[:space])
+            tr.cursor_x = 0
+            tr.cursor_y += 1
+            s = s[space:]
 
     def print_lines(lines):
         """Render complete lines offscreen, then blit once. [PRIMESUD]
@@ -245,15 +263,19 @@ def install_color_print(tr):
             return
         if _CC not in text:
             # Fast path: skip color_wrap and all colour-code scanning.
+            # [PRIMESUD] rows drawn via print_xy runs (alloc-free glyph
+            # loop in tml_prime) instead of per-char _put_char.
             if current_fg[0] is not None:
                 reset_color()
             lines = _wrap_plain(text, cols)
             n = len(lines)
             for idx, line in enumerate(lines):
-                orig_print(line, end='')
+                if line:
+                    _draw_run(line)
                 auto_wrapped = line and tr.cursor_x == 0
                 if not auto_wrapped:
-                    orig_print('', end=end if idx == n - 1 else '\n')
+                    for c2 in (end if idx == n - 1 else '\n'):
+                        _pch(c2)
             return
         # Colour-first rendering: split+group in one pass, then render one
         # set_color/reset_color per distinct colour.

@@ -187,6 +187,30 @@ def test_oversized_batch_prefix_scrolls_normally(monkeypatch):
     assert (tr.cursor_x, tr.cursor_y) == (0, 2)
 
 
+def test_plain_line_draws_as_one_run(monkeypatch):
+    tr, _, blits, _ = _installed(monkeypatch)
+
+    tr.print("hello", end="")
+    tr.print(" world")
+
+    # Plain fast path: whole runs via print_xy, no per-char draws and
+    # no batch compose.
+    assert tr.drawn == [(0, 0, "hello"), (5, 0, " world")]
+    assert [b for b in blits if b[0] in (0, _SCRATCH)] == []
+    assert (tr.cursor_x, tr.cursor_y) == (0, 1)
+
+
+def test_plain_run_wraps_mid_line(monkeypatch):
+    tr, _, _, _ = _installed(monkeypatch)
+
+    tr.print("x" * 60, end="")
+    tr.print("y" * 10, end="")
+
+    # Continuation exceeding the 64-col row wraps like _put_char would.
+    assert tr.drawn == [(0, 0, "x" * 60), (60, 0, "yyyy"), (0, 1, "yyyyyy")]
+    assert (tr.cursor_x, tr.cursor_y) == (6, 1)
+
+
 def test_empty_list_is_noop(monkeypatch):
     tr, palettes, blits, dims = _installed(monkeypatch)
 

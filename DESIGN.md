@@ -12,6 +12,20 @@ HP Prime Python appears to load all `.py` files in the app before `primesud.py` 
 
 Pickers force numeric keyboard mode on entry (`picker.py:_force_numeric_keys`) so stale alpha/shift-lock state doesn't eat digit selections.
 
+**Rendering (settled 22/07/2026).** Multi-line command output is passed
+unjoined as a list through `chprintln` -> `terminal.print_lines`, which
+composes the batch (scroll folded in, history-ring capture included)
+offscreen in `SCRATCH_GROB` and updates the screen in one blit -- the old
+screen holds during the compose, then the transition is atomic (~2ms).
+Single lines draw whole `print_xy` runs (`tml_prime` override). Both paths
+iterate `seg.encode()` with int-keyed glyph-offset maps because on-device
+profiling showed the cost driver is Python *allocation* (~0.5ms each at
+full game heap, 14x the standalone cost), not the native draw calls
+(`strblit2` ~10us, heap-flat). Rule of thumb for hot loops: one avoided
+alloc buys ~49 blits -- no per-char str iteration, slices, or `%`
+formatting. Numbers and method: docs/BUILTINS.md sec. Text rendering
+performance.
+
 ---
 
 ## Not ported

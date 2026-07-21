@@ -40,6 +40,8 @@ python tools/check_ascii_py.py
 
 8. **Use str() + concat in persisted/serialized strings.** Physical HP Prime Python has confirmed heap-sensitive string formatting bug. Values can behave like strings at first, then fail later during list/string operations such as `"~".join(lines)`. For save payloads, HVars/PPL strings, file formats, area-data generated strings, or any string that will be joined/stored/parsing-critical, use explicit `str()` plus concatenation. See `docs/PRIME_STRING_FORMAT_BUG.md`.
 
+9. **Allocation dominates hot loops on device.** One small heap alloc costs ~0.5ms at full game heap (~35us standalone) -- ~49x a native `strblit2` call. In per-char/per-item loops avoid anything that allocates: iterate `s.encode()` (ints) instead of a str (1-char str alloc each), no slices, `%` formatting, or tuple churn. Measured numbers in `docs/BUILTINS.md` sec. Text rendering performance.
+
 ## Colour codes
 
 Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` -- handled by `colors.py`. For transient UI-only strings, `%` (`"{G%s{x" % name`, `"hp: %d" % hp`) avoids `.format()` conflicts with `{X` colour delimiters. For persisted/serialized strings, no `%` -- see pitfall 8 (str() + concat). Full table in docs/REFERENCE.md sec. Colour codes.
