@@ -917,7 +917,7 @@ ROOMS = {
     },
     9205: {
         "name": 'Vista',
-        "desc": 'This is a stunning vista overlooking a canyon.  There is a sign here that says:\n\n\tBEHOLD -- ELEMENTAL CANYON\n\nFire leaps up from firepits in the western part of the canyon.  The sky looks\nfunny, and the air seems hazy to the northwest.  Electricity sparks\nintermittently in the northeast.  To the east you see a strong, magic-looking\nriver flowing through the canyon.  Also to the east you spy a cave entrance\nleading into the canyon wall.  The path descends to the north to another\noverlook.',
+        "desc": 'This is a stunning vista overlooking a canyon.  There is a sign here that says:\n\n        BEHOLD -- ELEMENTAL CANYON\n\nFire leaps up from firepits in the western part of the canyon.  The sky looks\nfunny, and the air seems hazy to the northwest.  Electricity sparks\nintermittently in the northeast.  To the east you see a strong, magic-looking\nriver flowing through the canyon.  Also to the east you spy a cave entrance\nleading into the canyon wall.  The path descends to the north to another\noverlook.',
         "exits": {
             "n": 9206,
             "d": 9204,
