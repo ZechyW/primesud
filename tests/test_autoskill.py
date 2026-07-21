@@ -93,15 +93,23 @@ def _make_mob(mid, **overrides):
     return ch
 
 
-# -- 1. Bare toggle ------------------------------------------------------------
+# -- 1. Command status and toggle ----------------------------------------------
 
-def test_bare_toggle_flips_flag_both_ways(out):
+def test_bare_shows_status_and_help_without_toggling(out):
     player = _make_player()
     assert player["flags"] & PLR_AUTOSKILL == 0  # not in PLR_DEFAULTS -> off
     do_autoskill(player, [])
+    assert not player["flags"] & PLR_AUTOSKILL
+    assert "Autoskill is off." in out[0]
+    assert "autoskill <on|off|edit|list|reset>" in out[1]
+
+
+def test_explicit_on_off_sets_flag(out):
+    player = _make_player()
+    do_autoskill(player, ["on"])
     assert player["flags"] & PLR_AUTOSKILL
     assert "You now attack with your skills and spells automatically." in out
-    do_autoskill(player, [])
+    do_autoskill(player, ["off"])
     assert not player["flags"] & PLR_AUTOSKILL
     assert "You no longer attack with your skills and spells automatically." in out
 

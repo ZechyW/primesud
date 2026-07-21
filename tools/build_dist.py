@@ -59,18 +59,11 @@ def preflight():
     checked-in data had drifted from the generators -- inspect before
     copying to the calculator.
     """
-    # ponytail: shell out to the bash script instead of duplicating its
-    # area lists here; port to Python if bash/uv ever unavailable.
-    # shutil.which, not bare "bash": CreateProcess checks System32 before
-    # PATH, so bare "bash" hits the WSL shim on Windows.
-    bash = shutil.which("bash")
-    if not bash:
-        sys.exit("Preflight needs bash (git-bash) on PATH")
     steps = [
         # Areas + world.py static tables + mobs.idx/paths.idx, in
-        # dependency order (the script refreshes world.py's tables before
+        # dependency order (regen refreshes world.py's tables before
         # the index builds that bootstrap the world from them).
-        [bash, "tools/regen_areas.sh"],
+        [sys.executable, "tools/regen_areas.py"],
         [sys.executable, "tools/build_help_idx.py"],
         [sys.executable, "tools/build_socials_idx.py"],
     ]

@@ -108,8 +108,8 @@ Two-track release plan:
   still feels jumpy or too eager.
 - **On-calculator checklist from the 08/07 planning queue** (consolidated
   final audit 10/07/2026; one walk of the world covers all, ordered by area):
-  - *Mud School*: acolyte demo prog end to end (`say help`, give any item,
-    delay follow-up); prog-room idle CPU/heap vs an empty room
+  - *Mud School*: acolyte demo prog end to end (entry greeting, donate one
+    silver twice, give any item); prog-room idle CPU/heap vs an empty room
     (`gc.mem_free`, act-heavy room); school banner light burnout pacing
     (flicker at <=5 hours, both goes-out messages)
   - *Midgaard*: idle tick cost with the full area loaded (regen + weather +

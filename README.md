@@ -19,7 +19,7 @@ A port of 1stMud (based on ROM 2.4), running in a text UI on the calculator's 32
 
 Calculator: an HP Prime (or the Virtual Calculator emulator) and the HP Connectivity Kit for file transfer.
 
-PC: Python 3, no runtime dependencies. The dist build also needs `python-minifier` and git-bash on PATH.
+PC: Python 3, no runtime dependencies. The dist build also needs `python-minifier`.
 
 ## Running on a PC
 

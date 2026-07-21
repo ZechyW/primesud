@@ -40,6 +40,11 @@ def create_object(vnum):
     """
     tpl = ITEM_DEFS[vnum]
     obj = {"vnum": vnum, "cost": tpl.get("value", 0)}
+    if tpl.get("type") == "money":
+        # 1stMud copies all value[] fields into each object instance; money
+        # consumers read these mutable denominations directly.
+        obj["silver"] = tpl.get("silver", 0)
+        obj["gold"] = tpl.get("gold", 0)
     if "max_charges" in tpl:
         obj["max_charges"] = tpl["max_charges"]
         obj["charges"] = tpl.get("charges", tpl["max_charges"])
@@ -626,8 +631,10 @@ def apply_money_pickup(player, obj, tpl):
     """
     if tpl.get("type") != "money":
         return False
-    player["silver"] += obj.get("silver", 0)
-    player["gold"] += obj.get("gold", 0)
+    # Template fallback repairs legacy sparse instances created before money
+    # denominations were seeded by create_object(). [PRIMESUD]
+    player["silver"] += obj.get("silver", tpl.get("silver", 0))
+    player["gold"] += obj.get("gold", tpl.get("gold", 0))
     return True
 
 

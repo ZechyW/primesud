@@ -125,13 +125,13 @@ def do_where(player, args):
 _FLAG_TABLE = (
     (PLR_AUTOMAP, "automap", "Map in Room Descriptions"),
     (PLR_AUTODAMAGE, "autodamage", "Displays damage amounts in combat."),
-    (PLR_AUTOASSIST, "autoassist", "Automatically assists group members."),
+    (PLR_AUTOASSIST, "autoassist", "Auto-assists group members in combat."),
     (PLR_AUTOEXIT, "autoexit", "Displays exits in room descriptions."),
-    (PLR_AUTOGOLD, "autogold", "Automatically loots gold from corpses."),
-    (PLR_AUTOLOOT, "autoloot", "Automatically loots objects from corpses."),
-    (PLR_AUTOSAC, "autosac", "Automatically sacrifices corpses."),
-    (PLR_AUTOSKILL, "autoskill", "Automatically attacks with skills and spells."),  # [PRIMESUD]
-    (PLR_AUTOSPLIT, "autosplit", "Automatically splits gold between group members."),
+    (PLR_AUTOGOLD, "autogold", "Auto-loots gold from corpses."),
+    (PLR_AUTOLOOT, "autoloot", "Auto-loots objects from corpses."),
+    (PLR_AUTOSAC, "autosac", "Auto-sacrifices corpses."),
+    (PLR_AUTOSKILL, "autoskill", "Auto-attacks with skills and spells."),  # [PRIMESUD]
+    (PLR_AUTOSPLIT, "autosplit", "Auto-splits gold between group members."),
     # PLR_AUTOPROMPT "autoprompt": [PRIMESUD] not ported -- the status bar
     # is the prompt and is always visible, so selective display is moot
     (COMM_COMPACT, "compact", "Compacts mud output."),
@@ -2061,13 +2061,14 @@ def _examine_extras(player, obj):
     [PRIMESUD] Container contents shown from the resolved obj directly; 1stMud
     re-resolves via do_look "in <arg>", which can match a different object.
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; jukebox do_play "list" branch added and re-verified 20/07/2026]
+    04/07/2026; jukebox do_play "list" branch added and re-verified 20/07/2026;
+    legacy sparse money fallback added and re-verified 21/07/2026]
     """
     tpl = ITEM_DEFS[obj_vnum(obj)]
     obj_type = tpl.get("type")
     if obj_type == "money":
-        silver = obj.get("silver", 0)
-        gold = obj.get("gold", 0)
+        silver = obj.get("silver", tpl.get("silver", 0))
+        gold = obj.get("gold", tpl.get("gold", 0))
         if silver == 0:
             if gold == 0:
                 chprintln(player, "Odd...there's no coins in the pile.")

@@ -363,8 +363,9 @@ def _drop_coins(player, amount, coin):
         if not isinstance(obj, dict) or ITEM_DEFS[obj_vnum(obj)].get("type") != "money":
             continue
         rs["items"].remove(obj)
-        silver_amt += obj.get("silver", 0)
-        gold += obj.get("gold", 0)
+        tpl = ITEM_DEFS[obj_vnum(obj)]
+        silver_amt += obj.get("silver", tpl.get("silver", 0))
+        gold += obj.get("gold", tpl.get("gold", 0))
 
     coin_obj = create_money(gold, silver_amt)
     if coin_obj is not None:
@@ -532,6 +533,17 @@ def do_put(player, args):
     chprintln(player, "You put {} in {}.".format(tpl["short_descr"], cont_name))
 
 
+def _give_target(ch, words):
+    """Resolve a give recipient, including the player for mobprog actors. [PRIMESUD]"""
+    target = " ".join(words)
+    if ch.get("is_npc"):
+        from mobprog import _get_char_room
+        return _get_char_room(ch, target)
+    rs = world.rooms[ch["room"]]
+    vid = get_char_room(target, rs["mobs"], world.chars, ch)
+    return world.chars.get(vid) if vid is not None else None
+
+
 def _give_coins(player, amount, coin, rest):
     """Coin branch of do_give (cf. 1stMud do_give money path in act_obj.c:655).
 
@@ -545,12 +557,10 @@ def _give_coins(player, amount, coin, rest):
     if not rest:
         chprintln(player, "Give what to whom?")
         return
-    rs = world.rooms[player["room"]]
-    vid = get_char_room(" ".join(rest), rs["mobs"], world.chars, player)
-    if vid is None:
+    victim = _give_target(player, rest)
+    if victim is None:
         chprintln(player, "They aren't here.")
         return
-    victim = world.chars[vid]
     wallet = "silver" if silver else "gold"
     if player[wallet] < amount:
         chprintln(player, "You haven't got that much.")
@@ -590,7 +600,7 @@ def _give_coins(player, amount, coin, rest):
 
 
 def do_give(player, args):
-    """Give coins or an item to a mob in the room (cf. 1stMud do_give in act_obj.c).
+    """Give coins or an item to a character in the room (cf. 1stMud do_give in act_obj.c).
 
     Args:
         player (dict): Player state dict.
@@ -611,12 +621,10 @@ def do_give(player, args):
         return
     # 1stMud: wear_loc check -- [PRIMESUD] inv never holds equipped items
 
-    rs = world.rooms[player["room"]]
-    vid = get_char_room(" ".join(args[1:]), rs["mobs"], world.chars, player)
-    if vid is None:
+    victim = _give_target(player, args[1:])
+    if victim is None:
         chprintln(player, "They aren't here.")
         return
-    victim = world.chars[vid]
     tpl = ITEM_DEFS[obj_vnum(obj)]
 
     # Quest delivery (cf. 1stMud do_give act_obj.c:772)
@@ -644,7 +652,7 @@ def do_give(player, args):
                 player, obj, None, TO_CHAR)
         return
 
-    if MOB_DEFS[victim["tpl"]].get("shop"):
+    if victim.get("is_npc") and MOB_DEFS[victim["tpl"]].get("shop"):
         act("$N tells you 'Sorry, you'll have to sell that.'",
             player, None, victim, TO_CHAR)
         return
@@ -658,9 +666,10 @@ def do_give(player, args):
         chprintln(player, "You can't give quest items.")
         return
 
-    carry_n = len(victim["inv"]) + sum(1 for e in victim["equip"].values()
-                                       if e is not None)
-    if carry_n + 1 > can_carry_n(victim):
+    carried = victim["inv"] + [e for e in victim["equip"].values()
+                               if e is not None]
+    carry_n = sum(_obj_number(o) for o in carried)
+    if carry_n + _obj_number(obj) > can_carry_n(victim):
         act("$N has $S hands full.", player, None, victim, TO_CHAR)
         return
 
@@ -698,6 +707,10 @@ def do_give(player, args):
             player, "give")
     if mobprog.has_rtrigger(player["room"], "give"):
         mobprog.rgive_trigger(player["room"], player, obj, "give")
+    # [PRIMESUD] Player wallets absorb received money objects, matching pickup.
+    if (not victim.get("is_npc") and obj in victim["inv"]
+            and apply_money_pickup(victim, obj, tpl)):
+        victim["inv"].remove(obj)
     # TRIG_GIVE: mob reacts to the received object (cf. do_give, act_obj.c:856)
     if victim.get("is_npc"):
         if mobprog.has_trigger(victim, "give"):

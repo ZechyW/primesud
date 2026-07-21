@@ -2687,7 +2687,7 @@ def gain_exp(ch, gain):
     ch["xp"] = max(0, ch["xp"] + gain)
     while (ch.get("level", 1) < classes.calc_max_level(ch)
            and ch["xp"] >= ch["xp_next"]):
-        chprintln(ch, "You raise a level!!")
+        chprintln(ch, "{YYou raise a level!!{x")  # [PRIMESUD] highlight among combat output
         ch["level"] += 1
         ch["xp"]    -= ch["xp_next"]
         # 1stMud: if (ch->level >= LEVEL_HERO) "Congratulations, you are now a %s!"

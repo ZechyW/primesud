@@ -9,7 +9,7 @@ HP Prime. The structure mirrors ROM 2.4's `#SECTION` layout.
 
 > **Do not edit area files directly.** They are generated from ROM 2.4 (QuickMUD-dialect)
 > `.are` source files in `areas/` by `tools/are_to_primesud.py`. Edit the
-> `.are` source or the converter and regenerate via `tools/regen_areas.sh` instead.
+> `.are` source or the converter and run `python tools/regen_areas.py` instead.
 > `areas/*.are` are editable working copies; pristine upstream originals remain under
 > `reference/`.
 
@@ -725,7 +725,7 @@ support -- noted per row).
 | Room guild: thief | `midgaard.are` | rooms 3028, 3029 -> `(2,)` | 1stMud-faithful -- reference rooms carry a single `G 2` each |
 | Room guild: warrior | `midgaard.are` | rooms 3022, 3023 -> `(3,` | 1stMud-faithful (base) -- reference rooms carry a single `G 3` each |
 | Room guild: ranger sharing warrior rooms | `midgaard.are` | rooms 3022, 3023 -> `5)` | [PRIMESUD] -- second `G 5` line added per room; upstream has no ranger guild in midgaard |
-| Acolyte demo mobprog (greet/give/delay) | `school.are` | mob 3700 (`M` trailers), progs 3790/3791/3792 (`#MOBPROGS`) | [PRIMESUD] -- stock QuickMUD ships zero `#MOBPROGS` entries anywhere; this is the mobprog engine's first content pilot (`MOBPROG_PLAN.md` Phase D content pilot). `.are` source has no per-entry comment support inside `#MOBPROGS`/mob trailers, so provenance lives here instead |
+| Acolyte demo mobprog (greet/bribe/give) | `school.are` | mob 3700 (`M` trailers), progs 3790/3791/3792 (`#MOBPROGS`) | [PRIMESUD] -- greets arrivals, rewards the first coin donation per live mob instance, and returns donated items. The transient reward marker deliberately uses `mprog_delay` without a delay trigger: matching upstream, it never ticks down; eviction/reload resets it. Stock QuickMUD ships zero `#MOBPROGS` entries anywhere; this is the mobprog engine's first content pilot (`MOBPROG_PLAN.md` Phase D content pilot) |
 | Recovered 1stMud object/room programs | `midgaard.are` | object 3005 (`O DROP 3005 100`), room 3054 (`R GRALL 3054 100`), matching `#OBJPROGS`/`#ROOMPROGS` code | 1stMud-faithful -- the original conversion to QuickMUD format dropped both trailers and code sections; restored verbatim from `reference/1stMud4.5.3/area/midgaard.are`. The `.are` format has no per-entry comment seam, so provenance lives here |
 | Moved reset: juke (obj 3200) -> room 1116 (The Ivy Bush) | removed from `midgaard.are`, added to `shire.are` | obj 3200, room 1116 | [PRIMESUD] defer-load optimization; same world state either way. `* [PRIMESUD] ... moved from/to midgaard` comment at both the removal and addition sites |
 | Moved reset: juke (obj 3200) -> room 1144 (The Green Dragon) | removed from `midgaard.are`, added to `shire.are` | obj 3200, room 1144 | [PRIMESUD] defer-load optimization; comment at both sites as above |

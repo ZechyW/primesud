@@ -823,10 +823,10 @@ def test_combat_fight_and_hpcnt_triggers(mp_world):
 #
 # End-to-end validation of the [PRIMESUD] demo content authored in
 # areas/school.are (M mob trailers + #MOBPROGS section): the
-# acolyte of Zump (mob 3700) greets on the "help" keyword, rewards any gift with
-# a diploma, and follows up after a delay.  Loads the *real* area file so the
-# mob_triggers tuple + MOBPROGS dict are exercised exactly as world.py loads
-# them; the actors are staged in a synthetic room to stay isolated.
+# acolyte of Zump (mob 3700) greets arriving players, rewards the first coin
+# donation per mob instance, and returns donated items.  Loads the *real* area
+# file so the mob_triggers tuple + MOBPROGS dict are exercised exactly as
+# world.py loads them; the actors are staged in a synthetic room to stay isolated.
 
 
 @pytest.fixture
@@ -857,7 +857,7 @@ def school_world(monkeypatch):
 
     player = _char_base()
     player.update(id=1, is_npc=False, name="Tester", room=9001, pos="standing",
-                  learned={})
+                  level=3, silver=2, learned={})
     world.chars[1] = player
 
     from mob import create_mobile
@@ -866,7 +866,7 @@ def school_world(monkeypatch):
     world.chars[2] = mob
     room["mobs"].append(2)
 
-    # deterministic percent roll so the delay trigger (phrase "100") fires
+    # deterministic percent roll so the greet trigger (phrase "100") fires
     monkeypatch.setattr(mobprog, "_number_percent", lambda: 1)
     out = []
     monkeypatch.setattr(handler, "tprint", lambda s="", end="\n": out.append(s))
@@ -891,40 +891,53 @@ def school_world(monkeypatch):
 def test_school_demo_data_loaded(school_world):
     """The authored triggers + progs ride the real area file as world loads it."""
     trigs = MOB_DEFS[3700].get("mob_triggers")
-    assert ("speech", 3790, "help") in trigs
-    assert ("give", 3791, "all") in trigs
-    assert ("delay", 3792, "100") in trigs
+    assert "zump" in MOB_DEFS[3700]["keywords"]
+    assert ("greet", 3790, "100") in trigs
+    assert ("bribe", 3791, "1") in trigs
+    assert ("give", 3792, "all") in trigs
     assert MOBPROGS.get(3790) and MOBPROGS.get(3791) and MOBPROGS.get(3792)
 
 
-def test_school_demo_full_interaction(school_world):
-    """say help -> greet; give gift -> thanks + diploma + delay armed; delay -> parting."""
+def test_school_demo_full_interaction(school_world, monkeypatch):
+    """Greet, one-time coin reward, and unwanted-item return work end to end."""
     player, mob, out = school_world
-    from comm import do_say
-    from inventory import do_give
-    from mobprog import pulse_mob
+    import inventory
+    from mobprog import greet_trigger
 
-    # 1) speech: "help" keyword substring-matches the phrase
-    do_say(player, "can you help me")
+    # 1) entering the room prompts the player without requiring "say help"
+    greet_trigger(player)
     assert any("Welcome to Mud School, Tester." in l for l in out)
+    assert any("one silver coin is enough" in l for l in out)
 
-    # 2) give: prog thanks the player ($O/$n), remembers them, loads the diploma
-    #    reward (obj 3715) to the room, and arms a 2-tick delay.
+    # 2) first coin donation rewards this low-level student with one gold coin
+    del out[:]
+    # Money contributes zero carry count, so a nominally full player can receive it.
+    with monkeypatch.context() as m:
+        m.setattr(inventory, "can_carry_n", lambda ch: 0)
+        inventory.do_give(player, ["1", "silver", "zump"])
+    assert player["silver"] == 1 and mob["silver"] == 1
+    assert any("students this fund was made for" in l for l in out)
+    assert player["gold"] == 1
+    assert not any(o.get("vnum") == 2 for o in player["inv"])
+    assert not any(o.get("vnum") == 2 for o in mob["inv"])
+    assert not any(o.get("vnum") == 2 for o in world.rooms._data[9001]["items"])
+    assert mob["mprog_delay"] == 1
+
+    # 3) marker suppresses repeat rewards for this mob instance
+    del out[:]
+    inventory.do_give(player, ["1", "silver", "zump"])
+    assert any("already shown your generosity" in l for l in out)
+    assert player["gold"] == 1
+    assert mobprog.pulse_mob(mob) is False
+    assert mob["mprog_delay"] == 1
+
+    # 4) non-money gifts are politely returned
     ring = create_object(9100)
     player["inv"].append(ring)
     del out[:]
-    do_give(player, ["ring", "acolyte"])
-    assert any("Ah, a gold ring.  Many thanks, Tester." in l for l in out)
-    assert mob["mprog_delay"] == 2
-    assert mob["mprog_target"] == 1                     # "mob remember $n"
-    assert any(o.get("vnum") == 3715 for o in world.rooms._data[9001]["items"])
-
-    # 3) delay: counts down over pulses, then the follow-up fires with $q
-    #    resolving the remembered target.
-    del out[:]
-    assert pulse_mob(mob) is False                      # 2 -> 1
-    assert pulse_mob(mob) is True                       # 1 -> 0, prog 3792 fires
-    assert any("May your studies serve you well, Tester." in l for l in out)
+    inventory.do_give(player, ["ring", "zump"])
+    assert ring in player["inv"] and ring not in mob["inv"]
+    assert any("hardship fund accepts coins only" in l for l in out)
 
 
 def test_idle_triggerless_mob_short_circuits(monkeypatch):

@@ -19,7 +19,7 @@ AREA = {
 # hitroll: from mob level line
 MOBILES = {
     3700: {
-        "keywords":    'acolyte cleric',
+        "keywords":    'acolyte cleric zump',
         "short_descr": 'the acolyte of Zump',
         "long_descr":  'An acolyte of Zump welcomes you to mud school.',
         "description": "He's big and bad.  Don't mess with him.",
@@ -42,9 +42,9 @@ MOBILES = {
         "wealth": 0,
         "size":   'medium',
         "mob_triggers": (
-            ('speech', 3790, 'help'),
-            ('give', 3791, 'all'),
-            ('delay', 3792, '100'),
+            ('greet', 3790, '100'),
+            ('bribe', 3791, '1'),
+            ('give', 3792, 'all'),
         ),
     },
     3701: {
@@ -1545,9 +1545,9 @@ SOCIALS = (
 # -- MobProgs ------------------------------------------------------------------
 # (vnum, code) -- mob program code blocks, referenced by mob triggers
 MOBPROGS = {
-    3790: 'say Welcome to Mud School, $n.  Bring me a gift and I shall reward you.',
-    3791: 'say Ah, $O.  Many thanks, $n.  Take this token of the school.\nmob remember $n\nmob oload 3715 0 R\nmob delay 2',
-    3792: 'say May your studies serve you well, $q.',
+    3790: 'say Welcome to Mud School, $n.  We keep a hardship fund for new students.  If you can spare it, one silver coin is enough.',
+    3791: "if isdelay $i\n  say You have already shown your generosity, $n.  Let others have their turn.\nelse\n  if level $n < 5\n    say Thank you, $n.  That was generous, but you look like one of the students this fund was made for.  Take this gold coin, and spend it wisely.\n  else\n    say Thank you, $n.  Generosity is a lesson worth rewarding.  Accept this gold coin with the school's gratitude.\n  endif\n  mob oload 2 0\n  give coin $n\n  * ponytail: no delay trigger, so this stays set for the mob instance; persist a player flag if abuse matters.\n  mob delay 1\nendif",
+    3792: 'say Kind of you, $n, but please keep $O.  The hardship fund accepts coins only.\ngive $o $n',
 }
 
 # -- ObjProgs ------------------------------------------------------------------

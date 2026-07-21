@@ -365,27 +365,33 @@ def _edit_rotation(player):
 
 
 def do_autoskill(player, args):
-    """Toggle autoskill, or edit/list/reset the rotation. [PRIMESUD] (no 1stMud equivalent)
+    """Show/configure autoskill and its rotation. [PRIMESUD] (no 1stMud equivalent)
 
-    Bare call toggles the PLR_AUTOSKILL flag (cf. do_autoX pattern in
-    info.py). 'edit' opens the blocking rotation editor; 'list' prints the
-    rotation read-only; 'reset' discards any custom order/exclusions back
-    to the pure heuristic default.
+    Bare call shows status and usage. 'on'/'off' set the PLR_AUTOSKILL flag;
+    'edit' opens the blocking rotation editor; 'list' prints the rotation
+    read-only; 'reset' discards any custom order/exclusions back to the pure
+    heuristic default.
 
     Args:
         player (dict): Player state dict.
-        args (list): Command arguments; args[0] in ('edit', 'list', 'reset')
-            or empty for the bare toggle.
+        args (list): Command arguments; args[0] in
+            ('on', 'off', 'edit', 'list', 'reset'), or empty for help.
     """
     if not args:
-        player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOSKILL
-        if player["flags"] & PLR_AUTOSKILL:
-            chprintln(player, "You now attack with your skills and spells automatically.")
-        else:
-            chprintln(player, "You no longer attack with your skills and spells automatically.")
+        state = "on" if player.get("flags", PLR_DEFAULTS) & PLR_AUTOSKILL else "off"
+        chprintln(player, "Autoskill is " + state + ". It uses offensive skills and spells automatically in combat.")
+        chprintln(player, "Usage: autoskill <on|off|edit|list|reset>")
         return None
 
     sub = args[0].lower()
+    if sub == "on":
+        player["flags"] = player.get("flags", PLR_DEFAULTS) | PLR_AUTOSKILL
+        chprintln(player, "You now attack with your skills and spells automatically.")
+        return None
+    if sub == "off":
+        player["flags"] = player.get("flags", PLR_DEFAULTS) & ~PLR_AUTOSKILL
+        chprintln(player, "You no longer attack with your skills and spells automatically.")
+        return None
     if sub == "edit":
         _edit_rotation(player)
         return None
@@ -397,5 +403,5 @@ def do_autoskill(player, args):
         chprintln(player, "Autoskill rotation reset to the default order.")
         return None
 
-    chprintln(player, "Usage: autoskill | autoskill edit | autoskill list | autoskill reset")
+    chprintln(player, "Usage: autoskill <on|off|edit|list|reset>")
     return None
