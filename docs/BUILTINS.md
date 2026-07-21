@@ -140,8 +140,9 @@ variance; full game modules loaded, i.e. in-game heap):
 
 | Path | Cost |
 |:-----|:-----|
-| Per-line `tr.print` (pre-batch) | 594 ms |
-| Batched offscreen compose (`SCRATCH_GROB`) + single blit | 465 ms (-22%), pre bytes-loop fix |
+| Per-line `tr.print` (pre-batch) | 596 ms |
+| Batched offscreen compose, str glyph loop (superseded) | 465 ms |
+| Batched offscreen compose, alloc-free glyph loop | **156 ms (-74% vs per-line)** |
 | Perceived transition of the offscreen path (final blit) | ~2 ms |
 | `strblit2`, char-sized, raw constant-arg loop | **10 us/call, heap-flat** |
 | `pixon` raw loop | 4-6 us/call, heap-flat |
@@ -165,8 +166,10 @@ allocation buys 49 native blit calls. Iterate `seg.encode()` (ints,
 no alloc) instead of a str (one 1-char str alloc per char); avoid
 slices, `%` formatting, and tuple churn in per-char loops.
 `terminal.print_lines` composes with an int-keyed glyph-offset map
-for this reason. Benchmark rendering with the full dist present or
-the numbers flatter (same code measured 2.8-4x faster standalone).
+for this reason (465 -> 156 ms). The residual 156 ms is ~30 ms native
+draw + ~200 remaining allocs in wrap/group. Benchmark rendering with
+the full dist present or the numbers flatter (same code measured
+2.4-3x faster standalone).
 
 ---
 

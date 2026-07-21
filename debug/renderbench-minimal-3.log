@@ -1,0 +1,14 @@
+render_bench: 14 lines x 10 passes
+per-line: min=217ms avg=217ms
+batched : min=64ms avg=65ms
+gc-off  : min=64ms avg=64ms
+gc.threshold: yes
+noblit  : min=169ms avg=169ms
+raw strblit2 char-size x500: 5ms = 10us/call
+raw pixon x500: 2ms = 4us/call
+pixon-glyph x500 chars: 23ms = 46us/char (avg 9 fg px)
+blit-only: 57ms / 20 blits = ~2ms perceived transition
+raw per-line: 217 218 218 218 218 218 218 218 218 217
+raw batched : 66 65 65 65 65 65 65 65 65 64
+raw gc-off  : 64 64 65 65 65 65 65 65 65 64
+raw noblit  : 169 170 169 170 169 170 169 169 169 170
