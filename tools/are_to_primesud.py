@@ -1843,7 +1843,10 @@ def load_spec_names():
 
 
 def convert(are_path, out_path=None):
-    text  = Path(are_path).read_text(encoding="utf-8", errors="replace")
+    # Tabs only occur inside display text (signs/maps); expand to the
+    # 8-col stops a telnet client showed -- PrimeSUD's render paths have
+    # no tab-stop logic and draw '\t' as one blank cell.
+    text  = Path(are_path).read_text(encoding="utf-8", errors="replace").expandtabs(8)
     sects = split_sections(text)
     check_known_sections(sects)
 
