@@ -145,7 +145,7 @@ variance; full game modules loaded, i.e. in-game heap):
 | Batched offscreen compose (`SCRATCH_GROB`) + single blit | 461 ms (-22%) |
 | Perceived transition of the offscreen path (final blit) | ~2 ms |
 | Glyph blit floor (`tml` per-char `strblit2`) | ~0.7 ms/char |
-| Font recolour (`set_color` pixon loop) | ~2.5 ms/repaint |
+| Font recolour (`set_color` pixon loop, whole strip per colour *switch*, never per char) | ~2.5 ms/repaint (derived from the batching delta, not directly timed) |
 
 Batching wins by collapsing per-colour-switch font repaints (~40 for a
 colour-heavy screen) to one per distinct colour. `print_lines` composes
