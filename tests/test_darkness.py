@@ -287,7 +287,9 @@ def look_out(monkeypatch):
     import info
     import handler
     lines = []
-    cap = lambda ch, s="": lines.append(s)
+    # do_look sends a pre-split list batch; flatten so assertions see lines
+    cap = lambda ch, s="": (
+        lines.extend(s) if type(s) is list else lines.append(s))
     # do_look/do_exits print via info.chprintln; check_blind via handler's own
     monkeypatch.setattr(info, "chprintln", cap)
     monkeypatch.setattr(handler, "chprintln", cap)

@@ -290,28 +290,31 @@ def show_greeting():
 
     mem_part = "{G(Mem. free: %s)" % free_mem()
     pad = 64 - 23 - len(mem_part) - 1
-    _first = '{C 8888888b.          d8b' + ' ' * pad + mem_part + '{x'
-    tr.print(_first)
-    tr.print("{C 888   Y88b         Y8P                                       {x")
-    tr.print("{C 888    888                                                   {x")
-    tr.print("{C 888   d88P 888d888 888 88888b.d88b.   .d88b.                 {x")
-    tr.print('{C 8888888P"  888P"   888 888 "888 "88b d8P  Y8b                {x')
-    tr.print("{C 888        888     888 888  888  888 88888888                {x")
-    tr.print("{C 888        888     888 888  888  888 Y8b.                    {x")
-    tr.print('{C 888        888     888 888  888  888  "Y8888                 {x')
-    tr.print("{C                             .d8888b.  888     888 8888888b.  {x")
-    tr.print('{C                            d88P  Y88b 888     888 888  "Y88b {x')
-    tr.print("{C                            Y88b.      888     888 888    888 {x")
-    tr.print('{C                             "Y888b.   888     888 888    888 {x')
-    tr.print('{C                                "Y88b. 888     888 888    888 {x')
-    tr.print('{C                                  "888 888     888 888    888 {x')
-    tr.print("{C                            Y88b  d88P Y88b. .d88P 888  .d88P {x")
-    tr.print('{C                             "Y8888P"   "Y88888P"  8888888P"  {x')
-    tr.print("{c      Original DikuMUD by Hans Staerfeldt, Katja Nyboe,       {x")
-    tr.print("{c      Tom Madsen, Michael Seifert, and Sebastian Hammer       {x")
-    tr.print("{c      Based on MERC 2.1 code by Hatchet, Furey, and Kahn      {x")
-    tr.print("{c      ROM 2.4 copyright (c) 1993-1998 Russ Taylor.            {x")
-    tr.print("{c      1stMud Server copyright (c) 2001-2004, Markanth.        {x")
+    # [PRIMESUD] single list batch: one colour-grouped render (terminal
+    # print_lines) instead of 20 per-line print calls
+    tr.print([
+        '{C 8888888b.          d8b' + ' ' * pad + mem_part + '{x',
+        "{C 888   Y88b         Y8P                                       {x",
+        "{C 888    888                                                   {x",
+        "{C 888   d88P 888d888 888 88888b.d88b.   .d88b.                 {x",
+        '{C 8888888P"  888P"   888 888 "888 "88b d8P  Y8b                {x',
+        "{C 888        888     888 888  888  888 88888888                {x",
+        "{C 888        888     888 888  888  888 Y8b.                    {x",
+        '{C 888        888     888 888  888  888  "Y8888                 {x',
+        "{C                             .d8888b.  888     888 8888888b.  {x",
+        '{C                            d88P  Y88b 888     888 888  "Y88b {x',
+        "{C                            Y88b.      888     888 888    888 {x",
+        '{C                             "Y888b.   888     888 888    888 {x',
+        '{C                                "Y88b. 888     888 888    888 {x',
+        '{C                                  "888 888     888 888    888 {x',
+        "{C                            Y88b  d88P Y88b. .d88P 888  .d88P {x",
+        '{C                             "Y8888P"   "Y88888P"  8888888P"  {x',
+        "{c      Original DikuMUD by Hans Staerfeldt, Katja Nyboe,       {x",
+        "{c      Tom Madsen, Michael Seifert, and Sebastian Hammer       {x",
+        "{c      Based on MERC 2.1 code by Hatchet, Furey, and Kahn      {x",
+        "{c      ROM 2.4 copyright (c) 1993-1998 Russ Taylor.            {x",
+        "{c      1stMud Server copyright (c) 2001-2004, Markanth.        {x",
+    ])
     tr.input("                    [Press Enter to start]                     ",
         alpha=False,
     )
@@ -590,7 +593,7 @@ _POS_LINES = {
 }
 
 
-def _show_char_to_char(player, mob_ids):
+def _show_char_to_char(player, mob_ids, out=None):
     """List room chars to player; red-eyes fallback in the dark (cf. 1stMud show_char_to_char in act_info.c:470).
 
     Each char the viewer can_see renders a full line (show_char_to_char_0); a
@@ -602,7 +605,9 @@ def _show_char_to_char(player, mob_ids):
     Args:
         player (dict): Observer.
         mob_ids (list): Room's live mob instance ids.
+        out (list): [PRIMESUD] optional accumulator for batched room output.
     """
+    emit = out.append if out is not None else lambda line: chprintln(player, line)
     p_aff = player.get("affected_by", {})
     # [PRIMESUD] mob vnum overlay under holylight (upstream imms use stat)
     show_vnums = "holylight" in DBG
@@ -615,7 +620,7 @@ def _show_char_to_char(player, mob_ids):
         # else a dark-room char with AFF_INFRARED shows glowing eyes
         if not can_see(player, inst):
             if dark and inst.get("affected_by", {}).get("infrared"):
-                chprintln(player, "You see glowing red eyes watching YOU!")
+                emit("You see glowing red eyes watching YOU!")
             continue
         tpl = MOB_DEFS[inst["tpl"]]
         # Build AFF prefix string (cf. 1stMud show_char_to_char_0, act_info.c:191-214)
@@ -661,7 +666,7 @@ def _show_char_to_char(player, mob_ids):
                 line = name + _POS_LINES.get(pos, " is here.")
         if show_vnums:  # [PRIMESUD] template vnum; instance id via debug stat mob
             line += " {D[" + str(inst["tpl"]) + "]"
-        chprintln(player, "%s{M%s{x" % (prefix, line))
+        emit("%s{M%s{x" % (prefix, line))
 
 
 def do_look(player, args):
@@ -674,6 +679,11 @@ def do_look(player, args):
     living things via _show_char_to_char, not the room description.
 
     [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check); check_blind + pitch-black/red-eyes + can_see_obj room-item filter added and re-verified 08/07/2026; pitch-black infrared gate dropped + char-list shared via _show_char_to_char to match act_info.c:1114 (infrared shows chars not room desc), re-verified 08/07/2026; PLR_HOLYLIGHT leg of the act_info.c:1115 condition added as debug channel and re-verified 10/07/2026; COMM_BRIEF "auto" gate added and re-verified 20/07/2026]
+
+    [PRIMESUD] Room output accumulated into a list and sent as one batched
+    print (21/07/2026) -- perf deviation, 1stMud sends per line; player-visible
+    output unchanged. The list is passed through unjoined (see pitfall 8 /
+    PRIME_STRING_FORMAT_BUG.md: no join over %-formatted lines).
 
     Args:
         player (dict): Player state dict.
@@ -782,10 +792,11 @@ def do_look(player, args):
     # Room vnum in title under holylight, cf. 1stMud PLR_HOLYLIGHT gate
     # (act_info.c:1136-1139)
     show_vnums = "holylight" in DBG
+    out = []
     if show_vnums:
-        chprintln(player, "{Y" + room["name"] + " {D[" + str(player["room"]) + "]{x")
+        out.append("{Y" + room["name"] + " {D[" + str(player["room"]) + "]{x")
     else:
-        chprintln(player, "{Y" + room["name"] + "{x")
+        out.append("{Y" + room["name"] + "{x")
 
     # cf. 1stMud act_info.c:1144-1171 -- the description (and, nested inside
     # the same gate upstream, the automap draw) is skipped entirely under
@@ -800,10 +811,10 @@ def do_look(player, args):
             for i in range(n):
                 ml = map_lines[i] if i < len(map_lines) else ' ' * COMPACT_W
                 tl = desc_lines[i] if i < len(desc_lines) else ''
-                chprintln(player, ml + ' ' + color + tl)
+                out.append(ml + ' ' + color + tl)
         else:
             for tl in desc_lines:
-                chprintln(player, color + tl)
+                out.append(color + tl)
 
     # cf. 1stMud do_look: exits only shown with PLR_AUTOEXIT (do_exits "auto")
     if player.get("flags", PLR_DEFAULTS) & PLR_AUTOEXIT:
@@ -814,7 +825,7 @@ def do_look(player, args):
                      or room["exits"][d].get("to") is None))
         )
         exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
-        chprintln(player, "{g" + exit_string + "{x")
+        out.append("{g" + exit_string + "{x")
     live_mobs = rs["mobs"]
     # Items: build a display string per instance (flags + desc), stack by exact string match
     # (cf. 1stMud format_obj_to_char + show_list_to_char in act_info.c)
@@ -853,9 +864,12 @@ def do_look(player, args):
     for line in order:
         n = seen[line]
         stack_prefix = "(%2d) " % n if n > 1 else "     "
-        chprintln(player, stack_prefix + line)
+        out.append(stack_prefix + line)
     # Mobs: one per line (cf. 1stMud show_char_to_char in act_info.c)
-    _show_char_to_char(player, live_mobs)
+    _show_char_to_char(player, live_mobs, out)
+    # [PRIMESUD] list sent unjoined: terminal batch-renders it, and joining
+    # %-formatted lines trips the device heap bug (PRIME_STRING_FORMAT_BUG.md)
+    chprintln(player, out)
 
 
 _SCORE_INNER = TERMINAL_COLS - 2

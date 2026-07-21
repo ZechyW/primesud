@@ -637,7 +637,12 @@ def chprint(ch, txt):
 
 
 def chprintln(ch, txt):
-    """Direct-send one line (cf. 1stMud chprintln in character.h)."""
+    """Direct-send one line (cf. 1stMud chprintln in character.h).
+
+    [PRIMESUD] txt may also be a list of lines -- passed through unjoined and
+    batch-rendered by terminal.print_lines (avoids the device join-over-
+    formatted-strings bug, see PRIME_STRING_FORMAT_BUG.md).
+    """
     if txt is None:
         txt = ""
     return _send_player_text(ch, txt)

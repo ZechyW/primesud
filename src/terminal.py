@@ -64,9 +64,124 @@ def install_color_print(tr):
     _pxy = tr.print_xy
     _pch = tr._put_char
 
+    def _group_piece(piece):
+        """Split one physical colour-coded piece into per-colour segments. [PRIMESUD]
+
+        Returns:
+            (colour_order, groups): first-appearance colour order and
+            {colour_or_None: [(x, seg), ...]} at visible x offsets.
+        """
+        x = 0
+        current = None
+        colour_order = []
+        groups = {}
+        parts = piece.split(_CC)
+        seg = parts[0]
+        if seg:
+            colour_order.append(None)
+            groups[None] = [(0, seg)]
+            x = len(seg)
+        skip = False
+        for part in parts[1:]:
+            if not part:
+                # '{{' escape: literal '{'.
+                if current not in groups:
+                    colour_order.append(current)
+                    groups[current] = []
+                groups[current].append((x, _CC))
+                x += 1
+                skip = True
+                continue
+            if skip:
+                skip = False
+                seg = part
+            else:
+                code = part[0]
+                seg = part[1:]
+                if code in _ANSI:
+                    current = _ANSI[code]
+                elif code in _RST:
+                    current = None
+                else:
+                    seg = _CC + part
+            if seg:
+                if current not in groups:
+                    colour_order.append(current)
+                    groups[current] = []
+                groups[current].append((x, seg))
+                x += len(seg)
+        return colour_order, groups
+
+    def print_lines(lines):
+        """Render complete lines grouped by colour across rows. [PRIMESUD]"""
+        physical = []
+        for text in lines:
+            if _CC not in text:
+                physical.extend(_wrap_plain(text, cols))
+            elif (len(text) - 2 * text.count(_CC) <= cols
+                    and '{{' not in text):
+                physical.append(text)
+            else:
+                physical.extend(color_wrap_full(text, cols))
+
+        # Keep batches to one screen.  Rendering any older prefix normally
+        # lets rows which later scroll off enter the history ring unchanged.
+        extra = len(physical) - tr.rows
+        if extra > 0:
+            for text in physical[:extra]:
+                wrapped_print(text)
+            physical = physical[extra:]
+        while tr.cursor_y >= tr.rows:
+            tr._scroll_up()
+        overflow = tr.cursor_y + len(physical) - tr.rows
+        for _ in range(max(0, overflow)):
+            tr._scroll_up()
+
+        row = tr.cursor_y
+        colour_order = []
+        groups = {}
+        for piece in physical:
+            order_p, groups_p = _group_piece(piece)
+            for colour in order_p:
+                if colour not in groups:
+                    colour_order.append(colour)
+                    groups[colour] = []
+                segs = groups[colour]
+                for x, seg in groups_p[colour]:
+                    segs.append((x, row, seg))
+            row += 1
+
+        for colour in colour_order:
+            if colour is None:
+                reset_color()
+            else:
+                set_color(colour)
+            for x, y, seg in groups[colour]:
+                _pxy(x, y, seg)
+        tr.cursor_x = 0
+        tr.cursor_y = row
+
     def wrapped_print(*args, sep=' ', end='\n'):
         """Colour-aware print with word-wrap and per-run font recolouring. [PRIMESUD]"""
+        # [PRIMESUD] a single list arg is a pre-split line batch, passed
+        # through unjoined (join over %-formatted lines trips the device
+        # heap bug, PRIME_STRING_FORMAT_BUG.md).
+        if len(args) == 1 and type(args[0]) is list:
+            if end == '\n' and tr.cursor_x == 0:
+                print_lines(args[0])
+            else:
+                for line in args[0]:
+                    wrapped_print(line)
+            return
         text = sep.join(str(a) for a in args)
+        if '\n' in text and end == '\n' and tr.cursor_x == 0:
+            print_lines(text.split('\n'))
+            return
+        if '\n' in text:
+            lines = text.split('\n')
+            for idx, line in enumerate(lines):
+                wrapped_print(line, end='\n' if idx < len(lines) - 1 else end)
+            return
         if _CC not in text:
             # Fast path: skip color_wrap and all colour-code scanning.
             if current_fg[0] is not None:
@@ -87,45 +202,7 @@ def install_color_print(tr):
             pieces = color_wrap_full(text, cols)
         n = len(pieces)
         for idx, piece in enumerate(pieces):
-            x = 0
-            current = None
-            colour_order = []
-            groups = {}
-            parts = piece.split(_CC)
-            seg = parts[0]
-            if seg:
-                colour_order.append(None)
-                groups[None] = [(0, seg)]
-                x = len(seg)
-            skip = False
-            for part in parts[1:]:
-                if not part:
-                    # '{{' escape: literal '{'.
-                    if current not in groups:
-                        colour_order.append(current)
-                        groups[current] = []
-                    groups[current].append((x, _CC))
-                    x += 1
-                    skip = True
-                    continue
-                if skip:
-                    skip = False
-                    seg = part
-                else:
-                    code = part[0]
-                    seg = part[1:]
-                    if code in _ANSI:
-                        current = _ANSI[code]
-                    elif code in _RST:
-                        current = None
-                    else:
-                        seg = _CC + part
-                if seg:
-                    if current not in groups:
-                        colour_order.append(current)
-                        groups[current] = []
-                    groups[current].append((x, seg))
-                    x += len(seg)
+            colour_order, groups = _group_piece(piece)
             if groups:
                 # [PRIMESUD] lazy scroll: resolve any pending scroll before
                 # drawing via print_xy (bypasses _put_char's check).
