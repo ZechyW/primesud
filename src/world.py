@@ -81,6 +81,7 @@ _AREA_FILES = [
     ("area_canyon.txt", "canyon", "Elemental Canyon", 9200, 9299),    # 79432 bytes
     ("area_pyramid.txt", "pyramid", "Pyramid", 8700, 8799),           # 85380 bytes
     ("area_haon.txt", "haon", "Haon Dor", 6000, 6199),                # 85969 bytes
+    ("area_chess2.txt", "chess2", "Chessboard of Midgaard", 4200, 4299), # 90301 bytes
     ("area_moria.txt", "moria", "Moria", 3900, 4199),                 # 98773 bytes
     ("area_mirror.txt", "mirror", "Old Thalos", 5300, 5399),          # 110420 bytes
     ("area_astral.txt", "astral", "Astral Plane", 7700, 7799),        # 112453 bytes
@@ -140,7 +141,8 @@ AREA_LEVELS = {
     "mirror":     (1, 30),
     "nirvana":    (30, 35),
     "olympus":    (5, 50),
-    "pyramid":    (1, 60),  # credits carry "5-50" (unparsed -> converter default)
+    "pyramid":    (5, 50),
+    "chess2":     (10, 35),
     "redferne":   (20, 30),
     "smurf":      (1, 10),
     "thalos":     (10, 25),
@@ -199,6 +201,7 @@ AREA_BUILDERS = {
     "canyon":     "Raff",
     "pyramid":    "Andersen",
     "haon":       "Diku",
+    "chess2":     "Exxon",
     "moria":      "Alfa",
     "mirror":     "Kahn",
     "astral":     "Andersen",
@@ -215,7 +218,6 @@ AREA_LVL_COMMENTS = {
     "ofcol":    "All",
     "limbo":    "None",
     "quest":    "None",
-    "pyramid":  "5-50",
     "midgaard": "All",
 }
 
@@ -258,6 +260,7 @@ _AREA_ADJ = {
     "canyon":     ("thalos",),
     "pyramid":    ("eastern",),
     "haon":       ("arachnos", "hitower", "marsh", "midgaard", "newthalos", "shire", "trollden"),
+    "chess2":     ("midgaard",),
     "moria":      ("dwarven", "midennir", "midgaard", "plains", "sewer"),
     "mirror":     ("grove",),
     "astral":     ("air",),
@@ -266,7 +269,7 @@ _AREA_ADJ = {
     "sewer":      ("midgaard",),
     "tohell":     ("chapel",),
     "hitower":    ("chapel", "draconia", "drow", "dylan", "galaxy", "haon", "midgaard", "olympus", "sewer"),
-    "midgaard":   ("air", "dream", "eastern", "grave", "haon", "hood", "immort", "limbo", "midennir", "mobfact", "moria", "mud_school", "newthalos", "quest", "redferne", "sewer"),
+    "midgaard":   ("air", "chess2", "dream", "eastern", "grave", "haon", "hood", "immort", "limbo", "midennir", "mobfact", "moria", "mud_school", "newthalos", "quest", "redferne", "sewer"),
     "newthalos":  ("haon", "midennir", "midgaard"),
 }
 
@@ -309,6 +312,7 @@ AREA_ROOM_COUNTS = {
     "canyon":     55,
     "pyramid":    60,
     "haon":       71,
+    "chess2":     67,
     "moria":      121,
     "mirror":     86,
     "astral":     80,

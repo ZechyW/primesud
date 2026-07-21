@@ -513,6 +513,19 @@
 6116|haon|17|oldstyle elder druid|the elder druid|haon
 6318|arachnos|8|oldstyle spider poisonous|the huge, poisonous spider|haon
 6319|arachnos|15|oldstyle queen spider|the Queen Spider|haon
+4200|chess2|10|black pawn|the Pawn of the Black Court|chess2
+4201|chess2|10|white pawn|the Pawn of the White Court|chess2
+4202|chess2|27|black rook castle|the Black Rook|chess2
+4203|chess2|27|white rook castle|the White Rook|chess2
+4204|chess2|18|black knight|the Black Knight|chess2
+4205|chess2|18|white knight|the White Knight|chess2
+4206|chess2|24|black bishop priest|the Black Bishop|chess2
+4207|chess2|24|white bishop priest|the White Bishop|chess2
+4208|chess2|32|black queen|the Black Queen|chess2
+4209|chess2|32|white queen|the White Queen|chess2
+4210|chess2|36|black king|the Black King|chess2
+4211|chess2|36|white king|the White King|chess2
+4212|chess2|60|caliph omar ghost|the Ghost of Caliph Omar|chess2
 4000|moria|11|python snake|the huge python|moria
 4001|moria|7|garter snake|the garter snake|moria
 4002|moria|3|centipede|the centipede|moria

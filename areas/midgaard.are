@@ -3858,10 +3858,12 @@ It is built from large grey rocks that have been fastened to each other with
 some kind of mortar.  It is far too high to climb.
 ~
 S
+* [PRIMESUD] Reciprocal gate into chess2.are; room 4200 already exits east here.
 #3043
 Wall Road~
 You are walking next to the western city wall.  Wall Road continues further
-north and south.  A small, poor alley leads east.
+north and south.  A small, poor alley leads east, while a rusted gate opens
+west onto a narrow dirt path.
 Some letters have been written on the wall here.
 ~
 0 S 1
@@ -3880,6 +3882,11 @@ The road continues further south.
 ~
 ~
 0 -1 3047
+D3
+A narrow dirt path leads west through the rusted gate.
+~
+~
+0 -1 4200
 E
 wall~
 It is built from large grey rocks that have been fastened to each other with

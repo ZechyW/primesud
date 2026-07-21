@@ -149,6 +149,8 @@ def test_routes_match_unrestricted_bfs(real_world):
         # (src, target_tag, target_room) -- target_room None = area target
         (_first_room(data, "catacomb"), "midgaard", None),
         (2, "olympus", None),                    # old corridor: 71 vs ~18
+        (3001, "chess2", None),
+        (_first_room(data, "chess2"), "midgaard", None),
         (3001, "moria", None),
         (_first_room(data, "newthalos"), "midgaard", None),
         (_first_room(data, "olympus"), "catacomb", None),

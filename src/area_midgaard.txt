@@ -2029,11 +2029,12 @@ ROOMS = {
     },
     3043: {
         "name": 'Wall Road',
-        "desc": 'You are walking next to the western city wall.  Wall Road continues further\nnorth and south.  A small, poor alley leads east.\nSome letters have been written on the wall here.',
+        "desc": 'You are walking next to the western city wall.  Wall Road continues further\nnorth and south.  A small, poor alley leads east, while a rusted gate opens\nwest onto a narrow dirt path.\nSome letters have been written on the wall here.',
         "exits": {
             "n": {"to": 3042, "desc": 'The road continues further north.'},
             "e": {"to": 3044, "desc": 'The alley leads east.'},
             "s": {"to": 3047, "desc": 'The road continues further south.'},
+            "w": {"to": 4200, "desc": 'A narrow dirt path leads west through the rusted gate.'},
         },
         "flags": {"law": True},
         "sector": 'city',

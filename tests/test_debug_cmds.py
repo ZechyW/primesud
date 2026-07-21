@@ -160,7 +160,7 @@ def test_load_obj_notake_goes_to_room(scene, out):
 
 
 def test_load_bad_vnum(scene, out):
-    _run(scene["player"], "load mob 4242")
+    _run(scene["player"], "load mob 99999")
     assert "No mob has that vnum." in out
 
 

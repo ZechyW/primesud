@@ -140,7 +140,8 @@ def test_do_explored_noarg_lines():
     _set(p, 3001, 3002)
     lines = _capture(do_explored, p, [])
     assert len(lines) == 4
-    assert "The realm has {G3124{x explorable rooms." == lines[0]
+    total = sum(world.AREA_ROOM_COUNTS.values())
+    assert "The realm has {G" + str(total) + "{x explorable rooms." == lines[0]
     assert "explored {G2 (" in lines[3]     # current area line
 
 

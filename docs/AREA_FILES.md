@@ -717,6 +717,7 @@ support -- noted per row).
 | Cross-area exits: room 3001 `e`->200, `w`->201 (quest area) | `midgaard.are` | room 3001 | 1stMud-faithful -- `reference/1stMud4.5.3/area/midgaard.are` room 3001 has these exact `D1`/`D3` exits (empty desc/keyword, matching upstream) |
 | Cross-area exit: room 3054 `d`->3 (limbo) | `midgaard.are` | room 3054 | 1stMud-faithful -- same reference room's `D5` exit |
 | Cross-area exit: room 3303 `s`->202 (quest trivia shop) | `midgaard.are` | room 3303 | 1stMud-faithful -- same reference room's `D2` exit |
+| Cross-area exit: room 3043 `w`->4200 (Chessboard of Midgaard) | `midgaard.are` | room 3043 | [PRIMESUD] -- reciprocal for `chess2.are` room 4200's stock `e`->3043 exit; makes the shipped area reachable from Midgaard |
 | Guildmaster `train`+`gain` act flags | `midgaard.are` | mobs 3020 (mage), 3023 (warrior) | 1stMud-faithful -- reference `midgaard.are`'s `+Y/n` bitstrings for 3020/3023 have bits 9 (train) and 27 (gain) set |
 | Guildmaster `gain` act flag (no `train`) | `midgaard.are` | mobs 3021 (cleric), 3022 (thief) | [PRIMESUD] -- upstream 1stMud has neither bit set for these two; added so every class is gain/remort-capable within midgaard (`CLASS_PLAN.md` Phase D) |
 | Room guild: mage | `midgaard.are` | rooms 3018, 3019 -> `(0,)` | 1stMud-faithful -- reference rooms carry a single `G 0` each |

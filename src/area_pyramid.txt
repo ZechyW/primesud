@@ -2,16 +2,15 @@
 # Area: Pyramid
 # Source: QuickMUD/ROM 2.4
 # VNUM ranges: 8700-8799
-# Credits: { 5-50} Andersen The Great Pyramid
+# Credits: { 5 50} Andersen The Great Pyramid
 
 
 AREA = {
     "name":     'Pyramid',
     "builders": 'None',
     "vnums":    (8700, 8799),
-    "credits":  '{ 5-50} Andersen The Great Pyramid',
-    "lvl_comment": '5-50',
-    "levels":   (1, 60),
+    "credits":  '{ 5 50} Andersen The Great Pyramid',
+    "levels":   (5, 50),
 }
 
 # -- Mob templates --------------------------------------------------------------

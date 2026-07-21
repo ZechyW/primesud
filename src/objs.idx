@@ -593,6 +593,79 @@ haon|6111|shield large
 haon|6112|crown iron
 haon|6114|ring iron
 haon|6155|morning-star star morning
+chess2|4200|armour black pawn
+chess2|4201|armour white pawn
+chess2|4202|axe black pawn
+chess2|4203|axe white pawn
+chess2|4204|armour black rook
+chess2|4205|armour white rook
+chess2|4206|lance black knight
+chess2|4207|lance white knight
+chess2|4208|staff black bishop
+chess2|4209|staff white bishop
+chess2|4210|crown black queen
+chess2|4211|crown white queen
+chess2|4212|sceptre black king
+chess2|4213|sceptre white king
+chess2|4214|key black treasury
+chess2|4215|key white treasury
+chess2|4216|coins gold black royal treasure
+chess2|4217|coins gold white royal treasure
+chess2|4218|flail black pawn
+chess2|4219|flail white pawn
+chess2|4220|whip black pawn
+chess2|4221|whip white pawn
+chess2|4222|spear black pawn
+chess2|4223|spear white pawn
+chess2|4224|halberd black pawn
+chess2|4225|halberd white pawn
+chess2|4226|rapier black pawn
+chess2|4227|rapier white pawn
+chess2|4228|kris black pawn
+chess2|4229|kris white pawn
+chess2|4230|crossbow black pawn
+chess2|4231|crossbow white pawn
+chess2|4232|shield black pawn
+chess2|4233|shield white pawn
+chess2|4234|cloak black pawn
+chess2|4235|cloak white pawn
+chess2|4236|helmet black pawn
+chess2|4237|helmet white pawn
+chess2|4238|leggings black pawn
+chess2|4239|leggings white pawn
+chess2|4240|boots black pawn
+chess2|4241|boots white pawn
+chess2|4242|gloves black pawn
+chess2|4243|gloves white pawn
+chess2|4244|sleeves black pawn
+chess2|4245|sleeves white pawn
+chess2|4246|cape black pawn
+chess2|4247|cape white pawn
+chess2|4248|belt black pawn
+chess2|4249|belt white pawn
+chess2|4250|bracer black pawn
+chess2|4251|bracer white pawn
+chess2|4260|small chessboard
+chess2|4261|shield black pawn
+chess2|4262|shield white pawn
+chess2|4263|cloak black pawn
+chess2|4264|cloak white pawn
+chess2|4265|helmet black pawn
+chess2|4266|helmet white pawn
+chess2|4267|leggings black pawn
+chess2|4268|leggings white pawn
+chess2|4269|boots black pawn
+chess2|4270|boots white pawn
+chess2|4271|gloves black pawn
+chess2|4272|gloves white pawn
+chess2|4273|sleeves black pawn
+chess2|4274|sleeves white pawn
+chess2|4275|cape black pawn
+chess2|4276|cape white pawn
+chess2|4277|belt black pawn
+chess2|4278|belt white pawn
+chess2|4279|bracer black pawn
+chess2|4280|bracer white pawn
 moria|4000|ring yellow green
 moria|4001|corpse
 moria|4002|coins
