@@ -96,6 +96,12 @@ Two-track release plan:
 
 ## Platform
 
+- **Validate mobs.idx heap headroom on device (21/07/2026)** -- the index
+  grew 32KB -> 58KB (all templates, counter metadata). `mobkills`/
+  `mobdeaths` and `_find_unloaded_mob` each do one whole-file `read()` +
+  `split("\n")` (~120KB transient). Sanity-check on hardware: `mobkills`
+  with populated counters, and portal/summon into an unloaded area;
+  watch `gc.mem_free`.
 - **Validate fling-scroll tuning on physical Prime** — touch scrollback now
   uses row-step fling easing with touch-cancel/release guard
   (`tml_prime.py`, 06/07/2026). Re-tune thresholds/decay on device if it
