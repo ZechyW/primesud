@@ -36,9 +36,12 @@ def minify_source(source):
         remove_explicit_return_none=True,
         remove_builtin_exception_brackets=True,
         constant_folding=True,
-        # Risky on HP Prime -- disable
-        hoist_literals=False,
-        rename_locals=False,
+        # Enabled 21/07/2026 (were off as untested-on-device): desktop
+        # --check + dist smoke green; device walk pending (TODO.md).
+        # hoist_literals dedups repeated area-data strings (-816KB);
+        # rename_locals shrinks source + on-device qstr pool (-90KB).
+        hoist_literals=True,
+        rename_locals=True,
         rename_globals=False,
         convert_posargs_to_args=False,
         remove_asserts=False,
@@ -197,7 +200,10 @@ def check_area_data():
             errors.append("%s: exec failed: %s" % (src_file.name, e))
             continue
         src_data = {k: v for k, v in src_ns.items() if not k.startswith("__")}
-        dst_data = {k: v for k, v in dst_ns.items() if not k.startswith("__")}
+        # Compare on src's keyset: src is never hoisted, so its keys are
+        # canonical. hoist_literals adds helper names to the dist namespace
+        # (ignored here); a missing or wrong-valued key still mismatches.
+        dst_data = {k: dst_ns.get(k) for k in src_data}
         if src_data != dst_data:
             diff_keys = [k for k in sorted(set(src_data) | set(dst_data))
                          if src_data.get(k) != dst_data.get(k)]

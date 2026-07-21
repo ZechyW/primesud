@@ -102,6 +102,21 @@ Two-track release plan:
   `split("\n")` (~120KB transient). Sanity-check on hardware: `mobkills`
   with populated counters, and portal/summon into an unloaded area;
   watch `gc.mem_free`.
+- **Validate minifier flags + startup preload on device (21/07/2026)** --
+  `hoist_literals` + `rename_locals` now on in build_dist.py (-906KB dist,
+  desktop --check + import/area smoke green; were off as untested).
+  `primesud.run()` now preloads the lazy trio (mobprog/socials/namegen)
+  before the game loop so first-use lag lands in startup, regardless of
+  the Prime's auto-import order. On hardware: full boot, new game through
+  Mud School (first prog fires), one area load, save/load round-trip;
+  watch `gc.mem_free` at the greeting vs pre-flag build.
+- **Validate batched line rendering on device (21/07/2026)** -- `look` and
+  the greeting now render via `terminal.print_lines` (one colour-grouped
+  pass, list passed unjoined per PRIME_STRING_FORMAT_BUG.md). Desktop
+  tests cover logic only; on hardware check: `look` in a busy room
+  (mobs + stacked items + automap), greeting screen paints correctly,
+  and an over-a-screen batch (long room desc) scrolls into the history
+  ring intact. Watch for garbled rows or `gc.mem_free` dips.
 - **Validate fling-scroll tuning on physical Prime** — touch scrollback now
   uses row-step fling easing with touch-cancel/release guard
   (`tml_prime.py`, 06/07/2026). Re-tune thresholds/decay on device if it
