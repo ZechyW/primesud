@@ -17,7 +17,7 @@ import handler
 import world
 from classes import CLASS_MAGE, CLASS_WARRIOR, CLASS_THIEF, class_who, prime_class
 from config import MAX_MORTAL_LEVEL
-from player import create_char
+from player import create_char, _EQUIP_SAVE_ORDER
 from system_cmds import do_backup
 from training import do_prime
 
@@ -141,8 +141,50 @@ class TestBackup:
         do_backup(player, [])
         player["played"] = 20
         game_state.save_world(quiet=True)
-        assert "p.played=20" in save_file.read_text()
-        assert "p.played=10" in backup_file.read_text()
+        played_i = game_state._PLAYER_NUMBER_SAVE_KEYS.index("played")
+        primary_n = next(line for line in save_file.read_text().split("~")
+                         if line.startswith("p.n="))
+        backup_n = next(line for line in backup_file.read_text().split("~")
+                        if line.startswith("p.n="))
+        assert int(primary_n.split("=", 1)[1].split("|")[played_i]) == 20
+        assert int(backup_n.split("=", 1)[1].split("|")[played_i]) == 10
+
+
+class TestCompactPlayerSave:
+    def test_numeric_and_equipment_roundtrip(self, tmp_path, monkeypatch):
+        import game_state
+        save_file = tmp_path / "compact.sav"
+        monkeypatch.setattr(game_state, "SAVE_FILE", str(save_file))
+
+        player = _make_player()
+        player["level"] = 12
+        player["xp"] = 3456
+        player["gold_bank"] = 789
+        player["perm_stat"]["str"] = 19
+        player["equip"]["wield"] = {"vnum": 3702, "cost": 0}
+        expected_numbers = {
+            k: player[k] for k in game_state._PLAYER_NUMBER_SAVE_KEYS}
+        expected_numbers["room"] = game_state.R_STARTING_ROOM
+        expected_stats = dict(player["perm_stat"])
+
+        game_state._serialize_world()
+        payload = save_file.read_text()
+        assert "~p.n=" in payload
+        assert "~p.level=" not in payload
+        assert "~p.eq=" in payload
+        assert "~p.eq.wield=" not in payload
+
+        world.chars.clear()
+        loaded = create_char()
+        loaded["_macros"] = {}
+        world.chars[1] = loaded
+        assert game_state.load_world() == "file"
+        assert {
+            k: loaded[k] for k in game_state._PLAYER_NUMBER_SAVE_KEYS
+        } == expected_numbers
+        assert loaded["perm_stat"] == expected_stats
+        assert loaded["equip"]["wield"] == {"vnum": 3702, "cost": 0}
+        assert set(loaded["equip"]) == set(_EQUIP_SAVE_ORDER)
 
 
 # -- prime ------------------------------------------------------------------------

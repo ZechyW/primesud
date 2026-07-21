@@ -752,6 +752,9 @@ class TestUnvisitedDataPreservedOnResave:
 
     def test_pending_mob_saves_in_serialized_output(self, fresh_world):
         """Mob positions for unvisited areas appear in save payload."""
+        import game_state
+        from player import create_char
+
         fw = fresh_world
         fw.register_area("alpha", 100, 199,
                          rooms={100: {"name": "R100", "exits": {}}},
@@ -763,29 +766,21 @@ class TestUnvisitedDataPreservedOnResave:
         world._pending_mob_saves[200] = [200]
         fw.setup()
 
-        _load_area("alpha")
+        player = create_char()
+        player["name"] = "Tester"
+        player["room"] = 100
+        player["_macros"] = {}
+        world.chars[1] = player
+        game_state._serialize_world()
 
-        # Simulate what _serialize_world now does: live chars + pending
-        tpl_rooms = {}
-        for mob_id in sorted(world.chars):
-            inst = world.chars[mob_id]
-            if not inst.get("is_npc"):
-                continue
-            tpl = inst["tpl"]
-            if tpl not in tpl_rooms:
-                tpl_rooms[tpl] = []
-            tpl_rooms[tpl].append(inst["room"])
+        with open(game_state.SAVE_FILE) as f:
+            payload = f.read()
+        assert "~m=200,200" in payload
+        assert "~m.200=" not in payload
 
-        serialized_lines = []
-        for tpl_vnum in sorted(world._pending_mob_saves):
-            if tpl_vnum in tpl_rooms:
-                continue
-            parts = [str(r) for r in world._pending_mob_saves[tpl_vnum]]
-            serialized_lines.append("m." + str(tpl_vnum) + "=" + "|".join(parts))
-
-        mob_200_lines = [l for l in serialized_lines if l.startswith("m.200=")]
-        assert len(mob_200_lines) == 1
-        assert "200" in mob_200_lines[0]
+        world._pending_mob_saves.clear()
+        assert game_state.load_world() == "file"
+        assert world._pending_mob_saves[200] == [200]
 
 
 # ===== BUG: area age unbounded for unloaded areas ==========================

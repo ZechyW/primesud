@@ -38,13 +38,29 @@ from explored import encode_rle, decode_rle
 # different skill would cause old saves to corrupt the new skill's learned %.
 SAVE_VERSION = 9  # v9: p.explored RLE mask (explore tracking); v8: item lh: token, per-area weather
 
-# Per-area weather packed save line: a.<tag>.w=<temp>|<tv>|<precip>|<pv>|<wind>|<wv>
-# (cf. game_time weather model). [PRIMESUD] One line per area instead of six
-# (~6 kB -> ~1.3 kB of payload for 48 areas). Missing/short lines keep the
-# freshly seeded random values on load; pre-pack saves' a.<tag>.temp=-style
-# lines fall through as ignored unknown keys (one-time weather reroll).
+# Per-area state packed save line:
+# a.<tag>=<age>|<temp>|<tv>|<precip>|<pv>|<wind>|<wv>
+# (cf. game_time weather model). [PRIMESUD] Legacy .age/.w lines remain
+# loadable. Missing/short weather keeps freshly seeded random values.
 _WEATHER_PACK_FIELDS = ("temp", "temp_vector", "precip", "precip_vector",
                         "wind", "wind_vector")
+
+# Fixed-order compact player fields. Never reorder or extend without a
+# compatibility branch; save new additive fields as named lines instead.
+# Legacy p.<name> lines remain loadable. [PRIMESUD]
+_PLAYER_STRING_SAVE_KEYS = (
+    "name", "title", "race", "sex", "true_sex",
+    "quest_mob_name", "quest_room_name", "quest_area_name",
+)
+_PLAYER_NUMBER_SAVE_KEYS = (
+    "level", "xp", "xp_next", "hit", "mana", "move",
+    "perm_hit", "perm_mana", "perm_move", "room", "trivia",
+    "practice", "train", "flags", "played", "backup", "alignment",
+    "tier", "gold", "silver", "gold_bank", "shares", "wimpy",
+    "quest_points", "quest_status", "quest_time", "quest_mob",
+    "quest_obj", "quest_room", "quest_giver", "prime_class",
+)
+_PLAYER_STAT_SAVE_KEYS = ("str", "dex", "int", "wis", "con")
 
 # -- Persistence ---------------------------------------------------------------
 # Dual-save strategy:
@@ -86,28 +102,19 @@ def _serialize_world(hvar_name=None, file_name=None):
     player = world.chars[1]
     gc_collect()
     lines = ["v=" + str(SAVE_VERSION)]
-    for key in ("name", "title", "race", "sex", "true_sex",
-                "level", "xp", "xp_next",
-                "hit", "mana", "move",
-                "perm_hit", "perm_mana", "perm_move",
-                "room", "trivia",
-                "practice", "train", "flags", "played", "backup", "alignment",
-                "tier",  # [PRIMESUD] prestige tier (see training.py finish_tier_reset)
-                "gold", "silver", "gold_bank", "shares", "wimpy",
-                # cf. 1stMud fwrite_char QuestPnts/QuestNext; PrimeSUD also
-                # persists the active quest (vnum-based, see quest.py)
-                "quest_points", "quest_status", "quest_time",
-                "quest_mob", "quest_obj", "quest_room", "quest_giver",
-                "quest_mob_name", "quest_room_name", "quest_area_name"):
+    for key in _PLAYER_STRING_SAVE_KEYS:
         lines.append("p." + key + "=" + str(player[key]))
-    for stat in ("str", "dex", "int", "wis", "con"):
-        lines.append("p." + stat + "=" + str(player["perm_stat"][stat]))
+    number_parts = []
+    for key in _PLAYER_NUMBER_SAVE_KEYS:
+        number_parts.append(str(player[key]))
+    for stat in _PLAYER_STAT_SAVE_KEYS:
+        number_parts.append(str(player["perm_stat"][stat]))
+    lines.append("p.n=" + "|".join(number_parts))
     # cf. 1stMud ch->Class[] -- comma-joined ints (str+concat per PRIME_STRING_FORMAT_BUG)
     cls_str = ""
     for c in player["classes"]:
         cls_str = cls_str + ("," if cls_str else "") + str(c)
     lines.append("p.classes=" + cls_str)
-    lines.append("p.prime_class=" + str(player["prime_class"]))
     # cf. 1stMud fwrite_char "Pos" -- fighting saved as standing
     lines.append("p.pos=" + str("standing" if player.get("pos") == "fighting"
                                 else player.get("pos", "standing")))
@@ -127,10 +134,12 @@ def _serialize_world(hvar_name=None, file_name=None):
     for o in player["inv"]:
         inv_parts.append(serialize_item_token(o))
     lines.append("p.inv=" + "|".join(inv_parts))
+    equip_parts = []
     for slot in _EQUIP_SAVE_ORDER:
         obj = player["equip"][slot]
         val = serialize_item_token(obj) if obj is not None else ""
-        lines.append("p.eq." + slot + "=" + val)
+        equip_parts.append(val)
+    lines.append("p.eq=" + "|".join(equip_parts))
     learned_parts = []
     for sk in sorted(player["learned"]):
         learned_parts.append(str(sk) + ":" + str(player["learned"][sk]))
@@ -185,13 +194,12 @@ def _serialize_world(hvar_name=None, file_name=None):
         lines.append("p.alias." + _al_name + "=" + _al_sub)
     for _as in world.areas:
         # HP Prime G1 has unstable percent-format strings in save payloads.
-        lines.append("a." + str(_as["tag"]) + ".age=" + str(_as["age"]))
+        _aparts = [str(_as["age"])]
         weather = _as.get("weather")
         if weather is not None:
-            _wparts = []
             for _wfld in _WEATHER_PACK_FIELDS:
-                _wparts.append(str(weather.get(_wfld, 0)))
-            lines.append("a." + str(_as["tag"]) + ".w=" + "|".join(_wparts))
+                _aparts.append(str(weather.get(_wfld, 0)))
+        lines.append("a." + str(_as["tag"]) + "=" + "|".join(_aparts))
     lines.append("g.time=" + str(time_info["hour"]) + "|" + str(time_info["day"]) + "|" + str(time_info["month"]) + "|" + str(time_info["year"]))
     lines.append("g.share=" + str(world.share_value))
     for _vnum in sorted(world.mob_stats):
@@ -217,6 +225,7 @@ def _serialize_world(hvar_name=None, file_name=None):
     # and the 5% despawn keeps cross-area wanderers transient anyway.
     tpl_rooms = {}
     tpl_order = []
+    mob_parts = []
     for mob_id in sorted(world.chars):
         inst = world.chars[mob_id]
         if not inst.get("is_npc"):
@@ -236,7 +245,7 @@ def _serialize_world(hvar_name=None, file_name=None):
         room_parts = []
         for r in rooms:
             room_parts.append(str(r))
-        lines.append("m." + str(tpl_vnum) + "=" + "|".join(room_parts))
+        mob_parts.append(str(tpl_vnum) + "," + "|".join(room_parts))
     # Re-serialize pending mob deltas for unloaded areas (not in world.chars)
     for tpl_vnum in sorted(world._pending_mob_saves):
         if tpl_vnum in tpl_rooms:
@@ -244,7 +253,9 @@ def _serialize_world(hvar_name=None, file_name=None):
         room_parts = []
         for r in world._pending_mob_saves[tpl_vnum]:
             room_parts.append(str(r))
-        lines.append("m." + str(tpl_vnum) + "=" + "|".join(room_parts))
+        mob_parts.append(str(tpl_vnum) + "," + "|".join(room_parts))
+    if mob_parts:
+        lines.append("m=" + ";".join(mob_parts))
     for rvnum in sorted(world.rooms):
         rs = world.rooms[rvnum]
         if not rs["items"]:
@@ -365,16 +376,8 @@ def load_world():
             _backup_ok = False
         return (None, _backup_ok)
 
-    _STAT_KEYS = {"str", "dex", "int", "wis", "con"}
-    int_keys = {"level", "xp", "xp_next", "trivia",
-                "str", "dex", "int", "wis", "con",
-                "hit", "mana", "move",
-                "perm_hit", "perm_mana", "perm_move",
-                "room", "alignment", "prime_class",
-                "practice", "train", "flags", "played", "backup", "tier",
-                "gold", "silver", "gold_bank", "shares", "wimpy",
-                "quest_points", "quest_status", "quest_time",
-                "quest_mob", "quest_obj", "quest_room", "quest_giver"}
+    _STAT_KEYS = set(_PLAYER_STAT_SAVE_KEYS)
+    int_keys = set(_PLAYER_NUMBER_SAVE_KEYS)
 
     if player["_macros"] is not None:
         player["_macros"].clear()
@@ -394,6 +397,21 @@ def load_world():
             _pet_save = val
         elif key == "p.pet.affects":
             _pet_affects = val
+        elif key == "p.n":
+            parts = val.split("|")
+            if len(parts) == (len(_PLAYER_NUMBER_SAVE_KEYS)
+                              + len(_PLAYER_STAT_SAVE_KEYS)):
+                for i in range(len(_PLAYER_NUMBER_SAVE_KEYS)):
+                    player[_PLAYER_NUMBER_SAVE_KEYS[i]] = int(parts[i])
+                offset = len(_PLAYER_NUMBER_SAVE_KEYS)
+                for i in range(len(_PLAYER_STAT_SAVE_KEYS)):
+                    player["perm_stat"][_PLAYER_STAT_SAVE_KEYS[i]] = int(parts[offset + i])
+        elif key == "p.eq":
+            parts = val.split("|")
+            if len(parts) == len(_EQUIP_SAVE_ORDER):
+                for i in range(len(parts)):
+                    player["equip"][_EQUIP_SAVE_ORDER[i]] = (
+                        parse_item_token(parts[i]) if parts[i] else None)
         elif key.startswith("p.eq."):
             slot = key[5:]
             player["equip"][slot] = parse_item_token(val) if val else None
@@ -470,6 +488,15 @@ def load_world():
                     w = _area_by_tag[tag].setdefault("weather", {})
                     for i in range(len(parts)):
                         w[_WEATHER_PACK_FIELDS[i]] = int(parts[i])
+        elif key.startswith("a."):
+            tag = key[2:]
+            parts = val.split("|")
+            if tag in _area_by_tag and parts:
+                _area_by_tag[tag]["age"] = int(parts[0])
+                if len(parts) == len(_WEATHER_PACK_FIELDS) + 1:
+                    w = _area_by_tag[tag].setdefault("weather", {})
+                    for i in range(len(_WEATHER_PACK_FIELDS)):
+                        w[_WEATHER_PACK_FIELDS[i]] = int(parts[i + 1])
         elif key.startswith("g.gq") and gq_load_line(key, val):  # [PRIMESUD]
             pass
         elif key == "g.share":
@@ -498,6 +525,11 @@ def load_world():
                     time_info["sunlight"] = SUN_SET
                 else:
                     time_info["sunlight"] = SUN_LIGHT
+        elif key == "m":
+            for entry in val.split(";"):
+                if "," in entry:
+                    tpl, rooms = entry.split(",", 1)
+                    mob_saves[int(tpl)] = [int(r) for r in rooms.split("|") if r]
         elif key.startswith("m."):
             mob_saves[int(key[2:])] = [int(r) for r in val.split("|") if r]
 

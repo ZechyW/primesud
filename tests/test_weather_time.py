@@ -46,7 +46,7 @@ class TestWeatherHelpers:
 
 
 # ---------------------------------------------------------------------------
-# Packed per-area weather save line
+# Packed per-area state save line
 # ---------------------------------------------------------------------------
 
 class TestWeatherPersistence:
@@ -71,7 +71,9 @@ class TestWeatherPersistence:
             game_state._serialize_world()
             with open(str(tmp_path / "t.sav")) as f:
                 payload = f.read()
-            assert "a.midgaard.w=-12|3|5|-2|30|1" in payload
+            assert "a.midgaard=3|-12|3|5|-2|30|1" in payload
+            assert "a.midgaard.age=" not in payload
+            assert "a.midgaard.w=" not in payload
 
             world.areas[0]["weather"] = {}
             assert game_state.load_world() == "file"
