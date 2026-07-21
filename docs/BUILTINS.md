@@ -132,6 +132,28 @@ the 150KB help.dat.
 
 ---
 
+## Text rendering performance (measured on-device)
+
+Measured 21 Jul 2026 via `debug/render_bench.py` (synthetic 14-line
+busy-room look, ~690 visible chars, 10 alternating passes, +-1ms
+variance):
+
+| Path | Cost |
+|:-----|:-----|
+| Per-line `tr.print` (pre-batch) | 591 ms |
+| Batched `tr.print(list)` -> `print_lines` | 484 ms (-18%) |
+| Glyph blit floor (`tml` per-char `strblit2`) | ~0.7 ms/char |
+| Font recolour (`set_color` pixon loop) | ~2.5 ms/repaint |
+
+Batching wins by collapsing per-colour-switch font repaints (~40 for a
+colour-heavy screen) to one per distinct colour. The residual cost is
+pure per-char glyph blitting -- unreachable without composing offscreen
+(scratch GROB + single block blit; not implemented, revisit if fill-in
+still reads slow). `print_lines` draws the biggest colour group first
+so the bulk of the content lands in the first paint.
+
+---
+
 ## Keyboard input semantics (measured on-device)
 
 Probed 06 Jul 2026 on physical Prime G2 via `debug/keydrop_probe.py`

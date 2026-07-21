@@ -85,8 +85,19 @@ def test_list_arg_batches_without_join(monkeypatch):
     tr.print(["{Rred{x", "plain"])
 
     assert palettes == [0xFF0000]
-    assert tr.drawn == [(0, 0, "red"), (0, 1, "plain")]
+    # "plain" (5 chars, default colour) outweighs "red" (3): drawn first
+    assert tr.drawn == [(0, 1, "plain"), (0, 0, "red")]
     assert (tr.cursor_x, tr.cursor_y) == (0, 2)
+
+
+def test_biggest_colour_group_draws_first(monkeypatch):
+    tr, palettes = _installed(monkeypatch)
+
+    tr.print("{Rr{x\n{Ggreen bulk{x\n{Rr2{x")
+
+    # green total 10 > red total 3 despite red appearing first
+    assert palettes == [0x00FF00, 0xFF0000]
+    assert tr.drawn == [(0, 1, "green bulk"), (0, 0, "r"), (0, 2, "r2")]
 
 
 def test_blank_line_advances_row(monkeypatch):

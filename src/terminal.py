@@ -151,6 +151,17 @@ def install_color_print(tr):
                     segs.append((x, row, seg))
             row += 1
 
+        # Biggest colour group first: total draw time is unchanged, but the
+        # bulk of the content lands in the first paint instead of filling
+        # in around whichever colour happened to appear first.
+        sizes = {}
+        for colour in colour_order:
+            total = 0
+            for entry in groups[colour]:
+                total += len(entry[2])
+            sizes[colour] = total
+        colour_order.sort(key=lambda c: -sizes[c])
+
         for colour in colour_order:
             if colour is None:
                 reset_color()
