@@ -328,6 +328,16 @@ class PrimeSud:
             # paths, whose new_game() -> reset_lazy() would wipe an earlier one.
             world._ensure_area_by_tag("limbo")
 
+            # [PRIMESUD] Preload the lazy-import trio (deferred-import
+            # policy: no top-level consumers). The Prime auto-imports app
+            # .py files in an order we don't control, and this module's
+            # import starts the game, so anything not yet imported would
+            # otherwise lazy-load mid-play as a visible lag spike (mobprog
+            # fires in the very first Mud School room). Loading here lands
+            # the cost in the signposted startup phase instead.
+            import mobprog, socials, namegen  # noqa: F401
+            gc_collect()
+
             try:
                 game.game_loop()
             finally:
