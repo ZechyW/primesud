@@ -127,6 +127,44 @@ def main():
         pixon(SCRATCH_GROB, 0, 0, 0)
     raw_px = ticks() - t0
 
+    # Pixon glyph draw: per-char rendering via per-pixel pixon of the
+    # glyph's fg coords, in the segment colour directly -- the candidate
+    # replacement for strblit2 chars + font recolours.  Coords come from
+    # FONT_GROB at bench start (install-time cost in a real port).
+    from hpprime import getpix
+    pix_gly = 0
+    avg_fg = 0
+    cmap = getattr(tr, "char_map", None)
+    if cmap:
+        sample = "The quick brown fox jumps over the lazy dog. 0123456789"
+        font_fg = getpix(9, cmap["W"] * cw + cw // 2, chh // 2)
+        glyphs = []
+        total_fg = 0
+        for ch in sample:
+            gx = cmap[ch] * cw
+            coords = []
+            for y in range(chh):
+                for x in range(cw):
+                    if getpix(9, gx + x, y) == font_fg:
+                        coords.append((x, y))
+            glyphs.append(coords)
+            total_fg += len(coords)
+        avg_fg = total_fg // len(sample)
+        n_smp = len(sample)
+        i = 0
+        gx = 0
+        gc.collect()
+        t0 = ticks()
+        for _ in range(n_raw):
+            for x, y in glyphs[i]:
+                pixon(SCRATCH_GROB, gx + x, y, 0x00FF00)
+            i += 1
+            gx += cw
+            if i == n_smp:
+                i = 0
+                gx = 0
+        pix_gly = ticks() - t0
+
     # Blit-only: SCRATCH_GROB still holds the last composed batch; re-time
     # just the scratch->screen blit (Ticks is 1ms-grained, so loop it).
     n_blit = 20
@@ -149,6 +187,9 @@ def main():
                + "us/call")
     out.append("raw pixon x" + str(n_raw) + ": " + str(raw_px)
                + "ms = " + str(raw_px * 1000 // n_raw) + "us/call")
+    out.append("pixon-glyph x" + str(n_raw) + " chars: " + str(pix_gly)
+               + "ms = " + str(pix_gly * 1000 // n_raw)
+               + "us/char (avg " + str(avg_fg) + " fg px)")
     out.append("blit-only: " + str(blit_total) + "ms / " + str(n_blit)
                + " blits = ~" + str(blit_total // n_blit)
                + "ms perceived transition")
