@@ -87,6 +87,24 @@ def main():
     # Batched-noblit: no-op the draw primitives inside terminal, re-run
     # the batched pass -- isolates the Python side (wrap + group + loop)
     # from the blit calls.  Blit share = batched - noblit.
+    # gc-off: batched with automatic collection suppressed.  Full-heap
+    # allocs measured ~490us vs ~35us standalone (21/07 run) while
+    # zero-alloc native calls stayed flat -- if this pass drops toward
+    # the standalone time, the cost is amortized auto-collects marking
+    # the big live heap, and the game fix is gc.disable() around the
+    # compose (manual collect after).
+    d = []
+    _gc_off = hasattr(gc, "disable")
+    if _gc_off:
+        for _ in range(N):
+            tr.clear()
+            gc.collect()
+            gc.disable()
+            t0 = ticks()
+            batched()
+            d.append(ticks() - t0)
+            gc.enable()
+
     # hasattr: pc_shim's terminal has no draw primitives (blits no-op
     # there anyway, the unpatched pass measures the same thing).
     _prims = hasattr(terminal, "strblit2")
@@ -181,6 +199,12 @@ def main():
     out.append("render_bench: " + str(len(LINES)) + " lines x " + str(N) + " passes")
     out.append(_fmt("per-line", a))
     out.append(_fmt("batched ", b))
+    if d:
+        out.append(_fmt("gc-off  ", d))
+    else:
+        out.append("gc-off  : gc.disable not available")
+    out.append("gc.threshold: "
+               + ("yes" if hasattr(gc, "threshold") else "no"))
     out.append(_fmt("noblit  ", c))
     out.append("raw strblit2 char-size x" + str(n_raw) + ": "
                + str(raw_sb) + "ms = " + str(raw_sb * 1000 // n_raw)
@@ -195,6 +219,8 @@ def main():
                + "ms perceived transition")
     out.append("raw per-line: " + _raw(a))
     out.append("raw batched : " + _raw(b))
+    if d:
+        out.append("raw gc-off  : " + _raw(d))
     out.append("raw noblit  : " + _raw(c))
 
     # str()+concat payload throughout, then joined -- pitfall 8 safe
