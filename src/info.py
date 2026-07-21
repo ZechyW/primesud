@@ -926,7 +926,7 @@ def do_score(player, args):
     do_affects tail added, re-verified 20/07/2026; bank/share row added and
     re-verified 21/07/2026; [PRIMESUD] AC bars paired 2-per-row and the
     values/AC separator dropped (approved) so the box fits the 22-row
-    screen, 21/07/2026]
+    screen, 21/07/2026; output batched via list chprintln 22/07/2026]
     -- data fields (age, hours, thac0, AC bars)
     verified; box layout adapted for the 64-col screen [PRIMESUD].
     """
@@ -1082,8 +1082,8 @@ def do_score(player, args):
         _brp = max(0, _SCORE_INNER - _bv - _blp)
         lines.insert(-1, "{W|{x" + " " * _blp + _bank_txt
                      + " " * _brp + "{W|{x")
-    for line in lines:
-        chprintln(player, line)
+    # [PRIMESUD] list sent unjoined: batch-rendered by terminal.print_lines
+    chprintln(player, lines)
 
     # cf. 1stMud act_info.c:2182 -- COMM_SHOW_AFFECTS appends do_affects.
     if p.get("flags", PLR_DEFAULTS) & COMM_SHOW_AFFECTS:
@@ -1252,6 +1252,9 @@ def _print_level_lists(player, args, want_spells):
         else:
             chprintln(player, "{cNo skills found.{x")
         return
+    # [PRIMESUD] output accumulated and sent as one unjoined list --
+    # batch-rendered by terminal.print_lines
+    out = []
     for level in range(MAX_MORTAL_LEVEL + 1):
         items = rows.get(level)
         if not items:
@@ -1263,11 +1266,12 @@ def _print_level_lists(player, args, want_spells):
                 line += items[i + 1]
             # [PRIMESUD] 1stMud's 29-wide columns overflow 64 cols (68 vis);
             # 16-wide names + stripped tail keep two columns under the wrap.
-            chprintln(player, line.rstrip() + "{x")
+            out.append(line.rstrip() + "{x")
+    chprintln(player, out)
 
 
 def print_practice_table(player):
-    """Print learned practice percentages (cf. 1stMud do_practice in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
+    """Print learned practice percentages (cf. 1stMud do_practice in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; output batched via list chprintln 22/07/2026]"""
     items = []
     half = TERMINAL_COLS // 2
     name_w = 18
@@ -1276,11 +1280,14 @@ def print_practice_table(player):
         pct = learned.get(sn, 0)
         if can_use_skill_spell(player, sn) and pct > 0:
             items.append("{:<{}} {:3d}%".format(sk["name"][:name_w], name_w, pct))
+    # [PRIMESUD] list sent unjoined: batch-rendered by terminal.print_lines
+    out = []
     for i in range(0, len(items), 2):
         line = items[i]
         if i + 1 < len(items):
             line = line + " " * (half - len(line)) + items[i + 1]
-        chprintln(player, line)
+        out.append(line)
+    chprintln(player, out)
 
 
 def do_skills(player, args):
@@ -1334,7 +1341,8 @@ def do_help(player, args):
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified
     04/07/2026; index-scan rework re-verified 05/07/2026; 'debug time'
     timing instrumentation added 05/07/2026; one-shot idx read + substring
-    pre-filter re-verified 05/07/2026]
+    pre-filter re-verified 05/07/2026; output batched via list chprintln
+    22/07/2026]
     """
     argall = " ".join(args) if args else "summary"
     number, target = _number_argument(argall)
@@ -1387,16 +1395,17 @@ def do_help(player, args):
                     break
                 body.append(line.rstrip("\n"))
         t2 = ticks()
-        chprintln(player, sep)
-        chprintln(player, "Help Keywords : %s" % show[0])
-        chprintln(player, sep)
-        for line in body:
-            chprintln(player, line)
-        chprintln(player, sep)
+        # [PRIMESUD] output accumulated and sent as one unjoined list --
+        # batch-rendered by terminal.print_lines
+        out = [sep, "Help Keywords : %s" % show[0], sep]
+        out.extend(body)
+        out.append(sep)
+    else:
+        out = []
     if matches:
         # [PRIMESUD] 1stMud prints 3 columns; 2 columns fit the 64-col screen
-        chprintln(player, "Help files that start with the letter '%s'." % target[0].upper())
-        chprintln(player, sep)
+        out.append("Help files that start with the letter '%s'." % target[0].upper())
+        out.append(sep)
         half = TERMINAL_COLS // 2
         cells = []
         for i, kw in enumerate(matches):
@@ -1405,15 +1414,17 @@ def do_help(player, args):
             line = cells[i]
             if i + 1 < len(cells):
                 line = line + " " * (half - len(line)) + cells[i + 1]
-            chprintln(player, line)
-        chprintln(player, sep)
-        chprintln(player, "%d total help files." % len(matches))
+            out.append(line)
+        out.append(sep)
+        out.append("%d total help files." % len(matches))
     elif not found:
-        chprintln(player, "No help found for %s. Try using just the first letter." % target)
+        out.append("No help found for %s. Try using just the first letter." % target)
         # new_wiznet missing-help log: no immortals in single-user [PRIMESUD]
     elif related:
-        chprintln(player, "See Also : %s." % ", ".join(related))
-        chprintln(player, sep)
+        out.append("See Also : %s." % ", ".join(related))
+        out.append(sep)
+    if out:
+        chprintln(player, out)
     if "time" in DBG:  # [PRIMESUD] 'debug time' channel
         t3 = ticks()
         dbg("help: idx=" + str(t1 - t0) + "ms read=" + str(t2 - t1) +
@@ -1428,8 +1439,8 @@ def do_map(player, args):
     """
     if not check_blind(player):   # cf. 1stMud do_map automap.c:567
         return
-    for line in build_full_lines(player, ROOM_DEFS):
-        chprintln(player, line)
+    # [PRIMESUD] list sent unjoined: batch-rendered by terminal.print_lines
+    chprintln(player, list(build_full_lines(player, ROOM_DEFS)))
 
 
 def do_affects(player, args):
@@ -1437,16 +1448,20 @@ def do_affects(player, args):
 
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
     racial-ability section added and re-verified 06/07/2026; equipment-spells
-    section added and re-verified 06/07/2026]
+    section added and re-verified 06/07/2026; output batched via list
+    chprintln 22/07/2026]
 
     Args:
         player (dict): Player state dict.
         args (list): Unused.
     """
     found = False
+    # [PRIMESUD] output accumulated and sent as one unjoined list --
+    # batch-rendered by terminal.print_lines
+    out = []
     affects = player.get("affect_list", [])
     if affects:
-        chprintln(player, "You are affected by the following spells:")
+        out.append("You are affected by the following spells:")
         # cf. 1stMud: modifier/duration detail only at trust >= 20
         show_detail = player.get("level", 1) >= 20
         last_type = None
@@ -1469,21 +1484,21 @@ def do_affects(player, args):
                     line += "permanently"
                 else:
                     line += "for " + str(dur) + " hours"
-            chprintln(player, line)
+            out.append(line)
             last_type = sn
         found = True
-        chprintln(player, "")
+        out.append("")
     # cf. 1stMud do_affects racial-ability section (act_info.c:2249-2264);
     # gated on the bits actually being set on the char (IsAffected).
     _race = race_lookup(player.get("race", "Human")) or RACE_TABLE["Human"]
     race_aff = _race.get("aff", {})
     affected_by = player.get("affected_by", {})
     if race_aff and any(affected_by.get(f) for f in race_aff):
-        chprintln(player, "You are affected by the following racial abilities:")
+        out.append("You are affected by the following racial abilities:")
         for flag_name in sorted(race_aff):
-            chprintln(player, "{xSpell: {c" + _pad_color(flag_name, 19) + "{x")
+            out.append("{xSpell: {c" + _pad_color(flag_name, 19) + "{x")
         found = True
-        chprintln(player, "")
+        out.append("")
     # cf. 1stMud do_affects equipment-spells section (act_info.c:2265-2337):
     # gated on any active affected_by bit not accounted for by race->aff.
     active = set(f for f in affected_by if affected_by.get(f))
@@ -1503,10 +1518,10 @@ def do_affects(player, args):
                 if not bit or not affected_by.get(bit):
                     continue
                 if not printed:
-                    chprintln(player, "You are affected by the following equipment spells:")
+                    out.append("You are affected by the following equipment spells:")
                     printed = True
-                chprintln(player, "{xSpell: {c" + _pad_color(bit, 19)
-                          + ":{x " + short_descr)
+                out.append("{xSpell: {c" + _pad_color(bit, 19)
+                           + ":{x " + short_descr)
             # Then template flag_affects, non-enchanted only (cf. 1stMud
             # obj->pIndexData->affect_first, gated on !obj->enchanted)
             if not obj.get("enchanted"):
@@ -1517,17 +1532,18 @@ def do_affects(player, args):
                     if not bit or not affected_by.get(bit):
                         continue
                     if not printed:
-                        chprintln(player, "You are affected by the following equipment spells:")
+                        out.append("You are affected by the following equipment spells:")
                         printed = True
-                    chprintln(player, "{xSpell: {c" + _pad_color(bit, 19)
-                              + ":{x " + short_descr)
+                    out.append("{xSpell: {c" + _pad_color(bit, 19)
+                               + ":{x " + short_descr)
         # 1stMud sets found=true here unconditionally, even if nothing printed
         # (act_info.c:2333-2334) -- quirk preserved for fidelity.
         found = True
         if printed:
-            chprintln(player, "")
+            out.append("")
     if not found:
-        chprintln(player, "You are not affected by any spells.")
+        out.append("You are not affected by any spells.")
+    chprintln(player, out)
 
 
 def do_credits(player, args):

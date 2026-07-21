@@ -19,7 +19,7 @@ def help_out(monkeypatch):
     monkeypatch.setattr(handler, "tprint", capture)
     # PLAYER dict is not registered as world.chars[1], so chprintln's
     # local-player gate would drop output -- capture at the info level
-    monkeypatch.setattr(info, "chprintln", lambda ch, s="": lines.append(s))
+    monkeypatch.setattr(info, "chprintln", lambda ch, s="": (lines.extend(s) if type(s) is list else lines.append(s)))
     return lines
 
 

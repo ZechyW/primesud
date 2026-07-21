@@ -733,8 +733,11 @@ def _obj_flags(tpl):
 def do_inventory(player, args):
     """Display carried inventory with item counts (cf. 1stMud `do_inventory` in act_info.c)."""
     max_carry = can_carry_n(player)
-    chprintln(player, "{YYou are carrying {W%d/%d{Y items:{x" % (len(player["inv"]), max_carry))
+    # [PRIMESUD] output accumulated and sent as one unjoined list --
+    # batch-rendered by terminal.print_lines
+    out = ["{YYou are carrying {W%d/%d{Y items:{x" % (len(player["inv"]), max_carry)]
     if not player["inv"]:
+        chprintln(player, out)
         return
     counts = {}
     for obj in player["inv"]:
@@ -751,7 +754,8 @@ def do_inventory(player, args):
             name = "{r[{RTARGET{r] {x" + name
         if show_vnums:  # [PRIMESUD]
             name += " {D[" + str(v) + "]{x"
-        chprintln(player, "  {}{} x{}".format(flags, name, n) if n > 1 else "  {}{}".format(flags, name))
+        out.append("  {}{} x{}".format(flags, name, n) if n > 1 else "  {}{}".format(flags, name))
+    chprintln(player, out)
 
 
 _WEAR_MSG = {
@@ -1041,7 +1045,9 @@ def do_equipment(player, args):
         player (dict): Player state dict.
         args (list): Parsed command arguments (unused).
     """
-    chprintln(player, "You are wearing:")
+    # [PRIMESUD] output accumulated and sent as one unjoined list --
+    # batch-rendered by terminal.print_lines
+    out = ["You are wearing:"]
     # [PRIMESUD] obj vnum overlay under holylight (upstream imms use stat)
     show_vnums = "holylight" in DBG
     for slot, label in WEAR_LABELS:
@@ -1051,9 +1057,10 @@ def do_equipment(player, args):
             line = label + _obj_flags(tpl) + "{Y" + tpl["short_descr"] + "{x"
             if show_vnums:  # [PRIMESUD]
                 line += " {D[" + str(obj["vnum"]) + "]{x"
-            chprintln(player, line)
+            out.append(line)
         else:
-            chprintln(player, label + "nothing")
+            out.append(label + "nothing")
+    chprintln(player, out)
 
 
 def do_steal(player, args):

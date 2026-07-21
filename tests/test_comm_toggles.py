@@ -141,7 +141,7 @@ def test_show_toggle_messages_and_flag(out):
 @pytest.fixture
 def score_out(monkeypatch):
     lines = []
-    monkeypatch.setattr(info, "chprintln", lambda ch, s="": lines.append(s))
+    monkeypatch.setattr(info, "chprintln", lambda ch, s="": (lines.extend(s) if type(s) is list else lines.append(s)))
     monkeypatch.setattr(info, "free_mem", lambda: "245k")
     monkeypatch.setattr(info, "gc_collect", lambda: None)
     return lines

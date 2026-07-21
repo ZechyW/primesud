@@ -12,7 +12,7 @@ from classes import CLASS_WARRIOR, CLASS_MAGE
 def score_out(monkeypatch):
     """Capture do_score output lines at the info level."""
     lines = []
-    monkeypatch.setattr(info, "chprintln", lambda ch, s="": lines.append(s))
+    monkeypatch.setattr(info, "chprintln", lambda ch, s="": (lines.extend(s) if type(s) is list else lines.append(s)))
     # gc.mem_free() is MicroPython-only; stub the memory readout on CPython
     monkeypatch.setattr(info, "free_mem", lambda: "245k")
     monkeypatch.setattr(info, "gc_collect", lambda: None)

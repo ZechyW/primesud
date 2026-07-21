@@ -155,7 +155,7 @@ def test_multi_bit_entry_applies_modifier_once_sorted():
 
 def _score_out(monkeypatch):
     lines = []
-    monkeypatch.setattr(info, "chprintln", lambda ch, s="": lines.append(s))
+    monkeypatch.setattr(info, "chprintln", lambda ch, s="": (lines.extend(s) if type(s) is list else lines.append(s)))
     return lines
 
 
