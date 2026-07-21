@@ -63,6 +63,13 @@ def install_color_print(tr):
     _RST = _RESET_CODES
     _pxy = tr.print_xy
     _pch = tr._put_char
+    # [PRIMESUD] int-keyed glyph x-offsets for the batch compose: bytes
+    # iteration yields ints, so the per-char draw loop allocates nothing
+    # (a small alloc costs ~0.5ms at full game heap on device --
+    # BUILTINS.md sec. Text rendering performance).
+    _bmap = {}
+    for _ch, _ix in tr.char_map.items():
+        _bmap[ord(_ch)] = _ix * tr.char_width
 
     def _group_piece(piece):
         """Split one physical colour-coded piece into per-colour segments. [PRIMESUD]
@@ -196,7 +203,7 @@ def install_color_print(tr):
             if top > 0:
                 _sb(SCRATCH_GROB, 0, 0, tr.width, top * chh,
                     0, 0, n * chh, tr.width, top * chh)
-        cmap = tr.char_map
+        bget = _bmap.get
         for colour in colour_order:
             if colour is None:
                 reset_color()
@@ -205,10 +212,11 @@ def install_color_print(tr):
             for x, y, seg in groups[colour]:
                 px = x * cw
                 py = (y - base) * chh
-                for c in seg:
-                    if c in cmap:
+                for bch in seg.encode():
+                    fx = bget(bch, -1)
+                    if fx >= 0:
                         _sb(SCRATCH_GROB, px, py, cw, chh,
-                            FONT_GROB, cmap[c] * cw, 0, cw, chh)
+                            FONT_GROB, fx, 0, cw, chh)
                     px += cw
         _sb(0, 0, base * chh, tr.width, h, SCRATCH_GROB, 0, 0, tr.width, h)
         tr.cursor_x = 0

@@ -140,26 +140,33 @@ variance; full game modules loaded, i.e. in-game heap):
 
 | Path | Cost |
 |:-----|:-----|
-| Per-line `tr.print` (pre-batch) | 591 ms |
-| Batched, drawn direct to G0 (superseded same day) | 484 ms (-18%) |
-| Batched offscreen compose (`SCRATCH_GROB`) + single blit | 461 ms (-22%) |
+| Per-line `tr.print` (pre-batch) | 594 ms |
+| Batched offscreen compose (`SCRATCH_GROB`) + single blit | 465 ms (-22%), pre bytes-loop fix |
 | Perceived transition of the offscreen path (final blit) | ~2 ms |
-| Glyph blit floor (`tml` per-char `strblit2`) | ~0.7 ms/char |
-| Font recolour, per colour *switch* (never per char): `set_color` pixon loop (~1037 fg px) / `reset_color` full-grob strblit2 | 3.6 / ~2.5 ms per call (measured, PRIME_COLOURS.md sec. Cost breakdown) |
+| `strblit2`, char-sized, raw constant-arg loop | **10 us/call, heap-flat** |
+| `pixon` raw loop | 4-6 us/call, heap-flat |
+| Per-char glyph draw via per-pixel `pixon` (avg 9 fg px) | 46 us/char -- rejected, loses to the 10 us char blit |
+| Font recolour, per colour *switch* (never per char): `set_color` pixon loop (~1037 fg px) / `reset_color` full-grob strblit2 | 3.6 / ~2.5 ms per call (PRIME_COLOURS.md sec. Cost breakdown) |
+| **One small heap alloc** | **~35 us standalone -> ~490 us at full game heap** |
 
-Batching wins by collapsing per-colour-switch font repaints (~40 for a
-colour-heavy screen) to one per distinct colour. `print_lines` composes
-the batch offscreen and blits once: per-char blits into a scratch GROB
-are cheaper than into G0 (display memory), and the screen updates
-atomically -- perceived latency is the ~2 ms blit, no char-by-char
-crawl.
+The native draw calls were never the bottleneck: all ~690 char blits
+of a busy screen cost ~7 ms, recolours ~20 ms, final blit ~2 ms. The
+batch cost is Python-side **allocation**: a small alloc costs ~490 us
+with the full dist live vs ~35 us standalone (14x), while zero-alloc
+native calls stay flat. `gc.disable()` around the pass changes
+nothing, so it is the allocator's scan over the big live heap, not
+amortized collections (`gc.threshold` exists on-device but is
+irrelevant to this). Measured via render_bench's noblit pass, where a
+`lambda *a: None` stand-in -- one tuple alloc per call -- made the
+pass ~8x SLOWER than doing the real native blits.
 
-Heap-load factor: the same bench standalone (only the rendering chain
-imported, no game modules) measured 210 / 107 ms per-line / batched --
-rendering runs ~2.8x faster on a light heap. MicroPython alloc/lookup
-cost scales with the live heap, and rendering allocates constantly
-(string slices, segment lists). Benchmark rendering with the full dist
-present or the numbers flatter.
+Consequences for hot-path code: on a loaded heap, one avoided
+allocation buys 49 native blit calls. Iterate `seg.encode()` (ints,
+no alloc) instead of a str (one 1-char str alloc per char); avoid
+slices, `%` formatting, and tuple churn in per-char loops.
+`terminal.print_lines` composes with an int-keyed glyph-offset map
+for this reason. Benchmark rendering with the full dist present or
+the numbers flatter (same code measured 2.8-4x faster standalone).
 
 ---
 
