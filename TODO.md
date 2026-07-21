@@ -96,65 +96,10 @@ Two-track release plan:
 
 ## Platform
 
-- **Validate mobs.idx heap headroom on device (21/07/2026)** -- the index
-  grew 32KB -> 58KB (all templates, counter metadata). `mobkills`/
-  `mobdeaths` and `_find_unloaded_mob` each do one whole-file `read()` +
-  `split("\n")` (~120KB transient). Sanity-check on hardware: `mobkills`
-  with populated counters, and portal/summon into an unloaded area;
-  watch `gc.mem_free`.
-- **Validate minifier flags + startup preload on device (21/07/2026)** --
-  `hoist_literals` + `rename_locals` now on in build_dist.py (-906KB dist,
-  desktop --check + import/area smoke green; were off as untested).
-  `primesud.run()` now preloads the lazy trio (mobprog/socials/namegen)
-  before the game loop so first-use lag lands in startup, regardless of
-  the Prime's auto-import order. On hardware: full boot, new game through
-  Mud School (first prog fires), one area load, save/load round-trip;
-  watch `gc.mem_free` at the greeting vs pre-flag build.
-- **Validate batched line rendering on device (21/07/2026)** -- `look` and
-  the greeting now render via `terminal.print_lines` (one colour-grouped
-  pass, list passed unjoined per PRIME_STRING_FORMAT_BUG.md). Timing
-  validated on hardware 21/07 via `debug/render_bench.py`, incl. the
-  offscreen compose pass (batch drawn into `SCRATCH_GROB`, one blit to
-  screen -- atomic update, no fill-in crawl): 591 -> 461 ms total
-  (-22%), ~2 ms perceived transition, numbers in docs/BUILTINS.md sec.
-  Text rendering performance. Still open on hardware:
-  `look` correctness in a busy room (mobs + stacked items + automap),
-  greeting paint, over-a-screen batch (long room desc) scrolling into
-  the history ring intact. Watch for garbled rows or `gc.mem_free` dips.
-- **Validate fling-scroll tuning on physical Prime** — touch scrollback now
-  uses row-step fling easing with touch-cancel/release guard
-  (`tml_prime.py`, 06/07/2026). Re-tune thresholds/decay on device if it
-  still feels jumpy or too eager.
-- **On-calculator checklist from the 08/07 planning queue** (consolidated
-  final audit 10/07/2026; one walk of the world covers all, ordered by area):
-  - *Mud School*: acolyte demo prog end to end (entry greeting, donate one
-    silver twice, give any item); prog-room idle CPU/heap vs an empty room
-    (`gc.mem_free`, act-heavy room); school banner light burnout pacing
-    (flicker at <=5 hours, both goes-out messages)
-  - *Midgaard*: idle tick cost with the full area loaded (regen + weather +
-    mobprog pulse); weather message cadence over several ticks; buy + name a
-    pet at the pet shop, `group` rendering on the 64-col screen
-  - *Any dark room (e.g. caves/sewers)*: automap rendering while dark;
-    "It is pitch black ... " + glowing red eyes on the physical screen;
-    light a torch and re-look
-  - *Anywhere*: `explored`/`score` permille after the walk; `gc.mem_free`
-    before/after the ~2KB explored-mask alloc and a save/load round-trip
-  - *Path/run border graph (20/07/2026)*: `path midgaard` from a far area
-    and `run` picker to a multi-area destination on hardware -- route
-    correctness (walk it), plus latency/`gc.mem_free` around the
-    per-command paths.idx parse (~780 records, one f.read + transient
-    dicts per `path`/no-arg `run`)
-  - *Autoskill (18/07/2026)*: idle-fight CPU/`gc.mem_free` with autoskill on
-    during a long fight in a mobprog-heavy room (rotation scan runs per
-    violence pulse); message volume on the 64-col screen (one auto action
-    per ~2s round plus combat spam -- confirm readable); `autoskill edit`
-    on hardware -- navpad sentinel remap via `poll_char(dict)`, status-line
-    cursor legibility, `*` toggle feel
-- **Far-area eviction: validated on device 14/07/2026** via the (since
-  deleted) `debug evicttest` command -- all checks passed: load-all, evict
-  to keep-set, far-area unload, dropped-item round-trip through
-  `_pending_room_items`, recovery via `get`. Remaining spot-check during
-  the on-calculator walk above: long natural wander crossing >12 areas
-  (evicttest forced `AREA_CACHE_MAX = 1`; stock cap 12 untested in play).
-  The 1 MB stock-heap device remains unsupported (keep-set floor ~12 areas
-  exceeds it).
+(nothing outstanding -- full on-device walk completed 22/07/2026:
+batched/offscreen rendering, minifier flags + startup preload, mobs.idx
+heap headroom, path/run border graph, autoskill, Mud School progs,
+Midgaard ticks, dark rooms, eviction wander, and fling-scroll all
+validated on hardware; checklist text in git history. The 1 MB
+stock-heap device remains unsupported -- keep-set floor ~12 areas
+exceeds it.)
