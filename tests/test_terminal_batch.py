@@ -71,7 +71,11 @@ def _installed(monkeypatch, rows=4, cursor_y=0):
                         lambda *args: dims.append(args))
     monkeypatch.setattr(terminal, "strblit2",
                         lambda *args: blits.append(args))
+    fills = []
+    monkeypatch.setattr(terminal, "fillrect",
+                        lambda *args: fills.append(args))
     tr = _Terminal(rows, cursor_y)
+    tr.fills = fills
     terminal.install_color_print(tr)
     # Drop install-time font-copy dimgrob/strblit2 noise.
     blits.clear()
@@ -131,6 +135,44 @@ def test_multiline_scroll_folds_into_compose(monkeypatch):
     assert dims == [(_SCRATCH, 64, 4, 0xFFFFFF)]
     assert _chars(blits) == _expand([(0, 2, "one"), (0, 3, "two")])
     assert (tr.cursor_x, tr.cursor_y) == (0, 4)
+
+
+def test_pending_blank_line_never_reads_past_text_area(monkeypatch):
+    # Full screen + blank echo line leaves cursor_y = rows + 1; the fold
+    # must not source G0 rows >= rows (separator/status band).
+    tr, _, blits, _ = _installed(monkeypatch, rows=4, cursor_y=5)
+
+    tr.print("{Rone{x\n{Gtwo{x")
+
+    for b in blits:
+        if b[5] == 0:  # any blit reading from G0
+            assert b[7] + b[9] <= 4, "read past text area: %r" % (b,)
+    # Shift-copy clamped to the one surviving G0 row; the pending blank
+    # row stays scratch background.
+    assert [b for b in blits if b[0] == _SCRATCH and b[5] == 0] == [
+        (_SCRATCH, 0, 0, 64, 1, 0, 0, 3, 64, 1)]
+    assert (tr._hist_write, tr._hist_count) == (3, 3)
+    assert _chars(blits) == _expand([(0, 2, "one"), (0, 3, "two")])
+    assert (tr.cursor_x, tr.cursor_y) == (0, 4)
+
+
+def test_scrolloff_past_screen_fills_hist_blank(monkeypatch):
+    # n > rows: the scrolled-off blank line has no G0 row to capture;
+    # its history slot is background-filled instead.
+    tr, _, blits, _ = _installed(monkeypatch, rows=2, cursor_y=3)
+
+    tr.print("{Rone{x\n{Gtwo{x")
+
+    for b in blits:
+        if b[5] == 0:
+            assert b[7] + b[9] <= 2, "read past text area: %r" % (b,)
+    assert [b for b in blits if b[0] == _HIST] == [
+        (_HIST, 0, 0, 64, 1, 0, 0, 0, 64, 1),
+        (_HIST, 0, 1, 64, 1, 0, 0, 1, 64, 1)]
+    assert tr.fills == [(_HIST, 0, 2, 64, 1, 0xFFFFFF, 0xFFFFFF)]
+    assert (tr._hist_write, tr._hist_count) == (3, 3)
+    assert _chars(blits) == _expand([(0, 0, "one"), (0, 1, "two")])
+    assert (tr.cursor_x, tr.cursor_y) == (0, 2)
 
 
 def test_list_arg_batches_without_join(monkeypatch):

@@ -10,7 +10,7 @@ from config import (
 )
 from colors import (COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full,
                     color_parse_runs, strip_colors)
-from hpprime import dimgrob, getpix, grobh, grobw, pixon, strblit2
+from hpprime import dimgrob, fillrect, getpix, grobh, grobw, pixon, strblit2
 
 
 def _wrap_plain(text, width):
@@ -208,19 +208,32 @@ def install_color_print(tr):
         if n:
             # Capture the scrolled-off rows into the history ring (reads
             # G0 only; matches tml_prime._scroll_up bookkeeping).
+            # [PRIMESUD] cursor_y past rows (lazy scroll + trailing blank
+            # lines, e.g. the interpret() echo at a full screen) makes n
+            # exceed the rows G0 holds -- clamp every G0 read to the text
+            # area or the separator/status band below it leaks into the
+            # output; the excess rows are the pending blanks.
             hs = tr._hist_size
             if hs > 0:
                 hg = tr._hist_grob
                 hw = tr._hist_write
                 for i in range(n):
-                    _sb(hg, 0, ((hw + i) % hs) * chh, tr.width, chh,
-                        0, 0, i * chh, tr.width, chh)
+                    hy = ((hw + i) % hs) * chh
+                    if i < tr.rows:
+                        _sb(hg, 0, hy, tr.width, chh,
+                            0, 0, i * chh, tr.width, chh)
+                    else:
+                        fillrect(hg, 0, hy, tr.width, chh,
+                                 tr.back_color, tr.back_color)
                 tr._hist_write = (hw + n) % hs
                 hc = tr._hist_count + n
                 tr._hist_count = hc if hc < hs else hs
-            if top > 0:
-                _sb(SCRATCH_GROB, 0, 0, tr.width, top * chh,
-                    0, 0, n * chh, tr.width, top * chh)
+            avail = tr.rows - n
+            if avail > top:
+                avail = top
+            if avail > 0:
+                _sb(SCRATCH_GROB, 0, 0, tr.width, avail * chh,
+                    0, 0, n * chh, tr.width, avail * chh)
         bget = _bmap.get
         for colour in colour_order:
             if colour is None:
