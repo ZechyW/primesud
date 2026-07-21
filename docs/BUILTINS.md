@@ -147,10 +147,11 @@ variance):
 
 Batching wins by collapsing per-colour-switch font repaints (~40 for a
 colour-heavy screen) to one per distinct colour. The residual cost is
-pure per-char glyph blitting -- unreachable without composing offscreen
-(scratch GROB + single block blit; not implemented, revisit if fill-in
-still reads slow). `print_lines` draws the biggest colour group first
-so the bulk of the content lands in the first paint.
+pure per-char glyph blitting. Since 21 Jul 2026 `print_lines` composes
+the batch offscreen (`SCRATCH_GROB`) and blits once: total time is
+unchanged, but the screen updates atomically -- perceived latency is
+the single scratch->screen blit (`render_bench` "blit-only" row)
+instead of a visible char-by-char crawl.
 
 ---
 

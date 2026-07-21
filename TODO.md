@@ -115,11 +115,13 @@ Two-track release plan:
   pass, list passed unjoined per PRIME_STRING_FORMAT_BUG.md). Timing
   validated on hardware 21/07 via `debug/render_bench.py`: 591 -> 484 ms
   (-18%), numbers in docs/BUILTINS.md sec. Text rendering performance.
-  Still open on hardware: `look` correctness in a busy room (mobs +
-  stacked items + automap), greeting paint, over-a-screen batch (long
-  room desc) scrolling into the history ring intact. Watch for garbled
-  rows or `gc.mem_free` dips. If fill-in still reads slow, next lever is
-  offscreen compose (scratch GROB + single blit), noted in BUILTINS.md.
+  Offscreen compose added 21/07 (batch drawn into `SCRATCH_GROB`, one
+  blit to screen -- atomic update, no fill-in crawl): re-run
+  `debug/render_bench.py` on device to confirm total unchanged and log
+  the blit-only (perceived transition) time. Still open on hardware:
+  `look` correctness in a busy room (mobs + stacked items + automap),
+  greeting paint, over-a-screen batch (long room desc) scrolling into
+  the history ring intact. Watch for garbled rows or `gc.mem_free` dips.
 - **Validate fling-scroll tuning on physical Prime** — touch scrollback now
   uses row-step fling easing with touch-cancel/release guard
   (`tml_prime.py`, 06/07/2026). Re-tune thresholds/decay on device if it

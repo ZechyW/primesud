@@ -37,6 +37,11 @@ def _to_ansi(text):
 
 def install_color_print(tr):
     def wrapped_print(*args, sep=' ', end='\n'):
+        # Device batches: a single list arg is a pre-split line batch.
+        if len(args) == 1 and type(args[0]) is list:
+            for line in args[0]:
+                wrapped_print(line)
+            return
         text = sep.join(str(a) for a in args)
         # Word-wrap at the calc's 64-col width so PC output matches the
         # device (console otherwise hard-wraps long lines mid-word).

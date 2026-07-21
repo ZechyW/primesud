@@ -13,6 +13,7 @@ TERMINAL_COLS = 64   # character columns (std5x10 font, 320 px wide)
 TERMINAL_ROWS = 22   # character rows    (std5x10 font, 240 px high, excl. status bar)
 FONT_GROB     = 9    # grob tml blits font glyphs from (HP Prime default)
 COLOR_GROB    = 8    # unmodified font copy; restored into FONT_GROB on colour reset
+SCRATCH_GROB  = 5    # offscreen compose buffer for batched renders (6=save, 7=history)
 
 # -- Timing -- pulse system (1stMud convention) -----------------------------------------
 PULSE_PER_SECOND = 4                          # base pulse rate

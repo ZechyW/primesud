@@ -2,7 +2,7 @@
 
 from tml_prime import tml_prime as tml
 from config import (
-    TERMINAL_COLS, FONT_GROB, COLOR_GROB,
+    TERMINAL_COLS, FONT_GROB, COLOR_GROB, SCRATCH_GROB,
     DARK_MODE, BG_COLOR, TAB_SIZE, FONT,
     SCROLLBACK_SIZE, SCROLL_STEP, SWIPE_THRESHOLD, TOUCH_SCROLL_STEP,
     FLING_FRAME_MS, FLING_MIN_VELOCITY, FLING_DECAY_NUM, FLING_DECAY_DEN,
@@ -113,7 +113,12 @@ def install_color_print(tr):
         return colour_order, groups
 
     def print_lines(lines):
-        """Render complete lines grouped by colour across rows. [PRIMESUD]"""
+        """Render complete lines offscreen, then blit once. [PRIMESUD]
+
+        Groups segments by colour (one font repaint per distinct colour),
+        composes the whole batch into SCRATCH_GROB, and updates the screen
+        with a single blit -- no visible char-by-char fill-in.
+        """
         physical = []
         for text in lines:
             if _CC not in text:
@@ -123,6 +128,8 @@ def install_color_print(tr):
                 physical.append(text)
             else:
                 physical.extend(color_wrap_full(text, cols))
+        if not physical:
+            return
 
         # Keep batches to one screen.  Rendering any older prefix normally
         # lets rows which later scroll off enter the history ring unchanged.
@@ -151,24 +158,30 @@ def install_color_print(tr):
                     segs.append((x, row, seg))
             row += 1
 
-        # Biggest colour group first: total draw time is unchanged, but the
-        # bulk of the content lands in the first paint instead of filling
-        # in around whichever colour happened to appear first.
-        sizes = {}
-        for colour in colour_order:
-            total = 0
-            for entry in groups[colour]:
-                total += len(entry[2])
-            sizes[colour] = total
-        colour_order.sort(key=lambda c: -sizes[c])
-
+        # [PRIMESUD] offscreen compose: draw into a scratch GROB, blit once.
+        # The screen stays untouched during the ~0.7ms/char glyph pass and
+        # updates atomically (BUILTINS.md sec. Text rendering performance).
+        top = tr.cursor_y
+        cw = tr.char_width
+        chh = tr.char_height
+        h = (row - top) * chh
+        dimgrob(SCRATCH_GROB, tr.width, h, tr.back_color)
+        cmap = tr.char_map
+        _sb = strblit2
         for colour in colour_order:
             if colour is None:
                 reset_color()
             else:
                 set_color(colour)
             for x, y, seg in groups[colour]:
-                _pxy(x, y, seg)
+                px = x * cw
+                py = (y - top) * chh
+                for c in seg:
+                    if c in cmap:
+                        _sb(SCRATCH_GROB, px, py, cw, chh,
+                            FONT_GROB, cmap[c] * cw, 0, cw, chh)
+                    px += cw
+        _sb(0, 0, top * chh, tr.width, h, SCRATCH_GROB, 0, 0, tr.width, h)
         tr.cursor_x = 0
         tr.cursor_y = row
 
