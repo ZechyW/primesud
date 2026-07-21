@@ -644,6 +644,13 @@ def _apply_pending_deltas(tag, room_vnums):
     for _tpl in list(_pending_mob_saves):
         if _vnum_to_tag(_tpl) != tag:
             continue
+        # The mayor's route state is process-local. Restoring a mid-route
+        # room without its matching route position makes the restarted path
+        # walk out of Midgaard and lazy-load unrelated areas. Leave it at its
+        # reset room instead, matching upstream's non-persistent NPCs.
+        if MOB_DEFS._data.get(_tpl, {}).get("spec_fun") == "spec_mayor":
+            del _pending_mob_saves[_tpl]
+            continue
         _saved = _pending_mob_saves[_tpl]
         # Owned pets are persisted via p.pet, not m. lines -- never count or
         # cull them against saved template positions. [PRIMESUD]

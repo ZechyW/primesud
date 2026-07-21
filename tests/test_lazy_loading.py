@@ -416,6 +416,25 @@ class TestPendingMobDeltas:
         # Room 100 mob list should NOT contain it
         assert live[0][0] not in world.rooms._data[100]["mobs"]
 
+    def test_mayor_stays_in_reset_room(self, fresh_world):
+        """Mayor position is not restored without its process-local route state."""
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}},
+                                101: {"name": "R101", "exits": {}}},
+                         mobiles={100: _mob_tpl(spec_fun="spec_mayor")},
+                         resets=(("M", 100, 1, 100, 1),))
+        world._pending_mob_saves[100] = [101]
+        fw.setup()
+
+        _load_area("alpha")
+
+        live = [inst for inst in world.chars.values()
+                if inst.get("is_npc") and inst["tpl"] == 100]
+        assert len(live) == 1
+        assert live[0]["room"] == 100
+        assert 100 not in world._pending_mob_saves
+
     def test_cross_area_move_deferred(self, fresh_world):
         """Mob saved in unloaded area's room -> move deferred, not lost."""
         fw = fresh_world
