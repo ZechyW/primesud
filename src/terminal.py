@@ -138,13 +138,25 @@ def install_color_print(tr):
             for text in physical[:extra]:
                 wrapped_print(text)
             physical = physical[extra:]
-        while tr.cursor_y >= tr.rows:
-            tr._scroll_up()
-        overflow = tr.cursor_y + len(physical) - tr.rows
-        for _ in range(max(0, overflow)):
-            tr._scroll_up()
 
-        row = tr.cursor_y
+        # [PRIMESUD] fold the scroll into the compose: G0 is untouched
+        # until the final blit, so the old screen stays visible during
+        # the ~0.7ms/char glyph pass instead of scroll-blanked rows.
+        # n1 = pending lazy scroll, n2 = overflow from this batch; when
+        # n > 0 the batch always ends at the bottom row, so the compose
+        # covers the whole text area.
+        cy = tr.cursor_y
+        n1 = cy - tr.rows + 1
+        if n1 < 0:
+            n1 = 0
+        cy -= n1
+        n2 = cy + len(physical) - tr.rows
+        if n2 < 0:
+            n2 = 0
+        n = n1 + n2
+        top = cy - n2
+
+        row = top
         colour_order = []
         groups = {}
         for piece in physical:
@@ -159,15 +171,32 @@ def install_color_print(tr):
             row += 1
 
         # [PRIMESUD] offscreen compose: draw into a scratch GROB, blit once.
-        # The screen stays untouched during the ~0.7ms/char glyph pass and
-        # updates atomically (BUILTINS.md sec. Text rendering performance).
-        top = tr.cursor_y
+        # The screen updates atomically (BUILTINS.md sec. Text rendering
+        # performance).  With a scroll folded in, the scratch holds the
+        # whole text area: surviving G0 rows shifted up by n, batch below.
         cw = tr.char_width
         chh = tr.char_height
-        h = (row - top) * chh
+        base = 0 if n else top
+        h = (row - base) * chh
         dimgrob(SCRATCH_GROB, tr.width, h, tr.back_color)
-        cmap = tr.char_map
         _sb = strblit2
+        if n:
+            # Capture the scrolled-off rows into the history ring (reads
+            # G0 only; matches tml_prime._scroll_up bookkeeping).
+            hs = tr._hist_size
+            if hs > 0:
+                hg = tr._hist_grob
+                hw = tr._hist_write
+                for i in range(n):
+                    _sb(hg, 0, ((hw + i) % hs) * chh, tr.width, chh,
+                        0, 0, i * chh, tr.width, chh)
+                tr._hist_write = (hw + n) % hs
+                hc = tr._hist_count + n
+                tr._hist_count = hc if hc < hs else hs
+            if top > 0:
+                _sb(SCRATCH_GROB, 0, 0, tr.width, top * chh,
+                    0, 0, n * chh, tr.width, top * chh)
+        cmap = tr.char_map
         for colour in colour_order:
             if colour is None:
                 reset_color()
@@ -175,13 +204,13 @@ def install_color_print(tr):
                 set_color(colour)
             for x, y, seg in groups[colour]:
                 px = x * cw
-                py = (y - top) * chh
+                py = (y - base) * chh
                 for c in seg:
                     if c in cmap:
                         _sb(SCRATCH_GROB, px, py, cw, chh,
                             FONT_GROB, cmap[c] * cw, 0, cw, chh)
                     px += cw
-        _sb(0, 0, top * chh, tr.width, h, SCRATCH_GROB, 0, 0, tr.width, h)
+        _sb(0, 0, base * chh, tr.width, h, SCRATCH_GROB, 0, 0, tr.width, h)
         tr.cursor_x = 0
         tr.cursor_y = row
 

@@ -12,6 +12,7 @@ _SPEC.loader.exec_module(terminal)
 
 _SCRATCH = terminal.SCRATCH_GROB
 _FONT = terminal.FONT_GROB
+_HIST = 7
 
 
 class _Terminal:
@@ -28,6 +29,10 @@ class _Terminal:
         self.cursor_y = cursor_y
         self.drawn = []
         self.scrolled = 0
+        self._hist_grob = _HIST
+        self._hist_size = 8
+        self._hist_write = 0
+        self._hist_count = 0
 
     def print(self, *args, sep=" ", end="\n"):
         text = sep.join(str(arg) for arg in args) + end
@@ -110,12 +115,20 @@ def test_multiline_groups_same_palette_across_rows(monkeypatch):
     assert (tr.cursor_x, tr.cursor_y) == (0, 3)
 
 
-def test_multiline_prescrolls_before_absolute_draw(monkeypatch):
-    tr, _, blits, _ = _installed(monkeypatch, rows=4, cursor_y=3)
+def test_multiline_scroll_folds_into_compose(monkeypatch):
+    tr, _, blits, dims = _installed(monkeypatch, rows=4, cursor_y=3)
 
     tr.print("{Rone{x\n{Gtwo{x")
 
-    assert tr.scrolled == 1
+    # No on-screen scroll: the scrolled-off row is captured into the
+    # history ring, surviving rows shift inside the full-area scratch.
+    assert tr.scrolled == 0
+    assert (tr._hist_write, tr._hist_count) == (1, 1)
+    assert [b for b in blits if b[0] == _HIST] == [
+        (_HIST, 0, 0, 64, 1, 0, 0, 0, 64, 1)]
+    assert [b for b in blits if b[0] == _SCRATCH and b[5] == 0] == [
+        (_SCRATCH, 0, 0, 64, 2, 0, 0, 1, 64, 2)]
+    assert dims == [(_SCRATCH, 64, 4, 0xFFFFFF)]
     assert _chars(blits) == _expand([(0, 2, "one"), (0, 3, "two")])
     assert (tr.cursor_x, tr.cursor_y) == (0, 4)
 
@@ -164,11 +177,12 @@ def test_oversized_batch_prefix_scrolls_normally(monkeypatch):
 
     tr.print("{Ra{x\n{Rb{x\n{Rc{x\n{Rd{x")
 
-    # First two lines rendered normally (scroll through history ring),
-    # last screenful composed offscreen after pre-scroll.
+    # First two lines rendered normally, last screenful composed with
+    # the full-screen scroll folded in (both rows captured to history).
     assert palettes == [0xFF0000]
-    assert tr.scrolled == 2
+    assert tr.scrolled == 0
     assert tr.drawn == [(0, 0, "a"), (0, 1, "b")]
+    assert (tr._hist_write, tr._hist_count) == (2, 2)
     assert _chars(blits) == _expand([(0, 0, "c"), (0, 1, "d")])
     assert (tr.cursor_x, tr.cursor_y) == (0, 2)
 
