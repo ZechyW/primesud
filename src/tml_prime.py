@@ -148,11 +148,6 @@ class tml_prime(tml):
         if scrollback_size > 0:
             dimgrob(hist_grob, self.width, scrollback_size * self.char_height, self.back_color)
             dimgrob(save_grob, self.width, self.height, self.back_color)
-        # [PRIMESUD] int-keyed glyph x-offsets for the alloc-free
-        # print_xy override below.
-        self._glyph_x = {}
-        for _c, _i in self.char_map.items():
-            self._glyph_x[ord(_c)] = _i * self.char_width
 
     # ------------------------------------------------------------------
     # Override: alloc-free glyph draw -- bytes iteration yields ints, so
@@ -161,7 +156,14 @@ class tml_prime(tml):
     # ------------------------------------------------------------------
 
     def print_xy(self, x, y, text):
-        gmap = self._glyph_x
+        # Lazy build: tml.__init__ draws the status line through this
+        # override before our __init__ body runs.
+        try:
+            gmap = self._glyph_x
+        except AttributeError:
+            gmap = self._glyph_x = {}
+            for _c, _i in self.char_map.items():
+                gmap[ord(_c)] = _i * self.char_width
         cw = self.char_width
         chh = self.char_height
         px = x * cw
