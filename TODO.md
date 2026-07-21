@@ -113,12 +113,11 @@ Two-track release plan:
 - **Validate batched line rendering on device (21/07/2026)** -- `look` and
   the greeting now render via `terminal.print_lines` (one colour-grouped
   pass, list passed unjoined per PRIME_STRING_FORMAT_BUG.md). Timing
-  validated on hardware 21/07 via `debug/render_bench.py`: 591 -> 484 ms
-  (-18%), numbers in docs/BUILTINS.md sec. Text rendering performance.
-  Offscreen compose added 21/07 (batch drawn into `SCRATCH_GROB`, one
-  blit to screen -- atomic update, no fill-in crawl): re-run
-  `debug/render_bench.py` on device to confirm total unchanged and log
-  the blit-only (perceived transition) time. Still open on hardware:
+  validated on hardware 21/07 via `debug/render_bench.py`, incl. the
+  offscreen compose pass (batch drawn into `SCRATCH_GROB`, one blit to
+  screen -- atomic update, no fill-in crawl): 591 -> 461 ms total
+  (-22%), ~2 ms perceived transition, numbers in docs/BUILTINS.md sec.
+  Text rendering performance. Still open on hardware:
   `look` correctness in a busy room (mobs + stacked items + automap),
   greeting paint, over-a-screen batch (long room desc) scrolling into
   the history ring intact. Watch for garbled rows or `gc.mem_free` dips.

@@ -136,22 +136,30 @@ the 150KB help.dat.
 
 Measured 21 Jul 2026 via `debug/render_bench.py` (synthetic 14-line
 busy-room look, ~690 visible chars, 10 alternating passes, +-1ms
-variance):
+variance; full game modules loaded, i.e. in-game heap):
 
 | Path | Cost |
 |:-----|:-----|
 | Per-line `tr.print` (pre-batch) | 591 ms |
-| Batched `tr.print(list)` -> `print_lines` | 484 ms (-18%) |
+| Batched, drawn direct to G0 (superseded same day) | 484 ms (-18%) |
+| Batched offscreen compose (`SCRATCH_GROB`) + single blit | 461 ms (-22%) |
+| Perceived transition of the offscreen path (final blit) | ~2 ms |
 | Glyph blit floor (`tml` per-char `strblit2`) | ~0.7 ms/char |
 | Font recolour (`set_color` pixon loop) | ~2.5 ms/repaint |
 
 Batching wins by collapsing per-colour-switch font repaints (~40 for a
-colour-heavy screen) to one per distinct colour. The residual cost is
-pure per-char glyph blitting. Since 21 Jul 2026 `print_lines` composes
-the batch offscreen (`SCRATCH_GROB`) and blits once: total time is
-unchanged, but the screen updates atomically -- perceived latency is
-the single scratch->screen blit (`render_bench` "blit-only" row)
-instead of a visible char-by-char crawl.
+colour-heavy screen) to one per distinct colour. `print_lines` composes
+the batch offscreen and blits once: per-char blits into a scratch GROB
+are cheaper than into G0 (display memory), and the screen updates
+atomically -- perceived latency is the ~2 ms blit, no char-by-char
+crawl.
+
+Heap-load factor: the same bench standalone (only the rendering chain
+imported, no game modules) measured 210 / 107 ms per-line / batched --
+rendering runs ~2.8x faster on a light heap. MicroPython alloc/lookup
+cost scales with the live heap, and rendering allocates constantly
+(string slices, segment lists). Benchmark rendering with the full dist
+present or the numbers flatter.
 
 ---
 
