@@ -433,7 +433,7 @@ def test_vnum_loaded_template(scene, out, paged):
 
 def test_vnum_unloaded_via_idx(scene, out, paged, monkeypatch, tmp_path):
     idx = tmp_path / "mobs.idx"
-    idx.write_text("# header\nfaraway|9500|red dragon\n")
+    idx.write_text("# header\n9500|faraway|10|red dragon|a red dragon|faraway\n")
     monkeypatch.setattr(debug, "MOBS_IDX", str(idx))
     _run(scene["player"], "vnum mob dragon")
     assert any("9500" in l and "faraway, unloaded" in l for l in paged)
@@ -442,7 +442,7 @@ def test_vnum_unloaded_via_idx(scene, out, paged, monkeypatch, tmp_path):
 def test_vnum_idx_skips_loaded_areas(scene, out, paged, monkeypatch, tmp_path):
     # nonsense keyword so real loaded-area defs can't match either
     idx = tmp_path / "mobs.idx"
-    idx.write_text("loadedtag|9500|qqxzdragon\n")
+    idx.write_text("9500|loadedtag|10|qqxzdragon|a dragon|loadedtag\n")
     monkeypatch.setattr(debug, "MOBS_IDX", str(idx))
     world._LOADED_AREAS.add("loadedtag")
     try:

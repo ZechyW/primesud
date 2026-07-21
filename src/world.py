@@ -329,6 +329,9 @@ _TAG_TO_NAME = {}
 _VNUM_RANGES = []
 _pending_mob_saves = {}    # {tpl_vnum: [room_vnum, ...]} from save data
 _pending_room_items = {}   # {rvnum: "raw|token|string"} from save data
+mob_stats = {}             # {tpl_vnum: [kills, deaths]} (cf. CharIndex)
+area_stats = {}            # {area_tag: [kills, deaths]} (cf. AreaData)
+share_value = 100          # cf. 1stMud mud_info.share_value
 _reset_queue = []          # iterative drain prevents stack overflow
 _draining = False
 _LOADING_ALL = False
@@ -892,7 +895,7 @@ save_pending = False
 
 def reset_lazy():
     """Reset mutable state and lazy loading for new/load game. [PRIMESUD]"""
-    global _player_room, _seq_counter
+    global _player_room, _seq_counter, share_value
     _player_room = None
     _seq_counter = 0
     _area_seq.clear()
@@ -901,6 +904,9 @@ def reset_lazy():
     _LOADED_AREAS.clear()
     _pending_mob_saves.clear()
     _pending_room_items.clear()
+    mob_stats.clear()
+    area_stats.clear()
+    share_value = 100
     del _reset_queue[:]
     ROOM_DEFS._data.clear()
     MOB_DEFS._data.clear()

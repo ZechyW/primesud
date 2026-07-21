@@ -661,7 +661,7 @@ MOBS_IDX = "mobs.idx"
 OBJS_IDX = "objs.idx"
 
 
-def _find_idx(frag, idx_file, lines):
+def _find_idx(frag, idx_file, lines, mob=False):
     """Append "[vnum] keywords (tag, unloaded)" rows for unloaded-area matches. [PRIMESUD]
 
     One f.read() per call (looped readline() ~20ms/call on-device); nothing
@@ -678,11 +678,15 @@ def _find_idx(frag, idx_file, lines):
     for line in data.split("\n"):
         if not line or line[0] == "#":
             continue
-        parts = line.split("|", 2)
-        if len(parts) < 3 or parts[0] in world._LOADED_AREAS:
+        parts = line.split("|", 5 if mob else 2)
+        if len(parts) < (6 if mob else 3):
             continue
-        if is_name(frag, parts[2]):
-            lines.append("[%5s] %s (%s, unloaded)" % (parts[1], parts[2], parts[0]))
+        tag, vnum, keywords = ((parts[1], parts[0], parts[3]) if mob
+                               else (parts[0], parts[1], parts[2]))
+        if tag in world._LOADED_AREAS:
+            continue
+        if is_name(frag, keywords):
+            lines.append("[%5s] %s (%s, unloaded)" % (vnum, keywords, tag))
 
 
 def _debug_vnum(player, args):
@@ -691,8 +695,7 @@ def _debug_vnum(player, args):
 
     Loaded areas answer from MOB_DEFS/ITEM_DEFS in memory (short_descr
     shown); unloaded areas via the keyword indices mobs.idx / objs.idx
-    (keywords shown), so no area load is forced. mobs.idx lists only
-    M-reset mobs, so a reset-less template in an unloaded area is missed.
+    (keywords shown), so no area load is forced.
     do_vnum's skill branch (do_slookup) not ported -- PrimeSUD skills are
     name-keyed (skills_table.py), there is no sn to look up.
     """
@@ -725,7 +728,8 @@ def _debug_vnum(player, args):
         for vnum in sorted(defs._data):
             if is_name(frag, defs._data[vnum].get("keywords", "")):
                 lines.append("[%5d] %s" % (vnum, defs._data[vnum].get("short_descr", "")))
-        _find_idx(frag, MOBS_IDX if kind == "mob" else OBJS_IDX, lines)
+        _find_idx(frag, MOBS_IDX if kind == "mob" else OBJS_IDX, lines,
+                  kind == "mob")
         if len(lines) == start:
             lines.append("No %s by that name."
                          % ("mobiles" if kind == "mob" else "objects"))

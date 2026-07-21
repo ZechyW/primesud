@@ -23,6 +23,7 @@ from quest import quest_update
 from gquest import gquest_update
 from stances import first_stance_tip  # [PRIMESUD]
 from explored import mark_explored  # [PRIMESUD]
+from economy import bank_update
 from debug import DBG, dbg  # [PRIMESUD]
 
 # -- Return flags for update_handler (cf. 1stMud update.c) --------------------
@@ -60,6 +61,7 @@ def update_handler():
         if "tick" in DBG:  # [PRIMESUD]
             dbg("pulse area")
         area_update(tr, player)
+        bank_update()
 
     _pulse_music -= 1
     if _pulse_music <= 0:

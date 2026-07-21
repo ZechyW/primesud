@@ -2658,7 +2658,7 @@ def spell_high_explosive(sn, level, ch, vo, target):
 # -- magic2.c spells --
 
 
-MOB_INDEX_FILE = "mobs.idx"  # [PRIMESUD] "tag|vnum|keywords" per line
+MOB_INDEX_FILE = "mobs.idx"  # [PRIMESUD] mob metadata + ordered spawn tags
 
 
 def _find_unloaded_mob(tail, ch):
@@ -2666,9 +2666,8 @@ def _find_unloaded_mob(tail, ch):
 
     1stMud get_char_world sees every mob in the world; PrimeSUD only
     instantiates mobs of loaded areas. Fallback: scan the keyword index
-    built by tools/build_mob_index.py (one line per M-reset mob, in
-    _AREA_FILES ascending-size order, so ambiguous names resolve to the
-    cheapest area load).
+    built by tools/build_mob_index.py (one line per template, ordered so
+    ambiguous names resolve to the cheapest area load).
 
     Args:
         tail (str): Target name words.
@@ -2679,23 +2678,24 @@ def _find_unloaded_mob(tail, ch):
         tuple: (char_id, char) of the spawned instance, or (None, None).
     """
     loads = 0
+    candidates = []
     with open(MOB_INDEX_FILE) as f:
-        data = f.read()  # one ~32KB read; looped readline() ~20ms/call on-device
+        data = f.read()  # one ~58KB read; looped readline() ~20ms/call on-device
     for line in data.split("\n"):
         if not line or line[0] == "#":
             continue  # blank / header comment
-        parts = line.split("|", 2)
-        if len(parts) < 3:
+        parts = line.split("|", 5)
+        if len(parts) < 6 or not is_name(tail, parts[3]):
             continue
-        tag, _vnum, keywords = parts
-        if tag in world._LOADED_AREAS:
-            continue  # already covered by the world.chars scan
-        if not is_name(tail, keywords):
-            continue
+        for tag in parts[5].split(","):
+            if (tag and tag not in world._LOADED_AREAS
+                    and tag not in candidates):
+                candidates.append(tag)
+    order = {area[1]: i for i, area in enumerate(world._AREA_FILES)}
+    candidates.sort(key=lambda tag: order.get(tag, len(order)))
+    for tag in candidates:
         world._ensure_area_by_tag(tag)
-        # Re-scan chars by keywords (not just this line's vnum): the
-        # load spawned ALL of the area's mobs, and its remaining index
-        # lines are skipped by the _LOADED_AREAS guard above.
+        # Re-scan all chars: loading one area spawns all its reset mobs.
         for _cid, _c in world.chars.items():
             if not _c.get("is_npc"):
                 continue
@@ -2705,7 +2705,7 @@ def _find_unloaded_mob(tail, ch):
         # area loaded but no matching instance spawned (dead / limit 0)
         loads += 1
         if loads >= 2:  # ponytail: cap heap growth per cast
-            break
+            return None, None
     return None, None
 
 

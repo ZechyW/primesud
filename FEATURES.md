@@ -80,6 +80,8 @@ that into features rather than holes.
   could steal them (quest.py).
 - **Trivia spends trimmed** -- `tpspend` omits corpse retrieval, TP transfer,
   pretitle, and the PK flag; the rest of the trivia economy is faithful.
+- **Solo banking** -- banked gold, shares, and the fluctuating market remain;
+  player transfers and clan-bank branches are removed (economy.py).
 
 ## Built for the calculator
 

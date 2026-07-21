@@ -35,12 +35,12 @@ Two-track release plan:
 ## Commands
 
 - Genuinely still-deferred commands (commented-out rows in
-  `commands.py:_CMD_TABLE`): `gossip`, `shout`, `bank`, `auction`, `path`,
+  `commands.py:_CMD_TABLE`): `gossip`, `shout`, `auction`,
   immortal commands. Port when/if a solo gameplay hook appears.
   (`alias`/`unalias` and social actions ported 10/07/2026; the 20/07/2026
   S-effort batch ported `play`, `socials`, `sshow`, `brief`, `compact`,
-  `show`, `title`, `version`, `heel`, `grlist`, `backup`, `prime` -- see
-  docs/PARITY.md.)
+  `show`, `title`, `version`, `heel`, `grlist`, `backup`, `prime`; later
+  parity work ported `path`, `bank`, and `balance` -- see docs/PARITY.md.)
 
 ## Housing
 

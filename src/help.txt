@@ -3081,23 +3081,21 @@ Online social editting - (c) 1996,97 Erwin S. Andreasen
 <erwin@andreasen.org>
 #0|SHARES ECONOMY WITHDRAW BANK BANKS BALANCE
 Syntax:
-bank deposit
-bank withdraw
+bank deposit     <amount|all>
+bank withdraw    <amount|all>
 bank balance
-bank transfer
-bank buy        <# of shares>
-bank sell       <# of shares>
+bank buy         <amount|all>
+bank sell        <amount|all>
 bank check
 
 The Mythran mud bank system enhances the economy of the MUD. In a bank you
-can deposit money to your account, withdraw money from it, check your current
-bank balance, and transfer money to other players. This can be useful if you
-have to pay your fee for the clan or divide the cash from your quest among
-each other.
+can deposit money to your account, withdraw money from it, and check your
+current bank balance. Deposits are counted in gold; silver is exchanged at
+100 silver per gold.
 Another feature of the bank is that you can buy and sell shares. By buying
 shares you can invest your money in the mud economy. The shares constantly
 change in value, so you can make a nice profit if you buy and sell your
-shares at the right times. The current share price and be seen by going to
+shares at the right times. The current share price can be seen by going to
 the bank, or by checking your score.
 #0|SHIELD 'STONE SKIN'
 Syntax: cast shield

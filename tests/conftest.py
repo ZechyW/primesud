@@ -69,6 +69,9 @@ def fresh_world(tmp_path):
         "_VNUM_RANGES": list(world._VNUM_RANGES),
         "_pending_mob_saves": dict(world._pending_mob_saves),
         "_pending_room_items": dict(world._pending_room_items),
+        "mob_stats": dict(world.mob_stats),
+        "area_stats": dict(world.area_stats),
+        "share_value": world.share_value,
         "ROOM_DEFS": dict(world.ROOM_DEFS._data),
         "MOB_DEFS": dict(world.MOB_DEFS._data),
         "ITEM_DEFS": dict(world.ITEM_DEFS._data),
@@ -89,6 +92,9 @@ def fresh_world(tmp_path):
     world._VNUM_RANGES.clear()
     world._pending_mob_saves.clear()
     world._pending_room_items.clear()
+    world.mob_stats.clear()
+    world.area_stats.clear()
+    world.share_value = 100
     world.ROOM_DEFS._data.clear()
     world.MOB_DEFS._data.clear()
     world.ITEM_DEFS._data.clear()
@@ -147,7 +153,8 @@ def fresh_world(tmp_path):
     world._LOADED_AREAS.clear()
     world._LOADED_AREAS.update(old_state["_LOADED_AREAS"])
     for name in ("_TAG_TO_FILE", "_TAG_TO_NAME", "_pending_mob_saves",
-                 "_pending_room_items", "DOOR_DEFS", "MOBPROGS",
+                 "_pending_room_items", "mob_stats", "area_stats",
+                 "DOOR_DEFS", "MOBPROGS",
                  "OBJPROGS", "ROOMPROGS", "chars"):
         d = getattr(world, name)
         d.clear()
@@ -168,3 +175,4 @@ def fresh_world(tmp_path):
     # lazy loading keeps working for later tests; if False, the next
     # init_world() rebuilds as usual.
     world._WORLD_READY = old_state["_WORLD_READY"]
+    world.share_value = old_state["share_value"]

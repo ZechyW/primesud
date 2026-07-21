@@ -7,6 +7,8 @@ affects|list active spells and effects on you
 alias|define or list command shortcuts: alias <name> <command>
 appraise|ask a shopkeeper the sell value of an item
 areas|list the areas of the world
+areadeaths|rank areas by mob deaths
+areakills|rank areas by player deaths
 autoassist|toggle auto-assisting group members in combat
 autodamage|toggle damage amounts in combat messages
 autoexit|toggle exit display in room descriptions
@@ -19,6 +21,8 @@ autoskill|auto combat actions: autoskill [edit|list|reset]
 autosplit|toggle auto gold splitting (group)
 autostance|set the stance to enter when combat starts
 backup|save your character to a second backup slot
+balance|show banked gold, carried money, and shares
+bank|deposit, withdraw, or trade shares at a bank
 backstab|attack from the shadows for heavy damage
 bash|slam into an opponent to knock it down
 berserk|fly into a rage: more damage, less defense
@@ -76,6 +80,8 @@ list|see what a shop sells
 lock|lock a door or container (needs the key)
 look|look at the room, a mob, or an item
 macro|bind command shortcuts to keys
+mobdeaths|rank mob types by deaths
+mobkills|rank mob types by kills
 map|show the area map
 motd|show the message of the day
 murder|attack without mercy (no prefix matching)

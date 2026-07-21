@@ -25,22 +25,16 @@ def check_worth(ch, cost):
 
 def deduct_cost(ch, cost):
     """Remove cost (silver units) from ch, converting gold<->silver as needed (cf. 1stMud `deduct_cost` in handler.c: VALUE_DEFAULT branch)."""
-    silver = cost % 100
-    gold = cost // 100
-    if ch["silver"] < silver:
-        ch["gold"] -= 1
-        ch["silver"] += 100
-    if ch["gold"] < gold:
-        ch["silver"] += (gold - ch["gold"]) * 100
-        ch["gold"] = 0
-    ch["silver"] -= silver
-    ch["gold"] -= gold
+    total = ch["gold"] * 100 + ch["silver"] - cost
+    ch["gold"] = total // 100
+    ch["silver"] = total % 100
 
 
 def add_cost(ch, cost):
     """Add cost (silver units) to ch's money (cf. 1stMud `add_cost` in handler.c: VALUE_DEFAULT branch)."""
-    ch["silver"] += cost % 100
-    ch["gold"] += cost // 100
+    total = ch["gold"] * 100 + ch["silver"] + cost
+    ch["gold"] = total // 100
+    ch["silver"] = total % 100
 
 
 # -- Shop helpers (cf. 1stMud act_obj.c) --------------------------------------

@@ -93,7 +93,7 @@ def _serialize_world(hvar_name=None, file_name=None):
                 "room", "trivia",
                 "practice", "train", "flags", "played", "backup", "alignment",
                 "tier",  # [PRIMESUD] prestige tier (see training.py finish_tier_reset)
-                "gold", "silver", "wimpy",
+                "gold", "silver", "gold_bank", "shares", "wimpy",
                 # cf. 1stMud fwrite_char QuestPnts/QuestNext; PrimeSUD also
                 # persists the active quest (vnum-based, see quest.py)
                 "quest_points", "quest_status", "quest_time",
@@ -193,6 +193,13 @@ def _serialize_world(hvar_name=None, file_name=None):
                 _wparts.append(str(weather.get(_wfld, 0)))
             lines.append("a." + str(_as["tag"]) + ".w=" + "|".join(_wparts))
     lines.append("g.time=" + str(time_info["hour"]) + "|" + str(time_info["day"]) + "|" + str(time_info["month"]) + "|" + str(time_info["year"]))
+    lines.append("g.share=" + str(world.share_value))
+    for _vnum in sorted(world.mob_stats):
+        _stat = world.mob_stats[_vnum]
+        lines.append("s.m." + str(_vnum) + "=" + str(_stat[0]) + "|" + str(_stat[1]))
+    for _tag in sorted(world.area_stats):
+        _stat = world.area_stats[_tag]
+        lines.append("s.a." + str(_tag) + "=" + str(_stat[0]) + "|" + str(_stat[1]))
     for _gql in gq_save_lines():  # [PRIMESUD] gquest state
         lines.append(_gql)
     # Build reset-room map for single-instance mobs (gl=1): if the only live
@@ -365,7 +372,7 @@ def load_world():
                 "perm_hit", "perm_mana", "perm_move",
                 "room", "alignment", "prime_class",
                 "practice", "train", "flags", "played", "backup", "tier",
-                "gold", "silver", "wimpy",
+                "gold", "silver", "gold_bank", "shares", "wimpy",
                 "quest_points", "quest_status", "quest_time",
                 "quest_mob", "quest_obj", "quest_room", "quest_giver"}
 
@@ -465,6 +472,16 @@ def load_world():
                         w[_WEATHER_PACK_FIELDS[i]] = int(parts[i])
         elif key.startswith("g.gq") and gq_load_line(key, val):  # [PRIMESUD]
             pass
+        elif key == "g.share":
+            world.share_value = int(val)
+        elif key.startswith("s.m."):
+            parts = val.split("|")
+            if len(parts) == 2:
+                world.mob_stats[int(key[4:])] = [int(parts[0]), int(parts[1])]
+        elif key.startswith("s.a."):
+            parts = val.split("|")
+            if len(parts) == 2:
+                world.area_stats[key[4:]] = [int(parts[0]), int(parts[1])]
         elif key == "g.time":
             parts = val.split("|")
             if len(parts) == 4:

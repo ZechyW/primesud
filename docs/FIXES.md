@@ -473,3 +473,34 @@ a prog can pick the acting mob as its own "random bystander".
 Candidates are visible characters other than the acting mob, which is the
 behaviour the $-codes ($r/$R "random char here") plainly intend. Marked
 [PRIMESUD] at the site.
+
+---
+
+## bank: currency, cap, hours, and score inconsistencies
+
+**Upstream:** `reference/1stMud4.5.3/src/economy.c`, `do_bank()`, lines
+63-440; `reference/1stMud4.5.3/src/act_info.c`, `dlm_score()`, lines 1848-1858.
+
+### The bugs
+
+Personal deposits use `check_worth(..., VALUE_DEFAULT)`, which treats the
+amount as silver, but `paybank` subtracts that number from gold and credits it
+unchanged as bank gold. Silver can therefore satisfy the check without being
+deducted, creating bank gold. Deposits also check the amount alone instead of
+the resulting balance, so repeated deposits can exceed `MAX_GOLD`. Share sales
+at the cap consume every share while silently discarding excess proceeds.
+
+The bank advertises 4am-8pm hours but closes only when `hour > 20`, leaving it
+open through 8:59pm. The score format passes `shares` twice before
+`share_value`; its "value" field therefore shows the share count, not the
+current price.
+
+### PrimeSUD fixes -- implemented in `economy.py` and `info.py`
+
+- [PRIMESUD] Deposits are denominated in whole gold but may draw from the
+  combined wallet at 100 silver per gold. `all` leaves any sub-gold silver.
+- Deposit and share-sale mutations are rejected if the resulting bank balance
+  would exceed `MAX_GOLD`; shares are never consumed for discarded proceeds.
+- The bank closes at hour 20, matching its stated 8pm closing time.
+- Score uses a 64-column-safe full-width bank row and shows the real share
+  price.

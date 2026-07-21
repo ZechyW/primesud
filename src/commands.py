@@ -15,7 +15,9 @@ from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_autosplit, do_autoassist, do_autoexit, do_autodamage,
                   do_wimpy, do_exits, do_worth, do_where, do_clear,
                   do_time, do_weather, do_motd, do_version,
-                  do_brief, do_compact, do_show, do_title)
+                  do_brief, do_compact, do_show, do_title,
+                  do_mobdeaths, do_mobkills, do_areakills, do_areadeaths)
+from economy import do_bank, do_balance
 from path import do_path
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
@@ -369,8 +371,8 @@ _CMD_TABLE = [
     # ("donate",    do_donate,     "resting",  False),  # #266
     # ("whowas",    do_whowas,     "sleeping", False),  # #267
     # ("arena",     do_arena,      "resting",  False),  # #268
-    # ("bank",      do_bank,       "resting",  False),  # #269
-    # ("balance",   do_balance,    "sleeping", False),  # #270
+    ("bank",      do_bank,       "resting",  False),  # #269
+    ("balance",   do_balance,    "sleeping", False),  # #270
     # ("clanrecall", do_clanrecall, "standing", False), # #271
     # ("join",      do_join,       "sleeping", False),  # #272
     # ("clanadmin", do_clanadmin,  "sleeping", False),  # #273
@@ -434,10 +436,10 @@ _CMD_TABLE = [
     ("clear",      do_clear,      "dead",     False),  # #331
     ("cls",        do_clear,      "dead",     False),  # #332
     # ("nosayverbs", do_nosayverbs, "sleeping", False), # #333
-    # ("mobdeaths", do_mobdeaths,  "sleeping", False),  # #334
-    # ("mobkills",  do_mobkills,   "sleeping", False),  # #335
-    # ("areakills", do_areakills,  "sleeping", False),  # #336
-    # ("areadeaths", do_areadeaths, "sleeping", False), # #337
+    ("mobdeaths", do_mobdeaths,  "sleeping", False),  # #334
+    ("mobkills",  do_mobkills,   "sleeping", False),  # #335
+    ("areakills", do_areakills,  "sleeping", False),  # #336
+    ("areadeaths", do_areadeaths, "sleeping", False), # #337
     ("version",    do_version,    "dead",     False),  # #338
     ("sshow",      do_sshow,      "sleeping", False),  # #339
     ("appraise",  do_appraise,   "standing", False),  # #340

@@ -83,7 +83,9 @@ def create_char(class_idx=CLASS_WARRIOR, race_name="Human"):
         "id":       1,
         # cf. 1stMud nanny.c CON_READ_MOTD level==0 block: ch->gold = 10
         # (base is 0 -- see _char_base).
-        "gold":     10,
+        "gold":      10,
+        "gold_bank": 0,
+        "shares":    0,
         # cf. 1stMud ch->Class[] array in multiclass.c; grows on remort.
         "classes":     [class_idx],
         "prime_class": 0,  # slot index into classes (cf. pcdata->prime_class)

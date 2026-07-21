@@ -1354,7 +1354,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                 death_trigger(victim, ch)
 
         # 1stMud: update_death(victim, ch)
-        # [PRIMESUD] skip update_death (not ported)
+        update_death(victim, ch)
 
         # 1stMud: raw_kill(victim, ch)
         corpse = raw_kill(victim, ch)
@@ -2478,6 +2478,31 @@ def make_corpse(ch):
     # 1stMud: obj_to_room(corpse, ch->in_room);
     world.rooms[ch["room"]]["items"].append(corpse)
     return corpse
+
+
+def update_death(victim, killer):
+    """Update mob-template and area stats (cf. 1stMud update_death in fight.c).
+
+    Kills use mob/area perspective: a player death is an area kill; a mob
+    death is an area death. [PRIMESUD] Sparse maps avoid loading templates;
+    player/global/level stats, death sounds, and millionth-kill bonuses remain
+    absent.
+    """
+    # Upstream explicitly excludes self-inflicted deaths.
+    if victim is killer:
+        return
+    if victim.get("is_npc"):
+        # Template stats follow pIndexData; area stats follow in_room->area.
+        world.mob_stats.setdefault(victim["tpl"], [0, 0])[1] += 1
+        area = world._vnum_to_tag(victim.get("room"))
+        if area is not None:
+            world.area_stats.setdefault(area, [0, 0])[1] += 1
+    else:
+        area = world._vnum_to_tag(victim.get("room"))
+        if area is not None:
+            world.area_stats.setdefault(area, [0, 0])[0] += 1
+    if killer is not None and killer.get("is_npc"):
+        world.mob_stats.setdefault(killer["tpl"], [0, 0])[0] += 1
 
 
 def raw_kill(victim, killer):

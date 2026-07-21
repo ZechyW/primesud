@@ -38,6 +38,7 @@ from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
 from debug import DBG, dbg  # [PRIMESUD]
 from explored import roomcount, TOP_EXPLORED, _pct2
 from prime_platform import ticks  # [PRIMESUD] 'debug time' channel timings
+from pager import tpage
 
 
 def _wrap(text, width):
@@ -862,9 +863,9 @@ _SCORE_LEFT  = (TERMINAL_COLS - 7) // 2
 _SCORE_RIGHT = TERMINAL_COLS - 7 - _SCORE_LEFT
 _SCORE_SEP_OUTER = "{W+" + "-" * _SCORE_INNER + "+{x"
 _SCORE_SEP_INNER = "{W+" + "-" * (_SCORE_LEFT + 2) + "+" + "-" * (_SCORE_RIGHT + 2) + "+{x"
-# full-width AC bar: (_SCORE_INNER-2) content chars minus 6(label)+2(': ')+5(val)+2(' [')+1(']')
-# Minus 2 chars for precise colour segment lengths
-_AC_BAR_W = _SCORE_INNER - 18 - 2
+# paired AC bar: cell width minus 6(label)+2(': ')+5(val)+2(' [')+1(']')
+_AC_BAR_L = _SCORE_LEFT - 16
+_AC_BAR_R = _SCORE_RIGHT - 16
 _PERCENT_BAR_COLORS = ('r', 'R', 'y', 'Y', 'g', 'G', 'W')
 
 
@@ -908,7 +909,10 @@ def do_score(player, args):
     explored line (cf. act_info.c:1841) added and re-verified 08/07/2026;
     [PRIMESUD] Tier cell (approved) added 11/07/2026; real player["title"]
     field (set_title/do_title) wired into the header and COMM_SHOW_AFFECTS
-    do_affects tail added, re-verified 20/07/2026]
+    do_affects tail added, re-verified 20/07/2026; bank/share row added and
+    re-verified 21/07/2026; [PRIMESUD] AC bars paired 2-per-row and the
+    values/AC separator dropped (approved) so the box fits the 22-row
+    screen, 21/07/2026]
     -- data fields (age, hours, thac0, AC bars)
     verified; box layout adapted for the 64-col screen [PRIMESUD].
     """
@@ -931,10 +935,11 @@ def do_score(player, args):
         vc = '{w'
         return nc + '{:<13}'.format(name) + ': [' + vc + '{:>11}'.format(v) + nc + ' ]{x'
 
-    def _ac_row(label, val):
-        bar = _make_percent_bar(-val, 1000, _AC_BAR_W)
-        content = '{c' + '{:<6}'.format(label) + ' {W:  {w' + '{:5d}'.format(val) + ' {c[' + bar + '{c]'
-        return '{W|{x ' + content + ' {W|{x'
+    def _ac_cell(label, val, bar_w=_AC_BAR_L):
+        # [PRIMESUD] two bars per row so the score box fits the 22-row screen
+        bar = _make_percent_bar(-val, 1000, bar_w)
+        return ('{c' + '{:<6}'.format(label) + '{W: {w' + '{:5d}'.format(val)
+                + ' {c[' + bar + '{c]{x')
 
     def _free_mem():
         # Since memory is mentioned here, also use `score` as a point to do gc
@@ -1042,15 +1047,27 @@ def do_score(player, args):
             # [PRIMESUD] prestige tier (empty cell when tier 0, stock look)
             _val_r("Tier", p.get("tier", 0), bright=True) if p.get("tier", 0) else ""
         ),
-        _SCORE_SEP_OUTER,
-        _ac_row("Pierce", get_armor(p, AC_PIERCE)),
-        _ac_row("Bash", get_armor(p, AC_BASH)),
-        _ac_row("Slash", get_armor(p, AC_SLASH)),
-        _ac_row("Exotic", get_armor(p, AC_EXOTIC)),
+        _row(_ac_cell("Pierce", get_armor(p, AC_PIERCE)),
+             _ac_cell("Bash", get_armor(p, AC_BASH), _AC_BAR_R)),
+        _row(_ac_cell("Slash", get_armor(p, AC_SLASH)),
+             _ac_cell("Exotic", get_armor(p, AC_EXOTIC), _AC_BAR_R)),
         _SCORE_SEP_OUTER,
         expl_row,
         _SCORE_SEP_OUTER,
     ]
+    if p.get("gold_bank", 0) or p.get("shares", 0):
+        # [PRIMESUD] Full-width row fits max values and displays the intended
+        # share price; upstream passes shares twice where share_value is meant.
+        _shares = p.get("shares", 0)
+        _bank_txt = ("{CBank: {w" + str(p.get("gold_bank", 0))
+                     + " gold {C| Shares: {w" + str(_shares) + " {C("
+                     + str(_shares * world.share_value) + " gold @ "
+                     + str(world.share_value) + "){x")
+        _bv = color_len(_bank_txt)
+        _blp = max(0, (_SCORE_INNER - _bv) // 2)
+        _brp = max(0, _SCORE_INNER - _bv - _blp)
+        lines.insert(-1, "{W|{x" + " " * _blp + _bank_txt
+                     + " " * _brp + "{W|{x")
     for line in lines:
         chprintln(player, line)
 
@@ -1898,6 +1915,94 @@ def do_areas(player, args):
         chprintln(player, "{W" + _center_fill("[ {RNo areas meeting those criteria.{W ]") + "{x")
     else:
         chprintln(player, "{W" + _center_fill("[ {R" + str(count) + " areas found{W ]") + "{x")
+
+
+MOB_INDEX_FILE = "mobs.idx"  # [PRIMESUD] prebuilt mob display metadata
+
+
+def _mob_stats(player, stat_index):
+    """Show mob-template stats (cf. 1stMud do_mobkills/do_mobdeaths in act_info.c).
+
+    [PRIMESUD] Layout is condensed to 64 columns; immortal reset forms are
+    omitted with the immortal admin surface.
+    """
+    title = "Most Dangerous Monsters" if stat_index == 0 else "Most Popular Mobs"
+    label = "Kills" if stat_index == 0 else "Deaths"
+    counts = {v: s[stat_index] for v, s in world.mob_stats.items()
+              if s[stat_index] > 2}
+    lines = ["{W[ {R" + title + "{W ]{x",
+             "{GNum  Mob Name               Lvl Area                 " + label + "{x"]
+    if not counts:
+        lines.append("No Mobs listed yet.")
+        tpage(lines)
+        return
+    metadata = {}
+    with open(MOB_INDEX_FILE) as f:
+        data = f.read()
+    for line in data.split("\n"):
+        if not line or line[0] == "#":
+            continue
+        parts = line.split("|", 5)
+        if len(parts) < 6:
+            continue
+        vnum = int(parts[0])
+        if vnum in counts:
+            metadata[vnum] = (parts[4], int(parts[2]), parts[1])
+    ranked = [(count, vnum) for vnum, count in counts.items()
+              if vnum in metadata]
+    ranked.sort(key=lambda x: (-x[0], x[1]))
+    rank = 0
+    for count, vnum in ranked[:50]:
+        rank += 1
+        short_descr, level, tag = metadata[vnum]
+        lines.append("%3d) %-22s %3d %-20s %6d" %
+                     (rank, short_descr[:22], level,
+                      world._TAG_TO_NAME.get(tag, tag)[:20], count))
+    if not rank:
+        lines.append("No Mobs listed yet.")
+    tpage(lines)
+
+
+def do_mobkills(player, args):
+    """List mobs ranked by kills (cf. 1stMud do_mobkills in act_info.c)."""
+    _mob_stats(player, 0)
+
+
+def do_mobdeaths(player, args):
+    """List mobs ranked by deaths (cf. 1stMud do_mobdeaths in act_info.c)."""
+    _mob_stats(player, 1)
+
+
+def _area_stats(stat_index):
+    """Show area stats (cf. 1stMud do_areakills/do_areadeaths in act_info.c).
+
+    [PRIMESUD] Layout is condensed to 64 columns; trusted reset forms are
+    omitted with the immortal admin surface.
+    """
+    # [PRIMESUD] Upstream do_areakills has an inverted AREA_CLOSED gate that
+    # hides every active area; use its clear listing intent, like do_areadeaths.
+    label = "Kills" if stat_index == 0 else "Deaths"
+    ranked = [(s[stat_index], tag) for tag, s in world.area_stats.items()
+              if s[stat_index] > 0]
+    ranked.sort(key=lambda x: (-x[0], x[1]))
+    lines = ["{GNum  Area Name                 Levels   " + label + "{x"]
+    for rank, entry in enumerate(ranked, 1):
+        count, tag = entry
+        levels = world.AREA_LEVELS.get(tag, (1, MAX_LEVEL))
+        lvl = str(levels[0]) + "-" + str(levels[1])
+        lines.append("%3d) %-25s %7s %7d" %
+                     (rank, world._TAG_TO_NAME.get(tag, tag)[:25], lvl, count))
+    tpage(lines)
+
+
+def do_areakills(player, args):
+    """List areas ranked by kills (cf. 1stMud do_areakills in act_info.c)."""
+    _area_stats(0)
+
+
+def do_areadeaths(player, args):
+    """List areas ranked by deaths (cf. 1stMud do_areadeaths in act_info.c)."""
+    _area_stats(1)
 
 
 def do_read(player, args):

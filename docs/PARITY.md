@@ -9,7 +9,7 @@ checklist for the engine 1.0 parity tag; strike items as they are resolved.
 ## Command parity
 
 All 348 `commands.dat` commands are accounted for in `src/commands.py`
-(147 active since the 20/07/2026 parity ports below, 201 commented with
+(153 active since the 20-21/07/2026 parity ports below, 195 commented with
 reasons); PrimeSUD-only additions are
 `autoskill`, `debug`, `macro` (all `[PRIMESUD]`). Nothing was forgotten;
 the only risk class is *wrong* exclusions, audited below.
@@ -86,14 +86,25 @@ may differ.
 two-column layout; skill/spell views show all six classes across two lines
 to fit the Prime's 64-column screen.
 
+`mobdeaths`, `mobkills`, `areadeaths`, and `areakills` ported 21/07/2026:
+the shared `update_death` seam keeps sparse per-template/per-area counters,
+including upstream mob/area-perspective naming (`kills` = PCs killed), the
+mob-template/current-room area attribution split, self-death exclusion,
+mob-list >2 threshold, top-50 cap, and save persistence without loading all
+area templates. Display metadata comes from the compact all-template
+`mobs.idx`; stale saved vnums are discarded before the top-50 cut.
+
+`bank` / `balance` ported 21/07/2026: bank-room and opening-hour gates,
+deposit/withdraw, persistent bank gold and shares, daytime share-price walk,
+caps, score display, and messages follow `economy.c`. PrimeSUD fixes upstream
+currency/cap/hour/score bugs documented in `docs/FIXES.md`.
+Player transfer and clan-bank branches remain excluded as multiplayer-only.
+
 Remaining open candidates:
 
 | cmd | effort | evidence | value |
 |---|---|---|---|
 | index | M | act_info.c:2672 | help category index; needs category metadata in help.txt + build_help_idx.py |
-| mobdeaths / mobkills | M | act_info.c:3909-4020 | solo bestiary stats; needs per-template counters. NB upstream naming inverted (fight.c:1941/1968: area->kills = PC deaths) |
-| areadeaths / areakills | M | act_info.c:4139-4251 | per-area tallies; same new-counter plumbing |
-| bank / balance | L | economy.c:36-140 | shares minigame; TODO.md already defers. Stock lore (midgaard.are vnum 3140 liquidation notice) says bank defunct + no death-gold-loss, so solo value dubious — lean drop |
 | locate object: unloaded areas | M | magic.c:3523 (obj_first is world-global) | spell_locate_object scans loaded areas only (noted in its docstring 20/07/2026). objs.idx could name areas whose templates match, but live floor/carried state of unloaded areas sits in pending-save buffers — needs design before porting |
 
 ### Debug-toolkit candidates (imm commands with solo debug value)
@@ -102,7 +113,7 @@ All resolved 20/07/2026 as `debug` subcommands (debug.py):
 
 | cmd | evidence | resolution (20/07/2026) |
 |---|---|---|
-| vnum | act_wiz.c:988 | PORTED as `debug vnum [mob\|obj] <name>` (the old vnum display channel folded into holylight, matching upstream's PLR_HOLYLIGHT room-vnum gate, act_info.c:1136; mob/obj vnum overlay kept as [PRIMESUD] superset). Loaded areas answer from defs in memory; unloaded areas via keyword indices (mobs.idx + new objs.idx, built by tools/build_mob_index.py) -- no area load forced. Skill branch (do_slookup) N/A: skills are name-keyed |
+| vnum | act_wiz.c:988 | PORTED as `debug vnum [mob\|obj] <name>` (the old vnum display channel folded into holylight, matching upstream's PLR_HOLYLIGHT room-vnum gate, act_info.c:1136; mob/obj vnum overlay kept as [PRIMESUD] superset). Loaded areas answer from defs in memory; unloaded areas via all-template keyword indices (mobs.idx + objs.idx, built by tools/build_mob_index.py) -- no area load forced. Skill branch (do_slookup) N/A: skills are name-keyed |
 | flag | flags.c:35 | PORTED as `debug flag`; dict-key bits, +/-/=/toggle as upstream; plr/comm fields N/A (no player-flag/comm systems); no flag-name table at runtime, so result set is echoed instead of validated |
 | force | act_wiz.c:2720 | PORTED as `debug force <char> <cmd>`; all/players/gods sweeps + trust gates N/A solo |
 | switch/return | act_wiz.c:1609,1680 | CLOSED covered-by-force: upstream switch swaps the descriptor into the mob to issue commands as it; PrimeSUD has no descriptor layer and the whole command surface assumes the player dict. `debug force <mob> <cmd>` gives the same test lever (mob's own say doesn't fire speech triggers upstream either -- NPC gate) |
@@ -146,10 +157,7 @@ create_mobile stat/wealth rolls, weather engine, effects (acid/fire/cold/
 poison/shock), obj decay/corpse spill, aggr_update, spec_funs (25/26;
 spec_warmaster N/A — its only user is the unshipped war PK area), hunt
 (incl. dormant-upstream hunt_victim), mobprog engine (16/16 triggers,
-27/30 mob commands, 33/56 ifchecks — all unimplemented ones unused by any
-shipped content and recognized as vocabulary so they no-op rather than
-abort; the 3 stubbed commands (gtransfer/gforce/vforce) are solo-meaningful
-after all — completion scoped in PROGS_PLAN.md).
+30/30 mob commands, all ifchecks; `gtransfer`/`gforce`/`vforce` included).
 
 ### Confirmed gaps (fidelity; spot-checked against source)
 
@@ -182,7 +190,7 @@ All resolved or closed 19/07/2026:
 - TODO.md: save_objs question closed (player-home floor persistence only,
   homes.c:313 — N/A); `play` re-bucketed out of the MP-only list.
 - info.py: prompt/gprompt TODOs closed as superseded (status bar), combine
-  TODO closed as moot; compact TODO kept (port-candidate).
+  TODO closed as moot; compact TODO closed by the 20/07/2026 port.
 - commands.py: imm band comment reworded (ordinal band; `prime` noted as
   mortal -- its ordinal, misrecorded here as #203, was corrected to #317
   when `prime` was ported 20/07/2026).
