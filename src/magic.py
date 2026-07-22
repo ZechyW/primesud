@@ -462,8 +462,15 @@ def _scan_locate_areas(tags, wanted, level, ch, found, max_found,
             return
     for cid in list(world.chars):
         mob = world.chars.get(cid)
-        if (not mob or not mob.get("is_npc")
-                or world._vnum_to_tag(mob.get("room")) not in tags):
+        if not mob or not mob.get("is_npc"):
+            continue
+        # Room-tag match, or template-tag match for a wanderer restored
+        # into an already-scanned area's room when its home area hydrates.
+        # No double-scan: an instance's template area is always loaded, so
+        # it can only be in `tags` in the batch that loaded it, and no
+        # instance predates its own template area's load.
+        if (world._vnum_to_tag(mob.get("room")) not in tags
+                and world._vnum_to_tag(mob.get("tpl")) not in tags):
             continue
         if can_see(ch, mob):
             mloc = "one is carried by " + MOB_DEFS[mob["tpl"]]["short_descr"]
@@ -516,10 +523,24 @@ def _locate_candidate_areas(wanted):
                     candidates.append(tag)
     if not vnums:
         return candidates
+    # Cheap substring gate before parsing: every serialized item starts
+    # with "v:<vnum>" (nested contents included), so a token without any
+    # needle can't contain a wanted vnum. False positives (e.g. "lv:250"
+    # containing "v:250") fall through to the exact parsed check.
+    needles = []
+    for v in vnums:
+        needles.append("v:" + str(v))
     from item import parse_item_token  # deferred: item imports world
     for room_vnum, raw in world._pending_room_items.items():
         for token in raw.split("|"):
-            if token and _pending_obj_has_vnum(parse_item_token(token), vnums):
+            if not token:
+                continue
+            hit = False
+            for n in needles:
+                if n in token:
+                    hit = True
+                    break
+            if hit and _pending_obj_has_vnum(parse_item_token(token), vnums):
                 tag = world._vnum_to_tag(room_vnum)
                 if (tag and tag not in world._LOADED_AREAS
                         and tag not in candidates):

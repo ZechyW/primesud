@@ -171,6 +171,23 @@ def test_locate_finds_unloaded_item_on_invisible_mob(
     assert world._LOADED_AREAS == {"alpha"}
 
 
+def test_locate_finds_wanderer_restored_into_scanned_area(
+        fresh_world, monkeypatch, tmp_path):
+    player, out = _setup_remote(
+        fresh_world, monkeypatch, tmp_path,
+        {250: _obj("silver sword")},
+        resets=(("M", 210, 1, 200, 1), ("G", 250, 1)),
+        mobiles={210: _mob("carrier")})
+    # Beta's wanderer was buffered standing in alpha's (already-scanned)
+    # room; hydration restores it there, so the room-tag filter alone
+    # would miss it -- the template-tag test must catch it.
+    world._pending_mob_saves[210] = [100]
+
+    assert magic.spell_locate_object(0, 20, player, None, "char")
+    assert out == ["one is carried by a hidden carrier"]
+    assert world._LOADED_AREAS == {"alpha"}
+
+
 def test_locate_result_cap_prevents_remote_load(
         fresh_world, monkeypatch, tmp_path):
     player, out = _setup_remote(
