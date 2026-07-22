@@ -9,7 +9,7 @@ checklist for the engine 1.0 parity tag; strike items as they are resolved.
 ## Command parity
 
 All 348 `commands.dat` commands are accounted for in `src/commands.py`
-(154 active since the 20-22/07/2026 parity ports below, 194 commented with
+(155 active since the 20-22/07/2026 parity ports below, 193 commented with
 reasons); PrimeSUD-only additions are
 `autoskill`, `debug`, `macro` (all `[PRIMESUD]`). Nothing was forgotten;
 the only risk class is *wrong* exclusions, audited below.
@@ -105,11 +105,14 @@ caps, score display, and messages follow `economy.c`. PrimeSUD fixes upstream
 currency/cap/hour/score bugs documented in `docs/FIXES.md`.
 Player transfer and clan-bank branches remain excluded as multiplayer-only.
 
-Remaining open candidates:
+`index` ported 22/07/2026: category metadata was restored from the original
+help records without replacing PrimeSUD's edited help bodies; the runtime
+lists categories and numbered entries from the existing off-heap help index.
+
+Remaining open candidate:
 
 | cmd | effort | evidence | value |
 |---|---|---|---|
-| index | M | act_info.c:2672 | help category index; needs category metadata in help.txt + build_help_idx.py |
 | locate object: unloaded areas | M | magic.c:3523 (obj_first is world-global) | spell_locate_object scans loaded areas only (noted in its docstring 20/07/2026). objs.idx could name areas whose templates match, but live floor/carried state of unloaded areas sits in pending-save buffers — needs design before porting |
 
 ### Debug-toolkit candidates (imm commands with solo debug value)

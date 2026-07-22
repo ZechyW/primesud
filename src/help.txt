@@ -1,9 +1,9 @@
-# Canonical help source: '#<level>|<keywords>' marker line then text lines per entry, ASCII + LF only. Edit directly, then run: python tools/build_help_idx.py
-#0|!
+# Canonical help source: '#<level>|<category>|<keywords>' marker line then text lines per entry, ASCII + LF only. Edit directly, then run: python tools/build_help_idx.py
+#0|commands|!
 Syntax: !
 
 ! repeats the last command you typed.
-#0|'ACID BLAST' 'BURNING HANDS' 'COLOR SPRAY' FIREBALL 'LIGHTNING BOLT' 'MAGIC MISSILE' 'SHOCKING GRASP'
+#0|spells|'ACID BLAST' 'BURNING HANDS' 'COLOR SPRAY' FIREBALL 'LIGHTNING BOLT' 'MAGIC MISSILE' 'SHOCKING GRASP'
 Syntax: cast 'acid blast'      <victim>
 Syntax: cast 'burning hands'  <victim>
 Syntax: cast 'color spray'   <victim>
@@ -14,7 +14,7 @@ Syntax: cast 'shocking grasp' <victim>
 
 These spells inflict damage on the victim.  The higher-level
 spells do more damage.
-#0|'ACID BREATH' 'FIRE BREATH' 'FROST BREATH' 'GAS BREATH' 'LIGHTNING BREATH'
+#0|spells|'ACID BREATH' 'FIRE BREATH' 'FROST BREATH' 'GAS BREATH' 'LIGHTNING BREATH'
 Syntax: cast 'acid breath'      <victim>
 Syntax: cast 'fire breath'      <victim>
 Syntax: cast 'frost breath'     <victim>
@@ -27,12 +27,12 @@ room.  Fire and frost can break objects, and acid can damage
 armor.
 
 High level mages may learn and cast these spells as well.
-#0|'CALL LIGHTNING'
+#0|spells|'CALL LIGHTNING'
 Syntax: cast 'call lightning'
 
 This spell works only out of doors, and only when the weather is
 bad. It calls down lightning bolts from Mota.
-#0|'CAUSE LIGHT' 'CAUSE SERIOUS' 'CAUSE CRITICAL' HARM
+#0|spells|'CAUSE LIGHT' 'CAUSE SERIOUS' 'CAUSE CRITICAL' HARM
 Syntax: cast 'cause light'    <victim>
 Syntax: cast 'cause serious'  <victim>
 Syntax: cast 'cause critical' <victim>
@@ -40,7 +40,7 @@ Syntax: cast harm             <victim>
 
 These spells inflict damage on the victim.  The higher-level
 spells do more damage.
-#-1|'CHAIN LIGHTNING'
+#-1|spells|'CHAIN LIGHTNING'
 Syntax : cast 'chain lightning' <target>
 
 Chain lightning is a deadly spell, producing a powerful bolt of
@@ -50,7 +50,7 @@ this spell if they are members of a clan, while the caster
 himself will not be struck unless no other viable target
 remains.  Chain lightning is most effective when used on groups
 of creatures.
-#0|'CHARM PERSON'
+#0|spells|'CHARM PERSON'
 Syntax: cast 'charm person' <victim>
 
 This spell, if successful, causes the victim to follow you and
@@ -60,12 +60,12 @@ followers.
 You are responsible for the actions of your followers.
 Conversely, other people who attack your followers will be
 penalized as if they attacked you.
-#0|'CHILL TOUCH'
+#0|spells|'CHILL TOUCH'
 Syntax: cast 'chill touch' <victim>
 
 This spell inflicts damage on the victim and also reduces the
 victim's strength by one.
-#-1|'CLASS HELP' CLASS CLASSES
+#-1|creation|'CLASS HELP' CLASS CLASSES
 {n has the following classes for player characters:
 {x  Mage      : powerfull magic users
 {x  Cleric    : healing magics, some combat
@@ -77,42 +77,42 @@ victim's strength by one.
 Different races have different starting statistics, and also
 different stat maximums for magic items and training.
 
-#0|'CONTINUAL LIGHT'
+#0|spells|'CONTINUAL LIGHT'
 Syntax: cast 'continual light'
 Syntax: cast 'continual light' <object>
 
 This spell creates a ball of light, which you can hold as a
 light source. The ball of light will last indefinitely. It may
 also be used on an object to give it an enchanted glow.
-#0|'CONTROL WEATHER'
+#0|spells|'CONTROL WEATHER'
 Syntax: cast 'control weather' better
 Syntax: cast 'control weather' worse
 
 This spell makes the weather either better or worse.
-#0|'CREATE FOOD'
+#0|spells|'CREATE FOOD'
 Syntax: cast 'create food'
 
 This spell creates a Magic Mushroom, which you or anyone else
 can eat.
-#-1|'CREATE ROSE'
+#-1|spells|'CREATE ROSE'
 Syntax: cast 'create rose'
 
 A romantic spell that creates a fragrant red rose, with utterly
 no game use whatsoever.
-#0|'CREATE SPRING'
+#0|spells|'CREATE SPRING'
 Syntax: cast 'create spring'
 
 This spell brings forth a magical spring from the ground, which
 has the same properties as a fountain.
-#0|'CREATE WATER'
+#0|spells|'CREATE WATER'
 Syntax: cast 'create water' <drink-container>
 
 This spell replenishes a drink container with water.
-#0|'CURE BLINDNESS'
+#0|spells|'CURE BLINDNESS'
 Syntax: cast 'cure blindness' <character>
 
 This spell cures blindness in one so unfortunate.
-#0|'CURE LIGHT' 'CURE SERIOUS' 'CURE CRITICAL' HEAL
+#0|spells|'CURE LIGHT' 'CURE SERIOUS' 'CURE CRITICAL' HEAL
 Syntax: cast 'cure light'    <character>
 Syntax: cast 'cure serious'  <character>
 Syntax: cast 'cure critical' <character>
@@ -122,58 +122,58 @@ These spells cure damage on the target character.  The higher-
 level spells heal more damage.
 
 (see 'help healer' for details on the heal command)
-#0|'CURE POISON' 'CURE DISEASE'
+#0|spells|'CURE POISON' 'CURE DISEASE'
 Syntax: cast 'cure poison' <character>
 Syntax: cast 'cure disease' <character>
 
 These spells cure poison and disease in one so unfortunate.
 
-#-1|'DEMONFIRE'
+#-1|spells|'DEMONFIRE'
 Syntax: cast 'demonfire' <target>
 
 Demonfire is a spell of blackest evil, and as such can only be
 used by those who follow the paths of darkness.  It conjures
 forth demonic spirits to inflict terrible wounds on the enemies
 of the caster.
-#0|'DETECT EVIL'
+#0|spells|'DETECT EVIL'
 Syntax: cast 'detect evil'
 
 This spell enables the caster to detect evil characters, which
 will reveal a characteristic red aura.
-#-1|'DETECT GOOD'
+#-1|spells|'DETECT GOOD'
 Syntax: cast 'detect good'
 
 This spell enables the caster to detect good characters, which
 will reveal a characteristic golden aura.
-#0|'DETECT HIDDEN'
+#0|spells|'DETECT HIDDEN'
 Syntax: cast 'detect hidden'
 
 This spell enables the caster to detect hidden creatures.
-#0|'DETECT INVIS'
+#0|spells|'DETECT INVIS'
 Syntax: cast 'detect invis'
 
 This spell enables the caster to detect invisible objects and
 characters.
-#0|'DETECT MAGIC'
+#0|spells|'DETECT MAGIC'
 Syntax: cast 'detect magic'
 
 This spell enables the caster to detect magical objects.
-#0|'DETECT POISON'
+#0|spells|'DETECT POISON'
 Syntax: cast 'detect poison' <object>
 
 This spell detects the presence of poison in food or drink.
-#0|'DISPEL EVIL'
+#0|spells|'DISPEL EVIL'
 Syntax: cast 'dispel evil' <victim>
 
 This spell invokes the wrath of Mota on an evil victim. It can
 be very dangerous for casters who are not pure of heart.
-#-1|'DISPEL GOOD'
+#-1|spells|'DISPEL GOOD'
 Syntax: cast 'dispel good' <victim>
 
 Dispel good brings forth evil energies that inflict horrific
 torment on the pure of heart.  Good-aligned characters use this
 dark magic at their peril.
-#0|'DISPEL MAGIC' CANCELLATION
+#0|spells|'DISPEL MAGIC' CANCELLATION
 Syntax: cast 'dispel magic' <character>
         cast 'cancellation' <characte>
 
@@ -188,13 +188,13 @@ The chance of dispelling is based on the level of the spell.
 Permanent spells (such as mobile sanctuary) are much harder to
 remove.  Not all spells may be dispelled, notable examples are
 poison and plague.
-#-1|'ENCHANT ARMOR'
+#-1|spells|'ENCHANT ARMOR'
 The enchant armor spell imbues armor with powerful protective
 magics. It is not nearly as reliable as enchant weapon, being
 far more prone to destructive effects.  Each succesful enchant
 increases the plus of the armor by 1 or 2 points, and raises its
 level by one.
-#0|'ENCHANT WEAPON'
+#0|spells|'ENCHANT WEAPON'
 Syntax: cast 'enchant weapon' <weapon>
 
 This spell magically enchants a weapon, increasing its to-hit
@@ -203,35 +203,35 @@ be cast, but as the weapon grows more and more powerful, it is
 more likely to be drained or destroyed by the magic.  Also,
 every successful enchant increases the level of the weapon by
 one...and there is no turning back.
-#0|'ENERGY DRAIN'
+#0|spells|'ENERGY DRAIN'
 Syntax: cast 'energy drain' <victim>
 
 This spell saps the experience points, mana, and movement points
 of its target.
-#-1|'ENHANCED DAMAGE'
+#-1|unknown|'ENHANCED DAMAGE'
 Warriors and skilled thieves can become skilled enough in combat
 that they are able to inflict more damage than other classes.
 Enhanced damage is checked for with each hit, although with a
 low skill, the chance of receiving a bonus is very low indeed.
-#0|'FAERIE FIRE'
+#0|spells|'FAERIE FIRE'
 Syntax: cast 'faerie fire' <victim>
 
 This spell increases (makes worse) the armor class of its
 victim.  For each level of the caster, the victim's armor class
 is increased by two points.
-#0|'FAERIE FOG'
+#0|spells|'FAERIE FOG'
 Syntax: cast 'faerie fog'
 
 This spell reveals all manner of invisible, hidden, and sneaking
 creatures in the same room as you.
-#-1|'FAST HEALING'
+#-1|unknown|'FAST HEALING'
 The fast healing skill improves wound healing rates, whether
 walking, resting, or sleeping. It represents knowledge of
 healing herbs or just general toughness and stamina.  Fast
 healing is checked every tick, and it is possible for it to
 fail.  All class may learn this skill, but mages find it very
 difficult to master, due to their bookish lifestyle.
-#-1|'FLOATING DISC'
+#-1|spells|'FLOATING DISC'
 Syntax: cast 'floating disc'
 
 This useful spell creates a floating field of force which
@@ -242,11 +242,11 @@ twice the casters level in hours, and usually less.  It can hold
 per item.  The spell requires an open float location on the
 character, and the only way to remove the disc is to die or
 allow it to run out of energy.
-#0|'GIANT STRENGTH'
+#0|spells|'GIANT STRENGTH'
 Syntax: cast 'giant strength' <character>
 
 This spell increases the strength of the target character.
-#-1|'GROUPS' 'INFO' 'PREMISE'
+#-1|creation|'GROUPS' 'INFO' 'PREMISE'
 The {n skill system allows you to fully customize your new
 character, making him or her skilled in the skills you choose.
 But beware, the skills you pick at character creation are the
@@ -269,14 +269,14 @@ points   exp/level     points   exp/level
 70        3000         120      16000
 80        4000         130      24000
 The table continues in a similar manner for higher point totals.
-#-1|'HAND TO HAND'
+#-1|unknown|'HAND TO HAND'
 Hand to hand combat is a rare skill in the lands of Midgaard.
 Learning this style of fighting gives the player a weapon even
 when disarmed -- bare hands. Trained hand to hand experts are
 far more effective than many swordsmen. Clerics and warriors are
 the best at this skill, although thieves and mages may also
 learn it.
-#-1|'HEAT METAL'
+#-1|spells|'HEAT METAL'
 Syntax: cast 'heat metal' <target>
 
 Heat metal is a powerful clerical attack spell, with effects
@@ -286,7 +286,7 @@ point in time) on the target, causing him or her to drop them if
 possible, taking serious burns in the process (possibly fatal if
 the equipment is too heavy to remove easily). This spell does no
 damage to creatures who are immune to fire.
-#-1|'HOLY WORD'
+#-1|spells|'HOLY WORD'
 Syntax: cast 'holy word'
 
 Holy word involves the invocation of the full power of a
@@ -299,16 +299,16 @@ are struck down by holy (or unholy might) and cursed.  The
 cleric suffers greatly from the strain of this spell, being left
 unable to move and drained of vitality.  Experience loss is no
 longer associated with the spell.
-#0|'KNOW ALIGNMENT'
+#0|spells|'KNOW ALIGNMENT'
 Syntax: cast 'know alignment' <character>
 
 This spell reveals the alignment of the target character.
-#0|'LOCATE OBJECT'
+#0|spells|'LOCATE OBJECT'
 Syntax: cast 'locate object' <name>
 
 This spell reveals the location of all objects with the given
 name.
-#-1|'NEXUS'
+#-1|spells|'NEXUS'
 Syntax: cast 'nexus' <target>
 
 This spell is virtually identical to portal (see 'help portal'),
@@ -316,11 +316,11 @@ with the only difference being that while portal creates a one-
 way gate, a nexus spell makes a two-sided gate.  It also lasts
 longer than the lower-powered portal spell.  Both spells require
 an additional power source, the secret of which has been lost...
-#0|'PASS DOOR'
+#0|spells|'PASS DOOR'
 Syntax: cast 'pass door'
 
 This spell enables the caster to pass through closed doors.
-#-1|'PORTAL'
+#-1|spells|'PORTAL'
 Syntax: cast 'portal' <target>
 
 The portal spell is similar to gate, but creates a lasting one-
@@ -330,7 +330,7 @@ in 'go portal'.  Portals cannot be made to certain destinations,
 nor used to escape from gate-proof rooms. Portal requires a
 special source of power to be used, unfortunately the secret of
 this material component has been lost...
-#-1|'PROTECTION GOOD' 'PROTECTION EVIL'
+#-1|spells|'PROTECTION GOOD' 'PROTECTION EVIL'
 Syntax: cast 'protection evil' <target>
 	cast 'protection good' <target>
 
@@ -338,7 +338,7 @@ The protection spells reduce damage taken from attackers of the
 appropriate ethos, and improve saving throws against all forms
 of magic. They may not be cast on others, and one person cannot
 carry both defenses at the same time.
-#-1|'RACE HELP' 'RACE' 'RACES'
+#-1|creation|'RACE HELP' 'RACE' 'RACES'
 {n has the following races for player characters:
   Human  the standard race
   Dwarf  good warriors and priests, cost 8 creation points
@@ -353,21 +353,21 @@ different stat maximums for magic items and training.
 Creation points increase the amount of experience it takes to
 gain a level. For more information, see the help files for each
 race (i.e. 'help dwarf')
-#-1|'RAY OF TRUTH'
+#-1|spells|'RAY OF TRUTH'
 Syntax: cast 'ray of truth' <target>
 
 Ray of truth opens a portal to the planes of positive energy,
 bringing forth a beam of light of sufficient purity to harm or
 or annihilate the servants of evil.  It cannot harm the pure of
 heart, and will turn and strike casters who are tainted by evil.
-#-1|'RECHARGE'
+#-1|spells|'RECHARGE'
 Syntax: cast 'recharge' <item>
 
 The recharge spell is used to restore energy to depleted wands
 and staves. Fully exhausted items cannot be recharged, and the
 difficulty of the spell is proportional to the number of charges
 used.  Magic items can only be recharged one time successfully.
-#0|'REMOVE CURSE'
+#0|spells|'REMOVE CURSE'
 Syntax: cast 'remove curse' <character>
 Syntax: cast 'remove curse' <object>
 
@@ -375,12 +375,12 @@ This spell removes a curse from a character, and might possibly
 uncurse a cursed object.  It may also be targeted on an object
 in the caster's inventory, in which case it's chance of success
 is significantly higher.
-#-1|'SECOND ATTACK'
+#-1|unknown|'SECOND ATTACK'
 Training in second attack allows the character a chance at
 additional strikes in combat -- allow a 100% second attack does
 NOT guarantee 2 attacks every round.  Any class may learn this
 skill, although clerics and mages have a very hard time with it.
-#-1|'SHIELD BLOCK'
+#-1|unknown|'SHIELD BLOCK'
 Shield block is a rather fancy name for the art of parrying with
 a shield. Characters with no shield block skill will not be able
 to defend themselves well with a shield.  All classes may learn
@@ -388,7 +388,7 @@ shield block, but only warriors and clerics are good at it.
 Beware, flails ignore shield blocking attempts, and whips have
 an easier time getting around them.  Axes may split shields in
 two.
-#0|'SPELL MANTLE' 'ANIMAL INSTINCT' 'CHAOS FLARE' 'WILD MAGIC'
+#0|spells|'SPELL MANTLE' 'ANIMAL INSTINCT' 'CHAOS FLARE' 'WILD MAGIC'
 Syntax: cast 'spell mantle'
 {x      : cast 'animal instinct' <person>
 {x      : cast 'chaos flare' <person>
@@ -398,26 +398,26 @@ SPELL MANTLE is a booster for magic users.
 ANIMAL INSTINCT increases the casters strength and damroll.
 CHAOS FLARE does random stat changes on the victim.
 WILD MAGIC is a damage spell with weapon effects that hits random vulnerabilities.
-#-1|'THIRD ATTACK'
+#-1|unknown|'THIRD ATTACK'
 Training in third attack allows the character a chance at an
 additional strike in a combat, and increases the chance of a
 second attack as well.  Perfect third attack does NOT assure
 three attacks per round.  Only warriors and highly skilled
 thieves may learn this skill.
-#0|'WORD OF RECALL'
+#0|spells|'WORD OF RECALL'
 Syntax: cast 'word of recall'
 
 This spell duplicates the built-in RECALL ability.  It is
 provided solely for Merc-based muds which wish to eliminate the
 built-in ability while still providing the spell.
-#0|1STMUD '1STMUD CREDITS'
+#0|unknown|1STMUD '1STMUD CREDITS'
 1stMud ROM Derivative (c) 2001-2004 by Ryan Jennings
 {G  http://firstmud.com/  {R<admin@firstmud.com>
 {x
 Mailing List
 {G  http://firstmud.com/scripts/sf-list.php  {R<list@firstmud.com>
 {x
-#0|AEDIT
+#0|olc|AEDIT
 Syntax: edit area        -Enters the editor for the current
 area. Syntax: edit area <vnum> -Enters the editor for the
 selected area.
@@ -438,13 +438,13 @@ vnum <lower> <upper>- set the lower and upper vnum's
 lvnum <lower>       - set the lower vnum
 uvnum <upper>       - set the upper vnum
 <flags>             - area flags, type ? AREA for a list
-#-1|AFFECTS AFFECT
+#-1|commands|AFFECTS AFFECT
 This command is used to show all the spells affecting your
 character. At low levels, only the spell name will be displayed,
 at higher levels the effects and duration of the spell will also
 be shown.  Spell effects are no longer shown on score (this can
 be changed by using 'show' command).
-#-1|AFK
+#-1|commands|AFK
 Typing AFK puts your character in a tell-saving mode as follows:
 any tell to you is stored in a special buffer, and can be seen
 later by typing recall.  This is useful when you need to leave
@@ -456,7 +456,7 @@ can also be seen by typing replay (unless, of course, the
 character logs off before reading them).
 
 You may specify an option reason why you are AFK. (afk <msg>)
-#-1|ALIAS UNALIAS
+#-1|commands|ALIAS UNALIAS
 Syntax: alias
 	alias <word>
 	alias <word> <substitution>
@@ -475,13 +475,13 @@ corpse' alias ff cast 'fireball' --> ff orc will equal 'cast
 'fireball' orc'
 
 Only the first word on the line will be subsituted at this time.
-#0|ALIST
+#0|olc|ALIST
 Syntax: ALIST
 
 This command gives you a listing of all the areas along with
 their vnum assignments and the builder(s) assigned to editing
 them.
-#0|ANUBIS
+#0|creation|ANUBIS
 {GAnubis {x(An-oo-bis)
 Aspects       - Duty, Judgement. Outlook - Lawful Neutral.
 Influence     - Quertirr. Festival - 32nd/5th.
@@ -492,7 +492,7 @@ Notes         - WAL = Lawful. Following = Small. Non Aggression Pact = Hades. En
 Creations     - Caimar, Minotaurs, Sphinx.
 Honored title - Isara (judgement). Largest temple - Cires-Northern.
 Domains       - Animal, Earth, Law, Knowledge.
-#0|AREADEATHS AREAKILLS MOBDEATHS MOBKILLS
+#0|commands|AREADEATHS AREAKILLS MOBDEATHS MOBKILLS
 Typing 'Areadeaths' lists all areas that have had at least one
 monster killed. Areas shown are listed in order of mobs killed
 so this command can be used to see which are the most popular
@@ -506,7 +506,7 @@ most deadly areas of {n.
 'Mobdeaths' shows the top 50 mobile deaths.  'Mobkills' shows
 the top 50 mobile deaths. There must be at least 2 kills/deaths
 before mobiles show.
-#0|AREAS COMMANDS REPORT SCORE TIME
+#0|commands|AREAS COMMANDS REPORT SCORE TIME
 Syntax: areas
 Syntax: commands [category]
 Syntax: report
@@ -531,7 +531,7 @@ TIME shows the game time, as well as the time the mud was last
 started, and the current local time for the host computer.
 
 WEATHER shows the current game weather.
-#0|ARENA CHALLENGE BET DECLINE ACCEPT
+#0|unknown|ARENA CHALLENGE BET DECLINE ACCEPT
 The arena is built for PK tournaments among mortals.  Special
 rules and commands are as follows:
 
@@ -553,7 +553,7 @@ rules and commands are as follows:
     someone elses {YCHALLENGE{x.
 13) If you challenge someone and they don't respond, you can cancel the challenge
     by typing {YCHALLENGE DROP{x.
-#0|ARES
+#0|creation|ARES
 {GAres {x(Arh-ez)
 Aspects       - Strife, War. Outlook - Chaotic Evil.
 Influence     - Eurallit. Festival - 24th/1st.
@@ -564,12 +564,12 @@ Notes         - WAL = CN, NE, CE. Following = Large. Non Aggression Pact = None.
 Creations     - Gnolls, Hydra, Trolls, Xill.
 Honored title - Harbinger. Largest temple - Eurallit-Western.
 Domains       - Chaos, Destruction, Strength, War.
-#0|ARMOR
+#0|spells|ARMOR
 Syntax: cast armor <character>
 
 This spell decreases (improves) the armor class of the target
 character by 20 points.
-#0|ARTEMIS
+#0|creation|ARTEMIS
 {GArtemis {x(Ahr-tuh-mis)
 Aspects       - Children, Hunting, Wilderness. Outlook - Chaotic Good.
 Influence     - Cires, Nichmut. Festival - Oimelc.
@@ -580,7 +580,7 @@ Notes         - WAL = Good. Following = Medium. Non Aggression Pact = Belenus. E
 Creations     - Alfar, Good Dragons, Good Giants.
 Honored title - Shahar. Largest temple - Nichmut-Central.
 Domains       - Animal, Good, Plant, Sun.
-#-1|ATTACK
+#-1|creation|ATTACK
 The attack spells are essentially powerful curses, fueled by
 divine energy rather than magical power (like the combat spells
 are). They are less powerful than the combat spells, but can
@@ -595,7 +595,7 @@ earthquake	brings the power of earth to bear against your foes
 flamestrike	sends a column of flame from the heavens
 heat metal	heats metal equipment to searing tempatures
 ray of truth	sends forth a blinding ray of holy energy
-#0|AUCTION BARTER
+#0|commands|AUCTION BARTER
 Syntax: Auction <item> [minbid]
 Syntax: barter <message>
 
@@ -612,14 +612,14 @@ BARTER is a channel players may use to auction items that are
 not actionable or to comment on items being auctioned.
 
 See also BID.
-#-1|AUTHORS
+#-1|unknown|AUTHORS
 {c       Original DikuMUD by Hans Staerfeldt, Katja Nyboe,
        Tom Madsen, Michael Seifert, and Sebastian Hammer
        Based on MERC 2.1 code by Hatchet, Furey, and Kahn
        ROM 2.4 copyright (c) 1993-1998 Russ Taylor.
        1stMud Server copyright (c) 2001-2004, Ryan Jennings.
 {x
-#0|AUTO AUTOLIST AUTOLOOT AUTOGOLD AUTOSAC AUTOEXIT AUTOASSIST AUTOSPLIT
+#0|commands|AUTO AUTOLIST AUTOLOOT AUTOGOLD AUTOSAC AUTOEXIT AUTOASSIST AUTOSPLIT
 {n uses varies automatic actions, to ease the boredom of always
 splitting gold and sacrificing corpses.  The commands are as
 follows:
@@ -636,20 +636,20 @@ automap   : display a map in room descriptions
 autodamage: display damage amounts
 
 Typing a command sets the action , typing it again removes it.
-#-1|BACKSTAB
+#-1|commands|BACKSTAB
 Backstab is the favored attack of  thieves, murderers, and other
 rogues.  It can be used with any weapon type, but is most
 effective with piercing weapons. The damage inflicted by a
 backstab is determined by the attacker's level, his weapon
 skill, his backstab skill, and the power of his opponent. Only
 thieves may learn the backstab.
-#-1|BASH
+#-1|commands|BASH
 The bash skill is a warrior talent, a brute-force attack
 designed to knock your foe to his knees.  Its success depends on
 many factors, including the bash rating, your weight, and the
 size of your opponent.  Bashing a dragon is not generally a wise
 idea.
-#-1|BASICS 'ROM BASICS'
+#-1|creation|BASICS 'ROM BASICS'
 The basic skills:
 
 Every character starts with two skill groups, one for their
@@ -662,7 +662,7 @@ staves		use of magical staves
 wands		use of magical wands
 
 for class defaults, check the classes themselves.
-#0|BAST
+#0|creation|BAST
 {GBast {x(Bha-st)
 Aspects       - Protection, Revelry, Vengence. Outlook - Chaotic Good.
 Influence     - Muersa. Festival - 17th/8th.
@@ -673,7 +673,7 @@ Notes         - WAL = CG, NG, CN. Following = Medium. Non Aggression Pact = Skad
 Creations     - Griffons, Nichav, Pegasus, Viveru.
 Honored title - Balam (jaguar guardian). Largest temple - Muersa-South West.
 Domains       - Chaos, Destruction, Protection, Travel.
-#-1|BEGUILING
+#-1|creation|BEGUILING
 This insideous spell group is used to invade the minds of
 others.  It consists of various charming magics, well suited for
 turning your foes to your cause. Only mages and thieves have
@@ -682,7 +682,7 @@ access to the beguiling magics, which consist of the following:
 calm            if successful, stops all fighting in the room
 charm person	turns an enemy into a trusted friend
 sleep		puts a foe into enchanted slumber
-#0|BELENUS
+#0|creation|BELENUS
 {GBelenus {x(Bel-in-us)
 Aspects       - Harvest, Light, Strength. Outlook - Lawful Good.
 Influence     - Sibre. Festival - Beltane.
@@ -693,7 +693,7 @@ Notes         - WAL = Non Evil. Following = Large. Non Aggression Pact = Artemis
 Creations     - Humans, Phoenix, Unicorns.
 Honored title - Shepherd. Largest temple - Lighthawk Cathedral in Kommel-Sibre.
 Domains       - Healing, Protection, Strength, Sun.
-#-1|BENEDICTIONS
+#-1|creation|BENEDICTIONS
 Benedictions are priestly spells, used to bestow divine favor
 upon your allies. They are often restricted to those of like
 alignment.  Only clerics and warriors may use these spells.  The
@@ -704,13 +704,13 @@ calm		if successful, stops all fighting in the room
 frenzy		puts the recipient into beserker rage
 holy word	aids your allies while calling divine wrath upon your foes
 remove curse	removes malevolent magic from players and items
-#-1|BERSERK
+#-1|unknown|BERSERK
 Only powerful warriors can master berserking, the ability to
 enter insane rage in combat.  Its effects are not altogether
 unlike the frenzy spell -- a huge surge of combat prowess,
 coupled with a disregard for personal safety. Berserking
 warriors are more resistant to the effects of magic.
-#2|BID
+#2|commands|BID
 Syntax: bid <num> <amount>
 
 Typing BID on its own with no arguments will show all items
@@ -724,7 +724,7 @@ choice. The amount must be at least 10 gold or 10% (whichever
 is higher) coins more than the previous bid.
 
 See also AUCTION
-#0|BLESS
+#0|spells|BLESS
 Syntax: cast bless <character>
 Syntax: cast bless <object>
 
@@ -733,11 +733,11 @@ spell of the target character by 1 for every 8 levels of the
 caster. It may also be cast on an object to temporarily bless it
 (blessed weapons, for example, are more effective against
 demonic beings).
-#0|BLINDNESS
+#0|spells|BLINDNESS
 Syntax: cast blindness <victim>
 
 This spell renders the target character blind.
-#0|BRANDISH QUAFF RECITE ZAP
+#0|unknown|BRANDISH QUAFF RECITE ZAP
 Syntax: brandish
 Syntax: quaff    <potion>
 Syntax: recite   <scroll> <target>
@@ -760,13 +760,13 @@ When a magical object has no more charges, it will be consumed.
 These commands may require an item skill to be succesful, see
 the help entries on the skills scrolls, staves, and wands for
 more information.
-#0|BRIEF COMPACT
+#0|commands|BRIEF COMPACT
 Brief and compact help set your display options for the game.
 Typing brief toggles on and off the showing of room descriptions
 when you move around (considerably reducing the text to be
 processed), and typing compact removes the extra blank line
 before your prompt.
-#0|BUDDY BTALK BUDDIES
+#0|commands|BUDDY BTALK BUDDIES
 Syntax: Buddy
         Buddy <Name>
         Buddy clear   - Clears whole buddy list
@@ -795,14 +795,14 @@ show
 This allows you to keep track of your buddies quickly without
 having to view the who list.
 
-#0|BUG TYPO
+#0|commands|BUG TYPO
 Syntax: bug <message>
 Syntax: idea <message>
 Syntax: typo <message>
 
 These commands will take your message and record it into a file
 as feedback to the mud implementors.
-#0|BUY LIST SELL VALUE APPRAISE
+#0|commands|BUY LIST SELL VALUE APPRAISE
 Syntax: buy   <object>
 Syntax: list
 Syntax: sell  <object>
@@ -826,7 +826,7 @@ item for.
 
 APPRAISE will ask the shop keeper for more details about an
 object.
-#-1|CALM
+#-1|spells|CALM
 Syntax: cast 'calm'
 
 One of the most useful and often overlooked abilities of the
@@ -837,7 +837,7 @@ spell soothes their minds.  The more violence activity there is
 in a room, the harder the spell, and it is all or nothing --
 either all combat in the room is ended (with the exception of
 those who are immune to magic) or none is.
-#0|CARMAN
+#0|creation|CARMAN
 {GCarman {x(Car-man)
 Aspects       - Night, Sorcery. Outlook - Lawful Evil.
 Influence     - Borderlands. Festival - Every 160 days.
@@ -848,7 +848,7 @@ Notes         - WAL = Evil. Following = Medium. Non Aggression Pact = None. Enem
 Creations     - Hags, Kurst Ones, Unseelie.
 Honored title - Lilim (of the night). Largest temple - Unknown.
 Domains       - Evil, Law, Magic, Trickery.
-#0|CAST
+#0|commands|CAST
 Syntax: cast <spell> <target>
 
 Before you can cast a spell, you have to practice it.  The more
@@ -869,7 +869,7 @@ saving throw. The effect of the spell is reduced or eliminated
 if the victim makes the saving throw successfully.
 
 See also the help sections for individual spells.
-#0|CHANNEL INVESTITURE POWERSTORM 'MANA BURN' 'BARK SKIN'
+#0|spells|CHANNEL INVESTITURE POWERSTORM 'MANA BURN' 'BARK SKIN'
 Syntax: cast channel <person>
 {x      : cast investiture
 {x      : cast powerstorm <person>
@@ -881,7 +881,7 @@ INVESTITURE turns all movement into mana.
 POWERSTORM is a powerfull area attack spell.
 MANA BURN is a simple damaging spell.
 BARK SKIN forms a layer of bark around the caster, aiding with armor.
-#-1|CLAN
+#-1|unknown|CLAN
 A Clan is a collection of players, united to  follow and further
 a common cause.   Each clan has rules and  regulations, to find out
 more about clans and their 'beliefs' type "help <clan name>".  Only
@@ -897,7 +897,7 @@ mutiny your Clan leader.
 diamonds as payment.   To see room prices, type "help prices".  New
 Clans  may be formed by  petitioning the immortals.   Please  remember that
 their word is final on all matters not covered by this help.
-#-1|CLERIC 'CLERIC BASICS' 'CLERIC DEFAULT'
+#-1|creation|CLERIC 'CLERIC BASICS' 'CLERIC DEFAULT'
 Clerics are the most defensively orientated of all the classes.
 Most of their spells focus on healing or defending the faithful,
 with their few combat spells being far less powerful than those
@@ -923,7 +923,7 @@ maladictions	an assortment of curses
 protective	defensive magics, including the powerful sanctuary spell
 transportation	spells for getting from here to there
 weather         spells for conjuring and mastering the elements
-#0|CLIENT FEATURES SUPPORT IMP MIP PUEBLO PORTAL MCCP MSP MXP FIRECLIENT MUSHCLIENT ZMUD PROTOCOL
+#0|unknown|CLIENT FEATURES SUPPORT IMP MIP PUEBLO PORTAL MCCP MSP MXP FIRECLIENT MUSHCLIENT ZMUD PROTOCOL
 {CA:{R PROTOCOLS{B: {n supports the following:
  {C1{c.{Y MXP{W (Mud eXtension Protocol)
  {C2{c.{Y MSP{W (Mud Sound Protocol)
@@ -939,7 +939,7 @@ weather         spells for conjuring and mastering the elements
  {C4{c.{G FireClient{W (IMP){M http://www.firebolt.com/
  {C5{c.{G Pueblo{W (PUEBLO){M http://pueblo.mozdev.org/
  {C6{c.{G SimpleMU{W (MCCP){M http://simplemu.onlineroleplay.com/{x
-#0|COLOUR COLOR ANSI
+#0|unknown|COLOUR COLOR ANSI
 Syntax: color - turns color on or off
 
   {0+?Normal Colors    {1+?Bright Colors    {3+?Modifiers {{#[+X]{x
@@ -962,7 +962,7 @@ Syntax: color - turns color on or off
   {{n: print mud name ({{N for uppercase name)
   {{T[+"[str]"]: date/time where +"str" is an optional format string
                 (see HELP 'DATE FORMAT')
-#-1|COMBAT
+#-1|unknown|COMBAT
 These sorcerous spells are, in the words of one famous mage,
 just 'more ways to toss energy around'.  They are the most
 powerful of the damaging spells, and considered an essential
@@ -979,7 +979,7 @@ colour spray	blasts your opponent with a rainbow spray, which may blind him
 fireball	a powerful spell, great for burning your enemy to ashes
 acid blast	sends forth a stream of acid to eradicate your foes
 chain lightning	sends lightning bolts arcing through foes
-#0|COMPARE
+#0|commands|COMPARE
 Syntax: compare <object-1> <object-2>
 Syntax: compare <object>
 
@@ -993,16 +993,16 @@ to the object you are currently wearing or wielding of the same
 type.
 
 COMPARE doesn't consider any special modifiers of the objects.
-#0|CONSIDER
+#0|commands|CONSIDER
 Syntax: consider <character>
 
 CONSIDER tells you what your chances are of killing a character.
 Of course, it's only a rough estimate.
-#-1|COUNT
+#-1|commands|COUNT
 The count command displays the number of people (that you can
 see) logged into the mud.  It also displays the highest number
 observed that day, if it is higher.
-#-1|CREATION
+#-1|creation|CREATION
 The creation spell group is used to create objects, of temporary
 or permanent duration.  Skill creators can travel without food
 or drink, and use their powers to create nourishment as
@@ -1015,12 +1015,12 @@ create rose	creates a beautiful red rose
 create spring	calls forth a small but pure spring from the ground
 create water	fills any available container with water
 floating disc	creates a floating disc of force perfect for hauling treasure
-#0|CREDITS
+#0|commands|CREDITS
 Syntax: credits
 
 This command shows the list of the original Diku Mud
 implementors.
-#-1|CURATIVE
+#-1|creation|CURATIVE
 The curative spells are used to heal various unpleasant conditions that can
 befall an adventurer.   For healing of damage, see the healing spell group.
 Curative spells cannot be used by mages or thieves.
@@ -1028,7 +1028,7 @@ Curative spells cannot be used by mages or thieves.
 cure blindness	restored sight to the blind
 cure disease	heals the plague
 cure poison	removes the harmful effects of poison
-#0|CURSE
+#0|spells|CURSE
 Syntax: cast 'curse' <character>
 
 This spell reduces the character's to-hit roll and save versus
@@ -1036,7 +1036,7 @@ spells. It also renders the character unclean in the eyes of
 Mota and unable to RECALL. Curse may be used to fill equipment
 with evil power, allowing (for example) weapons to do more
 damage to particularly holy opponents.
-#0|DAMDICE
+#0|olc|DAMDICE
 A high number of dice makes for less variance in mobiles
 hitpoints. Suggested values are:
 
@@ -1054,7 +1054,7 @@ hitpoints. Suggested values are:
 Mean is the arithmetic mean.  The values in parenthesis are the
 the standard merc values.  (Will be put in when there's time to
 calculate them...)
-#0|DATE 'DATE FORMAT' 'TIME FORMAT'
+#0|unknown|DATE 'DATE FORMAT' 'TIME FORMAT'
       Code     Description
   ----------------------------------------------------------------------------
        %a     The abbreviated weekday name.
@@ -1129,7 +1129,7 @@ calculate them...)
        %%     A literal `%' character.
 
 Usage example: {{T+"%X" will print {T+"%X".
-#-1|DEAF
+#-1|commands|DEAF
 The deaf toggle turns off incoming tells, helpfull if you are
 being bombarded by messages from other players.  You can still
 use reply (see 'help reply') to reply to people who were telling
@@ -1137,7 +1137,7 @@ you before you went deaf, although you cannot reply to a deaf
 person unless you or they are a diety (it's mostly useful for
 sending a quick "I'm being spammed so I went deaf" message to a
 person).
-#0|DEATH
+#0|unknown|DEATH
 When your character dies, you are reincarnated back at the Altar
 of the Temple of Midgaard.  Your corpse is left behind in the
 room where you were killed, together with all of your equipment.
@@ -1154,7 +1154,7 @@ with them. Player corpses last *roughly* 30 hours of game time
 (15 minutes of real time). Only the player who died, or someone
 in the same group, can retrieve objects from a player's corpse.
 
-#0|DESCRIPTION DESC
+#0|commands|DESCRIPTION DESC
 Syntax: description <string>
 Syntax: description + <string>
 Syntax: description -
@@ -1164,7 +1164,7 @@ description string starts with a '+', the part after the '+' is
 appended to your current description, so that you can make
 multi-line descriptions. You can delete lines by uses
 description -.
-#-1|DETECTION
+#-1|creation|DETECTION
 The detection spells have may uses, all related to gathering
 information. They can be used to see hidden objects, give
 information about treasure, or even scry out the true nature of
@@ -1180,7 +1180,7 @@ farsight	searches for living beings near the caster
 identify	gives information about the nature of an object
 know alignment	determines the moral character of a monster or person
 locate object	finds a specific item
-#-1|DIKU 'DIKU CREDITS'
+#-1|unknown|DIKU 'DIKU CREDITS'
                     Original game idea, concept, and design:
 
           Katja Nyboe               [Superwoman] (katz@freja.diku.dk)
@@ -1194,27 +1194,27 @@ Developed at: DIKU -- The Department of Computer Science
                       at the University of Copenhagen.
 
 
-#-1|DIRT 'DIRT KICKING'
+#-1|commands|DIRT 'DIRT KICKING'
 Consider by some to be a cowardly skill, dirt kicking gives the
 clever combatant a chance to blind his opponent by casting dirt
 into his eyes.  The blindness does not last long, but can
 provide an edge in combat.  Dexterity helps in hitting or
 avoiding a dirt kick.  Only warriors and thieves may learn this
 skill.
-#-1|DISARM
+#-1|commands|DISARM
 Disarm is a somewhat showy and unreliable skill, designed to
 relieve your opponent of his weapon.  The best possible chance
 of disarming occurs when you are skilled both your own and your
 opponent's weapon. Only talented thieves and warriors may learn
 this skill.
-#-1|DODGE
+#-1|unknown|DODGE
 In the words of one wise warrior, 'the best way to block a blow
 is to not be where it lands'.  The dodge skill honors this
 tradition, by improving the character's natural agility to the
 point where many blows will miss the target. The chance of
 dodging is also affected by the dexterity of the attacker and
 the target.  Any class may learn dodging.
-#-1|DRACONIAN
+#-1|creation|DRACONIAN
 The Draconian spell group deals with the magic of dragons -- in
 this case, bringing forth the devastating power of their breath
 weapons upon your foes. Only mages have the mental training
@@ -1226,11 +1226,11 @@ fire breath	 calls forth the flames of a red dragon
 frost breath	 drains the life from a foe with the power a white dragon
 gas breath	 suffocates your enemies with poison gas
 lightning breath summons the electrical fury of a blue dragon
-#0|DRAGONS
+#0|creation|DRAGONS
 Dragons are big mystical creatures with leathery wings, horns
 and claws. They are good at most every class except thieves due
 to thier large size.
-#0|DRINK EAT FILL POUR
+#0|commands|DRINK EAT FILL POUR
 Syntax: drink <object>
 Syntax: eat   <object>
 Syntax: fill  <object>
@@ -1246,7 +1246,7 @@ FILL fills a drink container with water.
 
 POUR transfers a liquid to a container, or empties one.
 You can also pour from an object into something a character is holding.
-#0|DROP GET GIVE PUT TAKE
+#0|commands|DROP GET GIVE PUT TAKE
 Syntax: drop <object>
 Syntax: drop <amount> coins
 Syntax: get  <object>
@@ -1266,7 +1266,7 @@ PUT puts an object into a container.
 
 DROP, GET and PUT understand the object names 'ALL' for all
 objects and 'ALL.object' for all objects with the same name.
-#-1|DWARF DWARVES
+#-1|creation|DWARF DWARVES
 Dwarves are short, stocky demi-humans, known for foul temper and
 great stamina.  Dwarves have high strength and constitution, but
 poor dexterity. They are not as smart as humans, but are usually
@@ -1277,13 +1277,13 @@ Dwarves are very resistant to poison and disease, but cannot
 swim, and so are very vulnerable to drowning.  They recieve the
 berserk skill for free (if warriors), and can see in the dark
 with infravision.
-#0|EARTHQUAKE
+#0|spells|EARTHQUAKE
 Syntax: cast 'earthquake'
 
 This spell inflicts damage on every enemy character in the room.
 Beware that other characters who are not yet fighting may attack
 you as a result!
-#-1|ELF ELVES
+#-1|creation|ELF ELVES
 Elves are slightly taller than humans, but have a much lighter
 build.  They lack the strength and stamina of the other races,
 but are for more agile, both in body and mind.  Elves are superb
@@ -1296,7 +1296,7 @@ are barred from the use of iron or steel in their adventuring
 careers.  Elves are notoriously hard to spot, and so elven
 warriors and thieves recieve the sneak and hiding automatically.
 They may see in the dark with infravision.
-#0|EMOTE PMOTE POSE SOCIAL
+#0|commands|EMOTE PMOTE POSE SOCIAL
 Syntax: emote <action>
 Syntax: pose
 
@@ -1311,7 +1311,7 @@ you by Alander, and as bonks Alander by everyone else).
 
 POSE produces a random message depending on your class and
 level.
-#-1|ENCHANTMENT
+#-1|creation|ENCHANTMENT
 The enchantment spell group is used to imbue items with magical
 properties. Currently, this spell group consists of enchant
 weapon and enchant armor, although more will be added in the
@@ -1321,7 +1321,7 @@ enchant weapon	increases the hit and damage bonuses of a weapon
 enchant armor	increases the protective value of armor
 fireproof       shields items from the harmful effects of fire and acid
 recharge	restores power to a depleted wand or staff
-#-1|ENHANCEMENT
+#-1|creation|ENHANCEMENT
 The enhancement spells improve upon the body's pontential,
 allowing feats of superhuman strength and speed.  However, these
 spells may often have harmful effects upon the recipient.
@@ -1330,7 +1330,7 @@ giant strength	grants increased strength
 haste		doubles the speed of the target, but slows down healing
 infravision	allows monsters to be seen in the dark
 refresh		restores energy to tired adventurers
-#-1|ENVENOM
+#-1|commands|ENVENOM
 The envenom skill is a cowardly skill practiced only by thieves,
 designed to win a battle through alchemy and treachery rather
 than skill or strength. Or, put another way, it's a skill used
@@ -1343,13 +1343,13 @@ poisoned weapon, on the other hand, can inflict serious damage
 on an opponent as the poison burns through his bloodstream.  But
 be careful, blade venom evaporates quickly and is rendered
 almost powerless by repeated blows in combat.
-#0|EQUIPMENT INVENTORY
+#0|commands|EQUIPMENT INVENTORY
 Syntax: equipment
 Syntax: inventory
 
 EQUIPMENT lists your equipment (armor, weapons, and held items).
 INVENTORY lists your inventory.
-#0|EXAMINE LOOK
+#0|commands|EXAMINE LOOK
 Syntax: look
 Syntax: look    <object>
 Syntax: look    <character>
@@ -1364,7 +1364,7 @@ LOOK looks at something and sees what you can see.
 
 EXAMINE is short for 'LOOK container' followed by 'LOOK IN
 container'.
-#0|EXIT
+#0|olc|EXIT
 For exits, type the direction (north/s/e/w) followed by:
 
 dig <vnum>         - creates the room and makes a two way link
@@ -1382,14 +1382,14 @@ closed is due to a player closing the door and not due to the
 door being set to be closed.
 
 -South to [ 3744] Key: [   -1] Exit flags: [door CLOSED bashed pickproof]
-#0|EXITS
+#0|commands|EXITS
 Syntax: exits
 
 Tells you the visible exits of the room you are in.  Not all
 exits are visible. You can use the 'bump' technique to find
 hidden exits.  (Try to walk in a certain direction and see what
 you bump into).
-#-1|EXOTIC WEAPONS WEAPON WEAPONSMASTER AXE DAGGER FLAIL MACE POLEARM SPEAR SWORD WHIP
+#-1|creation|EXOTIC WEAPONS WEAPON WEAPONSMASTER AXE DAGGER FLAIL MACE POLEARM SPEAR SWORD WHIP
 Each weapon skill applies to a specific group of armaments, and
 determines how well a character fights with a particular weapon.
 The weaponsmaster group provides talent in all weapons (save
@@ -1413,7 +1413,7 @@ exotic		the use of strange magical weapons
 
 The exotic skill cannot be purchased, and is dependent solely
 upon level.
-#0|EXPERIENCE LEVEL XP
+#0|unknown|EXPERIENCE LEVEL XP
 Your character advances in power by gaining experience.  You
 need a set amount of experience points for each level based on
 your creation points.
@@ -1434,7 +1434,7 @@ how many players are in your group; your level versus the level
 of the monster; your alignment versus the monster's alignment;
 how many of this monster have been killed lately; and some
 random variation.
-#0|EXPLORED
+#0|commands|EXPLORED
 {n keeps track of how many rooms you explore.
 This data is displayed in 'score' as a number count, and as a percent
 of the world.
@@ -1443,7 +1443,7 @@ The 'explored' command can show you how much you've explored per
 area and per world.
 
 Syntax: explored 'area/world'
-#-1|FARSIGHT
+#-1|spells|FARSIGHT
 Syntax: cast 'farsight'
 	cast 'farsight' <direction>
 
@@ -1453,7 +1453,7 @@ room.  It takes intense concentration, often leaving the caster
 helpless for several minutes. The spell may be used for a
 general scan that reaches a short distance in all directions, or
 with a directional component to see creatures much farther away.
-#-1|FIREPROOF
+#-1|spells|FIREPROOF
 Syntax: cast 'fireproof' <object>
 
 The fireproof spell creates a short-lived protective aura around
@@ -1462,11 +1462,11 @@ flame.  Items protected by this spell are not harmed by acid,
 fire, or the heat metal spell. Although inexpensive to use, the
 spell's short duration makes it impractical for protecting large
 numbers of objects.
-#0|FLAMESTRIKE
+#0|spells|FLAMESTRIKE
 Syntax: cast 'flamestrike' <victim>
 
 This spell inflicts damage on the victim.
-#0|FLEE
+#0|commands|FLEE
 Syntax: flee
 Syntax: rescue   <character>
 
@@ -1480,11 +1480,11 @@ If you lose your link during a fight, then your character will
 keep fighting, and will attempt to RECALL from time to time.
 Your chances of making the recall are reduced, and you will lose
 much more experience.
-#0|FLY
+#0|spells|FLY
 Syntax: cast 'fly' <character>
 
 This spell enables the target character to fly.
-#0|FOLLOW GROUP
+#0|commands|FOLLOW GROUP
 Syntax: follow <character>
 Syntax: group
 Syntax: group <character>
@@ -1507,7 +1507,7 @@ your group.
 
 You may FOLLOW and GROUP only with characters who are within
 five levels of your own.
-#0|FORCESHIELD STATICSHIELD FLAMESHIELD
+#0|spells|FORCESHIELD STATICSHIELD FLAMESHIELD
 Syntax: cast forceshield
 {x      : cast staticshield
 {x      : case flameshield
@@ -1530,7 +1530,7 @@ bonus, but also will randomly harm any attacker that attacks
 without a wielded weapon. The rate of returned damage is about 1
 out of every 3 hits, so expect around 1 or 2 medium fire attacks
 per pulse.
-#-1|FRENZY
+#-1|spells|FRENZY
 Syntax: cast 'frenzy' <target>
 
 The frenzy spell fills the target with righteous fury, greatly
@@ -1539,7 +1539,7 @@ Unfortunately, this divine wrath is coupled with a tendency to
 ignore threats to personal safety, making the character easier
 to hit.  Frenzy provides immunity to the calm spell (see 'help
 calm'), and may only be used on those of the caster's alignment.
-#-1|GAIN
+#-1|commands|GAIN
 The gain command is used to learn new skills, once the proper
 trainer has been found. (Check New Thalos) The following options
 can be used with gain:
@@ -1552,12 +1552,12 @@ gain convert: turns 10 practices into one training session
 Gain uses training sessions, not practices. (see 'help train')
 Gained skills and groups do NOT increase your experience per
 level or total number of creation points.
-#0|GAMESTATS STATLISTS SHOWSTATS
+#0|commands|GAMESTATS STATLISTS SHOWSTATS
 Syntax: showstat <#|keyword>
       : showstat
 
 Shows top 50 statistics in each category.
-#-1|GATE
+#-1|spells|GATE
 The gate spell is a powerful transportation magic that opens up
 a portal between your character and another person or creature
 somewhere else in the world.  This portal will transport you and
@@ -1569,7 +1569,7 @@ to, and no recall rooms cannot be gated out of.  Finally, any
 god or hero is also immune to gate, as well as in player who has
 no summon set.  Clan members may not be gated to except by their
 fellow Clan members.
-#-1|GIANTS
+#-1|creation|GIANTS
 Giants are the largest of the races, ranging from 9-12 feet in
 height.  They are stronger than any other race, and almost as
 durable as the dwarves. They aren't too bright, however, and
@@ -1582,7 +1582,7 @@ mass.  However, their slow minds make them extremely vulnerable
 to mental attacks.  Giants, due to their size and stamina,
 receive the fast healing and bash skills for free. (Only giant
 warriors recive bash).
-#-1|GOLD SILVER MONEY
+#-1|unknown|GOLD SILVER MONEY
 Midgaard's economy is based on gold and silver coinage (and the
 lowly copper, which you as an adventurer are far too proud to
 carry).  Gold coins are worth 100 silver coins, but are also
@@ -1591,7 +1591,7 @@ pound for silver). Gems can be bought to alleviate weight
 problems from the Midgaard jeweller, he charges a mere 10% more
 than they are worth. 10 gems weigh one pound, and they can be
 worth more than 100 gold pieces for the highest quality stones.
-#0|GOSSIP CGOSSIP . SHOUT YELL OOC
+#0|commands|GOSSIP CGOSSIP . SHOUT YELL OOC
 Syntax: gossip  <message>
 Syntax: cgossip <message>
 Syntax: shout   <message>
@@ -1611,7 +1611,7 @@ be used In Character.
 YELL sends a message to all awake players within your area.
 
 Type a channel name by itself to turn it off.
-#0|GQUEST 'GLOBAL QUEST'
+#0|unknown|GQUEST 'GLOBAL QUEST'
 Global quests get run 3 ways:
 1) A player starts one from the Register's Office using:
    'gquest start <min Level> <max level> <#mobs>'
@@ -1632,7 +1632,7 @@ check') you must type 'gquest complete' to make it official.
 
 Players not in the gquest can check participants status by
 typing 'gquest progress'.
-#-1|GREETING1
+#-1|unknown|GREETING1
 
 	    This is a mud based on.....
 {C
@@ -1644,7 +1644,7 @@ typing 'gquest progress'.
 
 		  Server Project
 {x
-#-1|GREETING2
+#-1|unknown|GREETING2
 
 		 {W|\
 		 | \        /|
@@ -1666,7 +1666,7 @@ typing 'gquest progress'.
 		 {W|/              {y/| \'
 				{y/_  /
 				{y/  /
-#0|GTELL ; REPLY SAY TELL
+#0|commands|GTELL ; REPLY SAY TELL
 Syntax: gtell <message>
 Syntax: say   <message>
 Syntax: tell  <character> <message>
@@ -1685,7 +1685,7 @@ REPLY sends a message to the last player who sent you a TELL.
 REPLY will work even if you can't see the player, and without
 revealing their identity.  This is handy for talking to
 invisible or switched immortal players.
-#0|HADES
+#0|creation|HADES
 {GHades {x(Hay-deez)
 Aspects       - Death, Underworld, Wealth. Outlook - Neutral Evil.
 Influence     - Kiensun, Kurst Isle. Festival - 19th-22nd of 12th month.
@@ -1696,7 +1696,7 @@ Notes         - WAL = Non Good. Following = Large. Non Aggression Pact = Anubis.
 Creations     - Basilisk, Bugbears, Nekros, Raksasha.
 Honored title - Nephilim (sinful). Largest temple - Kiensun-Southern.
 Domains       - Death, Earth, Evil, Plant.
-#-1|HAGGLE HAGGLING
+#-1|unknown|HAGGLE HAGGLING
 Haggling is an indispensable skill to the trader.  It allows a
 character to match wits with a merchant, seeking to get a better
 price for merchandise, or to buy at the lowest possible cost.
@@ -1704,7 +1704,7 @@ Unfortunately, most merchants are already very skilled at
 haggling, so the untrainined adventurer had best guard his
 treasure closely.  Thieves are natural masters at haggling,
 although other classes may learn it as well.
-#-1|HARMFUL
+#-1|creation|HARMFUL
 This spell group is the opposite of healing.  The harmful spells
 are designed to tear flesh from bone, rupture arteries, and
 generally turn the body against itself.  Only priests and
@@ -1715,7 +1715,7 @@ cause light	inflicts minor wounds on an enemy
 cause serious	inflicts wounds on a foe
 cause critical  causes major damage to the target
 harm		the most deadly harmful spell
-#-1|HASTE
+#-1|spells|HASTE
 Syntax: cast 'haste' <target>
 
 The haste spell increases the speed and agility of the
@@ -1724,13 +1724,13 @@ combat, and improving evasive abilities in combat.  However, it
 produces a great strain on the system, such that recuperative
 abilities are halved.  Haste is capable of negating the slow
 spell. (see 'help slow').
-#0|HEALER
+#0|unknown|HEALER
 The healer decided to grab a quick buck, and now charges for his
 heals.  Some services are still free to players of level 10 or
 below, however.  To see a full listing of the healer's services,
 type 'heal' at his residence. To receive healing, bring plenty
 of money, and type 'heal <spell>'.
-#-1|HEALING
+#-1|creation|HEALING
 The healing spells are used to cure the wounds that adventurers
 inevitably suffer in battle.  For curing other conditions, such
 as poison, see the curative spell group.  Only warriors and
@@ -1743,7 +1743,7 @@ cure serious	heals wounds
 cure critical	closes all but the worst wounds
 heal		the most powerful healing spell
 mass healing	casts a heal spell on each player in the room
-#0|HELP
+#0|commands|HELP
 Syntax: help
 Syntax: help <keyword>
 
@@ -1752,14 +1752,14 @@ HELP without any arguments shows a one-page command summary.
 HELP <keyword> shows a page of help on that keyword.  The
 keywords include all the commands, spells, and skills listed in
 the game.
-#-1|HIDE SNEAK
+#-1|unknown|HIDE SNEAK
 Hide and sneak are similar skills, both related to remaining
 undetected. Hide has a very high chance of success, but only
 works for as long as the character remains stationary.  Sneak
 may be used when moving (including to sneak by monsters), but
 has a lower chance of success.  Only warriors and thieves may
 learn these skills.
-#0|HITDICE
+#0|olc|HITDICE
 A high number of dice makes for less variance in mobiles
 hitpoints. Suggested values are:
 
@@ -1775,7 +1775,7 @@ hitpoints. Suggested values are:
 
 Diff = max - min.  Mean is the arithmetic mean.
 The values in parenthesis are the the standard merc values.
-#0|HOLD REMOVE WEAR WIELD
+#0|commands|HOLD REMOVE WEAR WIELD
 Syntax: hold   <object>
 Syntax: remove <object>
 Syntax: wear   <object>
@@ -1795,7 +1795,7 @@ if you are not experienced enough to use it properly.
 
 REMOVE will take any object from your equipment and put it back
 into your inventory.
-#0|HOMES HOUSE MANOR ESTATE
+#0|unknown|HOMES HOUSE MANOR ESTATE
 
 Player Estates lies east of the small path in Midgaard Park.
 
@@ -1815,24 +1815,24 @@ items persist; GET and PUT work normally when rearranging them.
 [PRIMESUD] 1stMud's runtime-created extra rooms, selling, OLC
 editing, furnishing upgrades, and multiplayer invitations are
 omitted in favor of one static single-player home.
-#-1|HUMAN HUMANS MAN
+#-1|creation|HUMAN HUMANS MAN
 Humans are the most common race in the world, and make up the
 majority of adventurers. Although they have no special talents
 like the other races, they are more versitile, being skilled in
 all four classes. Humans may also train their primary stat
 higher than any other race, and are able to gain more benefit
 from magical devices.
-#0|HUNT
+#0|commands|HUNT
 Syntax:  {RHUNT{x <{Yvictim{x>
 
 The {Rhunt{x skill allows a character to hunt for a monster or
 player.  If the character is successful they will be given the
 direction to go to reach their prey.
-#0|IDENTIFY
+#0|spells|IDENTIFY
 Syntax: cast identify <object>
 
 This spell reveals information about the object.
-#0|IGNORE
+#0|commands|IGNORE
 Syntax:
    {MIgnore
    {MIgnore {x<{Yvictim{x>
@@ -1844,7 +1844,7 @@ by a certain player over most of the channels.  The only
 channels that are not covered by ignore are say, emote, and
 pmote.  Ignore by itself will show you a list of players who are
 currently being ignored.
-#-1|ILLUSION
+#-1|creation|ILLUSION
 The illusions spells are dedicated to deception and trickery.
 They can be used to mask appearances, or create distractions for
 the party.  Currently, the illusion group is very small, but it
@@ -1854,7 +1854,7 @@ illusion spells, which consist of the following:
 invis		turns the target invisible
 mass invis	turns the caster's group invisible
 ventriloquate	allows the caster to put words in someone's mouth
-#-1|IMMORTAL IMMORT GOD WIZARD WIZ
+#-1|unknown|IMMORTAL IMMORT GOD WIZARD WIZ
 'Immortal' (often, simply, 'immort') refers to players who have
 reached the highest attainable levels in the game.  Here, anyone
 of level 52 or higher is an 'immortal.'  Immortals are capable
@@ -1877,26 +1877,26 @@ The duties of immortals, and even the very reasons for their
 existence, are topics of continual and heated debate in various
 MUD forums, and are fraught with misconceptions, poor examples,
 and outrageous hypocrisies. :)
-#51|IMMTALK :
+#51|immortal|IMMTALK :
 Syntax: immtalk <message>
 	immtalk
 
 Immtalk sends a message to all immortals.  : is a synonym for
 immtalk. Using this command with no argument turns off the
 immortal channel (or turns it back on).
-#0|INFOCHANNEL ANNOUNCE
+#0|commands|INFOCHANNEL ANNOUNCE
 INFO
 Syntax: info          lists info fields and displays status
 	info <field>  toggles info field on or off
 
 Important game messages are displayed globally over the Info
 channel.
-#0|INFRAVISION
+#0|spells|INFRAVISION
 Syntax: cast infravision <character>
 
 This spell enables the target character to see warm-blooded
 creatures even while in the dark, and exits of a room as well.
-#0|INVISIBILITY 'MASS INVIS'
+#0|spells|INVISIBILITY 'MASS INVIS'
 Syntax: cast 'invisibility' <character>
 Syntax: cast 'invisibility' <object>
 Syntax: cast 'mass invis'
@@ -1907,13 +1907,13 @@ cast on an object to render the object invisible.
 
 The MASS INVIS spell makes all characters in the caster's group
 invisible, including the caster.
-#0|ITEM_ARMOR
+#0|olc|ITEM_ARMOR
    value 0    ac pierce
    value 1    ac bash
    value 2    ac slash
    value 3    ac exotic (magic)
    value 4    unused
-#0|ITEM_CONTAINER
+#0|olc|ITEM_CONTAINER
    value 0    weight capacity
    value 1    flags: closeable, pickproof, closed, locked
    value 2    key vnum
@@ -1922,7 +1922,7 @@ invisible, including the caster.
 
 An up-to-date list of flags can be obtained by typing
 ? CONTAINTER
-#0|ITEM_DRINK
+#0|olc|ITEM_DRINK
    value0    capacity
    value 1    current quantity
    value 2    liquid type
@@ -1931,25 +1931,25 @@ An up-to-date list of flags can be obtained by typing
 
 An up-to-date list of liquid types can be obtained by typing
 ? LIQUID
-#0|ITEM_FOOD
+#0|olc|ITEM_FOOD
    value 0    hours of food value
    value 1    unused
    value 2    unused
    value 3    poisoned?
    value 4    unused
-#0|ITEM_LIGHT
+#0|olc|ITEM_LIGHT
    value 0    unused
    value 1    unused
    value 2    hours of light available, 0 is dead, -1 or 999 is infinite
    value 3    unused
    value 4    unused
-#0|ITEM_MONEY
+#0|olc|ITEM_MONEY
    value 0    value in gold pieces
    value 1    unused
    value 2    unused
    value 3    unused
    value 4    unused
-#0|ITEM_SCROLL_POTION_PILL
+#0|olc|ITEM_SCROLL_POTION_PILL
    value 0    level
    value 1    spell name 1
    value 2    spell name 2
@@ -1958,7 +1958,7 @@ An up-to-date list of liquid types can be obtained by typing
 
 An up-to-date list of spells can be obtained by typing:
 ? SPELLS [ignore/attack/defend/self/object/all]
-#0|ITEM_STAFF_WAND
+#0|olc|ITEM_STAFF_WAND
    value 0    level
    value 1    max charges
    value 2    current charges
@@ -1968,7 +1968,7 @@ An up-to-date list of spells can be obtained by typing:
 
 An up-to-date list of spells can be obtained by typing:
 ? SPELLS [ignore/attack/defend/self/object/all]
-#0|ITEM_WEAPON
+#0|olc|ITEM_WEAPON
    value 0    weapon class.
    value 1    number of dice to roll.
    value 2    type of dice to roll.
@@ -1980,7 +1980,7 @@ An up-to-date list of values can be obtained by typing
 help WEAPON_DICE
 ? WEAPON
 ? WTYPE
-#0|JOG RUN SPEEDWALK
+#0|commands|JOG RUN SPEEDWALK
 Syntax: run <direction list>
 
 The <direction list> consists of a string of directions in the
@@ -2004,7 +2004,7 @@ running are received as if they were entered one at a time.
 This means that anything that can happen during normal walking
 can also happen while running.  All rooms are shown in brief
 mode while running.
-#0|KEYS KEYPAD CALCULATOR
+#0|commands|KEYS KEYPAD CALCULATOR
 PrimeSUD adapts the HP Prime's physical keys as game shortcuts:
 
 Movement (runs immediately):
@@ -2022,12 +2022,12 @@ Input line:
 The digit and function-row keys load a command into an EMPTY
 input line -- Enter runs it, or keep typing to add arguments.
 Type 'macro' to view, rebind, or reset the bindings.
-#-1|KICK
+#-1|commands|KICK
 Kicking allows the adventurer to receive an extra attack in
 combat, a powerful kick. However, a failed kick may throw an
 unwary fighter off balance.  Fighters and clerics are the most
 skilled at kicking, although thieves may also learn it.
-#-1|LAG
+#-1|unknown|LAG
 Twas dial-up, and the failing mudders did toil and struggle in the fray
 All checksummed were the compressed files
 And the man pages, outdate
@@ -2049,7 +2049,7 @@ Oh lag-free day, callooh callay, he chortled in his joy
 Twas dial-up, and the failing mudders did toil and struggle in the fray
 All checksummed were the compressed files
 And the man pages, outdate.
-#0|LOKI
+#0|creation|LOKI
 {GLoki {x(Low-kee)
 Aspects       - Shadow, Thievery. Outlook - Chaotic Neutral.
 Influence     - Adenep. Festival - 21st/10th (Autumn).
@@ -2060,7 +2060,7 @@ Notes         - WAL = Chaotic. Following = Small. Non Aggression Pact = None. En
 Creations     - Fenrir, Inktomi, Medusa.
 Honored title - Harlequin. Largest temple - Southern Adenep.
 Domains       - Air, Chaos, Fire, Trickery.
-#-1|LORE
+#-1|commands|LORE
 Lore is a general skill, consisting of knowledge of myths and
 legends. Use of the lore skill gives a chance of obtaining
 information on an object, concerning its power and uses.  It
@@ -2068,7 +2068,7 @@ also may occasionally increase the value of an object, because
 more will be known about its worth.  All classes may learn lore,
 although thieves are best at it, and warriors find it very hard
 to use.
-#-1|MAGE 'MAGIC-USER' 'MAGE BASICS' 'MAGE DEFAULT'
+#-1|creation|MAGE 'MAGIC-USER' 'MAGE BASICS' 'MAGE DEFAULT'
 Mages specialize in the casting of spells, offensive ones in
 particular. Mages have the highest-powered magic of any class,
 and are the only classes able to use the draconian and
@@ -2093,7 +2093,7 @@ maladictions	a selection of curses fit for any witch
 protective	defensive magics, ranging from armor to stone skin
 transporation	spells for getting from here to there
 weather		spells for conjuring and mastering the elements
-#-1|MALADICTIONS
+#-1|creation|MALADICTIONS
 Maladictions are a group of curses and other baneful spells,
 designed to cripple, inconvenience, or torture, rather than kill
 outright.  These spells may be cast by any class.
@@ -2105,22 +2105,22 @@ plague		causes the target to suffer a slow, painful death from plague
 poison		weaker than plague, but often fatal
 slow		slows your enemies down, reducing their rate of attack
 weaken		drains the strength of the target
-#0|MANADICE
+#0|olc|MANADICE
 A high number of dice makes for less variance in mobiles mana.
 The values the server generates for merc-type mobs is
 
   <level> d 10 + 100
 
 where level is the level of the mobile.
-#-1|MAP MAPS
+#-1|unknown|MAP MAPS
 Thanks to Ezra for drawing the originals of several maps on ROM.
-#-1|MASS HEALING
+#-1|spells|MASS HEALING
 Syntax: cast 'mass healing'
 
 The mass healing spell, as its name might suggest, performs a
 healing spell on all players in the room.  It also throws in a
 refresh spell for good measure.
-#0|MEDIT
+#0|olc|MEDIT
 Syntax: medit <vnum>            -Enters the editor for the
 selected mobile.
 
@@ -2156,13 +2156,13 @@ damdice		    - dice to toss to get mobile's hand to hand damage
 
 type 'help HITDICE', 'help MANADICE', 'help DAMDICE' for lists
 of reasonable dice combinations on different levels.
-#-1|MEDITATION
+#-1|unknown|MEDITATION
 This skill is similar to fast healing, but relies on the
 concentration and mantras to increase mana recovery when the
 character is sleeping or resting. Thieves and warriors, with
 their troubled minds and violent attitudes, have much trouble
 learning to meditate.
-#-1|MERC 'MERC CREDITS'
+#-1|unknown|MERC 'MERC CREDITS'
 This mud is based on Merc 2.1, created by Furey, Hatchet, and Kahn.
 Merc 2.1 is available as Merc_21.tar.gz from ftp.tcp.com and
 ftp.math.okstate.edu.
@@ -2186,7 +2186,7 @@ Thanks to ...
 
 Also see "help ROM" for information about the Rivers of Mud code
 base.
-#0|MOB_AC
+#0|olc|MOB_AC
 The values {n generates for a merc format mob is:
 
    level      pierce    bash    slash   exotic
@@ -2210,7 +2210,7 @@ The values {n generates for a merc format mob is:
 These values are 10 times what you would put in an area file.
 This is because the server multiplies what it reads from file
 with 10.
-#0|MORRIGAN
+#0|creation|MORRIGAN
 {GMorrigan {x(Mor-ig-an)
 Aspects       - Battle, Valour. Outlook - Neutral.
 Influence     - Rehik & Yerus. Festival - 5th/7th (Summer).
@@ -2221,7 +2221,7 @@ Notes         - WAL = Any. Following = Large. Non Aggression Pact = None. Enemie
 Creations     - Goblins, Orks, Slaad.
 Honored title -Arioch (lion of). Largest temple - Living fortress in Talgarten-Yerus.
 Domains       - Death, Fire, Strength, War.
-#-1|MOTD
+#-1|creation|MOTD
 {W* {cWelcome to {WPrimeSUD{c, a single-player MUD for the HP Prime.
 {W* {cImportant commands: {Chelp{c, {Ccommands{c, {Cscore{c, {Csave{c
 {W* {cType {Chelp keys{c for the keypad quick reference.
@@ -2229,7 +2229,7 @@ Domains       - Death, Fire, Strength, War.
 {W* {cType {Cautolist{c to review auto-settings, {Cmacro{c to bind
   command shortcuts to keys.
 {W* {cType {Cmotd{c to see this message again.{x
-#0|NAME 'NAME POLICY'
+#0|newbie|NAME 'NAME POLICY'
 {c{CNAME POLICY:{c
 In order to create a role-playing and adventure atmosphere throughout the
 realms of {n, you must choose a name accordingly explained below:
@@ -2248,7 +2248,7 @@ realms of {n, you must choose a name accordingly explained below:
 
 Anyway, immortals may ask you to choose another name if they
 consider your name inappropriate.
-#-1|NEWBIE 'NEWBIE INFO'
+#-1|creation|NEWBIE 'NEWBIE INFO'
 Ah! Another mortal, seeking adventure.  You should go through
 mudschool first, to gain experience to face the trials outside.
 Be sure to practice a weapon in the guild room, or your stay
@@ -2258,7 +2258,7 @@ see your skills, and 'commands' for a list of commands. Help is
 available on most commands and abilities.
 
 Please type 'help rules' to see the Rules of 1stMud.
-#0|NORTH SOUTH EAST WEST UP DOWN
+#0|commands|NORTH SOUTH EAST WEST UP DOWN
 Syntax: north
 Syntax: south
 Syntax: east
@@ -2267,7 +2267,7 @@ Syntax: up
 Syntax: down
 
 Use these commands to walk in a particular direction.
-#-1|NOTE 'NOTE WRITE' 'NOTE READ' BOARD 'NOTE SYSTEM' BOARDS UNREAD 'NOTE REPLY'
+#-1|commands|NOTE 'NOTE WRITE' 'NOTE READ' BOARD 'NOTE SYSTEM' BOARDS UNREAD 'NOTE REPLY'
 Syntax:
 
 board [number|name]          Shows or changes board.
@@ -2328,7 +2328,7 @@ The general outlook was based on Mystic Adventure's note system
 
 See also SUBSCRIBE
 
-#0|NUADA
+#0|creation|NUADA
 {GNuada {x(Noo-ah-dha)
 Aspects       - Arts, Crafts, Healing. Outlook - Neutral Good.
 Influence     - Faerv. Festival - Lughnasad.
@@ -2339,7 +2339,7 @@ Notes         - WAL = Non Evil. Following = Medium. Non Aggression Pact = Thoth.
 Creations     - Andaokut, Harpies, Seelie.
 Honored title - Argetlamh (Argetlau). Largest temple - Talizar.
 Domains       - Air, Healing, Good, Magic.
-#0|OEDIT
+#0|olc|OEDIT
 Syntax: edit object <vnum>      -Enters the editor for the
 selected object.
 
@@ -2366,7 +2366,7 @@ type         	    - type of object, type ? TYPE for a list
 extra		    - attributes of object, type ? EXTRA for a list
 wear                - where object is worn, type ? WEAR for a list
 material            - material the object is made from
-#-1|OLC EDIT
+#-1|olc|OLC EDIT
 Syntax: EDIT AREA [create/reset] [vnum]		- Area Creation and Repoping.
 Syntax: EDIT ROOM ( [create] [vnum] )		- Room Creation and Editing.
 Syntax: EDIT OBJ  [create] <vnum>		- Object Creation and Editing.
@@ -2388,7 +2388,7 @@ It was then converted to work with Envy by Jason Dinkel, and ported to ROM
 help. AEDIT and REDIT default to the current area or room. EDIT ROOM RESET
 resets the current room.  Most commands with no arguments display syntax.
 See also help: AEDIT REDIT MEDIT OEDIT
-#0|OPEN CLOSE LOCK UNLOCK PICK
+#0|commands|OPEN CLOSE LOCK UNLOCK PICK
 Syntax: open   <object|direction>
 Syntax: close  <object|direction>
 Syntax: lock   <object|direction>
@@ -2402,12 +2402,12 @@ must have the requisite key to LOCK or UNLOCK.
 
 PICK can open a lock without having the key.  In order to PICK
 successfully, you must practice the appropriate skill.
-#0|ORCS
+#0|creation|ORCS
 Orcs are a magical hybrid of other races.  Some with snouts,
 some with tails, some with horns.  Most are evil, flesh eating
 creatures and very powerfull.  Make good thieves and warriors.
 Poor magic users.
-#0|ORDER
+#0|commands|ORDER
 Syntax: order <character> command
 Syntax: order all command
 
@@ -2422,19 +2422,19 @@ charmed).
 
 If your charmed creature engages in combat, that will break the
 charm.
-#0|PATH
+#0|commands|PATH
 Syntax: path <destination mob or area>
 
 PATH shows the shortest walking route to an area or mob without
 moving you. Mob destinations cannot be quest targets, protected by
 summoning immunity, in a restricted room, or three or more levels
 above you.
-#0|OUTFIT
+#0|commands|OUTFIT
 The outfit command, usable by levels 5 and below, equips your
 character with a new set of sub issue gear (banner, weapon,
 helmet, shield, and vest), courtesy of the Mayor's warehouses.
 Only empty equipment slots are affected.
-#-1|PALADIN 'PALADIN BASICS' 'PALADIN DEFAULT'
+#-1|creation|PALADIN 'PALADIN BASICS' 'PALADIN DEFAULT'
 Paladins are the noble warriors of the battlefield. They prize
 honor and justice above all else. They are good fighters, almost
 as good as a warrior, but have some magical talents of a priest
@@ -2460,14 +2460,14 @@ maladictions	an assortment of curses
 protective	defensive magics, including the powerful sanctuary spell
 transportation	spells for getting from here to there
 weather         spells for conjuring and mastering the elements
-#-1|PARRY
+#-1|unknown|PARRY
 If at first you fail to dodge, block it.  Parry is useful for
 deflecting attacks, and is succesful more often than dodge.
 Parry requires a weapon for full success, the hand-to-hand skill
 may also be used, but results in reduced damage instead of no
 damage.  The best chance of parrying occurs when the defender is
 skilled in both his and his opponent's weapon type.
-#0|PASSWORD
+#0|commands|PASSWORD
 Syntax: password <old-password> <new-password>
 
 PASSWORD changes your character's password.  The first argument
@@ -2476,29 +2476,29 @@ password.
 
 The PASSWORD command is protected against being snooped or
 logged.
-#-1|PEEK
+#-1|unknown|PEEK
 The peek skill is useful for seeing what a player or monster is
 carrying, the better to use the steal command with.  More
 intelligent characters are harder to peek at.  All characters
 may learn peek, but thieves are the most common practicioners.
-#0|PET PETS
+#0|unknown|PET PETS
 You can buy pets in the pet shop.  You may own only one pet at a
 time, after the old one dies you may purchase a replacement.
 
 New pets are planned for a shop in New Thalos.
-#-1|PICK 'PICK LOCK'
+#-1|commands|PICK 'PICK LOCK'
 Lock picking is one of the prime skills of thieves, allowing
 them to gain access to many secured areas.  Lock picking chances
 are improved by intelligence, and hindered by the difficulty of
 the lock. Other classes may learn to pick locks, but they will
 never find it easy.
-#-1|PKILL PKILLING PKILLER 'PLAYER KILLING' PSTEAL PSTEALING 'PLAYER STEALING'
+#-1|unknown|PKILL PKILLING PKILLER 'PLAYER KILLING' PSTEAL PSTEALING 'PLAYER STEALING'
 Player killing and player stealing are allowed to all clan
 members (including loners), provided the victim is is within 8
 levels of the character and is also in a clan.  This will flag
 you as a "killer" or "thief", allowing any character to attack,
 and also provoking action from the city guard.
-#-1|PLAGUE
+#-1|spells|PLAGUE
 Syntax: cast 'plague' <target>
 
 The plague spell infests the target with a magical disease of
@@ -2506,7 +2506,7 @@ great virulence, sapping its strength and causing horrific
 suffering, possibly leading to death.  It is a risky spell to
 use, as the contagion can spread like wildfire if the victim
 makes it to a populated area.
-#0|POISON
+#0|spells|POISON
 Syntax: cast poison <victim>
 Syntax: cast poison <object>
 
@@ -2514,7 +2514,7 @@ This spell reduces the strength of the victim by two, as well as
 reducing the victim's regeneration rate. It may also be used to
 poison food, drink, or a weapon in a fashion similar to envenom
 ('help envenom'), but with drastically reduced effectiveness.
-#0|PRACTICE
+#0|commands|PRACTICE
 Syntax: PRACTICE
 Syntax: PRACTICE <skill|spell>
 
@@ -2531,12 +2531,12 @@ The higher your intelligence, the more you will learn at each
 practice session.  The higher your wisdom, the more practice
 sessions you will have each time you gain a level.  Unused
 sessions are saved until you do use them.
-#-1|PRICES PRICE
+#-1|unknown|PRICES PRICE
 New Clan Hall Rooms cost 50 diamonds.
 Boosting the mana or healing gains for a room costs 250 diamonds.
 Both in the same room costs double.
 Making the Healer or Store prices lower costs 1,000 diamonds.
-#-1|PROMPT
+#-1|commands|PROMPT
 Syntax: prompt
 Syntax: prompt all
 Syntax: prompt <%*>
@@ -2571,7 +2571,7 @@ yourself.
 Example:  PROMPT <%hhp %mm %vmv>
         Will set your prompt to "<10hp 100m 100mv>"
 
-#-1|PROTECTIVE
+#-1|creation|PROTECTIVE
 The protective spells are used to shield against harm, whether
 from spells or physical attack.  They range from the weak armor
 spell to the sought-after sanctuary charm.  Also included in
@@ -2589,7 +2589,7 @@ protects from the attacks of good beings sanctuary  reduces all
 damage taken by the recipient by half shield                puts
 a shimmering shield between you and your enemies stoneskin turns
 skin hard as stone, providing a huge armor boost
-#0|QUEST QUESTS
+#0|unknown|QUEST QUESTS
 Certain characters in the game will allow you to go on quests to
 recover an item or kill another mob. To go on a quest, you must
 be in the same room with a quest master. When you successfully
@@ -2636,7 +2636,7 @@ QUEST IDENTIFY - Identifies a quest object.
 
 Quest Code originnaly by Vassago of Moongate
 Modified Code by Markanth markanth@firstmud.com
-#0|QUESTITEMS
+#0|unknown|QUESTITEMS
 As you gain levels, the stats of Quest EQ will increase
 with you. Buying a higher level item from someone else
 serves no purpose as the item will be set to your own
@@ -2654,7 +2654,7 @@ Other notes:
 
 To see stats on a quest item for your level, type QUEST IDENTIFY
 <item> when at a questmaster.
-#0|QUIT RENT SAVE
+#0|commands|QUIT RENT SAVE
 Syntax: QUIT
 Syntax: RENT ... not!
 Syntax: SAVE
@@ -2678,7 +2678,7 @@ quitting, you're going to regret it.
 
 There is no RENT in this mud.  Just SAVE and QUIT whenever you
 want to leave.
-#0|QUOTE GRATS MUSIC Q/A QUESTION ANSWER
+#0|commands|QUOTE GRATS MUSIC Q/A QUESTION ANSWER
 Syntax: quote <msg>
 {x      : grats <msg>
 {x      : music <msg>
@@ -2689,7 +2689,7 @@ used to congratulate someone or something, the MUSIC channel is
 used for singing aloud. Q/A channel is for questions and
 answers.
 
-#-1|RANGER 'RANGER BASICS' 'RANGER DEFAULT'
+#-1|creation|RANGER 'RANGER BASICS' 'RANGER DEFAULT'
 Rangers are the hunter/woodsman type. They are excellent
 fighters and draw magical powers from nature. Rangers are at one
 with nature and try not to harm it in any way. They despise
@@ -2704,7 +2704,7 @@ enhanced damage	this skill multiplies your damage in battle
 parry		the art of parrying with weapons
 rescue		allows you to take the blows aimed for a companion
 third attack	allows the skilled ranger to land three blows in one round
-#0|RECALL /
+#0|commands|RECALL /
 Syntax: RECALL
 
 RECALL prays to Mota for miraculous transportation from where
@@ -2720,7 +2720,7 @@ RECALL costs half of your movement points.
 
 RECALL doesn't work in certain god-forsaken rooms.  Characters
 afflicted by a curse may not recall at all.
-#0|REDIT
+#0|olc|REDIT
 Syntax: edit room		-Enters the editor for the current room.
 
 The following commands are available from within the REDITOR:
@@ -2740,12 +2740,12 @@ mlist               - lists mobiles in this area.
 room <flags>        - room attributes, type ? ROOM for a list
 sector <type>       - terrain of room, type ? SECTOR for a list
 <direction>         - see help EXIT, or type <dir> ?
-#0|REFRESH
+#0|spells|REFRESH
 Syntax: cast refresh <character>
 
 This spell refreshes the movement points of a character who is
 out of movement points.
-#0|REMORT MULTICLASS
+#0|unknown|REMORT MULTICLASS
 When you reach HERO level on {n, you can choose
 to be 'reborn' into another class.  Adding an existing set of skills
 to your repitoire.  There are many advantages to multiclassing listed
@@ -2790,7 +2790,7 @@ by a bug, any mistakes you make during remort will not be
 reversed by an imm.
 
 The cost of this is 500,000 gold coins and 500qp.
-#-1|RESCUE
+#-1|commands|RESCUE
 A friend in need is a friend indeed.  And when in combat, a
 warrior with the rescue skill is just the friend you need.
 Rescue allows you to intercede in combat, protecting weaker
@@ -2799,7 +2799,7 @@ returned.  Success in rescuing depends on the skill rating, as
 well as a comparision of level, dexterity, and speed between the
 character and the target. (note: you rescue a friend, not the
 monster)
-#0|RESETS
+#0|olc|RESETS
 Syntax: RESET <number> OBJ <vnum> <location on body>    - equips last mobile
         RESET <number> OBJ <vnum> inside <obj vnum>     - store in container
         RESET <number> OBJ <vnum> room                  - store in room
@@ -2819,7 +2819,7 @@ then continue equiping the mobile.  It is likely that resets
 will backfire if they are not carefully entered.
 
 If you wish to reset the room then use EDIT ROOM RESET.
-#0|REST SLEEP STAND WAKE
+#0|commands|REST SLEEP STAND WAKE
 Syntax: rest
 Syntax: sleep
 Syntax: stand
@@ -2832,14 +2832,14 @@ SLEEP, you won't hear many things happen.
 
 Use STAND or WAKE to come back to a standing position.  You can
 also WAKE other sleeping characters.
-#0|RING
+#0|commands|RING
 Syntax: ring <direction>
 
 For exits that have a doorbell (type look <direction> to check)
 you can use the ring command to ring the doorbell.  A message
 that the doorbell has rung with spread through 5 rooms in every
 direction beyond the door.
-#-1|ROM 'ROM CREDITS'
+#-1|unknown|ROM 'ROM CREDITS'
 ROM started in early February 1993, using Merc 1.0 code. In July
 of 1993, ROM II was started, eventually replacing the original
 ROM.  ROM was up for a little over a year, after which the code
@@ -2906,12 +2906,12 @@ the changes to Merc 2.1 source code, were done by Alander over
 many a late night of hair-pulling. Hope you enjoy it.
 
 (my apologies if anyone was forgotten in this list)
-#0|ROSTER
+#0|clan|ROSTER
 Syntax: roster <clan name>
 
 ROSTER shows a listing of all members of <clan name> in order of
 clan rank.
-#-1|RULES
+#-1|unknown|RULES
 These are the rules of {n.  For other matters, use common sense.
 
 * Limited player stealing or player killing.
@@ -2935,17 +2935,17 @@ These are the rules of {n.  For other matters, use common sense.
 * Changes to these rules are at the discretion of the immortals,
 and may be done without warning, notice, or even evidence of
 sanity. Walk softly, and carry a black stick.
-#0|SACRIFICE
+#0|commands|SACRIFICE
 Syntax: sacrifice <object>
 
 SACRIFICE offers an object to Mota, who may reward you.
 The nature of the reward depends upon the type of object.
-#0|SANCTUARY
+#0|spells|SANCTUARY
 Syntax: cast sanctuary  <character>
 
 The SANCTUARY spell reduces the damage taken by the character
 from any attack by one half.
-#0|SCREEN
+#0|commands|SCREEN
 Syntax: screen
 {x      : screen lines <number>
 {x      : screen columns <number>
@@ -2956,7 +2956,7 @@ for larger screen sizes, or to -1 to disabling paging.
 
 Columns controls the number of characters per line. The default
 is 80.
-#1|SEDIT
+#1|olc|SEDIT
 Syntax:
 
 sedit delete         <social>
@@ -3047,7 +3047,7 @@ anything changes.
 
 Online social editting - (c) 1996,97 Erwin S. Andreasen
 <erwin@andreasen.org>
-#0|SHARES ECONOMY WITHDRAW BANK BANKS BALANCE
+#0|unknown|SHARES ECONOMY WITHDRAW BANK BANKS BALANCE
 Syntax:
 bank deposit     <amount|all>
 bank withdraw    <amount|all>
@@ -3065,14 +3065,14 @@ shares you can invest your money in the mud economy. The shares constantly
 change in value, so you can make a nice profit if you buy and sell your
 shares at the right times. The current share price can be seen by going to
 the bank, or by checking your score.
-#0|SHIELD 'STONE SKIN'
+#0|spells|SHIELD 'STONE SKIN'
 Syntax: cast shield
 Syntax: cast 'stone skin'
 
 These spells protect the caster by decreasing (improving) the
 caster's armor class.  SHIELD provides 20 points of armor.
 STONE SKIN provides 40 points of armor.
-#0|SKADI
+#0|creation|SKADI
 {GSkadi {x(Skad-ee)
 Aspects       - Earth, Fate, Winter. Outlook - Lawful Neutral.
 Influence     - Parene. Festival - Samhain.
@@ -3083,16 +3083,16 @@ Notes         - WAL = LG, NG, LN. Following = Small. Non Aggression Pact = Bast.
 Creations     - Gargoyles, Lugat.
 Honored title - Pack Master/Mistress. Largest temple - Mountain monastery in south Quertirr.
 Domains       - Law, Luck, Travel, Water.
-#0|SKILLS SPELLS
+#0|commands|SKILLS SPELLS
 The skills and spells commands are used to display your
 character's list of available skills (or spells, as the case may
 be).  They are listed in order of level, with mana cost (for
 spells) or percentage (for skills) listed where applicable.
-#0|SLEEP
+#0|spells|SLEEP
 Syntax: cast sleep <victim>
 
 This spell puts its victim to sleep.
-#-1|SLOW
+#-1|spells|SLOW
 Syntax: cast 'slow' <target>
 
 Despite popular mythology, slow is not the opposite of haste,
@@ -3101,9 +3101,9 @@ on an unfortunate victim, it slows its movements, making it
 easier to hit and reducing its rate of attack.  The effect of
 slow also double movement costs and halve healing rates, due to
 reduced metabolism.
-#-1|SOCIALS
+#-1|commands|SOCIALS
 The SOCIALS command displays a list of current socials.
-#-1|SPLIT
+#-1|commands|SPLIT
 Syntax: SPLIT <silver> <gold>
 
 SPLIT splits some coins  between you and all the members of your
@@ -3114,7 +3114,7 @@ Examples:
 split 30 	--> split 30 silver
 split 20 50	--> split 20 silver, 50 gold
 split  0 10	--> split 10 gold
-#0|STANCES SSKILL
+#0|commands|STANCES SSKILL
 Syntax: stance <style>
       : sskill
 
@@ -3143,7 +3143,7 @@ physical power.
 
 See also help on 'advancedstance' 'autostance' and
 'stancetable'.
-#0|STANCETABLE
+#0|unknown|STANCETABLE
 The following table is a rough comparison of stances, giving a
 value between 10 and -10, where the higher the number the better
 your chance of victory.  Cross-reference your stance from the
@@ -3163,7 +3163,7 @@ Tiger      +9   +7   +6   +6   +3   +5   +3    0   -2    0   +1
 Dragon     +10  +9   +1   +1   +3   +7    0   +2    0    0   -2
 Monkey      0    0    0    0    0    0    0    0    0    0    0
 Swallow    +10  +4   +3   +3   +5   +7   -3   -1   +2    0    0
-#0|STEAL
+#0|unknown|STEAL
 Syntax: STEAL coins <character>
 Syntax: STEAL <object> <character>
 
@@ -3180,20 +3180,20 @@ of monsters and characters, and even from shops!  But beware,
 shop keepers gaurd their merchandise carefully, and attempting
 to steal from a character earns you a THIEF flag if you are
 caught (making you free game for killing).
-#0|SUBSCRIBE
+#0|commands|SUBSCRIBE
 Syntax: subscribe         : show a list of all available boards.
 {x        subscribe <board> : toggles a subscribtion to specified board.
 
 UNSUBSCRIBING to a board will remove it from the 'board' and
 'unread' commands, allowing you to pick and choose only the
 boards you wish to read.
-#0|SUICIDE DELETE
+#0|commands|SUICIDE DELETE
 Use the delete command to erase unwanted characters, so the name
 will be available for use.  This command must be typed twice to
 delete a character, and you cannot be forced to delete.  Typing
 delete with an argument will return your character to 'safe'
 status if you change your mind after the first delete.
-#-1|SUMMARY
+#-1|unknown|SUMMARY
 MOVEMENT                            GROUP
 north south east west up down       follow group gtell split gprompt
 exits recall
@@ -3216,12 +3216,12 @@ backstab cast wimpy                 practice train
 For more help, type 'help <topic>' for any command, skill, or
 spell. Also help on: DAMAGE DEATH EXPERIENCE NEWS STORY TICK
 WIZLIST
-#0|SUMMON
+#0|spells|SUMMON
 Syntax: cast summon <character>
 
 This spell summons a character from anywhere else in the world
 into your room. Characters who are fighting may not be summoned.
-#0|TARANIS
+#0|creation|TARANIS
 {GTaranis {x(Tar-an-is)
 Aspects       - Beasts, Storms. Outlook - Chaotic Evil.
 Influence     - Bandit Lands. Festival - 11th/2nd (Winter).
@@ -3232,12 +3232,12 @@ Notes         - WAL = Non Good. Following = Small. Non Aggression Pact = None. E
 Creations     - Kuo Toa, Evil Dragons, Evil Giants, Shadow Caimar.
 Honored title - Hurakan. Largest temple - Bandit lands-Northern.
 Domains       - Animal, Destruction, Evil, Water.
-#0|TELEPORT
+#0|spells|TELEPORT
 Syntax: cast <teleport>
 
 This spell takes you from your current location to a random
 location somewhere in the world.
-#-1|THIEF 'THIEF BASICS' 'THIEF DEFAULT'
+#-1|creation|THIEF 'THIEF BASICS' 'THIEF DEFAULT'
 Thieves are a marginal class. They do few things better than any
 other class, but have the widest range of skills available.
 Thieves are specialists at thievery and covert actions, being
@@ -3262,7 +3262,7 @@ hide		the art of remaining undetected in a room
 peek		used to look into a person's belongings
 pick lock	a useful skill for breaking and entering
 sneak		with this skill, a thief can walk into a room undetected
-#0|THOTH
+#0|creation|THOTH
 {GThoth {x(Th-oth)
 Aspects       - Knowledge, Magic. Outlook - Neutral.
 Influence     - Talizar. Festival - 37th/6nd.
@@ -3273,7 +3273,7 @@ Notes         - WAL = Any. Following = Small. Non Aggression Pact = Nuada. Enemi
 Creations     - Kirek, Mind Flayers.
 Honored title - Nabu. Largest temple - Talizar.
 Domains       - Knowledge, Magic, Protection, Trickery.
-#0|TICK
+#0|unknown|TICK
 Many of the game actions are based upon interval timers,
 including combat, most autonomous monster actions, hp/mana/move
 regeneration, spell duration, weather, and area resetting.
@@ -3287,7 +3287,7 @@ Area resetting happens roughly every 3 minutes if no one is in
 the area; less often (15 minutes) if some one is.  Also note
 that objects lying on the ground will not be regenerated if
 anyone is in the area when it resets.
-#0|TITLE
+#0|commands|TITLE
 Syntax: title <string>
 
 Sets your title to a given string.
@@ -3295,7 +3295,7 @@ Sets your title to a given string.
 The game supplies a title when your character is created and
 when you advance a level.  You can use TITLE to set your title
 to something else.
-#0|TPGIVE TPSPEND QPGIVE
+#0|commands|TPGIVE TPSPEND QPGIVE
 Syntax: tpgive <amount of trivia points>
 Syntax: qpgive <amount of quest points>
 
@@ -3306,7 +3306,7 @@ Syntax: tpspend list
 Syntax: tpspend <option> [arg2]
 
 See also Help TRIVIA, QUEST.
-#0|TRAIN
+#0|commands|TRAIN
 Syntax: train <str int wis dex con hp mana>
 
 TRAIN increases one of your attributes.  When you start the
@@ -3323,7 +3323,7 @@ you more practice when you gain a level.  CON gives you more hit
 points. In the long run, your character will be most powerful if
 you train WIS and CON both to 18 before practising or training
 anything else.
-#-1|TRANSPORTATION
+#-1|creation|TRANSPORTATION
 The transportation group is used for travel, whether by flight,
 magical teleportation, or walking through walls.  All classes
 may learn these spells, which are among the most useful in the
@@ -3337,13 +3337,13 @@ portal		creates a one-way portal to a destination
 summon		transports the target to the caster
 teleport	sends the target to a random location
 word of recall	transports the caster to safety in Midgaard
-#-1|TRIP
+#-1|commands|TRIP
 Back by popular demand.  Trip is a somewhat dastardly attack,
 and involves using any one of a number of methods to bring your
 opponent down to the ground. Tripping large monsters is
 generally not a good idea, and agile ones will find the attack
 easy to avoid.  Thieves and warriors may learn trip.
-#0|TRIVIA TPSPEND
+#0|commands|TRIVIA TPSPEND
 Trivia Points can be used to purchase extras for your character
 that will make you the envy of all your friends.  Most of the
 features are automated with the TPSPEND command, but some you
@@ -3354,7 +3354,7 @@ Note: You can obtain Trivia Points either by buying them from
 Questor, at the cost of 100 Quest Points; as a rare bonus when
 you complete a quest; or by answering a Trivia question on a
 game run by the Imms.
-#0|VENTRILOQUATE
+#0|spells|VENTRILOQUATE
 Syntax: cast ventriloquate <speaker> <message>
 
 This spell throws your voice, making it appear that some other
@@ -3363,10 +3363,10 @@ who make their saving throw will know that someone is using
 ventriloquism, but not who.  Victims who fail their saving throw
 will think that the object or character really did say your
 message.
-#0|VISIBLE
+#0|commands|VISIBLE
 VISIBLE cancels your hiding and sneaking, as well as any
 invisibility, making you visible again.
-#-1|WANDS STAVES SCROLLS
+#-1|creation|WANDS STAVES SCROLLS
 Magical items require training to use properly.  If your
 character lacks the necessary skill to use an item, he will
 fail, possibly destroying it.  The item skills are as follows:
@@ -3375,7 +3375,7 @@ scrolls         The reading of magical scrolls and books (see
 'help recite') staves             The use of staves and similar
 devices (see 'help brandish') wands               The use of
 wands and similar items (see 'help zap')
-#0|WARFARE ARENA_COMBAT
+#0|unknown|WARFARE ARENA_COMBAT
 {G{N WARFARE{x
 Warfare is a feature added to {n in which players can fight
 each other in wars declared by an immortal. A special area, the
@@ -3404,7 +3404,7 @@ START'.
 
 Winners of wars receive a nice questpoint and gold bonus.
 Enjoy your battle and have a nice death!
-#-1|WARRIOR 'WARRIOR BASICS' 'WARRIOR DEFAULT'
+#-1|creation|WARRIOR 'WARRIOR BASICS' 'WARRIOR DEFAULT'
 Warriors live for combat and the thrill of battle. They are the
 best fighters of all the classes, but lack the subtle skills of
 thieves and the magical talents of mages and priests.  Warriors
@@ -3424,11 +3424,11 @@ enhanced damage	this skill multiplies your damage in battle
 parry		the art of parrying with weapons
 rescue		allows you to take the blows aimed for a companion
 third attack	allows the skilled warrior to land three blows in one round
-#0|WEAKEN
+#0|spells|WEAKEN
 Syntax: cast weaken <victim>
 
 This spell reduces the strength of the victim by two points.
-#0|WEAPON_DICE
+#0|olc|WEAPON_DICE
 These are the values the server generates automatically when
 converting a merc-format mobile to {n format.  A higher
 number of dice gives less variance in damage.  There is no
@@ -3443,7 +3443,7 @@ dice-bonus on weapon dice.
        20:     5d5
        30:     5d7
        50:     5d11
-#-1|WEATHER
+#-1|creation|WEATHER
 These spells allow the caster to manipulate local weather
 conditions, as well as summon fog clouds, lightning, or even
 electrical glows.  This group is usable by all classes.
@@ -3456,7 +3456,7 @@ lightning bolt	sends a bolt of electricity into the target
 
 (the weather command, unrelated to this group, shows local
 weather conditions)
-#0|WHERE
+#0|commands|WHERE
 Syntax: where
 Syntax: where <character>
 
@@ -3465,7 +3465,7 @@ players in the same area as you are.
 
 WHERE with an argument tells you the location of one character
 with that name within your area, including monsters.
-#-1|WHO
+#-1|commands|WHO
 Syntax: who
 Syntax: who <level-range>
 Syntax: who <class or race>
@@ -3490,11 +3490,11 @@ who elf cleric  lists all elven clerics
 who demise e m  lists all elven mages in Demise (hi Alander!)
 
 Classes and races may be abbreviated.
-#-1|WHOIS
+#-1|commands|WHOIS
 Syntax: whois <name>
 The whois command identifies any user who matches the name given. For
 example, 'whois a' shows all characters whose name begins with A.
-#0|WIMPY
+#0|commands|WIMPY
 Syntax: wimpy
 Syntax: wimpy <number>
 
@@ -3509,14 +3509,14 @@ WIMPY with no argument sets your wimpy value to 20% of your
 maximum hit points.
 
 Some monsters are wimpy.
-#51|WIZHELP
+#51|immortal|WIZHELP
 Syntax: wizhelp
 
 Wizhelp provides a list of all the immortal commands.
-#-1|WIZLIST
+#-1|commands|WIZLIST
 
 This command displays a list of immortals on {n.
-#0|WORSHIP DEITY
+#0|commands|WORSHIP DEITY
 Syntax : worship <deity>
 {x       : worship list
 

@@ -1301,7 +1301,9 @@ def do_spells(player, args):
 
 
 HELP_FILE = "help.txt"  # [PRIMESUD] canonical source; idx via tools/build_help_idx.py
-HELP_INDEX = "help.idx"  # [PRIMESUD] '<level>|<offset>|<keywords>' per entry
+HELP_INDEX = "help.idx"  # '<level>|<category>|<offset>|<keywords>' per entry
+HELP_CATEGORIES = ("unknown", "creation", "spells", "commands", "newbie",
+                   "immortal", "olc", "clan")
 
 
 def _help_is_name(sstr, namelist):
@@ -1331,18 +1333,126 @@ def _help_is_name(sstr, namelist):
     return True
 
 
+def _help_body(offset):
+    """Read one help body at its prebuilt byte offset. [PRIMESUD]"""
+    body = []
+    with open(HELP_FILE) as f:
+        f.seek(offset)
+        while True:
+            line = f.readline()
+            if not line or line[0] == "#":
+                break
+            body.append(line.rstrip("\n"))
+    return body
+
+
+def do_index(player, args):
+    """Browse help entries by category (cf. 1stMud do_index in act_info.c).
+
+    [PRIMESUD] Scans the off-heap help index and uses two columns for the
+    Prime's 64-column screen. [Verified: 22/07/2026]
+    """
+    with open(HELP_INDEX) as f:
+        data = f.read()
+    if not args:
+        counts = [0] * len(HELP_CATEGORIES)
+        for line in data.split("\n"):
+            if not line:
+                continue
+            _level, category, _offset, _keywords = line.split("|", 3)
+            if category in HELP_CATEGORIES:
+                counts[HELP_CATEGORIES.index(category)] += 1
+        data = None
+        lines = ["Help Category not found. Valid args are:"]
+        for i, category in enumerate(HELP_CATEGORIES):
+            lines.append("%2d) %s (%d helps)" %
+                         (i + 1, category, counts[i]))
+        tpage(lines)
+        return
+
+    arg = args[0].lower()
+    category = None
+    if arg.isdigit():
+        category_number = int(arg) - 1
+        if 0 <= category_number < len(HELP_CATEGORIES):
+            category = HELP_CATEGORIES[category_number]
+    else:
+        for name in HELP_CATEGORIES:
+            if name.startswith(arg):
+                category = name
+                break
+    if category is None:
+        chprintln(player, "Unknown category.")
+        return
+
+    number = None
+    if len(args) > 1:
+        # [PRIMESUD] Category-local misses use the clearer not-found message;
+        # upstream instead treats numbers >= global top_help as bad syntax.
+        if not args[1].isdigit() or int(args[1]) < 1:
+            chprintln(player, "Syntax: index <category> <help number>")
+            return
+        number = int(args[1])
+
+    trust = player.get("level", 1)
+    matches = []
+    selected = None
+    count = 0
+    for line in data.split("\n"):
+        if not line:
+            continue
+        level_s, entry_category, offset_s, keywords = line.split("|", 3)
+        if int(level_s) > trust or entry_category != category:
+            continue
+        if number is None:
+            matches.append(keywords)
+        else:
+            count += 1
+            if number == count:
+                selected = (keywords, int(offset_s))
+                break
+    data = None
+
+    sep = draw_line("{c-{C-")
+    if number is not None:
+        if selected is None:
+            chprintln(player, "That help not found in %s." % category)
+            return
+        lines = [sep, "Help Keywords : %s" % selected[0],
+                 "Help Category : %s" % category, sep]
+        lines.extend(_help_body(selected[1]))
+        lines.append(sep)
+        tpage(lines)
+        return
+
+    lines = [sep, "[ %s ]" % category.upper(), sep]
+    half = TERMINAL_COLS // 2
+    cells = []
+    for i, keywords in enumerate(matches):
+        cells.append(("%3d) %s" % (i + 1, keywords))[:half - 1])
+    for i in range(0, len(cells), 2):
+        line = cells[i]
+        if i + 1 < len(cells):
+            line += " " * (half - len(line)) + cells[i + 1]
+        lines.append(line)
+    if not matches:
+        lines.append("No helps found in %s." % category)
+    lines.append(sep)
+    tpage(lines)
+
+
 def do_help(player, args):
     """Show a help entry, keyword list, or see-also list (cf. 1stMud do_help in act_info.c).
 
-    [PRIMESUD] Scans HELP_INDEX (~7KB) instead of an in-memory help list or
+    [PRIMESUD] Scans HELP_INDEX (~9KB) instead of an in-memory help list or
     the full ~150KB HELP_FILE -- neither fits the HP Prime heap/time budget.
-    Index format: '<level>|<offset>|<keywords>' per line; offset is the byte
-    position of the entry's first text line in HELP_FILE, printed via seek.
+    Index format: '<level>|<category>|<offset>|<keywords>' per line; offset is
+    the byte position of the entry's first text line in HELP_FILE.
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified
     04/07/2026; index-scan rework re-verified 05/07/2026; 'debug time'
     timing instrumentation added 05/07/2026; one-shot idx read + substring
     pre-filter re-verified 05/07/2026; output batched via list chprintln
-    22/07/2026]
+    22/07/2026; category field added and re-verified 22/07/2026]
     """
     argall = " ".join(args) if args else "summary"
     number, target = _number_argument(argall)
@@ -1366,7 +1476,7 @@ def do_help(player, args):
     for line in data.split("\n"):
         if not line or q not in line:
             continue
-        level_s, off_s, keyword = line.split("|", 2)
+        level_s, _category, off_s, keyword = line.split("|", 3)
         if int(level_s) > trust:
             continue
         if not _help_is_name(target, keyword):
@@ -1381,19 +1491,12 @@ def do_help(player, args):
                 found = True
             elif found:
                 related.append(keyword)
-    data = None  # [PRIMESUD] release 7KB index string promptly
+    data = None  # [PRIMESUD] release 9KB index string promptly
     t1 = t2 = ticks()  # [PRIMESUD] idx scan done
     if show:
         # [PRIMESUD] read body before printing so 'debug time' can split
         # file-read cost from terminal-render cost
-        body = []
-        with open(HELP_FILE) as f:
-            f.seek(show[1])
-            while True:
-                line = f.readline()
-                if not line or line[0] == "#":
-                    break
-                body.append(line.rstrip("\n"))
+        body = _help_body(show[1])
         t2 = ticks()
         # [PRIMESUD] output accumulated and sent as one unjoined list --
         # batch-rendered by terminal.print_lines

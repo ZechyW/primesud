@@ -1,4 +1,4 @@
-"""Tests for do_help lazy file-scan port (cf. 1stMud do_help in act_info.c)."""
+"""Tests for lazy help and category-index ports from 1stMud act_info.c."""
 import os
 
 import pytest
@@ -20,6 +20,7 @@ def help_out(monkeypatch):
     # PLAYER dict is not registered as world.chars[1], so chprintln's
     # local-player gate would drop output -- capture at the info level
     monkeypatch.setattr(info, "chprintln", lambda ch, s="": (lines.extend(s) if type(s) is list else lines.append(s)))
+    monkeypatch.setattr(info, "tpage", lambda page: lines.extend(page))
     return lines
 
 
@@ -93,10 +94,57 @@ def test_index_offsets_align():
         data = f.read()
     with open(os.path.join("src", "help.idx"), "rb") as f:
         for line in f:
-            level, off_s, kw = line.rstrip(b"\n").split(b"|", 2)
+            level, category, off_s, kw = line.rstrip(b"\n").split(b"|", 3)
             off = int(off_s)
-            header = b"#" + level + b"|" + kw + b"\n"
+            header = b"#" + level + b"|" + category + b"|" + kw + b"\n"
             assert data[off - len(header):off] == header, kw
+
+
+def test_category_index_lists_counts(help_out):
+    info.do_index(PLAYER, [])
+    text = "\n".join(help_out)
+    assert " 3) spells (76 helps)" in text
+    assert " 4) commands (83 helps)" in text
+
+
+def test_category_index_lists_topics_by_name(help_out):
+    info.do_index(PLAYER, ["spells"])
+    text = "\n".join(help_out)
+    assert "[ SPELLS ]" in text
+    assert "ACID BLAST" in text
+
+
+def test_category_index_filters_by_level(help_out):
+    info.do_index(PLAYER, ["commands"])
+    assert "BID" not in "\n".join(help_out)
+    del help_out[:]
+    info.do_index({"level": 2}, ["commands"])
+    assert "BID" in "\n".join(help_out)
+
+
+def test_category_index_opens_numbered_topic(help_out):
+    info.do_index(PLAYER, ["3", "1"])
+    text = "\n".join(help_out)
+    assert "Help Keywords : 'ACID BLAST'" in text
+    assert "Help Category : spells" in text
+    assert "These spells inflict damage" in text
+
+
+def test_category_index_rejects_bad_input(help_out):
+    info.do_index(PLAYER, ["bogus"])
+    assert help_out == ["Unknown category."]
+
+
+def test_category_import_is_complete_and_idempotent():
+    from tools import import_help_categories
+
+    categories = import_help_categories.upstream_categories(
+        import_help_categories.SRC.read_bytes())
+    current = import_help_categories.DST.read_bytes()
+    result, entries, imported, custom, _digest = \
+        import_help_categories.add_categories(current, categories)
+    assert result == current
+    assert (entries, imported, custom) == (284, 282, 2)
 
 
 def test_help_is_name():

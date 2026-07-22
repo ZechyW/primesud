@@ -69,6 +69,7 @@ heal|buy healing services from a healer NPC
 heel|call your pet to your room
 hunt|track a mob in the current area (skill)
 help|read a help entry: help <topic>
+index|browse help entries by category
 hide|hide from view
 hit|attack a mob (alias for kill)
 hold|hold an item in your hand

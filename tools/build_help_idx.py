@@ -6,15 +6,14 @@ Usage:
 src/help.txt is the canonical help source -- edit it directly, then run
 this to rebuild the index (any edit shifts byte offsets). Format:
 
-    #<level>|<keywords>
+    #<level>|<category>|<keywords>
     <text line>
     ...
 
-Writes '<level>|<offset>|<keywords>' per entry, where offset is the byte
-offset of the entry's first text line in help.txt (LF line endings --
-.gitattributes marks both files -text so git never normalizes them).
-do_help scans this ~7KB index instead of the full ~150KB file, then
-seeks straight to the matched entry.
+Writes '<level>|<category>|<offset>|<keywords>' per entry, where offset is
+the byte offset of the entry's first text line in help.txt (LF line endings
+-- .gitattributes marks both files -text so git never normalizes them).
+do_help and do_index scan this index instead of the full ~150KB file.
 
 Originally part of tools/help_to_primesud.py, the one-shot converter
 from 1stMud help.dat (see git history).
@@ -41,16 +40,19 @@ def main():
                     sys.exit("Line 1 must be the '# ' header comment")
                 continue
             if line.startswith(b"#"):
-                # Must be a '#<level>|<keywords>' marker: do_help ends an
-                # entry body at any '#' line, so '#' text lines (or stray
-                # '# ' comments past line 1) would truncate entries.
+                # Must be a '#<level>|<category>|<keywords>' marker: do_help
+                # ends an entry body at any '#' line, so '#' text lines (or
+                # stray '# ' comments past line 1) would truncate entries.
                 try:
-                    level_s, kw = line[1:].rstrip(b"\n").split(b"|", 1)
+                    level_s, category, kw = line[1:].rstrip(b"\n").split(b"|", 2)
                     int(level_s)
                 except ValueError:
-                    sys.exit("Line %d: expected '#<level>|<keywords>'"
+                    sys.exit("Line %d: expected '#<level>|<category>|<keywords>'"
                              " marker, got %r" % (lineno, line))
-                idx_lines.append(level_s + b"|" + b"%d" % pos + b"|" + kw)
+                if not category:
+                    sys.exit("Line %d: empty help category" % lineno)
+                idx_lines.append(level_s + b"|" + category + b"|" +
+                                 b"%d" % pos + b"|" + kw)
     IDX.write_bytes(b"\n".join(idx_lines) + b"\n")
     print("Wrote %s: %d entries" % (IDX, len(idx_lines)))
 

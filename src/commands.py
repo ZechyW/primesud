@@ -10,7 +10,8 @@ from comm import (do_say, do_tell, do_reply, do_follow, do_ditch, do_order,
                   do_group, do_yell, do_emote)
 from config import POS_ORDER
 from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
-                  do_help, do_affects, do_credits, do_areas, do_map, do_automap,
+                  do_help, do_index, do_affects, do_credits, do_areas, do_map,
+                  do_automap,
                   do_autolist, do_autoloot, do_autogold, do_autosac,
                   do_autosplit, do_autoassist, do_autoexit, do_autodamage,
                   do_wimpy, do_exits, do_worth, do_where, do_clear,
@@ -423,7 +424,7 @@ _CMD_TABLE = [
     ("prime",      do_prime,      "sleeping", True),   # #317 noprefix; mortal (level-gated internally, see do_prime)
     # ("ring",      do_ring,       "resting",  False),  # #318
     # ("genname",   do_genname,    "sleeping", False),  # #319
-    # ("index",     do_index,      "dead",     False),  # #320
+    ("index",      do_index,      "dead",     False),  # #320
     # ("client",    do_client,     "dead",     False),  # #321
     ("backup",     do_backup,     "sleeping", True),   # #322 noprefix
     # ("system",    do_system,     "dead",     True),   # #323 noprefix, imm lvl 60
