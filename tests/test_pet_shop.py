@@ -221,8 +221,7 @@ class TestPetPersistence:
         game_state._serialize_world()
         with open(str(tmp_path / "t.sav")) as f:
             payload = f.read()
-        assert ("p.pet=" + str(PET_TPL) + "|7|" + str(pet["max_hit"])
-                + "|fido") in payload
+        assert ("p.pet=" + str(PET_TPL) + "|7|fido") in payload
         # pet must not be serialized as a template position
         assert "m." + str(PET_TPL) + "=" not in payload
 

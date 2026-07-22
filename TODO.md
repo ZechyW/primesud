@@ -44,14 +44,8 @@ Two-track release plan:
 
 ## Housing
 
-- **Player housing (homes.c) — discussion deferred (19/07/2026).** Not a
-  parity item: no stock area carries `AREA_PLAYER_HOMES`, so the system is
-  inert even upstream without imm-built content, and the faithful port
-  needs runtime room creation + world-state persistence (our save surface
-  is player-only). Possible middle ground for 1.0: ship it as a [PRIMESUD]
-  feature adapted to our context — pre-built home area in area data,
-  `home` command subset (buy/recall/describe/furnish), home state saved as
-  a player-owned blob — rather than full OLC. Decide before the 1.0 gate.
+(nothing outstanding -- static single-player estate shipped 22/07/2026;
+see DESIGN.md "Player housing")
 
 ## Area data
 
@@ -86,9 +80,9 @@ Two-track release plan:
   future area with a dangling exit would surface it. Belongs in world.py
   after-load if ever needed.
 - **Room flag `save_objs` (bit 22, 1stMud extension) has no runtime reader** —
-  resolved 19/07/2026 (parity sweep): its only stock use is player-home
-  floor persistence (homes.c:313); the home system is unported, so the
-  flag is N/A. No runtime reader needed.
+  resolved 22/07/2026: PrimeSUD already persists floor objects in every room,
+  including the static player home, so a flag-specific reader would add no
+  behavior.
 
 ## Tests
 

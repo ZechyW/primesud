@@ -72,6 +72,7 @@ help|read a help entry: help <topic>
 hide|hide from view
 hit|attack a mob (alias for kill)
 hold|hold an item in your hand
+home|buy, recall to, rename, or describe your Player Estates home
 inventory|list what you are carrying
 junk|sacrifice an item (alias for sacrifice)
 kick|kick an opponent in combat

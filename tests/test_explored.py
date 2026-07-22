@@ -59,6 +59,8 @@ def test_rle_all_set():
     m = get_mask(p)
     for i in range(len(m)):
         m[i] = 0xFF
+    # Last byte may contain padding beyond highest valid vnum.
+    m[-1] &= (1 << ((_MAX_VNUM & 7) + 1)) - 1
     _roundtrip(p)
 
 

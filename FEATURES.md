@@ -82,6 +82,9 @@ that into features rather than holes.
   pretitle, and the PK flag; the rest of the trivia economy is faithful.
 - **Solo banking** -- banked gold, shares, and the fluctuating market remain;
   player transfers and clan-bank branches are removed (economy.py).
+- **One personal estate** -- buy the stock Player Estates home, rename and
+  describe it, recall there, and decorate it with persistent floor items;
+  runtime OLC rooms and multiplayer ownership are unnecessary (DESIGN.md).
 
 ## Built for the calculator
 

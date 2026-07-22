@@ -112,6 +112,11 @@ def create_char(class_idx=CLASS_WARRIOR, race_name="Human"):
         # cf. 1stMud pcdata->backup; played-time (seconds) at the last
         # `backup` command, 0 = never backed up (see system_cmds.do_backup).
         "backup":   0,
+        # [PRIMESUD] Static player estate; home_owned rides the packed p.n
+        # save line (v10), name/desc are conditional named string lines.
+        "home_owned": 0,
+        "home_name": "",
+        "home_desc": "",
         # cf. 1stMud pcdata->group_known; filled by gn_add below.
         "groups":  [],
         # cf. 1stMud pcdata->alias[]/alias_sub[] parallel arrays; PrimeSUD

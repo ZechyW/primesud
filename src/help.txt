@@ -1797,56 +1797,24 @@ REMOVE will take any object from your equipment and put it back
 into your inventory.
 #0|HOMES HOUSE MANOR ESTATE
 
-Type HOME to see a list of arguments.
+Player Estates lies east of the small path in Midgaard Park.
 
-Type HOME BUY <direction> to purchase a home.  If you aren't
-carrying the right amount of gold coins on your person at the
-time of purchase. If the sale is successful, the coins will be
-extracted from you, you will be notified of your purchase, and
-you will receive a key for access.
+HOME BUY purchases its vacant home for 5,000,000 gold and 40
+trivia points. You receive a key for the locked front door.
 
-HOME ADD <direction> adds another room to your home for
-3,000,000 gold coins. You must already own a home and be in it
-for this to work.  You may have up to 5 rooms in your home.
+HOME KEY replaces a lost key. HOME RECALL transports you home
+through the normal recall rules.
 
-Type HOME SELL to sell your home. You will be reimbursed one
-half the cost of each room, including any items that were in the
-home at the time of sale.  This command can be used at any time.
+While inside your home, HOME NAME <title> changes its room name
+and HOME DESCRIBE <text> changes its description. Both survive
+saves and area unloading.
 
-Type HOME FURNISH to see a list of items available to furnish
-your home with. The items are permanent fixtures, and cannot be
-removed from the home. Certain items, such as lamps and
-lanterns, will expire over time, and new ones must be bought. To
-purchase an item, type HOME FURNISH <item name>, where item name
-is the name on the far left of the HOME FURNISH list. Certain
-items may also be further customized by typing HOME FURNISH
-<item name> <item type>, for example, to purchase an oak end
-table, type HOME FURNISH end table oak.
+Drop trophies or other items inside to decorate the room. Floor
+items persist; GET and PUT work normally when rearranging them.
 
-Type HOME DESCRIBE to supply a description for your home. Home
-Describe employs the OLC room editor, which can be tricky
-depending on what MUD Client you are using. If you are using
-zMUD, you may wish to speak with a Builder or other Immortal who
-is familiar with zMUD. While in home describe, all the standard
-dot commands are available, such as .h (help) .f (format) .c
-(clear) .s (show) .r# (line replace) .d# (line delete) .e
-(singular replace), and there may be others, depending on what
-version of OLC this MUD employs.
-
-HOME KEY will give you another key to your home in case you need
-one again.
-
-HOME RECALL will transfer you to your home, the GOHOME command
-does the same thing.
-
-HOME JOIN will allow you to co-own a home with someone.
-
-Home Code is originally by Dalsor of AWW - As the Wheel Weaves.
-MUD:  wheel.inetsolve.com 6500
-MAIL: wheel@wheel.inetsolve.com
-
-Modified by Markanth
-MAIL: markanth@firstmud.com
+[PRIMESUD] 1stMud's runtime-created extra rooms, selling, OLC
+editing, furnishing upgrades, and multiplayer invitations are
+omitted in favor of one static single-player home.
 #-1|HUMAN HUMANS MAN
 Humans are the most common race in the world, and make up the
 majority of adventurers. Although they have no special talents

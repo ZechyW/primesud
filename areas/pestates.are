@@ -1,0 +1,84 @@
+#AREA
+pestates.are~
+Player Estates~
+{All } 1stMud Player Estates~
+17700 17899
+
+* [PRIMESUD] 1stMud player-estate area adapted to one static solo home.
+
+#MOBILES
+#0
+
+#OBJECTS
+#17700
+key estate home~
+an estate key~
+An estate key lies here.~
+unknown~
+key 0 AO
+0 0 0 0 0
+0 0 0 R
+#0
+
+#ROOMS
+#17700
+Entrance to the Player Estates~
+A quiet lane leads from Midgaard Park to the Player Estates office.
+~
+0 0 0
+D1
+~
+~
+0 -1 17701
+D3
+~
+~
+0 -1 3109
+S
+#17701
+The Player Estates Office~
+A polished oak door stands ready for an adventurer seeking a place of their own.
+~
+0 0 0
+D0
+You see the door to an unclaimed home.~
+door~
+4 17700 17702
+D3
+~
+~
+0 -1 17700
+S
+#17702
+An Unclaimed Home~
+A quiet, unfurnished room waits for someone to make it their own.
+~
+0 DW 0
+D2
+You see the door to the estate office.~
+door~
+4 17700 17701
+S
+#0
+
+#SPECIALS
+S
+
+#RESETS
+D 0 17701 0 2
+D 0 17702 2 1
+S
+
+#SHOPS
+0
+
+#MOBPROGS
+#0
+
+#OBJPROGS
+#0
+
+#ROOMPROGS
+#0
+
+#$

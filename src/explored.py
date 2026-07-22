@@ -13,7 +13,7 @@ game loop, then update_handler right after) and mob-initiated drags (summon).
 Do NOT add a per-step mark to do_run: the tick seam already covers it.
 
 Storage: a bytearray on the player dict (bit index = room vnum), sized from the
-static _AREA_FILES vnum ranges (max < 10000 -> ~1.25 KB). Persisted as an RLE
+static _AREA_FILES vnum ranges (max < 18000 -> ~2.2 KB). Persisted as an RLE
 run-length string (str()+concat only, per PRIME_STRING_FORMAT_BUG).
 """
 from world import _AREA_FILES, AREA_ROOM_COUNTS

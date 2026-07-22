@@ -43,6 +43,7 @@ OBJ_VNUM_SCHOOL_POLEARM = 3722
 # Ascending size order: small areas load while heap is fresh (lower ms/KB),
 # big areas load last where heap pressure is unavoidable anyway.
 _AREA_FILES = [
+    ("area_pestates.txt", "pestates", "Player Estates", 17700, 17899),  # 4036 bytes
     ("area_ofcol.txt", "ofcol", "Ofcol", 5500, 5599),                 # 7084 bytes
     ("area_limbo.txt", "limbo", "Limbo", 1, 99),                      # 9466 bytes
     ("area_quest.txt", "quest", "Quest", 200, 249),                   # 12528 bytes
@@ -99,6 +100,7 @@ _AREA_FILES = [
 # Keep in sync with the area files -- tools/gen_area_adj.py cross-checks
 # and exits nonzero on drift. [PRIMESUD]
 AREA_LEVELS = {
+    "pestates":   (1, 50),
     "ofcol":      (1, 50),
     "limbo":      (1, 60),
     "quest":      (1, 60),
@@ -163,6 +165,7 @@ AREA_LEVELS = {
 # = sum of values. Regenerate with: python tools/gen_area_adj.py
 # [PRIMESUD]
 AREA_BUILDERS = {
+    "pestates":   "1stMud",
     "ofcol":      "Alfa",
     "limbo":      "Diku",
     "quest":      "1stMud",
@@ -215,6 +218,7 @@ AREA_BUILDERS = {
 }
 
 AREA_LVL_COMMENTS = {
+    "pestates": "All",
     "ofcol":    "All",
     "limbo":    "None",
     "quest":    "None",
@@ -222,6 +226,7 @@ AREA_LVL_COMMENTS = {
 }
 
 _AREA_ADJ = {
+    "pestates":   ("midgaard",),
     "ofcol":      ("ofcol2", "plains"),
     "limbo":      ("midgaard",),
     "quest":      ("midgaard",),
@@ -269,11 +274,12 @@ _AREA_ADJ = {
     "sewer":      ("midgaard",),
     "tohell":     ("chapel",),
     "hitower":    ("chapel", "draconia", "drow", "dylan", "galaxy", "haon", "midgaard", "olympus", "sewer"),
-    "midgaard":   ("air", "chess2", "dream", "eastern", "grave", "haon", "hood", "immort", "limbo", "midennir", "mobfact", "moria", "mud_school", "newthalos", "quest", "redferne", "sewer"),
+    "midgaard":   ("air", "chess2", "dream", "eastern", "grave", "haon", "hood", "immort", "limbo", "midennir", "mobfact", "moria", "mud_school", "newthalos", "pestates", "quest", "redferne", "sewer"),
     "newthalos":  ("haon", "midennir", "midgaard"),
 }
 
 AREA_ROOM_COUNTS = {
+    "pestates":   3,
     "ofcol":      8,
     "limbo":      3,
     "quest":      3,
@@ -491,6 +497,9 @@ def _load_area(tag):
                     "closed": bool(_ev.get("closed")),
                     "locked": bool(_ev.get("locked")),
                 }
+    if tag == "pestates" and 1 in chars:
+        from homes import apply_home  # deferred: homes imports world
+        apply_home(chars[1])
     MOB_DEFS.update(_ns["MOBILES"])
     ITEM_DEFS.update(_ns["OBJECTS"])
     # Program tables are optional so synthetic/older generated area files

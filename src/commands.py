@@ -30,6 +30,7 @@ from groups import do_grlist, do_slist
 from handler import chprintln
 from healer import do_heal
 from hunt import do_hunt
+from homes import do_home
 from macros import do_macro
 from magic import do_cast
 from music import do_play
@@ -361,7 +362,7 @@ _CMD_TABLE = [
     # ("raedit",    do_raedit,     "dead",     False),  # #256 imm lvl 55
     # ("skcheck",   do_skcheck,    "dead",     False),  # #257 imm lvl 57
     # ("cledit",    do_cledit,     "dead",     False),  # #258 imm lvl 57
-    # ("home",      do_home,       "standing", False),  # #259
+    ("home",      do_home,       "standing", False),  # #259
     # ("bid",       do_bid,        "sleeping", False),  # #260 lvl 2
     ("autodamage", do_autodamage, "sleeping", False),  # #261
     # ("unread",    do_board,      "sleeping", False),  # #262
@@ -465,7 +466,8 @@ _CMD_TABLE = [
 # ponytail: do_order excluded -- it relays only an NPC-safe combat subset
 # (keyword targets, case-insensitive), emits no free-text; add it here if the
 # ordered subset ever grows to include say/emote.
-_FREETEXT_FUNS = (do_say, do_emote, do_tell, do_reply, do_yell, do_alias, do_title)
+_FREETEXT_FUNS = (do_say, do_emote, do_tell, do_reply, do_yell, do_alias,
+                  do_title, do_home)
 
 
 # -- Interpreter ---------------------------------------------------------------

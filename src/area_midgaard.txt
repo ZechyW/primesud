@@ -2294,6 +2294,7 @@ ROOMS = {
         "name": 'Small path in the park',
         "desc": 'You are on a small path running through the park.  It continues west and\nsouth and just north of here you see the southern wall of Park Cafe.',
         "exits": {
+            "e": 17700,
             "s": 3115,
             "w": 3108,
         },

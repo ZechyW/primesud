@@ -36,18 +36,18 @@ from explored import encode_rle, decode_rle
 #
 # Skill numeric IDs (GSN_*) are permanent once assigned: recycling an ID for a
 # different skill would cause old saves to corrupt the new skill's learned %.
-SAVE_VERSION = 9  # v9: p.explored RLE mask (explore tracking); v8: item lh: token, per-area weather
+SAVE_VERSION = 10  # v10: packed-only records (p.n/p.eq/a.<tag>/m), home_owned in p.n; v9: p.explored RLE mask
 
 # Per-area state packed save line:
 # a.<tag>=<age>|<temp>|<tv>|<precip>|<pv>|<wind>|<wv>
-# (cf. game_time weather model). [PRIMESUD] Legacy .age/.w lines remain
-# loadable. Missing/short weather keeps freshly seeded random values.
+# (cf. game_time weather model). [PRIMESUD] Missing/short weather keeps
+# freshly seeded random values.
 _WEATHER_PACK_FIELDS = ("temp", "temp_vector", "precip", "precip_vector",
                         "wind", "wind_vector")
 
 # Fixed-order compact player fields. Never reorder or extend without a
-# compatibility branch; save new additive fields as named lines instead.
-# Legacy p.<name> lines remain loadable. [PRIMESUD]
+# SAVE_VERSION bump plus a one-off save conversion (load old, save new);
+# the p.n parser is exact-length and silently skips a mismatched line. [PRIMESUD]
 _PLAYER_STRING_SAVE_KEYS = (
     "name", "title", "race", "sex", "true_sex",
     "quest_mob_name", "quest_room_name", "quest_area_name",
@@ -59,6 +59,7 @@ _PLAYER_NUMBER_SAVE_KEYS = (
     "tier", "gold", "silver", "gold_bank", "shares", "wimpy",
     "quest_points", "quest_status", "quest_time", "quest_mob",
     "quest_obj", "quest_room", "quest_giver", "prime_class",
+    "home_owned",
 )
 _PLAYER_STAT_SAVE_KEYS = ("str", "dex", "int", "wis", "con")
 
@@ -169,7 +170,6 @@ def _serialize_world(hvar_name=None, file_name=None):
     pet = world.chars.get(player["pet"]) if player.get("pet") is not None else None
     if pet is not None:
         lines.append("p.pet=" + str(pet["tpl"]) + "|" + str(pet["hit"])
-                     + "|" + str(pet["max_hit"])
                      + "|" + str(pet.get("pet_name", "")))
         pet_af_parts = []
         for af in pet.get("affect_list", []):
@@ -192,6 +192,9 @@ def _serialize_world(hvar_name=None, file_name=None):
     # alias, order preserved (do_alias/do_unalias keep the list compact).
     for _al_name, _al_sub in player.get("aliases", []):
         lines.append("p.alias." + _al_name + "=" + _al_sub)
+    if player.get("home_owned"):
+        lines.append("p.home_name=" + str(player.get("home_name", "")))
+        lines.append("p.home_desc=" + str(player.get("home_desc", "")))
     for _as in world.areas:
         # HP Prime G1 has unstable percent-format strings in save payloads.
         _aparts = [str(_as["age"])]
@@ -376,9 +379,6 @@ def load_world():
             _backup_ok = False
         return (None, _backup_ok)
 
-    _STAT_KEYS = set(_PLAYER_STAT_SAVE_KEYS)
-    int_keys = set(_PLAYER_NUMBER_SAVE_KEYS)
-
     if player["_macros"] is not None:
         player["_macros"].clear()
     player["aliases"] = []
@@ -412,9 +412,6 @@ def load_world():
                 for i in range(len(parts)):
                     player["equip"][_EQUIP_SAVE_ORDER[i]] = (
                         parse_item_token(parts[i]) if parts[i] else None)
-        elif key.startswith("p.eq."):
-            slot = key[5:]
-            player["equip"][slot] = parse_item_token(val) if val else None
         elif key == "p.inv":
             player["inv"] = [parse_item_token(v) for v in val.split("|") if v]
         elif key == "p.classes":
@@ -468,26 +465,12 @@ def load_world():
         elif key.startswith("p.alias."):
             player["aliases"].append([key[8:], val])
         elif key.startswith("p."):
-            pkey = key[2:]
-            if pkey in _STAT_KEYS:
-                player["perm_stat"][pkey] = int(val)
-            else:
-                player[pkey] = int(val) if pkey in int_keys else val
+            # Named string fields: _PLAYER_STRING_SAVE_KEYS plus conditional
+            # extras (p.home_name/p.home_desc); numbers all ride p.n.
+            player[key[2:]] = val
         elif key.startswith("r.") and key.endswith(".items"):
             rvnum = int(key.split(".")[1])
             world._pending_room_items[rvnum] = val
-        elif key.startswith("a.") and key.endswith(".age"):
-            tag = key[2:-4]
-            if tag in _area_by_tag:
-                _area_by_tag[tag]["age"] = int(val)
-        elif key.startswith("a.") and key.endswith(".w"):
-            tag = key[2:-2]
-            if tag in _area_by_tag:
-                parts = val.split("|")
-                if len(parts) == len(_WEATHER_PACK_FIELDS):
-                    w = _area_by_tag[tag].setdefault("weather", {})
-                    for i in range(len(parts)):
-                        w[_WEATHER_PACK_FIELDS[i]] = int(parts[i])
         elif key.startswith("a."):
             tag = key[2:]
             parts = val.split("|")
@@ -530,8 +513,6 @@ def load_world():
                 if "," in entry:
                     tpl, rooms = entry.split(",", 1)
                     mob_saves[int(tpl)] = [int(r) for r in rooms.split("|") if r]
-        elif key.startswith("m."):
-            mob_saves[int(key[2:])] = [int(r) for r in val.split("|") if r]
 
     # Buffer mob saves for deferred application: _load_area will apply
     # each area's deltas when it actually loads (player enters the area).
@@ -552,13 +533,10 @@ def load_world():
         if _tpl is not None and _tpl in MOB_DEFS:
             _hp = (int(parts[1]) if len(parts) > 1
                    and parts[1].lstrip("-").isdigit() else None)
-            _max = (int(parts[2]) if len(parts) > 2
-                    and parts[2].lstrip("-").isdigit() else None)
-            _pname = parts[3] if len(parts) > 3 and parts[3] else None
+            _pname = parts[2] if len(parts) > 2 and parts[2] else None
             player["pet"] = None
             _pet = spawn_pet(_tpl, player, name_arg=_pname, announce=False)
-            # [PRIMESUD] max_hit is derived from owner level/tier; _max remains
-            # in the save line for backward compatibility with older saves.
+            # [PRIMESUD] max_hit is derived from owner level/tier, not saved.
             if _hp is not None:
                 _pet["hit"] = max(1, min(_hp, _pet["max_hit"]))
             # Re-apply saved affects (cf. 1stMud fread_pet "Affc" entries)

@@ -9,7 +9,7 @@ checklist for the engine 1.0 parity tag; strike items as they are resolved.
 ## Command parity
 
 All 348 `commands.dat` commands are accounted for in `src/commands.py`
-(153 active since the 20-21/07/2026 parity ports below, 195 commented with
+(154 active since the 20-22/07/2026 parity ports below, 194 commented with
 reasons); PrimeSUD-only additions are
 `autoskill`, `debug`, `macro` (all `[PRIMESUD]`). Nothing was forgotten;
 the only risk class is *wrong* exclusions, audited below.
@@ -27,8 +27,7 @@ the only risk class is *wrong* exclusions, audited below.
 - **Clan/PK family**: cinfo, claninfo, clanlist, clanrecall, clanadmin,
   clist, join, promote, roster, pk, pkshow, guild, tax — no clan system.
 - **MP systems**: arena, auction, bid, war, rent (literal "no rent" stub),
-  bug (writes report for nonexistent staff), qpgive, tpgive, home
-  (needs runtime OLC room creation; architecturally blocked), donate.
+  bug (writes report for nonexistent staff), qpgive, tpgive, donate.
 - **Client/network infra**: client, color, colour, compress, imp, msp, mxp,
   portal, pueblo, password, screen, strkey, sendstats, webpass.
 - **Server admin/moderation** (imm): allow, ban, announce, bonus, copyover,
@@ -54,6 +53,12 @@ the only risk class is *wrong* exclusions, audited below.
   [PRIMESUD] feature, not parity), mob (raw mobprog injection; engine
   covered by test_mobprog.py), showstats (needs new stat tracking; see
   mobdeaths/mobkills candidate).
+
+**Housing correction (22/07/2026):** `pestates.are` is present in 1stMud's
+stock `area.lst`, carries the player-home flag, and links from Midgaard 3109;
+the earlier "no stock area" exclusion was wrong. PrimeSUD now ships its static
+single-player adaptation (`home buy/key/recall/name/describe`) without runtime
+OLC rooms or multiplayer ownership; see DESIGN.md "Player housing".
 
 ### Port-candidates (player-facing; need go/no-go)
 
