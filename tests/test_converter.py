@@ -239,6 +239,41 @@ S
         self.check_raises(tmp_path, "#RESETS\nQ 0 1 2\nS\n",
                           "unrecognized command letter")
 
+    @pytest.mark.parametrize("reset", (
+        "M 0 9000 1 9000 1",
+        "O 0 9000 1 9000",
+        "R 0 9000 4",
+        "D 0 9000 0 1",
+    ))
+    def test_reset_cannot_target_foreign_room(self, tmp_path, reset):
+        self.check_raises(tmp_path, """#ROOMS
+#8020
+Test Room~
+A bare test room.
+~
+0 0 0
+S
+#0
+#RESETS
+""" + reset + "\nS\n", "outside this file's ROOMS section")
+
+    def test_reset_can_pull_foreign_template_into_local_room(self, tmp_path):
+        ns = convert_str(tmp_path, """#ROOMS
+#8020
+Test Room~
+A bare test room.
+~
+0 0 0
+S
+#0
+#RESETS
+M 0 9000 1 8020 1
+O 0 9001 1 8020
+S
+""")
+        assert ns["RESETS"] == (("M", 9000, 1, 8020, 1),
+                                ("O", 9001, 8020))
+
     def test_object_f_bad_where_letter(self, tmp_path):
         self.check_raises(tmp_path, """#OBJECTS
 #8014

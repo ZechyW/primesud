@@ -1,7 +1,9 @@
-# Cross-Area Resets
+# Cross-Area Template References
 
-Resets that reference mobs, items, or rooms defined in a different area.
-Generated from area data files (src/area_*.txt).
+Resets may reference mob and item templates defined in another area, but must
+target rooms owned by their own `.are` file. The room-owning area pulls foreign
+templates on demand; `tools/are_to_primesud.py` rejects resets that push state
+into another area's room. Generated from area data files (src/area_*.txt).
 
 Note: to defer the midgaard start-load cascade, areas/midgaard.are's own
 `#RESETS` places the juke resets directly in areas/shire.are (rooms

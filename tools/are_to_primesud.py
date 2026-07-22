@@ -1866,6 +1866,29 @@ def convert(are_path, out_path=None):
     objprogs  = parse_progs(sects.get("OBJPROGS", []))
     roomprogs = parse_progs(sects.get("ROOMPROGS", []))
 
+    # [PRIMESUD] An area may pull foreign mob/object templates into its own
+    # rooms, but must never push resets into a room owned by another area.
+    # Lazy loading depends on the room-owning area owning every placement.
+    room_vnums = set(vnum for vnum, _room in rooms)
+    for reset in resets:
+        cmd = reset[0]
+        target = (reset[3] if cmd == "M" else
+                  reset[2] if cmd == "O" else
+                  reset[1] if cmd == "R" else None)
+        if target is not None and target not in room_vnums:
+            raise ValueError(
+                "RESETS '" + cmd + "' targets room vnum " + str(target) +
+                " outside this file's ROOMS section; [PRIMESUD] move the "
+                "reset to the room-owning area"
+            )
+    for target, _direction in doverrides:
+        if target not in room_vnums:
+            raise ValueError(
+                "RESETS 'D' targets room vnum " + str(target) +
+                " outside this file's ROOMS section; [PRIMESUD] move the "
+                "reset to the room-owning area"
+            )
+
     # [PRIMESUD] Bake #SPECIALS and #SHOPS entries directly into their target
     # mob's MOBILES dict ("spec_fun" / "shop" keys) instead of emitting them
     # as standalone SPECIALS/SHOPS sections merged at runtime by world.py.

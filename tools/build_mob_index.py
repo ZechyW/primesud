@@ -6,8 +6,9 @@ Line order preserves _AREA_FILES priority, so ambiguous names still resolve
 to the cheapest area load.
 
 objs.idx (every object template) feeds `debug find` name->vnum lookups
-across unloaded areas (debug.py). It lists all templates, not just reset
-ones, because `debug load obj` can spawn any template.
+and gives locate-object ordered reset-owning area candidates. It lists all
+templates, not just reset ones, because `debug load obj` can spawn any
+template and pending saves can contain resetless objects.
 
 Re-run after re-converting any area:
 
@@ -72,16 +73,27 @@ def main():
         f.write(header + "\n".join(lines) + "\n")
     print("Wrote", out_path, "-", len(lines), "mobs")
 
+    obj_spawn_tags = {}
+    for tag, ns in areas:
+        seen = set()
+        for reset in ns.get("RESETS", ()):
+            if (reset[0] not in ("O", "E", "G", "P")
+                    or reset[1] in seen):
+                continue
+            seen.add(reset[1])
+            obj_spawn_tags.setdefault(reset[1], []).append(tag)
     obj_lines = []
     for tag, ns in areas:
         for vnum in sorted(ns.get("OBJECTS", {})):
             kw = " ".join(ns["OBJECTS"][vnum].get("keywords", "").split())
             assert "|" not in kw, "pipe in keywords of obj %d" % vnum
             if kw:
-                obj_lines.append(tag + "|" + str(vnum) + "|" + kw)
+                obj_lines.append(tag + "|" + str(vnum) + "|" + kw + "|"
+                                 + ",".join(obj_spawn_tags.get(vnum, ())))
     out_path = os.path.join(APPDIR, "objs.idx")
-    header = ("# tag|vnum|keywords per object template, areas ascending by"
-              " size -- built by tools/build_mob_index.py, do not edit\n")
+    header = ("# home_tag|vnum|keywords|spawn_tags per object template,"
+              " areas ascending by size -- built by tools/build_mob_index.py,"
+              " do not edit\n")
     with open(out_path, "w", newline="\n") as f:
         f.write(header + "\n".join(obj_lines) + "\n")
     print("Wrote", out_path, "-", len(obj_lines), "objects")

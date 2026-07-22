@@ -511,6 +511,11 @@ pathfinding see the shuffled graph once the room is loaded. The converter never
 emits the 1stMud `add_random_exit` variants (`arg3 == 1/2`); only the 2-tuple
 default-branch shuffle is supported.
 
+**Reset ownership [PRIMESUD].** Every `M`, `O`, `R`, and `D` reset must target a
+room defined in the same `.are` file. `tools/are_to_primesud.py` rejects a reset
+that pushes state into another area's room. Foreign mob and object template
+vnums remain valid: the room-owning area pulls those definitions on demand.
+
 **D resets** are consumed at conversion time and baked into the room exits dict —
 they do not appear in `RESETS`. A `D` reset overwrites a door's `closed`/`locked`
 state (case 0 = no change, 1 = set closed, 2 = set closed+locked). On every area
@@ -731,6 +736,7 @@ support -- noted per row).
 | Room guild: ranger sharing warrior rooms | `midgaard.are` | rooms 3022, 3023 -> `5)` | [PRIMESUD] -- second `G 5` line added per room; upstream has no ranger guild in midgaard |
 | Acolyte demo mobprog (greet/bribe/give) | `school.are` | mob 3700 (`M` trailers), progs 3790/3791/3792 (`#MOBPROGS`) | [PRIMESUD] -- greets arrivals, rewards the first coin donation per live mob instance, and returns donated items. The transient reward marker deliberately uses `mprog_delay` without a delay trigger: matching upstream, it never ticks down; eviction/reload resets it. Stock QuickMUD ships zero `#MOBPROGS` entries anywhere; this is the mobprog engine's first content pilot (`MOBPROG_PLAN.md` Phase D content pilot) |
 | Recovered 1stMud object/room programs | `midgaard.are` | object 3005 (`O DROP 3005 100`), room 3054 (`R GRALL 3054 100`), matching `#OBJPROGS`/`#ROOMPROGS` code | 1stMud-faithful -- the original conversion to QuickMUD format dropped both trailers and code sections; restored verbatim from `reference/1stMud4.5.3/area/midgaard.are`. The `.are` format has no per-entry comment seam, so provenance lives here |
+| Moved door reset: Elm Street south | removed from `grave.are`, added to `midgaard.are` | room 3124 | [PRIMESUD] reset-ownership invariant; same closed+locked state, with comments at both edit sites |
 | Moved reset: juke (obj 3200) -> room 1116 (The Ivy Bush) | removed from `midgaard.are`, added to `shire.are` | obj 3200, room 1116 | [PRIMESUD] defer-load optimization; same world state either way. `* [PRIMESUD] ... moved from/to midgaard` comment at both the removal and addition sites |
 | Moved reset: juke (obj 3200) -> room 1144 (The Green Dragon) | removed from `midgaard.are`, added to `shire.are` | obj 3200, room 1144 | [PRIMESUD] defer-load optimization; comment at both sites as above |
 | Moved reset: fountain (obj 3135) -> room 1200 (The Chat Room) | removed from `midgaard.are`, added to `immort.are` | obj 3135, room 1200 | [PRIMESUD] defer-load optimization; comment at both sites as above |
@@ -738,7 +744,7 @@ support -- noted per row).
 | Dropped reset: sarcophagus (obj 3415, chapel-owned) in room 3 (The Morgue) | `limbo.are` | obj 3415, room 3 | [PRIMESUD] -- would force all of chapel to load the moment limbo loads; limbo is preloaded at session start for corpse storage (`primesud.py`) and must stay self-contained. `*`-commented in place, not moved (no PrimeSUD room needs it) |
 | Dropped reset: Kate's Diner pipeweed bread (obj 1103, shire-owned) `G` reset | `midgaard.are` | obj 1103, room 3150 (Kate's Diner) | [PRIMESUD] -- would force shire (and via shire's shiriff gear, ofcol2) to load at game start; still sold in shire itself. `*`-commented in place between its sibling `G` lines under mob 3150 (Esme) |
 
-See `docs/CROSS_RESETS.md` for the full generated cross-area-reset inventory
+See `docs/CROSS_RESETS.md` for the full generated cross-area-template inventory
 (including the rows above, now attributed to their new source `.are` file)
 and `DESIGN.md` "Adjusted from 1stMud" for the guild-room design rationale.
 

@@ -439,6 +439,16 @@ def test_vnum_unloaded_via_idx(scene, out, paged, monkeypatch, tmp_path):
     assert any("9500" in l and "faraway, unloaded" in l for l in paged)
 
 
+def test_vnum_unloaded_object_ignores_spawn_tags(
+        scene, out, paged, monkeypatch, tmp_path):
+    idx = tmp_path / "objs.idx"
+    idx.write_text("faraway|9501|silver sword|otherarea\n")
+    monkeypatch.setattr(debug, "OBJS_IDX", str(idx))
+    _run(scene["player"], "vnum obj sword")
+    assert any("9501" in line and "faraway, unloaded" in line
+               for line in paged)
+
+
 def test_vnum_idx_skips_loaded_areas(scene, out, paged, monkeypatch, tmp_path):
     # nonsense keyword so real loaded-area defs can't match either
     idx = tmp_path / "mobs.idx"

@@ -6379,6 +6379,8 @@ E 1 3351  -1   16	*   a standard issue dagger
 O 0 3135  10 3005	* a fountain
 O 0 3139  15 3008	* the receptionist's letter of resignation
 O 0 3140  15 3008	* the bank's notice of liquidation
+* [PRIMESUD] moved from grave.are: room 3124 is Midgaard-owned.
+D 0 3124   2    2	* Elm Street south
 D 0 3110   3    2	* Cityguard Head Quarters west
 D 0 3142   1    2	* Captain's Office east
 D 0 3142   2    2	* Captain's Office south

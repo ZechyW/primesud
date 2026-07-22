@@ -416,20 +416,136 @@ def spell_farsight(sn, level, ch, vo, target):
     return True
 
 
-def _collect_objs_recursive(obj_list, location, out):
-    """Append (obj, location_str) for items and nested contents to out (cf. 1stMud obj_first flat list)."""
+OBJ_INDEX_FILE = "objs.idx"  # [PRIMESUD] template keywords + reset spawn areas
+
+
+def _locate_obj_list(obj_list, location, wanted, level, ch, found, max_found):
+    """Scan an object tree for locate-object matches. [PRIMESUD]"""
     for obj in obj_list:
-        out.append((obj, location))
-        _collect_objs_recursive(obj.get("contents", []), location, out)
+        tpl = ITEM_DEFS[obj_vnum(obj)]
+        if (can_see_obj(ch, obj)
+                and is_name(wanted, tpl.get("keywords", ""))
+                and not item_extra_flags(obj, tpl).get("no_locate")
+                and randint(1, 100) <= 2 * level
+                and ch.get("level", 1) >= tpl.get("level", 0)):
+            found.append(location)
+            if len(found) >= max_found:
+                return True
+        if _locate_obj_list(obj.get("contents", []), location, wanted,
+                            level, ch, found, max_found):
+            return True
+    return False
+
+
+def _scan_locate_areas(tags, wanted, level, ch, found, max_found,
+                       include_player=False):
+    """Scan objects hosted by selected loaded areas. [PRIMESUD]"""
+    loc = "one is carried by you"
+    if include_player:
+        if _locate_obj_list(ch.get("inv", []), loc, wanted, level, ch,
+                            found, max_found):
+            return
+        for obj in ch.get("equip", {}).values():
+            if obj is not None and _locate_obj_list(
+                    [obj], loc, wanted, level, ch, found, max_found):
+                return
+    # Snapshot keys: checking an object's template can lazy-load another area
+    # and mutate both dictionaries while this scan is running.
+    for room_vnum in list(world.rooms._data):
+        if world._vnum_to_tag(room_vnum) not in tags:
+            continue
+        room_state = world.rooms._data[room_vnum]
+        rloc = "one is in " + ROOM_DEFS._data.get(
+            room_vnum, {}).get("name", "somewhere")
+        if _locate_obj_list(room_state.get("items", []), rloc, wanted,
+                            level, ch, found, max_found):
+            return
+    for cid in list(world.chars):
+        mob = world.chars.get(cid)
+        if (not mob or not mob.get("is_npc")
+                or world._vnum_to_tag(mob.get("room")) not in tags):
+            continue
+        if can_see(ch, mob):
+            mloc = "one is carried by " + MOB_DEFS[mob["tpl"]]["short_descr"]
+        else:
+            # invisible carrier: upstream falls to the room branch, and a
+            # carried obj has no room (magic.c:3536-3549)
+            mloc = "one is in somewhere"
+        if _locate_obj_list(mob.get("inv", []), mloc, wanted, level, ch,
+                            found, max_found):
+            return
+        for obj in mob.get("equip", {}).values():
+            if obj is not None and _locate_obj_list(
+                    [obj], mloc, wanted, level, ch, found, max_found):
+                return
+
+
+def _pending_obj_has_vnum(obj, vnums):
+    """Return whether parsed pending object tree contains a wanted vnum. [PRIMESUD]"""
+    if obj_vnum(obj) in vnums:
+        return True
+    for child in obj.get("contents", []):
+        if _pending_obj_has_vnum(child, vnums):
+            return True
+    return False
+
+
+def _locate_candidate_areas(wanted):
+    """Read object index and return unloaded areas worth hydrating. [PRIMESUD]"""
+    candidates = []
+    vnums = set()
+    try:
+        with open(OBJ_INDEX_FILE) as f:
+            data = f.read()  # one read; looped readline() is costly on-device
+    except OSError:
+        return candidates
+    for line in data.split("\n"):
+        if not line or line[0] == "#":
+            continue
+        parts = line.split("|", 3)
+        if len(parts) < 3 or not is_name(wanted, parts[2]):
+            continue
+        try:
+            vnums.add(int(parts[1]))
+        except ValueError:
+            continue
+        if len(parts) > 3:
+            for tag in parts[3].split(","):
+                if (tag and tag not in world._LOADED_AREAS
+                        and tag not in candidates):
+                    candidates.append(tag)
+    if not vnums:
+        return candidates
+    from item import parse_item_token  # deferred: item imports world
+    for room_vnum, raw in world._pending_room_items.items():
+        for token in raw.split("|"):
+            if token and _pending_obj_has_vnum(parse_item_token(token), vnums):
+                tag = world._vnum_to_tag(room_vnum)
+                if (tag and tag not in world._LOADED_AREAS
+                        and tag not in candidates):
+                    candidates.append(tag)
+                break
+    return candidates
+
+
+def _release_locate_areas(initial):
+    """Unload every area transiently hydrated by locate object. [PRIMESUD]"""
+    transient = world._LOADED_AREAS - initial
+    if not transient:
+        return
+    for _fname, tag, _name, _lo, _hi in reversed(world._AREA_FILES):
+        if tag in transient:
+            world._unload_area(tag)
+    import gc
+    gc.collect()
 
 
 def spell_locate_object(sn, level, ch, vo, target):
     """Locate object by name fragment (cf. 1stMud spell_locate_object in magic.c).
     [Verified: 03/07/2026; can_see_obj filter and invisible-carrier
-    "somewhere" branch added and re-verified 20/07/2026] -- immortal
-    branches not ported; "carried by you" instead of player name is
-    [PRIMESUD]. [PRIMESUD] scans loaded areas only (1stMud obj_first is
-    world-global); unloaded-area coverage tracked in docs/PARITY.md.
+    "somewhere" branch added and re-verified 20/07/2026; unloaded-area
+    coverage added and re-verified 22/07/2026] -- immortal branches not
+    ported; "carried by you" instead of player name is [PRIMESUD].
 
     Recurses into container contents to match 1stMud's flat obj_first
     iteration (magic.c:3523).
@@ -440,45 +556,36 @@ def spell_locate_object(sn, level, ch, vo, target):
         return False
     found = []
     max_found = 2 * level
-    world_objs = []
-    loc = "one is carried by you"
-    _collect_objs_recursive(ch.get("inv", []), loc, world_objs)
-    for obj in ch.get("equip", {}).values():
-        if obj is not None:
-            world_objs.append((obj, loc))
-            _collect_objs_recursive(obj.get("contents", []), loc, world_objs)
-    for room_vnum, room_state in world.rooms.items():
-        rloc = "one is in " + ROOM_DEFS.get(room_vnum, {}).get("name", "somewhere")
-        _collect_objs_recursive(room_state.get("items", []), rloc, world_objs)
-    for cid, mob in world.chars.items():
-        if not mob.get("is_npc"):
-            continue
-        if can_see(ch, mob):
-            mloc = "one is carried by " + MOB_DEFS[mob["tpl"]]["short_descr"]
-        else:
-            # invisible carrier: upstream falls to the room branch, and a
-            # carried obj has no room (magic.c:3536-3549)
-            mloc = "one is in somewhere"
-        _collect_objs_recursive(mob.get("inv", []), mloc, world_objs)
-        for obj in mob.get("equip", {}).values():
-            if obj is not None:
-                world_objs.append((obj, mloc))
-                _collect_objs_recursive(obj.get("contents", []), mloc, world_objs)
-    for obj, line in world_objs:
-        tpl = ITEM_DEFS[obj_vnum(obj)]
-        if not can_see_obj(ch, obj):
-            continue
-        if not is_name(wanted, tpl.get("keywords", "")):
-            continue
-        if item_extra_flags(obj, tpl).get("no_locate"):
-            continue
-        if randint(1, 100) > 2 * level:
-            continue
-        if ch.get("level", 1) < tpl.get("level", 0):
-            continue
-        found.append(line)
-        if len(found) >= max_found:
-            break
+    candidates = _locate_candidate_areas(wanted)
+    initial = set(world._LOADED_AREAS)
+    scanned = set()
+    try:
+        _scan_locate_areas(initial, wanted, level, ch, found, max_found, True)
+        scanned.update(initial)
+        # Template lookups can cascade-load defining areas. Scan each once.
+        while len(found) < max_found:
+            new_tags = world._LOADED_AREAS - scanned
+            if not new_tags:
+                break
+            _scan_locate_areas(new_tags, wanted, level, ch, found, max_found)
+            scanned.update(new_tags)
+        _release_locate_areas(initial)
+        for tag in candidates:
+            if len(found) >= max_found:
+                break
+            if tag in scanned:
+                continue
+            world._ensure_area_by_tag(tag)
+            while len(found) < max_found:
+                new_tags = world._LOADED_AREAS - scanned
+                if not new_tags:
+                    break
+                _scan_locate_areas(new_tags, wanted, level, ch, found,
+                                   max_found)
+                scanned.update(new_tags)
+            _release_locate_areas(initial)
+    finally:
+        _release_locate_areas(initial)
     if not found:
         chprintln(ch, "Nothing like that in heaven or earth.")
         return False

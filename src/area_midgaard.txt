@@ -2460,7 +2460,7 @@ ROOMS = {
         "exits": {
             "n": {"to": 3144, "desc": "You see the beginnings of Midgaard's bad neighborhoods."},
             "e": {"to": 3273, "desc": 'You see the concourse.'},
-            "s": {"to": 3600, "desc": 'Through the solid iron bars you see the graveyard.', "keyword": 'grate', "isdoor": True, "key": 3121},
+            "s": {"to": 3600, "desc": 'Through the solid iron bars you see the graveyard.', "keyword": 'grate', "isdoor": True, "closed": True, "locked": True, "key": 3121},
             "w": 3123,
         },
         "flags": {"law": True},

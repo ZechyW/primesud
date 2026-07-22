@@ -109,11 +109,11 @@ Player transfer and clan-bank branches remain excluded as multiplayer-only.
 help records without replacing PrimeSUD's edited help bodies; the runtime
 lists categories and numbered entries from the existing off-heap help index.
 
-Remaining open candidate:
-
-| cmd | effort | evidence | value |
-|---|---|---|---|
-| locate object: unloaded areas | M | magic.c:3523 (obj_first is world-global) | spell_locate_object scans loaded areas only (noted in its docstring 20/07/2026). objs.idx could name areas whose templates match, but live floor/carried state of unloaded areas sits in pending-save buffers — needs design before porting |
+`locate object` unloaded-area coverage ported 22/07/2026: `objs.idx` supplies
+ordered `O`/`E`/`G`/`P` reset-owning candidate areas, while nested pending-save
+items add non-reset candidates. Candidate areas load and scan one at a time,
+then unload in `finally`; accepted results retain upstream filters and stop
+further loads at `max_found = 2 * level`.
 
 ### Debug-toolkit candidates (imm commands with solo debug value)
 

@@ -678,7 +678,7 @@ def _find_idx(frag, idx_file, lines, mob=False):
     for line in data.split("\n"):
         if not line or line[0] == "#":
             continue
-        parts = line.split("|", 5 if mob else 2)
+        parts = line.split("|", 5 if mob else 3)
         if len(parts) < (6 if mob else 3):
             continue
         tag, vnum, keywords = ((parts[1], parts[0], parts[3]) if mob

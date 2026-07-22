@@ -104,6 +104,9 @@ worth trusting -- the engineering layer.
   search Dijkstras a precomputed border graph (`paths.idx`) for exact
   shortest routes with zero area loads at routing time (DESIGN.md "Lazy
   area loading").
+- **World-wide object location** -- `locate object` searches plausible
+  unloaded areas one at a time through the object index, then releases each
+  transient load (DESIGN.md "Lazy area loading").
 - **Far-area eviction** -- when more than a dozen areas are loaded, the
   least-recently-visited are unloaded again, buffering mob positions and
   floor items exactly like a save; areas holding your pet, followers, or

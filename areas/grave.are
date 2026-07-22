@@ -859,7 +859,7 @@ S
 #0
 
 #RESETS
-D 0 3124   2    2	* Elm Street south
+* [PRIMESUD] D 0 3124 2 2 moved to midgaard.are: room 3124 is Midgaard-owned.
 D 0 3600   0    2	* A Gravel Road in the Graveyard north
 D 0 3604   2    1	* In front of the Chapel south
 D 0 3606   5    1	* A Gravel Path on the Graveyard down
