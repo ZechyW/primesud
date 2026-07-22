@@ -372,7 +372,8 @@ class TestCrossAreaCascade:
 # ===== Pending mob save deltas ==============================================
 
 class TestPendingMobDeltas:
-    """_apply_pending_deltas kills excess mobs and moves survivors."""
+    """_apply_pending_deltas kills excess mobs, moves survivors, and
+    spawns fresh instances for any shortfall vs the saved population."""
 
     def test_excess_mobs_killed(self, fresh_world):
         """Save says 1 instance, reset created 2 -> excess killed."""
@@ -455,6 +456,79 @@ class TestPendingMobDeltas:
         assert len(live) == 1
         # Pending delta should remain for this template
         assert 100 in world._pending_mob_saves
+
+    def test_shortfall_spawned(self, fresh_world):
+        """Save says 2 instances, reset created 1 -> shortfall spawned fresh."""
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}},
+                                101: {"name": "R101", "exits": {}}},
+                         mobiles={100: _mob_tpl()},
+                         resets=(("M", 100, 2, 100, 1),))  # room limit 1 -> 1 spawn
+        world._pending_mob_saves[100] = [100, 101]
+        fw.setup()
+
+        _load_area("alpha")
+        live = sorted(inst["room"] for inst in world.chars.values()
+                      if inst.get("is_npc") and inst["tpl"] == 100)
+        assert live == [100, 101]
+        assert 100 not in world._pending_mob_saves
+
+    def test_shortfall_spawn_gets_reset_equipment(self, fresh_world):
+        """Spawned shortfall mob receives the E/G gear trailing its M reset."""
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}},
+                                101: {"name": "R101", "exits": {}}},
+                         mobiles={100: _mob_tpl()},
+                         objects={150: _item_tpl(slot="wield"),
+                                  151: _item_tpl()},
+                         resets=(("M", 100, 2, 100, 1),
+                                 ("E", 150, "wield", -1),
+                                 ("G", 151, -1)))
+        world._pending_mob_saves[100] = [100, 101]
+        fw.setup()
+
+        _load_area("alpha")
+        spawned = [inst for inst in world.chars.values()
+                   if inst.get("is_npc") and inst["tpl"] == 100
+                   and inst["room"] == 101]
+        assert len(spawned) == 1
+        inst = spawned[0]
+        assert inst["equip"].get("wield", {}).get("vnum") == 150
+        assert [o["vnum"] for o in inst["inv"]] == [151]
+
+    def test_partial_deferral_keeps_placed_mobs(self, fresh_world):
+        """Mixed loadable/unloadable saved rooms: the placed mob survives
+        the retry pass untouched; the deferred room spawns once loadable."""
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}},
+                                101: {"name": "R101", "exits": {}}},
+                         mobiles={100: _mob_tpl()},
+                         resets=(("M", 100, 2, 100, 1),))
+        fw.register_area("beta", 200, 299,
+                         rooms={200: {"name": "R200", "exits": {}}})
+        world._pending_mob_saves[100] = [101, 200]
+        fw.setup()
+
+        _load_area("alpha")
+        live = [(mid, inst["room"]) for mid, inst in world.chars.items()
+                if inst.get("is_npc") and inst["tpl"] == 100]
+        assert len(live) == 1
+        mid = live[0][0]
+        assert live[0][1] == 101
+        # Full saved list stays pending until every room is loadable
+        assert world._pending_mob_saves[100] == [101, 200]
+
+        _load_area("beta")
+        _retry_pending_deltas()
+        live = sorted((m, inst["room"]) for m, inst in world.chars.items()
+                      if inst.get("is_npc") and inst["tpl"] == 100)
+        assert len(live) == 2
+        assert (mid, 101) in live       # placed mob not culled or moved
+        assert sorted(r for _, r in live) == [101, 200]
+        assert 100 not in world._pending_mob_saves
 
     def test_mob_id_alignment_with_gaps(self, fresh_world):
         """When IDs aren't contiguous (gap from mid-session death + respawn),

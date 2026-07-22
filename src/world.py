@@ -636,22 +636,35 @@ def _reset_loaded_area(tag, _adef, _room_vnums, _cross_area_rooms):
 def _apply_pending_deltas(tag, room_vnums):
     """Apply buffered save deltas after area load. [PRIMESUD]
 
-    Mob deltas: kill excess instances, move remaining to saved rooms.
-    Cross-area wanderers (mob from area A at room in area B) are skipped
-    by the ``_vnum_to_tag(_tpl) != tag`` guard -- their saved position is
-    silently lost.  This matches 1stMud's effective behavior: NPC positions
-    are never persisted, and the 5% per-tick despawn (update.c:541) keeps
-    cross-area wanderers short-lived.  The mob respawns at its home room
-    on next area reset.
+    Mob deltas: restore the exact saved population -- kill excess
+    instances, move survivors onto saved rooms, and spawn fresh instances
+    (template stats, like a reset) for any shortfall.  Matching is by
+    room multiset, so re-application (retry after a deferral) leaves
+    already-placed mobs alone.  Saved rooms in still-unloaded areas keep
+    the full saved list pending; their mobs wait parked at reset rooms.
+    The saved count never exceeds the template's reset global limit
+    (spawns were capped by it when the save was written).
 
     Args:
         tag (str): Area tag just loaded.
         room_vnums (list): Room vnums belonging to this area.
     """
+    from mob import create_mobile  # deferred: mob imports world
+    from handler import room_is_dark, equip_char
+    from item import create_object
     _rvnum_set = set(room_vnums)
+    _resets = ()
+    for _a in AREA_DEFS:
+        if _a["tag"] == tag:
+            _resets = _a.get("resets") or ()
+            break
 
     for _tpl in list(_pending_mob_saves):
         if _vnum_to_tag(_tpl) != tag:
+            continue
+        if _tpl not in MOB_DEFS._data:
+            # Stale save: template no longer exists in the area file.
+            del _pending_mob_saves[_tpl]
             continue
         # The mayor's route state is process-local. Restoring a mid-route
         # room without its matching route position makes the restarted path
@@ -667,8 +680,6 @@ def _apply_pending_deltas(tag, room_vnums):
                       if inst.get("is_npc") and inst["tpl"] == _tpl
                       and not (inst.get("act_flags", {}).get("pet")
                                and inst.get("master") is not None))
-        if not _ids:
-            continue
         for _mid in _ids[len(_saved):]:
             _old = chars[_mid]["room"]
             if _old in rooms._data:
@@ -676,22 +687,75 @@ def _apply_pending_deltas(tag, room_vnums):
                 if _mid in _ml:
                     _ml.remove(_mid)
             del chars[_mid]
-        _deferred = []
-        for _mid, _rv in zip(_ids, _saved):
+        _ids = _ids[:len(_saved)]
+        # Consume saved rooms already holding an instance (multiset match);
+        # what remains is unplaced mobs vs unclaimed rooms.
+        _want = list(_saved)
+        _unmatched = []
+        for _mid in _ids:
+            _r = chars[_mid]["room"]
+            if _r in _want:
+                _want.remove(_r)
+            else:
+                _unmatched.append(_mid)
+        _here = [_rv for _rv in _want if _rv in rooms._data]
+        _absent = len(_want) - len(_here)
+        for _mid, _rv in zip(_unmatched, _here):
             _old = chars[_mid]["room"]
-            if _rv == _old:
-                continue
-            if _rv not in rooms._data:
-                _deferred.append(_rv)
-                continue
             if _old in rooms._data:
                 _ml = rooms._data[_old]["mobs"]
                 if _mid in _ml:
                     _ml.remove(_mid)
             chars[_mid]["room"] = _rv
             rooms._data[_rv]["mobs"].append(_mid)
-        if _deferred:
-            _pending_mob_saves[_tpl] = _deferred
+        # Spawn the shortfall at the remaining loadable rooms (fresh
+        # template state, mirroring reset_room's M branch).
+        _spawn = _here[len(_unmatched):]
+        if _spawn:
+            # Reset-granted gear isn't saved, so re-apply the E/G lines
+            # trailing the template's first M reset (a naked cityguard
+            # respawn is player-visible).  Object limits skipped: this
+            # restores a previously-existing instance, not new stock.
+            _eq = []
+            _in_block = False
+            for _e in _resets:
+                if _in_block:
+                    if _e[0] == "E" or _e[0] == "G":
+                        _eq.append(_e)
+                    else:
+                        break
+                elif _e[0] == "M" and _e[1] == _tpl:
+                    _in_block = True
+            _shop = MOB_DEFS._data[_tpl].get("shop")
+            _next_id = max(chars, default=1) + 1
+            for _rv in _spawn:
+                inst = create_mobile(_tpl)
+                for _e in _eq:
+                    _obj = create_object(_e[1])
+                    if _shop:
+                        _obj.setdefault("extra_flags", {})["inventory"] = True
+                    inst["inv"].append(_obj)
+                    if _e[0] == "E":
+                        equip_char(inst, _obj, _e[2])
+                inst["room"] = _rv
+                # Own area, not the spawn room's: a cross-area saved
+                # position must keep the wanderer despawn semantics.
+                inst["home_area"] = tag
+                if room_is_dark(_rv):
+                    inst["affected_by"]["infrared"] = True
+                _prev = ROOM_DEFS._data.get(_rv - 1)
+                if _prev is not None and _prev.get("flags", {}).get("pet_shop"):
+                    inst["act_flags"]["pet"] = True
+                inst["id"] = _next_id
+                chars[_next_id] = inst
+                rooms._data[_rv]["mobs"].append(_next_id)
+                _next_id += 1
+        if _absent:
+            # Some saved rooms live in still-unloaded areas: keep the full
+            # list so a later pass re-matches idempotently.  A re-save
+            # drops it in favour of live positions (serializer skips
+            # pending for templates with live instances).
+            _pending_mob_saves[_tpl] = _saved
         else:
             del _pending_mob_saves[_tpl]
 
