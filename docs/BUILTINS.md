@@ -229,13 +229,12 @@ Measured 06 Jul 2026 via `debug/mem_footprint.py`, fresh Python session
 (imports are cached per session — a cached import costs ~0 and reports
 nothing useful):
 
-- Baseline `gc.mem_free()`: **~8.19 MB**. NOTE: heap size is a
-  calculator-side setting — **stock default is 1 MB**; this device is
-  configured up to 8 MB (works decently so far). Don't design against
-  the 8 MB figure: stay conservative with heap/stack where appropriate
-  (CLAUDE.md constraints still apply), and keep the game viable near the
-  1 MB default — the ~119 KB of table imports fit there, with far less
-  slack.
+- Baseline `gc.mem_free()`: **~8.19 MB** on the test device with an enlarged
+  heap. PrimeSUD cannot run within the stock 1 MB, but no exact minimum is
+  claimed: usable headroom varies with firmware and loaded content and must
+  be checked on-device. Prefer the smallest heap size proven stable, keep
+  heap use as low as practical, and do not treat the test device's capacity
+  as a design budget.
 - Import costs: `config`+`races` 41 KB (109 ms), `skills_table` (149
   skills) 58 KB (180 ms), `classes` 11 KB (28 ms), `groups` 9 KB (30 ms).
   Total ~119 KB, leaving ~8.07 MB free.

@@ -252,10 +252,10 @@ MOBILES = {
 | `res_flags`    | dict  | no       | Damage resistances (half damage) |
 | `vuln_flags`   | dict  | no       | Damage vulnerabilities (double damage) |
 | `start_pos`    | str   | yes      | Spawn position (e.g. `"stand"`, `"sleep"`) |
-| `default_pos`  | str   | yes      | Position the mob returns to when idle. `start_pos` is consumed at spawn (`mob.py`); nothing currently returns idle mobs to `default_pos` [PRIMESUD deferred] |
+| `default_pos`  | str   | yes      | Position restored after combat and required for idle mobprog triggers; `start_pos` is consumed at spawn (`mob.py`) |
 | `form_flags`   | dict  | no       | Body form (e.g. `biped`, `animal`, `undead`) |
 | `part_flags`   | dict  | no       | Body parts present (for dismemberment-style messages) |
-| `material`     | str   | yes      | Body material; often `"0"` for old-style `.are` mobs |
+| `material`     | str   | yes      | Source body material, retained losslessly; not copied to runtime mob instances (see DESIGN.md "Not ported") |
 | `sex`          | str   | yes      | `"male"`, `"female"`, `"neutral"` |
 | `wealth`       | int   | yes      | Gold carried (unused until economy is implemented) |
 | `size`         | str   | yes      | `"tiny"`..`"huge"` etc. |
@@ -389,7 +389,7 @@ OBJECTS = {
 | `type`         | str        | yes          | `weapon`, `armor`, `light`, `container`, `drink`, `food`, `money`, `jewelry`, `treasure`, `trash`, `key`, ... (see `ITEM_TYPE_NUM`) |
 | `wear_flags`   | dict       | yes          | Boolean equipment-slot/take flags (see below) |
 | `no_sac`       | bool       | no           | Present (`True`) only when set; item cannot be sacrificed |
-| `condition`    | int        | no           | Spawn wear-state (0-100); omitted when `100` (perfect, the default) |
+| `condition`    | int        | no           | Parsed source condition (0-100), omitted when `100`; retained losslessly, but 1stMud does not copy it to spawned objects and PrimeSUD likewise leaves it template-only (see DESIGN.md "Not ported") |
 | `extra_flags`  | dict       | no           | Item flags (see below); omitted if none set |
 | `level`        | int        | yes          | |
 | `weight`       | int        | yes          | Item weight (currently informational) |
@@ -412,7 +412,7 @@ OBJECTS = {
 | `drink` / `fountain`    | `liquid_total`/`liquid_left`/`liquid_type` (optional), `poisoned` (optional bool) |
 | `food`                  | `food_hours`/`food_hunger` (optional), `poisoned` (optional bool) |
 | `money`                 | `silver`/`gold` (optional pair) |
-| any other type          | `values` (optional): raw `(value[0], ..., value[4])` tuple decoded per QuickMUD `db2.c`'s `default:` branch (all five via `fread_flag`). Covers `furniture` (max occupants, position flags), `key` (linked door/portal vnum), `map`, `portal`, `jukebox`, `warp_stone`, corpses, etc. Omitted when all five are zero; read via `obj.get("values", (0, 0, 0, 0, 0))`. No runtime consumer yet (see TODO.md). |
+| any other type          | `values` (optional): raw `(value[0], ..., value[4])` tuple decoded per QuickMUD `db2.c`'s `default:` branch (all five via `fread_flag`). Covers `furniture`, `key`, `map`, `portal`, `jukebox`, `warp_stone`, corpses, etc.; meanings are type-specific and many types have none upstream. Omitted when all five are zero. `item.prog_obj_value` exposes the tuple to objprog `objval0-4`, with an instance tuple written by `obj attrib` taking precedence; no generic item mechanic interprets fallback values (see DESIGN.md "Not ported"). |
 
 ### `wear_flags` (equipment slots + take)
 

@@ -204,6 +204,7 @@ Recorded decisions, not gaps (DESIGN.md "Not ported" has the reasons):
 - Stat rolling -- stats come from the race table (plus prime-stat bonus).
 - Hunger/thirst, alignment deities, age tracking (no real-time clock).
 - Saving-throw race/class/equipment modifiers -- flat 0 baseline for now.
-- Furniture mechanics -- every furniture object in stock content has all-zero
-  values; nothing to sit on yet.
-- Item condition/wear -- parsed by the converter, unmodeled at runtime.
+- Furniture mechanics -- no usable stock furniture content; the sole nonzero
+  tuple belongs to mis-typed wearable red dragon claws with no position flags.
+- Item condition/wear -- retained as source metadata, but not modeled at
+  runtime; 1stMud itself does not copy template condition to spawned objects.

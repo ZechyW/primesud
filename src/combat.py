@@ -2255,10 +2255,10 @@ _DEATH_CRY_DEFAULT = "You hear $n's death cry."
 # None means unconditional; a part-gated case only fires when ch's
 # part_flags has that key set, otherwise it falls through to
 # _DEATH_CRY_DEFAULT (rolls 8-15 have no case at all and always fall
-# through too). 1stMud case 1 additionally guards on `ch->material == 0`,
-# falling through to case 2 (guts) when material is set; PrimeSUD chars
-# carry no "material" field at all (not ported), so case 1 is always taken
-# here -- see TODO.md / porting notes.
+# through too). 1stMud case 1 additionally guards on `ch->material == 0`:
+# PCs leave that pointer NULL, while NPC creation always assigns a string.
+# PrimeSUD needs no material field to preserve that distinction -- NPC roll 1
+# falls through to case 2 (guts), while PC roll 1 keeps the blood message.
 _DEATH_CRY_CASES = {
     0: ("$n hits the ground ... DEAD.", None, 0),
     1: ("$n splatters blood on your armor.", None, 0),
@@ -2289,7 +2289,7 @@ def _death_cry(ch):
     """Death flavour message, body-part drop, and adjacent-room cry
     (cf. 1stMud death_cry in fight.c).
     [Verified: 05/07/2026; PC form_flags/part_flags added and re-verified
-    05/07/2026] -- part-flag gated message/object selection,
+    05/07/2026; material-pointer fallthrough re-verified 23/07/2026] -- part-flag gated message/object selection,
     poison-food/trash-downgrade, and adjacent-room broadcast added per
     fight.c. PCs now get form_flags/part_flags from RACE_TABLE via
     player.py create_char (cf. 1stMud nanny.c:533-534 / save.c:723-724),
@@ -2300,7 +2300,10 @@ def _death_cry(ch):
     """
     msg = _DEATH_CRY_DEFAULT
     vnum = 0
-    case = _DEATH_CRY_CASES.get(randint(0, 15))  # 1stMud: number_bits(4)
+    roll = randint(0, 15)  # 1stMud: number_bits(4)
+    if roll == 1 and ch.get("is_npc"):
+        roll = 2
+    case = _DEATH_CRY_CASES.get(roll)
     if case is not None:
         cmsg, part, cvnum = case
         if part is None or ch.get("part_flags", {}).get(part):
