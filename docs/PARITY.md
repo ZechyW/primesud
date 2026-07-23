@@ -62,7 +62,7 @@ OLC rooms or multiplayer ownership; see DESIGN.md "Player housing".
 
 ### Port-candidates (player-facing; need go/no-go)
 
-All 12 S-effort rows resolved 20/07/2026 (commits `58e****`..`193****`):
+All 12 S-effort rows resolved 20/07/2026 (commits `b60c453`..`2e6313e`):
 **socials, sshow, brief, compact, title, show, version, play, heel,
 backup, prime, grlist** ported per the evidence rows below (genname had
 already resolved 19/07/2026 via the chargen picker + `rename`). Notable
@@ -76,7 +76,7 @@ manager (upstream has no player restore either); `prime`'s level-51 gate
 is an explicit message (no per-command level field). Follow-up resolved
 20/07/2026: all `do_look` call sites now pass "auto" where upstream does
 (stand, recall, gate, debug goto, boot look), plus the [PRIMESUD]
-flee-look for brief-mode consistency (commits 4b4****, 65d****, 7cb****).
+flee-look for brief-mode consistency (commits 2fd9616, 69fb9c3, 2fc2c19).
 
 `path` ported 20/07/2026 with intent parity for the upstream inverted mob
 condition: area-first lookup, gate-style mob restrictions, live-room targets,

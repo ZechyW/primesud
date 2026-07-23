@@ -1,7 +1,7 @@
 """Regression tests for do_tell / do_reply (cf. 1stMud act_comm.c).
 
 Both took the verbatim-argument signature in the interpret free-text refactor
-(commit 8bb****) but their parameter stayed named ``args`` while the body read
+(commit 23849ef) but their parameter stayed named ``args`` while the body read
 ``argument`` -- an UnboundLocalError on every reachable message path.  No test
 exercised either command, so the crash shipped.  Fixed 09/07/2026.
 """
