@@ -23,6 +23,22 @@ DIST_DIR = Path("dist/primesud.hpappdir")
 BOM = b"\xef\xbb\xbf"
 # Save files -- packaging these would overwrite on-calc data
 EXCLUDE = {"primesud.sav", "hvars.json"}
+RELEASE_DOCS = (
+    (Path("README.md"), Path("README.md")),
+    (Path("LICENSES.md"), Path("LICENSES.md")),
+    (Path("reference/1stMud4.5.3/doc/Diku/license.doc"),
+     Path("licenses/DIKU-LICENSE.txt")),
+    (Path("reference/1stMud4.5.3/doc/Merc/license.txt"),
+     Path("licenses/MERC-LICENSE.txt")),
+    (Path("reference/1stMud4.5.3/doc/Rom/rom.license"),
+     Path("licenses/ROM-LICENSE.txt")),
+    (Path("reference/1stMud4.5.3/doc/1stMud/LICENSE"),
+     Path("licenses/1STMUD-LICENSE.txt")),
+    (Path("reference/1stMud4.5.3/doc/Merc/rom.credits"),
+     Path("licenses/ROM-CREDITS.txt")),
+    (Path("reference/1stMud4.5.3/doc/1stMud/CREDITS"),
+     Path("licenses/1STMUD-CREDITS.txt")),
+)
 
 
 def minify_source(source):
@@ -36,8 +52,7 @@ def minify_source(source):
         remove_explicit_return_none=True,
         remove_builtin_exception_brackets=True,
         constant_folding=True,
-        # Enabled 21/07/2026 (were off as untested-on-device): desktop
-        # --check + dist smoke green; device walk pending (TODO.md).
+        # Enabled 21/07/2026 after desktop checks and device walk.
         # hoist_literals dedups repeated area-data strings (-816KB);
         # rename_locals shrinks source + on-device qstr pool (-90KB).
         hoist_literals=True,
@@ -101,6 +116,10 @@ def main():
     if DIST_DIR.exists():
         shutil.rmtree(DIST_DIR)
     DIST_DIR.mkdir(parents=True)
+    for source, destination in RELEASE_DOCS:
+        target = DIST_DIR / destination
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
 
     total_before = 0
     total_after = 0

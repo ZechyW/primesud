@@ -1,19 +1,20 @@
 # PrimeSUD
 
-Single-player MUD experience for the HP Prime graphing calculator.
+PrimeSUD is a single-player MUD-like RPG for the HP Prime graphing calculator.
 
-A port of 1stMud (based on ROM 2.4), running in a text UI on the calculator's 320x240 screen. Classes, races, spells, skills, quests, and shops; multiplayer mechanics are cut or reworked for solo play.
+Based on ROM 2.4, with enhancements ported from 1stMud, it runs in a custom text UI built for the calculator's 320x240 screen.
 
-![PrimeSUD greeting screen](docs/img/greeting.png)
+<img src="docs/img/greeting.png" alt="PrimeSUD greeting screen" width="480">
 
 ## Features
 
-- Six classes with remort and multiclassing, races, full spell and skill tables.
-- Combat stances.
-- Quests, gquests, and trivia points system.
-- Stock ROM 2.4 area files load unmodified after preparation via `tools/are_to_primesud.py`. ~22 areas bundled (Midgaard, Moria, the Shire, New Thalos, and others).
-- Automap and per-room exploration tracking (`explored` command).
-- PC mode. Shims in `pc_shim/` replace the Prime's `hpprime`, `urandom`, and text layer, so plain CPython suffices.
+- Classes, races, remorting, multiclassing, and full spell and skill tables.
+- Combat stances, quests, global quests, and trivia points.
+- Bundled collection of stock areas, including Midgaard, Moria, the Shire, and New Thalos. Other ROM 2.4 area files can be prepared with `tools/are_to_primesud.py`.
+- Automapping and per-room exploration tracking through the `explored` command.
+- PC mode using shims for Prime-specific modules and the calculator's text layer.
+
+Most multiplayer mechanics are cut or reworked for solo play.
 
 ## Requirements
 
@@ -39,20 +40,20 @@ python tools/build_dist.py           # build dist/primesud.hpappdir
 python tools/build_dist.py --check   # also verify symbols + area data survived
 ```
 
-Regenerates derived data (areas, world tables, mob index, help), then writes ASCII-only, BOM-free files to `dist/primesud.hpappdir/`. Copy that folder over with the Connectivity Kit.
+Regenerates derived data (areas, world tables, mob index, help), then writes to `dist/primesud.hpappdir/`. Copy that folder over with the Connectivity Kit.
 
-If the emulator runs clean but real hardware glitches or corrupts saves, reset the calculator first (Esc + Apps + On, or FCO).
+The app runs on both G1 and G2 Primes, but it is large and requests more runtime heap than the default 1 MB.
 
-## Layout
+If the calculator reports "Insufficient memory," power-cycle it first -- Shift+On to turn it off, then On -- before performing a soft reset with On+Symb. A soft reset restores user variables, including the game save, to their state at the last power-on checkpoint. Resetting before power-cycling may therefore risk losing save data.
 
-| Path | Contents |
-|---|---|
-| `src/` | Game code and data (`.py`, `area_*.txt`, fonts, help) |
-| `pc_shim/` | Prime-runtime stand-ins for running on PC |
-| `areas/` | Original ROM 2.4 `.are` files |
-| `tools/` | Build, conversion, and data-gen scripts |
-| `docs/` | Reference, device limits, PrimeSUD internals |
-| `DESIGN.md` | Where and why PrimeSUD differs from 1stMud |
-| `TODO.md` | Loose ends |
+## Read more
 
-See `CLAUDE.md` for dev conventions and HP Prime constraints.
+- [`FEATURES.md`](FEATURES.md) -- new systems, solo adaptations, and quality-of-life changes.
+- [`docs/PRIME_UX.md`](docs/PRIME_UX.md) -- controls, shortcuts, scrollback, autosave, and other Prime-specific features.
+- [`DESIGN.md`](DESIGN.md) -- where PrimeSUD deliberately differs from its source.
+- [`TODO.md`](TODO.md) -- remaining work and planned features.
+- [`docs/BUILTINS.md`](docs/BUILTINS.md) -- device limitations and measured performance details.
+
+## But why?
+
+I had a Prime gathering dust on a shelf and a sudden bout of nostalgia for the good old days. Apparently, this was the logical next step. 🙂

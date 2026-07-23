@@ -88,6 +88,14 @@ def test_last_entry_prints_to_eof(help_out):
     assert "No help found" not in text
 
 
+def test_credits_show_upstream_entries(help_out):
+    info.do_credits(PLAYER, [])
+    text = "\n".join(help_out)
+    assert "Help Keywords : DIKU 'DIKU CREDITS'" in text
+    assert "Help Keywords : ROM 'ROM CREDITS'" in text
+    assert "Help Keywords : 1STMUD '1STMUD CREDITS'" in text
+
+
 def test_index_offsets_align():
     # every index offset must sit immediately after its own header line
     with open(os.path.join("src", "help.txt"), "rb") as f:

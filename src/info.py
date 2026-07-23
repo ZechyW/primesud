@@ -1650,34 +1650,10 @@ def do_affects(player, args):
 
 
 def do_credits(player, args):
-    """Display game credits and acknowledgements (cf. 1stMud `do_credits` in act_info.c).
-
-    [PRIMESUD] 1stMud shows the diku/ROM/1stMud help entries; PrimeSUD
-    prints its own condensed text (adds the port line).
-    """
-    chprintln(player, "{WPrimeSUD{x -- a single-user dungeon for the HP Prime")
-    chprintln(player, "Port by ZechyW.  Not for commercial distribution.")
-    chprintln(player, "")
-    chprintln(player, "{W1stMud ROM Derivative{x")
-    chprintln(player, "  {c(c) 2001-2003 Ryan Jennings (Markanth){x")
-    chprintln(player, "  markanth@firstmud.com")
-    chprintln(player, "")
-    chprintln(player, "{WROM 2.4 beta{x")
-    chprintln(player, "  {c(c) 1993-1998 Russ Taylor{x")
-    chprintln(player, "  rtaylor@hypercube.org")
-    chprintln(player, "")
-    chprintln(player, "{WMerc 2.1{x")
-    chprintln(player, "  {c(c) 1992-1993 Michael Chastain  mec@shell.portal.com{x")
-    chprintln(player, "            Michael Quan       michael@uclink.berkeley.edu")
-    chprintln(player, "            Mitchell Tse       hatchet@uclink.berkeley.edu")
-    chprintln(player, "")
-    chprintln(player, "{WDikuMud{x -- creators of the original game")
-    chprintln(player, "  {c(c) 1990-1991 Sebastian Hammer       quinn@freja.diku.dk{x")
-    chprintln(player, "            Michael Seifert        seifert@freja.diku.dk")
-    chprintln(player, "            Hans Henrik Staerfeldt bombman@freja.diku.dk")
-    chprintln(player, "            Tom Madsen             noop@freja.diku.dk")
-    chprintln(player, "            Katja Nyboe            katz@freja.diku.dk")
-    chprintln(player, "  DIKU, Computer Science Institute, Copenhagen University")
+    """Display upstream credit help entries (cf. 1stMud `do_credits` in act_info.c). [Verified: 23/07/2026]"""
+    do_help(player, ["diku", "credits"])
+    do_help(player, ["ROM", "credits"])
+    do_help(player, ["1stMud", "credits"])
 
 
 def _convert_level(arg):
