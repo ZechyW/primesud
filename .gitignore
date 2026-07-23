@@ -36,3 +36,6 @@ build/
 /primesud.sav
 
 debug/transfer/
+
+# Claude Code local settings
+.claude/settings.local.json
