@@ -21,6 +21,11 @@ MAX_MORTAL_LEVEL = 51
 CUSTOM_CATEGORIES = {
     (0, b"KEYS KEYPAD CALCULATOR"): b"commands",
     (0, b"PATH"): b"commands",
+    (0, b"FLOW 'FLOWING FORM'"): b"commands",
+    (0, b"DRIVE 'DRIVING FORM'"): b"commands",
+    (-1, b"RIPOSTE"): b"unknown",
+    (-1, b"SWORDSMAN 'SWORD SAINT' 'SWORDSMAN BASICS' 'SWORDSMAN DEFAULT'"):
+        b"creation",
 }
 HEADER = (b"# Canonical help source: '#<level>|<category>|<keywords>' marker "
           b"line then text lines per entry, ASCII + LF only. Edit directly, "

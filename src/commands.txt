@@ -45,6 +45,7 @@ disarm|knock the weapon from an opponent's grip
 ditch|get rid of a follower
 down|move down
 drink|drink from a container or fountain
+drive|commit to one heavy sword strike (Swordsman)
 drop|drop an item, or coins: drop 5 gold
 east|move east
 enter|step through a portal object
@@ -57,6 +58,7 @@ exits|show obvious exits from this room
 explored|show how much of the world you have explored
 fill|fill a container from a fountain
 flee|run away from a fight
+flow|use one precise sword strike (Swordsman)
 follow|follow a character (or yourself to stop)
 gain|learn or improve skill groups at a trainer
 get|pick up an item: get <item> [container]

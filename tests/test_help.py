@@ -112,7 +112,7 @@ def test_category_index_lists_counts(help_out):
     info.do_index(PLAYER, [])
     text = "\n".join(help_out)
     assert " 3) spells (76 helps)" in text
-    assert " 4) commands (83 helps)" in text
+    assert " 4) commands (85 helps)" in text
 
 
 def test_category_index_lists_topics_by_name(help_out):
@@ -152,7 +152,7 @@ def test_category_import_is_complete_and_idempotent():
     result, entries, imported, custom, _digest = \
         import_help_categories.add_categories(current, categories)
     assert result == current
-    assert (entries, imported, custom) == (284, 282, 2)
+    assert (entries, imported, custom) == (288, 282, 6)
 
 
 def test_help_is_name():
