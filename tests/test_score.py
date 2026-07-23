@@ -56,6 +56,18 @@ def test_box_fits_screen_with_command_echo(score_out):
     assert any("Pierce" in ln and "Bash" in ln for ln in lines)  # paired AC
 
 
+def test_currency_alignment_and_tier_layout(score_out):
+    p = create_char(CLASS_WARRIOR)
+    p.update({"gold": 11, "silver": 22, "alignment": -750, "tier": 2})
+    info.do_score(p, [])
+    gold = next(i for i, line in enumerate(score_out) if "Gold" in line)
+    silver = next(i for i, line in enumerate(score_out) if "Silver" in line)
+    assert gold < silver
+    assert "Position" in score_out[gold]
+    assert "Alignment" in score_out[silver] and "-750" in score_out[silver]
+    assert any("Level" in line and "(T2)" in line for line in score_out)
+
+
 def test_bank_row_fits_and_shows_share_price(score_out, monkeypatch):
     p = create_char(CLASS_WARRIOR)
     p["gold_bank"] = 99999999

@@ -106,7 +106,8 @@ trains `5+tier`, practices `7+tier` -- with permanent perks per tier:
   (use-based `check_improve` still runs to 100 independently).
 
 Level caps, `lvl_bonus`, and the `LEVEL_IMMORTAL` 52 sentinel are untouched.
-Display: `score` Tier cell (only when tier > 0), `class_who` `*<tier>` suffix.
+Display: `score` Level cell `(T<tier>)` suffix (only when tier > 0),
+`class_who` `*<tier>` suffix.
 Save line `p.tier` (absent in old saves -> defaults 0, no version bump).
 
 Owned pets share the player's progression instead of keeping NPC XP: they
