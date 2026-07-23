@@ -121,7 +121,7 @@ worth trusting -- the engineering layer.
   second slot, restored by renaming the file in the calculator's file
   manager (game_state.py, world.py).
 - **Keypad UX** -- D-pad keys move directly, digit keys plus two function-key
-  rows (sin..log, x2..comma) are rebindable command macros, Symb/Help step
+  rows (x^y..log, x2..comma) are rebindable command macros, Symb/Help step
   command history, Shift-minus or a touch swipe opens
   a 250-row scrollback, and a persistent status bar shows hp/mana/xp plus the
   live input buffer (docs/PRIME_UX.md).

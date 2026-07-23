@@ -28,7 +28,7 @@ bit indices may differ between hardware revisions.
 
 ## Digit and function-key macros
 
-Digit keys `0`–`9` and nine function keys act as one-key shortcuts that load a
+Digit keys `0`–`9` and ten function keys act as one-key shortcuts that load a
 command into the input buffer when it is empty (not auto-submitted — the player
 still presses Enter, allowing arguments to be appended first).  With a
 non-empty buffer, digits type normally, so numeric arguments still work.
@@ -48,16 +48,17 @@ Default digit bindings (`config.py:DEFAULT_MACROS`):
 | 3   | `train`   |
 | 0   | `macro`   |
 
-Default function-key bindings (`config.py:FNKEY_TABLE`; the two key rows above
-the numpad):
+Function-key bindings (`config.py:FNKEY_TABLE`; the two key rows above the
+numpad):
 
 | Key | Name  | Command     |
 |-----|-------|-------------|
+| xʸ  | `xy`  | `run`       |
 | sin | `sin` | `look`      |
 | cos | `cos` | `rest`      |
 | tan | `tan` | `stand`     |
-| ln  | `ln`  | `recall`    |
-| log | `log` | `sac`       |
+| ln  | `ln`  | `quest info`|
+| log | `log` | `gquest check` |
 | x²  | `x2`  | `inventory` |
 | +/- | `pm`  | `equip`     |
 | ( ) | `()`  | `wear`      |
@@ -68,9 +69,17 @@ Bindings are live-editable with the `macro` command:
 ```
 macro             — show current bindings in a grid layout
 macro <key> <cmd> — bind key (digit or fn-key name) to command
-macro <key>       — clear binding
+macro <key>       — show the full binding without changing it
+macro unset <key> — clear binding
 macro default     — restore all defaults
 ```
+
+The overview follows the physical keypad, with fixed keys shown dim. Long
+commands are truncated with `...`; `macro <key>` shows the full command.
+The dim `/` key has `[Recall]` beneath it; `/` is a built-in, non-configurable
+alias for `recall`. The dim `On` key similarly has `[Exit]` beneath it and is
+not configurable: the calculator raises `KeyboardInterrupt` when it is
+pressed, which exits PrimeSUD.
 
 The mapping lives in `macros.py:_MACRO_SUBST` (initialised from
 `DEFAULT_MACROS` + `DEFAULT_FNKEY_MACROS`) and persists in the save file

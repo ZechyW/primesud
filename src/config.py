@@ -143,23 +143,25 @@ DEFAULT_MACROS = {  # [PRIMESUD]
 }
 
 # -- Function-row macro keys [PRIMESUD] ---------------------------------------
-# Sentinels must match _FN_* in tml_prime.py. One row per key: sentinel -> (display_name, default_command).
+# Sentinels must match _FN_* in tml_prime.py. One row per key: sentinel ->
+# (display_name, default_command); None leaves a configurable key unbound.
 # display_name is used as the save-file key (save_char/load_char in player.py); must not contain '~' (line
 # separator) or '=' (key/value separator) or save parsing will break.
 FNKEY_TABLE = {
     14: ('sin', 'look'),      # sin key -- index 21
     15: ('cos', 'rest'),      # cos key -- index 22
     16: ('tan', 'stand'),     # tan key -- index 23
-    17: ('ln',  'recall'),    # ln  key -- index 24
-    18: ('log', 'sac'),       # log key -- index 25
+    17: ('ln',  'quest info'),   # ln  key -- index 24
+    18: ('log', 'gquest check'), # log key -- index 25
     19: ('x2',  'inventory'), # x2  key -- index 26
     20: ('pm',  'equip'),     # +/- key -- index 27
     21: ('()',  'wear'),      # ()  key -- index 28
     22: (',',   'remove'),    # ,   key -- index 29
+    23: ('xy',  'run'),       # x^y key -- index 20
 }
 FNKEY_SENTINELS      = frozenset(FNKEY_TABLE)
 FNKEY_NAMES          = {k: v[0] for k, v in FNKEY_TABLE.items()}
-DEFAULT_FNKEY_MACROS = {k: v[1] for k, v in FNKEY_TABLE.items()}
+DEFAULT_FNKEY_MACROS = {k: v[1] for k, v in FNKEY_TABLE.items() if v[1] is not None}
 
 # -- Sector types (cf. 1stMud sector_t enum in defines.h) -----------------------------
 SECT_INSIDE       = 'inside'

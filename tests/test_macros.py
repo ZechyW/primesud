@@ -14,6 +14,8 @@ init_terminal()
 
 import macros
 from macros import do_macro, _MACRO_SUBST
+from colors import color_len, color_parse_runs, strip_colors
+from config import FNKEY_NAMES, TERMINAL_COLS
 
 
 @pytest.fixture(autouse=True)
@@ -34,6 +36,77 @@ def out(monkeypatch):
 def test_set_digit_macro(out):
     do_macro(None, ["3", "cast", "fireball"])
     assert _MACRO_SUBST["3"] == "cast fireball"
+
+
+def test_query_is_non_destructive_and_unset_is_explicit(out):
+    _MACRO_SUBST["9"] = "cast fireball"
+    before = dict(_MACRO_SUBST)
+
+    do_macro(None, ["9"])
+    assert _MACRO_SUBST == before
+    assert "cast fireball" in out[-1]
+
+    do_macro(None, ["unset", "9"])
+    assert "9" not in _MACRO_SUBST
+    assert out[-1] == "Macro 9 unset."
+
+
+def test_unset_requires_one_valid_key(out):
+    before = dict(_MACRO_SUBST)
+
+    do_macro(None, ["unset"])
+    assert _MACRO_SUBST == before
+    assert out[-1] == "Usage: macro unset <key>"
+
+    do_macro(None, ["unset", "bogus"])
+    assert _MACRO_SUBST == before
+    assert out[-1].startswith("Key must be")
+
+
+def test_function_key_defaults_and_xy_remains_configurable(out):
+    by_name = {name: key for key, name in FNKEY_NAMES.items()}
+    do_macro(None, ["default"])
+    assert _MACRO_SUBST[by_name["xy"]] == "run"
+    assert _MACRO_SUBST[by_name["ln"]] == "quest info"
+    assert _MACRO_SUBST[by_name["log"]] == "gquest check"
+    assert _MACRO_SUBST["3"] == "train"
+
+    do_macro(None, ["xy", "scan"])
+    assert _MACRO_SUBST[by_name["xy"]] == "scan"
+
+
+def test_grid_matches_physical_layout_and_truncates_preview(out):
+    _MACRO_SUBST["9"] = "cast fireball"
+    do_macro(None, [])
+
+    plain = [strip_colors(line) for line in out]
+    assert len(out) == 20
+    assert all(color_len(line) == TERMINAL_COLS for line in out)
+    assert all(label in plain[1] for label in ("x^y", "sin", "cos", "tan", "ln", "log"))
+    assert all(label in plain[4] for label in ("x^2", "+/-", "()", ",", "Enter"))
+    assert plain[1].count("|") == 7
+    assert plain[4].count("|") == 6
+    assert plain[6].count("+") == 6
+    assert all(label in plain[8] for label in ("EEX", "7", "8", "9", "/"))
+    assert "[Recall]" in plain[9]
+    assert "On" in plain[17]
+    assert "[Exit]" in plain[18]
+    assert "cast fir..." in plain[9]
+    assert "cast fireball" not in "".join(plain)
+
+
+def test_macro_display_treats_color_codes_as_literal_text(out):
+    do_macro(None, ["9", "say", "{Rcharge"])
+    assert "{{Rcharge" in out[-1]
+
+    do_macro(None, ["9"])
+    assert "{{Rcharge" in out[-1]
+
+    out[:] = []
+    do_macro(None, [])
+    assert "{{Rch..." in out[9]
+    assert all(sum(len(segment) for _, segment in color_parse_runs(line))
+               == TERMINAL_COLS for line in out)
 
 
 def test_tilde_in_macro_rejected(out):

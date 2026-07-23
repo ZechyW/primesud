@@ -19,6 +19,7 @@ _FN_X2    = 19  # x2 key -- index 26, row above numpad
 _FN_PM    = 20  # +/- key -- index 27
 _FN_PAREN = 21  # ()  key -- index 28
 _FN_COMMA = 22  # ,   key -- index 29
+_FN_XY    = 23  # x^y key -- index 20
 
 _KEY_QUEUE_SIZE = 16
 
@@ -90,7 +91,7 @@ class tml_prime(tml):
             17: [None,'d',None,'D'],
             18: [None,'e',None,'E'],
             19: ['\b','\b','\b','\b'],
-            20: ['^','f',None,'F'],
+            20: [_FN_XY,'f',None,'F'],
             21: [_FN_SIN,'g',None,'G'],
             22: [_FN_COS,'h',None,'H'],
             23: [_FN_TAN,'i',None,'I'],
