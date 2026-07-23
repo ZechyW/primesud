@@ -1,4 +1,7 @@
 # fmt: off
+# GENERATED FILE -- do not edit by hand.
+# Regenerated from areas/*.are by tools/are_to_primesud.py
+# (run via tools/regen_areas.py); fix the .are or the converter.
 # Area: Shire
 # Source: QuickMUD/ROM 2.4
 # VNUM ranges: 1100-1199
@@ -1337,7 +1340,7 @@ OBJECTS = {
         "type": 'furniture',
         "wear_flags": {},
         "level": 0, "weight": 0, "value": 0,
-        "extra_descs": [('sign', 'Welcome to the Shire.  As you enter the Shire from Haon-Dor you come under\nthe jurisdiction of the Thain, the peacekeeper of the Shire.  Consequently,\nby entering these lands you agree to obey our laws.  If you break these laws,\nyou will be severely punished.  We do not like riff raff in our peaceful\ntown.\n\n\t\t\t\t\tThe Thain\n\t\t\t\t\tPeacekeeper of the Shire')],
+        "extra_descs": [('sign', 'Welcome to the Shire.  As you enter the Shire from Haon-Dor you come under\nthe jurisdiction of the Thain, the peacekeeper of the Shire.  Consequently,\nby entering these lands you agree to obey our laws.  If you break these laws,\nyou will be severely punished.  We do not like riff raff in our peaceful\ntown.\n\n                                        The Thain\n                                        Peacekeeper of the Shire')],
     },
     1103: {
         "keywords":    'pipeweed bread',
@@ -1670,8 +1673,8 @@ RESETS = (
     ("E", 616, "body", 100),
     ("M", 1128, 4, 1154, 1),
     ("M", 1128, 4, 1155, 1),
-    ("O", 3200, 1116),  # [PRIMESUD] moved from midgaard (defer cross-area load)
-    ("O", 3200, 1144),  # [PRIMESUD] moved from midgaard (defer cross-area load)
+    ("O", 3200, 1116),
+    ("O", 3200, 1144),
 )
 
 # -- Helps ---------------------------------------------------------------------
@@ -1685,4 +1688,14 @@ SOCIALS = (
 # -- MobProgs ------------------------------------------------------------------
 # (vnum, code) -- mob program code blocks, referenced by mob triggers
 MOBPROGS = {
+}
+
+# -- ObjProgs ------------------------------------------------------------------
+# (vnum, code) -- object program code blocks, referenced by object triggers
+OBJPROGS = {
+}
+
+# -- RoomProgs -----------------------------------------------------------------
+# (vnum, code) -- room program code blocks, referenced by room triggers
+ROOMPROGS = {
 }

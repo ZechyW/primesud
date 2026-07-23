@@ -7,6 +7,8 @@ from handler import (act, chprintln, chprintlnf, is_name, can_see, can_see_obj,
 from skill_utils import get_skill, check_improve
 from comm import do_function, do_say
 from game_time import time_info
+from magic import spell_identify
+from mob import spawn_pet
 from item import (get_obj_list, obj_vnum, create_object, item_extra_flags,
                   ensure_item_extra_flags, can_drop_obj, can_carry_n,
                   can_carry_w, get_obj_weight)
@@ -23,22 +25,16 @@ def check_worth(ch, cost):
 
 def deduct_cost(ch, cost):
     """Remove cost (silver units) from ch, converting gold<->silver as needed (cf. 1stMud `deduct_cost` in handler.c: VALUE_DEFAULT branch)."""
-    silver = cost % 100
-    gold = cost // 100
-    if ch["silver"] < silver:
-        ch["gold"] -= 1
-        ch["silver"] += 100
-    if ch["gold"] < gold:
-        ch["silver"] += (gold - ch["gold"]) * 100
-        ch["gold"] = 0
-    ch["silver"] -= silver
-    ch["gold"] -= gold
+    total = ch["gold"] * 100 + ch["silver"] - cost
+    ch["gold"] = total // 100
+    ch["silver"] = total % 100
 
 
 def add_cost(ch, cost):
     """Add cost (silver units) to ch's money (cf. 1stMud `add_cost` in handler.c: VALUE_DEFAULT branch)."""
-    ch["silver"] += cost % 100
-    ch["gold"] += cost // 100
+    total = ch["gold"] * 100 + ch["silver"] + cost
+    ch["gold"] = total // 100
+    ch["silver"] = total % 100
 
 
 # -- Shop helpers (cf. 1stMud act_obj.c) --------------------------------------
@@ -193,12 +189,15 @@ def _mult_argument(argument):
 def _buy_pet(player, args):
     """Buy a pet from a pet shop (cf. 1stMud do_buy ROOM_PET_SHOP branch in act_obj.c).
 
-    Pets live in the room after the shop room (vnum + 1).
+    Pets live in the room after the shop room (vnum + 1), except New Thalos
+    (9621), whose stock room is 9706.
     """
-    from mob import spawn_pet  # lazy import to avoid circular dependency
 
-    # 1stMud: special case vnum 9621 -> 9706 (area not present; not ported)
-    next_vnum = player["room"] + 1
+    # hack to make new thalos pets work (cf. 1stMud/QuickMUD vnum 9621 -> 9706)
+    if player["room"] == 9621:
+        next_vnum = 9706
+    else:
+        next_vnum = player["room"] + 1
     if next_vnum not in ROOM_DEFS or next_vnum not in world.rooms:
         # 1stMud: bugf("Do_buy: bad pet shop at vnum %ld.")
         chprintln(player, "Sorry, you can't buy that here.")
@@ -350,8 +349,11 @@ def do_list(player, args):
     """Display shopkeeper's or pet shop's stock (cf. 1stMud do_list in act_obj.c)."""
     # -- Pet shop (cf. 1stMud ROOM_PET_SHOP branch)
     if ROOM_DEFS[player["room"]].get("flags", {}).get("pet_shop"):
-        # 1stMud: special case vnum 9621 -> 9706 (area not present; not ported)
-        next_vnum = player["room"] + 1
+        # hack to make new thalos pets work (cf. 1stMud/QuickMUD vnum 9621 -> 9706)
+        if player["room"] == 9621:
+            next_vnum = 9706
+        else:
+            next_vnum = player["room"] + 1
         if next_vnum not in ROOM_DEFS or next_vnum not in world.rooms:
             # 1stMud: bugf("Do_list: bad pet shop at vnum %ld.")
             chprintln(player, "You can't do that here.")
@@ -427,7 +429,7 @@ def do_sell(player, args):
     if keeper is None:
         return
 
-    obj = get_obj_list(args[0], player["inv"], ITEM_DEFS)
+    obj = get_obj_list(args[0], player["inv"], ITEM_DEFS, player)
     if obj is None:
         act("$n tells you 'You don't have that item'.", keeper, None, player, TO_VICT)
         player["reply"] = keeper["id"]
@@ -496,7 +498,7 @@ def do_value(player, args):
     if keeper is None:
         return
 
-    obj = get_obj_list(args[0], player["inv"], ITEM_DEFS)
+    obj = get_obj_list(args[0], player["inv"], ITEM_DEFS, player)
     if obj is None:
         act("$n tells you 'You don't have that item'.", keeper, None, player, TO_VICT)
         player["reply"] = keeper["id"]
@@ -540,5 +542,4 @@ def do_appraise(player, args):
         player["reply"] = keeper["id"]
         return
 
-    from magic import spell_identify
     spell_identify(0, player["level"], player, obj, "obj")

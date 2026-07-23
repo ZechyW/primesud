@@ -208,7 +208,7 @@ vast amount of knowledge she possesses. She is wearing fine magic clothing,
 and you notice that she is surrounded by a blue shimmering aura.
 ~
 elf~
-ABKRV DEFZ 1000 0
+ABJKRVb DEFZ 1000 0
 36 0 1d1+1999 1d1+999 3d8+24 magic
 -15 -15 -15 -15
 FG ABCD 0 0
@@ -223,7 +223,7 @@ You are in no doubt that this guildmaster is truly close to your god; he has
 a peaceful, loving look. You notice that he is surrounded by a white aura.
 ~
 human~
-ABKQV CDEFHZ 1000 0
+ABKQVb CDEFHZ 1000 0
 36 0 1d1+1999 1d1+999 3d8+24 divine
 -15 -15 -15 -15
 EFHIK ABCD 0 0
@@ -239,7 +239,7 @@ the way of the true thief.  She is dressed in poor clothing, having
 the appearance of a beggar.
 human~
 unique~
-ABKSV DFZ 1000 0
+ABKSVb DFZ 1000 0
 36 0 1d1+1999 1d1+199 3d8+24 punch
 -15 -15 -15 -15
 BEFHJN ABCD 0 0
@@ -255,7 +255,7 @@ across his body prove that he was using arms before you were born.  He
 has a calm look on his face.
 ~
 dwarf~
-ABKTV DF 1000 0
+ABJKTVb DF 1000 0
 36 0 1d1+1999 1d1+199 3d8+24 beating
 -20 -20 -20 -20
 ACDEIK ABCD 0 0
@@ -620,6 +620,7 @@ ABU 0 400 0
 0 0 C 0
 stand stand either 0
 0 0 tiny 0
+E 3096
 #3091
 puppy dog pet~
 the puppy~
@@ -634,6 +635,7 @@ ABU F 400 0
 N 0 C 0
 stand stand either 0
 0 Q small 0
+E 3092
 #3092
 beagle dog pet~
 the beagle~
@@ -648,6 +650,7 @@ ABU F 400 0
 N 0 C 0
 stand stand either 0
 0 Q small 0
+E 3093
 #3093
 rottweiler dog pet~
 the rottweiler~
@@ -662,6 +665,7 @@ ABU F 400 0
 CDL 0 C 0
 stand stand either 0
 0 0 medium 0
+E 3094
 #3094
 wolf pet~
 the wolf~
@@ -1010,6 +1014,7 @@ It is quite heavy.  The blade is made of some metal that you can't even
 spell.  The edge of the blade looks as if it could cut through anything
 or anyone.
 ~
+O DROP 3005 100~
 #3006
 stone~
 A Clan Stone~
@@ -2872,11 +2877,19 @@ At the northern end of the temple hall is a statue and a huge altar.
 ~
 ~
 0 -1 3054
+D1
+~
+~
+0 0 200
 D2
 You see the temple square.
 ~
 ~
 0 -1 3005
+D3
+~
+~
+0 0 201
 D4
 You see the entrance to Mud School.
 ~
@@ -2909,6 +2922,8 @@ impossible to climb back up.
 ~
 ~
 0 -1 7026
+G 1
+G 4
 S
 #3003
 Cleric's Bar~
@@ -2935,6 +2950,8 @@ Free instructions provided by the waiter:
    List - The waiter will show you all the different drinks and
           specialties, and tell the price of each.
 ~
+G 1
+G 4
 S
 #3004
 Entrance to Cleric's Guild~
@@ -3306,6 +3323,7 @@ You see the laboratory.
 ~
 ~
 0 -1 3019
+G 0
 S
 #3019
 Mage's Laboratory~
@@ -3329,6 +3347,7 @@ impossible to climb back up.
 ~
 ~
 0 -1 7017
+G 0
 S
 #3020
 The Armoury~
@@ -3390,6 +3409,8 @@ You see the entrance hall to the thieves guild.
 ~
 ~
 0 -1 3021
+G 3
+G 5
 S
 #3023
 The Tournament and Practice Yard~
@@ -3408,6 +3429,8 @@ impossible to climb back up.
 ~
 ~
 0 -1 7048
+G 3
+G 5
 S
 #3024
 Eastern End of Poor Alley~
@@ -3537,6 +3560,7 @@ E
 furniture~
 As you look at the furniture, the chair you sit on disappears.
 ~
+G 2
 S
 #3029
 The Secret Yard~
@@ -3555,6 +3579,7 @@ impossible to climb back up.
 ~
 ~
 0 -1 7043
+G 2
 S
 #3030
 The Dump~
@@ -3833,10 +3858,12 @@ It is built from large grey rocks that have been fastened to each other with
 some kind of mortar.  It is far too high to climb.
 ~
 S
+* [PRIMESUD] Reciprocal gate into chess2.are; room 4200 already exits east here.
 #3043
 Wall Road~
 You are walking next to the western city wall.  Wall Road continues further
-north and south.  A small, poor alley leads east.
+north and south.  A small, poor alley leads east, while a rusted gate opens
+west onto a narrow dirt path.
 Some letters have been written on the wall here.
 ~
 0 S 1
@@ -3855,6 +3882,11 @@ The road continues further south.
 ~
 ~
 0 -1 3047
+D3
+A narrow dirt path leads west through the rusted gate.
+~
+~
+0 -1 4200
 E
 wall~
 It is built from large grey rocks that have been fastened to each other with
@@ -4166,6 +4198,10 @@ Bifrost, the Rainbow Bridge, hangs in the sky above you.
 ~
 ~
 0 -1 1215
+D5
+~
+~
+0 0 3
 E
 statue Mota king god~
 The statue represents the Great God Mota, holding a staff.  He has long, grey
@@ -4177,6 +4213,7 @@ altar~
 Even though the altar is more than ten feet long it appears to be made from a
 single block of white virgin marble.
 ~
+R GRALL 3054 100~
 S
 #3056
 The Fountain of Youth Apothecary~
@@ -4423,6 +4460,10 @@ You are on a small path running through the park.  It continues west and
 south and just north of here you see the southern wall of Park Cafe.
 ~
 0 S 1
+D1
+~
+~
+0 -1 17700
 D2
 ~
 ~
@@ -5853,6 +5894,10 @@ Clan Road continues to the east.
 ~
 ~
 0 -1 3314
+D2
+~
+~
+0 0 202
 D3
 Clan Road continues to the west.
 ~
@@ -6218,7 +6263,9 @@ G 1 3154  -1     	*   a bottle of George Killian's Irish Red
 G 1 3152  -1     	*   a bowl of beef stew
 G 1 3153  -1     	*   a biscuit
 G 1 3151  -1     	*   a bowl of chicken noodle soup
-G 1 1103  -1     	*   a pipeweed bread
+* [PRIMESUD] dropped G 1103 -1 (Kate's Diner pipeweed bread; shire item def
+* would pull shire, and via shire's shiriff gear, ofcol2, at game start --
+* still sold in shire)
 G 1 3150  -1     	*   a cup of cinnamon coffee
 G 1 3100  -1     	*   a cup of tea
 M 0 3160   1 3160  1	* Melancholy
@@ -6327,11 +6374,13 @@ M 0 3005   4 3027  2	* the thief
 E 1 3351  -1   16	*   a standard issue dagger
 M 0 3005   4 3128  2	* the thief
 E 1 3351  -1   16	*   a standard issue dagger
-O 0 3135  10 1200	* a fountain
-O 0 3200  -1 1200
+* [PRIMESUD] O 3135 1200 moved to immort (defer cross-area load; a fountain)
+* [PRIMESUD] O 3200 1200 moved to immort (defer cross-area load; the juke)
 O 0 3135  10 3005	* a fountain
 O 0 3139  15 3008	* the receptionist's letter of resignation
 O 0 3140  15 3008	* the bank's notice of liquidation
+* [PRIMESUD] moved from grave.are: room 3124 is Midgaard-owned.
+D 0 3124   2    2	* Elm Street south
 D 0 3110   3    2	* Cityguard Head Quarters west
 D 0 3142   1    2	* Captain's Office east
 D 0 3142   2    2	* Captain's Office south
@@ -6432,8 +6481,8 @@ O 0 3200   -1 3150  1
 O 0 3200   -1 3352  1
 O 0 3200   -1 3355  1
 O 0 3200   -1 3356  1
-O 0 3200   -1 1116
-O 0 3200 -1 1144
+* [PRIMESUD] O 3200 1116 moved to shire (defer cross-area load; the juke, The Ivy Bush)
+* [PRIMESUD] O 3200 1144 moved to shire (defer cross-area load; the juke, The Green Dragon)
 S
 
 #SHOPS
@@ -6479,5 +6528,17 @@ M 3120 spec_cast_cleric    	* the sexton
 M 3143 spec_mayor          	* the mayor
 M 3163 spec_nasty          	* the thief
 S
+
+#OBJPROGS
+#3005
+obj echo Don't drop me!
+~
+#0
+
+#ROOMPROGS
+#3054
+room echo {`You enter a room of sanctuary and peace.{x
+~
+#0
 
 #$

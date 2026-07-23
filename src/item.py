@@ -2,7 +2,8 @@
 
 import world
 from world import ITEM_DEFS, MOB_DEFS
-from handler import is_name, number_argument, can_see_obj
+from config import STR_APP_CARRY
+from handler import is_name, number_argument, can_see_obj, get_curr_stat
 
 # Item types that can hold contents, for loot/look-in purposes [PRIMESUD]:
 # matches 1stMud's do_get/get_obj_list acceptance of ITEM_CONTAINER plus
@@ -39,6 +40,11 @@ def create_object(vnum):
     """
     tpl = ITEM_DEFS[vnum]
     obj = {"vnum": vnum, "cost": tpl.get("value", 0)}
+    if tpl.get("type") == "money":
+        # 1stMud copies all value[] fields into each object instance; money
+        # consumers read these mutable denominations directly.
+        obj["silver"] = tpl.get("silver", 0)
+        obj["gold"] = tpl.get("gold", 0)
     if "max_charges" in tpl:
         obj["max_charges"] = tpl["max_charges"]
         obj["charges"] = tpl.get("charges", tpl["max_charges"])
@@ -62,8 +68,9 @@ def create_object(vnum):
 def promote_obj(player, obj):
     """Swap a plain-vnum item for a mutable instance dict in place. [PRIMESUD]
 
-    Area resets and pickups keep items as plain ints; state mutation and
-    act() $p rendering need instance dicts. Replaces the first matching
+    Defensive shim: create_object returns dicts on every current spawn path,
+    so live items are always instance dicts; this only fires if a plain int
+    vnum ever appears (legacy/synthetic data). Replaces the first matching
     vnum in inventory, room, or equipment (identical plain vnums are
     indistinguishable, so first-match is safe).
     """
@@ -142,6 +149,103 @@ def set_item_container_flag(obj, tpl, flag, enabled):
     elif flag in flags:
         del flags[flag]
     return flags
+
+
+def liquid_left(obj, tpl):
+    """Return current liquid units for a drink object. [PRIMESUD]"""
+    if isinstance(obj, dict) and "liquid_left" in obj:
+        return obj["liquid_left"]
+    return tpl.get("liquid_left", 0)
+
+
+def liquid_total(obj, tpl):
+    """Return liquid capacity for a drink object. [PRIMESUD]"""
+    if isinstance(obj, dict) and "liquid_total" in obj:
+        return obj["liquid_total"]
+    return tpl.get("liquid_total", 0)
+
+
+def liquid_type(obj, tpl):
+    """Return current liquid type for a drink object. [PRIMESUD]"""
+    if isinstance(obj, dict) and "liquid_type" in obj:
+        return obj["liquid_type"]
+    return tpl.get("liquid_type", "water")
+
+
+def set_liquid(obj, tpl, left, liq):
+    """Persist mutable liquid state onto an item instance. [PRIMESUD]"""
+    obj["liquid_total"] = liquid_total(obj, tpl)
+    obj["liquid_left"] = left
+    obj["liquid_type"] = liq
+
+
+# Full liquid table name -> (color, sip), cf. 1stMud liq_table in const.c.
+# liq_color is liq_table[].liq_color; sip is liq_affect[4]. Unlisted
+# liquids fall back to water. [PRIMESUD] proof/full/thirst/food values
+# (liq_affect[0..3]) are dropped -- hunger/thirst/drunk condition tracking
+# is intentionally unported (see do_drink docstring in inventory.py).
+LIQ_TABLE = {
+    "water":             ("clear",         16),
+    "beer":               ("amber",         12),
+    "red wine":           ("burgundy",       5),
+    "ale":                ("brown",         12),
+    "dark ale":           ("dark",          12),
+    "whisky":             ("golden",         2),
+    "lemonade":           ("pink",          12),
+    "firebreather":       ("boiling",        2),
+    "local specialty":    ("clear",          2),
+    "slime mold juice":   ("green",          2),
+    "milk":               ("white",         12),
+    "tea":                ("tan",            6),
+    "coffee":             ("black",          6),
+    "blood":              ("red",            6),
+    "salt water":         ("clear",          1),
+    "coke":               ("brown",         12),
+    "root beer":          ("brown",         12),
+    "elvish wine":        ("green",          5),
+    "white wine":         ("golden",         5),
+    "champagne":          ("golden",         5),
+    "mead":               ("honey-colored", 12),
+    "rose wine":          ("pink",           5),
+    "benedictine wine":   ("burgundy",       5),
+    "vodka":              ("clear",          2),
+    "cranberry juice":    ("red",           12),
+    "orange juice":       ("orange",        12),
+    "absinthe":           ("green",          2),
+    "brandy":             ("golden",         4),
+    "aquavit":            ("clear",          2),
+    "schnapps":           ("clear",          2),
+    "icewine":            ("purple",         5),
+    "amontillado":        ("burgundy",       5),
+    "sherry":             ("red",            5),
+    "framboise":          ("red",            5),
+    "rum":                ("amber",          2),
+    "cordial":            ("clear",          2),
+}
+
+
+def liquid_color(liq):
+    """Return liq_table color name for a liquid, defaulting to water's. [PRIMESUD]
+
+    Args:
+        liq (str): Liquid type name.
+
+    Returns:
+        str: Colour name (cf. 1stMud liq_table[].liq_color in const.c).
+    """
+    return LIQ_TABLE.get(liq, LIQ_TABLE["water"])[0]
+
+
+def liq_sip(liq):
+    """Return liq_table sip size for a liquid, defaulting to water's. [PRIMESUD]
+
+    Args:
+        liq (str): Liquid type name.
+
+    Returns:
+        int: Sip amount (cf. 1stMud liq_table[].liq_affect[4] in const.c).
+    """
+    return LIQ_TABLE.get(liq, LIQ_TABLE["water"])[1]
 
 
 def item_affect_list(obj):
@@ -463,10 +567,12 @@ def get_obj_list(fragment, item_list, templates, viewer=None):
         fragment (str): Player-typed name fragment, optionally prefixed "N.".
         item_list (list): Ordered list of items (int or instance dict) to search.
         templates (dict): Item template dict mapping vnum -> template.
-        viewer (dict): Optional observer; when given, items it cannot see
+        viewer (dict): Observer; when given, items it cannot see
             (can_see_obj) are skipped, matching 1stMud get_obj_list's built-in
-            gate (handler.c:2007). [PRIMESUD] darkness gating is scoped to the
-            get/drop paths that pass a viewer; other callers leave it None.
+            gate (handler.c:2007). Every player-facing 1stMud lookup gates
+            (get_obj_carry/get_obj_wear pass ch), so command callers must pass
+            the acting char; None is reserved for internal machinery matching
+            1stMud's NULL-viewer/false-character calls (e.g. programs.c:962).
 
     Returns:
         Item from item_list (int or dict), or None if not found.
@@ -485,24 +591,28 @@ def get_obj_list(fragment, item_list, templates, viewer=None):
 
 
 def get_obj_here(player, arg):
-    """Find obj in room, inventory, or equipped (cf. 1stMud get_obj_here in handler.c).
+    """Find a visible obj in room, inventory, or equipped (cf. 1stMud get_obj_here in handler.c:2063).
+
+    The can_see_obj gate is baked in, as in the source (its room scan runs
+    through the gated get_obj_list, carry/wear through get_obj_carry /
+    get_obj_wear which gate likewise).
 
     Args:
-        player (dict): Player state dict.
+        player (dict): Observer state dict (player or mob).
         arg (str): Player-typed name fragment.
 
     Returns:
         Item (int or dict), or None if not found.
     """
     rs = world.rooms[player["room"]]
-    obj = get_obj_list(arg, rs["items"], ITEM_DEFS)
+    obj = get_obj_list(arg, rs["items"], ITEM_DEFS, player)
     if obj is not None:
         return obj
-    obj = get_obj_list(arg, player["inv"], ITEM_DEFS)
+    obj = get_obj_list(arg, player["inv"], ITEM_DEFS, player)
     if obj is not None:
         return obj
     equipped = [it for it in player["equip"].values() if it is not None]
-    return get_obj_list(arg, equipped, ITEM_DEFS)
+    return get_obj_list(arg, equipped, ITEM_DEFS, player)
 
 
 def apply_money_pickup(player, obj, tpl):
@@ -521,8 +631,10 @@ def apply_money_pickup(player, obj, tpl):
     """
     if tpl.get("type") != "money":
         return False
-    player["silver"] += obj.get("silver", 0)
-    player["gold"] += obj.get("gold", 0)
+    # Template fallback repairs legacy sparse instances created before money
+    # denominations were seeded by create_object(). [PRIMESUD]
+    player["silver"] += obj.get("silver", tpl.get("silver", 0))
+    player["gold"] += obj.get("gold", tpl.get("gold", 0))
     return True
 
 
@@ -540,14 +652,11 @@ def can_drop_obj(ch, obj):
 
 def can_carry_n(ch):
     """Max number of items ch can carry (cf. 1stMud can_carry_n in handler.c)."""
-    from handler import get_curr_stat
     return 20 + 2 * get_curr_stat(ch, "dex") + ch["level"]
 
 
 def can_carry_w(ch):
     """Max carry weight for ch in tenths of lbs (cf. 1stMud can_carry_w in handler.c)."""
-    from handler import get_curr_stat
-    from config import STR_APP_CARRY
     return STR_APP_CARRY[get_curr_stat(ch, "str")] * 10 + ch["level"] * 25
 
 
@@ -571,4 +680,102 @@ def get_carry_weight(ch):
         if e is not None:
             w += get_obj_weight(e)
     return w + ch.get("silver", 0) // 10 + ch.get("gold", 0) * 2 // 5
+
+
+# cf. 1stMud weapon_t enum order, defines.h:392 (exotic=0 .. polearm=8)
+_WEAPON_CLASS_NUM = {"exotic": 0, "sword": 1, "dagger": 2, "spear": 3,
+                     "mace": 4, "axe": 5, "flail": 6, "whip": 7, "polearm": 8}
+# cf. 1stMud WEAPON_* flag bits, bits.h:389-396 (BIT_A..BIT_H)
+_WEAPON_FLAG_BIT = {"flaming": 1, "frost": 2, "vampiric": 4, "sharp": 8,
+                    "vorpal": 16, "two_hands": 32, "shocking": 64,
+                    "poison": 128}
+
+
+def prog_obj_value(obj, idx):
+    """Upstream ``obj->value[idx]`` reconstructed from PrimeSUD's typed
+    fields, for the prog objval0-4 if-checks (cf. 1stMud ObjData.value[] and
+    db2.c load_objects; reverse of tools/are_to_primesud.py's per-type
+    mapping). [PRIMESUD]
+
+    An instance ``values`` 5-tuple (written by ``obj attrib v0..v4``) wins
+    outright, then instance field overrides, then the template.  Index spaces
+    PrimeSUD stores as words with no stable int mapping (weapon damage-type
+    and liquid-type: attack/liq table positions) return 0.
+
+    Args:
+        obj: Item instance dict or bare vnum.
+        idx (int): value[] slot, 0-4.
+
+    Returns:
+        int: The reconstructed value (0 for unknown/absent).
+    """
+    tpl = ITEM_DEFS.get(obj_vnum(obj), {})
+    inst = obj if isinstance(obj, dict) else {}
+    if "values" in inst:
+        return inst["values"][idx]
+
+    def f(field, dflt=0):
+        return inst.get(field, tpl.get(field, dflt))
+
+    itype = tpl.get("type", "")
+    if itype == "weapon":
+        if idx == 0:
+            return _WEAPON_CLASS_NUM.get(tpl.get("weapon_type", ""), 0)
+        if idx in (1, 2):
+            return f("dice", (0, 0, 0))[idx - 1]
+        if idx == 4:
+            bits = 0
+            for word, bit in _WEAPON_FLAG_BIT.items():
+                if f("weapon_flags", {}).get(word):
+                    bits |= bit
+            return bits
+        return 0  # value[3]: damage-type word -- attack-table index unported
+    if itype == "armor":
+        arm = tpl.get("armor", (0, 0, 0, 0))
+        return arm[idx] if idx < len(arm) else 0
+    if itype in ("potion", "pill", "scroll"):
+        if idx == 0:
+            return f("spell_level")
+        from magic import _skill_lookup  # deferred: magic imports item
+        spells = f("spells", ())
+        sn = _skill_lookup(spells[idx - 1]) if idx - 1 < len(spells) else None
+        return sn if sn is not None else 0
+    if itype in ("wand", "staff"):
+        if idx == 0:
+            return f("spell_level")
+        if idx == 1:
+            return f("max_charges")
+        if idx == 2:
+            return f("charges")
+        if idx == 3:
+            from magic import _skill_lookup  # deferred: magic imports item
+            sn = _skill_lookup(f("spell", ""))
+            return sn if sn is not None else 0
+        return 0
+    if itype == "light":
+        return f("light_hours") if idx == 2 else 0
+    if itype == "container":
+        return (f("container_max_weight"), f("container_flags"),
+                f("container_key"), f("container_max_item_weight"),
+                f("container_weight_mult", 100))[idx]
+    if itype in ("drink", "fountain"):
+        if idx == 0:
+            return f("liquid_total")
+        if idx == 1:
+            return f("liquid_left")
+        if idx == 3:
+            return 1 if f("poisoned") else 0
+        return 0  # value[2]: liquid-type word -- liq-table index unported
+    if itype == "food":
+        if idx == 0:
+            return f("food_hours")
+        if idx == 1:
+            return f("food_hunger")
+        if idx == 3:
+            return 1 if f("poisoned") else 0
+        return 0
+    if itype == "money":
+        return f("silver") if idx == 0 else (f("gold") if idx == 1 else 0)
+    # default branch: raw value[] survives as the "values" tuple
+    return f("values", (0, 0, 0, 0, 0))[idx]
 

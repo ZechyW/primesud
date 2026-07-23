@@ -1919,6 +1919,10 @@ M 0 1111   4 1153  1	* a shiriff
 E 1  616 100    5	*   a leather vest
 M 0 1128   4 1154  1	* a country bumpkin
 M 0 1128   4 1155  1	* a country bumpkin
+* [PRIMESUD] O 3200 1116 moved from midgaard (defer cross-area load)
+O 0 3200   -1 1116	* the juke, The Ivy Bush
+* [PRIMESUD] O 3200 1144 moved from midgaard (defer cross-area load)
+O 0 3200 -1 1144	* the juke, The Green Dragon
 S
 
 #SHOPS

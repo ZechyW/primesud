@@ -22,7 +22,6 @@ from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 def out(monkeypatch):
     lines = []
     cap = lambda s="", end="\n": lines.append(s)
-    monkeypatch.setattr(movement, "tprint", cap)
     monkeypatch.setattr(inventory, "tprint", cap)
     monkeypatch.setattr(handler, "tprint", cap)
     return lines
@@ -121,7 +120,7 @@ class TestTargeting:
         import comm
         monkeypatch.setattr(handler, "_player_char", lambda: scene)
         scene["area"] = None  # act TO_ZONE uses room area lookup
-        comm.do_yell(world.chars[2], ["Stop", "thief!"])
+        comm.do_yell(world.chars[2], "Stop thief!")
         assert any("yells 'Stop thief!'" in l for l in out)
 
 

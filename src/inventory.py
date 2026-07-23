@@ -11,12 +11,14 @@ from world import (OBJ_VNUM_SCHOOL_BANNER,
                    OBJ_VNUM_SCHOOL_VEST, OBJ_VNUM_SCHOOL_SHIELD,
                    OBJ_VNUM_SCHOOL_STAFF, OBJ_VNUM_SCHOOL_AXE, OBJ_VNUM_SCHOOL_FLAIL,
                    OBJ_VNUM_SCHOOL_WHIP, OBJ_VNUM_SCHOOL_POLEARM)
-from combat import _get_weapon_skill, is_safe, multi_hit, number_fuzzy, create_money
+from combat import (_get_weapon_skill, is_safe, multi_hit, number_fuzzy,
+                    create_money, _get_size)
 from comm import do_yell
+from debug import DBG  # [PRIMESUD] holylight vnum overlay
 from skill_utils import WaitState, check_improve, get_skill
 from config import (STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS,
                     MAX_LEVEL, MAX_MORTAL_LEVEL, TYPE_UNDEFINED,
-                    ATTACK_TABLE, DAM_BASH)
+                    ATTACK_TABLE, DAM_BASH, SIZE_RANK)
 from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   item_extra_flags, item_wear_flags, apply_money_pickup,
                   can_drop_obj, can_carry_n, can_carry_w, get_obj_weight,
@@ -25,8 +27,13 @@ from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   item_container_flags, set_item_container_flag,
                   CONTAINER_TYPES,
                   item_type as _item_type,
-                  promote_obj as _promote_obj)
-from magic import (cast_item_spells, validate_item_spell_payload,
+                  promote_obj as _promote_obj,
+                  liquid_left as _liquid_left,
+                  liquid_total as _liquid_total,
+                  liquid_type as _liquid_type,
+                  set_liquid as _set_liquid,
+                  liq_sip as _liq_sip)
+from magic import (_skill_lookup, cast_item_spells, validate_item_spell_payload,
                    _new_affect, _skill_lookup)
 from picker import pick_from
 from quest import (quest_obj_check, is_quester, QUEST_DELIVER,
@@ -81,6 +88,7 @@ def _loot_container_picker(player, container):
             chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
             if not apply_money_pickup(player, cobj, ctpl):
                 player["inv"].append(cobj)
+                _get_triggers(player, cobj)
                 quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
         return
     cobj = visible[cidx]
@@ -91,6 +99,7 @@ def _loot_container_picker(player, container):
     chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
     if not apply_money_pickup(player, cobj, ctpl):
         player["inv"].append(cobj)
+        _get_triggers(player, cobj)
         quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
 
 
@@ -137,6 +146,30 @@ def _check_carry_get(player, obj, tpl, from_carried=False):
         act("$d: you can't carry that much weight.", player, None, kw, TO_CHAR)
         return False
     return True
+
+
+def _get_triggers(player, obj):
+    """Obj then room TRIG_GET after a successful pickup (cf. get_obj,
+    act_obj.c:165-168). [PRIMESUD] shared by every do_get pickup path."""
+    import mobprog  # deferred: keep mobprog off the boot path
+    if mobprog.has_otrigger(obj, "get"):
+        mobprog.ogive_trigger(
+            {"obj": obj, "room": player["room"], "carrier": player},
+            player, "get")
+    if mobprog.has_rtrigger(player["room"], "get"):
+        mobprog.rgive_trigger(player["room"], player, obj, "get")
+
+
+def _drop_triggers(player, obj):
+    """Obj then room TRIG_DROP after a drop (cf. do_drop, act_obj.c:581-584).
+    [PRIMESUD] shared by every do_drop path."""
+    import mobprog  # deferred: keep mobprog off the boot path
+    if mobprog.has_otrigger(obj, "drop"):
+        mobprog.ogive_trigger(
+            {"obj": obj, "room": player["room"], "carrier": None},
+            player, "drop")
+    if mobprog.has_rtrigger(player["room"], "drop"):
+        mobprog.rgive_trigger(player["room"], player, obj, "drop")
 
 
 def do_get(player, args):
@@ -187,6 +220,7 @@ def do_get(player, args):
             if apply_money_pickup(player, obj, tpl):
                 return
             player["inv"].append(obj)
+            _get_triggers(player, obj)
             quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
             return "get " + tpl.get("keywords", tpl["short_descr"]).split()[0]
         if has_all and idx == len(loose):
@@ -199,6 +233,7 @@ def do_get(player, args):
                     (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
                 if not apply_money_pickup(player, obj, tpl):
                     player["inv"].append(obj)
+                    _get_triggers(player, obj)
                     quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
             return
         _loot_container_picker(player, conts[idx - cont_start])
@@ -213,6 +248,8 @@ def do_get(player, args):
                 continue
             if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
                 continue
+            if not can_see_obj(player, obj):  # cf. 1stMud do_get all loop, act_obj.c:230
+                continue
             found = True
             if "take" not in item_wear_flags(obj, tpl):
                 chprintln(player, "You can't take that.")
@@ -223,6 +260,7 @@ def do_get(player, args):
             chprintln(player, "You get {}.".format(tpl["short_descr"]))
             if not apply_money_pickup(player, obj, tpl):
                 player["inv"].append(obj)
+                _get_triggers(player, obj)
                 quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
         if not found:
             if filter_kw:
@@ -252,12 +290,15 @@ def do_get(player, args):
                 else:
                     for cobj in list(contents):
                         ctpl = ITEM_DEFS[obj_vnum(cobj)]
+                        if not can_see_obj(player, cobj):  # cf. 1stMud do_get all-from-container loop, act_obj.c:311
+                            continue
                         if not _check_carry_get(player, cobj, ctpl, cont_carried):
                             continue
                         cont_obj["contents"].remove(cobj)
                         chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
                         if not apply_money_pickup(player, cobj, ctpl):
                             player["inv"].append(cobj)
+                            _get_triggers(player, cobj)
                             quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
                 return
             cobj = get_obj_list(item_arg, contents, ITEM_DEFS, player)
@@ -272,6 +313,7 @@ def do_get(player, args):
             chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
             if not apply_money_pickup(player, cobj, ctpl):
                 player["inv"].append(cobj)
+                _get_triggers(player, cobj)
                 quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
             return
     obj = get_obj_list(arg, rs["items"], ITEM_DEFS, player)
@@ -288,6 +330,7 @@ def do_get(player, args):
     chprintln(player, "You get {}.".format((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
     if not apply_money_pickup(player, obj, tpl):
         player["inv"].append(obj)
+        _get_triggers(player, obj)
         quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
 
 
@@ -320,8 +363,9 @@ def _drop_coins(player, amount, coin):
         if not isinstance(obj, dict) or ITEM_DEFS[obj_vnum(obj)].get("type") != "money":
             continue
         rs["items"].remove(obj)
-        silver_amt += obj.get("silver", 0)
-        gold += obj.get("gold", 0)
+        tpl = ITEM_DEFS[obj_vnum(obj)]
+        silver_amt += obj.get("silver", tpl.get("silver", 0))
+        gold += obj.get("gold", tpl.get("gold", 0))
 
     coin_obj = create_money(gold, silver_amt)
     if coin_obj is not None:
@@ -360,10 +404,14 @@ def do_drop(player, args):
             return
         tpl = ITEM_DEFS[obj["vnum"]]
         player["inv"].remove(obj)
-        world.rooms[player["room"]]["items"].append(obj)
+        ritems = world.rooms[player["room"]]["items"]
+        ritems.append(obj)
         chprintln(player, "You drop {}.".format(tpl["short_descr"]))
-        if item_extra_flags(obj, tpl).get("melt_drop"):
-            world.rooms[player["room"]]["items"].remove(obj)
+        _drop_triggers(player, obj)
+        # cf. act_obj.c:586 `if (obj && ...)`: a drop prog may have purged or
+        # moved the obj -- melt only if it still lies here
+        if obj in ritems and item_extra_flags(obj, tpl).get("melt_drop"):
+            ritems.remove(obj)
             chprintln(player, "{} dissolves into smoke.".format(tpl["short_descr"]))
             return
         return "drop " + tpl.get("keywords", tpl["short_descr"]).split()[0]
@@ -375,14 +423,19 @@ def do_drop(player, args):
             tpl = ITEM_DEFS[obj["vnum"]]
             if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
                 continue
+            if not can_see_obj(player, obj):  # cf. 1stMud do_drop all loop, act_obj.c:602
+                continue
             if not can_drop_obj(player, obj):
                 continue
             found = True
             player["inv"].remove(obj)
-            world.rooms[player["room"]]["items"].append(obj)
+            ritems = world.rooms[player["room"]]["items"]
+            ritems.append(obj)
             chprintln(player, "You drop {}.".format(tpl["short_descr"]))
-            if item_extra_flags(obj, tpl).get("melt_drop"):
-                world.rooms[player["room"]]["items"].remove(obj)
+            _drop_triggers(player, obj)
+            # cf. act_obj.c:616 `if (obj && ...)`: prog may have moved it
+            if obj in ritems and item_extra_flags(obj, tpl).get("melt_drop"):
+                ritems.remove(obj)
                 chprintln(player, "{} dissolves into smoke.".format(tpl["short_descr"]))
         if not found:
             if filter_kw:
@@ -399,10 +452,13 @@ def do_drop(player, args):
         return
     tpl = ITEM_DEFS[obj["vnum"]]
     player["inv"].remove(obj)
-    world.rooms[player["room"]]["items"].append(obj)
+    ritems = world.rooms[player["room"]]["items"]
+    ritems.append(obj)
     chprintln(player, "You drop {}.".format(tpl["short_descr"]))
-    if item_extra_flags(obj, tpl).get("melt_drop"):
-        world.rooms[player["room"]]["items"].remove(obj)
+    _drop_triggers(player, obj)
+    # cf. act_obj.c:586 `if (obj && ...)`: prog may have moved it
+    if obj in ritems and item_extra_flags(obj, tpl).get("melt_drop"):
+        ritems.remove(obj)
         chprintln(player, "{} dissolves into smoke.".format(tpl["short_descr"]))
 
 
@@ -425,9 +481,9 @@ def do_put(player, args):
         return
     cont_arg = " ".join(rest)
     rs = world.rooms[player["room"]]
-    cont_obj = get_obj_list(cont_arg, rs["items"], ITEM_DEFS)
+    cont_obj = get_obj_list(cont_arg, rs["items"], ITEM_DEFS, player)
     if cont_obj is None:
-        cont_obj = get_obj_list(cont_arg, player["inv"], ITEM_DEFS)
+        cont_obj = get_obj_list(cont_arg, player["inv"], ITEM_DEFS, player)
     if cont_obj is None:
         chprintln(player, "I see no {} here.".format(cont_arg))
         return
@@ -440,7 +496,7 @@ def do_put(player, args):
         kw = cont_tpl.get("keywords", cont_tpl["short_descr"])
         act("The $d is closed.", player, None, kw, TO_CHAR)
         return
-    obj = get_obj_list(item_arg, player["inv"], ITEM_DEFS)
+    obj = get_obj_list(item_arg, player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You do not have that item.")
         return
@@ -477,10 +533,21 @@ def do_put(player, args):
     chprintln(player, "You put {} in {}.".format(tpl["short_descr"], cont_name))
 
 
+def _give_target(ch, words):
+    """Resolve a give recipient, including the player for mobprog actors. [PRIMESUD]"""
+    target = " ".join(words)
+    if ch.get("is_npc"):
+        from mobprog import _get_char_room
+        return _get_char_room(ch, target)
+    rs = world.rooms[ch["room"]]
+    vid = get_char_room(target, rs["mobs"], world.chars, ch)
+    return world.chars.get(vid) if vid is not None else None
+
+
 def _give_coins(player, amount, coin, rest):
     """Coin branch of do_give (cf. 1stMud do_give money path in act_obj.c:655).
 
-    [PRIMESUD] Bribe mob-trigger skipped (no mob progs).  The changer's
+    Fires TRIG_BRIBE on the recipient (see below). [PRIMESUD] The changer's
     change comes straight from thin air like 1stMud's till top-up.
     """
     if amount <= 0 or coin not in ("coins", "coin", "gold", "silver"):
@@ -490,12 +557,10 @@ def _give_coins(player, amount, coin, rest):
     if not rest:
         chprintln(player, "Give what to whom?")
         return
-    rs = world.rooms[player["room"]]
-    vid = get_char_room(" ".join(rest), rs["mobs"], world.chars, player)
-    if vid is None:
+    victim = _give_target(player, rest)
+    if victim is None:
         chprintln(player, "They aren't here.")
         return
-    victim = world.chars[vid]
     wallet = "silver" if silver else "gold"
     if player[wallet] < amount:
         chprintln(player, "You haven't got that much.")
@@ -505,6 +570,12 @@ def _give_coins(player, amount, coin, rest):
     act("$n gives you %d %s." % (amount, wallet), player, None, victim, TO_VICT)
     act("$n gives $N some coins.", player, None, victim, TO_NOTVICT)
     act("You give $N %d %s." % (amount, wallet), player, None, victim, TO_CHAR)
+
+    # TRIG_BRIBE: amount normalised to silver (cf. p_bribe_trigger, act_obj.c:710)
+    if victim.get("is_npc"):
+        from mobprog import has_trigger, bribe_trigger  # deferred: keep mobprog off the boot path
+        if has_trigger(victim, "bribe"):
+            bribe_trigger(victim, player, amount if silver else amount * 100)
 
     # Money changer (cf. 1stMud ACT_IS_CHANGER branch)
     if victim.get("act_flags", {}).get("changer"):
@@ -529,7 +600,7 @@ def _give_coins(player, amount, coin, rest):
 
 
 def do_give(player, args):
-    """Give coins or an item to a mob in the room (cf. 1stMud do_give in act_obj.c).
+    """Give coins or an item to a character in the room (cf. 1stMud do_give in act_obj.c).
 
     Args:
         player (dict): Player state dict.
@@ -544,18 +615,16 @@ def do_give(player, args):
         _give_coins(player, int(arg1), args[1].lower(), args[2:])
         return
 
-    obj = get_obj_list(arg1, player["inv"], ITEM_DEFS)
+    obj = get_obj_list(arg1, player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You do not have that item.")
         return
     # 1stMud: wear_loc check -- [PRIMESUD] inv never holds equipped items
 
-    rs = world.rooms[player["room"]]
-    vid = get_char_room(" ".join(args[1:]), rs["mobs"], world.chars, player)
-    if vid is None:
+    victim = _give_target(player, args[1:])
+    if victim is None:
         chprintln(player, "They aren't here.")
         return
-    victim = world.chars[vid]
     tpl = ITEM_DEFS[obj_vnum(obj)]
 
     # Quest delivery (cf. 1stMud do_give act_obj.c:772)
@@ -583,7 +652,7 @@ def do_give(player, args):
                 player, obj, None, TO_CHAR)
         return
 
-    if MOB_DEFS[victim["tpl"]].get("shop"):
+    if victim.get("is_npc") and MOB_DEFS[victim["tpl"]].get("shop"):
         act("$N tells you 'Sorry, you'll have to sell that.'",
             player, None, victim, TO_CHAR)
         return
@@ -597,9 +666,10 @@ def do_give(player, args):
         chprintln(player, "You can't give quest items.")
         return
 
-    carry_n = len(victim["inv"]) + sum(1 for e in victim["equip"].values()
-                                       if e is not None)
-    if carry_n + 1 > can_carry_n(victim):
+    carried = victim["inv"] + [e for e in victim["equip"].values()
+                               if e is not None]
+    carry_n = sum(_obj_number(o) for o in carried)
+    if carry_n + _obj_number(obj) > can_carry_n(victim):
         act("$N has $S hands full.", player, None, victim, TO_CHAR)
         return
 
@@ -614,10 +684,37 @@ def do_give(player, args):
 
     player["inv"].remove(obj)
     victim["inv"].append(obj)
-    act("$n gives $p to $N.", player, obj, victim, TO_NOTVICT)
-    act("$n gives you $p.", player, obj, victim, TO_VICT)
-    act("You give $p to $N.", player, obj, victim, TO_CHAR)
-    # 1stMud: TRIG_GIVE obj/room/mob triggers -- [PRIMESUD] mob progs not ported
+    # cf. do_give (act_obj.c:845): MOBtrigger off around the give announcement
+    # so the "gives you" text can't fire the recipient's act trigger -- the
+    # give trigger below is the intended reaction.  (1stMud does not latch the
+    # coin/quest give paths, so those stay unlatched too.)
+    import mobprog  # deferred: keep mobprog off the boot path
+    saved = mobprog.MOBtrigger
+    mobprog.MOBtrigger = False
+    try:
+        act("$n gives $p to $N.", player, obj, victim, TO_NOTVICT)
+        act("$n gives you $p.", player, obj, victim, TO_VICT)
+        act("You give $p to $N.", player, obj, victim, TO_CHAR)
+    finally:
+        mobprog.MOBtrigger = saved
+    # TRIG_GIVE: obj then room react before the mob (cf. do_give,
+    # act_obj.c:851-854); the room "give" pass is unreachable upstream (the
+    # room trigger vocabulary lacks "give", so HasTriggerRoom is always
+    # false) -- mirrored anyway
+    if mobprog.has_otrigger(obj, "give"):
+        mobprog.ogive_trigger(
+            {"obj": obj, "room": player["room"], "carrier": victim},
+            player, "give")
+    if mobprog.has_rtrigger(player["room"], "give"):
+        mobprog.rgive_trigger(player["room"], player, obj, "give")
+    # [PRIMESUD] Player wallets absorb received money objects, matching pickup.
+    if (not victim.get("is_npc") and obj in victim["inv"]
+            and apply_money_pickup(victim, obj, tpl)):
+        victim["inv"].remove(obj)
+    # TRIG_GIVE: mob reacts to the received object (cf. do_give, act_obj.c:856)
+    if victim.get("is_npc"):
+        if mobprog.has_trigger(victim, "give"):
+            mobprog.give_trigger(victim, player, obj)
 
 
 def _obj_flags(tpl):
@@ -636,15 +733,18 @@ def _obj_flags(tpl):
 def do_inventory(player, args):
     """Display carried inventory with item counts (cf. 1stMud `do_inventory` in act_info.c)."""
     max_carry = can_carry_n(player)
-    chprintln(player, "{YYou are carrying {W%d/%d{Y items:{x" % (len(player["inv"]), max_carry))
+    # [PRIMESUD] output accumulated and sent as one unjoined list --
+    # batch-rendered by terminal.print_lines
+    out = ["{YYou are carrying {W%d/%d{Y items:{x" % (len(player["inv"]), max_carry)]
     if not player["inv"]:
+        chprintln(player, out)
         return
     counts = {}
     for obj in player["inv"]:
         v = obj["vnum"]
         counts[v] = counts.get(v, 0) + 1
-    from debug import DBG  # [PRIMESUD] debug vnum visibility toggle
-    show_vnums = "vnum" in DBG
+    # [PRIMESUD] obj vnum overlay under holylight (upstream imms use stat)
+    show_vnums = "holylight" in DBG
     for v, n in counts.items():
         tpl = ITEM_DEFS[v]
         flags = _obj_flags(tpl)
@@ -654,7 +754,8 @@ def do_inventory(player, args):
             name = "{r[{RTARGET{r] {x" + name
         if show_vnums:  # [PRIMESUD]
             name += " {D[" + str(v) + "]{x"
-        chprintln(player, "  {}{} x{}".format(flags, name, n) if n > 1 else "  {}{}".format(flags, name))
+        out.append("  {}{} x{}".format(flags, name, n) if n > 1 else "  {}{}".format(flags, name))
+    chprintln(player, out)
 
 
 _WEAR_MSG = {
@@ -716,8 +817,9 @@ def remove_obj(player, slot, fReplace):
     if item_extra_flags(obj, tpl).get("noremove"):
         chprintln(player, "You can't remove {}.".format(tpl["short_descr"]))
         return False
-    chprintln(player, "You stop using {}.".format(tpl["short_descr"]))
     unequip_char(player, slot)
+    act("$n stops using $p.", player, obj, None, TO_ROOM)
+    act("You stop using $p.", player, obj, None, TO_CHAR)
     return True
 
 
@@ -806,6 +908,25 @@ def wear_obj(player, obj, fReplace):
         if tpl.get("weight", 0) > wield_limit * 10:
             chprintln(player, "It is too heavy for you to wield.")
             return
+        # cf. 1stMud wear_obj wield-vs-shield two-hand check, act_obj.c:1631-1637
+        if (_get_size(player) < SIZE_RANK["large"]
+                and item_weapon_flags(obj, tpl).get("two_hands")
+                and player["equip"].get("shield") is not None):
+            chprintln(player, "You need two hands free for that weapon.")
+            return
+    elif slot == "shield":
+        # cf. 1stMud wear_obj shield-vs-dual-wield check, act_obj.c:1593-1597
+        if player["equip"].get("secondary") is not None:
+            chprintln(player, "You cannot use a shield while using 2 weapons.")
+            return
+        # cf. 1stMud wear_obj shield-vs-two-hand-weapon check, act_obj.c:1602-1608
+        wobj = player["equip"].get("wield")
+        if wobj is not None:
+            wtpl = ITEM_DEFS[wobj["vnum"]]
+            if (_get_size(player) < SIZE_RANK["large"]
+                    and item_weapon_flags(wobj, wtpl).get("two_hands")):
+                chprintln(player, "Your hands are tied up with your weapon!")
+                return
 
     chprintln(player, _WEAR_MSG[slot].format(tpl["short_descr"]))
     if _zap_anti_align(player, obj, tpl):
@@ -833,6 +954,8 @@ def do_wear(player, args):
     if not args:
         equippable = []
         for obj in player["inv"]:
+            if not can_see_obj(player, obj):  # cf. 1stMud get_obj_carry can_see_obj gate
+                continue
             tpl = ITEM_DEFS[obj["vnum"]]
             if tpl.get("type") == "light":
                 slot = "light"
@@ -862,9 +985,11 @@ def do_wear(player, args):
         return "wear " + tpl.get("keywords", tpl["short_descr"]).split()[0]
     if args[0] == "all":
         for obj in list(player["inv"]):
+            if not can_see_obj(player, obj):  # cf. 1stMud do_wear all loop, act_obj.c:1724
+                continue
             wear_obj(player, obj, False)
         return
-    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS)
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You do not have that item.")
         return
@@ -879,7 +1004,9 @@ def do_remove(player, args):
         args (list): Parsed command arguments; first token may be "all".
     """
     if not args:
-        worn = [(slot, obj) for slot, obj in player["equip"].items() if obj is not None]
+        # cf. 1stMud get_obj_wear can_see_obj gate: can't remove what you can't see
+        worn = [(slot, obj) for slot, obj in player["equip"].items()
+                if obj is not None and can_see_obj(player, obj)]
         if not worn:
             chprintln(player, "You aren't wearing anything.")
             return
@@ -898,12 +1025,14 @@ def do_remove(player, args):
         return "remove " + ITEM_DEFS[obj["vnum"]].get("keywords", ITEM_DEFS[obj["vnum"]]["short_descr"]).split()[0]
     if args[0] == "all":
         for slot, obj in list(player["equip"].items()):
-            if obj is not None:
+            if obj is not None and can_see_obj(player, obj):  # cf. 1stMud do_remove all loop, act_obj.c:1763
                 remove_obj(player, slot, True)
         return
     target = " ".join(args)
+    # cf. 1stMud get_obj_wear (handler.c:2052) -- worn lookup gates on can_see_obj
     for slot, obj in player["equip"].items():
-        if obj is not None and is_name(target, ITEM_DEFS[obj["vnum"]].get("keywords", "")):
+        if (obj is not None and can_see_obj(player, obj)
+                and is_name(target, ITEM_DEFS[obj["vnum"]].get("keywords", ""))):
             remove_obj(player, slot, True)
             return
     chprintln(player, "You do not have that item.")
@@ -916,9 +1045,11 @@ def do_equipment(player, args):
         player (dict): Player state dict.
         args (list): Parsed command arguments (unused).
     """
-    chprintln(player, "You are wearing:")
-    from debug import DBG  # [PRIMESUD] debug vnum visibility toggle
-    show_vnums = "vnum" in DBG
+    # [PRIMESUD] output accumulated and sent as one unjoined list --
+    # batch-rendered by terminal.print_lines
+    out = ["You are wearing:"]
+    # [PRIMESUD] obj vnum overlay under holylight (upstream imms use stat)
+    show_vnums = "holylight" in DBG
     for slot, label in WEAR_LABELS:
         obj = player["equip"].get(slot)
         if obj is not None:
@@ -926,9 +1057,10 @@ def do_equipment(player, args):
             line = label + _obj_flags(tpl) + "{Y" + tpl["short_descr"] + "{x"
             if show_vnums:  # [PRIMESUD]
                 line += " {D[" + str(obj["vnum"]) + "]{x"
-            chprintln(player, line)
+            out.append(line)
         else:
-            chprintln(player, label + "nothing")
+            out.append(label + "nothing")
+    chprintln(player, out)
 
 
 def do_steal(player, args):
@@ -988,7 +1120,7 @@ def do_steal(player, args):
         if not is_awake(victim):
             victim["pos"] = "standing"  # cf. do_wake on victim
         if is_awake(victim):
-            do_yell(victim, yells[randint(0, 3)].split())
+            do_yell(victim, yells[randint(0, 3)])
         check_improve(player, GSN_STEAL, False, 2)
         multi_hit(victim, player, TYPE_UNDEFINED)
         return
@@ -1013,7 +1145,8 @@ def do_steal(player, args):
         check_improve(player, GSN_STEAL, True, 2)
         return
 
-    obj = get_obj_list(what, victim.get("inv", []), ITEM_DEFS)
+    # cf. 1stMud act_obj.c:2324 -- thief is the viewer, not the victim
+    obj = get_obj_list(what, victim.get("inv", []), ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You can't find it.")
         return
@@ -1052,7 +1185,7 @@ def do_compare(player, args):
         return
 
     carried = player["inv"] + [o for o in player["equip"].values() if o is not None]
-    obj1 = get_obj_list(args[0], carried, ITEM_DEFS)
+    obj1 = get_obj_list(args[0], carried, ITEM_DEFS, player)
     if obj1 is None:
         chprintln(player, "You do not have that item.")
         return
@@ -1074,7 +1207,7 @@ def do_compare(player, args):
             chprintln(player, "You aren't wearing anything comparable.")
             return
     else:
-        obj2 = get_obj_list(args[1], carried, ITEM_DEFS)
+        obj2 = get_obj_list(args[1], carried, ITEM_DEFS, player)
         if obj2 is None:
             chprintln(player, "You do not have that item.")
             return
@@ -1122,7 +1255,7 @@ def do_second(player, args):
     if not args:
         chprintln(player, "Wear which weapon in your off-hand?")
         return
-    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS)
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You have no such thing in your backpack.")
         return
@@ -1158,7 +1291,7 @@ def do_quaff(player, args):
     if not args:
         chprintln(player, "Quaff what?")
         return
-    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS)
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You do not have that potion.")
         return
@@ -1179,7 +1312,8 @@ def do_quaff(player, args):
 def do_envenom(player, args):
     """Coat a weapon or food/drink with poison (cf. 1stMud do_envenom in act_obj.c).
     [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
-    instance type override added and re-verified 06/07/2026]
+    instance type override added and re-verified 06/07/2026; get_obj_list
+    can_see_obj viewer gate added and re-verified 10/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -1191,7 +1325,7 @@ def do_envenom(player, args):
 
     # 1stMud: get_obj_list(ch, argument, ch->carrying_first) -- carried + worn
     equipped = [o for o in player["equip"].values() if o is not None]
-    obj = get_obj_list(" ".join(args), player["inv"] + equipped, ITEM_DEFS)
+    obj = get_obj_list(" ".join(args), player["inv"] + equipped, ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You don't have that item.")
         return
@@ -1268,7 +1402,7 @@ def do_eat(player, args):
     if not args:
         chprintln(player, "Eat what?")
         return
-    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS)
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You do not have that item.")
         return
@@ -1303,34 +1437,6 @@ def do_eat(player, args):
                                         None, 0, "poison"))
 
 
-def _liquid_left(obj, tpl):
-    """Return current liquid units for a drink object. [PRIMESUD]"""
-    if isinstance(obj, dict) and "liquid_left" in obj:
-        return obj["liquid_left"]
-    return tpl.get("liquid_left", 0)
-
-
-def _liquid_total(obj, tpl):
-    """Return liquid capacity for a drink object. [PRIMESUD]"""
-    if isinstance(obj, dict) and "liquid_total" in obj:
-        return obj["liquid_total"]
-    return tpl.get("liquid_total", 0)
-
-
-def _liquid_type(obj, tpl):
-    """Return current liquid type for a drink object. [PRIMESUD]"""
-    if isinstance(obj, dict) and "liquid_type" in obj:
-        return obj["liquid_type"]
-    return tpl.get("liquid_type", "water")
-
-
-def _set_liquid(obj, tpl, left, liq):
-    """Persist mutable liquid state onto an item instance. [PRIMESUD]"""
-    obj["liquid_total"] = _liquid_total(obj, tpl)
-    obj["liquid_left"] = left
-    obj["liquid_type"] = liq
-
-
 def _is_poisoned_drink(obj, tpl):
     """Return True if drink object/template is poisoned. [PRIMESUD]
 
@@ -1351,15 +1457,6 @@ def _is_poisoned_food(obj, tpl):
     if isinstance(obj, dict) and "poisoned" in obj:
         return obj["poisoned"]
     return tpl.get("poisoned")
-
-
-# Sip sizes for liquids used in area data, from 1stMud liq_table
-# liq_affect[4] (cf. const.c); unlisted liquids fall back to water.
-_LIQ_SIP = {
-    "water": 16, "beer": 12, "red wine": 5, "ale": 12, "dark ale": 12,
-    "whisky": 2, "firebreather": 2, "local specialty": 2, "milk": 12,
-    "tea": 6, "coffee": 6, "blood": 6,
-}
 
 
 def _first_room_fountain(player):
@@ -1390,13 +1487,13 @@ def do_drink(player, args):
     otype = tpl.get("type")
     if otype == "fountain":
         liq = _liquid_type(obj, tpl)
-        amount = _LIQ_SIP.get(liq, _LIQ_SIP["water"]) * 3
+        amount = _liq_sip(liq) * 3
     elif otype == "drink":
         if _liquid_left(obj, tpl) <= 0:
             chprintln(player, "It is already empty.")
             return
         liq = _liquid_type(obj, tpl)
-        amount = min(_LIQ_SIP.get(liq, _LIQ_SIP["water"]), _liquid_left(obj, tpl))
+        amount = min(_liq_sip(liq), _liquid_left(obj, tpl))
     else:
         chprintln(player, "You can't drink from that.")
         return
@@ -1425,7 +1522,7 @@ def do_fill(player, args):
     if not args:
         chprintln(player, "Fill what?")
         return
-    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS)
+    obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You do not have that item.")
         return
@@ -1465,7 +1562,7 @@ def do_pour(player, args):
     if len(args) < 2:
         chprintln(player, "Pour what into what?")
         return
-    out = get_obj_list(args[0], player["inv"], ITEM_DEFS)
+    out = get_obj_list(args[0], player["inv"], ITEM_DEFS, player)
     if out is None:
         chprintln(player, "You don't have that item.")
         return
@@ -1546,7 +1643,7 @@ def do_recite(player, args):
     """Recite a scroll (cf. 1stMud do_recite in act_obj.c)."""
     arg1 = args[0] if args else ""
     arg2 = " ".join(args[1:]) if len(args) > 1 else ""
-    scroll = get_obj_list(arg1, player["inv"], ITEM_DEFS)
+    scroll = get_obj_list(arg1, player["inv"], ITEM_DEFS, player)
     if scroll is None:
         chprintln(player, "You do not have that scroll.")
         return
@@ -1593,7 +1690,6 @@ def do_brandish(player, args):
     _level, payload = parsed
     sn_target = None
     if payload:
-        from magic import _skill_lookup
         sn_target = _skill_lookup(payload[0])
     WaitState(player, 2 * PULSE_VIOLENCE)
     if staff.get("charges", tpl.get("charges", tpl.get("max_charges", 0))) > 0:
@@ -1785,11 +1881,14 @@ def do_sacrifice(player, args):
     arg = " ".join(args)
 
     if arg == "all":
+        # cf. 1stMud do_sacrifice all (act_obj.c:1811) -- recurses per obj name,
+        # so unseen objects fail the gated get_obj_list and are skipped
         for obj in list(rs["items"]):
-            _sacrifice_one(player, obj, rs)
+            if can_see_obj(player, obj):
+                _sacrifice_one(player, obj, rs)
         return
 
-    obj = get_obj_list(arg, rs["items"], ITEM_DEFS)
+    obj = get_obj_list(arg, rs["items"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You can't find it.")
         return

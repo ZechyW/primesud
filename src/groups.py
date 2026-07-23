@@ -12,8 +12,13 @@ characters never exceed the flat exp rate, so it has no observable effect
 single-player. group_add's deduct flag is dropped with it.
 """
 
-from classes import CLASS_TABLE, char_classes
-from skills_table import SKILLS
+from classes import CLASS_TABLE, char_classes, class_lookup, class_name
+from colors import draw_line
+from config import MAX_MORTAL_LEVEL
+from handler import chprintln
+from pager import tpage
+from skill_utils import skill_level
+from skills_table import SKILL_TABLE, SKILLS
 
 # Ported verbatim from 1stMud data/groups.dat. Rating 6-tuple order matches
 # CLASS_TABLE (mage, cleric, thief, warrior, paladin, ranger); -1 = not
@@ -180,3 +185,204 @@ def add_default_groups(player):
     """
     for cl in char_classes(player):
         gn_add(player, group_lookup(CLASS_TABLE[cl]["default_group"]))
+
+
+# -- do_grlist (cf. 1stMud do_grlist in skills.c) ----------------------------
+
+_GRLIST_COLS = 4
+_GRLIST_COL_W = 16  # [PRIMESUD] 4 x 16 = 64 exactly fits the Prime's 64-col
+                     # screen -- upstream's set_cols(Cd, ch, 4, COLS_CHAR, ch)
+                     # hardcodes 4 columns too, so the grid ports unchanged;
+                     # the longest name ("paladin default", 15 chars) fits.
+
+
+def _group_name_rows(names):
+    """Chunk group names into 4-wide padded columns for tpage. [PRIMESUD helper]"""
+    rows = []
+    for i in range(0, len(names), _GRLIST_COLS):
+        row = names[i:i + _GRLIST_COLS]
+        rows.append("{W" + "".join("%-*s" % (_GRLIST_COL_W, n) for n in row) + "{x")
+    return rows
+
+
+def _skill_lookup_prefix(name):
+    """Skill/spell sn for a (prefix of a) skill name, or -1
+    (cf. 1stMud skill_lookup in magic.c: str_prefix match).
+
+    [PRIMESUD] magic._skill_lookup is exact-match only (its callers all pass
+    full internal names -- see its docstring); do_grlist needs upstream's
+    prefix match against player-typed text, so it is reimplemented here
+    rather than widened there.
+
+    Args:
+        name (str): Player-typed word, already lowercased.
+
+    Returns:
+        int: Skill sn, or -1 if no skill name starts with *name*.
+    """
+    if not name:
+        return -1
+    for sn, sk in SKILL_TABLE:
+        if sk["name"].startswith(name):
+            return sn
+    return -1
+
+
+def do_slist(player, args):
+    """List skills by class and level, or one skill across all classes
+    (cf. 1stMud do_slist in skills.c).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Skill/spell or class name.
+    """
+    argument = " ".join(args)
+    cl = class_lookup(argument)
+    if cl != -1:
+        # Single-pass level buckets like upstream's skill_list[level].
+        buckets = {}
+        for sn, sk in SKILL_TABLE:
+            level = sk["skill_level"][cl]
+            if level <= MAX_MORTAL_LEVEL:
+                buckets.setdefault(level, []).append(sk["name"])
+        lines = []
+        for level in range(MAX_MORTAL_LEVEL + 1):
+            names = buckets.get(level, [])
+            for i in range(0, len(names), 2):
+                prefix = "{cLevel {W%3d{c: " % level if i == 0 else "{x           "
+                lines.append(prefix + "".join("{c%-18s      " % name
+                                               for name in names[i:i + 2]) + "{x")
+        tpage(lines)
+        return
+
+    sn = _skill_lookup_prefix(argument)
+    if sn != -1:
+        fields = []
+        for cl in range(len(CLASS_TABLE)):
+            level = SKILLS[sn]["skill_level"][cl]
+            fields.append("{W%3s: %3s{c  " %
+                          (class_name(player, cl)[:3],
+                           "n/a" if level > MAX_MORTAL_LEVEL else "%03d" % level))
+        name = SKILLS[sn]["name"].capitalize()
+        # [PRIMESUD] Upstream's six-class line is wider than the 64-col screen.
+        chprintln(player, "{c" + name + ": [ " + "".join(fields[:3]) + "{x")
+        chprintln(player, "{c" + " " * (len(name) + 4) +
+                  "".join(fields[3:]) + "]{x")
+        return
+
+    chprintln(player, "Syntax: slist <skill>")
+    chprintln(player, "        slist <spell>")
+    chprintln(player, "        slist <class>")
+
+
+def _grlist_known(player):
+    """do_grlist with no argument: groups the player currently knows."""
+    names = [GROUP_TABLE[gn][0] for gn in range(len(GROUP_TABLE))
+             if gn in player.get("groups", [])]
+    if not names:
+        chprintln(player, "{cYou know no groups.{x")
+        return
+    lines = ["{cGroups you currently have:", draw_line()]
+    lines.extend(_group_name_rows(names))
+    tpage(lines)
+
+
+def _grlist_all(player):
+    """do_grlist "all": every group available to the player's classes.
+
+    [PRIMESUD] Upstream also lists everything for IsImmortal(ch) -- no
+    immortal player levels (single-player), so only group_rating gates.
+    """
+    names = [GROUP_TABLE[gn][0] for gn in range(len(GROUP_TABLE))
+             if group_rating(player, gn) > 0]
+    if not names:
+        chprintln(player, "{cNo groups are available to you.{x")
+        return
+    lines = ["{cGroups available to you:", draw_line()]
+    lines.extend(_group_name_rows(names))
+    tpage(lines)
+
+
+def _grlist_class(player, cl):
+    """do_grlist <class>: groups available to one class."""
+    cname = CLASS_TABLE[cl]["names"][0]
+    names = [GROUP_TABLE[gn][0] for gn in range(len(GROUP_TABLE))
+             if GROUP_TABLE[gn][1][cl] > 0]
+    if not names:
+        chprintln(player, "{cThere are no groups available to the {W" + cname + "{c class.{x")
+        return
+    lines = ["{cGroups available for the {W" + cname + "{c class:", draw_line()]
+    lines.extend(_group_name_rows(names))
+    tpage(lines)
+
+
+def _grlist_group_spells(player, gn):
+    """do_grlist <group>: spells/skills the player can use within one group."""
+    rows = []
+    for sn in GROUP_SKILLS[gn]:
+        lvl = skill_level(player, sn)
+        if lvl <= MAX_MORTAL_LEVEL:
+            rows.append("{c%-5d {W%s{x" % (lvl, SKILLS[sn]["name"]))
+    if not rows:
+        chprintln(player, "{cNo spells available in the {W" + GROUP_TABLE[gn][0] + "{c group.{x")
+        return
+    lines = ["{cSpells available in {W" + GROUP_TABLE[gn][0] + "{c:{x",
+             "{cLevel {WSpell{x", "{c" + draw_line() + "{x"]
+    lines.extend(rows)
+    tpage(lines)
+
+
+def _grlist_skill_groups(player, sn):
+    """do_grlist <skill>: groups that directly carry a given skill."""
+    sk_name = SKILLS[sn]["name"]
+    names = [GROUP_TABLE[gn][0] for gn in range(len(GROUP_TABLE))
+             if sn in GROUP_SKILLS[gn]]
+    if not names:
+        chprintln(player, "{W" + sk_name + "{c can't be found in any groups.{x")
+        return
+    lines = ["{W" + sk_name + "{c is in the following groups:{x",
+             "{c" + draw_line() + "{x"]
+    lines.extend(_group_name_rows(names))
+    tpage(lines)
+
+
+def do_grlist(player, args):
+    """List skill groups: known, available, by class, by group, or by skill
+    (cf. 1stMud do_grlist in skills.c).
+
+    [PRIMESUD] The creation-point economy is not ported (see module
+    docstring), so the no-argument branch's "Creation points: %d" trailer is
+    dropped. Long listings go through the tpage pager (upstream sendpage /
+    Column buffering) in a 4 x 16 grid (see _GRLIST_COLS) sized to the
+    Prime's 64-col screen.
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Sub-command words: none, "all", or a class/group/skill
+            name (possibly multi-word, e.g. "rom basics").
+    """
+    argument = " ".join(args)
+
+    if not argument:
+        _grlist_known(player)
+        return
+    if argument == "all":
+        _grlist_all(player)
+        return
+    cl = class_lookup(argument)
+    if cl != -1:
+        _grlist_class(player, cl)
+        return
+    gn = group_lookup(argument)
+    if gn != -1:
+        _grlist_group_spells(player, gn)
+        return
+    sn = _skill_lookup_prefix(argument)
+    if sn != -1:
+        _grlist_skill_groups(player, sn)
+        return
+    chprintln(player, "Syntax: grlist         -list your current groups")
+    chprintln(player, "        grlist all     -list all available groups")
+    chprintln(player, "        grlist <group> -list all spells in a group")
+    chprintln(player, "        grlist <skill> -list all groups a skill is in")
+    chprintln(player, "        grlist <class> -list all groups available to a class")

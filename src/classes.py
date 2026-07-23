@@ -7,7 +7,7 @@ NPCs have no "classes" key.
 """
 
 from config import (LEVEL_HERO, LEVEL_IMMORTAL, MAX_LEVEL, MAX_MORTAL_LEVEL,
-                     MAX_REMORT)
+                     MAX_REMORT, SKILL_ADEPT)
 from races import RACE_TABLE, race_lookup
 from skills_table import SKILLS
 from urandom import randint
@@ -26,7 +26,8 @@ CLASS_RANGER  = 5
 # "weapon" = starting weapon type ([PRIMESUD] type string; 1stMud stores the
 #            school item vnum -- 3700 mace / 3701 dagger / 3702 sword).
 # Guild membership lives on rooms as a "guild" field (cf. 1stMud room->guild
-# from area-file G fields; patched into area data by patch_1stmud_deltas.py).
+# from area-file G room trailers; areas/midgaard.are, converted by
+# are_to_primesud.py).
 # "summary" = [PRIMESUD] one-line blurb for the chargen picker.
 # "base_group"/"default_group" = groups.py names (cf. classes.dat fields);
 #                 granted at creation/remort by add_base/default_groups.
@@ -279,6 +280,15 @@ def get_hp_gain(ch):
     return randint(gain, gain + count)
 
 
+def skill_adept_cap(ch):
+    """Practice ceiling: SKILL_ADEPT + 5 per prestige tier, max 95. [PRIMESUD]
+
+    Tier perk (see finish_tier_reset in training.py); use-based improvement
+    (check_improve) still runs to 100 independently of this cap.
+    """
+    return min(95, SKILL_ADEPT + 5 * ch.get("tier", 0))
+
+
 def lvl_bonus(ch):
     """Remort progression multiplier (cf. 1stMud lvl_bonus in multiclass.c).
 
@@ -300,6 +310,25 @@ def class_name(ch, cl):
     return CLASS_TABLE[cl]["names"][max(0, tier)]
 
 
+def class_lookup(name):
+    """Class index for a (prefix of a) class's base name, or -1
+    (cf. 1stMud class_lookup in handler.c: str_prefix match on name[0]).
+
+    Args:
+        name (str): Player-typed word, already lowercased.
+
+    Returns:
+        int: Class index (CLASS_MAGE etc.), or -1 if no class base name
+            starts with *name*.
+    """
+    if not name:
+        return -1
+    for cl in range(len(CLASS_TABLE)):
+        if CLASS_TABLE[cl]["names"][0].lower().startswith(name):
+            return cl
+    return -1
+
+
 def class_who(ch):
     """Short who-list class tag (cf. 1stMud class_who in multiclass.c).
 
@@ -313,8 +342,14 @@ def class_who(ch):
         return "Mob"
     name = class_name(ch, prime_class(ch))
     if len(classes) > 1:
-        return name[:2] + "+" + str(len(classes) - 1)
-    return name[:4]
+        name = name[:2] + "+" + str(len(classes) - 1)
+    else:
+        name = name[:4]
+    # [PRIMESUD] prestige tier suffix (see finish_tier_reset in training.py)
+    tier = ch.get("tier", 0)
+    if tier:
+        name = name + "*" + str(tier)
+    return name
 
 
 def class_long(ch):

@@ -1,5 +1,8 @@
 """Mutable world catalog and state loaded from area data files."""
 
+import terminal
+import config
+
 # Well-known VNUMs referenced by game logic (cf. area_limbo, area_school).
 # Names match 1stMud's vnums.h (OBJ_VNUM_*) for easy comparison against the
 # original sources. These are literal constants so game modules can import
@@ -17,6 +20,10 @@ OBJ_VNUM_LIGHT_BALL     = 21
 OBJ_VNUM_SPRING         = 22
 OBJ_VNUM_DISC           = 23
 OBJ_VNUM_PORTAL         = 25
+# [PRIMESUD] 1stMud uses vnum 1001 (vnums.h); the rose object's canonical
+# vnum sits outside limbo's 1-99 range, so it is remapped here instead of
+# added at 1001 (which would spill into a different area's vnum span).
+OBJ_VNUM_ROSE           = 26
 # -- area_school items --
 OBJ_VNUM_SCHOOL_MACE    = 3700
 OBJ_VNUM_SCHOOL_DAGGER  = 3701
@@ -36,24 +43,54 @@ OBJ_VNUM_SCHOOL_POLEARM = 3722
 # Ascending size order: small areas load while heap is fresh (lower ms/KB),
 # big areas load last where heap pressure is unavoidable anyway.
 _AREA_FILES = [
+    ("area_pestates.txt", "pestates", "Player Estates", 17700, 17899),  # 4036 bytes
     ("area_ofcol.txt", "ofcol", "Ofcol", 5500, 5599),                 # 7084 bytes
     ("area_limbo.txt", "limbo", "Limbo", 1, 99),                      # 9466 bytes
     ("area_quest.txt", "quest", "Quest", 200, 249),                   # 12528 bytes
     ("area_trollden.txt", "trollden", "Troll Den", 2800, 2899),       # 19073 bytes
+    ("area_redferne.txt", "redferne", "Redferne's", 7900, 7999),      # 20405 bytes
+    ("area_daycare.txt", "daycare", "Day Care", 6600, 6699),          # 23024 bytes
+    ("area_air.txt", "air", "In the Air", 1000, 1099),                # 24083 bytes
     ("area_mobfact.txt", "mobfact", "Mob Factory", 9400, 9499),       # 24889 bytes
     ("area_immort.txt", "immort", "Valhalla", 1200, 1299),            # 26758 bytes
+    ("area_smurf.txt", "smurf", "Smurfville", 100, 199),              # 32221 bytes
     ("area_grave.txt", "grave", "Graveyard", 3600, 3699),             # 32513 bytes
     ("area_marsh.txt", "marsh", "Marsh", 8300, 8399),                 # 35321 bytes
+    ("area_dream.txt", "dream", "Machine Dreams", 8600, 8699),        # 35713 bytes
+    ("area_mega1.txt", "mega1", "Mega City One", 8000, 8099),         # 39140 bytes
+    ("area_grove.txt", "grove", "Holy Grove", 8900, 8999),            # 41050 bytes
+    ("area_drow.txt", "drow", "Drow City", 5100, 5199),               # 42409 bytes
+    ("area_midennir.txt", "midennir", "Miden'nir", 3500, 3599),       # 43104 bytes
     ("area_arachnos.txt", "arachnos", "Arachnos", 6200, 6399),        # 44543 bytes
+    ("area_nirvana.txt", "nirvana", "Nirvana", 9000, 9099),           # 45281 bytes
     ("area_plains.txt", "plains", "Plains", 300, 399),                # 45308 bytes
+    ("area_dwarven.txt", "dwarven", "Dwarven Kingdom", 6500, 6599),   # 49806 bytes
+    ("area_dylan.txt", "dylan", "Dylan's Area", 9100, 9199),          # 51484 bytes
+    ("area_eastern.txt", "eastern", "Sands of Sorrow", 5000, 5099),   # 52160 bytes
+    ("area_hood.txt", "hood", "Gangland", 2100, 2199),                # 55546 bytes
+    ("area_catacomb.txt", "catacomb", "Catacombs", 2000, 2099),       # 60170 bytes
+    ("area_draconia.txt", "draconia", "Dragon Tower", 2200, 2299),    # 64023 bytes
+    ("area_olympus.txt", "olympus", "Olympus", 900, 999),             # 65354 bytes
+    ("area_wyvern.txt", "wyvern", "Wyvern's Tower", 1600, 1799),      # 67450 bytes
+    ("area_valley.txt", "valley", "Valley of the Elves", 7800, 7899), # 70719 bytes
     ("area_chapel.txt", "chapel", "Chapel", 3400, 3499),              # 71267 bytes
+    ("area_thalos.txt", "thalos", "Thalos", 5200, 5299),              # 72345 bytes
+    ("area_gnome.txt", "gnome", "Gnome Village", 1500, 1599),         # 74271 bytes
+    ("area_galaxy.txt", "galaxy", "Galaxy", 9300, 9399),              # 74643 bytes
     ("area_school.txt", "mud_school", "Mud School", 3700, 3799),      # 76023 bytes
     ("area_shire.txt", "shire", "Shire", 1100, 1199),                 # 79009 bytes
+    ("area_canyon.txt", "canyon", "Elemental Canyon", 9200, 9299),    # 79432 bytes
+    ("area_pyramid.txt", "pyramid", "Pyramid", 8700, 8799),           # 85380 bytes
     ("area_haon.txt", "haon", "Haon Dor", 6000, 6199),                # 85969 bytes
+    ("area_chess2.txt", "chess2", "Chessboard of Midgaard", 4200, 4299), # 90301 bytes
     ("area_moria.txt", "moria", "Moria", 3900, 4199),                 # 98773 bytes
+    ("area_mirror.txt", "mirror", "Old Thalos", 5300, 5399),          # 110420 bytes
+    ("area_astral.txt", "astral", "Astral Plane", 7700, 7799),        # 112453 bytes
     ("area_ofcol2.txt", "ofcol2", "New Ofcol", 600, 699),             # 126239 bytes
+    ("area_mahntor.txt", "mahntor", "Mahn-Tor", 2300, 2399),          # 140720 bytes
     ("area_sewer.txt", "sewer", "Sewers", 7000, 7499),                # 158284 bytes
     ("area_tohell.txt", "tohell", "Hell", 10400, 10599),              # 195277 bytes
+    ("area_hitower.txt", "hitower", "High Tower", 1300, 1499),        # 204451 bytes
     ("area_midgaard.txt", "midgaard", "Midgaard", 3000, 3399),        # 259207 bytes
     ("area_newthalos.txt", "newthalos", "New Thalos", 9500, 9799),    # 265007 bytes
 ]
@@ -63,6 +100,7 @@ _AREA_FILES = [
 # Keep in sync with the area files -- tools/gen_area_adj.py cross-checks
 # and exits nonzero on drift. [PRIMESUD]
 AREA_LEVELS = {
+    "pestates":   (1, 50),
     "ofcol":      (1, 50),
     "limbo":      (1, 60),
     "quest":      (1, 60),
@@ -83,6 +121,35 @@ AREA_LEVELS = {
     "sewer":      (5, 30),
     "tohell":     (32, 51),
     "newthalos":  (10, 35),
+    "air":        (5, 10),
+    "astral":     (10, 35),
+    "canyon":     (5, 30),
+    "catacomb":   (10, 20),
+    "daycare":    (1, 5),
+    "draconia":   (5, 30),
+    "dream":      (1, 5),
+    "drow":       (15, 25),
+    "dwarven":    (10, 25),
+    "dylan":      (15, 25),
+    "eastern":    (10, 20),
+    "galaxy":     (20, 30),
+    "gnome":      (5, 15),
+    "grove":      (5, 20),
+    "hitower":    (10, 30),
+    "hood":       (5, 15),
+    "mahntor":    (5, 35),
+    "mega1":      (5, 35),
+    "midennir":   (5, 15),
+    "mirror":     (1, 30),
+    "nirvana":    (30, 35),
+    "olympus":    (5, 50),
+    "pyramid":    (5, 50),
+    "chess2":     (10, 35),
+    "redferne":   (20, 30),
+    "smurf":      (1, 10),
+    "thalos":     (10, 25),
+    "valley":     (5, 20),
+    "wyvern":     (5, 30),
 }
 
 # -- BEGIN GENERATED: tools/gen_area_adj.py (do not hand-edit) --
@@ -98,29 +165,60 @@ AREA_LEVELS = {
 # = sum of values. Regenerate with: python tools/gen_area_adj.py
 # [PRIMESUD]
 AREA_BUILDERS = {
+    "pestates":   "1stMud",
     "ofcol":      "Alfa",
     "limbo":      "Diku",
     "quest":      "1stMud",
     "trollden":   "Merc",
+    "redferne":   "Diku",
+    "daycare":    "Sandman",
+    "air":        "Copper",
     "mobfact":    "PinkF",
     "immort":     "ROM",
+    "smurf":      "Generic",
     "grave":      "Alfa",
     "marsh":      "Generic",
+    "dream":      "Furey",
+    "mega1":      "Glop",
+    "grove":      "Alfa",
+    "drow":       "Drkside",
+    "midennir":   "Copper",
     "arachnos":   "Mahatma",
+    "nirvana":    "Fstall",
     "plains":     "Copper",
+    "dwarven":    "Anon",
+    "dylan":      "Dylan",
+    "eastern":    "Anon",
+    "hood":       "Raff",
+    "catacomb":   "Raff",
+    "draconia":   "Wench",
+    "olympus":    "Generic",
+    "wyvern":     "Tyrst",
+    "valley":     "Hatchet",
     "chapel":     "Copper",
+    "thalos":     "Drkside",
+    "gnome":      "Vougon",
+    "galaxy":     "Doctor",
     "mud_school": "Hatchet",
     "shire":      "Poohb",
+    "canyon":     "Raff",
+    "pyramid":    "Andersen",
     "haon":       "Diku",
+    "chess2":     "Exxon",
     "moria":      "Alfa",
+    "mirror":     "Kahn",
+    "astral":     "Andersen",
     "ofcol2":     "Hatchet",
+    "mahntor":    "Chris",
     "sewer":      "Diku",
     "tohell":     "Strahd",
+    "hitower":    "Skylar",
     "midgaard":   "Diku",
     "newthalos":  "Conner",
 }
 
 AREA_LVL_COMMENTS = {
+    "pestates": "All",
     "ofcol":    "All",
     "limbo":    "None",
     "quest":    "None",
@@ -128,47 +226,107 @@ AREA_LVL_COMMENTS = {
 }
 
 _AREA_ADJ = {
+    "pestates":   ("midgaard",),
     "ofcol":      ("ofcol2", "plains"),
     "limbo":      ("midgaard",),
     "quest":      ("midgaard",),
     "trollden":   ("haon",),
+    "redferne":   ("dylan", "midgaard"),
+    "daycare":    ("dwarven",),
+    "air":        ("astral", "midgaard"),
     "mobfact":    ("midgaard",),
     "immort":     ("limbo", "midgaard"),
+    "smurf":      ("midennir",),
     "grave":      ("chapel", "midgaard"),
     "marsh":      ("haon",),
+    "dream":      ("midgaard",),
+    "mega1":      ("eastern",),
+    "grove":      ("midennir", "mirror", "nirvana"),
+    "drow":       ("thalos",),
+    "midennir":   ("gnome", "grove", "midgaard", "moria", "newthalos", "smurf", "thalos"),
     "arachnos":   ("haon",),
-    "plains":     ("moria", "ofcol"),
+    "nirvana":    ("grove",),
+    "plains":     ("moria", "ofcol", "olympus", "valley"),
+    "dwarven":    ("catacomb", "daycare", "moria"),
+    "dylan":      ("midgaard", "redferne"),
+    "eastern":    ("mega1", "midgaard", "pyramid"),
+    "hood":       ("midgaard",),
+    "catacomb":   ("dwarven",),
+    "draconia":   ("hitower",),
+    "olympus":    ("plains",),
+    "wyvern":     ("thalos",),
+    "valley":     ("plains",),
     "chapel":     ("grave", "tohell"),
+    "thalos":     ("canyon", "drow", "mahntor", "midennir", "wyvern"),
+    "gnome":      ("midennir",),
+    "galaxy":     ("hitower", "thalos"),
     "mud_school": ("midgaard",),
     "shire":      ("haon", "midgaard"),
-    "haon":       ("arachnos", "marsh", "midgaard", "newthalos", "shire", "trollden"),
-    "moria":      ("midgaard", "plains", "sewer"),
+    "canyon":     ("thalos",),
+    "pyramid":    ("eastern",),
+    "haon":       ("arachnos", "hitower", "marsh", "midgaard", "newthalos", "shire", "trollden"),
+    "chess2":     ("midgaard",),
+    "moria":      ("dwarven", "midennir", "midgaard", "plains", "sewer"),
+    "mirror":     ("grove",),
+    "astral":     ("air",),
     "ofcol2":     ("ofcol",),
+    "mahntor":    ("thalos",),
     "sewer":      ("midgaard",),
     "tohell":     ("chapel",),
-    "midgaard":   ("grave", "haon", "immort", "limbo", "mobfact", "moria", "mud_school", "newthalos", "quest", "sewer"),
-    "newthalos":  ("haon", "midgaard"),
+    "hitower":    ("chapel", "draconia", "drow", "dylan", "galaxy", "haon", "midgaard", "olympus", "sewer"),
+    "midgaard":   ("air", "chess2", "dream", "eastern", "grave", "haon", "hood", "immort", "limbo", "midennir", "mobfact", "moria", "mud_school", "newthalos", "pestates", "quest", "redferne", "sewer"),
+    "newthalos":  ("haon", "midennir", "midgaard"),
 }
 
 AREA_ROOM_COUNTS = {
+    "pestates":   3,
     "ofcol":      8,
     "limbo":      3,
     "quest":      3,
     "trollden":   5,
+    "redferne":   17,
+    "daycare":    19,
+    "air":        40,
     "mobfact":    25,
     "immort":     22,
+    "smurf":      29,
     "grave":      33,
     "marsh":      18,
+    "dream":      36,
+    "mega1":      28,
+    "grove":      22,
+    "drow":       51,
+    "midennir":   52,
     "arachnos":   56,
+    "nirvana":    60,
     "plains":     44,
+    "dwarven":    51,
+    "dylan":      88,
+    "eastern":    47,
+    "hood":       70,
+    "catacomb":   69,
+    "draconia":   44,
+    "olympus":    50,
+    "wyvern":     61,
+    "valley":     84,
     "chapel":     67,
+    "thalos":     81,
+    "gnome":      89,
+    "galaxy":     61,
     "mud_school": 59,
     "shire":      58,
+    "canyon":     55,
+    "pyramid":    60,
     "haon":       71,
+    "chess2":     67,
     "moria":      121,
+    "mirror":     86,
+    "astral":     80,
     "ofcol2":     100,
+    "mahntor":    100,
     "sewer":      177,
     "tohell":     141,
+    "hitower":    183,
     "midgaard":   143,
     "newthalos":  257,
 }
@@ -181,9 +339,17 @@ _TAG_TO_NAME = {}
 _VNUM_RANGES = []
 _pending_mob_saves = {}    # {tpl_vnum: [room_vnum, ...]} from save data
 _pending_room_items = {}   # {rvnum: "raw|token|string"} from save data
+mob_stats = {}             # {tpl_vnum: [kills, deaths]} (cf. CharIndex)
+area_stats = {}            # {area_tag: [kills, deaths]} (cf. AreaData)
+share_value = 100          # cf. 1stMud mud_info.share_value
 _reset_queue = []          # iterative drain prevents stack overflow
 _draining = False
 _LOADING_ALL = False
+# -- Far-area eviction state (see maybe_evict) [PRIMESUD] -----------------------
+_PINNED = ("limbo",)       # corpse/coin/portal templates spawn on every kill
+_player_room = None        # maybe_evict fast path: room unchanged -> no work
+_area_seq = {}             # tag -> visit counter (LRU eviction order)
+_seq_counter = 0
 
 
 class LazyDict:
@@ -295,7 +461,6 @@ def _loading_notice(tag):
     if _LOADING_ALL:
         return
     try:
-        import terminal
         if terminal.tr is not None:
             terminal.tprint("{D[Loading area: " + _TAG_TO_NAME.get(tag, tag) + "]{x")
     except Exception:
@@ -310,13 +475,19 @@ def _load_area(tag):
     """
     global _draining
     _loading_notice(tag)
+    # Explicit close: MicroPython has no refcounting, so open().read()
+    # leaks the handle until (if ever) GC finalization -- the Prime's FD
+    # table is small and repeated loads exhaust it (OSError: 0 on open).
+    with open(_TAG_TO_FILE[tag]) as _f:
+        _src = _f.read()
     _ns = {}
-    exec(open(_TAG_TO_FILE[tag]).read(), _ns)
+    exec(_src, _ns)
+    _src = None  # release before the merge allocations below
 
     _room_vnums = []
     for _vnum, _room in _ns["ROOMS"].items():
         _room["area"] = tag
-        ROOM_DEFS[_vnum] = _room
+        ROOM_DEFS._data[_vnum] = _room
         _room_vnums.append(_vnum)
         for _d, _ev in _room.get("exits", {}).items():
             if isinstance(_ev, dict) and _ev.get("isdoor"):
@@ -326,8 +497,17 @@ def _load_area(tag):
                     "closed": bool(_ev.get("closed")),
                     "locked": bool(_ev.get("locked")),
                 }
+    if tag == "pestates" and 1 in chars:
+        from homes import apply_home  # deferred: homes imports world
+        apply_home(chars[1])
     MOB_DEFS.update(_ns["MOBILES"])
     ITEM_DEFS.update(_ns["OBJECTS"])
+    # Program tables are optional so synthetic/older generated area files
+    # remain loadable. Real area files emit all three, empty when unused.
+    # [PRIMESUD]
+    MOBPROGS.update(_ns.get("MOBPROGS", {}))
+    OBJPROGS.update(_ns.get("OBJPROGS", {}))
+    ROOMPROGS.update(_ns.get("ROOMPROGS", {}))
     # Partition resets to per-room lists (cf. 1stMud pRoom->reset_first).
     # Cross-area resets (target room in a different area) are deferred to
     # avoid the cascade-load race: accessing ROOM_DEFS[cross_vnum] via
@@ -359,6 +539,30 @@ def _load_area(tag):
             # partition after own reset so target's first reset sees them.
             _cross_area_rooms.add(_cur_rvnum)
 
+    # Pull cross-area resets that other loaded areas own targeting our
+    # rooms.  The owner appends its cross-entries only into rooms that were
+    # resident at its load (see _reset_loaded_area); if we load (or reload
+    # after eviction) later, we pull them here instead.  The two paths are
+    # disjoint by construction -- appending in both would duplicate resets.
+    _rvs = set(_room_vnums)
+    for _oa in AREA_DEFS:
+        if _oa["tag"] == tag or _oa["tag"] not in _LOADED_AREAS:
+            continue
+        _cur_rvnum = None
+        for _entry in _oa["resets"]:
+            _cmd = _entry[0]
+            if _cmd == "M":
+                _cur_rvnum = _entry[3]
+            elif _cmd == "O":
+                _cur_rvnum = _entry[2]
+            elif _cmd == "R":
+                _cur_rvnum = _entry[1]
+            if _cur_rvnum is not None and _cur_rvnum in _rvs:
+                _rdef = ROOM_DEFS._data[_cur_rvnum]
+                if "resets" not in _rdef:
+                    _rdef["resets"] = []
+                _rdef["resets"].append(_entry)
+
     # Update AREA_DEFS entry with full metadata
     _adef = None
     for _a in AREA_DEFS:
@@ -385,10 +589,17 @@ def _load_area(tag):
 
 def _reset_loaded_area(tag, _adef, _room_vnums, _cross_area_rooms):
     """Reset a loaded area and apply pending deltas. [PRIMESUD]"""
-    from mob import reset_area, reset_room, _object_count_map
+    from mob import reset_area, reset_room, _object_count_map  # deferred: mob imports world
     reset_area(_adef)
 
     if _cross_area_rooms:
+        # Split targets by residency BEFORE any LazyDict access: rooms
+        # already resident get our entries appended (and reset) here;
+        # unloaded targets are only touched to trigger their load --
+        # their _load_area pulls our entries from _adef["resets"] itself.
+        # Appending here AND letting the pull run would duplicate resets.
+        _preloaded = set(_rv for _rv in _cross_area_rooms
+                         if _rv in ROOM_DEFS._data)
         _cur_rvnum = None
         for _entry in _adef["resets"]:
             _cmd = _entry[0]
@@ -398,15 +609,17 @@ def _reset_loaded_area(tag, _adef, _room_vnums, _cross_area_rooms):
                 _cur_rvnum = _entry[2]
             elif _cmd == "R":
                 _cur_rvnum = _entry[1]
-            if _cur_rvnum is not None and _cur_rvnum in _cross_area_rooms:
-                if _cur_rvnum in ROOM_DEFS:
-                    _rdef = ROOM_DEFS[_cur_rvnum]
-                    if "resets" not in _rdef:
-                        _rdef["resets"] = []
-                    _rdef["resets"].append(_entry)
+            if _cur_rvnum is not None and _cur_rvnum in _preloaded:
+                _rdef = ROOM_DEFS._data[_cur_rvnum]
+                if "resets" not in _rdef:
+                    _rdef["resets"] = []
+                _rdef["resets"].append(_entry)
+        for _rv in _cross_area_rooms:
+            if _rv not in _preloaded:
+                _ensure_area(_rv)
         _next_id = max(chars, default=1) + 1
         _obj_counts = _object_count_map()
-        for _rv in _cross_area_rooms:
+        for _rv in _preloaded:
             if _rv in rooms:
                 _next_id = reset_room(_rv, _next_id, _obj_counts)
 
@@ -423,22 +636,42 @@ def _reset_loaded_area(tag, _adef, _room_vnums, _cross_area_rooms):
 def _apply_pending_deltas(tag, room_vnums):
     """Apply buffered save deltas after area load. [PRIMESUD]
 
-    Mob deltas: kill excess instances, move remaining to saved rooms.
-    Cross-area wanderers (mob from area A at room in area B) are skipped
-    by the ``_vnum_to_tag(_tpl) != tag`` guard -- their saved position is
-    silently lost.  This matches 1stMud's effective behavior: NPC positions
-    are never persisted, and the 5% per-tick despawn (update.c:541) keeps
-    cross-area wanderers short-lived.  The mob respawns at its home room
-    on next area reset.
+    Mob deltas: restore the exact saved population -- kill excess
+    instances, move survivors onto saved rooms, and spawn fresh instances
+    (template stats, like a reset) for any shortfall.  Matching is by
+    room multiset, so re-application (retry after a deferral) leaves
+    already-placed mobs alone.  Saved rooms in still-unloaded areas keep
+    the full saved list pending; their mobs wait parked at reset rooms.
+    The saved count never exceeds the template's reset global limit
+    (spawns were capped by it when the save was written).
 
     Args:
         tag (str): Area tag just loaded.
         room_vnums (list): Room vnums belonging to this area.
     """
+    from mob import create_mobile  # deferred: mob imports world
+    from handler import room_is_dark, equip_char
+    from item import create_object
     _rvnum_set = set(room_vnums)
+    _resets = ()
+    for _a in AREA_DEFS:
+        if _a["tag"] == tag:
+            _resets = _a.get("resets") or ()
+            break
 
     for _tpl in list(_pending_mob_saves):
         if _vnum_to_tag(_tpl) != tag:
+            continue
+        if _tpl not in MOB_DEFS._data:
+            # Stale save: template no longer exists in the area file.
+            del _pending_mob_saves[_tpl]
+            continue
+        # The mayor's route state is process-local. Restoring a mid-route
+        # room without its matching route position makes the restarted path
+        # walk out of Midgaard and lazy-load unrelated areas. Leave it at its
+        # reset room instead, matching upstream's non-persistent NPCs.
+        if MOB_DEFS._data.get(_tpl, {}).get("spec_fun") == "spec_mayor":
+            del _pending_mob_saves[_tpl]
             continue
         _saved = _pending_mob_saves[_tpl]
         # Owned pets are persisted via p.pet, not m. lines -- never count or
@@ -447,8 +680,6 @@ def _apply_pending_deltas(tag, room_vnums):
                       if inst.get("is_npc") and inst["tpl"] == _tpl
                       and not (inst.get("act_flags", {}).get("pet")
                                and inst.get("master") is not None))
-        if not _ids:
-            continue
         for _mid in _ids[len(_saved):]:
             _old = chars[_mid]["room"]
             if _old in rooms._data:
@@ -456,26 +687,79 @@ def _apply_pending_deltas(tag, room_vnums):
                 if _mid in _ml:
                     _ml.remove(_mid)
             del chars[_mid]
-        _deferred = []
-        for _mid, _rv in zip(_ids, _saved):
+        _ids = _ids[:len(_saved)]
+        # Consume saved rooms already holding an instance (multiset match);
+        # what remains is unplaced mobs vs unclaimed rooms.
+        _want = list(_saved)
+        _unmatched = []
+        for _mid in _ids:
+            _r = chars[_mid]["room"]
+            if _r in _want:
+                _want.remove(_r)
+            else:
+                _unmatched.append(_mid)
+        _here = [_rv for _rv in _want if _rv in rooms._data]
+        _absent = len(_want) - len(_here)
+        for _mid, _rv in zip(_unmatched, _here):
             _old = chars[_mid]["room"]
-            if _rv == _old:
-                continue
-            if _rv not in rooms._data:
-                _deferred.append(_rv)
-                continue
             if _old in rooms._data:
                 _ml = rooms._data[_old]["mobs"]
                 if _mid in _ml:
                     _ml.remove(_mid)
             chars[_mid]["room"] = _rv
             rooms._data[_rv]["mobs"].append(_mid)
-        if _deferred:
-            _pending_mob_saves[_tpl] = _deferred
+        # Spawn the shortfall at the remaining loadable rooms (fresh
+        # template state, mirroring reset_room's M branch).
+        _spawn = _here[len(_unmatched):]
+        if _spawn:
+            # Reset-granted gear isn't saved, so re-apply the E/G lines
+            # trailing the template's first M reset (a naked cityguard
+            # respawn is player-visible).  Object limits skipped: this
+            # restores a previously-existing instance, not new stock.
+            _eq = []
+            _in_block = False
+            for _e in _resets:
+                if _in_block:
+                    if _e[0] == "E" or _e[0] == "G":
+                        _eq.append(_e)
+                    else:
+                        break
+                elif _e[0] == "M" and _e[1] == _tpl:
+                    _in_block = True
+            _shop = MOB_DEFS._data[_tpl].get("shop")
+            _next_id = max(chars, default=1) + 1
+            for _rv in _spawn:
+                inst = create_mobile(_tpl)
+                for _e in _eq:
+                    _obj = create_object(_e[1])
+                    if _shop:
+                        _obj.setdefault("extra_flags", {})["inventory"] = True
+                    inst["inv"].append(_obj)
+                    if _e[0] == "E":
+                        equip_char(inst, _obj, _e[2])
+                inst["room"] = _rv
+                # Own area, not the spawn room's: a cross-area saved
+                # position must keep the wanderer despawn semantics.
+                inst["home_area"] = tag
+                if room_is_dark(_rv):
+                    inst["affected_by"]["infrared"] = True
+                _prev = ROOM_DEFS._data.get(_rv - 1)
+                if _prev is not None and _prev.get("flags", {}).get("pet_shop"):
+                    inst["act_flags"]["pet"] = True
+                inst["id"] = _next_id
+                chars[_next_id] = inst
+                rooms._data[_rv]["mobs"].append(_next_id)
+                _next_id += 1
+        if _absent:
+            # Some saved rooms live in still-unloaded areas: keep the full
+            # list so a later pass re-matches idempotently.  A re-save
+            # drops it in favour of live positions (serializer skips
+            # pending for templates with live instances).
+            _pending_mob_saves[_tpl] = _saved
         else:
             del _pending_mob_saves[_tpl]
 
-    from item import parse_item_token
+    from item import parse_item_token  # deferred: item imports world
     for _rv in list(_pending_room_items):
         if _rv not in _rvnum_set:
             continue
@@ -497,6 +781,177 @@ def _retry_pending_deltas():
             _apply_pending_deltas(_a["tag"], _a["room_vnums"])
 
 
+def _unload_area(tag):
+    """Evict one loaded area: buffer live state as save deltas, drop defs. [PRIMESUD]
+
+    Inverse of _load_area.  Mob positions and floor items are written to
+    _pending_mob_saves / _pending_room_items in the exact shape the save
+    system uses, so reload replays them through _apply_pending_deltas just
+    like a game load.  Dropped without recording (same as save/load):
+    live door state (rebuilt from area file), mob hp/inventory (fresh from
+    template on reset), and foreign-template wanderers standing in evicted
+    rooms (respawn at home on their area's next reset).
+
+    Caller must guarantee the area holds nothing player-critical (the pet,
+    combatants, the player itself) -- maybe_evict's keep-set does.
+    """
+    _adef = None
+    for _a in AREA_DEFS:
+        if _a["tag"] == tag:
+            _adef = _a
+            break
+    if _adef is None or "room_vnums" not in _adef:
+        return
+    _room_vnums = _adef["room_vnums"]
+    _rvnum_set = set(_room_vnums)
+    _lo = _hi = None
+    for _l, _h, _t in _VNUM_RANGES:
+        if _t == tag:
+            _lo, _hi = _l, _h
+            break
+
+    # Remove our cross-area reset entries from resident foreign rooms, or
+    # reload would append them a second time (duplicate mobs/objects).
+    _cur_rvnum = None
+    for _entry in _adef["resets"]:
+        _cmd = _entry[0]
+        if _cmd == "M":
+            _cur_rvnum = _entry[3]
+        elif _cmd == "O":
+            _cur_rvnum = _entry[2]
+        elif _cmd == "R":
+            _cur_rvnum = _entry[1]
+        if _cur_rvnum is not None and _cur_rvnum not in _rvnum_set:
+            _rdef = ROOM_DEFS._data.get(_cur_rvnum)
+            if _rdef and "resets" in _rdef:
+                try:
+                    _rdef["resets"].remove(_entry)
+                except ValueError:
+                    pass
+
+    # Buffer mob positions: our templates wherever they stand (mirrors the
+    # m.<tpl>= save lines; sorted ids match _apply_pending_deltas), then
+    # delete them plus foreign wanderers standing in our rooms.  The pet is
+    # excluded like the save path (persisted via p.pet).
+    _pet = chars[1].get("pet") if 1 in chars else None
+    _tpl_rooms = {}
+    _dead = []
+    for _mid in sorted(chars):
+        _inst = chars[_mid]
+        if not _inst.get("is_npc") or _mid == _pet:
+            continue
+        _tpl = _inst["tpl"]
+        if _lo is not None and _lo <= _tpl <= _hi:
+            _tpl_rooms.setdefault(_tpl, []).append(_inst["room"])
+            _dead.append(_mid)
+        elif _inst["room"] in _rvnum_set:
+            _dead.append(_mid)
+    for _tpl in _tpl_rooms:
+        # Overwrites any deferred pending entry for this template --
+        # deferred moves into still-unloaded areas are dropped, matching
+        # the documented wanderer-position-loss semantics.
+        _pending_mob_saves[_tpl] = _tpl_rooms[_tpl]
+    _dead_set = set(_dead)
+    for _mid in _dead:
+        _rv = chars[_mid]["room"]
+        if _rv in rooms._data and _rv not in _rvnum_set:
+            _ml = rooms._data[_rv]["mobs"]
+            if _mid in _ml:
+                _ml.remove(_mid)
+        del chars[_mid]
+    if _dead_set:
+        for _inst in chars.values():
+            if _inst.get("fighting") in _dead_set:
+                _inst["fighting"] = None
+
+    # Buffer floor items (mirrors the r.<vnum>.items= save lines).
+    from item import serialize_item_token  # deferred: item imports world
+    for _rv in _room_vnums:
+        _rs = rooms._data.get(_rv)
+        if _rs and _rs["items"]:
+            _toks = []
+            for _o in _rs["items"]:
+                _toks.append(serialize_item_token(_o))
+            _pending_room_items[_rv] = "|".join(_toks)
+
+    # Drop definitions and runtime state.
+    for _rv in _room_vnums:
+        ROOM_DEFS._data.pop(_rv, None)
+        rooms._data.pop(_rv, None)
+        DOOR_DEFS.pop(_rv, None)
+    if _lo is not None:
+        for _k in [k for k in MOB_DEFS._data if _lo <= k <= _hi]:
+            del MOB_DEFS._data[_k]
+        for _k in [k for k in ITEM_DEFS._data if _lo <= k <= _hi]:
+            del ITEM_DEFS._data[_k]
+        for _k in [k for k in MOBPROGS if _lo <= k <= _hi]:
+            del MOBPROGS[_k]
+        for _k in [k for k in OBJPROGS if _lo <= k <= _hi]:
+            del OBJPROGS[_k]
+        for _k in [k for k in ROOMPROGS if _lo <= k <= _hi]:
+            del ROOMPROGS[_k]
+    _adef["resets"] = []
+    _adef.pop("room_vnums", None)
+    for _s in areas:
+        if _s["tag"] == tag:
+            _s.pop("room_vnums", None)  # area_update skips it while evicted
+            break
+    _LOADED_AREAS.discard(tag)
+
+
+def maybe_evict(player, force=False):
+    """Evict far areas when over the cache cap; call every pulse. [PRIMESUD]
+
+    Fast path is one int compare (player's room unchanged).  On area
+    transition, builds a keep-set -- current area, its static neighbours,
+    pinned areas, and any area owning or hosting a follower or combatant --
+    and evicts the rest, least-recently-visited first, until at
+    AREA_CACHE_MAX loaded areas. ``force`` lets non-moving remote lookups
+    enforce the cap immediately.
+
+    Args:
+        player (dict): Player state dict.
+        force (bool): Check the cap even if the player's room did not change.
+    """
+    global _player_room, _seq_counter
+    _rv = player["room"]
+    if _rv == _player_room and not force:
+        return
+    _moved = _rv != _player_room
+    _player_room = _rv
+    _tag = _vnum_to_tag(_rv)
+    if _tag is None:
+        return
+    if _moved:
+        if _area_seq.get(_tag) == _seq_counter:
+            return
+        _seq_counter += 1
+        _area_seq[_tag] = _seq_counter
+    if len(_LOADED_AREAS) <= config.AREA_CACHE_MAX:
+        return
+    _keep = set(_PINNED)
+    _keep.add(_tag)
+    _keep.update(_AREA_ADJ.get(_tag, ()))
+    _target = player.get("fighting")
+    for _i, _inst in chars.items():
+        if not _inst.get("is_npc"):
+            continue
+        if (_inst.get("master") is not None
+                or _inst.get("fighting") == 1
+                or _i == _target):
+            _keep.add(_vnum_to_tag(_inst["tpl"]))
+            _keep.add(_vnum_to_tag(_inst["room"]))
+    _victims = [t for t in _LOADED_AREAS if t not in _keep]
+    _victims.sort(key=lambda t: _area_seq.get(t, 0))
+    _evicted = False
+    while _victims and len(_LOADED_AREAS) > config.AREA_CACHE_MAX:
+        _unload_area(_victims.pop(0))
+        _evicted = True
+    if _evicted:
+        import gc
+        gc.collect()
+
+
 def is_area_loaded(tag):
     """Check whether an area has been loaded. [PRIMESUD]"""
     return tag in _LOADED_AREAS
@@ -508,6 +963,11 @@ MOB_DEFS = LazyDict(load_all_on_iter=True)
 ITEM_DEFS = LazyDict(load_all_on_iter=True)
 AREA_DEFS = []
 DOOR_DEFS = {}
+# Program code blocks by vnum, merged from each area's corresponding dict as
+# it loads (like MOB_DEFS -- heap cost only for loaded areas). [PRIMESUD]
+MOBPROGS = {}
+OBJPROGS = {}
+ROOMPROGS = {}
 _WORLD_READY = False
 
 # -- Mutable runtime state (mutated by reset_area / game functions) ------------
@@ -519,16 +979,26 @@ save_pending = False
 
 def reset_lazy():
     """Reset mutable state and lazy loading for new/load game. [PRIMESUD]"""
+    global _player_room, _seq_counter, share_value
+    _player_room = None
+    _seq_counter = 0
+    _area_seq.clear()
     rooms._data.clear()
     chars.clear()
     _LOADED_AREAS.clear()
     _pending_mob_saves.clear()
     _pending_room_items.clear()
+    mob_stats.clear()
+    area_stats.clear()
+    share_value = 100
     del _reset_queue[:]
     ROOM_DEFS._data.clear()
     MOB_DEFS._data.clear()
     ITEM_DEFS._data.clear()
     DOOR_DEFS.clear()
+    MOBPROGS.clear()
+    OBJPROGS.clear()
+    ROOMPROGS.clear()
     del AREA_DEFS[:]
     for _, _tag, _, _, _ in _AREA_FILES:
         AREA_DEFS.append({"tag": _tag, "resets": []})

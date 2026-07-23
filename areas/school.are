@@ -6,7 +6,7 @@ mud school~
 
 #MOBILES
 #3700
-acolyte cleric~
+acolyte cleric zump~
 the acolyte of Zump~
 An acolyte of Zump welcomes you to mud school.
 ~
@@ -19,6 +19,9 @@ ABGQTV CH 1000 0
 ACEFHIKN ABCD 0 0
 stand stand male 0
 0 0 medium 0
+M greet 3790 100~
+M bribe 3791 1~
+M give 3792 all~
 #3701
 blob~
 the blob~
@@ -2172,5 +2175,30 @@ M 3707 spec_cast_adept     	* the adept of Satin
 M 3708 spec_cast_adept     	* the adept of Alander
 M 3714 spec_fido           	* the beast
 S
+
+#MOBPROGS
+#3790
+say Welcome to Mud School, $n. We keep a hardship fund for new students. If you can spare it, one silver coin is enough.
+~
+#3791
+if isdelay $i
+  say You have already shown your generosity, $n. Let others have their turn.
+else
+  if level $n < 5
+    say Thank you, $n. That was generous, but you look like one of the students this fund was made for. Take this gold coin, and spend it wisely.
+  else
+    say Thank you, $n. Generosity is a lesson worth rewarding. Accept this gold coin with the school's gratitude.
+  endif
+  mob oload 2 0
+  give coin $n
+  * ponytail: no delay trigger, so this stays set for the mob instance; persist a player flag if abuse matters.
+  mob delay 1
+endif
+~
+#3792
+say Kind of you, $n, but please keep $O. The hardship fund accepts coins only.
+give $o $n
+~
+#0
 
 #$

@@ -104,7 +104,6 @@ def out(monkeypatch):
     lines = []
     capture = lambda *a, **kw: lines.append(" ".join(str(x) for x in a))
     monkeypatch.setattr(handler, "tprint", capture)
-    monkeypatch.setattr(movement, "tprint", capture)
     return lines
 
 
@@ -222,8 +221,8 @@ def test_portal_targets_unloaded_area_mob(out, monkeypatch, tmp_path):
     player = _make_player(9001)
     _held_stone(player)
     player["_target_name"] = "dragon"
-    idx = tmp_path / "mob_index.txt"
-    idx.write_text("testarea|9402|red dragon\n")
+    idx = tmp_path / "mobs.idx"
+    idx.write_text("9402|testarea|10|red dragon|a red dragon|testarea\n")
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
     loaded = []
 
@@ -242,10 +241,10 @@ def test_portal_targets_unloaded_area_mob(out, monkeypatch, tmp_path):
 def test_find_unloaded_mob_second_mob_same_area(monkeypatch, tmp_path):
     # first index hit has no instance; sibling mob spawned by the same
     # area load must still be found (later same-tag lines get skipped)
-    _make_player(9001)
-    idx = tmp_path / "mob_index.txt"
-    idx.write_text("testarea|9402|red dragon\n"
-                   "testarea|9403|blue dragon\n")
+    player = _make_player(9001)
+    idx = tmp_path / "mobs.idx"
+    idx.write_text("9402|testarea|10|red dragon|a red dragon|testarea\n"
+                   "9403|testarea|10|blue dragon|a blue dragon|testarea\n")
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
 
     def fake_load(tag):
@@ -256,26 +255,90 @@ def test_find_unloaded_mob_second_mob_same_area(monkeypatch, tmp_path):
         world._LOADED_AREAS.add(tag)
     monkeypatch.setattr(world, "_ensure_area_by_tag", fake_load)
     monkeypatch.setattr(world, "_LOADED_AREAS", set())
-    cid, mob = magic._find_unloaded_mob("dragon")
+    cid, mob = magic._find_unloaded_mob("dragon", player)
     assert cid == 3
     assert mob["tpl"] == 9403
 
 
+def test_find_unloaded_mob_tries_ordered_spawn_tags(monkeypatch, tmp_path):
+    player = _make_player(9001)
+    idx = tmp_path / "mobs.idx"
+    idx.write_text("9402|home|10|red dragon|a red dragon|first,second\n")
+    monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
+    loaded = []
+
+    def fake_load(tag):
+        loaded.append(tag)
+        world._LOADED_AREAS.add(tag)
+        if tag == "second":
+            MOB_DEFS._data[9402] = {"keywords": "red dragon"}
+            _make_mob(3, room=9002, tpl=9402)
+    monkeypatch.setattr(world, "_ensure_area_by_tag", fake_load)
+    monkeypatch.setattr(world, "_LOADED_AREAS", set())
+
+    assert magic._find_unloaded_mob("dragon", player)[0] == 3
+    assert loaded == ["first", "second"]
+
+
+def test_find_unloaded_mob_keeps_global_area_priority(monkeypatch, tmp_path):
+    player = _make_player(9001)
+    idx = tmp_path / "mobs.idx"
+    idx.write_text("9402|home|10|red dragon|a dragon|first,third\n"
+                   "9403|home|10|blue dragon|a dragon|second\n")
+    monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
+    monkeypatch.setattr(world, "_AREA_FILES",
+                        [("", "first", "", 0, 0),
+                         ("", "second", "", 0, 0),
+                         ("", "third", "", 0, 0)])
+    loaded = []
+    monkeypatch.setattr(world, "_ensure_area_by_tag", loaded.append)
+    monkeypatch.setattr(world, "_LOADED_AREAS", set())
+
+    assert magic._find_unloaded_mob("dragon", player) == (None, None)
+    assert loaded == ["first", "second"]
+
+
+def test_find_unloaded_mob_skips_invisible_spawn(monkeypatch, tmp_path):
+    # get_char_world can_see fidelity: invisible spawn stays unfound
+    player = _make_player(9001)
+    idx = tmp_path / "mobs.idx"
+    idx.write_text("9402|testarea|10|red dragon|a red dragon|testarea\n")
+    monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
+
+    def fake_load(tag):
+        MOB_DEFS._data[9402] = {"keywords": "red dragon",
+                                "short_descr": "a red dragon", "level": 10}
+        _make_mob(3, room=9002, tpl=9402)
+        world.chars[3]["affected_by"] = {"invisible": True}
+        world._LOADED_AREAS.add(tag)
+    monkeypatch.setattr(world, "_ensure_area_by_tag", fake_load)
+    monkeypatch.setattr(world, "_LOADED_AREAS", set())
+    assert magic._find_unloaded_mob("dragon", player) == (None, None)
+
+    player["affected_by"] = {"detect_invis": True}
+    monkeypatch.setattr(world, "_LOADED_AREAS", set())
+    cid, mob = magic._find_unloaded_mob("dragon", player)
+    assert cid == 3
+
+
 def test_find_unloaded_mob_edge_cases(monkeypatch, tmp_path):
-    # missing index file: quiet None
+    player = _make_player(9001)
+    # missing index file: fail loud (index always shipped in a dist)
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(tmp_path / "absent.dat"))
-    assert magic._find_unloaded_mob("dragon") == (None, None)
-    # loaded areas skipped; no-spawn load capped at 2
-    idx = tmp_path / "mob_index.txt"
-    idx.write_text("loadedarea|9402|red dragon\n"
-                   "ghost1|9403|red dragon\n"
-                   "ghost2|9404|red dragon\n"
-                   "ghost3|9405|red dragon\n")
+    with pytest.raises(OSError):
+        magic._find_unloaded_mob("dragon", player)
+    # loaded areas skipped; header comment ignored; no-spawn load capped at 2
+    idx = tmp_path / "mobs.idx"
+    idx.write_text("# header\n"
+                   "9402|loadedarea|10|red dragon|a dragon|loadedarea\n"
+                   "9403|ghost1|10|red dragon|a dragon|ghost1\n"
+                   "9404|ghost2|10|red dragon|a dragon|ghost2\n"
+                   "9405|ghost3|10|red dragon|a dragon|ghost3\n")
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
     monkeypatch.setattr(world, "_LOADED_AREAS", {"loadedarea"})
     loaded = []
     monkeypatch.setattr(world, "_ensure_area_by_tag", loaded.append)
-    assert magic._find_unloaded_mob("dragon") == (None, None)
+    assert magic._find_unloaded_mob("dragon", player) == (None, None)
     assert loaded == ["ghost1", "ghost2"]
 
 

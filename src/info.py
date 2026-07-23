@@ -1,5 +1,6 @@
 """Information and room-view command handlers."""
 
+import terminal
 import world
 from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
                     get_char_room, mob_condition, is_good, is_evil, can_see,
@@ -7,18 +8,25 @@ from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name
                     act, chprintln, TO_CHAR,
                     number_argument as _number_argument, tpl_flag_affects)
 from automap import build_compact_lines, build_full_lines, COMPACT_W
-from classes import class_long, class_short, class_name
+from classes import class_long, class_short
 from colors import color_len, upper, draw_line
 from combat import get_thac0
+from game_time import (time_info, day_name, month_name, ordinal_string,
+                       weather_report_line, DAYS_IN_WEEK, HOURS_IN_DAY)
+from races import RACE_TABLE, race_lookup
 from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, POS_FROM_SHORT, SECTOR_COLORS,
                     MAX_MORTAL_LEVEL, MAX_LEVEL, DIR_ALIASES,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC,
-                    WEAR_LABELS)
-from item import get_obj_here, obj_vnum, item_extra_flags, item_container_flags
+                    WEAR_LABELS, VERSION)
+from item import (get_obj_here, obj_vnum, item_extra_flags,
+                  item_container_flags, liquid_color, liquid_left,
+                  liquid_total, liquid_type)
+from music import do_play
 from picker import pick_from
-from player import (PLR_AUTOMAP, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD,
-                    PLR_AUTOSPLIT, PLR_AUTOASSIST, PLR_AUTOEXIT,
-                    PLR_AUTODAMAGE, PLR_DEFAULTS, _EQUIP_SAVE_ORDER)
+from player import (PLR_AUTOMAP, PLR_AUTOSKILL, PLR_AUTOLOOT, PLR_AUTOSAC,
+                    PLR_AUTOGOLD, PLR_AUTOSPLIT, PLR_AUTOASSIST, PLR_AUTOEXIT,
+                    PLR_AUTODAMAGE, PLR_DEFAULTS, _EQUIP_SAVE_ORDER,
+                    COMM_BRIEF, COMM_COMPACT, COMM_SHOW_AFFECTS, set_title)
 from gquest import gq_is_player_target
 from quest import is_quester, _intstr
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
@@ -30,6 +38,7 @@ from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
 from debug import DBG, dbg  # [PRIMESUD]
 from explored import roomcount, TOP_EXPLORED, _pct2
 from prime_platform import ticks  # [PRIMESUD] 'debug time' channel timings
+from pager import tpage
 
 
 def _wrap(text, width):
@@ -116,18 +125,22 @@ def do_where(player, args):
 _FLAG_TABLE = (
     (PLR_AUTOMAP, "automap", "Map in Room Descriptions"),
     (PLR_AUTODAMAGE, "autodamage", "Displays damage amounts in combat."),
-    (PLR_AUTOASSIST, "autoassist", "Automatically assists group members."),
+    (PLR_AUTOASSIST, "autoassist", "Auto-assists group members in combat."),
     (PLR_AUTOEXIT, "autoexit", "Displays exits in room descriptions."),
-    (PLR_AUTOGOLD, "autogold", "Automatically loots gold from corpses."),
-    (PLR_AUTOLOOT, "autoloot", "Automatically loots objects from corpses."),
-    (PLR_AUTOSAC, "autosac", "Automatically sacrifices corpses."),
-    (PLR_AUTOSPLIT, "autosplit", "Automatically splits gold between group members."),
+    (PLR_AUTOGOLD, "autogold", "Auto-loots gold from corpses."),
+    (PLR_AUTOLOOT, "autoloot", "Auto-loots objects from corpses."),
+    (PLR_AUTOSAC, "autosac", "Auto-sacrifices corpses."),
+    (PLR_AUTOSKILL, "autoskill", "Auto-attacks with skills and spells."),  # [PRIMESUD]
+    (PLR_AUTOSPLIT, "autosplit", "Auto-splits gold between group members."),
     # PLR_AUTOPROMPT "autoprompt": [PRIMESUD] not ported -- the status bar
     # is the prompt and is always visible, so selective display is moot
-    # TODO: COMM_COMPACT "compact" - compact output (comm flags)
-    # TODO: COMM_PROMPT "prompt" - prompt display (comm flags)
-    # TODO: COMM_GPROMPT "gprompt" - group prompt (comm flags)
-    # TODO: COMM_COMBINE "combine" - combine duplicate objects (comm flags)
+    (COMM_COMPACT, "compact", "Compacts mud output."),
+    # COMM_PROMPT/COMM_GPROMPT "prompt"/"gprompt": [PRIMESUD] not ported --
+    # superseded by the always-visible status bar, same reasoning as
+    # autoprompt above (closed 19/07/2026 parity sweep)
+    # COMM_COMBINE "combine": [PRIMESUD] not ported -- inventory display is
+    # already always-combined and a long-form toggle is moot on the 320x240
+    # screen (closed 19/07/2026 parity sweep)
     # TODO: PLR_CANLOOT "noloot" - prevent corpse looting (inverted flag)
     # TODO: PLR_NOSUMMON "nosummon" - block summoning
     # TODO: PLR_NOFOLLOW "nofollow" - block following
@@ -207,6 +220,45 @@ def do_autoexit(player, args):
         chprintln(player, "Exits will no longer be displayed.")
 
 
+def do_brief(player, args):
+    """Toggle room-description suppression on movement (cf. 1stMud do_brief in act_info.c).
+
+    Brief mode only affects the "auto" look triggered by movement (see
+    do_look's "auto" branch below); an explicit `look` always shows the full
+    room description regardless of this flag (cf. act_info.c:1144).
+    """
+    player["flags"] = player.get("flags", PLR_DEFAULTS) ^ COMM_BRIEF
+    if player["flags"] & COMM_BRIEF:
+        chprintln(player, "You no longer see room descriptions.")
+    else:
+        chprintln(player, "You now see room descriptions.")
+
+
+def do_compact(player, args):
+    """Toggle compact mode (cf. 1stMud do_compact in act_info.c).
+
+    [PRIMESUD] 1stMud's compact mode suppresses the blank line normally
+    printed before an inline telnet prompt (comm.c:1467). PrimeSUD's prompt
+    is a persistent status bar (never printed inline), so there is no
+    equivalent blank-line seam to gate -- this toggle only flips the flag
+    (visible via `autolist`) with no other behavioural effect.
+    """
+    player["flags"] = player.get("flags", PLR_DEFAULTS) ^ COMM_COMPACT
+    if player["flags"] & COMM_COMPACT:
+        chprintln(player, "Compact mode set.")
+    else:
+        chprintln(player, "Compact mode removed.")
+
+
+def do_show(player, args):
+    """Toggle affects display in the score sheet (cf. 1stMud do_show in act_info.c)."""
+    player["flags"] = player.get("flags", PLR_DEFAULTS) ^ COMM_SHOW_AFFECTS
+    if player["flags"] & COMM_SHOW_AFFECTS:
+        chprintln(player, "Affects will now be shown in score.")
+    else:
+        chprintln(player, "Affects will no longer be shown in score.")
+
+
 def do_autolist(player, args):
     """Display toggle settings (cf. 1stMud do_autolist in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
     chprintln(player, " %-9s %-6s{w %s" % ("Command", "Status", "Description"))
@@ -224,8 +276,72 @@ def do_clear(player, args):
     1stMud clear_screen sends VT100 erase codes; [PRIMESUD] the tml layer
     clears the LCD directly.
     """
-    import terminal
     terminal.tr.clear()
+
+
+def show_greeting():
+    """Clear the screen and show the title screen with credits. [PRIMESUD]
+
+    Blocks on tr.input until Enter is pressed.  Called at startup
+    (primesud.py).
+    """
+    tr = terminal.tr
+    tr.clear()
+
+    mem_part = "{G(Mem. free: %s)" % free_mem()
+    pad = 64 - 23 - len(mem_part) - 1
+    # [PRIMESUD] single list batch: one colour-grouped render (terminal
+    # print_lines) instead of 20 per-line print calls
+    tr.print([
+        '{C 8888888b.          d8b' + ' ' * pad + mem_part + '{x',
+        "{C 888   Y88b         Y8P                                       {x",
+        "{C 888    888                                                   {x",
+        "{C 888   d88P 888d888 888 88888b.d88b.   .d88b.                 {x",
+        '{C 8888888P"  888P"   888 888 "888 "88b d8P  Y8b                {x',
+        "{C 888        888     888 888  888  888 88888888                {x",
+        "{C 888        888     888 888  888  888 Y8b.                    {x",
+        '{C 888        888     888 888  888  888  "Y8888                 {x',
+        "{C                             .d8888b.  888     888 8888888b.  {x",
+        '{C                            d88P  Y88b 888     888 888  "Y88b {x',
+        "{C                            Y88b.      888     888 888    888 {x",
+        '{C                             "Y888b.   888     888 888    888 {x',
+        '{C                                "Y88b. 888     888 888    888 {x',
+        '{C                                  "888 888     888 888    888 {x',
+        "{C                            Y88b  d88P Y88b. .d88P 888  .d88P {x",
+        '{C                             "Y8888P"   "Y88888P"  8888888P"  {x',
+        "{c      Original DikuMUD by Hans Staerfeldt, Katja Nyboe,       {x",
+        "{c      Tom Madsen, Michael Seifert, and Sebastian Hammer       {x",
+        "{c      Based on MERC 2.1 code by Hatchet, Furey, and Kahn      {x",
+        "{c      ROM 2.4 copyright (c) 1993-1998 Russ Taylor.            {x",
+        "{c      1stMud Server copyright (c) 2001-2004, Markanth.        {x",
+    ])
+    tr.input("                    [Press Enter to start]                     ",
+        alpha=False,
+    )
+
+    tr.print()
+
+
+def do_motd(player, args):
+    """Show the message of the day help entry (cf. 1stMud do_motd in act_info.c)."""
+    do_help(player, ["motd"])
+
+
+def do_version(player, args):
+    """Show the server version and build info (cf. 1stMud do_version in act_info.c).
+
+    [PRIMESUD] Upstream prints "<mudname> is running <mudstring>." plus a
+    "Compiled at <date> at <time>." line from C preprocessor macros;
+    PrimeSUD has no build/compile step (interpreted on-device, cf.
+    docs/PARITY.md), so the version line is adapted to name PrimeSUD's own
+    VERSION and 1stMud/ROM lineage, and the compile-timestamp line is
+    dropped (no equivalent exists).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Parsed command arguments (unused).
+    """
+    chprintln(player, "PrimeSUD is running PrimeSUD %s, based on 1stMud 4.5.3 / ROM 2.4 beta." % VERSION)
 
 
 def do_wimpy(player, args):
@@ -320,10 +436,9 @@ _CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
 def _look_in(player, args):
     """Show contents of a container in room or inventory (cf. 1stMud do_look 'in' case in act_info.c).
 
-    ITEM_DRINK_CON branch not ported -- drink containers don't exist yet
-    [PRIMESUD].
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; closed-container check added and re-verified 05/07/2026]
+    04/07/2026; closed-container check added and re-verified 05/07/2026;
+    ITEM_DRINK_CON branch added and re-verified 19/07/2026]
     """
     if not args:
         chprintln(player, "Look in what?")
@@ -334,6 +449,24 @@ def _look_in(player, args):
         chprintln(player, "You do not see that here.")
         return
     tpl = ITEM_DEFS[obj_vnum(obj)]
+    if tpl.get("type") == "drink":
+        # cf. 1stMud do_look 'in' ITEM_DRINK_CON case, act_info.c:1205-1220
+        left = liquid_left(obj, tpl)
+        if left <= 0:
+            chprintln(player, "It is empty.")
+            return
+        total = liquid_total(obj, tpl)
+        if left < total // 4:
+            frac = "less than half-"
+        elif left < 3 * total // 4:
+            frac = "about half-"
+        else:
+            frac = "more than half-"
+        # [PRIMESUD] transient UI string -- % formatting ok per CLAUDE.md;
+        # double space after "with" matches upstream's format string exactly
+        chprintln(player, "It's %sfilled with  a %s liquid." %
+                  (frac, liquid_color(liquid_type(obj, tpl))))
+        return
     if tpl.get("type") not in _CONTAINER_TYPES:
         chprintln(player, "That is not a container.")
         return
@@ -346,14 +479,16 @@ def _look_in(player, args):
 
 
 def _show_container(player, obj, tpl):
-    """Print container contents (cf. 1stMud do_look 'in' case in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
+    """Print container contents (cf. 1stMud do_look 'in' case in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; can_see_obj content filter added and re-verified 10/07/2026]"""
     obj_name = (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]
     chprintln(player, "{} holds:".format(obj_name))
     contents = isinstance(obj, dict) and obj.get("contents", [])
-    if not contents:
+    # cf. show_list_to_char's can_see_obj filter (invisible contents hidden)
+    visible = [c for c in contents or [] if can_see_obj(player, c)]
+    if not visible:
         chprintln(player, "  Nothing.")
         return
-    for cobj in contents:
+    for cobj in visible:
         ctpl = ITEM_DEFS[obj_vnum(cobj)]
         chprintln(player, "  " + (cobj.get("short_descr") or ctpl["short_descr"]))
 
@@ -361,12 +496,15 @@ def _show_container(player, obj, tpl):
 def _look_scan_items(player, target, number, count, items):
     """Scan an item list for extra_desc or name match (cf. 1stMud `do_look` in act_info.c: item scan loop).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; instance extra_descs check added and re-verified 05/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; instance extra_descs check added and re-verified 05/07/2026; can_see_obj gate added and re-verified 10/07/2026]
 
     Returns:
         tuple: (found, count) where found is True if the Nth match was displayed.
     """
     for obj in items:
+        # cf. act_info.c:1234/1263 -- both look-item loops gate on can_see_obj
+        if not can_see_obj(player, obj):
+            continue
         vnum = obj_vnum(obj)
         tpl = ITEM_DEFS[vnum]
         # Check instance extra_descs first (cf. 1stMud obj->ed_first, act_info.c:1248)
@@ -455,7 +593,7 @@ _POS_LINES = {
 }
 
 
-def _show_char_to_char(player, mob_ids):
+def _show_char_to_char(player, mob_ids, out=None):
     """List room chars to player; red-eyes fallback in the dark (cf. 1stMud show_char_to_char in act_info.c:470).
 
     Each char the viewer can_see renders a full line (show_char_to_char_0); a
@@ -467,9 +605,12 @@ def _show_char_to_char(player, mob_ids):
     Args:
         player (dict): Observer.
         mob_ids (list): Room's live mob instance ids.
+        out (list): [PRIMESUD] optional accumulator for batched room output.
     """
+    emit = out.append if out is not None else lambda line: chprintln(player, line)
     p_aff = player.get("affected_by", {})
-    show_vnums = "vnum" in DBG  # [PRIMESUD] debug vnum visibility toggle
+    # [PRIMESUD] mob vnum overlay under holylight (upstream imms use stat)
+    show_vnums = "holylight" in DBG
     dark = (player["room"] in ROOM_DEFS._data and room_is_dark(player["room"]))
     for mob_id in mob_ids:
         inst = world.chars.get(mob_id)
@@ -479,7 +620,7 @@ def _show_char_to_char(player, mob_ids):
         # else a dark-room char with AFF_INFRARED shows glowing eyes
         if not can_see(player, inst):
             if dark and inst.get("affected_by", {}).get("infrared"):
-                chprintln(player, "You see glowing red eyes watching YOU!")
+                emit("You see glowing red eyes watching YOU!")
             continue
         tpl = MOB_DEFS[inst["tpl"]]
         # Build AFF prefix string (cf. 1stMud show_char_to_char_0, act_info.c:191-214)
@@ -525,7 +666,7 @@ def _show_char_to_char(player, mob_ids):
                 line = name + _POS_LINES.get(pos, " is here.")
         if show_vnums:  # [PRIMESUD] template vnum; instance id via debug stat mob
             line += " {D[" + str(inst["tpl"]) + "]"
-        chprintln(player, "%s{M%s{x" % (prefix, line))
+        emit("%s{M%s{x" % (prefix, line))
 
 
 def do_look(player, args):
@@ -537,20 +678,38 @@ def do_look(player, args):
     pitch-black gate ignores infrared (matching the source): infrared reveals
     living things via _show_char_to_char, not the room description.
 
-    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check); check_blind + pitch-black/red-eyes + can_see_obj room-item filter added and re-verified 08/07/2026; pitch-black infrared gate dropped + char-list shared via _show_char_to_char to match act_info.c:1114 (infrared shows chars not room desc), re-verified 08/07/2026]
+    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check); check_blind + pitch-black/red-eyes + can_see_obj room-item filter added and re-verified 08/07/2026; pitch-black infrared gate dropped + char-list shared via _show_char_to_char to match act_info.c:1114 (infrared shows chars not room desc), re-verified 08/07/2026; PLR_HOLYLIGHT leg of the act_info.c:1115 condition added as debug channel and re-verified 10/07/2026; COMM_BRIEF "auto" gate added and re-verified 20/07/2026]
+
+    [PRIMESUD] Room output accumulated into a list and sent as one batched
+    print (21/07/2026) -- perf deviation, 1stMud sends per line; player-visible
+    output unchanged. The list is passed through unjoined (see pitfall 8 /
+    PRIME_STRING_FORMAT_BUG.md: no join over %-formatted lines).
 
     Args:
         player (dict): Player state dict.
-        args (list): Parsed command arguments; non-empty triggers targeted look.
+        args (list): Parsed command arguments; non-empty triggers targeted
+            look, except the single sentinel "auto" (cf. 1stMud
+            do_function(ch, &do_look, "auto") from move_char) which requests
+            the brief-mode-gated room display used after movement.
     """
     # cf. 1stMud do_look act_info.c:1112 -- both gates precede argument parsing
     if not check_blind(player):
         return
+    # cf. 1stMud do_look act_info.c:1128 -- "auto" (movement) shows the room
+    # description unless COMM_BRIEF is set; explicit `look` (empty args)
+    # always shows it. Falls through to the same full-room-display branch
+    # as bare `look` below; only desc_lines' visibility differs.
+    show_desc = True
+    if args and args[0] == "auto":
+        show_desc = not (player.get("flags", PLR_DEFAULTS) & COMM_BRIEF)
+        args = []
     # cf. 1stMud act_info.c:1114 -- infrared does NOT lift this gate: it reveals
     # living things (via show_char_to_char, which can_see-passes for an infrared
     # viewer), never the room name/desc/items. room_is_dark itself ignores
     # infrared, so a dark room stays "pitch black" for infrared and unlit alike.
-    if player["room"] in ROOM_DEFS._data and room_is_dark(player["room"]):
+    # PLR_HOLYLIGHT in the source condition maps to the [PRIMESUD] debug toggle.
+    if ("holylight" not in DBG
+            and player["room"] in ROOM_DEFS._data and room_is_dark(player["room"])):
         chprintln(player, "It is pitch black ... ")
         _show_char_to_char(player, world.rooms[player["room"]]["mobs"])
         return
@@ -630,25 +789,32 @@ def do_look(player, args):
     automap_on = player.get("flags", PLR_DEFAULTS) & PLR_AUTOMAP
     text_w = TERMINAL_COLS - COMPACT_W - 1 if automap_on else TERMINAL_COLS
 
-    show_vnums = "vnum" in DBG  # [PRIMESUD] debug vnum visibility toggle
+    # Room vnum in title under holylight, cf. 1stMud PLR_HOLYLIGHT gate
+    # (act_info.c:1136-1139)
+    show_vnums = "holylight" in DBG
+    out = []
     if show_vnums:
-        chprintln(player, "{Y" + room["name"] + " {D[" + str(player["room"]) + "]{x")
+        out.append("{Y" + room["name"] + " {D[" + str(player["room"]) + "]{x")
     else:
-        chprintln(player, "{Y" + room["name"] + "{x")
+        out.append("{Y" + room["name"] + "{x")
 
-    color = SECTOR_COLORS.get(room.get("sector", "inside"), "")
-    desc_lines = _wrap_paragraphs(room["desc"], text_w)
+    # cf. 1stMud act_info.c:1144-1171 -- the description (and, nested inside
+    # the same gate upstream, the automap draw) is skipped entirely under
+    # COMM_BRIEF; exits/items/mobs below are not gated (act_info.c:1173-1180).
+    if show_desc:
+        color = SECTOR_COLORS.get(room.get("sector", "inside"), "")
+        desc_lines = _wrap_paragraphs(room["desc"], text_w)
 
-    if automap_on:
-        map_lines = build_compact_lines(player, ROOM_DEFS)
-        n = max(len(map_lines), len(desc_lines))
-        for i in range(n):
-            ml = map_lines[i] if i < len(map_lines) else ' ' * COMPACT_W
-            tl = desc_lines[i] if i < len(desc_lines) else ''
-            chprintln(player, ml + ' ' + color + tl)
-    else:
-        for tl in desc_lines:
-            chprintln(player, color + tl)
+        if automap_on:
+            map_lines = build_compact_lines(player, ROOM_DEFS)
+            n = max(len(map_lines), len(desc_lines))
+            for i in range(n):
+                ml = map_lines[i] if i < len(map_lines) else ' ' * COMPACT_W
+                tl = desc_lines[i] if i < len(desc_lines) else ''
+                out.append(ml + ' ' + color + tl)
+        else:
+            for tl in desc_lines:
+                out.append(color + tl)
 
     # cf. 1stMud do_look: exits only shown with PLR_AUTOEXIT (do_exits "auto")
     if player.get("flags", PLR_DEFAULTS) & PLR_AUTOEXIT:
@@ -659,7 +825,7 @@ def do_look(player, args):
                      or room["exits"][d].get("to") is None))
         )
         exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
-        chprintln(player, "{g" + exit_string + "{x")
+        out.append("{g" + exit_string + "{x")
     live_mobs = rs["mobs"]
     # Items: build a display string per instance (flags + desc), stack by exact string match
     # (cf. 1stMud format_obj_to_char + show_list_to_char in act_info.c)
@@ -698,9 +864,12 @@ def do_look(player, args):
     for line in order:
         n = seen[line]
         stack_prefix = "(%2d) " % n if n > 1 else "     "
-        chprintln(player, stack_prefix + line)
+        out.append(stack_prefix + line)
     # Mobs: one per line (cf. 1stMud show_char_to_char in act_info.c)
-    _show_char_to_char(player, live_mobs)
+    _show_char_to_char(player, live_mobs, out)
+    # [PRIMESUD] list sent unjoined: terminal batch-renders it, and joining
+    # %-formatted lines trips the device heap bug (PRIME_STRING_FORMAT_BUG.md)
+    chprintln(player, out)
 
 
 _SCORE_INNER = TERMINAL_COLS - 2
@@ -708,9 +877,9 @@ _SCORE_LEFT  = (TERMINAL_COLS - 7) // 2
 _SCORE_RIGHT = TERMINAL_COLS - 7 - _SCORE_LEFT
 _SCORE_SEP_OUTER = "{W+" + "-" * _SCORE_INNER + "+{x"
 _SCORE_SEP_INNER = "{W+" + "-" * (_SCORE_LEFT + 2) + "+" + "-" * (_SCORE_RIGHT + 2) + "+{x"
-# full-width AC bar: (_SCORE_INNER-2) content chars minus 6(label)+2(': ')+5(val)+2(' [')+1(']')
-# Minus 2 chars for precise colour segment lengths
-_AC_BAR_W = _SCORE_INNER - 18 - 2
+# paired AC bar: cell width minus 6(label)+2(': ')+5(val)+2(' [')+1(']')
+_AC_BAR_L = _SCORE_LEFT - 16
+_AC_BAR_R = _SCORE_RIGHT - 16
 _PERCENT_BAR_COLORS = ('r', 'R', 'y', 'Y', 'g', 'G', 'W')
 
 
@@ -751,7 +920,13 @@ def do_score(player, args):
 
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
     header name+title (cf. dlm_score/set_title) added and re-verified 04/07/2026;
-    explored line (cf. act_info.c:1841) added and re-verified 08/07/2026]
+    explored line (cf. act_info.c:1841) added and re-verified 08/07/2026;
+    [PRIMESUD] Tier cell (approved) added 11/07/2026; real player["title"]
+    field (set_title/do_title) wired into the header and COMM_SHOW_AFFECTS
+    do_affects tail added, re-verified 20/07/2026; bank/share row added and
+    re-verified 21/07/2026; [PRIMESUD] AC bars paired 2-per-row and the
+    values/AC separator dropped (approved) so the box fits the 22-row
+    screen, 21/07/2026; output batched via list chprintln 22/07/2026]
     -- data fields (age, hours, thac0, AC bars)
     verified; box layout adapted for the 64-col screen [PRIMESUD].
     """
@@ -774,10 +949,11 @@ def do_score(player, args):
         vc = '{w'
         return nc + '{:<13}'.format(name) + ': [' + vc + '{:>11}'.format(v) + nc + ' ]{x'
 
-    def _ac_row(label, val):
-        bar = _make_percent_bar(-val, 1000, _AC_BAR_W)
-        content = '{c' + '{:<6}'.format(label) + ' {W:  {w' + '{:5d}'.format(val) + ' {c[' + bar + '{c]'
-        return '{W|{x ' + content + ' {W|{x'
+    def _ac_cell(label, val, bar_w=_AC_BAR_L):
+        # [PRIMESUD] two bars per row so the score box fits the 22-row screen
+        bar = _make_percent_bar(-val, 1000, bar_w)
+        return ('{c' + '{:<6}'.format(label) + '{W: {w' + '{:5d}'.format(val)
+                + ' {c[' + bar + '{c]{x')
 
     def _free_mem():
         # Since memory is mentioned here, also use `score` as a point to do gc
@@ -793,16 +969,10 @@ def do_score(player, args):
         cls_name = class_short(p)
     mem_str = _free_mem()
     name_raw = p.get('name', '???')
-    # cf. 1stMud dlm_score header "<name><title>"; the initial title set at
-    # creation is "the <race> <ClassName(prime)>" (nanny.c set_title).
-    # [PRIMESUD] No title field or 'title' command, so derive that initial
-    # title on the fly; fall back to the bare name if it would not fit.
-    classes = p.get("classes")
-    if classes:
-        title_raw = (name_raw + " the " + str(p.get("race", "Human")) + " "
-                     + class_name(p, classes[p.get("prime_class", 0)]))
-    else:
-        title_raw = name_raw
+    # cf. 1stMud dlm_score header "<name><title>" (ch->name + ch->pcdata->title;
+    # the title already carries its own leading space -- see set_title).
+    # Falls back to the bare name if the combination would not fit the header.
+    title_raw = name_raw + p.get("title", "")
     _hdr_w = _SCORE_LEFT + 3 + _SCORE_RIGHT
     if len(title_raw) + color_len(mem_str) + 1 > _hdr_w:
         title_raw = name_raw
@@ -888,19 +1058,60 @@ def do_score(player, args):
         ),
         _row(
             _val_l("Gold", p["gold"], bright=True),
-            ""
+            # [PRIMESUD] prestige tier (empty cell when tier 0, stock look)
+            _val_r("Tier", p.get("tier", 0), bright=True) if p.get("tier", 0) else ""
         ),
-        _SCORE_SEP_OUTER,
-        _ac_row("Pierce", get_armor(p, AC_PIERCE)),
-        _ac_row("Bash", get_armor(p, AC_BASH)),
-        _ac_row("Slash", get_armor(p, AC_SLASH)),
-        _ac_row("Exotic", get_armor(p, AC_EXOTIC)),
+        _row(_ac_cell("Pierce", get_armor(p, AC_PIERCE)),
+             _ac_cell("Bash", get_armor(p, AC_BASH), _AC_BAR_R)),
+        _row(_ac_cell("Slash", get_armor(p, AC_SLASH)),
+             _ac_cell("Exotic", get_armor(p, AC_EXOTIC), _AC_BAR_R)),
         _SCORE_SEP_OUTER,
         expl_row,
         _SCORE_SEP_OUTER,
     ]
-    for line in lines:
-        chprintln(player, line)
+    if p.get("gold_bank", 0) or p.get("shares", 0):
+        # [PRIMESUD] Full-width row fits max values and displays the intended
+        # share price; upstream passes shares twice where share_value is meant.
+        _shares = p.get("shares", 0)
+        _bank_txt = ("{CBank: {w" + str(p.get("gold_bank", 0))
+                     + " gold {C| Shares: {w" + str(_shares) + " {C("
+                     + str(_shares * world.share_value) + " gold @ "
+                     + str(world.share_value) + "){x")
+        _bv = color_len(_bank_txt)
+        _blp = max(0, (_SCORE_INNER - _bv) // 2)
+        _brp = max(0, _SCORE_INNER - _bv - _blp)
+        lines.insert(-1, "{W|{x" + " " * _blp + _bank_txt
+                     + " " * _brp + "{W|{x")
+    # [PRIMESUD] list sent unjoined: batch-rendered by terminal.print_lines
+    chprintln(player, lines)
+
+    # cf. 1stMud act_info.c:2182 -- COMM_SHOW_AFFECTS appends do_affects.
+    if p.get("flags", PLR_DEFAULTS) & COMM_SHOW_AFFECTS:
+        do_affects(player, [])
+
+
+def do_title(player, argument):
+    """Set the player's score title (cf. 1stMud do_title in act_info.c).
+
+    Args:
+        player (dict): Player state dict.
+        argument (str): Raw command tail -- the title text, case and spacing
+            preserved (cf. 1stMud do_fun(ch, argument), not a lowercased
+            token list).
+    """
+    if not argument:
+        chprintln(player, "Change your title to what?")
+        return
+    title = argument[:45]  # cf. 1stMud act_info.c:3531 -- 45-char cap
+    # [PRIMESUD] save-payload safety (game_state.py _serialize_world): '~' is
+    # the save-line separator and '"' would break the PPL string literal --
+    # neither is guarded upstream (raw C string), but both would corrupt the
+    # next save here.
+    if "~" in title or '"' in title:
+        chprintln(player, "Titles may not contain '~' or '\"'.")
+        return
+    set_title(player, title)
+    chprintln(player, "Ok.")
 
 
 def do_worth(player, args):
@@ -924,8 +1135,6 @@ def do_time(player, args):
     server/multiplayer lines (boot/copyover time, timezones, connected-at,
     creation percentage) have no single-player equivalent and are omitted.
     """
-    from game_time import (time_info, day_name, month_name, ordinal_string,
-                           HOURS_IN_DAY, DAYS_IN_WEEK)
     hour = time_info["hour"]
     half = HOURS_IN_DAY // 2
     hour12 = half if hour % half == 0 else hour % half
@@ -950,7 +1159,6 @@ def do_time(player, args):
 
 def do_weather(player, args):
     """Report the current weather to an outdoor player (cf. 1stMud do_weather in act_info.c:2470)."""
-    from game_time import weather_report_line
     room = ROOM_DEFS[player["room"]]
     # IsOutside (cf. 1stMud macro.h): a room not flagged indoors.
     if room.get("flags", {}).get("indoors"):
@@ -1044,6 +1252,9 @@ def _print_level_lists(player, args, want_spells):
         else:
             chprintln(player, "{cNo skills found.{x")
         return
+    # [PRIMESUD] output accumulated and sent as one unjoined list --
+    # batch-rendered by terminal.print_lines
+    out = []
     for level in range(MAX_MORTAL_LEVEL + 1):
         items = rows.get(level)
         if not items:
@@ -1055,11 +1266,12 @@ def _print_level_lists(player, args, want_spells):
                 line += items[i + 1]
             # [PRIMESUD] 1stMud's 29-wide columns overflow 64 cols (68 vis);
             # 16-wide names + stripped tail keep two columns under the wrap.
-            chprintln(player, line.rstrip() + "{x")
+            out.append(line.rstrip() + "{x")
+    chprintln(player, out)
 
 
 def print_practice_table(player):
-    """Print learned practice percentages (cf. 1stMud do_practice in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
+    """Print learned practice percentages (cf. 1stMud do_practice in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; output batched via list chprintln 22/07/2026]"""
     items = []
     half = TERMINAL_COLS // 2
     name_w = 18
@@ -1068,11 +1280,14 @@ def print_practice_table(player):
         pct = learned.get(sn, 0)
         if can_use_skill_spell(player, sn) and pct > 0:
             items.append("{:<{}} {:3d}%".format(sk["name"][:name_w], name_w, pct))
+    # [PRIMESUD] list sent unjoined: batch-rendered by terminal.print_lines
+    out = []
     for i in range(0, len(items), 2):
         line = items[i]
         if i + 1 < len(items):
             line = line + " " * (half - len(line)) + items[i + 1]
-        chprintln(player, line)
+        out.append(line)
+    chprintln(player, out)
 
 
 def do_skills(player, args):
@@ -1085,8 +1300,10 @@ def do_spells(player, args):
     _print_level_lists(player, args, True)
 
 
-HELP_FILE = "help.txt"  # [PRIMESUD] generated by tools/help_to_primesud.py
-HELP_INDEX = "help.idx"  # [PRIMESUD] '<level>|<offset>|<keywords>' per entry
+HELP_FILE = "help.txt"  # [PRIMESUD] canonical source; idx via tools/build_help_idx.py
+HELP_INDEX = "help.idx"  # '<level>|<category>|<offset>|<keywords>' per entry
+HELP_CATEGORIES = ("unknown", "creation", "spells", "commands", "newbie",
+                   "immortal", "olc", "clan")
 
 
 def _help_is_name(sstr, namelist):
@@ -1116,17 +1333,126 @@ def _help_is_name(sstr, namelist):
     return True
 
 
+def _help_body(offset):
+    """Read one help body at its prebuilt byte offset. [PRIMESUD]"""
+    body = []
+    with open(HELP_FILE) as f:
+        f.seek(offset)
+        while True:
+            line = f.readline()
+            if not line or line[0] == "#":
+                break
+            body.append(line.rstrip("\n"))
+    return body
+
+
+def do_index(player, args):
+    """Browse help entries by category (cf. 1stMud do_index in act_info.c).
+
+    [PRIMESUD] Scans the off-heap help index and uses two columns for the
+    Prime's 64-column screen. [Verified: 22/07/2026]
+    """
+    with open(HELP_INDEX) as f:
+        data = f.read()
+    if not args:
+        counts = [0] * len(HELP_CATEGORIES)
+        for line in data.split("\n"):
+            if not line:
+                continue
+            _level, category, _offset, _keywords = line.split("|", 3)
+            if category in HELP_CATEGORIES:
+                counts[HELP_CATEGORIES.index(category)] += 1
+        data = None
+        lines = ["Help Category not found. Valid args are:"]
+        for i, category in enumerate(HELP_CATEGORIES):
+            lines.append("%2d) %s (%d helps)" %
+                         (i + 1, category, counts[i]))
+        tpage(lines)
+        return
+
+    arg = args[0].lower()
+    category = None
+    if arg.isdigit():
+        category_number = int(arg) - 1
+        if 0 <= category_number < len(HELP_CATEGORIES):
+            category = HELP_CATEGORIES[category_number]
+    else:
+        for name in HELP_CATEGORIES:
+            if name.startswith(arg):
+                category = name
+                break
+    if category is None:
+        chprintln(player, "Unknown category.")
+        return
+
+    number = None
+    if len(args) > 1:
+        # [PRIMESUD] Category-local misses use the clearer not-found message;
+        # upstream instead treats numbers >= global top_help as bad syntax.
+        if not args[1].isdigit() or int(args[1]) < 1:
+            chprintln(player, "Syntax: index <category> <help number>")
+            return
+        number = int(args[1])
+
+    trust = player.get("level", 1)
+    matches = []
+    selected = None
+    count = 0
+    for line in data.split("\n"):
+        if not line:
+            continue
+        level_s, entry_category, offset_s, keywords = line.split("|", 3)
+        if int(level_s) > trust or entry_category != category:
+            continue
+        if number is None:
+            matches.append(keywords)
+        else:
+            count += 1
+            if number == count:
+                selected = (keywords, int(offset_s))
+                break
+    data = None
+
+    sep = draw_line("{c-{C-")
+    if number is not None:
+        if selected is None:
+            chprintln(player, "That help not found in %s." % category)
+            return
+        lines = [sep, "Help Keywords : %s" % selected[0],
+                 "Help Category : %s" % category, sep]
+        lines.extend(_help_body(selected[1]))
+        lines.append(sep)
+        tpage(lines)
+        return
+
+    lines = [sep, "[ %s ]" % category.upper(), sep]
+    half = TERMINAL_COLS // 2
+    cells = []
+    for i, keywords in enumerate(matches):
+        cells.append(("%3d) %s" % (i + 1, keywords))[:half - 1])
+    for i in range(0, len(cells), 2):
+        line = cells[i]
+        if i + 1 < len(cells):
+            line += " " * (half - len(line)) + cells[i + 1]
+        lines.append(line)
+    if not matches:
+        lines.append("No helps found in %s." % category)
+    lines.append(sep)
+    tpage(lines)
+
+
 def do_help(player, args):
     """Show a help entry, keyword list, or see-also list (cf. 1stMud do_help in act_info.c).
 
-    [PRIMESUD] Scans HELP_INDEX (~7KB) instead of an in-memory help list or
+    [PRIMESUD] Scans HELP_INDEX (~9KB) instead of an in-memory help list or
     the full ~150KB HELP_FILE -- neither fits the HP Prime heap/time budget.
-    Index format: '<level>|<offset>|<keywords>' per line; offset is the byte
-    position of the entry's first text line in HELP_FILE, printed via seek.
+    Index format: '<level>|<category>|<offset>|<keywords>' per line; offset is
+    the byte position of the entry's first text line in HELP_FILE.
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified
     04/07/2026; index-scan rework re-verified 05/07/2026; 'debug time'
     timing instrumentation added 05/07/2026; one-shot idx read + substring
-    pre-filter re-verified 05/07/2026]
+    pre-filter re-verified 05/07/2026; output batched via list chprintln
+    22/07/2026; category field added and re-verified 22/07/2026]
     """
     argall = " ".join(args) if args else "summary"
     number, target = _number_argument(argall)
@@ -1143,15 +1469,14 @@ def do_help(player, args):
     # Substring pre-filter: any _help_is_name match needs the first target
     # word to prefix some keyword, so its uppercase form must appear in the
     # index line -- skips split/int/is_name work on non-candidates.
-    f = open(HELP_INDEX)
-    data = f.read()
-    f.close()
+    with open(HELP_INDEX) as f:
+        data = f.read()
     words = target.split()
     q = words[0].strip("'\"").upper() if words else ""
     for line in data.split("\n"):
         if not line or q not in line:
             continue
-        level_s, off_s, keyword = line.split("|", 2)
+        level_s, _category, off_s, keyword = line.split("|", 3)
         if int(level_s) > trust:
             continue
         if not _help_is_name(target, keyword):
@@ -1166,31 +1491,24 @@ def do_help(player, args):
                 found = True
             elif found:
                 related.append(keyword)
-    data = None  # [PRIMESUD] release 7KB index string promptly
+    data = None  # [PRIMESUD] release 9KB index string promptly
     t1 = t2 = ticks()  # [PRIMESUD] idx scan done
     if show:
         # [PRIMESUD] read body before printing so 'debug time' can split
         # file-read cost from terminal-render cost
-        body = []
-        f = open(HELP_FILE)
-        f.seek(show[1])
-        while True:
-            line = f.readline()
-            if not line or line[0] == "#":
-                break
-            body.append(line.rstrip("\n"))
-        f.close()
+        body = _help_body(show[1])
         t2 = ticks()
-        chprintln(player, sep)
-        chprintln(player, "Help Keywords : %s" % show[0])
-        chprintln(player, sep)
-        for line in body:
-            chprintln(player, line)
-        chprintln(player, sep)
+        # [PRIMESUD] output accumulated and sent as one unjoined list --
+        # batch-rendered by terminal.print_lines
+        out = [sep, "Help Keywords : %s" % show[0], sep]
+        out.extend(body)
+        out.append(sep)
+    else:
+        out = []
     if matches:
         # [PRIMESUD] 1stMud prints 3 columns; 2 columns fit the 64-col screen
-        chprintln(player, "Help files that start with the letter '%s'." % target[0].upper())
-        chprintln(player, sep)
+        out.append("Help files that start with the letter '%s'." % target[0].upper())
+        out.append(sep)
         half = TERMINAL_COLS // 2
         cells = []
         for i, kw in enumerate(matches):
@@ -1199,15 +1517,17 @@ def do_help(player, args):
             line = cells[i]
             if i + 1 < len(cells):
                 line = line + " " * (half - len(line)) + cells[i + 1]
-            chprintln(player, line)
-        chprintln(player, sep)
-        chprintln(player, "%d total help files." % len(matches))
+            out.append(line)
+        out.append(sep)
+        out.append("%d total help files." % len(matches))
     elif not found:
-        chprintln(player, "No help found for %s. Try using just the first letter." % target)
+        out.append("No help found for %s. Try using just the first letter." % target)
         # new_wiznet missing-help log: no immortals in single-user [PRIMESUD]
     elif related:
-        chprintln(player, "See Also : %s." % ", ".join(related))
-        chprintln(player, sep)
+        out.append("See Also : %s." % ", ".join(related))
+        out.append(sep)
+    if out:
+        chprintln(player, out)
     if "time" in DBG:  # [PRIMESUD] 'debug time' channel
         t3 = ticks()
         dbg("help: idx=" + str(t1 - t0) + "ms read=" + str(t2 - t1) +
@@ -1220,9 +1540,10 @@ def do_map(player, args):
     Args:
         player (dict): Player state dict.
     """
-    # [TODO blind] 1stMud checks check_blind(ch) here and refuses if AFF_BLIND -- add when blindness is implemented
-    for line in build_full_lines(player, ROOM_DEFS):
-        chprintln(player, line)
+    if not check_blind(player):   # cf. 1stMud do_map automap.c:567
+        return
+    # [PRIMESUD] list sent unjoined: batch-rendered by terminal.print_lines
+    chprintln(player, list(build_full_lines(player, ROOM_DEFS)))
 
 
 def do_affects(player, args):
@@ -1230,16 +1551,20 @@ def do_affects(player, args):
 
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
     racial-ability section added and re-verified 06/07/2026; equipment-spells
-    section added and re-verified 06/07/2026]
+    section added and re-verified 06/07/2026; output batched via list
+    chprintln 22/07/2026]
 
     Args:
         player (dict): Player state dict.
         args (list): Unused.
     """
     found = False
+    # [PRIMESUD] output accumulated and sent as one unjoined list --
+    # batch-rendered by terminal.print_lines
+    out = []
     affects = player.get("affect_list", [])
     if affects:
-        chprintln(player, "You are affected by the following spells:")
+        out.append("You are affected by the following spells:")
         # cf. 1stMud: modifier/duration detail only at trust >= 20
         show_detail = player.get("level", 1) >= 20
         last_type = None
@@ -1262,22 +1587,21 @@ def do_affects(player, args):
                     line += "permanently"
                 else:
                     line += "for " + str(dur) + " hours"
-            chprintln(player, line)
+            out.append(line)
             last_type = sn
         found = True
-        chprintln(player, "")
+        out.append("")
     # cf. 1stMud do_affects racial-ability section (act_info.c:2249-2264);
     # gated on the bits actually being set on the char (IsAffected).
-    from races import race_lookup, RACE_TABLE
     _race = race_lookup(player.get("race", "Human")) or RACE_TABLE["Human"]
     race_aff = _race.get("aff", {})
     affected_by = player.get("affected_by", {})
     if race_aff and any(affected_by.get(f) for f in race_aff):
-        chprintln(player, "You are affected by the following racial abilities:")
+        out.append("You are affected by the following racial abilities:")
         for flag_name in sorted(race_aff):
-            chprintln(player, "{xSpell: {c" + _pad_color(flag_name, 19) + "{x")
+            out.append("{xSpell: {c" + _pad_color(flag_name, 19) + "{x")
         found = True
-        chprintln(player, "")
+        out.append("")
     # cf. 1stMud do_affects equipment-spells section (act_info.c:2265-2337):
     # gated on any active affected_by bit not accounted for by race->aff.
     active = set(f for f in affected_by if affected_by.get(f))
@@ -1297,10 +1621,10 @@ def do_affects(player, args):
                 if not bit or not affected_by.get(bit):
                     continue
                 if not printed:
-                    chprintln(player, "You are affected by the following equipment spells:")
+                    out.append("You are affected by the following equipment spells:")
                     printed = True
-                chprintln(player, "{xSpell: {c" + _pad_color(bit, 19)
-                          + ":{x " + short_descr)
+                out.append("{xSpell: {c" + _pad_color(bit, 19)
+                           + ":{x " + short_descr)
             # Then template flag_affects, non-enchanted only (cf. 1stMud
             # obj->pIndexData->affect_first, gated on !obj->enchanted)
             if not obj.get("enchanted"):
@@ -1311,48 +1635,25 @@ def do_affects(player, args):
                     if not bit or not affected_by.get(bit):
                         continue
                     if not printed:
-                        chprintln(player, "You are affected by the following equipment spells:")
+                        out.append("You are affected by the following equipment spells:")
                         printed = True
-                    chprintln(player, "{xSpell: {c" + _pad_color(bit, 19)
-                              + ":{x " + short_descr)
+                    out.append("{xSpell: {c" + _pad_color(bit, 19)
+                               + ":{x " + short_descr)
         # 1stMud sets found=true here unconditionally, even if nothing printed
         # (act_info.c:2333-2334) -- quirk preserved for fidelity.
         found = True
         if printed:
-            chprintln(player, "")
+            out.append("")
     if not found:
-        chprintln(player, "You are not affected by any spells.")
+        out.append("You are not affected by any spells.")
+    chprintln(player, out)
 
 
 def do_credits(player, args):
-    """Display game credits and acknowledgements (cf. 1stMud `do_credits` in act_info.c).
-
-    [PRIMESUD] 1stMud shows the diku/ROM/1stMud help entries; PrimeSUD
-    prints its own condensed text (adds the port line).
-    """
-    chprintln(player, "{WPrimeSUD{x -- a single-user dungeon for the HP Prime")
-    chprintln(player, "Port by ZechyW.  Not for commercial distribution.")
-    chprintln(player, "")
-    chprintln(player, "{W1stMud ROM Derivative{x")
-    chprintln(player, "  {c(c) 2001-2003 Ryan Jennings (Markanth){x")
-    chprintln(player, "  markanth@firstmud.com")
-    chprintln(player, "")
-    chprintln(player, "{WROM 2.4 beta{x")
-    chprintln(player, "  {c(c) 1993-1998 Russ Taylor{x")
-    chprintln(player, "  rtaylor@hypercube.org")
-    chprintln(player, "")
-    chprintln(player, "{WMerc 2.1{x")
-    chprintln(player, "  {c(c) 1992-1993 Michael Chastain  mec@shell.portal.com{x")
-    chprintln(player, "            Michael Quan       michael@uclink.berkeley.edu")
-    chprintln(player, "            Mitchell Tse       hatchet@uclink.berkeley.edu")
-    chprintln(player, "")
-    chprintln(player, "{WDikuMud{x -- creators of the original game")
-    chprintln(player, "  {c(c) 1990-1991 Sebastian Hammer       quinn@freja.diku.dk{x")
-    chprintln(player, "            Michael Seifert        seifert@freja.diku.dk")
-    chprintln(player, "            Hans Henrik Staerfeldt bombman@freja.diku.dk")
-    chprintln(player, "            Tom Madsen             noop@freja.diku.dk")
-    chprintln(player, "            Katja Nyboe            katz@freja.diku.dk")
-    chprintln(player, "  DIKU, Computer Science Institute, Copenhagen University")
+    """Display upstream credit help entries (cf. 1stMud `do_credits` in act_info.c). [Verified: 23/07/2026]"""
+    do_help(player, ["diku", "credits"])
+    do_help(player, ["ROM", "credits"])
+    do_help(player, ["1stMud", "credits"])
 
 
 def _convert_level(arg):
@@ -1426,120 +1727,209 @@ def _compress_path(parent, source, target):
     return "".join(parts)
 
 
-def find_area_paths(ch):
-    """Single BFS from player room to all areas (cf. 1stMud path_to_area in act_enter.c).
+# Precomputed border-graph index (tools/build_path_index.py); cwd is src/
+# both on-device and at runtime. Tests monkeypatch this to a tmp file.
+PATH_INDEX_FILE = "paths.idx"
 
-    [PRIMESUD] One BFS for all areas (1stMud re-runs per area).
-    [Verified: 03/07/2026]
+
+def _parse_index():
+    """Read paths.idx in one f.read() and parse both record types. [PRIMESUD]
 
     Returns:
-        dict: Mapping of area_tag -> compressed direction string.
+        tuple: (segs, xedges) where segs maps entry vnum ->
+            [(exit_vnum, dist, dirs), ...] intra-area segments and xedges
+            maps exit vnum -> [(dir, to_vnum), ...] cross-area exits.
     """
-    source = ch.get("room")
-    if source is None:
-        return {}
-    source_room = ROOM_DEFS.get(source)
-    if source_room is None:
-        return {}
-    source_area = source_room.get("area")
-    found = {}
-    dist = {source: 0}
+    segs = {}
+    xedges = {}
+    with open(PATH_INDEX_FILE) as f:
+        data = f.read()
+    for line in data.split("\n"):
+        if not line or line[0] == "#":
+            continue
+        parts = line.split("|")
+        if parts[0] == "S":
+            segs.setdefault(int(parts[1]), []).append(
+                (int(parts[2]), int(parts[3]), parts[4]))
+        elif parts[0] == "X":
+            xedges.setdefault(int(parts[1]), []).append(
+                (parts[2], int(parts[3])))
+    return segs, xedges
+
+
+def _bfs_leg(start, tag):
+    """BFS from start over one already-loaded area's rooms only. [PRIMESUD]
+
+    Returns:
+        tuple: (dist, parent) dicts; parent chains feed _compress_path.
+    """
+    dist = {start: 0}
     parent = {}
-    queue = [source]
+    queue = [start]
     qi = 0
     while qi < len(queue):
         cur = queue[qi]
         qi += 1
-        room = ROOM_DEFS.get(cur)
+        room = ROOM_DEFS._data.get(cur)
         if room is None:
             continue
-        for d in EXIT_ORDER:
-            ev = room.get("exits", {}).get(d)
-            if ev is None:
+        for direction in EXIT_ORDER:
+            exit_val = room.get("exits", {}).get(direction)
+            if exit_val is None:
                 continue
-            to_vnum = ev.get("to") if isinstance(ev, dict) else ev
-            if to_vnum is None or to_vnum in dist:
+            to = exit_val.get("to") if isinstance(exit_val, dict) else exit_val
+            if to is None or to in dist:
                 continue
-            to_room = ROOM_DEFS.get(to_vnum)
-            if to_room is None:
+            to_room = ROOM_DEFS._data.get(to)
+            if to_room is None or to_room.get("area") != tag:
                 continue
-            dist[to_vnum] = dist[cur] + 1
-            parent[to_vnum] = (cur, d)
-            tag = to_room.get("area")
-            if tag and tag != source_area and tag not in found:
-                found[tag] = _compress_path(parent, source, to_vnum)
-            queue.append(to_vnum)
-    return found
+            dist[to] = dist[cur] + 1
+            parent[to] = (cur, direction)
+            queue.append(to)
+    return dist, parent
 
 
-def _area_chain(source, target, adj):
-    """BFS the static area-adjacency graph for a chain of area tags. [PRIMESUD]
+def _merge_runs(parts):
+    """Concatenate compressed direction strings, merging boundary runs.
 
-    Pure helper for find_path_to_area's zero-load Stage 1: no ROOM_DEFS
-    access, so it never triggers an area load. Iterates each area's
-    neighbor tuple in the order given by `adj` for deterministic output.
+    "3n" + "2n" -> "5n"; format is count-then-dir with count omitted when
+    1, matching _compress_path / do_run's parser. [PRIMESUD]
+    """
+    runs = []  # [dir, count] pairs
+    for s in parts:
+        i = 0
+        n = len(s)
+        while i < n:
+            j = i
+            while "0" <= s[j] <= "9":
+                j += 1
+            count = int(s[i:j]) if j > i else 1
+            d = s[j]
+            i = j + 1
+            if runs and runs[-1][0] == d:
+                runs[-1][1] += count
+            else:
+                runs.append([d, count])
+    out = []
+    for d, count in runs:
+        if count > 1:
+            out.append(str(count))
+        out.append(d)
+    return "".join(out)
 
-    Args:
-        source (str): Starting area tag.
-        target (str): Destination area tag.
-        adj (dict): {area_tag: tuple_of_neighbor_tags}, e.g. world._AREA_ADJ.
+
+def _route(player, target_tag, target_room=None):
+    """Exact shortest route via the precomputed border graph. [PRIMESUD]
+
+    Dijkstra over paths.idx segments plus two live BFS legs inside
+    already-loaded areas (source area; target area for mob targets, loaded
+    by the mob lookup). Loads no areas at routing time. Step count matches
+    an unrestricted full-world BFS; the chosen equal-length route may
+    differ from upstream's.
 
     Returns:
-        list or None: Area tags from source to target inclusive (length 1
-            if source == target), or None if target is unreachable from
-            source via the adjacency graph.
+        tuple: ("", 0) no walk needed; (route, steps) compressed route;
+            (None, 0) unreachable.
     """
-    if source == target:
-        return [source]
-    dist = {source: 0}
-    parent = {}
-    queue = [source]
-    qi = 0
-    while qi < len(queue):
-        cur = queue[qi]
-        qi += 1
-        for nb in adj.get(cur, ()):
-            if nb in dist:
-                continue
-            dist[nb] = dist[cur] + 1
-            parent[nb] = cur
-            queue.append(nb)
-    if target not in dist:
-        return None
-    chain = [target]
-    v = target
-    while v != source:
-        v = parent[v]
-        chain.append(v)
-    chain.reverse()
-    return chain
+    source = player.get("room")
+    if source is None:
+        return None, 0
+    source_tag = ROOM_DEFS[source].get("area")
+    if source_tag == target_tag:
+        if target_room is None or source == target_room:
+            return "", 0
+
+    segs, xedges = _parse_index()
+    START = -1
+    GOAL = -2
+
+    # Source leg: virtual start -> each source-area exit room; plus a
+    # direct edge to the goal for a same-area mob target (the graph still
+    # considers leave-and-re-enter routes alongside it).
+    sdist, sparent = _bfs_leg(source, source_tag)
+    start_edges = []
+    for room in sdist:
+        if room in xedges:
+            start_edges.append(
+                (room, sdist[room], _compress_path(sparent, source, room)))
+    if target_room is not None and target_room in sdist:
+        start_edges.append((GOAL, sdist[target_room],
+                            _compress_path(sparent, source, target_room)))
+
+    # Target leg (mob targets): each entry room of the target area -> the
+    # mob's room, BFS inside the target area (loaded by the mob lookup).
+    tgt_entry = {}
+    if target_room is not None:
+        entries = set()
+        for xlist in xedges.values():
+            for _direction, to in xlist:
+                if world._vnum_to_tag(to) == target_tag:
+                    entries.add(to)
+        for entry in entries:
+            tdist, tparent = _bfs_leg(entry, target_tag)
+            if target_room in tdist:
+                tgt_entry[entry] = (tdist[target_room],
+                                    _compress_path(tparent, entry,
+                                                   target_room))
+
+    # Dijkstra, integer weights, O(V^2) linear-min (no heapq: device
+    # availability unverified).
+    dist = {START: 0}
+    prev = {}
+    settled = set()
+    goal_node = None
+    while goal_node is None:
+        u = None
+        du = 0
+        for node in dist:
+            if node not in settled and (u is None or dist[node] < du):
+                u = node
+                du = dist[node]
+        if u is None:
+            return None, 0
+        settled.add(u)
+        if target_room is None:
+            # Area target: done on first arrival inside the target area
+            # (upstream path_to_area stops at the first such room).
+            if u >= 0 and world._vnum_to_tag(u) == target_tag:
+                goal_node = u
+                break
+        elif u == GOAL:
+            goal_node = u
+            break
+        if u == START:
+            edges = start_edges
+        else:
+            edges = [(to, w, dirs) for to, w, dirs in segs.get(u, ())]
+            for direction, to in xedges.get(u, ()):
+                edges.append((to, 1, direction))
+            if target_room is not None and u in tgt_entry:
+                w, dirs = tgt_entry[u]
+                edges.append((GOAL, w, dirs))
+        for to, w, dirs in edges:
+            nd = du + w
+            if to not in dist or nd < dist[to]:
+                dist[to] = nd
+                prev[to] = (u, dirs)
+
+    parts = []
+    node = goal_node
+    while node != START:
+        node, dirs = prev[node]
+        parts.append(dirs)
+    parts.reverse()
+    return _merge_runs(parts), dist[goal_node]
 
 
 def find_path_to_area(ch, target_tag):
-    """Lazy speedwalk pathfinder to a target area. [PRIMESUD]
+    """Speedwalk to a target area via the border graph. [PRIMESUD]
 
-    Staged to minimize (ideally avoid) area loads, unlike find_area_paths
-    which always loads every area:
-
-    1. Zero-load BFS over the static area-adjacency graph
-       (world._AREA_ADJ, via _area_chain) from the player's current area
-       to target_tag. No chain -- e.g. the graph has no path, since it
-       only records edges into already-converted areas -- returns None
-       immediately without loading anything.
-    2. Load just the areas in that chain (world._ensure_area_by_tag;
-       each prints its own "[Loading area: X]" notice).
-    3. Restricted room-level BFS from the player's room, walking exits
-       exactly like find_area_paths but filtering each destination vnum
-       through world._vnum_to_tag (a static-range lookup, never a load)
-       *before* touching ROOM_DEFS for it. Destinations outside the
-       chain are skipped without ever probing ROOM_DEFS[to_vnum] --
-       touching it would trigger that area's load via the LazyDict trap.
-       Stops at the first room whose area is target_tag.
-    4. Fallback: if the area graph has a chain but the restricted BFS
-       can't complete it at room granularity (e.g. a one-way exit means
-       the reverse edge doesn't actually exist as a walkable exit),
-       print the loading notice and fall back to find_area_paths, which
-       loads every area but is guaranteed to find any reachable target.
+    Thin wrapper over _route: exact shortest route, zero area loads at
+    routing time. Replaces the earlier staged corridor pathfinder and its
+    load-all find_area_paths fallback -- the corridor's area-level chains
+    assumed any entry of an area reaches any exit, which internally
+    partitioned areas break constantly (silent 3-4x overlong walks, or a
+    full ~5.9MB world load when the restricted BFS dead-ended).
 
     Args:
         ch (dict): Player state dict.
@@ -1550,58 +1940,8 @@ def find_path_to_area(ch, target_tag):
             if unreachable. Also None if ch is already in target_tag --
             callers exclude the current area from candidate lists anyway.
     """
-    source_room = ch.get("room")
-    if source_room is None:
-        return None
-    # ch["room"] is always loaded (the player is standing there), so this
-    # is a safe, zero-load ROOM_DEFS access.
-    source_tag = ROOM_DEFS[source_room].get("area")
-    if source_tag is None or source_tag == target_tag:
-        return None
-
-    chain = _area_chain(source_tag, target_tag, world._AREA_ADJ)
-    if chain is None:
-        return None
-
-    for tag in chain:
-        world._ensure_area_by_tag(tag)
-    chain_set = set(chain)
-
-    dist = {source_room: 0}
-    parent = {}
-    queue = [source_room]
-    qi = 0
-    while qi < len(queue):
-        cur = queue[qi]
-        qi += 1
-        room = ROOM_DEFS.get(cur)
-        if room is None:
-            continue
-        for d in EXIT_ORDER:
-            ev = room.get("exits", {}).get(d)
-            if ev is None:
-                continue
-            to_vnum = ev.get("to") if isinstance(ev, dict) else ev
-            if to_vnum is None or to_vnum in dist:
-                continue
-            # Check ownership via the zero-load static range lookup
-            # BEFORE touching ROOM_DEFS[to_vnum] -- accessing it for a
-            # vnum outside the chain would load that area (LazyDict trap).
-            to_tag = world._vnum_to_tag(to_vnum)
-            if to_tag not in chain_set:
-                continue
-            dist[to_vnum] = dist[cur] + 1
-            parent[to_vnum] = (cur, d)
-            if to_tag == target_tag:
-                return _compress_path(parent, source_room, to_vnum)
-            queue.append(to_vnum)
-
-    # Stage 4 fallback: the area graph says target_tag is reachable via
-    # this chain, but the restricted room-level search never connected
-    # (e.g. a one-way exit makes the graph edge non-walkable in this
-    # direction at room granularity). Fall back to the exhaustive search.
-    chprintln(ch, "{YLoading all area paths...{x")
-    return find_area_paths(ch).get(target_tag)
+    route, _steps = _route(ch, target_tag)
+    return route or None
 
 
 def _center_fill(text, width=0):
@@ -1686,6 +2026,94 @@ def do_areas(player, args):
         chprintln(player, "{W" + _center_fill("[ {R" + str(count) + " areas found{W ]") + "{x")
 
 
+MOB_INDEX_FILE = "mobs.idx"  # [PRIMESUD] prebuilt mob display metadata
+
+
+def _mob_stats(player, stat_index):
+    """Show mob-template stats (cf. 1stMud do_mobkills/do_mobdeaths in act_info.c).
+
+    [PRIMESUD] Layout is condensed to 64 columns; immortal reset forms are
+    omitted with the immortal admin surface.
+    """
+    title = "Most Dangerous Monsters" if stat_index == 0 else "Most Popular Mobs"
+    label = "Kills" if stat_index == 0 else "Deaths"
+    counts = {v: s[stat_index] for v, s in world.mob_stats.items()
+              if s[stat_index] > 2}
+    lines = ["{W[ {R" + title + "{W ]{x",
+             "{GNum  Mob Name               Lvl Area                 " + label + "{x"]
+    if not counts:
+        lines.append("No Mobs listed yet.")
+        tpage(lines)
+        return
+    metadata = {}
+    with open(MOB_INDEX_FILE) as f:
+        data = f.read()
+    for line in data.split("\n"):
+        if not line or line[0] == "#":
+            continue
+        parts = line.split("|", 5)
+        if len(parts) < 6:
+            continue
+        vnum = int(parts[0])
+        if vnum in counts:
+            metadata[vnum] = (parts[4], int(parts[2]), parts[1])
+    ranked = [(count, vnum) for vnum, count in counts.items()
+              if vnum in metadata]
+    ranked.sort(key=lambda x: (-x[0], x[1]))
+    rank = 0
+    for count, vnum in ranked[:50]:
+        rank += 1
+        short_descr, level, tag = metadata[vnum]
+        lines.append("%3d) %-22s %3d %-20s %6d" %
+                     (rank, short_descr[:22], level,
+                      world._TAG_TO_NAME.get(tag, tag)[:20], count))
+    if not rank:
+        lines.append("No Mobs listed yet.")
+    tpage(lines)
+
+
+def do_mobkills(player, args):
+    """List mobs ranked by kills (cf. 1stMud do_mobkills in act_info.c)."""
+    _mob_stats(player, 0)
+
+
+def do_mobdeaths(player, args):
+    """List mobs ranked by deaths (cf. 1stMud do_mobdeaths in act_info.c)."""
+    _mob_stats(player, 1)
+
+
+def _area_stats(stat_index):
+    """Show area stats (cf. 1stMud do_areakills/do_areadeaths in act_info.c).
+
+    [PRIMESUD] Layout is condensed to 64 columns; trusted reset forms are
+    omitted with the immortal admin surface.
+    """
+    # [PRIMESUD] Upstream do_areakills has an inverted AREA_CLOSED gate that
+    # hides every active area; use its clear listing intent, like do_areadeaths.
+    label = "Kills" if stat_index == 0 else "Deaths"
+    ranked = [(s[stat_index], tag) for tag, s in world.area_stats.items()
+              if s[stat_index] > 0]
+    ranked.sort(key=lambda x: (-x[0], x[1]))
+    lines = ["{GNum  Area Name                 Levels   " + label + "{x"]
+    for rank, entry in enumerate(ranked, 1):
+        count, tag = entry
+        levels = world.AREA_LEVELS.get(tag, (1, MAX_LEVEL))
+        lvl = str(levels[0]) + "-" + str(levels[1])
+        lines.append("%3d) %-25s %7s %7d" %
+                     (rank, world._TAG_TO_NAME.get(tag, tag)[:25], lvl, count))
+    tpage(lines)
+
+
+def do_areakills(player, args):
+    """List areas ranked by kills (cf. 1stMud do_areakills in act_info.c)."""
+    _area_stats(0)
+
+
+def do_areadeaths(player, args):
+    """List areas ranked by deaths (cf. 1stMud do_areadeaths in act_info.c)."""
+    _area_stats(1)
+
+
 def do_read(player, args):
     """Alias for do_look (cf. 1stMud do_read in act_info.c). [Verified: 03/07/2026]"""
     do_look(player, args)
@@ -1694,18 +2122,20 @@ def do_read(player, args):
 def do_examine(player, args):
     """Examine an object: look at it, then show contents or coin count (cf. 1stMud do_examine in act_info.c).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; picker visibility filter added 10/07/2026]
 
     Args:
         player (dict): Player state dict.
         args (list): Parsed command arguments.
     """
     if not args:
-        # [PRIMESUD] picker menu when no args (1stMud prints "Examine what?" and stops)
+        # [PRIMESUD] picker menu when no args (1stMud prints "Examine what?" and
+        # stops); hidden/invisible entries filtered like the get/drop pickers
         rs = world.rooms[player["room"]]
         equipped = [o for o in player["equip"].values() if o is not None]
-        mobs = list(rs["mobs"])
-        objs = list(rs["items"]) + player["inv"] + equipped
+        mobs = [i for i in rs["mobs"] if can_see(player, world.chars[i])]
+        objs = [o for o in (list(rs["items"]) + player["inv"] + equipped)
+                if can_see_obj(player, o)]
         labels = [MOB_DEFS[world.chars[i]["tpl"]]["short_descr"] for i in mobs]
         for o in objs:
             labels.append((isinstance(o, dict) and o.get("short_descr"))
@@ -1739,13 +2169,15 @@ def _examine_extras(player, obj):
 
     [PRIMESUD] Container contents shown from the resolved obj directly; 1stMud
     re-resolves via do_look "in <arg>", which can match a different object.
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified
+    04/07/2026; jukebox do_play "list" branch added and re-verified 20/07/2026;
+    legacy sparse money fallback added and re-verified 21/07/2026]
     """
     tpl = ITEM_DEFS[obj_vnum(obj)]
     obj_type = tpl.get("type")
     if obj_type == "money":
-        silver = obj.get("silver", 0)
-        gold = obj.get("gold", 0)
+        silver = obj.get("silver", tpl.get("silver", 0))
+        gold = obj.get("gold", tpl.get("gold", 0))
         if silver == 0:
             if gold == 0:
                 chprintln(player, "Odd...there's no coins in the pile.")
@@ -1762,4 +2194,8 @@ def _examine_extras(player, obj):
             chprintln(player, "There are " + str(gold) + " gold and " + str(silver) + " silver coins in the pile.")
     elif obj_type in _CONTAINER_TYPES:
         _show_container(player, obj, tpl)
-    # 1stMud: ITEM_JUKEBOX -> do_play "list" -- not yet ported
+    elif obj_type == "jukebox":
+        # cf. 1stMud do_function(ch, &do_play, "list") -- re-resolves the
+        # jukebox from scratch rather than reusing the already-matched obj,
+        # same as upstream.
+        do_play(player, ["list"])

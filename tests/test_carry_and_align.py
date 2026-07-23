@@ -111,12 +111,12 @@ def _clean_world_state():
     ITEM_DEFS._data[world.OBJ_VNUM_SILVER_ONE] = {
         "keywords": "coin silver gcash", "short_descr": "A silver coin",
         "type": "money", "wear_flags": {"take": True}, "level": 0,
-        "weight": 10, "value": 0,
+        "weight": 10, "value": 0, "silver": 1, "gold": 0,
     }
     ITEM_DEFS._data[world.OBJ_VNUM_GOLD_ONE] = {
         "keywords": "coin gold gcash", "short_descr": "A gold coin",
         "type": "money", "wear_flags": {"take": True}, "level": 0,
-        "weight": 10, "value": 0,
+        "weight": 10, "value": 0, "silver": 0, "gold": 1,
     }
     ITEM_DEFS._data[world.OBJ_VNUM_GOLD_SOME] = {
         "keywords": "coins gold gcash", "short_descr": "%d gold coins",
@@ -196,6 +196,21 @@ def test_get_money_exempt_from_item_count_limit(out, monkeypatch):
     assert not any("you can't carry that many items" in l for l in out)
     assert player["gold"] == 3
     assert world.rooms[ROOM_VNUM]["items"] == []
+
+
+def test_get_created_gold_coin_credits_wallet(out):
+    player = _make_player(gold=0, silver=0)
+    coin = inventory.create_object(world.OBJ_VNUM_GOLD_ONE)
+    assert coin["gold"] == 1 and coin["silver"] == 0
+    world.rooms[ROOM_VNUM]["items"].append(coin)
+    inventory.do_get(player, ["gold"])
+    assert player["gold"] == 1 and player["inv"] == []
+
+    # Old save tokens may contain only the vnum; template fallback repairs them.
+    world.rooms[ROOM_VNUM]["items"].append(
+        {"vnum": world.OBJ_VNUM_GOLD_ONE})
+    inventory.do_get(player, ["gold"])
+    assert player["gold"] == 2 and player["inv"] == []
 
 
 # -- Task 1: do_put container capacity -------------------------------------------
@@ -321,7 +336,7 @@ def test_drop_gold_creates_room_pile(out):
 def test_drop_gold_merges_with_existing_pile(out):
     player = _make_player(gold=100, silver=0)
     world.rooms[ROOM_VNUM]["items"].append(
-        {"vnum": world.OBJ_VNUM_GOLD_ONE, "gold": 1, "silver": 0})
+        {"vnum": world.OBJ_VNUM_GOLD_ONE})  # legacy sparse save token
     inventory.do_drop(player, ["9", "gold"])
     assert player["gold"] == 91
     money_items = [o for o in world.rooms[ROOM_VNUM]["items"]

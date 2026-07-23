@@ -22,7 +22,7 @@ def is_runtime_spell(sn):
     if fun == "spell_null":
         return False
     try:
-        from magic import SPELL_FUNS
+        from magic import SPELL_FUNS  # deferred: magic imports skill_utils
         return fun in SPELL_FUNS
     except ImportError:
         return False
@@ -53,13 +53,32 @@ def can_use_skill_spell(player, sn):
     return classes.can_use_skill_spell(player, sn)
 
 
+def _words_prefix(name, sk_name):
+    """[PRIMESUD] Sequential per-word prefix match: input word k must prefix
+    skill-name word k. Lets 'cu li' or 'c l w' match 'cure light wound';
+    bare 'li' still won't match (word 1 must match word 1), so 'cure light'
+    vs 'lightning bolt' stays unambiguous."""
+    parts = name.split()
+    words = sk_name.split()
+    if not parts or len(parts) > len(words):
+        return False
+    i = 0
+    for p in parts:
+        if not words[i].startswith(p):
+            return False
+        i += 1
+    return True
+
+
 def find_skill_spell(player, name):
     """Prefix-match a skill/spell, preferring usable learned entries (cf. 1stMud find_spell in magic.c).
-    [Verified: 03/07/2026]
+    [Verified: 03/07/2026; [PRIMESUD] per-word prefix matching added 17/07/2026]
 
     [PRIMESUD] 1stMud's IsNPC branch (plain skill_lookup) not ported -- only the
-    player casts through this path. Case-sensitive startswith is safe: command
+    player casts through this path. Case-sensitive matching is safe: command
     input is lowercased upstream (commands.py) and skill names are lowercase.
+    [PRIMESUD] Deviation from 1stMud str_prefix: matches per word via
+    _words_prefix, so 'cu li' finds 'cure light'.
     """
     found = None
     if not name:
@@ -68,7 +87,7 @@ def find_skill_spell(player, name):
     learned = player.get("learned", {})
     for sn, sk in SKILL_TABLE:
         sk_name = sk["name"]
-        if sk_name[0].lower() == first and sk_name.startswith(name):
+        if sk_name[0].lower() == first and _words_prefix(name, sk_name):
             if found is None:
                 found = sn
             if can_use_skill_spell(player, sn) and learned.get(sn, 0) > 0:

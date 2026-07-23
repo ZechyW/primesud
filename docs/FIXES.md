@@ -95,12 +95,12 @@ The malformed dice values are the sole source of the damage spike.
 The offhand strike is gated before `one_hit` is called:
 
 ```python
-offhand = player["equip"].get("offhand")
-if offhand is not None and ITEM_TEMPLATES[offhand["vnum"]].get("type") == "weapon":
-    one_hit(tr, player, target_inst, slot="offhand")
+secondary_obj = ch["equip"].get("secondary")
+if secondary_obj is not None and ITEM_DEFS[secondary_obj["vnum"]].get("type") == "weapon":
+    one_hit(ch, victim, dt=dt, secondary=True)
 ```
 
-Only a confirmed weapon item proceeds to the hit; non-weapons in the offhand slot
+Only a confirmed weapon item proceeds to the hit; non-weapons in the secondary slot
 are silently skipped rather than producing undefined dice behaviour inside `one_hit`.
 
 ---
@@ -386,3 +386,121 @@ single-player PrimeSUD that made the spell a complete no-op.
 Restored ROM behaviour: every room occupant whose name does not match the
 spoken name (including the caster) receives the line, with a successful
 save revealing "Someone makes X say ...".
+
+---
+
+## mobprog: $R expansion renders the triggering char, not the random one
+
+**Upstream:** `reference/1stMud4.5.3/src/programs.c`, `expand_arg_mob()`,
+case `'R'`, lines 1512-1520.
+
+### The bug
+
+Every random-char $-code resolves `rch` (the picked random char) except `$R`,
+whose display expression reads `ch` (the triggering char) instead:
+
+```c
+case 'R':
+    if (rch == NULL)
+        rch = get_random_char(mob, NULL, NULL);
+    i = (rch != NULL && can_see(mob, rch))
+        ? (IsNPC(ch) ? ch->short_descr : ch->name)   /* ch, should be rch */
+        : someone;
+    break;
+```
+
+The guard tests `rch` for visibility, then renders `ch` -- a copy-paste slip
+from the `$N` case just above. `$r` (lowercase, name form) is correct; only
+`$R` (short-descr form) is affected. A prog line like `mob echo $R glares at
+you` names the triggering player rather than the random bystander it picked.
+
+### PrimeSUD fix -- implemented in `expand_arg` in `mobprog.py`
+
+The `'R'` branch renders `rch` (`_char_short(rch)`), matching `$r`/`$J`/`$K`/
+`$L` and the `rch` visibility guard. The site carries a `[PRIMESUD]` comment
+referencing this entry.
+
+## multiclass: finish_remort zeroes race skills when the race is kept
+
+**Upstream:** `reference/1stMud4.5.3/src/multiclass.c`, `finish_remort`,
+lines 213-222.
+
+### The bug
+
+The remort skill-reset loop special-cases race skills on the `stay_race`
+flag:
+
+```c
+if (ch->pcdata->learned[sn] > 0 && ch->pcdata->learned[sn] < 100)
+{
+    if (is_race_skill(ch, sn) && !ch->pcdata->stay_race)
+        ch->pcdata->learned[sn] = 0;    /* forgotten entirely */
+    else
+        ch->pcdata->learned[sn] = 1;
+}
+```
+
+`stay_race` is only set when a remort picks a *different* race
+(nanny.c:519-523), so `!stay_race` here means the player went through the
+race prompt and **kept** their race. Their own racial skills are zeroed to
+unknown -- and the `group_add` re-grant in `HANDLE_CON_GET_NEW_RACE` ran
+*earlier* in the flow, so nothing restores them. Changing race (the case
+the special-case presumably meant to handle, dropping the old race's
+skills) instead leaves the old race's skills at 1% via the generic branch.
+The condition appears inverted.
+
+### PrimeSUD fix -- implemented in `finish_remort` in `training.py`
+
+No race special-case: in-progress race skills reset to 1% like every other
+skill, and the new race's skills are granted at 1% by `_apply_remort_race`.
+Old-race skills at 1% match upstream's (accidental) race-change behaviour.
+
+---
+
+## mobprog: get_random_char candidate pool narrowed to visible non-self chars
+
+### 1stMud bug (programs.c:208-246)
+
+For a mob caller the loop's first branch correctly restricts candidates to
+visible players other than the mob -- but any occupant that FAILS those
+conditions falls through to a bare `else if (number_percent() > highest)`,
+which happily rolls for the mob itself, other NPCs, and invisible chars.
+So the restriction only weights the odds; it doesn't restrict the pool, and
+a prog can pick the acting mob as its own "random bystander".
+
+### PrimeSUD deviation -- implemented in `get_random_char` in `mobprog.py`
+
+Candidates are visible characters other than the acting mob, which is the
+behaviour the $-codes ($r/$R "random char here") plainly intend. Marked
+[PRIMESUD] at the site.
+
+---
+
+## bank: currency, cap, hours, and score inconsistencies
+
+**Upstream:** `reference/1stMud4.5.3/src/economy.c`, `do_bank()`, lines
+63-440; `reference/1stMud4.5.3/src/act_info.c`, `dlm_score()`, lines 1848-1858.
+
+### The bugs
+
+Personal deposits use `check_worth(..., VALUE_DEFAULT)`, which treats the
+amount as silver, but `paybank` subtracts that number from gold and credits it
+unchanged as bank gold. Silver can therefore satisfy the check without being
+deducted, creating bank gold. Deposits also check the amount alone instead of
+the resulting balance, so repeated deposits can exceed `MAX_GOLD`. Share sales
+at the cap consume every share while silently discarding excess proceeds.
+
+The bank advertises 4am-8pm hours but closes only when `hour > 20`, leaving it
+open through 8:59pm. The score format passes `shares` twice before
+`share_value`; its "value" field therefore shows the share count, not the
+current price.
+
+### PrimeSUD fixes -- implemented in `economy.py` and `info.py`
+
+- [PRIMESUD] Deposits are denominated in whole gold but may draw from the
+  combined wallet at 100 silver per gold. `all` leaves any sub-gold silver.
+- Deposit and share-sale mutations are rejected if the resulting bank balance
+  would exceed `MAX_GOLD`; shares are never consumed for discarded proceeds.
+- The bank closes at hour 20, matching its stated 8pm closing time.
+- Score uses a 64-column-safe full-width bank row and shows the real share
+  price.

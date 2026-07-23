@@ -23,6 +23,22 @@ DIST_DIR = Path("dist/primesud.hpappdir")
 BOM = b"\xef\xbb\xbf"
 # Save files -- packaging these would overwrite on-calc data
 EXCLUDE = {"primesud.sav", "hvars.json"}
+RELEASE_DOCS = (
+    (Path("README.md"), Path("README.md")),
+    (Path("LICENSES.md"), Path("LICENSES.md")),
+    (Path("reference/1stMud4.5.3/doc/Diku/license.doc"),
+     Path("licenses/DIKU-LICENSE.txt")),
+    (Path("reference/1stMud4.5.3/doc/Merc/license.txt"),
+     Path("licenses/MERC-LICENSE.txt")),
+    (Path("reference/1stMud4.5.3/doc/Rom/rom.license"),
+     Path("licenses/ROM-LICENSE.txt")),
+    (Path("reference/1stMud4.5.3/doc/1stMud/LICENSE"),
+     Path("licenses/1STMUD-LICENSE.txt")),
+    (Path("reference/1stMud4.5.3/doc/Merc/rom.credits"),
+     Path("licenses/ROM-CREDITS.txt")),
+    (Path("reference/1stMud4.5.3/doc/1stMud/CREDITS"),
+     Path("licenses/1STMUD-CREDITS.txt")),
+)
 
 
 def minify_source(source):
@@ -36,9 +52,11 @@ def minify_source(source):
         remove_explicit_return_none=True,
         remove_builtin_exception_brackets=True,
         constant_folding=True,
-        # Risky on HP Prime -- disable
-        hoist_literals=False,
-        rename_locals=False,
+        # Enabled 21/07/2026 after desktop checks and device walk.
+        # hoist_literals dedups repeated area-data strings (-816KB);
+        # rename_locals shrinks source + on-device qstr pool (-90KB).
+        hoist_literals=True,
+        rename_locals=True,
         rename_globals=False,
         convert_posargs_to_args=False,
         remove_asserts=False,
@@ -54,25 +72,18 @@ def preflight():
     """Regenerate all derived data (areas, world static tables, mob index,
     help + index).
 
-    Order matters: mob_index.txt is built from the area .txt files.
+    Order matters: mobs.idx is built from the area .txt files.
     Regen writes into SRC_DIR, so a dirty git tree afterwards means the
     checked-in data had drifted from the generators -- inspect before
     copying to the calculator.
     """
-    # ponytail: shell out to the bash script instead of duplicating its
-    # area lists here; port to Python if bash/uv ever unavailable.
-    # shutil.which, not bare "bash": CreateProcess checks System32 before
-    # PATH, so bare "bash" hits the WSL shim on Windows.
-    bash = shutil.which("bash")
-    if not bash:
-        sys.exit("Preflight needs bash (git-bash) on PATH")
     steps = [
-        [bash, "tools/regen_areas.sh"],
-        # Regenerates world.py's static AREA_BUILDERS/_AREA_ADJ tables from
-        # the area .txt files; also fails on AREA_LEVELS drift.
-        [sys.executable, "tools/gen_area_adj.py"],
-        [sys.executable, "tools/build_mob_index.py"],
-        [sys.executable, "tools/help_to_primesud.py"],
+        # Areas + world.py static tables + mobs.idx/paths.idx, in
+        # dependency order (regen refreshes world.py's tables before
+        # the index builds that bootstrap the world from them).
+        [sys.executable, "tools/regen_areas.py"],
+        [sys.executable, "tools/build_help_idx.py"],
+        [sys.executable, "tools/build_socials_idx.py"],
     ]
     for cmd in steps:
         print("==> preflight: %s" % cmd[-1])
@@ -105,6 +116,10 @@ def main():
     if DIST_DIR.exists():
         shutil.rmtree(DIST_DIR)
     DIST_DIR.mkdir(parents=True)
+    for source, destination in RELEASE_DOCS:
+        target = DIST_DIR / destination
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
 
     total_before = 0
     total_after = 0
@@ -117,7 +132,7 @@ def main():
 
         # area_*.txt are Python source exec'd by world.py -- minify like
         # .py. Other .txt stay verbatim: help.txt's index is byte-offset
-        # based; mob_index.txt/commands.txt are custom line formats.
+        # based; mobs.idx/commands.txt are custom line formats.
         if src_file.suffix != ".py" and not _is_area_data(src_file):
             shutil.copy2(src_file, dst_file)
             continue
@@ -204,7 +219,10 @@ def check_area_data():
             errors.append("%s: exec failed: %s" % (src_file.name, e))
             continue
         src_data = {k: v for k, v in src_ns.items() if not k.startswith("__")}
-        dst_data = {k: v for k, v in dst_ns.items() if not k.startswith("__")}
+        # Compare on src's keyset: src is never hoisted, so its keys are
+        # canonical. hoist_literals adds helper names to the dist namespace
+        # (ignored here); a missing or wrong-valued key still mismatches.
+        dst_data = {k: dst_ns.get(k) for k in src_data}
         if src_data != dst_data:
             diff_keys = [k for k in sorted(set(src_data) | set(dst_data))
                          if src_data.get(k) != dst_data.get(k)]

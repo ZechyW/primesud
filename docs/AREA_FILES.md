@@ -9,13 +9,14 @@ HP Prime. The structure mirrors ROM 2.4's `#SECTION` layout.
 
 > **Do not edit area files directly.** They are generated from ROM 2.4 (QuickMUD-dialect)
 > `.are` source files in `areas/` by `tools/are_to_primesud.py`. Edit the
-> `.are` source or the converter and regenerate via `tools/regen_areas.sh` instead.
+> `.are` source or the converter and run `python tools/regen_areas.py` instead.
 > `areas/*.are` are editable working copies; pristine upstream originals remain under
 > `reference/`.
 
-`world.py` loads every area module and merges `ROOMS`, `MOBILES`, `OBJECTS`, and
-`RESETS` into the game-wide tables. `SKILL_TABLE` and `SKILLS` live in `world.py`
-directly — skills are global, not per-area.
+`world.py` loads area modules on demand and merges `ROOMS`, `MOBILES`, `OBJECTS`,
+`MOBPROGS`, `OBJPROGS`, and `ROOMPROGS` into game-wide tables; `RESETS` are
+partitioned onto their target rooms. `SKILL_TABLE` and `SKILLS` live in
+`world.py` directly — skills are global, not per-area.
 
 Cross-area VNUM constants that game logic needs to hardcode (e.g. respawn room, skill
 IDs) go in `world_consts.py`.
@@ -33,7 +34,8 @@ or truncated payloads, out-of-range exit/reset directions, and `spec_fun` names
 not present in `src/special.py`'s `SPEC_TABLE` all raise `ValueError` rather
 than silently dropping data. Trailer payloads split across physical lines
 (legal under ROM's whitespace-skipping readers) are handled for object `A`/`F`
-and mob `F` lines.
+and mob `F` lines. Object/room program trigger words are validated against
+1stMud's `oprog_flags`/`rprog_flags` tables and invalid values also fail loudly.
 
 ---
 
@@ -70,6 +72,12 @@ SOCIALS = ( ... )
 
 # -- MobProgs --
 MOBPROGS = { ... }
+
+# -- ObjProgs --
+OBJPROGS = { ... }
+
+# -- RoomProgs --
+ROOMPROGS = { ... }
 ```
 
 ---
@@ -119,6 +127,8 @@ ROOMS = {
 | `extra_descs`| list      | no       | `(keyword, desc)` tuples from `E` room trailers |
 | `clan`       | str       | no       | ROM `C` room trailer (clan name) |
 | `owner`      | str       | no       | ROM `O` room trailer (owner name) |
+| `guild`      | tuple     | no       | `G` room trailer(s) -- tuple of class indices (0 mage, 1 cleric, 2 thief, 3 warrior, 4 paladin, 5 ranger). [PRIMESUD] dialect extension: repeated `G` lines accumulate into the tuple; 1stMud's own `db.c load_rooms` allows only one `G` per room (`bug ("Duplicate guild."); exit(1);` on a second) |
+| `room_triggers` | tuple  | no       | `(trig_type, rprog_vnum, trig_phrase)` from `R` room trailers; see ROOMPROGS below; omitted if empty |
 
 A destination of `None` means the exit exists (and is listed by `exits`/automap
 data) but doesn't lead anywhere — ROM keeps such exits examinable but
@@ -150,7 +160,7 @@ reference" section below for the full bit map, including 1stMud extension bits).
 | `nowhere`       | Not a real location (informational) |
 | `noexplore`     | 1stMud extension; excluded from explore-tracking |
 | `noautomap`     | 1stMud extension; hidden from the automap |
-| `save_objs`     | 1stMud extension; room contents persist across reboot/reset. No runtime reader yet [PRIMESUD] — carried by e.g. Limbo's Morgue room (vnum 3, `areas/limbo.are`) |
+| `save_objs`     | 1stMud extension; no flag-specific runtime reader [PRIMESUD] because PrimeSUD already persists every room's floor contents, including Player Estates |
 | `_unknown_bits` | List of uninterpreted bit positions from the original `.are` conversion; preserve, don't add new ones |
 
 ### Doors
@@ -242,17 +252,31 @@ MOBILES = {
 | `res_flags`    | dict  | no       | Damage resistances (half damage) |
 | `vuln_flags`   | dict  | no       | Damage vulnerabilities (double damage) |
 | `start_pos`    | str   | yes      | Spawn position (e.g. `"stand"`, `"sleep"`) |
-| `default_pos`  | str   | yes      | Position the mob returns to when idle. `start_pos` is consumed at spawn (`mob.py`); nothing currently returns idle mobs to `default_pos` [PRIMESUD deferred] |
+| `default_pos`  | str   | yes      | Position restored after combat and required for idle mobprog triggers; `start_pos` is consumed at spawn (`mob.py`) |
 | `form_flags`   | dict  | no       | Body form (e.g. `biped`, `animal`, `undead`) |
 | `part_flags`   | dict  | no       | Body parts present (for dismemberment-style messages) |
-| `material`     | str   | yes      | Body material; often `"0"` for old-style `.are` mobs |
+| `material`     | str   | yes      | Source body material, retained losslessly; not copied to runtime mob instances (see DESIGN.md "Not ported") |
 | `sex`          | str   | yes      | `"male"`, `"female"`, `"neutral"` |
 | `wealth`       | int   | yes      | Gold carried (unused until economy is implemented) |
 | `size`         | str   | yes      | `"tiny"`..`"huge"` etc. |
 | `mob_triggers` | tuple | no       | `(trig_type, mprog_vnum, trig_phrase)` — see MOBPROGS below; omitted if empty |
+| `evolves_to`  | int   | no       | [PRIMESUD] Target pet-template VNUM for one evolution step on the owner's next tier reset; emitted from an `E <vnum>` mob trailer |
 | `flag_removes` | tuple | no       | `(canonical_field, flag_names)` — `F`-trailer bit removals applied after race-merge at runtime (cf. `mob.py create_mobile`, ROM `db2.c` `REMOVE_BIT`) |
 | `spec_fun`     | str   | no       | See SPECIALS below |
 | `shop`         | dict  | no       | See SHOPS below |
+
+### Pet evolution trailer `[PRIMESUD]`
+
+An optional `E <vnum>` line after a mob's standard fields links that pet form
+to its next prestige form.  The target may live in another area and is resolved
+through the lazy VNUM catalog.  The evolved instance receives the `pet` act
+flag because stock pet-shop forms often gain it dynamically from room placement;
+missing or invalid targets safely leave the current form unchanged.  Stock ROM areas
+need no trailer and convert unchanged.
+
+```text
+E 3092
+```
 
 ### `act_flags`
 
@@ -365,7 +389,7 @@ OBJECTS = {
 | `type`         | str        | yes          | `weapon`, `armor`, `light`, `container`, `drink`, `food`, `money`, `jewelry`, `treasure`, `trash`, `key`, ... (see `ITEM_TYPE_NUM`) |
 | `wear_flags`   | dict       | yes          | Boolean equipment-slot/take flags (see below) |
 | `no_sac`       | bool       | no           | Present (`True`) only when set; item cannot be sacrificed |
-| `condition`    | int        | no           | Spawn wear-state (0-100); omitted when `100` (perfect, the default) |
+| `condition`    | int        | no           | Parsed source condition (0-100), omitted when `100`; retained losslessly, but 1stMud does not copy it to spawned objects and PrimeSUD likewise leaves it template-only (see DESIGN.md "Not ported") |
 | `extra_flags`  | dict       | no           | Item flags (see below); omitted if none set |
 | `level`        | int        | yes          | |
 | `weight`       | int        | yes          | Item weight (currently informational) |
@@ -373,6 +397,7 @@ OBJECTS = {
 | `extra_descs`  | list       | no           | `(keyword, desc)` tuples; omitted if empty |
 | `stat_bonuses` | dict       | no           | `{apply_loc_name: modifier}` from `.are` `A`-trailers |
 | `flag_affects` | tuple      | no           | `.are` `F`-trailers — see below |
+| `obj_triggers` | tuple      | no           | `(trig_type, oprog_vnum, trig_phrase)` from `O` object trailers; see OBJPROGS below; omitted if empty |
 
 ### Type-specific keys
 
@@ -387,7 +412,7 @@ OBJECTS = {
 | `drink` / `fountain`    | `liquid_total`/`liquid_left`/`liquid_type` (optional), `poisoned` (optional bool) |
 | `food`                  | `food_hours`/`food_hunger` (optional), `poisoned` (optional bool) |
 | `money`                 | `silver`/`gold` (optional pair) |
-| any other type          | `values` (optional): raw `(value[0], ..., value[4])` tuple decoded per QuickMUD `db2.c`'s `default:` branch (all five via `fread_flag`). Covers `furniture` (max occupants, position flags), `key` (linked door/portal vnum), `map`, `portal`, `jukebox`, `warp_stone`, corpses, etc. Omitted when all five are zero; read via `obj.get("values", (0, 0, 0, 0, 0))`. No runtime consumer yet (see TODO.md). |
+| any other type          | `values` (optional): raw `(value[0], ..., value[4])` tuple decoded per QuickMUD `db2.c`'s `default:` branch (all five via `fread_flag`). Covers `furniture`, `key`, `map`, `portal`, `jukebox`, `warp_stone`, corpses, etc.; meanings are type-specific and many types have none upstream. Omitted when all five are zero. `item.prog_obj_value` exposes the tuple to objprog `objval0-4`, with an instance tuple written by `obj attrib` taking precedence; no generic item mechanic interprets fallback values (see DESIGN.md "Not ported"). |
 
 ### `wear_flags` (equipment slots + take)
 
@@ -486,6 +511,11 @@ pathfinding see the shuffled graph once the room is loaded. The converter never
 emits the 1stMud `add_random_exit` variants (`arg3 == 1/2`); only the 2-tuple
 default-branch shuffle is supported.
 
+**Reset ownership [PRIMESUD].** Every `M`, `O`, `R`, and `D` reset must target a
+room defined in the same `.are` file. `tools/are_to_primesud.py` rejects a reset
+that pushes state into another area's room. Foreign mob and object template
+vnums remain valid: the room-owning area pulls those definitions on demand.
+
 **D resets** are consumed at conversion time and baked into the room exits dict —
 they do not appear in `RESETS`. A `D` reset overwrites a door's `closed`/`locked`
 state (case 0 = no change, 1 = set closed, 2 = set closed+locked). On every area
@@ -530,7 +560,8 @@ file's `MOBILES` section is a conversion error, not a silently dropped entry.
 | `open_hour`   | int     | Game hour the shop opens (0-23) |
 | `close_hour`  | int     | Game hour the shop closes (0-23) |
 
-[PRIMESUD] deferred: buy/sell commands not yet implemented.
+Consumed by `shop.py` (`buy`/`sell`/`list`/`value`, open/close hours,
+profit margins). (Stale "deferred" note removed 19/07/2026.)
 
 ---
 
@@ -587,7 +618,8 @@ him/her/it, `$s`/`$S` = his/her/its. `None` = no message for that case.
 Socials are global (not per-area) in ROM. The converter preserves them per-file;
 `world.py` merges all `SOCIALS` tuples into one table at load time.
 
-[PRIMESUD] deferred: social commands not yet implemented.
+Consumed by the social command dispatch (ported 10/07/2026; see
+`socials.py`). (Stale "deferred" note removed 19/07/2026.)
 
 ---
 
@@ -636,7 +668,28 @@ Mob templates reference programs via `mob_triggers` in their `MOBILES` entry:
 | `delay`      | After a programmed delay |
 | `surrender`  | Mob surrenders |
 
-[PRIMESUD] deferred: mob_prog interpreter not yet implemented.
+Consumed by `mobprog.py` (ported 10/07/2026; `surr` trigger wired
+19/07/2026). (Stale "deferred" note removed 19/07/2026.)
+
+---
+
+## `OBJPROGS` and `ROOMPROGS`
+
+These code dictionaries have the same `vnum -> source string` shape as
+`MOBPROGS`. Object templates reference `OBJPROGS` through `obj_triggers` from
+an `O <trigger> <program-vnum> <phrase>~` trailer; rooms reference `ROOMPROGS`
+through `room_triggers` from an equivalent `R` trailer. These are [PRIMESUD]
+dialect extensions to the editable QuickMUD-format `.are` sources, preserving
+1stMud's `db2.c`/`db.c` loaders.
+
+Valid object triggers are `act`, `fight`, `give`, `greet`, `grall`, `random`,
+`speech`, `exall`, `delay`, `drop`, `get`, and `sit`. Valid room triggers are
+`act`, `fight`, `drop`, `greet`, `grall`, `random`, `speech`, `exall`, and
+`delay`.
+
+`world.py` loads and evicts both program tables with their owning area. Phase 0
+only preserves this data; interpreter and trigger dispatch are added by later
+phases of `PROGS_PLAN.md`.
 
 ---
 
@@ -645,7 +698,69 @@ Mob templates reference programs via `mob_triggers` in their `MOBILES` entry:
 - **`# fmt: off` is mandatory.** The aligned column style in mob/item/room dicts
   would be destroyed by an auto-formatter. Do not remove it.
 - **`_unknown_bits`** keys in flag dicts record uninterpreted bit positions from the
-  original `.are` file. Preserve them; do not add new ones manually.
+  original `.are` file. Preserve them; do not add new ones manually. Known
+  carriers: stock quest.are sets ACT bits 11/31 and AFF bits 34/36, which are
+  undefined even in 1stMud's own `bits.h` — no runtime meaning.
+
+---
+
+## Deviations from stock QuickMUD in `areas/*.are`
+
+`areas/*.are` are PrimeSUD-owned, editable copies of the QuickMUD-dialect
+sources (pristine upstream originals: `reference/quickmud/area/`; the
+1stMud-dialect equivalents PrimeSUD is ported from live under
+`reference/1stMud4.5.3/area/`). The 1stMud-only `limbo`, `quest`, and
+`pestates` sources have no QuickMUD counterpart and were converted once into
+this same canonical dialect. Historically these deltas were applied as a
+post-conversion patch step (`tools/patch_1stmud_deltas.py`, now deleted);
+they are now real `.are` content, so a plain
+`diff areas/<name>.are reference/quickmud/area/<name>.are` is the audit
+trail for every row below (plus a `* [PRIMESUD]` comment at each edit site
+in the `.are` source itself, except where the format has no comment
+support -- noted per row).
+
+| Delta | `.are` file | Vnums | Provenance |
+|-------|-------------|-------|------------|
+| Cross-area exits: room 3001 `e`->200, `w`->201 (quest area) | `midgaard.are` | room 3001 | 1stMud-faithful -- `reference/1stMud4.5.3/area/midgaard.are` room 3001 has these exact `D1`/`D3` exits (empty desc/keyword, matching upstream) |
+| Cross-area exit: room 3054 `d`->3 (limbo) | `midgaard.are` | room 3054 | 1stMud-faithful -- same reference room's `D5` exit |
+| Cross-area exit: room 3303 `s`->202 (quest trivia shop) | `midgaard.are` | room 3303 | 1stMud-faithful -- same reference room's `D2` exit |
+| Player Estates area plus Midgaard room 3109 `e`->17700 | `pestates.are`, `midgaard.are` | 17700-17702, 3109 | 1stMud-faithful area/link, with [PRIMESUD] static solo home replacing Tester's sample and runtime-created rooms |
+| Cross-area exit: room 3043 `w`->4200 (Chessboard of Midgaard) | `midgaard.are` | room 3043 | [PRIMESUD] -- reciprocal for `chess2.are` room 4200's stock `e`->3043 exit; makes the shipped area reachable from Midgaard |
+| Guildmaster `train`+`gain` act flags | `midgaard.are` | mobs 3020 (mage), 3023 (warrior) | 1stMud-faithful -- reference `midgaard.are`'s `+Y/n` bitstrings for 3020/3023 have bits 9 (train) and 27 (gain) set |
+| Guildmaster `gain` act flag (no `train`) | `midgaard.are` | mobs 3021 (cleric), 3022 (thief) | [PRIMESUD] -- upstream 1stMud has neither bit set for these two; added so every class is gain/remort-capable within midgaard (`CLASS_PLAN.md` Phase D) |
+| Room guild: mage | `midgaard.are` | rooms 3018, 3019 -> `(0,)` | 1stMud-faithful -- reference rooms carry a single `G 0` each |
+| Room guild: cleric | `midgaard.are` | rooms 3002, 3003 -> `(1,` | 1stMud-faithful (base) -- reference rooms carry a single `G 1` each |
+| Room guild: paladin sharing cleric rooms | `midgaard.are` | rooms 3002, 3003 -> `4)` | [PRIMESUD] -- second `G 4` line added per room; upstream has no paladin guild in midgaard |
+| Room guild: thief | `midgaard.are` | rooms 3028, 3029 -> `(2,)` | 1stMud-faithful -- reference rooms carry a single `G 2` each |
+| Room guild: warrior | `midgaard.are` | rooms 3022, 3023 -> `(3,` | 1stMud-faithful (base) -- reference rooms carry a single `G 3` each |
+| Room guild: ranger sharing warrior rooms | `midgaard.are` | rooms 3022, 3023 -> `5)` | [PRIMESUD] -- second `G 5` line added per room; upstream has no ranger guild in midgaard |
+| Acolyte demo mobprog (greet/bribe/give) | `school.are` | mob 3700 (`M` trailers), progs 3790/3791/3792 (`#MOBPROGS`) | [PRIMESUD] -- greets arrivals, rewards the first coin donation per live mob instance, and returns donated items. The transient reward marker deliberately uses `mprog_delay` without a delay trigger: matching upstream, it never ticks down; eviction/reload resets it. Stock QuickMUD ships zero `#MOBPROGS` entries anywhere; this is the mobprog engine's first content pilot (`MOBPROG_PLAN.md` Phase D content pilot) |
+| Recovered 1stMud object/room programs | `midgaard.are` | object 3005 (`O DROP 3005 100`), room 3054 (`R GRALL 3054 100`), matching `#OBJPROGS`/`#ROOMPROGS` code | 1stMud-faithful -- the original conversion to QuickMUD format dropped both trailers and code sections; restored verbatim from `reference/1stMud4.5.3/area/midgaard.are`. The `.are` format has no per-entry comment seam, so provenance lives here |
+| Moved door reset: Elm Street south | removed from `grave.are`, added to `midgaard.are` | room 3124 | [PRIMESUD] reset-ownership invariant; same closed+locked state, with comments at both edit sites |
+| Moved reset: juke (obj 3200) -> room 1116 (The Ivy Bush) | removed from `midgaard.are`, added to `shire.are` | obj 3200, room 1116 | [PRIMESUD] defer-load optimization; same world state either way. `* [PRIMESUD] ... moved from/to midgaard` comment at both the removal and addition sites |
+| Moved reset: juke (obj 3200) -> room 1144 (The Green Dragon) | removed from `midgaard.are`, added to `shire.are` | obj 3200, room 1144 | [PRIMESUD] defer-load optimization; comment at both sites as above |
+| Moved reset: fountain (obj 3135) -> room 1200 (The Chat Room) | removed from `midgaard.are`, added to `immort.are` | obj 3135, room 1200 | [PRIMESUD] defer-load optimization; comment at both sites as above |
+| Moved reset: juke (obj 3200) -> room 1200 (The Chat Room) | removed from `midgaard.are`, added to `immort.are` | obj 3200, room 1200 | [PRIMESUD] defer-load optimization; comment at both sites as above |
+| Dropped reset: sarcophagus (obj 3415, chapel-owned) in room 3 (The Morgue) | `limbo.are` | obj 3415, room 3 | [PRIMESUD] -- would force all of chapel to load the moment limbo loads; limbo is preloaded at session start for corpse storage (`primesud.py`) and must stay self-contained. `*`-commented in place, not moved (no PrimeSUD room needs it) |
+| Dropped reset: Kate's Diner pipeweed bread (obj 1103, shire-owned) `G` reset | `midgaard.are` | obj 1103, room 3150 (Kate's Diner) | [PRIMESUD] -- would force shire (and via shire's shiriff gear, ofcol2) to load at game start; still sold in shire itself. `*`-commented in place between its sibling `G` lines under mob 3150 (Esme) |
+
+See `docs/CROSS_RESETS.md` for the full generated cross-area-template inventory
+(including the rows above, now attributed to their new source `.are` file)
+and `DESIGN.md` "Adjusted from 1stMud" for the guild-room design rationale.
+
+### Converter extension: room `G` (guild) trailer
+
+`tools/are_to_primesud.py`'s room parser gained explicit support for the
+`G` room trailer (previously unhandled -- any `G` line would have hit the
+"trailer letter not DESHMCO" hard error). Mirrors 1stMud's own
+`reference/1stMud4.5.3/src/db.c` `load_rooms` `'G'` case
+(`pRoomIndex->guild = read_number(fp)`), except upstream allows only a
+**single** `G` per room (a second one is a hard `bug()`+`exit(1)`,
+`"Duplicate guild."`). PrimeSUD's dialect extension lets a room carry
+**repeated** `G` lines, accumulated in file order into a `"guild"` tuple on
+the room dict -- this is what lets the cleric/paladin and warrior/ranger
+rooms above share a single room. Emitted as `"guild": (class_idx, ...),`
+in the room dict (see the `ROOMS` key table above).
 
 ---
 

@@ -372,7 +372,8 @@ class TestCrossAreaCascade:
 # ===== Pending mob save deltas ==============================================
 
 class TestPendingMobDeltas:
-    """_apply_pending_deltas kills excess mobs and moves survivors."""
+    """_apply_pending_deltas kills excess mobs, moves survivors, and
+    spawns fresh instances for any shortfall vs the saved population."""
 
     def test_excess_mobs_killed(self, fresh_world):
         """Save says 1 instance, reset created 2 -> excess killed."""
@@ -416,6 +417,25 @@ class TestPendingMobDeltas:
         # Room 100 mob list should NOT contain it
         assert live[0][0] not in world.rooms._data[100]["mobs"]
 
+    def test_mayor_stays_in_reset_room(self, fresh_world):
+        """Mayor position is not restored without its process-local route state."""
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}},
+                                101: {"name": "R101", "exits": {}}},
+                         mobiles={100: _mob_tpl(spec_fun="spec_mayor")},
+                         resets=(("M", 100, 1, 100, 1),))
+        world._pending_mob_saves[100] = [101]
+        fw.setup()
+
+        _load_area("alpha")
+
+        live = [inst for inst in world.chars.values()
+                if inst.get("is_npc") and inst["tpl"] == 100]
+        assert len(live) == 1
+        assert live[0]["room"] == 100
+        assert 100 not in world._pending_mob_saves
+
     def test_cross_area_move_deferred(self, fresh_world):
         """Mob saved in unloaded area's room -> move deferred, not lost."""
         fw = fresh_world
@@ -436,6 +456,79 @@ class TestPendingMobDeltas:
         assert len(live) == 1
         # Pending delta should remain for this template
         assert 100 in world._pending_mob_saves
+
+    def test_shortfall_spawned(self, fresh_world):
+        """Save says 2 instances, reset created 1 -> shortfall spawned fresh."""
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}},
+                                101: {"name": "R101", "exits": {}}},
+                         mobiles={100: _mob_tpl()},
+                         resets=(("M", 100, 2, 100, 1),))  # room limit 1 -> 1 spawn
+        world._pending_mob_saves[100] = [100, 101]
+        fw.setup()
+
+        _load_area("alpha")
+        live = sorted(inst["room"] for inst in world.chars.values()
+                      if inst.get("is_npc") and inst["tpl"] == 100)
+        assert live == [100, 101]
+        assert 100 not in world._pending_mob_saves
+
+    def test_shortfall_spawn_gets_reset_equipment(self, fresh_world):
+        """Spawned shortfall mob receives the E/G gear trailing its M reset."""
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}},
+                                101: {"name": "R101", "exits": {}}},
+                         mobiles={100: _mob_tpl()},
+                         objects={150: _item_tpl(slot="wield"),
+                                  151: _item_tpl()},
+                         resets=(("M", 100, 2, 100, 1),
+                                 ("E", 150, "wield", -1),
+                                 ("G", 151, -1)))
+        world._pending_mob_saves[100] = [100, 101]
+        fw.setup()
+
+        _load_area("alpha")
+        spawned = [inst for inst in world.chars.values()
+                   if inst.get("is_npc") and inst["tpl"] == 100
+                   and inst["room"] == 101]
+        assert len(spawned) == 1
+        inst = spawned[0]
+        assert inst["equip"].get("wield", {}).get("vnum") == 150
+        assert [o["vnum"] for o in inst["inv"]] == [151]
+
+    def test_partial_deferral_keeps_placed_mobs(self, fresh_world):
+        """Mixed loadable/unloadable saved rooms: the placed mob survives
+        the retry pass untouched; the deferred room spawns once loadable."""
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}},
+                                101: {"name": "R101", "exits": {}}},
+                         mobiles={100: _mob_tpl()},
+                         resets=(("M", 100, 2, 100, 1),))
+        fw.register_area("beta", 200, 299,
+                         rooms={200: {"name": "R200", "exits": {}}})
+        world._pending_mob_saves[100] = [101, 200]
+        fw.setup()
+
+        _load_area("alpha")
+        live = [(mid, inst["room"]) for mid, inst in world.chars.items()
+                if inst.get("is_npc") and inst["tpl"] == 100]
+        assert len(live) == 1
+        mid = live[0][0]
+        assert live[0][1] == 101
+        # Full saved list stays pending until every room is loadable
+        assert world._pending_mob_saves[100] == [101, 200]
+
+        _load_area("beta")
+        _retry_pending_deltas()
+        live = sorted((m, inst["room"]) for m, inst in world.chars.items()
+                      if inst.get("is_npc") and inst["tpl"] == 100)
+        assert len(live) == 2
+        assert (mid, 101) in live       # placed mob not culled or moved
+        assert sorted(r for _, r in live) == [101, 200]
+        assert 100 not in world._pending_mob_saves
 
     def test_mob_id_alignment_with_gaps(self, fresh_world):
         """When IDs aren't contiguous (gap from mid-session death + respawn),
@@ -733,6 +826,9 @@ class TestUnvisitedDataPreservedOnResave:
 
     def test_pending_mob_saves_in_serialized_output(self, fresh_world):
         """Mob positions for unvisited areas appear in save payload."""
+        import game_state
+        from player import create_char
+
         fw = fresh_world
         fw.register_area("alpha", 100, 199,
                          rooms={100: {"name": "R100", "exits": {}}},
@@ -744,29 +840,21 @@ class TestUnvisitedDataPreservedOnResave:
         world._pending_mob_saves[200] = [200]
         fw.setup()
 
-        _load_area("alpha")
+        player = create_char()
+        player["name"] = "Tester"
+        player["room"] = 100
+        player["_macros"] = {}
+        world.chars[1] = player
+        game_state._serialize_world()
 
-        # Simulate what _serialize_world now does: live chars + pending
-        tpl_rooms = {}
-        for mob_id in sorted(world.chars):
-            inst = world.chars[mob_id]
-            if not inst.get("is_npc"):
-                continue
-            tpl = inst["tpl"]
-            if tpl not in tpl_rooms:
-                tpl_rooms[tpl] = []
-            tpl_rooms[tpl].append(inst["room"])
+        with open(game_state.SAVE_FILE) as f:
+            payload = f.read()
+        assert "~m=200,200" in payload
+        assert "~m.200=" not in payload
 
-        serialized_lines = []
-        for tpl_vnum in sorted(world._pending_mob_saves):
-            if tpl_vnum in tpl_rooms:
-                continue
-            parts = [str(r) for r in world._pending_mob_saves[tpl_vnum]]
-            serialized_lines.append("m." + str(tpl_vnum) + "=" + "|".join(parts))
-
-        mob_200_lines = [l for l in serialized_lines if l.startswith("m.200=")]
-        assert len(mob_200_lines) == 1
-        assert "200" in mob_200_lines[0]
+        world._pending_mob_saves.clear()
+        assert game_state.load_world() == "file"
+        assert world._pending_mob_saves[200] == [200]
 
 
 # ===== BUG: area age unbounded for unloaded areas ==========================

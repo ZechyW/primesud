@@ -1,8 +1,9 @@
 # fmt: off
 """Global skill table data converted from 1stMud."""
 
-# Generated from 1stMud 4.5.3 skills.dat -- do not edit manually.
-# Re-generate: uv run python tools/skills_to_primesud.py reference/1stMud4.5.3/data/skills.dat
+# Canonical source since 18/07/2026 -- edit directly. Originally generated
+# from 1stMud 4.5.3 skills.dat (parity verified at flip; converter deleted,
+# see git history for tools/skills_to_primesud.py).
 
 # skill_level / rating indices:  0=Mage  1=Cleric  2=Thief  3=Warrior  4=Paladin  5=Ranger
 # skill_level 53 = ANGEL (not available to that class)  52 = LEVEL_IMMORTAL (immo-only)

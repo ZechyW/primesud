@@ -122,3 +122,12 @@ def test_cancel_prints_nothing(monkeypatch, out, scene):
     monkeypatch.setattr(info, "pick_from", lambda t, o: -1)
     info.do_examine(scene, [])
     assert out == []
+
+
+def test_examine_legacy_sparse_money_uses_template(out, scene):
+    ITEM_DEFS._data[8003] = {
+        "type": "money", "short_descr": "A gold coin", "keywords": "gold coin",
+        "description": "One valuable gold coin.", "silver": 0, "gold": 1,
+    }
+    info._examine_extras(scene, {"vnum": 8003})
+    assert "Wow. One gold coin." in out

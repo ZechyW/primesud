@@ -1,5 +1,7 @@
 """Command dispatcher, command table, and position gates (cf. 1stMud interpret in interp.c)."""
 
+from aliases import do_alias, do_unalias, substitute_alias
+from autoskill import do_autoskill  # [PRIMESUD]
 from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
                     do_berserk, do_bash, do_dirt, do_trip, do_flee,
                     do_rescue, do_disarm, do_surrender,
@@ -8,11 +10,16 @@ from comm import (do_say, do_tell, do_reply, do_follow, do_ditch, do_order,
                   do_group, do_yell, do_emote)
 from config import POS_ORDER
 from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
-                  do_help, do_affects, do_credits, do_areas, do_map, do_automap,
+                  do_help, do_index, do_affects, do_credits, do_areas, do_map,
+                  do_automap,
                   do_autolist, do_autoloot, do_autogold, do_autosac,
                   do_autosplit, do_autoassist, do_autoexit, do_autodamage,
                   do_wimpy, do_exits, do_worth, do_where, do_clear,
-                  do_time, do_weather)
+                  do_time, do_weather, do_motd, do_version,
+                  do_brief, do_compact, do_show, do_title,
+                  do_mobdeaths, do_mobkills, do_areakills, do_areadeaths)
+from economy import do_bank, do_balance
+from path import do_path
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
@@ -20,24 +27,29 @@ from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_drink, do_fill, do_pour, do_envenom)
 from explored import do_explored, mark_explored
 from gquest import do_gquest
+from groups import do_grlist, do_slist
 from handler import chprintln
 from healer import do_heal
 from hunt import do_hunt
+from homes import do_home
 from macros import do_macro
 from magic import do_cast
+from music import do_play
 from quest import do_quest, do_tpspend
 from movement import (do_north, do_east, do_south, do_west, do_up, do_down,
                       do_open, do_close, do_recall, do_run,
                       do_stand, do_rest, do_sit, do_sleep, do_wake,
                       do_lock, do_unlock, do_pick,
-                      do_hide, do_sneak, do_visible, do_enter)
+                      do_hide, do_sneak, do_visible, do_enter, do_heel)
 from scan import do_scan
 from shop import do_buy, do_sell, do_list, do_value, do_appraise
-from system_cmds import do_save, do_quit
+from socials import do_socials, do_sshow, check_social
+from system_cmds import do_save, do_backup, do_quit
+from game_state import do_rename
 from debug import do_debug
 from pager import tpage
 from terminal import tprint
-from training import do_train, do_practice, do_remort, do_gain
+from training import do_train, do_practice, do_remort, do_gain, do_prime
 from urandom import randint
 
 _POS_MSG = {
@@ -67,18 +79,14 @@ def do_commands(player, args):
         args (list): Parsed command arguments.
     """
     descs = {}
-    try:
-        f = open(CMD_DESC_FILE)
-        while True:
-            line = f.readline()
-            if not line:
-                break
-            if "|" in line:
-                name, desc = line.split("|", 1)
-                descs[name] = desc.rstrip()  # CRLF-safe
-        f.close()
-    except OSError:
-        pass  # missing file: names-only listing
+    with open(CMD_DESC_FILE) as f:
+        data = f.read()  # one read; looped readline() ~20ms/call on-device
+    for line in data.split("\n"):
+        if not line or line[0] == "#":
+            continue  # header comment
+        if "|" in line:
+            name, desc = line.split("|", 1)
+            descs[name] = desc.rstrip()  # CRLF-safe
     # cf. cmd_first_sorted -- alphabetical listing
     lines = []
     for name in sorted(e[0] for e in _CMD_TABLE):
@@ -137,14 +145,14 @@ _CMD_TABLE = [
     ("equipment",  do_equipment,  "dead",     False),  # #42
     ("examine",    do_examine,    "resting",  False),  # #43
     ("help",       do_help,       "dead",     False),  # #44
-    # ("motd",      do_motd,       "dead",     False),  # #45
+    ("motd",       do_motd,       "dead",     False),  # #45
     ("read",       do_read,       "resting",  False),  # #46
     # ("report",    do_report,     "resting",  False),  # #47
     # ("rules",     do_rules,      "dead",     False),  # #48
     ("score",      do_score,      "dead",     False),  # #49
     ("skills",     do_skills,     "dead",     False),  # #50
-    # ("socials",   do_socials,    "dead",     False),  # #51
-    # ("show",      do_show,       "dead",     False),  # #52
+    ("socials",    do_socials,    "dead",     False),  # #51
+    ("show",       do_show,       "dead",     False),  # #52
     ("spells",     do_spells,     "dead",     False),  # #53
     # ("story",     do_story,      "dead",     False),  # #54
     ("time",       do_time,       "dead",     False),  # #55
@@ -154,7 +162,7 @@ _CMD_TABLE = [
     # ("whois",     do_whois,      "dead",     False),  # #59
     # ("wizlist",   do_wizlist,    "dead",     False),  # #60
     ("worth",      do_worth,      "sleeping", False),  # #61
-    # ("alias",     do_alias,      "dead",     True),   # #62 noprefix
+    ("alias",      do_alias,      "dead",     True),   # #62 noprefix
     ("autolist",   do_autolist,   "dead",     False),  # #63
     ("autoassist", do_autoassist, "dead",     False),  # #64
     ("autoexit",   do_autoexit,   "dead",     False),  # #65
@@ -162,11 +170,11 @@ _CMD_TABLE = [
     ("autoloot",   do_autoloot,   "dead",     False),  # #67
     ("autosac",    do_autosac,    "dead",     False),  # #68
     ("autosplit",  do_autosplit,  "dead",     False),  # #69
-    # ("brief",     do_brief,      "dead",     False),  # #70
+    ("brief",      do_brief,      "dead",     False),  # #70
     # ("colour",    do_color,      "dead",     False),  # #71
     # ("color",     do_color,      "dead",     False),  # #72
     # ("combine",   do_combine,    "dead",     False),  # #73
-    # ("compact",   do_compact,    "dead",     False),  # #74
+    ("compact",    do_compact,    "dead",     False),  # #74
     # ("description", do_description, "dead",  False),  # #75
     # ("delete",    do_delete,     "standing", True),   # #76 noprefix
     # ("nofollow",  do_nofollow,   "dead",     False),  # #77
@@ -176,8 +184,8 @@ _CMD_TABLE = [
     # ("password",  do_password,   "dead",     False),  # #81
     # ("prompt",    do_prompt,     "dead",     False),  # #82
     # ("screen",    do_screen,     "dead",     False),  # #83
-    # ("title",     do_title,      "dead",     False),  # #84
-    # ("unalias",   do_unalias,    "dead",     False),  # #85
+    ("title",      do_title,      "dead",     False),  # #84
+    ("unalias",    do_unalias,    "dead",     False),  # #85
     ("wimpy",      do_wimpy,      "dead",     False),  # #86
     # ("info",      do_info,       "dead",     False),  # #87
     # ("afk",       do_afk,        "sleeping", False),  # #88
@@ -254,7 +262,7 @@ _CMD_TABLE = [
     ("gain",       do_gain,       "standing", False),  # #158
     ("go",         do_enter,      "standing", False),  # #159
     ("hide",       do_hide,       "resting",  False),  # #160
-    # ("play",      do_play,       "resting",  False),  # #161
+    ("play",       do_play,       "resting",  False),  # #161
     ("quit",       do_quit,       "dead",     True),   # #162 noprefix
     ("recall",     do_recall,     "fighting", False),  # #163
     ("/",          do_recall,     "fighting", False),  # #164
@@ -273,7 +281,9 @@ _CMD_TABLE = [
     ("remort",     do_remort,     "standing", True),   # #177 noprefix
     ("gquest",    do_gquest,     "resting",  False),  # #178
     ("explored",   do_explored,   "sleeping", False),  # #179
-    # --- Immortal commands #180-#252 ---
+    # --- 1stMud ordinals #180-#252 (band label only: all immortal
+    # commands in this range; `prime` -- previously mis-swept as imm here --
+    # is actually ordinal #317, mortal, see below) ---
     # ("advance",   do_advance,    "dead",     False),  # #180 imm lvl 60
     # ("announce",  do_announce,   "dead",     False),  # #181 imm lvl 53
     # ("trust",     do_trust,      "dead",     False),  # #182 imm lvl 60
@@ -310,7 +320,7 @@ _CMD_TABLE = [
     # ("poofin",    do_bamfin,     "dead",     False),  # #213 imm lvl 52
     # ("poofout",   do_bamfout,    "dead",     False),  # #214 imm lvl 52
     # ("gecho",     do_echo,       "dead",     False),  # #215 imm lvl 56
-    # ("holylight", do_holylight,  "dead",     False),  # #216 imm lvl 52
+    # ("holylight", do_holylight,  "dead",     False),  # #216 imm lvl 52 -- [PRIMESUD] moved to 'debug holylight'
     # ("incognito", do_incognito,  "dead",     False),  # #217 imm lvl 52
     # ("invis",     do_invis,      "dead",     False),  # #218 imm lvl 52
     # ("log",       do_log,        "dead",     False),  # #219 imm lvl 59
@@ -353,7 +363,7 @@ _CMD_TABLE = [
     # ("raedit",    do_raedit,     "dead",     False),  # #256 imm lvl 55
     # ("skcheck",   do_skcheck,    "dead",     False),  # #257 imm lvl 57
     # ("cledit",    do_cledit,     "dead",     False),  # #258 imm lvl 57
-    # ("home",      do_home,       "standing", False),  # #259
+    ("home",      do_home,       "standing", False),  # #259
     # ("bid",       do_bid,        "sleeping", False),  # #260 lvl 2
     ("autodamage", do_autodamage, "sleeping", False),  # #261
     # ("unread",    do_board,      "sleeping", False),  # #262
@@ -363,14 +373,14 @@ _CMD_TABLE = [
     # ("donate",    do_donate,     "resting",  False),  # #266
     # ("whowas",    do_whowas,     "sleeping", False),  # #267
     # ("arena",     do_arena,      "resting",  False),  # #268
-    # ("bank",      do_bank,       "resting",  False),  # #269
-    # ("balance",   do_balance,    "sleeping", False),  # #270
+    ("bank",      do_bank,       "resting",  False),  # #269
+    ("balance",   do_balance,    "sleeping", False),  # #270
     # ("clanrecall", do_clanrecall, "standing", False), # #271
     # ("join",      do_join,       "sleeping", False),  # #272
     # ("clanadmin", do_clanadmin,  "sleeping", False),  # #273
     # ("rpedit",    do_rpedit,     "dead",     False),  # #274 imm lvl 55
     # ("opedit",    do_opedit,     "dead",     False),  # #275 imm lvl 55
-    # ("slist",     do_slist,      "dead",     False),  # #276
+    ("slist",      do_slist,      "dead",     False),  # #276
     # ("worship",   do_worship,    "resting",  False),  # #277
     # ("dedit",     do_dedit,      "dead",     False),  # #278 imm lvl 55
     # ("nogocial",  do_nogocial,   "sleeping", False),  # #279
@@ -402,7 +412,7 @@ _CMD_TABLE = [
     ("stance",     do_stance,     "standing", False),  # #305
     ("autostance", do_autostance, "sleeping", False),  # #306
     # ("ignore",    do_ignore,     "sleeping", False),  # #307
-    # ("grlist",    do_grlist,     "sleeping", False),  # #308
+    ("grlist",     do_grlist,     "sleeping", False),  # #308
     # ("programs",  do_programs,   "dead",     False),  # #309 imm lvl 58
     # ("subscribe", do_subscribe,  "dead",     False),  # #310
     # ("barter",    do_barter,     "dead",     False),  # #311
@@ -411,14 +421,14 @@ _CMD_TABLE = [
     # ("gprompt",   do_gprompt,    "dead",     False),  # #314
     # ("bonus",     do_bonus,      "dead",     False),  # #315 imm lvl 56
     # ("sendstats", do_sendstat,   "dead",     False),  # #316 imm lvl 60
-    # ("prime",     do_prime,      "sleeping", True),   # #317 noprefix, imm lvl 51
+    ("prime",      do_prime,      "sleeping", True),   # #317 noprefix; mortal (level-gated internally, see do_prime)
     # ("ring",      do_ring,       "resting",  False),  # #318
     # ("genname",   do_genname,    "sleeping", False),  # #319
-    # ("index",     do_index,      "dead",     False),  # #320
+    ("index",      do_index,      "dead",     False),  # #320
     # ("client",    do_client,     "dead",     False),  # #321
-    # ("backup",    do_backup,     "sleeping", True),   # #322 noprefix
+    ("backup",     do_backup,     "sleeping", True),   # #322 noprefix
     # ("system",    do_system,     "dead",     True),   # #323 noprefix, imm lvl 60
-    # ("heel",      do_heel,       "resting",  False),  # #324
+    ("heel",       do_heel,       "resting",  False),  # #324
     # ("whisper",   do_whisper,    "resting",  False),  # #325
     # ("sooc",      do_sooc,       "resting",  False),  # #326
     # ("helpcheck", do_helpcheck,  "dead",     False),  # #327 imm lvl 54
@@ -428,15 +438,15 @@ _CMD_TABLE = [
     ("clear",      do_clear,      "dead",     False),  # #331
     ("cls",        do_clear,      "dead",     False),  # #332
     # ("nosayverbs", do_nosayverbs, "sleeping", False), # #333
-    # ("mobdeaths", do_mobdeaths,  "sleeping", False),  # #334
-    # ("mobkills",  do_mobkills,   "sleeping", False),  # #335
-    # ("areakills", do_areakills,  "sleeping", False),  # #336
-    # ("areadeaths", do_areadeaths, "sleeping", False), # #337
-    # ("version",   do_version,    "dead",     False),  # #338
-    # ("sshow",     do_sshow,      "sleeping", False),  # #339
+    ("mobdeaths", do_mobdeaths,  "sleeping", False),  # #334
+    ("mobkills",  do_mobkills,   "sleeping", False),  # #335
+    ("areakills", do_areakills,  "sleeping", False),  # #336
+    ("areadeaths", do_areadeaths, "sleeping", False), # #337
+    ("version",    do_version,    "dead",     False),  # #338
+    ("sshow",      do_sshow,      "sleeping", False),  # #339
     ("appraise",  do_appraise,   "standing", False),  # #340
-    # ("rename",    do_rename,     "dead",     True),   # #341 noprefix, imm lvl 59
-    # ("path",      do_path,       "resting",  False),  # #342
+    ("rename",    do_rename,     "resting",  True),   # #341 noprefix; [PRIMESUD] mortal self-rename (upstream imm rename-others in act_wiz.c not ported)
+    ("path",       do_path,       "resting",  False),  # #342
     # ("nopretitles", do_nopretitles, "sleeping", False), # #343
     ("suicide",    do_suicide,    "resting",  True),   # #344 noprefix
     # ("changes",   do_changes,    "dead",     False),  # #345 imm lvl 59
@@ -446,7 +456,19 @@ _CMD_TABLE = [
     # --- [PRIMESUD] extensions (after 1stMud table) ---
     ("macro",      do_macro,      "dead",     False),  # [PRIMESUD] #349
     ("debug",      do_debug,      "dead",     False),  # [PRIMESUD] #350
+    ("autoskill",  do_autoskill,  "dead",     False),  # [PRIMESUD] #351
 ]
+
+# [PRIMESUD] Free-text commands receive the verbatim argument tail -- like
+# 1stMud's do_fun(ch, argument) -- instead of a lowercased split_args token
+# list, so message text and {C colour codes survive.  They lowercase only the
+# head words they extract themselves (target/keyword), matching 1stMud's
+# per-token tolower.  Every other command keeps the split_args token list.
+# ponytail: do_order excluded -- it relays only an NPC-safe combat subset
+# (keyword targets, case-insensitive), emits no free-text; add it here if the
+# ordered subset ever grows to include say/emote.
+_FREETEXT_FUNS = (do_say, do_emote, do_tell, do_reply, do_yell, do_alias,
+                  do_title, do_home)
 
 
 # -- Interpreter ---------------------------------------------------------------
@@ -466,12 +488,12 @@ _HUH_MESSAGES = [
 def one_argument(argument):
     """Extract one argument from *argument*, returning (word, rest) (cf. 1stMud one_argument in interp.c).
 
-    Handles single/double-quote grouping.  Both the extracted word and the
-    remainder are lowercased to match 1stMud's ``tolower`` inside
-    ``one_argument``.
+    Handles single/double-quote grouping.  Only the extracted word is
+    lowercased, matching 1stMud's ``tolower`` on ``arg_first``; the remainder
+    is returned verbatim (case preserved) so ``say``/``emote`` text and colour
+    codes like ``{C`` survive intact.
     """
     i = 0
-    argument = argument.strip().lower()
     length = len(argument)
     while i < length and argument[i].isspace():
         i += 1
@@ -488,10 +510,10 @@ def one_argument(argument):
     else:
         while i < length and argument[i] != end:
             i += 1
-    word = argument[start:i]
+    word = argument[start:i].lower()
     if i < length and argument[i] == end:
         i += 1
-    rest = argument[i:].strip()
+    rest = argument[i:].lstrip()
     return (word, rest)
 
 
@@ -505,16 +527,47 @@ def split_args(argument):
     return args
 
 
+# Last raw player input line, for the '!' repeat shortcut (cf. 1stMud
+# d->inlast in comm.c). Session-only, never persisted.
+_inlast = ""
+
+
 def interpret(raw, player):
     """Main command interpreter (cf. 1stMud interpret in interp.c).
 
     Flow mirrors 1stMud: strip input, remove AFF_HIDE, extract command word
     (handling non-alpha first chars), look up command, check position, execute.
     """
+    global _inlast
     argument = raw.strip()
     if not argument:
         return None
-    tprint("")
+
+    # '!' repeats the last raw input line (cf. 1stMud read_from_buffer in
+    # comm.c: descriptor-level swap before alias substitution; folded here
+    # like substitute_alias since PrimeSUD has no descriptor layer). Prefix
+    # match per upstream -- anything after the '!' is discarded. The raw
+    # pre-alias line is stored, so aliases re-expand on repeat. NPC actors
+    # (mobprog command path) never touch it.
+    if not player.get("is_npc"):
+        if argument[0] == "!":
+            argument = _inlast
+            if not argument:
+                return None
+        else:
+            _inlast = argument
+    # Blank separator line echoes the player's own input; a mob acting through
+    # the interpreter (mobprog command actor) must not emit it. [PRIMESUD]
+    if not player.get("is_npc"):
+        tprint("")
+
+    # [PRIMESUD] Alias substitution (cf. 1stMud substitute_alias in alias.c,
+    # normally invoked from the descriptor input handler before interpret()
+    # is ever called). PrimeSUD has no separate descriptor-level input hook,
+    # so it is folded into the top of interpret() instead; substitute_alias
+    # itself is a no-op for NPCs / players with no aliases / "alias"/"una"
+    # input, and runs at most once (never recursive).
+    argument = substitute_alias(player, argument)
 
     # RemBit(ch->affected_by, AFF_HIDE)
     aff = player.get("affected_by")
@@ -549,7 +602,10 @@ def interpret(raw, player):
 
     # -- No match: check_social fallback, then huh message
     if not cmd:
-        # check_social: not yet ported
+        # socials now imported at module level (do_socials/do_sshow are
+        # command-table entries) [PRIMESUD]
+        if check_social(player, command, argument):
+            return None
         msg = _HUH_MESSAGES[randint(0, len(_HUH_MESSAGES) - 1)]
         if "%s" in msg:
             chprintln(player, msg % command)
@@ -567,8 +623,13 @@ def interpret(raw, player):
         chprintln(player, _POS_MSG.get(pos, ""))
         return None
 
-    args = split_args(argument)
-    result = fn(player, args)
+    if fn in _FREETEXT_FUNS:
+        # Verbatim tail (cf. 1stMud do_fun(ch, argument)) -- preserves case and
+        # colour codes for say/emote/tell/reply/yell message text.
+        result = fn(player, argument)
+    else:
+        args = split_args(argument)
+        result = fn(player, args)
     # [PRIMESUD] mark the room the command left us in as explored. 1stMud does
     # this in char_to_room; PrimeSUD has no such choke point, so mark_explored
     # compares against a cached vnum here (player moves) and in the update tick

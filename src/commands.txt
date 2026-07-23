@@ -1,9 +1,14 @@
+# name|description per command, shown by do_commands -- hand-maintained;
+# every _CMD_TABLE entry needs a line (enforced by tests/test_pager.py)
 '|say something (alias for say)
 ,|act out an action or feeling (alias for emote)
 /|return to the recall point (alias for recall)
 affects|list active spells and effects on you
+alias|define or list command shortcuts: alias <name> <command>
 appraise|ask a shopkeeper the sell value of an item
 areas|list the areas of the world
+areadeaths|rank areas by mob deaths
+areakills|rank areas by player deaths
 autoassist|toggle auto-assisting group members in combat
 autodamage|toggle damage amounts in combat messages
 autoexit|toggle exit display in room descriptions
@@ -12,12 +17,17 @@ autolist|show your auto-action toggle settings
 autoloot|toggle auto looting of corpses
 automap|toggle the mini-map beside room descriptions
 autosac|toggle auto sacrifice of empty corpses
+autoskill|auto combat actions: autoskill [on|off|edit|list|reset]
 autosplit|toggle auto gold splitting (group)
 autostance|set the stance to enter when combat starts
+backup|save your character to a second backup slot
+balance|show banked gold, carried money, and shares
+bank|deposit, withdraw, or trade shares at a bank
 backstab|attack from the shadows for heavy damage
 bash|slam into an opponent to knock it down
 berserk|fly into a rage: more damage, less defense
 brandish|invoke a held magical staff
+brief|toggle room descriptions on movement
 bs|backstab, the short form
 buy|purchase an item (or pet) from a shop
 cast|cast a spell: cast <spell> [target]
@@ -25,6 +35,7 @@ clear|clear the screen
 close|close a door or container
 cls|clear the screen (alias for clear)
 commands|this list
+compact|toggle compact mode
 compare|compare an item with what you have equipped
 consider|judge how dangerous a mob is to fight
 credits|the people behind the game
@@ -52,13 +63,17 @@ get|pick up an item: get <item> [container]
 group|show your group's status, or 'group where' for locations
 give|give an item or coins to a character
 gquest|global quest status and commands
+grlist|list skill groups: known, available, by class/group/skill
 go|step through a portal object (same as enter)
 heal|buy healing services from a healer NPC
+heel|call your pet to your room
 hunt|track a mob in the current area (skill)
 help|read a help entry: help <topic>
+index|browse help entries by category
 hide|hide from view
 hit|attack a mob (alias for kill)
 hold|hold an item in your hand
+home|buy, recall to, rename, or describe your Player Estates home
 inventory|list what you are carrying
 junk|sacrifice an item (alias for sacrifice)
 kick|kick an opponent in combat
@@ -67,15 +82,21 @@ list|see what a shop sells
 lock|lock a door or container (needs the key)
 look|look at the room, a mob, or an item
 macro|bind command shortcuts to keys
+mobdeaths|rank mob types by deaths
+mobkills|rank mob types by kills
 map|show the area map
+motd|show the message of the day
 murder|attack without mercy (no prefix matching)
 north|move north
 open|open a door or container
 order|command a charmed follower or pet
 outfit|receive a free set of basic equipment
+path|show the shortest route to an area or mob
 pick|pick a lock (thief skill)
+play|play a song on a jukebox
 pour|pour liquid between containers, or out
 practice|practice skills and spells at a trainer
+prime|set your prime class: prime <class> (costs 5 trivia)
 put|put an item into a container
 quaff|drink a magical potion
 quest|personal quest status and commands
@@ -85,6 +106,7 @@ recall|pray for transport to the recall point
 recite|recite a magical scroll at a target
 remort|be reborn into a new class at max level
 remove|take off a worn or wielded item
+rename|change your name: rename <new> or bare for suggestions
 reply|answer the last mob that spoke to you
 rescue|pull a friend out of combat
 rest|sit down and rest to recover faster
@@ -96,12 +118,16 @@ scan|look for mobs in adjacent rooms
 score|show your character sheet
 second|wield a second weapon in your off hand
 sell|sell an item to a shop
+show|toggle affects display in score
 sit|sit down
 skills|list the skills you know
+slist|show skill levels for a class or skill
 sleep|go to sleep to recover fastest
 sneak|move silently between rooms
+socials|list social commands: smile, nod, wave, ...
 south|move south
 spells|list the spells you know
+sshow|preview a social's messages without performing it
 sskill|show stance skill ratings
 stance|enter a combat stance: stance <name>
 stand|stand up
@@ -112,12 +138,15 @@ take|pick up an item (alias for get)
 tap|sacrifice an item (alias for sacrifice)
 tell|send a private message to a mob
 time|show the game time, date, and hours played
+title|set your score title: title <text>
 tpspend|spend trivia points on rewards
 train|convert sessions into stats at a trainer
 trip|trip an opponent off its feet
+unalias|remove a defined alias
 unlock|unlock a door or container (needs the key)
 up|move up
 value|ask a shopkeeper what an item is worth
+version|show the game version
 visible|step out of hiding / cancel invisibility
 wake|wake up (yourself)
 wear|wear armor or clothing from your inventory

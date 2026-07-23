@@ -26,36 +26,64 @@ bit indices may differ between hardware revisions.
 
 ---
 
-## Digit macros
+## Digit and function-key macros
 
-Digit keys `0`–`9` act as one-key shortcuts that load a command into the input
-buffer (not auto-submitted — the player still presses Enter, allowing arguments
-to be appended first).
+Digit keys `0`–`9` and ten function keys act as one-key shortcuts that load a
+command into the input buffer when it is empty (not auto-submitted — the player
+still presses Enter, allowing arguments to be appended first).  With a
+non-empty buffer, digits type normally, so numeric arguments still work.
 
-Default bindings (`config.py:DEFAULT_MACROS`):
+Default digit bindings (`config.py:DEFAULT_MACROS`):
 
 | Key | Command   |
 |-----|-----------|
 | 7   | `kill`    |
 | 8   | `flee`    |
+| 9   | `cast`    |
 | 4   | `open`    |
 | 5   | `get`     |
-| 6   | `wear`    |
+| 6   | `drop`    |
 | 1   | `score`   |
 | 2   | `practice`|
 | 3   | `train`   |
 | 0   | `macro`   |
 
+Function-key bindings (`config.py:FNKEY_TABLE`; the two key rows above the
+numpad):
+
+| Key | Name  | Command     |
+|-----|-------|-------------|
+| xʸ  | `xy`  | `run`       |
+| sin | `sin` | `look`      |
+| cos | `cos` | `rest`      |
+| tan | `tan` | `stand`     |
+| ln  | `ln`  | `quest info`|
+| log | `log` | `gquest check` |
+| x²  | `x2`  | `inventory` |
+| +/- | `pm`  | `equip`     |
+| ( ) | `()`  | `wear`      |
+| ,   | `,`   | `remove`    |
+
 Bindings are live-editable with the `macro` command:
 
 ```
-macro               — show current bindings in a grid layout
-macro <digit> <cmd> — bind digit to command
-macro <digit>       — clear binding
+macro             — show current bindings in a grid layout
+macro <key> <cmd> — bind key (digit or fn-key name) to command
+macro <key>       — show the full binding without changing it
+macro unset <key> — clear binding
+macro default     — restore all defaults
 ```
 
-The mapping lives in `commands.py:_MACRO_SUBST` (initialised from
-`DEFAULT_MACROS`).  Changes are session-only; defaults are restored on restart.
+The overview follows the physical keypad, with fixed keys shown dim. Long
+commands are truncated with `...`; `macro <key>` shows the full command.
+The dim `/` key has `[Recall]` beneath it; `/` is a built-in, non-configurable
+alias for `recall`. The dim `On` key similarly has `[Exit]` beneath it and is
+not configurable: the calculator raises `KeyboardInterrupt` when it is
+pressed, which exits PrimeSUD.
+
+The mapping lives in `macros.py:_MACRO_SUBST` (initialised from
+`DEFAULT_MACROS` + `DEFAULT_FNKEY_MACROS`) and persists in the save file
+(`p.macro.*` lines in game_state.py).
 
 ---
 
@@ -166,6 +194,34 @@ target and multiple valid targets exist, a numbered menu is presented:
 
 The player types a digit and Enter.  Option 1 is the default and pre-selected.
 Implemented in `picker.py:pick_from`; blocks until a valid choice is made.
+
+---
+
+## Autoskill rotation editor
+
+`autoskill edit` opens a blocking editor for the automatic combat rotation
+(see DESIGN.md "Autoskill combat automation" for the engine policy):
+
+```
+Autoskill rotation
+[Up/Dn] sel  [+/-] move  [*] on/off  [Enter] save  [Esc] cancel
+  1) blindness 75%
+  2) fireball 52% (off)
+  3) bash 100%
+  4) trip 88% (new)
+```
+
+The list prints once through the normal scroll path; the cursor lives in the
+status line (`> 2) fireball (off)  [2/4]`), updated in place, so navpad
+navigation produces zero scroll spam — only reordering (`+`/`-`) and
+include/exclude toggling (`*`) reprint the list.  Digits jump to a row
+(picker-style 1–9 then 0, per block of ten).  Enter saves the custom
+rotation; Esc discards.  `(off)` marks excluded entries, `(new)` marks
+newly learned entries not yet in a saved rotation.
+
+The navpad Up/Down keys (bits 2/12, normally n/s movement in the game loop)
+are remapped for the editor by passing a private `key_commands` dict to
+`tml_prime.poll_char` — no changes to the tml key map.
 
 ---
 

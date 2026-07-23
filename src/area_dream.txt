@@ -1,0 +1,624 @@
+# fmt: off
+# GENERATED FILE -- do not edit by hand.
+# Regenerated from areas/*.are by tools/are_to_primesud.py
+# (run via tools/regen_areas.py); fix the .are or the converter.
+# Area: Machine Dreams
+# Source: QuickMUD/ROM 2.4
+# VNUM ranges: 8600-8699
+# Credits: { 1  5} Furey   Machine Dreams
+
+
+AREA = {
+    "name":     'Machine Dreams',
+    "builders": 'None',
+    "vnums":    (8600, 8699),
+    "credits":  '{ 1  5} Furey   Machine Dreams',
+    "levels":   (1, 5),
+}
+
+# -- Mob templates --------------------------------------------------------------
+# hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
+# armor: (pierce, bash, slash, exotic), raw .are units
+# hitroll: from mob level line
+MOBILES = {
+    8600: {
+        "keywords":    'oldstyle keeper',
+        "short_descr": 'the keeper',
+        "long_descr":  'The keeper of the Morris equipment is here.',
+        "description": 'Her job is to set the level for this equipment.',
+        "race":        'human',
+        "alignment": 1000,
+        "level":     8,
+        "hitroll":   0,
+        "hp_dice":   (2, 7, 96),
+        "mana_dice": (4, 9, 100),
+        "damage":    (1, 7, 2),  "dam_type": 'none',
+        "armor":     (3, 3, 3, 9),
+        "off_flags": {"disarm": True, "dodge": True, "trip": True, "assist_vnum": True},
+        "start_pos":   'stand',
+        "default_pos": 'stand',
+        "material": '0',
+        "sex":    'female',
+        "wealth": 5,
+        "size":   'medium',
+    },
+}
+
+# -- Rooms ----------------------------------------------------------------------
+ROOMS = {
+    8600: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8606, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8601, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8603, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8602, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8610, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8620, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8601: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8607, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8602, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8604, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8600, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8611, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8621, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8602: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8608, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8600, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8605, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8601, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8612, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8622, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8603: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8600, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8604, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8606, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8605, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8613, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8623, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8604: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8601, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8605, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8607, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8603, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8614, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 3050, "desc": 'You see an abandoned warehouse.'},
+        },
+        "flags": {"no_mob": True, "no_recall": True},
+        "sector": 'field',
+    },
+    8605: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8602, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8603, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8608, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8604, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8615, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8625, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8606: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8603, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8607, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8600, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8608, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8616, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8626, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8607: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8604, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8608, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8601, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8606, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8617, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8627, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8608: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8605, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8606, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8602, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8607, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8618, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8628, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8610: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8616, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8611, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8613, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8612, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8620, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8600, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8611: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8630, "desc": 'You see the Road to Newfane.'},
+            "e": {"to": 8612, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8614, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8610, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8621, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8601, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8612: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8618, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8610, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8615, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8611, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8622, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8602, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8613: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8610, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8614, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8616, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8636, "desc": 'You see a road by a pond.'},
+            "u": {"to": 8623, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8603, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8614: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8611, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8615, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8617, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8613, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8624, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8604, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8615: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8612, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8632, "desc": 'You see a large dance hall.'},
+            "s": {"to": 8618, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8614, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8625, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8605, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8616: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8613, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8617, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8610, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8618, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8626, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8606, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8617: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8614, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8618, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8634, "desc": 'You see a small hall.'},
+            "w": {"to": 8616, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8627, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8607, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8618: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8615, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8616, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8612, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8617, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8628, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8608, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8620: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8626, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8621, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8623, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8622, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8600, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8610, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8621: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8627, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8622, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8624, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8620, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8601, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8611, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8622: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8628, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8620, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8625, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8621, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8602, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8612, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8623: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8620, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8624, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8626, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8625, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8603, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8613, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8624: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8621, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8625, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8627, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8623, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8638, "desc": 'You see a mountain ridge against the sky.'},
+            "d": {"to": 8614, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8625: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8622, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8623, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8628, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8624, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8605, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8615, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8626: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8623, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8627, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8620, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8628, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8606, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8616, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8627: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8624, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8628, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8621, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8626, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8607, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8617, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8628: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+            "n": {"to": 8625, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "e": {"to": 8626, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "s": {"to": 8622, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8627, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "u": {"to": 8608, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "d": {"to": 8618, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "flags": {"no_recall": True},
+        "sector": 'field',
+    },
+    8630: {
+        "name": 'Road to Newfane',
+        "desc": 'You are on a gently curving north-south road.  On your east side a youthful\nriver sparkles blue and rushes in the sunlight.  On the west, green leaves and\ngreen ferns burst against the rich brown earth.  You feel the heat of your\nhealthy muscles as you travel swiftly down the well-paved road.\nYou may recall now if you like.',
+        "exits": {
+            "n": {"to": 8631, "desc": 'You see a village square.'},
+            "s": {"to": 8611, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "sector": 'field',
+    },
+    8631: {
+        "name": 'Newfane Village Square',
+        "desc": 'You are on the lawn of the village square of Newfane, resting against an oak\nafter your vigorous journey.  The late spring breeze feels warm and sensuous\non your body.  An Ale is in progress: you spy more than a dozen fiddlers and\nhundreds of Morris Dancers dressed in white cotton and wearing colorful hats\nand bells.',
+        "exits": {
+            "s": {"to": 8630, "desc": 'You see the Road to Newfane.'},
+        },
+        "sector": 'field',
+    },
+    8632: {
+        "name": 'A Large Dance Hall',
+        "desc": 'You are inside a large dance hall with a very polished, very slippery wooden\nfloor.  You see three long lines of dancers, alternating men and women, in\nsome sort of progressive country dance.  Two fiddlers, a flautist, and a\nharpsichord player provide the music.  You hear scattered screams of joy\nfrom the dancers.\nYou may recall now if you like.',
+        "exits": {
+            "w": {"to": 8615, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "sector": 'field',
+        "extra_descs": [('dancer dancers', 'The dancers have been here all night and intend to dance until dawn.')],
+    },
+    8634: {
+        "name": 'A Small Hall',
+        "desc": "You are inside a small hall with a rough wooden floor.  You see dozens of\npeople in the hall chasing one poor man who is yelling at the top of\nhis lungs.  Wait a minute.  These people are all holding hands and smiling!\nThe man in front is leading them in a spiral!  They're DANCING!  And you\nthought people didn't dance like this any more!\nYou may recall now if you like.",
+        "exits": {
+            "n": {"to": 8617, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "sector": 'field',
+    },
+    8636: {
+        "name": 'Road by a Pond',
+        "desc": 'You are passing by a large pond, almost a small lake.  You notice a small\nwooden shack by the side of the road.\nYou may recall now if you like.',
+        "exits": {
+            "e": {"to": 8613, "desc": 'You see machine dreams and taste violet phosphor.'},
+            "w": {"to": 8637, "desc": 'You see a wooden church set back among the trees.'},
+        },
+        "sector": 'field',
+        "extra_descs": [('shack', 'The shack looks hand-made by an amateur.')],
+    },
+    8637: {
+        "name": 'An Old Wooden Church',
+        "desc": "As you enter the hall, you see the largest crowd of people you've ever seen in\nyour life.  They're also the noisiest crowd you've ever heard, and as they\npress around you, the SWEATIEST crowd you've ever felt!  At the front of the\nhall, a group of musicians are playing 'Chorus Jig'.",
+        "exits": {
+            "e": {"to": 8636, "desc": 'You see a road by a pond.'},
+        },
+        "sector": 'field',
+    },
+    8638: {
+        "name": 'Mountain Road',
+        "desc": 'You are following a road at the top of a mountain ridge with sky all around\nyou.  Distant valleys are spread out below you on both sides.  There are\nmany horsemen and horsewomen on this road, riding hell-for-leather out of\nsheer exhilaration.  You wish you had a horse!\nYou may recall now if you like.',
+        "exits": {
+            "u": {"to": 8639, "desc": 'You see several acres of thickly planted, very young Yule Trees.'},
+            "d": {"to": 8624, "desc": 'You see machine dreams and taste violet phosphor.'},
+        },
+        "sector": 'field',
+    },
+    8639: {
+        "name": 'Yule Tree Farm',
+        "desc": 'This is the Yule Tree Farm at the top of Mountain Road.  All around you,\nyoung Yule Trees saturate your senses with dark green needles and pine\nessence.',
+        "exits": {
+            "d": {"to": 8638, "desc": 'You see a mountain ridge against the sky.'},
+        },
+        "sector": 'field',
+    },
+    8699: {
+        "name": 'The Void',
+        "desc": "You are suspended in cool electric space above a translucent plain.  You feel\nsynesthesia invading your nerves and reshuffling your senses.  The sky is the\nsame obsidian color as the ground and you can't find a horizon.",
+        "exits": {
+        },
+        "flags": {"no_mob": True, "solitary": True},
+        "sector": 'field',
+    },
+}
+
+# -- Item templates -------------------------------------------------------------
+OBJECTS = {
+    8600: {
+        "keywords":    'bells morris leggings',
+        "short_descr": 'morris bells',
+        "description": 'A set of leggings with a dozen brass bells sewn on has been left here.',
+        "material":    'oldstyle',
+        "type": 'armor',
+        "wear_flags": {"take": True, "legs": True},
+        "armor": (3, 3, 3, 0),
+        "level": 3, "weight": 50, "value": 310,
+        "extra_descs": [('motto', "'Time on the ground is time wasted.'"), ('bells morris', 'These are a set of sturdy leather leggings with small brass bells sewn on.\nThey look like the leggings worn by Morris dancers.  There is a motto tooled\ninto the leather.')],
+    },
+    8601: {
+        "keywords":    'handkerchief hankie kerchief morris',
+        "short_descr": 'a morris handkerchief',
+        "description": 'A white handkerchief is here.',
+        "material":    'oldstyle',
+        "type": 'armor',
+        "wear_flags": {"take": True, "wrist": True},
+        "armor": (3, 3, 3, 0),
+        "level": 3, "weight": 50, "value": 310,
+        "extra_descs": [('handkerchief hankie kerchief', 'This is a fine linen handkerchief used for ritual Morris dances.')],
+    },
+    8602: {
+        "keywords":    'sash morris white',
+        "short_descr": 'a morris sash',
+        "description": 'A white sash is here.',
+        "material":    'oldstyle',
+        "type": 'armor',
+        "wear_flags": {"take": True, "waist": True},
+        "armor": (3, 3, 3, 0),
+        "level": 3, "weight": 50, "value": 310,
+        "extra_descs": [('sash', 'This is a fine linen sash used for ritual Morris dances.')],
+    },
+    8603: {
+        "keywords":    'staff morris',
+        "short_descr": 'a morris staff',
+        "description": 'A short, stout staff made of polished wood is here.',
+        "material":    'oldstyle',
+        "type": 'staff',
+        "wear_flags": {"take": True, "hold": True},
+        "spell_level": 10,
+        "max_charges": 4, "charges": 4,
+        "spell": 'protection evil',
+        "level": 6, "weight": 50, "value": 1460,
+        "extra_descs": [('stick staff', 'Made from the wood of a Yule Tree, this staff is about one meter long and\nhighly polished.  It looks more like a ritual device than a weapon.')],
+    },
+}
+
+# -- Resets ---------------------------------------------------------------------
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          -- place one item copy in room
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G/P limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 means unlimited, and 0
+# also means unlimited for E/G specifically (not P). Enforced at runtime.
+# ("P", item_vnum, limit, container_vnum, max)         -- fill container in room up to max (capped by limit)
+# ("R", room_vnum, num_dirs)                           -- shuffle first num_dirs exits (skipped on doors)
+# D resets are baked into room exit flags at conversion time
+RESETS = (
+    ("R", 8600, 6),
+    ("R", 8601, 6),
+    ("R", 8602, 6),
+    ("R", 8603, 6),
+    ("R", 8604, 6),
+    ("R", 8605, 6),
+    ("R", 8606, 6),
+    ("R", 8607, 6),
+    ("R", 8608, 6),
+    ("R", 8610, 6),
+    ("R", 8611, 6),
+    ("R", 8612, 6),
+    ("R", 8613, 6),
+    ("R", 8614, 6),
+    ("R", 8615, 6),
+    ("R", 8616, 6),
+    ("R", 8617, 6),
+    ("R", 8618, 6),
+    ("R", 8620, 6),
+    ("R", 8621, 6),
+    ("R", 8622, 6),
+    ("R", 8623, 6),
+    ("R", 8624, 6),
+    ("R", 8625, 6),
+    ("R", 8626, 6),
+    ("R", 8627, 6),
+    ("R", 8628, 6),
+    ("M", 8600, 1, 8699, 1),
+    ("O", 8600, 8631),
+    ("O", 8601, 8632),
+    ("O", 8601, 8634),
+    ("O", 8602, 8637),
+    ("O", 8603, 8639),
+)
+
+# -- Helps ---------------------------------------------------------------------
+HELPS = (
+)
+
+# -- Socials -------------------------------------------------------------------
+SOCIALS = (
+)
+
+# -- MobProgs ------------------------------------------------------------------
+# (vnum, code) -- mob program code blocks, referenced by mob triggers
+MOBPROGS = {
+}
+
+# -- ObjProgs ------------------------------------------------------------------
+# (vnum, code) -- object program code blocks, referenced by object triggers
+OBJPROGS = {
+}
+
+# -- RoomProgs -----------------------------------------------------------------
+# (vnum, code) -- room program code blocks, referenced by room triggers
+ROOMPROGS = {
+}

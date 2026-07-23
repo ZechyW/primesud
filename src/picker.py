@@ -82,7 +82,7 @@ def pick_from(title, options):
         tprint("> ", end="")
         while True:  # FIRST_KEY: loop until action taken
             char = _read_key()
-            if char == "\e":
+            if char == "\\e":
                 return _cancel()
             elif char == "\n":
                 tprint("")
@@ -124,6 +124,6 @@ def pick_from(title, options):
                     elif char2 == "\b":
                         tprint("")
                         break
-                    elif char2 == "\e":
+                    elif char2 == "\\e":
                         return _cancel()
                 break

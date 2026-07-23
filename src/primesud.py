@@ -18,14 +18,14 @@ from config import (
     CMD_HISTORY_MAX,
     FNKEY_SENTINELS,
 )
-from util import free_mem, gc_collect
+from util import gc_collect
 import world
 from world import MOB_DEFS, init_world
 from handler import mob_condition
 from player import show_prompt
 from update import update_handler, UPD_VIOLENCE, UPD_TICK
 from commands import interpret
-from info import do_look
+from info import do_look, show_greeting
 from movement import run_buf_step, free_runbuf
 from macros import _MACRO_SUBST
 import terminal
@@ -108,40 +108,6 @@ class Game:
         self.tr.print("")
         self.tr.print("You stop running.")
 
-    def show_greeting(self):
-        tr = self.tr
-        tr.clear()
-
-        mem_part = "{G(Mem. free: %s)" % free_mem()
-        pad = 64 - 23 - len(mem_part) - 1
-        _first = '{C 8888888b.          d8b' + ' ' * pad + mem_part + '{x'
-        tr.print(_first)
-        tr.print("{C 888   Y88b         Y8P                                       {x")
-        tr.print("{C 888    888                                                   {x")
-        tr.print("{C 888   d88P 888d888 888 88888b.d88b.   .d88b.                 {x")
-        tr.print('{C 8888888P"  888P"   888 888 "888 "88b d8P  Y8b                {x')
-        tr.print("{C 888        888     888 888  888  888 88888888                {x")
-        tr.print("{C 888        888     888 888  888  888 Y8b.                    {x")
-        tr.print('{C 888        888     888 888  888  888  "Y8888                 {x')
-        tr.print("{C                             .d8888b.  888     888 8888888b.  {x")
-        tr.print('{C                            d88P  Y88b 888     888 888  "Y88b {x')
-        tr.print("{C                            Y88b.      888     888 888    888 {x")
-        tr.print('{C                             "Y888b.   888     888 888    888 {x')
-        tr.print('{C                                "Y88b. 888     888 888    888 {x')
-        tr.print('{C                                  "888 888     888 888    888 {x')
-        tr.print("{C                            Y88b  d88P Y88b. .d88P 888  .d88P {x")
-        tr.print('{C                             "Y8888P"   "Y88888P"  8888888P"  {x')
-        tr.print("{c      Original DikuMUD by Hans Staerfeldt, Katja Nyboe,       {x")
-        tr.print("{c      Tom Madsen, Michael Seifert, and Sebastian Hammer       {x")
-        tr.print("{c      Based on MERC 2.1 code by Hatchet, Furey, and Kahn      {x")
-        tr.print("{c      ROM 2.4 copyright (c) 1993-1998 Russ Taylor.            {x")
-        tr.print("{c      1stMud Server copyright (c) 2001-2004, Markanth.        {x")
-        tr.input("                    [Press Enter to start]                     ",
-            alpha=False,
-        )
-
-        tr.print()
-
     def game_loop(self):
         tr = self.tr
         player = world.chars[1]
@@ -154,7 +120,8 @@ class Game:
 
         tr.resync_keyboard()
         show_prompt(player, self.input_buf)
-        do_look(player, [])
+        # cf. 1stMud nanny.c:1276 (enter-game): do_look "auto" -- COMM_BRIEF gate
+        do_look(player, ["auto"])
 
         while True:
             result = tr.poll_char(_KEY_COMMANDS)
@@ -285,6 +252,7 @@ class Game:
                         break
                     show_prompt(player, self.input_buf)
 
+                player["_cmd_queued"] = self._pending_cmd is not None  # [PRIMESUD] autoskill: manual input wins the round
                 fired = update_handler()
 
                 # [PRIMESUD] display follows -- not part of 1stMud update_handler
@@ -333,7 +301,7 @@ class PrimeSud:
         with self:
             game = self.game
 
-            game.show_greeting()
+            show_greeting()
 
             result = load_game(game)
             if result is None:          # version mismatch
@@ -354,11 +322,21 @@ class PrimeSud:
             # [PRIMESUD] Preload limbo: it holds the morgue where corpses spawn
             # (OBJ_VNUM_CORPSE_NPC), so a first mob kill would otherwise trigger its lazy
             # load mid-combat, printing "Loading area" into the kill sequence.
-            # Its chapel-pulling sarcophagus reset is dropped at convert time
-            # (patch_1stmud_deltas.py), so this stays self-contained. Idempotent
+            # Its chapel-pulling sarcophagus reset is dropped in
+            # areas/limbo.are, so this stays self-contained. Idempotent
             # no-op on the load path (done above); real preload for new-game
             # paths, whose new_game() -> reset_lazy() would wipe an earlier one.
             world._ensure_area_by_tag("limbo")
+
+            # [PRIMESUD] Preload the lazy-import trio (deferred-import
+            # policy: no top-level consumers). The Prime auto-imports app
+            # .py files in an order we don't control, and this module's
+            # import starts the game, so anything not yet imported would
+            # otherwise lazy-load mid-play as a visible lag spike (mobprog
+            # fires in the very first Mud School room). Loading here lands
+            # the cost in the signposted startup phase instead.
+            import mobprog, socials, namegen  # noqa: F401
+            gc_collect()
 
             try:
                 game.game_loop()

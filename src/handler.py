@@ -7,11 +7,13 @@ from config import (LEVEL_IMMORTAL, MAX_STATS,
                     STR_APP_WIELD, POS_ORDER,
                     SEX_VALUES)
 from races import race_lookup, RACE_TABLE
+from skills_table import GSN_SNEAK
 from terminal import tprint
 from urandom import randint
 import world
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 from game_time import time_info, SUN_SET, SUN_DARK
+from debug import DBG  # [PRIMESUD] "holylight" debug toggle = 1stMud PLR_HOLYLIGHT
 
 # -- Alignment helpers (cf. 1stMud IsGood/IsEvil/IsNeutral in macro.h) ----------------
 
@@ -42,6 +44,7 @@ TO_SOCIALS = 128  # BIT_H
 # Defined here (not player.py) because player.py imports handler; player.py
 # re-exports them, so import from either.
 PLR_AUTOMAP = 1
+PLR_AUTOSKILL = 2   # [PRIMESUD] autoskill combat automation
 PLR_AUTOASSIST = 4   # BIT_C
 PLR_AUTOEXIT = 8     # BIT_D
 PLR_AUTOLOOT = 16    # BIT_E
@@ -52,6 +55,18 @@ PLR_AUTODAMAGE = 1024  # BIT_K
 # cf. 1stMud pload_default in save.c: all auto* flags on for new players
 PLR_DEFAULTS = (PLR_AUTOMAP | PLR_AUTOASSIST | PLR_AUTOEXIT | PLR_AUTOLOOT
                 | PLR_AUTOSAC | PLR_AUTOGOLD | PLR_AUTOSPLIT | PLR_AUTODAMAGE)
+
+# -- Comm bits (cf. 1stMud COMM_* in bits.h) -----------------------------------
+# 1stMud keeps these on a separate ch->comm bitfield; PrimeSUD has only one
+# player "flags" field (already persisted -- see game_state._serialize_world),
+# so they share it with the PLR_* bits above rather than adding a parallel
+# field. New bits, not a continuation of the PLR_* numbering.
+COMM_BRIEF = 2048         # 1stMud BIT_M
+COMM_COMPACT = 4096       # 1stMud BIT_L
+COMM_SHOW_AFFECTS = 8192  # 1stMud BIT_Q
+# None of the three are on by default (cf. 1stMud save.c:691 pload_default:
+# ch->comm = COMM_COMBINE | COMM_PROMPT -- neither COMBINE nor PROMPT is
+# ported, and brief/compact/show_affects aren't in that default set anyway).
 
 AFF_TO_WHERE = {
     "to_affects": "affected_by",
@@ -209,6 +224,9 @@ def get_max_train(ch, stat):
             cap += 3
         else:
             cap += 2
+    # [PRIMESUD] prestige tier perk: +1 trainable cap per tier (see
+    # finish_tier_reset in training.py), still clamped at MAX_STATS.
+    cap += ch.get("tier", 0)
     return min(cap, MAX_STATS)
 
 
@@ -594,7 +612,6 @@ def equip_char(char, obj, slot):
 
 def _player_char():
     """Return the runtime player character, if present. [PRIMESUD]"""
-    import world
     return world.chars.get(1)
 
 
@@ -620,7 +637,12 @@ def chprint(ch, txt):
 
 
 def chprintln(ch, txt):
-    """Direct-send one line (cf. 1stMud chprintln in character.h)."""
+    """Direct-send one line (cf. 1stMud chprintln in character.h).
+
+    [PRIMESUD] txt may also be a list of lines -- passed through unjoined and
+    batch-rendered by terminal.print_lines (avoids the device join-over-
+    formatted-strings bug, see PRIME_STRING_FORMAT_BUG.md).
+    """
     if txt is None:
         txt = ""
     return _send_player_text(ch, txt)
@@ -796,19 +818,13 @@ def _act_code(code, ch, arg1, arg2, to, type):
     return "<@@@>"
 
 
-def _perform_act(format, ch, arg1, arg2, type, to):
-    """Format and deliver one act message (cf. 1stMud perform_act in comm.c).
+def _render_act(format, ch, arg1, arg2, type, to):
+    """Substitute $-codes for one recipient and return the rendered line (cf. 1stMud perform_act buf).
 
-    Substitutes $-codes, appends {x color reset, capitalizes first visible
-    char (skipping color codes), then sends to the terminal.
-
-    Args:
-        format (str): Act format string with $-codes.
-        ch (dict): Subject character.
-        arg1: Object argument (object dict or string).
-        arg2: Target argument (victim dict, object dict, or string).
-        type (int): Bitmask of TO_* flags.
-        to (dict): Recipient character (always the player in PrimeSUD).
+    Substitutes $-codes as seen by *to*, appends {x color reset, capitalizes
+    the first visible char (skipping color codes).  Split out from
+    _perform_act so act triggers can render the mob-recipient buffer without
+    printing it ([PRIMESUD] Phase E). (cf. perform_act in comm.c)
     """
     out = []
     # [PRIMESUD] TO_SOCIALS color prefix not ported -- needs CTAG(_SOCIALS)
@@ -829,7 +845,21 @@ def _perform_act(format, ch, arg1, arg2, type, to):
             out.append(_act_code(code, ch, arg1, arg2, to, type))
         i += 1
     out.append("{x")
-    tprint(upper("".join(out)))
+    return upper("".join(out))
+
+
+def _perform_act(format, ch, arg1, arg2, type, to):
+    """Format and deliver one act message to the player (cf. 1stMud perform_act in comm.c).
+
+    Args:
+        format (str): Act format string with $-codes.
+        ch (dict): Subject character.
+        arg1: Object argument (object dict or string).
+        arg2: Target argument (victim dict, object dict, or string).
+        type (int): Bitmask of TO_* flags.
+        to (dict): Recipient character (always the player in PrimeSUD).
+    """
+    tprint(_render_act(format, ch, arg1, arg2, type, to))
 
 
 def _sendok(ch, min_pos="resting"):
@@ -869,7 +899,23 @@ def act_new(format, ch, arg1, arg2, type, min_pos):
     """
     if not format:
         return
+    _act_to_player(format, ch, arg1, arg2, type, min_pos)
+    # [PRIMESUD] Phase E: fire TRIG_ACT on NPC recipients of this act.  1stMud
+    # does this inside perform_act's per-recipient loop (comm.c:2041); the
+    # PrimeSUD player-only delivery above never visits mobs, so it is a
+    # separate room-mob pass here, gated by the MOBtrigger latch.
+    _act_trigger_mobs(format, ch, arg1, arg2, type)
+    # obj/room TRIG_ACT pass (cf. perform_act tail, comm.c:2044-2073) --
+    # deliberately NOT gated by the MOBtrigger latch, matching upstream
+    _act_trigger_objs_rooms(format, ch, arg1, arg2, type)
 
+
+def _act_to_player(format, ch, arg1, arg2, type, min_pos):
+    """Deliver an act message to the solo player, if the player qualifies. [PRIMESUD]
+
+    The recipient-selection half of act_new (cf. act_new in comm.c); split out
+    so act-trigger firing runs regardless of which delivery branch matched.
+    """
     player = _player_char()
     if player is None:
         return
@@ -896,7 +942,6 @@ def act_new(format, ch, arg1, arg2, type, min_pos):
                 return
             # TO_ZONE: same area check
             if isinstance(ch, dict) and ch.get("room") is not None:
-                from world import ROOM_DEFS
                 ch_area = ROOM_DEFS.get(ch["room"], {}).get("area")
                 pl_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
                 if ch_area is not None and ch_area == pl_area:
@@ -915,6 +960,110 @@ def act_new(format, ch, arg1, arg2, type, min_pos):
                 if player is not arg2:
                     _perform_act(format, ch, arg1, arg2, type, player)
                     return
+
+
+def _act_trigger_mobs(format, ch, arg1, arg2, type):
+    """Fire TRIG_ACT on the NPC recipients of an act (cf. perform_act tail, comm.c:2041). [PRIMESUD]
+
+    Mirrors act_new's recipient selection: TO_CHAR -> ch, TO_VICT -> the
+    victim, TO_ROOM/TO_NOTVICT -> every room NPC except ch (and the victim for
+    NOTVICT).  TO_ALL/TO_ZONE reach only descriptors (players) in 1stMud, so no
+    mob recipients.  The trigger phrase is matched against the line as rendered
+    for that mob.
+
+    The MOBtrigger latch is held off for the whole dispatch -- [PRIMESUD]
+    stricter than 1stMud (which latches only emote/asound): a prog fired here
+    must not have its own act output recursively fire further act triggers, a
+    hard recursion bound for the Prime's small stack.
+    """
+    import mobprog  # deferred: keep mobprog off the boot path
+    if not mobprog.MOBtrigger:
+        return
+    has_trigger = mobprog.has_trigger
+    vch = arg2 if isinstance(arg2, dict) and "room" in arg2 else None
+    # Collect only the NPC recipients that actually carry an act trigger, so a
+    # populated but trigger-less room costs one has_trigger check per mob and
+    # never flips the latch or renders a buffer.
+    recips = []
+    if (type & TO_CHAR) and isinstance(ch, dict) and ch.get("is_npc") and has_trigger(ch, "act"):
+        recips.append(ch)
+    if (type & TO_VICT) and vch is not None and vch is not ch and vch.get("is_npc") and has_trigger(vch, "act"):
+        recips.append(vch)
+    if type & (TO_ROOM | TO_NOTVICT):
+        room = _act_room(ch, arg1, arg2)
+        rs = world.rooms._data.get(room) if room is not None else None
+        if rs is not None:
+            for mid in list(rs.get("mobs", [])):
+                mob = world.chars.get(mid)
+                if mob is None or mob is ch or not mob.get("is_npc"):
+                    continue
+                if (type & TO_NOTVICT) and mob is vch:
+                    continue
+                if has_trigger(mob, "act"):
+                    recips.append(mob)
+    if not recips:
+        return
+    saved = mobprog.MOBtrigger
+    mobprog.MOBtrigger = False
+    try:
+        for mob in recips:
+            # an earlier recipient's prog may have extracted a later one
+            # (mppurge / mpdamage); skip a mob that is no longer resident.
+            mid = mob.get("id")
+            if mid is not None and world.chars.get(mid) is not mob:
+                continue
+            buf = _render_act(format, ch, arg1, arg2, type, mob)
+            mobprog.act_trigger(buf, mob, ch, arg1, arg2, "act")
+    finally:
+        mobprog.MOBtrigger = saved
+
+
+def _act_trigger_objs_rooms(format, ch, arg1, arg2, type):
+    """Fire TRIG_ACT on room objs, carried objs, and the room (cf. perform_act
+    tail, comm.c:2044-2073). [PRIMESUD]
+
+    Upstream this block runs inside perform_act -- once per qualifying
+    TO_ROOM/TO_NOTVICT recipient -- and is NOT gated on the MOBtrigger latch
+    (only the mob-recipient branch is): an emote or a latched give still fires
+    obj/room act triggers.  Recursion is bounded by mobprog's global
+    program_flow call-depth counter.  The trigger text is the unrendered
+    format string (upstream passes ``orig``).  As in _act_trigger_mobs, the
+    SENDOK position gate on recipients is not mirrored.
+    """
+    if not (type & (TO_ROOM | TO_NOTVICT)):
+        return
+    # ponytail: no obj/room progs loaded -> skip the per-act room scan; a
+    # per-room trigger cache is the upgrade path if this shows on-device
+    if not world.OBJPROGS and not world.ROOMPROGS:
+        return
+    if not isinstance(ch, dict) or ch.get("room") is None:
+        return
+    rs = world.rooms._data.get(ch["room"])
+    if rs is None:
+        return
+    vch = arg2 if isinstance(arg2, dict) and "room" in arg2 else None
+    # one firing pass per qualifying recipient, as upstream's per-recipient
+    # perform_act calls repeat the whole block
+    persons = []
+    player = _player_char()
+    if player is not None and player.get("room") == ch["room"]:
+        persons.append(player)
+    for mid in list(rs.get("mobs", [])):
+        m = world.chars.get(mid)
+        if m is not None:
+            persons.append(m)
+    recips = 0
+    for p in persons:
+        if p is ch:
+            continue
+        if (type & TO_NOTVICT) and p is vch:
+            continue
+        recips += 1
+    if recips == 0:
+        return
+    import mobprog  # deferred: keep mobprog off the boot path
+    for _i in range(recips):
+        mobprog.act_trigger_objs_room(format, ch)
 
 
 def act(format, ch, arg1=None, arg2=None, type=TO_CHAR):
@@ -1035,10 +1184,12 @@ def can_see_room(ch, room_vnum):
 def can_see(ch, victim):
     """Check if ch can see victim (cf. 1stMud can_see in handler.c).
 
-    Checks AFF_BLIND, room darkness vs AFF_INFRARED, AFF_INVISIBLE vs
-    detect_invis, AFF_SNEAK skill contest, and AFF_HIDE vs detect_hidden.
-    [PRIMESUD] invis_level/incog/holylight/arena and the quest/gquest target
-    overrides not ported.
+    Checks AFF_BLIND, quest/gquest target overrides, room darkness vs
+    AFF_INFRARED, AFF_INVISIBLE vs detect_invis, AFF_SNEAK skill contest,
+    and AFF_HIDE vs detect_hidden.
+    PLR_HOLYLIGHT (handler.c:2403) maps to the [PRIMESUD] "debug holylight"
+    toggle (imm sight for playtesting). [PRIMESUD] invis_level/incog/arena
+    not ported.
 
     Args:
         ch (dict): Observer (player or mob instance).
@@ -1050,19 +1201,36 @@ def can_see(ch, victim):
     if ch is victim:
         return True
 
+    # cf. 1stMud PLR_HOLYLIGHT (handler.c:2403) -- [PRIMESUD] debug toggle
+    if not ch.get("is_npc") and "holylight" in DBG:
+        return True
+
     ch_aff = ch.get("affected_by", {})
     v_aff = victim.get("affected_by", {})
 
     if ch_aff.get("blind"):
         return False
 
+    # cf. handler.c:2421-2426 -- a quester keeps sight of their quest-target
+    # mob, and a gquester of any still-unkilled gquest target, through
+    # darkness/invis/hide. [PRIMESUD] quest_mob is a template vnum, so any
+    # live instance matches (same semantics as quest.py kill credit); plain
+    # dict reads + a lazy gquest import keep handler decoupled from quest.
+    if not ch.get("is_npc") and victim.get("is_npc"):
+        tpl = victim.get("tpl", 0)
+        if tpl:
+            if ch.get("quest_status") and tpl == ch.get("quest_mob", 0):
+                return True
+            from gquest import gquest_info, GQUEST_RUNNING, gq_is_player_target  # deferred: gquest imports handler
+            if (gquest_info["running"] == GQUEST_RUNNING
+                    and gq_is_player_target(tpl)):
+                return True
+
     # cf. 1stMud can_see dark gate (handler.c:2428): a dark room hides the
-    # victim from a viewer without infrared. In 1stMud the quest / gquest
-    # target overrides (handler.c:2421-2426) precede this, so a quester keeps
-    # sight of their target in the dark; PrimeSUD has no can_see quest override
-    # yet [TODO quest-override]. Observer room resolves from ch["room"] for
-    # both players and mobs -- mob aggro routes through can_see, so a dark room
-    # shields an unlit player from non-infrared aggressors (1stMud-correct).
+    # victim from a viewer without infrared. Observer room resolves from
+    # ch["room"] for both players and mobs -- mob aggro routes through
+    # can_see, so a dark room shields an unlit player from non-infrared
+    # aggressors (1stMud-correct).
     # Membership tests _data (already-loaded rooms) not ROOM_DEFS: a plain
     # `in ROOM_DEFS` would fire LazyDict's on-demand area load. The observer is
     # always standing in a loaded room, so _data is sufficient and side-effect
@@ -1077,8 +1245,7 @@ def can_see(ch, victim):
 
     if (v_aff.get("sneak") and not ch_aff.get("detect_hidden")
             and victim.get("fighting") is None):
-        from skill_utils import get_skill
-        from skills_table import GSN_SNEAK
+        from skill_utils import get_skill  # deferred: skill_utils imports handler
         chance = get_skill(victim, GSN_SNEAK,
                            is_mob=bool(victim.get("is_npc")))
         chance += get_curr_stat(victim, "dex") * 3 // 2
@@ -1097,13 +1264,10 @@ def can_see(ch, victim):
 def can_see_obj(ch, obj):
     """Check if ch can see obj (cf. 1stMud can_see_obj in handler.c:2456).
 
-    Check order matches the source: ITEM_VIS_DEATH, blindness (potions
-    exempt), a lit light source, ITEM_INVIS vs detect_invis, ITEM_GLOW, then a
-    dark room vs dark_vision. [PRIMESUD] HOLYLIGHT gate omitted (no immortals).
-    The quest-object override (handler.c:2461) is not ported [TODO
-    quest-override]: quest.py tracks the target obj by vnum, but wiring it here
-    would couple handler to quest, and quest items carry no invis/vis_death
-    flags, so the gap is harmless for now.
+    Check order matches the source: HOLYLIGHT (mapped to the [PRIMESUD]
+    "debug holylight" toggle), quest-object override, ITEM_VIS_DEATH,
+    blindness (potions exempt), a lit light source, ITEM_INVIS vs
+    detect_invis, ITEM_GLOW, then a dark room vs dark_vision.
 
     Args:
         ch (dict): Observer (player or mob instance).
@@ -1123,7 +1287,17 @@ def can_see_obj(ch, obj):
     else:
         otype = tpl.get("type")
 
+    # cf. 1stMud PLR_HOLYLIGHT (handler.c:2458) -- [PRIMESUD] debug toggle
+    if not ch.get("is_npc") and "holylight" in DBG:
+        return True
+
     ch_aff = ch.get("affected_by", {})
+
+    # cf. handler.c:2461 -- a quester always sees their quest object (so a
+    # retrieve token in a dark room stays visible). [PRIMESUD] matched by
+    # template vnum, same semantics as quest.py quest_obj_check.
+    if ch.get("quest_status") and vnum and vnum == ch.get("quest_obj", 0):
+        return True
 
     if flags.get("vis_death"):
         return False
@@ -1158,7 +1332,8 @@ def can_see_obj(ch, obj):
 def check_blind(ch):
     """True unless ch is blinded, printing the failure line (cf. 1stMud check_blind in act_info.c:495).
 
-    [PRIMESUD] HOLYLIGHT short-circuit omitted (no immortals).
+    HOLYLIGHT short-circuit (act_info.c:498) maps to the [PRIMESUD]
+    "debug holylight" toggle.
 
     Args:
         ch (dict): Observer whose sight is being tested.
@@ -1167,6 +1342,8 @@ def check_blind(ch):
         bool: True if ch can see; False (after printing "You can't see a
         thing!") if blinded.
     """
+    if not ch.get("is_npc") and "holylight" in DBG:
+        return True
     if ch.get("affected_by", {}).get("blind"):
         chprintln(ch, "You can't see a thing!")
         return False

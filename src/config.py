@@ -1,6 +1,8 @@
 # fmt: off
 """Game configuration constants, key maps, and stat tables."""
 
+VERSION = "1.0.0"  # [PRIMESUD] shown by do_version; upstream has no PrimeSUD-side equivalent
+
 # -- Display ---------------------------------------------------------------------------
 DARK_MODE     = True
 FONT          = "std5x10"
@@ -11,17 +13,24 @@ TERMINAL_COLS = 64   # character columns (std5x10 font, 320 px wide)
 TERMINAL_ROWS = 22   # character rows    (std5x10 font, 240 px high, excl. status bar)
 FONT_GROB     = 9    # grob tml blits font glyphs from (HP Prime default)
 COLOR_GROB    = 8    # unmodified font copy; restored into FONT_GROB on colour reset
+SCRATCH_GROB  = 5    # offscreen compose buffer for batched renders (6=save, 7=history)
 
 # -- Timing -- pulse system (1stMud convention) -----------------------------------------
 PULSE_PER_SECOND = 4                          # base pulse rate
 MS_PER_PULSE     = 1000 // PULSE_PER_SECOND   # 250 ms per pulse
 PULSE_VIOLENCE   = 2  * PULSE_PER_SECOND      # combat round
 PULSE_MOBILE     = 5  * PULSE_PER_SECOND      # mob wander
+PULSE_MUSIC      = 6  * PULSE_PER_SECOND      # jukebox lyric line (cf. 1stMud PULSE_MUSIC)
 PULSE_TICK       = 30 * PULSE_PER_SECOND      # world tick
 TICK_SECS        = PULSE_TICK // PULSE_PER_SECOND  # seconds elapsed per world tick
 # PULSE_AREA     = 120 * PULSE_PER_SECOND     # area reset
 PULSE_AREA       = 30 * PULSE_PER_SECOND      # Quicker age ticks for better UX
 POLL_MS          = 10                         # keyboard polling interval (ms)
+# [PRIMESUD] Max loaded areas before world.maybe_evict unloads far ones.
+# The keep-set (current area + neighbours + pinned limbo + follower/combat
+# areas) is immune, so the effective floor is ~12 around the Midgaard hub;
+# lower this for smaller-heap devices only alongside a smaller world.
+AREA_CACHE_MAX   = 12
 AUTOSAVE_TICKS   = 4                          # autosave every N world ticks
 DEATH_MSG_DELAY  = 3                          # seconds between death flavour lines
 
@@ -134,18 +143,25 @@ DEFAULT_MACROS = {  # [PRIMESUD]
 }
 
 # -- Function-row macro keys [PRIMESUD] ---------------------------------------
-# Sentinels must match _FN_* in tml_prime.py. One row per key: sentinel -> (display_name, default_command).
+# Sentinels must match _FN_* in tml_prime.py. One row per key: sentinel ->
+# (display_name, default_command); None leaves a configurable key unbound.
 # display_name is used as the save-file key (save_char/load_char in player.py); must not contain '~' (line
 # separator) or '=' (key/value separator) or save parsing will break.
 FNKEY_TABLE = {
-    14: ('x2', 'inventory'),      # x2 key -- index 26
-    15: ('pm', 'equip'),  # +/- key -- index 27
-    16: ('()', 'wear'),       # ()  key -- index 28
-    17: (',',  'remove'),     # ,   key -- index 29
+    14: ('sin', 'look'),      # sin key -- index 21
+    15: ('cos', 'rest'),      # cos key -- index 22
+    16: ('tan', 'stand'),     # tan key -- index 23
+    17: ('ln',  'quest info'),   # ln  key -- index 24
+    18: ('log', 'gquest check'), # log key -- index 25
+    19: ('x2',  'inventory'), # x2  key -- index 26
+    20: ('pm',  'equip'),     # +/- key -- index 27
+    21: ('()',  'wear'),      # ()  key -- index 28
+    22: (',',   'remove'),    # ,   key -- index 29
+    23: ('xy',  'run'),       # x^y key -- index 20
 }
 FNKEY_SENTINELS      = frozenset(FNKEY_TABLE)
 FNKEY_NAMES          = {k: v[0] for k, v in FNKEY_TABLE.items()}
-DEFAULT_FNKEY_MACROS = {k: v[1] for k, v in FNKEY_TABLE.items()}
+DEFAULT_FNKEY_MACROS = {k: v[1] for k, v in FNKEY_TABLE.items() if v[1] is not None}
 
 # -- Sector types (cf. 1stMud sector_t enum in defines.h) -----------------------------
 SECT_INSIDE       = 'inside'
@@ -205,8 +221,9 @@ MAX_MORTAL_LEVEL = 51  # 1stMud do_skills/do_spells display/filter cap.
 LEVEL_IMMORTAL = 52  # skill_level() sentinel for skills no held class learns.
 LEVEL_HERO = 49  # calc_max_level base: mortals cap at HERO + remort count.
 
-# Class-count cap (cf. 1stMud MAX_REMORT in defines.h); do_remort in training.py
-# refuses once len(classes) == MAX_REMORT. Stock = 2 (1 remort). classes.py's
+# Class-count cap (cf. 1stMud MAX_REMORT in defines.h). Stock = 2 (1 remort).
+# [PRIMESUD] At len(classes) == MAX_REMORT, do_remort in training.py offers a
+# prestige tier reset (finish_tier_reset) instead of 1stMud's refusal. classes.py's
 # calc_max_level() combines this with LEVEL_HERO/MAX_MORTAL_LEVEL above, so a
 # different remort count needs ALL of the following changed together:
 #  - MAX_REMORT here (how many classes/remorts are allowed)
@@ -218,8 +235,18 @@ LEVEL_HERO = 49  # calc_max_level base: mortals cap at HERO + remort count.
 #    level bounds, debug setlevel, corpse-gold split, info.py display clamps).
 MAX_REMORT = 2
 
+# [PRIMESUD] Remort power divisor. Stock 1stMud finish_remort grants
+# 100*lvl_bonus hp/mana/move, 5*lvl_bonus trains, 7*lvl_bonus practices --
+# ~6000 hp / 300 trains / 420 practices at first remort, absurd against
+# PrimeSUD's flatter economy (fresh char: 50 hp / 3 trains / 5 practices).
+# All three grants are divided by this; 12 lands ~500 hp / 25 / 35.
+# Set to 1 for stock 1stMud behaviour.
+REMORT_POWER_DIV = 12
+
 # -- Practice cap ----------------------------------------------------------------------
 SKILL_ADEPT = 75  # 1stMud class_table[].skill_adept; all shipped classes use 75
+# [PRIMESUD] Effective practice ceiling is skill_adept_cap() in classes.py:
+# SKILL_ADEPT + 5 per prestige tier, max 95.
 
 # -- Stat training cap -----------------------------------------------------------------
 # race.max_stats[stat] + 2 (or +3 for human prime stats), capped at MAX_STATS;

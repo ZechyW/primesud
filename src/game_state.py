@@ -3,22 +3,26 @@
 from util import gc_collect
 from prime_platform import hvars_get, hvars_set
 from config import SAVE_VAR, FNKEY_NAMES, R_STARTING_ROOM
-from game_time import time_info
+from game_time import time_info, SUN_DARK, SUN_RISE, SUN_LIGHT, SUN_SET
 from item import serialize_item_token, parse_item_token
+import terminal
 from terminal import tprint
 import world
-from world import ROOM_DEFS, AREA_DEFS
+from world import ROOM_DEFS, AREA_DEFS, MOB_DEFS
 from inventory import do_outfit
 from macros import _MACRO_SUBST
 from quest import rescale_quest_gear
 from gquest import gq_save_lines, gq_load_line, gq_reset
-from mob import reset_area, create_area_states
+from mob import reset_area, create_area_states, spawn_pet
 from player import create_char, reset_char, _EQUIP_SAVE_ORDER
 from picker import pick_from
 from classes import CLASS_TABLE
 from races import race_lookup, PC_RACE_ORDER, RACE_TABLE
 from skills_table import WEAPON_GSN_MAP
 from colors import capitalize
+from debug import DBG, dbg
+from handler import affect_to_char, chprintln
+from info import do_help
 from explored import encode_rle, decode_rle
 
 
@@ -32,16 +36,32 @@ from explored import encode_rle, decode_rle
 #
 # Skill numeric IDs (GSN_*) are permanent once assigned: recycling an ID for a
 # different skill would cause old saves to corrupt the new skill's learned %.
-SAVE_VERSION = 9  # v9: p.explored RLE mask (explore tracking); v8: item lh: token, per-area weather
+SAVE_VERSION = 10  # v10: packed-only records (p.n/p.eq/a.<tag>/m), home_owned in p.n; v9: p.explored RLE mask
 
-# Per-area weather save keys -> weather-dict fields (cf. game_time weather model).
-# [PRIMESUD] Persisted only-when-present; missing fields keep their freshly
-# seeded random value on load, and a SAVE_VERSION mismatch discards old saves.
-_WEATHER_SAVE_FIELDS = {
-    "temp": "temp", "tempv": "temp_vector",
-    "precip": "precip", "precipv": "precip_vector",
-    "wind": "wind", "windv": "wind_vector",
-}
+# Per-area state packed save line:
+# a.<tag>=<age>|<temp>|<tv>|<precip>|<pv>|<wind>|<wv>
+# (cf. game_time weather model). [PRIMESUD] Missing/short weather keeps
+# freshly seeded random values.
+_WEATHER_PACK_FIELDS = ("temp", "temp_vector", "precip", "precip_vector",
+                        "wind", "wind_vector")
+
+# Fixed-order compact player fields. Never reorder or extend without a
+# SAVE_VERSION bump plus a one-off save conversion (load old, save new);
+# the p.n parser is exact-length and silently skips a mismatched line. [PRIMESUD]
+_PLAYER_STRING_SAVE_KEYS = (
+    "name", "title", "race", "sex", "true_sex",
+    "quest_mob_name", "quest_room_name", "quest_area_name",
+)
+_PLAYER_NUMBER_SAVE_KEYS = (
+    "level", "xp", "xp_next", "hit", "mana", "move",
+    "perm_hit", "perm_mana", "perm_move", "room", "trivia",
+    "practice", "train", "flags", "played", "backup", "alignment",
+    "tier", "gold", "silver", "gold_bank", "shares", "wimpy",
+    "quest_points", "quest_status", "quest_time", "quest_mob",
+    "quest_obj", "quest_room", "quest_giver", "prime_class",
+    "home_owned",
+)
+_PLAYER_STAT_SAVE_KEYS = ("str", "dex", "int", "wis", "con")
 
 # -- Persistence ---------------------------------------------------------------
 # Dual-save strategy:
@@ -59,37 +79,43 @@ _WEATHER_SAVE_FIELDS = {
 SAVE_FILE = "primesud.sav"
 
 
-def _serialize_world():
+def _serialize_world(hvar_name=None, file_name=None):
     """Serialise world state to a PPL HVars variable (cf. 1stMud save_char_obj in save.c).
+
+    Args:
+        hvar_name (str or None): HVar name to write; None (default) resolves
+            to module-global SAVE_VAR at call time -- not a bound default
+            argument, so tests/callers that patch game_state.SAVE_VAR still
+            take effect. backup_world passes BACKUP_VAR for the manual
+            second save slot.
+        file_name (str or None): File path to write; None (default) resolves
+            to module-global SAVE_FILE at call time, same reasoning.
+            backup_world passes BACKUP_FILE.
 
     Raises:
         Exception: If the PPL write fails, readback does not match the written
             payload, or the save-file mirror cannot be written.
     """
+    if hvar_name is None:
+        hvar_name = SAVE_VAR
+    if file_name is None:
+        file_name = SAVE_FILE
     player = world.chars[1]
     gc_collect()
     lines = ["v=" + str(SAVE_VERSION)]
-    for key in ("name", "race", "sex", "true_sex",
-                "level", "xp", "xp_next",
-                "hit", "mana", "move",
-                "perm_hit", "perm_mana", "perm_move",
-                "room", "trivia",
-                "practice", "train", "flags", "played", "alignment",
-                "gold", "silver", "wimpy",
-                # cf. 1stMud fwrite_char QuestPnts/QuestNext; PrimeSUD also
-                # persists the active quest (vnum-based, see quest.py)
-                "quest_points", "quest_status", "quest_time",
-                "quest_mob", "quest_obj", "quest_room", "quest_giver",
-                "quest_mob_name", "quest_room_name", "quest_area_name"):
+    for key in _PLAYER_STRING_SAVE_KEYS:
         lines.append("p." + key + "=" + str(player[key]))
-    for stat in ("str", "dex", "int", "wis", "con"):
-        lines.append("p." + stat + "=" + str(player["perm_stat"][stat]))
+    number_parts = []
+    for key in _PLAYER_NUMBER_SAVE_KEYS:
+        number_parts.append(str(player[key]))
+    for stat in _PLAYER_STAT_SAVE_KEYS:
+        number_parts.append(str(player["perm_stat"][stat]))
+    lines.append("p.n=" + "|".join(number_parts))
     # cf. 1stMud ch->Class[] -- comma-joined ints (str+concat per PRIME_STRING_FORMAT_BUG)
     cls_str = ""
     for c in player["classes"]:
         cls_str = cls_str + ("," if cls_str else "") + str(c)
     lines.append("p.classes=" + cls_str)
-    lines.append("p.prime_class=" + str(player["prime_class"]))
     # cf. 1stMud fwrite_char "Pos" -- fighting saved as standing
     lines.append("p.pos=" + str("standing" if player.get("pos") == "fighting"
                                 else player.get("pos", "standing")))
@@ -109,14 +135,20 @@ def _serialize_world():
     for o in player["inv"]:
         inv_parts.append(serialize_item_token(o))
     lines.append("p.inv=" + "|".join(inv_parts))
+    equip_parts = []
     for slot in _EQUIP_SAVE_ORDER:
         obj = player["equip"][slot]
         val = serialize_item_token(obj) if obj is not None else ""
-        lines.append("p.eq." + slot + "=" + val)
+        equip_parts.append(val)
+    lines.append("p.eq=" + "|".join(equip_parts))
     learned_parts = []
     for sk in sorted(player["learned"]):
         learned_parts.append(str(sk) + ":" + str(player["learned"][sk]))
     lines.append("p.learned=" + "|".join(learned_parts))
+    # [PRIMESUD] autoskill rotation -- custom order/exclusions only; absent
+    # key means pure heuristic default (see autoskill.py)
+    if "autoskill_rot" in player:
+        lines.append("p.autoskill_rot=" + ",".join(player["autoskill_rot"]))
     # cf. 1stMud write_rle (explored.c) -- RLE run-length string, str()+concat
     lines.append("p.explored=" + encode_rle(player))
     af_parts = []
@@ -138,7 +170,6 @@ def _serialize_world():
     pet = world.chars.get(player["pet"]) if player.get("pet") is not None else None
     if pet is not None:
         lines.append("p.pet=" + str(pet["tpl"]) + "|" + str(pet["hit"])
-                     + "|" + str(pet["max_hit"])
                      + "|" + str(pet.get("pet_name", "")))
         pet_af_parts = []
         for af in pet.get("affect_list", []):
@@ -157,15 +188,29 @@ def _serialize_world():
     _mk_str = sorted(k for k in player["_macros"] if isinstance(k, str))
     for k in _mk_int + _mk_str:
         lines.append("p.macro." + str(FNKEY_NAMES.get(k, k)) + "=" + str(player["_macros"][k]))
+    # cf. 1stMud pcdata->alias[]/alias_sub[] (fwrite_char); one line per
+    # alias, order preserved (do_alias/do_unalias keep the list compact).
+    for _al_name, _al_sub in player.get("aliases", []):
+        lines.append("p.alias." + _al_name + "=" + _al_sub)
+    if player.get("home_owned"):
+        lines.append("p.home_name=" + str(player.get("home_name", "")))
+        lines.append("p.home_desc=" + str(player.get("home_desc", "")))
     for _as in world.areas:
         # HP Prime G1 has unstable percent-format strings in save payloads.
-        lines.append("a." + str(_as["tag"]) + ".age=" + str(_as["age"]))
+        _aparts = [str(_as["age"])]
         weather = _as.get("weather")
         if weather is not None:
-            _wtag = str(_as["tag"])
-            for _skey, _wfld in _WEATHER_SAVE_FIELDS.items():
-                lines.append("a." + _wtag + "." + _skey + "=" + str(weather.get(_wfld, 0)))
+            for _wfld in _WEATHER_PACK_FIELDS:
+                _aparts.append(str(weather.get(_wfld, 0)))
+        lines.append("a." + str(_as["tag"]) + "=" + "|".join(_aparts))
     lines.append("g.time=" + str(time_info["hour"]) + "|" + str(time_info["day"]) + "|" + str(time_info["month"]) + "|" + str(time_info["year"]))
+    lines.append("g.share=" + str(world.share_value))
+    for _vnum in sorted(world.mob_stats):
+        _stat = world.mob_stats[_vnum]
+        lines.append("s.m." + str(_vnum) + "=" + str(_stat[0]) + "|" + str(_stat[1]))
+    for _tag in sorted(world.area_stats):
+        _stat = world.area_stats[_tag]
+        lines.append("s.a." + str(_tag) + "=" + str(_stat[0]) + "|" + str(_stat[1]))
     for _gql in gq_save_lines():  # [PRIMESUD] gquest state
         lines.append(_gql)
     # Build reset-room map for single-instance mobs (gl=1): if the only live
@@ -183,6 +228,7 @@ def _serialize_world():
     # and the 5% despawn keeps cross-area wanderers transient anyway.
     tpl_rooms = {}
     tpl_order = []
+    mob_parts = []
     for mob_id in sorted(world.chars):
         inst = world.chars[mob_id]
         if not inst.get("is_npc"):
@@ -202,7 +248,7 @@ def _serialize_world():
         room_parts = []
         for r in rooms:
             room_parts.append(str(r))
-        lines.append("m." + str(tpl_vnum) + "=" + "|".join(room_parts))
+        mob_parts.append(str(tpl_vnum) + "," + "|".join(room_parts))
     # Re-serialize pending mob deltas for unloaded areas (not in world.chars)
     for tpl_vnum in sorted(world._pending_mob_saves):
         if tpl_vnum in tpl_rooms:
@@ -210,7 +256,9 @@ def _serialize_world():
         room_parts = []
         for r in world._pending_mob_saves[tpl_vnum]:
             room_parts.append(str(r))
-        lines.append("m." + str(tpl_vnum) + "=" + "|".join(room_parts))
+        mob_parts.append(str(tpl_vnum) + "," + "|".join(room_parts))
+    if mob_parts:
+        lines.append("m=" + ";".join(mob_parts))
     for rvnum in sorted(world.rooms):
         rs = world.rooms[rvnum]
         if not rs["items"]:
@@ -226,12 +274,46 @@ def _serialize_world():
         if not isinstance(lines[i], str):
             raise Exception("non-str save line %s" % i)
     payload = "~".join(lines)
-    hvars_set(SAVE_VAR, payload)
-    saved = hvars_get(SAVE_VAR)
+    hvars_set(hvar_name, payload)
+    saved = hvars_get(hvar_name)
     if saved != payload:
         raise Exception("save verification failed (readback mismatch)")
-    with open(SAVE_FILE, "w") as f:
+    with open(file_name, "w") as f:
         f.write(payload)
+
+
+# -- Manual backup slot (cf. 1stMud do_backup/backup_char_obj in
+# act_comm.c/save.c) -----------------------------------------------------------
+# Distinct from SAVE_VAR + "_bak" above, which load_world writes as an
+# automatic pre-migration snapshot on a SAVE_VERSION mismatch: that one is a
+# machine-written safety net, this one is the player-triggered `backup` slot.
+BACKUP_VAR = SAVE_VAR + "_backup"
+BACKUP_FILE = "primesud_backup.sav"
+
+
+def backup_world():
+    """Save world state to the manual backup slot. [PRIMESUD] (cf. 1stMud
+    do_backup/backup_char_obj in act_comm.c/save.c)
+
+    Same write path as save_world (HVar + file, with HVar readback
+    verification) but targets BACKUP_VAR/BACKUP_FILE instead of SAVE_VAR/
+    SAVE_FILE, so the primary save slot is untouched.
+
+    Upstream has no player-facing restore command -- backup_char_obj's only
+    other caller is the immortal-only rename_char cleanup (act_wiz.c).
+    Restoring a PrimeSUD backup is a manual step: rename
+    primesud_backup.sav to primesud.sav via the calculator's file manager
+    (same "calculator file manager covers it" precedent as PARITY.md's
+    `delete` entry).
+
+    Returns:
+        bool: True on success, False if the write failed.
+    """
+    try:
+        _serialize_world(BACKUP_VAR, BACKUP_FILE)
+        return True
+    except Exception:
+        return False
 
 
 def save_world(quiet=False):
@@ -242,7 +324,6 @@ def save_world(quiet=False):
             tprint("Saved.")
         else:
             # [PRIMESUD] 'debug save' channel makes silent autosaves visible
-            from debug import DBG, dbg
             if "save" in DBG:
                 dbg("autosave")
         return True
@@ -298,19 +379,9 @@ def load_world():
             _backup_ok = False
         return (None, _backup_ok)
 
-    _STAT_KEYS = {"str", "dex", "int", "wis", "con"}
-    int_keys = {"level", "xp", "xp_next", "trivia",
-                "str", "dex", "int", "wis", "con",
-                "hit", "mana", "move",
-                "perm_hit", "perm_mana", "perm_move",
-                "room", "alignment", "prime_class",
-                "practice", "train", "flags", "played",
-                "gold", "silver", "wimpy",
-                "quest_points", "quest_status", "quest_time",
-                "quest_mob", "quest_obj", "quest_room", "quest_giver"}
-
     if player["_macros"] is not None:
         player["_macros"].clear()
+    player["aliases"] = []
 
     _area_by_tag = {s["tag"]: s for s in world.areas} if world.areas is not None else {}
     mob_saves = {}  # tpl_vnum -> [room, room, ...]
@@ -326,9 +397,21 @@ def load_world():
             _pet_save = val
         elif key == "p.pet.affects":
             _pet_affects = val
-        elif key.startswith("p.eq."):
-            slot = key[5:]
-            player["equip"][slot] = parse_item_token(val) if val else None
+        elif key == "p.n":
+            parts = val.split("|")
+            if len(parts) == (len(_PLAYER_NUMBER_SAVE_KEYS)
+                              + len(_PLAYER_STAT_SAVE_KEYS)):
+                for i in range(len(_PLAYER_NUMBER_SAVE_KEYS)):
+                    player[_PLAYER_NUMBER_SAVE_KEYS[i]] = int(parts[i])
+                offset = len(_PLAYER_NUMBER_SAVE_KEYS)
+                for i in range(len(_PLAYER_STAT_SAVE_KEYS)):
+                    player["perm_stat"][_PLAYER_STAT_SAVE_KEYS[i]] = int(parts[offset + i])
+        elif key == "p.eq":
+            parts = val.split("|")
+            if len(parts) == len(_EQUIP_SAVE_ORDER):
+                for i in range(len(parts)):
+                    player["equip"][_EQUIP_SAVE_ORDER[i]] = (
+                        parse_item_token(parts[i]) if parts[i] else None)
         elif key == "p.inv":
             player["inv"] = [parse_item_token(v) for v in val.split("|") if v]
         elif key == "p.classes":
@@ -350,6 +433,8 @@ def load_world():
                         player["learned"][int(sk_str)] = int(pct_str)
                     except ValueError:
                         pass
+        elif key == "p.autoskill_rot":  # [PRIMESUD] autoskill rotation
+            player["autoskill_rot"] = val.split(",") if val else []
         elif key == "p.explored":
             decode_rle(player, val)  # cf. 1stMud read_rle (explored.c)
         elif key == "p.armor":
@@ -377,26 +462,36 @@ def load_world():
         elif key.startswith("p.macro.") and player["_macros"] is not None:
             raw = key[8:]
             player["_macros"][_name_to_fn.get(raw, raw)] = val
+        elif key.startswith("p.alias."):
+            player["aliases"].append([key[8:], val])
         elif key.startswith("p."):
-            pkey = key[2:]
-            if pkey in _STAT_KEYS:
-                player["perm_stat"][pkey] = int(val)
-            else:
-                player[pkey] = int(val) if pkey in int_keys else val
+            # Named string fields: _PLAYER_STRING_SAVE_KEYS plus conditional
+            # extras (p.home_name/p.home_desc); numbers all ride p.n.
+            player[key[2:]] = val
         elif key.startswith("r.") and key.endswith(".items"):
             rvnum = int(key.split(".")[1])
             world._pending_room_items[rvnum] = val
-        elif key.startswith("a.") and key.endswith(".age"):
-            tag = key[2:-4]
-            if tag in _area_by_tag:
-                _area_by_tag[tag]["age"] = int(val)
-        elif key.startswith("a.") and key.rpartition(".")[2] in _WEATHER_SAVE_FIELDS:
-            tag, _, fld = key[2:].rpartition(".")  # area tags carry no dots
-            if tag in _area_by_tag:
-                w = _area_by_tag[tag].setdefault("weather", {})
-                w[_WEATHER_SAVE_FIELDS[fld]] = int(val)
+        elif key.startswith("a."):
+            tag = key[2:]
+            parts = val.split("|")
+            if tag in _area_by_tag and parts:
+                _area_by_tag[tag]["age"] = int(parts[0])
+                if len(parts) == len(_WEATHER_PACK_FIELDS) + 1:
+                    w = _area_by_tag[tag].setdefault("weather", {})
+                    for i in range(len(_WEATHER_PACK_FIELDS)):
+                        w[_WEATHER_PACK_FIELDS[i]] = int(parts[i + 1])
         elif key.startswith("g.gq") and gq_load_line(key, val):  # [PRIMESUD]
             pass
+        elif key == "g.share":
+            world.share_value = int(val)
+        elif key.startswith("s.m."):
+            parts = val.split("|")
+            if len(parts) == 2:
+                world.mob_stats[int(key[4:])] = [int(parts[0]), int(parts[1])]
+        elif key.startswith("s.a."):
+            parts = val.split("|")
+            if len(parts) == 2:
+                world.area_stats[key[4:]] = [int(parts[0]), int(parts[1])]
         elif key == "g.time":
             parts = val.split("|")
             if len(parts) == 4:
@@ -404,7 +499,6 @@ def load_world():
                 time_info["day"] = int(parts[1])
                 time_info["month"] = int(parts[2])
                 time_info["year"] = int(parts[3])
-                from game_time import SUN_DARK, SUN_RISE, SUN_LIGHT, SUN_SET
                 h = time_info["hour"]
                 if h < 5 or h >= 20:
                     time_info["sunlight"] = SUN_DARK
@@ -414,8 +508,11 @@ def load_world():
                     time_info["sunlight"] = SUN_SET
                 else:
                     time_info["sunlight"] = SUN_LIGHT
-        elif key.startswith("m."):
-            mob_saves[int(key[2:])] = [int(r) for r in val.split("|") if r]
+        elif key == "m":
+            for entry in val.split(";"):
+                if "," in entry:
+                    tpl, rooms = entry.split(",", 1)
+                    mob_saves[int(tpl)] = [int(r) for r in rooms.split("|") if r]
 
     # Buffer mob saves for deferred application: _load_area will apply
     # each area's deltas when it actually loads (player enters the area).
@@ -428,29 +525,22 @@ def load_world():
 
     # Restore pet in the player's room (cf. 1stMud fread_pet in save.c)
     if _pet_save:
-        from world import MOB_DEFS
         parts = _pet_save.split("|")
         try:
             _tpl = int(parts[0])
         except ValueError:
             _tpl = None
         if _tpl is not None and _tpl in MOB_DEFS:
-            from mob import spawn_pet
             _hp = (int(parts[1]) if len(parts) > 1
                    and parts[1].lstrip("-").isdigit() else None)
-            _max = (int(parts[2]) if len(parts) > 2
-                    and parts[2].lstrip("-").isdigit() else None)
-            _pname = parts[3] if len(parts) > 3 and parts[3] else None
+            _pname = parts[2] if len(parts) > 2 and parts[2] else None
             player["pet"] = None
             _pet = spawn_pet(_tpl, player, name_arg=_pname, announce=False)
-            # max_hit rerolls in create_mobile; restore the saved roll
-            if _max is not None:
-                _pet["max_hit"] = _max
+            # [PRIMESUD] max_hit is derived from owner level/tier, not saved.
             if _hp is not None:
                 _pet["hit"] = max(1, min(_hp, _pet["max_hit"]))
             # Re-apply saved affects (cf. 1stMud fread_pet "Affc" entries)
             if _pet_affects:
-                from handler import affect_to_char
                 for entry in _pet_affects.split("|"):
                     if not entry:
                         continue
@@ -528,6 +618,73 @@ def _sanitize_name(raw):
     return capitalize("".join(letters))
 
 
+def _prompt_name(default="Hero", allow_cancel=False):
+    """Name picker: generated suggestions, reroll, or typed entry. [PRIMESUD]
+
+    Replaces 1stMud's typed-only CON_GET_NAME with a pick_from list of
+    namegen suggestions (cf. get_random_name in namegen.c) -- typing a name
+    on the calculator keyboard is painful. "Type my own..." drops to the
+    original tr.input flow with *default* pre-filled.
+
+    Args:
+        default (str): Pre-filled name for the typed-entry path.
+        allow_cancel (bool): If True, Esc returns None (rename command);
+            if False, Esc re-shows the same picker (a fat-fingered Esc in
+            chargen must not dump the player into typed entry -- cf.
+            _pick_required).
+
+    Returns:
+        str or None: Sanitized 2-12 letter name, or None if cancelled.
+    """
+    from namegen import random_name  # deferred: keep namegen off the boot path
+    names = [random_name() for _ in range(6)]
+    while True:
+        idx = pick_from("By what name do you wish to be known?",
+                        names + ["More names...", "Type my own..."])
+        if 0 <= idx < 6:
+            return names[idx]
+        if idx == 6:
+            names = [random_name() for _ in range(6)]  # reroll
+            continue
+        if idx < 0:  # Esc
+            if allow_cancel:
+                return None
+            continue  # re-show same suggestions
+        while True:  # "Type my own..." chosen explicitly
+            raw = terminal.tr.input("By what name do you wish to be known?\n",
+                                    default=default)
+            name = _sanitize_name(raw)
+            if name:
+                return name
+            tprint("Illegal name, try another.")
+
+
+def do_rename(ch, args):
+    """Change your character's name at any time. [PRIMESUD]
+
+    Solo game: no player roster or other players, and the save file name is
+    fixed, so renaming is free and consequence-free. Upstream do_rename
+    (act_wiz.c:4284, imm renames another player) is not ported. With an
+    argument renames directly (same 2-12 letter rules as chargen); with no
+    argument opens the chargen name picker (Esc cancels).
+
+    Args:
+        ch (dict): Acting character.
+        args (list): Optional [new_name].
+    """
+    if args:
+        name = _sanitize_name(args[0])
+        if not name:
+            chprintln(ch, "Illegal name, try another.")
+            return
+    else:
+        name = _prompt_name(default=ch.get("name", "Hero"), allow_cancel=True)
+        if name is None:
+            return
+    ch["name"] = name
+    chprintln(ch, "You are now known as " + name + ".")
+
+
 def new_game(game):
     """Create a new game world with a fresh player character. [PRIMESUD]
 
@@ -542,16 +699,10 @@ def new_game(game):
     Args:
         game: Game instance (supplies the terminal for prompts).
     """
-    # Name prompt (cf. 1stMud nanny.c CON_GET_NAME). [PRIMESUD] "Hero" is
-    # pre-filled on the input line -- bare Enter accepts it, backspace to
-    # replace; invalid entries re-prompt like nanny's illegal-name path.
-    while True:
-        raw_name = game.tr.input("By what name do you wish to be known?\n",
-                                 default="Hero")
-        name = _sanitize_name(raw_name)
-        if name:
-            break
-        game.tr.print("Illegal name, try another.")
+    # Name prompt (cf. 1stMud nanny.c CON_GET_NAME). [PRIMESUD] picker of
+    # namegen suggestions; "Type my own..." path keeps "Hero" pre-filled
+    # and re-prompts on invalid entry like nanny's illegal-name path.
+    name = _prompt_name()
 
     # Race choice (cf. 1stMud nanny.c CON_GET_NEW_RACE; [PRIMESUD] picker with
     # one-line summaries instead of bare list + 'help <race>'). PC_RACE_ORDER,
@@ -608,7 +759,6 @@ def new_game(game):
     # Newbie info help (cf. 1stMud nanny.c CON_READ_MOTD level==0 block:
     # do_function(ch, &nanny_help, "newbie info")). Local import: matches this
     # module's existing lazy-import style for less-frequently-used deps.
-    from info import do_help
     do_help(player, ["newbie", "info"])
 
     save_game(game, quiet=True)

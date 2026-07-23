@@ -3,7 +3,7 @@ import pytest
 
 import info
 from colors import color_len
-from config import TERMINAL_COLS
+from config import TERMINAL_COLS, TERMINAL_ROWS
 from player import create_char
 from classes import CLASS_WARRIOR, CLASS_MAGE
 
@@ -12,7 +12,7 @@ from classes import CLASS_WARRIOR, CLASS_MAGE
 def score_out(monkeypatch):
     """Capture do_score output lines at the info level."""
     lines = []
-    monkeypatch.setattr(info, "chprintln", lambda ch, s="": lines.append(s))
+    monkeypatch.setattr(info, "chprintln", lambda ch, s="": (lines.extend(s) if type(s) is list else lines.append(s)))
     # gc.mem_free() is MicroPython-only; stub the memory readout on CPython
     monkeypatch.setattr(info, "free_mem", lambda: "245k")
     monkeypatch.setattr(info, "gc_collect", lambda: None)
@@ -48,3 +48,21 @@ def test_header_falls_back_to_bare_name_on_overflow(score_out):
     info.do_score(p, [])
     assert "the Human" not in score_out[1]
     assert color_len(score_out[1]) == TERMINAL_COLS
+
+
+def test_box_fits_screen_with_command_echo(score_out):
+    lines = _score_lines(score_out, CLASS_WARRIOR, "Hero")
+    assert len(lines) <= TERMINAL_ROWS - 1  # echoed command takes one row
+    assert any("Pierce" in ln and "Bash" in ln for ln in lines)  # paired AC
+
+
+def test_bank_row_fits_and_shows_share_price(score_out, monkeypatch):
+    p = create_char(CLASS_WARRIOR)
+    p["gold_bank"] = 99999999
+    p["shares"] = 10000
+    monkeypatch.setattr(info.world, "share_value", 1000)
+    info.do_score(p, [])
+    bank_line = next(line for line in score_out if "Bank:" in line)
+    assert color_len(bank_line) == TERMINAL_COLS
+    assert "10000000 gold @ 1000" in bank_line
+    assert len(score_out) <= TERMINAL_ROWS  # bank row: only top border scrolls

@@ -22,7 +22,6 @@ CHEST_VNUM = 8101
 def out(monkeypatch):
     lines = []
     cap = lambda s="", end="\n": lines.append(s)
-    monkeypatch.setattr(movement, "tprint", cap)
     import handler
     monkeypatch.setattr(handler, "tprint", cap)
     return lines

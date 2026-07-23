@@ -179,8 +179,8 @@ class TestGuildRooms:
             world.chars.pop(1, None)
 
     def test_paladin_shares_cleric_guild(self):
-        # "guild" fields are patched into the generated area data by
-        # patch_1stmud_deltas; check the artifact without booting the world
+        # "guild" fields come from G room trailers in areas/midgaard.are;
+        # check the generated artifact without booting the world
         path = os.path.join(ROOT, _SRC, "area_midgaard.txt")
         with open(path) as f:
             text = f.read()
@@ -192,7 +192,7 @@ class TestGuildRooms:
 class TestRemort:
     """do_remort / finish_remort (cf. 1stMud multiclass.c)."""
 
-    def _hero(self, monkeypatch, pick=0):
+    def _hero(self, monkeypatch, pick=0, race_pick=0):
         """Max-level warrior in his guild with a trainer, rich, at 3022."""
         import world
         from world import ROOM_DEFS, MOB_DEFS
@@ -203,9 +203,14 @@ class TestRemort:
                 "guild": (CLASS_WARRIOR,)}
         ROOM_DEFS._data[3022] = room
         world.rooms._data[3022] = room
+        # dice/combat fields present so create_mobile can spawn a pet from it
         MOB_DEFS._data[9900] = {"short_descr": "the guildmaster", "level": 60,
-                                "act_flags": {"train": True}}
-        trainer = {"is_npc": True, "id": 2, "tpl": 9900, "room": 3022}
+                                "act_flags": {"train": True},
+                                "hp_dice": (1, 1, 100), "hitroll": 0,
+                                "damage": (1, 4, 0), "armor": (0, 0, 0, 0)}
+        # "fighting" present: stop_fighting(both=True) indexes it on every char
+        trainer = {"is_npc": True, "id": 2, "tpl": 9900, "room": 3022,
+                   "fighting": None}
         world.chars[2] = trainer
 
         player = create_char(CLASS_WARRIOR)
@@ -216,7 +221,10 @@ class TestRemort:
         world.chars[1] = player
 
         import training
-        monkeypatch.setattr(training, "pick_from", lambda t, o: pick)
+        # remort runs three pickers: race, sex, then class -- route on title
+        monkeypatch.setattr(
+            training, "pick_from",
+            lambda t, o: race_pick if "race" in t else (0 if "sex" in t else pick))
         monkeypatch.setattr(training, "save_world", lambda quiet=False: True,
                             raising=False)
         # school outfit items not loaded in the test world
@@ -239,6 +247,9 @@ class TestRemort:
         import game_state
         monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
         player = self._hero(monkeypatch, pick=0)  # first available = Mage
+        # [PRIMESUD] pets survive and share the owner's level reset
+        from mob import spawn_pet
+        pet = spawn_pet(9900, player, announce=False)
         try:
             old_cap = calc_max_level(player)
             training.do_remort(player, [])          # confirm prompt
@@ -250,10 +261,12 @@ class TestRemort:
             assert player["xp"] == 0
             # b = lvl_bonus at level 49 with the new class already appended
             # (2 classes): 2 + 48*.9 + inclev sums = 60.194 -> 60 (cf. 1stMud
-            # nanny appends class before finish_remort computes b)
-            assert player["max_hit"] == player["perm_hit"] == 6000
-            assert player["train"] == 5 * (player["max_hit"] // 100)
-            assert player["practice"] == 7 * (player["max_hit"] // 100)
+            # nanny appends class before finish_remort computes b).
+            # [PRIMESUD] stock 100*b/5*b/7*b scaled by REMORT_POWER_DIV=12:
+            # 6000 -> 500 hp, 300 -> 25 trains, 420 -> 35 practices
+            assert player["max_hit"] == player["perm_hit"] == 500
+            assert player["train"] == 25
+            assert player["practice"] == 35
             # level cap grew by one
             assert calc_max_level(player) == old_cap + 1
             # mage skills granted at 1%
@@ -262,6 +275,52 @@ class TestRemort:
             assert player["learned"][WEAPON_GSN_MAP["dagger"]] == 40
             assert player["learned"][WEAPON_GSN_MAP["sword"]] == 1
             assert player["room"] == 3700 or player["room"] != 3022  # moved to school
+            import world
+            assert player["pet"] == pet["id"]
+            assert world.chars[pet["id"]]["level"] == 1
+        finally:
+            self._teardown()
+
+    def test_remort_race_change(self, monkeypatch):
+        # Elf pick (PC_RACE_ORDER[1]): stats reset to Elf base, fields and
+        # racial skills re-derived (cf. nanny.c:525-544); [PRIMESUD] no
+        # stay_race lock -- race is re-pickable on every remort
+        import training
+        import game_state
+        monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
+        from races import RACE_TABLE
+        player = self._hero(monkeypatch, pick=0, race_pick=1)
+        try:
+            training.do_remort(player, [])
+            training.do_remort(player, [])
+            assert player["race"] == "Elf"
+            stats = RACE_TABLE["Elf"]["stats"]
+            for i, st in enumerate(("str", "dex", "int", "wis", "con")):
+                assert player["perm_stat"][st] == stats[i]
+            assert player["vuln_flags"].get("iron")
+            assert player["size"] == "small"
+            from magic import _skill_lookup
+            assert player["learned"].get(_skill_lookup("sneak"), 0) >= 1
+        finally:
+            self._teardown()
+
+    def test_remort_same_race_still_resets_stats(self, monkeypatch):
+        # keeping the race still resets stats to base (nanny.c:527 runs on
+        # every race prompt); sex re-picked too (remort = re-creation)
+        import training
+        import game_state
+        monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
+        player = self._hero(monkeypatch, pick=0, race_pick=0)  # Human again
+        player["sex"] = player["true_sex"] = "female"
+        try:
+            training.do_remort(player, [])
+            training.do_remort(player, [])
+            assert player["race"] == "Human"
+            # Human base 13s; the chargen prime +3 is lost, as upstream
+            for st in ("str", "dex", "int", "wis", "con"):
+                assert player["perm_stat"][st] == 13
+            # sex picker returned Male (index 0)
+            assert player["sex"] == player["true_sex"] == "male"
         finally:
             self._teardown()
 
@@ -294,13 +353,17 @@ class TestRemort:
             world.rooms._data.pop(3001, None)
             self._teardown()
 
-    def test_remort_cap(self, monkeypatch):
+    def test_remort_at_max_classes_needs_max_level(self, monkeypatch):
+        # [PRIMESUD] 1stMud's "You can't remort any more!" refusal is now a
+        # prestige tier reset (test_tier.py); the level gate still applies:
+        # a 2-class char below the raised cap (50) gets nothing.
         import training
         player = self._hero(monkeypatch)
-        player["classes"] = [CLASS_WARRIOR, CLASS_MAGE]
+        player["classes"] = [CLASS_WARRIOR, CLASS_MAGE]  # cap now 50, level 49
         try:
             training.do_remort(player, [])
             assert not player.get("confirm_remort")
             assert len(player["classes"]) == 2
+            assert player.get("tier", 0) == 0
         finally:
             self._teardown()

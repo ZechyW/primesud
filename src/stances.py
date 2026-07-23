@@ -1,5 +1,9 @@
 """Fighting stance table and helpers (cf. 1stMud stance_table in tables.c, stance helpers in fight.c)."""
 
+import world
+from handler import act, chprintln, chprintlnf, _pers, TO_ROOM
+from picker import pick_from
+
 # -- Stance constants (cf. 1stMud STANCE_* in defines.h:516-529) ---------------
 STANCE_NONE     = -1
 STANCE_NORMAL   = 0
@@ -156,7 +160,6 @@ def can_use_stance(ch, stance):
 def improve_stance(ch):
     """Chance to improve the current stance by 1% per hit (cf. 1stMud improve_stance in fight.c)."""
     from urandom import randint
-    from handler import chprintlnf
 
     dice1 = randint(1, 100)
     dice2 = randint(1, 100)
@@ -202,9 +205,6 @@ def first_stance_pick(ch):
     arms the one-time post-battle hint.  Esc (likely accidental) shows a
     close-call flavor line and re-prompts -- a stance must be chosen.
     """
-    from handler import chprintln, _pers
-    from picker import pick_from
-    import world
 
     foe = world.chars.get(ch.get("fighting"))
     foe_name = _pers(foe, ch)
@@ -248,7 +248,6 @@ def first_stance_pick(ch):
 
 def first_stance_tip(ch):
     """One-time post-battle stance hint, armed by first_stance_pick. [PRIMESUD]"""
-    from handler import chprintln
 
     if not ch.get("_stance_tip"):
         return
@@ -272,7 +271,6 @@ def autodrop(ch):
     current stance, no training) gets the one-time first-combat stance
     pick instead.
     """
-    from handler import act, chprintlnf, TO_ROOM
 
     stance = get_stance(ch, STANCE_AUTODROP)
 

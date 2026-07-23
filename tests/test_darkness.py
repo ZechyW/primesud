@@ -126,6 +126,62 @@ class TestCanSeeDark:
 
 
 # ---------------------------------------------------------------------------
+# Quest / gquest target sight overrides (handler.c:2421-2426, 2461)
+# ---------------------------------------------------------------------------
+
+class TestQuestSight:
+    def test_quester_sees_target_mob_in_dark(self, fresh_world):
+        from handler import can_see
+        _room(1, flags={"dark": True})
+        ch = _char(1)
+        ch.update(quest_status=1, quest_mob=9405)
+        victim = _char(1)
+        victim.update(is_npc=True, tpl=9405)
+        assert can_see(ch, victim) is True
+
+    def test_quester_other_mob_still_hidden(self, fresh_world):
+        from handler import can_see
+        _room(1, flags={"dark": True})
+        ch = _char(1)
+        ch.update(quest_status=1, quest_mob=9405)
+        victim = _char(1)
+        victim.update(is_npc=True, tpl=9999)
+        assert can_see(ch, victim) is False
+
+    def test_gquester_sees_remaining_target_in_dark(self, fresh_world):
+        from handler import can_see
+        from gquest import gquest_info, GQUEST_RUNNING, GQUEST_OFF
+        _room(1, flags={"dark": True})
+        ch = _char(1)
+        victim = _char(1)
+        victim.update(is_npc=True, tpl=9405)
+        old = (gquest_info["running"], gquest_info["joined"],
+               list(gquest_info["pmobs"]))
+        try:
+            gquest_info["running"] = GQUEST_RUNNING
+            gquest_info["joined"] = True
+            gquest_info["pmobs"] = [9405]
+            assert can_see(ch, victim) is True
+            gquest_info["pmobs"] = [-1]          # already killed -> no override
+            assert can_see(ch, victim) is False
+        finally:
+            (gquest_info["running"], gquest_info["joined"],
+             gquest_info["pmobs"]) = old
+
+    def test_quester_sees_quest_obj_in_dark(self, fresh_world):
+        from handler import can_see_obj
+        _room(1, flags={"dark": True})
+        ITEM_DEFS._data[214] = {"type": "gem", "keywords": "token",
+                                "short_descr": "a quest token",
+                                "extra_flags": {}}
+        ch = _char(1)
+        ch.update(quest_status=2, quest_obj=214)
+        assert can_see_obj(ch, {"vnum": 214}) is True
+        ch["quest_obj"] = 215
+        assert can_see_obj(ch, {"vnum": 214}) is False
+
+
+# ---------------------------------------------------------------------------
 # Phase A -- can_see_obj full port
 # ---------------------------------------------------------------------------
 
@@ -231,7 +287,9 @@ def look_out(monkeypatch):
     import info
     import handler
     lines = []
-    cap = lambda ch, s="": lines.append(s)
+    # do_look sends a pre-split list batch; flatten so assertions see lines
+    cap = lambda ch, s="": (
+        lines.extend(s) if type(s) is list else lines.append(s))
     # do_look/do_exits print via info.chprintln; check_blind via handler's own
     monkeypatch.setattr(info, "chprintln", cap)
     monkeypatch.setattr(handler, "chprintln", cap)
@@ -344,3 +402,145 @@ class TestAggroShield:
                "affected_by": {"infrared": True}}
         player = {"id": 1, "room": 1, "affected_by": {}}
         assert can_see(mob, player) is True
+
+
+# ---------------------------------------------------------------------------
+# [PRIMESUD] "holylight" debug channel = 1stMud PLR_HOLYLIGHT imm sight
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def holylight():
+    from debug import DBG
+    DBG.add("holylight")
+    yield
+    DBG.discard("holylight")
+
+
+class TestHolylight:
+    def test_can_see_ignores_dark(self, fresh_world, holylight):
+        from handler import can_see
+        _room(1, flags={"dark": True})
+        assert can_see(_char(1), _char(1)) is True
+
+    def test_can_see_obj_ignores_dark_and_blind(self, fresh_world, holylight):
+        from handler import can_see_obj
+        _room(1, flags={"dark": True})
+        ITEM_DEFS._data[610] = {"type": "trash", "keywords": "thing",
+                                "short_descr": "a thing", "extra_flags": {}}
+        assert can_see_obj(_char(1), 610) is True
+        assert can_see_obj(_char(1, blind=True), 610) is True
+
+    def test_npc_observer_not_holylit(self, fresh_world, holylight):
+        # cf. handler.c:2403/2458 -- the PLR_HOLYLIGHT leg is !IsNPC only
+        from handler import can_see
+        _room(1, flags={"dark": True})
+        mob = {"id": 2, "is_npc": True, "room": 1, "affected_by": {}}
+        player = {"id": 1, "room": 1, "affected_by": {}}
+        assert can_see(mob, player) is False
+
+    def test_check_blind_passes(self, fresh_world, holylight, monkeypatch):
+        import handler
+        lines = []
+        monkeypatch.setattr(handler, "chprintln",
+                            lambda ch, s="": lines.append(s))
+        assert handler.check_blind(_char(1, blind=True)) is True
+        assert lines == []
+
+    def test_look_shows_dark_room(self, fresh_world, holylight, look_out):
+        import info
+        _room(1, flags={"dark": True})
+        ROOM_DEFS._data[1]["name"] = "Secret Vault"
+        info.do_look(_look_player(1), [])
+        joined = " ".join(look_out)
+        assert "Secret Vault" in joined
+        assert "pitch black" not in joined
+
+    def test_toggle_messages(self, fresh_world, monkeypatch):
+        # cf. 1stMud do_holylight set_on_off messages (act_wiz.c:2946)
+        import debug
+        lines = []
+
+        class _TR:
+            print = staticmethod(lambda s: lines.append(s))
+        monkeypatch.setattr(debug.terminal, "tr", _TR)
+        debug.DBG.discard("holylight")
+        try:
+            debug._debug_holylight(None, [])
+            assert "holylight" in debug.DBG
+            debug._debug_holylight(None, [])
+            assert "holylight" not in debug.DBG
+            assert lines == ["Holy light mode on.", "Holy light mode off."]
+        finally:
+            debug.DBG.discard("holylight")
+
+    def test_debug_all_leaves_holylight_alone(self, fresh_world, monkeypatch):
+        import debug
+        lines = []
+
+        class _TR:
+            print = staticmethod(lambda s: lines.append(s))
+        monkeypatch.setattr(debug.terminal, "tr", _TR)
+        debug.DBG.add("holylight")
+        try:
+            debug.do_debug(None, ["all"])   # all channels on
+            assert "holylight" in debug.DBG
+            debug.do_debug(None, ["all"])   # all channels off
+            assert "holylight" in debug.DBG
+            assert not debug.DBG.intersection(debug._CHANNELS)
+        finally:
+            debug.DBG.discard("holylight")
+            debug.DBG.difference_update(debug._CHANNELS)
+
+
+class TestObjectVisibilityGates:
+    """can_see_obj baked into get_obj_here / look-item scan / container list
+    (cf. handler.c:2063, act_info.c:1234-1300, show_list_to_char)."""
+
+    def _invis_item(self, vnum):
+        ITEM_DEFS._data[vnum] = {"type": "trash", "keywords": "bauble",
+                                 "short_descr": "a shimmering bauble",
+                                 "extra_flags": {"invis": True}}
+        return vnum
+
+    def _actor(self, room, **aff):
+        p = _char(room, **aff)
+        p.update(inv=[], equip={})
+        return p
+
+    def test_get_obj_here_skips_invisible(self, fresh_world):
+        from item import get_obj_here
+        _room(1, sector="inside")
+        v = self._invis_item(620)
+        world.rooms._data[1]["items"].append(v)
+        assert get_obj_here(self._actor(1), "bauble") is None
+        assert get_obj_here(self._actor(1, detect_invis=True), "bauble") == v
+
+    def test_look_scan_skips_invisible(self, fresh_world):
+        import info
+        v = self._invis_item(621)
+        _room(1, sector="inside")
+        found, count = info._look_scan_items(self._actor(1), "bauble", 1, 0, [v])
+        assert found is False
+        found, count = info._look_scan_items(
+            self._actor(1, detect_invis=True), "bauble", 1, 0, [v])
+        assert found is True
+
+    def test_container_hides_invisible_contents(self, fresh_world, look_out):
+        import info
+        _room(1, sector="inside")
+        self._invis_item(622)
+        ITEM_DEFS._data[623] = {"type": "container", "keywords": "chest",
+                                "short_descr": "a chest", "extra_flags": {}}
+        chest = {"vnum": 623, "contents": [622]}
+        info._show_container(self._actor(1), chest, ITEM_DEFS._data[623])
+        assert look_out == ["a chest holds:", "  Nothing."]
+
+
+class TestDoMapBlind:
+    def test_blind_refuses_map(self, fresh_world, look_out):
+        import info
+        _room(1, sector="inside")
+        p = _look_player(1)
+        p["affected_by"] = {"blind": True}
+        info.do_map(p, [])
+        assert look_out == ["You can't see a thing!"]

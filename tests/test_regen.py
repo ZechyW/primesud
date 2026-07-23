@@ -15,7 +15,7 @@ import skill_utils
 import world
 from handler import _char_base
 from world import ROOM_DEFS
-from skills_table import GSN_FAST_HEALING
+from skills_table import GSN_FAST_HEALING, GSN_PLAGUE, GSN_POISON
 
 
 @pytest.fixture
@@ -70,7 +70,7 @@ class TestRegenTail:
 class TestPlayerGains:
     def _hp_gain(self, monkeypatch, roll, skill):
         monkeypatch.setattr(player_mod, "randint", lambda a, b: roll)
-        monkeypatch.setattr(skill_utils, "get_skill",
+        monkeypatch.setattr(player_mod, "get_skill",
                             lambda e, sn, is_mob=False:
                             skill if sn == GSN_FAST_HEALING else 0)
         p = _full_player()
@@ -94,7 +94,7 @@ class TestPlayerGains:
     def test_has_spells_halves_mana(self, monkeypatch):
         # roll high -> no meditation bonus; isolate the has_spells branch.
         monkeypatch.setattr(player_mod, "randint", lambda a, b: 100)
-        monkeypatch.setattr(skill_utils, "get_skill",
+        monkeypatch.setattr(player_mod, "get_skill",
                             lambda e, sn, is_mob=False: 0)
         room = {"heal_rate": 100, "mana_rate": 100}
 
@@ -187,3 +187,108 @@ class TestMobRegen:
         m = self._mob(pos="sleeping", hit=95, max_hit=100)
         self._tick()
         assert m["hit"] == 100
+
+
+# -- Player disease tick + bleed-out (cf. char_update, update.c:670-746) ------
+
+class TestDiseaseAndBleed:
+    def _patch(self, monkeypatch, roll=0):
+        """No-op the output layer, record damage() calls, pin the RNG."""
+        import combat
+        import handler
+        calls = []
+        monkeypatch.setattr(
+            combat, "damage",
+            lambda ch, v, dam, sn, dt, show: calls.append((dam, sn, dt)))
+        monkeypatch.setattr(handler, "act", lambda *a, **k: None)
+        monkeypatch.setattr(handler, "chprintln", lambda *a, **k: None)
+        monkeypatch.setattr(player_mod, "randint", lambda a, b: roll)
+        return calls
+
+    def _tick(self, p):
+        player_mod.tick_update(None, p,
+                               {"heal_rate": 100, "mana_rate": 100})
+
+    def test_incap_blocks_regen_and_bleeds(self, isolate, monkeypatch):
+        calls = self._patch(monkeypatch, roll=0)  # number_range(0,1)==0 hits
+        p = _full_player()
+        p.update({"pos": "incap", "hit": 1})
+        self._tick(p)
+        assert p["hit"] == 1  # gate: no regen below stunned
+        from config import TYPE_UNDEFINED, DAM_NONE
+        assert calls == [(1, TYPE_UNDEFINED, DAM_NONE)]
+
+    def test_incap_coin_flip_miss(self, isolate, monkeypatch):
+        calls = self._patch(monkeypatch, roll=1)  # number_range(0,1)==1 skips
+        p = _full_player()
+        p.update({"pos": "incap", "hit": 1})
+        self._tick(p)
+        assert calls == []
+
+    def test_mortal_bleeds_every_tick(self, isolate, monkeypatch):
+        calls = self._patch(monkeypatch, roll=1)  # mortal ignores the flip
+        p = _full_player()
+        p.update({"pos": "mortal", "hit": 1})
+        self._tick(p)
+        from config import TYPE_UNDEFINED, DAM_NONE
+        assert calls == [(1, TYPE_UNDEFINED, DAM_NONE)]
+
+    def test_stunned_player_stands_up(self, isolate, monkeypatch):
+        # update.c:566-567: stunned + hit > 0 -> update_pos stands them up
+        self._patch(monkeypatch)
+        p = _full_player()
+        p.update({"pos": "stunned", "hit": 50})
+        self._tick(p)
+        assert p["pos"] == "standing"
+
+    def test_poison_tick_damage(self, isolate, monkeypatch):
+        calls = self._patch(monkeypatch)
+        p = _full_player()
+        p.update({"pos": "standing",
+                  "affected_by": {"poison": True},
+                  "affect_list": [{"type": GSN_POISON, "level": 20,
+                                   "duration": 5, "location": "none",
+                                   "modifier": 0, "bitvector": "poison"}]})
+        self._tick(p)
+        from config import DAM_POISON
+        assert (20 // 10 + 1, GSN_POISON, DAM_POISON) in calls
+
+    def test_poison_slowed_skips(self, isolate, monkeypatch):
+        calls = self._patch(monkeypatch)
+        p = _full_player()
+        p.update({"pos": "standing",
+                  "affected_by": {"poison": True, "slow": True},
+                  "affect_list": [{"type": GSN_POISON, "level": 20,
+                                   "duration": 5, "location": "none",
+                                   "modifier": 0, "bitvector": "poison"}]})
+        self._tick(p)
+        assert calls == []
+
+    def test_plague_level_one_is_inert(self, isolate, monkeypatch):
+        # af.level == 1: messages only, no drain, no damage (update.c:694-695)
+        calls = self._patch(monkeypatch)
+        p = _full_player()
+        p.update({"pos": "standing",
+                  "affected_by": {"plague": True},
+                  "affect_list": [{"type": GSN_PLAGUE, "level": 1,
+                                   "duration": 5, "location": "str",
+                                   "modifier": -5, "bitvector": "plague"}]})
+        self._tick(p)
+        assert calls == []
+        assert p["mana"] == 100 and p["move"] == 100
+
+    def test_plague_damages_and_drains(self, isolate, monkeypatch):
+        # dam = min(level, af.level//5 + 1) = min(10, 6//5+1) = 2
+        calls = self._patch(monkeypatch)
+        p = _full_player()
+        # room vnum outside every area: keeps the contagion room lookup from
+        # lazy-loading midgaard (vnum 3001) inside the test
+        p.update({"pos": "standing", "room": 99999,
+                  "affected_by": {"plague": True},
+                  "affect_list": [{"type": GSN_PLAGUE, "level": 6,
+                                   "duration": 5, "location": "str",
+                                   "modifier": -5, "bitvector": "plague"}]})
+        self._tick(p)
+        from config import DAM_DISEASE
+        assert (2, GSN_PLAGUE, DAM_DISEASE) in calls
+        assert p["mana"] == 98 and p["move"] == 98

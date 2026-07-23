@@ -1,5 +1,6 @@
 """Hunt skill: locate a mob in the current area (cf. 1stMud hunt.c)."""
 
+from comm import do_say
 from config import EXIT_ORDER, EXIT_NAMES
 from handler import (act, chprintln, TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT,
                      get_char_room, number_argument, can_see, is_name)
@@ -167,12 +168,9 @@ def hunt_victim(ch):
     # is equivalent (get() returns None if the id is stale/gone).
     victim = world.chars.get(ch["hunting"])
     if victim is None or not can_see(ch, victim):
-        from comm import do_say
-        # do_say(ch, args) rejoins args with " ".join -- splitting on the
-        # literal separator " " (not whitespace-collapsing .split()) round
-        # trips exactly, preserving the double space in "Damn!  My" that
-        # hunt.c's literal C string has.
-        do_say(ch, "Damn!  My prey is gone!!".split(" "))
+        # do_say takes the verbatim message string; the double space in
+        # "Damn!  My" (from hunt.c's literal C string) is preserved as-is.
+        do_say(ch, "Damn!  My prey is gone!!")
         ch["hunting"] = None
         return
 
@@ -191,7 +189,7 @@ def hunt_victim(ch):
                 ch, None, victim, TO_VICT)
             act("{gYou glare at $N{g and say, '{GHey, I remember you!{g'{x",
                 ch, None, victim, TO_CHAR)
-        from combat import multi_hit
+        from combat import multi_hit  # deferred: combat imports hunt
         multi_hit(ch, victim)
         ch["hunting"] = None
         return
@@ -214,11 +212,11 @@ def hunt_victim(ch):
 
     exit_val = ROOM_DEFS[ch["room"]].get("exits", {}).get(direction)
     if isinstance(exit_val, dict) and exit_val.get("closed"):
-        from movement import do_open
+        from movement import do_open  # deferred: movement -> combat -> hunt cycle
         do_open(ch, [EXIT_NAMES[direction]])
         return
 
-    from movement import move_char
+    from movement import move_char  # deferred: movement -> combat -> hunt cycle
     move_char(ch, direction)
 
 

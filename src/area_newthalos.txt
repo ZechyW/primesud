@@ -1,4 +1,7 @@
 # fmt: off
+# GENERATED FILE -- do not edit by hand.
+# Regenerated from areas/*.are by tools/are_to_primesud.py
+# (run via tools/regen_areas.py); fix the .are or the converter.
 # Area: New Thalos
 # Source: QuickMUD/ROM 2.4
 # VNUM ranges: 9500-9799
@@ -3941,7 +3944,7 @@ ROOMS = {
         },
         "flags": {"indoors": True},
         "sector": 'inside',
-        "extra_descs": [('banner', '========================================================================\n\n\t\tH A P P Y   B I R T H D A Y   T O   U S\n\n========================================================================')],
+        "extra_descs": [('banner', '========================================================================\n\n                H A P P Y   B I R T H D A Y   T O   U S\n\n========================================================================')],
     },
     9653: {
         "name": 'Jail',
@@ -6359,4 +6362,14 @@ SOCIALS = (
 # -- MobProgs ------------------------------------------------------------------
 # (vnum, code) -- mob program code blocks, referenced by mob triggers
 MOBPROGS = {
+}
+
+# -- ObjProgs ------------------------------------------------------------------
+# (vnum, code) -- object program code blocks, referenced by object triggers
+OBJPROGS = {
+}
+
+# -- RoomProgs -----------------------------------------------------------------
+# (vnum, code) -- room program code blocks, referenced by room triggers
+ROOMPROGS = {
 }

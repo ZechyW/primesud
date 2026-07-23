@@ -7,10 +7,13 @@ _SRC = os.environ.get("PRIMESUD_SRC", "src")
 sys.path.insert(0, os.path.join(ROOT, _SRC))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
+import handler
+import groups as groups_mod
+import world
 from classes import (CLASS_MAGE, CLASS_CLERIC, CLASS_THIEF, CLASS_WARRIOR,
                      CLASS_TABLE)
 from groups import (GROUP_TABLE, GROUP_SKILLS, GROUP_SUBGROUPS, gn_add,
-                    group_lookup, group_rating)
+                    group_lookup, group_rating, do_grlist)
 from player import create_char
 from skills_table import SKILLS, GSN_BASH, GSN_SANCTUARY, GSN_RECALL, WEAPON_GSN_MAP
 
@@ -220,5 +223,127 @@ class TestDoGain:
             player["train"] = 50
             training.do_gain(player, ["protective"])
             assert player["train"] == 50
+        finally:
+            self._teardown()
+
+
+class TestDoGrlist:
+    """do_grlist (cf. 1stMud do_grlist in skills.c)."""
+
+    def _setup(self):
+        player = create_char(CLASS_WARRIOR)
+        world.chars[1] = player
+        return player
+
+    def _teardown(self):
+        world.chars.pop(1, None)
+
+    def _out(self, monkeypatch):
+        lines = []
+        monkeypatch.setattr(handler, "tprint", lambda s="", end="\n": lines.append(s))
+        return lines
+
+    def _paged(self, monkeypatch):
+        captured = []
+        monkeypatch.setattr(groups_mod, "tpage", lambda lines: captured.extend(lines))
+        return captured
+
+    def test_no_arg_lists_known_groups(self, monkeypatch):
+        paged = self._paged(monkeypatch)
+        player = self._setup()
+        try:
+            do_grlist(player, [])
+            assert any("Groups you currently have:" in l for l in paged)
+            # cf. test_groups_known_recorded: warrior default grants this
+            assert any("weaponsmaster" in l for l in paged)
+            # [PRIMESUD] creation-point economy not ported: no trailing
+            # "Creation points: N" line
+            assert not any("Creation points" in l for l in paged)
+        finally:
+            self._teardown()
+
+    def test_no_arg_no_groups_known(self, monkeypatch):
+        out = self._out(monkeypatch)
+        player = self._setup()
+        player["groups"] = []
+        try:
+            do_grlist(player, [])
+            assert any("You know no groups." in l for l in out)
+        finally:
+            self._teardown()
+
+    def test_all_lists_groups_available_to_class(self, monkeypatch):
+        paged = self._paged(monkeypatch)
+        player = self._setup()
+        try:
+            do_grlist(player, ["all"])
+            assert any("Groups available to you:" in l for l in paged)
+            assert any("weaponsmaster" in l for l in paged)
+            # beguiling is mage/thief only -- not available to a warrior
+            assert not any("beguiling" in l for l in paged)
+        finally:
+            self._teardown()
+
+    def test_class_branch_lists_groups_for_named_class(self, monkeypatch):
+        paged = self._paged(monkeypatch)
+        player = self._setup()
+        try:
+            do_grlist(player, ["warrior"])
+            assert any("Groups available for the {W" "Warrior" in l for l in paged)
+            assert any("weaponsmaster" in l for l in paged)
+        finally:
+            self._teardown()
+
+    def test_group_branch_lists_spells_in_group(self, monkeypatch):
+        paged = self._paged(monkeypatch)
+        player = self._setup()
+        try:
+            do_grlist(player, ["weaponsmaster"])
+            assert any("Spells available in {W" "weaponsmaster" in l for l in paged)
+            assert any("Level" in l and "Spell" in l for l in paged)
+            assert any("sword" in l for l in paged)
+        finally:
+            self._teardown()
+
+    def test_group_branch_unknown_group_no_spells(self, monkeypatch):
+        # illusion's members are all immortal-only (skill_level 53) for a
+        # warrior -- none pass the MAX_MORTAL_LEVEL cutoff.
+        out = self._out(monkeypatch)
+        player = self._setup()
+        try:
+            do_grlist(player, ["illusion"])
+            assert any("No spells available in the {W" "illusion" in l for l in out)
+        finally:
+            self._teardown()
+
+    def test_skill_branch_lists_groups_containing_skill(self, monkeypatch):
+        paged = self._paged(monkeypatch)
+        player = self._setup()
+        try:
+            do_grlist(player, ["sword"])
+            assert any("is in the following groups:" in l for l in paged)
+            assert any("weaponsmaster" in l for l in paged)
+        finally:
+            self._teardown()
+
+    def test_skill_branch_skill_not_in_any_group_member_list(self, monkeypatch):
+        # "kick" is a real skill (skills_table.py) but is not listed as a
+        # direct member of any GROUP_TABLE entry.
+        out = self._out(monkeypatch)
+        player = self._setup()
+        try:
+            do_grlist(player, ["kick"])
+            assert any("{c can't be found in any groups." in l for l in out)
+        finally:
+            self._teardown()
+
+    def test_unrecognized_argument_prints_syntax(self, monkeypatch):
+        out = self._out(monkeypatch)
+        player = self._setup()
+        try:
+            do_grlist(player, ["zzzznotarealthing"])
+            assert any("Syntax: grlist" in l for l in out)
+            assert any("list your current groups" in l for l in out)
+            assert any("list all available groups" in l for l in out)
         finally:
             self._teardown()

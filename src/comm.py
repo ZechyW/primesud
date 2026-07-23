@@ -53,49 +53,63 @@ def say_verb(text, form):
 
 # -- do_say (cf. 1stMud do_say in act_comm.c) --------------------------------
 
-def do_say(ch, args):
+def do_say(ch, argument):
     """Say something to the room (cf. 1stMud do_say in act_comm.c).
 
     Args:
         ch (dict): Speaking character (player or mob instance).
-        args (list): Words to say.
+        argument (str): Verbatim message tail (case and colour codes intact).
     """
-    if not args:
+    if not argument:
         chprintln(ch, "Say what?")
         return
 
-    argument = " ".join(args)
     verb_room = say_verb(argument, 1)
     verb_self = say_verb(argument, 0)
     act("{g$n $t '{G$T{g'{x", ch, verb_room, argument, TO_ROOM)
     act("{gYou $t '{G$T{g'{x", ch, verb_self, argument, TO_CHAR)
-    # [PRIMESUD] TRIG_SPEECH (mob/obj/room speech triggers) not ported
+    # TRIG_SPEECH: room NPCs, carried objs (the speaker's own included),
+    # floor objs, and the room react to a *player's* speech (cf. do_say gate,
+    # act_comm.c:371 `if (!IsNPC(ch))`).  Restricting to a player speaker is
+    # 1stMud's guard against a mob's prog `say` re-triggering other room mobs
+    # into mutual speech recursion, so a mob speaker fires no speech triggers.
+    if not ch.get("is_npc"):
+        from mobprog import speech_trigger  # deferred: keep mobprog off the boot path
+        speech_trigger(argument, ch)
 
 
 # -- do_emote (cf. 1stMud do_emote in act_comm.c) ----------------------------
 
-def do_emote(ch, args):
+def do_emote(ch, argument):
     """Act out a free-form emote (cf. 1stMud do_emote in act_comm.c).
-    [Verified: 04/07/2026] -- COMM_NOEMOTE check not ported (comm flags /
-    channel penalties do not exist); MOBtrigger guard not ported (mobprogs
-    not ported).
+    [Verified: 04/07/2026; free-text tail signature (verbatim argument, cf.
+    1stMud do_fun) 09/07/2026; MOBtrigger guard wired 10/07/2026] --
+    COMM_NOEMOTE check not ported (comm flags / channel penalties do not
+    exist).
 
     Args:
         ch (dict): Acting character (player or mob instance).
-        args (list): Emote text words.
+        argument (str): Verbatim emote text (case and colour codes intact).
     """
-    if not args:
+    if not argument:
         chprintln(ch, "Emote what?")
         return
 
-    argument = " ".join(args)
-    act("$n $T", ch, None, argument, TO_ROOM)
-    act("$n $T", ch, None, argument, TO_CHAR)
+    # cf. do_emote: MOBtrigger off so free-form emote text can't fire mob act
+    # triggers (a player could otherwise trip any prog by typing its phrase).
+    import mobprog  # deferred: keep mobprog off the boot path
+    saved = mobprog.MOBtrigger
+    mobprog.MOBtrigger = False
+    try:
+        act("$n $T", ch, None, argument, TO_ROOM)
+        act("$n $T", ch, None, argument, TO_CHAR)
+    finally:
+        mobprog.MOBtrigger = saved
 
 
 # -- do_tell (cf. 1stMud do_tell in act_comm.c) ------------------------------
 
-def do_yell(ch, args):
+def do_yell(ch, argument):
     """Yell to everyone in the area (cf. 1stMud do_yell in act_comm.c).
 
     [PRIMESUD] COMM_NOSHOUT, swearcheck, channel-ignore, and COMM_QUIET
@@ -103,17 +117,17 @@ def do_yell(ch, args):
 
     Args:
         ch (dict): Speaker (player or mob instance).
-        args (list): Words to yell.
+        argument (str): Verbatim text to yell (case and colour codes intact).
     """
-    if not args:
+    if not argument:
         chprintln(ch, "Yell what?")
         return
-    text = " ".join(args)
+    text = argument
     act("You yell '$t'", ch, text, None, TO_CHAR)
     act("$n yells '$t'", ch, text, None, TO_ZONE)
 
 
-def do_tell(ch, args):
+def do_tell(ch, argument):
     """Tell something to a character in the room (cf. 1stMud do_tell in act_comm.c).
 
     [PRIMESUD] Simplified for single-player: target must be in same room.
@@ -122,14 +136,15 @@ def do_tell(ch, args):
 
     Args:
         ch (dict): Speaking character (player or mob instance).
-        args (list): [target_name, ...message_words].
+        argument (str): "<target> <verbatim message>".
     """
-    if len(args) < 2:
+    parts = argument.split(None, 1)
+    if len(parts) < 2 or not parts[1]:
         chprintln(ch, "Tell whom what?")
         return
 
-    target = args[0]
-    argument = " ".join(args[1:])
+    target = parts[0]  # matched case-insensitively by is_name/get_char_room
+    argument = parts[1]  # verbatim message tail
 
     rs = world.rooms.get(ch.get("room"))
     if rs is None:
@@ -157,19 +172,23 @@ def do_tell(ch, args):
     chprintlnf(victim, "{c%s tells you '{C%s{c'{x", ch_name, argument)
 
     victim["reply"] = ch["id"]  # [PRIMESUD] stored as id, not dict ref (see _char_base)
-    # [PRIMESUD] TRIG_SPEECH not ported
+    # TRIG_SPEECH: PC telling an NPC fires its speech prog (cf. do_tell, act_comm.c:624)
+    if not ch.get("is_npc") and victim.get("is_npc"):
+        from mobprog import has_trigger, act_trigger  # deferred: keep mobprog off the boot path
+        if has_trigger(victim, "speech"):
+            act_trigger(argument, victim, ch, None, None, "speech")
 
 
 # -- do_reply (cf. 1stMud do_reply in act_comm.c) ----------------------------
 
-def do_reply(ch, args):
+def do_reply(ch, argument):
     """Reply to last character who told you something (cf. 1stMud do_reply in act_comm.c).
 
     [PRIMESUD] Simplified for single-player: no COMM_NOTELL/DEAF/linkdead checks.
 
     Args:
         ch (dict): Speaking character.
-        args (list): Words to reply.
+        argument (str): Verbatim reply text (case and colour codes intact).
     """
     # [PRIMESUD] reply stored as id; extracted (dead) targets resolve to None,
     # matching 1stMud's extract_char nulling wch->reply
@@ -178,11 +197,10 @@ def do_reply(ch, args):
         chprintln(ch, "They aren't here.")
         return
 
-    if not args:
+    if not argument:
         chprintln(ch, "Reply what?")
         return
 
-    argument = " ".join(args)
     ch_name = ch.get("name", "someone")
     victim_name = victim.get("name", "someone")
     chprintlnf(ch, "{cYou tell %s '{C%s{c'{x", victim_name, argument)
@@ -197,10 +215,12 @@ def do_function(ch, cmd_fn, argument):
 
     Args:
         ch (dict): Character executing the command.
-        cmd_fn (callable): Command function (e.g. do_say).
-        argument (str): Raw argument string.
+        cmd_fn (callable): Free-text command function (e.g. do_say/do_emote)
+            that takes a verbatim argument string -- NOT a split_args token
+            handler.  All current callers pass free-text commands.
+        argument (str): Raw argument string, forwarded verbatim.
     """
-    cmd_fn(ch, argument.split())
+    cmd_fn(ch, argument)
 
 
 # -- Followers (cf. 1stMud add_follower..do_order in act_comm.c) --------------

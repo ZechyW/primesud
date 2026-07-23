@@ -112,6 +112,26 @@ def _force_roll(monkeypatch, roll):
 
 
 class TestPartGatedDrop:
+    def test_case_one_npc_falls_through_to_guts(self, monkeypatch, out):
+        player = _make_char(1, npc=False, room=9001)
+        mob = _make_char(2, npc=True, part_flags={"guts": True})
+        _force_roll(monkeypatch, 1)
+
+        combat._death_cry(mob)
+
+        assert any("spills" in line and "guts" in line for line in out)
+        assert world.rooms[9001]["items"][0]["vnum"] == combat._OBJ_VNUM_GUTS
+
+    def test_case_one_pc_keeps_blood_message(self, monkeypatch, out):
+        player = _make_char(1, npc=False, room=9001)
+        victim = _make_char(2, npc=False, room=9001)
+        _force_roll(monkeypatch, 1)
+
+        combat._death_cry(victim)
+
+        assert any("splatters blood" in line for line in out)
+        assert world.rooms[9001]["items"] == []
+
     def test_guts_flag_set_drops_object_and_message(self, monkeypatch, out):
         player = _make_char(1, npc=False, room=9001)
         mob = _make_char(2, npc=True, part_flags={"guts": True})

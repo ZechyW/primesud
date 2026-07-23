@@ -1240,12 +1240,10 @@ S
 #0
 
 #RESETS
-M 0 6319   1 6134  1	* the Queen Spider
-G 1 6308   1     	*   a big pile of coins
-G 1 6309  -1     	*   a blue potion
-M 0 6318   3 6134  3	* the huge, poisonous spider
-M 0 6318   3 6134  3	* the huge, poisonous spider
-M 0 6318   3 6134  3	* the huge, poisonous spider
+* [PRIMESUD] Queen Spider + poisonous spider resets (room 6134) moved to
+* haon.are: 6134 is a Haon Dor room, and keeping placement entries in the
+* room's owning area avoids the only cross-area reset in stock data
+* (cf. DESIGN.md "Far-area eviction").
 M 0 6301   8 6301  2	* the young spider
 M 0 6301   8 6306  2	* the young spider
 M 0 6301   8 6306  2	* the young spider

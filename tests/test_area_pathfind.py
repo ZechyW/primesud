@@ -1,9 +1,8 @@
-"""Tests for lazy area-graph pathfinding and the zero-load do_areas render.
+"""Tests for border-graph run pathfinding and the zero-load do_areas render.
 
 Covers:
-- _area_chain: pure BFS helper over the static area-adjacency graph
-- find_path_to_area: staged lazy pathfinder (area-graph BFS -> chain load
-  -> restricted room BFS -> load-all fallback)
+- find_path_to_area: border-graph routing wrapper (exact shortest route,
+  zero area loads at routing time)
 - do_areas: renders purely from static tables, never triggers an area load
 [PRIMESUD]
 """
@@ -22,43 +21,18 @@ import info
 import movement
 from handler import _char_base
 from world import ROOM_DEFS
-from info import _area_chain, find_path_to_area, do_areas
+from info import find_path_to_area, do_areas
+
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+from build_path_index import build_records
 
 
-# ===== _area_chain (pure helper) ============================================
-
-class TestAreaChain:
-    """Zero-load BFS over a static {tag: neighbor_tuple} graph."""
-
-    def test_source_equals_target(self):
-        assert _area_chain("a", "a", {}) == ["a"]
-
-    def test_direct_neighbor(self):
-        adj = {"a": ("b",), "b": ()}
-        assert _area_chain("a", "b", adj) == ["a", "b"]
-
-    def test_multi_hop(self):
-        adj = {"a": ("b",), "b": ("c",), "c": ()}
-        assert _area_chain("a", "c", adj) == ["a", "b", "c"]
-
-    def test_unreachable(self):
-        adj = {"a": ("b",), "b": (), "c": ()}
-        assert _area_chain("a", "c", adj) is None
-
-    def test_unknown_source_has_no_edges(self):
-        adj = {"b": ()}
-        assert _area_chain("a", "b", adj) is None
-
-    def test_prefers_first_listed_neighbor_on_tie(self):
-        # a -> b, c both lead to d in one more hop; "b" is listed first
-        # in a's neighbor tuple, so BFS discovers d via b first.
-        adj = {"a": ("b", "c"), "b": ("d",), "c": ("d",), "d": ()}
-        assert _area_chain("a", "d", adj) == ["a", "b", "d"]
-
-    def test_deterministic_across_repeated_calls(self):
-        adj = {"a": ("c", "b"), "b": ("d",), "c": ("d",), "d": ()}
-        results = {tuple(_area_chain("a", "d", adj)) for _ in range(5)}
-        assert results == {("a", "c", "d")}
+def _write_index(tmp_path, monkeypatch, rooms_data):
+    """Build a border-graph index from raw room dicts and point info at it."""
+    lines = build_records(rooms_data)
+    idx = tmp_path / "paths.idx"
+    idx.write_text("# test index\n" + "\n".join(lines) + "\n")
+    monkeypatch.setattr(info, "PATH_INDEX_FILE", str(idx))
 
 
 # ===== do_areas: zero-load rendering ========================================
@@ -161,52 +135,49 @@ class TestAreaLevelComments:
         assert "001" not in alpha_line
 
 
-# ===== find_path_to_area: synthetic fallback ================================
+# ===== find_path_to_area: synthetic border-graph routing ====================
 
-class TestFindPathToAreaFallback:
-    """Stage 4: restricted room BFS can't complete the area-graph chain."""
+class TestFindPathToAreaBorderGraph:
+    """Wrapper over info._route: exact routes, zero loads at routing time."""
 
-    def test_falls_back_when_restricted_bfs_cannot_complete_chain(
+    def test_route_found_without_loading_target_area(
             self, fresh_world, monkeypatch):
         fw = fresh_world
-        # alpha's only room has no exits at all, so the room-level BFS
-        # can never reach beta even though the area graph claims an
-        # edge -- mirrors a real one-way-exit situation where the graph
-        # edge exists (recorded from the *other* direction) but isn't
-        # walkable from this particular room.
         fw.register_area("alpha", 100, 199,
-                         rooms={100: {"name": "R100", "exits": {}}})
+                         rooms={100: {"name": "R100", "exits": {"n": 101}},
+                                101: {"name": "R101", "exits": {"e": 200}}})
         fw.register_area("beta", 200, 299,
                          rooms={200: {"name": "R200", "exits": {}}})
         fw.setup()
-        monkeypatch.setattr(world, "_AREA_ADJ", {"alpha": ("beta",), "beta": ()})
+        _write_index(fw.tmp_path, monkeypatch, {
+            100: {"area": "alpha", "exits": {"n": 101}},
+            101: {"area": "alpha", "exits": {"e": 200}},
+            200: {"area": "beta", "exits": {}},
+        })
 
         ch = _char_base()
         ch["room"] = 100
         _ = ROOM_DEFS[100]
 
-        calls = []
-        monkeypatch.setattr(
-            info, "find_area_paths",
-            lambda ch: calls.append(1) or {"beta": "5n"})
-        lines = []
-        monkeypatch.setattr(info, "chprintln", lambda p, s="": lines.append(s))
-
         buf = find_path_to_area(ch, "beta")
 
-        assert calls == [1], "fallback should call find_area_paths exactly once"
-        assert buf == "5n"
-        assert any("Loading all area paths" in l for l in lines)
+        assert buf == "ne"
+        assert world._LOADED_AREAS == {"alpha"}, \
+            "routing must load nothing beyond the source area"
 
-    def test_no_chain_returns_none_without_any_loads(self, fresh_world, monkeypatch):
-        """No area-graph edge at all -> bail out before loading anything."""
+    def test_unreachable_returns_none_without_any_loads(
+            self, fresh_world, monkeypatch):
+        """No cross-area exit out of alpha -> None, nothing loaded."""
         fw = fresh_world
         fw.register_area("alpha", 100, 199,
                          rooms={100: {"name": "R100", "exits": {}}})
         fw.register_area("beta", 200, 299,
                          rooms={200: {"name": "R200", "exits": {}}})
         fw.setup()
-        monkeypatch.setattr(world, "_AREA_ADJ", {"alpha": (), "beta": ()})
+        _write_index(fw.tmp_path, monkeypatch, {
+            100: {"area": "alpha", "exits": {}},
+            200: {"area": "beta", "exits": {}},
+        })
 
         ch = _char_base()
         ch["room"] = 100
@@ -216,7 +187,23 @@ class TestFindPathToAreaFallback:
         buf = find_path_to_area(ch, "beta")
 
         assert buf is None
-        assert world._LOADED_AREAS == before, "unreachable chain must load nothing new"
+        assert world._LOADED_AREAS == before, \
+            "unreachable target must load nothing new"
+
+    def test_current_area_returns_none(self, fresh_world, monkeypatch):
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}}})
+        fw.setup()
+        _write_index(fw.tmp_path, monkeypatch, {
+            100: {"area": "alpha", "exits": {}},
+        })
+
+        ch = _char_base()
+        ch["room"] = 100
+        _ = ROOM_DEFS[100]
+
+        assert find_path_to_area(ch, "alpha") is None
 
 
 # ===== find_path_to_area: real area data (e2e) ==============================
@@ -277,9 +264,15 @@ def real_world():
 
 
 class TestFindPathToAreaRealData:
-    """cf. task example: midgaard -> shire via the real stock area files."""
+    """cf. task example: midgaard -> shire via the real stock area files.
 
-    def test_midgaard_to_shire_loads_chain_only_and_path_is_walkable(self, real_world):
+    Uses the real committed src/paths.idx (the fixture chdirs to src/, so
+    the default PATH_INDEX_FILE resolves). The route avoids the
+    randomized-exit rooms (hitower's Shadow Grove, the daycare maze), so
+    the index's frozen maze layout can't diverge from this world load.
+    """
+
+    def test_midgaard_to_shire_loads_nothing_and_path_is_walkable(self, real_world):
         ch = _char_base()
         ch["room"] = 3001  # Temple of Mota (cf. config.R_RECALL)
         _ = ROOM_DEFS[3001]  # player's current room is always loaded
@@ -287,19 +280,14 @@ class TestFindPathToAreaRealData:
         buf = find_path_to_area(ch, "shire")
 
         assert buf is not None
-        # The area-graph chain (midgaard -> haon -> shire) got loaded...
-        assert {"midgaard", "haon", "shire"} <= world._LOADED_AREAS
-        # ...but this did not fall back to loading every area. (Loading
-        # haon/shire can cross-area-reset-cascade in a couple of extra
-        # areas beyond the chain -- that's pre-existing world.py
-        # behavior, not part of the pathfinding search itself.)
-        assert len(world._LOADED_AREAS) < len(world._AREA_FILES)
-        assert "tohell" not in world._LOADED_AREAS
-        assert "newthalos" not in world._LOADED_AREAS
+        # Border-graph routing loads no areas at all -- only the source
+        # area (loaded because the player stands in it) is resident.
+        assert world._LOADED_AREAS == {"midgaard"}
 
         steps = movement._parse_run_buf(buf)
         assert steps is not None
 
+        # Walking the route lazily loads areas along it, like a real run.
         cur = 3001
         for action, d in steps:
             assert action == "move"

@@ -129,8 +129,8 @@ def test_commands_have_descriptions(paged, monkeypatch):
     assert missing == [], "commands.txt missing descriptions: %s" % missing
 
 
-def test_commands_missing_dat_falls_back_to_names(paged, monkeypatch):
+def test_commands_missing_dat_fails_loud(paged, monkeypatch):
+    # commands.txt always shipped in a dist: missing file is a build error
     monkeypatch.setattr(commands, "CMD_DESC_FILE", "no_such_file.dat")
-    commands.do_commands({}, [])
-    assert len(paged) == len(commands._CMD_TABLE)
-    assert any("north" in l for l in paged)
+    with pytest.raises(OSError):
+        commands.do_commands({}, [])

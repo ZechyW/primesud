@@ -1,0 +1,874 @@
+# fmt: off
+# GENERATED FILE -- do not edit by hand.
+# Regenerated from areas/*.are by tools/are_to_primesud.py
+# (run via tools/regen_areas.py); fix the .are or the converter.
+# Area: Miden'nir
+# Source: QuickMUD/ROM 2.4
+# VNUM ranges: 3500-3599
+# Credits: { 5 15} Copper  Miden'nir
+
+
+AREA = {
+    "name":     "Miden'nir",
+    "builders": 'None',
+    "vnums":    (3500, 3599),
+    "credits":  "{ 5 15} Copper  Miden'nir",
+    "levels":   (5, 15),
+}
+
+# -- Mob templates --------------------------------------------------------------
+# hp_dice / mana_dice / damage: (num_dice, die_size, bonus)
+# armor: (pierce, bash, slash, exotic), raw .are units
+# hitroll: from mob level line
+MOBILES = {
+    3500: {
+        "keywords":    'wyvern',
+        "short_descr": 'the wyvern',
+        "long_descr":  'A monstrous wyvern slowly circles just above your head.',
+        "description": "This huge winged creature looks really menacing.  You are happy it doesn't\nAPPEAR to be very hungry ... yet.",
+        "race":        'wyvern',
+        "act_flags": {"stay_area": True},
+        "alignment": -200,
+        "level":     8,
+        "hitroll":   2,
+        "hp_dice":   (8, 8, 80),
+        "mana_dice": (1, 1, 149),
+        "damage":    (2, 6, 1),  "dam_type": 'bite',
+        "armor":     (5, 4, 5, 6),
+        "off_flags": {"berserk": True, "trip": True, "assist_race": True},
+        "start_pos":   'stand',
+        "default_pos": 'stand',
+        "material": '0',
+        "sex":    'either',
+        "wealth": 0,
+        "size":   'huge',
+        "spec_fun": 'spec_poison',
+    },
+    3501: {
+        "keywords":    'goblin mountain',
+        "short_descr": 'the goblin',
+        "long_descr":  'A mountain goblin is wandering about, mumbling to himself.',
+        "description": 'You see before you a small and twisted creature with knotted muscles.',
+        "race":        'goblin',
+        "act_flags": {"aggressive": True, "stay_area": True, "warrior": True},
+        "alignment": -500,
+        "level":     6,
+        "hitroll":   1,
+        "hp_dice":   (4, 4, 65),
+        "mana_dice": (1, 1, 99),
+        "damage":    (2, 4, 1),  "dam_type": 'punch',
+        "armor":     (4, 6, 4, 9),
+        "off_flags": {"parry": True, "assist_race": True},
+        "start_pos":   'stand',
+        "default_pos": 'stand',
+        "material": '0',
+        "sex":    'male',
+        "wealth": 25,
+        "size":   'small',
+    },
+    3502: {
+        "keywords":    'boy small',
+        "short_descr": 'the small boy',
+        "long_descr":  'A small boy sits here, licking his wounds.',
+        "description": 'The poor boy has numerous cuts and scratches, but appears to be all right.\nHe is apparently the only survivor of the ambush.',
+        "race":        'human',
+        "act_flags": {"sentinel": True, "wimpy": True},
+        "alignment": 500,
+        "level":     4,
+        "hitroll":   0,
+        "hp_dice":   (1, 12, 47),
+        "mana_dice": (1, 1, 99),
+        "damage":    (1, 6, 0),  "dam_type": 'beating',
+        "armor":     (8, 8, 8, 10),
+        "off_flags": {"kick": True},
+        "vuln_flags": {"magic": True},
+        "start_pos":   'rest',
+        "default_pos": 'rest',
+        "material": '0',
+        "sex":    'male',
+        "wealth": 0,
+        "size":   'small',
+    },
+    3503: {
+        "keywords":    'innkeeper',
+        "short_descr": 'the Innkeeper',
+        "long_descr":  'The Innkeeper stands here, cleaning glasses.',
+        "description": 'The Innkeeper now spends most of his days waiting for customers, while the\nnights are spent watching out for goblins.  His inn is no longer the happy\nplace that is used to be in days past.',
+        "race":        'human',
+        "act_flags": {"sentinel": True, "warrior": True},
+        "alignment": 500,
+        "level":     10,
+        "hitroll":   1,
+        "hp_dice":   (1, 12, 200),
+        "mana_dice": (1, 1, 149),
+        "damage":    (2, 8, 1),  "dam_type": 'punch',
+        "armor":     (2, 2, 2, 8),
+        "off_flags": {"backstab": True, "dodge": True, "parry": True, "assist_align": True},
+        "imm_flags": {"summon": True, "charm": True},
+        "res_flags": {"magic": True, "weapon": True},
+        "start_pos":   'stand',
+        "default_pos": 'stand',
+        "material": '0',
+        "sex":    'male',
+        "wealth": 350,
+        "size":   'medium',
+    },
+    3504: {
+        "keywords":    'bard',
+        "short_descr": 'the bard',
+        "long_descr":  'A sullen bard is here, drinking away his problems.',
+        "description": 'You can smell the alcohol on his breath from across the room.  This poor bard\nhas been sitting here quite a while, drinking himself into oblivion.',
+        "race":        'human',
+        "act_flags": {"sentinel": True, "thief": True, "warrior": True},
+        "affected_by": {"detect_invis": True},
+        "alignment": 600,
+        "level":     8,
+        "hitroll":   3,
+        "hp_dice":   (1, 12, 110),
+        "mana_dice": (1, 1, 99),
+        "damage":    (2, 6, 0),  "dam_type": 'punch',
+        "armor":     (3, 5, 3, 6),
+        "off_flags": {"dodge": True, "kick": True, "kick_dirt": True, "parry": True, "trip": True, "assist_align": True},
+        "start_pos":   'sit',
+        "default_pos": 'sit',
+        "material": '0',
+        "sex":    'male',
+        "wealth": 260,
+        "size":   'medium',
+    },
+    3505: {
+        "keywords":    'horseman dark',
+        "short_descr": 'the dark horseman',
+        "long_descr":  'A dark horseman is here, mounted on his black steed.',
+        "description": 'The man is obviously an outlaw, and has no qualms about slashing you into\nlittle bits.',
+        "race":        'human',
+        "act_flags": {"stay_area": True, "wimpy": True, "thief": True},
+        "affected_by": {"sneak": True},
+        "alignment": -900,
+        "level":     8,
+        "hitroll":   2,
+        "hp_dice":   (1, 12, 110),
+        "mana_dice": (1, 1, 99),
+        "damage":    (2, 5, 2),  "dam_type": 'punch',
+        "armor":     (5, 3, 3, 6),
+        "off_flags": {"backstab": True, "dodge": True, "kick_dirt": True, "parry": True, "assist_align": True},
+        "start_pos":   'stand',
+        "default_pos": 'stand',
+        "material": '0',
+        "sex":    'male',
+        "wealth": 400,
+        "size":   'medium',
+    },
+    3506: {
+        "keywords":    'goblin lieutenant',
+        "short_descr": 'the goblin lieutenant',
+        "long_descr":  'A goblin lieutenant stands here, attempting to get his men in order.',
+        "description": 'The goblin lieutenant is rather angry, and looking for one of his men to\nbeat up upon, but maybe you will do just fine ...',
+        "race":        'goblin',
+        "act_flags": {"aggressive": True, "stay_area": True, "warrior": True},
+        "alignment": -600,
+        "level":     7,
+        "hitroll":   1,
+        "hp_dice":   (1, 12, 100),
+        "mana_dice": (1, 1, 149),
+        "damage":    (1, 10, 1),  "dam_type": 'punch',
+        "armor":     (3, 5, 3, 8),
+        "off_flags": {"berserk": True, "parry": True, "trip": True, "assist_race": True},
+        "start_pos":   'stand',
+        "default_pos": 'stand',
+        "material": '0',
+        "sex":    'male',
+        "wealth": 55,
+        "size":   'medium',
+    },
+    3507: {
+        "keywords":    'goblin leader',
+        "short_descr": 'the goblin leader',
+        "long_descr":  'The goblin leader surveys the room.',
+        "description": "The leader doesn't look too happy that you have found him here.  He grabs\nfor his shortsword and lunges for your neck.",
+        "race":        'goblin',
+        "act_flags": {"scavenger": True, "aggressive": True, "stay_area": True, "warrior": True},
+        "alignment": -900,
+        "level":     9,
+        "hitroll":   2,
+        "hp_dice":   (1, 12, 120),
+        "mana_dice": (1, 1, 199),
+        "damage":    (1, 12, 3),  "dam_type": 'punch',
+        "armor":     (1, 3, 1, 6),
+        "off_flags": {"berserk": True, "kick_dirt": True, "parry": True, "trip": True, "assist_race": True},
+        "start_pos":   'stand',
+        "default_pos": 'stand',
+        "material": '0',
+        "sex":    'male',
+        "wealth": 500,
+        "size":   'medium',
+    },
+}
+
+# -- Rooms ----------------------------------------------------------------------
+ROOMS = {
+    3500: {
+        "name": 'The Plains',
+        "desc": 'You are standing on the plains. This is a vast desolate place where the\nwind can howl undisturbed since nothing but you bars its way. However you\nare not the first to wander here. Before you somebody has left a small path.\nThe path looks rather bewildered and is not the kind of path to lead to\nanywhere significant or important but it seems to have made up its mind to\nenter the hills far away north.',
+        "exits": {
+            "n": 4000,
+            "s": 3501,
+        },
+        "sector": 'city',
+    },
+    3501: {
+        "name": 'The Lane',
+        "desc": 'You are strolling along a pleasant, shady lane. The road is lined on both\nsides by tall, stately trees which lend the scene with a sense of quiet\nserenity. You can follow the road north or south.',
+        "exits": {
+            "n": 3500,
+            "s": 3502,
+        },
+        "sector": 'city',
+    },
+    3502: {
+        "name": 'The Cross Roads',
+        "desc": 'Here, the great eastern road intersects with an older road between the mines\nof Moria and the ruined city of Thalos.  The outskirts of Midgaard lie to your\nwest, and the highway continues the the east.  An old northern road leads to\nthe dwarven kingdom and the abandoned mines of Moria, while the southern road\nshows the scars of the war which destroyed Thalos.',
+        "exits": {
+            "n": {"to": 3501, "desc": 'An old road leads towards the abandoned mines of Moria and the Dwarven Kingom.'},
+            "e": {"to": 3525, "desc": 'The road continues east, where you hear faint singing.'},
+            "s": {"to": 5261, "desc": 'A once mighty road leads through the dwarf forest towards ruined Thalos.'},
+            "w": {"to": 3503, "desc": 'The road leads west towards Midgaard.'},
+        },
+        "sector": 'city',
+    },
+    3503: {
+        "name": 'City Entrance',
+        "desc": 'You stand on the outskirts of a large city - Midgaard; the capital of this\nland. The road leads east into the peace and quiet - and dangers - of the\nforest; and to the west it becomes the main street of the town; surrounded by\na confusion of shops, bars, and market places.',
+        "exits": {
+            "e": 3502,
+            "w": 3053,
+        },
+        "flags": {"no_mob": True},
+        "sector": 'city',
+    },
+    3505: {
+        "name": "The Trail to Miden'nir",
+        "desc": 'You are in a light forest. A path leads south, but the passage to the\neast is easy enough. To the west, smoke can be seen rising above the\ntreetops. The sprawl of Midgaard lies north of here.',
+        "exits": {
+            "n": {"to": 3256, "desc": 'To the north, you see the southern gates of Midgaard.'},
+            "e": {"to": 3506, "desc": 'More light forest.'},
+            "s": {"to": 3507, "desc": "This path cuts through the darkness of the Miden'nir."},
+            "w": {"to": 3570, "desc": "The Woodsman's Inn."},
+        },
+        "sector": 'forest',
+        "extra_descs": [('credits credit author', '+-------------------------------------------------+\n| This area originally written for Copper II DIKU |\n|   by ?                                          |\n| Modifications and alterations for MERCmud DIKU  |\n|   by VampLestat                        1 JAN 93 |\n+-------------------------------------------------+')],
+    },
+    3506: {
+        "name": "The Miden'nir",
+        "desc": 'You are in a dark forest. To the east, mountains block passage. From\nhere, only the lighter forest to the west or south offer a way to travel.',
+        "exits": {
+            "e": 3550,
+            "s": {"to": 3509, "desc": 'The forest is darker to the south.'},
+            "w": {"to": 3505, "desc": 'The forest gets lighter as you go west.'},
+        },
+        "sector": 'forest',
+    },
+    3507: {
+        "name": "The Miden'nir",
+        "desc": 'The forest is deep here and the wind blows through the trees and\nthrough your hair. To the north, the forest gets lighter. However, the\nsouthern and western paths place you even deeper in the wood.',
+        "exits": {
+            "n": {"to": 3505, "desc": 'The forest is lighter in this direction.'},
+            "s": {"to": 3510, "desc": 'More and darker woods.'},
+            "w": {"to": 3508, "desc": 'There is a small path leading west.'},
+        },
+        "sector": 'forest',
+    },
+    3508: {
+        "name": 'On a Small Path',
+        "desc": "A path is here, leading east and south through the dark woods of\nMiden'nir. Mountains slash the scenery to the west of here.",
+        "exits": {
+            "e": {"to": 3507, "desc": 'Wind-swept forest.'},
+            "s": {"to": 3511, "desc": 'To the south, the trail continues.'},
+        },
+        "sector": 'forest',
+    },
+    3509: {
+        "name": "The Miden'nir",
+        "desc": "The trees of Miden'nir are lush and green, hiding the evil that lurks\nin these woods. The trees become too thick to the west, but you may go\nnorth, south or travel toward the mountains that lie east of here.",
+        "exits": {
+            "n": {"to": 3506, "desc": 'The trees lighten up a bit this way.'},
+            "e": {"to": 3512, "desc": 'Huge grey mountains lie in this direction.'},
+            "s": {"to": 3514, "desc": 'The forest continues.'},
+        },
+        "sector": 'forest',
+    },
+    3510: {
+        "name": 'A Crossroads',
+        "desc": 'Here footworn paths meet leading north, south and east. The trees seem to\nbe closing in on you at this point, and you can barely see the sky\nthrough the thick branches above your head.',
+        "exits": {
+            "n": {"to": 3507, "desc": 'Trees as far as the eye can see.'},
+            "e": {"to": 3514, "desc": 'There is an especially dark part of the forest this way.'},
+            "s": {"to": 3516, "desc": 'There is an especially dark section of forest this way.'},
+        },
+        "sector": 'forest',
+    },
+    3511: {
+        "name": 'The Trail',
+        "desc": 'You are on a north-south trail through the woods. To the west, impassable\nmountains glare at you, and the thick woods and undergrowth prevent any\nmovement westward.',
+        "exits": {
+            "n": {"to": 3508, "desc": 'The trail bends to the north.'},
+            "s": {"to": 3515, "desc": 'To the south, the path re-enters the forest.'},
+        },
+        "sector": 'forest',
+    },
+    3512: {
+        "name": "The Miden'nir",
+        "desc": "The trees of Miden'nir are lush and green, hiding the evil that lurks\nin these woods. You can go north toward the mountains, or west to the\nforest, but the steep mountains prevent any movement east.",
+        "exits": {
+            "n": 3550,
+            "s": {"to": 3513, "desc": 'A light section of forest.'},
+            "w": {"to": 3509, "desc": 'The forest continues here.'},
+        },
+        "sector": 'forest',
+    },
+    3513: {
+        "name": "The Miden'nir",
+        "desc": 'The forest is dark, and becomes even darker west.  You sense\nthat there is something evil hidden in these woods.  The forest gets\nlighter to the north.  The wind kicks up as you ponder your options.',
+        "exits": {
+            "n": {"to": 3512, "desc": 'There is a small clearing to the north.'},
+            "w": {"to": 3514, "desc": 'It gets darker and thicker this way.'},
+        },
+        "sector": 'forest',
+    },
+    3514: {
+        "name": 'Deep Forest',
+        "desc": 'It is quite dark here, forest surrounds you. With each step, the forest\nseems to close around you, and get darker and more foreboding.  It might just\nbe time to head back to somewhere safe.',
+        "exits": {
+            "n": {"to": 3509, "desc": 'More forest.'},
+            "e": {"to": 3513, "desc": 'Lighter forest and mountains in the distance.'},
+            "s": {"to": 3517, "desc": 'More trees.'},
+            "w": {"to": 3510, "desc": 'The forest continues.'},
+        },
+        "sector": 'forest',
+    },
+    3515: {
+        "name": 'Light Forest',
+        "desc": 'The forest is light here and you can easily pick your way through the\ntrail.  To the east, the forest becomes thick and darker. South, the trail\ncontinues.',
+        "exits": {
+            "n": {"to": 3511, "desc": 'A trail leading north-south.'},
+            "e": {"to": 3516, "desc": 'The trees get thicker as you go east.'},
+            "s": {"to": 3518, "desc": 'More trees and some small hills.'},
+        },
+        "sector": 'forest',
+    },
+    3516: {
+        "name": 'Muddy Ground',
+        "desc": 'The ground is quite muddy here and puddles are all around. Your boots\nmake a disgusting SQUISH as you walk here. You can go in any of the\nfour cardinal directions from here. Hopefully, it will be dryer.',
+        "exits": {
+            "n": {"to": 3510, "desc": "The Miden'nir continues."},
+            "e": {"to": 3517, "desc": 'More trees.'},
+            "s": {"to": 3519, "desc": 'The trees get VERY thick to the south. You can barely see...'},
+            "w": {"to": 3515, "desc": 'Some light trees and daylight.'},
+        },
+        "sector": 'forest',
+    },
+    3517: {
+        "name": 'Near the Mountains',
+        "desc": 'The most prominent feature here is the mountains that lie to the east.\nYou can only go north and west from here as the rocks stop all other\nmovement.',
+        "exits": {
+            "n": {"to": 3514, "desc": 'Many trees to the north.'},
+            "w": {"to": 3516, "desc": 'There is a bit of a slope downward to the west.'},
+        },
+        "sector": 'forest',
+    },
+    3518: {
+        "name": 'The Fading Trail',
+        "desc": 'The trail becomes nearly unpassable here. You can go north\nas the forest is relatively light. To the south, you can see a path.',
+        "exits": {
+            "n": {"to": 3515, "desc": 'You can see a trail this way.'},
+            "e": {"to": None, "desc": 'The trees are nearly trunk-to-trunk this way.'},
+            "s": {"to": 3522, "desc": 'Dark forests.'},
+        },
+        "sector": 'forest',
+    },
+    3519: {
+        "name": 'The Dark Path',
+        "desc": 'You are hemmed in by trees on either side of you.  The path\ncontinues north and south, and while is much to thick to explore west,\nyou can head off into the woods to the east.',
+        "exits": {
+            "n": {"to": 3516, "desc": 'The forest gets lighter this way.'},
+            "e": {"to": 3520, "desc": 'The forest continues.'},
+            "s": {"to": 3521, "desc": 'There is a strong stench coming from this direction.'},
+            "w": {"to": None, "desc": 'The trees are nearly trunk-to-trunk this way.'},
+        },
+        "sector": 'forest',
+    },
+    3520: {
+        "name": 'The Dark Forest',
+        "desc": "You stomp your way through the underbrush.  The dark forest of Miden'nir\nget pretty thick here, and the branches high above your head are so thick that\nthey block out all direct sunlight.  While it is much too thick to go\nfurther east, you might be able to make your way though the forest to the\nsouth and west.",
+        "exits": {
+            "s": {"to": 3523, "desc": 'The thick forest continues.'},
+            "w": {"to": 3519, "desc": 'The thick forest continues.'},
+        },
+        "sector": 'forest',
+    },
+    3521: {
+        "name": 'Carnage',
+        "desc": 'Here, you see a gruesome sight. Blood is everywhere... on the trees and\nsoaked into the ground. Two carcasses lie in front of you, seeming to look\nup at you. The forest is impassible to the south, but the other directions\nlook ok.',
+        "exits": {
+            "n": {"to": 3519, "desc": 'Darkness...'},
+            "e": {"to": 3523, "desc": 'Your light does not extend that far.'},
+            "w": {"to": 3522, "desc": 'More dark forest.'},
+        },
+        "flags": {"dark": True},
+        "sector": 'forest',
+        "extra_descs": [('carcass body corpse carcasses bodies corpses', 'The corpses looked as if they have been pierced by a large, jagged\nspear. The damage these people sustained is simply amazing. Worse, the\nlips on the bodies are a light shade of blue, hinting at poison in\ntheir systems.')],
+    },
+    3522: {
+        "name": "Deep in the Forest of Miden'nir",
+        "desc": 'There is a sickening stench here. It smells of blood and death.\nTo the north, you catch glimpses of daylight. To the east, you\nsimply cannot see. The trees are close and stifling.',
+        "exits": {
+            "n": {"to": 3518, "desc": 'You see daylight and a trail to follow.'},
+            "e": {"to": 3521, "desc": 'The stench seems to becoming from this direction.'},
+        },
+        "sector": 'forest',
+    },
+    3523: {
+        "name": 'The Dark Forest',
+        "desc": 'The branches above you block out all direct sunlight, making the forest\nin this area rather dark.  The forest continues east, where it meets the\nmountains. The air is still and stuffy - a stench comes from the west and an\nugly feeling causes the hair to rise on the back of your neck!',
+        "exits": {
+            "n": {"to": 3520, "desc": 'It appears to get much darker that direction.'},
+            "e": 3551,
+            "w": {"to": 3521, "desc": 'The sky becomes lighter in this direction.'},
+        },
+        "sector": 'forest',
+    },
+    3525: {
+        "name": 'Along the Eastern Road',
+        "desc": 'You are walking along a well-travelled road between Midgaard and lands\neast.  A northern road crosses this one to the west, towards Midgaard.  You\nhear faint, happy singing to the north.',
+        "exits": {
+            "n": {"to": 101, "desc": 'You see a faint trail, covered with tiny footprints. The singing grows louder.'},
+            "e": {"to": 3526, "desc": 'The road continues to the east.'},
+            "w": {"to": 3502, "desc": 'You can see the crossroads.'},
+        },
+        "sector": 'city',
+    },
+    3526: {
+        "name": 'Along the Eastern Road',
+        "desc": 'You are travelling down the eastern road between Midgaard and the eastern\nlands.  The road back to Midgaard is west of you, and a heavily guarded\ncheckpoint is east.  A beautiful grove of trees is north, and a dirt path\nwanders off to the south.',
+        "exits": {
+            "n": {"to": 8950, "desc": 'You see a beautiful, shady grove -- it looks like a peaceful place to relax.'},
+            "e": {"to": 3527, "desc": 'The road continues west towards a guarded checkpoint.'},
+            "s": {"to": 1501, "desc": 'A dirt path leads to the gnome village.'},
+            "w": {"to": 3525, "desc": 'The road continues west towards midgaard.'},
+        },
+        "sector": 'city',
+    },
+    3527: {
+        "name": 'The Checkpoint',
+        "desc": 'You are met by a group of heavily armored knights.  They check you over\nfor contraband, and then allow you to pass on.  One of the knights cautions to\nnot stray into the desert, lest you lose your way.',
+        "exits": {
+            "e": {"to": 3528, "desc": 'The continues east towards New Thalos.'},
+            "w": {"to": 3526, "desc": 'The road continues west towards midgaard.'},
+        },
+        "sector": 'city',
+    },
+    3528: {
+        "name": 'Along the Eastern Road',
+        "desc": 'You are walking along a well-travelled road, just east of a heavily\nguarded checkpoint.  You have covered about half the distance between\nthe city of Midgaard and New Thalos.  The air is getting drier and the heat\nmore oppressive as you near the the barren wastes of the Sands of Sorrow.',
+        "exits": {
+            "e": {"to": 3529, "desc": 'The road continues ahead, growing more arid as you near the desert.'},
+            "w": {"to": 3527, "desc": 'You see a heavily guarded checkpoint to the west.'},
+        },
+        "sector": 'city',
+    },
+    3529: {
+        "name": 'Along the Eastern Road',
+        "desc": 'The tempatures are climbing as you near the Sands of Sorrow, a barren\nwasteland blasted by arcane powers.  Ahead of you, the road is partially\nburied by the creeping sands, and the air grows even hotter.',
+        "exits": {
+            "e": {"to": 3530, "desc": 'You see the Sands of Sorrow spilling over the road.'},
+            "w": {"to": 3528, "desc": 'The road continues to the west, towards distant Midgaard.'},
+        },
+        "sector": 'city',
+    },
+    3530: {
+        "name": 'Near the Sands of Sorrow',
+        "desc": 'The eastern road is losing ground to the creeping desert here.  You stagger\nin the growing heat, and wonder if you have enough water.  The endless waste\nof the Sands of Sorrows is south, and the road continues east and west.  The\nsun paints illusions at the edge of your vision, one of them looks like a far\noff city...',
+        "exits": {
+            "e": {"to": 3531, "desc": 'The road ahead is almost lost in the desert.'},
+            "w": {"to": 3529, "desc": 'You see a clearer section of road.'},
+        },
+        "sector": 'desert',
+    },
+    3531: {
+        "name": 'Near the Sands of Sorrow',
+        "desc": 'The road is almost completely swallowed by the desert here.  The heat is\nsucking the life from your body, you wonder if it will ever end.  To your\nsouth, the Sands of Sorrow stretch on for miles, and to the east you think\nyou see the towers of a magnificent city...or is it just a mirage?',
+        "exits": {
+            "e": {"to": 3532, "desc": 'You can barely make out enough road to follow.'},
+            "w": {"to": 3530, "desc": 'The desert thins a little to the west.'},
+        },
+        "sector": 'desert',
+    },
+    3532: {
+        "name": 'On the Outskirts of New Thalos',
+        "desc": 'The sun is hot enough to melt your armor, but salvation is at hand.  To the\neast, you see the mighty gates of New Thalos, one of the most prosperous cities\nof all of Thera.  To the south, you see the endless wasteland of the Sands\nof Sorrows, and to the west you can barely make out a faint, but well-used,\nroad leading to the City of Midgaard.',
+        "exits": {
+            "e": {"to": 9669, "desc": 'You see the west gate of New Thalos.'},
+            "w": {"to": 3531, "desc": 'You see the road to Midgaard, covered with sand.'},
+        },
+        "sector": 'desert',
+    },
+    3550: {
+        "name": 'At The Foot of The Mountains',
+        "desc": "You find yourself at the foot of the mountains, where it is much to steep\nto continue north or east.  You see the lush, green forest of Miden'nir to the\nsouth and west.",
+        "exits": {
+            "s": {"to": 3512, "desc": "The forest of Miden'nir spreads out before you."},
+            "w": {"to": 3506, "desc": "The forest of Miden'nir spreads out before you."},
+        },
+        "sector": 'mountain',
+    },
+    3551: {
+        "name": "The Deep in the Forest of Miden'nir",
+        "desc": 'The branches above you block out all direct sunlight, making the forest\nin this area very dark.  The forest continues west, but mountains block\nfurther exploration in all other directions, except south, where you notice a\nsmall tunnel dug into the mountainside.',
+        "exits": {
+            "s": 3552,
+            "w": 3523,
+        },
+        "flags": {"dark": True},
+        "sector": 'forest',
+    },
+    3552: {
+        "name": 'A Tunnel in the Mountains',
+        "desc": 'The walls of this tunnel were carved out many years ago by the goblins of\nthis forest.  The floor is well worn, and continues south, into the\nmountain, or back north out into the forest.',
+        "exits": {
+            "n": {"to": 3551, "desc": "Outside, you see the forest of Miden'nir."},
+            "s": {"to": 3553, "desc": 'The tunnel continues to the south.'},
+        },
+        "flags": {"dark": True},
+        "sector": 'city',
+    },
+    3553: {
+        "name": 'A Tunnel in the Mountains',
+        "desc": 'The tunnel gets lighter to the north, presumably leading out, while to\nthe south the passage gets smaller and smaller.  A small alcove has been\ncarved into the east wall.',
+        "exits": {
+            "n": {"to": 3552, "desc": 'The tunnel gets wider in this direction.'},
+            "e": {"to": 3554, "desc": 'You see a small alcove.'},
+            "s": {"to": 3555, "desc": 'The tunnel gets smaller in this direction.'},
+        },
+        "flags": {"dark": True},
+        "sector": 'city',
+    },
+    3554: {
+        "name": 'A Small Alcove',
+        "desc": 'A small alcove has been carved out here.  There are a bunch of twigs\nand leaves thrown into a pile here, probably serving as a bed.',
+        "exits": {
+            "w": {"to": 3553, "desc": 'You see the main passageway.'},
+        },
+        "flags": {"dark": True},
+        "sector": 'city',
+        "extra_descs": [('twigs leaves bead', 'The twigs and leaves have all been piled together as a makeshift bed for\nsome small humanoid.')],
+    },
+    3555: {
+        "name": 'A Tunnel in the Mountains',
+        "desc": 'As you explore further into the mountainside, the tunnel gets smaller and\nsmaller to the south.  You almost have to hunch over to make your way thru\nthis area.  A small archway to the south leads into a large chamber.',
+        "exits": {
+            "n": {"to": 3553, "desc": 'The tunnel continues north.'},
+            "s": {"to": 3556, "desc": 'You see a small cavern.'},
+        },
+        "flags": {"dark": True},
+        "sector": 'city',
+    },
+    3556: {
+        "name": 'The Goblin Headquarters',
+        "desc": "The tunnel widens into a large (well, large for goblins) cavern that\nserves as the living quarters for the goblins of Miden'nir.  The bones of\nnumbers woodland creatures are strewn about the room, the remanents of a\nrecent meal.",
+        "exits": {
+            "n": {"to": 3555, "desc": 'The tunnel heads north.'},
+        },
+        "flags": {"dark": True},
+        "sector": 'city',
+    },
+    3570: {
+        "name": 'The Front of the Inn',
+        "desc": 'You are standing on a well-worn path which opens into a clearing.\nAn old, wooden building is here with smoke billowing from its\nchimney. A painted sign is visible on the porch to the west. You\ncould go north or south around the building or leave this place and\nreturn to the forest.',
+        "exits": {
+            "n": {"to": 3571, "desc": 'You can go north around the inn.'},
+            "e": {"to": 3505, "desc": "Back through the trees to the Miden'nir."},
+            "s": {"to": 3572, "desc": 'You can go south around the inn.'},
+            "w": {"to": 3574, "desc": 'The front door of the inn beckons.'},
+        },
+        "sector": 'forest',
+        "extra_descs": [('credits credit author', '+-------------------------------------------------+\n| This zone originally written for Copper II DIKU |\n|   by ?                                          |\n| Modification and alterations for MERCmud DIKU   |\n|   by VampLestat                        1 JAN 93 |\n+-------------------------------------------------+'), ('sign', 'The sign reads:\n   The Woodsman')],
+    },
+    3571: {
+        "name": 'North of the Inn',
+        "desc": "You are standing north of the inn. Things don't look much different\nfrom this angle.  The air here is filled with smells of smoke and cooking.\nSouth, the front porch is waiting for you... or you can see if there is\na back door.",
+        "exits": {
+            "s": {"to": 3570, "desc": 'You see the front of the Inn.'},
+        },
+        "sector": 'forest',
+    },
+    3572: {
+        "name": 'South of the Inn',
+        "desc": 'You are standing south of the inn.  You could easily go north and enter\nthrough the front door, or west and to the rear of the establishment.  You\nhere some muffled cries from a tiny trail leading south of here.',
+        "exits": {
+            "n": {"to": 3570, "desc": 'This way leads to the front of the inn.'},
+            "s": {"to": 3575, "desc": 'The trail heads south.'},
+            "w": {"to": 3573, "desc": 'This way leads to the back of the inn.'},
+        },
+        "sector": 'forest',
+    },
+    3573: {
+        "name": 'Behind the Inn',
+        "desc": 'You now stand behind the inn. The smell here is not so pleasant as\nthe keeper and his help throw a good deal of garbage here. A couple of\npiles of rubbish are to the west, but you will smell the worse for\nmeddling there. As a clean alternative, you can go north or east around\nthe inn.',
+        "exits": {
+            "e": {"to": 3572, "desc": 'You can go around the inn this way.'},
+            "w": {"to": 3578, "desc": 'Only rats and fool adventurers play in garbage.'},
+        },
+        "sector": 'forest',
+    },
+    3574: {
+        "name": 'The Woodsman Inn',
+        "desc": "You are in the common room of the Woodsman Inn. A thin haze of smoke sits\nin the air here. The Inn is often empty, as the forest has become overrun by\ngoblins as of late, and it is no longer safe in these parts. The bar is just\nnorth of here. If you'd rather have your own table, one is empty to the\nsouth.",
+        "exits": {
+            "n": {"to": 3576, "desc": 'The bar is here, manned by the innkeeper.'},
+            "e": {"to": 3570, "desc": 'You can leave now and return to fresher air.'},
+            "s": {"to": 3579, "desc": 'An empty table is a rare commodity.'},
+            "w": 3577,
+        },
+        "flags": {"no_mob": True, "indoors": True},
+        "sector": 'city',
+    },
+    3575: {
+        "name": 'The Ambush Point',
+        "desc": 'This is a overgrown foot-trail south of the inn. It leads west, but you\nwould be hard pressed to follow it far. A number of bushes are trampled on\nand some medium sized branches have been knocked down.  Obviously there has\nbeen a battle here rather recently.',
+        "exits": {
+            "n": {"to": 3572, "desc": 'The inn lies to the north.'},
+            "w": {"to": 3581, "desc": 'A trail thru the woods.'},
+        },
+        "sector": 'forest',
+    },
+    3576: {
+        "name": 'The Bar',
+        "desc": 'This is where people use to come and enjoy the food, drink and hospitality\nof the innkeeper, but as of late, he only serves the few adventurers that\nmanage to survive a trip thru the forest. You can leave south and return to the\ncommon room.',
+        "exits": {
+            "s": {"to": 3574, "desc": 'You may retreat south back to the common room.'},
+        },
+        "sector": 'city',
+    },
+    3577: {
+        "name": "The Bard's Table",
+        "desc": 'You are in a darker corner in the Inn.  A large round table with a few\nwooden chairs sits here.  There is a large stain on the table, the remnants\nof a spilled drink.',
+        "exits": {
+            "e": {"to": 3574, "desc": 'You see the main floor of the Inn to the east.'},
+        },
+        "flags": {"indoors": True},
+        "sector": 'city',
+    },
+    3578: {
+        "name": 'Garbage dump',
+        "desc": 'You stand knee deep in garbage.  YECCH!!! It smells terrible and who knows\nwhat vermin live in these piles of filth ...',
+        "exits": {
+            "e": {"to": 3573, "desc": 'You can return to cleaner lands this way.'},
+        },
+        "sector": 'forest',
+    },
+    3579: {
+        "name": 'A Quieter Section of the Inn',
+        "desc": 'There seems to be no one in this end of the Woodsman, probably a safe place\nto rest and lick your wounds ...',
+        "exits": {
+            "n": {"to": 3574, "desc": 'You see the common room.'},
+        },
+        "flags": {"indoors": True},
+        "sector": 'inside',
+    },
+    3581: {
+        "name": 'On the Trail of the Horsemen',
+        "desc": 'The path continues east and west of here.  You notice fresh tracks in\nthe soft ground that show the horsemen fled to the west.',
+        "exits": {
+            "e": {"to": 3575, "desc": 'Back to ambush point.'},
+            "w": {"to": 3582, "desc": 'The trail continues.'},
+        },
+        "sector": 'forest',
+    },
+    3582: {
+        "name": 'On the Trail of the Horsemen',
+        "desc": 'The path continues east and south.  You notice fresh tracks in\nthe soft ground that show the horsemen turned, and fled south.',
+        "exits": {
+            "e": {"to": 3581, "desc": 'The trail continues.'},
+            "s": {"to": 3583, "desc": 'The tracks lead south.'},
+        },
+        "sector": 'forest',
+    },
+    3583: {
+        "name": 'On the Trail of the Horsemen',
+        "desc": 'The trail of the horsemen continues east and north along this path through\nthe forest.  The tracks are still fresh, so they must be near.',
+        "exits": {
+            "n": {"to": 3582, "desc": 'The trail continues.'},
+            "w": {"to": 3584, "desc": 'The tracks lead east.'},
+        },
+        "sector": 'forest',
+    },
+    3584: {
+        "name": 'A Dead End Trail',
+        "desc": 'The path comes to an abrupt end here, as the trees close around you and\nmake any further exploration impossible.  Fresh tracks cover the ground, and\nend right here.  The horsemen must be nearby.',
+        "exits": {
+            "e": {"to": 3583, "desc": 'Back to along the trail.'},
+        },
+        "sector": 'forest',
+    },
+}
+
+# -- Item templates -------------------------------------------------------------
+OBJECTS = {
+    3500: {
+        "keywords":    'sword short',
+        "short_descr": "a goblin's short sword",
+        "description": 'A rusted sword lies on the ground.',
+        "material":    'iron',
+        "type": 'weapon',
+        "wear_flags": {"take": True, "wield": True},
+        "condition": 75,
+        "weapon_type": 'sword', "dam_type": 'stab', "dice": (2, 4, 0),
+        "weapon_flags": {},
+        "stat_bonuses": {'hitroll': -1},
+        "level": 5, "weight": 40, "value": 460,
+        "extra_descs": [('sword', 'It looks heavier than your average short sword, but it could use some oiling.')],
+    },
+    3501: {
+        "keywords":    'spear long',
+        "short_descr": 'a long spear',
+        "description": 'A blackened spear with an evil-looking blade lies here.',
+        "material":    'iron',
+        "type": 'weapon',
+        "wear_flags": {"take": True, "wield": True},
+        "condition": 75,
+        "weapon_type": 'polearm', "dam_type": 'thrust', "dice": (2, 7, 0),
+        "weapon_flags": {"two_hands": True},
+        "stat_bonuses": {'ac': 2},
+        "level": 6, "weight": 80, "value": 100,
+        "extra_descs": [('spear', 'This used to be a boar spear, but it has been used for more dangerous game.')],
+    },
+    3502: {
+        "keywords":    'helmet horned black',
+        "short_descr": 'a black horned helmet',
+        "description": 'A helmet with sharp black horns sits here.',
+        "material":    'iron',
+        "type": 'armor',
+        "wear_flags": {"take": True, "head": True},
+        "condition": 75,
+        "armor": (3, 5, 4, 0),
+        "level": 5, "weight": 30, "value": 490,
+    },
+    3503: {
+        "keywords":    'cloak stained',
+        "short_descr": 'a stained travelling cloak',
+        "description": 'A worn and stained cloak is crumpled up on the floor.',
+        "material":    'cloth',
+        "type": 'armor',
+        "wear_flags": {"take": True, "neck": True},
+        "condition": 75,
+        "armor": (2, 3, 4, 0),
+        "level": 3, "weight": 40, "value": 310,
+    },
+    3504: {
+        "keywords":    'bracer leather enchanted',
+        "short_descr": 'an enchanted leather bracer',
+        "description": 'A leather bracer with mystic symbols sits here.',
+        "material":    'leather',
+        "type": 'armor',
+        "wear_flags": {"take": True, "wrist": True},
+        "condition": 90,
+        "armor": (2, 4, 4, 2),
+        "stat_bonuses": {'hitroll': 1},
+        "level": 7, "weight": 10, "value": 690,
+        "extra_descs": [('bracer', 'This bracer is covered with runes of protection and luck in combat.')],
+    },
+    3505: {
+        "keywords":    'knife dagger',
+        "short_descr": 'a rune-covered knife',
+        "description": 'A wide-bladed knife sits undisturbed on the floor.',
+        "material":    'mithril',
+        "type": 'weapon',
+        "wear_flags": {"take": True, "wield": True},
+        "extra_flags": {"magic": True, "anti_evil": True},
+        "weapon_type": 'dagger', "dam_type": 'stab', "dice": (2, 4, 0),
+        "weapon_flags": {},
+        "stat_bonuses": {'hitroll': 1},
+        "level": 5, "weight": 10, "value": 420,
+        "extra_descs": [('knife dagger', "It's very sharp, you suspect this knife is more effective than many swords.\nIt appears to be of elvish origins, and is made of finely crafted mithril,\nwith a stylized ivory hilt.")],
+    },
+}
+
+# -- Resets ---------------------------------------------------------------------
+# ("M", mob_vnum, global_limit, room_vnum, room_limit) -- spawn mob up to limits
+# ("O", item_vnum, room_vnum)                          -- place one item copy in room
+# ("E", item_vnum, slot_name, limit)                   -- equip item on last M mob
+# ("G", item_vnum, limit)                              -- give item to last M mob inventory
+# E/G/P limit: raw ROM reset-count field (cf. db.c reset_room): a value
+# > 50 is a legacy encoding meaning limit 6; -1 means unlimited, and 0
+# also means unlimited for E/G specifically (not P). Enforced at runtime.
+# ("P", item_vnum, limit, container_vnum, max)         -- fill container in room up to max (capped by limit)
+# ("R", room_vnum, num_dirs)                           -- shuffle first num_dirs exits (skipped on doors)
+# D resets are baked into room exit flags at conversion time
+RESETS = (
+    ("M", 3500, 2, 3521, 2),
+    ("M", 3500, 2, 3521, 2),
+    ("M", 3501, 8, 3512, 2),
+    ("E", 3500, "wield", 18),
+    ("E", 3045, "body", 6),
+    ("M", 3501, 10, 3512, 2),
+    ("E", 3500, "wield", 18),
+    ("E", 3502, "head", 6),
+    ("E", 3075, "feet", 6),
+    ("M", 3501, 10, 3509, 2),
+    ("E", 3500, "wield", 18),
+    ("E", 3072, "body", 6),
+    ("M", 3501, 10, 3506, 2),
+    ("E", 3500, "wield", 18),
+    ("E", 3074, "legs", 6),
+    ("M", 3501, 10, 3513, 2),
+    ("E", 3500, "wield", 18),
+    ("E", 3077, "arms", 6),
+    ("M", 3501, 10, 3556, 2),
+    ("E", 3500, "wield", 18),
+    ("E", 3076, "hands", 6),
+    ("M", 3506, 4, 3551, 2),
+    ("E", 3502, "head", -1),
+    ("E", 3500, "wield", 20),
+    ("E", 3072, "body", 8),
+    ("M", 3506, 4, 3556, 2),
+    ("E", 3500, "wield", 20),
+    ("E", 3502, "head", -1),
+    ("E", 3072, "body", 8),
+    ("M", 3507, 1, 3556, 1),
+    ("E", 3072, "body", -1),
+    ("E", 3501, "wield", 6),
+    ("E", 3502, "head", -1),
+    ("M", 3502, 1, 3575, 1),
+    ("M", 3503, 1, 3576, 1),
+    ("M", 3504, 1, 3577, 1),
+    ("E", 3505, "wield", 3),
+    ("M", 3505, 4, 3583, 2),
+    ("E", 3503, "neck_1", 8),
+    ("E", 3022, "wield", -1),
+    ("M", 3505, 4, 3584, 2),
+    ("E", 3504, "wrist_l", 4),
+    ("E", 3022, "wield", -1),
+)
+
+# -- Helps ---------------------------------------------------------------------
+HELPS = (
+)
+
+# -- Socials -------------------------------------------------------------------
+SOCIALS = (
+)
+
+# -- MobProgs ------------------------------------------------------------------
+# (vnum, code) -- mob program code blocks, referenced by mob triggers
+MOBPROGS = {
+}
+
+# -- ObjProgs ------------------------------------------------------------------
+# (vnum, code) -- object program code blocks, referenced by object triggers
+OBJPROGS = {
+}
+
+# -- RoomProgs -----------------------------------------------------------------
+# (vnum, code) -- room program code blocks, referenced by room triggers
+ROOMPROGS = {
+}

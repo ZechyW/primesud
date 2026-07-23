@@ -23,6 +23,11 @@ _advance_fling = _MOD._advance_fling
 tml_prime = _MOD.tml_prime
 
 
+def test_xy_key_uses_macro_sentinel_without_changing_alpha_letters():
+    tr = tml_prime(scrollback_size=0)
+    assert tr.key_map[20] == [_MOD._FN_XY, 'f', None, 'F']
+
+
 def test_advance_fling_moves_by_row_steps_and_decays_velocity():
     depth, accum_px, velocity, moved = _advance_fling(
         depth=7, accum_px=0, velocity=500, dt_ms=40,

@@ -22,7 +22,8 @@ avoid confusion with the similarly-named 1stMud sources; recover via git
 history, commit f74****, or reference/quickmud/rom24-quickmud-master.zip).
 
 Sections handled:   #AREA  #ROOMS  #MOBILES  #OBJECTS  #RESETS  #SPECIALS
-                    #SHOPS  #HELPS  #SOCIALS  #MOBPROGS
+                    #SHOPS  #HELPS  #SOCIALS  #MOBPROGS  #OBJPROGS
+                    #ROOMPROGS
 Anything else -- including #AREADATA and legacy #MOBOLD/#OBJOLD -- is a
 hard conversion error, mirroring QuickMUD boot_db's bug()+exit(1).
 
@@ -155,6 +156,14 @@ ITEM_TYPE_NUM = {
 MPROG_TRIGGERS = {
     "act", "bribe", "death", "entry", "fight", "give", "greet", "grall",
     "kill", "hpcnt", "random", "speech", "exit", "exall", "delay", "surr",
+}
+OPROG_TRIGGERS = {
+    "act", "fight", "give", "greet", "grall", "random", "speech",
+    "exall", "delay", "drop", "get", "sit",
+}
+RPROG_TRIGGERS = {
+    "act", "fight", "drop", "greet", "grall", "random", "speech",
+    "exall", "delay",
 }
 WLOC_SLOT = {
     0:  "light",
@@ -441,6 +450,17 @@ def parse_mobiles(lines):
 
         # level  hitroll  hp_dice  mana_dice  dam_dice  dam_type  (all one line in ROM)
         parts = lines[i].split(); i += 1
+        if len(parts) > 6:
+            # ROM format is exactly 6 tokens; 8 tokens is the signature of a
+            # 1stMud v4 line (level random autoset hitroll ..., db2.c:101-105)
+            # which would otherwise silently mis-parse (random read as
+            # hitroll, hitroll fed to parse_dice's (1,1,0) fallback).
+            raise ValueError(
+                "mob #" + str(vnum) + " stat line has " + str(len(parts)) +
+                " tokens (expected 6): " + repr(lines[i - 1]) +
+                " -- 1stMud v4 layout with random/autoset fields? Strip them "
+                "or add v4 support (db2.c:101-105) before converting."
+            )
         level   = int(parts[0]) if parts else 0
         hitroll = int(parts[1]) if len(parts) > 1 else 0
         hp_dice   = parse_dice(parts[2]) if len(parts) > 2 else (1, 1, 0)
@@ -474,15 +494,24 @@ def parse_mobiles(lines):
         size     = parts[2] if len(parts) > 2 else "medium"
         material = parts[3] if len(parts) > 3 else ""
 
-        # optional trailer lines: F (flag remove) or M (mobprog trigger)
+        # optional trailer lines: E (pet evolution), F (flag remove), or M (mobprog trigger)
         # F lines REMOVE bits inherited from race table (cf. db2.c:307-335)
         f_removes = []
         mob_triggers = []
+        evolves_to = None
         while i < len(lines):
             tline = lines[i].strip()
             if tline.startswith("#") or tline == "":
                 break
-            if tline and tline[0] == "F":
+            if tline and tline[0] == "E":
+                eparts = tline.split()
+                if len(eparts) != 2 or not eparts[1].isdigit():
+                    raise ValueError(
+                        "mob trailer 'E' needs one target vnum: " + repr(tline)
+                    )
+                evolves_to = int(eparts[1])
+                i += 1
+            elif tline and tline[0] == "F":
                 # db2.c:307-313 reads word/vector via whitespace-skipping
                 # freads, so the payload may spill onto the next line(s)
                 # (mirrors the OBJECTS 'F' trailer handling below).
@@ -616,6 +645,8 @@ def parse_mobiles(lines):
             "size":        size,
             "mob_triggers": mob_triggers,
         }
+        if evolves_to is not None:
+            mob["evolves_to"] = evolves_to
         if f_removes:
             mob["flag_removes"] = tuple(flag_removes)
         mobs.append((vnum, mob))
@@ -657,10 +688,11 @@ def parse_objects(lines):
         cond_letter = lw_line[3] if len(lw_line) > 3 else ""
         condition = OBJ_CONDITION.get(cond_letter, 100)
 
-        # optional A / E / F trailer lines
+        # optional A / E / F / O trailer lines
         applies      = {}
         extra_descs  = []
         flag_affects = []
+        obj_triggers = []
         while i < len(lines):
             tline = lines[i].strip()
             if tline.startswith("#"):
@@ -723,6 +755,31 @@ def parse_objects(lines):
                 bits = decode_flags(flag_bits(bv), bit_table)
                 flag_affects.append((where, loc_name, mod, bits))
                 i += 1
+            elif tline and tline[0] == "O":
+                # O <trig_type> <oprog_vnum> <trig_phrase>~
+                # 1stMud db2.c load_objects 'O': read_word + read_long +
+                # read_string, all whitespace-skipping. [PRIMESUD dialect
+                # extension to the QuickMUD source format.]
+                oparts = tline.split(None, 3)
+                while len(oparts) < 3 and i + 1 < len(lines) and lines[i + 1].strip():
+                    i += 1
+                    oparts = " ".join(oparts + [lines[i]]).split(None, 3)
+                if len(oparts) < 3:
+                    raise ValueError(
+                        "object trailer 'O' line incomplete (need trig_type + "
+                        "oprog vnum + phrase): " + repr(tline)
+                    )
+                trig_type = oparts[1].lower()
+                if trig_type not in OPROG_TRIGGERS:
+                    raise ValueError(
+                        "object trailer 'O' has invalid trigger type " +
+                        repr(oparts[1])
+                    )
+                oprog_vnum = int(oparts[2])
+                phrase_start = oparts[3] if len(oparts) > 3 else ""
+                trig_phrase, i = read_tilde_string_inline(
+                    phrase_start, lines, i + 1)
+                obj_triggers.append((trig_type, oprog_vnum, trig_phrase))
             elif tline == "":
                 i += 1
             else:
@@ -853,6 +910,8 @@ def parse_objects(lines):
 
         if applies:
             obj["stat_bonuses"] = applies
+        if obj_triggers:
+            obj["obj_triggers"] = obj_triggers
 
         objs.append((vnum, obj))
     return objs
@@ -898,6 +957,8 @@ def parse_rooms(lines):
             room_flags["law"] = True
         clan  = ""
         owner = ""
+        guild_classes = []
+        room_triggers = []
 
         while i < len(lines):
             tline = lines[i].strip()
@@ -988,13 +1049,57 @@ def parse_rooms(lines):
                 # owner: 'O' letter, then a tilde string that may continue on
                 # the same line (cf. db.c load_rooms: fread_string(fp))
                 owner, i = read_tilde_string_inline(tline[1:], lines, i + 1)
+            elif tline[0] == "G":
+                # guild: 'G' letter, then a class-index number (cf.
+                # reference/1stMud4.5.3/src/db.c load_rooms 'G' case:
+                # pRoomIndex->guild = read_number(fp), guarded by "if
+                # (pRoomIndex->guild > -1 && ... ) bug (\"Duplicate
+                # guild.\"); exit (1);" -- upstream allows only ONE G per
+                # room. [PRIMESUD] dialect extension: this converter allows
+                # repeated G lines on the same room and accumulates them
+                # into a "guild" tuple, so a room can serve more than one
+                # class (e.g. cleric rooms shared with paladins). Class
+                # indices per classes.py CLASS_TABLE: 0 mage, 1 cleric,
+                # 2 thief, 3 warrior, 4 paladin, 5 ranger.
+                gparts = tline.split()
+                if len(gparts) < 2:
+                    raise ValueError(
+                        "room " + str(vnum) +
+                        " has malformed 'G' (guild) trailer: " + repr(tline)
+                    )
+                guild_classes.append(int(gparts[1]))
+                i += 1
+            elif tline[0] == "R":
+                # R <trig_type> <rprog_vnum> <trig_phrase>~
+                # 1stMud db.c load_rooms 'R': read_word + read_long +
+                # read_string. [PRIMESUD dialect extension.]
+                rparts = tline.split(None, 3)
+                while len(rparts) < 3 and i + 1 < len(lines) and lines[i + 1].strip():
+                    i += 1
+                    rparts = " ".join(rparts + [lines[i]]).split(None, 3)
+                if len(rparts) < 3:
+                    raise ValueError(
+                        "room trailer 'R' line incomplete (need trig_type + "
+                        "rprog vnum + phrase): " + repr(tline)
+                    )
+                trig_type = rparts[1].lower()
+                if trig_type not in RPROG_TRIGGERS:
+                    raise ValueError(
+                        "room trailer 'R' has invalid trigger type " +
+                        repr(rparts[1])
+                    )
+                rprog_vnum = int(rparts[2])
+                phrase_start = rparts[3] if len(rparts) > 3 else ""
+                trig_phrase, i = read_tilde_string_inline(
+                    phrase_start, lines, i + 1)
+                room_triggers.append((trig_type, rprog_vnum, trig_phrase))
             else:
                 # cf. db.c load_rooms: "bug (...vnum %d has flag not
                 # 'DES'...); exit (1);" -- fail loud on any unrecognized
                 # non-blank trailer line rather than silently eating it.
                 raise ValueError(
                     "room " + str(vnum) +
-                    " has trailer letter not DESHMCO: " + repr(tline)
+                    " has trailer letter not DESHMCOGR: " + repr(tline)
                 )
 
         room = {
@@ -1013,6 +1118,10 @@ def parse_rooms(lines):
             room["clan"] = clan
         if owner:
             room["owner"] = owner
+        if guild_classes:
+            room["guild"] = tuple(guild_classes)
+        if room_triggers:
+            room["room_triggers"] = room_triggers
         rooms.append((vnum, room))
     return rooms
 
@@ -1245,8 +1354,8 @@ def parse_socials(lines):
     return socials
 
 
-def parse_mobprogs(lines):
-    """Parse #MOBPROGS section.
+def parse_progs(lines):
+    """Parse a #MOBPROGS/#OBJPROGS/#ROOMPROGS section.
 
     Each entry: #vnum  code~
     Terminated by #0.
@@ -1288,7 +1397,7 @@ def asciitext(value):
 
 
 def emit(area_data, rooms, mobs, objs, resets, helps, socials,
-         mobprogs, doverrides=None):
+         mobprogs, objprogs, roomprogs, doverrides=None):
     out = []
 
     def w(s=""):
@@ -1301,6 +1410,9 @@ def emit(area_data, rooms, mobs, objs, resets, helps, socials,
     credits  = area_data.get("credits", "Unknown")
 
     w("# fmt: off")
+    w("# GENERATED FILE -- do not edit by hand.")
+    w("# Regenerated from areas/*.are by tools/are_to_primesud.py")
+    w("# (run via tools/regen_areas.py); fix the .are or the converter.")
     w(f"# Area: {asciitext(aname)}")
     w(f"# Source: QuickMUD/ROM 2.4")
     w(f"# VNUM ranges: {vnums[0]}-{vnums[1]}")
@@ -1374,6 +1486,8 @@ def emit(area_data, rooms, mobs, objs, resets, helps, socials,
             for trig_type, mpv, phrase in mob["mob_triggers"]:
                 w(f'            ({pyrepr(trig_type)}, {mpv}, {pyrepr(phrase)}),')
             w(f'        ),')
+        if mob.get("evolves_to") is not None:
+            w(f'        "evolves_to": {mob["evolves_to"]},')
         if mob.get("flag_removes"):
             # F-line flag removals, applied after race-merge at runtime
             # (cf. mob.py create_mobile; QuickMUD db2.c REMOVE_BIT).
@@ -1471,6 +1585,18 @@ def emit(area_data, rooms, mobs, objs, resets, helps, socials,
             w(f'        "clan": {pyrepr(room["clan"])},')
         if room.get("owner"):
             w(f'        "owner": {pyrepr(room["owner"])},')
+        if room.get("guild"):
+            # [PRIMESUD] cf. 1stMud db.c load_rooms 'G' field (room->guild);
+            # this converter's dialect extension allows repeated 'G' lines
+            # to accumulate a tuple of class indices instead of upstream's
+            # single-value guild int. Class indices: 0 mage, 1 cleric,
+            # 2 thief, 3 warrior, 4 paladin, 5 ranger.
+            w(f'        "guild": {pyrepr(room["guild"])},')
+        if room.get("room_triggers"):
+            w(f'        "room_triggers": (')
+            for trig_type, rpv, phrase in room["room_triggers"]:
+                w(f'            ({pyrepr(trig_type)}, {rpv}, {pyrepr(phrase)}),')
+            w(f'        ),')
         w("    },")
     w("}")
     w("")
@@ -1561,6 +1687,11 @@ def emit(area_data, rooms, mobs, objs, resets, helps, socials,
             for where, loc_name, mod, bits in obj["flag_affects"]:
                 w(f'            ({pyrepr(where)}, {pyrepr(loc_name)}, {mod}, {_repr_flags(bits)}),')
             w(f'        ),')
+        if obj.get("obj_triggers"):
+            w(f'        "obj_triggers": (')
+            for trig_type, opv, phrase in obj["obj_triggers"]:
+                w(f'            ({pyrepr(trig_type)}, {opv}, {pyrepr(phrase)}),')
+            w(f'        ),')
         w(f'        "level": {obj["level"]}, "weight": {obj["weight"]}, "value": {obj["value"]},')
         if obj["extra_descs"]:
             w(f'        "extra_descs": {pyrepr(obj["extra_descs"])},')
@@ -1644,6 +1775,24 @@ def emit(area_data, rooms, mobs, objs, resets, helps, socials,
     w("}")
     w("")
 
+    # -- OBJPROGS --
+    w(f"# -- ObjProgs {BAR * 66}")
+    w('# (vnum, code) -- object program code blocks, referenced by object triggers')
+    w("OBJPROGS = {")
+    for opv, code in objprogs:
+        w(f'    {opv}: {pyrepr(code)},')
+    w("}")
+    w("")
+
+    # -- ROOMPROGS --
+    w(f"# -- RoomProgs {BAR * 65}")
+    w('# (vnum, code) -- room program code blocks, referenced by room triggers')
+    w("ROOMPROGS = {")
+    for rpv, code in roomprogs:
+        w(f'    {rpv}: {pyrepr(code)},')
+    w("}")
+    w("")
+
     return "\n".join(out)
 
 
@@ -1652,7 +1801,7 @@ def emit(area_data, rooms, mobs, objs, resets, helps, socials,
 # Section names this converter (and QuickMUD's boot_db) recognizes.
 KNOWN_SECTIONS = {
     "AREA", "ROOMS", "MOBILES", "OBJECTS", "RESETS", "SPECIALS",
-    "SHOPS", "HELPS", "SOCIALS", "MOBPROGS",
+    "SHOPS", "HELPS", "SOCIALS", "MOBPROGS", "OBJPROGS", "ROOMPROGS",
 }
 
 
@@ -1697,7 +1846,10 @@ def load_spec_names():
 
 
 def convert(are_path, out_path=None):
-    text  = Path(are_path).read_text(encoding="utf-8", errors="replace")
+    # Tabs only occur inside display text (signs/maps); expand to the
+    # 8-col stops a telnet client showed -- PrimeSUD's render paths have
+    # no tab-stop logic and draw '\t' as one blank cell.
+    text  = Path(are_path).read_text(encoding="utf-8", errors="replace").expandtabs(8)
     sects = split_sections(text)
     check_known_sections(sects)
 
@@ -1710,7 +1862,32 @@ def convert(are_path, out_path=None):
     shops     = parse_shops(sects.get("SHOPS", []))
     helps     = parse_helps(sects.get("HELPS", []))
     socials   = parse_socials(sects.get("SOCIALS", []))
-    mobprogs  = parse_mobprogs(sects.get("MOBPROGS", []))
+    mobprogs  = parse_progs(sects.get("MOBPROGS", []))
+    objprogs  = parse_progs(sects.get("OBJPROGS", []))
+    roomprogs = parse_progs(sects.get("ROOMPROGS", []))
+
+    # [PRIMESUD] An area may pull foreign mob/object templates into its own
+    # rooms, but must never push resets into a room owned by another area.
+    # Lazy loading depends on the room-owning area owning every placement.
+    room_vnums = set(vnum for vnum, _room in rooms)
+    for reset in resets:
+        cmd = reset[0]
+        target = (reset[3] if cmd == "M" else
+                  reset[2] if cmd == "O" else
+                  reset[1] if cmd == "R" else None)
+        if target is not None and target not in room_vnums:
+            raise ValueError(
+                "RESETS '" + cmd + "' targets room vnum " + str(target) +
+                " outside this file's ROOMS section; [PRIMESUD] move the "
+                "reset to the room-owning area"
+            )
+    for target, _direction in doverrides:
+        if target not in room_vnums:
+            raise ValueError(
+                "RESETS 'D' targets room vnum " + str(target) +
+                " outside this file's ROOMS section; [PRIMESUD] move the "
+                "reset to the room-owning area"
+            )
 
     # [PRIMESUD] Bake #SPECIALS and #SHOPS entries directly into their target
     # mob's MOBILES dict ("spec_fun" / "shop" keys) instead of emitting them
@@ -1752,7 +1929,7 @@ def convert(are_path, out_path=None):
         mobs_by_vnum[keeper]["shop"] = shop
 
     code = emit(area_data, rooms, mobs, objs, resets, helps, socials,
-                mobprogs, doverrides)
+                mobprogs, objprogs, roomprogs, doverrides)
 
     if out_path:
         Path(out_path).write_text(code, encoding="utf-8", newline="\n")

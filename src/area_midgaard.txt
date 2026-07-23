@@ -1,4 +1,7 @@
 # fmt: off
+# GENERATED FILE -- do not edit by hand.
+# Regenerated from areas/*.are by tools/are_to_primesud.py
+# (run via tools/regen_areas.py); fix the .are or the converter.
 # Area: Midgaard
 # Source: QuickMUD/ROM 2.4
 # VNUM ranges: 3000-3399
@@ -341,7 +344,7 @@ MOBILES = {
         "long_descr":  'Your guildmaster is standing here.',
         "description": 'Even though your guildmaster looks old and tired, you can clearly see the\nvast amount of knowledge she possesses. She is wearing fine magic clothing,\nand you notice that she is surrounded by a blue shimmering aura.',
         "race":        'elf',
-        "act_flags": {"sentinel": True, "practice": True, "mage": True, "nopurge": True, "train": True, "gain": True},  # [PRIMESUD] +train/gain (patch_1stmud_deltas)
+        "act_flags": {"sentinel": True, "train": True, "practice": True, "mage": True, "nopurge": True, "gain": True},
         "affected_by": {"detect_invis": True, "detect_magic": True, "detect_hidden": True, "dark_vision": True},
         "alignment": 1000,
         "level":     36,
@@ -366,7 +369,7 @@ MOBILES = {
         "long_descr":  'Your guildmaster is standing here.',
         "description": 'You are in no doubt that this guildmaster is truly close to your god; he has\na peaceful, loving look. You notice that he is surrounded by a white aura.',
         "race":        'human',
-        "act_flags": {"sentinel": True, "practice": True, "cleric": True, "nopurge": True, "gain": True},  # [PRIMESUD] +gain (patch_1stmud_deltas)
+        "act_flags": {"sentinel": True, "practice": True, "cleric": True, "nopurge": True, "gain": True},
         "affected_by": {"detect_evil": True, "detect_invis": True, "detect_magic": True, "detect_hidden": True, "sanctuary": True, "dark_vision": True},
         "alignment": 1000,
         "level":     36,
@@ -391,7 +394,7 @@ MOBILES = {
         "long_descr":  'Your guildmaster is standing here.',
         "description": 'You realize that whenever your guildmaster moves, you fail to notice it:\nthe way of the true thief.  She is dressed in poor clothing, having\nthe appearance of a beggar.\nhuman',
         "race":        'unique',
-        "act_flags": {"sentinel": True, "practice": True, "thief": True, "nopurge": True, "gain": True},  # [PRIMESUD] +gain (patch_1stmud_deltas)
+        "act_flags": {"sentinel": True, "practice": True, "thief": True, "nopurge": True, "gain": True},
         "affected_by": {"detect_invis": True, "detect_hidden": True, "dark_vision": True},
         "alignment": 1000,
         "level":     36,
@@ -415,7 +418,7 @@ MOBILES = {
         "long_descr":  'Your guildmaster is standing here.',
         "description": 'This is your master. A short, strong dwarf with bulging muscles.  Several scars\nacross his body prove that he was using arms before you were born.  He\nhas a calm look on his face.',
         "race":        'dwarf',
-        "act_flags": {"sentinel": True, "practice": True, "warrior": True, "nopurge": True, "train": True, "gain": True},  # [PRIMESUD] +train/gain (patch_1stmud_deltas)
+        "act_flags": {"sentinel": True, "train": True, "practice": True, "warrior": True, "nopurge": True, "gain": True},
         "affected_by": {"detect_invis": True, "detect_hidden": True},
         "alignment": 1000,
         "level":     36,
@@ -1044,6 +1047,7 @@ MOBILES = {
         "sex":    'either',
         "wealth": 0,
         "size":   'tiny',
+        "evolves_to": 3096,
     },
     3091: {
         "keywords":    'puppy dog pet',
@@ -1069,6 +1073,7 @@ MOBILES = {
         "sex":    'either',
         "wealth": 0,
         "size":   'small',
+        "evolves_to": 3092,
     },
     3092: {
         "keywords":    'beagle dog pet',
@@ -1094,6 +1099,7 @@ MOBILES = {
         "sex":    'either',
         "wealth": 0,
         "size":   'small',
+        "evolves_to": 3093,
     },
     3093: {
         "keywords":    'rottweiler dog pet',
@@ -1118,6 +1124,7 @@ MOBILES = {
         "sex":    'either',
         "wealth": 0,
         "size":   'medium',
+        "evolves_to": 3094,
     },
     3094: {
         "keywords":    'wolf pet',
@@ -1607,9 +1614,9 @@ ROOMS = {
         "desc": "You are in the southern end of the temple hall in the Temple of Mota.\nThe temple has been constructed from giant marble blocks, eternal in\nappearance, and most of the walls are covered by ancient wall paintings\npicturing gods, giants and peasants.\n   Large steps lead down through the grand temple gate, descending the huge\nmound upon which the temple is built and ends on the temple square below.\n   Equally large steps lead UP through a small door into the ENTRANCE to MUD\nSCHOOL.  (type 'up' to go to MUD SCHOOL.)  A small plaque is on this wall.",
         "exits": {
             "n": {"to": 3054, "desc": 'At the northern end of the temple hall is a statue and a huge altar.'},
-            "e": 200,  # [PRIMESUD] cross-area (1stMud)
+            "e": 200,
             "s": {"to": 3005, "desc": 'You see the temple square.'},
-            "w": 201,  # [PRIMESUD] cross-area (1stMud)
+            "w": 201,
             "u": {"to": 3700, "desc": 'You see the entrance to Mud School.'},
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
@@ -1617,7 +1624,6 @@ ROOMS = {
         "extra_descs": [('plaque', 'This entire world has been integrated, modified, debugged, and enhanced by\nHatchet, Kahn, and Furey of MERC Industries to be run by any MERC Mud.\n1992 December 17\nROM enhancements by Alander.')],
     },
     3002: {
-        "guild": (1, 4),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": "Cleric's Inner Sanctum",
         "desc": 'This is the inner sanctum.  A picture of the mighty Mota is hanging on\nthe wall, just above the altar which is set against the western wall.  A well\nin the middle of the floor leads down into darkness.  Vile smells waft from\nthe depths.',
         "exits": {
@@ -1626,9 +1632,9 @@ ROOMS = {
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
         "sector": 'inside',
+        "guild": (1, 4),
     },
     3003: {
-        "guild": (1, 4),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": "Cleric's Bar",
         "desc": 'The bar is one of the finest in the land, lucky it is members only.  Fine\nfurniture is set all around the room.  A small sign is hanging on the wall.',
         "exits": {
@@ -1638,6 +1644,7 @@ ROOMS = {
         "flags": {"no_mob": True, "indoors": True, "law": True},
         "sector": 'inside',
         "extra_descs": [('sign', 'The sign reads:\nFree instructions provided by the waiter:\n\n   Buy  - Buy something (drinkable) from the waiter.\n   List - The waiter will show you all the different drinks and\n          specialties, and tell the price of each.')],
+        "guild": (1, 4),
     },
     3004: {
         "name": "Entrance to Cleric's Guild",
@@ -1794,7 +1801,6 @@ ROOMS = {
         "sector": 'inside',
     },
     3018: {
-        "guild": (0,),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": "Mage's Bar",
         "desc": 'The bar is one of the wierdest in the land.  Mystical images float around\nthe air.  Illusions of fine furniture appear all around the room.',
         "exits": {
@@ -1803,9 +1809,9 @@ ROOMS = {
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
         "sector": 'inside',
+        "guild": (0,),
     },
     3019: {
-        "guild": (0,),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": "Mage's Laboratory",
         "desc": 'This is the Magical Experiments Laboratory.  Dark smoke-stained stones\narch over numerous huge oaken tables, most of these cluttered with strange-\nlooking pipes and flasks.  The floor is covered with half-erased pentagrams\nand even weirder symbols, and a blackboard in a dark corner has only been\npartially cleaned, some painful-looking letters faintly visible.  A well in\nthe middle of the floor leads down into darkness.  Vile smells waft from the\ndepths.',
         "exits": {
@@ -1814,6 +1820,7 @@ ROOMS = {
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
         "sector": 'inside',
+        "guild": (0,),
     },
     3020: {
         "name": 'The Armoury',
@@ -1836,7 +1843,6 @@ ROOMS = {
         "sector": 'inside',
     },
     3022: {
-        "guild": (3, 5),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": 'The Bar of Swordsmen',
         "desc": 'The bar of swordsmen, once upon a time beautifully furnished.  But now the\nfurniture is all around you in small pieces.  To the south is the yard, and\nto the west is the entrance hall.',
         "exits": {
@@ -1845,9 +1851,9 @@ ROOMS = {
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
         "sector": 'inside',
+        "guild": (3, 5),
     },
     3023: {
-        "guild": (3, 5),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": 'The Tournament and Practice Yard',
         "desc": 'The practice yard of the fighters.  To the north is the bar.  A well leads\ndown into darkness.',
         "exits": {
@@ -1856,6 +1862,7 @@ ROOMS = {
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
         "sector": 'inside',
+        "guild": (3, 5),
     },
     3024: {
         "name": 'Eastern End of Poor Alley',
@@ -1905,7 +1912,6 @@ ROOMS = {
         "sector": 'inside',
     },
     3028: {
-        "guild": (2,),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": 'The Thieves Bar',
         "desc": 'The bar of the thieves.  Once upon a time this place was beautifully\nfurnished, but now it seems almost empty.  To the south is the yard, and to\nthe west is the entrance hall.\n   (Maybe the furniture has been stolen?!)',
         "exits": {
@@ -1915,9 +1921,9 @@ ROOMS = {
         "flags": {"no_mob": True, "indoors": True, "law": True},
         "sector": 'inside',
         "extra_descs": [('furniture', 'As you look at the furniture, the chair you sit on disappears.')],
+        "guild": (2,),
     },
     3029: {
-        "guild": (2,),  # [PRIMESUD] cf. 1stMud G field (patch_1stmud_deltas)
         "name": 'The Secret Yard',
         "desc": 'The secret practice yard of thieves and assassins.  To the north is the\nbar.  A well leads down into darkness.',
         "exits": {
@@ -1926,6 +1932,7 @@ ROOMS = {
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
         "sector": 'inside',
+        "guild": (2,),
     },
     3030: {
         "name": 'The Dump',
@@ -2025,11 +2032,12 @@ ROOMS = {
     },
     3043: {
         "name": 'Wall Road',
-        "desc": 'You are walking next to the western city wall.  Wall Road continues further\nnorth and south.  A small, poor alley leads east.\nSome letters have been written on the wall here.',
+        "desc": 'You are walking next to the western city wall.  Wall Road continues further\nnorth and south.  A small, poor alley leads east, while a rusted gate opens\nwest onto a narrow dirt path.\nSome letters have been written on the wall here.',
         "exits": {
             "n": {"to": 3042, "desc": 'The road continues further north.'},
             "e": {"to": 3044, "desc": 'The alley leads east.'},
             "s": {"to": 3047, "desc": 'The road continues further south.'},
+            "w": {"to": 4200, "desc": 'A narrow dirt path leads west through the rusted gate.'},
         },
         "flags": {"law": True},
         "sector": 'city',
@@ -2153,13 +2161,16 @@ ROOMS = {
         "exits": {
             "s": {"to": 3001, "desc": 'You see the southern end of the temple.'},
             "u": {"to": 1215, "desc": 'Bifrost, the Rainbow Bridge, hangs in the sky above you.'},
-            "d": 3,  # [PRIMESUD] cross-area (1stMud)
+            "d": 3,
         },
         "flags": {"indoors": True, "safe": True, "law": True},
         "sector": 'inside',
         "heal_rate": 110,
         "mana_rate": 110,
         "extra_descs": [('statue Mota king god', 'The statue represents the Great God Mota, holding a staff.  He has long, grey\nhair and beard and a kindly look on his face.  His staff is topped by a painted\ncube, the 6 faces of which represent the 6 aspects of his power.'), ('altar', 'Even though the altar is more than ten feet long it appears to be made from a\nsingle block of white virgin marble.')],
+        "room_triggers": (
+            ('grall', 3054, '100'),
+        ),
     },
     3056: {
         "name": 'The Fountain of Youth Apothecary',
@@ -2283,6 +2294,7 @@ ROOMS = {
         "name": 'Small path in the park',
         "desc": 'You are on a small path running through the park.  It continues west and\nsouth and just north of here you see the southern wall of Park Cafe.',
         "exits": {
+            "e": 17700,
             "s": 3115,
             "w": 3108,
         },
@@ -2448,7 +2460,7 @@ ROOMS = {
         "exits": {
             "n": {"to": 3144, "desc": "You see the beginnings of Midgaard's bad neighborhoods."},
             "e": {"to": 3273, "desc": 'You see the concourse.'},
-            "s": {"to": 3600, "desc": 'Through the solid iron bars you see the graveyard.', "keyword": 'grate', "isdoor": True, "key": 3121},
+            "s": {"to": 3600, "desc": 'Through the solid iron bars you see the graveyard.', "keyword": 'grate', "isdoor": True, "closed": True, "locked": True, "key": 3121},
             "w": 3123,
         },
         "flags": {"law": True},
@@ -3031,7 +3043,7 @@ ROOMS = {
         "desc": 'The shops on this stretch of Clan road are long-closed and boarded up.\nNot much traffic passes through this part, as there is nothing to buy.',
         "exits": {
             "e": {"to": 3314, "desc": 'Clan Road continues to the east.'},
-            "s": 202,  # [PRIMESUD] cross-area (1stMud)
+            "s": 202,
             "w": {"to": 3302, "desc": 'Clan Road continues to the west.'},
         },
         "flags": {"law": True},
@@ -3208,6 +3220,9 @@ OBJECTS = {
         "extra_flags": {"hum": True, "bless": True},
         "weapon_type": 'sword', "dam_type": 'cleave', "dice": (4, 10, 0),
         "weapon_flags": {"vorpal": True, "two_hands": True},
+        "obj_triggers": (
+            ('drop', 3005, '100'),
+        ),
         "level": 42, "weight": 450, "value": 5600,
         "extra_descs": [('scimitar blade', "It is quite heavy.  The blade is made of some metal that you can't even\nspell.  The edge of the blade looks as if it could cut through anything\nor anyone.")],
     },
@@ -5128,7 +5143,6 @@ RESETS = (
     ("G", 3152, -1),
     ("G", 3153, -1),
     ("G", 3151, -1),
-    # [PRIMESUD] dropped ("G", 1103, -1) (defer cross-area load)
     ("G", 3150, -1),
     ("G", 3100, -1),
     ("M", 3160, 1, 3160, 1),
@@ -5347,4 +5361,16 @@ SOCIALS = (
 # -- MobProgs ------------------------------------------------------------------
 # (vnum, code) -- mob program code blocks, referenced by mob triggers
 MOBPROGS = {
+}
+
+# -- ObjProgs ------------------------------------------------------------------
+# (vnum, code) -- object program code blocks, referenced by object triggers
+OBJPROGS = {
+    3005: "obj echo Don't drop me!",
+}
+
+# -- RoomProgs -----------------------------------------------------------------
+# (vnum, code) -- room program code blocks, referenced by room triggers
+ROOMPROGS = {
+    3054: 'room echo {`You enter a room of sanctuary and peace.{x',
 }

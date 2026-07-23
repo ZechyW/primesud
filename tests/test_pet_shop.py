@@ -11,12 +11,13 @@ sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
 from handler import _char_base, get_char_room
 from shop import do_buy, do_list
-from mob import spawn_pet, create_mobile
+from mob import spawn_pet, create_mobile, scale_pet
 import world
 from world import ROOM_DEFS, MOB_DEFS
 
 
 PET_TPL = 9402
+EVOLVED_TPL = 9403
 SHOP_ROOM = 9010     # pet_shop flag
 STOCK_ROOM = 9011    # SHOP_ROOM + 1
 
@@ -66,6 +67,15 @@ def _clean_world_state():
         "hp_dice": (1, 1, 10), "hitroll": 0, "damage": (1, 4, 0),
         "armor": (0, 0, 0, 0),
         "act_flags": {"sentinel": True, "pet": True},
+        "evolves_to": EVOLVED_TPL,
+    }
+    MOB_DEFS._data[EVOLVED_TPL] = {
+        "short_descr": "a dire beagle", "long_descr": "A dire beagle is here.",
+        "description": "The dire beagle looks formidable.",
+        "keywords": "dire beagle dog pet", "level": 10, "race": "Human",
+        "hp_dice": (2, 1, 18), "hitroll": 2, "damage": (2, 4, 2),
+        # Stock pet-shop forms may gain the pet flag dynamically from the room.
+        "armor": (-2, -2, -2, -2), "act_flags": {},
     }
     _stub_room(SHOP_ROOM, flags={"pet_shop": True, "indoors": True})
     _stub_room(STOCK_ROOM)
@@ -155,6 +165,41 @@ class TestBuyPet:
         assert "out of pets" in out
 
 
+class TestNewThalosStockRoom:
+    """New Thalos shop 9621 stocks from 9706, not 9622 (ROM 'new thalos' hack)."""
+
+    def _setup_new_thalos(self):
+        _stub_room(9621, flags={"pet_shop": True, "indoors": True})
+        _stub_room(9622)   # The Butchary -- vnum+1 decoy, must NOT be used
+        _stub_room(9706)
+
+    def _stock_9706(self, mid=2):
+        pet = create_mobile(PET_TPL)
+        pet["id"] = mid
+        pet["room"] = 9706
+        pet["home_area"] = "test"
+        world.chars[mid] = pet
+        world.rooms._data[9706]["mobs"].append(mid)
+        return pet
+
+    def test_list_reads_9706(self, capsys):
+        self._setup_new_thalos()
+        player = _make_player(room=9621)
+        self._stock_9706()
+        do_list(player, [])
+        out = capsys.readouterr().out
+        assert "Pets for sale:" in out
+        assert "a fat beagle" in out
+
+    def test_buy_reads_9706(self):
+        self._setup_new_thalos()
+        player = _make_player(room=9621)
+        self._stock_9706()
+        do_buy(player, ["beagle"])
+        assert player["pet"] is not None
+        assert world.chars[player["pet"]]["room"] == 9621
+
+
 class TestPetPersistence:
     def _full_player(self):
         from player import create_char
@@ -176,8 +221,7 @@ class TestPetPersistence:
         game_state._serialize_world()
         with open(str(tmp_path / "t.sav")) as f:
             payload = f.read()
-        assert ("p.pet=" + str(PET_TPL) + "|7|" + str(pet["max_hit"])
-                + "|fido") in payload
+        assert ("p.pet=" + str(PET_TPL) + "|7|fido") in payload
         # pet must not be serialized as a template position
         assert "m." + str(PET_TPL) + "=" not in payload
 
@@ -207,8 +251,9 @@ class TestPetPersistence:
         assert pid is not None
         pet2 = world.chars[pid]
         assert pet2["tpl"] == PET_TPL
-        assert pet2["hit"] == 7
-        assert pet2["max_hit"] == 11
+        # max HP is re-derived from the loaded owner's level/tier; legacy
+        # absolute HP is clamped into that new range.
+        assert pet2["hit"] == pet2["max_hit"] == 2
         assert pet2["pet_name"] == "fido"
         assert pet2["master"] == 1
         assert pet2["room"] == player2["room"]
@@ -216,3 +261,30 @@ class TestPetPersistence:
         assert len(afs) == 1
         assert afs[0]["duration"] == 5
         assert pet2["mod_stat"].get("str") == 2   # modifier re-applied
+
+
+class TestPetProgression:
+    def test_pet_scales_and_evolves_with_owner(self):
+        player = _make_player()
+        player["tier"] = 0
+        pet = spawn_pet(PET_TPL, player, name_arg="fido", announce=False)
+        hp = pet["max_hit"]
+        player["level"] += 1
+        scale_pet(player)
+        assert pet["level"] == player["level"]
+        assert pet["max_hit"] > hp
+
+        player["tier"] = 1
+        player["level"] = 1
+        scale_pet(player, evolve=True, reset=True)
+        assert pet["tpl"] == EVOLVED_TPL
+        assert pet["act_flags"].get("pet")
+        assert pet["pet_name"] == "fido"
+        assert pet["master"] == player["id"]
+
+    def test_invalid_evolution_keeps_current_form(self):
+        player = _make_player()
+        pet = spawn_pet(PET_TPL, player, announce=False)
+        MOB_DEFS._data[PET_TPL]["evolves_to"] = 999999
+        scale_pet(player, evolve=True, reset=True)
+        assert pet["tpl"] == PET_TPL

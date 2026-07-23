@@ -3,11 +3,13 @@
 import world
 from world import ITEM_DEFS, ROOM_DEFS
 from item import obj_vnum, item_affect_remove
+from handler import unequip_char
 from urandom import randint
 import terminal
 from config import (
     PULSE_VIOLENCE,
     PULSE_MOBILE,
+    PULSE_MUSIC,
     PULSE_TICK,
     PULSE_AREA,
     TICK_SECS,
@@ -15,11 +17,13 @@ from config import (
 from combat import update_mob_timers, violence_update
 from game_time import time_update
 from mob import mobile_update, aggr_update, area_update, weather_update
+from music import song_update
 from player import tick_update
 from quest import quest_update
 from gquest import gquest_update
 from stances import first_stance_tip  # [PRIMESUD]
 from explored import mark_explored  # [PRIMESUD]
+from economy import bank_update
 from debug import DBG, dbg  # [PRIMESUD]
 
 # -- Return flags for update_handler (cf. 1stMud update.c) --------------------
@@ -29,6 +33,7 @@ UPD_TICK     = 2
 # -- Countdown timers (cf. 1stMud static locals in update_handler) -------------
 _pulse_area     = 0
 _pulse_mobile   = 0
+_pulse_music    = 0
 _pulse_violence = 0
 _pulse_tick     = 0
 
@@ -40,11 +45,15 @@ def update_handler():
     static locals.  Returns bitmask of UPD_* flags so caller can handle
     PrimeSUD-specific display.
     """
-    global _pulse_area, _pulse_mobile, _pulse_violence, _pulse_tick
+    global _pulse_area, _pulse_mobile, _pulse_music, _pulse_violence, _pulse_tick
 
     tr = terminal.tr
     player = world.chars[1]
     fired = 0
+
+    # [PRIMESUD] Far-area eviction; fast no-op unless the player moved.
+    # Runs before area_update so resets happen after the heap is trimmed.
+    world.maybe_evict(player)
 
     _pulse_area -= 1
     if _pulse_area <= 0:
@@ -52,8 +61,14 @@ def update_handler():
         if "tick" in DBG:  # [PRIMESUD]
             dbg("pulse area")
         area_update(tr, player)
+        bank_update()
 
-    # pulse_music -- not yet ported
+    _pulse_music -= 1
+    if _pulse_music <= 0:
+        _pulse_music = PULSE_MUSIC
+        if "tick" in DBG:  # [PRIMESUD]
+            dbg("pulse music")
+        song_update()
 
     _pulse_mobile -= 1
     if _pulse_mobile <= 0:
@@ -79,7 +94,7 @@ def update_handler():
         if "tick" in DBG:  # [PRIMESUD]
             dbg("pulse tick")
         weather_update(tr, player)
-        time_update()
+        time_update(tr, player)
         player["played"] = player.get("played", 0) + TICK_SECS
         tick_update(tr, player, ROOM_DEFS[player["room"]])
         obj_update(tr, player)
@@ -161,17 +176,29 @@ def obj_update(tr, player):
     Iterates room items, NPC inventories, and player inventory/equipment.
     Recurses into container contents to match 1stMud's flat global object
     list iteration.  Affects tick first (duration--, 20%% level fade, remove
-    expired), then timer countdown and decay handling.
+    expired), then the random/delay objprog pulse (cf. update.c:822-835;
+    container contents are excluded, matching the upstream located-only gate
+    -- see mobprog.pulse_obj for the intent-parity note), then timer
+    countdown and decay handling.
 
     Args:
         tr: Terminal for decay messages.
         player (dict): Player state.
     """
+    oprogs = bool(world.OBJPROGS)  # ponytail: no obj progs -> skip per-obj pulse
+    if oprogs:
+        import mobprog  # deferred: keep mobprog off the boot path
+        ptag = ROOM_DEFS[player["room"]].get("area")  # non-empty area = the player's
+
     # -- Room items --
     for rvnum, room in world.rooms.items():
         for obj in list(room.get("items", [])):
             _tick_contents(obj.get("contents", []))
             _obj_affect_update(obj)
+            if (oprogs and mobprog.pulse_obj(
+                    obj, rvnum, None, ROOM_DEFS[rvnum].get("area") == ptag)
+                    and obj not in room["items"]):
+                continue  # the prog purged/moved it; nothing left to tick
             timer = obj.get("timer", -1)
             if timer <= 0:
                 continue
@@ -192,6 +219,9 @@ def obj_update(tr, player):
         for obj in list(ch.get("inv", [])):
             _tick_contents(obj.get("contents", []))
             _obj_affect_update(obj)
+            if (oprogs and mobprog.pulse_obj(obj, ch["room"], ch, True)
+                    and obj not in ch["inv"]):
+                continue
             timer = obj.get("timer", -1)
             if timer <= 0:
                 continue
@@ -207,6 +237,9 @@ def obj_update(tr, player):
     for obj in list(player.get("inv", [])):
         _tick_contents(obj.get("contents", []))
         _obj_affect_update(obj)
+        if (oprogs and mobprog.pulse_obj(obj, player["room"], player, True)
+                and obj not in player["inv"]):
+            continue
         timer = obj.get("timer", -1)
         if timer <= 0:
             continue
@@ -228,13 +261,15 @@ def obj_update(tr, player):
             continue
         _tick_contents(obj.get("contents", []))
         _obj_affect_update(obj)
+        if (oprogs and mobprog.pulse_obj(obj, player["room"], player, True)
+                and player["equip"].get(slot) is not obj):
+            continue
         timer = obj.get("timer", -1)
         if timer <= 0:
             continue
         timer -= 1
         obj["timer"] = timer
         if timer == 0:
-            from handler import unequip_char
             tr.print(_decay_message(obj))
             # Floating equipped container: spill contents to room
             # (cf. 1stMud update.c:910-913)

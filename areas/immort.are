@@ -676,6 +676,10 @@ D 0 1210   0    1	* Office north
 D 0 1217   2    1	* Valhalla south
 D 0 1211   2    1	* Arena of Judgement south
 D 0 1218   0    1	* Valhalla north
+* [PRIMESUD] O 3135 1200 moved from midgaard (defer cross-area load)
+O 0 3135  10 1200	* a fountain
+* [PRIMESUD] O 3200 1200 moved from midgaard (defer cross-area load)
+O 0 3200  -1 1200	* the juke
 S
 
 #SHOPS

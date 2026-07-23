@@ -10,10 +10,16 @@ _SB_DN = 11   # shift++ : scroll down (within scrollback)
 _HIST_UP = 12   # symb key (index 1) -- recall older command
 _HIST_DN = 13   # help key (index 3) -- recall newer command
 
-_FN_X2    = 14  # x2 key -- index 26, row above numpad
-_FN_PM    = 15  # +/- key -- index 27
-_FN_PAREN = 16  # ()  key -- index 28
-_FN_COMMA = 17  # ,   key -- index 29
+_FN_SIN   = 14  # sin key -- index 21, two rows above numpad
+_FN_COS   = 15  # cos key -- index 22
+_FN_TAN   = 16  # tan key -- index 23
+_FN_LN    = 17  # ln  key -- index 24
+_FN_LOG   = 18  # log key -- index 25
+_FN_X2    = 19  # x2 key -- index 26, row above numpad
+_FN_PM    = 20  # +/- key -- index 27
+_FN_PAREN = 21  # ()  key -- index 28
+_FN_COMMA = 22  # ,   key -- index 29
+_FN_XY    = 23  # x^y key -- index 20
 
 _KEY_QUEUE_SIZE = 16
 
@@ -76,21 +82,21 @@ class tml_prime(tml):
         # [PRIMESUD] Rebuild key_map: G2 Prime's MicroPython corrupts
         # inherited dicts from super()/tml.__init__() -- missing keys.
         self.key_map = {
-            4: ['\e','\e','\e','\e'],
-            7: ['\L','\L','\L','\L'],
-            8: ['\R','\R','\R','\R'],
+            4: ['\\e','\\e','\\e','\\e'],
+            7: ['\\L','\\L','\\L','\\L'],
+            8: ['\\R','\\R','\\R','\\R'],
             14: [None,'a',None,'A'],
             15: [None,'b',None,'B'],
             16: [None,'c',None,'C'],
             17: [None,'d',None,'D'],
             18: [None,'e',None,'E'],
             19: ['\b','\b','\b','\b'],
-            20: ['^','f',None,'F'],
-            21: [None,'g',None,'G'],
-            22: [None,'h',None,'H'],
-            23: [None,'i',None,'I'],
-            24: [None,'j',None,'J'],
-            25: [None,'k',None,'K'],
+            20: [_FN_XY,'f',None,'F'],
+            21: [_FN_SIN,'g',None,'G'],
+            22: [_FN_COS,'h',None,'H'],
+            23: [_FN_TAN,'i',None,'I'],
+            24: [_FN_LN,'j',None,'J'],
+            25: [_FN_LOG,'k',None,'K'],
             26: [_FN_X2,'l',None,'L'],
             27: [_FN_PM,'m','|','M'],
             28: [_FN_PAREN,'n',"'",'N'],
@@ -143,6 +149,33 @@ class tml_prime(tml):
         if scrollback_size > 0:
             dimgrob(hist_grob, self.width, scrollback_size * self.char_height, self.back_color)
             dimgrob(save_grob, self.width, self.height, self.back_color)
+
+    # ------------------------------------------------------------------
+    # Override: alloc-free glyph draw -- bytes iteration yields ints, so
+    # no per-char str allocs (a small alloc costs ~0.5ms at full game
+    # heap; docs/BUILTINS.md sec. Text rendering performance).
+    # ------------------------------------------------------------------
+
+    def print_xy(self, x, y, text):
+        # Lazy build: tml.__init__ draws the status line through this
+        # override before our __init__ body runs.
+        try:
+            gmap = self._glyph_x
+        except AttributeError:
+            gmap = self._glyph_x = {}
+            for _c, _i in self.char_map.items():
+                gmap[ord(_c)] = _i * self.char_width
+        cw = self.char_width
+        chh = self.char_height
+        px = x * cw
+        py = y * chh
+        grob = self.grob
+        _sb = strblit2
+        for b in text.encode():
+            fx = gmap.get(b, -1)
+            if fx >= 0:
+                _sb(0, px, py, cw, chh, grob, fx, 0, cw, chh)
+            px += cw
 
     # ------------------------------------------------------------------
     # Override: capture the row about to scroll off before shifting G0
@@ -490,7 +523,7 @@ class tml_prime(tml):
                 kc = self._dequeue_key()
                 if kc is not None:
                     char, _ = kc
-                    if char is None or char == '\SR':
+                    if char is None or char == '\\SR':
                         pass
                     elif char == _SB_UP or char == '-':
                         depth = min(depth + self._scroll_step, self._hist_count)

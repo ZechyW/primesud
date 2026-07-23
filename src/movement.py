@@ -4,7 +4,7 @@ from classes import is_class
 from handler import (can_see_room, chprintln, act, TO_CHAR, TO_ROOM, TO_VICT,
                      get_char_room, is_awake, is_name, affect_strip,
                      affect_to_char)
-from combat import stop_fighting
+from combat import stop_fighting, do_stance
 from skill_utils import WaitState, check_improve, get_skill
 from stances import valid_stance, get_stance, STANCE_CURRENT
 from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
@@ -19,7 +19,6 @@ from skills_table import (GSN_RECALL, GSN_PICK_LOCK, GSN_SNEAK, GSN_HIDE,
 from item import (get_obj_list, get_obj_here, create_object, obj_vnum,
                   item_container_flags, set_item_container_flag,
                   promote_obj, item_type as _item_type)
-from terminal import tprint
 from urandom import randint
 import world
 from world import ROOM_DEFS, ITEM_DEFS
@@ -61,7 +60,6 @@ def _has_boat(ch):
     Direct children only -- matches 1stMud carrying_first (act_move.c:131),
     which does not recurse into containers.
     """
-    from world import ITEM_DEFS
     for obj in ch.get("inv", []):
         vnum = obj.get("vnum") if isinstance(obj, dict) else obj
         if ITEM_DEFS.get(vnum, {}).get("type") == "boat":
@@ -96,15 +94,27 @@ def move_char(ch, direction):
 
     [Verified: 03/07/2026; quest_room_check moved after follower loop to
     match 1stMud order and re-verified same day; [PRIMESUD] auto-door
-    added 04/07/2026, auto-unlock with key added 05/07/2026] --
-    private-room / area-closed checks, area entry
-    sound, and exit/entry/greet progs not ported (see comments).
+    added 04/07/2026, auto-unlock with key added 05/07/2026; entry/greet
+    mobprogs wired after the follower loop and re-verified 09/07/2026;
+    exit/exall mobprog trigger wired at entry and re-verified 10/07/2026;
+    do_look("auto") now passed post-move so COMM_BRIEF gates the room desc,
+    re-verified 20/07/2026; obj/room exit + greet prog passes added and
+    re-verified 20/07/2026] --
+    private-room / area-closed checks and area entry sound not ported (see
+    comments).
 
     Args:
         ch (dict): Moving character (player or mob instance).
         direction (str): Single-char direction key (n/e/s/w/u/d).
     """
-    # -- p_exit_trigger (mob/obj/room progs) not ported --
+    # -- exit/exall prog triggers (cf. p_exit_trigger, act_move.c:56-60): a
+    # room mob, obj, or the room itself may react to (and abort) a player's
+    # departure; mob pass first, then obj, then room, as upstream.
+    if not ch.get("is_npc", False):
+        from mobprog import exit_trigger, oexit_trigger, rexit_trigger  # deferred: keep mobprog off the boot path
+        if (exit_trigger(ch, direction) or oexit_trigger(ch, direction)
+                or rexit_trigger(ch, direction)):
+            return
 
     in_room = ROOM_DEFS[ch["room"]]
     exits = in_room.get("exits", {})
@@ -165,7 +175,7 @@ def move_char(ch, direction):
 
     if not is_npc:
         # -- Guild room (cf. 1stMud act_move.c: to_room->guild + is_class) --
-        # "guild" tuple patched onto rooms by patch_1stmud_deltas.py;
+        # "guild" tuple from G room trailers (areas/midgaard.are);
         # Paladin/Ranger share the Cleric/Warrior guilds (CLASS_PLAN.md).
         allowed = to_room.get("guild")
         if allowed is not None:
@@ -232,7 +242,6 @@ def move_char(ch, direction):
     # [PRIMESUD] 1stMud passed "" (bare toggle); bare stance is now a
     # status screen, so relax explicitly via 'none'
     if valid_stance(get_stance(ch, STANCE_CURRENT)):
-        from combat import do_stance  # lazy import (combat imports movement targets)
         do_stance(ch, ["none"])
 
     # -- Leave message (1stMud: act("$n leaves $T.", ch, NULL, dir_name[door], TO_ROOM))
@@ -252,14 +261,15 @@ def move_char(ch, direction):
         if not aff.get("sneak"):
             act("$n has arrived.", ch, type=TO_ROOM)
     else:
-        # 1stMud: do_function(ch, &do_look, "auto") -- "auto" triggers brief mode;
-        # PrimeSUD has no brief mode, so empty args shows full room.
+        # 1stMud: do_function(ch, &do_look, "auto") -- "auto" triggers the
+        # COMM_BRIEF gate on the room description (see do_look's "auto"
+        # branch in info.py).
         # [PRIMESUD] During speedwalk, intermediate rooms get brief one-liners.
         run_buf = ch.get("run_buf")
         if run_buf and any(a == "move" for a, _ in run_buf):
             _brief_room_line(ch)
         else:
-            do_look(ch, [])
+            do_look(ch, ["auto"])
 
     # cf. 1stMud move_char: exit looping back to the same room skips
     # followers and quest checks
@@ -304,9 +314,17 @@ def move_char(ch, direction):
     # [PRIMESUD] re-close an auto-opened door once followers are through
     _close_auto_door(ch, auto_door)
 
-    # cf. 1stMud move_char act_move.c:266: quest check runs after the
-    # follower loop (entry/greet progs, also there, not ported)
-    if not is_npc:
+    # cf. 1stMud move_char act_move.c:259-267: entry (NPC self-move) and the
+    # three greet passes (player arrival: mob, obj, room), then the quest
+    # check, all after the follower loop
+    from mobprog import has_trigger, entry_trigger, greet_trigger, ogreet_trigger, rgreet_trigger  # deferred: keep mobprog off the boot path
+    if is_npc:
+        if has_trigger(ch, "entry"):
+            entry_trigger(ch)
+    else:
+        greet_trigger(ch)
+        ogreet_trigger(ch)
+        rgreet_trigger(ch)
         quest_room_check(ch)
 
 
@@ -413,8 +431,10 @@ def get_random_room(ch):
 
 def do_enter(ch, args):
     """Enter a portal object in the room (cf. 1stMud do_enter in act_enter.c).
-    [Verified: 04/07/2026] -- IsTrusted immortal bypasses and mob entry/greet
-    triggers not ported.
+    [Verified: 04/07/2026; entry/greet mobprogs wired after arrival and
+    re-verified 09/07/2026; get_obj_list can_see_obj viewer gate added and
+    re-verified 10/07/2026; do_look("auto") now gated by COMM_BRIEF and
+    re-verified 20/07/2026] -- IsTrusted immortal bypasses not ported.
 
     Args:
         ch (dict): Character entering (player or follower mob).
@@ -428,7 +448,7 @@ def do_enter(ch, args):
 
     old_vnum = ch["room"]
     rs = world.rooms[old_vnum]
-    portal = get_obj_list(" ".join(args), rs["items"], ITEM_DEFS)
+    portal = get_obj_list(" ".join(args), rs["items"], ITEM_DEFS, ch)
     if portal is None:
         chprintln(ch, "You don't see that here.")
         return
@@ -499,8 +519,9 @@ def do_enter(ch, args):
         act("$n has arrived through $p.", ch, portal, None, TO_ROOM)
 
     if not ch["is_npc"]:
-        # 1stMud: do_function(ch, &do_look, "auto") -- no brief mode here
-        do_look(ch, [])
+        # 1stMud: do_function(ch, &do_look, "auto") -- COMM_BRIEF gate (see
+        # do_look's "auto" branch in info.py).
+        do_look(ch, ["auto"])
 
     # 1stMud value[0]: charges > 0 count down; 0 -> -1 marks it spent
     charges = portal.get("charges")
@@ -542,8 +563,45 @@ def do_enter(ch, args):
             if portal in items:
                 items.remove(portal)
                 break
-    # 1stMud runs entry/greet mobprogs here (not ported); no quest room
-    # check in do_enter -- that is a move_char-only mechanic
+    # cf. 1stMud act_enter.c:206-212: entry (NPC) / the three greet passes
+    # (player: mob, obj, room) run after arrival; no quest room check in
+    # do_enter -- that is a move_char mechanic
+    from mobprog import has_trigger, entry_trigger, greet_trigger, ogreet_trigger, rgreet_trigger  # deferred: keep mobprog off the boot path
+    if ch["is_npc"]:
+        if has_trigger(ch, "entry"):
+            entry_trigger(ch)
+    else:
+        greet_trigger(ch)
+        ogreet_trigger(ch)
+        rgreet_trigger(ch)
+
+
+def do_heel(player, args):
+    """Call your pet to your room (cf. 1stMud do_heel in act_enter.c).
+
+    [PRIMESUD] ROOM_ARENA check not ported -- no arena system, matching the
+    rest of the codebase (e.g. combat.py, magic.py).
+
+    Args:
+        player (dict): Player state dict.
+        args (list): Unused.
+    """
+    pet_id = player.get("pet")
+    pet = world.chars.get(pet_id) if pet_id is not None else None
+    if pet is None:
+        chprintln(player, "You don't have a pet!")
+        return
+
+    from_vnum = pet.get("room")
+    to_vnum = player["room"]
+    if from_vnum in world.rooms and to_vnum in world.rooms:
+        if pet["id"] in world.rooms[from_vnum]["mobs"]:
+            world.rooms[from_vnum]["mobs"].remove(pet["id"])
+        pet["room"] = to_vnum
+        world.rooms[to_vnum]["mobs"].append(pet["id"])
+
+    act("$n lets out a loud whistle and $N comes running.", player, None, pet, TO_ROOM)
+    act("You let out a loud whistle and $N comes running.", player, None, pet, TO_CHAR)
 
 
 def _find_door(player, arg, exits):
@@ -853,7 +911,6 @@ def do_close(player, args):
 
 def _has_key(ch, key_vnum):
     """True if ch carries the key item (cf. 1stMud has_key in act_move.c). [Verified: 03/07/2026]"""
-    from item import obj_vnum
     for obj in ch["inv"] + [o for o in ch["equip"].values() if o is not None]:
         if obj_vnum(obj) == key_vnum:
             return True
@@ -1038,10 +1095,12 @@ def do_pick(player, args):
 # -- Position commands ---------------------------------------------------------
 # [PRIMESUD] ITEM_FURNITURE branches (stand/rest/sit/sleep at/on/in objects,
 # count_users, ch->on) not ported in all five commands below -- few furniture
-# items in current areas.  Revisit if furniture matters later.
+# items in current areas.  Revisit if furniture matters later.  Obj TRIG_SIT
+# (act_move.c:1042/1164/1303/1439, fired on the furniture object) is unported
+# for the same reason -- it needs these seams to exist.
 
 def do_stand(player, args):
-    """Stand up, waking first if asleep (cf. 1stMud do_stand in act_move.c). [Verified: 03/07/2026]
+    """Stand up, waking first if asleep (cf. 1stMud do_stand in act_move.c). [Verified: 03/07/2026; do_look("auto") on wake (act_move.c:1080) so COMM_BRIEF gates the room desc, re-verified 20/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -1055,7 +1114,8 @@ def do_stand(player, args):
         chprintln(player, "You wake and stand up.")
         act("$n wakes and stands up.", player, None, None, TO_ROOM)
         player["pos"] = "standing"
-        do_look(player, [])
+        # 1stMud: do_function(ch, &do_look, "auto") -- COMM_BRIEF gate
+        do_look(player, ["auto"])
     elif pos in ("resting", "sitting"):
         chprintln(player, "You stand up.")
         act("$n stands up.", player, None, None, TO_ROOM)
@@ -1257,7 +1317,7 @@ def perform_recall(player, location, what="recall"):
     "$n disappears." / "$n appears in the room." room acts are not ported
     (single-player, no arena). [PRIMESUD]
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; do_look("auto") post-recall (act_move.c:1631) so COMM_BRIEF gates the room desc, re-verified 20/07/2026]
     """
     room = ROOM_DEFS[player["room"]]
 
@@ -1299,7 +1359,8 @@ def perform_recall(player, location, what="recall"):
         pet["room"] = location
         world.rooms[location]["mobs"].append(pet["id"])
 
-    do_look(player, [])
+    # 1stMud: do_function(ch, &do_look, "auto") -- COMM_BRIEF gate
+    do_look(player, ["auto"])
     return True
 
 
@@ -1424,11 +1485,11 @@ def do_run(player, args):
 
     With args: parse speedwalk string (e.g. '3s2en', 'son2e').
     Without args: [PRIMESUD] present picker of all other areas (static
-    tables only, no area loads to build the list), then lazily pathfind
-    to just the chosen one via info.find_path_to_area -- zero-load
-    area-graph BFS, then load only the areas on that chain, then a
-    restricted room-level BFS; falls back to loading every area only if
-    that restricted search can't complete the chain at room granularity.
+    tables only, no area loads to build the list), then pathfind to just
+    the chosen one via info.find_path_to_area -- exact shortest route
+    over the precomputed border graph (paths.idx), zero area loads at
+    routing time; areas along the walk load lazily as the run enters
+    them, and far-area eviction trims behind per pulse.
 
     Steps are consumed one-per-pulse by run_buf_step() in game_loop
     (cf. 1stMud read_from_buffer consuming run_buf in comm.c).
@@ -1452,8 +1513,8 @@ def do_run(player, args):
 
     if not args:
         # [PRIMESUD] No-args picker: list all other areas from the static
-        # tables (zero area loads), then pathfind lazily to just the one
-        # picked -- computing directions for every area up front is
+        # tables (zero area loads), then border-graph route to just the
+        # one picked -- computing directions for every area up front is
         # exactly the load-everything cost this is meant to avoid.
         # (1stMud prints "You run in place!" on no args)
         source_area = ROOM_DEFS.get(player.get("room"), {}).get("area")

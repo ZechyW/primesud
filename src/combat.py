@@ -10,6 +10,7 @@ from world import (
     OBJ_VNUM_COINS,
 )
 from colors import upper
+from comm import die_follower, do_emote, do_function, nuke_pets, stop_follower
 from config import (
     LEVEL_HERO,
     MAX_MORTAL_LEVEL,
@@ -56,9 +57,12 @@ from effects import TARGET_CHAR, fire_effect, cold_effect, shock_effect
 from item import (create_object, item_extra_flags,
                   set_item_extra_flag, get_obj_list, obj_vnum,
                   apply_money_pickup, item_weapon_flags, item_affect_find)
+from gquest import gq_kill_check
 from picker import pick_from
-from player import (PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOASSIST,
+from player import (reset_char, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOASSIST,
                     PLR_AUTODAMAGE, PLR_DEFAULTS)
+from quest import (QUEST_DELIVER, QUEST_FINDMOB, is_quester, quest_kill_check,
+                   update_all_qobjs)
 from races import RACE_TABLE, race_lookup
 from skill_utils import get_skill, check_improve, skill_level, WaitState, DazeState
 from stances import (STANCE_TABLE, MAX_STANCE,
@@ -86,14 +90,18 @@ from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 
 def violence_update(player):
     """One combat pulse: all chars with a fight target attack (cf. 1stMud violence_update in fight.c).
-    [Verified: 02/07/2026; hunt_victim wired and re-verified 04/07/2026] --
-    mobprog/objprog/roomprog TRIG_FIGHT still not ported (see TODOs).
+    [Verified: 02/07/2026; hunt_victim wired and re-verified 04/07/2026; mob
+    TRIG_FIGHT/TRIG_HPCNT wired and re-verified 09/07/2026; [PRIMESUD]
+    autoskill hook added 18/07/2026; worn-obj + room TRIG_FIGHT wired and
+    re-verified 20/07/2026; post-multi_hit victim re-fetch (fight.c:86) fixed
+    and re-verified 21/07/2026]
 
     Args:
         player (dict): Player state dict.
     """
     chars = world.chars
 
+    room_trig = False  # room TRIG_FIGHT at most once per pulse (cf. fight.c:65)
     # Need to copy to list first as chars could get modified during iteration (on deaths)
     for ch in [chars[k] for k in sorted(chars)]:
         # 1stMud: IsNPC(ch) && ch->fighting == NULL && IsAwake(ch) && ch->hunting != NULL
@@ -119,15 +127,35 @@ def violence_update(player):
             stop_fighting(ch, both=False)
 
         # 1stMud: victim = ch->fighting; if victim == NULL: continue
-        if ch["fighting"] is None:
+        # (fight.c:86 re-fetches: multi_hit may have killed and retargeted,
+        # leaving the old local victim pointing at an extracted char)
+        victim = chars.get(ch["fighting"]) if ch["fighting"] is not None else None
+        if victim is None:
             continue
 
         # 1stMud: check_assist(ch, victim)
         check_assist(ch, victim)
 
-        # TODO: mob TRIG_FIGHT / TRIG_HPCNT triggers not ported
-        # TODO: obj worn-item TRIG_FIGHT triggers not ported
-        # TODO: room TRIG_FIGHT trigger not ported
+        # mob TRIG_FIGHT / TRIG_HPCNT (cf. fight.c:91-98); opponent = victim
+        if ch["is_npc"]:
+            from mobprog import fight_trigger  # deferred: keep mobprog off the boot path
+            fight_trigger(ch, victim)
+        else:
+            # [PRIMESUD] autoskill: player fires one auto combat action per
+            # round, mirroring where mobs fire their specials
+            from autoskill import auto_skill_round  # deferred: autoskill imports combat
+            auto_skill_round(ch)
+        # worn-item then room TRIG_FIGHT, the room at most once per pulse;
+        # the prog's triggering char is ch's opponent (cf. fight.c:99-113)
+        import mobprog  # deferred: keep mobprog off the boot path
+        for obj in (ch.get("equip") or {}).values():
+            if obj is not None and mobprog.has_otrigger(obj, "fight"):
+                mobprog.opercent_trigger(
+                    {"obj": obj, "room": ch["room"], "carrier": ch},
+                    victim, None, None, "fight")
+        if not room_trig and mobprog.has_rtrigger(ch["room"], "fight"):
+            room_trig = True
+            mobprog.rpercent_trigger(ch["room"], victim, None, None, "fight")
 
 
 def check_assist(ch, victim):
@@ -164,7 +192,6 @@ def check_assist(ch, victim):
         # Case 1: mob with assist_players aids player against victim
         if not ch["is_npc"]:
             if off.get("assist_players") and rch["level"] + 6 > victim["level"]:
-                from comm import do_function, do_emote
                 do_function(rch, do_emote, "screams and attacks!")
                 multi_hit(rch, victim)
                 continue
@@ -200,7 +227,6 @@ def check_assist(ch, victim):
         # [PRIMESUD] Single-player: victim's group = victim only; target is always victim.
         if not can_see(rch, victim):
             continue
-        from comm import do_function, do_emote
         do_function(rch, do_emote, "screams and attacks!")
         multi_hit(rch, victim)
 
@@ -942,7 +968,6 @@ def is_safe(ch, victim):
 
             # 1stMud: quest deliver/findmob target protected;
             # [PRIMESUD] vnum match instead of instance pointer
-            from quest import QUEST_DELIVER, QUEST_FINDMOB
             if (ch.get("quest_status") in (QUEST_DELIVER, QUEST_FINDMOB)
                     and victim.get("tpl") == ch.get("quest_mob", 0)):
                 # 1stMud: "You are supposed to deliver $p to $N, not kill $M."
@@ -1009,7 +1034,6 @@ def is_safe_spell(ch, victim, area):
                 return True
             # 1stMud: quest deliver/findmob target protected;
             # [PRIMESUD] vnum match instead of instance pointer
-            from quest import QUEST_DELIVER, QUEST_FINDMOB
             if (ch.get("quest_status") in (QUEST_DELIVER, QUEST_FINDMOB)
                     and victim.get("tpl") == ch.get("quest_mob", 0)):
                 return True
@@ -1090,8 +1114,9 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
     (cf. 1stMud damage in fight.c).
     [Verified: 02/07/2026; stance re-checks and stop_follower added and
     re-verified 03/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- force/static/flame shields, drunk reduction,
-    arena/war, PvP, mobprogs, and wiznet not ported (noted inline);
+    04/07/2026; TRIG_KILL/TRIG_DEATH mobprogs wired and re-verified
+    09/07/2026] -- force/static/flame shields, drunk reduction,
+    arena/war, PvP, and wiznet not ported (noted inline);
     autoloot/autogold/autosac inlined instead of do_get/do_sacrifice
     dispatch; randomize_damage applied (1stMud discards it -- see FIXES.md).
 
@@ -1134,8 +1159,12 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         if POS_ORDER[victim["pos"]] > POS_ORDER["stunned"]:
             if victim["fighting"] is None:
                 set_fighting(victim, ch)
-                # 1stMud: if (IsNPC(victim) && HasTriggerMob(victim,TRIG_KILL)) p_percent_trigger(...)
-                # [PRIMESUD] skip TRIG_KILL (not ported) - mobprogs
+                # TRIG_KILL: NPC victim joining combat reacts to attacker
+                # (cf. fight.c:920); named "kill" upstream but fires on engage.
+                if victim["is_npc"]:
+                    from mobprog import has_trigger, kill_trigger  # deferred: keep mobprog off the boot path
+                    if has_trigger(victim, "kill"):
+                        kill_trigger(victim, ch)
             # 1stMud: if (victim->timer <= 4) victim->position = POS_FIGHTING;
             # [PRIMESUD] timer is connection idle counter -- always 0 in single-player, so always true
             victim["pos"] = "fighting"
@@ -1148,7 +1177,6 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
 
         # 1stMud: if (victim->master == ch) stop_follower(victim);
         if victim.get("master") == ch.get("id"):
-            from comm import stop_follower  # lazy import to avoid circular dependency
             stop_follower(victim)
 
     # 1stMud: if (IsAffected(ch, AFF_INVISIBLE)) { affect_strip invis + mass invis;
@@ -1310,7 +1338,6 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         # C division truncates toward zero.
         # 1stMud: no XP penalty when a quester dies to their own quest mob;
         # [PRIMESUD] vnum match instead of instance pointer
-        from quest import is_quester
         if (not victim["is_npc"] and victim.get("xp", 0) > 0
                 and not (is_quester(victim)
                          and ch.get("tpl") == victim.get("quest_mob", 0))):
@@ -1319,11 +1346,15 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         # 1stMud: new_wiznet / announce
         # [PRIMESUD] skip wiznet/announce (not ported)
 
-        # 1stMud: if (IsNPC(victim) && HasTriggerMob(victim, TRIG_DEATH)) p_percent_trigger(...)
-        # [PRIMESUD] skip TRIG_DEATH (not ported)
+        # TRIG_DEATH: NPC victim's death prog runs before extraction, restored
+        # to standing so it can act (cf. fight.c:1141)
+        if victim["is_npc"]:
+            from mobprog import has_trigger, death_trigger  # deferred: keep mobprog off the boot path
+            if has_trigger(victim, "death"):
+                death_trigger(victim, ch)
 
         # 1stMud: update_death(victim, ch)
-        # [PRIMESUD] skip update_death (not ported)
+        update_death(victim, ch)
 
         # 1stMud: raw_kill(victim, ch)
         corpse = raw_kill(victim, ch)
@@ -1674,21 +1705,29 @@ def do_kick(ch, args):
     return None
 
 
-def do_backstab(ch, args):
+def do_backstab(ch, args, victim=None):
     """Backstab a target from behind (cf. 1stMud do_backstab in fight.c).
     [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- check_killer not ported.
+    04/07/2026; direct-victim parameter added and re-verified 19/07/2026]
+    -- check_killer not ported.
 
     Args:
         ch (dict): Acting character (player or mob instance).
-        args (list): Command arguments -- target keyword.
+        args (list): Command arguments -- target keyword.  Ignored when
+            `victim` is given.
+        victim (dict, optional): Pre-resolved target. [PRIMESUD] 1stMud
+            resolves the target by name via a room person list that holds
+            both players and NPCs; our `get_char_room` only searches NPC
+            instances (players aren't modeled as mob instances), so callers
+            that already know the target -- e.g. a mob attacking the player
+            in special.py -- pass it directly instead of a name fragment.
     """
     # [PRIMESUD] explicit gate; 1stMud lets it through but get_skill returns 0 -> guaranteed miss + lag
     if not ch["is_npc"] and GSN_BACKSTAB not in ch["learned"]:
         chprintln(ch, "You don't know how to backstab.")
         return None
 
-    if not args:
+    if victim is None and not args:
         chprintln(ch, "Backstab whom?")
         return None
 
@@ -1696,13 +1735,14 @@ def do_backstab(ch, args):
         chprintln(ch, "You're facing the wrong end.")
         return None
 
-    rs = world.rooms[ch["room"]]
-    target_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
-    if target_id is None:
-        chprintln(ch, "They aren't here.")
-        return None
+    if victim is None:
+        rs = world.rooms[ch["room"]]
+        target_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
+        if target_id is None:
+            chprintln(ch, "They aren't here.")
+            return None
+        victim = world.chars[target_id]
 
-    victim = world.chars[target_id]
     if victim is ch:
         chprintln(ch, "How can you sneak up on yourself?")
         return None
@@ -2215,10 +2255,10 @@ _DEATH_CRY_DEFAULT = "You hear $n's death cry."
 # None means unconditional; a part-gated case only fires when ch's
 # part_flags has that key set, otherwise it falls through to
 # _DEATH_CRY_DEFAULT (rolls 8-15 have no case at all and always fall
-# through too). 1stMud case 1 additionally guards on `ch->material == 0`,
-# falling through to case 2 (guts) when material is set; PrimeSUD chars
-# carry no "material" field at all (not ported), so case 1 is always taken
-# here -- see TODO.md / porting notes.
+# through too). 1stMud case 1 additionally guards on `ch->material == 0`:
+# PCs leave that pointer NULL, while NPC creation always assigns a string.
+# PrimeSUD needs no material field to preserve that distinction -- NPC roll 1
+# falls through to case 2 (guts), while PC roll 1 keeps the blood message.
 _DEATH_CRY_CASES = {
     0: ("$n hits the ground ... DEAD.", None, 0),
     1: ("$n splatters blood on your armor.", None, 0),
@@ -2249,7 +2289,7 @@ def _death_cry(ch):
     """Death flavour message, body-part drop, and adjacent-room cry
     (cf. 1stMud death_cry in fight.c).
     [Verified: 05/07/2026; PC form_flags/part_flags added and re-verified
-    05/07/2026] -- part-flag gated message/object selection,
+    05/07/2026; material-pointer fallthrough re-verified 23/07/2026] -- part-flag gated message/object selection,
     poison-food/trash-downgrade, and adjacent-room broadcast added per
     fight.c. PCs now get form_flags/part_flags from RACE_TABLE via
     player.py create_char (cf. 1stMud nanny.c:533-534 / save.c:723-724),
@@ -2260,7 +2300,10 @@ def _death_cry(ch):
     """
     msg = _DEATH_CRY_DEFAULT
     vnum = 0
-    case = _DEATH_CRY_CASES.get(randint(0, 15))  # 1stMud: number_bits(4)
+    roll = randint(0, 15)  # 1stMud: number_bits(4)
+    if roll == 1 and ch.get("is_npc"):
+        roll = 2
+    case = _DEATH_CRY_CASES.get(roll)
     if case is not None:
         cmsg, part, cvnum = case
         if part is None or ch.get("part_flags", {}).get(part):
@@ -2440,6 +2483,31 @@ def make_corpse(ch):
     return corpse
 
 
+def update_death(victim, killer):
+    """Update mob-template and area stats (cf. 1stMud update_death in fight.c).
+
+    Kills use mob/area perspective: a player death is an area kill; a mob
+    death is an area death. [PRIMESUD] Sparse maps avoid loading templates;
+    player/global/level stats, death sounds, and millionth-kill bonuses remain
+    absent.
+    """
+    # Upstream explicitly excludes self-inflicted deaths.
+    if victim is killer:
+        return
+    if victim.get("is_npc"):
+        # Template stats follow pIndexData; area stats follow in_room->area.
+        world.mob_stats.setdefault(victim["tpl"], [0, 0])[1] += 1
+        area = world._vnum_to_tag(victim.get("room"))
+        if area is not None:
+            world.area_stats.setdefault(area, [0, 0])[1] += 1
+    else:
+        area = world._vnum_to_tag(victim.get("room"))
+        if area is not None:
+            world.area_stats.setdefault(area, [0, 0])[0] += 1
+    if killer is not None and killer.get("is_npc"):
+        world.mob_stats.setdefault(killer["tpl"], [0, 0])[0] += 1
+
+
 def raw_kill(victim, killer):
     """Kill victim: stop fight, death cry, corpse, extract/respawn (cf. 1stMud raw_kill in fight.c).
     [Verified: 02/07/2026; tprint->chprintln output routing re-verified
@@ -2482,7 +2550,6 @@ def raw_kill(victim, killer):
     # their gear on respawn (see make_corpse), so re-derive equipment-granted
     # armor, stats, and affect bits. affect_list is empty after the strip
     # above, so no spell affects re-apply.
-    from player import reset_char  # deferred: player -> magic -> combat cycle
     reset_char(victim)
     # 1stMud: victim->position = POS_RESTING
     victim["pos"] = "resting"
@@ -2515,7 +2582,6 @@ def _extract_char(ch, pull=True):
         pull (bool): True = fully remove (NPC death), False = teleport to altar (PC death).
     """
     # 1stMud extract_char: nuke_pets always; die_follower only on fPull
-    from comm import nuke_pets, die_follower  # lazy import to avoid circular dependency
     nuke_pets(ch)
     ch["pet"] = None
     if pull:
@@ -2538,7 +2604,8 @@ def _extract_char(ch, pull=True):
 
 def advance_level(player):
     """Roll HP/MP gains, grant practice and train (cf. 1stMud advance_level in update.c).
-    [Verified: 02/07/2026; update_all_qobjs added and re-verified 03/07/2026]
+    [Verified: 02/07/2026; update_all_qobjs added and re-verified 03/07/2026;
+    pet scaling added and re-verified 11/07/2026]
     -- last_level play-time stamp not ported; [PRIMESUD] full heal/restore
     on level.
 
@@ -2585,8 +2652,10 @@ def advance_level(player):
     player["train"]    += 1
 
     # cf. 1stMud advance_level: quest gear rescales to the new level
-    from quest import update_all_qobjs
     update_all_qobjs(player)
+    # [PRIMESUD] Owned pets grow with their player; no separate pet XP track.
+    from mob import scale_pet  # deferred: mob imports combat
+    scale_pet(player)
 
     chprintlnf(player, "You gain %d hit %s, %d mana, %d move, and %d %s.",
         add_hp,  "point" if add_hp  == 1 else "points",
@@ -2621,7 +2690,7 @@ def gain_exp(ch, gain):
     ch["xp"] = max(0, ch["xp"] + gain)
     while (ch.get("level", 1) < classes.calc_max_level(ch)
            and ch["xp"] >= ch["xp_next"]):
-        chprintln(ch, "You raise a level!!")
+        chprintln(ch, "{YYou raise a level!!{x")  # [PRIMESUD] highlight among combat output
         ch["level"] += 1
         ch["xp"]    -= ch["xp_next"]
         # 1stMud: if (ch->level >= LEVEL_HERO) "Congratulations, you are now a %s!"
@@ -2736,10 +2805,8 @@ def group_gain(ch, victim):
 
         # 1stMud: quest mob check (IsQuester && quest.mob == victim);
         # [PRIMESUD] vnum match inside quest_kill_check
-        from quest import quest_kill_check
         quest_kill_check(gch, victim)
         # 1stMud: gquest target check (is_gqmob)
-        from gquest import gq_kill_check
         gq_kill_check(gch, victim)
 
         # 1stMud: worn anti-align items zap after the kill's alignment shift
@@ -2787,7 +2854,7 @@ def _exit_to(exit_val):
 
 # -- Do_Fun ports from fight.c ------------------------------------------------
 
-def do_murder(ch, args):
+def do_murder(ch, args, victim=None):
     """Attack a target with a yell for help (cf. 1stMud do_murder in fight.c).
 
     In ROM/Merc MUDs, ``kill`` was the normal PvE command while ``murder``
@@ -2796,13 +2863,18 @@ def do_murder(ch, args):
     so the practical difference is just the yell broadcast and the noprefix
     flag (can't trigger by abbreviation).
     [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- check_killer not ported; yell rendered locally.
+    04/07/2026; direct-victim parameter added and re-verified 19/07/2026]
+    -- check_killer not ported; yell rendered locally.
 
     Args:
         ch (dict): Acting character.
-        args (list): Target keyword.
+        args (list): Target keyword.  Ignored when `victim` is given.
+        victim (dict, optional): Pre-resolved target, for callers that
+            already know it (e.g. a mob attacking the player in
+            special.py) -- see do_backstab's `victim` param for why
+            name-based lookup can't reach the player. [PRIMESUD]
     """
-    if not args:
+    if victim is None and not args:
         chprintln(ch, "Murder whom?")
         return None
 
@@ -2810,13 +2882,14 @@ def do_murder(ch, args):
     if ch.get("affected_by", {}).get("charm"):
         return None
 
-    rs = world.rooms[ch["room"]]
-    mob_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
-    if mob_id is None:
-        chprintln(ch, "They aren't here.")
-        return None
+    if victim is None:
+        rs = world.rooms[ch["room"]]
+        mob_id = get_char_room(" ".join(args), rs["mobs"], world.chars, ch)
+        if mob_id is None:
+            chprintln(ch, "They aren't here.")
+            return None
+        victim = world.chars[mob_id]
 
-    victim = world.chars[mob_id]
     if victim is ch:
         chprintln(ch, "Suicide is a mortal sin.")
         return None
@@ -3262,7 +3335,8 @@ def do_trip(ch, args):
 def do_flee(ch, args):
     """Attempt to flee from combat (cf. 1stMud do_flee in fight.c).
     [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- arena check not ported; [PRIMESUD] auto-look
+    04/07/2026; flee-look switched to "auto" arg and re-verified
+    20/07/2026] -- arena check not ported; [PRIMESUD] auto-look
     after fleeing.
 
     Works for both players and NPCs.
@@ -3333,7 +3407,7 @@ def do_flee(ch, args):
 
         stop_fighting(ch, both=True)
         if not is_npc:
-            do_look(ch, [])
+            do_look(ch, ["auto"])  # [PRIMESUD] flee-look; "auto" so brief mode applies
         return None
 
     chprintln(ch, "PANIC! You couldn't escape!")
@@ -3519,7 +3593,7 @@ def do_disarm(ch, args):
 def do_surrender(ch, args):
     """Surrender to current opponent (cf. 1stMud do_surrender in fight.c).
     [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- TRIG_SURR mobprog not ported (mob always resumes).
+    04/07/2026; TRIG_SURR mobprog trigger added and re-verified 19/07/2026].
 
     Args:
         ch (dict): Acting character.
@@ -3538,14 +3612,21 @@ def do_surrender(ch, args):
 
     act("You surrender to $N!", ch, None, mob, TO_CHAR)
     act("$n surrenders to you!", ch, None, mob, TO_VICT)
+    act("$n tries to surrender to $N!", ch, None, mob, TO_NOTVICT)
 
     stop_fighting(ch, both=True)
 
-    # 1stMud: if (!IsNPC(ch) && IsNPC(mob) && no TRIG_SURR) mob resumes attack
+    # 1stMud: if (!IsNPC(ch) && IsNPC(mob) && (!HasTriggerMob(mob, TRIG_SURR)
+    # || !p_percent_trigger(mob, NULL, NULL, ch, NULL, NULL, TRIG_SURR)))
+    # mob resumes attack. percent_trigger() already returns False when the
+    # mob carries no "surr" trigger, so a single call covers both halves of
+    # the upstream condition (cf. mobprog.py kill_trigger/death_trigger for
+    # the same call convention).
     if not ch["is_npc"] and mob["is_npc"]:
-        # [PRIMESUD] TRIG_SURR not ported; mob always ignores surrender
-        act("$N seems to ignore your cowardly act!", ch, None, mob, TO_CHAR)
-        multi_hit(mob, ch)
+        from mobprog import percent_trigger  # deferred: keep mobprog off the boot path
+        if not percent_trigger(mob, ch, None, None, "surr"):
+            act("$N seems to ignore your cowardly act!", ch, None, mob, TO_CHAR)
+            multi_hit(mob, ch)
     return None
 
 

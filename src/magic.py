@@ -2,16 +2,18 @@
 
 import world
 from handler import (is_name, is_affected, affect_to_char, affect_join, affect_strip, is_awake,
-                   can_see_room, act, chprintln, get_char_room, equip_char,
-                   unequip_char, tpl_flag_affects,
+                   can_see, can_see_obj, can_see_room, act, chprintln, get_char_room, equip_char,
+                   unequip_char, tpl_flag_affects, get_curr_stat,
                    TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
                    is_good, is_evil, is_neutral)
 from world import (OBJ_VNUM_MUSHROOM, OBJ_VNUM_LIGHT_BALL, OBJ_VNUM_SPRING,
-                   OBJ_VNUM_DISC, OBJ_VNUM_PORTAL)
+                   OBJ_VNUM_DISC, OBJ_VNUM_PORTAL, OBJ_VNUM_ROSE)
 from colors import upper
 from classes import has_spells
+from comm import add_follower, stop_follower
 from combat import (is_safe, is_safe_spell, check_immune, dice, number_fuzzy,
-                    multi_hit, damage, stop_fighting, update_pos, is_same_group)
+                    multi_hit, damage, stop_fighting, update_pos, is_same_group,
+                    gain_exp)
 from effects import acid_effect, fire_effect, cold_effect, poison_effect, shock_effect
 from skill_utils import WaitState, check_improve, get_skill
 from config import (POS_ORDER, DAM_ACID, DAM_BASH, DAM_CHARM, DAM_COLD,
@@ -19,15 +21,18 @@ from config import (POS_ORDER, DAM_ACID, DAM_BASH, DAM_CHARM, DAM_COLD,
                     DAM_HARM, DAM_HOLY, DAM_LIGHT, DAM_LIGHTNING,
                     DAM_NEGATIVE, DAM_NONE, DAM_OTHER, DAM_PIERCE, DAM_POISON,
                     DAM_SLASH, IS_IMMUNE, IS_RESISTANT, IS_VULNERABLE)
-from config import R_RECALL, MAX_MORTAL_LEVEL
+from config import R_RECALL, MAX_MORTAL_LEVEL, SEX_VALUES
+from gquest import gq_is_target
+from info import do_look
 from item import (get_obj_list, obj_vnum, item_spell_level,
                   item_spells, item_spell_name, item_extra_flags,
                   item_current_charges, item_affect_list,
                   item_affect_find, item_affect_remove, item_affect_to_obj,
                   set_item_extra_flag, create_object, promote_obj,
-                  item_weapon_flags)
+                  item_weapon_flags, can_drop_obj)
 from movement import perform_recall, get_random_room
 from picker import pick_from
+from quest import is_quester
 from scan import do_scan
 from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
 from skills_table import SKILLS, SKILL_TABLE
@@ -395,8 +400,6 @@ def spell_teleport(sn, level, ch, vo, target):
     if victim is not ch:
         chprintln(victim, "You have been teleported!")
     act("$n vanishes!", victim, None, None, TO_ROOM)
-    if victim is ch:
-        from info import do_look
     act("$n slowly fades into existence.", victim, None, None, TO_ROOM)
     if victim is ch:
         do_look(victim, [])
@@ -413,16 +416,156 @@ def spell_farsight(sn, level, ch, vo, target):
     return True
 
 
-def _collect_objs_recursive(obj_list, location, out):
-    """Append (obj, location_str) for items and nested contents to out (cf. 1stMud obj_first flat list)."""
+OBJ_INDEX_FILE = "objs.idx"  # [PRIMESUD] template keywords + reset spawn areas
+
+
+def _locate_obj_list(obj_list, location, wanted, level, ch, found, max_found):
+    """Scan an object tree for locate-object matches. [PRIMESUD]"""
     for obj in obj_list:
-        out.append((obj, location))
-        _collect_objs_recursive(obj.get("contents", []), location, out)
+        tpl = ITEM_DEFS[obj_vnum(obj)]
+        if (can_see_obj(ch, obj)
+                and is_name(wanted, tpl.get("keywords", ""))
+                and not item_extra_flags(obj, tpl).get("no_locate")
+                and randint(1, 100) <= 2 * level
+                and ch.get("level", 1) >= tpl.get("level", 0)):
+            found.append(location)
+            if len(found) >= max_found:
+                return True
+        if _locate_obj_list(obj.get("contents", []), location, wanted,
+                            level, ch, found, max_found):
+            return True
+    return False
+
+
+def _scan_locate_areas(tags, wanted, level, ch, found, max_found,
+                       include_player=False):
+    """Scan objects hosted by selected loaded areas. [PRIMESUD]"""
+    loc = "one is carried by you"
+    if include_player:
+        if _locate_obj_list(ch.get("inv", []), loc, wanted, level, ch,
+                            found, max_found):
+            return
+        for obj in ch.get("equip", {}).values():
+            if obj is not None and _locate_obj_list(
+                    [obj], loc, wanted, level, ch, found, max_found):
+                return
+    # Snapshot keys: checking an object's template can lazy-load another area
+    # and mutate both dictionaries while this scan is running.
+    for room_vnum in list(world.rooms._data):
+        if world._vnum_to_tag(room_vnum) not in tags:
+            continue
+        room_state = world.rooms._data[room_vnum]
+        rloc = "one is in " + ROOM_DEFS._data.get(
+            room_vnum, {}).get("name", "somewhere")
+        if _locate_obj_list(room_state.get("items", []), rloc, wanted,
+                            level, ch, found, max_found):
+            return
+    for cid in list(world.chars):
+        mob = world.chars.get(cid)
+        if not mob or not mob.get("is_npc"):
+            continue
+        # Room-tag match, or template-tag match for a wanderer restored
+        # into an already-scanned area's room when its home area hydrates.
+        # No double-scan: an instance's template area is always loaded, so
+        # it can only be in `tags` in the batch that loaded it, and no
+        # instance predates its own template area's load.
+        if (world._vnum_to_tag(mob.get("room")) not in tags
+                and world._vnum_to_tag(mob.get("tpl")) not in tags):
+            continue
+        if can_see(ch, mob):
+            mloc = "one is carried by " + MOB_DEFS[mob["tpl"]]["short_descr"]
+        else:
+            # invisible carrier: upstream falls to the room branch, and a
+            # carried obj has no room (magic.c:3536-3549)
+            mloc = "one is in somewhere"
+        if _locate_obj_list(mob.get("inv", []), mloc, wanted, level, ch,
+                            found, max_found):
+            return
+        for obj in mob.get("equip", {}).values():
+            if obj is not None and _locate_obj_list(
+                    [obj], mloc, wanted, level, ch, found, max_found):
+                return
+
+
+def _pending_obj_has_vnum(obj, vnums):
+    """Return whether parsed pending object tree contains a wanted vnum. [PRIMESUD]"""
+    if obj_vnum(obj) in vnums:
+        return True
+    for child in obj.get("contents", []):
+        if _pending_obj_has_vnum(child, vnums):
+            return True
+    return False
+
+
+def _locate_candidate_areas(wanted):
+    """Read object index and return unloaded areas worth hydrating. [PRIMESUD]"""
+    candidates = []
+    vnums = set()
+    try:
+        with open(OBJ_INDEX_FILE) as f:
+            data = f.read()  # one read; looped readline() is costly on-device
+    except OSError:
+        return candidates
+    for line in data.split("\n"):
+        if not line or line[0] == "#":
+            continue
+        parts = line.split("|", 3)
+        if len(parts) < 3 or not is_name(wanted, parts[2]):
+            continue
+        try:
+            vnums.add(int(parts[1]))
+        except ValueError:
+            continue
+        if len(parts) > 3:
+            for tag in parts[3].split(","):
+                if (tag and tag not in world._LOADED_AREAS
+                        and tag not in candidates):
+                    candidates.append(tag)
+    if not vnums:
+        return candidates
+    # Cheap substring gate before parsing: every serialized item starts
+    # with "v:<vnum>" (nested contents included), so a token without any
+    # needle can't contain a wanted vnum. False positives (e.g. "lv:250"
+    # containing "v:250") fall through to the exact parsed check.
+    needles = []
+    for v in vnums:
+        needles.append("v:" + str(v))
+    from item import parse_item_token  # deferred: item imports world
+    for room_vnum, raw in world._pending_room_items.items():
+        for token in raw.split("|"):
+            if not token:
+                continue
+            hit = False
+            for n in needles:
+                if n in token:
+                    hit = True
+                    break
+            if hit and _pending_obj_has_vnum(parse_item_token(token), vnums):
+                tag = world._vnum_to_tag(room_vnum)
+                if (tag and tag not in world._LOADED_AREAS
+                        and tag not in candidates):
+                    candidates.append(tag)
+                break
+    return candidates
+
+
+def _release_locate_areas(initial):
+    """Unload every area transiently hydrated by locate object. [PRIMESUD]"""
+    transient = world._LOADED_AREAS - initial
+    if not transient:
+        return
+    for _fname, tag, _name, _lo, _hi in reversed(world._AREA_FILES):
+        if tag in transient:
+            world._unload_area(tag)
+    import gc
+    gc.collect()
 
 
 def spell_locate_object(sn, level, ch, vo, target):
     """Locate object by name fragment (cf. 1stMud spell_locate_object in magic.c).
-    [Verified: 03/07/2026] -- immortal branches and can_see checks not
+    [Verified: 03/07/2026; can_see_obj filter and invisible-carrier
+    "somewhere" branch added and re-verified 20/07/2026; unloaded-area
+    coverage added and re-verified 22/07/2026] -- immortal branches not
     ported; "carried by you" instead of player name is [PRIMESUD].
 
     Recurses into container contents to match 1stMud's flat obj_first
@@ -434,38 +577,36 @@ def spell_locate_object(sn, level, ch, vo, target):
         return False
     found = []
     max_found = 2 * level
-    world_objs = []
-    loc = "one is carried by you"
-    _collect_objs_recursive(ch.get("inv", []), loc, world_objs)
-    for obj in ch.get("equip", {}).values():
-        if obj is not None:
-            world_objs.append((obj, loc))
-            _collect_objs_recursive(obj.get("contents", []), loc, world_objs)
-    for room_vnum, room_state in world.rooms.items():
-        rloc = "one is in " + ROOM_DEFS.get(room_vnum, {}).get("name", "somewhere")
-        _collect_objs_recursive(room_state.get("items", []), rloc, world_objs)
-    for cid, mob in world.chars.items():
-        if not mob.get("is_npc"):
-            continue
-        mloc = "one is carried by " + MOB_DEFS[mob["tpl"]]["short_descr"]
-        _collect_objs_recursive(mob.get("inv", []), mloc, world_objs)
-        for obj in mob.get("equip", {}).values():
-            if obj is not None:
-                world_objs.append((obj, mloc))
-                _collect_objs_recursive(obj.get("contents", []), mloc, world_objs)
-    for obj, line in world_objs:
-        tpl = ITEM_DEFS[obj_vnum(obj)]
-        if not is_name(wanted, tpl.get("keywords", "")):
-            continue
-        if item_extra_flags(obj, tpl).get("no_locate"):
-            continue
-        if randint(1, 100) > 2 * level:
-            continue
-        if ch.get("level", 1) < tpl.get("level", 0):
-            continue
-        found.append(line)
-        if len(found) >= max_found:
-            break
+    candidates = _locate_candidate_areas(wanted)
+    initial = set(world._LOADED_AREAS)
+    scanned = set()
+    try:
+        _scan_locate_areas(initial, wanted, level, ch, found, max_found, True)
+        scanned.update(initial)
+        # Template lookups can cascade-load defining areas. Scan each once.
+        while len(found) < max_found:
+            new_tags = world._LOADED_AREAS - scanned
+            if not new_tags:
+                break
+            _scan_locate_areas(new_tags, wanted, level, ch, found, max_found)
+            scanned.update(new_tags)
+        _release_locate_areas(initial)
+        for tag in candidates:
+            if len(found) >= max_found:
+                break
+            if tag in scanned:
+                continue
+            world._ensure_area_by_tag(tag)
+            while len(found) < max_found:
+                new_tags = world._LOADED_AREAS - scanned
+                if not new_tags:
+                    break
+                _scan_locate_areas(new_tags, wanted, level, ch, found,
+                                   max_found)
+                scanned.update(new_tags)
+            _release_locate_areas(initial)
+    finally:
+        _release_locate_areas(initial)
     if not found:
         chprintln(ch, "Nothing like that in heaven or earth.")
         return False
@@ -850,7 +991,8 @@ def spell_shield(sn, level, ch, vo, target):
 
 def spell_bless(sn, level, ch, vo, target):
     """Bless character and object paths (cf. 1stMud spell_bless in magic.c).
-    [Verified: 03/07/2026]"""
+    [Verified: 03/07/2026; caster saving_throw adjust for worn blessed items
+    added and re-verified 10/07/2026]"""
     if target == TARGET_OBJ:
         tpl = ITEM_DEFS[obj_vnum(vo)]
         flags = item_extra_flags(vo, tpl)
@@ -869,7 +1011,11 @@ def spell_bless(sn, level, ch, vo, target):
             return False
         item_affect_to_obj(vo, _new_obj_affect(sn, level, 6 + level, "saves", -1, "bless"), tpl)
         chprintln(ch, _item_name(vo) + " glows with a holy aura.")
-        # TODO [PRIMESUD] saving_throw adjust for worn blessed items
+        if any(vo is e for e in ch.get("equip", {}).values()):
+            # cf. 1stMud: if (obj->wear_loc != WEAR_NONE) ch->saving_throw -= 1
+            # (magic.c:758-759) -- note this adjusts the CASTER's saving throw,
+            # not the wearer's, exactly as upstream.
+            ch["saving_throw"] = ch.get("saving_throw", 0) - 1
         return True
     if vo.get("pos") == "fighting" or is_affected(vo, sn):
         if vo is ch:
@@ -979,7 +1125,8 @@ def spell_poison(sn, level, ch, vo, target):
 
 def spell_curse(sn, level, ch, vo, target):
     """Curse character and object paths (cf. 1stMud spell_curse in magic.c).
-    [Verified: 03/07/2026]"""
+    [Verified: 03/07/2026; caster saving_throw adjust for worn cursed items
+    added and re-verified 10/07/2026]"""
     if target == TARGET_OBJ:
         tpl = ITEM_DEFS[obj_vnum(vo)]
         flags = item_extra_flags(vo, tpl)
@@ -998,7 +1145,11 @@ def spell_curse(sn, level, ch, vo, target):
             return False
         item_affect_to_obj(vo, _new_obj_affect(sn, level, 2 * level, "saves", 1, "evil"), tpl)
         chprintln(ch, _item_name(vo) + " glows with a malevolent aura.")
-        # TODO [PRIMESUD] saving_throw adjust for worn cursed items
+        if any(vo is e for e in ch.get("equip", {}).values()):
+            # cf. 1stMud: if (obj->wear_loc != WEAR_NONE) ch->saving_throw += 1
+            # (magic.c:1668-1669) -- adjusts the CASTER's saving throw, not the
+            # wearer's, exactly as upstream.
+            ch["saving_throw"] = ch.get("saving_throw", 0) + 1
         return True
     if vo.get("affected_by", {}).get("curse") or saves_spell(level, vo, DAM_NEGATIVE):
         return False
@@ -1275,7 +1426,6 @@ def spell_change_sex(sn, level, ch, vo, target):
         return False
     if saves_spell(level, vo, DAM_OTHER):
         return False
-    from config import SEX_VALUES
     cur_sex = SEX_VALUES.index(vo["sex"]) if vo.get("sex") in SEX_VALUES else 0
     mod = 0
     while mod == 0:
@@ -1305,7 +1455,6 @@ def spell_charm_person(sn, level, ch, vo, target):
     if room and room.get("flags", {}).get("law"):
         chprintln(ch, "The mayor does not allow charming in the city limits.")
         return False
-    from comm import add_follower, stop_follower  # lazy import to avoid circular dependency
     if victim.get("master") is not None:
         stop_follower(victim)
     add_follower(victim, ch)
@@ -1345,10 +1494,11 @@ def spell_color_spray(sn, level, ch, vo, target):
 
 def spell_continual_light(sn, level, ch, vo, target):
     """Create light ball or make carried item glow (cf. 1stMud spell_continual_light in magic.c).
-    [Verified: 03/07/2026]"""
+    [Verified: 03/07/2026; get_obj_list can_see_obj viewer gate added and
+    re-verified 10/07/2026]"""
     tail = ch.get("_target_name", "")
     if tail:
-        obj = get_obj_list(tail, ch["inv"], ITEM_DEFS)
+        obj = get_obj_list(tail, ch["inv"], ITEM_DEFS, ch)
         if obj is None:
             chprintln(ch, "You don't see that here.")
             return False
@@ -1384,12 +1534,12 @@ def spell_create_food(sn, level, ch, vo, target):
 
 def spell_create_rose(sn, level, ch, vo, target):
     """Create a rose (cf. 1stMud spell_create_rose in magic.c).
-
-    TODO: OBJ_VNUM_ROSE template not yet defined in area data.
-    """
-    # TODO [PRIMESUD] need rose item template
-    act("$n has created a beautiful red rose.", ch, None, None, TO_ROOM)
+    [Verified: 10/07/2026; OBJ_VNUM_ROSE template added to area_limbo and
+    object creation wired up]"""
+    rose = create_object(OBJ_VNUM_ROSE)
+    act("$n has created a beautiful red rose.", ch, rose, None, TO_ROOM)
     chprintln(ch, "You create a beautiful red rose.")
+    ch.setdefault("inv", []).append(rose)
     return True
 
 
@@ -1575,7 +1725,7 @@ def spell_dispel_good(sn, level, ch, vo, target):
 def spell_energy_drain(sn, level, ch, vo, target):
     """Energy drain (cf. 1stMud spell_energy_drain in magic.c).
     [Verified: 03/07/2026; low-level branch fixed to victim hp 03/07/2026
-    [PRIMESUD], see FIXES.md]"""
+    [PRIMESUD], see FIXES.md; gain_exp call added and re-verified 10/07/2026]"""
     victim = vo
     if victim is not ch:
         ch["alignment"] = max(-1000, ch.get("alignment", 0) - 50)
@@ -1587,7 +1737,10 @@ def spell_energy_drain(sn, level, ch, vo, target):
         # the intent is a guaranteed kill on the low-level victim.
         dam = victim.get("hit", 1) + 1
     else:
-        # TODO [PRIMESUD] gain_exp not yet ported
+        # gain_exp guards is_npc internally (combat.py:2629); victims are
+        # always NPCs in single-player PrimeSUD, so this is a no-op here,
+        # same as it would be a no-op for a PC-less mob-only world upstream.
+        gain_exp(victim, 0 - randint(level // 2, 3 * level // 2))
         victim["mana"] = victim.get("mana", 0) // 2
         victim["move"] = victim.get("move", 0) // 2
         dam = dice(1, level)
@@ -1721,7 +1874,9 @@ def spell_gate(sn, level, ch, vo, target):
     """Gate to another character's location (cf. 1stMud spell_gate in magic.c).
     [Verified: 03/07/2026; pet gate added and re-verified 03/07/2026;
     unloaded-area target fallback (get_char_world fidelity) added and
-    re-verified 04/07/2026]"""
+    re-verified 04/07/2026; look "auto" arg added and re-verified
+    20/07/2026; get_char_world can_see filter added and re-verified
+    20/07/2026]"""
     tail = ch.get("_target_name", "")
     if not tail:
         chprintln(ch, "You failed.")
@@ -1738,11 +1893,11 @@ def spell_gate(sn, level, ch, vo, target):
                 continue
             if _c.get("is_npc"):
                 _tpl = MOB_DEFS.get(_c.get("tpl"), {})
-                if is_name(tail, _tpl.get("keywords", "")):
+                if is_name(tail, _tpl.get("keywords", "")) and can_see(ch, _c):
                     victim = _c
                     break
         if victim is None:
-            victim = _find_unloaded_mob(tail)[1]
+            victim = _find_unloaded_mob(tail, ch)[1]
 
     if victim is None or victim is ch:
         chprintln(ch, "You failed.")
@@ -1756,8 +1911,6 @@ def spell_gate(sn, level, ch, vo, target):
     src_flags = ROOM_DEFS.get(ch.get("room"), {}).get("flags", {})
     dst_flags = ROOM_DEFS.get(victim_vnum, {}).get("flags", {})
 
-    from quest import is_quester
-    from gquest import gq_is_target
     if (not can_see_room(ch, victim_vnum)
             or dst_flags.get("safe")
             # TODO [PRIMESUD] arena flag not yet implemented
@@ -1788,8 +1941,7 @@ def spell_gate(sn, level, ch, vo, target):
     old_room = ch["room"]
     ch["room"] = victim_vnum
     # act("$n has arrived through a gate.", ..., TO_ROOM) omitted -- single-player
-    from info import do_look
-    do_look(ch, [])
+    do_look(ch, ["auto"])  # 1stMud: do_function(ch, &do_look, "auto")
 
     if gate_pet:
         if pet_id in world.rooms.get(old_room, {}).get("mobs", []):
@@ -1833,22 +1985,107 @@ def spell_haste(sn, level, ch, vo, target):
 
 
 def spell_heat_metal(sn, level, ch, vo, target):
-    """Heat metal (cf. 1stMud spell_heat_metal in magic.c).
-
-    TODO: equipment drop/sear mechanic requires full equipment iteration.
-    Simplified to flat damage based on level.
-    """
+    """Heat metal: sear or drop victim's metal armor/weapons (cf. 1stMud
+    spell_heat_metal in magic.c).
+    [Verified: 10/07/2026; full equipment drop/sear mechanic ported]"""
     victim = vo
     if saves_spell(level + 2, victim, DAM_FIRE) or victim.get("imm_flags", {}).get("fire"):
         chprintln(ch, "Your spell had no effect.")
         chprintln(victim, "You feel momentarily warmer.")
         return False
-    dam = dice(level // 2, 8)
+
+    dam = 0
+    fail = True
+    from inventory import remove_obj  # lazy import to avoid circular dependency
+
+    # Snapshot both lists before mutating -- dropped items move inv<->room
+    # in place. slot is None for carried (unworn) items (cf. 1stMud's single
+    # carrying_first walk, split here into inv/equip per PrimeSUD's
+    # separate carried/worn structures).
+    targets = [(o, None) for o in list(victim.get("inv", []))]
+    targets += [(o, slot) for slot, o in list(victim.get("equip", {}).items())
+                if o is not None]
+
+    for obj_lose, slot in targets:
+        tpl = ITEM_DEFS[obj_vnum(obj_lose)]
+        obj_level = obj_lose.get("level", tpl.get("level", 0))
+        if not (randint(1, 2 * level) > obj_level
+                and not saves_spell(level, victim, DAM_FIRE)
+                and not item_extra_flags(obj_lose, tpl).get("nonmetal")
+                and not item_extra_flags(obj_lose, tpl).get("burn_proof")):
+            continue
+        # cf. 1stMud number_range(1, obj->level): an inverted range returns
+        # `from` (db.c:2682), but Python randint(1, 0) raises ValueError --
+        # clamp level-0 items to the same result of 1. [PRIMESUD]
+        sear_max = obj_level if obj_level > 1 else 1
+        itype = tpl.get("type")
+        if itype == "armor":
+            if slot is not None:
+                if (can_drop_obj(victim, obj_lose)
+                        and (tpl.get("weight", 0) // 10) < randint(1, 2 * get_curr_stat(victim, "dex"))
+                        and remove_obj(victim, slot, True)):
+                    act("$n yelps and throws $p to the ground!", victim, obj_lose, None, TO_ROOM)
+                    act("You remove and drop $p before it burns you.", victim, obj_lose, None, TO_CHAR)
+                    dam += randint(1, sear_max) // 3
+                    victim["inv"].remove(obj_lose)
+                    world.rooms[victim["room"]]["items"].append(obj_lose)
+                    fail = False
+                else:
+                    act("Your skin is seared by $p!", victim, obj_lose, None, TO_CHAR)
+                    dam += randint(1, sear_max)
+                    fail = False
+            else:
+                if can_drop_obj(victim, obj_lose):
+                    act("$n yelps and throws $p to the ground!", victim, obj_lose, None, TO_ROOM)
+                    # [PRIMESUD] 1stMud text is "You and drop $p before it
+                    # burns you." (missing verb, magic.c:3011/3065) -- typo fix.
+                    act("You drop $p before it burns you.", victim, obj_lose, None, TO_CHAR)
+                    dam += randint(1, sear_max) // 6
+                    victim["inv"].remove(obj_lose)
+                    world.rooms[victim["room"]]["items"].append(obj_lose)
+                    fail = False
+                else:
+                    act("Your skin is seared by $p!", victim, obj_lose, None, TO_CHAR)
+                    dam += randint(1, sear_max) // 2
+                    fail = False
+        elif itype == "weapon":
+            if slot is not None:
+                if item_weapon_flags(obj_lose, tpl).get("flaming"):
+                    continue  # cf. IsWeaponStat(obj_lose, WEAPON_FLAMING) -> continue
+                if can_drop_obj(victim, obj_lose) and remove_obj(victim, slot, True):
+                    act("$n is burned by $p, and throws it to the ground.", victim, obj_lose, None, TO_ROOM)
+                    chprintln(victim, "You throw your red-hot weapon to the ground!")
+                    dam += 1
+                    victim["inv"].remove(obj_lose)
+                    world.rooms[victim["room"]]["items"].append(obj_lose)
+                    fail = False
+                else:
+                    chprintln(victim, "Your weapon sears your flesh!")
+                    dam += randint(1, sear_max)
+                    fail = False
+            else:
+                if can_drop_obj(victim, obj_lose):
+                    act("$n throws a burning hot $p to the ground!", victim, obj_lose, None, TO_ROOM)
+                    # [PRIMESUD] typo fix, see armor branch above.
+                    act("You drop $p before it burns you.", victim, obj_lose, None, TO_CHAR)
+                    dam += randint(1, sear_max) // 6
+                    victim["inv"].remove(obj_lose)
+                    world.rooms[victim["room"]]["items"].append(obj_lose)
+                    fail = False
+                else:
+                    act("Your skin is seared by $p!", victim, obj_lose, None, TO_CHAR)
+                    dam += randint(1, sear_max) // 2
+                    fail = False
+
+    if fail:
+        chprintln(ch, "Your spell had no effect.")
+        chprintln(victim, "You feel momentarily warmer.")
+        return False
+
     if saves_spell(level, victim, DAM_FIRE):
         dam = 2 * dam // 3
-    act("You sear $N with heat!", ch, None, victim, TO_CHAR)  # [PRIMESUD] simplified stub
-    # TODO [PRIMESUD] full equipment iteration and drop/sear mechanic
-    return damage(ch, victim, dam, sn, DAM_FIRE, True)
+    damage(ch, victim, dam, sn, DAM_FIRE, True)
+    return True
 
 
 def spell_holy_word(sn, level, ch, vo, target):
@@ -2276,7 +2513,8 @@ def spell_stone_skin(sn, level, ch, vo, target):
 def spell_summon(sn, level, ch, vo, target):
     """Summon (cf. 1stMud spell_summon in magic.c).
     [Verified: 03/07/2026; unloaded-area target fallback (get_char_world
-    fidelity) added and re-verified 04/07/2026] -- LEVEL_IMMORTAL /
+    fidelity) added and re-verified 04/07/2026; get_char_world can_see
+    filter added and re-verified 20/07/2026] -- LEVEL_IMMORTAL /
     PLR_NOSUMMON PC checks and AREA_CLOSED flag not ported (no other PCs;
     area flags not modeled)."""
     tail = ch.get("_target_name", "")
@@ -2289,12 +2527,12 @@ def spell_summon(sn, level, ch, vo, target):
             if _c is ch or not _c.get("is_npc"):
                 continue
             _tpl = MOB_DEFS.get(_c.get("tpl"), {})
-            if is_name(tail, _tpl.get("keywords", "")):
+            if is_name(tail, _tpl.get("keywords", "")) and can_see(ch, _c):
                 victim = _c
                 victim_id = _cid
                 break
         if victim is None:
-            victim_id, victim = _find_unloaded_mob(tail)
+            victim_id, victim = _find_unloaded_mob(tail, ch)
 
     if victim is None or victim.get("room") is None:
         chprintln(ch, "You failed.")
@@ -2304,8 +2542,6 @@ def spell_summon(sn, level, ch, vo, target):
     dst_flags = ROOM_DEFS.get(victim.get("room"), {}).get("flags", {})
     tpl = MOB_DEFS.get(victim.get("tpl"), {})
 
-    from quest import is_quester
-    from gquest import gq_is_target
     if (src_flags.get("safe")
             or dst_flags.get("safe")
             or dst_flags.get("private")
@@ -2550,58 +2786,54 @@ def spell_high_explosive(sn, level, ch, vo, target):
 # -- magic2.c spells --
 
 
-MOB_INDEX_FILE = "mob_index.txt"  # [PRIMESUD] "tag|vnum|keywords" per line
+MOB_INDEX_FILE = "mobs.idx"  # [PRIMESUD] mob metadata + ordered spawn tags
 
 
-def _find_unloaded_mob(tail):
+def _find_unloaded_mob(tail, ch):
     """Locate a name-matched mob in an unloaded area and load that area. [PRIMESUD]
 
     1stMud get_char_world sees every mob in the world; PrimeSUD only
     instantiates mobs of loaded areas. Fallback: scan the keyword index
-    built by tools/build_mob_index.py (one line per M-reset mob, in
-    _AREA_FILES ascending-size order, so ambiguous names resolve to the
-    cheapest area load).
+    built by tools/build_mob_index.py (one line per template, ordered so
+    ambiguous names resolve to the cheapest area load).
 
     Args:
         tail (str): Target name words.
+        ch (dict): Observer; spawned candidates are filtered through
+            can_see, matching get_char_world (handler.c:1934).
 
     Returns:
         tuple: (char_id, char) of the spawned instance, or (None, None).
     """
-    try:
-        f = open(MOB_INDEX_FILE)
-    except OSError:
-        return None, None  # no index shipped: loaded-world search only
     loads = 0
-    try:
-        while True:
-            line = f.readline()
-            if not line:
-                break
-            parts = line.rstrip().split("|", 2)
-            if len(parts) < 3:
+    candidates = []
+    with open(MOB_INDEX_FILE) as f:
+        data = f.read()  # one ~58KB read; looped readline() ~20ms/call on-device
+    for line in data.split("\n"):
+        if not line or line[0] == "#":
+            continue  # blank / header comment
+        parts = line.split("|", 5)
+        if len(parts) < 6 or not is_name(tail, parts[3]):
+            continue
+        for tag in parts[5].split(","):
+            if (tag and tag not in world._LOADED_AREAS
+                    and tag not in candidates):
+                candidates.append(tag)
+    order = {area[1]: i for i, area in enumerate(world._AREA_FILES)}
+    candidates.sort(key=lambda tag: order.get(tag, len(order)))
+    for tag in candidates:
+        world._ensure_area_by_tag(tag)
+        # Re-scan all chars: loading one area spawns all its reset mobs.
+        for _cid, _c in world.chars.items():
+            if not _c.get("is_npc"):
                 continue
-            tag, _vnum, keywords = parts
-            if tag in world._LOADED_AREAS:
-                continue  # already covered by the world.chars scan
-            if not is_name(tail, keywords):
-                continue
-            world._ensure_area_by_tag(tag)
-            # Re-scan chars by keywords (not just this line's vnum): the
-            # load spawned ALL of the area's mobs, and its remaining index
-            # lines are skipped by the _LOADED_AREAS guard above.
-            for _cid, _c in world.chars.items():
-                if not _c.get("is_npc"):
-                    continue
-                _tpl = MOB_DEFS.get(_c.get("tpl"), {})
-                if is_name(tail, _tpl.get("keywords", "")):
-                    return _cid, _c
-            # area loaded but no matching instance spawned (dead / limit 0)
-            loads += 1
-            if loads >= 2:  # ponytail: cap heap growth per cast
-                break
-    finally:
-        f.close()
+            _tpl = MOB_DEFS.get(_c.get("tpl"), {})
+            if is_name(tail, _tpl.get("keywords", "")) and can_see(ch, _c):
+                return _cid, _c
+        # area loaded but no matching instance spawned (dead / limit 0)
+        loads += 1
+        if loads >= 2:  # ponytail: cap heap growth per cast
+            return None, None
     return None, None
 
 
@@ -2626,11 +2858,11 @@ def _warp_victim(level, ch, check_from=False):
         if _c is ch or not _c.get("is_npc"):
             continue
         _tpl = MOB_DEFS.get(_c.get("tpl"), {})
-        if is_name(tail, _tpl.get("keywords", "")):
+        if is_name(tail, _tpl.get("keywords", "")) and can_see(ch, _c):
             victim = _c
             break
     if victim is None:
-        victim = _find_unloaded_mob(tail)[1]
+        victim = _find_unloaded_mob(tail, ch)[1]
     if victim is None:
         return None
 
@@ -2640,8 +2872,6 @@ def _warp_victim(level, ch, check_from=False):
     src_flags = ROOM_DEFS.get(ch.get("room"), {}).get("flags", {})
     dst_flags = ROOM_DEFS.get(dst, {}).get("flags", {})
 
-    from quest import is_quester
-    from gquest import gq_is_target
     if (not can_see_room(ch, dst)
             or dst_flags.get("safe")
             or dst_flags.get("private")
@@ -3343,7 +3573,7 @@ def _resolve_target(player, sn, target_name):
         if not arg2:
             chprintln(player, "What should the spell be cast upon?")
             return (None, TARGET_NONE, None, False)
-        obj = get_obj_list(target_name, player["inv"], ITEM_DEFS)
+        obj = get_obj_list(target_name, player["inv"], ITEM_DEFS, player)
         if obj is None:
             chprintln(player, "You are not carrying that.")
             return (None, TARGET_NONE, None, False)
@@ -3362,7 +3592,7 @@ def _resolve_target(player, sn, target_name):
         if victim_id is not None:
             return (world.chars[victim_id], TARGET_CHAR, victim_id, True)
         rs = _room_state(player)
-        obj = get_obj_list(target_name, rs["items"], ITEM_DEFS)
+        obj = get_obj_list(target_name, rs["items"], ITEM_DEFS, player)
         if obj is not None:
             # [PRIMESUD] spells mutate obj state; plain vnums need instances
             return (promote_obj(player, obj), TARGET_OBJ, None, True)
@@ -3375,7 +3605,7 @@ def _resolve_target(player, sn, target_name):
         victim = _find_room_char(player, target_name)
         if victim is not None:
             return (victim, TARGET_CHAR, None, True)
-        obj = get_obj_list(target_name, player["inv"], ITEM_DEFS)
+        obj = get_obj_list(target_name, player["inv"], ITEM_DEFS, player)
         if obj is not None:
             # [PRIMESUD] spells mutate obj state; plain vnums need instances
             return (promote_obj(player, obj), TARGET_OBJ, None, True)

@@ -135,7 +135,7 @@ class tml:
                         self.cursor_x -= 1
                         self.print_xy(self.cursor_x, self.cursor_y, input_string[_x - 1:] + ' ')
                         self._invert_cursor()
-                elif char == '\e':  # Escape or clear line
+                elif char == '\\e':  # Escape or clear line
                     self._invert_cursor()
                     self.cursor_x = start_x + len(input_string)
                     while self.cursor_x > start_x:
@@ -143,7 +143,7 @@ class tml:
                         self._draw_char(' ')
                     self._invert_cursor()
                     input_string = ''
-                elif char == '\L':  # Left
+                elif char == '\\L':  # Left
                     if self.cursor_x > start_x:
                         self._invert_cursor()
                         if self.is_shift:
@@ -151,7 +151,7 @@ class tml:
                         else:
                             self.cursor_x -= 1
                         self._invert_cursor()
-                elif char == '\R':  # Right
+                elif char == '\\R':  # Right
                     end_x = start_x + len(input_string)
                     if self.cursor_x < end_x:
                         self._invert_cursor()
@@ -160,7 +160,7 @@ class tml:
                         else:
                             self.cursor_x += 1
                         self._invert_cursor()
-                elif char == '\SR':  # Symb released
+                elif char == '\\SR':  # Symb released
                     if symb_entered:
                         self._invert_cursor()
                         self.cursor_x += 1
@@ -269,7 +269,7 @@ class tml:
                             elif key_index == 1:  # Symb key
                                 self.symb_hold = False
                                 if code == False:
-                                    return '\SR'
+                                    return '\\SR'
                             self._refresh_indicators()
             ppleval('WAIT(1/1e3)')
 
@@ -302,9 +302,9 @@ class tml:
         # Map key index to respective character
         return {
             # [no modifiers, Alpha, Shift, Alpha+Shift]
-            4: ['\e','\e','\e','\e'],
-            7: ['\L','\L','\L','\L'],
-            8: ['\R','\R','\R','\R'],
+            4: ['\\e','\\e','\\e','\\e'],
+            7: ['\\L','\\L','\\L','\\L'],
+            8: ['\\R','\\R','\\R','\\R'],
             14: [None,'a',None,'A'],
             15: [None,'b',None,'B'],
             16: [None,'c',None,'C'],

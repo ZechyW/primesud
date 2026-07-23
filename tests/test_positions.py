@@ -19,8 +19,9 @@ from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 @pytest.fixture
 def out(monkeypatch):
     lines = []
-    cap = lambda s="", end="\n": lines.append(s)
-    monkeypatch.setattr(movement, "tprint", cap)
+    # do_look sends a pre-split list batch; flatten so assertions see lines
+    cap = lambda s="", end="\n": (
+        lines.extend(s) if type(s) is list else lines.append(s))
     import handler
     monkeypatch.setattr(handler, "tprint", cap)
     return lines

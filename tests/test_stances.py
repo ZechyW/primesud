@@ -202,7 +202,7 @@ class TestFirstCombatPick:
 
     def test_pick_sets_stance_and_autostance(self, monkeypatch):
         import picker
-        monkeypatch.setattr(picker, "pick_from", lambda title, opts: 0)  # viper
+        monkeypatch.setattr(stances, "pick_from", lambda title, opts: 0)  # viper
         ch = self._fresh()
         autodrop(ch)
         assert get_stance(ch, STANCE_CURRENT) == STANCE_VIPER
@@ -211,7 +211,7 @@ class TestFirstCombatPick:
 
     def test_skipped_when_trained(self, monkeypatch):
         import picker
-        monkeypatch.setattr(picker, "pick_from", lambda title, opts: 0)
+        monkeypatch.setattr(stances, "pick_from", lambda title, opts: 0)
         ch = self._fresh()
         set_stance(ch, STANCE_CRANE, 5)
         autodrop(ch)
@@ -219,7 +219,7 @@ class TestFirstCombatPick:
 
     def test_skipped_for_npc(self, monkeypatch):
         import picker
-        monkeypatch.setattr(picker, "pick_from", lambda title, opts: 0)
+        monkeypatch.setattr(stances, "pick_from", lambda title, opts: 0)
         mob = _make_char(is_npc=True)
         set_stance(mob, STANCE_CURRENT, STANCE_NONE)
         set_stance(mob, STANCE_AUTODROP, STANCE_NONE)
@@ -229,7 +229,7 @@ class TestFirstCombatPick:
     def test_cancel_reprompts_until_chosen(self, monkeypatch, capsys):
         import picker
         results = [-1, -1, -1, 0]  # three accidental Escs, then viper
-        monkeypatch.setattr(picker, "pick_from",
+        monkeypatch.setattr(stances, "pick_from",
                             lambda title, opts: results.pop(0))
         ch = self._fresh()
         autodrop(ch)

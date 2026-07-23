@@ -1,5 +1,7 @@
 """1stMud-style colour-code parsing and visible-width helpers."""
 
+from config import TERMINAL_COLS
+
 COLOR_CODE = '{'
 
 # {X color codes -> RGB.  Lowercase = dim, uppercase = bright (1stMud convention).
@@ -99,7 +101,6 @@ def draw_line(fill=None, length=0):
     Returns:
         str: Separator string with {x reset appended.
     """
-    from config import TERMINAL_COLS
     if not fill:
         fill = "-"
     if length <= 0:

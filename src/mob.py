@@ -6,9 +6,13 @@ from config import SIZE_RANK, POS_FROM_SHORT
 import world
 from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, AREA_DEFS, DOOR_DEFS
 from races import RACE_TABLE, race_lookup
-from handler import equip_char, act, _char_base, is_awake, TO_ROOM, can_see, room_is_dark
+from handler import (affect_remove, equip_char, act, chprintln, _char_base, is_awake,
+                     TO_ROOM, can_see, room_is_dark)
 from hunt import hunt_victim
-from item import create_object
+from combat import multi_hit
+from comm import add_follower
+from movement import move_char
+from item import create_object, item_wear_flags
 from game_time import init_weather, advance_weather, adjust_vectors, get_weather_echo
 from special import SPEC_TABLE
 from debug import DBG, dbg  # [PRIMESUD]
@@ -204,12 +208,76 @@ def spawn_pet(tpl_vnum, owner, name_arg=None, hp=None, announce=True):
     world.rooms[room_vnum]["mobs"].append(next_id)
 
     if announce:
-        from comm import add_follower  # lazy import to avoid circular dependency
         add_follower(pet, owner)
     else:
         pet["master"] = owner["id"]
     pet["leader"] = owner["id"]
     owner["pet"] = next_id
+    scale_pet(owner)
+    if hp is not None:
+        pet["hit"] = max(1, min(int(hp), pet["max_hit"]))
+    return pet
+
+
+def scale_pet(owner, evolve=False, reset=False):
+    """Scale an owned pet with its player, optionally evolving it. [PRIMESUD]
+
+    Args:
+        owner (dict): Pet owner.
+        evolve (bool): Follow one valid ``evolves_to`` template link.
+        reset (bool): Clear temporary affects as part of remort/tier reset.
+
+    Returns:
+        dict or None: Scaled pet, or None when the owner has no live pet.
+    """
+    pet_id = owner.get("pet")
+    pet = world.chars.get(pet_id) if pet_id is not None else None
+    if pet is None:
+        return None
+
+    if reset:
+        for af in list(pet.get("affect_list", [])):
+            affect_remove(pet, af)
+        pet.setdefault("affected_by", {})["charm"] = True
+
+    old_tpl = MOB_DEFS[pet["tpl"]]
+    target = old_tpl.get("evolves_to") if evolve else None
+    if target is not None:
+        target_tpl = MOB_DEFS.get(target)
+        if target_tpl is not None:
+            fresh = create_mobile(target)
+            for key in ("level", "sex", "race", "alignment", "size", "hitroll",
+                        "damroll", "armor", "perm_stat", "act_flags", "off_flags",
+                        "affected_by", "imm_flags", "res_flags", "vuln_flags",
+                        "form_flags", "part_flags", "pos"):
+                pet[key] = fresh[key]
+            pet["tpl"] = target
+            old_tpl = target_tpl
+            pet["name"] = target_tpl["short_descr"]
+            pname = pet.get("pet_name")
+            pet["keywords"] = target_tpl.get("keywords", "") + ((" " + pname) if pname else "")
+            desc = target_tpl.get("description", "")
+            if desc and not desc.endswith("\n"):
+                desc += "\n"
+            pet["description"] = desc + "A neck tag says 'I belong to " + str(owner.get("name", "")) + "'."
+            # Evolution metadata authorizes an ordinary mob template as a pet
+            # form; pet-shop stock often gains ACT_PET dynamically from its room.
+            pet["act_flags"]["pet"] = True
+            pet["affected_by"]["charm"] = True
+            chprintln(owner, "Your pet evolves into " + target_tpl["short_descr"] + "!")
+
+    tpl_level = max(1, old_tpl.get("level", 1))
+    level = max(1, owner.get("level", 1))
+    effective = level + 5 * owner.get("tier", 0)
+    n, sides, bonus = old_tpl["hp_dice"]
+    base_hp = max(1, bonus + n * (sides + 1) // 2)
+    pet["level"] = level
+    pet["max_hit"] = max(1, base_hp * effective // tpl_level)
+    pet["hit"] = pet["max_hit"]
+    delta = effective - tpl_level
+    pet["hitroll"] = old_tpl.get("hitroll", 0) + delta
+    pet["damroll"] = old_tpl["damage"][2] + delta // 2
+    pet["armor"] = tuple(v * 10 - 2 * delta for v in old_tpl["armor"])
     return pet
 
 
@@ -555,13 +623,39 @@ def mobile_update(tr, player):
             spec = SPEC_TABLE.get(spec_name)
             if spec is not None and spec(inst):
                 continue
+        # Shopkeeper wealth top-up (cf. 1stMud update.c:435-442).
+        shop = tpl.get("shop")
+        if shop is not None:
+            wealth = tpl.get("wealth", 0)
+            if inst["gold"] * 100 + inst["silver"] < wealth:
+                inst["gold"] += wealth * randint(1, 20) // 5000000
+                inst["silver"] += wealth * randint(1, 20) // 50000
+        # [PRIMESUD] random/delay mobprog pulse (cf. char_update, update.c:444-462);
+        # gated on position == default_pos, so fighting/knocked-down mobs skip it.
+        from mobprog import pulse_mob  # deferred: keep mobprog off the boot path
+        if pulse_mob(inst):
+            continue
         if inst["fighting"] is not None:
             continue
         act_flags = tpl.get("act_flags", {})
-        # [PRIMESUD] TODO: ACT_SCAVENGER floor pickup (update.c:467-493) not
-        # ported -- scavenger mobs do not yet grab the best item off the ground
-        # before wandering. Wander gates below (sentinel / stay_area / no_mob /
-        # OUTDOORS / INDOORS) match update.c:499-506.
+        # Scavenger floor pickup (cf. 1stMud char_update, update.c:467-493).
+        room_items = world.rooms[inst["room"]].get("items", [])
+        if act_flags.get("scavenger") and room_items and randint(0, 63) == 0:  # cf. number_bits(6) == 0
+            obj_best = None
+            best_cost = 1
+            for obj in room_items:
+                obj_tpl = ITEM_DEFS[obj["vnum"]]
+                cost = obj.get("cost", 0)
+                # can_loot(ch, obj) always true here: an NPC looter against an
+                # unowned floor item short-circuits true (cf. 1stMud can_loot,
+                # act_obj.c:43-71) -- floor items never carry an owner tag.
+                if item_wear_flags(obj, obj_tpl).get("take") and cost > best_cost and cost > 0:
+                    obj_best = obj
+                    best_cost = cost
+            if obj_best is not None:
+                room_items.remove(obj_best)
+                inst.setdefault("inv", []).append(obj_best)
+                act("$n gets $p.", inst, obj_best, None, TO_ROOM)
         if act_flags.get("sentinel"):
             continue
         if randint(0, 7) != 0:  # 1/8 chance -- matches number_bits(3)==0
@@ -594,7 +688,6 @@ def mobile_update(tr, player):
         # Wander via move_char so leave/arrive acts fire and followers are
         # dragged along (cf. 1stMud mobile_update move_char(ch, door, false),
         # update.c:503)
-        from movement import move_char  # lazy import to avoid circular dependency
         move_char(inst, direction)
         if "move" in DBG and inst["room"] != old_room:  # [PRIMESUD]
             dbg("move " + inst["name"] + " " + str(old_room) + ">" + str(inst["room"]))
@@ -617,7 +710,6 @@ def aggr_update(tr, player):
         tr: Terminal for printing combat messages.
         player (dict): Player state dict.
     """
-    from combat import multi_hit
 
     # cf. update.c:951 -- immortal / empty area / ROOM_SAFE early-outs
     room_vnum = player["room"]
@@ -686,6 +778,18 @@ def area_update(tr, player):
                 # School area is intentionally silent (cf. db.c:1335 else-if excludes it).
                 if ROOM_DEFS[player["room"]].get("area") == area["tag"]:
                     tr.print("{D" + _RESET_MSGS[randint(0, len(_RESET_MSGS) - 1)] + "{x")
+
+    # random/delay roomprog pulse (cf. area_update tail, db.c:1374-1389):
+    # upstream skips rooms in empty areas; single-player, only the player's
+    # area is non-empty, so only its rooms are swept
+    if world.ROOMPROGS:  # ponytail: no room progs -> skip the sweep
+        from mobprog import pulse_room  # deferred: keep mobprog off the boot path
+        ptag = ROOM_DEFS[player["room"]].get("area")
+        for area in world.areas:
+            if area["tag"] == ptag and "room_vnums" in area:
+                for v in area["room_vnums"]:
+                    pulse_room(v)
+                break
 
 
 def weather_update(tr, player):

@@ -1,8 +1,15 @@
-"""Build mob_index.txt: "tag|vnum|keywords" per line for every M-reset mob.
+"""Build mob-template and object-template keyword indices.
 
-Feeds _find_unloaded_mob (magic.py) so portal/nexus/gate/summon can target
-mobs in areas that are not loaded yet. Line order follows _AREA_FILES
-(ascending size), so ambiguous names resolve to the cheapest area load.
+mobs.idx has one row per mob template. Metadata feeds mob counters without
+loading areas; ordered spawn tags feed portal/nexus/gate/summon lookups.
+Line order preserves _AREA_FILES priority, so ambiguous names still resolve
+to the cheapest area load.
+
+objs.idx (every object template) feeds `debug find` name->vnum lookups
+and gives locate-object ordered reset-owning area candidates. It lists all
+templates, not just reset ones, because `debug load obj` can spawn any
+template and pending saves can contain resetless objects.
+
 Re-run after re-converting any area:
 
     python tools/build_mob_index.py
@@ -19,27 +26,77 @@ import world
 
 
 def main():
-    lines = []
-    for fname, tag, _name, _lo, _hi in world._AREA_FILES:
+    # Two passes: an M-reset may spawn a template defined in another file
+    # (haon.are places arachnos-defined spiders in room 6134), so template
+    # lookup must span all areas. The emitted tag stays the reset-owning
+    # area -- that's the load that makes the instance exist.
+    areas = []
+    all_mobiles = {}
+    home_tags = {}
+    area_order = {}
+    for order, (fname, tag, _name, _lo, _hi) in enumerate(world._AREA_FILES):
         ns = {}
         with open(os.path.join(APPDIR, fname)) as f:
             exec(f.read(), ns)
-        mobiles = ns["MOBILES"]
+        areas.append((tag, ns))
+        area_order[tag] = order
+        for vnum, mob in ns["MOBILES"].items():
+            all_mobiles[vnum] = mob
+            home_tags[vnum] = tag
+    spawn_tags = {}
+    for tag, ns in areas:
         seen = set()
         for reset in ns.get("RESETS", ()):
             if reset[0] != "M" or reset[1] in seen:
                 continue
             seen.add(reset[1])
-            # flatten whitespace: some source keywords carry stray newlines
-            # (e.g. quest.are mob 202)
-            kw = " ".join(mobiles.get(reset[1], {}).get("keywords", "").split())
-            assert "|" not in kw, "pipe in keywords of mob %d" % reset[1]
-            if kw:
-                lines.append(tag + "|" + str(reset[1]) + "|" + kw)
-    out_path = os.path.join(APPDIR, "mob_index.txt")
+            spawn_tags.setdefault(reset[1], []).append(tag)
+    # Reset-backed mobs retain old cheapest-area ordering. Resetless templates
+    # follow their defining area and remain visible to debug/counter listings.
+    vnums = sorted(all_mobiles, key=lambda v: (
+        area_order[(spawn_tags.get(v) or [home_tags[v]])[0]], v))
+    lines = []
+    for vnum in vnums:
+        mob = all_mobiles[vnum]
+        # Flatten whitespace: some source fields carry stray newlines.
+        kw = " ".join(mob.get("keywords", "").split())
+        short = " ".join(mob.get("short_descr", "").split())
+        assert "|" not in kw, "pipe in keywords of mob %d" % vnum
+        assert "|" not in short, "pipe in short_descr of mob %d" % vnum
+        lines.append(str(vnum) + "|" + home_tags[vnum] + "|"
+                     + str(mob.get("level", 0)) + "|" + kw + "|" + short
+                     + "|" + ",".join(spawn_tags.get(vnum, ())))
+    out_path = os.path.join(APPDIR, "mobs.idx")
+    header = ("# vnum|home_tag|level|keywords|short_descr|spawn_tags per mob"
+              " template -- built by tools/build_mob_index.py, do not edit\n")
     with open(out_path, "w", newline="\n") as f:
-        f.write("\n".join(lines) + "\n")
+        f.write(header + "\n".join(lines) + "\n")
     print("Wrote", out_path, "-", len(lines), "mobs")
+
+    obj_spawn_tags = {}
+    for tag, ns in areas:
+        seen = set()
+        for reset in ns.get("RESETS", ()):
+            if (reset[0] not in ("O", "E", "G", "P")
+                    or reset[1] in seen):
+                continue
+            seen.add(reset[1])
+            obj_spawn_tags.setdefault(reset[1], []).append(tag)
+    obj_lines = []
+    for tag, ns in areas:
+        for vnum in sorted(ns.get("OBJECTS", {})):
+            kw = " ".join(ns["OBJECTS"][vnum].get("keywords", "").split())
+            assert "|" not in kw, "pipe in keywords of obj %d" % vnum
+            if kw:
+                obj_lines.append(tag + "|" + str(vnum) + "|" + kw + "|"
+                                 + ",".join(obj_spawn_tags.get(vnum, ())))
+    out_path = os.path.join(APPDIR, "objs.idx")
+    header = ("# home_tag|vnum|keywords|spawn_tags per object template,"
+              " areas ascending by size -- built by tools/build_mob_index.py,"
+              " do not edit\n")
+    with open(out_path, "w", newline="\n") as f:
+        f.write(header + "\n".join(obj_lines) + "\n")
+    print("Wrote", out_path, "-", len(obj_lines), "objects")
 
 
 if __name__ == "__main__":

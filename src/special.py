@@ -6,11 +6,16 @@ Signature: spec_fun(ch) -> bool, matching 1stMud Spec_Fun macro.
 from urandom import randint
 
 import world
-from config import TYPE_UNDEFINED
-from handler import (act, is_awake, can_see,
-                     TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT)
+from config import TYPE_UNDEFINED, POS_ORDER
+from game_time import time_info
+from combat import do_backstab, do_flee, do_murder, is_safe, multi_hit
+from magic import SPELL_FUNS, TARGET_CHAR, _skill_lookup
+from movement import move_char, do_open, do_close
+from skills_table import SKILLS
+from handler import (act, chprintln, is_awake, can_see,
+                     TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL)
 from item import obj_vnum, item_wear_flags
-from world import ITEM_DEFS
+from world import ITEM_DEFS, ROOM_DEFS
 
 
 def _spec_find_player(ch):
@@ -81,11 +86,9 @@ def _find_combat_victim(ch, chance=4):
 
 def _cast_spell(ch, spell_name, victim):
     """Look up spell_name and invoke its spell_fun at ch's level (cf. 1stMud skill_lookup + spell_fun call in special.c)."""
-    from magic import _skill_lookup, SPELL_FUNS, TARGET_CHAR
     sn = _skill_lookup(spell_name)
     if sn is None:
         return False
-    from skills_table import SKILLS
     sk = SKILLS.get(sn)
     if sk is None:
         return False
@@ -301,7 +304,6 @@ def spec_guard(ch):
     if ech is not None:
         # [PRIMESUD] added missing closing quote
         act("$n screams 'PROTECT THE INNOCENT!!  BANZAI!!'", ch, None, None, TO_ROOM)
-        from combat import multi_hit
         multi_hit(ch, ech, TYPE_UNDEFINED)
         return True
     return False
@@ -338,21 +340,230 @@ def spec_janitor(ch):
     return False
 
 
+# Gangland vnums (cf. 1stMud vnums.h; all live in hood.are's 2100-2199 range)
+MOB_VNUM_GROUP_TROLLS = 2100
+MOB_VNUM_GROUP_OGRES = 2101
+MOB_VNUM_PATROLMAN = 2106
+OBJ_VNUM_WHISTLE = 2116
+
+# Shared taunts for the troll/ogre gang wars (cf. 1stMud spec_troll_member /
+# spec_ogre_member switch blocks; index = number_range(0,6)). Slot 2 differs
+# per gang and is filled in by the caller.
+_GANG_TAUNTS = (
+    "$n yells 'I've been looking for you, punk!'",
+    # [PRIMESUD] 1stMud's ogre variant carries a stray trailing apostrophe
+    "With a scream of rage, $n attacks $N.",
+    None,
+    "$n cracks his knuckles and says 'Do ya feel lucky?'",
+    "$n says 'There's no cops to save you this time!'",
+    "$n says 'Time to join your brother, spud.'",
+    "$n says 'Let's rock.'",
+)
+
+
+def _spec_gang_member(ch, rival_group, rival_taunt):
+    """Attack a rival gang member in the room (cf. 1stMud spec_troll_member/spec_ogre_member in special.c)."""
+    aff = ch.get("affected_by", {})
+    if (not is_awake(ch) or aff.get("calm") or aff.get("charm")
+            or ch.get("fighting") is not None):
+        return False
+    victim = None
+    count = 0
+    for vch in _room_persons(ch):
+        if not vch.get("is_npc") or vch is ch:
+            continue
+        if vch["tpl"] == MOB_VNUM_PATROLMAN:
+            return False
+        if (world.MOB_DEFS.get(vch["tpl"], {}).get("group") == rival_group
+                and ch["level"] > vch["level"] - 2
+                and not is_safe(ch, vch)):
+            if randint(0, count) == 0:
+                victim = vch
+            count += 1
+    if victim is None:
+        return False
+
+    message = _GANG_TAUNTS[randint(0, 6)]
+    if message is None:
+        message = rival_taunt
+    act(message, ch, None, victim, TO_ALL)
+    multi_hit(ch, victim, TYPE_UNDEFINED)
+    return True
+
+
+def spec_troll_member(ch):
+    """Troll gangster attacks ogre gangsters (cf. 1stMud spec_troll_member in special.c)."""
+    return _spec_gang_member(
+        ch, MOB_VNUM_GROUP_OGRES,
+        "$n says 'What's slimy Ogre trash like you doing around here?'")
+
+
+def spec_ogre_member(ch):
+    """Ogre gangster attacks troll gangsters (cf. 1stMud spec_ogre_member in special.c)."""
+    return _spec_gang_member(
+        ch, MOB_VNUM_GROUP_TROLLS,
+        "$n says 'What's Troll filth like you doing around here?'")
+
+
+def spec_patrolman(ch):
+    """Break up fights, whistling for backup (cf. 1stMud spec_patrolman in special.c)."""
+    aff = ch.get("affected_by", {})
+    if (not is_awake(ch) or aff.get("calm") or aff.get("charm")
+            or ch.get("fighting") is not None):
+        return False
+    victim = None
+    count = 0
+    for vch in _room_persons(ch):
+        if vch is ch:
+            continue
+        if vch.get("fighting") is not None:
+            opp = world.chars.get(vch["fighting"])
+            if opp is None:
+                continue
+            if randint(0, count) == 0:
+                victim = vch if vch["level"] > opp["level"] else opp
+            count += 1
+    if victim is None or (victim.get("is_npc")
+                          and world.MOB_DEFS.get(victim["tpl"], {}).get("spec_fun")
+                          == world.MOB_DEFS.get(ch["tpl"], {}).get("spec_fun")):
+        return False
+
+    eq = ch.get("equip", {})
+    whistle = None
+    for slot in ("neck_1", "neck_2"):
+        obj = eq.get(slot)
+        if obj is not None and obj_vnum(obj) == OBJ_VNUM_WHISTLE:
+            whistle = obj
+            break
+    if whistle is not None:
+        act("You blow down hard on $p.", ch, whistle, None, TO_CHAR)
+        act("$n blows on $p, ***WHEEEEEEEEEEEET***", ch, whistle, None, TO_ROOM)
+        # Same-area broadcast, excluding ch's room (cf. 1stMud char_first walk)
+        player = world.chars.get(1)
+        if player is not None and player["room"] != ch["room"]:
+            ch_area = ROOM_DEFS.get(ch["room"], {}).get("area")
+            pl_area = ROOM_DEFS.get(player["room"], {}).get("area")
+            if ch_area is not None and ch_area == pl_area:
+                chprintln(player, "You hear a shrill whistling sound.")
+
+    roll = randint(0, 6)
+    if roll == 0:
+        message = "$n yells 'All roit! All roit! break it up!'"
+    elif roll == 1:
+        message = "$n says 'Society's to blame, but what's a bloke to do?'"
+    elif roll == 2:
+        message = "$n mumbles 'bloody kids will be the death of us all.'"
+    elif roll == 3:
+        message = "$n shouts 'Stop that! Stop that!' and attacks."
+    elif roll == 4:
+        message = "$n pulls out his billy and goes to work."
+    elif roll == 5:
+        message = "$n sighs in resignation and proceeds to break up the fight."
+    else:
+        message = "$n says 'Settle down, you hooligans!'"
+    act(message, ch, None, None, TO_ALL)
+    multi_hit(ch, victim, TYPE_UNDEFINED)
+    return True
+
+
+# Mayor's scripted gate-walk path strings (cf. 1stMud spec_mayor open_path/
+# close_path in special.c). Digits 0-3 step n/e/s/w; letters speak/wake/
+# sleep; 'O'/'C' open/close the "gate"-keyworded exit in the mayor's current
+# room (only Midgaard's west and east gates carry that keyword -- north and
+# south never had one upstream either, so the mayor never touches them,
+# matching 1stMud exactly); '.' ends the walk.
+_MAYOR_OPEN_PATH = "W3a3003b33000c111d0d111Oe333333Oe22c222112212111a1S."
+_MAYOR_CLOSE_PATH = "W3a3003b33000c111d0d111CE333333CE22c222112212111a1S."
+
+# [PRIMESUD] module-level state mirrors 1stMud's `static` locals in
+# spec_mayor (special.c:1006-1008): they persist for the process lifetime,
+# shared across every mob using this spec_fun. Stock Midgaard has exactly
+# one mayor, so a single-slot latch here is equivalent.
+_mayor_path = None
+_mayor_pos = 0
+_mayor_move = False
+
+
 def spec_mayor(ch):
-    """Mayor's scripted gate walk (cf. 1stMud spec_mayor in special.c)."""
+    """Mayor's scripted day/night gate walk (cf. 1stMud spec_mayor in special.c).
+
+    Fights like a mage if attacked; otherwise advances one token of the
+    open/close path per call once the path is latched at 6am/8pm.
+
+    Returns:
+        bool: Always False -- the walk never consumes the mob's normal turn
+            (cf. 1stMud spec_mayor: every path branch falls through to the
+            trailing ``return false``).
+    """
+    global _mayor_path, _mayor_pos, _mayor_move
+
+    if not _mayor_move:
+        if time_info["hour"] == 6:
+            _mayor_path = _MAYOR_OPEN_PATH
+            _mayor_move = True
+            _mayor_pos = 0
+        if time_info["hour"] == 20:
+            _mayor_path = _MAYOR_CLOSE_PATH
+            _mayor_move = True
+            _mayor_pos = 0
+
     if ch.get("fighting") is not None:
         return spec_cast_mage(ch)
-    # [PRIMESUD] TODO stub -- scripted open/close gate path walk not ported
+
+    if not _mayor_move or POS_ORDER[ch["pos"]] < POS_ORDER["sleeping"]:
+        return False
+
+    token = _mayor_path[_mayor_pos]
+    if token in "0123":
+        move_char(ch, "nesw"[int(token)])
+    elif token == "W":
+        ch["pos"] = "standing"
+        act("$n awakens and groans loudly.", ch, None, None, TO_ROOM)
+    elif token == "S":
+        ch["pos"] = "sleeping"
+        act("$n lies down and falls asleep.", ch, None, None, TO_ROOM)
+    elif token == "a":
+        act("$n says 'Hello Honey!'", ch, None, None, TO_ROOM)
+    elif token == "b":
+        act("$n says 'What a view!  I must do something about that dump!'",
+            ch, None, None, TO_ROOM)
+    elif token == "c":
+        act("$n says 'Vandals!  Youngsters have no respect for anything!'",
+            ch, None, None, TO_ROOM)
+    elif token == "d":
+        act("$n says 'Good day, citizens!'", ch, None, None, TO_ROOM)
+    elif token == "e":
+        act("$n says 'I hereby declare the city of Midgaard open!'",
+            ch, None, None, TO_ROOM)
+    elif token == "E":
+        act("$n says 'I hereby declare the city of Midgaard closed!'",
+            ch, None, None, TO_ROOM)
+    elif token == "O":
+        do_open(ch, ["gate"])
+    elif token == "C":
+        do_close(ch, ["gate"])
+    elif token == ".":
+        _mayor_move = False
+
+    _mayor_pos += 1
     return False
 
 
 def spec_nasty(ch):
-    """Rob players in combat: purse-slash or flee (cf. 1stMud spec_nasty in special.c)."""
+    """Ambush a wealthy-looking player, then rob or flee once fighting (cf. 1stMud spec_nasty in special.c)."""
     if not is_awake(ch):
         return False
     if ch.get("pos") != "fighting":
-        # [PRIMESUD] TODO backstab/murder opener not ported (do_backstab
-        # cannot target the player); in-combat behaviour below works
+        # 1stMud walks all room persons for a victim whose level is above
+        # ch's but within 10; the player is the only non-NPC candidate
+        # [PRIMESUD]
+        victim = _spec_find_player(ch)
+        if (victim is not None and victim["level"] > ch["level"]
+                and victim["level"] < ch["level"] + 10):
+            do_backstab(ch, [], victim=victim)
+            if ch.get("pos") != "fighting":
+                do_murder(ch, [], victim=victim)
+            return True
         return False
     victim = world.chars.get(ch.get("fighting"))
     if victim is None:
@@ -370,7 +581,6 @@ def spec_nasty(ch):
         ch["gold"] = ch.get("gold", 0) + gold
         return True
     if roll == 1:
-        from combat import do_flee
         do_flee(ch, [])
         return True
     return False
@@ -398,8 +608,28 @@ def spec_registar(ch):
 
 
 def spec_fido(ch):
-    """Eat corpses in room (cf. 1stMud spec_fido in special.c)."""
-    # [PRIMESUD] stub -- corpse system not yet ported
+    """Devour the first NPC corpse in the room (cf. 1stMud spec_fido in special.c).
+
+    Corpse contents spill onto the room floor and the corpse is removed,
+    matching 1stMud's obj_from_obj/obj_to_room + extract_obj sequence.
+
+    Returns:
+        bool: True if a corpse was eaten (mob's turn is consumed).
+    """
+    if not is_awake(ch):
+        return False
+    rs = world.rooms.get(ch["room"])
+    if rs is None:
+        return False
+    for corpse in list(rs.get("items", [])):
+        tpl = ITEM_DEFS[obj_vnum(corpse)]
+        if tpl.get("type") != "npc_corpse":
+            continue
+        act("$n savagely devours a corpse.", ch, None, None, TO_ROOM)
+        for inner in corpse.get("contents", []):
+            rs["items"].append(inner)
+        rs["items"].remove(corpse)
+        return True
     return False
 
 
@@ -421,9 +651,12 @@ SPEC_TABLE = {
     "spec_janitor": spec_janitor,
     "spec_mayor": spec_mayor,
     "spec_nasty": spec_nasty,
+    "spec_ogre_member": spec_ogre_member,
+    "spec_patrolman": spec_patrolman,
     "spec_poison": spec_poison,
     "spec_questmaster": spec_questmaster,
     "spec_registar": spec_registar,
     "spec_thief": spec_thief,
     "spec_triviamob": spec_triviamob,
+    "spec_troll_member": spec_troll_member,
 }

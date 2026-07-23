@@ -7,106 +7,157 @@ from terminal import tprint
 _MACRO_SUBST = dict(DEFAULT_MACROS)   # [PRIMESUD] user-configurable macros -- no 1stMud equivalent
 _MACRO_SUBST.update(DEFAULT_FNKEY_MACROS)
 
-_CELL_W         = (TERMINAL_COLS - 4) // 3  # width of each of the 3 display columns
-_MACRO_SEP      = "+" + ("-" * _CELL_W + "+") * 3
-_MACRO_SEP_STRONG = "+" + ("=" * _CELL_W + "+") * 3
-
-_FNKEY_ORDER   = sorted(FNKEY_NAMES.keys())
-_FNKEY_BY_NAME = {v: k for k, v in FNKEY_NAMES.items()}  # 'x2' -> 14 etc.
-
-_fns = [(s, FNKEY_NAMES[s]) for s in _FNKEY_ORDER]
-while len(_fns) % 3:
-    _fns.append(None)
-_MACRO_TABLE = [_fns[i:i+3] for i in range(0, len(_fns), 3)] + [
-    None,
-    [("7","7"), ("8","8"), ("9","9")],
-    [("4","4"), ("5","5"), ("6","6")],
-    [("1","1"), ("2","2"), ("3","3")],
-    [("0","0"), None,      None     ],
-]
-del _fns
+_FNKEY_BY_NAME = {v: k for k, v in FNKEY_NAMES.items()}
 
 
-def _macro_cell(key, label=None):
-    """Return padded display lines for one cell; key=None -> blank. [PRIMESUD]"""
-    def pad(s):
-        return s + " " * (_CELL_W - len(s))
-    if key is None:
-        return [" " * _CELL_W]
+def _fn(name, label=None):
+    """Return a function-key display cell. [PRIMESUD]"""
+    return (_FNKEY_BY_NAME[name], label or name)
+
+
+# Physical HP Prime layout. A labelled None is a dim, non-configurable key;
+# its optional third item annotates the second line. A short row makes its
+# final cell span the unused trailing columns.
+_MACRO_SECTIONS = (
+    (
+        (_fn("xy", "x^y"), _fn("sin"), _fn("cos"), _fn("tan"),
+         _fn("ln"), _fn("log")),
+        (_fn("x2", "x^2"), _fn("pm", "+/-"), _fn("()"), _fn(","),
+         (None, "Enter")),
+    ),
+    (
+        ((None, "EEX"), ("7", "7"), ("8", "8"), ("9", "9"),
+         (None, "/", "[Recall]")),
+        ((None, "ALPHA"), ("4", "4"), ("5", "5"), ("6", "6"), (None, "*")),
+        ((None, "Shift"), ("1", "1"), ("2", "2"), ("3", "3"), (None, "-")),
+        ((None, "On", "[Exit]"), ("0", "0"), (None, "."), (None, "Space"), (None, "+")),
+    ),
+)
+
+
+def _center(s, width):
+    """Pad text to a fixed-width cell. [PRIMESUD]"""
+    left = (width - len(s)) // 2
+    return " " * left + s + " " * (width - len(s) - left)
+
+
+def _macro_widths(count):
+    """Distribute terminal width across count cells. [PRIMESUD]"""
+    inner = TERMINAL_COLS - count - 1
+    base, extra = divmod(inner, count)
+    return [base + (1 if i < extra else 0) for i in range(count)]
+
+
+def _macro_cell(key, label, width, note=None):
+    """Render label and truncated binding for one physical key. [PRIMESUD]"""
     if label is None:
-        label = key
-    label = " " * (3 - len(label)) + label
+        return (" " * width, " " * width)
+    if key is None:
+        value = "{D" + _center(note, width) + "{x" if note else " " * width
+        return ("{D" + _center(label, width) + "{x", value)
     cmd = _MACRO_SUBST.get(key)
     if cmd is None:
-        return [pad(" {}:".format(label))]
-    indent = len(label) + 3
-    content_w = _CELL_W - indent
-    lines = []
-    rest = cmd
-    while rest:
-        prefix = " {}: ".format(label) if not lines else " " * indent
-        lines.append(pad(prefix + rest[:content_w]))
-        rest = rest[content_w:]
-    return lines
+        value = "{D" + _center("unset", width) + "{x"
+    else:
+        preview = cmd if len(cmd) <= width else cmd[:width - 3] + "..."
+        value = _center(preview, width).replace("{", "{{")
+    return ("{R" + _center(label, width) + "{x", value)
 
 
-def _macro_row(entries):
-    """Render one 3-cell row; each entry is (key, label) or None for blank. [PRIMESUD]"""
-    cells = [_macro_cell(*(e if e is not None else (None, None))) for e in entries]
-    height = max(len(c) for c in cells)
-    for c in cells:
-        while len(c) < height:
-            c.append(" " * _CELL_W)
-    for ki, e in enumerate(entries):
-        if e is not None:
-            label = e[1]
-            pad_len = max(3, len(label))
-            s = cells[ki][0]
-            cells[ki][0] = s[:1 + pad_len - len(label)] + "{R" + label + "{x" + s[1 + pad_len:]
-    return ["|{}|{}|{}|".format(cells[0][i], cells[1][i], cells[2][i])
-            for i in range(height)]
+def _row_widths(entries, widths):
+    """Let a short row's final cell span trailing columns. [PRIMESUD]"""
+    row_widths = widths[:len(entries)]
+    if len(entries) < len(widths):
+        row_widths[-1] += sum(widths[len(entries):]) + len(widths) - len(entries)
+    return row_widths
+
+
+def _macro_row(entries, widths):
+    """Render one physical key row as label and binding lines. [PRIMESUD]"""
+    cells = []
+    widths = _row_widths(entries, widths)
+    for i in range(len(entries)):
+        entry = entries[i] if entries[i] is not None else (None, None)
+        note = entry[2] if len(entry) > 2 else None
+        cells.append(_macro_cell(entry[0], entry[1], widths[i], note))
+    return ("|" + "|".join(c[0] for c in cells) + "|",
+            "|" + "|".join(c[1] for c in cells) + "|")
+
+
+def _macro_sep(widths, fill="-"):
+    """Render a full-width grid separator. [PRIMESUD]"""
+    return "+" + "+".join(fill * width for width in widths) + "+"
+
+
+def _macro_target(key):
+    """Resolve a command-facing key name to its macro-map key. [PRIMESUD]"""
+    key = key.lower()
+    sentinel = _FNKEY_BY_NAME.get(key)
+    if sentinel is not None:
+        return sentinel, key
+    if len(key) == 1 and key in "0123456789":
+        return key, key
+    return None, None
+
+
+def _print_key_error():
+    """Print valid macro key names. [PRIMESUD]"""
+    tprint("Key must be a digit 0-9 or one of: {}.".format(
+        " ".join(sorted(_FNKEY_BY_NAME))))
 
 
 def do_macro(player, args):
     """Display or set function-key and digit-key macros. [PRIMESUD]"""
     if not args:
-        next_sep = _MACRO_SEP
-        for row in _MACRO_TABLE:
-            if row is None:
-                next_sep = _MACRO_SEP_STRONG
-            else:
-                tprint(next_sep)
-                for line in _macro_row(row):
+        for section_i in range(len(_MACRO_SECTIONS)):
+            section = _MACRO_SECTIONS[section_i]
+            widths = _macro_widths(len(section[0]))
+            tprint(_macro_sep(widths, "=" if section_i else "-"))
+            for row in section:
+                for line in _macro_row(row, widths):
                     tprint(line)
-                next_sep = _MACRO_SEP
-        tprint(next_sep)
+                tprint(_macro_sep(_row_widths(row, widths)))
         return None
     if args[0] == "default":
+        if len(args) != 1:
+            tprint("Usage: macro default")
+            return None
         _MACRO_SUBST.clear()
         _MACRO_SUBST.update(DEFAULT_MACROS)
         _MACRO_SUBST.update(DEFAULT_FNKEY_MACROS)
         tprint("Macros reset to defaults.")
         return None
-    key = args[0].lower()
-    sentinel = _FNKEY_BY_NAME.get(key)
-    if sentinel is not None:
-        target = sentinel
-        label = key
-    elif len(key) == 1 and key in "0123456789":
-        target = key
-        label = key
-    else:
-        tprint("Key must be a digit 0-9 or one of: {}.".format(
-            " ".join(sorted(_FNKEY_BY_NAME))))
+    if args[0] == "unset":
+        if len(args) != 2:
+            tprint("Usage: macro unset <key>")
+            return None
+        target, label = _macro_target(args[1])
+        if target is None:
+            _print_key_error()
+        elif target in _MACRO_SUBST:
+            del _MACRO_SUBST[target]
+            tprint("Macro {} unset.".format(label))
+        else:
+            tprint("No macro configured for {}.".format(label))
+        return None
+    target, label = _macro_target(args[0])
+    if target is None:
+        _print_key_error()
         return None
     if len(args) == 1:
-        if target in _MACRO_SUBST:
-            del _MACRO_SUBST[target]
-            tprint("Macro {} cleared.".format(label))
+        cmd = _MACRO_SUBST.get(target)
+        if cmd is None:
+            tprint("No macro configured for {}.".format(label))
         else:
-            tprint("No macro on {}.".format(label))
-    else:
-        cmd = " ".join(args[1:])
-        _MACRO_SUBST[target] = cmd
-        tprint("{R%s{x mapped to '%s'." % (label, cmd))
+            tprint("{R%s{x is mapped to '%s'." % (
+                label, cmd.replace("{", "{{")))
+        return None
+    cmd = " ".join(args[1:])
+    # [PRIMESUD] '~' is the save-payload line separator (game_state.py);
+    # a macro containing it would corrupt the save on the next write.
+    if "~" in cmd:
+        tprint("Macro text may not contain '~'.")
+        return None
+    _MACRO_SUBST[target] = cmd
+    tprint("{R%s{x mapped to '%s'." % (label, cmd.replace("{", "{{")))
     return None
