@@ -527,19 +527,10 @@ do { int _a; \
 #define STDERR_FILENO           2
 #define S_ISREG(mode)           ((mode) & S_IFREG)
 #define S_ISDIR(mode)           ((mode) & S_IFDIR)
-#define strcasecmp              _stricmp
-#define strncasecmp             _strnicmp
-#define stricmp                 _stricmp
-#define strnicmp                _strnicmp
+#define strcasecmp              stricmp
+#define strncasecmp             strnicmp
 #define socket_error(text)      logf("%s: %s", get_winsock_error_text(0), text)
-#define makedir(dir)            _mkdir(dir)
-#define chdir                   _chdir
-#define unlink                  _unlink
-#define getcwd                  _getcwd
-#define tzset                   _tzset
-#define strdup                  _strdup
-#define execl                   _execl
-#define cwait                   _cwait
+#define makedir(dir)            mkdir(dir)
 #define check_errno(err)        (WSAGetLastError() == WSA##err)
 #define sockerrno               WSAGetLastError()
 #define popen					_popen

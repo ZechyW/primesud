@@ -2541,9 +2541,7 @@ char *str_time(time_t timet, int tz, const char *format)
 	{
 #ifdef __CYGWIN__
 		timet += _timezone;
-#elif defined WIN32
-		timet += _timezone;
-#elif defined HAVE_TIMEZONE_VAR
+#elif defined HAVE_TIMEZONE_VAR || defined WIN32
 		timet += timezone;
 #elif defined HAVE_STRUCT_TM_TM_GMTOFF || defined HAVE_TM_GMTOFF
 
