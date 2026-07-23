@@ -926,7 +926,8 @@ def do_score(player, args):
     do_affects tail added, re-verified 20/07/2026; bank/share row added and
     re-verified 21/07/2026; [PRIMESUD] AC bars paired 2-per-row and the
     values/AC separator dropped (approved) so the box fits the 22-row
-    screen, 21/07/2026; output batched via list chprintln 22/07/2026]
+    screen, 21/07/2026; output batched via list chprintln 22/07/2026;
+    gold/silver order corrected and alignment shown 23/07/2026]
     -- data fields (age, hours, thac0, AC bars)
     verified; box layout adapted for the 64-col screen [PRIMESUD].
     """
@@ -993,6 +994,10 @@ def do_score(player, args):
     total_played = p.get('played', 0)
     hours = total_played // 3600            # cf. 1stMud act_info.c: played/HOUR
     age   = 17 + total_played // 72000      # cf. 1stMud act_info.c: 17 + played/(20*HOUR)
+    level = p["level"]
+    tier = p.get("tier", 0)
+    if tier:
+        level = str(level) + " (T" + str(tier) + ")"
 
     lines = [
         _SCORE_SEP_OUTER,
@@ -1000,7 +1005,7 @@ def do_score(player, args):
         _SCORE_SEP_INNER,
         _row(
             _stat("Strength", ps["str"], get_curr_stat(p, "str")),
-            _val_r("Level", p["level"])
+            _val_r("Level", level)
         ),
         _row(
             _stat("Intelligence", ps["int"], get_curr_stat(p, "int")),
@@ -1053,13 +1058,12 @@ def do_score(player, args):
             _val_r("Hours", hours, bright=True),
         ),
         _row(
-            _val_l("Silver", p["silver"], bright=True),
+            _val_l("Gold", p["gold"], bright=True),
             _val_r("Position", p["pos"], bright=True),
         ),
         _row(
-            _val_l("Gold", p["gold"], bright=True),
-            # [PRIMESUD] prestige tier (empty cell when tier 0, stock look)
-            _val_r("Tier", p.get("tier", 0), bright=True) if p.get("tier", 0) else ""
+            _val_l("Silver", p["silver"], bright=True),
+            _val_r("Alignment", p.get("alignment", 0), bright=True),
         ),
         _row(_ac_cell("Pierce", get_armor(p, AC_PIERCE)),
              _ac_cell("Bash", get_armor(p, AC_BASH), _AC_BAR_R)),
