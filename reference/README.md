@@ -15,16 +15,8 @@ Reference material for PrimeSUD development.
 
 ---
 
-## HP Prime sample apps
-
-Python apps demonstrating available functionality:
-
-- **`keyspy/`** — utility for checking the bit index of any pressed key.
-- **`trek/`** — a Python port of the classic 1972 Star Trek text game, adapted to run on the HP Prime via `tml.py`.
-- **`jezzball/`** — a full graphical JezzBall clone (1.23 by komame); source of the environment setup/teardown pattern used in this project. Includes a binary compression loader in the deployed `.hpappdir`.
-
----
-
 ## MUD reference
 
-- **`1stMud4.5.3/`** — ROM-derived MUD codebase, primarily C. Reference for MUD conventions, data structures, and gameplay systems.
+- **`1stMud4.5.3/`** - ROM-derived MUD codebase, primarily C. Reference for MUD conventions, data structures, and gameplay systems.
+- **`quickmud/`** - Another ROM reference, closer to stock. Reference for original ROM behaviour, and stock ROM areas.
+- **`CAW/`** - Curious Areas Workshop. Reference areas for potential future inclusion.

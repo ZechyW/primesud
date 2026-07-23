@@ -54,6 +54,12 @@ If the calculator reports "Insufficient memory," power-cycle it first -- Shift+O
 - [`TODO.md`](TODO.md) -- remaining work and planned features.
 - [`docs/BUILTINS.md`](docs/BUILTINS.md) -- device limitations and measured performance details.
 
+## Credits
+
+PrimeSUD builds on 1stMud, ROM, Merc, and DikuMud; see [`LICENSES.md`](LICENSES.md) for their licenses and full credits.
+
+Its text interface began with [Text Mode Layer (tml) 1.0](https://www.hpcalc.org/details/9661) by Piotr Kowalewski (komame), extensively adapted and extended for PrimeSUD.
+
 ## But why?
 
 I had a Prime gathering dust on a shelf and a sudden bout of nostalgia for the good old days. Apparently, this was the logical next step. 🙂
