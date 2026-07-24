@@ -85,6 +85,7 @@ Completed plan documents are deleted, not archived -- durable decisions get harv
 
 ## Working style
 
+- Assessment-shaped questions ("Possible?", "Worth it?", "Should we...?") want the assessment for review, not implementation. Propose the approach, wait for the go-ahead.
 - Read `DESIGN.md`, and relevant reference docs before porting behavior from 1stMud.
 - Provide sanity check and brief explanation of key decisions -- especially HP Prime constraints or PPL interop -- before complex coding.
 - Minimal targeted changes. No surrounding refactor unless it is substantially cleaner or better; if so, raise for review.
