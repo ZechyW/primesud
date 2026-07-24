@@ -3549,6 +3549,7 @@ committed heavy active strike. Their combat flourishes follow the last
 active form used and have no mechanical effect.
 
 Swordsmen begin with sword and second attack. Their default group grants
-dagger, disarm, dodge, enhanced damage, fast healing, hand to hand, parry,
-shield block, third attack, and all three unique sword skills.
+disarm, dodge, enhanced damage, fast healing, hand to hand, parry, shield
+block, third attack, and all three unique sword skills. Dagger can be gained
+later as their only sidearm.
 High Dexterity gives all three unique skills a small activation bonus.

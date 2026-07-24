@@ -84,9 +84,9 @@ performance.
 ## Swordsman / Sword Saint [PRIMESUD]
 
 Added 23/07/2026 as the first post-1.0 content class. Swordsman is a
-DEX-primary, non-caster single-sword duelist: sword is rating 1, dagger is
-the only sidearm, and other weapon skills are unavailable. THAC0 and HP sit
-between Thief and Warrior. Swordsman shares the Warrior guild rooms.
+DEX-primary, non-caster single-sword duelist: sword is rating 1, dagger is an
+optional level-5 sidearm, and other weapon skills are unavailable. THAC0 and
+HP sit between Thief and Warrior. Swordsman shares the Warrior guild rooms.
 
 Three unique skills condense classical Chinese sword forms without adding a
 second stance system:
