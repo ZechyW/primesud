@@ -1548,8 +1548,8 @@ SOCIALS = (
 # -- MobProgs ------------------------------------------------------------------
 # (vnum, code) -- mob program code blocks, referenced by mob triggers
 MOBPROGS = {
-    3790: 'say Welcome to Mud School, $n. We keep a hardship fund for new students. If you can spare it, one silver coin is enough.',
-    3791: "if isdelay $i\n  say You have already shown your generosity, $n. Let others have their turn.\nelse\n  if level $n < 5\n    say Thank you, $n. That was generous, but you look like one of the students this fund was made for. Take this gold coin, and spend it wisely.\n  else\n    say Thank you, $n. Generosity is a lesson worth rewarding. Accept this gold coin with the school's gratitude.\n  endif\n  mob oload 2 0\n  give coin $n\n  * ponytail: no delay trigger, so this stays set for the mob instance; persist a player flag if abuse matters.\n  mob delay 1\nendif",
+    3790: 'if isdelay $i\n  say Welcome back, $n. The hardship fund remembers your generosity.\nelse\n  say Welcome to Mud School, $n. We keep a hardship fund for new students. If you can spare it, one silver coin is enough.\nendif',
+    3791: "if isdelay $i\n  say You have already shown your generosity, $n. Let others have their turn.\n  mob refund $n\nelse\n  if level $n < 5\n    say Thank you, $n. That was generous, but you look like one of the students this fund was made for. Take this gold coin, and spend it wisely.\n  else\n    say Thank you, $n. Generosity is a lesson worth rewarding. Accept this gold coin with the school's gratitude.\n  endif\n  mob oload 2 0\n  give coin $n\n  * ponytail: no delay trigger, so this stays set for the mob instance; persist a player flag if abuse matters.\n  mob delay 1\nendif",
     3792: 'say Kind of you, $n, but please keep $O. The hardship fund accepts coins only.\ngive $o $n',
 }
 

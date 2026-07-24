@@ -577,6 +577,9 @@ def _give_coins(player, amount, coin, rest, victim=None):
     if victim.get("is_npc"):
         from mobprog import has_trigger, bribe_trigger  # deferred: keep mobprog off the boot path
         if has_trigger(victim, "bribe"):
+            # [PRIMESUD] stash the payment for 'mob refund' (progs can't
+            # see bribe amounts); original denomination so refunds match
+            victim["mprog_bribe"] = (amount, wallet)
             bribe_trigger(victim, player, amount if silver else amount * 100)
 
     # Money changer (cf. 1stMud ACT_IS_CHANGER branch)

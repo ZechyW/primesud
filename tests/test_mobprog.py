@@ -654,6 +654,26 @@ def test_bribe_trigger_via_do_give(mp_world):
     assert any("Bribe taken." in l for l in out)
 
 
+def test_mp_refund_returns_bribe(mp_world):
+    """[PRIMESUD] 'mob refund' repays the stashed bribe in its original
+    denomination; one-shot (stash popped)."""
+    player, mob, out = mp_world
+    player["gold"] = 100
+    MOBPROGS[6006] = "\n".join([
+        "if isdelay $i",
+        "  mob refund $n",
+        "else",
+        "  mob delay 1",
+        "endif"])
+    from inventory import do_give
+    do_give(player, ["50", "gold", "guard"])   # first bribe kept, delay armed
+    assert player["gold"] == 50 and mob.get("gold", 0) == 50
+    do_give(player, ["30", "gold", "guard"])   # isdelay -> refunded
+    assert player["gold"] == 50 and mob.get("gold", 0) == 50
+    assert mob.get("mprog_bribe") is None      # stash consumed
+    assert any("returns your 30 gold" in l for l in out)
+
+
 def test_random_pulse_fires_at_default_pos(mp_world):
     player, mob, out = mp_world
     # add a random trigger (phrase 100 always rolls < 100) to the template

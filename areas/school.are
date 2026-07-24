@@ -2178,11 +2178,16 @@ S
 
 #MOBPROGS
 #3790
-say Welcome to Mud School, $n. We keep a hardship fund for new students. If you can spare it, one silver coin is enough.
+if isdelay $i
+  say Welcome back, $n. The hardship fund remembers your generosity.
+else
+  say Welcome to Mud School, $n. We keep a hardship fund for new students. If you can spare it, one silver coin is enough.
+endif
 ~
 #3791
 if isdelay $i
   say You have already shown your generosity, $n. Let others have their turn.
+  mob refund $n
 else
   if level $n < 5
     say Thank you, $n. That was generous, but you look like one of the students this fund was made for. Take this gold coin, and spend it wisely.

@@ -2958,6 +2958,27 @@ def _mp_vforce(mob, args, pv, cl):
             interpret(parts[1], victim)
 
 
+def _mp_refund(mob, args, pv, cl):
+    """Return the bribe that fired this prog to its giver. [PRIMESUD]
+
+    ``refund <victim>``.  No 1stMud equivalent: progs cannot see bribe
+    amounts, so _give_coins stashes (amount, wallet) on the mob before
+    firing TRIG_BRIBE and this pops it, repaying in the original
+    denomination.  One-shot -- a second refund without a new bribe is a
+    no-op.
+    """
+    victim = _get_char_room(mob, args.split(None, 1)[0] if args else "")
+    stash = mob.pop("mprog_bribe", None)
+    if victim is None or stash is None:
+        dbg("mobprog: refund without briber or stashed bribe")
+        return
+    amount, wallet = stash
+    mob[wallet] = mob.get(wallet, 0) - amount
+    victim[wallet] = victim.get(wallet, 0) + amount
+    act("$n returns your %d %s." % (amount, wallet), mob, None, victim, TO_VICT)
+    act("$n returns some coins to $N.", mob, None, victim, TO_NOTVICT)
+
+
 # Table order matches 1stMud mob_cmd_table (prog_cmds.c:43); dispatch is a
 # case-insensitive prefix match in this order (first match wins).
 MP_COMMANDS = (
@@ -2991,6 +3012,7 @@ MP_COMMANDS = (
     ("flee", _mp_flee),
     ("remove", _mp_remove),
     ("peace", _mp_peace),
+    ("refund", _mp_refund),  # [PRIMESUD] appended past the 1stMud table
 )
 
 
