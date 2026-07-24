@@ -621,11 +621,12 @@ def do_give(player, args):
 
         giveables = []
         labels = []
-        for coin in ("silver", "gold"):
+        # str.capitalize is missing on-device; use literal labels
+        for coin, cap in (("silver", "Silver"), ("gold", "Gold")):
             amount = player.get(coin, 0)
             if amount:
                 giveables.append(coin)
-                labels.append(coin.capitalize() + " coins (" + str(amount)
+                labels.append(cap + " coins (" + str(amount)
                               + " available)")
         for carried in player["inv"]:
             if can_see_obj(player, carried):

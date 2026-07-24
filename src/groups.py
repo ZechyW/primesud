@@ -13,7 +13,7 @@ single-player. group_add's deduct flag is dropped with it.
 """
 
 from classes import CLASS_TABLE, char_classes, class_lookup, class_name
-from colors import draw_line
+from colors import capitalize, draw_line
 from config import MAX_MORTAL_LEVEL
 from handler import chprintln
 from pager import tpage
@@ -263,7 +263,8 @@ def do_slist(player, args):
             fields.append("{W%3s: %3s{c  " %
                           (class_name(player, cl)[:3],
                            "n/a" if level > MAX_MORTAL_LEVEL else "%03d" % level))
-        name = SKILLS[sn]["name"].capitalize()
+        # colors.capitalize -- str.capitalize missing on-device
+        name = capitalize(SKILLS[sn]["name"])
         # [PRIMESUD] Upstream's six-class line is wider than the 64-col screen.
         chprintln(player, "{c" + name + ": [ " + "".join(fields[:3]) + "{x")
         chprintln(player, "{c" + " " * (len(name) + 4) +

@@ -1,6 +1,7 @@
 """Social commands: smile, nod, wave, etc. (cf. 1stMud find_social / check_social in interp.c)."""
 
 import world
+from colors import capitalize
 from handler import act, chprintln, get_char_room, is_awake, is_name, \
     TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT
 from pager import tpage
@@ -100,7 +101,8 @@ def do_sshow(player, args):
      char_auto, others_auto) = data.split("\n")[:7]
 
     victim = {
-        "name": (player.get("name", "") or "")[::-1].capitalize(),
+        # colors.capitalize -- str.capitalize missing on-device
+        "name": capitalize((player.get("name", "") or "")[::-1]),
         "is_npc": True, "room": None, "sex": "neutral",
         "affected_by": {}, "fighting": None,
     }

@@ -228,7 +228,8 @@ def do_explored(player, args):
         rows.sort(key=lambda r: (-r[0], r[1]))
         cells = []
         for pct, name in rows:
-            cells.append("{D[{Y" + str(pct).rjust(3) + "{y%{D]{x " + name)
+            # str.rjust missing on-device; transient UI string so % is fine
+            cells.append("{D[{Y" + "%3d" % pct + "{y%{D]{x " + name)
         # two per line (cf. 1stMud print_cols 2-column layout)
         for i in range(0, len(cells), 2):
             left = cells[i]
