@@ -3,6 +3,9 @@
 Usage:
     python tools/build_dist.py          Build dist
     python tools/build_dist.py --check  Build dist + verify symbol preservation
+    python tools/build_dist.py --zip v1.0.1
+                                        Also write dist/PrimeSUD-<ver>-hpprime.zip
+                                        (release asset layout: hpappdir at zip root)
 """
 
 import ast
@@ -265,10 +268,25 @@ def check_symbols():
     return 0
 
 
+def build_zip(version):
+    """Zip DIST_DIR into dist/PrimeSUD-<version>-hpprime.zip (release asset)."""
+    base = DIST_DIR.parent / ("PrimeSUD-" + version + "-hpprime")
+    path = shutil.make_archive(str(base), "zip", root_dir=DIST_DIR.parent,
+                               base_dir=DIST_DIR.name)
+    print("Release zip written to %s" % path)
+
+
 if __name__ == "__main__":
     rc = main()
     if rc != 0:
         raise SystemExit(rc)
     if "--check" in sys.argv:
-        raise SystemExit(check_symbols() or check_area_data())
-    raise SystemExit(rc)
+        rc = check_symbols() or check_area_data()
+        if rc != 0:
+            raise SystemExit(rc)
+    if "--zip" in sys.argv:
+        i = sys.argv.index("--zip")
+        if i + 1 >= len(sys.argv) or sys.argv[i + 1].startswith("-"):
+            raise SystemExit("--zip requires a version, e.g. --zip v1.0.1")
+        build_zip(sys.argv[i + 1])
+    raise SystemExit(0)
