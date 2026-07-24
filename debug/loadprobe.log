@@ -1,0 +1,10 @@
+targets: pestates / catacomb / newthalos
+free at start=7120576
+-- pass A: fresh heap --
+A pestates: total=20ms read=2 exec=18 reset=1 merge~=-1 heap+=9856 free=7464464
+A catacomb: total=682ms read=19 exec=465 reset=191 merge~=7 heap+=410192 free=7061888
+A newthalos: total=6263ms read=234 exec=2649 reset=3768 merge~=-388 heap+=2428672 free=4900048
+-- pass B: pressured heap (cache 12) --
+loaded areas=15 free=2308192
+B+gc newthalos: total=4320ms read=238 exec=2827 reset=1616 merge~=-361 heap+=2335280 free=3756448
+B-nogc newthalos: total=4825ms read=237 exec=2439 reset=1631 merge~=518 heap+=-18192 free=3756432

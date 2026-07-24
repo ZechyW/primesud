@@ -175,6 +175,34 @@ split/iterate in memory. Never loop `readline()` over more than a handful
 of lines. Watch heap size — bulk reads are fine for KB-scale files, not
 the 150KB help.dat.
 
+## Area load performance (measured on-device)
+
+Measured 25 Jul 2026 via `debug/loadprobe.py` (standalone app, full game
+modules imported, ~7.1MB free at start). Phases of `world._load_area`:
+read (one `f.read()`), exec (compile + build the def dict tree), reset
+(mob/object spawning via `reset_area`), plus the cost of a `gc.collect()`
+run just before the load.
+
+| Area (file size) | total | read | exec | reset | gc | heap+ |
+|:-----------------|------:|-----:|-----:|------:|---:|------:|
+| pestates (4KB), fresh heap | 20ms | 2 | 18 | 0 | 73 | 10KB |
+| catacomb (61KB), fresh heap | 683ms | 20 | 467 | 192 | 73 | 400KB |
+| newthalos (265KB), fresh heap | 6243ms | 233 | 2658 | 3754 | 79 | 2.4MB |
+| newthalos reload, pressured heap, gc first | 4307ms | 237 | 2812 | 1620 | 132 | 2.3MB |
+| newthalos reload, pressured heap, no gc | 4813ms | 238 | 2418 | 1631 | 0 | — |
+
+Conclusions:
+
+- Reset dominates first loads (60% on newthalos); eviction reloads reset
+  ~2.1s cheaper (delta replay spawns less). exec is ~45% and stable across
+  heap states; read is noise. Load time scales roughly linearly with file
+  size (~2.4ms/KB fresh).
+- `gc.collect()` immediately before the load is a net win: 73-132ms cost
+  buys ~500ms on a big-area load at pressured heap (~375ms net); worst
+  case ~+75ms on a tiny area. `_load_area` now collects unconditionally.
+- A big area costs ~2.4MB resident heap; 15 loaded areas left 2.3MB free,
+  so the `AREA_CACHE_MAX` eviction cap is load-bearing.
+
 ---
 
 ## Text rendering performance (measured on-device)

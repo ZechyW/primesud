@@ -475,6 +475,12 @@ def _load_area(tag):
     """
     global _draining
     _loading_notice(tag)
+    # [PRIMESUD] Defrag before the load's big allocations: measured ~375ms
+    # net wall-clock win on a 265KB area at pressured heap (collect costs
+    # 73-132ms, load runs ~500ms faster); worst case ~+75ms on a tiny
+    # area, imperceptible. BUILTINS.md sec. Area load performance.
+    import gc
+    gc.collect()
     # Explicit close: MicroPython has no refcounting, so open().read()
     # leaks the handle until (if ever) GC finalization -- the Prime's FD
     # table is small and repeated loads exhaust it (OSError: 0 on open).
