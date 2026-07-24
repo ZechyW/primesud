@@ -63,6 +63,8 @@ Verified with `dir(str)` on-device.
 | `removeprefix` | Strip prefix if present (Python 3.9+)              |
 | `removesuffix` | Strip suffix if present (Python 3.9+)              |
 | `rjust`        | Right-justify in field of given width — use `"%10s" % s` instead |
+| `swapcase`     | Swap upper/lower case                              |
+| `istitle`      | True if title-cased                                |
 | `title`        | Title-case the string                              |
 | `translate`    | Map chars through translation table                |
 | `zfill`        | Pad with leading zeros                             |
