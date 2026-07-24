@@ -81,9 +81,10 @@ def create_char(class_idx=CLASS_WARRIOR, race_name="Human"):
         "move":     100,  "max_move": 100,  "perm_move": 100,
         "room":     R_STARTING_ROOM,
         "id":       1,
-        # cf. 1stMud nanny.c CON_READ_MOTD level==0 block: ch->gold = 10
-        # (base is 0 -- see _char_base).
+        # cf. 1stMud nanny.c CON_READ_MOTD level==0 block: ch->gold = 10.
+        # [PRIMESUD] Silver funds the Mud School acolyte tutorial naturally.
         "gold":      10,
+        "silver":    100,
         "gold_bank": 0,
         "shares":    0,
         # cf. 1stMud ch->Class[] array in multiclass.c; grows on remort.

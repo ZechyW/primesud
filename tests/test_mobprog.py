@@ -914,7 +914,11 @@ def test_school_demo_full_interaction(school_world, monkeypatch):
     # Money contributes zero carry count, so a nominally full player can receive it.
     with monkeypatch.context() as m:
         m.setattr(inventory, "can_carry_n", lambda ch: 0)
-        inventory.do_give(player, ["1", "silver", "zump"])
+        picks = iter((0, 0))  # silver, then acolyte
+        m.setattr(inventory, "pick_from", lambda title, options: next(picks))
+        m.setattr(inventory.terminal.tr, "input",
+                  lambda *args, **kwargs: "1")
+        inventory.do_give(player, [])
     assert player["silver"] == 1 and mob["silver"] == 1
     assert any("students this fund was made for" in l for l in out)
     assert player["gold"] == 1

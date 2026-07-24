@@ -40,7 +40,7 @@ Default digit bindings (`config.py:DEFAULT_MACROS`):
 | 7   | `kill`    |
 | 8   | `flee`    |
 | 9   | `cast`    |
-| 4   | `open`    |
+| 4   | `give`    |
 | 5   | `get`     |
 | 6   | `drop`    |
 | 1   | `score`   |
@@ -182,7 +182,7 @@ then the current input buffer (right-truncated to fit).  Implemented in
 
 ## Contextual target picker
 
-When a command (e.g. `kill`, `get`, `wear`, `practice`) is given without a
+When a command (e.g. `kill`, `get`, `give`, `wear`, `practice`) is given without a
 target and multiple valid targets exist, a numbered menu is presented:
 
 ```
@@ -193,6 +193,8 @@ target and multiple valid targets exist, a numbered menu is presented:
 ```
 
 The player types a digit and Enter.  Option 1 is the default and pre-selected.
+For bare `give`, the first picker includes carried items and available silver
+or gold. Choosing coins prompts for the amount, then the recipient picker.
 Implemented in `picker.py:pick_from`; blocks until a valid choice is made.
 
 ---

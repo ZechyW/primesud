@@ -53,7 +53,7 @@ Things with no upstream equivalent.
 There are no other players, no immortals, no clans -- and the design turns
 that into features rather than holes.
 
-- **Pickers replace typing** -- `kill`, `get`, `wear`, `cast`, `practice`,
+- **Pickers replace typing** -- `kill`, `get`, `give`, `wear`, `cast`, `practice`,
   `train`, `examine`, `open`/`unlock`, remort, chargen: given no argument,
   each opens a numbered target menu instead of failing (docs/PRIME_UX.md).
 - **Name picker and free rename** -- chargen offers six generated fantasy
@@ -82,6 +82,8 @@ that into features rather than holes.
   pretitle, and the PK flag; the rest of the trivia economy is faithful.
 - **Solo banking** -- banked gold, shares, and the fluctuating market remain;
   player transfers and clan-bank branches are removed (economy.py).
+- **Tutorial-ready purse** -- new players start with 100 silver alongside
+  1stMud's 10 gold, enough to follow the Mud School acolyte's donation lesson.
 - **One personal estate** -- buy the stock Player Estates home, rename and
   describe it, recall there, and decorate it with persistent floor items;
   runtime OLC rooms and multiplayer ownership are unnecessary (DESIGN.md).

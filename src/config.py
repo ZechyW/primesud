@@ -133,7 +133,7 @@ DEFAULT_MACROS = {  # [PRIMESUD]
     "7": "kill",
     "8": "flee",
     "9": "cast",
-    "4": "open",
+    "4": "give",
     "5": "get",
     "6": "drop",
     "1": "score",

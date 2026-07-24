@@ -69,6 +69,7 @@ def test_function_key_defaults_and_xy_remains_configurable(out):
     assert _MACRO_SUBST[by_name["xy"]] == "run"
     assert _MACRO_SUBST[by_name["ln"]] == "quest info"
     assert _MACRO_SUBST[by_name["log"]] == "gquest check"
+    assert _MACRO_SUBST["4"] == "give"
     assert _MACRO_SUBST["3"] == "train"
 
     do_macro(None, ["xy", "scan"])

@@ -10,6 +10,11 @@ from game_time import time_info
 from player import create_char
 
 
+def test_new_player_starts_with_school_donation_money():
+    player = create_char()
+    assert (player["gold"], player["silver"]) == (10, 100)
+
+
 def _scene(fresh_world):
     fresh_world.register_area("alpha", 100, 199)
     fresh_world.register_area("beta", 200, 299)
@@ -24,6 +29,7 @@ def _scene(fresh_world):
     player = create_char()
     player["name"] = "Tester"
     player["room"] = 100
+    player["silver"] = 0
     player["_macros"] = {}
     world.chars[1] = player
     return player

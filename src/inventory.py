@@ -1,6 +1,7 @@
 """Inventory, equipment, item-use, and starter-outfit commands."""
 
 import world
+import terminal
 from handler import (get_curr_stat, is_name, equip_char, unequip_char, act,
                      get_char_room, can_see, can_see_obj, is_awake,
                      affect_strip, affect_join, chprintln, chprintlnf,
@@ -544,7 +545,7 @@ def _give_target(ch, words):
     return world.chars.get(vid) if vid is not None else None
 
 
-def _give_coins(player, amount, coin, rest):
+def _give_coins(player, amount, coin, rest, victim=None):
     """Coin branch of do_give (cf. 1stMud do_give money path in act_obj.c:655).
 
     Fires TRIG_BRIBE on the recipient (see below). [PRIMESUD] The changer's
@@ -554,13 +555,14 @@ def _give_coins(player, amount, coin, rest):
         chprintln(player, "Sorry, you can't do that.")
         return
     silver = coin != "gold"
-    if not rest:
-        chprintln(player, "Give what to whom?")
-        return
-    victim = _give_target(player, rest)
     if victim is None:
-        chprintln(player, "They aren't here.")
-        return
+        if not rest:
+            chprintln(player, "Give what to whom?")
+            return
+        victim = _give_target(player, rest)
+        if victim is None:
+            chprintln(player, "They aren't here.")
+            return
     wallet = "silver" if silver else "gold"
     if player[wallet] < amount:
         chprintln(player, "You haven't got that much.")
@@ -604,27 +606,75 @@ def do_give(player, args):
 
     Args:
         player (dict): Player state dict.
-        args (list): [amount, coin-word, mob] for coins, or [item, mob].
+        args (list): [amount, coin-word, mob] for coins, or [item, mob];
+            [PRIMESUD] picker shown if omitted.
     """
-    if len(args) < 2:
-        chprintln(player, "Give what to whom?")
-        return
-    arg1 = args[0]
+    obj = None
+    victim = None
+    if not args and not player.get("is_npc"):
+        rs = world.rooms[player["room"]]
+        victims = [world.chars[i] for i in rs["mobs"]
+                   if can_see(player, world.chars[i])]
+        if not victims:
+            chprintln(player, "Give what to whom?")
+            return
 
-    if arg1.isdigit():
-        _give_coins(player, int(arg1), args[1].lower(), args[2:])
-        return
+        giveables = []
+        labels = []
+        for coin in ("silver", "gold"):
+            amount = player.get(coin, 0)
+            if amount:
+                giveables.append(coin)
+                labels.append(coin.capitalize() + " coins (" + str(amount)
+                              + " available)")
+        for carried in player["inv"]:
+            if can_see_obj(player, carried):
+                giveables.append(carried)
+                labels.append(carried.get("short_descr")
+                              or ITEM_DEFS[obj_vnum(carried)]["short_descr"])
+        if not giveables:
+            chprintln(player, "You have nothing to give.")
+            return
 
-    obj = get_obj_list(arg1, player["inv"], ITEM_DEFS, player)
-    if obj is None:
-        chprintln(player, "You do not have that item.")
-        return
-    # 1stMud: wear_loc check -- [PRIMESUD] inv never holds equipped items
+        idx = pick_from("Give what?", labels)
+        if idx < 0:
+            return
+        picked = giveables[idx]
+        amount = None
+        if isinstance(picked, str):
+            raw = terminal.tr.input("How many " + picked + " coins? ",
+                                    alpha=False, default="1").strip()
+            if not raw.isdigit():
+                chprintln(player, "Sorry, you can't do that.")
+                return
+            amount = int(raw)
 
-    victim = _give_target(player, args[1:])
-    if victim is None:
-        chprintln(player, "They aren't here.")
-        return
+        idx = pick_from("Give to whom?",
+                        [MOB_DEFS[v["tpl"]]["short_descr"] for v in victims])
+        if idx < 0:
+            return
+        victim = victims[idx]
+        if amount is not None:
+            _give_coins(player, amount, picked, [], victim)
+            return
+        obj = picked
+    else:
+        if len(args) < 2:
+            chprintln(player, "Give what to whom?")
+            return
+        arg1 = args[0]
+        if arg1.isdigit():
+            _give_coins(player, int(arg1), args[1].lower(), args[2:])
+            return
+        obj = get_obj_list(arg1, player["inv"], ITEM_DEFS, player)
+        if obj is None:
+            chprintln(player, "You do not have that item.")
+            return
+        # 1stMud: wear_loc check -- [PRIMESUD] inv never holds equipped items
+        victim = _give_target(player, args[1:])
+        if victim is None:
+            chprintln(player, "They aren't here.")
+            return
     tpl = ITEM_DEFS[obj_vnum(obj)]
 
     # Quest delivery (cf. 1stMud do_give act_obj.c:772)

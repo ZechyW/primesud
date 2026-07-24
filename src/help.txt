@@ -2257,7 +2257,7 @@ what you are wielding, 'spells' to see your spells, 'skills' to
 see your skills, and 'commands' for a list of commands. Help is
 available on most commands and abilities.
 
-Please type 'help rules' to see the Rules of 1stMud.
+Please type 'help keys' to learn the HP Prime game shortcuts.
 #0|commands|NORTH SOUTH EAST WEST UP DOWN
 Syntax: north
 Syntax: south
