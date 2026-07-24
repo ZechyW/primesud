@@ -1,0 +1,10 @@
+target: newthalos free=7007264
+fresh: total=6484ms reset=3605 free=6023360
+reload0: total=3926ms reset=511 mobs=271 free=5586832
+reload1: total=3922ms reset=509 mobs=271 free=5586864
+create_mobile(9561) x50: 129ms (2580us each)
+create_object(3135) x50: 1ms (20us each)
+_char_base x50: 44ms (880us each)
+dict(base-copy) x50: 120ms (2400us each)
+MOB_DEFS[tpl] x50: 0ms (0us each)
+race_lookup(human) x50: 59ms (1180us each)

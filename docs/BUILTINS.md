@@ -202,6 +202,27 @@ Conclusions:
   case ~+75ms on a tiny area. `_load_area` now collects unconditionally.
 - A big area costs ~2.4MB resident heap; 15 loaded areas left 2.3MB free,
   so the `AREA_CACHE_MAX` eviction cap is load-bearing.
+- A fresh load's reset number can include neighbours: cross-area resets
+  trigger `_ensure_area` inside the reset drain, so the pulled area's full
+  read+exec+reset lands there (newthalos pulls midgaard).
+
+### Reset-phase breakdown (measured 25 Jul 2026, `debug/resetprobe.py`)
+
+newthalos reload reset went 1050ms -> 510ms (-51%) across three fixes;
+`create_mobile` micro (50x, one template) went 3160us -> 2580us per call:
+
+| Fix | Saving |
+|:----|:-------|
+| `_mob_count_maps`: one O(chars) walk + local increments replaced per-M-reset full `world.chars` scans (271 M-resets x 2 scans = ~73k dict iterations on newthalos) | ~270ms/reset |
+| `_RACE_CACHE` in `create_mobile`: `race_lookup` scans RACE_TABLE lowering every key (~1.2ms/call on-device, dict order is hash order in MicroPython so "Human" is not necessarily early) | ~275ms/reset |
+| `create_mobile` merge-into-base diet (~27 fewer allocs/mob) | ~0 at light probe heap; kept -- allocs cost ~14x more at full game heap (see above) |
+
+Remaining `create_mobile` cost: `_char_base` 45-key dict literal build =
+880us; `dict(d)` shallow copy of the same dict is *slower* (1720-2400us),
+so building via copy-a-frozen-base loses -- per-key insert dominates, not
+the container allocs. Next cut would be redesigning the instance dict
+(fewer keys / deferred defaults) for maybe ~150ms/area -- parked as
+diminishing returns.
 
 ---
 

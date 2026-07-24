@@ -1,0 +1,8 @@
+target: newthalos free=7008208
+fresh: total=7337ms reset=4473 free=5820032
+base0: total=4481ms reset=1051 mobs=271 free=5332896
+zero0: total=4228ms reset=793 mobs=271 free=5395120
+base1: total=4481ms reset=1049 mobs=271 free=5333024
+zero1: total=4226ms reset=794 mobs=271 free=5394784
+create_mobile(9561) x50: 158ms (3160us each)
+create_object(3135) x50: 2ms (40us each)

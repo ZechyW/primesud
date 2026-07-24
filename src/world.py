@@ -595,7 +595,7 @@ def _load_area(tag):
 
 def _reset_loaded_area(tag, _adef, _room_vnums, _cross_area_rooms):
     """Reset a loaded area and apply pending deltas. [PRIMESUD]"""
-    from mob import reset_area, reset_room, _object_count_map  # deferred: mob imports world
+    from mob import reset_area, reset_room, _object_count_map, _mob_count_maps  # deferred: mob imports world
     reset_area(_adef)
 
     if _cross_area_rooms:
@@ -625,9 +625,10 @@ def _reset_loaded_area(tag, _adef, _room_vnums, _cross_area_rooms):
                 _ensure_area(_rv)
         _next_id = max(chars, default=1) + 1
         _obj_counts = _object_count_map()
+        _mob_counts = _mob_count_maps()
         for _rv in _preloaded:
             if _rv in rooms:
-                _next_id = reset_room(_rv, _next_id, _obj_counts)
+                _next_id = reset_room(_rv, _next_id, _obj_counts, _mob_counts)
 
     _apply_pending_deltas(tag, _room_vnums)
 

@@ -47,11 +47,39 @@ def _stat_from_level(level):
     return min(25, 11 + level // 4)
 
 
+# Flag-merge routing for create_mobile: (instance/template key, race key).
+# Merge order per key: race bits, then template bits (cf. 1stMud db2.c:88-136).
+_FLAG_MERGE = (
+    ("act_flags", "act"), ("off_flags", "off"), ("affected_by", "aff"),
+    ("imm_flags", "imm"), ("res_flags", "res"), ("vuln_flags", "vuln"),
+    # form/parts drive death_cry body-part drops and poison food (combat.py)
+    ("form_flags", "form"), ("part_flags", "parts"),
+)
+
+# F-line field name -> instance flag-dict key (for flag_removes below)
+_REMOVE_KEY = {"act": "act_flags", "aff": "affected_by", "off": "off_flags",
+               "imm": "imm_flags", "res": "res_flags", "vuln": "vuln_flags",
+               "form": "form_flags", "parts": "part_flags"}
+
+# Raw template race string -> resolved RACE_TABLE entry.  race_lookup scans
+# the table lowering every key until it matches (~1.2ms per call on-device,
+# a third of create_mobile); template race strings are a small fixed set, so
+# memoize per distinct string.  create_mobile only -- race_lookup callers
+# taking user-typed prefixes stay uncached. [PRIMESUD]
+_RACE_CACHE = {}
+
+
 def create_mobile(tpl_vnum):
     """Instantiate a mob from its template (cf. 1stMud create_mobile in db.c).
 
     Returns a placement-agnostic instance dict; caller must set "room" and
     "home_area" before registering it in mob_instances.
+
+    Flag dicts are merged in place into _char_base's empty dicts rather than
+    built fresh and reassigned: create_mobile runs per spawn in area resets,
+    and the merge-into-base form avoids ~27 heap allocs per mob (measured
+    3.2ms/mob on-device before; BUILTINS.md sec. Area load performance).
+    [PRIMESUD]
 
     Args:
         tpl_vnum (int): Mob template VNUM.
@@ -69,32 +97,31 @@ def create_mobile(tpl_vnum):
 
     # Merge race defaults into template flags (cf. 1stMud db2.c:88-136,
     # where race->act/aff/off/imm/res/vuln/form/parts are OR'd into mob index).
-    race = race_lookup(tpl.get("race", "Human")) or RACE_TABLE["Human"]
+    _rname = tpl.get("race", "Human")
+    race = _RACE_CACHE.get(_rname)
+    if race is None:
+        race = race_lookup(_rname) or RACE_TABLE["Human"]
+        _RACE_CACHE[_rname] = race
 
-    def _merge(tpl_key, race_key):
-        merged = dict(race.get(race_key, {}))
-        merged.update(tpl.get(tpl_key, {}))
-        return merged
-
-    act_flags = _merge("act_flags", "act")
-    off       = _merge("off_flags", "off")
-    affected_by = _merge("affected_by", "aff")
-    imm_flags = _merge("imm_flags", "imm")
-    res_flags = _merge("res_flags", "res")
-    vuln_flags = _merge("vuln_flags", "vuln")
-    # form/parts drive death_cry body-part drops and poison food (combat.py)
-    form_flags = _merge("form_flags", "form")
-    part_flags = _merge("part_flags", "parts")
+    ch = _char_base()
+    for _ck, _rk in _FLAG_MERGE:
+        _d = ch[_ck]
+        _rv = race.get(_rk)
+        if _rv:
+            _d.update(_rv)
+        _tv = tpl.get(_ck)
+        if _tv:
+            _d.update(_tv)
+    act_flags = ch["act_flags"]
+    off = ch["off_flags"]
 
     # [PRIMESUD] apply .are F-line flag removals after race merge
     # (cf. QuickMUD db2.c: race bits OR'd in, then F lines REMOVE_BIT)
     _removes = tpl.get("flag_removes")
     if _removes:
-        _fmap = {"act": act_flags, "aff": affected_by, "off": off,
-                 "imm": imm_flags, "res": res_flags, "vuln": vuln_flags,
-                 "form": form_flags, "parts": part_flags}
         for _field, _names in _removes:
-            _d = _fmap.get(_field)
+            _key = _REMOVE_KEY.get(_field)
+            _d = ch[_key] if _key else None
             if _d:
                 for _nm in _names:
                     if _nm in _d:
@@ -116,6 +143,9 @@ def create_mobile(tpl_vnum):
     size_delta = SIZE_RANK.get(tpl.get("size", "medium"), 2) - 2   # 2 = SIZE_MEDIUM
     s_str += size_delta
     s_con += size_delta // 2
+    _ps = ch["perm_stat"]
+    _ps["str"] = s_str; _ps["dex"] = s_dex; _ps["int"] = s_int
+    _ps["wis"] = s_wis; _ps["con"] = s_con
 
     wealth = tpl.get("wealth", 0)
     if wealth > 0:
@@ -126,7 +156,7 @@ def create_mobile(tpl_vnum):
         mob_gold = 0
         mob_silver = 0
 
-    ch = _char_base()
+    _armor = tpl["armor"]
     ch.update({
         # -- Mob identity
         "tpl":        tpl_vnum,    # cf. 1stMud pIndexData ptr
@@ -144,18 +174,9 @@ def create_mobile(tpl_vnum):
         # -- Combat stats
         "hitroll":    tpl["hitroll"],
         "damroll":    tpl["damage"][2],  # bonus = damroll (cf. 1stMud damage[DICE_BONUS])
-        "armor":      tuple(v * 10 for v in tpl["armor"]),  # area units -> PrimeSUD runtime units
-        "perm_stat":  {"str": s_str, "dex": s_dex, "int": s_int,
-                       "wis": s_wis, "con": s_con},
-        # -- Flags (race+template merged; cf. 1stMud create_mobile db2.c:88-136)
-        "act_flags":  dict(act_flags),
-        "off_flags":  off,
-        "affected_by":  dict(affected_by),
-        "imm_flags":  imm_flags,
-        "res_flags":  res_flags,
-        "vuln_flags": vuln_flags,
-        "form_flags": form_flags,
-        "part_flags": part_flags,
+        # area units -> PrimeSUD runtime units
+        "armor":      (_armor[0] * 10, _armor[1] * 10,
+                       _armor[2] * 10, _armor[3] * 10),
         # cf. 1stMud create_mobile: mob->position = mob->start_pos
         "pos":        POS_FROM_SHORT.get(tpl.get("start_pos", "stand"), "standing"),
     })
@@ -281,15 +302,27 @@ def scale_pet(owner, evolve=False, reset=False):
     return pet
 
 
-def _tpl_live_count(mob_instances, tpl_vnum):
-    """Count live instances of a template across all rooms (cf. pMobIndex->count in db.c)."""
-    return sum(1 for inst in mob_instances.values() if inst.get("is_npc") and inst["tpl"] == tpl_vnum)
+def _mob_count_maps():
+    """Live mob instance counts per template and per (room, template). [PRIMESUD]
 
+    Replaces per-M-reset full scans of world.chars: one O(chars) walk per
+    reset pass, incremented locally by reset_room as mobs spawn -- same
+    pattern as _object_count_map, and closer to 1stMud's incremental
+    pMobIndex->count than rescanning (the scans cost ~250ms per big-area
+    reset on-device; BUILTINS.md sec. Area load performance).
 
-def _tpl_room_count(mob_instances, room_vnum, tpl_vnum):
-    """Count live instances of a template in a specific room (cf. per-room scan in reset_room, db.c)."""
-    return sum(1 for inst in mob_instances.values()
-               if inst.get("is_npc") and inst["tpl"] == tpl_vnum and inst["room"] == room_vnum)
+    Returns:
+        tuple: ({tpl_vnum: count}, {(room_vnum, tpl_vnum): count}).
+    """
+    tpl_counts = {}
+    room_counts = {}
+    for inst in world.chars.values():
+        if inst.get("is_npc"):
+            t = inst["tpl"]
+            tpl_counts[t] = tpl_counts.get(t, 0) + 1
+            k = (inst["room"], t)
+            room_counts[k] = room_counts.get(k, 0) + 1
+    return tpl_counts, room_counts
 
 
 def _decode_limit(arg2, zero_unlimited):
@@ -401,19 +434,23 @@ def _reset_randomize_exits(shuffle_vnum, num_dirs):
             exits[d] = v
 
 
-def reset_room(vnum, next_id, obj_counts):
+def reset_room(vnum, next_id, obj_counts, mob_counts):
     """Reset one room's doors and process its resets (cf. 1stMud reset_room, db.c:1393).
 
     Resets door closed/locked state to initial values, then processes the
     room's M/O/E/G/P/R reset commands with count-based limits. ``obj_counts``
     is the shared per-template object-instance map from ``_object_count_map``;
     it is mutated in place as items spawn so E/G/P limits stay live across the
-    whole area pass (cf. 1stMud pObjIndex->count).
+    whole area pass (cf. 1stMud pObjIndex->count). ``mob_counts`` is the
+    ``_mob_count_maps`` pair, likewise mutated in place as mobs spawn so M
+    limits stay live (cf. 1stMud pMobIndex->count).
 
     Args:
         vnum (int): Room VNUM.
         next_id (int): Next available mob instance ID.
         obj_counts (dict): Live per-template object counts (mutated in place).
+        mob_counts (tuple): (tpl_counts, room_counts) from _mob_count_maps
+            (mutated in place).
 
     Returns:
         int: Updated next_id after any mob spawns.
@@ -431,16 +468,18 @@ def reset_room(vnum, next_id, obj_counts):
     if not room_resets:
         return next_id
     rs = world.rooms[vnum]
+    tpl_counts, room_counts = mob_counts
     last_mob_id = None
     last_spawned = False
     for entry in room_resets:
         cmd = entry[0]
         if cmd == "M":
             tpl_vnum, gl, room_vnum, rl = entry[1], entry[2], entry[3], entry[4]
-            if _tpl_live_count(world.chars, tpl_vnum) >= gl:
+            if tpl_counts.get(tpl_vnum, 0) >= gl:
                 last_spawned = False
                 continue
-            if _tpl_room_count(world.chars, room_vnum, tpl_vnum) >= rl:
+            _rk = (room_vnum, tpl_vnum)
+            if room_counts.get(_rk, 0) >= rl:
                 last_spawned = False
                 continue
             inst = create_mobile(tpl_vnum)
@@ -458,6 +497,8 @@ def reset_room(vnum, next_id, obj_counts):
             inst["id"] = next_id
             world.chars[next_id] = inst
             world.rooms[room_vnum]["mobs"].append(next_id)
+            tpl_counts[tpl_vnum] = tpl_counts.get(tpl_vnum, 0) + 1
+            room_counts[_rk] = room_counts.get(_rk, 0) + 1
             if "spawn" in DBG:  # [PRIMESUD]
                 dbg("spawn mob " + str(tpl_vnum) + " " + inst["name"] + " @" + str(room_vnum))
             last_mob_id = next_id
@@ -559,10 +600,11 @@ def reset_area(pArea):
     """
     next_id = max(world.chars, default=1) + 1
     obj_counts = _object_count_map()
+    mob_counts = _mob_count_maps()
     for vnum in pArea["room_vnums"]:
         if vnum not in world.rooms:
             world.rooms[vnum] = {"items": [], "mobs": []}
-        next_id = reset_room(vnum, next_id, obj_counts)
+        next_id = reset_room(vnum, next_id, obj_counts, mob_counts)
 
 
 def create_area_states():
