@@ -91,4 +91,5 @@ Completed plan documents are deleted, not archived -- durable decisions get harv
 - Minimal targeted changes. No surrounding refactor unless it is substantially cleaner or better; if so, raise for review.
 - After code changes, run the desktop test suite: `python -m pytest -q` (CPython via `pc_shim/` device shims), plus `python tools/check_ascii_py.py` per pitfall 6.
 - Commit messages: Conventional Commits (`feat(scope): ...`, `fix:`, `docs:`, ...).
+- Git flow: dev rebases onto main (never merge main into dev); main takes fast-forward merges from dev only. Keeps history linear.
 - Unsure if Python feature is available on HP Prime? Ask for human check.
