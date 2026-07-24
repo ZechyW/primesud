@@ -77,6 +77,49 @@ Verified with `dir(str)` on-device.
 
 ---
 
+## Module inventory (menu-derived, unverified)
+
+From the Python app's CMDS menu, as transcribed at
+<https://udel.edu/~mm/hp/primePython/upython.html> (checked 2026-07-25).
+**Menu-derived, not `dir()`-verified** — the menu is curated and may omit
+real attributes or list menu-only entries. Its `str` list matches our
+on-device `dir(str)` exactly, so accuracy looks good, but re-verify with
+`dir()` before relying on anything load-bearing. No signatures/semantics.
+
+Modules present (beyond the CLAUDE.md core of `hpprime`, `uio`, `cas`,
+`math`, `urandom`, `gc`):
+
+| Module | Contents (per menu) |
+|:-------|:--------------------|
+| `sys` | `argv`, `byteorder`, `exc_info`, `exit`, `implementation`, `maxsize`, `modules`, `path`, `platform`, `print_exception`, `stderr`, `stdin`, `stdout`, `version`, `version_info` |
+| `ure` | `compile`, `match`, `search`, `DEBUG` — regex exists on device (MicroPython-subset syntax) |
+| `ustruct` | `calcsize`, `pack`, `pack_into`, `unpack`, `unpack_from` |
+| `ucollections` | `namedtuple`, `OrderedDict` (full dict method set), `deque` (**minimal: `append`/`popleft` only**) |
+| `uhashlib` | `sha256` (`digest`, `update`) |
+| `uerrno` | `errorcode` + errno constants |
+| `utimeq` | `utimeq` (`push`, `pop`, `peektime`) |
+| `micropython` | `const`, `heap_lock`/`heap_unlock`, `kbd_intr`, `mem_info`, `opt_level`, `pystack_use`, `qstr_info`, `stack_use` |
+| `array` | `array` (**minimal: `append`/`extend` only**) |
+| calc-specific | `arith` (gcd/isprime/...), `graphic` (draw_* wrappers), `linalg`, `cmath`, `matplotl` (page misspells it "maplotl") |
+
+Still absent: `utime` (confirmed 2026-07-07 independently of this list),
+`os`, `json`, `re` (only `ure`), `collections` (only `ucollections`).
+
+Built-in container methods per the menu (unverified — see caveat above):
+
+| Type | Methods |
+|:-----|:--------|
+| `list` | full standard set: `append`, `clear`, `copy`, `count`, `extend`, `index`, `insert`, `pop`, `remove`, `reverse`, `sort` |
+| `dict` | full standard set: `clear`, `copy`, `fromkeys`, `get`, `items`, `keys`, `pop`, `popitem`, `setdefault`, `update`, `values` |
+| `set` | full standard set incl. `difference_update`, `symmetric_difference`, etc. |
+| `tuple` | `count`, `index` |
+| `bytes` | same set as `str` (incl. `decode`; menu misspells `partition` as "parition") |
+| `bytearray` | `append`, `extend` only per menu — likely understated, re-verify before use |
+| `int` | `from_bytes`, `to_bytes` |
+| `frozenset` | `copy`, `difference`, `intersection`, `isdisjoint`, `issubset`, `issuperset`, `symmetric_difference`, `union` |
+
+---
+
 ## Language / Syntax Restrictions
 
 Features not supported by HP Prime's MicroPython (confirmed via `SyntaxError` at runtime):
