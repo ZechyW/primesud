@@ -1,19 +1,21 @@
-"""Render the PrimeSUD greeting screen to a device-accurate 320x240 PNG.
+"""Render PrimeSUD greeting or score screens to a device-accurate PNG.
 
 The PC shim (pc_shim/) is text/ANSI only -- its hpprime pixel calls are
 no-ops -- so it cannot produce a real screen capture. This tool instead
 reproduces the on-device pixel output directly: it blits glyphs from the
-real font atlas (src/std5x10.font) and recolours each {X run exactly like
-src/terminal.py does on the calculator (dark mode, black background,
-per-run foreground recolour).
+selected font atlas and recolours each {X run exactly like src/terminal.py
+does on the calculator (dark mode, black background, per-run foreground
+recolour).
 
 Needs Pillow (dev-only, like build_dist's python_minifier):
     python -m pip install Pillow
 
 Usage:
-    python tools/render_greeting.py            # writes docs/img/greeting.png (3x)
-    python tools/render_greeting.py out.png    # custom path
+    python tools/render_greeting.py
+    python tools/render_greeting.py --score
+    python tools/render_greeting.py --font reference/fonts/scientifica5x10.font out.png
 """
+import argparse
 import sys
 from pathlib import Path
 
@@ -21,7 +23,8 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
-from colors import ANSI_COLORS, color_parse_runs  # noqa: E402
+sys.path.insert(0, str(ROOT / "pc_shim"))
+from colors import color_parse_runs  # noqa: E402
 
 FONT = ROOT / "src" / "std5x10.font"
 COLS, ROWS = 64, 22          # text grid (config.TERMINAL_COLS / _ROWS)
@@ -60,15 +63,53 @@ LINES = [
 ]
 
 
-def load_glyphs():
+def score_lines():
+    """Return a representative score sheet from the real game formatter."""
+    import info
+    from classes import CLASS_WARRIOR
+    from player import create_char
+
+    player = create_char(CLASS_WARRIOR)
+    player.update({
+        "name": "Aldren",
+        "level": 17,
+        "xp": 148750,
+        "xp_next": 170000,
+        "hit": 312,
+        "max_hit": 365,
+        "mana": 94,
+        "max_mana": 128,
+        "move": 176,
+        "max_move": 210,
+        "practice": 7,
+        "train": 2,
+        "quest_points": 43,
+        "gold": 125,
+        "silver": 684,
+        "alignment": -375,
+        "played": 187200,
+        "gold_bank": 2400,
+        "shares": 3,
+        "armor": [-180, -140, -165, -95],
+    })
+    lines = []
+    info.chprintln = lambda _player, value="": (
+        lines.extend(value) if type(value) is list else lines.append(value))
+    info.free_mem = lambda: FREE
+    info.gc_collect = lambda: None
+    info.do_score(player, [])
+    return lines
+
+
+def load_glyphs(font):
     """Map char -> per-pixel ink mask from the font atlas.
 
     Atlas is a horizontal strip of 5x10 glyphs, index = ord(c) - 32,
     black ink (0,0,0) on white. Returns (cw, ch, {char: set((x, y))}).
     """
-    atlas = Image.open(FONT).convert("RGB")
+    atlas = Image.open(font).convert("RGB")
     w, ch = atlas.size
-    cw = (FONT.read_bytes()[-1] >> 3) + 4  # tml.py: char_width from last byte
+    cw = (font.read_bytes()[-1] >> 3) + 4  # tml.py: char_width from last byte
     px = atlas.load()
     glyphs = {}
     for code in range(32, 127):
@@ -82,8 +123,8 @@ def load_glyphs():
     return cw, ch, glyphs
 
 
-def render():
-    cw, ch, glyphs = load_glyphs()
+def render(lines, font):
+    cw, ch, glyphs = load_glyphs(font)
     # Full 320x240 screen: 22 text rows (220px) + status bar (20px). The
     # device draws a gray separator across the status area at boot
     # (tml.__init__: rect at y = height + char_height//2), status empty here.
@@ -93,7 +134,7 @@ def render():
     for x in range(COLS * cw):
         px[x, sep_y] = (0x7F, 0x7F, 0x7F)
         px[x, sep_y + 1] = (0x7F, 0x7F, 0x7F)
-    for row, line in enumerate(LINES[:ROWS]):
+    for row, line in enumerate(lines[:ROWS]):
         x = 0
         for colour, seg in color_parse_runs(line):
             rgb = DEFAULT_FG if colour is None else (
@@ -108,9 +149,15 @@ def render():
 
 
 def main():
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "docs" / "img" / "greeting.png"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("out", nargs="?", type=Path)
+    parser.add_argument("--font", type=Path, default=FONT)
+    parser.add_argument("--score", action="store_true")
+    args = parser.parse_args()
+    name = "score.png" if args.score else "greeting.png"
+    out = args.out or ROOT / "docs" / "img" / name
     out.parent.mkdir(parents=True, exist_ok=True)
-    img = render()
+    img = render(score_lines() if args.score else LINES, args.font)
     if SCALE != 1:
         img = img.resize((img.width * SCALE, img.height * SCALE), Image.NEAREST)
     img.save(out)
