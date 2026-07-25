@@ -21,7 +21,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
@@ -252,6 +252,10 @@ def main():
     screens.add_argument("--room", action="store_true")
     screens.add_argument("--score", action="store_true")
     screens.add_argument("--macro", action="store_true")
+    parser.add_argument("--border", type=int, default=4,
+                        help="background-coloured margin in device pixels, so "
+                             "screen-edge text does not touch the image edge "
+                             "(--border 0 for a pure device capture)")
     args = parser.parse_args()
     name = ("room.png" if args.room else "score.png" if args.score else
             "macro.png" if args.macro else "greeting.png")
@@ -261,6 +265,8 @@ def main():
                      score_scene() if args.score else
                      macro_scene() if args.macro else (LINES, ""))
     img = render(lines, args.font, status)
+    if args.border:
+        img = ImageOps.expand(img, border=args.border, fill=BG)
     if SCALE != 1:
         img = img.resize((img.width * SCALE, img.height * SCALE), Image.NEAREST)
     img.save(out)

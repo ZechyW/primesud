@@ -33,7 +33,7 @@ PC: Python 3, no runtime dependencies. The dist build also needs `python-minifie
 
 ```
 python run_source.py   # run src/ directly, no build
-python run_dist.py      # build the minified dist first, then run it
+python run_dist.py     # build the minified dist first, then run it
 ```
 
 `run_source.py` for everyday use. `run_dist.py` builds `dist/` and runs the minified copy, catching anything minification broke.
@@ -43,11 +43,15 @@ Saves live in the repo root (`primesud.sav`, gitignored), shared between both ru
 ## Deploying to a calculator
 
 ```
-python tools/build_dist.py           # build dist/primesud.hpappdir
-python tools/build_dist.py --check   # also verify symbols + area data survived
+python tools/build_dist.py --zip v1.0.0           # build + pack the release zip
+python tools/build_dist.py --check --zip v1.0.0   # also verify symbols + area data survived
 ```
 
-Regenerates derived data (areas, world tables, mob index, help), then writes to `dist/primesud.hpappdir/`. Copy that folder over with the Connectivity Kit.
+Regenerates derived data (areas, world tables, mob index, help), writes `dist/primesud.hpappdir/`, then packs it as `dist/PrimeSUD-v1.0.0-hpprime.zip`.
+
+Send that zip to the calculator with the Connectivity Kit, which unpacks the app folder itself. Prefer this over copying the folder across file by file -- one transfer leaves far less room for an individual file to corrupt or silently fail to send. Drop `--zip` if you do want the loose `dist/primesud.hpappdir/` folder.
+
+To skip the build entirely, download the zip from the [latest release](https://github.com/ZechyW/primesud/releases/latest).
 
 The app runs on both G1 and G2 Primes, but it is large and requests more runtime heap than the default 1 MB.
 
