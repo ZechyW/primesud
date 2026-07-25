@@ -3,9 +3,11 @@
 Usage:
     python tools/build_dist.py          Build dist
     python tools/build_dist.py --check  Build dist + verify symbol preservation
+    python tools/build_dist.py --zip    Also write dist/PrimeSUD-hpprime.zip
+                                        (hpappdir at zip root, for Connectivity Kit)
     python tools/build_dist.py --zip v1.0.1
-                                        Also write dist/PrimeSUD-<ver>-hpprime.zip
-                                        (release asset layout: hpappdir at zip root)
+                                        Same, named dist/PrimeSUD-<ver>-hpprime.zip
+                                        (release asset)
 """
 
 import ast
@@ -268,9 +270,15 @@ def check_symbols():
     return 0
 
 
-def build_zip(version):
-    """Zip DIST_DIR into dist/PrimeSUD-<version>-hpprime.zip (release asset)."""
-    base = DIST_DIR.parent / ("PrimeSUD-" + version + "-hpprime")
+def build_zip(version=None):
+    """Zip DIST_DIR into dist/PrimeSUD[-<version>]-hpprime.zip.
+
+    Args:
+        version: Release tag for the filename, or None for an unversioned
+            local build.
+    """
+    stem = "PrimeSUD-" + (version + "-" if version else "") + "hpprime"
+    base = DIST_DIR.parent / stem
     path = shutil.make_archive(str(base), "zip", root_dir=DIST_DIR.parent,
                                base_dir=DIST_DIR.name)
     print("Release zip written to %s" % path)
@@ -286,7 +294,6 @@ if __name__ == "__main__":
             raise SystemExit(rc)
     if "--zip" in sys.argv:
         i = sys.argv.index("--zip")
-        if i + 1 >= len(sys.argv) or sys.argv[i + 1].startswith("-"):
-            raise SystemExit("--zip requires a version, e.g. --zip v1.0.1")
-        build_zip(sys.argv[i + 1])
+        versioned = i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith("-")
+        build_zip(sys.argv[i + 1] if versioned else None)
     raise SystemExit(0)
