@@ -6,10 +6,10 @@ Based on ROM 2.4, with enhancements ported from 1stMud, it runs in a custom text
 
 ## Screenshots
 
-<img src="docs/img/greeting.png" alt="PrimeSUD greeting screen">
-<img src="docs/img/room.png" alt="PrimeSUD room view with automap and mob greeting">
-<img src="docs/img/score.png" alt="PrimeSUD score screen">
-<img src="docs/img/macro.png" alt="PrimeSUD default keypad macro bindings">
+<img src="docs/img/greeting.png" width="656" alt="PrimeSUD greeting screen">
+<img src="docs/img/room.png" width="656" alt="PrimeSUD room view with automap and mob greeting">
+<img src="docs/img/score.png" width="656" alt="PrimeSUD score screen">
+<img src="docs/img/macro.png" width="656" alt="PrimeSUD default keypad macro bindings">
 
 ## Features
 
