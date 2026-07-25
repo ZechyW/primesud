@@ -112,6 +112,20 @@ class TestDoTime:
                           " first the Month of Winter, year 0.")
         # 7749s -> 2h; (7749//36)%100 = 15 -> "2.15"
         assert out[1] == "You have played approximately 2.15 hours."
+        # [PRIMESUD] no _session key yet -> fresh sitting
+        assert out[2] == "This session: 0 minutes."
+
+    def test_session_line(self, out):
+        import info
+        old = dict(time_info)
+        try:
+            self._at(8)
+            info.do_time({"played": 9999, "_session": 3600 + 25 * 60}, [])
+            info.do_time({"played": 9999, "_session": 25 * 60}, [])
+        finally:
+            time_info.update(old)
+        assert out[2] == "This session: 1 hour, 25 minutes."
+        assert out[5] == "This session: 25 minutes."
 
     def test_midnight_and_noon(self, out):
         import info
@@ -124,7 +138,22 @@ class TestDoTime:
         finally:
             time_info.update(old)
         assert out[0].startswith("It is 12 o'clock am,")   # midnight
-        assert out[2].startswith("It is 12 o'clock pm,")   # noon
+        assert out[3].startswith("It is 12 o'clock pm,")   # noon
+
+    def test_session_hour_nudge(self, monkeypatch):
+        """[PRIMESUD] session_update announces once per hour crossed."""
+        import update
+        from config import TICK_SECS
+        lines = []
+        monkeypatch.setattr(update, "chprintln",
+                            lambda ch, s="": lines.append(s))
+        p = {}
+        for _ in range(2 * 3600 // TICK_SECS):
+            update.session_update(p)
+        assert p["_session"] == 2 * 3600
+        assert len(lines) == 2
+        assert "1 hour this session" in lines[0]
+        assert "2 hours this session" in lines[1]
 
     def test_ordinal_no_special_teens(self):
         # 1stMud quirk preserved: 11th day renders "11st"

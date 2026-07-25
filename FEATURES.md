@@ -135,6 +135,9 @@ worth trusting -- the engineering layer.
   Symb/Help step command history, Shift-minus or a touch swipe opens a 250-row
   scrollback, and a persistent status bar shows hp/mana/xp plus the live input
   buffer (docs/PRIME_UX.md).
+- **Session clock in place of a battery gauge** -- the Prime exposes no battery
+  level to PPL or Python, so `time` reports how long the current sitting has
+  run and an hourly notice announces it unprompted (update.py, info.py).
 - **Firmware workarounds** -- a hand-rolled key queue drains the 4-deep GETKEY
   FIFO around a keystroke-swallowing firmware race; the terminal subclass
   rebuilds inherited dict attributes the G2 firmware corrupts (tml_prime.py).

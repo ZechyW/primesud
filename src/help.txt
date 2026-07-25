@@ -528,8 +528,10 @@ as true value(current value), so for example Str: 15(23) means
 you have a 15 strength from training, but a 23 strength from
 other factors (spells or items).
 
-TIME shows the game time, as well as the time the mud was last
-started, and the current local time for the host computer.
+TIME shows the game time and date, the total hours you have
+played, and how long the current session has run.  Session time
+is your best guide to how much calculator battery a sitting has
+used; the Prime does not report its battery level to programs.
 
 WEATHER shows the current game weather.
 #0|combat|ARENA CHALLENGE BET DECLINE ACCEPT

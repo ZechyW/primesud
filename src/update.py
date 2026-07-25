@@ -3,7 +3,7 @@
 import world
 from world import ITEM_DEFS, ROOM_DEFS
 from item import obj_vnum, item_affect_remove
-from handler import unequip_char
+from handler import unequip_char, chprintln
 from urandom import randint
 import terminal
 from config import (
@@ -19,7 +19,7 @@ from game_time import time_update
 from mob import mobile_update, aggr_update, area_update, weather_update
 from music import song_update
 from player import tick_update
-from quest import quest_update
+from quest import quest_update, _intstr
 from gquest import gquest_update
 from stances import first_stance_tip  # [PRIMESUD]
 from explored import mark_explored  # [PRIMESUD]
@@ -36,6 +36,26 @@ _pulse_mobile   = 0
 _pulse_music    = 0
 _pulse_violence = 0
 _pulse_tick     = 0
+
+
+def session_update(player):
+    """Track this sitting's play time; announce each hour crossed. [PRIMESUD]
+
+    The Prime exposes no battery level to PPL or Python (no ADC access, no PPL
+    command), so elapsed play time is the only handle a player has on how much
+    battery a sitting has burned.  "_session" is deliberately unsaved -- it is
+    absent from game_state's save whitelist, so a reload starts a new sitting,
+    which is what a battery-relevant figure should do.
+
+    Args:
+        player (dict): Player state dict.
+    """
+    was = player.get("_session", 0)
+    player["_session"] = was + TICK_SECS
+    hrs = player["_session"] // 3600
+    if hrs != was // 3600:
+        chprintln(player, "{cYou have been playing for "
+                  + _intstr(hrs, "hour") + " this session.{x")
 
 
 def update_handler():
@@ -96,6 +116,7 @@ def update_handler():
         weather_update(tr, player)
         time_update(tr, player)
         player["played"] = player.get("played", 0) + TICK_SECS
+        session_update(player)  # [PRIMESUD]
         tick_update(tr, player, ROOM_DEFS[player["room"]])
         obj_update(tr, player)
         quest_update()

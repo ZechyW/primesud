@@ -1138,6 +1138,7 @@ def do_time(player, args):
     [PRIMESUD] Only the calendar line and played-time line are ported; 1stMud's
     server/multiplayer lines (boot/copyover time, timezones, connected-at,
     creation percentage) have no single-player equivalent and are omitted.
+    A session-time line is added (no 1stMud equivalent).
     """
     hour = time_info["hour"]
     half = HOURS_IN_DAY // 2
@@ -1159,6 +1160,14 @@ def do_time(player, args):
     cs = str(cents) if cents >= 10 else "0" + str(cents)
     chprintln(player, "You have played approximately "
               + str(played // 3600) + "." + cs + " hours.")
+    # [PRIMESUD] Current sitting, tracked unsaved in update.py.  No battery
+    # level is readable on the Prime, so this is the player's only gauge of
+    # how long the calculator has been awake.
+    session = player.get("_session", 0)
+    sh = session // 3600
+    chprintln(player, "This session: "
+              + ((_intstr(sh, "hour") + ", ") if sh else "")
+              + _intstr((session % 3600) // 60, "minute") + ".")
 
 
 def do_weather(player, args):
