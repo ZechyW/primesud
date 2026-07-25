@@ -56,6 +56,14 @@ that into features rather than holes.
 - **Pickers replace typing** -- `kill`, `get`, `give`, `wear`, `cast`, `practice`,
   `train`, `examine`, `open`/`unlock`, remort, chargen: given no argument,
   each opens a numbered target menu instead of failing (docs/PRIME_UX.md).
+- **Browsable help** -- bare `help` opens a category-then-entry browser driven
+  by digits and Enter, reaching all 288 entries without alpha-shifting a
+  keyword, and `help <letter>` picks from its matches instead of printing a
+  list you can only act on by retyping; Enter on the default option still
+  gives upstream's one-page summary. Categories are rebalanced for menu use --
+  upstream's 50-entry `unknown` bucket is split, and helps for systems
+  PrimeSUD doesn't port (OLC, clans, deities, immortal powers) sit at level 51
+  instead of cluttering the browser and `index` (docs/PRIME_UX.md).
 - **Name picker and free rename** -- chargen offers six generated fantasy
   names (1stMud's namegen syllable pools) with reroll and typed-entry
   options, and `rename` changes your name anytime -- no roster, no

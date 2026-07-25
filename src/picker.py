@@ -56,16 +56,20 @@ def _render(title, options, page, max_page):
         tprint("{w[Esc] cancel{x")
 
 
-def pick_from(title, options):
+def pick_from(title, options, start_page=0):
     """Display a numbered list and read digit+Enter to select, or Esc to cancel.
 
     Prints title, then up to 10 options labelled 1-9 then 0 per page.
     Uses tr.poll_char() directly: Esc and +/- act on single keypress;
-    digit selection requires Enter to confirm. Bare Enter selects item 1.
+    digit selection requires Enter to confirm. Bare Enter selects the first
+    option on the current page.
 
     Args:
         title (str): Header line, plain text -- colour wrapping applied internally.
         options (list[str]): Display strings.
+        start_page (int): 0-based page to open on, so a caller that reopens
+            the picker in a loop can resume where the player left off
+            (`selected_index // 10`). Out of range falls back to page 0.
 
     Returns:
         int: 0-based index of the selected option, or -1 if cancelled.
@@ -75,7 +79,7 @@ def pick_from(title, options):
 
     _force_numeric_keys()
     max_page = (len(options) - 1) // _MAX_OPTS
-    page = 0
+    page = start_page if 0 <= start_page <= max_page else 0
     _render(title, options, page, max_page)
 
     while True:

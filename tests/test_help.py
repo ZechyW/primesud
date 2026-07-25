@@ -28,21 +28,21 @@ def test_entry_lookup(help_out):
     assert "Syntax" in text
 
 
-def test_default_is_summary(help_out):
-    info.do_help(PLAYER, [])
-    assert any("SUMMARY" in ln for ln in help_out)
-
-
 def test_quoted_multiword_keyword(help_out):
     info.do_help(PLAYER, ["acid", "blast"])
     assert any("ACID BLAST" in ln for ln in help_out)
 
 
-def test_single_letter_lists(help_out):
+def test_single_letter_opens_a_picker_of_matches(help_out, monkeypatch):
+    # [PRIMESUD] bare list replaced by a picker -- see test_help_browser.py
+    seen = {}
+    monkeypatch.setattr(info, "pick_from",
+                        lambda title, opts, page=0:
+                        seen.update(title=title, opts=opts) or -1)
     info.do_help(PLAYER, ["m"])
-    text = "\n".join(help_out)
-    assert "start with the letter 'M'" in text
-    assert "total help files." in text
+    assert seen["title"] == "Help files starting with 'M'"
+    assert "MOTD" in seen["opts"]
+    assert help_out == []
 
 
 def test_no_match(help_out):
@@ -51,10 +51,8 @@ def test_no_match(help_out):
 
 
 def test_numbered_selection(help_out):
-    info.do_help(PLAYER, ["2.s"])
-    # single char after number -> list mode is NOT triggered upstream?
-    # number_argument("2.s") -> target "s", len 1 -> list mode; use a word
-    del help_out[:]
+    # number_argument("2.s") -> target "s", len 1 -> list mode, which ignores
+    # the number and opens the picker instead; two letters select directly
     info.do_help(PLAYER, ["2.sc"])
     text = "\n".join(help_out)
     assert "Help Keywords :" in text
@@ -76,9 +74,12 @@ def test_motd_entry(help_out):
 
 def test_last_entry_prints_to_eof(help_out):
     # last entry's body terminates on EOF, not a following '#' header
-    info.do_help(PLAYER, ["worship"])
+    with open(info.HELP_INDEX, "rb") as f:
+        last = f.read().rstrip(b"\n").rsplit(b"\n", 1)[-1]
+    keywords = last.split(b"|", 3)[3].decode()
+    info.do_help(PLAYER, [keywords.split(" ")[0].lower()])
     text = "\n".join(help_out)
-    assert "Help Keywords : WORSHIP DEITY" in text
+    assert "Help Keywords : %s" % keywords in text
     assert "No help found" not in text
 
 
@@ -105,8 +106,11 @@ def test_index_offsets_align():
 def test_category_index_lists_counts(help_out):
     info.do_index(PLAYER, [])
     text = "\n".join(help_out)
-    assert " 3) spells (76 helps)" in text
-    assert " 4) commands (85 helps)" in text
+    assert " 2) commands (86 helps)" in text
+    assert " 4) spells (76 helps)" in text
+    # unported systems sit at level 51, so they never reach the listing
+    assert "olc" not in text
+    assert "deities" not in text
 
 
 def test_category_index_lists_topics_by_name(help_out):
@@ -125,7 +129,7 @@ def test_category_index_filters_by_level(help_out):
 
 
 def test_category_index_opens_numbered_topic(help_out):
-    info.do_index(PLAYER, ["3", "1"])
+    info.do_index(PLAYER, ["4", "1"])
     text = "\n".join(help_out)
     assert "Help Keywords : 'ACID BLAST'" in text
     assert "Help Category : spells" in text
@@ -137,16 +141,13 @@ def test_category_index_rejects_bad_input(help_out):
     assert help_out == ["Unknown category."]
 
 
-def test_category_import_is_complete_and_idempotent():
-    from tools import import_help_categories
-
-    categories = import_help_categories.upstream_categories(
-        import_help_categories.SRC.read_bytes())
-    current = import_help_categories.DST.read_bytes()
-    result, entries, imported, custom, _digest = \
-        import_help_categories.add_categories(current, categories)
-    assert result == current
-    assert (entries, imported, custom) == (288, 282, 6)
+def test_every_entry_has_a_listed_category():
+    # [PRIMESUD] a category missing from HELP_CATEGORIES is silently dropped
+    # from both the index and the browser, so entries would vanish unnoticed
+    with open(info.HELP_INDEX, "rb") as f:
+        for line in f:
+            _level, category, _off, kw = line.rstrip(b"\n").split(b"|", 3)
+            assert category.decode() in info.HELP_CATEGORIES, kw
 
 
 def test_help_is_name():

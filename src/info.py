@@ -22,7 +22,7 @@ from item import (get_obj_here, obj_vnum, item_extra_flags,
                   item_container_flags, liquid_color, liquid_left,
                   liquid_total, liquid_type)
 from music import do_play
-from picker import pick_from
+from picker import pick_from, _MAX_OPTS as _PICKER_PAGE
 from player import (PLR_AUTOMAP, PLR_AUTOSKILL, PLR_AUTOLOOT, PLR_AUTOSAC,
                     PLR_AUTOGOLD, PLR_AUTOSPLIT, PLR_AUTOASSIST, PLR_AUTOEXIT,
                     PLR_AUTODAMAGE, PLR_DEFAULTS, _EQUIP_SAVE_ORDER,
@@ -1306,8 +1306,17 @@ def do_spells(player, args):
 
 HELP_FILE = "help.txt"  # [PRIMESUD] canonical source; idx via tools/build_help_idx.py
 HELP_INDEX = "help.idx"  # '<level>|<category>|<offset>|<keywords>' per entry
-HELP_CATEGORIES = ("unknown", "creation", "spells", "commands", "newbie",
-                   "immortal", "olc", "clan")
+# [PRIMESUD] Upstream ships 8 categories, half of them unusable as menu rows:
+# a 50-entry "unknown" dumping ground, two single-entry categories, and 23 olc
+# helps for an unported editor. Rebalanced into browsable groups. Eight are
+# mortal-visible; every entry in deities, immortal, olc, clan and unknown sits
+# at level 51 in help.txt -- out of reach of any player level, since none of
+# those systems is ported, but still readable if one ever lands. Tuple order
+# is the listing order, and a category missing from it is silently dropped
+# from both menus.
+HELP_CATEGORIES = ("creation", "deities", "commands", "skills", "spells",
+                   "combat", "world", "interface", "credits",
+                   "immortal", "olc", "clan", "unknown")
 
 
 def _help_is_name(sstr, namelist):
@@ -1354,34 +1363,33 @@ def do_index(player, args):
     """Browse help entries by category (cf. 1stMud do_index in act_info.c).
 
     [PRIMESUD] Scans the off-heap help index and uses two columns for the
-    Prime's 64-column screen. [Verified: 22/07/2026]
+    Prime's 64-column screen. The category listing is level-filtered and
+    gap-free: upstream counts every entry regardless of level, so a mortal was
+    offered `olc (23 helps)` and got an empty page from `index olc`. Both
+    `index <n>` and `index <name>` resolve against that same filtered list, so
+    neither can reach a category the listing withheld.
+    [Verified: 22/07/2026; level-filtered listing re-verified 25/07/2026]
     """
-    with open(HELP_INDEX) as f:
-        data = f.read()
+    trust = player.get("level", 1)
     if not args:
-        counts = [0] * len(HELP_CATEGORIES)
-        for line in data.split("\n"):
-            if not line:
-                continue
-            _level, category, _offset, _keywords = line.split("|", 3)
-            if category in HELP_CATEGORIES:
-                counts[HELP_CATEGORIES.index(category)] += 1
-        data = None
         lines = ["Help Category not found. Valid args are:"]
-        for i, category in enumerate(HELP_CATEGORIES):
-            lines.append("%2d) %s (%d helps)" %
-                         (i + 1, category, counts[i]))
+        for i, (category, count) in enumerate(_help_visible_categories(trust)):
+            lines.append("%2d) %s (%d helps)" % (i + 1, category, count))
         tpage(lines)
         return
 
     arg = args[0].lower()
     category = None
     if arg.isdigit():
+        visible = _help_visible_categories(trust)
         category_number = int(arg) - 1
-        if 0 <= category_number < len(HELP_CATEGORIES):
-            category = HELP_CATEGORIES[category_number]
+        if 0 <= category_number < len(visible):
+            category = visible[category_number][0]
     else:
-        for name in HELP_CATEGORIES:
+        # [PRIMESUD] Matched against the visible categories, not all of
+        # HELP_CATEGORIES: naming a level-51 category is "Unknown category."
+        # here, the same denial `help olc` already gives for its entries.
+        for name, _count in _help_visible_categories(trust):
             if name.startswith(arg):
                 category = name
                 break
@@ -1398,7 +1406,8 @@ def do_index(player, args):
             return
         number = int(args[1])
 
-    trust = player.get("level", 1)
+    with open(HELP_INDEX) as f:
+        data = f.read()
     matches = []
     selected = None
     count = 0
@@ -1439,8 +1448,8 @@ def do_index(player, args):
         if i + 1 < len(cells):
             line += " " * (half - len(line)) + cells[i + 1]
         lines.append(line)
-    if not matches:
-        lines.append("No helps found in %s." % category)
+    # [PRIMESUD] Upstream's "No helps found in %s." is dropped: only a visible
+    # category resolves now, and a visible category has entries by definition.
     lines.append(sep)
     tpage(lines)
 
@@ -1456,9 +1465,15 @@ def do_help(player, args):
     04/07/2026; index-scan rework re-verified 05/07/2026; 'debug time'
     timing instrumentation added 05/07/2026; one-shot idx read + substring
     pre-filter re-verified 05/07/2026; output batched via list chprintln
-    22/07/2026; category field added and re-verified 22/07/2026]
+    22/07/2026; category field added and re-verified 22/07/2026; bare-help
+    browser and single-letter picker added, rest re-verified 25/07/2026]
     """
-    argall = " ".join(args) if args else "summary"
+    if not args:
+        # [PRIMESUD] Bare help browses by category rather than printing the
+        # summary outright; its first menu option is that same summary.
+        _help_browse(player)
+        return
+    argall = " ".join(args)
     number, target = _number_argument(argall)
     trust = player.get("level", 1)
     listing = len(target) == 1  # single-letter arg lists matching keywords
@@ -1466,6 +1481,7 @@ def do_help(player, args):
     found = False
     count = 0
     matches = []  # list-mode keywords
+    offsets = []  # list-mode body offsets, parallel to matches [PRIMESUD]
     related = []  # "See Also" keywords after the shown entry
     show = None   # (keyword, offset) of the entry to print
     t0 = ticks()  # [PRIMESUD] 'debug time' channel timings
@@ -1487,6 +1503,7 @@ def do_help(player, args):
             continue
         if listing:
             matches.append(keyword)
+            offsets.append(int(off_s))  # [PRIMESUD] picker opens the body
             found = True
         else:
             count += 1
@@ -1510,20 +1527,13 @@ def do_help(player, args):
     else:
         out = []
     if matches:
-        # [PRIMESUD] 1stMud prints 3 columns; 2 columns fit the 64-col screen
-        out.append("Help files that start with the letter '%s'." % target[0].upper())
-        out.append(sep)
-        half = TERMINAL_COLS // 2
-        cells = []
-        for i, kw in enumerate(matches):
-            cells.append(("%3d) %s" % (i + 1, kw))[:half - 1])
-        for i in range(0, len(cells), 2):
-            line = cells[i]
-            if i + 1 < len(cells):
-                line = line + " " * (half - len(line)) + cells[i + 1]
-            out.append(line)
-        out.append(sep)
-        out.append("%d total help files." % len(matches))
+        # [PRIMESUD] Replaces 1stMud's numbered 3-column list, which the
+        # player could only act on by retyping 'help <n>.<word>' with enough
+        # letters to leave list mode. The picker opens any match with a
+        # digit and Enter instead. `show` is never set in list mode, so
+        # nothing is pending in `out` here.
+        _help_pick("Help files starting with '%s'" % target[0].upper(),
+                   matches, offsets)
     elif not found:
         out.append("No help found for %s. Try using just the first letter." % target)
         # new_wiznet missing-help log: no immortals in single-user [PRIMESUD]
@@ -1536,6 +1546,118 @@ def do_help(player, args):
         t3 = ticks()
         dbg("help: idx=" + str(t1 - t0) + "ms read=" + str(t2 - t1) +
             "ms print=" + str(t3 - t2) + "ms")
+
+
+# [PRIMESUD] Picker rows render as "  N) <label>", and row 1 of each page
+# also carries a " (default)" marker -- 15 columns of furniture in the worst
+# case. Keyword lists run to 101 chars, so they are elided to fit one row.
+_HELP_LABEL_MAX = TERMINAL_COLS - 15
+
+
+def _help_visible_categories(trust):
+    """Return [(category, count)] for categories with entries visible at trust. [PRIMESUD]"""
+    counts = [0] * len(HELP_CATEGORIES)
+    with open(HELP_INDEX) as f:
+        data = f.read()
+    for line in data.split("\n"):
+        if not line:
+            continue
+        level_s, category, _offset, _keywords = line.split("|", 3)
+        if int(level_s) > trust or category not in HELP_CATEGORIES:
+            continue
+        counts[HELP_CATEGORIES.index(category)] += 1
+    data = None  # [PRIMESUD] release the 9KB index string promptly
+    out = []
+    for i, name in enumerate(HELP_CATEGORIES):
+        if counts[i]:
+            out.append((name, counts[i]))
+    return out
+
+
+def _help_category_entries(trust, category):
+    """Return (keywords, offsets) lists for one category, in do_index order. [PRIMESUD]
+
+    Same filter and same order as do_index, so menu position N is also the
+    number `index <category> N` takes.
+    """
+    with open(HELP_INDEX) as f:
+        data = f.read()
+    keywords = []
+    offsets = []
+    for line in data.split("\n"):
+        if not line:
+            continue
+        level_s, entry_category, offset_s, entry_keywords = line.split("|", 3)
+        if int(level_s) > trust or entry_category != category:
+            continue
+        keywords.append(entry_keywords)
+        offsets.append(int(offset_s))
+    data = None
+    return keywords, offsets
+
+
+def _help_pick(title, keywords, offsets, category=None):
+    """Menu a keyword list, showing each pick until Esc. [PRIMESUD]
+
+    Args:
+        title (str): Picker header.
+        keywords (list[str]): Full keyword lists, one per entry.
+        offsets (list[int]): HELP_FILE body offsets, parallel to keywords.
+        category (str): Shown as a "Help Category" header line; omitted
+            when the caller's entries span categories.
+    """
+    labels = []
+    for kw in keywords:
+        # Short labels are appended as-is, so the common case shares the
+        # existing string rather than allocating a copy.
+        labels.append(kw if len(kw) <= _HELP_LABEL_MAX
+                      else kw[:_HELP_LABEL_MAX - 3] + "...")
+    sep = draw_line("{c-{C-")
+    page = 0
+    while True:
+        idx = pick_from(title, labels, page)
+        if idx < 0:
+            return
+        # Reopen where the player left off: without this, picking entry 63
+        # drops them back on page 1 with six pages to walk again.
+        page = idx // _PICKER_PAGE
+        lines = [sep, "Help Keywords : %s" % keywords[idx]]
+        if category is not None:
+            lines.append("Help Category : %s" % category)
+        lines.append(sep)
+        lines.extend(_help_body(offsets[idx]))
+        lines.append(sep)
+        tpage(lines)
+
+
+def _help_browse_category(player, category, trust):
+    """Menu one category's entries, showing each pick until Esc. [PRIMESUD]"""
+    keywords, offsets = _help_category_entries(trust, category)
+    _help_pick("Help: %s" % category, keywords, offsets, category)
+
+
+def _help_browse(player):
+    """Browse help by category with digits and Enter only. [PRIMESUD]
+
+    Typing a keyword on the calculator keypad means alpha-shifting every
+    letter, so bare `help` opens a menu instead: category, then entry, then
+    the entry body; Esc steps back out one level at a time. The first option
+    is `summary`, so `help` followed by Enter still yields 1stMud's bare-help
+    output.
+    """
+    trust = player.get("level", 1)
+    categories = _help_visible_categories(trust)
+    labels = ["summary (one-page command overview)"]
+    for name, count in categories:
+        labels.append("%s (%d helps)" % (name, count))
+    while True:
+        choice = pick_from("Help: pick a category", labels)
+        if choice < 0:
+            return
+        if choice == 0:
+            do_help(player, ["summary"])
+            continue
+        _help_browse_category(player, categories[choice - 1][0], trust)
 
 
 def do_map(player, args):

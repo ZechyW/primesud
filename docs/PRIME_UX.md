@@ -201,6 +201,56 @@ Implemented in `picker.py:pick_from`; blocks until a valid choice is made.
 
 ---
 
+## Help browser
+
+Typing a help keyword means alpha-shifting every letter, so bare `help` opens
+a two-level picker instead of printing the command summary and stopping:
+
+```
+[Help] Help: pick a category
+  1) summary (one-page command overview)   (default)
+  2) creation (38 helps)
+  3) commands (85 helps)
+  4) skills (15 helps)
+  ...
+```
+
+The category set is `[PRIMESUD]`: upstream's eight are half unusable as menu
+rows -- a 50-entry `unknown` bucket, two single-entry categories, and 23 helps
+for the unported OLC editor.  `info.py:HELP_CATEGORIES` lists the rebalanced
+set; the eight a mortal sees (`creation`, `commands`, `skills`, `spells`,
+`combat`, `world`, `interface`, `credits`) fit one picker page with `summary`.
+
+Helps for systems PrimeSUD does not port -- OLC, clans, deities, immortal
+powers, plus the two upstream `GREETING` entries nothing reads -- stay in
+`help.txt` at level 51, above any reachable player level.  They never surface
+in a menu and never match a keyword lookup, but survive intact if the system
+lands.  `index` applies the same filter to its category listing and numbers it
+gap-free, so `index <n>` always names a category the player can read.
+
+Picking a category opens its entries, ten per page (`+`/`-` to page); picking
+an entry prints it through the pager and returns to the entry menu at the page
+it was picked from, so reading several entries in a row costs no re-paging.
+Esc steps back one level: entry menu to category menu, category menu to the
+prompt.  Option 1 of the category menu is `summary`, so `help` followed by
+Enter reproduces 1stMud's bare-`help` output in one keypress.
+
+Entries are filtered by player level and listed in `help.txt` order — the same
+filter and order `index` uses — so menu position N is the number
+`index <category> N` takes.
+
+`help <letter>` uses the same picker.  Upstream prints a numbered
+three-column list of every entry with a keyword starting with that letter,
+which the player can only act on by retyping `help <n>.<word>` with enough
+letters to leave list mode — a dead end on the calculator keypad.  The picker
+opens any match directly and returns to the list afterwards, same as the
+category menus.
+
+Every other argument form is unchanged; `do_help` (`info.py`) branches to the
+browser only when called with no arguments.
+
+---
+
 ## Autoskill rotation editor
 
 `autoskill edit` opens a blocking editor for the automatic combat rotation
