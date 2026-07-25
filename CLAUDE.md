@@ -90,6 +90,7 @@ Completed plan documents are deleted, not archived -- durable decisions get harv
 - Provide sanity check and brief explanation of key decisions -- especially HP Prime constraints or PPL interop -- before complex coding.
 - Minimal targeted changes. No surrounding refactor unless it is substantially cleaner or better; if so, raise for review.
 - After code changes, run the desktop test suite: `python -m pytest -q` (CPython via `pc_shim/` device shims), plus `python tools/check_ascii_py.py` per pitfall 6.
+- The suite runs with cwd == `src/` (pinned in `tests/conftest.py`), matching the device's flat filesystem and `run_source.py`, so runtime data files resolve by bare name. Tests must not chdir, and tools must resolve paths from `__file__`, not the cwd.
 - Commit messages: Conventional Commits (`feat(scope): ...`, `fix:`, `docs:`, ...).
 - Git flow: dev rebases onto main (never merge main into dev); main takes fast-forward merges from dev only. Keeps history linear.
 - Unsure if Python feature is available on HP Prime? Ask for human check.

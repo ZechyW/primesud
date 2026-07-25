@@ -862,7 +862,6 @@ def school_world(monkeypatch):
         "ready": world._WORLD_READY, "mobprogs": dict(MOBPROGS),
     }
     world.init_world()
-    monkeypatch.chdir(os.path.join(ROOT, _SRC))
     _ = MOB_DEFS[3700]          # lazy-load Mud School -> MOBILES/OBJECTS/MOBPROGS
 
     # synthetic single-room stage (avoids pulling school's whole room graph)

@@ -29,9 +29,6 @@ QUESTMASTER_ROOM = 200  # quest area; Edurin (mob 200) resets here
 
 @pytest.fixture
 def fresh():
-    # area .txt files load via cwd-relative paths
-    old_cwd = os.getcwd()
-    os.chdir(os.path.join(ROOT, _SRC))
     world.init_world()
     world.reset_lazy()
     ch = _char_base()
@@ -49,7 +46,6 @@ def fresh():
     world.chars[1] = ch
     ROOM_DEFS[QUESTMASTER_ROOM]  # trigger quest area load + reset
     yield ch
-    os.chdir(old_cwd)
 
 
 def _questman(ch):

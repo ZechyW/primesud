@@ -6,6 +6,23 @@ ROOT = os.path.dirname(os.path.dirname(__file__))
 _SRC = os.environ.get("PRIMESUD_SRC", "src")
 sys.path.insert(0, os.path.join(ROOT, _SRC))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
+sys.path.insert(0, ROOT)  # `from tools import ...` in a few tests
+
+def pytest_configure(config):
+    """Run the whole suite from src/, exactly as run_source.py does.
+
+    The calculator has a flat filesystem, so runtime data files (area_*.txt,
+    help.txt/.idx, socials, music, *.idx) are opened by bare name relative to
+    the cwd.  Pinning it here means no test has to invent its own chdir, and
+    a lazy area load that fires unexpectedly just works instead of raising
+    FileNotFoundError depending on run order.
+
+    A hook, not a fixture or a module-level call: test modules do work at
+    import time, which happens during collection -- after configure, but
+    before any fixture runs.  Doing it at import time instead would land
+    before pytest resolves `testpaths`.
+    """
+    os.chdir(os.path.join(ROOT, _SRC))
 
 import pytest
 from terminal import init_terminal

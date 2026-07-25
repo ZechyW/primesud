@@ -1,6 +1,4 @@
 """Tests for lazy help and category-index ports from 1stMud act_info.c."""
-import os
-
 import pytest
 
 import handler
@@ -9,11 +7,7 @@ import info
 
 @pytest.fixture
 def help_out(monkeypatch):
-    """Point do_help at the generated help file and capture tprint output."""
-    monkeypatch.setattr(info, "HELP_FILE",
-                        os.path.join("src", "help.txt"))
-    monkeypatch.setattr(info, "HELP_INDEX",
-                        os.path.join("src", "help.idx"))
+    """Capture tprint output; do_help reads the real src/ help files."""
     lines = []
     capture = lambda *a, **kw: lines.append(a[0] if a else "")
     monkeypatch.setattr(handler, "tprint", capture)
@@ -98,9 +92,9 @@ def test_credits_show_upstream_entries(help_out):
 
 def test_index_offsets_align():
     # every index offset must sit immediately after its own header line
-    with open(os.path.join("src", "help.txt"), "rb") as f:
+    with open(info.HELP_FILE, "rb") as f:
         data = f.read()
-    with open(os.path.join("src", "help.idx"), "rb") as f:
+    with open(info.HELP_INDEX, "rb") as f:
         for line in f:
             level, category, off_s, kw = line.rstrip(b"\n").split(b"|", 3)
             off = int(off_s)

@@ -15,8 +15,9 @@ import sys
 from pathlib import Path
 
 
-SRC = Path("reference/1stMud4.5.3/data/help.dat")
-DST = Path("src/help.txt")
+_ROOT = Path(__file__).resolve().parent.parent  # runnable from any cwd
+SRC = _ROOT / "reference/1stMud4.5.3/data/help.dat"
+DST = _ROOT / "src/help.txt"
 MAX_MORTAL_LEVEL = 51
 CUSTOM_CATEGORIES = {
     (0, b"KEYS KEYPAD CALCULATOR"): b"commands",

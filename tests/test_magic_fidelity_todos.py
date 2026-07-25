@@ -76,6 +76,10 @@ def _clean_world_state():
     old_chars = dict(world.chars)
     old_mobs = dict(MOB_DEFS._data)
     old_items = dict(ITEM_DEFS._data)
+    # The scavenger tests call mobile_update, which sweeps *all* of
+    # world.chars; real mobs left over from earlier area loads would be
+    # walked (and despawned) alongside the stubs below.  Restored at teardown.
+    world.chars.clear()
     MOB_DEFS._data[MOB_TPL] = {
         "short_descr": "a test dummy", "long_descr": "A test dummy is here.",
         "keywords": "dummy test", "level": 5, "race": "Human",

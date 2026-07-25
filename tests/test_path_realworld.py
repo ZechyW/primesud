@@ -46,9 +46,6 @@ def real_world(tmp_path, monkeypatch):
         "_WORLD_READY": world._WORLD_READY,
     }
 
-    # Area file names in _TAG_TO_FILE are relative to src/ (device cwd)
-    monkeypatch.chdir(os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src"))
     if not world._WORLD_READY:
         world.init_world()
     for _ in world.ROOM_DEFS:  # force-load every area (LazyDict.__iter__)

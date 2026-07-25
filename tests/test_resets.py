@@ -296,8 +296,8 @@ class TestRoomDark:
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def real_world(monkeypatch):
-    """Snapshot global world state, chdir to src so real area files load."""
+def real_world():
+    """Snapshot global world state so real area files can load."""
     snap = {
         "chars": dict(world.chars),
         "rooms": dict(world.rooms._data),
@@ -314,7 +314,6 @@ def real_world(monkeypatch):
         "ready": world._WORLD_READY,
     }
     world.init_world()
-    monkeypatch.chdir(os.path.join(ROOT, _SRC))
     yield
     world.chars.clear(); world.chars.update(snap["chars"])
     world.rooms._data.clear(); world.rooms._data.update(snap["rooms"])

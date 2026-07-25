@@ -217,9 +217,6 @@ def real_world():
     that run later in the same session don't see areas we loaded here.
     [PRIMESUD]
     """
-    old_cwd = os.getcwd()
-    os.chdir(os.path.join(ROOT, "src"))
-
     old_state = {
         "_LOADED_AREAS": set(world._LOADED_AREAS),
         "_pending_mob_saves": dict(world._pending_mob_saves),
@@ -260,14 +257,13 @@ def real_world():
         world.rooms._data.update(old_state["rooms"])
         world.areas = old_state["areas"]
         world._WORLD_READY = old_state["_WORLD_READY"]
-        os.chdir(old_cwd)
 
 
 class TestFindPathToAreaRealData:
     """cf. task example: midgaard -> shire via the real stock area files.
 
-    Uses the real committed src/paths.idx (the fixture chdirs to src/, so
-    the default PATH_INDEX_FILE resolves). The route avoids the
+    Uses the real committed src/paths.idx (the suite runs with cwd == src/,
+    so the default PATH_INDEX_FILE resolves). The route avoids the
     randomized-exit rooms (hitower's Shadow Grove, the daycare maze), so
     the index's frozen maze layout can't diverge from this world load.
     """

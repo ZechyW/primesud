@@ -130,10 +130,6 @@ def test_macro_bindings_survive_save_load(tmp_path, monkeypatch):
     import world
     from player import create_char
     monkeypatch.setattr(game_state, "SAVE_FILE", str(tmp_path / "t.sav"))
-    # Empty plain dict for world.rooms: the room check in load_world would
-    # otherwise try a real area load, which needs cwd == src/ (see TODO.md,
-    # Tests). The player just falls back to the starting room.
-    monkeypatch.setattr(world, "rooms", {})
     world.areas = []
     saved = {".": "help", "7": "kill", _fn_key("xy"): "run"}
     player = create_char()

@@ -53,8 +53,6 @@ class TestWeatherPersistence:
     def test_packed_roundtrip(self, tmp_path, monkeypatch):
         import game_state
         from player import create_char
-        # loading the player's room area opens area_*.txt relative to src
-        monkeypatch.chdir(os.path.join(ROOT, _SRC))
         monkeypatch.setattr(game_state, "SAVE_FILE", str(tmp_path / "t.sav"))
         old_areas, old_chars = world.areas, dict(world.chars)
         wdict = {"temp": -12, "temp_vector": 3, "precip": 5,
