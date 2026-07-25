@@ -21,6 +21,8 @@ Based on ROM 2.4, with enhancements ported from 1stMud, it runs in a custom text
 
 Most multiplayer mechanics are cut or reworked for solo play.
 
+[Version 1.0](https://github.com/ZechyW/primesud/releases/tag/v1.0.0) is the content-parity baseline against 1stMud 4.5.3, within those solo adaptations; later releases may go beyond it with new content and balance changes.
+
 ## Requirements
 
 Calculator: an HP Prime (or the Virtual Calculator emulator) and the HP Connectivity Kit for file transfer.
