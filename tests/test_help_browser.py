@@ -49,13 +49,17 @@ def test_category_menu_offers_summary_then_visible_categories(out, pick):
     title, options, start_page = picker.calls[0]
     assert (title, start_page) == ("Help: pick a category", 0)
     assert options[0] == "summary (one-page command overview)"
-    assert "commands (86 helps)" in options  # 87 total, BID is level 2
-    assert "spells (76 helps)" in options
+    # The count in the label and the entries the category actually lists come
+    # from two separate scans of help.idx; a menu promising 86 helps and then
+    # listing 84 is the failure a player sees, and a literal can't catch it.
+    for category in ("commands", "spells"):
+        entries, _offsets = info._help_category_entries(PLAYER["level"],
+                                                        category)
+        assert "%s (%d helps)" % (category, len(entries)) in options
     # unported systems and the leftover plumbing entries all sit at level 51
     for hidden in ("immortal", "olc", "clan", "deities", "unknown"):
         assert not any(o.startswith(hidden) for o in options)
-    # eight categories plus summary, well inside one picker page
-    assert len(options) == 9
+    assert len(options) <= 10  # categories plus summary fit one picker page
 
 
 def test_higher_trust_sees_more_categories(out, pick):

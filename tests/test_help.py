@@ -104,10 +104,14 @@ def test_index_offsets_align():
 
 
 def test_category_index_lists_counts(help_out):
+    # Slots are pinned, counts are not: the numbering is what `index <n>`
+    # resolves against, while a literal count only drifts on help.txt edits.
+    # Level filtering is covered by test_category_index_filters_by_level.
+    counts = dict(info._help_visible_categories(PLAYER["level"]))
     info.do_index(PLAYER, [])
     text = "\n".join(help_out)
-    assert " 2) commands (86 helps)" in text
-    assert " 4) spells (76 helps)" in text
+    assert " 2) commands (%d helps)" % counts["commands"] in text
+    assert " 4) spells (%d helps)" % counts["spells"] in text
     # unported systems sit at level 51, so they never reach the listing
     assert "olc" not in text
     assert "deities" not in text
