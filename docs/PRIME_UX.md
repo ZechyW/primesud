@@ -28,12 +28,13 @@ bit indices may differ between hardware revisions.
 
 ## Digit and function-key macros
 
-Digit keys `0`–`9` and ten function keys act as one-key shortcuts that load a
-command into the input buffer when it is empty (not auto-submitted — the player
-still presses Enter, allowing arguments to be appended first).  With a
-non-empty buffer, digits type normally, so numeric arguments still work.
+Digit keys `0`–`9`, the decimal key, and ten function keys act as one-key
+shortcuts that load a command into the input buffer when it is empty (not
+auto-submitted — the player still presses Enter, allowing arguments to be
+appended first).  With a non-empty buffer, digits and the decimal key type
+normally, so numeric arguments still work.
 
-Default digit bindings (`config.py:DEFAULT_MACROS`):
+Default digit and decimal bindings (`config.py:DEFAULT_MACROS`):
 
 | Key | Command   |
 |-----|-----------|
@@ -47,6 +48,7 @@ Default digit bindings (`config.py:DEFAULT_MACROS`):
 | 2   | `practice`|
 | 3   | `train`   |
 | 0   | `macro`   |
+| .   | `help`    |
 
 Function-key bindings (`config.py:FNKEY_TABLE`; the two key rows above the
 numpad):
@@ -68,7 +70,7 @@ Bindings are live-editable with the `macro` command:
 
 ```
 macro             — show current bindings in a grid layout
-macro <key> <cmd> — bind key (digit or fn-key name) to command
+macro <key> <cmd> — bind key (digit, `.`, or fn-key name) to command
 macro <key>       — show the full binding without changing it
 macro unset <key> — clear binding
 macro default     — restore all defaults

@@ -127,8 +127,8 @@ KEY_COMMANDS = {  # [PRIMESUD]
     12: ("s",  True),   # Nav-pad Down
 }
 
-# -- Default digit macros [PRIMESUD] ---------------------------------------------------
-# Maps digit key "0"-"9" -> command string. Edit to taste.
+# -- Default digit/decimal macros [PRIMESUD] -------------------------------------------
+# Maps digit keys "0"-"9" and "." -> command strings. Edit to taste.
 DEFAULT_MACROS = {  # [PRIMESUD]
     "7": "kill",
     "8": "flee",
@@ -139,7 +139,8 @@ DEFAULT_MACROS = {  # [PRIMESUD]
     "1": "score",
     "2": "practice",
     "3": "train",
-    "0": "macro"
+    "0": "macro",
+    ".": "help"
 }
 
 # -- Function-row macro keys [PRIMESUD] ---------------------------------------

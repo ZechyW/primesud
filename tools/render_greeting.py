@@ -1,4 +1,4 @@
-"""Render PrimeSUD greeting, room, or score screens to a device-accurate PNG.
+"""Render PrimeSUD greeting, room, score, or macro screens to a device-accurate PNG.
 
 The PC shim (pc_shim/) is text/ANSI only -- its hpprime pixel calls are
 no-ops -- so it cannot produce a real screen capture. This tool instead
@@ -14,6 +14,7 @@ Usage:
     python tools/render_greeting.py
     python tools/render_greeting.py --room
     python tools/render_greeting.py --score
+    python tools/render_greeting.py --macro
     python tools/render_greeting.py --font reference/fonts/scientifica5x10.font out.png
 """
 import argparse
@@ -169,6 +170,20 @@ def room_scene():
     return lines, prompt_text(player)
 
 
+def macro_scene():
+    """Render the default macro grid through the real command."""
+    import macros
+    from classes import CLASS_WARRIOR
+    from player import create_char
+
+    lines = []
+    macros.tprint = lambda value="", end="\n": lines.append(value)
+    macros.do_macro(None, ["default"])
+    lines.clear()
+    macros.do_macro(None, [])
+    return lines, prompt_text(create_char(CLASS_WARRIOR))
+
+
 def load_glyphs(font):
     """Map char -> per-pixel ink mask from the font atlas.
 
@@ -236,12 +251,15 @@ def main():
     screens = parser.add_mutually_exclusive_group()
     screens.add_argument("--room", action="store_true")
     screens.add_argument("--score", action="store_true")
+    screens.add_argument("--macro", action="store_true")
     args = parser.parse_args()
-    name = "room.png" if args.room else "score.png" if args.score else "greeting.png"
+    name = ("room.png" if args.room else "score.png" if args.score else
+            "macro.png" if args.macro else "greeting.png")
     out = args.out or ROOT / "docs" / "img" / name
     out.parent.mkdir(parents=True, exist_ok=True)
-    lines, status = room_scene() if args.room else (
-        score_scene() if args.score else (LINES, ""))
+    lines, status = (room_scene() if args.room else
+                     score_scene() if args.score else
+                     macro_scene() if args.macro else (LINES, ""))
     img = render(lines, args.font, status)
     if SCALE != 1:
         img = img.resize((img.width * SCALE, img.height * SCALE), Image.NEAREST)

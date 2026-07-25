@@ -63,7 +63,7 @@ def test_unset_requires_one_valid_key(out):
     assert out[-1].startswith("Key must be")
 
 
-def test_function_key_defaults_and_xy_remains_configurable(out):
+def test_macro_defaults_and_keys_remain_configurable(out):
     by_name = {name: key for key, name in FNKEY_NAMES.items()}
     do_macro(None, ["default"])
     assert _MACRO_SUBST[by_name["xy"]] == "run"
@@ -71,9 +71,12 @@ def test_function_key_defaults_and_xy_remains_configurable(out):
     assert _MACRO_SUBST[by_name["log"]] == "gquest check"
     assert _MACRO_SUBST["4"] == "give"
     assert _MACRO_SUBST["3"] == "train"
+    assert _MACRO_SUBST["."] == "help"
 
     do_macro(None, ["xy", "scan"])
     assert _MACRO_SUBST[by_name["xy"]] == "scan"
+    do_macro(None, [".", "commands"])
+    assert _MACRO_SUBST["."] == "commands"
 
 
 def test_grid_matches_physical_layout_and_truncates_preview(out):
@@ -92,6 +95,7 @@ def test_grid_matches_physical_layout_and_truncates_preview(out):
     assert "[Recall]" in plain[9]
     assert "On" in plain[17]
     assert "[Exit]" in plain[18]
+    assert "help" in plain[18]
     assert "cast fir..." in plain[9]
     assert "cast fireball" not in "".join(plain)
 
@@ -117,3 +121,38 @@ def test_tilde_in_macro_rejected(out):
     do_macro(None, ["3", "say", "hi~quit"])
     assert _MACRO_SUBST == before
     assert any("may not contain" in l for l in out)
+
+
+def test_macro_bindings_survive_save_load(tmp_path, monkeypatch):
+    # '.' is the only non-alphanumeric macro key, so it is the one that can
+    # break the "p.macro.<key>=<cmd>" save line (game_state.py).
+    import game_state
+    import world
+    from player import create_char
+    monkeypatch.setattr(game_state, "SAVE_FILE", str(tmp_path / "t.sav"))
+    # Empty plain dict for world.rooms: the room check in load_world would
+    # otherwise try a real area load, which needs cwd == src/ (see TODO.md,
+    # Tests). The player just falls back to the starting room.
+    monkeypatch.setattr(world, "rooms", {})
+    world.areas = []
+    saved = {".": "help", "7": "kill", _fn_key("xy"): "run"}
+    player = create_char()
+    player["name"] = "Tester"
+    player["room"] = 9001
+    player["_macros"] = dict(saved)
+    world.chars[1] = player
+    game_state._serialize_world()
+
+    world.chars.clear()
+    player2 = create_char()
+    player2["name"] = "Tester"
+    player2["room"] = 9001
+    player2["_macros"] = {}
+    world.chars[1] = player2
+    assert game_state.load_world() == "file"
+    assert player2["_macros"] == saved
+
+
+def _fn_key(name):
+    """Sentinel for a function-key display name."""
+    return {v: k for k, v in FNKEY_NAMES.items()}[name]

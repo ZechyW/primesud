@@ -122,11 +122,11 @@ worth trusting -- the engineering layer.
   are buffered and replayed when the area loads; `backup` writes a manual
   second slot, restored by renaming the file in the calculator's file
   manager (game_state.py, world.py).
-- **Keypad UX** -- D-pad keys move directly, digit keys plus two function-key
-  rows (x^y..log, x2..comma) are rebindable command macros, Symb/Help step
-  command history, Shift-minus or a touch swipe opens
-  a 250-row scrollback, and a persistent status bar shows hp/mana/xp plus the
-  live input buffer (docs/PRIME_UX.md).
+- **Keypad UX** -- D-pad keys move directly, digit/decimal keys plus two
+  function-key rows (x^y..log, x2..comma) are rebindable command macros,
+  Symb/Help step command history, Shift-minus or a touch swipe opens a 250-row
+  scrollback, and a persistent status bar shows hp/mana/xp plus the live input
+  buffer (docs/PRIME_UX.md).
 - **Firmware workarounds** -- a hand-rolled key queue drains the 4-deep GETKEY
   FIFO around a keystroke-swallowing firmware race; the terminal subclass
   rebuilds inherited dict attributes the G2 firmware corrupts (tml_prime.py).

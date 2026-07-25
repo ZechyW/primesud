@@ -30,7 +30,7 @@ _MACRO_SECTIONS = (
          (None, "/", "[Recall]")),
         ((None, "ALPHA"), ("4", "4"), ("5", "5"), ("6", "6"), (None, "*")),
         ((None, "Shift"), ("1", "1"), ("2", "2"), ("3", "3"), (None, "-")),
-        ((None, "On", "[Exit]"), ("0", "0"), (None, "."), (None, "Space"), (None, "+")),
+        ((None, "On", "[Exit]"), ("0", "0"), (".", "."), (None, "Space"), (None, "+")),
     ),
 )
 
@@ -95,14 +95,14 @@ def _macro_target(key):
     sentinel = _FNKEY_BY_NAME.get(key)
     if sentinel is not None:
         return sentinel, key
-    if len(key) == 1 and key in "0123456789":
+    if len(key) == 1 and key in "0123456789.":
         return key, key
     return None, None
 
 
 def _print_key_error():
     """Print valid macro key names. [PRIMESUD]"""
-    tprint("Key must be a digit 0-9 or one of: {}.".format(
+    tprint("Key must be 0-9, '.', or one of: {}.".format(
         " ".join(sorted(_FNKEY_BY_NAME))))
 
 
