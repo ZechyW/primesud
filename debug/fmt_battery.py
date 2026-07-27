@@ -15,10 +15,24 @@ confirmed on hardware --
      the heap (stochastic, G1-probed; "%d" and slice-made strings
      acquitted; number-string cache + int_str fix validated).
 
+v2 (28/07) completes the operator x context matrix: v1 confounded
+operator with context (.format tested in the trigger context, % only
+flat-arg), so the % ban rested purely on 2026 trigger-1 evidence.
+New phases A0/A1/A1t/A2 run FIRST because the G1 dies at fmt-comp
+(2/2 prior sessions) and everything after a death is lost.
+
 Phases (each fully logged/flushed before the next starts):
-  A  mwe-base   -- 30 reps of the .format() comprehension MWE,
+  A0 pct-comp   -- % in the comprehension + nested-dict trigger
+                   context: the untested quadrant.
+  A1 pct-loop   -- % in a plain loop, same data.
+  A1t pct-t1    -- % in a plain loop with the HISTORICAL trigger-1
+                   content ("a.%s.age=%s", mud_school/age-0 kept
+                   verbatim -- the bug is content-sensitive).
+  A2 fmt-loop   -- .format() in a plain loop (context axis for the
+                   fmt operator).
+  A  fmt-comp   -- 30 reps of the .format() comprehension MWE,
                    every result string verified in full.  Baseline
-                   corruption rate per device.
+                   corruption rate per device (G1: known killer).
   B  mwe-gc     -- same with gc.collect() before each rep.  Output
                    bug rate tracking collects => evidence the two
                    bugs share a root.
@@ -109,6 +123,53 @@ def mwe_fmt():
             for k, v in _learned.items()]
 
 
+def mwe_pct():
+    # Same trigger context, % operator: the untested quadrant of the
+    # operator x context matrix (v2, 28/07).
+    return ["%s (%d%%)" % (_skills[k]["name"], v)
+            for k, v in _learned.items()]
+
+
+def mwe_fmt_loop():
+    # .format() in a plain loop (no comprehension).
+    out = []
+    for k, v in _learned.items():
+        out.append("{} ({}%)".format(_skills[k]["name"], v))
+    return out
+
+
+def mwe_pct_loop():
+    # % in a plain loop.
+    out = []
+    for k, v in _learned.items():
+        out.append("%s (%d%%)" % (_skills[k]["name"], v))
+    return out
+
+
+# Historical trigger-1 shape and content: "%"-built area-age lines,
+# including the content-sensitive mud_school/age-0 pair (renaming the
+# tag to "mudschool" made the 2026 probe pass -- content matters, so
+# the known-bad content is preserved verbatim).
+_areas = (("mud_school", 0), ("midgaard", 15), ("plains", 3),
+          ("smurfville", 42), ("mirror", 0), ("gstrand", 7),
+          ("dwarven", 11), ("chapel", 0), ("thalos", 28),
+          ("sewers", 5))
+
+
+def t1_pct():
+    out = []
+    for tag, age in _areas:
+        out.append("a.%s.age=%s" % (tag, age))
+    return out
+
+
+def t1_expected():
+    exp = []
+    for tag, age in _areas:
+        exp.append("a." + tag + ".age=" + int_str(age))
+    return exp
+
+
 def mwe_expected():
     # Safe construction: plain concat + int_str.  Same items() order
     # as mwe_fmt within a run (dict unchanged between iterations).
@@ -137,15 +198,14 @@ def check_names(names, exp, tag):
     return bad
 
 
-def run_mwe_phase(name, collect_each, ballast_live):
+def run_mwe_phase(name, build, exp, collect_each, ballast_live):
     log("phase " + name + " reps=" + int_str(REPS)
         + " free=" + int_str(free()))
-    exp = mwe_expected()
     total_bad = 0
     for r in range(REPS):
         if collect_each:
             gc.collect()
-        names = mwe_fmt()
+        names = build()
         total_bad += check_names(names, exp, name + "/r" + int_str(r + 1))
         names = None
         if (r + 1) % 10 == 0:
@@ -235,14 +295,26 @@ def main():
     log("fmt_battery: format-bug vs str(int)-GC-bug differentiation")
     log("free at start=" + int_str(free()))
 
-    run_mwe_phase("A/mwe-base", False, False)
-    run_mwe_phase("B/mwe-gc", True, False)
+    exp_sk = mwe_expected()
+    exp_t1 = t1_expected()
+
+    # v2 phase order: % variants FIRST.  The G1 dies at fmt-comp
+    # (2/2 prior sessions, fmt_battery-g1.log), so anything after it
+    # never runs there; the prior sessions already supply the G1
+    # fmt-comp data point, and a v2 death position localizes the %
+    # question cleanly.
+    run_mwe_phase("A0/pct-comp", mwe_pct, exp_sk, False, False)
+    run_mwe_phase("A1/pct-loop", mwe_pct_loop, exp_sk, False, False)
+    run_mwe_phase("A1t/pct-t1", t1_pct, exp_t1, False, False)
+    run_mwe_phase("A2/fmt-loop", mwe_fmt_loop, exp_sk, False, False)
+    run_mwe_phase("A/fmt-comp", mwe_fmt, exp_sk, False, False)
+    run_mwe_phase("B/fmt-comp-gc", mwe_fmt, exp_sk, True, False)
 
     log("building ballast for C...")
     ballast = make_ballast()
     log("ballast " + int_str(len(ballast)) + " entries, free="
         + int_str(free()))
-    run_mwe_phase("C/mwe-press", False, True)
+    run_mwe_phase("C/fmt-comp-press", mwe_fmt, exp_sk, False, True)
     ballast = None
     gc.collect()
 
