@@ -370,16 +370,23 @@ on+symb checkpoint restore before each):
   collection fires at an unlucky VM state, block reused; stale read =>
   TypeError, stale write => corruption/reset/stall) -- working
   hypothesis, not confirmed.
-- **The explicit `gc.collect()` is the trigger** (`chunkedng` bisect):
-  the identical cycle minus the explicit collect ran clean over
-  multiple sessions; with it, death within ~4 iterations regardless of
-  string size.  Fits the root-scan hypothesis: a shallow explicit
-  collect pins the fewest conservative roots and frees the most,
-  occasionally including a block an unscanned firmware/VM slot still
-  references.  Whether alloc-triggered *auto*-collects are equally
-  dangerous is being tested (`autogc` kind, forced auto-collects);
-  the answer decides if removing explicit collects after churn is a
-  sufficient fix or only a rate reduction.
+- **Any collect over mixed churned garbage is the trigger**
+  (`chunkedng`/`autogc` bisects): the cycle minus its explicit collect
+  ran clean exactly as long as no collect happened at all (20-iter
+  sessions, heap never filled), and died the moment heap exhaustion
+  forced the first *auto*-collect (300-iter run, dead at ~iter 33
+  where free hit zero).  Explicit-vs-auto is irrelevant; what matters
+  is the garbage composition the collect walks: a few big uniform
+  blocks is safe (mem_soak forced ~243 auto-collects clean; `bigonly`
+  60+ explicit collects clean), fragmented mixed small+medium garbage
+  from a serialize-shaped storm is a ~25-30%-per-collect death roll.
+  Every collect is a dice roll weighted by churn since the last one.
+  Mitigation is therefore statistical, not absolute: do not add
+  explicit collects right after churn bursts (the save path's opening
+  `gc_collect()` was a guaranteed worst-case roll per save -- earlier
+  "may be load-bearing protection" guess in this file was backwards),
+  keep hot-path garbage small and uniform (alloc diet), and rely on
+  headroom to keep collects rare.
 
 Consequences for game code until better understood: keep single-string
 builds at or under ~8 KB (the save payload measures 7990 B mid-game and
