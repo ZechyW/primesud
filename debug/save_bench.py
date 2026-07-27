@@ -45,13 +45,17 @@ SAV = "primesud.sav"
 LOG = "save_bench.log"
 HVAR = "savebench"
 
-# Bisect toggle (G1 stall hunt, 27/07): False skips ALL HVars interop
-# (size-scaling block, hvset/hvget segments, end-of-run cleanup) --
-# HVars big-literal PPL parsing is the main workload difference from
-# mem_soak, which completes clean under identical conditions.  If the
-# ladder completes with this False, HVars is implicated; flip back to
-# True (or ship a 1x-only variant) to find the size threshold.
-DO_HV = False
+# Bisect toggle (G1 stall hunt, 27/07): HVars interop is CONFIRMED as
+# the stall trigger -- "off" completed clean (save_bench-4.log) where
+# the full run stalled 2/2 on identical clean-pool conditions, with
+# every HVars call succeeding (verified readback) before the delayed
+# firmware wedge.  Modes:
+#   "off"  -- no HVars at all (the clean-run control)
+#   "1x"   -- all HVars call sites, but only payload-sized (~8KB)
+#             literals: same call count, no 16/32KB literals.
+#             Distinguishes size-triggered from count-triggered.
+#   "full" -- original behaviour incl. 2x/4x scaling (the stall repro)
+HV_MODE = "1x"
 
 _out = []
 
@@ -245,7 +249,7 @@ def run_segments(payload, work, tag):
         ("join  ", lambda: "~".join(lines)),
         ("fwrite", lambda: _fwrite(payload)),
     ]
-    if DO_HV:
+    if HV_MODE != "off":
         segs.insert(2, ("hvset ", lambda: hvars_set(HVAR, payload)))
         segs.insert(3, ("hvget ", lambda: hvars_get(HVAR) == payload))
     for name, fn in segs:
@@ -293,13 +297,14 @@ def main():
 
     # HVars size-scaling first: cheapest, highest-value data -- get it
     # into the log before any alloc-heavy segment can hard-reset the G1.
-    if not DO_HV:
-        log("DO_HV=False: skipping all HVars interop (bisect run)")
-    if DO_HV:
-        for label, p in (("1x", payload),
-                         ("2x", payload + "~" + payload),
-                         ("4x", payload + "~" + payload + "~" + payload
-                          + "~" + payload)):
+    log("HV_MODE=" + HV_MODE)
+    if HV_MODE != "off":
+        sizes = [("1x", payload)]
+        if HV_MODE == "full":
+            sizes.append(("2x", payload + "~" + payload))
+            sizes.append(("4x", payload + "~" + payload + "~" + payload
+                          + "~" + payload))
+        for label, p in sizes:
             try:
                 gc.collect()
                 t0 = ticks()
@@ -357,7 +362,7 @@ def main():
     ballast = None
     gc.collect()
 
-    if DO_HV:
+    if HV_MODE != "off":
         try:
             hvars_set(HVAR, "0")
         except Exception:
