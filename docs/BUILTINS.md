@@ -356,7 +356,11 @@ pool = on+symb checkpoint restore before each):
   `"%d" % t` producing the same 690 digit strings per cycle ran
   13.8K conversions / 20 collects clean in the same session whose
   `str(int)` control died at its iteration 2 (save_bench-14.log).
-  Same-output different-route, opposite fates.  The cycle [~965 `str(int)` allocs +
+  Same-output different-route, opposite fates.  Confirmation run
+  (save_bench-15.log): 80 straight clean collects (40 cache + 40 %)
+  before the str(int) control corrupted at its iteration 2 again.
+  Cumulative: cache fix 60 collects clean, `%` 60 clean, `str(int)`
+  guilty 6/6 sessions.  The cycle [~965 `str(int)` allocs +
   ~173 list allocs -> drop -> collect] kills or corrupts within ~4-9
   iterations, 4/4 sessions (`smallonly`,
   save_bench-10/-11/-13.log + one unlogged hard crash).  Everything

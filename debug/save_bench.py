@@ -170,7 +170,12 @@ HV_MODE = "bigloop"
 #   "matrix3"  -- cachedstr -> pctonly -> smallonly as positive
 #                control.  40/40/20 for the confirmation run
 #                (originally 20/20/20; -14.log control fired at
-#                phase iteration 2).
+#                phase iteration 2).  CONFIRMED (save_bench-15.log):
+#                80 straight clean collects (40 cached + 40 pct),
+#                control corrupted at its iteration 2 again (two
+#                elements this time) and the session died mid-scan.
+#                Cumulative: cachedstr 60 collects clean, pctonly 60
+#                clean, smallonly guilty 6/6 sessions.
 #   "matrix"  -- all three in one session, 20 iters each (smallnostr
 #                -> smallonly -> medonly).  Phase boundaries are
 #                scrubbed by the per-iteration collects, so a clean
