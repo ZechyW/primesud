@@ -1,0 +1,160 @@
+save_bench: save-path primitive timings, N=5
+payload: file, 7990 bytes, 173 lines, 965 tokens
+HV_MODE=bigloop
+bigloop kind=matrix2
+bigloop 1/60 ok smallslice 965 slice allocs
+.. 1 collect ok
+bigloop 2/60 ok smallslice 965 slice allocs
+.. 2 collect ok
+bigloop 3/60 ok smallslice 965 slice allocs
+.. 3 collect ok
+bigloop 4/60 ok smallslice 965 slice allocs
+.. 4 collect ok
+bigloop 5/60 ok smallslice 965 slice allocs
+.. 5 collect ok
+bigloop 6/60 ok smallslice 965 slice allocs
+.. 6 collect ok
+bigloop 7/60 ok smallslice 965 slice allocs
+.. 7 collect ok
+bigloop 8/60 ok smallslice 965 slice allocs
+.. 8 collect ok
+bigloop 9/60 ok smallslice 965 slice allocs
+.. 9 collect ok
+bigloop 10/60 ok smallslice 965 slice allocs
+.. 10 collect ok
+bigloop 11/60 ok smallslice 965 slice allocs
+.. 11 collect ok
+bigloop 12/60 ok smallslice 965 slice allocs
+.. 12 collect ok
+bigloop 13/60 ok smallslice 965 slice allocs
+.. 13 collect ok
+bigloop 14/60 ok smallslice 965 slice allocs
+.. 14 collect ok
+bigloop 15/60 ok smallslice 965 slice allocs
+.. 15 collect ok
+bigloop 16/60 ok smallslice 965 slice allocs
+.. 16 collect ok
+bigloop 17/60 ok smallslice 965 slice allocs
+.. 17 collect ok
+bigloop 18/60 ok smallslice 965 slice allocs
+.. 18 collect ok
+bigloop 19/60 ok smallslice 965 slice allocs
+.. 19 collect ok
+bigloop 20/60 ok smallslice 965 slice allocs
+.. 20 collect ok
+bigloop 21/60 ok digitslice 965 slice allocs
+.. 21 collect ok
+bigloop 22/60 ok digitslice 965 slice allocs
+.. 22 collect ok
+bigloop 23/60 ok digitslice 965 slice allocs
+.. 23 collect ok
+bigloop 24/60 ok digitslice 965 slice allocs
+.. 24 collect ok
+bigloop 25/60 ok digitslice 965 slice allocs
+.. 25 collect ok
+bigloop 26/60 ok digitslice 965 slice allocs
+.. 26 collect ok
+bigloop 27/60 ok digitslice 965 slice allocs
+.. 27 collect ok
+bigloop 28/60 ok digitslice 965 slice allocs
+.. 28 collect ok
+bigloop 29/60 ok digitslice 965 slice allocs
+.. 29 collect ok
+bigloop 30/60 ok digitslice 965 slice allocs
+.. 30 collect ok
+bigloop 31/60 ok digitslice 965 slice allocs
+.. 31 collect ok
+bigloop 32/60 ok digitslice 965 slice allocs
+.. 32 collect ok
+bigloop 33/60 ok digitslice 965 slice allocs
+.. 33 collect ok
+bigloop 34/60 ok digitslice 965 slice allocs
+.. 34 collect ok
+bigloop 35/60 ok digitslice 965 slice allocs
+.. 35 collect ok
+bigloop 36/60 ok digitslice 965 slice allocs
+.. 36 collect ok
+bigloop 37/60 ok digitslice 965 slice allocs
+.. 37 collect ok
+bigloop 38/60 ok digitslice 965 slice allocs
+.. 38 collect ok
+bigloop 39/60 ok digitslice 965 slice allocs
+.. 39 collect ok
+bigloop 40/60 ok digitslice 965 slice allocs
+.. 40 collect ok
+bigloop 41/60 ok small 965 str allocs
+.. 41 collect ok
+bigloop 42/60 ok small 965 str allocs
+.. 42 collect ok
+bigloop 43/60 ok small 965 str allocs
+.. 43 collect ok
+bigloop 44/60 EXC 'list' object is not an iterator
+SCAN work/iter44: elem 83 -> <class 'tuple'>
+SCAN work/iter44: 1 bad of 173
+.. 44 collect ok
+bigloop 45/60 EXC 'list' object is not an iterator
+SCAN work/iter45: elem 83 -> <class 'tuple'>
+SCAN work/iter45: 1 bad of 173
+.. 45 collect ok
+bigloop 46/60 EXC 'list' object is not an iterator
+SCAN work/iter46: elem 83 -> <class 'tuple'>
+SCAN work/iter46: 1 bad of 173
+.. 46 collect ok
+bigloop 47/60 EXC 'list' object is not an iterator
+SCAN work/iter47: elem 83 -> <class 'tuple'>
+SCAN work/iter47: 1 bad of 173
+.. 47 collect ok
+bigloop 48/60 EXC 'list' object is not an iterator
+SCAN work/iter48: elem 83 -> <class 'tuple'>
+SCAN work/iter48: 1 bad of 173
+.. 48 collect ok
+bigloop 49/60 EXC 'list' object is not an iterator
+SCAN work/iter49: elem 83 -> <class 'tuple'>
+SCAN work/iter49: 1 bad of 173
+.. 49 collect ok
+bigloop 50/60 EXC 'list' object is not an iterator
+SCAN work/iter50: elem 83 -> <class 'tuple'>
+SCAN work/iter50: 1 bad of 173
+.. 50 collect ok
+bigloop 51/60 EXC 'list' object is not an iterator
+SCAN work/iter51: elem 83 -> <class 'tuple'>
+SCAN work/iter51: 1 bad of 173
+.. 51 collect ok
+bigloop 52/60 EXC 'list' object is not an iterator
+SCAN work/iter52: elem 83 -> <class 'tuple'>
+SCAN work/iter52: 1 bad of 173
+.. 52 collect ok
+bigloop 53/60 EXC 'list' object is not an iterator
+SCAN work/iter53: elem 83 -> <class 'tuple'>
+SCAN work/iter53: 1 bad of 173
+.. 53 collect ok
+bigloop 54/60 EXC 'list' object is not an iterator
+SCAN work/iter54: elem 83 -> <class 'tuple'>
+SCAN work/iter54: 1 bad of 173
+.. 54 collect ok
+bigloop 55/60 EXC 'list' object is not an iterator
+SCAN work/iter55: elem 83 -> <class 'tuple'>
+SCAN work/iter55: 1 bad of 173
+.. 55 collect ok
+bigloop 56/60 EXC 'list' object is not an iterator
+SCAN work/iter56: elem 83 -> <class 'tuple'>
+SCAN work/iter56: 1 bad of 173
+.. 56 collect ok
+bigloop 57/60 EXC 'list' object is not an iterator
+SCAN work/iter57: elem 83 -> <class 'tuple'>
+SCAN work/iter57: 1 bad of 173
+.. 57 collect ok
+bigloop 58/60 EXC 'list' object is not an iterator
+SCAN work/iter58: elem 83 -> <class 'tuple'>
+SCAN work/iter58: 1 bad of 173
+.. 58 collect ok
+bigloop 59/60 EXC 'list' object is not an iterator
+SCAN work/iter59: elem 83 -> <class 'tuple'>
+SCAN work/iter59: 1 bad of 173
+.. 59 collect ok
+bigloop 60/60 EXC 'list' object is not an iterator
+SCAN work/iter60: elem 83 -> <class 'tuple'>
+SCAN work/iter60: 1 bad of 173
+.. 60 collect ok
+bigloop: 17 caught errors in 60 iterations
+Done. Results in save_bench.log

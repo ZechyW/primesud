@@ -134,15 +134,25 @@ HV_MODE = "bigloop"
 # These decouple the three axes -- same alloc count/shape as
 # smallonly (965 small strs + 173 lists per iter -> drop -> collect):
 #   "smallslice" -- 3-char slices of the payload: small size, MIXED
-#                content, no int formatting.  Dies => size alone
-#                sufficient.
+#                content, no int formatting.  CLEAN 40/40 collects
+#                over 2 sessions (27/07).
 #   "digitslice" -- 3-char slices of a pure digit source string:
-#                small + digit content, still no formatting.  Dies
-#                (with smallslice clean) => content convicted.
+#                small + digit content, still no formatting.  CLEAN
+#                40/40 over the same 2 sessions: content acquitted.
 #   "matrix2" -- smallslice -> digitslice -> smallonly, 20 each;
 #                smallonly last as same-session positive control.
-#                All-clean phases 1-2 + phase-3 death => the str(int)
-#                formatting path itself is convicted.
+#                VERDICT (2 sessions, 27/07): both slice phases
+#                clean, smallonly phase died at its iteration 9
+#                (hard crash; the post-crash auto-rerun then
+#                triggered a self-initiated full memory reset) and
+#                corrupted at its iteration 4 (save_bench-13.log:
+#                work[83]'s toks list persistently type-confused for
+#                17 straight iterations, non-fatal -- first scan to
+#                catch the corruption in data rather than VM slots).
+#                The str(int) FORMATTING PATH itself is convicted;
+#                size and content acquitted.  Avoidance predicate:
+#                do not bulk-produce str(int) transients between
+#                collects -- number-string caching defeats it.
 #   "matrix"  -- all three in one session, 20 iters each (smallnostr
 #                -> smallonly -> medonly).  Phase boundaries are
 #                scrubbed by the per-iteration collects, so a clean

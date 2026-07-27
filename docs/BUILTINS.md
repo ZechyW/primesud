@@ -351,21 +351,32 @@ pool = on+symb checkpoint restore before each):
   `Ticks` calls fine), big *bytes* allocations (247 x 32 KB clean,
   twice), `str(int)` conversion, gc-call interplay, bad RAM (7.6 MB
   pattern-verified twice), heap size config, session residency.
-- **Convicted (bigloop bisect + composition matrix)**: the cycle
-  [~965 small str allocs + ~173 list allocs -> drop -> collect] kills
-  within ~4 iterations with NO medium/big strings at all
-  (`smallonly`, dead 2/2 sessions at its iteration 4,
-  save_bench-10/-11.log).  The medium/big payload strings present in
-  every earlier deadly kind (`both`/`both8k`/`chunked`) were
-  passengers.  It is *string-object-specific*: the identical churn
-  shape built from tuples of existing refs instead of strings
-  (`smallnostr`, zero new string objects) survived 20 collects clean
-  in the same session that then died 4 iterations into its
-  `smallonly` phase (save_bench-11.log).  Same family neighbourhood
-  as the known str-format heap bug (PRIME_STRING_FORMAT_BUG.md).
-  This is the real save path's exact shape (serialize str() storm +
-  gc_collect per autosave): the game's occasional G1 crashes are this
-  bug, rate-limited only by saves being minutes apart.
+- **Convicted (bigloop bisect + composition matrices)**: the
+  `str(int)` FORMATTING PATH.  The cycle [~965 `str(int)` allocs +
+  ~173 list allocs -> drop -> collect] kills or corrupts within ~4-9
+  iterations, 4/4 sessions (`smallonly`,
+  save_bench-10/-11/-13.log + one unlogged hard crash).  Everything
+  else acquitted by matrices: identical churn from tuples
+  (`smallnostr`, 20 collects clean), identical small strs made by
+  *slicing* -- mixed content (`smallslice`) and pure digit content
+  (`digitslice`), 80/80 collects clean over 2 sessions.  Since a
+  slice-made and a str(int)-made 3-char str are identical heap
+  objects once created, the creation path itself is doing something
+  GC/IRQ-unsafe -- same family as the str-format heap bug
+  (PRIME_STRING_FORMAT_BUG.md).  Medium/big strings were passengers
+  in every earlier deadly kind.  This is the real save path's exact
+  shape (serialize str() storm + gc_collect per autosave): the
+  game's occasional G1 crashes are this bug, rate-limited only by
+  saves being minutes apart.
+- **Manifestation spectrum confirmed as one root** (save_bench-13):
+  a matrix2 run survived all 60 iterations but its smallonly phase
+  persistently type-confused exactly one heap object (work[83]'s
+  toks list) from iteration 44 on -- 17 straight identical
+  non-fatal TypeErrors, first time the corruption landed in
+  scannable data rather than VM iterator/stack slots.  Where the
+  stale write lands picks the symptom: data object => persistent
+  catchable TypeError; VM slot => "impossible" TypeError with a
+  clean data scan; native state => stall or reset.
 - **Not reproducible on the Virtual Calculator** (27 Jul 2026): the
   same matrix probe that killed the physical G1 at iteration 24 ran
   60/60 clean on the PC emulator.  Same firmware source on x86, so a
@@ -384,35 +395,35 @@ pool = on+symb checkpoint restore before each):
   sessions, heap never filled), and died the moment heap exhaustion
   forced the first *auto*-collect (300-iter run, dead at ~iter 33
   where free hit zero).  Explicit-vs-auto is irrelevant; what matters
-  is the garbage composition the collect walks: uniform big blocks
-  are safe (mem_soak forced ~243 auto-collects clean; `bigonly` 60+
-  explicit collects clean; `medonly` 2 KB string slices clean over
-  multiple sessions -- size profile: 1-4 char strs deadly, 2 KB+
-  safe; `smallnostr` tuple churn 20 collects clean), garbage rich in
-  small string objects is a
-  ~25-30%-per-collect death roll in probe conditions.  Deaths land in
-  the alloc burst right *after* a logged-ok collect: the collect
-  plants the corruption, the next string-alloc storm detonates it.
-  Every collect is a dice roll weighted by the small-str garbage
-  accumulated since the last one.  Mitigation is therefore
-  statistical, not absolute: do not add explicit collects right after
-  string-churn bursts (the save path's opening `gc_collect()` was a
-  guaranteed worst-case roll per save -- earlier "may be load-bearing
-  protection" guess in this file was backwards), shrink the number of
-  transient small strings in serialize-shaped code paths (alloc
-  diet), and rely on headroom to keep collects rare.  Caveat on
-  rates: the clean -4/-5 sessions survived ~25 storm+collect passes,
-  improbably lucky at the probe rate -- per-collect risk also depends
-  on heap state, so probe rates do not transfer to in-game rates;
-  validate fixes by soak, not arithmetic.
+  is what the cycle churned: uniform big blocks are safe (mem_soak
+  forced ~243 auto-collects clean; `bigonly` 60+ explicit collects
+  clean; `medonly` 2 KB string slices clean over multiple sessions;
+  `smallnostr` tuple churn and `smallslice`/`digitslice` slice-made
+  small strs all clean), cycles rich in `str(int)` transients are a
+  ~25-30%-per-collect death roll in probe conditions.  Deaths land
+  in the alloc burst right *after* a logged-ok collect: the collect
+  (or the formatter racing it) plants the corruption, the next storm
+  detonates it.  Mitigation can now be near-deterministic for bulk
+  paths: eliminate bulk `str(int)` calls (number-string cache /
+  precomputed tables), and do not add explicit collects right after
+  churn bursts (the save path's opening `gc_collect()` was a
+  guaranteed worst-case roll per save -- earlier "may be
+  load-bearing protection" guess in this file was backwards).
+  Caveat on rates: the clean -4/-5 sessions survived ~25
+  storm+collect passes, improbably lucky at the probe rate --
+  per-collect risk also depends on heap state, so probe rates do not
+  transfer to in-game rates; validate fixes by soak, not arithmetic.
 
-Consequences for game code until better understood: minimise transient
-small-string creation in bulk paths (serialize, area load) -- reuse,
-concat into fewer/larger pieces, or emit into a persistent buffer;
-payload chunking does NOT mitigate (`chunked` died; string *count* is
-the exposure, not string size); never call `gc.collect()` immediately
-after a string-churn burst; keep alloc churn low in hot paths (already
-policy).
+Consequences for game code until better understood: eliminate bulk
+`str(int)` production (serialize, area-data generation) via a
+number-string cache or precomputed tables -- sporadic single calls
+are background-level risk, ~1000-call storms are the repro; payload
+chunking does NOT mitigate (`chunked` died; the formatter call count
+is the exposure, not string size); never call `gc.collect()`
+immediately after such a burst; keep alloc churn low in hot paths
+(already policy).  Untested near neighbours of `str(int)`: `"%d" %`
+formatting and `hex()` likely share the formatter core -- treat bulk
+use as suspect until probed.
 
 Related community-documented PPL parse bug (unrelated mechanism, same
 fragile bridge): numeric literals with a plus-sign exponent (`2e+1`)
@@ -462,6 +473,13 @@ MemoryError, verify twice) plus observed session behaviour:
   32 KB block) is conservative-GC pinning: stale C-stack/register words
   can pin dead blocks through a collect. A dead 32 KB string surviving
   a collect is normal, not a leak.
+- HAZARD: pressing on+symb while the Python app is open, without a
+  power cycle (shift-on, then on) first, restores the checkpoint and
+  immediately auto-reruns the app -- and if that rerun crashes, the
+  calculator can self-initiate a FULL memory reset, wiping all user
+  apps and variables (observed 27 Jul 2026).  Always power-cycle
+  before on+symb, and keep transferable copies of anything on the
+  device.
 - The Python app has no clean exit; it stays resident (holding its
   whole heap carve-out) until an on+symb reset. While resident, the
   Connectivity Kit fails with a system-level "insufficient memory" --
