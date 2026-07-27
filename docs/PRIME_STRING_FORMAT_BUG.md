@@ -106,3 +106,28 @@ use `%` when useful for `{X` colour-code compatibility.
 
 Two independent triggers confirmed on physical HP Prime hardware.
 MWE in `debug/test_fmt_bug.py`.
+
+## Relation to the G1 str(int)-GC crash bug (27 Jul 2026)
+
+A second, distinct string-subsystem defect was isolated later: bulk
+`str(int)` transients plus a garbage collection stochastically corrupt
+the heap on the G1 (BUILTINS.md sec. G1 memory-corruption bug).  Shared
+family traits: physical-only (emulator clean), heap-context sensitive,
+corruption lands at block starts (first byte here, object headers
+there).  Discriminating traits: this bug is near-deterministic and
+content/alignment-dependent (`mud_school` vs `mudschool`), corrupts its
+own output, and reproduces on G2; the GC bug is stochastic,
+content-independent, corrupts unrelated live objects, and `"%d"`
+formatting is *acquitted* for it while `str(int)` is convicted -- the
+opposite polarity of this bug's workaround.  Keep both rules: no
+`%`/`.format()` in persisted strings (this bug), no bulk `str(int)`
+between collects (the GC bug -- use the number-string cache +
+`int_str`, see save_bench.py `cachedstr`).
+
+Caution on Trigger 1's crash counts: the ~200-autosave crash vs 300+
+clean comparison was one run each, and any save build of that era also
+did bulk `str(int)` + an opening `gc_collect()` -- the *crash* (unlike
+the probed output corruption) may have been the GC bug, so do not
+treat those counts as evidence about `%`.  Discriminating probe if
+closure is ever wanted: run the MWE with and without interleaved
+`gc.collect()` -- corruption rate tracking collects implies one root.
