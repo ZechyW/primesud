@@ -332,3 +332,93 @@ nothing useful):
 - Import costs: `config`+`races` 41 KB (109 ms), `skills_table` (149
   skills) 58 KB (180 ms), `classes` 11 KB (28 ms), `groups` 9 KB (30 ms).
   Total ~119 KB, leaving ~8.07 MB free.
+
+## PPL `HVars` interop size limit (G1, measured 27 Jul 2026)
+
+Writing a large string through `hpprime.eval('HVars("x"):="..."')`
+corrupts firmware state on the G1 when the embedded literal is too big.
+Measured with `debug/save_bench.py` (all runs on a clean pool, i.e.
+after an on+symb checkpoint restore):
+
+- **~8 KB literals are safe**: 22 `HVars` set/get calls at 7990 B per
+  session completed clean, repeatedly (`HV_MODE="1x"`).
+- **16 KB and 32 KB literals kill the session**: runs that pushed 2x/4x
+  payloads stalled or crashed 2/2. Threshold is somewhere in
+  (8 KB, 16 KB]; exact value not narrowed.
+- **The failure is a delayed fuse, not an error.** Every `HVars` call
+  *succeeds*, including verified readback; `Ticks` evals keep working;
+  the session then dies minutes later at the next sustained burst of
+  small allocations. Observed failure modes at the same code location
+  across sessions: hard reset, an impossible Python `TypeError`
+  (`'list' object is not an iterator` on a `for` over a plain list),
+  and an uninterruptible stall (native call never returns; the On key
+  cannot raise KeyboardInterrupt inside native code).
+- Ruled out by controlled runs: USB/Connectivity-Kit attachment, plain
+  `ppleval` call volume (100+ `Ticks` calls fine), Python-side alloc
+  churn (see mem_soak below), `str(int)` conversion, gc interplay.
+- Status: root-cause confirmation in progress -- the stall repro also
+  built the 16/32 KB strings Python-side, and the `bignohv`/`4xonce`
+  probe modes (single-hvars_set diff) close that confound.
+
+Consequence for the save path: `_serialize_world` mirrors the whole
+payload into one HVar; payloads grow with play (`s.m.`/`s.a.` stat
+lines) and a real mid-game save already measures 7990 B -- at the edge
+of the safe zone. Mitigation (planned): chunk the HVar mirror at ~6 KB
+per variable.
+
+Related community-documented PPL parse bug (unrelated mechanism, same
+fragile bridge): numeric literals with a plus-sign exponent (`2e+1`)
+error out in `hpprime.eval`, and MicroPython float-to-string can emit
+exactly that form -- never `str()` a float into a PPL expression
+(PrimeSUD sends only ints). See <https://udel.edu/~mm/hp/primePython/>.
+
+## Save-path primitive costs (G1, measured 27 Jul 2026)
+
+`debug/save_bench.py` with a real 7990 B / 173-line / 965-token save
+payload, N=5, clean pool:
+
+| Segment | bare | +2.6 MB ballast |
+| --- | --- | --- |
+| `gc.collect()` | 78-84 ms | 186-198 ms |
+| build (str()+append+join line loop) | 100-240 ms* | same as bare |
+| `"~".join(lines)` | 1-2 ms | same |
+| HVars set (8 KB) | 9-10 ms, linear ~1.1 ms/KB | same |
+| HVars get + compare | 3-4 ms | same |
+| file write (open+write) | 9-13 ms | same |
+
+\* Build cost swung 240 ms -> 101 ms between sessions with identical
+code and payload -- allocator cost is highly sensitive to heap
+*composition* (what else is live/fragmented), not just live bytes:
+2.6 MB of list/str/tuple ballast changed build not at all while
+doubling `gc.collect()`. Do not extrapolate probe numbers to the game;
+instrument in-game for optimization decisions. Implication for the
+~1 s in-game save: serialization allocs + `gc_collect()` dominate;
+HVars and file I/O are negligible.
+
+## Session / memory behaviour (G1, measured 27 Jul 2026)
+
+`debug/mem_soak.py` (fill heap with 32 KB pattern chunks to
+MemoryError, verify twice) plus observed session behaviour:
+
+- The configured 8 MB heap is fully backable: 7904 KB filled, clean
+  MemoryError at the boundary, zero pattern mismatches over two 7.6 MB
+  verify passes. No bad RAM in the heap range.
+- Alloc churn at a ~full heap is safe: 243 iterations of (32 KB alloc +
+  compare) under ~130 KB headroom, one forced full-heap collect per
+  iteration (~67 ms each), survived twice.
+- Sessions are deterministic: two runs (fresh restore vs 'Clear'
+  softkey re-run) matched `gc.mem_free()` at start to the byte and all
+  fill checkpoints. The Python app rebuilds its heap fully per run;
+  there is no cross-session depletion or damage at the Python level.
+- Small run-to-run wobble in *post-collect* free numbers (16 B .. one
+  32 KB block) is conservative-GC pinning: stale C-stack/register words
+  can pin dead blocks through a collect. A dead 32 KB string surviving
+  a collect is normal, not a leak.
+- The Python app has no clean exit; it stays resident (holding its
+  whole heap carve-out) until an on+symb reset. While resident, the
+  Connectivity Kit fails with a system-level "insufficient memory" --
+  close the app (reset) before kit transfers. This is pool occupancy by
+  a resident app, not a leak: gameplay itself is unaffected.
+- The Prime executes every `.py` in an appdir at app start -- keep one
+  probe per debug appdir, and expect module-level code in *any* shipped
+  file to run.
