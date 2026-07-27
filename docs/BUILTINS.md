@@ -391,6 +391,14 @@ pool = on+symb checkpoint restore before each):
   pure GC/string logic bug should have reproduced -- points at
   something physical-level (IRQ timing mid-collect, ARM codegen,
   memory ordering).  Also means all probing must happen on hardware.
+- **G1-specific -- the G2 is acquitted** (fmt_battery, 27 Jul 2026):
+  the exact str(int) storm + collect cycle that killed the G1 in 2-9
+  iterations across 6/6 sessions ran 20/20 clean on a physical G2,
+  after 40 further clean collects in the same session.  The G2 has
+  its own, mechanistically distinct string bug (output corruption,
+  collect-SUPPRESSED -- see PRIME_STRING_FORMAT_BUG.md sec. Battery
+  results); the serializer fix below still applies game-wide since
+  the game ships on both devices.
 - **Stochastic**: byte-identical runs on clean pools split
   dead/clean.  Iterator-slot type confusion plus stochastic behaviour
   under churn fits a GC root-scan defect (live object collected when a

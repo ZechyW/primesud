@@ -124,6 +124,39 @@ opposite polarity of this bug's workaround.  Keep both rules: no
 between collects (the GC bug -- use the number-string cache +
 `int_str`, see save_bench.py `cachedstr`).
 
+## Battery results (debug/fmt_battery.py, 27 Jul 2026)
+
+Six-phase differentiation battery run on both devices
+(debug/fmt_battery-g1.log / -g2.log):
+
+- G2, MWE baseline: entry 5 ("parry") first-byte-zeroed 30/30 reps --
+  deterministic, exact historical signature.
+- G2, MWE + collect before each rep: 6/30 bad (reps 8/10/18/20/28/30,
+  periodic).  Collects SUPPRESS the corruption; the periodic pattern
+  tracks the session's slowly-growing log garbage, i.e. heap LAYOUT
+  decides whether a given construction corrupts.  This is opposite
+  polarity to the G1 str(int)-GC bug (collect-triggered) -- the two
+  bugs are mechanistically distinct, settled.
+- G2, MWE + 2.5MB live ballast: back to 30/30 bad.  Pressure/layout
+  drives the rate, not collections.
+- G2, bulk flat-arg conversions: 27,600 verified `"%d" %` and
+  `"{}".format` conversions, 0 bad, 40 collects clean -- corruption
+  requires the comprehension/nested-dict context, matching the
+  original "standalone is clean" observation.
+- G2, str(int) storm + collect x20 (the 6/6 G1 killer): CLEAN.  The
+  GC bug is G1-specific; G2 needs only this output bug's rules.
+- G2 sleeper: the battery log's own second line lost its first byte
+  ("free at start" -> " ree...") -- that string was built by concat +
+  digit-table lookup, NO %/format involved.  Single instance, but it
+  suggests the defect sits in G2 string construction generally, with
+  %/.format-in-comprehension merely the reliable trigger context.
+- G1: session DIED in the MWE baseline phase -- zero collects, zero
+  str(int) in play, so the G1 GC bug cannot explain it.  Possible G1
+  manifestation of THIS bug is a crash rather than output corruption
+  (which would explain why the old MWE "didn't trigger" on G1: it
+  was looking for corrupt output, not death).  Single session --
+  UNCONFIRMED, rerun wanted before treating as fact.
+
 Caution on Trigger 1's crash counts: the ~200-autosave crash vs 300+
 clean comparison was one run each, and any save build of that era also
 did bulk `str(int)` + an opening `gc_collect()` -- the *crash* (unlike
