@@ -41,6 +41,7 @@ class tml:
         self.rows = 240 // self.char_height - (status != None) * 2
         self.cursor_x = 0
         self.cursor_y = 0
+        self._cursor_ppl = {}  # [PRIMESUD] memoized INVERT_P strings per cursor cell
         self.width = self.columns * self.char_width
         self.height = self.rows * self.char_height
         self.back_color = bg_color
@@ -413,7 +414,16 @@ class tml:
         self.cursor_y -= 1
 
     def _invert_cursor(self):
-        # Invert the cursor display
-        x0 = self.cursor_x * self.char_width
-        y0 = self.cursor_y * self.char_height
-        ppleval('INVERT_P(' + str(x0) + ',' + str(y0) + ',' + str(x0 + self.char_width - 1) + ',' + str(y0 + self.char_height - 1) + ')')
+        # Invert the cursor display. [PRIMESUD] Memoized per cursor cell:
+        # this fires on every blink/redraw, and recurring str(int) transients
+        # feed the G1 GC-corruption bug (CLAUDE.md pitfall 8); the cell set
+        # is tiny so the cache stays small and steady-state alloc-free.
+        k = self.cursor_y * self.columns + self.cursor_x
+        s = self._cursor_ppl.get(k)
+        if s is None:
+            x0 = self.cursor_x * self.char_width
+            y0 = self.cursor_y * self.char_height
+            s = ('INVERT_P(' + str(x0) + ',' + str(y0) + ','
+                 + str(x0 + self.char_width - 1) + ',' + str(y0 + self.char_height - 1) + ')')
+            self._cursor_ppl[k] = s
+        ppleval(s)

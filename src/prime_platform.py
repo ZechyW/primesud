@@ -1,6 +1,7 @@
 """HP Prime platform wrappers and graphic primitive ownership."""
 
 from hpprime import dimgrob, eval as ppl_eval
+from util import num_str
 
 
 def ticks():
@@ -9,8 +10,13 @@ def ticks():
 
 
 def wait_ms(ms):
-    """Wait for milliseconds via PPL WAIT. [PRIMESUD]"""
-    ppl_eval("WAIT(" + str(ms) + "/1e3)")
+    """Wait for milliseconds via PPL WAIT. [PRIMESUD]
+
+    num_str, not str(): this runs every idle pass of the main loop, and
+    recurring str(int) transients feed the G1 GC-corruption bug (CLAUDE.md
+    pitfall 8); the cache makes repeat delays allocation-free.
+    """
+    ppl_eval("WAIT(" + (num_str(ms) if type(ms) is int else str(ms)) + "/1e3)")
 
 
 def clear_graphics(first=1, last=8):
