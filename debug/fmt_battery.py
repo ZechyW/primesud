@@ -62,6 +62,14 @@ LOG = "fmt_battery.log"
 REPS = 30
 ITERS = 20
 
+# v3 (28/07): BOTH devices hard-crashed in A0/pct-comp -- % in the
+# trigger context kills G1 and G2 alike (the G2 only ever corrupted
+# output under fmt-comp).  The A-group bisect therefore proceeds one
+# session at a time: set START_PHASE to the first phase to RUN
+# (earlier A-group phases are skipped); after a death, restart the
+# next session from the phase after the killer.
+START_PHASE = "A1"
+
 _out = []
 
 
@@ -303,12 +311,21 @@ def main():
     # never runs there; the prior sessions already supply the G1
     # fmt-comp data point, and a v2 death position localizes the %
     # question cleanly.
-    run_mwe_phase("A0/pct-comp", mwe_pct, exp_sk, False, False)
-    run_mwe_phase("A1/pct-loop", mwe_pct_loop, exp_sk, False, False)
-    run_mwe_phase("A1t/pct-t1", t1_pct, exp_t1, False, False)
-    run_mwe_phase("A2/fmt-loop", mwe_fmt_loop, exp_sk, False, False)
-    run_mwe_phase("A/fmt-comp", mwe_fmt, exp_sk, False, False)
-    run_mwe_phase("B/fmt-comp-gc", mwe_fmt, exp_sk, True, False)
+    agroup = (
+        ("A0/pct-comp", mwe_pct, exp_sk, False),
+        ("A1/pct-loop", mwe_pct_loop, exp_sk, False),
+        ("A1t/pct-t1", t1_pct, exp_t1, False),
+        ("A2/fmt-loop", mwe_fmt_loop, exp_sk, False),
+        ("A/fmt-comp", mwe_fmt, exp_sk, False),
+        ("B/fmt-comp-gc", mwe_fmt, exp_sk, True),
+    )
+    started = False
+    for name, fn, exp, ce in agroup:
+        if not started and name.split("/")[0] != START_PHASE:
+            log("skip " + name)
+            continue
+        started = True
+        run_mwe_phase(name, fn, exp, ce, False)
 
     log("building ballast for C...")
     ballast = make_ballast()

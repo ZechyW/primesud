@@ -162,6 +162,24 @@ Six-phase differentiation battery run on both devices
 - Evidence-file curio: the G2 battery log itself contains the
   corruption -- its second line's first byte is a literal \x00
   (git/editors sniff the log as binary because of it).
+- Battery v2 (28 Jul 2026, fmt_battery-g1-2/-g2-2.log): `%` in the
+  same comprehension + nested-dict trigger context hard-crashed BOTH
+  devices immediately (phase A0, before a single verified rep, no
+  collects involved).  The % ban is independently necessary -- and
+  in this context % is WORSE than .format(): the G2, which survived
+  the whole v1 battery with only output corruption under fmt-comp,
+  dies outright under pct-comp.  Manifestation (corrupt vs crash) is
+  a function of operator x context x device, not device alone.  The
+  rest of the operator x context matrix (pct-loop, pct-t1, fmt-loop)
+  is being bisected one phase per session (fmt_battery.py
+  START_PHASE).
+- Game-code implication, URGENT-ish: the "transient UI-only strings
+  may still use %" allowance was written when the worst known
+  outcome was a corrupted display string; pct-comp crashing both
+  devices means % with dict-sourced args in loop/comprehension
+  contexts is a crash risk, not a cosmetic one.  Audit game % sites
+  against the allowance's "simple literals, no dict lookup" wording
+  before trusting it.
 
 Caution on Trigger 1's crash counts: the ~200-autosave crash vs 300+
 clean comparison was one run each, and any save build of that era also
