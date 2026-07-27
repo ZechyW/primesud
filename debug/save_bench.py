@@ -75,14 +75,20 @@ HV_MODE = "bigloop"
 # acquitted (clean -4/-5 runs each executed ~25 build_pass calls with
 # no big strings), so:
 #   "both"    -- concat chain + build storm (the -6.log death repro)
-#   "bigonly" -- concat chain only, no build storm.  Dies => minimal
-#                repro is [16/32KB concat chain + collect].
+#   "bigonly" -- concat chain only, no build storm.  CLEAN over ~60+
+#                trials (20/20 + several clear-rerun sessions, 27/07):
+#                big strings alone acquitted; the interaction with the
+#                small-alloc storm is required.
 #   "bigmul"  -- like bigonly but the 32KB string is made by
 #                (payload+"~")*4 (2 allocs, no 16/24KB chain temps).
-#                bigonly dies + bigmul clean => the concat CHAIN's
-#                temps are the trigger; bigmul dies too => any big str
-#                alloc/free cycling is.
-BIGLOOP_KIND = "bigonly"
+#   "both8k"  -- ONE fresh ~8KB concat + build storm + collect per
+#                iteration: the real game save's exact allocation
+#                pattern ("~".join payload + ~1000-alloc serialize +
+#                gc_collect) at today's payload size.  Dies => the
+#                in-game occasional G1 crashes are this bug, today;
+#                clean => threshold sits in (8KB, 16KB] even in the
+#                interaction case and payload growth is the time bomb.
+BIGLOOP_KIND = "both8k"
 
 _out = []
 
@@ -359,12 +365,16 @@ def main():
                 if BIGLOOP_KIND == "bigmul":
                     b2 = (payload + "~") * 2
                     b4 = (payload + "~") * 4
+                elif BIGLOOP_KIND == "both8k":
+                    b2 = payload + "~"  # one fresh game-save-sized alloc
+                    b4 = None
                 else:
                     b2 = payload + "~" + payload
                     b4 = payload + "~" + payload + "~" + payload + "~" + payload
-                lines = build_pass(work) if BIGLOOP_KIND == "both" else None
+                lines = (build_pass(work)
+                         if BIGLOOP_KIND in ("both", "both8k") else None)
                 log("bigloop " + str(it + 1) + "/20 ok "
-                    + str(len(b2) + len(b4)) + "B big"
+                    + str(len(b2) + (len(b4) if b4 else 0)) + "B big"
                     + ((", " + str(len(lines)) + " lines") if lines else ""))
             except Exception as e:
                 errs += 1
