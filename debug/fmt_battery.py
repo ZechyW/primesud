@@ -68,7 +68,10 @@ ITERS = 20
 # session at a time: set START_PHASE to the first phase to RUN
 # (earlier A-group phases are skipped); after a death, restart the
 # next session from the phase after the killer.
-START_PHASE = "A1"
+# Verdicts so far (both devices unless noted): A0/pct-comp DEAD
+# (28/07, -2 logs); A1/pct-loop DEAD (28/07, -3 logs) -- plain loop
+# suffices, comprehension not required.
+START_PHASE = "A1L"
 
 _out = []
 
@@ -154,27 +157,41 @@ def mwe_pct_loop():
     return out
 
 
-# Historical trigger-1 shape and content: "%"-built area-age lines,
-# including the content-sensitive mud_school/age-0 pair (renaming the
-# tag to "mudschool" made the 2026 probe pass -- content matters, so
-# the known-bad content is preserved verbatim).
-_areas = (("mud_school", 0), ("midgaard", 15), ("plains", 3),
-          ("smurfville", 42), ("mirror", 0), ("gstrand", 7),
-          ("dwarven", 11), ("chapel", 0), ("thalos", 28),
-          ("sewers", 5))
+def mwe_pct_loop_locals():
+    # Same loop and data as pct-loop, but the dict lookups are
+    # hoisted to locals BEFORE the % line -- the game's typical
+    # transient-UI shape, and the exact line the policy allowance
+    # draws.  Discriminates arg complexity within the loop context
+    # (v1 D-phase evidence: local-scalar % in a loop = 13.8K clean).
+    out = []
+    for k, v in _learned.items():
+        nm = _skills[k]["name"]
+        out.append("%s (%d%%)" % (nm, v))
+    return out
+
+
+# Historical trigger-1 shape and content VERBATIM: dict-of-area
+# records, subscripts inside the % expression, including the
+# content-sensitive mud_school/age-0 pair (renaming the tag to
+# "mudschool" made the 2026 probe pass -- content matters).
+_areas = ({"tag": "mud_school", "age": 0}, {"tag": "midgaard", "age": 15},
+          {"tag": "plains", "age": 3}, {"tag": "smurfville", "age": 42},
+          {"tag": "mirror", "age": 0}, {"tag": "gstrand", "age": 7},
+          {"tag": "dwarven", "age": 11}, {"tag": "chapel", "age": 0},
+          {"tag": "thalos", "age": 28}, {"tag": "sewers", "age": 5})
 
 
 def t1_pct():
     out = []
-    for tag, age in _areas:
-        out.append("a.%s.age=%s" % (tag, age))
+    for _as in _areas:
+        out.append("a.%s.age=%s" % (_as["tag"], _as["age"]))
     return out
 
 
 def t1_expected():
     exp = []
-    for tag, age in _areas:
-        exp.append("a." + tag + ".age=" + int_str(age))
+    for _as in _areas:
+        exp.append("a." + _as["tag"] + ".age=" + int_str(_as["age"]))
     return exp
 
 
@@ -314,6 +331,7 @@ def main():
     agroup = (
         ("A0/pct-comp", mwe_pct, exp_sk, False),
         ("A1/pct-loop", mwe_pct_loop, exp_sk, False),
+        ("A1L/pct-loop-locals", mwe_pct_loop_locals, exp_sk, False),
         ("A1t/pct-t1", t1_pct, exp_t1, False),
         ("A2/fmt-loop", mwe_fmt_loop, exp_sk, False),
         ("A/fmt-comp", mwe_fmt, exp_sk, False),
