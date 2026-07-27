@@ -1,0 +1,297 @@
+"""Save-path primitive timings: alloc build / join / HVars / file write. [PRIMESUD]
+
+Run standalone on the physical HP Prime -- needs NO game modules, so it
+runs from the minimal "Python debug" appdir.  If a real primesud.sav is
+copied into the appdir (Connectivity Kit, from the PrimeSUD appdir) the
+probe uses that payload verbatim; otherwise it synthesizes a
+representative one (~6KB, same line/field mix as _serialize_world).
+
+Segments mirror _serialize_world (game_state.py):
+  gc     -- the up-front gc.collect() (mark cost over live heap only;
+            game-heap garbage sweep is not simulated)
+  build  -- per-line str()+append+join alloc workload rebuilt from the
+            parsed payload (same token count and data volume)
+  join   -- final "~".join(lines)
+  hvset  -- HVars write: payload embedded in a PPL string literal and
+            parsed by eval (hvars_set in prime_platform.py)
+  hvget  -- HVars readback + full-payload compare (the verify step)
+  fwrite -- one open/write of the payload
+
+Each segment runs N passes bare, then again with ~2.5MB of small live
+objects as ballast: alloc cost scales with live heap (~35us standalone
+vs ~490us at full game heap, BUILTINS.md sec. Text rendering
+performance), so bare numbers under-rank alloc-heavy segments; the
+ballast pass approximates game conditions.  hvset/hvget also run at
+1x/2x/4x payload size (bare heap) to check PPL parse-cost linearity.
+
+Results printed and written to save_bench.log.  Uses HVar "savebench"
+(never the real primesud_save); reset to "0" at the end.  Leaves
+save_bench.tmp in the appdir (fwrite target).
+"""
+import gc
+from hpprime import eval as ppleval
+
+N = 5
+SAV = "primesud.sav"
+LOG = "save_bench.log"
+HVAR = "savebench"
+
+_out = []
+
+
+def log(msg):
+    print(msg)
+    _out.append(msg)
+
+
+def ticks():
+    return int(ppleval("Ticks"))
+
+
+def free():
+    return gc.mem_free() if hasattr(gc, "mem_free") else 0
+
+
+# Inlined from prime_platform.py (hvars_get/hvars_set) so the probe has
+# no game imports -- keep in sync if the wrappers change.
+def hvars_set(name, value):
+    ppleval('HVars("' + name + '"):="' + value + '"')
+
+
+def hvars_get(name):
+    return ppleval('HVars("' + name + '")')
+
+
+def synth_payload():
+    """Representative save payload: same line/field mix as _serialize_world."""
+    lines = ["v=10"]
+    for k in ("name=Hero", "title= the Acolyte", "race=Human", "sex=male",
+              "true_sex=male", "quest_mob_name=", "quest_room_name=",
+              "quest_area_name="):
+        lines.append("p." + k)
+    nums = []
+    for i in range(35):
+        nums.append(str(100 + i * 37))
+    lines.append("p.n=" + "|".join(nums))
+    lines.append("p.classes=0,2")
+    lines.append("p.pos=standing")
+    lines.append("p.groups=1,4,7,12")
+    lines.append("p.stance=0,0,0,0,0,0,0,0,0,0")
+    lines.append("p.armor=95|95|95|90")
+    inv = []
+    for i in range(15):
+        inv.append(str(3000 + i) + "," + str(i % 5) + ",0," + str(40 + i))
+    lines.append("p.inv=" + "|".join(inv))
+    eq = []
+    for i in range(19):
+        eq.append((str(3100 + i) + "," + str(i % 3) + ",0," + str(50 + i))
+                  if i % 4 else "")
+    lines.append("p.eq=" + "|".join(eq))
+    lrn = []
+    for i in range(60):
+        lrn.append(str(i) + ":" + str(1 + (i * 13) % 100))
+    lines.append("p.learned=" + "|".join(lrn))
+    rparts = []
+    for i in range(100):
+        rparts.append(str(1 + (i * 7) % 60))
+    lines.append("p.explored=" + ".".join(rparts))
+    af = []
+    for i in range(4):
+        af.append(str(20 + i) + ",40,12,none," + str(i) + ",,")
+    lines.append("p.affects=" + "|".join(af))
+    for i in range(40):
+        aparts = [str(i * 3)]
+        for j in range(6):
+            aparts.append(str((i * j) % 100 - 50))
+        lines.append("a.area" + str(i) + "=" + "|".join(aparts))
+    lines.append("g.time=14|12|6|1462")
+    lines.append("g.share=1030")
+    for i in range(120):
+        lines.append("s.m." + str(3000 + i) + "=" + str(i % 30) + "|"
+                     + str(i % 7))
+    for i in range(40):
+        lines.append("s.a.area" + str(i) + "=" + str(i * 11) + "|"
+                     + str(i * 3))
+    mparts = []
+    for i in range(60):
+        rooms = []
+        for j in range(1 + i % 3):
+            rooms.append(str(3700 + i + j))
+        mparts.append(str(3000 + i) + "," + "|".join(rooms))
+    lines.append("m=" + ";".join(mparts))
+    for i in range(10):
+        items = []
+        for j in range(1 + i % 4):
+            items.append(str(3200 + j) + "," + str(j) + ",0," + str(10 + j))
+        lines.append("r." + str(3001 + i * 7) + ".items=" + "|".join(items))
+    return "~".join(lines)
+
+
+def load_payload():
+    try:
+        with open(SAV, "r") as f:
+            data = f.read()
+        if data and isinstance(data, str):
+            return data, "file"
+    except Exception:
+        pass
+    return synth_payload(), "synthetic"
+
+
+def parse_workload(payload):
+    """Split payload into (key, tokens) per line; numeric tokens become
+    ints so build_pass pays the same str(int) conversion allocs as
+    _serialize_world."""
+    work = []
+    for line in payload.split("~"):
+        if "=" in line:
+            key, val = line.split("=", 1)
+        else:
+            key, val = line, ""
+        toks = []
+        for t in val.split("|"):
+            if t and (t.isdigit() or (t[0] == "-" and t[1:].isdigit())):
+                toks.append(int(t))
+            else:
+                toks.append(t)
+        work.append((key, toks))
+    return work
+
+
+def build_pass(work):
+    """Rebuild all save lines -- same append/str()/join alloc pattern as
+    _serialize_world's line loop."""
+    lines = []
+    for key, toks in work:
+        parts = []
+        for t in toks:
+            parts.append(str(t))
+        lines.append(key + "=" + "|".join(parts))
+    return lines
+
+
+def _fwrite(payload):
+    with open("save_bench.tmp", "w") as f:
+        f.write(payload)
+
+
+def time_n(fn, n=N):
+    ts = []
+    for _ in range(n):
+        gc.collect()
+        t0 = ticks()
+        fn()
+        ts.append(ticks() - t0)
+    return ts
+
+
+def fmt(name, ts):
+    lo = ts[0]
+    tot = 0
+    for t in ts:
+        tot += t
+        if t < lo:
+            lo = t
+    return name + ": min=" + str(lo) + "ms avg=" + str(tot // len(ts)) + "ms"
+
+
+def raw(ts):
+    parts = []
+    for t in ts:
+        parts.append(str(t))
+    return " ".join(parts)
+
+
+def run_segments(payload, work, tag):
+    lines = build_pass(work)
+    segs = (
+        ("gc    ", gc.collect),
+        ("build ", lambda: build_pass(work)),
+        ("join  ", lambda: "~".join(lines)),
+        ("hvset ", lambda: hvars_set(HVAR, payload)),
+        ("hvget ", lambda: hvars_get(HVAR) == payload),
+        ("fwrite", lambda: _fwrite(payload)),
+    )
+    for name, fn in segs:
+        try:
+            ts = time_n(fn)
+            log(tag + " " + fmt(name, ts) + "  raw " + raw(ts))
+        except Exception as e:
+            log(tag + " " + name + ": FAILED " + str(e))
+
+
+def make_ballast():
+    """Grow ~2.5MB of small live objects (lists/strs/tuples) so the
+    allocator scans a game-sized live heap during the ballast pass."""
+    ballast = []
+    start = free()
+    i = 0
+    while i < 200000:
+        ballast.append([i, "x" + str(i), (i, i + 1)])
+        i += 1
+        if i % 1024 == 0:
+            f = free()
+            if start:
+                if start - f >= 2500000 or f < 1500000:
+                    break
+            elif i >= 60000:
+                break
+    return ballast
+
+
+def main():
+    log("save_bench: save-path primitive timings, N=" + str(N))
+    payload, src = load_payload()
+    if '"' in payload:
+        # PPL string literal cannot hold '"' (see _serialize_world
+        # serialisation constraints) -- a real save never contains it.
+        log("WARN: payload contains a double quote; using synthetic")
+        payload = synth_payload()
+        src = "synthetic"
+    work = parse_workload(payload)
+    ntok = 0
+    for _k, toks in work:
+        ntok += len(toks)
+    log("payload: " + src + ", " + str(len(payload)) + " bytes, "
+        + str(len(work)) + " lines, " + str(ntok) + " tokens")
+
+    run_segments(payload, work, "bare   ")
+
+    for label, p in (("1x", payload),
+                     ("2x", payload + "~" + payload),
+                     ("4x", payload + "~" + payload + "~" + payload
+                      + "~" + payload)):
+        try:
+            gc.collect()
+            t0 = ticks()
+            hvars_set(HVAR, p)
+            w = ticks() - t0
+            t0 = ticks()
+            rb = hvars_get(HVAR)
+            ok = rb == p
+            r = ticks() - t0
+            log("hv " + label + " (" + str(len(p)) + "B): set=" + str(w)
+                + "ms get+cmp=" + str(r) + "ms match=" + str(ok))
+        except Exception as e:
+            log("hv " + label + ": FAILED " + str(e))
+
+    log("building ballast...")
+    f0 = free()
+    ballast = make_ballast()
+    log("ballast: " + str(len(ballast)) + " entries, "
+        + str(f0 - free()) + "B live delta")
+    run_segments(payload, work, "ballast")
+    ballast = None
+    gc.collect()
+
+    try:
+        hvars_set(HVAR, "0")
+    except Exception:
+        pass
+
+    with open(LOG, "w") as f:
+        f.write("\n".join(_out) + "\n")
+    print("Done. Results in " + LOG)
+
+
+main()
