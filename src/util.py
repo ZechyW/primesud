@@ -6,7 +6,7 @@ from hpprime import eval as ppl_eval
 
 def wait(seconds):
     """Wait for seconds via PPL WAIT."""
-    ppl_eval("WAIT(" + str(seconds) + ")")
+    ppl_eval("WAIT(" + (num_str(seconds) if type(seconds) is int else str(seconds)) + ")")
 
 
 def fmt_bytes(n, precision=1):
