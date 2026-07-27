@@ -67,7 +67,22 @@ HVAR = "savebench"
 #                bit each.  This mode yields ~20 trials per session:
 #                death rate + iteration counts, or 20 survivals to
 #                weaken the big-string hypothesis too.
+#                First device run died in iteration 3 (save_bench-6.log)
+#                -- high-rate repro confirmed.
 HV_MODE = "bigloop"
+
+# bigloop composition bisect.  build-storm-only is effectively
+# acquitted (clean -4/-5 runs each executed ~25 build_pass calls with
+# no big strings), so:
+#   "both"    -- concat chain + build storm (the -6.log death repro)
+#   "bigonly" -- concat chain only, no build storm.  Dies => minimal
+#                repro is [16/32KB concat chain + collect].
+#   "bigmul"  -- like bigonly but the 32KB string is made by
+#                (payload+"~")*4 (2 allocs, no 16/24KB chain temps).
+#                bigonly dies + bigmul clean => the concat CHAIN's
+#                temps are the trigger; bigmul dies too => any big str
+#                alloc/free cycling is.
+BIGLOOP_KIND = "bigonly"
 
 _out = []
 
@@ -337,15 +352,20 @@ def main():
         # chain + full small-alloc storm, drop, collect.  Per-iteration
         # log flush pinpoints a hard death; caught exceptions (the
         # spurious TypeErrors) are counted and the blamed data scanned.
+        log("bigloop kind=" + BIGLOOP_KIND)
         errs = 0
         for it in range(20):
             try:
-                b2 = payload + "~" + payload
-                b4 = payload + "~" + payload + "~" + payload + "~" + payload
-                lines = build_pass(work)
+                if BIGLOOP_KIND == "bigmul":
+                    b2 = (payload + "~") * 2
+                    b4 = (payload + "~") * 4
+                else:
+                    b2 = payload + "~" + payload
+                    b4 = payload + "~" + payload + "~" + payload + "~" + payload
+                lines = build_pass(work) if BIGLOOP_KIND == "both" else None
                 log("bigloop " + str(it + 1) + "/20 ok "
-                    + str(len(b2) + len(b4)) + "B big, "
-                    + str(len(lines)) + " lines")
+                    + str(len(b2) + len(b4)) + "B big"
+                    + ((", " + str(len(lines)) + " lines") if lines else ""))
             except Exception as e:
                 errs += 1
                 log("bigloop " + str(it + 1) + "/20 EXC " + str(e))
@@ -354,6 +374,9 @@ def main():
             b4 = None
             lines = None
             gc.collect()
+            # Separate flush: a death here blames the collect, not the
+            # next iteration's concat/build.
+            log(".. " + str(it + 1) + " collect ok")
         log("bigloop: " + str(errs) + " caught errors in 20 iterations")
         log("Done. Results in " + LOG)
         return
