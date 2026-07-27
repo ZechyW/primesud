@@ -183,13 +183,31 @@ Six-phase differentiation battery run on both devices
   verified conversions G2).  The A1L shape differs only in
   {multi-arg tuple, %s-with-str-arg, %% escape} -- the poison is in
   that set; bisectable via further START_PHASE rungs if wanted.
-- Game-code implication, SEVERE: the "transient UI-only strings may
-  still use %" allowance is DEAD -- hoisted-locals % in a loop, its
-  best case, crashes both devices.  The only demonstrated-safe %
-  use is a single int arg with "%d".  Treat every %s / multi-arg /
-  .format site as crash exposure on BOTH devices until the poison
-  ingredient is isolated; concat + str() (or the int_str/cache path
-  in bulk) is the only fully-cleared construction method.
+- Poison-isolation session (28 Jul 2026, -5 logs, both devices):
+  single ingredients ALL clean 30/30 -- %s-with-str, tuple-of-ints,
+  int+%% escape, and even the historical trigger-1 subscript shape.
+  The A1L killer combined all three.  But the same session showed
+  the acquittals are untrustworthy:
+  - fmt-comp, which killed the G1 2/2 as a fresh-session phase, ran
+    30/30 CLEAN on the G1 as the 7th phase of this session.  Phase
+    outcome depends on heap history/layout, not shape alone.
+    Survival evidence does not transfer between layouts; only
+    deaths/corruptions are informative.
+  - Phase B (fmt-comp + the session's first collects) progressively
+    zeroed first bytes of the EXPECTED-value strings on BOTH
+    devices -- strings built at startup via concat+int_str, held
+    live, never touched by the formatter.  Both devices then died
+    mid-phase.  The format machinery under collect pressure
+    corrupts ARBITRARY resident strings; safe construction does not
+    confer safe residence while formatting happens elsewhere.
+- Game-code implication, FINAL: no % and no .format() on-device,
+  period.  The bisect is closed as unconvergeable (layout roulette
+  defeats shape-level acquittal).  Only construction method with a
+  clean record across every tested layout: concat + str(), with the
+  int_str/number-cache path for bulk int rendering ("%d"-single-int
+  has real mileage -- 60 collects G1, 27.6K conversions G2 -- but
+  its safety claim is now the same epistemic class as fmt-comp's
+  was before this session).
 
 Caution on Trigger 1's crash counts: the ~200-autosave crash vs 300+
 clean comparison was one run each, and any save build of that era also

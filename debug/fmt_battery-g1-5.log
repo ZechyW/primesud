@@ -1,0 +1,74 @@
+fmt_battery: format-bug vs str(int)-GC-bug differentiation
+free at start=8173488
+skip A0/pct-comp
+skip A1/pct-loop
+skip A1L/pct-loop-locals
+phase A1s/pct-single-str reps=30 free=8164720
+.. A1s/pct-single-str 10/30 bad-so-far=0
+.. A1s/pct-single-str 20/30 bad-so-far=0
+.. A1s/pct-single-str 30/30 bad-so-far=0
+phase A1s/pct-single-str done: 0 bad entries of 300
+phase A1c/pct-tuple-ints reps=30 free=8139600
+.. A1c/pct-tuple-ints 10/30 bad-so-far=0
+.. A1c/pct-tuple-ints 20/30 bad-so-far=0
+.. A1c/pct-tuple-ints 30/30 bad-so-far=0
+phase A1c/pct-tuple-ints done: 0 bad entries of 300
+phase A1e/pct-int-escape reps=30 free=8096928
+.. A1e/pct-int-escape 10/30 bad-so-far=0
+.. A1e/pct-int-escape 20/30 bad-so-far=0
+.. A1e/pct-int-escape 30/30 bad-so-far=0
+phase A1e/pct-int-escape done: 0 bad entries of 300
+phase A1t/pct-t1 reps=30 free=8061632
+.. A1t/pct-t1 10/30 bad-so-far=0
+.. A1t/pct-t1 20/30 bad-so-far=0
+.. A1t/pct-t1 30/30 bad-so-far=0
+phase A1t/pct-t1 done: 0 bad entries of 300
+phase A2/fmt-loop reps=30 free=8024160
+.. A2/fmt-loop 10/30 bad-so-far=0
+.. A2/fmt-loop 20/30 bad-so-far=0
+.. A2/fmt-loop 30/30 bad-so-far=0
+phase A2/fmt-loop done: 0 bad entries of 300
+phase A/fmt-comp reps=30 free=7971792
+.. A/fmt-comp 10/30 bad-so-far=0
+.. A/fmt-comp 20/30 bad-so-far=0
+.. A/fmt-comp 30/30 bad-so-far=0
+phase A/fmt-comp done: 0 bad entries of 300
+phase B/fmt-comp-gc reps=30 free=7916576
+  BAD B/fmt-comp-gc/r1 entry 3 fb=98 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r2 entry 3 fb=98 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r3 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r3 entry 3 fb=98 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r3 entry 4 fb=100 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r4 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r4 entry 3 fb=98 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r4 entry 4 fb=100 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r4 entry 5 fb=112 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r5 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r5 entry 3 fb=98 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r5 entry 4 fb=100 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r5 entry 5 fb=112 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r6 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r6 entry 3 fb=98 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r6 entry 4 fb=100 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r6 entry 5 fb=112 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r7 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r7 entry 3 fb=98 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r7 entry 4 fb=100 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r7 entry 5 fb=112 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r8 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r8 entry 3 fb=98 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r8 entry 4 fb=100 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r8 entry 5 fb=112 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r9 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r9 entry 3 fb=98 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r9 entry 4 fb=100 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r9 entry 5 fb=112 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r10 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r10 entry 3 fb=98 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r10 entry 4 fb=100 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r10 entry 5 fb=112 want-fb=0 len=11/11
+.. B/fmt-comp-gc 10/30 bad-so-far=33
+  BAD B/fmt-comp-gc/r11 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r11 entry 3 fb=98 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r11 entry 4 fb=100 want-fb=0 len=11/11
+  BAD B/fmt-comp-gc/r11 entry 5 fb=112 want-fb=0 len=11/11

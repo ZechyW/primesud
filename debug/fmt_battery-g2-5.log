@@ -1,0 +1,114 @@
+fmt_battery: format-bug vs str(int)-GC-bug differentiation
+free at start=8173952
+skip A0/pct-comp
+skip A1/pct-loop
+skip A1L/pct-loop-locals
+phase A1s/pct-single-str reps=30 free=8165840
+.. A1s/pct-single-str 10/30 bad-so-far=0
+.. A1s/pct-single-str 20/30 bad-so-far=0
+.. A1s/pct-single-str 30/30 bad-so-far=0
+phase A1s/pct-single-str done: 0 bad entries of 300
+phase A1c/pct-tuple-ints reps=30 free=8145520
+.. A1c/pct-tuple-ints 10/30 bad-so-far=0
+.. A1c/pct-tuple-ints 20/30 bad-so-far=0
+.. A1c/pct-tuple-ints 30/30 bad-so-far=0
+phase A1c/pct-tuple-ints done: 0 bad entries of 300
+phase A1e/pct-int-escape reps=30 free=8112448
+.. A1e/pct-int-escape 10/30 bad-so-far=0
+.. A1e/pct-int-escape 20/30 bad-so-far=0
+.. A1e/pct-int-escape 30/30 bad-so-far=0
+phase A1e/pct-int-escape done: 0 bad entries of 300
+phase A1t/pct-t1 reps=30 free=8081952
+.. A1t/pct-t1 10/30 bad-so-far=0
+.. A1t/pct-t1 20/30 bad-so-far=0
+.. A1t/pct-t1 30/30 bad-so-far=0
+phase A1t/pct-t1 done: 0 bad entries of 300
+phase A2/fmt-loop reps=30 free=8049280
+  BAD A2/fmt-loop/r1 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r2 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r3 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r4 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r5 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r6 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r7 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r8 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r9 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r10 entry 5 fb=0 want-fb=112 len=11/11
+.. A2/fmt-loop 10/30 bad-so-far=10
+  BAD A2/fmt-loop/r11 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r12 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r13 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r14 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r15 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r16 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r17 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r18 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r19 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r20 entry 5 fb=0 want-fb=112 len=11/11
+.. A2/fmt-loop 20/30 bad-so-far=20
+  BAD A2/fmt-loop/r21 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r22 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r23 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r24 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r25 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r26 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r27 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r28 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r29 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A2/fmt-loop/r30 entry 5 fb=0 want-fb=112 len=11/11
+.. A2/fmt-loop 30/30 bad-so-far=30
+phase A2/fmt-loop done: 30 bad entries of 300
+phase A/fmt-comp reps=30 free=7847968
+  BAD A/fmt-comp/r1 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r2 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r3 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r4 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r5 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r6 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r7 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r8 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r9 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r10 entry 5 fb=0 want-fb=112 len=11/11
+.. A/fmt-comp 10/30 bad-so-far=10
+  BAD A/fmt-comp/r11 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r12 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r13 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r14 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r15 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r16 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r17 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r18 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r19 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r20 entry 5 fb=0 want-fb=112 len=11/11
+.. A/fmt-comp 20/30 bad-so-far=20
+  BAD A/fmt-comp/r21 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r22 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r23 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r24 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r25 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r26 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r27 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r28 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r29 entry 5 fb=0 want-fb=112 len=11/11
+  BAD A/fmt-comp/r30 entry 5 fb=0 want-fb=112 len=11/11
+.. A/fmt-comp 30/30 bad-so-far=30
+phase A/fmt-comp done: 30 bad entries of 300
+phase B/fmt-comp-gc reps=30 free=7515024
+  BAD B/fmt-comp-gc/r1 entry 0 fb=107 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r1 entry 5 fb=0 want-fb=112 len=11/11
+  BAD B/fmt-comp-gc/r2 entry 0 fb=107 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r2 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r3 entry 0 fb=107 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r3 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r4 entry 0 fb=107 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r4 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r4 entry 3 fb=98 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r5 entry 0 fb=107 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r5 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r5 entry 3 fb=98 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r6 entry 0 fb=107 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r6 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r6 entry 3 fb=98 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r7 entry 0 fb=107 want-fb=0 len=10/10
+  BAD B/fmt-comp-gc/r7 entry 1 fb=114 want-fb=0 len=12/12
+  BAD B/fmt-comp-gc/r7 entry 3 fb=98 want-fb=0 len=10/10

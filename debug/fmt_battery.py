@@ -76,6 +76,13 @@ ITERS = 20
 # (matrix3 pctonly 60 collects G1; D phase 27.6K conversions G2), so
 # the poison is among {multi-arg tuple, %s-with-str-arg, %% escape}
 # -- bisected by the A1s/A1c/A1e rungs.
+# BISECT CLOSED 28/07 (-5 logs): all single ingredients clean, BUT
+# fmt-comp (2/2 fresh-session G1 killer) also ran clean as a
+# mid-session phase -- outcome is heap-history-dependent, so
+# survival acquittals do not transfer and the hunt cannot converge.
+# Phase B also zeroed the concat-built EXPECTED strings in place on
+# both devices (bystander corruption) before killing both.  Verdict:
+# no %/.format on-device at all; see PRIME_STRING_FORMAT_BUG.md.
 START_PHASE = "A1s"
 
 _out = []
