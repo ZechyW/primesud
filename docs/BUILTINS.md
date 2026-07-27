@@ -352,9 +352,18 @@ on+symb checkpoint restore before each):
   `Ticks` calls fine), big *bytes* allocations (247 x 32 KB clean,
   twice), `str(int)` conversion, gc-call interplay, bad RAM (7.6 MB
   pattern-verified twice), heap size config, session residency.
-- **Correlated**: sessions that build 16/32 KB strings via `+` concat
-  chains died 3 of 5; sessions capped at ~8 KB strings ran clean (small
-  sample; quantification via the probe's `bigloop` mode pending).
+- **Convicted (bigloop bisect)**: the tight cycle [fresh medium/large
+  string alloc -> drop -> ~1000-small-alloc storm -> collect] kills
+  within ~3 iterations, at 8 KB strings just as at 16/32 KB
+  (`both`/`both8k` kinds).  Either ingredient alone is clean: concat
+  chains + collects with no storm survived ~60+ trials (`bigonly`),
+  storms with no fresh big strings survived ~50 passes.  Fresh ~8 KB
+  allocs *separated in time* from storms also ran clean -- the
+  interleaving is the trigger, and repetition rate sets the death
+  rate.  This is the real save path's exact shape ("~".join payload +
+  serialize storm + gc_collect per autosave): the game's occasional
+  G1 crashes are this bug at today's payload size, rate-limited only
+  by saves being minutes apart.
 - **Stochastic**: byte-identical runs on clean pools split
   dead/clean.  Iterator-slot type confusion plus stochastic behaviour
   under churn fits a GC root-scan defect (live object collected when a

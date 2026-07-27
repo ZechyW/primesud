@@ -83,12 +83,18 @@ HV_MODE = "bigloop"
 #                (payload+"~")*4 (2 allocs, no 16/24KB chain temps).
 #   "both8k"  -- ONE fresh ~8KB concat + build storm + collect per
 #                iteration: the real game save's exact allocation
-#                pattern ("~".join payload + ~1000-alloc serialize +
-#                gc_collect) at today's payload size.  Dies => the
-#                in-game occasional G1 crashes are this bug, today;
-#                clean => threshold sits in (8KB, 16KB] even in the
-#                interaction case and payload growth is the time bomb.
-BIGLOOP_KIND = "both8k"
+#                pattern.  DIED after iteration 2 on-device (27/07):
+#                the in-game occasional G1 crashes are this bug at
+#                today's payload size; the tight-cycle repetition is
+#                what concentrates the rate vs. minutes-apart saves.
+#   "chunked" -- the PROPOSED MITIGATION, tested before shipping it:
+#                same build storm + collect per iteration, but the
+#                payload is assembled as ~2KB join groups -- no single
+#                string bigger than ~2KB is ever created.  Clean over
+#                several sessions => chunked save assembly validated;
+#                dies => size is not the knob and the mitigation must
+#                attack the storm/collect side instead.
+BIGLOOP_KIND = "chunked"
 
 _out = []
 
@@ -362,20 +368,51 @@ def main():
         errs = 0
         for it in range(20):
             try:
-                if BIGLOOP_KIND == "bigmul":
-                    b2 = (payload + "~") * 2
-                    b4 = (payload + "~") * 4
-                elif BIGLOOP_KIND == "both8k":
-                    b2 = payload + "~"  # one fresh game-save-sized alloc
-                    b4 = None
+                b2 = None
+                b4 = None
+                lines = None
+                if BIGLOOP_KIND == "chunked":
+                    # Mitigated save assembly: storm as usual, but the
+                    # payload only ever exists as ~2KB join groups.
+                    lines = build_pass(work)
+                    groups = []
+                    cur = []
+                    clen = 0
+                    for ln in lines:
+                        cur.append(ln)
+                        clen += len(ln) + 1
+                        if clen >= 2048:
+                            groups.append("~".join(cur))
+                            cur = []
+                            clen = 0
+                    if cur:
+                        groups.append("~".join(cur))
+                    mx = 0
+                    tot = 0
+                    for g in groups:
+                        if len(g) > mx:
+                            mx = len(g)
+                        tot += len(g)
+                    log("bigloop " + str(it + 1) + "/20 ok chunked "
+                        + str(len(groups)) + " groups, max " + str(mx)
+                        + "B, tot " + str(tot) + "B")
+                    groups = None
                 else:
-                    b2 = payload + "~" + payload
-                    b4 = payload + "~" + payload + "~" + payload + "~" + payload
-                lines = (build_pass(work)
-                         if BIGLOOP_KIND in ("both", "both8k") else None)
-                log("bigloop " + str(it + 1) + "/20 ok "
-                    + str(len(b2) + (len(b4) if b4 else 0)) + "B big"
-                    + ((", " + str(len(lines)) + " lines") if lines else ""))
+                    if BIGLOOP_KIND == "bigmul":
+                        b2 = (payload + "~") * 2
+                        b4 = (payload + "~") * 4
+                    elif BIGLOOP_KIND == "both8k":
+                        b2 = payload + "~"  # one fresh game-save-sized alloc
+                    else:
+                        b2 = payload + "~" + payload
+                        b4 = (payload + "~" + payload + "~" + payload
+                              + "~" + payload)
+                    lines = (build_pass(work)
+                             if BIGLOOP_KIND in ("both", "both8k") else None)
+                    log("bigloop " + str(it + 1) + "/20 ok "
+                        + str(len(b2) + (len(b4) if b4 else 0)) + "B big"
+                        + ((", " + str(len(lines)) + " lines")
+                           if lines else ""))
             except Exception as e:
                 errs += 1
                 log("bigloop " + str(it + 1) + "/20 EXC " + str(e))
