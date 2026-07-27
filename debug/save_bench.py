@@ -24,9 +24,14 @@ performance), so bare numbers under-rank alloc-heavy segments; the
 ballast pass approximates game conditions.  hvset/hvget also run at
 1x/2x/4x payload size (bare heap) to check PPL parse-cost linearity.
 
-Results printed and written to save_bench.log.  Uses HVar "savebench"
-(never the real primesud_save); reset to "0" at the end.  Leaves
-save_bench.tmp in the appdir (fwrite target).
+Results printed and written to save_bench.log -- flushed line by line,
+so a hard reset mid-run keeps everything logged up to the crash point,
+including per-pass ".." trace lines.  Segment order puts the HVars
+size-scaling first and the build segment last: repeated alloc-heavy
+build passes hard-reset the G1 (observed 27/07), so the cheap
+high-value numbers land in the log before the crash suspect runs.
+Uses HVar "savebench" (never the real primesud_save); reset to "0" at
+the end.  Leaves save_bench.tmp in the appdir (fwrite target).
 """
 import gc
 from hpprime import eval as ppleval
@@ -40,8 +45,18 @@ _out = []
 
 
 def log(msg):
+    """Print and append to the log file immediately -- a firmware-level
+    crash mid-run (hard reset, no Python traceback) must not lose the
+    lines already produced.  Full rewrite per call: ~20ms/write is
+    nothing next to the segments, and append mode is unverified on
+    device."""
     print(msg)
     _out.append(msg)
+    try:
+        with open(LOG, "w") as f:
+            f.write("\n".join(_out) + "\n")
+    except Exception:
+        pass
 
 
 def ticks():
@@ -175,13 +190,17 @@ def _fwrite(payload):
         f.write(payload)
 
 
-def time_n(fn, n=N):
+def time_n(name, fn, n=N):
     ts = []
-    for _ in range(n):
+    for i in range(n):
         gc.collect()
         t0 = ticks()
         fn()
         ts.append(ticks() - t0)
+        # Per-pass trace: pinpoints which pass a hard reset lands on
+        # (file flush happens outside the timed region).
+        log(".. " + name.strip() + " pass " + str(i + 1) + "/" + str(n)
+            + " " + str(ts[i]) + "ms")
     return ts
 
 
@@ -203,18 +222,21 @@ def raw(ts):
 
 
 def run_segments(payload, work, tag):
+    # build runs LAST: repeated alloc-heavy passes are the segment that
+    # hard-resets the G1 (crash observed after the gc line, 27/07) --
+    # collect every other segment's numbers before entering it.
     lines = build_pass(work)
     segs = (
         ("gc    ", gc.collect),
-        ("build ", lambda: build_pass(work)),
         ("join  ", lambda: "~".join(lines)),
         ("hvset ", lambda: hvars_set(HVAR, payload)),
         ("hvget ", lambda: hvars_get(HVAR) == payload),
         ("fwrite", lambda: _fwrite(payload)),
+        ("build ", lambda: build_pass(work)),
     )
     for name, fn in segs:
         try:
-            ts = time_n(fn)
+            ts = time_n(tag.strip() + " " + name, fn)
             log(tag + " " + fmt(name, ts) + "  raw " + raw(ts))
         except Exception as e:
             log(tag + " " + name + ": FAILED " + str(e))
@@ -255,8 +277,8 @@ def main():
     log("payload: " + src + ", " + str(len(payload)) + " bytes, "
         + str(len(work)) + " lines, " + str(ntok) + " tokens")
 
-    run_segments(payload, work, "bare   ")
-
+    # HVars size-scaling first: cheapest, highest-value data -- get it
+    # into the log before any alloc-heavy segment can hard-reset the G1.
     for label, p in (("1x", payload),
                      ("2x", payload + "~" + payload),
                      ("4x", payload + "~" + payload + "~" + payload
@@ -275,6 +297,8 @@ def main():
         except Exception as e:
             log("hv " + label + ": FAILED " + str(e))
 
+    run_segments(payload, work, "bare   ")
+
     log("building ballast...")
     f0 = free()
     ballast = make_ballast()
@@ -289,9 +313,7 @@ def main():
     except Exception:
         pass
 
-    with open(LOG, "w") as f:
-        f.write("\n".join(_out) + "\n")
-    print("Done. Results in " + LOG)
+    log("Done. Results in " + LOG)
 
 
 main()
