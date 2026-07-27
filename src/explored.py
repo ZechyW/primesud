@@ -19,6 +19,7 @@ run-length string (str()+concat only, per PRIME_STRING_FORMAT_BUG).
 from world import _AREA_FILES, AREA_ROOM_COUNTS
 from handler import chprintln
 from colors import color_len
+from util import num_str
 
 # Static vnum ranges + names per area tag (cf. 1stMud area->min_vnum/max_vnum),
 # from the generation-time _AREA_FILES table -- no area load required.
@@ -134,10 +135,10 @@ def encode_rle(player):
         if b == bit:
             count += 1
         else:
-            parts.append(str(count))
+            parts.append(num_str(count))
             count = 1
             bit = b
-    parts.append(str(count))
+    parts.append(num_str(count))
     parts.append("-1")
     return " ".join(parts)
 

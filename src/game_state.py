@@ -1,6 +1,6 @@
 """Game lifecycle helpers for new, load, save, and migration UX."""
 
-from util import gc_collect
+from util import sstr
 from prime_platform import hvars_get, hvars_set
 from config import SAVE_VAR, FNKEY_NAMES, R_STARTING_ROOM
 from game_time import time_info, SUN_DARK, SUN_RISE, SUN_LIGHT, SUN_SET
@@ -101,36 +101,38 @@ def _serialize_world(hvar_name=None, file_name=None):
     if file_name is None:
         file_name = SAVE_FILE
     player = world.chars[1]
-    gc_collect()
-    lines = ["v=" + str(SAVE_VERSION)]
+    # No gc_collect() here: a collect adjacent to bulk int rendering is the
+    # G1 heap-corruption trigger (BUILTINS.md sec. G1 memory-corruption bug);
+    # sstr's cached digit path below is the validated fix.
+    lines = ["v=" + sstr(SAVE_VERSION)]
     for key in _PLAYER_STRING_SAVE_KEYS:
-        lines.append("p." + key + "=" + str(player[key]))
+        lines.append("p." + key + "=" + sstr(player[key]))
     number_parts = []
     for key in _PLAYER_NUMBER_SAVE_KEYS:
-        number_parts.append(str(player[key]))
+        number_parts.append(sstr(player[key]))
     for stat in _PLAYER_STAT_SAVE_KEYS:
-        number_parts.append(str(player["perm_stat"][stat]))
+        number_parts.append(sstr(player["perm_stat"][stat]))
     lines.append("p.n=" + "|".join(number_parts))
     # cf. 1stMud ch->Class[] -- comma-joined ints (str+concat per PRIME_STRING_FORMAT_BUG)
     cls_str = ""
     for c in player["classes"]:
-        cls_str = cls_str + ("," if cls_str else "") + str(c)
+        cls_str = cls_str + ("," if cls_str else "") + sstr(c)
     lines.append("p.classes=" + cls_str)
     # cf. 1stMud fwrite_char "Pos" -- fighting saved as standing
-    lines.append("p.pos=" + str("standing" if player.get("pos") == "fighting"
-                                else player.get("pos", "standing")))
+    lines.append("p.pos=" + sstr("standing" if player.get("pos") == "fighting"
+                                 else player.get("pos", "standing")))
     # cf. 1stMud pcdata->group_known -- comma-joined group indices
     grp_str = ""
     for g in player.get("groups", []):
-        grp_str = grp_str + ("," if grp_str else "") + str(g)
+        grp_str = grp_str + ("," if grp_str else "") + sstr(g)
     lines.append("p.groups=" + grp_str)
     # cf. 1stMud ch->stance[] (fwrite_char "Stances" line) -- comma-joined ints
     st_str = ""
     for s in player.get("stance", []):
-        st_str = st_str + ("," if st_str else "") + str(s)
+        st_str = st_str + ("," if st_str else "") + sstr(s)
     lines.append("p.stance=" + st_str)
     armor = player["armor"]
-    lines.append("p.armor=" + str(armor[0]) + "|" + str(armor[1]) + "|" + str(armor[2]) + "|" + str(armor[3]))
+    lines.append("p.armor=" + sstr(armor[0]) + "|" + sstr(armor[1]) + "|" + sstr(armor[2]) + "|" + sstr(armor[3]))
     inv_parts = []
     for o in player["inv"]:
         inv_parts.append(serialize_item_token(o))
@@ -143,7 +145,7 @@ def _serialize_world(hvar_name=None, file_name=None):
     lines.append("p.eq=" + "|".join(equip_parts))
     learned_parts = []
     for sk in sorted(player["learned"]):
-        learned_parts.append(str(sk) + ":" + str(player["learned"][sk]))
+        learned_parts.append(sstr(sk) + ":" + sstr(player["learned"][sk]))
     lines.append("p.learned=" + "|".join(learned_parts))
     # [PRIMESUD] autoskill rotation -- custom order/exclusions only; absent
     # key means pure heuristic default (see autoskill.py)
@@ -154,13 +156,13 @@ def _serialize_world(hvar_name=None, file_name=None):
     af_parts = []
     for af in player.get("affect_list", []):
         af_parts.append(
-            str(af.get("type", "")) + ","
-            + str(af.get("level", 0)) + ","
-            + str(af.get("duration", 0)) + ","
-            + str(af.get("location", "")) + ","
-            + str(af.get("modifier", 0)) + ","
-            + str(af.get("bitvector", "")) + ","
-            + str(af.get("where", ""))
+            sstr(af.get("type", "")) + ","
+            + sstr(af.get("level", 0)) + ","
+            + sstr(af.get("duration", 0)) + ","
+            + sstr(af.get("location", "")) + ","
+            + sstr(af.get("modifier", 0)) + ","
+            + sstr(af.get("bitvector", "")) + ","
+            + sstr(af.get("where", ""))
         )
     if af_parts:
         lines.append("p.affects=" + "|".join(af_parts))
@@ -169,48 +171,48 @@ def _serialize_world(hvar_name=None, file_name=None):
     # template since PrimeSUD pets cannot accumulate them
     pet = world.chars.get(player["pet"]) if player.get("pet") is not None else None
     if pet is not None:
-        lines.append("p.pet=" + str(pet["tpl"]) + "|" + str(pet["hit"])
-                     + "|" + str(pet.get("pet_name", "")))
+        lines.append("p.pet=" + sstr(pet["tpl"]) + "|" + sstr(pet["hit"])
+                     + "|" + sstr(pet.get("pet_name", "")))
         pet_af_parts = []
         for af in pet.get("affect_list", []):
             pet_af_parts.append(
-                str(af.get("type", "")) + ","
-                + str(af.get("level", 0)) + ","
-                + str(af.get("duration", 0)) + ","
-                + str(af.get("location", "")) + ","
-                + str(af.get("modifier", 0)) + ","
-                + str(af.get("bitvector", "")) + ","
-                + str(af.get("where", ""))
+                sstr(af.get("type", "")) + ","
+                + sstr(af.get("level", 0)) + ","
+                + sstr(af.get("duration", 0)) + ","
+                + sstr(af.get("location", "")) + ","
+                + sstr(af.get("modifier", 0)) + ","
+                + sstr(af.get("bitvector", "")) + ","
+                + sstr(af.get("where", ""))
             )
         if pet_af_parts:
             lines.append("p.pet.affects=" + "|".join(pet_af_parts))
     _mk_int = sorted(k for k in player["_macros"] if isinstance(k, int))
     _mk_str = sorted(k for k in player["_macros"] if isinstance(k, str))
     for k in _mk_int + _mk_str:
-        lines.append("p.macro." + str(FNKEY_NAMES.get(k, k)) + "=" + str(player["_macros"][k]))
+        lines.append("p.macro." + sstr(FNKEY_NAMES.get(k, k)) + "=" + sstr(player["_macros"][k]))
     # cf. 1stMud pcdata->alias[]/alias_sub[] (fwrite_char); one line per
     # alias, order preserved (do_alias/do_unalias keep the list compact).
     for _al_name, _al_sub in player.get("aliases", []):
         lines.append("p.alias." + _al_name + "=" + _al_sub)
     if player.get("home_owned"):
-        lines.append("p.home_name=" + str(player.get("home_name", "")))
-        lines.append("p.home_desc=" + str(player.get("home_desc", "")))
+        lines.append("p.home_name=" + sstr(player.get("home_name", "")))
+        lines.append("p.home_desc=" + sstr(player.get("home_desc", "")))
     for _as in world.areas:
         # HP Prime G1 has unstable percent-format strings in save payloads.
-        _aparts = [str(_as["age"])]
+        _aparts = [sstr(_as["age"])]
         weather = _as.get("weather")
         if weather is not None:
             for _wfld in _WEATHER_PACK_FIELDS:
-                _aparts.append(str(weather.get(_wfld, 0)))
-        lines.append("a." + str(_as["tag"]) + "=" + "|".join(_aparts))
-    lines.append("g.time=" + str(time_info["hour"]) + "|" + str(time_info["day"]) + "|" + str(time_info["month"]) + "|" + str(time_info["year"]))
-    lines.append("g.share=" + str(world.share_value))
+                _aparts.append(sstr(weather.get(_wfld, 0)))
+        lines.append("a." + sstr(_as["tag"]) + "=" + "|".join(_aparts))
+    lines.append("g.time=" + sstr(time_info["hour"]) + "|" + sstr(time_info["day"]) + "|" + sstr(time_info["month"]) + "|" + sstr(time_info["year"]))
+    lines.append("g.share=" + sstr(world.share_value))
     for _vnum in sorted(world.mob_stats):
         _stat = world.mob_stats[_vnum]
-        lines.append("s.m." + str(_vnum) + "=" + str(_stat[0]) + "|" + str(_stat[1]))
+        lines.append("s.m." + sstr(_vnum) + "=" + sstr(_stat[0]) + "|" + sstr(_stat[1]))
     for _tag in sorted(world.area_stats):
         _stat = world.area_stats[_tag]
-        lines.append("s.a." + str(_tag) + "=" + str(_stat[0]) + "|" + str(_stat[1]))
+        lines.append("s.a." + sstr(_tag) + "=" + sstr(_stat[0]) + "|" + sstr(_stat[1]))
     for _gql in gq_save_lines():  # [PRIMESUD] gquest state
         lines.append(_gql)
     # Build reset-room map for single-instance mobs (gl=1): if the only live
@@ -247,16 +249,16 @@ def _serialize_world(hvar_name=None, file_name=None):
             continue
         room_parts = []
         for r in rooms:
-            room_parts.append(str(r))
-        mob_parts.append(str(tpl_vnum) + "," + "|".join(room_parts))
+            room_parts.append(sstr(r))
+        mob_parts.append(sstr(tpl_vnum) + "," + "|".join(room_parts))
     # Re-serialize pending mob deltas for unloaded areas (not in world.chars)
     for tpl_vnum in sorted(world._pending_mob_saves):
         if tpl_vnum in tpl_rooms:
             continue
         room_parts = []
         for r in world._pending_mob_saves[tpl_vnum]:
-            room_parts.append(str(r))
-        mob_parts.append(str(tpl_vnum) + "," + "|".join(room_parts))
+            room_parts.append(sstr(r))
+        mob_parts.append(sstr(tpl_vnum) + "," + "|".join(room_parts))
     if mob_parts:
         lines.append("m=" + ";".join(mob_parts))
     for rvnum in sorted(world.rooms):
@@ -266,13 +268,13 @@ def _serialize_world(hvar_name=None, file_name=None):
         item_parts = []
         for o in rs["items"]:
             item_parts.append(serialize_item_token(o))
-        lines.append("r." + str(rvnum) + ".items=" + "|".join(item_parts))
+        lines.append("r." + sstr(rvnum) + ".items=" + "|".join(item_parts))
     # Re-serialize pending room items for unloaded areas (not in world.rooms)
     for rvnum in sorted(world._pending_room_items):
-        lines.append("r." + str(rvnum) + ".items=" + str(world._pending_room_items[rvnum]))
+        lines.append("r." + sstr(rvnum) + ".items=" + sstr(world._pending_room_items[rvnum]))
     for i in range(len(lines)):
         if not isinstance(lines[i], str):
-            raise Exception("non-str save line %s" % i)
+            raise Exception("non-str save line " + sstr(i))
     payload = "~".join(lines)
     hvars_set(hvar_name, payload)
     saved = hvars_get(hvar_name)

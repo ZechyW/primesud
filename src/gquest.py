@@ -23,6 +23,7 @@ from quest import (chance, is_quester, mob_tell, quest_target_ok,
                    quest_area_def, _find_spec_mob, _intstr, _prefix,
                    _QUEST_AREA_EXCLUDE)
 from urandom import randint
+from util import sstr
 
 # cf. 1stMud gquest_t in defines.h
 GQUEST_OFF     = 0
@@ -509,17 +510,17 @@ def do_gquest(player, args):
 def gq_save_lines():
     """Serialise gquest state to save lines (str+concat per PRIME_STRING_FORMAT_BUG)."""
     gq = gquest_info
-    line = ("g.gquest=" + str(gq["running"]) + "|" + str(gq["timer"])
-            + "|" + str(gq["mob_count"]) + "|" + str(gq["minlevel"])
-            + "|" + str(gq["maxlevel"]) + "|" + str(gq["qpoints"])
-            + "|" + str(gq["gold"]) + "|" + str(gq["cost"])
-            + "|" + ("1" if gq["joined"] else "0") + "|" + str(gq["who"]))
+    line = ("g.gquest=" + sstr(gq["running"]) + "|" + sstr(gq["timer"])
+            + "|" + sstr(gq["mob_count"]) + "|" + sstr(gq["minlevel"])
+            + "|" + sstr(gq["maxlevel"]) + "|" + sstr(gq["qpoints"])
+            + "|" + sstr(gq["gold"]) + "|" + sstr(gq["cost"])
+            + "|" + ("1" if gq["joined"] else "0") + "|" + sstr(gq["who"]))
     mobs = ""
     for v in gq["mobs"]:
-        mobs = mobs + ("," if mobs else "") + str(v)
+        mobs = mobs + ("," if mobs else "") + sstr(v)
     pmobs = ""
     for v in gq["pmobs"]:
-        pmobs = pmobs + ("," if pmobs else "") + str(v)
+        pmobs = pmobs + ("," if pmobs else "") + sstr(v)
     return [line, "g.gqmobs=" + mobs, "g.gqpmobs=" + pmobs]
 
 

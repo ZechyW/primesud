@@ -3,6 +3,7 @@
 import world
 from world import ITEM_DEFS, MOB_DEFS
 from config import STR_APP_CARRY
+from util import sstr
 from handler import is_name, number_argument, can_see_obj, get_curr_stat
 
 # Item types that can hold contents, for loot/look-in purposes [PRIMESUD]:
@@ -411,15 +412,15 @@ def _split_token_fields(token):
 
 def serialize_item_token(obj):
     """Serialize item instance to v2 save token. [PRIMESUD]"""
-    fields = ["v:" + str(obj["vnum"])]
+    fields = ["v:" + sstr(obj["vnum"])]
     if "level" in obj:
-        fields.append("lv:" + str(obj["level"]))
+        fields.append("lv:" + sstr(obj["level"]))
     if "cost" in obj:
-        fields.append("c:" + str(obj["cost"]))
+        fields.append("c:" + sstr(obj["cost"]))
     if "charges" in obj:
-        fields.append("ch:" + str(obj["charges"]))
+        fields.append("ch:" + sstr(obj["charges"]))
     if "max_charges" in obj:
-        fields.append("mx:" + str(obj["max_charges"]))
+        fields.append("mx:" + sstr(obj["max_charges"]))
     if obj.get("enchanted"):
         fields.append("en:1")
     if "extra_flags" in obj:
@@ -435,39 +436,39 @@ def serialize_item_token(obj):
         fields.append("cf:" + ",".join(names))
     if "type" in obj:
         # instance type override, e.g. death_cry/poison_effect trash downgrade
-        fields.append("ty:" + _str_escape(str(obj["type"])))
+        fields.append("ty:" + _str_escape(sstr(obj["type"])))
     for af in obj.get("affect_list", []):
         parts = [
-            str(af.get("type", 0)),
-            str(af.get("level", 0)),
-            str(af.get("duration", 0)),
-            str(af.get("location", "")),
-            str(af.get("modifier", 0)),
-            str(af.get("bitvector", "")),
-            str(af.get("where", "")),
+            sstr(af.get("type", 0)),
+            sstr(af.get("level", 0)),
+            sstr(af.get("duration", 0)),
+            sstr(af.get("location", "")),
+            sstr(af.get("modifier", 0)),
+            sstr(af.get("bitvector", "")),
+            sstr(af.get("where", "")),
         ]
         fields.append("af:" + ",".join(parts))
     if "light_hours" in obj:
-        fields.append("lh:" + str(obj["light_hours"]))
+        fields.append("lh:" + sstr(obj["light_hours"]))
     if "timer" in obj:
-        fields.append("ti:" + str(obj["timer"]))
+        fields.append("ti:" + sstr(obj["timer"]))
     if "liquid_left" in obj:
-        fields.append("ll:" + str(obj["liquid_left"]))
+        fields.append("ll:" + sstr(obj["liquid_left"]))
     if "liquid_total" in obj:
-        fields.append("lt:" + str(obj["liquid_total"]))
+        fields.append("lt:" + sstr(obj["liquid_total"]))
     if "liquid_type" in obj:
-        fields.append("lq:" + _str_escape(str(obj["liquid_type"])))
+        fields.append("lq:" + _str_escape(sstr(obj["liquid_type"])))
     if "poisoned" in obj:
         # explicit 0 preserved: a cleared poison must override template
         fields.append("po:" + ("1" if obj["poisoned"] else "0"))
     if "short_descr" in obj:
-        fields.append("sd:" + _str_escape(str(obj["short_descr"])))
+        fields.append("sd:" + _str_escape(sstr(obj["short_descr"])))
     if "description" in obj:
-        fields.append("de:" + _str_escape(str(obj["description"])))
+        fields.append("de:" + _str_escape(sstr(obj["description"])))
     if "gold" in obj:
-        fields.append("go:" + str(obj["gold"]))
+        fields.append("go:" + sstr(obj["gold"]))
     if "silver" in obj:
-        fields.append("si:" + str(obj["silver"]))
+        fields.append("si:" + sstr(obj["silver"]))
     if obj.get("contents"):
         inner = "^".join(serialize_item_token(o) for o in obj["contents"])
         fields.append("co:[" + inner + "]")
