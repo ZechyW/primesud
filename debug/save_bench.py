@@ -87,14 +87,19 @@ HV_MODE = "bigloop"
 #                the in-game occasional G1 crashes are this bug at
 #                today's payload size; the tight-cycle repetition is
 #                what concentrates the rate vs. minutes-apart saves.
-#   "chunked" -- the PROPOSED MITIGATION, tested before shipping it:
-#                same build storm + collect per iteration, but the
-#                payload is assembled as ~2KB join groups -- no single
-#                string bigger than ~2KB is ever created.  Clean over
-#                several sessions => chunked save assembly validated;
-#                dies => size is not the knob and the mitigation must
-#                attack the storm/collect side instead.
-BIGLOOP_KIND = "chunked"
+#   "chunked" -- proposed size mitigation: storm + collect per
+#                iteration, payload assembled as hard-capped 2048B
+#                pieces.  DIED iteration 4 on-device (save_bench-7.log)
+#                -- size is NOT the knob; mitigation-by-chunking
+#                falsified before it reached the game.
+#   "chunkedng" -- chunked without the explicit per-cycle gc.collect:
+#                auto-GC only.  Clean => the explicit collect's
+#                position in the cycle is the trigger lever, and the
+#                game fix is relocating/removing _serialize_world's
+#                opening gc_collect().  Dies => the cycle is unsafe
+#                under any of our knobs; pivot to rate reduction
+#                (fewer saves, alloc diet) + crash resilience.
+BIGLOOP_KIND = "chunkedng"
 
 _out = []
 
@@ -371,7 +376,7 @@ def main():
                 b2 = None
                 b4 = None
                 lines = None
-                if BIGLOOP_KIND == "chunked":
+                if BIGLOOP_KIND in ("chunked", "chunkedng"):
                     # Mitigated save assembly: storm as usual, but the
                     # payload only ever exists as ~2KB join groups.
                     lines = build_pass(work)
@@ -427,10 +432,13 @@ def main():
             b2 = None
             b4 = None
             lines = None
-            gc.collect()
-            # Separate flush: a death here blames the collect, not the
-            # next iteration's concat/build.
-            log(".. " + str(it + 1) + " collect ok")
+            if BIGLOOP_KIND == "chunkedng":
+                log(".. " + str(it + 1) + " end (no collect)")
+            else:
+                gc.collect()
+                # Separate flush: a death here blames the collect, not
+                # the next iteration's concat/build.
+                log(".. " + str(it + 1) + " collect ok")
         log("bigloop: " + str(errs) + " caught errors in 20 iterations")
         log("Done. Results in " + LOG)
         return
