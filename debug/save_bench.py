@@ -92,14 +92,21 @@ HV_MODE = "bigloop"
 #                pieces.  DIED iteration 4 on-device (save_bench-7.log)
 #                -- size is NOT the knob; mitigation-by-chunking
 #                falsified before it reached the game.
-#   "chunkedng" -- chunked without the explicit per-cycle gc.collect:
-#                auto-GC only.  Clean => the explicit collect's
-#                position in the cycle is the trigger lever, and the
-#                game fix is relocating/removing _serialize_world's
-#                opening gc_collect().  Dies => the cycle is unsafe
-#                under any of our knobs; pivot to rate reduction
-#                (fewer saves, alloc diet) + crash resilience.
-BIGLOOP_KIND = "chunkedng"
+#   "chunkedng" -- chunked without the explicit per-cycle gc.collect.
+#                CLEAN over multiple sessions (save_bench-8.log,
+#                27/07): the explicit collect is convicted as the
+#                trigger.  Caveat: 20 iterations (~2MB garbage, 8MB
+#                heap) may never auto-collect, so this shows "no
+#                collect = no death", not yet "auto-collect is safe".
+#   "autogc"  -- chunkedng at 300 iterations (~30MB garbage):
+#                guarantees several alloc-triggered auto-collects
+#                (mem_free logged every 10 iters shows them fire).
+#                Clean => auto-collect is safe and the game fix is
+#                just removing/relocating explicit gc_collect() calls
+#                after churn (save path first).  Dies at/after the
+#                first auto-collect => any collect over churned state
+#                is unsafe; pivot to rate reduction + resilience.
+BIGLOOP_KIND = "autogc"
 
 _out = []
 
@@ -371,12 +378,14 @@ def main():
         # spurious TypeErrors) are counted and the blamed data scanned.
         log("bigloop kind=" + BIGLOOP_KIND)
         errs = 0
-        for it in range(20):
+        iters = 300 if BIGLOOP_KIND == "autogc" else 20
+        n_str = "/" + str(iters)
+        for it in range(iters):
             try:
                 b2 = None
                 b4 = None
                 lines = None
-                if BIGLOOP_KIND in ("chunked", "chunkedng"):
+                if BIGLOOP_KIND in ("chunked", "chunkedng", "autogc"):
                     # Mitigated save assembly: storm as usual, but the
                     # payload only ever exists as ~2KB join groups.
                     lines = build_pass(work)
@@ -405,7 +414,7 @@ def main():
                         if len(g) > mx:
                             mx = len(g)
                         tot += len(g)
-                    log("bigloop " + str(it + 1) + "/20 ok chunked "
+                    log("bigloop " + str(it + 1) + n_str + " ok chunked "
                         + str(len(groups)) + " groups, max " + str(mx)
                         + "B, tot " + str(tot) + "B")
                     groups = None
@@ -421,25 +430,30 @@ def main():
                               + "~" + payload)
                     lines = (build_pass(work)
                              if BIGLOOP_KIND in ("both", "both8k") else None)
-                    log("bigloop " + str(it + 1) + "/20 ok "
+                    log("bigloop " + str(it + 1) + n_str + " ok "
                         + str(len(b2) + (len(b4) if b4 else 0)) + "B big"
                         + ((", " + str(len(lines)) + " lines")
                            if lines else ""))
             except Exception as e:
                 errs += 1
-                log("bigloop " + str(it + 1) + "/20 EXC " + str(e))
+                log("bigloop " + str(it + 1) + n_str + " EXC " + str(e))
                 scan_work(work, "work/iter" + str(it + 1))
             b2 = None
             b4 = None
             lines = None
-            if BIGLOOP_KIND == "chunkedng":
+            if BIGLOOP_KIND == "autogc":
+                # No explicit collect; watch auto-GC via mem_free dips.
+                if (it + 1) % 10 == 0:
+                    log(".. " + str(it + 1) + " free=" + str(free()))
+            elif BIGLOOP_KIND == "chunkedng":
                 log(".. " + str(it + 1) + " end (no collect)")
             else:
                 gc.collect()
                 # Separate flush: a death here blames the collect, not
                 # the next iteration's concat/build.
                 log(".. " + str(it + 1) + " collect ok")
-        log("bigloop: " + str(errs) + " caught errors in 20 iterations")
+        log("bigloop: " + str(errs) + " caught errors in " + str(iters)
+            + " iterations")
         log("Done. Results in " + LOG)
         return
     # bignohv/4xonce: build the big strings exactly as "full" does and

@@ -370,6 +370,16 @@ on+symb checkpoint restore before each):
   collection fires at an unlucky VM state, block reused; stale read =>
   TypeError, stale write => corruption/reset/stall) -- working
   hypothesis, not confirmed.
+- **The explicit `gc.collect()` is the trigger** (`chunkedng` bisect):
+  the identical cycle minus the explicit collect ran clean over
+  multiple sessions; with it, death within ~4 iterations regardless of
+  string size.  Fits the root-scan hypothesis: a shallow explicit
+  collect pins the fewest conservative roots and frees the most,
+  occasionally including a block an unscanned firmware/VM slot still
+  references.  Whether alloc-triggered *auto*-collects are equally
+  dangerous is being tested (`autogc` kind, forced auto-collects);
+  the answer decides if removing explicit collects after churn is a
+  sufficient fix or only a rate reduction.
 
 Consequences for game code until better understood: keep single-string
 builds at or under ~8 KB (the save payload measures 7990 B mid-game and
