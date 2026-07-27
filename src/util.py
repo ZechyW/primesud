@@ -26,3 +26,57 @@ def free_mem():
 def gc_collect():
     """Convenience function for gc within the game"""
     return gc.collect()
+
+
+# -- Firmware-safe int rendering [PRIMESUD] ------------------------------------
+# The physical G1 corrupts its heap when bulk str(int) transients meet a
+# garbage collection (explicit or automatic) -- see docs/BUILTINS.md sec.
+# G1 memory-corruption bug.  int_str() renders ints by digit-table lookup +
+# concat, never touching the firmware int formatter; num_str() fronts it
+# with a persistent cache so repeat values (save payloads re-render the
+# same few hundred numbers every save) cost one dict hit, no allocation.
+# Probe-validated at 60 clean collects (debug/save_bench.py, cachedstr).
+
+_DIG = ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+_NCACHE = {}
+
+
+def int_str(n):
+    """Render an int as a decimal string without the firmware int formatter. [PRIMESUD]"""
+    if n == 0:
+        return "0"
+    neg = n < 0
+    if neg:
+        n = -n
+    s = ""
+    while n:
+        s = _DIG[n % 10] + s
+        n //= 10
+    return ("-" + s) if neg else s
+
+
+def num_str(n):
+    """Cached int_str: int -> decimal str via persistent cache. [PRIMESUD]
+
+    Cache lives across saves; bounded by a rare clear-and-rebuild so a long
+    session's drifting counters (xp, played) cannot grow it without limit.
+    """
+    s = _NCACHE.get(n)
+    if s is None:
+        if len(_NCACHE) > 4096:
+            _NCACHE.clear()
+        s = int_str(n)
+        _NCACHE[n] = s
+    return s
+
+
+def sstr(v):
+    """Safe str() for save payloads: cached digit path for ints, pass-through
+    for strs, plain str() for anything else (bools keep their str() form). [PRIMESUD]
+    """
+    t = type(v)
+    if t is int:
+        return num_str(v)
+    if t is str:
+        return v
+    return str(v)
