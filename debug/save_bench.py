@@ -158,14 +158,19 @@ HV_MODE = "bigloop"
 #                int->str), misses filled by int_str() digit-concat
 #                (never calls the firmware formatter).  Iteration 1
 #                fills the cache, 2+ run pure hits = the steady
-#                state every later save would see.  Clean => fix
-#                validated at probe level.
-#   "pctonly"  -- '"%d" % t' per int token: does %-formatting share
-#                the deadly formatter core?  Dies => the game's
-#                transient-UI % usage is (low-rate) exposure too.
-#   "matrix3"  -- cachedstr -> pctonly -> smallonly, 20 each;
-#                smallonly last as positive control (only decisive
-#                if both earlier phases run clean).
+#                state every later save would see.  CLEAN 20/20
+#                (save_bench-14.log): fix validated at probe level.
+#   "pctonly"  -- '"%d" % t' per int token.  CLEAN 20/20 (-14.log,
+#                13.8K conversions) while smallonly in the SAME
+#                session died at its iteration 2 making the same 690
+#                digit strs: the deadly path is specifically the
+#                str() builtin on ints, not the formatter core
+#                broadly.  (Distinct from the persisted-string %
+#                output-corruption bug -- that one still stands.)
+#   "matrix3"  -- cachedstr -> pctonly -> smallonly as positive
+#                control.  40/40/20 for the confirmation run
+#                (originally 20/20/20; -14.log control fired at
+#                phase iteration 2).
 #   "matrix"  -- all three in one session, 20 iters each (smallnostr
 #                -> smallonly -> medonly).  Phase boundaries are
 #                scrubbed by the per-iteration collects, so a clean
@@ -471,7 +476,7 @@ def main():
             plan = (["smallslice"] * 20 + ["digitslice"] * 20
                     + ["smallonly"] * 20)
         elif BIGLOOP_KIND == "matrix3":
-            plan = (["cachedstr"] * 20 + ["pctonly"] * 20
+            plan = (["cachedstr"] * 40 + ["pctonly"] * 40
                     + ["smallonly"] * 20)
         else:
             plan = [BIGLOOP_KIND] * (300 if BIGLOOP_KIND == "autogc"

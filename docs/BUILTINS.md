@@ -352,7 +352,11 @@ pool = on+symb checkpoint restore before each):
   twice), `str(int)` conversion, gc-call interplay, bad RAM (7.6 MB
   pattern-verified twice), heap size config, session residency.
 - **Convicted (bigloop bisect + composition matrices)**: the
-  `str(int)` FORMATTING PATH.  The cycle [~965 `str(int)` allocs +
+  `str()` BUILTIN APPLIED TO INTS -- narrower than "the formatter":
+  `"%d" % t` producing the same 690 digit strings per cycle ran
+  13.8K conversions / 20 collects clean in the same session whose
+  `str(int)` control died at its iteration 2 (save_bench-14.log).
+  Same-output different-route, opposite fates.  The cycle [~965 `str(int)` allocs +
   ~173 list allocs -> drop -> collect] kills or corrupts within ~4-9
   iterations, 4/4 sessions (`smallonly`,
   save_bench-10/-11/-13.log + one unlogged hard crash).  Everything
@@ -421,9 +425,14 @@ are background-level risk, ~1000-call storms are the repro; payload
 chunking does NOT mitigate (`chunked` died; the formatter call count
 is the exposure, not string size); never call `gc.collect()`
 immediately after such a burst; keep alloc churn low in hot paths
-(already policy).  Untested near neighbours of `str(int)`: `"%d" %`
-formatting and `hex()` likely share the formatter core -- treat bulk
-use as suspect until probed.
+(already policy).  `"%d" %` formatting is acquitted for the CRASH bug
+(13.8K bulk conversions clean) -- but remains banned in
+persisted/serialized strings for the separate OUTPUT-corruption bug
+(PRIME_STRING_FORMAT_BUG.md); the two bugs are distinct and both
+real.  A validated `str(int)` replacement exists: number-string cache
+with `int_str()` digit-concat misses (debug/save_bench.py
+`cachedstr`), clean over collects that killed the `str(int)` control
+in the same session.  `hex()` remains unprobed.
 
 Related community-documented PPL parse bug (unrelated mechanism, same
 fragile bridge): numeric literals with a plus-sign exponent (`2e+1`)

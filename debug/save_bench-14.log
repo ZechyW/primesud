@@ -1,0 +1,86 @@
+save_bench: save-path primitive timings, N=5
+payload: file, 7990 bytes, 173 lines, 965 tokens
+HV_MODE=bigloop
+bigloop kind=matrix3
+bigloop 1/60 ok cached 965 toks, 446 hits, cache 244
+.. 1 collect ok
+bigloop 2/60 ok cached 965 toks, 690 hits, cache 244
+.. 2 collect ok
+bigloop 3/60 ok cached 965 toks, 690 hits, cache 244
+.. 3 collect ok
+bigloop 4/60 ok cached 965 toks, 690 hits, cache 244
+.. 4 collect ok
+bigloop 5/60 ok cached 965 toks, 690 hits, cache 244
+.. 5 collect ok
+bigloop 6/60 ok cached 965 toks, 690 hits, cache 244
+.. 6 collect ok
+bigloop 7/60 ok cached 965 toks, 690 hits, cache 244
+.. 7 collect ok
+bigloop 8/60 ok cached 965 toks, 690 hits, cache 244
+.. 8 collect ok
+bigloop 9/60 ok cached 965 toks, 690 hits, cache 244
+.. 9 collect ok
+bigloop 10/60 ok cached 965 toks, 690 hits, cache 244
+.. 10 collect ok
+bigloop 11/60 ok cached 965 toks, 690 hits, cache 244
+.. 11 collect ok
+bigloop 12/60 ok cached 965 toks, 690 hits, cache 244
+.. 12 collect ok
+bigloop 13/60 ok cached 965 toks, 690 hits, cache 244
+.. 13 collect ok
+bigloop 14/60 ok cached 965 toks, 690 hits, cache 244
+.. 14 collect ok
+bigloop 15/60 ok cached 965 toks, 690 hits, cache 244
+.. 15 collect ok
+bigloop 16/60 ok cached 965 toks, 690 hits, cache 244
+.. 16 collect ok
+bigloop 17/60 ok cached 965 toks, 690 hits, cache 244
+.. 17 collect ok
+bigloop 18/60 ok cached 965 toks, 690 hits, cache 244
+.. 18 collect ok
+bigloop 19/60 ok cached 965 toks, 690 hits, cache 244
+.. 19 collect ok
+bigloop 20/60 ok cached 965 toks, 690 hits, cache 244
+.. 20 collect ok
+bigloop 21/60 ok pct 690 fmt allocs
+.. 21 collect ok
+bigloop 22/60 ok pct 690 fmt allocs
+.. 22 collect ok
+bigloop 23/60 ok pct 690 fmt allocs
+.. 23 collect ok
+bigloop 24/60 ok pct 690 fmt allocs
+.. 24 collect ok
+bigloop 25/60 ok pct 690 fmt allocs
+.. 25 collect ok
+bigloop 26/60 ok pct 690 fmt allocs
+.. 26 collect ok
+bigloop 27/60 ok pct 690 fmt allocs
+.. 27 collect ok
+bigloop 28/60 ok pct 690 fmt allocs
+.. 28 collect ok
+bigloop 29/60 ok pct 690 fmt allocs
+.. 29 collect ok
+bigloop 30/60 ok pct 690 fmt allocs
+.. 30 collect ok
+bigloop 31/60 ok pct 690 fmt allocs
+.. 31 collect ok
+bigloop 32/60 ok pct 690 fmt allocs
+.. 32 collect ok
+bigloop 33/60 ok pct 690 fmt allocs
+.. 33 collect ok
+bigloop 34/60 ok pct 690 fmt allocs
+.. 34 collect ok
+bigloop 35/60 ok pct 690 fmt allocs
+.. 35 collect ok
+bigloop 36/60 ok pct 690 fmt allocs
+.. 36 collect ok
+bigloop 37/60 ok pct 690 fmt allocs
+.. 37 collect ok
+bigloop 38/60 ok pct 690 fmt allocs
+.. 38 collect ok
+bigloop 39/60 ok pct 690 fmt allocs
+.. 39 collect ok
+bigloop 40/60 ok pct 690 fmt allocs
+.. 40 collect ok
+bigloop 41/60 ok small 965 str allocs
+.. 41 collect ok
