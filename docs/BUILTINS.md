@@ -21,7 +21,7 @@ Verified with `dir(str)` on-device.
 | `encode`     |                                                                           |
 | `endswith`   |                                                                           |
 | `find`       |                                                                           |
-| `format`     | Caution: `{` conflicts with `{X` colour codes — use `%` formatting instead |
+| `format`     | Present but BANNED on-device (heap corruption; CLAUDE.md pitfall 8) — concat only |
 | `index`      |                                                                           |
 | `isalpha`    |                                                                           |
 | `isdigit`    |                                                                           |
