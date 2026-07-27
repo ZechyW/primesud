@@ -375,18 +375,25 @@ def main():
                     # Mitigated save assembly: storm as usual, but the
                     # payload only ever exists as ~2KB join groups.
                     lines = build_pass(work)
+                    # Streaming chunker, hard 2048B cap: pieces may
+                    # split mid-line (load rejoins before parsing), so
+                    # a long m=/p.eq line cannot inflate a piece.
                     groups = []
-                    cur = []
-                    clen = 0
+                    buf = ""
                     for ln in lines:
-                        cur.append(ln)
-                        clen += len(ln) + 1
-                        if clen >= 2048:
-                            groups.append("~".join(cur))
-                            cur = []
-                            clen = 0
-                    if cur:
-                        groups.append("~".join(cur))
+                        s = ln + "~"
+                        while s:
+                            room = 2048 - len(buf)
+                            if len(s) <= room:
+                                buf = buf + s
+                                s = ""
+                            else:
+                                buf = buf + s[:room]
+                                groups.append(buf)
+                                buf = ""
+                                s = s[room:]
+                    if buf:
+                        groups.append(buf)
                     mx = 0
                     tot = 0
                     for g in groups:
