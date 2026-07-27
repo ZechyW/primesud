@@ -26,12 +26,16 @@ ballast pass approximates game conditions.  hvset/hvget also run at
 
 Results printed and written to save_bench.log -- flushed line by line,
 so a hard reset mid-run keeps everything logged up to the crash point,
-including per-pass ".." trace lines.  Segment order puts the HVars
-size-scaling first and the build segment last: repeated alloc-heavy
-build passes hard-reset the G1 (observed 27/07), so the cheap
-high-value numbers land in the log before the crash suspect runs.
-Uses HVar "savebench" (never the real primesud_save); reset to "0" at
-the end.  Leaves save_bench.tmp in the appdir (fwrite target).
+including per-pass ".." trace lines.  Repeated alloc-heavy build
+passes hard-reset the G1 (27/07 device log dies at build entry with
+the 8MB heap; all other segments survive), so ordering is
+data-before-death: HVars size-scaling first, then the cheap segments,
+then a build-variant ladder (quarter workload / pre-stringed tokens /
+no per-pass collect / full) that doubles as a crash-trigger bisect --
+whichever rung the reset lands on narrows the cause (volume vs
+str(int) vs gc interplay).  Uses HVar "savebench" (never the real
+primesud_save); reset to "0" at the end.  Leaves save_bench.tmp in
+the appdir (fwrite target).
 """
 import gc
 from hpprime import eval as ppleval
@@ -190,10 +194,11 @@ def _fwrite(payload):
         f.write(payload)
 
 
-def time_n(name, fn, n=N):
+def time_n(name, fn, n=N, collect=True):
     ts = []
     for i in range(n):
-        gc.collect()
+        if collect:
+            gc.collect()
         t0 = ticks()
         fn()
         ts.append(ticks() - t0)
@@ -222,9 +227,10 @@ def raw(ts):
 
 
 def run_segments(payload, work, tag):
-    # build runs LAST: repeated alloc-heavy passes are the segment that
-    # hard-resets the G1 (crash observed after the gc line, 27/07) --
-    # collect every other segment's numbers before entering it.
+    # No build here: repeated alloc-heavy build passes hard-reset the
+    # G1 (27/07 device log dies exactly at build entry, everything
+    # before survives) -- build runs via main's variant ladder instead,
+    # after all of this has hit the log.
     lines = build_pass(work)
     segs = (
         ("gc    ", gc.collect),
@@ -232,7 +238,6 @@ def run_segments(payload, work, tag):
         ("hvset ", lambda: hvars_set(HVAR, payload)),
         ("hvget ", lambda: hvars_get(HVAR) == payload),
         ("fwrite", lambda: _fwrite(payload)),
-        ("build ", lambda: build_pass(work)),
     )
     for name, fn in segs:
         try:
@@ -299,12 +304,44 @@ def main():
 
     run_segments(payload, work, "bare   ")
 
+    # Build-variant ladder, least to most demanding.  The G1 hard-
+    # resets somewhere in build territory; whichever rung it dies on
+    # narrows the trigger:
+    #   bld-q  -- quarter workload, same mix      (volume threshold?)
+    #   bld-s  -- pre-stringed tokens, no str(int) (int->str implicated,
+    #             format-bug family?)
+    #   bld-ng -- full workload, no per-pass collect (gc interplay?)
+    #   build  -- the real thing
+    work_q = work[:len(work) // 4]
+    work_s = []
+    for key, toks in work:
+        sparts = []
+        for t in toks:
+            sparts.append(str(t))
+        work_s.append((key, sparts))
+    for name, fn, coll in (
+            ("bld-q ", lambda: build_pass(work_q), True),
+            ("bld-s ", lambda: build_pass(work_s), True),
+            ("bld-ng", lambda: build_pass(work), False),
+            ("build ", lambda: build_pass(work), True),
+    ):
+        try:
+            ts = time_n("bare " + name, fn, collect=coll)
+            log("bare    " + fmt(name, ts) + "  raw " + raw(ts))
+        except Exception as e:
+            log("bare    " + name + ": FAILED " + str(e))
+
     log("building ballast...")
     f0 = free()
     ballast = make_ballast()
     log("ballast: " + str(len(ballast)) + " entries, "
         + str(f0 - free()) + "B live delta")
     run_segments(payload, work, "ballast")
+    try:
+        ts = time_n("ballast build ", lambda: build_pass(work))
+        log("ballast " + fmt("build ", ts) + "  raw " + raw(ts))
+    except Exception as e:
+        log("ballast build : FAILED " + str(e))
     ballast = None
     gc.collect()
 
