@@ -45,6 +45,14 @@ SAV = "primesud.sav"
 LOG = "save_bench.log"
 HVAR = "savebench"
 
+# Bisect toggle (G1 stall hunt, 27/07): False skips ALL HVars interop
+# (size-scaling block, hvset/hvget segments, end-of-run cleanup) --
+# HVars big-literal PPL parsing is the main workload difference from
+# mem_soak, which completes clean under identical conditions.  If the
+# ladder completes with this False, HVars is implicated; flip back to
+# True (or ship a 1x-only variant) to find the size threshold.
+DO_HV = False
+
 _out = []
 
 
@@ -232,13 +240,14 @@ def run_segments(payload, work, tag):
     # before survives) -- build runs via main's variant ladder instead,
     # after all of this has hit the log.
     lines = build_pass(work)
-    segs = (
+    segs = [
         ("gc    ", gc.collect),
         ("join  ", lambda: "~".join(lines)),
-        ("hvset ", lambda: hvars_set(HVAR, payload)),
-        ("hvget ", lambda: hvars_get(HVAR) == payload),
         ("fwrite", lambda: _fwrite(payload)),
-    )
+    ]
+    if DO_HV:
+        segs.insert(2, ("hvset ", lambda: hvars_set(HVAR, payload)))
+        segs.insert(3, ("hvget ", lambda: hvars_get(HVAR) == payload))
     for name, fn in segs:
         try:
             ts = time_n(tag.strip() + " " + name, fn)
@@ -284,23 +293,26 @@ def main():
 
     # HVars size-scaling first: cheapest, highest-value data -- get it
     # into the log before any alloc-heavy segment can hard-reset the G1.
-    for label, p in (("1x", payload),
-                     ("2x", payload + "~" + payload),
-                     ("4x", payload + "~" + payload + "~" + payload
-                      + "~" + payload)):
-        try:
-            gc.collect()
-            t0 = ticks()
-            hvars_set(HVAR, p)
-            w = ticks() - t0
-            t0 = ticks()
-            rb = hvars_get(HVAR)
-            ok = rb == p
-            r = ticks() - t0
-            log("hv " + label + " (" + str(len(p)) + "B): set=" + str(w)
-                + "ms get+cmp=" + str(r) + "ms match=" + str(ok))
-        except Exception as e:
-            log("hv " + label + ": FAILED " + str(e))
+    if not DO_HV:
+        log("DO_HV=False: skipping all HVars interop (bisect run)")
+    if DO_HV:
+        for label, p in (("1x", payload),
+                         ("2x", payload + "~" + payload),
+                         ("4x", payload + "~" + payload + "~" + payload
+                          + "~" + payload)):
+            try:
+                gc.collect()
+                t0 = ticks()
+                hvars_set(HVAR, p)
+                w = ticks() - t0
+                t0 = ticks()
+                rb = hvars_get(HVAR)
+                ok = rb == p
+                r = ticks() - t0
+                log("hv " + label + " (" + str(len(p)) + "B): set=" + str(w)
+                    + "ms get+cmp=" + str(r) + "ms match=" + str(ok))
+            except Exception as e:
+                log("hv " + label + ": FAILED " + str(e))
 
     run_segments(payload, work, "bare   ")
 
@@ -345,10 +357,11 @@ def main():
     ballast = None
     gc.collect()
 
-    try:
-        hvars_set(HVAR, "0")
-    except Exception:
-        pass
+    if DO_HV:
+        try:
+            hvars_set(HVAR, "0")
+        except Exception:
+            pass
 
     log("Done. Results in " + LOG)
 
