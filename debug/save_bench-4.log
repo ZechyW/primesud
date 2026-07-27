@@ -1,0 +1,72 @@
+save_bench: save-path primitive timings, N=5
+payload: file, 7990 bytes, 173 lines, 965 tokens
+DO_HV=False: skipping all HVars interop (bisect run)
+.. bare gc pass 1/5 78ms
+.. bare gc pass 2/5 78ms
+.. bare gc pass 3/5 78ms
+.. bare gc pass 4/5 80ms
+.. bare gc pass 5/5 79ms
+bare    gc    : min=78ms avg=78ms  raw 78 78 78 80 79
+.. bare join pass 1/5 1ms
+.. bare join pass 2/5 1ms
+.. bare join pass 3/5 2ms
+.. bare join pass 4/5 1ms
+.. bare join pass 5/5 2ms
+bare    join  : min=1ms avg=1ms  raw 1 1 2 1 2
+.. bare fwrite pass 1/5 11ms
+.. bare fwrite pass 2/5 9ms
+.. bare fwrite pass 3/5 9ms
+.. bare fwrite pass 4/5 9ms
+.. bare fwrite pass 5/5 9ms
+bare    fwrite: min=9ms avg=9ms  raw 11 9 9 9 9
+.. bare bld-q pass 1/5 18ms
+.. bare bld-q pass 2/5 18ms
+.. bare bld-q pass 3/5 18ms
+.. bare bld-q pass 4/5 17ms
+.. bare bld-q pass 5/5 18ms
+bare    bld-q : min=17ms avg=17ms  raw 18 18 18 17 18
+.. bare bld-s pass 1/5 105ms
+.. bare bld-s pass 2/5 104ms
+.. bare bld-s pass 3/5 104ms
+.. bare bld-s pass 4/5 105ms
+.. bare bld-s pass 5/5 105ms
+bare    bld-s : min=104ms avg=104ms  raw 105 104 104 105 105
+.. bare bld-ng pass 1/5 101ms
+.. bare bld-ng pass 2/5 101ms
+.. bare bld-ng pass 3/5 101ms
+.. bare bld-ng pass 4/5 100ms
+.. bare bld-ng pass 5/5 101ms
+bare    bld-ng: min=100ms avg=100ms  raw 101 101 101 100 101
+.. bare build pass 1/5 101ms
+.. bare build pass 2/5 101ms
+.. bare build pass 3/5 102ms
+.. bare build pass 4/5 102ms
+.. bare build pass 5/5 102ms
+bare    build : min=101ms avg=101ms  raw 101 101 102 102 102
+building ballast...
+ballast: 19456 entries, 2621376B live delta
+.. ballast gc pass 1/5 187ms
+.. ballast gc pass 2/5 184ms
+.. ballast gc pass 3/5 187ms
+.. ballast gc pass 4/5 186ms
+.. ballast gc pass 5/5 187ms
+ballast gc    : min=184ms avg=186ms  raw 187 184 187 186 187
+.. ballast join pass 1/5 1ms
+.. ballast join pass 2/5 2ms
+.. ballast join pass 3/5 1ms
+.. ballast join pass 4/5 1ms
+.. ballast join pass 5/5 2ms
+ballast join  : min=1ms avg=1ms  raw 1 2 1 1 2
+.. ballast fwrite pass 1/5 9ms
+.. ballast fwrite pass 2/5 10ms
+.. ballast fwrite pass 3/5 9ms
+.. ballast fwrite pass 4/5 9ms
+.. ballast fwrite pass 5/5 9ms
+ballast fwrite: min=9ms avg=9ms  raw 9 10 9 9 9
+.. ballast build pass 1/5 101ms
+.. ballast build pass 2/5 102ms
+.. ballast build pass 3/5 101ms
+.. ballast build pass 4/5 101ms
+.. ballast build pass 5/5 102ms
+ballast build : min=101ms avg=101ms  raw 101 102 101 101 102
+Done. Results in save_bench.log

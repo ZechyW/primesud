@@ -1,0 +1,46 @@
+save_bench: save-path primitive timings, N=5
+payload: file, 7990 bytes, 173 lines, 965 tokens
+HV_MODE=bigloop
+bigloop kind=chunkedng
+bigloop 1/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 1 end (no collect)
+bigloop 2/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 2 end (no collect)
+bigloop 3/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 3 end (no collect)
+bigloop 4/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 4 end (no collect)
+bigloop 5/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 5 end (no collect)
+bigloop 6/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 6 end (no collect)
+bigloop 7/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 7 end (no collect)
+bigloop 8/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 8 end (no collect)
+bigloop 9/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 9 end (no collect)
+bigloop 10/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 10 end (no collect)
+bigloop 11/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 11 end (no collect)
+bigloop 12/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 12 end (no collect)
+bigloop 13/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 13 end (no collect)
+bigloop 14/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 14 end (no collect)
+bigloop 15/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 15 end (no collect)
+bigloop 16/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 16 end (no collect)
+bigloop 17/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 17 end (no collect)
+bigloop 18/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 18 end (no collect)
+bigloop 19/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 19 end (no collect)
+bigloop 20/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 20 end (no collect)
+bigloop: 0 caught errors in 20 iterations
+Done. Results in save_bench.log

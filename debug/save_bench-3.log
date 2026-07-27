@@ -1,0 +1,98 @@
+save_bench: save-path primitive timings, N=5
+payload: file, 7990 bytes, 173 lines, 965 tokens
+hv 1x (7990B): set=10ms get+cmp=4ms match=True
+hv 2x (15981B): set=17ms get+cmp=6ms match=True
+hv 4x (31963B): set=32ms get+cmp=11ms match=True
+.. bare gc pass 1/5 85ms
+.. bare gc pass 2/5 86ms
+.. bare gc pass 3/5 85ms
+.. bare gc pass 4/5 86ms
+.. bare gc pass 5/5 85ms
+bare    gc    : min=85ms avg=85ms  raw 85 86 85 86 85
+.. bare join pass 1/5 1ms
+.. bare join pass 2/5 2ms
+.. bare join pass 3/5 2ms
+.. bare join pass 4/5 1ms
+.. bare join pass 5/5 1ms
+bare    join  : min=1ms avg=1ms  raw 1 2 2 1 1
+.. bare hvset pass 1/5 9ms
+.. bare hvset pass 2/5 10ms
+.. bare hvset pass 3/5 10ms
+.. bare hvset pass 4/5 10ms
+.. bare hvset pass 5/5 9ms
+bare    hvset : min=9ms avg=9ms  raw 9 10 10 10 9
+.. bare hvget pass 1/5 4ms
+.. bare hvget pass 2/5 4ms
+.. bare hvget pass 3/5 4ms
+.. bare hvget pass 4/5 4ms
+.. bare hvget pass 5/5 4ms
+bare    hvget : min=4ms avg=4ms  raw 4 4 4 4 4
+.. bare fwrite pass 1/5 13ms
+.. bare fwrite pass 2/5 11ms
+.. bare fwrite pass 3/5 10ms
+.. bare fwrite pass 4/5 9ms
+.. bare fwrite pass 5/5 9ms
+bare    fwrite: min=9ms avg=10ms  raw 13 11 10 9 9
+.. bare bld-q pass 1/5 38ms
+.. bare bld-q pass 2/5 38ms
+.. bare bld-q pass 3/5 38ms
+.. bare bld-q pass 4/5 39ms
+.. bare bld-q pass 5/5 39ms
+bare    bld-q : min=38ms avg=38ms  raw 38 38 38 39 39
+.. bare bld-s pass 1/5 243ms
+.. bare bld-s pass 2/5 243ms
+.. bare bld-s pass 3/5 243ms
+.. bare bld-s pass 4/5 243ms
+.. bare bld-s pass 5/5 243ms
+bare    bld-s : min=243ms avg=243ms  raw 243 243 243 243 243
+.. bare bld-ng pass 1/5 238ms
+.. bare bld-ng pass 2/5 238ms
+.. bare bld-ng pass 3/5 238ms
+.. bare bld-ng pass 4/5 239ms
+.. bare bld-ng pass 5/5 238ms
+bare    bld-ng: min=238ms avg=238ms  raw 238 238 238 239 238
+.. bare build pass 1/5 240ms
+.. bare build pass 2/5 240ms
+.. bare build pass 3/5 240ms
+.. bare build pass 4/5 240ms
+.. bare build pass 5/5 240ms
+bare    build : min=240ms avg=240ms  raw 240 240 240 240 240
+building ballast...
+ballast: 19456 entries, 2621216B live delta
+.. ballast gc pass 1/5 198ms
+.. ballast gc pass 2/5 198ms
+.. ballast gc pass 3/5 198ms
+.. ballast gc pass 4/5 198ms
+.. ballast gc pass 5/5 198ms
+ballast gc    : min=198ms avg=198ms  raw 198 198 198 198 198
+.. ballast join pass 1/5 1ms
+.. ballast join pass 2/5 1ms
+.. ballast join pass 3/5 2ms
+.. ballast join pass 4/5 1ms
+.. ballast join pass 5/5 2ms
+ballast join  : min=1ms avg=1ms  raw 1 1 2 1 2
+.. ballast hvset pass 1/5 10ms
+.. ballast hvset pass 2/5 9ms
+.. ballast hvset pass 3/5 9ms
+.. ballast hvset pass 4/5 10ms
+.. ballast hvset pass 5/5 10ms
+ballast hvset : min=9ms avg=9ms  raw 10 9 9 10 10
+.. ballast hvget pass 1/5 4ms
+.. ballast hvget pass 2/5 4ms
+.. ballast hvget pass 3/5 4ms
+.. ballast hvget pass 4/5 4ms
+.. ballast hvget pass 5/5 4ms
+ballast hvget : min=4ms avg=4ms  raw 4 4 4 4 4
+.. ballast fwrite pass 1/5 10ms
+.. ballast fwrite pass 2/5 12ms
+.. ballast fwrite pass 3/5 10ms
+.. ballast fwrite pass 4/5 10ms
+.. ballast fwrite pass 5/5 10ms
+ballast fwrite: min=10ms avg=10ms  raw 10 12 10 10 10
+.. ballast build pass 1/5 240ms
+.. ballast build pass 2/5 239ms
+.. ballast build pass 3/5 239ms
+.. ballast build pass 4/5 240ms
+.. ballast build pass 5/5 240ms
+ballast build : min=239ms avg=239ms  raw 240 239 239 240 240
+Done. Results in save_bench.log

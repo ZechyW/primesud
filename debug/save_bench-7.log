@@ -1,0 +1,10 @@
+save_bench: save-path primitive timings, N=5
+payload: file, 7990 bytes, 173 lines, 965 tokens
+HV_MODE=bigloop
+bigloop kind=chunked
+bigloop 1/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 1 collect ok
+bigloop 2/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 2 collect ok
+bigloop 3/20 ok chunked 4 groups, max 2048B, tot 7991B
+.. 3 collect ok

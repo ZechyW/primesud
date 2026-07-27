@@ -1,0 +1,44 @@
+mem_soak: chunk=32768B max=400
+free at start: 8185904
+free after collect: 8186144
+fill 8 ~256KB free=7922640
+fill 16 ~512KB free=7659136
+fill 24 ~768KB free=7395520
+fill 32 ~1024KB free=7131920
+fill 40 ~1280KB free=6868128
+fill 48 ~1536KB free=6604432
+fill 56 ~1792KB free=6340640
+fill 64 ~2048KB free=6076816
+fill 72 ~2304KB free=5812672
+fill 80 ~2560KB free=5548720
+fill 88 ~2816KB free=5284720
+fill 96 ~3072KB free=5020672
+fill 104 ~3328KB free=4756560
+fill 112 ~3584KB free=4492384
+fill 120 ~3840KB free=4228080
+fill 128 ~4096KB free=3963776
+fill 136 ~4352KB free=3698896
+fill 144 ~4608KB free=3434480
+fill 152 ~4864KB free=3170016
+fill 160 ~5120KB free=2905488
+fill 168 ~5376KB free=2640896
+fill 176 ~5632KB free=2376240
+fill 184 ~5888KB free=2111520
+fill 192 ~6144KB free=1846736
+fill 200 ~6400KB free=1581888
+fill 208 ~6656KB free=1316992
+fill 216 ~6912KB free=1052048
+fill 224 ~7168KB free=787040
+fill 232 ~7424KB free=521968
+fill 240 ~7680KB free=256832
+filled 247 chunks = 7904KB in 4532ms (MemoryError)
+.. verify 1 at 64
+.. verify 1 at 128
+.. verify 1 at 192
+verify pass 1: 0 bad of 243 in 16347ms
+.. verify 2 at 64
+.. verify 2 at 128
+.. verify 2 at 192
+verify pass 2: 0 bad of 243 in 16562ms
+free after release: 8118128
+Done. Results in mem_soak.log

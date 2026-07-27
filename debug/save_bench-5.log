@@ -1,0 +1,97 @@
+save_bench: save-path primitive timings, N=5
+payload: file, 7990 bytes, 173 lines, 965 tokens
+HV_MODE=1x
+hv 1x (7990B): set=9ms get+cmp=3ms match=True
+.. bare gc pass 1/5 79ms
+.. bare gc pass 2/5 78ms
+.. bare gc pass 3/5 79ms
+.. bare gc pass 4/5 79ms
+.. bare gc pass 5/5 79ms
+bare    gc    : min=78ms avg=78ms  raw 79 78 79 79 79
+.. bare join pass 1/5 2ms
+.. bare join pass 2/5 2ms
+.. bare join pass 3/5 2ms
+.. bare join pass 4/5 1ms
+.. bare join pass 5/5 2ms
+bare    join  : min=1ms avg=1ms  raw 2 2 2 1 2
+.. bare hvset pass 1/5 9ms
+.. bare hvset pass 2/5 9ms
+.. bare hvset pass 3/5 9ms
+.. bare hvset pass 4/5 9ms
+.. bare hvset pass 5/5 9ms
+bare    hvset : min=9ms avg=9ms  raw 9 9 9 9 9
+.. bare hvget pass 1/5 3ms
+.. bare hvget pass 2/5 4ms
+.. bare hvget pass 3/5 3ms
+.. bare hvget pass 4/5 4ms
+.. bare hvget pass 5/5 3ms
+bare    hvget : min=3ms avg=3ms  raw 3 4 3 4 3
+.. bare fwrite pass 1/5 13ms
+.. bare fwrite pass 2/5 9ms
+.. bare fwrite pass 3/5 9ms
+.. bare fwrite pass 4/5 10ms
+.. bare fwrite pass 5/5 9ms
+bare    fwrite: min=9ms avg=10ms  raw 13 9 9 10 9
+.. bare bld-q pass 1/5 18ms
+.. bare bld-q pass 2/5 18ms
+.. bare bld-q pass 3/5 18ms
+.. bare bld-q pass 4/5 18ms
+.. bare bld-q pass 5/5 18ms
+bare    bld-q : min=18ms avg=18ms  raw 18 18 18 18 18
+.. bare bld-s pass 1/5 104ms
+.. bare bld-s pass 2/5 104ms
+.. bare bld-s pass 3/5 104ms
+.. bare bld-s pass 4/5 104ms
+.. bare bld-s pass 5/5 104ms
+bare    bld-s : min=104ms avg=104ms  raw 104 104 104 104 104
+.. bare bld-ng pass 1/5 100ms
+.. bare bld-ng pass 2/5 100ms
+.. bare bld-ng pass 3/5 100ms
+.. bare bld-ng pass 4/5 99ms
+.. bare bld-ng pass 5/5 99ms
+bare    bld-ng: min=99ms avg=99ms  raw 100 100 100 99 99
+.. bare build pass 1/5 101ms
+.. bare build pass 2/5 100ms
+.. bare build pass 3/5 101ms
+.. bare build pass 4/5 100ms
+.. bare build pass 5/5 101ms
+bare    build : min=100ms avg=100ms  raw 101 100 101 100 101
+building ballast...
+ballast: 19456 entries, 2621376B live delta
+.. ballast gc pass 1/5 193ms
+.. ballast gc pass 2/5 192ms
+.. ballast gc pass 3/5 192ms
+.. ballast gc pass 4/5 192ms
+.. ballast gc pass 5/5 193ms
+ballast gc    : min=192ms avg=192ms  raw 193 192 192 192 193
+.. ballast join pass 1/5 1ms
+.. ballast join pass 2/5 1ms
+.. ballast join pass 3/5 1ms
+.. ballast join pass 4/5 2ms
+.. ballast join pass 5/5 1ms
+ballast join  : min=1ms avg=1ms  raw 1 1 1 2 1
+.. ballast hvset pass 1/5 9ms
+.. ballast hvset pass 2/5 9ms
+.. ballast hvset pass 3/5 9ms
+.. ballast hvset pass 4/5 9ms
+.. ballast hvset pass 5/5 9ms
+ballast hvset : min=9ms avg=9ms  raw 9 9 9 9 9
+.. ballast hvget pass 1/5 4ms
+.. ballast hvget pass 2/5 3ms
+.. ballast hvget pass 3/5 4ms
+.. ballast hvget pass 4/5 3ms
+.. ballast hvget pass 5/5 4ms
+ballast hvget : min=3ms avg=3ms  raw 4 3 4 3 4
+.. ballast fwrite pass 1/5 10ms
+.. ballast fwrite pass 2/5 11ms
+.. ballast fwrite pass 3/5 9ms
+.. ballast fwrite pass 4/5 9ms
+.. ballast fwrite pass 5/5 9ms
+ballast fwrite: min=9ms avg=9ms  raw 10 11 9 9 9
+.. ballast build pass 1/5 101ms
+.. ballast build pass 2/5 100ms
+.. ballast build pass 3/5 101ms
+.. ballast build pass 4/5 101ms
+.. ballast build pass 5/5 100ms
+ballast build : min=100ms avg=100ms  raw 101 100 101 101 100
+Done. Results in save_bench.log

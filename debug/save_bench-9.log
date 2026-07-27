@@ -1,0 +1,40 @@
+save_bench: save-path primitive timings, N=5
+payload: file, 7990 bytes, 173 lines, 965 tokens
+HV_MODE=bigloop
+bigloop kind=autogc
+bigloop 1/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 2/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 3/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 4/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 5/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 6/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 7/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 8/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 9/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 10/300 ok chunked 4 groups, max 2048B, tot 7991B
+.. 10 free=5556272
+bigloop 11/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 12/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 13/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 14/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 15/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 16/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 17/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 18/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 19/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 20/300 ok chunked 4 groups, max 2048B, tot 7991B
+.. 20 free=3032480
+bigloop 21/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 22/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 23/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 24/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 25/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 26/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 27/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 28/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 29/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 30/300 ok chunked 4 groups, max 2048B, tot 7991B
+.. 30 free=495664
+bigloop 31/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 32/300 ok chunked 4 groups, max 2048B, tot 7991B
+bigloop 33/300 ok chunked 4 groups, max 2048B, tot 7991B

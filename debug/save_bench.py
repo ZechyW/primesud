@@ -94,19 +94,33 @@ HV_MODE = "bigloop"
 #                falsified before it reached the game.
 #   "chunkedng" -- chunked without the explicit per-cycle gc.collect.
 #                CLEAN over multiple sessions (save_bench-8.log,
-#                27/07): the explicit collect is convicted as the
-#                trigger.  Caveat: 20 iterations (~2MB garbage, 8MB
-#                heap) may never auto-collect, so this shows "no
-#                collect = no death", not yet "auto-collect is safe".
+#                27/07): no collect = no death.  (Early "explicit
+#                collect is the trigger" read was overturned by the
+#                autogc death -- see below.)
 #   "autogc"  -- chunkedng at 300 iterations (~30MB garbage):
 #                guarantees several alloc-triggered auto-collects
 #                (mem_free logged every 10 iters shows them fire).
-#                Clean => auto-collect is safe and the game fix is
-#                just removing/relocating explicit gc_collect() calls
-#                after churn (save path first).  Dies at/after the
-#                first auto-collect => any collect over churned state
-#                is unsafe; pivot to rate reduction + resilience.
-BIGLOOP_KIND = "autogc"
+#                DIED at ~iter 33 (save_bench-9.log) -- exactly when
+#                heap exhaustion forced the first auto-collect (free
+#                fell 5.5MB -> 0.5MB with no dips before death).
+#                Verdict: any collect over churned mixed garbage is
+#                unsafe; explicit-vs-auto irrelevant.
+# Garbage-composition matrix (27/07, post-verdict): the deadly kinds
+# all mixed a small-alloc storm WITH medium/big payload strings; the
+# clean kinds had one ingredient or no collect.  These isolate which
+# ingredient loads the gun -- each runs 20x [make garbage -> drop ->
+# explicit collect]:
+#   "smallonly"  -- token-str storm only (~965 small str allocs + 173
+#                list allocs per iter), NO line/medium/big strings.
+#                Dies => small string churn alone is sufficient;
+#                medium/big strings fully innocent.
+#   "smallnostr" -- same alloc count/shape but tuples of existing
+#                refs: zero new string objects.  Dies => generic
+#                allocator/GC bug.  Clean while smallonly dies =>
+#                string-object-specific (str-format-bug family).
+#   "medonly" -- 2KB payload slices only (4 medium strs per iter), no
+#                small churn.  Complements bigonly (which was 8-32KB).
+BIGLOOP_KIND = "smallonly"
 
 _out = []
 
@@ -417,6 +431,42 @@ def main():
                     log("bigloop " + str(it + 1) + n_str + " ok chunked "
                         + str(len(groups)) + " groups, max " + str(mx)
                         + "B, tot " + str(tot) + "B")
+                    groups = None
+                elif BIGLOOP_KIND == "smallonly":
+                    # Token-str storm only: same str()/append churn as
+                    # build_pass but no line strings, so every garbage
+                    # object is a small str or a small list.
+                    nal = 0
+                    for _key, toks in work:
+                        parts = []
+                        for t in toks:
+                            parts.append(str(t))
+                        nal += len(parts)
+                        parts = None
+                    log("bigloop " + str(it + 1) + n_str + " ok small "
+                        + str(nal) + " str allocs")
+                elif BIGLOOP_KIND == "smallnostr":
+                    # Same alloc count/shape, zero new string objects:
+                    # tuples of existing refs + list churn only.
+                    nal = 0
+                    for _key, toks in work:
+                        parts = []
+                        for t in toks:
+                            parts.append((t, it))
+                        nal += len(parts)
+                        parts = None
+                    log("bigloop " + str(it + 1) + n_str + " ok nostr "
+                        + str(nal) + " tuple allocs")
+                elif BIGLOOP_KIND == "medonly":
+                    # Medium strings only: 2KB slices of the payload,
+                    # no small-alloc churn at all.
+                    groups = []
+                    i = 0
+                    while i < len(payload):
+                        groups.append(payload[i:i + 2048])
+                        i += 2048
+                    log("bigloop " + str(it + 1) + n_str + " ok med "
+                        + str(len(groups)) + " x <=2048B slices")
                     groups = None
                 else:
                     if BIGLOOP_KIND == "bigmul":

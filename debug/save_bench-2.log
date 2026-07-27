@@ -1,0 +1,35 @@
+save_bench: save-path primitive timings, N=5
+payload: file, 7990 bytes, 173 lines, 965 tokens
+hv 1x (7990B): set=10ms get+cmp=4ms match=True
+hv 2x (15981B): set=17ms get+cmp=7ms match=True
+hv 4x (31963B): set=32ms get+cmp=11ms match=True
+.. bare gc pass 1/5 84ms
+.. bare gc pass 2/5 84ms
+.. bare gc pass 3/5 84ms
+.. bare gc pass 4/5 84ms
+.. bare gc pass 5/5 84ms
+bare    gc    : min=84ms avg=84ms  raw 84 84 84 84 84
+.. bare join pass 1/5 2ms
+.. bare join pass 2/5 2ms
+.. bare join pass 3/5 2ms
+.. bare join pass 4/5 2ms
+.. bare join pass 5/5 2ms
+bare    join  : min=2ms avg=2ms  raw 2 2 2 2 2
+.. bare hvset pass 1/5 9ms
+.. bare hvset pass 2/5 9ms
+.. bare hvset pass 3/5 10ms
+.. bare hvset pass 4/5 10ms
+.. bare hvset pass 5/5 9ms
+bare    hvset : min=9ms avg=9ms  raw 9 9 10 10 9
+.. bare hvget pass 1/5 4ms
+.. bare hvget pass 2/5 3ms
+.. bare hvget pass 3/5 4ms
+.. bare hvget pass 4/5 4ms
+.. bare hvget pass 5/5 4ms
+bare    hvget : min=3ms avg=3ms  raw 4 3 4 4 4
+.. bare fwrite pass 1/5 13ms
+.. bare fwrite pass 2/5 9ms
+.. bare fwrite pass 3/5 10ms
+.. bare fwrite pass 4/5 10ms
+.. bare fwrite pass 5/5 10ms
+bare    fwrite: min=9ms avg=10ms  raw 13 9 10 10 10
