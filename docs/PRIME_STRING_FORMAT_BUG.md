@@ -173,13 +173,23 @@ Six-phase differentiation battery run on both devices
   rest of the operator x context matrix (pct-loop, pct-t1, fmt-loop)
   is being bisected one phase per session (fmt_battery.py
   START_PHASE).
-- Game-code implication, URGENT-ish: the "transient UI-only strings
-  may still use %" allowance was written when the worst known
-  outcome was a corrupted display string; pct-comp crashing both
-  devices means % with dict-sourced args in loop/comprehension
-  contexts is a crash risk, not a cosmetic one.  Audit game % sites
-  against the allowance's "simple literals, no dict lookup" wording
-  before trusting it.
+- Bisect continuation (28 Jul 2026, -3/-4 logs, both devices each
+  time): pct-loop (plain loop, subscripts in the % expression) DEAD;
+  pct-loop-locals (same loop, lookups hoisted to plain locals before
+  the % line) ALSO DEAD.  No comprehension, no dict access at the
+  format site, still fatal on G1 and G2.
+- Standing contrast that bounds the safe set: single-int `"%d" % t`
+  in a plain loop is proven clean at scale (60 collects G1, 27.6K
+  verified conversions G2).  The A1L shape differs only in
+  {multi-arg tuple, %s-with-str-arg, %% escape} -- the poison is in
+  that set; bisectable via further START_PHASE rungs if wanted.
+- Game-code implication, SEVERE: the "transient UI-only strings may
+  still use %" allowance is DEAD -- hoisted-locals % in a loop, its
+  best case, crashes both devices.  The only demonstrated-safe %
+  use is a single int arg with "%d".  Treat every %s / multi-arg /
+  .format site as crash exposure on BOTH devices until the poison
+  ingredient is isolated; concat + str() (or the int_str/cache path
+  in bulk) is the only fully-cleared construction method.
 
 Caution on Trigger 1's crash counts: the ~200-autosave crash vs 300+
 clean comparison was one run each, and any save build of that era also

@@ -70,8 +70,12 @@ ITERS = 20
 # next session from the phase after the killer.
 # Verdicts so far (both devices unless noted): A0/pct-comp DEAD
 # (28/07, -2 logs); A1/pct-loop DEAD (28/07, -3 logs) -- plain loop
-# suffices, comprehension not required.
-START_PHASE = "A1L"
+# suffices, comprehension not required; A1L/pct-loop-locals DEAD
+# (28/07, -4 logs) -- hoisting args to locals does NOT help.
+# Standing contrast: single-int '"%d" % t' loops are proven clean
+# (matrix3 pctonly 60 collects G1; D phase 27.6K conversions G2), so
+# the poison is among {multi-arg tuple, %s-with-str-arg, %% escape}.
+START_PHASE = "A1t"
 
 _out = []
 

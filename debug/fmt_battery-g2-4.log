@@ -1,0 +1,5 @@
+fmt_battery: format-bug vs str(int)-GC-bug differentiation
+free at start=8174944
+skip A0/pct-comp
+skip A1/pct-loop
+phase A1L/pct-loop-locals reps=30 free=8170112
