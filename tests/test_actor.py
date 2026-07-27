@@ -92,6 +92,7 @@ def test_safe_fmt_matches_percent_operator():
         ("%05d]", (-42,)),
         ("100%% done %d", (3,)),
         ("%c", ("y",)),
+        ("%c", (65,)),
     ]
     for fmt, args in cases:
         assert handler._safe_fmt(fmt, args) == fmt % args, fmt

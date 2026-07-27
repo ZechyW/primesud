@@ -702,7 +702,9 @@ def _safe_fmt(fmt, args):
         ai += 1
         if c == "d":
             s = int_str(arg) if type(arg) is int else str(arg)
-        elif c == "s" or c == "c":
+        elif c == "c":
+            s = chr(arg) if type(arg) is int else (arg if type(arg) is str else str(arg))
+        elif c == "s":
             s = arg if type(arg) is str else str(arg)
         else:
             raise ValueError("unsupported format: %" + c)
