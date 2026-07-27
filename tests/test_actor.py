@@ -72,3 +72,26 @@ def test_chprintlnf(scene):
     assert handler.chprintlnf(scene["player"], "%s %d", "lvl", 3) == 1
     assert handler.chprintlnf(scene["player"], None) == 1
     assert scene["seen"] == ["lvl 3", ""]
+
+
+def test_safe_fmt_matches_percent_operator():
+    # chprintf/chprintlnf format via _safe_fmt (manual concat parser), not
+    # the firmware % operator (banned on-device, CLAUDE.md pitfall 8);
+    # CPython's % is the reference implementation for the supported subset
+    cases = [
+        ("plain text", ()),
+        ("%s", ("x",)),
+        ("%d", (0,)),
+        ("%d", (-42,)),
+        ("a %s b %d c", ("mid", 7)),
+        ("%-10s|", ("left",)),
+        ("%10s|", ("right",)),
+        ("%2d]", (123,)),
+        ("%5d]", (-7,)),
+        ("%05d]", (42,)),
+        ("%05d]", (-42,)),
+        ("100%% done %d", (3,)),
+        ("%c", ("y",)),
+    ]
+    for fmt, args in cases:
+        assert handler._safe_fmt(fmt, args) == fmt % args, fmt

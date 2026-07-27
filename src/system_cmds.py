@@ -1,9 +1,10 @@
 """System command handlers for save, backup, and quit."""
 
 from game_state import save_world, backup_world
-from handler import chprintln, chprintlnf
+from handler import chprintln
 from skill_utils import WaitState
 from config import PULSE_VIOLENCE
+from util import num_str
 
 
 def do_save(player, args):
@@ -39,19 +40,19 @@ def do_backup(player, args):
             if player.get("backup", 0) == 0:
                 chprintln(player, "{RThere is currently no backup for your character.{x")
             elif elapsed >= 3600 * 24:
-                chprintlnf(player,
-                          "{RYou have not backed up for {W%d{R hours of gameplay.{x",
-                          elapsed // 3600)
+                chprintln(player,
+                          "{RYou have not backed up for {W" + num_str(elapsed // 3600)
+                          + "{R hours of gameplay.{x")
             else:
                 hrs = elapsed // 3600
-                chprintlnf(player,
-                          "{RYou have not backed up for {W%d{R hour%s of gameplay.{x",
-                          hrs, "" if hrs == 1 else "s")
+                chprintln(player,
+                          "{RYou have not backed up for {W" + num_str(hrs)
+                          + "{R hour" + ("" if hrs == 1 else "s") + " of gameplay.{x")
         return
 
     if backup_world():
         player["backup"] = player.get("played", 0)
-        chprintlnf(player, "%s has been saved to a backup.", player.get("name", ""))
+        chprintln(player, player.get("name", "") + " has been saved to a backup.")
         WaitState(player, PULSE_VIOLENCE)
     else:
         # [PRIMESUD] upstream never checks backup_char_obj's return value and

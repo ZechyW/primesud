@@ -1,7 +1,7 @@
 """Communication commands: say, tell (cf. 1stMud do_say/do_tell in act_comm.c)."""
 
 import world
-from handler import (act, chprintln, chprintlnf, is_name, get_char_room,
+from handler import (act, chprintln, is_name, get_char_room,
                    affect_strip, can_see, _pers,
                    TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ZONE)
 from colors import capitalize
@@ -9,6 +9,7 @@ from classes import class_who
 from skill_utils import WaitState
 from skills_table import GSN_CHARM_PERSON
 from config import PULSE_VIOLENCE
+from util import num_str, pad_left, pad_right
 
 
 # -- say_verb (cf. 1stMud say_verb in act_comm.c) ----------------------------
@@ -168,8 +169,8 @@ def do_tell(ch, argument):
 
     victim_name = victim.get("name", "someone")
     ch_name = ch.get("name", "someone")
-    chprintlnf(ch, "{cYou tell %s '{C%s{c'{x", victim_name, argument)
-    chprintlnf(victim, "{c%s tells you '{C%s{c'{x", ch_name, argument)
+    chprintln(ch, "{cYou tell " + victim_name + " '{C" + argument + "{c'{x")
+    chprintln(victim, "{c" + ch_name + " tells you '{C" + argument + "{c'{x")
 
     victim["reply"] = ch["id"]  # [PRIMESUD] stored as id, not dict ref (see _char_base)
     # TRIG_SPEECH: PC telling an NPC fires its speech prog (cf. do_tell, act_comm.c:624)
@@ -203,8 +204,8 @@ def do_reply(ch, argument):
 
     ch_name = ch.get("name", "someone")
     victim_name = victim.get("name", "someone")
-    chprintlnf(ch, "{cYou tell %s '{C%s{c'{x", victim_name, argument)
-    chprintlnf(victim, "{c%s tells you '{C%s{c'{x", ch_name, argument)
+    chprintln(ch, "{cYou tell " + victim_name + " '{C" + argument + "{c'{x")
+    chprintln(victim, "{c" + ch_name + " tells you '{C" + argument + "{c'{x")
     victim["reply"] = ch["id"]  # [PRIMESUD] stored as id, not dict ref (see _char_base)
 
 
@@ -506,35 +507,37 @@ def do_group(ch, args):
         leader = world.chars.get(ch["leader"], ch)
 
     if not args:
-        chprintln(ch, "%s's group:" % _pers(leader, ch))
+        chprintln(ch, _pers(leader, ch) + "'s group:")
         for gch in world.chars.values():
             if is_same_group(gch, ch):
                 # [PRIMESUD] two-line split: 1stMud's single "[%2d %s] %-16s
                 # %4ld/%4ld hp ... %5d xp" line is ~70 chars and wraps at 64.
-                chprintln(ch, "[%2d %-4s] %s" % (
-                    gch["level"],
-                    "Mob" if gch["is_npc"] else class_who(gch),
-                    capitalize(_pers(gch, ch))))
+                chprintln(ch, "[" + pad_left(num_str(gch["level"]), 2) + " "
+                    + pad_right("Mob" if gch["is_npc"] else class_who(gch), 4)
+                    + "] " + capitalize(_pers(gch, ch)))
                 chprintln(ch,
-                    "     %4d/%4d hp %4d/%4d mana %4d/%4d mv %5d xp" % (
-                        gch["hit"], gch["max_hit"],
-                        gch["mana"], gch["max_mana"],
-                        gch.get("move", 0), gch.get("max_move", 0),
-                        0 if gch["is_npc"] else gch.get("xp", 0)))
+                    "     " + pad_left(num_str(gch["hit"]), 4) + "/"
+                    + pad_left(num_str(gch["max_hit"]), 4) + " hp "
+                    + pad_left(num_str(gch["mana"]), 4) + "/"
+                    + pad_left(num_str(gch["max_mana"]), 4) + " mana "
+                    + pad_left(num_str(gch.get("move", 0)), 4) + "/"
+                    + pad_left(num_str(gch.get("max_move", 0)), 4) + " mv "
+                    + pad_left(num_str(0 if gch["is_npc"] else gch.get("xp", 0)), 5)
+                    + " xp")
         chprintln(ch, "Type 'group where' to view group member locations.")
         return
 
     # 1stMud one_argument: only the first word matters
     if args[0] == "where":
-        chprintln(ch, "{W%s's group:{x" % _pers(leader, ch))
+        chprintln(ch, "{W" + _pers(leader, ch) + "'s group:{x")
         for gch in world.chars.values():
             if is_same_group(gch, ch):
                 rs = world.rooms.get(gch.get("room"))
                 room_name = rs["name"] if rs else "somewhere"
                 tag = world.ROOM_DEFS.get(gch.get("room"), {}).get("area")
                 area_name = world._TAG_TO_NAME.get(tag, tag) if tag else ""
-                chprintln(ch, "{W%s is in %s the general area of %s.{x" % (
-                    _pers(gch, ch), room_name, area_name))
+                chprintln(ch, "{W" + _pers(gch, ch) + " is in " + room_name
+                    + " the general area of " + area_name + ".{x")
         return
 
     rs = world.rooms.get(ch.get("room"))

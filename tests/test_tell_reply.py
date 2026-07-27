@@ -42,8 +42,8 @@ def two_chars(monkeypatch):
     world.chars[2] = mob
 
     out = []
-    monkeypatch.setattr(comm, "chprintlnf",
-                        lambda ch, fmt, *a: out.append(fmt % a))
+    monkeypatch.setattr(comm, "chprintln",
+                        lambda ch, txt: out.append(txt))
     yield player, mob, out
 
     ROOM_DEFS._data.clear(); ROOM_DEFS._data.update(old_rd)

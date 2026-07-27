@@ -6,17 +6,30 @@ from hpprime import eval as ppl_eval
 
 def wait(seconds):
     """Wait for seconds via PPL WAIT."""
-    ppl_eval("WAIT({})".format(seconds))
+    ppl_eval("WAIT(" + str(seconds) + ")")
 
 
 def fmt_bytes(n, precision=1):
     """Format a byte count as a human-readable string."""
-    fmt = "{:." + str(precision) + "f}{}"
-    for unit in ("B", "K", "M"):
+    unit = "G"
+    for u in ("B", "K", "M"):
         if n < 1024:
-            return fmt.format(n, unit)
+            unit = u
+            break
         n /= 1024
-    return fmt.format(n, "G")
+    # manual fixed-point render: %/.format banned on-device (CLAUDE.md
+    # pitfall 8) and this reproduces "{:.<p>f}" rounding for positive n
+    p10 = 1
+    for _ in range(precision):
+        p10 *= 10
+    scaled = int(n * p10 + 0.5)
+    whole = int_str(scaled // p10)
+    if precision == 0:
+        return whole + unit
+    f = int_str(scaled % p10)
+    while len(f) < precision:
+        f = "0" + f
+    return whole + "." + f + unit
 
 
 def free_mem():
@@ -80,3 +93,29 @@ def sstr(v):
     if t is str:
         return v
     return str(v)
+
+
+# str.ljust/rjust are missing on-device and %-padding is banned (see
+# CLAUDE.md pitfall 8); these pad by byte length, like the old % specs.
+# For strings carrying {X colour codes use info._pad_color instead.
+
+def pad_right(s, w):
+    """Left-justify: pad s with trailing spaces to byte width w. [PRIMESUD]"""
+    d = w - len(s)
+    return s + " " * d if d > 0 else s
+
+
+def pad_left(s, w):
+    """Right-justify: pad s with leading spaces to byte width w. [PRIMESUD]"""
+    d = w - len(s)
+    return " " * d + s if d > 0 else s
+
+
+def zpad(n, w):
+    """Render int n zero-padded to byte width w, sign preserved. [PRIMESUD]"""
+    s = int_str(n)
+    if s[0] == "-":
+        d = w - len(s)
+        return ("-" + "0" * d + s[1:]) if d > 0 else s
+    d = w - len(s)
+    return ("0" * d + s) if d > 0 else s

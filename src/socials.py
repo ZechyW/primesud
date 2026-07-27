@@ -6,6 +6,7 @@ from handler import act, chprintln, get_char_room, is_awake, is_name, \
     TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT
 from pager import tpage
 from urandom import randint
+from util import pad_right
 
 SOCIALS_FILE = "socials.txt"  # [PRIMESUD] canonical source; idx via tools/build_socials_idx.py
 SOCIALS_IDX = "socials.idx"   # [PRIMESUD] '<offset>|<length>|<name>' per entry, sorted by name
@@ -67,7 +68,7 @@ def do_socials(player, args):
     lines = []
     for i in range(0, len(names), SOCIALS_COLS):
         row = names[i:i + SOCIALS_COLS]
-        lines.append("".join("%-12s" % n for n in row))
+        lines.append("".join(pad_right(n, 12) for n in row))
     lines.append("Use the 'sshow' command to display a social's text.")
     tpage(lines)
 
@@ -107,7 +108,7 @@ def do_sshow(player, args):
         "affected_by": {}, "fighting": None,
     }
 
-    chprintln(player, "Social: %s" % name)
+    chprintln(player, "Social: " + name)
     act(char_no_arg, player, None, None, TO_CHAR)
     act(others_no_arg, player, None, None, TO_CHAR)
 

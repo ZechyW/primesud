@@ -87,7 +87,7 @@ def do_alias(player, argument):
     if not argument:
         for name, sub in aliases:
             if name == arg:
-                tprint("%s aliases to '%s'." % (name, sub))
+                tprint(name + " aliases to '" + sub + "'.")
                 return None
         tprint("That alias is not defined.")
         return None
@@ -111,7 +111,7 @@ def do_alias(player, argument):
     for pos, pair in enumerate(aliases):
         if pair[0] == arg:
             pair[1] = argument
-            tprint("%s is now realiased to '%s'." % (arg, argument))
+            tprint(arg + " is now realiased to '" + argument + "'.")
             return None
 
     if len(aliases) >= MAX_ALIAS:
@@ -119,7 +119,7 @@ def do_alias(player, argument):
         return None
 
     aliases.append([arg, argument])
-    tprint("%s is now aliased to '%s'." % (arg, argument))
+    tprint(arg + " is now aliased to '" + argument + "'.")
     return None
 
 

@@ -56,7 +56,7 @@ def spec_cast_adept(ch):
     else:
         return False
 
-    act("$n utters the word '%s'." % word, ch=ch, type=TO_ROOM)
+    act("$n utters the word '" + word + "'.", ch=ch, type=TO_ROOM)
     return _cast_spell(ch, spell, player)
 
 

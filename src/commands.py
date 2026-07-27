@@ -52,6 +52,7 @@ from pager import tpage
 from terminal import tprint
 from training import do_train, do_practice, do_remort, do_gain, do_prime
 from urandom import randint
+from util import pad_right
 
 _POS_MSG = {
     "dead":     "Lie still; you are DEAD.",
@@ -91,7 +92,7 @@ def do_commands(player, args):
     # cf. cmd_first_sorted -- alphabetical listing
     lines = []
     for name in sorted(e[0] for e in _CMD_TABLE):
-        lines.append("{G%-10s{x %s" % (name, descs.get(name, "")))
+        lines.append("{G" + pad_right(name, 10) + "{x " + descs.get(name, ""))
     tpage(lines)
 
 
@@ -477,10 +478,14 @@ _FREETEXT_FUNS = (do_say, do_emote, do_tell, do_reply, do_yell, do_alias,
 # -- Interpreter ---------------------------------------------------------------
 
 # {? = random colour in 1stMud; we use {R as fallback until random colour ported
+# Index 2 is a template: "{RWhat is command '<cmd>'?{x" -- built by concatenation
+# below (no % formatting on-device), so its list slot holds just the prefix.
+_HUH_CMD_MSG = 2
+_HUH_CMD_SUFFIX = "'?{x"
 _HUH_MESSAGES = [
     "{RHuh?{x",
     "{RPardon?{x",
-    "{RWhat is command '%s'?{x",
+    "{RWhat is command '",
     "{RInput error.{x",
     "{RTry again.{x",
     "{RI do not understand.{x",
@@ -609,9 +614,10 @@ def interpret(raw, player):
         # command-table entries) [PRIMESUD]
         if check_social(player, command, argument):
             return None
-        msg = _HUH_MESSAGES[randint(0, len(_HUH_MESSAGES) - 1)]
-        if "%s" in msg:
-            chprintln(player, msg % command)
+        idx = randint(0, len(_HUH_MESSAGES) - 1)
+        msg = _HUH_MESSAGES[idx]
+        if idx == _HUH_CMD_MSG:
+            chprintln(player, msg + command + _HUH_CMD_SUFFIX)
         else:
             chprintln(player, msg)
         return None

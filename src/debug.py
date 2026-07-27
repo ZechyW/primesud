@@ -7,6 +7,7 @@ from config import MAX_LEVEL
 from pager import tpage
 from skills_table import (GSN_PLAGUE, GSN_POISON, GSN_BLINDNESS, GSN_CURSE,
                           GSN_SLEEP)
+from util import num_str, pad_left, pad_right
 
 # Game-module imports (combat, handler, item, info, mob, game_state) stay
 # function-local throughout this file: handler/info/mob/update import debug
@@ -287,9 +288,11 @@ def _debug_mwhere(player, args):
         if not is_name(frag, tpl.get("keywords", "")):
             continue
         count += 1
-        terminal.tr.print("%3d) [%5d] %-20s [%5d] %s" % (
-            count, inst["tpl"], tpl["short_descr"][:20], inst["room"],
-            world.ROOM_DEFS.get(inst["room"], {}).get("name", "?")))
+        terminal.tr.print(
+            pad_left(num_str(count), 3) + ") [" + pad_left(num_str(inst["tpl"]), 5)
+            + "] " + pad_right(tpl["short_descr"][:20], 20) + " ["
+            + pad_left(num_str(inst["room"]), 5) + "] "
+            + world.ROOM_DEFS.get(inst["room"], {}).get("name", "?"))
     if count == 0:
         terminal.tr.print("You didn't find any " + frag + ".")
 
@@ -317,7 +320,8 @@ def _debug_owhere(player, args):
         tpl = world.ITEM_DEFS[obj_vnum(obj)]
         if is_name(frag, tpl.get("keywords", "")):
             count[0] += 1
-            terminal.tr.print("%3d) %s is %s" % (count[0], _sd(obj), where))
+            terminal.tr.print(pad_left(num_str(count[0]), 3) + ") " + _sd(obj)
+                              + " is " + where)
 
     # Loaded room state only -- ._data avoids triggering a full world load
     for rvnum in sorted(world.rooms._data):
@@ -397,13 +401,14 @@ def _debug_heapmap(player, args):
                 world._ensure_area_by_tag(tag)
             after = _alloc()
             if before is None or after is None:
-                terminal.tr.print("%-14s  n/a" % tag)
+                terminal.tr.print(pad_right(tag, 14) + "  n/a")
                 continue
             delta = after - before
             total += delta
-            terminal.tr.print("%-14s %5d %8d%s"
-                              % (tag, delta // 1024, total // 1024,
-                                 " *" if pre_loaded else ""))
+            terminal.tr.print(
+                pad_right(tag, 14) + " " + pad_left(num_str(delta // 1024), 5)
+                + " " + pad_left(num_str(total // 1024), 8)
+                + (" *" if pre_loaded else ""))
     finally:
         world._LOADING_ALL = False
     if start is not None:
@@ -686,7 +691,8 @@ def _find_idx(frag, idx_file, lines, mob=False):
         if tag in world._LOADED_AREAS:
             continue
         if is_name(frag, keywords):
-            lines.append("[%5s] %s (%s, unloaded)" % (vnum, keywords, tag))
+            lines.append("[" + pad_left(vnum, 5) + "] " + keywords + " ("
+                        + tag + ", unloaded)")
 
 
 def _debug_vnum(player, args):
@@ -727,12 +733,13 @@ def _debug_vnum(player, args):
         # ._data scan: loaded areas only, never triggers a load
         for vnum in sorted(defs._data):
             if is_name(frag, defs._data[vnum].get("keywords", "")):
-                lines.append("[%5d] %s" % (vnum, defs._data[vnum].get("short_descr", "")))
+                lines.append("[" + pad_left(num_str(vnum), 5) + "] "
+                            + defs._data[vnum].get("short_descr", ""))
         _find_idx(frag, MOBS_IDX if kind == "mob" else OBJS_IDX, lines,
                   kind == "mob")
         if len(lines) == start:
-            lines.append("No %s by that name."
-                         % ("mobiles" if kind == "mob" else "objects"))
+            lines.append("No " + ("mobiles" if kind == "mob" else "objects")
+                        + " by that name.")
     tpage(lines)
 
 
@@ -918,8 +925,8 @@ def _debug_clone(player, args):
         inst["fighting"] = None
         world.chars[next_id] = inst
         world.rooms[player["room"]]["mobs"].append(next_id)
-        terminal.tr.print("You clone %s."
-                          % world.MOB_DEFS[inst["tpl"]].get("short_descr", "it"))
+        terminal.tr.print("You clone "
+                          + world.MOB_DEFS[inst["tpl"]].get("short_descr", "it") + ".")
         return
     obj = get_obj_here(player, name)
     if obj is None:
@@ -934,9 +941,9 @@ def _debug_clone(player, args):
         player["inv"].append(clone)
     else:
         world.rooms[player["room"]]["items"].append(clone)
-    terminal.tr.print("You clone %s."
-                      % (obj.get("short_descr")
-                         or world.ITEM_DEFS[obj["vnum"]].get("short_descr", "it")))
+    terminal.tr.print("You clone "
+                      + (obj.get("short_descr")
+                         or world.ITEM_DEFS[obj["vnum"]].get("short_descr", "it")) + ".")
 
 
 def _pstat_trigs(trigs):
@@ -947,8 +954,9 @@ def _pstat_trigs(trigs):
     i = 0
     for t in trigs:
         i += 1
-        terminal.tr.print("[%2d] Trigger [%-8s] Program [%4d] Phrase [%s]"
-                          % (i, t[0], t[1], t[2]))
+        terminal.tr.print(
+            "[" + pad_left(num_str(i), 2) + "] Trigger [" + pad_right(t[0], 8)
+            + "] Program [" + pad_left(num_str(t[1]), 4) + "] Phrase [" + t[2] + "]")
 
 
 def _debug_pstat(player, args):
@@ -979,12 +987,12 @@ def _debug_pstat(player, args):
         if tpl is None:
             terminal.tr.print("No such room.")
             return
-        terminal.tr.print("Room #%-6d [%s]" % (vnum, tpl.get("name", "")))
+        terminal.tr.print("Room #" + pad_right(str(vnum), 6) + " ["
+                          + tpl.get("name", "") + "]")
         rs = world.rooms._data.get(vnum) or {}
         tgt = rs.get("rprog_target")
-        terminal.tr.print("Delay   %-6d [%s]"
-                          % (rs.get("rprog_delay", 0),
-                             "No target" if tgt is None else str(tgt)))
+        terminal.tr.print("Delay   " + pad_right(str(rs.get("rprog_delay", 0)), 6)
+                          + " [" + ("No target" if tgt is None else str(tgt)) + "]")
         _pstat_trigs(tpl.get("room_triggers"))
         return
     if "object".startswith(sub):
@@ -1005,11 +1013,11 @@ def _debug_pstat(player, args):
         if tpl is None:
             terminal.tr.print("No such object.")
             return
-        terminal.tr.print("Object #%-6d [%s]" % (vnum, tpl.get("short_descr", "")))
+        terminal.tr.print("Object #" + pad_right(str(vnum), 6) + " ["
+                          + tpl.get("short_descr", "") + "]")
         tgt = obj.get("oprog_target") if obj is not None else None
-        terminal.tr.print("Delay   %-6d [%s]"
-                          % ((obj or {}).get("oprog_delay", 0),
-                             "No target" if tgt is None else str(tgt)))
+        terminal.tr.print("Delay   " + pad_right(str((obj or {}).get("oprog_delay", 0)), 6)
+                          + " [" + ("No target" if tgt is None else str(tgt)) + "]")
         _pstat_trigs(tpl.get("obj_triggers"))
         return
     if "mobile".startswith(sub) and rest:
@@ -1028,12 +1036,12 @@ def _debug_pstat(player, args):
     if tpl is None:
         terminal.tr.print("No mob template " + str(vnum) + ".")
         return
-    terminal.tr.print("Mobile #%-6d [%s]" % (vnum, tpl.get("short_descr", "")))
+    terminal.tr.print("Mobile #" + pad_right(str(vnum), 6) + " ["
+                      + tpl.get("short_descr", "") + "]")
     if inst is not None:
         tgt = inst.get("mprog_target")
-        terminal.tr.print("Delay   %-6d [%s]"
-                          % (inst.get("mprog_delay", 0),
-                             "No target" if tgt is None else str(tgt)))
+        terminal.tr.print("Delay   " + pad_right(str(inst.get("mprog_delay", 0)), 6)
+                          + " [" + ("No target" if tgt is None else str(tgt)) + "]")
     _pstat_trigs(tpl.get("mob_triggers"))
 
 
@@ -1096,7 +1104,7 @@ def do_debug(player, args):
             # the toggle's state must be visible somewhere
             if sub[0] == "holylight":
                 desc += ": " + ("{Gon{x" if "holylight" in DBG else "{Doff{x")
-            lines.append("{G%-9s{x %s" % (sub[0], desc))
+            lines.append("{G" + pad_right(sub[0], 9) + "{x " + desc)
         tpage(lines)
         return
     name = args[0]

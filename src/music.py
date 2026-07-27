@@ -6,6 +6,7 @@ from item import obj_vnum, item_type
 from handler import act, chprintln, can_see_obj, TO_CHAR
 from config import POS_ORDER
 from pager import tpage
+from util import pad_right
 
 MUSIC_FILE = "music.txt"  # [PRIMESUD] canonical source; idx via tools/build_music_idx.py
 MUSIC_INDEX = "music.idx"  # [PRIMESUD] '<offset>|<length>|<lines>|<name>|<group>' per entry, music.dat order
@@ -122,7 +123,7 @@ def _do_play_list(player, juke, rest):
         if artist:
             if match and not group.lower().startswith(match_text):
                 continue
-            out_lines.append("%-20s %s" % (group, name))
+            out_lines.append(pad_right(group, 20) + " " + name)
         else:
             if match and not name.lower().startswith(match_text):
                 continue

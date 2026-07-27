@@ -4,8 +4,9 @@ import world
 from classes import (CLASS_TABLE, MAX_REMORT, calc_max_level,
                      char_classes, class_lookup, class_name,
                      exp_per_level, is_class, lvl_bonus, skill_adept_cap)
-from handler import (get_curr_stat, get_max_train, act, chprintln, chprintlnf,
+from handler import (get_curr_stat, get_max_train, act, chprintln,
                    TO_CHAR, TO_ROOM, affect_remove, unequip_char)
+from util import num_str, pad_right
 from config import (INT_APP_LEARN, MAX_MORTAL_LEVEL, REMORT_POWER_DIV,
                     R_STARTING_ROOM, TERMINAL_COLS)
 from info import print_practice_table
@@ -64,9 +65,8 @@ def do_train(player, args):
         all_opts = stat_opts + vital_opts
         # [PRIMESUD] Picker UI -- 1stMud prints "You can train: ..." then falls through
         # [PRIMESUD] Singular/plural fix -- 1stMud always prints "sessions"
-        chprintlnf(player, "You have %d training session%s.",
-                    player["train"],
-                    "" if player["train"] == 1 else "s")
+        chprintln(player, "You have " + num_str(player["train"])
+                  + " training session" + ("" if player["train"] == 1 else "s") + ".")
         names = []
         for k, lng in all_opts:
             if k in ("max_hit", "max_mana"):
@@ -148,9 +148,8 @@ def do_practice(player, args):
     if not args:
         print_practice_table(player)
         # [PRIMESUD] Singular/plural fix -- 1stMud always prints "sessions"
-        chprintlnf(player, "You have %d practice session%s left.",
-                    player["practice"],
-                    "" if player["practice"] == 1 else "s")
+        chprintln(player, "You have " + num_str(player["practice"])
+                  + " practice session" + ("" if player["practice"] == 1 else "s") + " left.")
         if teacher is None or player["practice"] < 1:
             return
         # [PRIMESUD] Picker UI for practicing skills
@@ -187,8 +186,8 @@ def do_practice(player, args):
             return
         # [PRIMESUD] skill_adept_cap: SKILL_ADEPT + prestige tier bonus
         if player["learned"][sk_vnum] >= skill_adept_cap(player):
-            chprintlnf(player, "You are already learned at %s.",
-                        SKILLS[sk_vnum]["name"])
+            chprintln(player, "You are already learned at "
+                      + SKILLS[sk_vnum]["name"] + ".")
             return
 
     int_val = get_curr_stat(player, "int")
@@ -244,8 +243,8 @@ def do_remort(player, args):
             member = True
             break
     if not member:
-        chprintlnf(player, "You must be at your class%s guild to do that.",
-                   "(s)" if len(player["classes"]) > 1 else "")
+        chprintln(player, "You must be at your class"
+                  + ("(s)" if len(player["classes"]) > 1 else "") + " guild to do that.")
         return
 
     trainer = None
@@ -261,7 +260,7 @@ def do_remort(player, args):
 
     if player["level"] < calc_max_level(player):
         # [PRIMESUD] plain level number; 1stMud prints high_level_name ("HERO")
-        chprintlnf(player, "You must be level %d to remort.", calc_max_level(player))
+        chprintln(player, "You must be level " + num_str(calc_max_level(player)) + " to remort.")
         return
 
     # [PRIMESUD] At full class count the remort becomes a prestige tier
@@ -356,8 +355,8 @@ def do_prime(player, args):
         args (list): [<class name>].
     """
     if player.get("level", 1) < MAX_MORTAL_LEVEL:
-        chprintlnf(player, "You must be level %d to set your prime class.",
-                  MAX_MORTAL_LEVEL)
+        chprintln(player, "You must be level " + num_str(MAX_MORTAL_LEVEL)
+                  + " to set your prime class.")
         return
 
     if not args:
@@ -381,11 +380,11 @@ def do_prime(player, args):
     classes = char_classes(player)
     islot = classes.index(iclass) if iclass in classes else -1  # cf. 1stMud class_slot in multiclass.c
     if islot == -1:
-        chprintlnf(player, "You aren't part %s!", class_name(player, iclass))
+        chprintln(player, "You aren't part " + class_name(player, iclass) + "!")
         return
 
     if islot == player.get("prime_class", 0):
-        chprintlnf(player, "Your prime class is already %s.", class_name(player, iclass))
+        chprintln(player, "Your prime class is already " + class_name(player, iclass) + ".")
         return
 
     if player.get("trivia", 0) < 5:
@@ -396,9 +395,9 @@ def do_prime(player, args):
     player["trivia"] -= 5
     # [PRIMESUD] upstream (multiclass.c:735) drops the "you": "and are {R5{x
     # trivia points lighter" -- grammar slip fixed per CLAUDE.md.
-    chprintlnf(player,
-              "Your prime class is now %s, and you are {R5{x trivia points lighter.",
-              class_name(player, iclass))
+    chprintln(player,
+              "Your prime class is now " + class_name(player, iclass)
+              + ", and you are {R5{x trivia points lighter.")
 
 
 def _apply_remort_race(player, race_name):
@@ -679,7 +678,7 @@ def do_gain(player, args):
         for gn in range(len(GROUP_TABLE)):
             val = group_rating(player, gn)
             if gn not in known and val > 0:
-                items.append("%-18s %d" % (GROUP_TABLE[gn][0], val))
+                items.append(pad_right(GROUP_TABLE[gn][0], 18) + " " + num_str(val))
         _print_two_col(player, items)
         chprintln(player, "")
         hdr = "Skill              Cost Lev"
@@ -689,12 +688,12 @@ def do_gain(player, args):
             val = skill_rating(player, sn)
             if (learned.get(sn, 0) == 0 and val > 0
                     and sk["spell_fun"] == 'spell_null'):
-                items.append("%-18s %-4d %d" % (sk["name"], val,
-                                                skill_level(player, sn)))
+                items.append(pad_right(sk["name"], 18) + " " + pad_right(num_str(val), 4)
+                             + " " + num_str(skill_level(player, sn)))
         _print_two_col(player, items)
         # cf. 1stMud intstr(ch->train, "train")
-        chprintlnf(player, "You have %d train%s left.", player["train"],
-                   "" if player["train"] == 1 else "s")
+        chprintln(player, "You have " + num_str(player["train"])
+                  + " train" + ("" if player["train"] == 1 else "s") + " left.")
         return
 
     if "convert".startswith(args[0]):

@@ -30,12 +30,13 @@ from classes import lvl_bonus
 from comm import do_function, do_say
 from config import MAX_LEVEL, mins_to_ticks, ticks_to_mins, on_minute
 from races import RACE_TABLE, race_lookup
-from handler import (chprintln, chprintlnf, act, is_evil, is_good, is_name,
+from handler import (chprintln, act, is_evil, is_good, is_name,
                      unequip_char, equip_char, TO_CHAR, TO_ROOM, TO_VICT,
                      TO_NOTVICT)
 from item import (create_object, obj_vnum, get_obj_list, item_extra_flags,
                   item_wear_flags)
 from urandom import randint
+from util import num_str, pad_right
 
 # -- Quest types (cf. 1stMud quest_t in defines.h) -----------------------------
 QUEST_RETURN_FINDMOB  = -5
@@ -478,15 +479,15 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
         short = ITEM_DEFS[obj_vnum(obj)]["short_descr"]
         if randint(0, 1) == 0:
             mob_tell(player, questman,
-                     "Vile pilferers have stolen %s from the royal treasury!" % short)
+                     "Vile pilferers have stolen " + short + " from the royal treasury!")
             mob_tell(player, questman,
                      "My court wizardess, with her magic mirror, has pinpointed its location.")
         else:
             mob_tell(player, questman,
-                     "A powerful wizard has stolen %s for his personal power!" % short)
+                     "A powerful wizard has stolen " + short + " for his personal power!")
         mob_tell(player, questman,
-                 "This %s was last seen somewhere in the vicinity of %s!"
-                 % (_QOBJ_DESC[randint(0, len(_QOBJ_DESC) - 1)], room_name))
+                 "This " + _QOBJ_DESC[randint(0, len(_QOBJ_DESC) - 1)]
+                 + " was last seen somewhere in the vicinity of " + room_name + "!")
 
     elif status == QUEST_KILL:
         player["quest_mob"] = mvnum
@@ -495,33 +496,33 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
         variant = randint(0, 3)
         if variant == 0:
             mob_tell(player, questman,
-                     "An enemy of mine, %s, is making vile threats against the crown." % mob_name)
+                     "An enemy of mine, " + mob_name + ", is making vile threats against the crown.")
             mob_tell(player, questman, "This threat must be eliminated!")
         elif variant == 1:
             # [PRIMESUD] "{n" (mud name) rendered as "The realm";
             # "civillians" typo fixed
             mob_tell(player, questman,
-                     "The realm's most heinous criminal, %s, has escaped from the dungeon!" % mob_name)
+                     "The realm's most heinous criminal, " + mob_name + ", has escaped from the dungeon!")
             mob_tell(player, questman,
-                     "Since the escape, %s has murdered %d civilians!"
-                     % (mob_name, randint(2, 20)))
+                     "Since the escape, " + mob_name + " has murdered "
+                     + str(randint(2, 20)) + " civilians!")
             mob_tell(player, questman,
                      "The penalty for this crime is death, and you are to deliver the sentence!")
         elif variant == 2:
             # [PRIMESUD] "severly" typo fixed
             mob_tell(player, questman,
-                     "The Mayor of Midgaard has recently been attacked by %s.  This is an act of war!" % mob_name)
+                     "The Mayor of Midgaard has recently been attacked by " + mob_name + ".  This is an act of war!")
             mob_tell(player, questman,
-                     "%s must be severely dealt with for this injustice." % mob_name)
+                     mob_name + " must be severely dealt with for this injustice.")
         else:
             mob_tell(player, questman,
-                     "%s has been stealing valuables from the citizens of %s."
-                     % (mob_name, area_name))
+                     mob_name + " has been stealing valuables from the citizens of "
+                     + area_name + ".")
             mob_tell(player, questman,
-                     "Make sure that %s never has the chance to steal again." % mob_name)
+                     "Make sure that " + mob_name + " never has the chance to steal again.")
         mob_tell(player, questman,
-                 "Seek this %s out somewhere in the vicinity of %s!"
-                 % (_QMOB_DESC[randint(0, len(_QMOB_DESC) - 1)], room_name))
+                 "Seek this " + _QMOB_DESC[randint(0, len(_QMOB_DESC) - 1)]
+                 + " out somewhere in the vicinity of " + room_name + "!")
 
     elif status == QUEST_DELIVER:
         # 1stMud strips ACT_AGGRESSIVE/spec_fun from the live victim;
@@ -538,11 +539,11 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
         short = ITEM_DEFS[obj_vnum(obj)]["short_descr"]
         # [PRIMESUD] "Time is the essence" grammar fixed
         mob_tell(player, questman,
-                 "Please deliver this %s to my friend - %s. Time is of the essence, please hurry."
-                 % (short, mob_name))
+                 "Please deliver this " + short + " to my friend - " + mob_name
+                 + ". Time is of the essence, please hurry.")
         mob_tell(player, questman,
-                 "Seek %s out somewhere in the vicinity of {W%s{x!"
-                 % (mob_name, room_name))
+                 "Seek " + mob_name + " out somewhere in the vicinity of {W"
+                 + room_name + "{x!")
         act("$n gives $p to $N.", questman, obj, player, TO_NOTVICT)
         act("$n gives you $p.", questman, obj, player, TO_VICT)
         act("You give $p to $N.", questman, obj, player, TO_CHAR)
@@ -555,7 +556,7 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
         mob_tell(player, questman,
                  "This quest tests your knowledge of the realm. Your goal is simple, seek out")
         mob_tell(player, questman,
-                 "the location '{W%s{x' and return to me." % room_name)
+                 "the location '{W" + room_name + "{x' and return to me.")
         mob_tell(player, questman,
                  "You will be told when you find the right place.")
 
@@ -566,8 +567,8 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
         mob_tell(player, questman,
                  "This quest tests your knowledge of the realm. Your goal is simple, seek out")
         mob_tell(player, questman,
-                 "'{W%s{x' in vicinity of {W%s{x, and return to me."
-                 % (mob_name, room_name))
+                 "'{W" + mob_name + "{x' in vicinity of {W" + room_name
+                 + "{x, and return to me.")
         mob_tell(player, questman,
                  "You will be told when you find the right person.")
 
@@ -577,10 +578,10 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
         return
 
     mob_tell(player, questman,
-             "The location is in the general area of %s." % area_name)
+             "The location is in the general area of " + area_name + ".")
     mob_tell(player, questman,
-             "You have %s to complete this quest."
-             % _intstr(ticks_to_mins(player["quest_time"]), "minute"))
+             "You have " + _intstr(ticks_to_mins(player["quest_time"]), "minute")
+             + " to complete this quest.")
     # 1stMud: "May %s go with you!" (ch->deity->name) -- [PRIMESUD] no deities
     mob_tell(player, questman, "May the gods go with you!")
 
@@ -632,8 +633,8 @@ def quest_reward(player, questman, rtype):
     pointreward = add_qp(player, pointreward)
     # 1stMud: act("$N congratulates $n.", TO_ROOM) -- no audience, skipped
     mob_tell(player, questman,
-             "Congratulations on completing your quest! As a reward, I am giving you {W%s{x, and {Y%d{x gold."
-             % (_intstr(pointreward, "quest point"), reward))
+             "Congratulations on completing your quest! As a reward, I am giving you {W"
+             + _intstr(pointreward, "quest point") + "{x, and {Y" + str(reward) + "{x gold.")
     if chance(pointreward // 5):
         chprintln(player, "You gain an extra {YTrivia {RPoint{x!")
         player["trivia"] = player.get("trivia", 0) + 1
@@ -707,8 +708,7 @@ def quest_room_check(player):
             return
         # [PRIMESUD] "{5+R" (blink) rendered as {R
         chprintln(player, "{RYou have almost completed your QUEST!{x")
-        chprintlnf(player, "{RReturn to %s before your time runs out!{x",
-                   _giver_name(player))
+        chprintln(player, "{RReturn to " + _giver_name(player) + " before your time runs out!{x")
         player["quest_status"] = QUEST_RETURN_FINDROOM
         player["quest_room"] = 0
         return
@@ -729,8 +729,7 @@ def quest_room_check(player):
         do_function(victim, do_say,
                     "Excellent! You have found me. Good job!")
         chprintln(player, "{RYou have almost completed your QUEST!{x")
-        chprintlnf(player, "{RReturn to %s before your time runs out!{x",
-                   _giver_name(player))
+        chprintln(player, "{RReturn to " + _giver_name(player) + " before your time runs out!{x")
         player["quest_status"] = QUEST_RETURN_FINDMOB
         player["quest_mob"] = 0
     elif status == QUEST_KILL:
@@ -750,8 +749,7 @@ def quest_obj_check(player, obj):
             and obj_vnum(obj) == player.get("quest_obj", 0)):
         # [PRIMESUD] "{5+R" (blink) rendered as {R
         chprintln(player, "{RYou have almost completed your QUEST!{x")
-        chprintlnf(player, "{RReturn to %s before your time runs out!{x",
-                   _giver_name(player))
+        chprintln(player, "{RReturn to " + _giver_name(player) + " before your time runs out!{x")
         player["quest_status"] = QUEST_RETURN_RETRIEVE
 
 
@@ -766,16 +764,14 @@ def quest_kill_check(player, victim):
     if status == QUEST_DELIVER:
         chprintln(player,
                   "{rOOPS! Now you did it! You were supposed to deliver the item, not kill!{x")
-        chprintlnf(player,
-                   "You just lost {R50{r questpoints and %s is very mad!{x",
-                   _giver_name(player))
+        chprintln(player,
+                  "You just lost {R50{r questpoints and " + _giver_name(player) + " is very mad!{x")
         end_quest(player, QUEST_TIME + 10)
         player["quest_points"] = max(0, player.get("quest_points", 0) - 50)
     elif status == QUEST_KILL:
         # [PRIMESUD] "{5+R" (blink) rendered as {R
         chprintln(player, "{RYou have almost completed your QUEST!{x")
-        chprintlnf(player, "{RReturn to %s before your time runs out!{x",
-                   _giver_name(player))
+        chprintln(player, "{RReturn to " + _giver_name(player) + " before your time runs out!{x")
         player["quest_status"] = QUEST_RETURN_KILL
 
 
@@ -794,10 +790,10 @@ def quest_update():
         player["quest_time"] -= 1
         if player["quest_time"] <= 0:
             end_quest(player, QUEST_TIME - 2)
-            chprintlnf(player,
-                       "{RYou have run out of time for your quest!"
-                       "  You may quest again in %d minutes.{x",
-                       ticks_to_mins(player["quest_time"]))
+            chprintln(player,
+                      "{RYou have run out of time for your quest!"
+                      "  You may quest again in " + str(ticks_to_mins(player["quest_time"]))
+                      + " minutes.{x")
         elif (player["quest_time"] < mins_to_ticks(6)
                 and on_minute(player["quest_time"])):
             # [PRIMESUD] "{p" (1stMud pink) rendered as {M
@@ -837,53 +833,53 @@ def do_quest(player, args):
         chprintln(player, "")
         if status == QUEST_NONE:
             chprintln(player, "You aren't currently on a quest.")
-            chprintlnf(player,
-                       "There are %s remaining until you can go on another quest.",
-                       _intstr(ticks_to_mins(player.get("quest_time", 0)), "minute"))
-            chprintlnf(player, "You have %s.",
-                       _intstr(player.get("quest_points", 0), "quest point"))
+            chprintln(player,
+                      "There are " + _intstr(ticks_to_mins(player.get("quest_time", 0)), "minute")
+                      + " remaining until you can go on another quest.")
+            chprintln(player, "You have "
+                      + _intstr(player.get("quest_points", 0), "quest point") + ".")
         elif status == QUEST_RETRIEVE and player.get("quest_obj", 0):
-            chprintlnf(player, "You are on a quest to recover the fabled %s!",
-                       ITEM_DEFS[player["quest_obj"]]["short_descr"])
-            chprintlnf(player,
-                       "Rumor has it this %s was last seen in the area known as %s, near %s.",
-                       _QOBJ_DESC[randint(0, len(_QOBJ_DESC) - 1)],
-                       player.get("quest_area_name", "?"),
-                       player.get("quest_room_name", "?"))
+            chprintln(player, "You are on a quest to recover the fabled "
+                      + ITEM_DEFS[player["quest_obj"]]["short_descr"] + "!")
+            chprintln(player,
+                      "Rumor has it this " + _QOBJ_DESC[randint(0, len(_QOBJ_DESC) - 1)]
+                      + " was last seen in the area known as "
+                      + player.get("quest_area_name", "?") + ", near "
+                      + player.get("quest_room_name", "?") + ".")
         elif status == QUEST_DELIVER and player.get("quest_mob", 0):
             # 1stMud: "known area %s" grammar slip fixed [PRIMESUD]
-            chprintlnf(player, "You are on a quest to deliver an item to %s.",
-                       player.get("quest_mob_name", "?"))
-            chprintlnf(player,
-                       "Rumor has it %s was last seen in the area known as %s, near %s.",
-                       player.get("quest_mob_name", "?"),
-                       player.get("quest_area_name", "?"),
-                       player.get("quest_room_name", "?"))
+            chprintln(player, "You are on a quest to deliver an item to "
+                      + player.get("quest_mob_name", "?") + ".")
+            chprintln(player,
+                      "Rumor has it " + player.get("quest_mob_name", "?")
+                      + " was last seen in the area known as "
+                      + player.get("quest_area_name", "?") + ", near "
+                      + player.get("quest_room_name", "?") + ".")
         elif status == QUEST_KILL and player.get("quest_mob", 0):
-            chprintlnf(player, "You are on a quest to slay %s!",
-                       player.get("quest_mob_name", "?"))
-            chprintlnf(player,
-                       "Rumor has it this %s was last seen in the area known as %s, near %s.",
-                       _QMOB_DESC[randint(0, len(_QMOB_DESC) - 1)],
-                       player.get("quest_area_name", "?"),
-                       player.get("quest_room_name", "?"))
+            chprintln(player, "You are on a quest to slay "
+                      + player.get("quest_mob_name", "?") + "!")
+            chprintln(player,
+                      "Rumor has it this " + _QMOB_DESC[randint(0, len(_QMOB_DESC) - 1)]
+                      + " was last seen in the area known as "
+                      + player.get("quest_area_name", "?") + ", near "
+                      + player.get("quest_room_name", "?") + ".")
         elif status == QUEST_FINDROOM and player.get("quest_room", 0):
-            chprintlnf(player, "You are on a quest to find %s in %s!",
-                       player.get("quest_room_name", "?"),
-                       player.get("quest_area_name", "?"))
+            chprintln(player, "You are on a quest to find "
+                      + player.get("quest_room_name", "?") + " in "
+                      + player.get("quest_area_name", "?") + "!")
         elif status == QUEST_FINDMOB and player.get("quest_mob", 0):
-            chprintlnf(player, "You are on a quest to find %s near %s in %s!",
-                       player.get("quest_mob_name", "?"),
-                       player.get("quest_room_name", "?"),
-                       player.get("quest_area_name", "?"))
+            chprintln(player, "You are on a quest to find "
+                      + player.get("quest_mob_name", "?") + " near "
+                      + player.get("quest_room_name", "?") + " in "
+                      + player.get("quest_area_name", "?") + "!")
         else:
             # QUEST_RETURN_* states
             # [PRIMESUD] "{5ALMOST" (blink) rendered as {W
             chprintln(player, "{RYour quest is {WALMOST{R complete!{x")
-            chprintlnf(player,
-                       "{RYou have %s to get back to %s before your time runs out!{x",
-                       _intstr(ticks_to_mins(player.get("quest_time", 0)), "minute"),
-                       _giver_name(player))
+            chprintln(player,
+                      "{RYou have " + _intstr(ticks_to_mins(player.get("quest_time", 0)), "minute")
+                      + " to get back to " + _giver_name(player)
+                      + " before your time runs out!{x")
         return
 
     # 1stMud imm-only 'quest reset' not ported
@@ -901,8 +897,8 @@ def do_quest(player, args):
         chprintln(player, "  Current Quest Items available for Purchase:")
         for name, vnum, cost in QUEST_TABLE:
             tpl = ITEM_DEFS.get(vnum)
-            chprintlnf(player, "  %-4dqp ........ %s", cost,
-                       tpl["short_descr"] if tpl else "Unavailable")
+            chprintln(player, "  " + pad_right(num_str(cost), 4) + "qp ........ "
+                      + (tpl["short_descr"] if tpl else "Unavailable"))
         chprintln(player, "  To buy an item, type 'quest buy <item>'.")
         return
 
@@ -913,12 +909,12 @@ def do_quest(player, args):
         i = quest_lookup(arg2)
         if i == -1:
             mob_tell(player, questman,
-                     "I don't have that item, %s." % player["name"])
+                     "I don't have that item, " + player["name"] + ".")
             return
         name, vnum, cost = QUEST_TABLE[i]
         if player.get("quest_points", 0) < cost:
             mob_tell(player, questman,
-                     "You need %s for that." % _intstr(cost, "questpoint"))
+                     "You need " + _intstr(cost, "questpoint") + " for that.")
             return
         # 1stMud vnum 0 = nohunger service -- [PRIMESUD] omitted from table
         obj = create_object(vnum)
@@ -947,11 +943,11 @@ def do_quest(player, args):
         i = qobj_lookup(obj)
         if i == -1:
             mob_tell(player, questman,
-                     "I only take items I sell, %s." % player["name"])
+                     "I only take items I sell, " + player["name"] + ".")
             return
         cost = QUEST_TABLE[i][2]
         player["quest_points"] = player.get("quest_points", 0) + cost // 3
-        act("$N takes $p from you for %s." % _intstr(cost // 3, "questpoint"),
+        act("$N takes $p from you for " + _intstr(cost // 3, "questpoint") + ".",
             player, obj, questman, TO_CHAR)
         player["inv"].remove(obj)  # cf. 1stMud extract_obj
         world.save_pending = True  # cf. 1stMud save_char_obj
@@ -987,11 +983,11 @@ def do_quest(player, args):
             return
         if player.get("quest_time", 0) > 0:
             mob_tell(player, questman,
-                     "You're very brave, %s, but let someone else have a chance."
-                     % player["name"])
+                     "You're very brave, " + player["name"]
+                     + ", but let someone else have a chance.")
             mob_tell(player, questman, "Come back later.")
             return
-        mob_tell(player, questman, "Thank you, brave %s!" % player["name"])
+        mob_tell(player, questman, "Thank you, brave " + player["name"] + "!")
         generate_quest(player, questman, QUEST_NONE)
         return
 
@@ -1023,8 +1019,8 @@ def do_quest(player, args):
             end_quest(player, QUEST_TIME * 3 // 4)
             mob_tell(player, questman,
                      "Your quest is over, but for your cowardly behavior,"
-                     " you may not quest again for %s."
-                     % _intstr(ticks_to_mins(player["quest_time"]), "minute"))
+                     " you may not quest again for "
+                     + _intstr(ticks_to_mins(player["quest_time"]), "minute") + ".")
         else:
             chprintln(player, "You aren't on a quest!")
         return

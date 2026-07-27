@@ -4,7 +4,7 @@ import world
 import terminal
 from handler import (get_curr_stat, is_name, equip_char, unequip_char, act,
                      get_char_room, can_see, can_see_obj, is_awake,
-                     affect_strip, affect_join, chprintln, chprintlnf,
+                     affect_strip, affect_join, chprintln,
                      is_good, is_evil, is_neutral,
                      TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT)
 from world import (OBJ_VNUM_SCHOOL_BANNER,
@@ -44,6 +44,7 @@ from skills_table import (GSN_SCROLLS, GSN_STAVES, GSN_WANDS, GSN_STEAL,
 from skills_table import SKILLS, WEAPON_GSN_MAP
 from terminal import tprint
 from urandom import randint
+from util import num_str
 from world import ITEM_DEFS, MOB_DEFS
 
 _CONTAINER_TYPES = CONTAINER_TYPES  # [PRIMESUD] shared definition now lives in item.py
@@ -86,7 +87,7 @@ def _loot_container_picker(player, container):
             if not _check_carry_get(player, cobj, ctpl):
                 continue
             container["contents"].remove(cobj)
-            chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+            chprintln(player, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
             if not apply_money_pickup(player, cobj, ctpl):
                 player["inv"].append(cobj)
                 _get_triggers(player, cobj)
@@ -97,7 +98,7 @@ def _loot_container_picker(player, container):
     if not _check_carry_get(player, cobj, ctpl):
         return
     container["contents"].remove(cobj)
-    chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+    chprintln(player, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
     if not apply_money_pickup(player, cobj, ctpl):
         player["inv"].append(cobj)
         _get_triggers(player, cobj)
@@ -216,8 +217,8 @@ def do_get(player, args):
             if not _check_carry_get(player, obj, tpl):
                 return
             rs["items"].remove(obj)
-            chprintln(player, "You get {}.".format(
-                (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
+            chprintln(player, "You get " + (
+                (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]) + ".")
             if apply_money_pickup(player, obj, tpl):
                 return
             player["inv"].append(obj)
@@ -230,8 +231,8 @@ def do_get(player, args):
                 if not _check_carry_get(player, obj, tpl):
                     continue
                 rs["items"].remove(obj)
-                chprintln(player, "You get {}.".format(
-                    (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
+                chprintln(player, "You get " + (
+                    (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]) + ".")
                 if not apply_money_pickup(player, obj, tpl):
                     player["inv"].append(obj)
                     _get_triggers(player, obj)
@@ -258,14 +259,14 @@ def do_get(player, args):
             if not _check_carry_get(player, obj, tpl):
                 continue
             rs["items"].remove(obj)
-            chprintln(player, "You get {}.".format(tpl["short_descr"]))
+            chprintln(player, "You get " + tpl["short_descr"] + ".")
             if not apply_money_pickup(player, obj, tpl):
                 player["inv"].append(obj)
                 _get_triggers(player, obj)
                 quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
         if not found:
             if filter_kw:
-                chprintln(player, "I see no {} here.".format(filter_kw))
+                chprintln(player, "I see no " + filter_kw + " here.")
             else:
                 chprintln(player, "I see nothing here.")
         return
@@ -296,7 +297,7 @@ def do_get(player, args):
                         if not _check_carry_get(player, cobj, ctpl, cont_carried):
                             continue
                         cont_obj["contents"].remove(cobj)
-                        chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+                        chprintln(player, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
                         if not apply_money_pickup(player, cobj, ctpl):
                             player["inv"].append(cobj)
                             _get_triggers(player, cobj)
@@ -304,14 +305,14 @@ def do_get(player, args):
                 return
             cobj = get_obj_list(item_arg, contents, ITEM_DEFS, player)
             if cobj is None:
-                chprintln(player, "I see nothing like that in the {}.".format(
-                    cont_obj.get("short_descr") or cont_tpl["short_descr"]))
+                chprintln(player, "I see nothing like that in the " + (
+                    cont_obj.get("short_descr") or cont_tpl["short_descr"]) + ".")
                 return
             ctpl = ITEM_DEFS[obj_vnum(cobj)]
             if not _check_carry_get(player, cobj, ctpl, cont_carried):
                 return
             cont_obj["contents"].remove(cobj)
-            chprintln(player, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+            chprintln(player, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
             if not apply_money_pickup(player, cobj, ctpl):
                 player["inv"].append(cobj)
                 _get_triggers(player, cobj)
@@ -319,7 +320,7 @@ def do_get(player, args):
             return
     obj = get_obj_list(arg, rs["items"], ITEM_DEFS, player)
     if obj is None:
-        chprintln(player, "I see no {} here.".format(arg))
+        chprintln(player, "I see no " + arg + " here.")
         return
     tpl = ITEM_DEFS[obj_vnum(obj)]
     if "take" not in item_wear_flags(obj, tpl):
@@ -328,7 +329,7 @@ def do_get(player, args):
     if not _check_carry_get(player, obj, tpl):
         return
     rs["items"].remove(obj)
-    chprintln(player, "You get {}.".format((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]))
+    chprintln(player, "You get " + ((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]) + ".")
     if not apply_money_pickup(player, obj, tpl):
         player["inv"].append(obj)
         _get_triggers(player, obj)
@@ -353,7 +354,7 @@ def _drop_coins(player, amount, coin):
     silver = coin != "gold"
     wallet = "silver" if silver else "gold"
     if player[wallet] < amount:
-        chprintln(player, "You don't have that much %s." % wallet)
+        chprintln(player, "You don't have that much " + wallet + ".")
         return
     player[wallet] -= amount
     gold = 0 if silver else amount
@@ -407,13 +408,13 @@ def do_drop(player, args):
         player["inv"].remove(obj)
         ritems = world.rooms[player["room"]]["items"]
         ritems.append(obj)
-        chprintln(player, "You drop {}.".format(tpl["short_descr"]))
+        chprintln(player, "You drop " + tpl["short_descr"] + ".")
         _drop_triggers(player, obj)
         # cf. act_obj.c:586 `if (obj && ...)`: a drop prog may have purged or
         # moved the obj -- melt only if it still lies here
         if obj in ritems and item_extra_flags(obj, tpl).get("melt_drop"):
             ritems.remove(obj)
-            chprintln(player, "{} dissolves into smoke.".format(tpl["short_descr"]))
+            chprintln(player, tpl["short_descr"] + " dissolves into smoke.")
             return
         return "drop " + tpl.get("keywords", tpl["short_descr"]).split()[0]
     arg = " ".join(args)
@@ -432,15 +433,15 @@ def do_drop(player, args):
             player["inv"].remove(obj)
             ritems = world.rooms[player["room"]]["items"]
             ritems.append(obj)
-            chprintln(player, "You drop {}.".format(tpl["short_descr"]))
+            chprintln(player, "You drop " + tpl["short_descr"] + ".")
             _drop_triggers(player, obj)
             # cf. act_obj.c:616 `if (obj && ...)`: prog may have moved it
             if obj in ritems and item_extra_flags(obj, tpl).get("melt_drop"):
                 ritems.remove(obj)
-                chprintln(player, "{} dissolves into smoke.".format(tpl["short_descr"]))
+                chprintln(player, tpl["short_descr"] + " dissolves into smoke.")
         if not found:
             if filter_kw:
-                chprintln(player, "You are not carrying any {}.".format(filter_kw))
+                chprintln(player, "You are not carrying any " + filter_kw + ".")
             else:
                 chprintln(player, "You are not carrying anything.")
         return
@@ -455,12 +456,12 @@ def do_drop(player, args):
     player["inv"].remove(obj)
     ritems = world.rooms[player["room"]]["items"]
     ritems.append(obj)
-    chprintln(player, "You drop {}.".format(tpl["short_descr"]))
+    chprintln(player, "You drop " + tpl["short_descr"] + ".")
     _drop_triggers(player, obj)
     # cf. act_obj.c:586 `if (obj && ...)`: prog may have moved it
     if obj in ritems and item_extra_flags(obj, tpl).get("melt_drop"):
         ritems.remove(obj)
-        chprintln(player, "{} dissolves into smoke.".format(tpl["short_descr"]))
+        chprintln(player, tpl["short_descr"] + " dissolves into smoke.")
 
 
 def do_put(player, args):
@@ -486,7 +487,7 @@ def do_put(player, args):
     if cont_obj is None:
         cont_obj = get_obj_list(cont_arg, player["inv"], ITEM_DEFS, player)
     if cont_obj is None:
-        chprintln(player, "I see no {} here.".format(cont_arg))
+        chprintln(player, "I see no " + cont_arg + " here.")
         return
     cont_tpl = ITEM_DEFS[obj_vnum(cont_obj)]
     if _item_type(cont_obj, cont_tpl) != "container":
@@ -531,7 +532,7 @@ def do_put(player, args):
     player["inv"].remove(obj)
     cont_obj.setdefault("contents", []).append(obj)
     cont_name = (isinstance(cont_obj, dict) and cont_obj.get("short_descr")) or cont_tpl["short_descr"]
-    chprintln(player, "You put {} in {}.".format(tpl["short_descr"], cont_name))
+    chprintln(player, "You put " + tpl["short_descr"] + " in " + cont_name + ".")
 
 
 def _give_target(ch, words):
@@ -569,9 +570,9 @@ def _give_coins(player, amount, coin, rest, victim=None):
         return
     player[wallet] -= amount
     victim[wallet] = victim.get(wallet, 0) + amount
-    act("$n gives you %d %s." % (amount, wallet), player, None, victim, TO_VICT)
+    act("$n gives you " + str(amount) + " " + wallet + ".", player, None, victim, TO_VICT)
     act("$n gives $N some coins.", player, None, victim, TO_NOTVICT)
-    act("You give $N %d %s." % (amount, wallet), player, None, victim, TO_CHAR)
+    act("You give $N " + str(amount) + " " + wallet + ".", player, None, victim, TO_CHAR)
 
     # TRIG_BRIBE: amount normalised to silver (cf. p_bribe_trigger, act_obj.c:710)
     if victim.get("is_npc"):
@@ -591,16 +592,16 @@ def _give_coins(player, amount, coin, rest, victim=None):
             # 1stMud: changer gives the original amount back via do_give
             victim[wallet] -= amount
             player[wallet] += amount
-            act("$n gives you %d %s." % (amount, wallet), victim, None, player, TO_VICT)
+            act("$n gives you " + str(amount) + " " + wallet + ".", victim, None, player, TO_VICT)
         elif can_see(victim, player):
             out = "gold" if silver else "silver"
             player[out] += change
-            act("$n gives you %d %s." % (change, out), victim, None, player, TO_VICT)
+            act("$n gives you " + str(change) + " " + out + ".", victim, None, player, TO_VICT)
             if silver:
                 rem = 95 * amount // 100 - change * 100
                 if rem > 0:
                     player["silver"] += rem
-                    act("$n gives you %d silver." % rem, victim, None, player, TO_VICT)
+                    act("$n gives you " + str(rem) + " silver.", victim, None, player, TO_VICT)
             act("$n tells you 'Thank you, come again.'", victim, None, player, TO_VICT)
 
 
@@ -691,8 +692,8 @@ def do_give(player, args):
             act("You give $p to $N.", player, obj, victim, TO_CHAR)
             # [PRIMESUD] "{5+R" (blink) rendered as {R
             chprintln(player, "{RYou have almost completed your QUEST!{x")
-            chprintlnf(player, "{RReturn to %s before your time runs out!{x",
-                       _giver_name(player))
+            chprintln(player, "{RReturn to " + _giver_name(player)
+                     + " before your time runs out!{x")
             player["quest_status"] = QUEST_RETURN_DELIVER
             player["inv"].remove(obj)  # cf. 1stMud extract_obj
             player["quest_obj"] = 0
@@ -789,7 +790,8 @@ def do_inventory(player, args):
     max_carry = can_carry_n(player)
     # [PRIMESUD] output accumulated and sent as one unjoined list --
     # batch-rendered by terminal.print_lines
-    out = ["{YYou are carrying {W%d/%d{Y items:{x" % (len(player["inv"]), max_carry)]
+    out = ["{YYou are carrying {W" + str(len(player["inv"])) + "/" + str(max_carry)
+           + "{Y items:{x"]
     if not player["inv"]:
         chprintln(player, out)
         return
@@ -808,30 +810,32 @@ def do_inventory(player, args):
             name = "{r[{RTARGET{r] {x" + name
         if show_vnums:  # [PRIMESUD]
             name += " {D[" + str(v) + "]{x"
-        out.append("  {}{} x{}".format(flags, name, n) if n > 1 else "  {}{}".format(flags, name))
+        out.append("  " + flags + name + " x" + num_str(n) if n > 1 else "  " + flags + name)
     chprintln(player, out)
 
 
+# [PRIMESUD] (prefix, suffix) pairs split around the item name -- avoids
+# .format()/{}-placeholder use per the firmware string-format bug (pitfall 8)
 _WEAR_MSG = {
-    "light":    "You light {} and hold it.",
-    "finger_l": "You wear {} on your left finger.",
-    "finger_r": "You wear {} on your right finger.",
-    "neck_1":   "You wear {} around your neck.",
-    "neck_2":   "You wear {} around your neck.",
-    "body":     "You wear {} on your torso.",
-    "head":     "You wear {} on your head.",
-    "legs":     "You wear {} on your legs.",
-    "feet":     "You wear {} on your feet.",
-    "hands":    "You wear {} on your hands.",
-    "arms":     "You wear {} on your arms.",
-    "shield":   "You wear {} as a shield.",
-    "about":    "You wear {} about your torso.",
-    "waist":    "You wear {} about your waist.",
-    "wrist_l":  "You wear {} around your left wrist.",
-    "wrist_r":  "You wear {} around your right wrist.",
-    "wield":    "You wield {}.",
-    "hold":     "You hold {} in your hand.",
-    "float":    "You release {} and it floats next to you.",
+    "light":    ("You light ", " and hold it."),
+    "finger_l": ("You wear ", " on your left finger."),
+    "finger_r": ("You wear ", " on your right finger."),
+    "neck_1":   ("You wear ", " around your neck."),
+    "neck_2":   ("You wear ", " around your neck."),
+    "body":     ("You wear ", " on your torso."),
+    "head":     ("You wear ", " on your head."),
+    "legs":     ("You wear ", " on your legs."),
+    "feet":     ("You wear ", " on your feet."),
+    "hands":    ("You wear ", " on your hands."),
+    "arms":     ("You wear ", " on your arms."),
+    "shield":   ("You wear ", " as a shield."),
+    "about":    ("You wear ", " about your torso."),
+    "waist":    ("You wear ", " about your waist."),
+    "wrist_l":  ("You wear ", " around your left wrist."),
+    "wrist_r":  ("You wear ", " around your right wrist."),
+    "wield":    ("You wield ", "."),
+    "hold":     ("You hold ", " in your hand."),
+    "float":    ("You release ", " and it floats next to you."),
 }
 
 _DUAL_SLOTS = {
@@ -840,14 +844,16 @@ _DUAL_SLOTS = {
     "wrist":  ("wrist_l",  "wrist_r"),
 }
 
+# [PRIMESUD] (threshold, prefix, suffix) -- prefix/suffix split around the
+# item name, avoiding .format()/{}-placeholder use (pitfall 8)
 _WIELD_SKILL_MSG = (
-    (100, "{} feels like a part of you!"),
-    ( 85, "You feel quite confident with {}."),
-    ( 70, "You are skilled with {}."),
-    ( 50, "Your skill with {} is adequate."),
-    ( 25, "{} feels a little clumsy in your hands."),
-    (  1, "You fumble and almost drop {}."),
-    (  0, "You don't even know which end is up on {}."),
+    (100, "", " feels like a part of you!"),
+    ( 85, "You feel quite confident with ", "."),
+    ( 70, "You are skilled with ", "."),
+    ( 50, "Your skill with ", " is adequate."),
+    ( 25, "", " feels a little clumsy in your hands."),
+    (  1, "You fumble and almost drop ", "."),
+    (  0, "You don't even know which end is up on ", "."),
 )
 
 
@@ -869,7 +875,7 @@ def remove_obj(player, slot, fReplace):
         return False
     tpl = ITEM_DEFS[obj["vnum"]]
     if item_extra_flags(obj, tpl).get("noremove"):
-        chprintln(player, "You can't remove {}.".format(tpl["short_descr"]))
+        chprintln(player, "You can't remove " + tpl["short_descr"] + ".")
         return False
     unequip_char(player, slot)
     act("$n stops using $p.", player, obj, None, TO_ROOM)
@@ -914,13 +920,13 @@ def wear_obj(player, obj, fReplace):
     """
     tpl = ITEM_DEFS[obj["vnum"]]
     if player["level"] < tpl.get("level", 1):
-        chprintln(player, "You must be level {} to use this object.".format(tpl.get("level", 1)))
+        chprintln(player, "You must be level " + str(tpl.get("level", 1)) + " to use this object.")
         return
 
     if tpl.get("type") == "light":
         if not remove_obj(player, "light", fReplace):
             return
-        chprintln(player, _WEAR_MSG["light"].format(tpl["short_descr"]))
+        chprintln(player, _WEAR_MSG["light"][0] + tpl["short_descr"] + _WEAR_MSG["light"][1])
         if _zap_anti_align(player, obj, tpl):
             return
         equip_char(player, obj, "light")
@@ -982,7 +988,7 @@ def wear_obj(player, obj, fReplace):
                 chprintln(player, "Your hands are tied up with your weapon!")
                 return
 
-    chprintln(player, _WEAR_MSG[slot].format(tpl["short_descr"]))
+    chprintln(player, _WEAR_MSG[slot][0] + tpl["short_descr"] + _WEAR_MSG[slot][1])
     if _zap_anti_align(player, obj, tpl):
         return
     equip_char(player, obj, slot)
@@ -990,12 +996,12 @@ def wear_obj(player, obj, fReplace):
     if slot == "wield":
         sn = WEAPON_GSN_MAP.get(tpl.get("weapon_type", ""), -1)
         skill = _get_weapon_skill(player, sn)
-        msg = _WIELD_SKILL_MSG[-1][1]
-        for threshold, m in _WIELD_SKILL_MSG[:-1]:
+        pre, suf = _WIELD_SKILL_MSG[-1][1], _WIELD_SKILL_MSG[-1][2]
+        for threshold, p, s in _WIELD_SKILL_MSG[:-1]:
             if skill > threshold:
-                msg = m
+                pre, suf = p, s
                 break
-        chprintln(player, msg.format(tpl["short_descr"]))
+        chprintln(player, pre + tpl["short_descr"] + suf)
 
 
 def do_wear(player, args):
@@ -1191,11 +1197,11 @@ def do_steal(player, args):
         victim["gold"] -= gold
         victim["silver"] -= silver
         if silver <= 0:
-            chprintln(player, "Bingo!  You got %d gold coins." % gold)
+            chprintln(player, "Bingo!  You got " + str(gold) + " gold coins.")
         elif gold <= 0:
-            chprintln(player, "Bingo!  You got %d silver coins." % silver)
+            chprintln(player, "Bingo!  You got " + str(silver) + " silver coins.")
         else:
-            chprintln(player, "Bingo!  You got %d silver and %d gold coins." % (silver, gold))
+            chprintln(player, "Bingo!  You got " + str(silver) + " silver and " + str(gold) + " gold coins.")
         check_improve(player, GSN_STEAL, True, 2)
         return
 
@@ -1319,7 +1325,7 @@ def do_second(player, args):
         return
     tpl = ITEM_DEFS[obj["vnum"]]
     if player["level"] < tpl.get("level", 1):
-        chprintln(player, "You must be level {} to use this object.".format(tpl.get("level", 1)))
+        chprintln(player, "You must be level " + str(tpl.get("level", 1)) + " to use this object.")
         return
     if player["equip"].get("wield") is None:
         chprintln(player, "You need to wield a primary weapon, before using a secondary one!")
@@ -1334,7 +1340,7 @@ def do_second(player, args):
         return
     if not remove_obj(player, "secondary", True):
         return
-    chprintln(player, "You wield {} in your off-hand.".format(tpl["short_descr"]))
+    chprintln(player, "You wield " + tpl["short_descr"] + " in your off-hand.")
     if _zap_anti_align(player, obj, tpl):
         return
     equip_char(player, obj, "secondary")
@@ -1358,7 +1364,7 @@ def do_quaff(player, args):
         return
     if validate_item_spell_payload(obj) is None:
         return
-    chprintln(player, "You quaff {}.".format(tpl["short_descr"]))
+    chprintln(player, "You quaff " + tpl["short_descr"] + ".")
     cast_item_spells(player, obj, player, None)
     player["inv"].remove(obj)
 
@@ -1602,8 +1608,8 @@ def do_fill(player, args):
     # without persisting to room items / save payload [PRIMESUD]
     if not isinstance(fountain, dict):
         fountain = create_object(obj_vnum(fountain))
-    act("You fill $p with %s from $P." % fliq, player, obj, fountain, TO_CHAR)
-    act("$n fills $p with %s from $P." % fliq, player, obj, fountain, TO_ROOM)
+    act("You fill $p with " + fliq + " from $P.", player, obj, fountain, TO_CHAR)
+    act("$n fills $p with " + fliq + " from $P.", player, obj, fountain, TO_ROOM)
     _set_liquid(obj, tpl, _liquid_total(obj, tpl), fliq)
 
 
@@ -1633,9 +1639,9 @@ def do_pour(player, args):
         out = _promote_obj(player, out)
         _set_liquid(out, tpl, 0, liq)
         out["poisoned"] = False  # 1stMud: value[3] = 0
-        act("You invert $p, spilling %s all over the ground." % liq,
+        act("You invert $p, spilling " + liq + " all over the ground.",
             player, out, None, TO_CHAR)
-        act("$n inverts $p, spilling %s all over the ground." % liq,
+        act("$n inverts $p, spilling " + liq + " all over the ground.",
             player, out, None, TO_ROOM)
         return
     # out must be promoted BEFORE the dest lookup: if both names match the
@@ -1671,8 +1677,8 @@ def do_pour(player, args):
     amount = min(_liquid_left(out, tpl), _liquid_total(dest, dtpl) - dleft)
     _set_liquid(dest, dtpl, dleft + amount, liq)
     _set_liquid(out, tpl, _liquid_left(out, tpl) - amount, liq)
-    act("You pour %s from $p into $P." % liq, player, out, dest, TO_CHAR)
-    act("$n pours %s from $p into $P." % liq, player, out, dest, TO_ROOM)
+    act("You pour " + liq + " from $p into $P.", player, out, dest, TO_CHAR)
+    act("$n pours " + liq + " from $p into $P.", player, out, dest, TO_ROOM)
 
 
 def _find_here_char_or_obj(player, target_name):
@@ -1718,7 +1724,7 @@ def do_recite(player, args):
         if victim is None and obj is None:
             chprintln(player, "You can't find it.")
             return
-    chprintln(player, "You recite {}.".format(tpl["short_descr"]))
+    chprintln(player, "You recite " + tpl["short_descr"] + ".")
     if randint(1, 100) >= 20 + get_skill(player, GSN_SCROLLS) * 4 // 5:
         chprintln(player, "You mispronounce a syllable.")
         check_improve(player, GSN_SCROLLS, False, 2)
@@ -1747,9 +1753,9 @@ def do_brandish(player, args):
         sn_target = _skill_lookup(payload[0])
     WaitState(player, 2 * PULSE_VIOLENCE)
     if staff.get("charges", tpl.get("charges", tpl.get("max_charges", 0))) > 0:
-        chprintln(player, "You brandish {}.".format(tpl["short_descr"]))
+        chprintln(player, "You brandish " + tpl["short_descr"] + ".")
         if player["level"] < tpl.get("level", 1) or randint(1, 100) >= 20 + get_skill(player, GSN_STAVES) * 4 // 5:
-            chprintln(player, "You fail to invoke {}.".format(tpl["short_descr"]))
+            chprintln(player, "You fail to invoke " + tpl["short_descr"] + ".")
             check_improve(player, GSN_STAVES, False, 2)
         else:
             target_type = None
@@ -1768,7 +1774,7 @@ def do_brandish(player, args):
                 return
     staff["charges"] = staff.get("charges", tpl.get("charges", tpl.get("max_charges", 0))) - 1
     if staff["charges"] <= 0:
-        chprintln(player, "Your {} blazes bright and is gone.".format(tpl["short_descr"]))
+        chprintln(player, "Your " + tpl["short_descr"] + " blazes bright and is gone.")
         _destroy_equipped(player, "hold")
 
 
@@ -1807,14 +1813,14 @@ def do_zap(player, args):
         else:
             chprintln(player, "You zap " + ITEM_DEFS[obj["vnum"]]["short_descr"] + " with " + tpl["short_descr"] + ".")
         if player["level"] < tpl.get("level", 1) or randint(1, 100) >= 20 + get_skill(player, GSN_WANDS) * 4 // 5:
-            chprintln(player, "Your efforts with {} produce only smoke and sparks.".format(tpl["short_descr"]))
+            chprintln(player, "Your efforts with " + tpl["short_descr"] + " produce only smoke and sparks.")
             check_improve(player, GSN_WANDS, False, 2)
         else:
             cast_item_spells(player, wand, victim, obj)
             check_improve(player, GSN_WANDS, True, 2)
     wand["charges"] = wand.get("charges", tpl.get("charges", tpl.get("max_charges", 0))) - 1
     if wand["charges"] <= 0:
-        chprintln(player, "Your {} explodes into fragments.".format(tpl["short_descr"]))
+        chprintln(player, "Your " + tpl["short_descr"] + " explodes into fragments.")
         _destroy_equipped(player, "hold")
 
 

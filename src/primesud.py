@@ -316,7 +316,7 @@ class PrimeSud:
                 # Preload limbo before the status line so its "Loading area"
                 # notice groups with the player-area loads, not after them.
                 world._ensure_area_by_tag("limbo")
-                game.tr.print("Loaded from: %s." % result)
+                game.tr.print("Loaded from: " + str(result) + ".")
                 game.tr.print("")
 
             # [PRIMESUD] Preload limbo: it holds the morgue where corpses spawn

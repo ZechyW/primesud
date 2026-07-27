@@ -11,6 +11,7 @@ from config import (
 from colors import (COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full,
                     color_parse_runs, strip_colors)
 from hpprime import dimgrob, fillrect, getpix, grobh, grobw, pixon, strblit2
+from util import pad_right
 
 
 def _wrap_plain(text, width):
@@ -361,7 +362,7 @@ def install_color_print(tr):
         if x < length:
             reset_color()
             _pxy(x, row, ' ' * (length - x))
-        tr.status_text = "%-*s" % (length, plain)
+        tr.status_text = pad_right(plain, length)
 
     tr.set_status = wrapped_set_status
 

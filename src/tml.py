@@ -20,19 +20,21 @@ class tml:
                 raise OSError("No font file found")
             font = font.rsplit('.',1)[0]
             del afiles
-        ftype = ppleval('G%d:=AFiles("%s.font")' % (grob, font))
+        # [PRIMESUD] %-format calls converted to concat: %/.format corrupt
+        # the heap on physical hardware (CLAUDE.md pitfall 8)
+        ftype = ppleval('G' + str(grob) + ':=AFiles("' + font + '.font")')
         try:
-            with FileIO('%s.font' % font,'rb') as ffile:
+            with FileIO(font + '.font','rb') as ffile:
                 ffile.seek(-1,2)
                 cfg = ord(ffile.read(1))
         except OSError:
-            raise OSError("File '%s.font' not found" % font)
+            raise OSError("File '" + font + ".font' not found")
         except Exception:
             ftype = ''  # invalid file
         if ftype == 'PNG':
             self.char_width = (cfg >> 3) + 4
         if ftype != 'PNG' or cfg & 3 != 0 or grobw(grob) % self.char_width != 0:
-            raise ValueError("Invalid font file '%s.font'" % font)
+            raise ValueError("Invalid font file '" + font + ".font'")
         # Initialize terminal dimensions and properties
         self.char_height = grobh(grob)
         self.columns = 320 // self.char_width
@@ -60,7 +62,7 @@ class tml:
         self.symb_key_map = symb_key_map
         
         if dark_mode:
-            ppleval('INVERT_P(G%d)' % grob)
+            ppleval('INVERT_P(G' + str(grob) + ')')
         else:
             self.back_color = 0xFFFFFF
         fillrect(0, 0, 0, 320, 240, self.back_color, self.back_color)
@@ -288,7 +290,8 @@ class tml:
     def set_status(self, text):
         # Set the status text and ensure it fits within the display width
         length = self.columns-6
-        self.status_text = "%-*s" % (length, text[:length])
+        text = text[:length]
+        self.status_text = text + " " * (length - len(text))
         self.print_xy(0, self.rows + 1, self.status_text)
 
     def print_xy(self, x, y, text):
@@ -357,7 +360,7 @@ class tml:
             indic += 'A' if (self.is_shift | self.shift_hold) ^ self.shift_lock else 'a'
         x = self.columns-6
         y = self.rows
-        indic = "%6s" % indic
+        indic = " " * (6 - len(indic)) + indic
         self.print_xy(x, y + 1, indic)
 
     def _put_char(self, char):
@@ -411,4 +414,6 @@ class tml:
 
     def _invert_cursor(self):
         # Invert the cursor display
-        ppleval('INVERT_P(%d,%d,%d,%d)' % (self.cursor_x * self.char_width, self.cursor_y * self.char_height, self.cursor_x * self.char_width + self.char_width - 1, self.cursor_y * self.char_height + self.char_height - 1))
+        x0 = self.cursor_x * self.char_width
+        y0 = self.cursor_y * self.char_height
+        ppleval('INVERT_P(' + str(x0) + ',' + str(y0) + ',' + str(x0 + self.char_width - 1) + ',' + str(y0 + self.char_height - 1) + ')')

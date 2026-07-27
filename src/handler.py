@@ -14,6 +14,7 @@ import world
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 from game_time import time_info, SUN_SET, SUN_DARK
 from debug import DBG  # [PRIMESUD] "holylight" debug toggle = 1stMud PLR_HOLYLIGHT
+from util import int_str
 
 # -- Alignment helpers (cf. 1stMud IsGood/IsEvil/IsNeutral in macro.h) ----------------
 
@@ -648,21 +649,101 @@ def chprintln(ch, txt):
     return _send_player_text(ch, txt)
 
 
+def _safe_fmt(fmt, args):
+    """Format fmt with args by manual parse + concat, never the firmware
+    formatter. [PRIMESUD]
+
+    The `%` operator and `.format()` are banned on-device (CLAUDE.md
+    pitfall 8); this keeps the 1stMud printf-style chprintf/chprintlnf API
+    usable. Supports %s, %c, %d, %% with optional `-` (left-justify),
+    `0` (zero-pad, %d only) and width. Anything else raises ValueError.
+
+    Raises:
+        ValueError: On an unsupported conversion character.
+    """
+    out = []
+    ai = 0
+    i = 0
+    n = len(fmt)
+    while i < n:
+        if fmt[i] != "%":
+            j = fmt.find("%", i)
+            if j < 0:
+                out.append(fmt[i:])
+                break
+            out.append(fmt[i:j])
+            i = j
+            continue
+        i += 1
+        if i >= n:
+            out.append("%")
+            break
+        c = fmt[i]
+        if c == "%":
+            out.append("%")
+            i += 1
+            continue
+        left = False
+        zero = False
+        if c == "-":
+            left = True
+            i += 1
+            c = fmt[i]
+        if c == "0":
+            zero = True
+            i += 1
+            c = fmt[i]
+        width = 0
+        while "0" <= c <= "9":
+            width = width * 10 + (ord(c) - 48)
+            i += 1
+            c = fmt[i]
+        arg = args[ai]
+        ai += 1
+        if c == "d":
+            s = int_str(arg) if type(arg) is int else str(arg)
+        elif c == "s" or c == "c":
+            s = arg if type(arg) is str else str(arg)
+        else:
+            raise ValueError("unsupported format: %" + c)
+        if width > len(s):
+            if zero and c == "d":
+                if s[0] == "-":
+                    s = "-" + "0" * (width - len(s)) + s[1:]
+                else:
+                    s = "0" * (width - len(s)) + s
+            elif left:
+                s = s + " " * (width - len(s))
+            else:
+                s = " " * (width - len(s)) + s
+        out.append(s)
+        i += 1
+    return "".join(out)
+
+
 def chprintf(ch, fmt, *args):
-    """Printf-style direct-send without forced line break (cf. 1stMud chprintf in character.h)."""
+    """Printf-style direct-send without forced line break (cf. 1stMud chprintf in character.h).
+
+    [PRIMESUD] Formats via _safe_fmt (manual concat), not the banned
+    firmware `%` operator -- see CLAUDE.md pitfall 8.
+    """
     if not fmt:
         return 0
     if args:
-        fmt = fmt % args
+        fmt = _safe_fmt(fmt, args)
     return _send_player_text(ch, fmt)
 
 
 def chprintlnf(ch, fmt, *args):
-    """Printf-style direct-send with line semantics (cf. 1stMud chprintlnf in character.h)."""
+    """Printf-style direct-send with line semantics (cf. 1stMud chprintlnf in character.h).
+
+    [PRIMESUD] Formats via _safe_fmt (manual concat), not the banned
+    firmware `%` operator -- see CLAUDE.md pitfall 8.
+    """
     if not fmt:
         return _send_player_text(ch, "")
     if args:
-        fmt = fmt % args
+        fmt = _safe_fmt(fmt, args)
     return _send_player_text(ch, fmt)
 
 

@@ -10,7 +10,7 @@ def ticks():
 
 def wait_ms(ms):
     """Wait for milliseconds via PPL WAIT. [PRIMESUD]"""
-    ppl_eval("WAIT({}/1e3)".format(ms))
+    ppl_eval("WAIT(" + str(ms) + "/1e3)")
 
 
 def clear_graphics(first=1, last=8):

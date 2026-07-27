@@ -15,6 +15,7 @@ from skills_table import (SKILLS, GSN_RECALL, GSN_FAST_HEALING, GSN_MEDITATION,
                          GSN_PLAGUE, GSN_POISON)
 from urandom import randint
 from races import RACE_TABLE, race_lookup
+from util import num_str
 import world
 from world import ROOM_DEFS, AREA_DEFS, ITEM_DEFS
 
@@ -602,11 +603,9 @@ def show_prompt(player, buf):
         player (dict): Player state dict.
         buf (str): Current input buffer shown on the right of the prompt.
     """
-    prefix = "{R%d/%dhp {M%d/%dmn {B%d/%dmv{x %dtnl>" % (
-        player["hit"], player["max_hit"],
-        player["mana"], player["max_mana"],
-        player["move"], player["max_move"],
-        player["xp_next"] - player["xp"],
-    )
+    prefix = ("{R" + num_str(player["hit"]) + "/" + num_str(player["max_hit"])
+              + "hp {M" + num_str(player["mana"]) + "/" + num_str(player["max_mana"])
+              + "mn {B" + num_str(player["move"]) + "/" + num_str(player["max_move"])
+              + "mv{x " + num_str(player["xp_next"] - player["xp"]) + "tnl>")
     avail = max(1, TERMINAL_COLS - 6 - color_len(prefix))
     terminal.tr.set_status(prefix + buf[-avail:])
