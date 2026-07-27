@@ -58,7 +58,16 @@ HVAR = "savebench"
 #                HVars traffic.  Clean => big str concat acquitted.
 #   "4xonce"  -- bignohv plus a single hvars_set of the 32KB string.
 #                Stall => one-call minimal repro, HVars convicted.
-HV_MODE = "bignohv"
+#   "bigloop" -- REPLACES the normal run: 20 iterations of [16/32KB
+#                concat chain -> full build_pass small-alloc storm ->
+#                drop -> collect], logged per iteration.  bignohv
+#                overturned the HVars conviction (reset with zero HVars
+#                traffic, clean pool, 27/07) but split 1 dead / 1 clean
+#                -- the failure is stochastic, so single runs carry ~1
+#                bit each.  This mode yields ~20 trials per session:
+#                death rate + iteration counts, or 20 survivals to
+#                weaken the big-string hypothesis too.
+HV_MODE = "bigloop"
 
 _out = []
 
@@ -241,6 +250,28 @@ def raw(ts):
     return " ".join(parts)
 
 
+def scan_work(work, tag):
+    """Integrity-check the work list after a spurious failure: logs the
+    first 5 elements whose shape/types no longer match what
+    parse_workload built.  0 bad + an impossible TypeError means the
+    corruption sits in VM stack/iterator slots, not in the data."""
+    bad = 0
+    for i in range(len(work)):
+        e = work[i]
+        ok = isinstance(e, tuple) and len(e) == 2
+        if ok:
+            k = e[0]
+            toks = e[1]
+            ok = isinstance(k, str) and isinstance(toks, list)
+        if not ok:
+            bad += 1
+            if bad <= 5:
+                log("SCAN " + tag + ": elem " + str(i) + " -> "
+                    + str(type(e)))
+    log("SCAN " + tag + ": " + str(bad) + " bad of " + str(len(work)))
+    return bad
+
+
 def run_segments(payload, work, tag):
     # No build here: repeated alloc-heavy build passes hard-reset the
     # G1 (27/07 device log dies exactly at build entry, everything
@@ -301,6 +332,31 @@ def main():
     # HVars size-scaling first: cheapest, highest-value data -- get it
     # into the log before any alloc-heavy segment can hard-reset the G1.
     log("HV_MODE=" + HV_MODE)
+    if HV_MODE == "bigloop":
+        # ~20 trials of the death-zone pattern per session: big concat
+        # chain + full small-alloc storm, drop, collect.  Per-iteration
+        # log flush pinpoints a hard death; caught exceptions (the
+        # spurious TypeErrors) are counted and the blamed data scanned.
+        errs = 0
+        for it in range(20):
+            try:
+                b2 = payload + "~" + payload
+                b4 = payload + "~" + payload + "~" + payload + "~" + payload
+                lines = build_pass(work)
+                log("bigloop " + str(it + 1) + "/20 ok "
+                    + str(len(b2) + len(b4)) + "B big, "
+                    + str(len(lines)) + " lines")
+            except Exception as e:
+                errs += 1
+                log("bigloop " + str(it + 1) + "/20 EXC " + str(e))
+                scan_work(work, "work/iter" + str(it + 1))
+            b2 = None
+            b4 = None
+            lines = None
+            gc.collect()
+        log("bigloop: " + str(errs) + " caught errors in 20 iterations")
+        log("Done. Results in " + LOG)
+        return
     # bignohv/4xonce: build the big strings exactly as "full" does and
     # keep them live for the whole run (see the end-of-main log line);
     # the ONLY difference between the two modes is one hvars_set call.
@@ -364,6 +420,10 @@ def main():
             log("bare    " + fmt(name, ts) + "  raw " + raw(ts))
         except Exception as e:
             log("bare    " + name + ": FAILED " + str(e))
+            # Spurious 'list is not an iterator' TypeErrors observed
+            # here on-device (27/07): fingerprint the data they blame.
+            scan_work(work, "work/" + name.strip())
+            scan_work(work_s, "work_s/" + name.strip())
 
     log("building ballast...")
     f0 = free()

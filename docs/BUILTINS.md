@@ -333,38 +333,43 @@ nothing useful):
   skills) 58 KB (180 ms), `classes` 11 KB (28 ms), `groups` 9 KB (30 ms).
   Total ~119 KB, leaving ~8.07 MB free.
 
-## PPL `HVars` interop size limit (G1, measured 27 Jul 2026)
+## G1 memory-corruption bug under big-string + alloc churn (investigation, 27 Jul 2026)
 
-Writing a large string through `hpprime.eval('HVars("x"):="..."')`
-corrupts firmware state on the G1 when the embedded literal is too big.
-Measured with `debug/save_bench.py` (all runs on a clean pool, i.e.
-after an on+symb checkpoint restore):
+Sessions on the physical G1 die stochastically at zones of sustained
+small-allocation churn, and the death rate rises sharply when 16/32 KB
+strings were built in the same session. Measured with
+`debug/save_bench.py` across many controlled runs (clean pool =
+on+symb checkpoint restore before each):
 
-- **~8 KB literals are safe**: 22 `HVars` set/get calls at 7990 B per
-  session completed clean, repeatedly (`HV_MODE="1x"`).
-- **16 KB and 32 KB literals kill the session**: runs that pushed 2x/4x
-  payloads stalled or crashed 2/2. Threshold is somewhere in
-  (8 KB, 16 KB]; exact value not narrowed.
-- **The failure is a delayed fuse, not an error.** Every `HVars` call
-  *succeeds*, including verified readback; `Ticks` evals keep working;
-  the session then dies minutes later at the next sustained burst of
-  small allocations. Observed failure modes at the same code location
-  across sessions: hard reset, an impossible Python `TypeError`
-  (`'list' object is not an iterator` on a `for` over a plain list),
-  and an uninterruptible stall (native call never returns; the On key
-  cannot raise KeyboardInterrupt inside native code).
-- Ruled out by controlled runs: USB/Connectivity-Kit attachment, plain
-  `ppleval` call volume (100+ `Ticks` calls fine), Python-side alloc
-  churn (see mem_soak below), `str(int)` conversion, gc interplay.
-- Status: root-cause confirmation in progress -- the stall repro also
-  built the 16/32 KB strings Python-side, and the `bignohv`/`4xonce`
-  probe modes (single-hvars_set diff) close that confound.
+- **Symptom spectrum, all at the same code zones**: hard reset; an
+  impossible Python `TypeError` (`'list' object is not an iterator` on
+  a `for` over a healthy list -- non-fatal, repeatable within the
+  session); an uninterruptible stall (native call never returns; the
+  On key cannot raise KeyboardInterrupt inside native code).
+- **Acquitted by controlled runs**: `HVars` interop (a zero-HVars run
+  reset on a clean pool; 22 8 KB HVars calls/session run clean),
+  USB/Connectivity-Kit attachment, plain `ppleval` volume (100+
+  `Ticks` calls fine), big *bytes* allocations (247 x 32 KB clean,
+  twice), `str(int)` conversion, gc-call interplay, bad RAM (7.6 MB
+  pattern-verified twice), heap size config, session residency.
+- **Correlated**: sessions that build 16/32 KB strings via `+` concat
+  chains died 3 of 5; sessions capped at ~8 KB strings ran clean (small
+  sample; quantification via the probe's `bigloop` mode pending).
+- **Stochastic**: byte-identical runs on clean pools split
+  dead/clean.  Iterator-slot type confusion plus stochastic behaviour
+  under churn fits a GC root-scan defect (live object collected when a
+  collection fires at an unlucky VM state, block reused; stale read =>
+  TypeError, stale write => corruption/reset/stall) -- working
+  hypothesis, not confirmed.
 
-Consequence for the save path: `_serialize_world` mirrors the whole
-payload into one HVar; payloads grow with play (`s.m.`/`s.a.` stat
-lines) and a real mid-game save already measures 7990 B -- at the edge
-of the safe zone. Mitigation (planned): chunk the HVar mirror at ~6 KB
-per variable.
+Consequences for game code until better understood: keep single-string
+builds at or under ~8 KB (the save payload measures 7990 B mid-game and
+grows with play -- chunk it before it crosses); keep alloc churn low in
+hot paths (already policy); prefer explicit `gc.collect()` at
+shallow-stack safe points ahead of unavoidable churn bursts (the
+`gc_collect()` opening `_serialize_world` may be load-bearing crash
+protection, not just perf hygiene -- do not remove it on timing grounds
+alone).
 
 Related community-documented PPL parse bug (unrelated mechanism, same
 fragile bridge): numeric literals with a plus-sign exponent (`2e+1`)

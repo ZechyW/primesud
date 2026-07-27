@@ -44,13 +44,15 @@ Engine 1.0 was tagged as `v1.0.0` on 23/07/2026. Content track is now open:
 
 ## Platform
 
-- G1 HVars size-limit bug (docs/BUILTINS.md sec. PPL HVars interop size
-  limit): finish root-cause confirmation (`bignohv`/`4xonce` probe runs,
-  single-hvars_set diff), then fix the save path -- chunk the HVar
-  mirror at ~6 KB/variable (primary + backup slots, load joins chunks)
-  and consider pruning zero-information `s.m.` entries to slow payload
-  growth. Payload measured 7990 B mid-game; safe zone ends somewhere in
-  (8 KB, 16 KB].
+- G1 memory-corruption bug (docs/BUILTINS.md sec. G1 memory-corruption
+  bug): HVars acquitted (bignohv reset with zero HVars traffic);
+  current suspect is a stochastic GC/alloc defect whose death rate
+  rises with 16/32 KB string concat chains. Quantify with the probe's
+  `bigloop` mode, then fix the save path: chunk payload assembly and
+  the HVar mirror so no single string exceeds ~6 KB (primary + backup
+  slots, load joins chunks), and consider pruning zero-information
+  `s.m.` entries to slow payload growth past the danger zone. Payload
+  measured 7990 B mid-game.
 - Save optimisation (probe data in docs/BUILTINS.md sec. Save-path
   primitive costs): add debug-gated `ticks()` instrumentation to
   `_serialize_world` ("save" DBG channel), then alloc-diet the line
