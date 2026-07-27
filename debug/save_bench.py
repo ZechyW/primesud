@@ -153,13 +153,26 @@ HV_MODE = "bigloop"
 #                size and content acquitted.  Avoidance predicate:
 #                do not bulk-produce str(int) transients between
 #                collects -- number-string caching defeats it.
+# Fix-validation matrix (27/07):
+#   "cachedstr" -- the game-fix pattern: number-string cache (dict
+#                int->str), misses filled by int_str() digit-concat
+#                (never calls the firmware formatter).  Iteration 1
+#                fills the cache, 2+ run pure hits = the steady
+#                state every later save would see.  Clean => fix
+#                validated at probe level.
+#   "pctonly"  -- '"%d" % t' per int token: does %-formatting share
+#                the deadly formatter core?  Dies => the game's
+#                transient-UI % usage is (low-rate) exposure too.
+#   "matrix3"  -- cachedstr -> pctonly -> smallonly, 20 each;
+#                smallonly last as positive control (only decisive
+#                if both earlier phases run clean).
 #   "matrix"  -- all three in one session, 20 iters each (smallnostr
 #                -> smallonly -> medonly).  Phase boundaries are
 #                scrubbed by the per-iteration collects, so a clean
 #                run acquits all three at once; a death only
 #                provisionally convicts its phase (cross-phase pinned
 #                residue possible) -- rerun that kind isolated.
-BIGLOOP_KIND = "matrix2"
+BIGLOOP_KIND = "matrix3"
 
 _out = []
 
@@ -195,6 +208,26 @@ def hvars_set(name, value):
 
 def hvars_get(name):
     return ppleval('HVars("' + name + '")')
+
+
+_DIG = ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+
+
+def int_str(n):
+    """str(int) replacement that never calls the firmware int
+    formatter: digit lookup in a literal table + string concat only.
+    Game-fix candidate for the cache-miss path ([PRIMESUD] G1
+    string-GC bug avoidance)."""
+    if n == 0:
+        return "0"
+    neg = n < 0
+    if neg:
+        n = -n
+    s = ""
+    while n:
+        s = _DIG[n % 10] + s
+        n //= 10
+    return ("-" + s) if neg else s
 
 
 def synth_payload():
@@ -437,6 +470,9 @@ def main():
         elif BIGLOOP_KIND == "matrix2":
             plan = (["smallslice"] * 20 + ["digitslice"] * 20
                     + ["smallonly"] * 20)
+        elif BIGLOOP_KIND == "matrix3":
+            plan = (["cachedstr"] * 20 + ["pctonly"] * 20
+                    + ["smallonly"] * 20)
         else:
             plan = [BIGLOOP_KIND] * (300 if BIGLOOP_KIND == "autogc"
                                      else 20)
@@ -444,6 +480,9 @@ def main():
         n_str = "/" + str(iters)
         # Pure-digit slice source for digitslice; kept live all run.
         digsrc = "0123456789" * 40
+        # Number-string cache for cachedstr; lives across iterations
+        # like the game fix would live across saves.
+        ncache = {}
         for it in range(iters):
             kind = plan[it]
             try:
@@ -527,6 +566,45 @@ def main():
                         parts = None
                     log("bigloop " + str(it + 1) + n_str + " ok "
                         + kind + " " + str(nal) + " slice allocs")
+                elif kind == "cachedstr":
+                    # Game-fix pattern: dict lookup per int token,
+                    # miss filled via int_str (no firmware
+                    # formatter).  Same loop shape as smallonly.
+                    nal = 0
+                    hits = 0
+                    for _key, toks in work:
+                        parts = []
+                        for t in toks:
+                            if isinstance(t, int):
+                                s = ncache.get(t)
+                                if s is None:
+                                    s = int_str(t)
+                                    ncache[t] = s
+                                else:
+                                    hits += 1
+                                parts.append(s)
+                            else:
+                                parts.append(t)
+                            nal += 1
+                        parts = None
+                    log("bigloop " + str(it + 1) + n_str + " ok cached "
+                        + str(nal) + " toks, " + str(hits) + " hits, cache "
+                        + str(len(ncache)))
+                elif kind == "pctonly":
+                    # %-formatting per int token: shares the deadly
+                    # formatter core?
+                    nal = 0
+                    for _key, toks in work:
+                        parts = []
+                        for t in toks:
+                            if isinstance(t, int):
+                                parts.append("%d" % t)
+                                nal += 1
+                            else:
+                                parts.append(t)
+                        parts = None
+                    log("bigloop " + str(it + 1) + n_str + " ok pct "
+                        + str(nal) + " fmt allocs")
                 elif kind == "medonly":
                     # Medium strings only: 2KB slices of the payload,
                     # no small-alloc churn at all.
