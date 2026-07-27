@@ -33,7 +33,7 @@ from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_l
     spell_mana, get_skill, check_improve
 from skills_table import SKILL_TABLE, SKILLS, GSN_PEEK
 from urandom import randint
-from util import free_mem, gc_collect
+from util import free_mem, gc_collect, num_str, pad_left, pad_right, zpad
 from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
 from debug import DBG, dbg  # [PRIMESUD]
 from explored import roomcount, TOP_EXPLORED, _pct2
@@ -89,11 +89,11 @@ def do_where(player, args):
         # by one to keep the colons aligned
         chprintln(player, "You are in zone   : " + str(area.get("name", tag)))
         if area.get("lvl_comment"):
-            chprintln(player, "Recommended Levels: [%-7s]" % area["lvl_comment"])
+            chprintln(player, "Recommended Levels: [" + pad_right(area["lvl_comment"], 7) + "]")
         else:
             levels = area.get("levels", (0, 0))
-            chprintln(player, "Recommended Levels: [%03d %03d]" % (levels[0], levels[1]))
-        chprintln(player, "Author            : [%-7s]" % area.get("credits", ""))
+            chprintln(player, "Recommended Levels: [" + zpad(levels[0], 3) + " " + zpad(levels[1], 3) + "]")
+        chprintln(player, "Author            : [" + pad_right(area.get("credits", ""), 7) + "]")
         return
 
     target = args[0]
@@ -119,7 +119,7 @@ def do_where(player, args):
         act("You didn't find any $T.", player, None, target, TO_CHAR)
         return
     for name, room_name in rows:
-        chprintln(player, "%-28s %s" % (name[:28], room_name))
+        chprintln(player, pad_right(name[:28], 28) + " " + room_name)
 
 
 _FLAG_TABLE = (
@@ -261,12 +261,12 @@ def do_show(player, args):
 
 def do_autolist(player, args):
     """Display toggle settings (cf. 1stMud do_autolist in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
-    chprintln(player, " %-9s %-6s{w %s" % ("Command", "Status", "Description"))
+    chprintln(player, " " + pad_right("Command", 9) + " " + pad_right("Status", 6) + "{w " + "Description")
     chprintln(player, draw_line())
     flags = player.get("flags", PLR_DEFAULTS)
     for bit, name, desc in _FLAG_TABLE:
         status = "ON" if flags & bit else "OFF"
-        chprintln(player, "{G%-11s {W%-6s{w %s{x" % (name, status, desc))
+        chprintln(player, "{G" + pad_right(name, 11) + " {W" + pad_right(status, 6) + "{w " + desc + "{x")
     chprintln(player, draw_line())
 
 
@@ -288,7 +288,7 @@ def show_greeting():
     tr = terminal.tr
     tr.clear()
 
-    mem_part = "{G(Mem. free: %s)" % free_mem()
+    mem_part = "{G(Mem. free: " + free_mem() + ")"
     pad = 64 - 23 - len(mem_part) - 1
     # [PRIMESUD] single list batch: one colour-grouped render (terminal
     # print_lines) instead of 20 per-line print calls
@@ -341,7 +341,7 @@ def do_version(player, args):
         player (dict): Player state dict.
         args (list): Parsed command arguments (unused).
     """
-    chprintln(player, "PrimeSUD is running PrimeSUD %s, based on 1stMud 4.5.3 / ROM 2.4 beta." % VERSION)
+    chprintln(player, "PrimeSUD is running PrimeSUD " + VERSION + ", based on 1stMud 4.5.3 / ROM 2.4 beta.")
 
 
 def do_wimpy(player, args):
@@ -367,7 +367,7 @@ def do_wimpy(player, args):
         chprintln(player, "Such cowardice ill becomes you.")
         return
     player["wimpy"] = wimpy
-    chprintln(player, "Wimpy set to %d hit points." % wimpy)
+    chprintln(player, "Wimpy set to " + str(wimpy) + " hit points.")
 
 
 def _get_ed(name, extra_descs):
@@ -427,7 +427,7 @@ def _show_char_to_char_1(player, mob_id):
                     order.append(s)
             for s in order:
                 n = seen[s]
-                chprintln(player, ("(%2d) " % n if n > 1 else "     ") + s)
+                chprintln(player, ("(" + pad_left(num_str(n), 2) + ") " if n > 1 else "     ") + s)
 
 
 _CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
@@ -462,10 +462,10 @@ def _look_in(player, args):
             frac = "about half-"
         else:
             frac = "more than half-"
-        # [PRIMESUD] transient UI string -- % formatting ok per CLAUDE.md;
-        # double space after "with" matches upstream's format string exactly
-        chprintln(player, "It's %sfilled with  a %s liquid." %
-                  (frac, liquid_color(liquid_type(obj, tpl))))
+        # [PRIMESUD] double space after "with" matches upstream's format
+        # string exactly
+        chprintln(player, "It's " + frac + "filled with  a "
+                  + liquid_color(liquid_type(obj, tpl)) + " liquid.")
         return
     if tpl.get("type") not in _CONTAINER_TYPES:
         chprintln(player, "That is not a container.")
@@ -481,7 +481,7 @@ def _look_in(player, args):
 def _show_container(player, obj, tpl):
     """Print container contents (cf. 1stMud do_look 'in' case in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; can_see_obj content filter added and re-verified 10/07/2026]"""
     obj_name = (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]
-    chprintln(player, "{} holds:".format(obj_name))
+    chprintln(player, obj_name + " holds:")
     contents = isinstance(obj, dict) and obj.get("contents", [])
     # cf. show_list_to_char's can_see_obj filter (invisible contents hidden)
     visible = [c for c in contents or [] if can_see_obj(player, c)]
@@ -574,7 +574,7 @@ def do_exits(player, args):
         # cf. 1stMud do_exits act_info.c:1476 -- a dark destination hides its
         # name (independent of the viewer's infrared, matching the source)
         dest = "Too dark to tell" if room_is_dark(to) else ROOM_DEFS[to]["name"]
-        chprintln(player, "%-5s - %s" % (upper(name), dest))
+        chprintln(player, pad_right(upper(name), 5) + " - " + dest)
     if not found:
         chprintln(player, "None.")
 
@@ -652,21 +652,21 @@ def _show_char_to_char(player, mob_ids, out=None):
             name = upper(name) if name else name
             if inst["fighting"] is not None or pos == "fighting":
                 if inst["fighting"] == player["id"]:
-                    line = "%s is here, fighting YOU!" % name
+                    line = name + " is here, fighting YOU!"
                 else:
                     # [PRIMESUD] 1stMud shows the target's name; mobs only
                     # fight the player or each other's ids -- resolve if present
                     tgt = world.chars.get(inst["fighting"])
                     if tgt is None:
-                        line = "%s is here, fighting thin air??" % name
+                        line = name + " is here, fighting thin air??"
                     else:
-                        line = "%s is here, fighting %s." % (
-                            name, MOB_DEFS[tgt["tpl"]]["short_descr"])
+                        line = (name + " is here, fighting "
+                                + MOB_DEFS[tgt["tpl"]]["short_descr"] + ".")
             else:
                 line = name + _POS_LINES.get(pos, " is here.")
         if show_vnums:  # [PRIMESUD] template vnum; instance id via debug stat mob
-            line += " {D[" + str(inst["tpl"]) + "]"
-        emit("%s{M%s{x" % (prefix, line))
+            line += " {D[" + num_str(inst["tpl"]) + "]"
+        emit(prefix + "{M" + line + "{x")
 
 
 def do_look(player, args):
@@ -751,9 +751,9 @@ def do_look(player, args):
 
         if count > 0 and count != number:
             if count == 1:
-                chprintln(player, "You only see one %s here." % target)
+                chprintln(player, "You only see one " + target + " here.")
             else:
-                chprintln(player, "You only see %d of those here." % count)
+                chprintln(player, "You only see " + str(count) + " of those here.")
             return
 
         # Direction look (cf. 1stMud do_look lines 1330-1362)
@@ -778,9 +778,9 @@ def do_look(player, args):
             if kw and kw[0] != ' ':
                 kw = kw.split()[0]  # 1stMud act "$d": first word of keyword
                 if ex.get("closed"):
-                    chprintln(player, "The %s is closed." % kw)
+                    chprintln(player, "The " + kw + " is closed.")
                 elif ex.get("isdoor"):
-                    chprintln(player, "The %s is open." % kw)
+                    chprintln(player, "The " + kw + " is open.")
         else:
             chprintln(player, "Nothing special there.")
         return
@@ -824,7 +824,7 @@ def do_look(player, args):
                 and (room["exits"][d].get("closed")
                      or room["exits"][d].get("to") is None))
         )
-        exit_string = "[Exits: {}]".format(exits) if exits else "[Exits: none]"
+        exit_string = "[Exits: " + exits + "]" if exits else "[Exits: none]"
         out.append("{g" + exit_string + "{x")
     live_mobs = rs["mobs"]
     # Items: build a display string per instance (flags + desc), stack by exact string match
@@ -863,7 +863,7 @@ def do_look(player, args):
             order.append(line)
     for line in order:
         n = seen[line]
-        stack_prefix = "(%2d) " % n if n > 1 else "     "
+        stack_prefix = "(" + pad_left(num_str(n), 2) + ") " if n > 1 else "     "
         out.append(stack_prefix + line)
     # Mobs: one per line (cf. 1stMud show_char_to_char in act_info.c)
     _show_char_to_char(player, live_mobs, out)
@@ -938,22 +938,25 @@ def do_score(player, args):
         rpad = ' ' * (_SCORE_RIGHT - color_len(r))
         return "{W|{x " + l + lpad + " {W|{x " + r + rpad + " {W|{x"
     def _stat(name, perm, curr):
-        return '{c' + '{:<13}'.format(name) + ': [{w' + '{:2d}/{:2d}'.format(perm, curr) + '{c]{x'
+        return ('{c' + pad_right(name, 13) + ': [{w'
+                + pad_left(num_str(perm), 2) + '/' + pad_left(num_str(curr), 2) + '{c]{x')
     def _val_l(name, v, bright=False):
         nc = '{C' if bright else '{c'
         # values stay as dim white
         vc = '{w'
-        return nc + '{:<13}'.format(name) + ': [' + vc + '{:>10}'.format(v) + nc + ' ]{x'
+        vs = v if isinstance(v, str) else num_str(v)
+        return nc + pad_right(name, 13) + ': [' + vc + pad_left(vs, 10) + nc + ' ]{x'
     def _val_r(name, v, bright=False):
         nc = '{C' if bright else '{c'
         # values stay as dim white
         vc = '{w'
-        return nc + '{:<13}'.format(name) + ': [' + vc + '{:>11}'.format(v) + nc + ' ]{x'
+        vs = v if isinstance(v, str) else num_str(v)
+        return nc + pad_right(name, 13) + ': [' + vc + pad_left(vs, 11) + nc + ' ]{x'
 
     def _ac_cell(label, val, bar_w=_AC_BAR_L):
         # [PRIMESUD] two bars per row so the score box fits the 22-row screen
         bar = _make_percent_bar(-val, 1000, bar_w)
-        return ('{c' + '{:<6}'.format(label) + '{W: {w' + '{:5d}'.format(val)
+        return ('{c' + pad_right(label, 6) + '{W: {w' + pad_left(num_str(val), 5)
                 + ' {c[' + bar + '{c]{x')
 
     def _free_mem():
@@ -1026,25 +1029,25 @@ def do_score(player, args):
         _SCORE_SEP_INNER,
         _row(
             "{CHit          : [{R"
-            + "{:5d}".format(p["hit"])
+            + pad_left(num_str(p["hit"]), 5)
             + "{C/{R"
-            + "{:5d}".format(p["max_hit"])
+            + pad_left(num_str(p["max_hit"]), 5)
             + "{C]{x",
             _val_r("Hitroll", get_hitroll(p), bright=True),
         ),
         _row(
             "{CMana         : [{M"
-            + "{:5d}".format(p["mana"])
+            + pad_left(num_str(p["mana"]), 5)
             + "{C/{M"
-            + "{:5d}".format(p["max_mana"])
+            + pad_left(num_str(p["max_mana"]), 5)
             + "{C]{x",
             _val_r("Damroll", get_damroll(p), bright=True),
         ),
         _row(
             "{CMovement     : [{G"
-            + "{:5d}".format(p.get("move", 100))
+            + pad_left(num_str(p.get("move", 100)), 5)
             + "{C/{G"
-            + "{:5d}".format(p.get("max_move", 100))
+            + pad_left(num_str(p.get("max_move", 100)), 5)
             + "{C]{x",
             # cf. 1stMud dlm_score "Quest Points" cell
             _val_r("Quest Points", p.get("quest_points", 0), bright=True),
@@ -1205,7 +1208,7 @@ def _parse_skill_range(player, args):
         chprintln(player, "Arguments must be numerical or all.")
         return (False, 1, MAX_MORTAL_LEVEL, False)
     if max_lev < 1 or max_lev > MAX_MORTAL_LEVEL:
-        chprintln(player, "Levels must be between 1 and {}.".format(MAX_MORTAL_LEVEL))
+        chprintln(player, "Levels must be between 1 and " + str(MAX_MORTAL_LEVEL) + ".")
         return (False, 1, MAX_MORTAL_LEVEL, False)
     min_lev = 1
     if len(args) > 1:
@@ -1216,7 +1219,7 @@ def _parse_skill_range(player, args):
             chprintln(player, "Arguments must be numerical or all.")
             return (False, 1, MAX_MORTAL_LEVEL, False)
         if max_lev < 1 or max_lev > MAX_MORTAL_LEVEL:
-            chprintln(player, "Levels must be between 1 and {}.".format(MAX_MORTAL_LEVEL))
+            chprintln(player, "Levels must be between 1 and " + str(MAX_MORTAL_LEVEL) + ".")
             return (False, 1, MAX_MORTAL_LEVEL, False)
         if min_lev > max_lev:
             chprintln(player, "That would be silly.")
@@ -1250,11 +1253,13 @@ def _print_level_lists(player, args, want_spells):
                 if player.get("level", 1) < level:
                     item = "{c" + _pad_color(sk["name"], 16) + " n/a      "
                 else:
-                    item = "{c" + _pad_color(sk["name"], 16) + " {W%3d mana  " % spell_mana(player, sn)
+                    item = ("{c" + _pad_color(sk["name"], 16) + " {W"
+                            + pad_left(num_str(spell_mana(player, sn)), 3) + " mana  ")
             elif player.get("level", 1) < level:
                 item = "{c" + _pad_color(sk["name"], 16) + " n/a      "
             else:
-                item = "{c" + _pad_color(sk["name"], 16) + " {W%3d%%      " % learned.get(sn, 0)
+                item = ("{c" + _pad_color(sk["name"], 16) + " {W"
+                        + pad_left(num_str(learned.get(sn, 0)), 3) + "%      ")
             if level not in rows:
                 rows[level] = []
             rows[level].append(item)
@@ -1273,7 +1278,8 @@ def _print_level_lists(player, args, want_spells):
         if not items:
             continue
         for i in range(0, len(items), 2):
-            prefix = "{cLevel {W%2d{c: " % level if i == 0 else "{x          "
+            prefix = ("{cLevel {W" + pad_left(num_str(level), 2) + "{c: "
+                      if i == 0 else "{x          ")
             line = prefix + items[i]
             if i + 1 < len(items):
                 line += items[i + 1]
@@ -1292,7 +1298,7 @@ def print_practice_table(player):
     for sn, sk in SKILL_TABLE:
         pct = learned.get(sn, 0)
         if can_use_skill_spell(player, sn) and pct > 0:
-            items.append("{:<{}} {:3d}%".format(sk["name"][:name_w], name_w, pct))
+            items.append(pad_right(sk["name"][:name_w], name_w) + " " + pad_left(num_str(pct), 3) + "%")
     # [PRIMESUD] list sent unjoined: batch-rendered by terminal.print_lines
     out = []
     for i in range(0, len(items), 2):
@@ -1383,7 +1389,7 @@ def do_index(player, args):
     if not args:
         lines = ["Help Category not found. Valid args are:"]
         for i, (category, count) in enumerate(_help_visible_categories(trust)):
-            lines.append("%2d) %s (%d helps)" % (i + 1, category, count))
+            lines.append(pad_left(num_str(i + 1), 2) + ") " + category + " (" + num_str(count) + " helps)")
         tpage(lines)
         return
 
@@ -1438,20 +1444,20 @@ def do_index(player, args):
     sep = draw_line("{c-{C-")
     if number is not None:
         if selected is None:
-            chprintln(player, "That help not found in %s." % category)
+            chprintln(player, "That help not found in " + category + ".")
             return
-        lines = [sep, "Help Keywords : %s" % selected[0],
-                 "Help Category : %s" % category, sep]
+        lines = [sep, "Help Keywords : " + selected[0],
+                 "Help Category : " + category, sep]
         lines.extend(_help_body(selected[1]))
         lines.append(sep)
         tpage(lines)
         return
 
-    lines = [sep, "[ %s ]" % category.upper(), sep]
+    lines = [sep, "[ " + category.upper() + " ]", sep]
     half = TERMINAL_COLS // 2
     cells = []
     for i, keywords in enumerate(matches):
-        cells.append(("%3d) %s" % (i + 1, keywords))[:half - 1])
+        cells.append((pad_left(num_str(i + 1), 3) + ") " + keywords)[:half - 1])
     for i in range(0, len(cells), 2):
         line = cells[i]
         if i + 1 < len(cells):
@@ -1530,7 +1536,7 @@ def do_help(player, args):
         t2 = ticks()
         # [PRIMESUD] output accumulated and sent as one unjoined list --
         # batch-rendered by terminal.print_lines
-        out = [sep, "Help Keywords : %s" % show[0], sep]
+        out = [sep, "Help Keywords : " + show[0], sep]
         out.extend(body)
         out.append(sep)
     else:
@@ -1541,13 +1547,13 @@ def do_help(player, args):
         # letters to leave list mode. The picker opens any match with a
         # digit and Enter instead. `show` is never set in list mode, so
         # nothing is pending in `out` here.
-        _help_pick("Help files starting with '%s'" % target[0].upper(),
+        _help_pick("Help files starting with '" + target[0].upper() + "'",
                    matches, offsets)
     elif not found:
-        out.append("No help found for %s. Try using just the first letter." % target)
+        out.append("No help found for " + target + ". Try using just the first letter.")
         # new_wiznet missing-help log: no immortals in single-user [PRIMESUD]
     elif related:
-        out.append("See Also : %s." % ", ".join(related))
+        out.append("See Also : " + ", ".join(related) + ".")
         out.append(sep)
     if out:
         chprintln(player, out)
@@ -1630,9 +1636,9 @@ def _help_pick(title, keywords, offsets, category=None):
         # Reopen where the player left off: without this, picking entry 63
         # drops them back on page 1 with six pages to walk again.
         page = idx // _PICKER_PAGE
-        lines = [sep, "Help Keywords : %s" % keywords[idx]]
+        lines = [sep, "Help Keywords : " + keywords[idx]]
         if category is not None:
-            lines.append("Help Category : %s" % category)
+            lines.append("Help Category : " + category)
         lines.append(sep)
         lines.extend(_help_body(offsets[idx]))
         lines.append(sep)
@@ -1642,7 +1648,7 @@ def _help_pick(title, keywords, offsets, category=None):
 def _help_browse_category(player, category, trust):
     """Menu one category's entries, showing each pick until Esc. [PRIMESUD]"""
     keywords, offsets = _help_category_entries(trust, category)
-    _help_pick("Help: %s" % category, keywords, offsets, category)
+    _help_pick("Help: " + category, keywords, offsets, category)
 
 
 def _help_browse(player):
@@ -1658,7 +1664,7 @@ def _help_browse(player):
     categories = _help_visible_categories(trust)
     labels = ["summary (one-page command overview)"]
     for name, count in categories:
-        labels.append("%s (%d helps)" % (name, count))
+        labels.append(name + " (" + num_str(count) + " helps)")
     while True:
         choice = pick_from("Help: pick a category", labels)
         if choice < 0:
@@ -1815,8 +1821,8 @@ def _print_area_levels(levels, comment=None):
     lo, hi = levels
     if lo >= MAX_MORTAL_LEVEL and hi >= MAX_MORTAL_LEVEL:
         return " HERO+ "
-    lo_s = "HRO" if lo >= MAX_MORTAL_LEVEL else "%03d" % lo
-    hi_s = "HRO" if hi >= MAX_MORTAL_LEVEL else "%03d" % hi
+    lo_s = "HRO" if lo >= MAX_MORTAL_LEVEL else zpad(lo, 3)
+    hi_s = "HRO" if hi >= MAX_MORTAL_LEVEL else zpad(hi, 3)
     return lo_s + " " + hi_s
 
 
@@ -2151,8 +2157,8 @@ def do_areas(player, args):
             builder = world.AREA_BUILDERS.get(tag, "")
             # [PRIMESUD] "here" marker, see docstring.
             here = "{G>{x" if tag == source_area else " "
-            chprintln(player, "%s{W[{B%-7s{W] {r%-7s {C%s{x"
-                   % (here, lvl_str, builder, name))
+            chprintln(player, here + "{W[{B" + pad_right(lvl_str, 7)
+                   + "{W] {r" + pad_right(builder, 7) + " {C" + name + "{x")
             count += 1
 
     if count == 0:
@@ -2199,9 +2205,10 @@ def _mob_stats(player, stat_index):
     for count, vnum in ranked[:50]:
         rank += 1
         short_descr, level, tag = metadata[vnum]
-        lines.append("%3d) %-22s %3d %-20s %6d" %
-                     (rank, short_descr[:22], level,
-                      world._TAG_TO_NAME.get(tag, tag)[:20], count))
+        lines.append(pad_left(num_str(rank), 3) + ") " + pad_right(short_descr[:22], 22)
+                     + " " + pad_left(num_str(level), 3) + " "
+                     + pad_right(world._TAG_TO_NAME.get(tag, tag)[:20], 20)
+                     + " " + pad_left(num_str(count), 6))
     if not rank:
         lines.append("No Mobs listed yet.")
     tpage(lines)
@@ -2234,8 +2241,9 @@ def _area_stats(stat_index):
         count, tag = entry
         levels = world.AREA_LEVELS.get(tag, (1, MAX_LEVEL))
         lvl = str(levels[0]) + "-" + str(levels[1])
-        lines.append("%3d) %-25s %7s %7d" %
-                     (rank, world._TAG_TO_NAME.get(tag, tag)[:25], lvl, count))
+        lines.append(pad_left(num_str(rank), 3) + ") "
+                     + pad_right(world._TAG_TO_NAME.get(tag, tag)[:25], 25)
+                     + " " + pad_left(lvl, 7) + " " + pad_left(num_str(count), 7))
     tpage(lines)
 
 

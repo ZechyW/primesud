@@ -2975,7 +2975,7 @@ def _mp_refund(mob, args, pv, cl):
     amount, wallet = stash
     mob[wallet] = mob.get(wallet, 0) - amount
     victim[wallet] = victim.get(wallet, 0) + amount
-    act("$n returns your %d %s." % (amount, wallet), mob, None, victim, TO_VICT)
+    act("$n returns your " + str(amount) + " " + wallet + ".", mob, None, victim, TO_VICT)
     act("$n returns some coins to $N.", mob, None, victim, TO_NOTVICT)
 
 

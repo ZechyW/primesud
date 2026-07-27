@@ -2,12 +2,13 @@
 
 import world
 from combat import dice
-from handler import act, chprintln, chprintlnf, TO_CHAR, TO_ROOM
+from handler import act, chprintln, TO_CHAR, TO_ROOM
 from config import PULSE_VIOLENCE
 from skill_utils import WaitState
 from magic import SPELL_FUNS, TARGET_CHAR, _skill_lookup
 from skills_table import SKILLS
 from shop import check_worth, deduct_cost, add_cost
+from util import pad_left
 
 # (name, descr, spell name for _skill_lookup or None=mana, words, cost in gold)
 # cf. 1stMud healer_table in healer.c
@@ -42,7 +43,8 @@ def do_heal(player, args):
     if not args:
         act("$N says 'I offer the following spells:'", player, None, mob, TO_CHAR)
         for name, descr, _spell, _words, cost in _HEALER_TABLE:
-            chprintlnf(player, "  %12s: %24s %d gold", name, descr, cost)
+            chprintln(player, "  " + pad_left(name, 12) + ": " + pad_left(descr, 24)
+                      + " " + str(cost) + " gold")
         chprintln(player, "  Type heal <type> to be healed.")
         return
 

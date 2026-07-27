@@ -58,24 +58,27 @@ Verified with `dir(str)` on-device.
 | `isidentifier` | True if valid Python identifier                    |
 | `isnumeric`    | True if all chars are numeric                      |
 | `isprintable`  | True if all chars are printable                    |
-| `ljust`        | Left-justify in field of given width — use `"%-10s" % s` instead |
+| `ljust`        | Left-justify in field of given width — use `util.pad_right(s, w)` instead |
 | `maketrans`    | Build translation table for `translate`            |
 | `removeprefix` | Strip prefix if present (Python 3.9+)              |
 | `removesuffix` | Strip suffix if present (Python 3.9+)              |
-| `rjust`        | Right-justify in field of given width — use `"%10s" % s` instead |
+| `rjust`        | Right-justify in field of given width — use `util.pad_left(s, w)` instead |
 | `swapcase`     | Swap upper/lower case                              |
 | `istitle`      | True if title-cased                                |
 | `title`        | Title-case the string                              |
 | `translate`    | Map chars through translation table                |
 | `zfill`        | Pad with leading zeros                             |
 
-> **`ljust`/`rjust` workaround caveat:** `%` padding uses actual byte length, not visual width.
-> Strings containing `{X` colour codes have `len() > visual_width`, so `"%-10s" % coloured_str`
-> will underpad. For coloured strings keep manual `s + ' ' * (width - color_len(s))` padding.
+> **`pad_left`/`pad_right` caveat:** they pad by actual byte length, not visual width.
+> Strings containing `{X` colour codes have `len() > visual_width`, so byte padding
+> will underpad. For coloured strings keep manual `s + ' ' * (width - color_len(s))`
+> padding (see `info._pad_color`).
 
-> **Physical HP Prime string formatting caveat:** `%s` and `.format()` formatting have 
-> a confirmed heap/timing-sensitive bug in some cases. See
-> [PRIME_STRING_FORMAT_BUG.md](PRIME_STRING_FORMAT_BUG.md).
+> **Physical HP Prime string formatting caveat:** `%` and `.format()` are BANNED on-device
+> entirely — confirmed heap-corruption bugs on both G1 and G2, layout-dependent, can
+> corrupt strings the formatter never touched. Concat + `util.int_str`/`num_str`/`sstr`
+> only. See [PRIME_STRING_FORMAT_BUG.md](PRIME_STRING_FORMAT_BUG.md) and sec.
+> G1 memory-corruption bug below.
 
 ---
 

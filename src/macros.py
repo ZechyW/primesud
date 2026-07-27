@@ -102,8 +102,8 @@ def _macro_target(key):
 
 def _print_key_error():
     """Print valid macro key names. [PRIMESUD]"""
-    tprint("Key must be 0-9, '.', or one of: {}.".format(
-        " ".join(sorted(_FNKEY_BY_NAME))))
+    tprint("Key must be 0-9, '.', or one of: "
+           + " ".join(sorted(_FNKEY_BY_NAME)) + ".")
 
 
 def do_macro(player, args):
@@ -136,9 +136,9 @@ def do_macro(player, args):
             _print_key_error()
         elif target in _MACRO_SUBST:
             del _MACRO_SUBST[target]
-            tprint("Macro {} unset.".format(label))
+            tprint("Macro " + label + " unset.")
         else:
-            tprint("No macro configured for {}.".format(label))
+            tprint("No macro configured for " + label + ".")
         return None
     target, label = _macro_target(args[0])
     if target is None:
@@ -147,10 +147,10 @@ def do_macro(player, args):
     if len(args) == 1:
         cmd = _MACRO_SUBST.get(target)
         if cmd is None:
-            tprint("No macro configured for {}.".format(label))
+            tprint("No macro configured for " + label + ".")
         else:
-            tprint("{R%s{x is mapped to '%s'." % (
-                label, cmd.replace("{", "{{")))
+            tprint("{R" + label + "{x is mapped to '"
+                   + cmd.replace("{", "{{") + "'.")
         return None
     cmd = " ".join(args[1:])
     # [PRIMESUD] '~' is the save-payload line separator (game_state.py);
@@ -159,5 +159,5 @@ def do_macro(player, args):
         tprint("Macro text may not contain '~'.")
         return None
     _MACRO_SUBST[target] = cmd
-    tprint("{R%s{x mapped to '%s'." % (label, cmd.replace("{", "{{")))
+    tprint("{R" + label + "{x mapped to '" + cmd.replace("{", "{{") + "'.")
     return None

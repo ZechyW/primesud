@@ -181,18 +181,18 @@ def check_improve(player, sk_vnum, success, multiplier):
         inner = min(95, max(5, 100 - current))
         if randint(1, 100) < inner:
             player["learned"][sk_vnum] += 1
-            chprintln(player, "You have become better at {}!".format(sk_name))
+            chprintln(player, "You have become better at " + sk_name + "!")
             player["xp"] += 2 * sk_rating
     else:
         inner = min(30, max(5, current // 2))
         if randint(1, 100) < inner:
             gain = randint(1, 3)
             player["learned"][sk_vnum] = min(100, current + gain)
-            chprintln(player, "You learn from your mistakes, and your {} improves.".format(sk_name))
+            chprintln(player, "You learn from your mistakes, and your " + sk_name + " improves.")
             player["xp"] += 2 * sk_rating
 
     if player["learned"].get(sk_vnum) == 100:
-        chprintln(player, "{GYou have mastered %s!{x" % sk_name)
+        chprintln(player, "{GYou have mastered " + sk_name + "!{x")
 
 
 # -- Skill lookup -------------------------------------------------------------

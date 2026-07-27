@@ -2,7 +2,7 @@
 
 import world
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
-from handler import (act, chprintln, chprintlnf, is_name, can_see, can_see_obj,
+from handler import (act, chprintln, is_name, can_see, can_see_obj,
                    get_char_room, TO_CHAR, TO_VICT, TO_ROOM)
 from skill_utils import get_skill, check_improve
 from comm import do_function, do_say
@@ -14,6 +14,7 @@ from item import (get_obj_list, obj_vnum, create_object, item_extra_flags,
                   can_carry_w, get_obj_weight)
 from skills_table import GSN_HAGGLE
 from urandom import randint
+from util import num_str, pad_left
 
 
 # -- Money helpers (cf. 1stMud check_worth/deduct_cost/add_cost in handler.c) --
@@ -226,7 +227,7 @@ def _buy_pet(player, args):
     roll = randint(1, 100)
     if roll < get_skill(player, GSN_HAGGLE):
         cost -= cost // 2 * roll // 100
-        chprintlnf(player, "You haggle the price down to %d coins.", cost)
+        chprintln(player, "You haggle the price down to " + str(cost) + " coins.")
         check_improve(player, GSN_HAGGLE, True, 4)
 
     deduct_cost(player, cost)
@@ -316,11 +317,11 @@ def do_buy(player, args):
         check_improve(player, GSN_HAGGLE, True, 4)
 
     if number > 1:
-        act("$n buys $p[%d]." % number, player, obj, None, TO_ROOM)
-        act("You buy $p for %d silver." % (cost * number), player, obj, None, TO_CHAR)
+        act("$n buys $p[" + str(number) + "].", player, obj, None, TO_ROOM)
+        act("You buy $p for " + str(cost * number) + " silver.", player, obj, None, TO_CHAR)
     else:
         act("$n buys $p.", player, obj, None, TO_ROOM)
-        act("You buy $p for %d silver." % cost, player, obj, None, TO_CHAR)
+        act("You buy $p for " + str(cost) + " silver.", player, obj, None, TO_CHAR)
 
     deduct_cost(player, cost * number)
     add_cost(keeper, cost * number)
@@ -365,9 +366,9 @@ def do_list(player, args):
                 if not found:
                     found = True
                     chprintln(player, "Pets for sale:")
-                chprintlnf(player, "[%2d] %8d - %s", pet["level"],
-                           10 * pet["level"] * pet["level"],
-                           MOB_DEFS[pet["tpl"]]["short_descr"])
+                chprintln(player, "[" + pad_left(num_str(pet["level"]), 2) + "] "
+                          + pad_left(num_str(10 * pet["level"] * pet["level"]), 8) + " - "
+                          + MOB_DEFS[pet["tpl"]]["short_descr"])
         if not found:
             chprintln(player, "Sorry, we're out of pets right now.")
         return
@@ -397,8 +398,8 @@ def do_list(player, args):
                 short = obj.get("short_descr") or tpl["short_descr"]
 
                 if flags.get("inventory"):
-                    chprintlnf(player, "[%2d %5d -- ] %s",
-                               tpl.get("level", 0), cost, short)
+                    chprintln(player, "[" + pad_left(num_str(tpl.get("level", 0)), 2) + " "
+                              + pad_left(num_str(cost), 5) + " -- ] " + short)
                 else:
                     count = 1
                     while i + 1 < len(inv):
@@ -411,8 +412,9 @@ def do_list(player, args):
                             break
                         count += 1
                         i += 1
-                    chprintlnf(player, "[%2d %5d %2d ] %s",
-                               tpl.get("level", 0), cost, count, short)
+                    chprintln(player, "[" + pad_left(num_str(tpl.get("level", 0)), 2) + " "
+                              + pad_left(num_str(cost), 5) + " " + pad_left(num_str(count), 2)
+                              + " ] " + short)
         i += 1
 
     if not found:

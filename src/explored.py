@@ -19,7 +19,7 @@ run-length string (str()+concat only, per PRIME_STRING_FORMAT_BUG).
 from world import _AREA_FILES, AREA_ROOM_COUNTS
 from handler import chprintln
 from colors import color_len
-from util import num_str
+from util import num_str, pad_left
 
 # Static vnum ranges + names per area tag (cf. 1stMud area->min_vnum/max_vnum),
 # from the generation-time _AREA_FILES table -- no area load required.
@@ -229,8 +229,8 @@ def do_explored(player, args):
         rows.sort(key=lambda r: (-r[0], r[1]))
         cells = []
         for pct, name in rows:
-            # str.rjust missing on-device; transient UI string so % is fine
-            cells.append("{D[{Y" + "%3d" % pct + "{y%{D]{x " + name)
+            # str.rjust missing on-device; pad_left replaces the old %3d
+            cells.append("{D[{Y" + pad_left(num_str(pct), 3) + "{y%{D]{x " + name)
         # two per line (cf. 1stMud print_cols 2-column layout)
         for i in range(0, len(cells), 2):
             left = cells[i]

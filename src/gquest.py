@@ -18,12 +18,12 @@ from world import MOB_DEFS, ROOM_DEFS, AREA_LEVELS
 from config import (MAX_LEVEL, MAX_MORTAL_LEVEL, GQUEST_INITIAL_DELAY,
                     GQUEST_AUTO_DELAY_MIN, GQUEST_AUTO_DELAY_MAX,
                     mins_to_ticks, ticks_to_mins, on_minute)
-from handler import chprintln, chprintlnf
+from handler import chprintln
 from quest import (chance, is_quester, mob_tell, quest_target_ok,
                    quest_area_def, _find_spec_mob, _intstr, _prefix,
                    _QUEST_AREA_EXCLUDE)
 from urandom import randint
-from util import sstr
+from util import sstr, num_str, pad_left, pad_right
 
 # cf. 1stMud gquest_t in defines.h
 GQUEST_OFF     = 0
@@ -88,9 +88,9 @@ def end_gquest():
         player = world.chars.get(1)
         if player is not None and player.get("name") == gquest_info["who"]:
             player["trivia"] = player.get("trivia", 0) + gquest_info["cost"]
-            chprintlnf(player,
-                       "Unable to start global quest, being refunded %d TP.",
-                       gquest_info["cost"])
+            chprintln(player,
+                      "Unable to start global quest, being refunded "
+                      + str(gquest_info["cost"]) + " TP.")
     gquest_info["running"] = GQUEST_OFF
     gquest_info["mob_count"] = 0
     gquest_info["timer"] = _next_auto_timer()
@@ -190,14 +190,16 @@ def generate_gquest(who_name):
     player = world.chars.get(1)
     if player is not None:
         if who_name:
-            chprintlnf(player,
-                       "You announce a Global Quest for levels %d to %d with %d targets.",
-                       gquest_info["minlevel"], gquest_info["maxlevel"],
-                       gquest_info["mob_count"])
+            chprintln(player,
+                      "You announce a Global Quest for levels "
+                      + str(gquest_info["minlevel"]) + " to "
+                      + str(gquest_info["maxlevel"]) + " with "
+                      + str(gquest_info["mob_count"]) + " targets.")
         else:
-            chprintlnf(player,
-                       "A Global Quest for levels %d to %d has started.  Type 'gquest info' to see the quest.",
-                       gquest_info["minlevel"], gquest_info["maxlevel"])
+            chprintln(player,
+                      "A Global Quest for levels " + str(gquest_info["minlevel"])
+                      + " to " + str(gquest_info["maxlevel"])
+                      + " has started.  Type 'gquest info' to see the quest.")
         # [PRIMESUD] auto-join the single player when eligible (same gates
         # as 'gquest join': no regular quest running, level in range)
         if (not is_quester(player)
@@ -205,13 +207,13 @@ def generate_gquest(who_name):
                 <= gquest_info["maxlevel"]):
             gquest_info["joined"] = True
             gquest_info["pmobs"] = list(gquest_info["mobs"])
-            chprintlnf(player,
-                       "You have %s to complete the task!",
-                       _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
+            chprintln(player,
+                      "You have " + _intstr(ticks_to_mins(gquest_info["timer"]), "minute")
+                      + " to complete the task!")
         else:
-            chprintlnf(player,
-                       "You have %s to join and complete the task!",
-                       _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
+            chprintln(player,
+                      "You have " + _intstr(ticks_to_mins(gquest_info["timer"]), "minute")
+                      + " to join and complete the task!")
     return True
 
 
@@ -272,7 +274,7 @@ def start_gquest(player, args):
         return
 
     if blevel <= 0 or blevel > MAX_LEVEL or elevel > MAX_LEVEL:
-        chprintlnf(player, "Level must be between 1 and %d.", MAX_LEVEL)
+        chprintln(player, "Level must be between 1 and " + str(MAX_LEVEL) + ".")
         return
     if elevel <= blevel:
         chprintln(player, "Max level must be greater than the min level.")
@@ -290,11 +292,11 @@ def start_gquest(player, args):
     cost = 5 + mobs // 5
     if player.get("trivia", 0) < cost:
         mob_tell(player, registar,
-                 "It costs %d Trivia Points to start a global quest with %d mobs."
-                 % (cost, mobs))
+                 "It costs " + str(cost) + " Trivia Points to start a global quest with "
+                 + str(mobs) + " mobs.")
         return
     mob_tell(player, registar,
-             "%d mobs have cost you %d trivia points." % (mobs, cost))
+             str(mobs) + " mobs have cost you " + str(cost) + " trivia points.")
     player["trivia"] -= cost
 
     gquest_info["minlevel"] = blevel
@@ -349,9 +351,9 @@ def gquest_update():
             elif player is not None and on_minute(gquest_info["timer"]):
                 mins = ticks_to_mins(gquest_info["timer"])
                 if mins % 20 == 0 or mins in (1, 5):
-                    chprintlnf(player,
-                               "{WA global quest will begin in about %s.{x",
-                               _intstr(mins, "minute"))
+                    chprintln(player,
+                              "{WA global quest will begin in about "
+                              + _intstr(mins, "minute") + ".{x")
     elif running == GQUEST_RUNNING:
         # [PRIMESUD] 1stMud ends the quest here if no players remain; kept
         # running so the (single) player can join or rejoin until time runs
@@ -359,14 +361,14 @@ def gquest_update():
         if gquest_info["timer"] == 0:
             end_gquest()
             if player is not None:
-                chprintlnf(player,
-                           "Time has run out on the Global Quest, next quest will start in %s.",
-                           _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
+                chprintln(player,
+                          "Time has run out on the Global Quest, next quest will start in "
+                          + _intstr(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
             return
         if (player is not None and on_minute(gquest_info["timer"])
                 and ticks_to_mins(gquest_info["timer"]) in (1, 2, 3, 4, 5, 10, 15)):
-            chprintlnf(player, "%s remaining in the global quest.",
-                       _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
+            chprintln(player, _intstr(ticks_to_mins(gquest_info["timer"]), "minute")
+                      + " remaining in the global quest.")
         gquest_info["timer"] -= 1
 
 
@@ -384,8 +386,10 @@ def _target_lines(player, vnums):
         adef = quest_area_def(tag) if tag else None
         area_name = adef.get("name", tag) if adef else "?"
         # [PRIMESUD] columns narrowed/truncated to fit the calculator screen
-        chprintlnf(player, "%2d) [%-16s] %-25s (level %3d)", count,
-                   area_name[:16], tpl["short_descr"][:25], tpl.get("level", 1))
+        chprintln(player, pad_left(num_str(count), 2) + ") ["
+                  + pad_right(area_name[:16], 16) + "] "
+                  + pad_right(tpl["short_descr"][:25], 25) + " (level "
+                  + pad_left(num_str(tpl.get("level", 1)), 3) + ")")
 
 
 def do_gquest(player, args):
@@ -411,9 +415,9 @@ def do_gquest(player, args):
         return
 
     if gquest_info["running"] == GQUEST_OFF:
-        chprintlnf(player,
-                   "There is no global quest running.  The next Gquest will start in %s.",
-                   _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
+        chprintln(player,
+                  "There is no global quest running.  The next Gquest will start in "
+                  + _intstr(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
         return
 
     if _prefix(arg1, "join"):
@@ -450,30 +454,29 @@ def do_gquest(player, args):
 
     if _prefix(arg1, "info"):
         chprintln(player, "[ GLOBAL QUEST INFO ]")
-        chprintlnf(player, "Started by  : %s", gquest_info["who"] or "Unknown")
-        chprintlnf(player, "Levels      : %d - %d",
-                   gquest_info["minlevel"], gquest_info["maxlevel"])
-        chprintlnf(player, "Status      : Running for %s.",
-                   _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
+        chprintln(player, "Started by  : " + (gquest_info["who"] or "Unknown"))
+        chprintln(player, "Levels      : " + str(gquest_info["minlevel"])
+                  + " - " + str(gquest_info["maxlevel"]))
+        chprintln(player, "Status      : Running for "
+                  + _intstr(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
         chprintln(player, "[ Quest Rewards ]")
-        chprintlnf(player, "Qp Reward   : %d", gquest_info["qpoints"])
-        chprintlnf(player, "Gold Reward : %d", gquest_info["gold"])
+        chprintln(player, "Qp Reward   : " + str(gquest_info["qpoints"]))
+        chprintln(player, "Gold Reward : " + str(gquest_info["gold"]))
         chprintln(player, "[ Quest Targets ]")
         _target_lines(player, gquest_info["mobs"])
         return
 
     if _prefix(arg1, "time"):
-        chprintlnf(player, "The Global Quest is Running for %s.",
-                   _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
+        chprintln(player, "The Global Quest is Running for "
+                  + _intstr(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
         return
 
     if _prefix(arg1, "check"):
         if not gquest_info["joined"]:
             chprintln(player, "You aren't on a global quest.")
             return
-        chprintlnf(player, "[ You have %d of %d mobs left ]",
-                   gquest_info["mob_count"] - _count_killed(),
-                   gquest_info["mob_count"])
+        chprintln(player, "[ You have " + str(gquest_info["mob_count"] - _count_killed())
+                  + " of " + str(gquest_info["mob_count"]) + " mobs left ]")
         _target_lines(player, gquest_info["pmobs"])
         return
 
@@ -485,20 +488,20 @@ def do_gquest(player, args):
         killed = _count_killed()
         if killed != gquest_info["mob_count"]:
             # [PRIMESUD] 1stMud intstr(..., "minute") slip fixed to "mob"
-            chprintlnf(player,
-                       "You haven't finished just yet, theres still %s to kill.",
-                       _intstr(gquest_info["mob_count"] - killed, "mob"))
+            chprintln(player,
+                      "You haven't finished just yet, theres still "
+                      + _intstr(gquest_info["mob_count"] - killed, "mob") + " to kill.")
             return
         chprintln(player, "YES! You have completed the global quest.")
         # 1stMud: post_gquest note-board history -- [PRIMESUD] skipped
         player["quest_points"] = player.get("quest_points", 0) + gquest_info["qpoints"]
         player["gold"] += gquest_info["gold"]
-        chprintlnf(player, "You receive %d gold and %d quest points.",
-                   gquest_info["gold"], gquest_info["qpoints"])
+        chprintln(player, "You receive " + str(gquest_info["gold"]) + " gold and "
+                  + str(gquest_info["qpoints"]) + " quest points.")
         end_gquest()
-        chprintlnf(player,
-                   "You have completed the global quest, next gquest in %s.",
-                   _intstr(ticks_to_mins(gquest_info["timer"]), "minute"))
+        chprintln(player,
+                  "You have completed the global quest, next gquest in "
+                  + _intstr(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
         world.save_pending = True
         return
 

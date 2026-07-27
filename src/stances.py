@@ -1,7 +1,7 @@
 """Fighting stance table and helpers (cf. 1stMud stance_table in tables.c, stance helpers in fight.c)."""
 
 import world
-from handler import act, chprintln, chprintlnf, _pers, TO_ROOM
+from handler import act, chprintln, _pers, TO_ROOM
 from picker import pick_from
 
 # -- Stance constants (cf. 1stMud STANCE_* in defines.h:516-529) ---------------
@@ -184,8 +184,7 @@ def improve_stance(ch):
     title = _RANK_TITLES.get(get_stance(ch, stance))
     if title is None:
         return
-    chprintlnf(ch, "{RYou are now %s the %s stance.{x", title,
-               stance_name(stance))
+    chprintln(ch, "{RYou are now " + title + " the " + stance_name(stance) + " stance.{x")
 
 
 def _never_stanced(ch):
@@ -282,7 +281,7 @@ def autodrop(ch):
 
     if not valid_stance(get_stance(ch, STANCE_CURRENT)):
         set_stance(ch, STANCE_CURRENT, stance)
-        chprintlnf(ch, "You autodrop into the %s stance. (%d%%)",
-                   stance_name(stance), get_stance(ch, stance))
+        chprintln(ch, "You autodrop into the " + stance_name(stance) + " stance. ("
+                  + str(get_stance(ch, stance)) + "%)")
         act("$n autodrops into the $T stance.", ch, None, stance_name(stance),
             TO_ROOM)

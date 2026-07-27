@@ -19,6 +19,7 @@ from handler import chprintln
 from pager import tpage
 from skill_utils import skill_level
 from skills_table import SKILL_TABLE, SKILLS
+from util import num_str, pad_left, pad_right, zpad
 
 # Ported from 1stMud data/groups.dat. Rating 7-tuple order matches CLASS_TABLE
 # (mage, cleric, thief, warrior, paladin, ranger, swordsman); -1 = not
@@ -205,7 +206,7 @@ def _group_name_rows(names):
     rows = []
     for i in range(0, len(names), _GRLIST_COLS):
         row = names[i:i + _GRLIST_COLS]
-        rows.append("{W" + "".join("%-*s" % (_GRLIST_COL_W, n) for n in row) + "{x")
+        rows.append("{W" + "".join(pad_right(n, _GRLIST_COL_W) for n in row) + "{x")
     return rows
 
 
@@ -257,8 +258,9 @@ def do_slist(player, args):
         for level in range(MAX_MORTAL_LEVEL + 1):
             names = buckets.get(level, [])
             for i in range(0, len(names), 2):
-                prefix = "{cLevel {W%3d{c: " % level if i == 0 else "{x           "
-                lines.append(prefix + "".join("{c%-18s      " % name
+                prefix = ("{cLevel {W" + pad_left(num_str(level), 3) + "{c: "
+                          if i == 0 else "{x           ")
+                lines.append(prefix + "".join("{c" + pad_right(name, 18) + "      "
                                                for name in names[i:i + 2]) + "{x")
         tpage(lines)
         return
@@ -277,9 +279,9 @@ def _slist_skill(player, sn):
     fields = []
     for cl in range(len(CLASS_TABLE)):
         level = SKILLS[sn]["skill_level"][cl]
-        fields.append("{W%3s: %3s{c  " %
-                      (class_name(player, cl)[:3],
-                       "n/a" if level > MAX_MORTAL_LEVEL else "%03d" % level))
+        level_str = "n/a" if level > MAX_MORTAL_LEVEL else zpad(level, 3)
+        fields.append("{W" + pad_left(class_name(player, cl)[:3], 3) + ": "
+                      + pad_left(level_str, 3) + "{c  ")
     # colors.capitalize -- str.capitalize missing on-device
     name = capitalize(SKILLS[sn]["name"])
     prefix = name + ": [ "
@@ -337,7 +339,7 @@ def _grlist_group_spells(player, gn):
     for sn in GROUP_SKILLS[gn]:
         lvl = skill_level(player, sn)
         if lvl <= MAX_MORTAL_LEVEL:
-            rows.append("{c%-5d {W%s{x" % (lvl, SKILLS[sn]["name"]))
+            rows.append("{c" + pad_right(num_str(lvl), 5) + " {W" + SKILLS[sn]["name"] + "{x")
     if not rows:
         chprintln(player, "{cNo spells available in the {W" + GROUP_TABLE[gn][0] + "{c group.{x")
         return

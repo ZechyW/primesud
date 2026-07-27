@@ -50,7 +50,7 @@ import classes
 from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
                      is_awake, can_see, affect_to_char, affect_remove, affect_strip,
                      affect_join, is_affected,
-                     chprintln, chprintlnf, get_char_room, unequip_char,
+                     chprintln, get_char_room, unequip_char,
                      TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT,
                      is_good, is_evil, is_neutral)
 from effects import TARGET_CHAR, fire_effect, cold_effect, shock_effect
@@ -83,7 +83,7 @@ from skills_table import (
 )
 from hunt import hunt_victim
 from urandom import randint
-from util import wait
+from util import wait, pad_right
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 
 
@@ -1136,7 +1136,7 @@ def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
     # cf. 1stMud SEE_DAMAGE(ch): damage tag only for player viewers with
     # PLR_AUTODAMAGE ("{x" otherwise); TO_CHAR line sees ch's flag, TO_VICT
     # line sees victim's flag
-    tag = " {W[{R%d{W]{x" % dam
+    tag = " {W[{R" + str(dam) + "{W]{x"
     tag_ch = tag if (not ch["is_npc"]
                      and ch.get("flags", PLR_DEFAULTS) & PLR_AUTODAMAGE) else "{x"
     tag_vict = tag if (not victim["is_npc"]
@@ -1148,17 +1148,17 @@ def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
     if attack_noun is None and not immune:
         # dt == TYPE_HIT: bare hit, no attack noun (misses included -- 1stMud
         # has no separate miss branch; dam 0 resolves to miss/misses verbs)
-        act("{GYou %s{G $N%s%s" % (vs, punct, tag_ch), ch, None, victim, TO_CHAR)
-        act("{R$n %s{R you%s%s" % (vp, punct, tag_vict), ch, None, victim, TO_VICT)
+        act("{GYou " + vs + "{G $N" + punct + tag_ch, ch, None, victim, TO_CHAR)
+        act("{R$n " + vp + "{R you" + punct + tag_vict, ch, None, victim, TO_VICT)
     else:
         # 1stMud: dt == TYPE_HIT under immunity resolves attack_table[0].noun = "hit"
         noun = attack_noun if attack_noun else "hit"
         if immune:
-            act("{G$N is unaffected by your %s!{x" % noun, ch, None, victim, TO_CHAR)
-            act("{R$n's %s is powerless against you.{x" % noun, ch, None, victim, TO_VICT)
+            act("{G$N is unaffected by your " + noun + "!{x", ch, None, victim, TO_CHAR)
+            act("{R$n's " + noun + " is powerless against you.{x", ch, None, victim, TO_VICT)
         else:
-            act("{GYour %s %s{G $N%s%s" % (noun, vp, punct, tag_ch), ch, None, victim, TO_CHAR)
-            act("{R$n's %s %s{R you%s%s" % (noun, vp, punct, tag_vict), ch, None, victim, TO_VICT)
+            act("{GYour " + noun + " " + vp + "{G $N" + punct + tag_ch, ch, None, victim, TO_CHAR)
+            act("{R$n's " + noun + " " + vp + "{R you" + punct + tag_vict, ch, None, victim, TO_VICT)
 
 
 def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
@@ -1431,7 +1431,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                     for cobj in list(contents):
                         ctpl = ITEM_DEFS[obj_vnum(cobj)]
                         corpse["contents"].remove(cobj)
-                        chprintln(ch, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+                        chprintln(ch, "You get " + str(cobj.get("short_descr") or ctpl["short_descr"]) + ".")
                         if not apply_money_pickup(ch, cobj, ctpl):
                             ch["inv"].append(cobj)
 
@@ -1442,7 +1442,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                         ctpl = ITEM_DEFS[obj_vnum(cobj)]
                         if ctpl.get("type") == "money":
                             corpse["contents"].remove(cobj)
-                            chprintln(ch, "You get {}.".format(cobj.get("short_descr") or ctpl["short_descr"]))
+                            chprintln(ch, "You get " + str(cobj.get("short_descr") or ctpl["short_descr"]) + ".")
                             apply_money_pickup(ch, cobj, ctpl)
 
                 # 1stMud: if (PLR_AUTOSAC) { if (autoloot && still has contents) skip; else sacrifice }
@@ -2820,11 +2820,10 @@ def advance_level(player):
     from mob import scale_pet  # deferred: mob imports combat
     scale_pet(player)
 
-    chprintlnf(player, "You gain %d hit %s, %d mana, %d move, and %d %s.",
-        add_hp,  "point" if add_hp  == 1 else "points",
-        add_mp,
-        add_mv,
-        add_prac, "practice" if add_prac == 1 else "practices")
+    chprintln(player, "You gain " + str(add_hp) + " hit "
+              + ("point" if add_hp == 1 else "points") + ", " + str(add_mp)
+              + " mana, " + str(add_mv) + " move, and " + str(add_prac) + " "
+              + ("practice" if add_prac == 1 else "practices") + ".")
     learned = player.get("learned", {})
     for _sn, data in SKILL_TABLE:
         # cf. 1stMud advance_level: skill_level(ch, sn) == ch->level (class-aware)
@@ -2832,8 +2831,8 @@ def advance_level(player):
             kind = "spell" if data.get("spell_fun", "spell_null") != "spell_null" else "skill"
             # 1stMud: learned==1 -> "learn" (go practice it), >1 -> "use" (already practiced)
             verb = "learn" if learned.get(_sn, 0) <= 1 else "use"
-            chprintlnf(player, "{MYou can now %s the {W%s{M %s.{x",
-                verb, data["name"], kind)
+            chprintln(player, "{MYou can now " + verb + " the {W" + data["name"]
+                      + "{M " + kind + ".{x")
 
 
 def gain_exp(ch, gain):
@@ -2962,8 +2961,8 @@ def group_gain(ch, victim):
         # 1stMud: if (mud_info.bonus.status == BONUS_XP) ...
         # [PRIMESUD] skip bonus XP event (not ported)
         # [PRIMESUD] singular/plural fixed; 1stMud always prints "points"
-        chprintln(gch, "You receive %s experience %s." % (
-            str(xp), "point" if xp == 1 else "points"))
+        chprintln(gch, "You receive " + str(xp) + " experience "
+                  + ("point" if xp == 1 else "points") + ".")
         gain_exp(gch, xp)
 
         # 1stMud: quest mob check (IsQuester && quest.mob == victim);
@@ -3077,8 +3076,8 @@ def do_murder(ch, args, victim=None):
     # [PRIMESUD] third-person about victim -- flagged, plain chprintln kept per sweep scope
     victim_name = MOB_DEFS[victim["tpl"]]["short_descr"] if victim["is_npc"] else "someone"
     ch_name = ch.get("name", "someone")
-    chprintln(ch, "{} screams 'Help!  I am being attacked by {}!'".format(
-        upper(victim_name), ch_name))
+    chprintln(ch, upper(victim_name) + " screams 'Help!  I am being attacked by "
+              + ch_name + "!'")
 
     # [PRIMESUD] check_killer not ported
     multi_hit(ch, victim)
@@ -3842,20 +3841,20 @@ def do_sskill(ch, args):
             continue
 
         if prereq[0] == STANCE_NORMAL:
-            chprintlnf(ch, "%-9s: {Y%d%%{x", name, get_stance(ch, stance))
+            chprintln(ch, pad_right(name, 9) + ": {Y" + str(get_stance(ch, stance)) + "%{x")
             continue
 
         if prereq[0] == STANCE_CURRENT:
-            chprintlnf(ch, "%-9s: {R%s{x", name,
-                       stance_name(get_stance(ch, stance)))
+            chprintln(ch, pad_right(name, 9) + ": {R"
+                      + stance_name(get_stance(ch, stance)) + "{x")
             continue
 
         if (get_stance(ch, prereq[0]) >= 200
                 and get_stance(ch, prereq[1]) >= 200):
-            chprintlnf(ch, "%-9s: {Y%d%%{x", name, get_stance(ch, stance))
+            chprintln(ch, pad_right(name, 9) + ": {Y" + str(get_stance(ch, stance)) + "%{x")
         else:
-            chprintlnf(ch, "%-9s: {yrequires master in %s and %s.{x",
-                       name, stance_name(prereq[0]), stance_name(prereq[1]))
+            chprintln(ch, pad_right(name, 9) + ": {yrequires master in "
+                      + stance_name(prereq[0]) + " and " + stance_name(prereq[1]) + ".{x")
     chprintln(ch, "{w----{x")
     return None
 
@@ -3897,12 +3896,12 @@ def _stance_status(ch):
     cur = get_stance(ch, STANCE_CURRENT)
     auto = get_stance(ch, STANCE_AUTODROP)
     if valid_stance(cur):
-        chprintlnf(ch, "Stance    : {Y%s{x (%d%%)", stance_name(cur),
-                   get_stance(ch, cur))
+        chprintln(ch, "Stance    : {Y" + stance_name(cur) + "{x ("
+                  + str(get_stance(ch, cur)) + "%)")
     else:
         chprintln(ch, "Stance    : {wnone{x")
     if valid_stance(auto):
-        chprintlnf(ch, "Autostance: {Y%s{x", stance_name(auto))
+        chprintln(ch, "Autostance: {Y" + stance_name(auto) + "{x")
     else:
         chprintln(ch, "Autostance: {wnone{x")
     show_available_stances(ch, "stance")
@@ -3951,10 +3950,9 @@ def do_stance(ch, args):
         return None
 
     if not can_use_stance(ch, STANCE_TABLE[i][1]):
-        chprintlnf(ch, "You need to master %s and %s stances to use %s.",
-                   stance_name(STANCE_TABLE[i][2][0]),
-                   stance_name(STANCE_TABLE[i][2][1]),
-                   STANCE_TABLE[i][0])
+        chprintln(ch, "You need to master " + stance_name(STANCE_TABLE[i][2][0])
+                  + " and " + stance_name(STANCE_TABLE[i][2][1]) + " stances to use "
+                  + STANCE_TABLE[i][0] + ".")
         return None
 
     set_stance(ch, STANCE_CURRENT, STANCE_TABLE[i][1])
@@ -3995,13 +3993,12 @@ def do_autostance(ch, args):
         return None
 
     if not can_use_stance(ch, STANCE_TABLE[i][1]):
-        chprintlnf(ch, "You need to master %s and %s stances to use %s.",
-                   stance_name(STANCE_TABLE[i][2][0]),
-                   stance_name(STANCE_TABLE[i][2][1]),
-                   STANCE_TABLE[i][0])
+        chprintln(ch, "You need to master " + stance_name(STANCE_TABLE[i][2][0])
+                  + " and " + stance_name(STANCE_TABLE[i][2][1]) + " stances to use "
+                  + STANCE_TABLE[i][0] + ".")
         return None
 
     set_stance(ch, STANCE_AUTODROP, STANCE_TABLE[i][1])
 
-    chprintlnf(ch, "You now autostance to %s.", STANCE_TABLE[i][0])
+    chprintln(ch, "You now autostance to " + STANCE_TABLE[i][0] + ".")
     return None
