@@ -74,8 +74,9 @@ ITERS = 20
 # (28/07, -4 logs) -- hoisting args to locals does NOT help.
 # Standing contrast: single-int '"%d" % t' loops are proven clean
 # (matrix3 pctonly 60 collects G1; D phase 27.6K conversions G2), so
-# the poison is among {multi-arg tuple, %s-with-str-arg, %% escape}.
-START_PHASE = "A1t"
+# the poison is among {multi-arg tuple, %s-with-str-arg, %% escape}
+# -- bisected by the A1s/A1c/A1e rungs.
+START_PHASE = "A1s"
 
 _out = []
 
@@ -159,6 +160,55 @@ def mwe_pct_loop():
     for k, v in _learned.items():
         out.append("%s (%d%%)" % (_skills[k]["name"], v))
     return out
+
+
+def pct_single_str():
+    # Poison bisect rung 1: single %s with a str local -- the most
+    # common game UI shape ("{G%s{x" % name).
+    out = []
+    for k, _v in _learned.items():
+        nm = _skills[k]["name"]
+        out.append("%s" % nm)
+    return out
+
+
+def exp_single_str():
+    exp = []
+    for k, _v in _learned.items():
+        exp.append(_skills[k]["name"])
+    return exp
+
+
+def pct_tuple_ints():
+    # Rung 2: multi-arg tuple, ints only -- isolates tuple-ness from
+    # %s-str ("hp: %d/%d" shape).
+    out = []
+    for _k, v in _learned.items():
+        out.append("%d/%d" % (v, v * 2))
+    return out
+
+
+def exp_tuple_ints():
+    exp = []
+    for _k, v in _learned.items():
+        exp.append(int_str(v) + "/" + int_str(v * 2))
+    return exp
+
+
+def pct_int_escape():
+    # Rung 3: single int plus %% escape -- isolates the escape from
+    # the proven-clean bare "%d".
+    out = []
+    for _k, v in _learned.items():
+        out.append("%d%%" % v)
+    return out
+
+
+def exp_int_escape():
+    exp = []
+    for _k, v in _learned.items():
+        exp.append(int_str(v) + "%")
+    return exp
 
 
 def mwe_pct_loop_locals():
@@ -336,6 +386,9 @@ def main():
         ("A0/pct-comp", mwe_pct, exp_sk, False),
         ("A1/pct-loop", mwe_pct_loop, exp_sk, False),
         ("A1L/pct-loop-locals", mwe_pct_loop_locals, exp_sk, False),
+        ("A1s/pct-single-str", pct_single_str, exp_single_str(), False),
+        ("A1c/pct-tuple-ints", pct_tuple_ints, exp_tuple_ints(), False),
+        ("A1e/pct-int-escape", pct_int_escape, exp_int_escape(), False),
         ("A1t/pct-t1", t1_pct, exp_t1, False),
         ("A2/fmt-loop", mwe_fmt_loop, exp_sk, False),
         ("A/fmt-comp", mwe_fmt, exp_sk, False),
