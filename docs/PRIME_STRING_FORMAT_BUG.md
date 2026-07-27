@@ -93,13 +93,12 @@ str(SKILLS[vnum]["name"]) + " (" + str(pct) + "%)"
 "a." + str(_as["tag"]) + ".age=" + str(_as["age"])
 ```
 
-Avoid both `%` and `.format()` for:
-- List comprehensions with nested dict lookups
-- Save payloads, HVars/PPL strings, file formats, generated area data
-- Any string that will be joined/stored/parsing-critical
-
-Transient UI-only strings built from simple literals (no dict lookup) may still
-use `%` when useful for `{X` colour-code compatibility.
+Avoid both `%` and `.format()` everywhere on-device -- see the FINAL rule
+at the end of sec. Battery results.  (An earlier revision of this section
+allowed `%` for transient UI-only strings; the 28 Jul 2026 battery
+falsified that carve-out: outcomes are heap-layout-dependent and the
+formatter under collect pressure corrupts even resident strings it never
+touched, on both devices.)
 
 
 ## Status

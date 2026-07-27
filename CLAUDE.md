@@ -38,13 +38,17 @@ python tools/check_ascii_py.py
 
 7. **File I/O calls are expensive (~20ms each).** Never loop `readline()` at runtime; use one `f.read()` (or `seek` + bounded read) and split in memory. Measured numbers in `docs/BUILTINS.md` sec. File I/O performance. Always use `with open(...) as f:` (works on-device): MicroPython has no refcounting, `open(f).read()` leaks the handle, and the Prime's small FD table exhausts as `OSError: 0` on a later `open()`.
 
-8. **Use str() + concat in persisted/serialized strings.** Physical HP Prime Python has confirmed heap-sensitive string formatting bug. Values can behave like strings at first, then fail later during list/string operations such as `"~".join(lines)`. For save payloads, HVars/PPL strings, file formats, area-data generated strings, or any string that will be joined/stored/parsing-critical, use explicit `str()` plus concatenation. See `docs/PRIME_STRING_FORMAT_BUG.md`.
+8. **No `%` and no `.format()` on-device, period. No bulk `str(int)` either.** Two distinct confirmed firmware heap bugs (physical hardware only; emulator clean):
+   - **Format bug (G1 + G2):** any `%` or `.format()` call can zero the first byte of its output, corrupt unrelated *resident* strings, or hard-crash the calculator, depending on operator x context x device x heap layout. Layout-dependence makes shape-level "safe subsets" unprovable -- a construction that ran clean 30/30 in one session crashed 2/2 in another. Build ALL strings with concatenation. See `docs/PRIME_STRING_FORMAT_BUG.md`.
+   - **str(int)-GC bug (G1):** bulk `str(int)` transients plus any garbage collection (explicit or automatic) corrupt the heap -- crash, stall, or delayed type-confusion. For int rendering use `util.int_str()` (digit-table + concat), `util.num_str()` (cached), or `util.sstr()` (typed dispatch for mixed values); never loop plain `str()` over numbers. See `docs/BUILTINS.md` sec. G1 memory-corruption bug.
+
+   Occasional single `str(x)` calls outside loops are fine. `str()` on values that are already strings is fine.
 
 9. **Allocation dominates hot loops on device.** One small heap alloc costs ~0.5ms at full game heap (~35us standalone) -- ~49x a native `strblit2` call. In per-char/per-item loops avoid anything that allocates: iterate `s.encode()` (ints) instead of a str (1-char str alloc each), no slices, `%` formatting, or tuple churn. Measured numbers in `docs/BUILTINS.md` sec. Text rendering performance.
 
 ## Colour codes
 
-Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` -- handled by `colors.py`. For transient UI-only strings, `%` (`"{G%s{x" % name`, `"hp: %d" % hp`) avoids `.format()` conflicts with `{X` colour delimiters. For persisted/serialized strings, no `%` -- see pitfall 8 (str() + concat). Full table in docs/REFERENCE.md sec. Colour codes.
+Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` -- handled by `colors.py`. Build the strings with concatenation only (`"{G" + name + "{x"`, `"hp: " + num_str(hp)`) -- `%` and `.format()` are banned on-device per pitfall 8, which also conveniently sidesteps `.format()`'s brace conflict with `{X` colour delimiters. Full table in docs/REFERENCE.md sec. Colour codes.
 
 When porting 1stMud code using `CTAG(_CONSTANT)` (e.g. `CTAG(_MOBILES)`), default colour per constant documented in docs/REFERENCE.md sec. CTAG colour scheme. Use that table to pick equivalent `{X` code.
 
