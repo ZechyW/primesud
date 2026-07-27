@@ -45,17 +45,20 @@ SAV = "primesud.sav"
 LOG = "save_bench.log"
 HVAR = "savebench"
 
-# Bisect toggle (G1 stall hunt, 27/07): HVars interop is CONFIRMED as
-# the stall trigger -- "off" completed clean (save_bench-4.log) where
-# the full run stalled 2/2 on identical clean-pool conditions, with
-# every HVars call succeeding (verified readback) before the delayed
-# firmware wedge.  Modes:
-#   "off"  -- no HVars at all (the clean-run control)
-#   "1x"   -- all HVars call sites, but only payload-sized (~8KB)
-#             literals: same call count, no 16/32KB literals.
-#             Distinguishes size-triggered from count-triggered.
-#   "full" -- original behaviour incl. 2x/4x scaling (the stall repro)
-HV_MODE = "1x"
+# Bisect toggle (G1 stall hunt, 27/07).  Evidence so far: "full"
+# stalls 2/2 on clean pool; "off" and "1x" complete clean
+# (save_bench-4/5.log) -- BUT "full" is confounded: it also builds the
+# 16/32KB payload strings Python-side before the HVars calls, and the
+# clean modes skipped both.  The bignohv/4xonce pair decouples them;
+# the two runs differ by exactly one hvars_set call.  Modes:
+#   "off"     -- no HVars at all (clean-run control)
+#   "1x"      -- all HVars call sites, ~8KB literals only (clean, -5.log)
+#   "full"    -- original incl. 2x/4x scaling (the stall repro)
+#   "bignohv" -- build 2x/4x strings, keep them live all run, ZERO
+#                HVars traffic.  Clean => big str concat acquitted.
+#   "4xonce"  -- bignohv plus a single hvars_set of the 32KB string.
+#                Stall => one-call minimal repro, HVars convicted.
+HV_MODE = "bignohv"
 
 _out = []
 
@@ -249,7 +252,7 @@ def run_segments(payload, work, tag):
         ("join  ", lambda: "~".join(lines)),
         ("fwrite", lambda: _fwrite(payload)),
     ]
-    if HV_MODE != "off":
+    if HV_MODE in ("1x", "full"):
         segs.insert(2, ("hvset ", lambda: hvars_set(HVAR, payload)))
         segs.insert(3, ("hvget ", lambda: hvars_get(HVAR) == payload))
     for name, fn in segs:
@@ -298,7 +301,21 @@ def main():
     # HVars size-scaling first: cheapest, highest-value data -- get it
     # into the log before any alloc-heavy segment can hard-reset the G1.
     log("HV_MODE=" + HV_MODE)
-    if HV_MODE != "off":
+    # bignohv/4xonce: build the big strings exactly as "full" does and
+    # keep them live for the whole run (see the end-of-main log line);
+    # the ONLY difference between the two modes is one hvars_set call.
+    big2 = None
+    big4 = None
+    if HV_MODE in ("bignohv", "4xonce"):
+        big2 = payload + "~" + payload
+        big4 = payload + "~" + payload + "~" + payload + "~" + payload
+        log("big strings built: " + str(len(big2)) + "B + "
+            + str(len(big4)) + "B, held live")
+        if HV_MODE == "4xonce":
+            t0 = ticks()
+            hvars_set(HVAR, big4)
+            log("hv set 4x once: " + str(ticks() - t0) + "ms")
+    if HV_MODE in ("1x", "full"):
         sizes = [("1x", payload)]
         if HV_MODE == "full":
             sizes.append(("2x", payload + "~" + payload))
@@ -362,7 +379,11 @@ def main():
     ballast = None
     gc.collect()
 
-    if HV_MODE != "off":
+    if big2 is not None:
+        # Reference keeps big2/big4 live across the whole danger zone in
+        # both bignohv and 4xonce -- identical liveness, one-call diff.
+        log("big strings still live: " + str(len(big2) + len(big4)) + "B")
+    if HV_MODE in ("1x", "full", "4xonce"):
         try:
             hvars_set(HVAR, "0")
         except Exception:
