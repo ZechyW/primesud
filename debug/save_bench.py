@@ -133,7 +133,7 @@ HV_MODE = "bigloop"
 #                run acquits all three at once; a death only
 #                provisionally convicts its phase (cross-phase pinned
 #                residue possible) -- rerun that kind isolated.
-BIGLOOP_KIND = "matrix"
+BIGLOOP_KIND = "medonly"
 
 _out = []
 
