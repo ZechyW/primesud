@@ -99,7 +99,8 @@ def move_char(ch, direction):
     exit/exall mobprog trigger wired at entry and re-verified 10/07/2026;
     do_look("auto") now passed post-move so COMM_BRIEF gates the room desc,
     re-verified 20/07/2026; obj/room exit + greet prog passes added and
-    re-verified 20/07/2026] --
+    re-verified 20/07/2026; movement WaitState(1) dropped as a [PRIMESUD]
+    single-player pacing deviation 28/07/2026] --
     private-room / area-closed checks and area entry sound not ported (see
     comments).
 
@@ -215,7 +216,9 @@ def move_char(ch, direction):
             chprintln(ch, "You are too exhausted.")
             return
 
-        WaitState(ch, 1)
+        # [PRIMESUD] 1stMud's WAIT_STATE(ch, 1) movement lag is dropped:
+        # single-player UX, the player moves as fast as they can type (see
+        # DESIGN.md). Skill/combat WaitState lag is unaffected.
         ch["move"] = ch.get("move", 0) - move_cost
 
     # [PRIMESUD] auto-door: all move checks passed -- open (and unlock) now
@@ -1493,8 +1496,8 @@ def do_run(player, args):
 
     Steps are consumed one-per-pulse by run_buf_step() in game_loop
     (cf. 1stMud read_from_buffer consuming run_buf in comm.c).
-    move_char WaitState(1) means each move takes two pulses (one to
-    move, one recovery). Movement-point cost applies per step so the
+    [PRIMESUD] movement carries no WaitState lag, so runs advance one
+    step per pulse. Movement-point cost applies per step so the
     player can exhaust mid-run.
 
     Intermediate rooms show brief one-liners. [PRIMESUD] Final

@@ -158,6 +158,9 @@ Deliberate gameplay tweaks; each is a settled decision in DESIGN.md or a
 - **Kinder start** -- 50 hp at creation (stock: 20; mana/move stay at the
   stock 100); flat 1000 XP per level replaces the creation-point-scaled
   curve.
+- **No movement lag** -- plain walking never triggers the `[Recovering...]`
+  gate; move as fast as you can type, and `run` advances every pulse
+  (skill/combat lag unchanged).
 - **Level-up heals** -- gaining a level fully restores hp/mana/move; no more
   "levelled at 1 HP mid-fight".
 - **Remort power knob** -- the stock remort grant (~6000 hp) is divided by
