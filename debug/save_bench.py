@@ -120,7 +120,13 @@ HV_MODE = "bigloop"
 #                string-object-specific (str-format-bug family).
 #   "medonly" -- 2KB payload slices only (4 medium strs per iter), no
 #                small churn.  Complements bigonly (which was 8-32KB).
-BIGLOOP_KIND = "smallonly"
+#   "matrix"  -- all three in one session, 20 iters each (smallnostr
+#                -> smallonly -> medonly).  Phase boundaries are
+#                scrubbed by the per-iteration collects, so a clean
+#                run acquits all three at once; a death only
+#                provisionally convicts its phase (cross-phase pinned
+#                residue possible) -- rerun that kind isolated.
+BIGLOOP_KIND = "matrix"
 
 _out = []
 
@@ -392,14 +398,21 @@ def main():
         # spurious TypeErrors) are counted and the blamed data scanned.
         log("bigloop kind=" + BIGLOOP_KIND)
         errs = 0
-        iters = 300 if BIGLOOP_KIND == "autogc" else 20
+        if BIGLOOP_KIND == "matrix":
+            plan = (["smallnostr"] * 20 + ["smallonly"] * 20
+                    + ["medonly"] * 20)
+        else:
+            plan = [BIGLOOP_KIND] * (300 if BIGLOOP_KIND == "autogc"
+                                     else 20)
+        iters = len(plan)
         n_str = "/" + str(iters)
         for it in range(iters):
+            kind = plan[it]
             try:
                 b2 = None
                 b4 = None
                 lines = None
-                if BIGLOOP_KIND in ("chunked", "chunkedng", "autogc"):
+                if kind in ("chunked", "chunkedng", "autogc"):
                     # Mitigated save assembly: storm as usual, but the
                     # payload only ever exists as ~2KB join groups.
                     lines = build_pass(work)
@@ -432,7 +445,7 @@ def main():
                         + str(len(groups)) + " groups, max " + str(mx)
                         + "B, tot " + str(tot) + "B")
                     groups = None
-                elif BIGLOOP_KIND == "smallonly":
+                elif kind == "smallonly":
                     # Token-str storm only: same str()/append churn as
                     # build_pass but no line strings, so every garbage
                     # object is a small str or a small list.
@@ -445,7 +458,7 @@ def main():
                         parts = None
                     log("bigloop " + str(it + 1) + n_str + " ok small "
                         + str(nal) + " str allocs")
-                elif BIGLOOP_KIND == "smallnostr":
+                elif kind == "smallnostr":
                     # Same alloc count/shape, zero new string objects:
                     # tuples of existing refs + list churn only.
                     nal = 0
@@ -457,7 +470,7 @@ def main():
                         parts = None
                     log("bigloop " + str(it + 1) + n_str + " ok nostr "
                         + str(nal) + " tuple allocs")
-                elif BIGLOOP_KIND == "medonly":
+                elif kind == "medonly":
                     # Medium strings only: 2KB slices of the payload,
                     # no small-alloc churn at all.
                     groups = []
@@ -469,17 +482,17 @@ def main():
                         + str(len(groups)) + " x <=2048B slices")
                     groups = None
                 else:
-                    if BIGLOOP_KIND == "bigmul":
+                    if kind == "bigmul":
                         b2 = (payload + "~") * 2
                         b4 = (payload + "~") * 4
-                    elif BIGLOOP_KIND == "both8k":
+                    elif kind == "both8k":
                         b2 = payload + "~"  # one fresh game-save-sized alloc
                     else:
                         b2 = payload + "~" + payload
                         b4 = (payload + "~" + payload + "~" + payload
                               + "~" + payload)
                     lines = (build_pass(work)
-                             if BIGLOOP_KIND in ("both", "both8k") else None)
+                             if kind in ("both", "both8k") else None)
                     log("bigloop " + str(it + 1) + n_str + " ok "
                         + str(len(b2) + (len(b4) if b4 else 0)) + "B big"
                         + ((", " + str(len(lines)) + " lines")
@@ -491,11 +504,11 @@ def main():
             b2 = None
             b4 = None
             lines = None
-            if BIGLOOP_KIND == "autogc":
+            if kind == "autogc":
                 # No explicit collect; watch auto-GC via mem_free dips.
                 if (it + 1) % 10 == 0:
                     log(".. " + str(it + 1) + " free=" + str(free()))
-            elif BIGLOOP_KIND == "chunkedng":
+            elif kind == "chunkedng":
                 log(".. " + str(it + 1) + " end (no collect)")
             else:
                 gc.collect()
