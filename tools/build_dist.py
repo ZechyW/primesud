@@ -8,6 +8,11 @@ Usage:
     python tools/build_dist.py --zip v1.0.1
                                         Same, named dist/PrimeSUD-<ver>-hpprime.zip
                                         (release asset)
+    python tools/build_dist.py --skip-preflight
+                                        Skip the uncommitted-src drift warning
+    python tools/build_dist.py --help   Print this usage text and exit (no build)
+
+Run from the repo root (paths are cwd-relative).
 """
 
 import ast
@@ -112,6 +117,10 @@ def preflight():
 
 
 def main():
+    if "--help" in sys.argv or "-h" in sys.argv:
+        print(__doc__)
+        raise SystemExit(0)  # skip --check/--zip handling in __main__ too
+
     if not SRC_DIR.is_dir():
         sys.exit("Source dir %s not found" % SRC_DIR)
 
