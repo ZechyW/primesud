@@ -366,6 +366,12 @@ pool = on+symb checkpoint restore before each):
   This is the real save path's exact shape (serialize str() storm +
   gc_collect per autosave): the game's occasional G1 crashes are this
   bug, rate-limited only by saves being minutes apart.
+- **Not reproducible on the Virtual Calculator** (27 Jul 2026): the
+  same matrix probe that killed the physical G1 at iteration 24 ran
+  60/60 clean on the PC emulator.  Same firmware source on x86, so a
+  pure GC/string logic bug should have reproduced -- points at
+  something physical-level (IRQ timing mid-collect, ARM codegen,
+  memory ordering).  Also means all probing must happen on hardware.
 - **Stochastic**: byte-identical runs on clean pools split
   dead/clean.  Iterator-slot type confusion plus stochastic behaviour
   under churn fits a GC root-scan defect (live object collected when a
