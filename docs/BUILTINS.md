@@ -449,6 +449,15 @@ with `int_str()` digit-concat misses (debug/save_bench.py
 `cachedstr`), clean over collects that killed the `str(int)` control
 in the same session.  `hex()` remains unprobed.
 
+Remediation soak-validated on-device (G1, 28 Jul 2026): a 1 Hz
+full-save-path autosave hammer (serialize + HVars + readback + file
+write every second) plus movement-heavy room rendering ran 250
+autosaves with zero crashes, stalls, or type confusion -- far past
+the pre-fix crash horizon (probe sessions died within a handful of
+save-shaped churn+collect cycles). Covers both bugs: the serializer
+now runs on `util.sstr`/`num_str`/`int_str` (Bug A) and all game
+output is concat-built with zero `%`/`.format()` (Bug B).
+
 Related community-documented PPL parse bug (unrelated mechanism, same
 fragile bridge): numeric literals with a plus-sign exponent (`2e+1`)
 error out in `hpprime.eval`, and MicroPython float-to-string can emit

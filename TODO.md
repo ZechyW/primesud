@@ -44,15 +44,6 @@ Engine 1.0 was tagged as `v1.0.0` on 23/07/2026. Content track is now open:
 
 ## Platform
 
-- Firmware string-bug remediation (both bugs root-caused and CLOSED;
-  see CLAUDE.md pitfall 8, docs/BUILTINS.md sec. G1 memory-corruption
-  bug, docs/PRIME_STRING_FORMAT_BUG.md sec. Battery results): Part 1
-  DONE (serializer on util.sstr/num_str/int_str, pre-save gc_collect
-  removed); Part 2 DONE (policy docs); Part 3 DONE (de-format sweep:
-  all `%`/`.format()` sites converted to concat; chprintf/chprintlnf
-  kept but reimplemented on handler._safe_fmt, a concat-based parser).
-  REMAINING: on-device soak -- autosave + room-render heavy session on
-  the G1 validating both fixes.
 - Save optimisation (probe data in docs/BUILTINS.md sec. Save-path
   primitive costs): add debug-gated `ticks()` instrumentation to
   `_serialize_world` ("save" DBG channel); the cache conversion is
