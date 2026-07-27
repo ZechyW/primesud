@@ -1,0 +1,10 @@
+save_bench: save-path primitive timings, N=5
+payload: file, 7990 bytes, 173 lines, 965 tokens
+HV_MODE=bigloop
+bigloop kind=smallonly
+bigloop 1/20 ok small 965 str allocs
+.. 1 collect ok
+bigloop 2/20 ok small 965 str allocs
+.. 2 collect ok
+bigloop 3/20 ok small 965 str allocs
+.. 3 collect ok

@@ -112,8 +112,13 @@ HV_MODE = "bigloop"
 # explicit collect]:
 #   "smallonly"  -- token-str storm only (~965 small str allocs + 173
 #                list allocs per iter), NO line/medium/big strings.
-#                Dies => small string churn alone is sufficient;
-#                medium/big strings fully innocent.
+#                RESET in iteration 4 (save_bench-10.log, 27/07):
+#                small string churn alone is sufficient; medium/big
+#                strings were passengers in every earlier deadly kind.
+#                Caveat: the clean -4/-5 sessions survived ~25
+#                storm+collect build passes, improbably lucky at this
+#                rate -- per-collect risk also depends on heap state,
+#                not garbage type alone.
 #   "smallnostr" -- same alloc count/shape but tuples of existing
 #                refs: zero new string objects.  Dies => generic
 #                allocator/GC bug.  Clean while smallonly dies =>
