@@ -333,13 +333,12 @@ nothing useful):
   skills) 58 KB (180 ms), `classes` 11 KB (28 ms), `groups` 9 KB (30 ms).
   Total ~119 KB, leaving ~8.07 MB free.
 
-## G1 memory-corruption bug under big-string + alloc churn (investigation, 27 Jul 2026)
+## G1 memory-corruption bug: GC over small-string churn (investigation, 27 Jul 2026)
 
-Sessions on the physical G1 die stochastically at zones of sustained
-small-allocation churn, and the death rate rises sharply when 16/32 KB
-strings were built in the same session. Measured with
-`debug/save_bench.py` across many controlled runs (clean pool =
-on+symb checkpoint restore before each):
+Sessions on the physical G1 die stochastically when a garbage
+collection walks garbage containing many small string objects.
+Measured with `debug/save_bench.py` across many controlled runs (clean
+pool = on+symb checkpoint restore before each):
 
 - **Symptom spectrum, all at the same code zones**: hard reset; an
   impossible Python `TypeError` (`'list' object is not an iterator` on
@@ -352,18 +351,21 @@ on+symb checkpoint restore before each):
   `Ticks` calls fine), big *bytes* allocations (247 x 32 KB clean,
   twice), `str(int)` conversion, gc-call interplay, bad RAM (7.6 MB
   pattern-verified twice), heap size config, session residency.
-- **Convicted (bigloop bisect)**: the tight cycle [fresh medium/large
-  string alloc -> drop -> ~1000-small-alloc storm -> collect] kills
-  within ~3 iterations, at 8 KB strings just as at 16/32 KB
-  (`both`/`both8k` kinds).  Either ingredient alone is clean: concat
-  chains + collects with no storm survived ~60+ trials (`bigonly`),
-  storms with no fresh big strings survived ~50 passes.  Fresh ~8 KB
-  allocs *separated in time* from storms also ran clean -- the
-  interleaving is the trigger, and repetition rate sets the death
-  rate.  This is the real save path's exact shape ("~".join payload +
-  serialize storm + gc_collect per autosave): the game's occasional
-  G1 crashes are this bug at today's payload size, rate-limited only
-  by saves being minutes apart.
+- **Convicted (bigloop bisect + composition matrix)**: the cycle
+  [~965 small str allocs + ~173 list allocs -> drop -> collect] kills
+  within ~4 iterations with NO medium/big strings at all
+  (`smallonly`, dead 2/2 sessions at its iteration 4,
+  save_bench-10/-11.log).  The medium/big payload strings present in
+  every earlier deadly kind (`both`/`both8k`/`chunked`) were
+  passengers.  It is *string-object-specific*: the identical churn
+  shape built from tuples of existing refs instead of strings
+  (`smallnostr`, zero new string objects) survived 20 collects clean
+  in the same session that then died 4 iterations into its
+  `smallonly` phase (save_bench-11.log).  Same family neighbourhood
+  as the known str-format heap bug (PRIME_STRING_FORMAT_BUG.md).
+  This is the real save path's exact shape (serialize str() storm +
+  gc_collect per autosave): the game's occasional G1 crashes are this
+  bug, rate-limited only by saves being minutes apart.
 - **Stochastic**: byte-identical runs on clean pools split
   dead/clean.  Iterator-slot type confusion plus stochastic behaviour
   under churn fits a GC root-scan defect (live object collected when a
@@ -376,26 +378,33 @@ on+symb checkpoint restore before each):
   sessions, heap never filled), and died the moment heap exhaustion
   forced the first *auto*-collect (300-iter run, dead at ~iter 33
   where free hit zero).  Explicit-vs-auto is irrelevant; what matters
-  is the garbage composition the collect walks: a few big uniform
-  blocks is safe (mem_soak forced ~243 auto-collects clean; `bigonly`
-  60+ explicit collects clean), fragmented mixed small+medium garbage
-  from a serialize-shaped storm is a ~25-30%-per-collect death roll.
-  Every collect is a dice roll weighted by churn since the last one.
-  Mitigation is therefore statistical, not absolute: do not add
-  explicit collects right after churn bursts (the save path's opening
-  `gc_collect()` was a guaranteed worst-case roll per save -- earlier
-  "may be load-bearing protection" guess in this file was backwards),
-  keep hot-path garbage small and uniform (alloc diet), and rely on
-  headroom to keep collects rare.
+  is the garbage composition the collect walks: uniform big blocks
+  are safe (mem_soak forced ~243 auto-collects clean; `bigonly` 60+
+  explicit collects clean; `smallnostr` tuple churn 20 collects
+  clean), garbage rich in small string objects is a
+  ~25-30%-per-collect death roll in probe conditions.  Deaths land in
+  the alloc burst right *after* a logged-ok collect: the collect
+  plants the corruption, the next string-alloc storm detonates it.
+  Every collect is a dice roll weighted by the small-str garbage
+  accumulated since the last one.  Mitigation is therefore
+  statistical, not absolute: do not add explicit collects right after
+  string-churn bursts (the save path's opening `gc_collect()` was a
+  guaranteed worst-case roll per save -- earlier "may be load-bearing
+  protection" guess in this file was backwards), shrink the number of
+  transient small strings in serialize-shaped code paths (alloc
+  diet), and rely on headroom to keep collects rare.  Caveat on
+  rates: the clean -4/-5 sessions survived ~25 storm+collect passes,
+  improbably lucky at the probe rate -- per-collect risk also depends
+  on heap state, so probe rates do not transfer to in-game rates;
+  validate fixes by soak, not arithmetic.
 
-Consequences for game code until better understood: keep single-string
-builds at or under ~8 KB (the save payload measures 7990 B mid-game and
-grows with play -- chunk it before it crosses); keep alloc churn low in
-hot paths (already policy); prefer explicit `gc.collect()` at
-shallow-stack safe points ahead of unavoidable churn bursts (the
-`gc_collect()` opening `_serialize_world` may be load-bearing crash
-protection, not just perf hygiene -- do not remove it on timing grounds
-alone).
+Consequences for game code until better understood: minimise transient
+small-string creation in bulk paths (serialize, area load) -- reuse,
+concat into fewer/larger pieces, or emit into a persistent buffer;
+payload chunking does NOT mitigate (`chunked` died; string *count* is
+the exposure, not string size); never call `gc.collect()` immediately
+after a string-churn burst; keep alloc churn low in hot paths (already
+policy).
 
 Related community-documented PPL parse bug (unrelated mechanism, same
 fragile bridge): numeric literals with a plus-sign exponent (`2e+1`)

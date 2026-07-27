@@ -1,0 +1,52 @@
+save_bench: save-path primitive timings, N=5
+payload: file, 7990 bytes, 173 lines, 965 tokens
+HV_MODE=bigloop
+bigloop kind=matrix
+bigloop 1/60 ok nostr 965 tuple allocs
+.. 1 collect ok
+bigloop 2/60 ok nostr 965 tuple allocs
+.. 2 collect ok
+bigloop 3/60 ok nostr 965 tuple allocs
+.. 3 collect ok
+bigloop 4/60 ok nostr 965 tuple allocs
+.. 4 collect ok
+bigloop 5/60 ok nostr 965 tuple allocs
+.. 5 collect ok
+bigloop 6/60 ok nostr 965 tuple allocs
+.. 6 collect ok
+bigloop 7/60 ok nostr 965 tuple allocs
+.. 7 collect ok
+bigloop 8/60 ok nostr 965 tuple allocs
+.. 8 collect ok
+bigloop 9/60 ok nostr 965 tuple allocs
+.. 9 collect ok
+bigloop 10/60 ok nostr 965 tuple allocs
+.. 10 collect ok
+bigloop 11/60 ok nostr 965 tuple allocs
+.. 11 collect ok
+bigloop 12/60 ok nostr 965 tuple allocs
+.. 12 collect ok
+bigloop 13/60 ok nostr 965 tuple allocs
+.. 13 collect ok
+bigloop 14/60 ok nostr 965 tuple allocs
+.. 14 collect ok
+bigloop 15/60 ok nostr 965 tuple allocs
+.. 15 collect ok
+bigloop 16/60 ok nostr 965 tuple allocs
+.. 16 collect ok
+bigloop 17/60 ok nostr 965 tuple allocs
+.. 17 collect ok
+bigloop 18/60 ok nostr 965 tuple allocs
+.. 18 collect ok
+bigloop 19/60 ok nostr 965 tuple allocs
+.. 19 collect ok
+bigloop 20/60 ok nostr 965 tuple allocs
+.. 20 collect ok
+bigloop 21/60 ok small 965 str allocs
+.. 21 collect ok
+bigloop 22/60 ok small 965 str allocs
+.. 22 collect ok
+bigloop 23/60 ok small 965 str allocs
+.. 23 collect ok
+bigloop 24/60 ok small 965 str allocs
+.. 24 collect ok

@@ -120,9 +120,11 @@ HV_MODE = "bigloop"
 #                rate -- per-collect risk also depends on heap state,
 #                not garbage type alone.
 #   "smallnostr" -- same alloc count/shape but tuples of existing
-#                refs: zero new string objects.  Dies => generic
-#                allocator/GC bug.  Clean while smallonly dies =>
-#                string-object-specific (str-format-bug family).
+#                refs: zero new string objects.  CLEAN 20/20 collects
+#                in the same session whose smallonly phase then died
+#                at its iteration 4 (save_bench-11.log, 27/07):
+#                string-object-specific, generic allocator bug
+#                excluded (str-format-bug family).
 #   "medonly" -- 2KB payload slices only (4 medium strs per iter), no
 #                small churn.  Complements bigonly (which was 8-32KB).
 #   "matrix"  -- all three in one session, 20 iters each (smallnostr
