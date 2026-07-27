@@ -386,8 +386,10 @@ pool = on+symb checkpoint restore before each):
   where free hit zero).  Explicit-vs-auto is irrelevant; what matters
   is the garbage composition the collect walks: uniform big blocks
   are safe (mem_soak forced ~243 auto-collects clean; `bigonly` 60+
-  explicit collects clean; `smallnostr` tuple churn 20 collects
-  clean), garbage rich in small string objects is a
+  explicit collects clean; `medonly` 2 KB string slices clean over
+  multiple sessions -- size profile: 1-4 char strs deadly, 2 KB+
+  safe; `smallnostr` tuple churn 20 collects clean), garbage rich in
+  small string objects is a
   ~25-30%-per-collect death roll in probe conditions.  Deaths land in
   the alloc burst right *after* a logged-ok collect: the collect
   plants the corruption, the next string-alloc storm detonates it.

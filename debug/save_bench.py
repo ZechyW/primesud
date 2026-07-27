@@ -127,13 +127,29 @@ HV_MODE = "bigloop"
 #                excluded (str-format-bug family).
 #   "medonly" -- 2KB payload slices only (4 medium strs per iter), no
 #                small churn.  Complements bigonly (which was 8-32KB).
+#                CLEAN over multiple clear-rerun sessions (27/07):
+#                size profile is small(1-4ch)=deadly, 2KB+=safe.
+# Confound-splitting matrix (27/07): every deadly string so far was
+# small AND digit-content AND made by str(int) formatting at once.
+# These decouple the three axes -- same alloc count/shape as
+# smallonly (965 small strs + 173 lists per iter -> drop -> collect):
+#   "smallslice" -- 3-char slices of the payload: small size, MIXED
+#                content, no int formatting.  Dies => size alone
+#                sufficient.
+#   "digitslice" -- 3-char slices of a pure digit source string:
+#                small + digit content, still no formatting.  Dies
+#                (with smallslice clean) => content convicted.
+#   "matrix2" -- smallslice -> digitslice -> smallonly, 20 each;
+#                smallonly last as same-session positive control.
+#                All-clean phases 1-2 + phase-3 death => the str(int)
+#                formatting path itself is convicted.
 #   "matrix"  -- all three in one session, 20 iters each (smallnostr
 #                -> smallonly -> medonly).  Phase boundaries are
 #                scrubbed by the per-iteration collects, so a clean
 #                run acquits all three at once; a death only
 #                provisionally convicts its phase (cross-phase pinned
 #                residue possible) -- rerun that kind isolated.
-BIGLOOP_KIND = "medonly"
+BIGLOOP_KIND = "matrix2"
 
 _out = []
 
@@ -408,11 +424,16 @@ def main():
         if BIGLOOP_KIND == "matrix":
             plan = (["smallnostr"] * 20 + ["smallonly"] * 20
                     + ["medonly"] * 20)
+        elif BIGLOOP_KIND == "matrix2":
+            plan = (["smallslice"] * 20 + ["digitslice"] * 20
+                    + ["smallonly"] * 20)
         else:
             plan = [BIGLOOP_KIND] * (300 if BIGLOOP_KIND == "autogc"
                                      else 20)
         iters = len(plan)
         n_str = "/" + str(iters)
+        # Pure-digit slice source for digitslice; kept live all run.
+        digsrc = "0123456789" * 40
         for it in range(iters):
             kind = plan[it]
             try:
@@ -477,6 +498,25 @@ def main():
                         parts = None
                     log("bigloop " + str(it + 1) + n_str + " ok nostr "
                         + str(nal) + " tuple allocs")
+                elif kind in ("smallslice", "digitslice"):
+                    # Same alloc count/shape as smallonly, but the
+                    # small strs come from slicing (no int->str
+                    # formatting).  smallslice = mixed payload
+                    # content; digitslice = digits only.  Offsets
+                    # vary per iteration so content differs run to
+                    # run like real token values do.
+                    src = payload if kind == "smallslice" else digsrc
+                    lim = len(src) - 4
+                    nal = 0
+                    for _key, toks in work:
+                        parts = []
+                        for t in toks:
+                            j = (nal * 11 + it * 7) % lim
+                            parts.append(src[j:j + 3])
+                            nal += 1
+                        parts = None
+                    log("bigloop " + str(it + 1) + n_str + " ok "
+                        + kind + " " + str(nal) + " slice allocs")
                 elif kind == "medonly":
                     # Medium strings only: 2KB slices of the payload,
                     # no small-alloc churn at all.
