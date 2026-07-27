@@ -151,11 +151,17 @@ Six-phase differentiation battery run on both devices
   suggests the defect sits in G2 string construction generally, with
   %/.format-in-comprehension merely the reliable trigger context.
 - G1: session DIED in the MWE baseline phase -- zero collects, zero
-  str(int) in play, so the G1 GC bug cannot explain it.  Possible G1
-  manifestation of THIS bug is a crash rather than output corruption
-  (which would explain why the old MWE "didn't trigger" on G1: it
-  was looking for corrupt output, not death).  Single session --
-  UNCONFIRMED, rerun wanted before treating as fact.
+  str(int) in play, so the G1 GC bug cannot explain it.  REPRODUCED
+  2/2 sessions (28 Jul 2026), both dying right after the phase-A
+  header: the G1 manifestation of THIS bug is a crash rather than
+  output corruption -- which explains why the old MWE "didn't
+  trigger" on G1; it watched for corrupt output while the G1 failure
+  mode was death.  Both devices are exposed to this bug, with
+  different symptoms (G2 corrupts, G1 dies); the no-%/.format rules
+  are load-bearing on BOTH.
+- Evidence-file curio: the G2 battery log itself contains the
+  corruption -- its second line's first byte is a literal \x00
+  (git/editors sniff the log as binary because of it).
 
 Caution on Trigger 1's crash counts: the ~200-autosave crash vs 300+
 clean comparison was one run each, and any save build of that era also
