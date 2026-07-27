@@ -1,0 +1,46 @@
+save_bench: save-path primitive timings, N=5
+payload: file, 7990 bytes, 173 lines, 965 tokens
+HV_MODE=bigloop
+bigloop kind=medonly
+bigloop 1/20 ok med 4 x <=2048B slices
+.. 1 collect ok
+bigloop 2/20 ok med 4 x <=2048B slices
+.. 2 collect ok
+bigloop 3/20 ok med 4 x <=2048B slices
+.. 3 collect ok
+bigloop 4/20 ok med 4 x <=2048B slices
+.. 4 collect ok
+bigloop 5/20 ok med 4 x <=2048B slices
+.. 5 collect ok
+bigloop 6/20 ok med 4 x <=2048B slices
+.. 6 collect ok
+bigloop 7/20 ok med 4 x <=2048B slices
+.. 7 collect ok
+bigloop 8/20 ok med 4 x <=2048B slices
+.. 8 collect ok
+bigloop 9/20 ok med 4 x <=2048B slices
+.. 9 collect ok
+bigloop 10/20 ok med 4 x <=2048B slices
+.. 10 collect ok
+bigloop 11/20 ok med 4 x <=2048B slices
+.. 11 collect ok
+bigloop 12/20 ok med 4 x <=2048B slices
+.. 12 collect ok
+bigloop 13/20 ok med 4 x <=2048B slices
+.. 13 collect ok
+bigloop 14/20 ok med 4 x <=2048B slices
+.. 14 collect ok
+bigloop 15/20 ok med 4 x <=2048B slices
+.. 15 collect ok
+bigloop 16/20 ok med 4 x <=2048B slices
+.. 16 collect ok
+bigloop 17/20 ok med 4 x <=2048B slices
+.. 17 collect ok
+bigloop 18/20 ok med 4 x <=2048B slices
+.. 18 collect ok
+bigloop 19/20 ok med 4 x <=2048B slices
+.. 19 collect ok
+bigloop 20/20 ok med 4 x <=2048B slices
+.. 20 collect ok
+bigloop: 0 caught errors in 20 iterations
+Done. Results in save_bench.log
