@@ -123,7 +123,9 @@ class TestRegen:
         player["mana"] = 1
         player["max_mana"] = 100
         room = {"heal_rate": 100, "mana_rate": 100}
-        player_mod.tick_update(None, player, room)
+        for key in ("_regen_hit", "_regen_mana", "_regen_move"):
+            player.pop(key, None)
+        player_mod.regen_update(player, room)
         return player["hit"] - 1
 
     def test_sleeping_beats_resting_beats_standing(self, scene):

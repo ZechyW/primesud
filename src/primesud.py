@@ -23,7 +23,7 @@ import world
 from world import MOB_DEFS, init_world
 from handler import mob_condition
 from player import show_prompt
-from update import update_handler, UPD_VIOLENCE, UPD_TICK
+from update import update_handler, UPD_VIOLENCE, UPD_TICK, UPD_REGEN
 from commands import interpret
 from info import do_look, show_greeting
 from movement import run_buf_step, free_runbuf
@@ -263,8 +263,10 @@ class Game:
                         tr.print(mob_condition(finst, MOB_DEFS[finst["tpl"]]))
                     show_prompt(player, self.input_buf)
 
-                if fired & UPD_TICK:
+                if fired & (UPD_TICK | UPD_REGEN):
                     show_prompt(player, self.input_buf)
+
+                if fired & UPD_TICK:
                     tick_count += 1
                     if tick_count >= AUTOSAVE_TICKS:
                         save_game(self, quiet=True)

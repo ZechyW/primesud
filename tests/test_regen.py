@@ -15,7 +15,9 @@ import skill_utils
 import world
 from handler import _char_base
 from world import ROOM_DEFS
-from skills_table import GSN_FAST_HEALING, GSN_PLAGUE, GSN_POISON
+from skills_table import (GSN_FAST_HEALING, GSN_MEDITATION, GSN_PLAGUE,
+                          GSN_POISON)
+from config import REGEN_SECS, TICK_SECS
 
 
 @pytest.fixture
@@ -34,13 +36,19 @@ def isolate():
 
 
 def _full_player():
-    """PC at full pools so tick_update's player half is a clamp no-op."""
+    """PC at full pools so unrelated regen pools remain clamp no-ops."""
     p = _char_base()
     p.update({"id": 1, "room": 3001, "level": 10, "learned": {},
               "hit": 100, "max_hit": 100,
               "mana": 100, "max_mana": 100,
               "move": 100, "max_move": 100})
     return p
+
+
+def _regen_cycle(player, room, improve=False):
+    """Run enough granular pulses to equal one world tick."""
+    for _ in range(TICK_SECS // REGEN_SECS):
+        player_mod.regen_update(player, room, improve)
 
 
 # -- _regen_tail: affect divisors + room rate ---------------------------------
@@ -76,7 +84,7 @@ class TestPlayerGains:
         p = _full_player()
         p.update({"pos": "standing", "hit": 1, "max_hit": 100})
         room = {"heal_rate": 100, "mana_rate": 100}
-        player_mod.tick_update(None, p, room)
+        _regen_cycle(p, room)
         return p["hit"] - 1
 
     def test_fast_healing_roll_boundary(self, monkeypatch):
@@ -102,7 +110,7 @@ class TestPlayerGains:
             monkeypatch.setattr(player_mod, "has_spells", lambda p: caster)
             p = _full_player()
             p.update({"pos": "standing", "mana": 1, "max_mana": 100})
-            player_mod.tick_update(None, p, room)
+            _regen_cycle(p, room)
             return p["mana"] - 1
 
         # mana base (int13+wis13+level10)//2 = 18; standing -> //4.
@@ -117,6 +125,67 @@ class TestPlayerGains:
         mage = create_char(classes.CLASS_MAGE, "Human")
         assert classes.has_spells(warrior) is False
         assert classes.has_spells(mage) is True
+
+
+# -- Granular player cadence ---------------------------------------------------
+
+class TestGranularPlayerRegen:
+    def test_pool_above_reduced_maximum_is_clamped(self):
+        p = _full_player()
+        p["hit"] = 101
+
+        assert player_mod.regen_update(
+            p, {"heal_rate": 100, "mana_rate": 100})
+        assert p["hit"] == 100
+
+    def test_small_gain_carries_without_rounding_loss(self, monkeypatch):
+        monkeypatch.setattr(player_mod, "randint", lambda a, b: 100)
+        monkeypatch.setattr(player_mod, "get_skill", lambda *args: 0)
+        monkeypatch.setattr(player_mod, "has_spells", lambda player: False)
+        p = _full_player()
+        p.update({"pos": "standing", "mana": 1, "max_mana": 100})
+        room = {"heal_rate": 100, "mana_rate": 100}
+        values = []
+
+        for _ in range(TICK_SECS // REGEN_SECS):
+            player_mod.regen_update(p, room)
+            values.append(p["mana"])
+
+        # Full-tick mana gain is 2; carry releases it across six pulses.
+        assert values == [1, 1, 2, 2, 2, 3]
+
+    def test_improvement_check_uses_explicit_world_tick_gate(self, monkeypatch):
+        calls = []
+        monkeypatch.setattr(player_mod, "randint", lambda a, b: 1)
+        monkeypatch.setattr(player_mod, "get_skill", lambda *args: 100)
+        monkeypatch.setattr(player_mod, "check_improve",
+                            lambda player, skill, success, mult:
+                            calls.append(skill))
+        p = _full_player()
+        p.update({"pos": "standing", "hit": 1, "mana": 1})
+        room = {"heal_rate": 100, "mana_rate": 100}
+
+        player_mod.regen_update(p, room, False)
+        assert calls == []
+        player_mod.regen_update(p, room, True)
+        assert calls == [GSN_FAST_HEALING, GSN_MEDITATION]
+
+    def test_scheduler_reports_only_visible_regen(self, isolate, monkeypatch):
+        import update
+        player = _full_player()
+        player["hit"] = 1
+        world.chars[1] = player
+        monkeypatch.setattr(world, "maybe_evict", lambda _player: None)
+        monkeypatch.setattr(update, "mark_explored", lambda _player: None)
+        for name in ("_pulse_area", "_pulse_music", "_pulse_mobile",
+                     "_pulse_violence", "_pulse_tick"):
+            monkeypatch.setattr(update, name, 1000)
+        monkeypatch.setattr(update, "_pulse_regen", 0)
+        monkeypatch.setattr(update, "_regen_phase", 0)
+
+        fired = update.update_handler()
+
+        assert fired == update.UPD_REGEN
 
 
 # -- Mob hp regen -------------------------------------------------------------
@@ -238,7 +307,8 @@ class TestDiseaseAndBleed:
         self._patch(monkeypatch)
         p = _full_player()
         p.update({"pos": "stunned", "hit": 50})
-        self._tick(p)
+        player_mod.regen_update(
+            p, {"heal_rate": 100, "mana_rate": 100})
         assert p["pos"] == "standing"
 
     def test_poison_tick_damage(self, isolate, monkeypatch):

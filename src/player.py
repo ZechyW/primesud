@@ -4,7 +4,7 @@ from classes import CLASS_TABLE, CLASS_WARRIOR, exp_per_level, has_spells, class
 from colors import color_len
 import terminal
 from terminal import tprint
-from config import TERMINAL_COLS
+from config import TERMINAL_COLS, REGEN_SECS, TICK_SECS
 from config import R_STARTING_ROOM
 from config import POS_ORDER
 from config import DAM_DISEASE, DAM_NONE, DAM_POISON, TYPE_UNDEFINED
@@ -429,24 +429,52 @@ def _char_disease_tick(ch):
         damage(ch, ch, 1, TYPE_UNDEFINED, DAM_NONE, False)
 
 
-def tick_update(tr, player, room):
-    """Regenerate HP/MP/MV once per world tick, gated on position, then tick
-    affects and disease/bleed-out (cf. 1stMud char_update in update.c).
-
-    Regen only runs at ``position >= POS_STUNNED`` (update.c:538); below that
-    (incap/mortal/dead) the char instead bleeds out via
-    :func:`_char_disease_tick`, matching upstream's split between the regen
-    block (update.c:538-564) and the unconditional plague/poison/incap/mortal
-    chain that follows the affect loop (update.c:670-746).
-
-    Hunger/thirst conditions omitted [PRIMESUD].
+def _apply_regen(player, field, maximum, gain):
+    """Apply one fractional player-regen gain without rounding loss. [PRIMESUD]
 
     Args:
-        tr: Terminal for affect wear-off messages.
+        player (dict): Player state dict.
+        field (str): Current-pool key.
+        maximum (str): Maximum-pool key.
+        gain (int): Full-world-tick gain before interval scaling.
+
+    Returns:
+        bool: Whether the visible pool changed.
+    """
+    rem_key = "_regen_" + field
+    if player[field] >= player[maximum]:
+        player[rem_key] = 0
+        if player[field] > player[maximum]:
+            player[field] = player[maximum]
+            return True
+        return False
+    scaled = gain * REGEN_SECS + player.get(rem_key, 0)
+    amount = scaled // TICK_SECS
+    player[rem_key] = scaled - amount * TICK_SECS
+    if amount <= 0:
+        return False
+    before = player[field]
+    player[field] = min(player[maximum], before + amount)
+    if player[field] == player[maximum]:
+        player[rem_key] = 0
+    return player[field] != before
+
+
+def regen_update(player, room, improve=False):
+    """Regenerate player HP/MP/MV on the five-second pulse. [PRIMESUD]
+
+    Uses 1stMud's per-world-tick gain formulas, scaled with integer remainder
+    carry so six steady-state pulses equal one old 30-second gain. Skill rolls
+    happen every pulse for smoother variance; improvement checks remain on the
+    world-tick cadence via ``improve``.
+
+    Args:
         player (dict): Player state dict.
         room (dict): Current room (supplies heal_rate/mana_rate).
+        improve (bool): Permit fast-healing/meditation improvement this pulse.
 
-    Uses imported world module for player stat lookups.
+    Returns:
+        bool: Whether a visible resource pool changed.
     """
     # deferred: player -> skill_utils -> handler load-order
     con  = get_curr_stat(player, "con")
@@ -465,7 +493,7 @@ def tick_update(tr, player, room):
         roll = randint(1, 100)
         if roll < get_skill(player, GSN_FAST_HEALING):
             hp_gain += roll * hp_gain // 100
-            if player["hit"] < player["max_hit"]:
+            if improve and player["hit"] < player["max_hit"]:
                 check_improve(player, GSN_FAST_HEALING, True, 8)
         # Position divisors: sleeping /1, resting /2, fighting /6, other /4
         if pos == "resting":
@@ -483,7 +511,7 @@ def tick_update(tr, player, room):
         roll = randint(1, 100)
         if roll < get_skill(player, GSN_MEDITATION):
             mp_gain += roll * mp_gain // 100
-            if player["mana"] < player["max_mana"]:
+            if improve and player["mana"] < player["max_mana"]:
                 check_improve(player, GSN_MEDITATION, True, 8)
         # non-casters regen mana at half (cf. update.c:281-282)
         if not has_spells(player):
@@ -506,17 +534,34 @@ def tick_update(tr, player, room):
             mv_gain += dex // 2
         mv_gain = _regen_tail(mv_gain, player, room.get("heal_rate", 100))
 
-        player["hit"] = min(player["max_hit"], player["hit"] + hp_gain)
-        player["mana"] = min(player["max_mana"], player["mana"] + mp_gain)
-        player["move"] = min(player["max_move"], player["move"] + mv_gain)
+        changed = _apply_regen(player, "hit", "max_hit", hp_gain)
+        changed = _apply_regen(player, "mana", "max_mana", mp_gain) or changed
+        _apply_regen(player, "move", "max_move", mv_gain)
+    else:
+        changed = False
 
     # cf. 1stMud update.c:566-567 -- a stunned char whose hit points have
-    # recovered stands back up on the next tick (without this, a stunned
+    # recovered stands back up on the next regen pulse (without this, a stunned
     # player who regens above 0 hp has no recovery path: the interpreter
     # blocks all commands below sleeping)
     if player.get("pos") == "stunned":
         from combat import update_pos  # deferred: combat imports player
         update_pos(player)
+    return changed
+
+
+def tick_update(tr, player, room):
+    """Tick affects, disease, lights, and mob HP (cf. 1stMud char_update).
+
+    Player HP/MP/MV regeneration runs separately through :func:`regen_update`
+    every five seconds [PRIMESUD]. Disease damage, affect expiry, light fuel,
+    and mob regeneration retain the 30-second world-tick cadence.
+
+    Args:
+        tr: Terminal for affect wear-off messages.
+        player (dict): Player state dict.
+        room (dict): Current room; retained for the world-tick call signature.
+    """
 
     _tick_affects(player, tr)
 

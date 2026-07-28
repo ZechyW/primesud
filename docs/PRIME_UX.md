@@ -170,7 +170,7 @@ once inside scrollback; `fling_frame_ms`, `fling_min_velocity`,
 ## Status bar prompt
 
 The terminal's bottom status line shows live game state, updated after every
-command and every combat/tick pulse:
+command and every combat, regen, or world-tick pulse:
 
 ```
 HP:45/50 MP:12/20 38tnl> _input buffer_

@@ -187,7 +187,8 @@ Deliberate gameplay tweaks; each is a settled decision in DESIGN.md or a
 - **Forgiving quest targets** -- kill/find/deliver quests match any live
   instance of the target template, surviving resets and reloads, instead of
   tracking one specific spawn (quest.py).
-- **Faster pulses** -- combat rounds and regen ticks come quicker, mob wander
+- **Faster pulses** -- combat rounds come quicker, player hp/mana/move recover
+  smoothly every 5 seconds at the same 30-second total rate, and mob wander is
   slower (DESIGN.md "Pulse timing").
 - **Every class can remort in town** -- Paladin shares the Cleric guilds,
   Ranger and Swordsman share the Warrior's, and all four Midgaard guildmasters can `gain`

@@ -10,6 +10,7 @@ from config import (
     PULSE_VIOLENCE,
     PULSE_MOBILE,
     PULSE_MUSIC,
+    PULSE_REGEN,
     PULSE_TICK,
     PULSE_AREA,
     TICK_SECS,
@@ -18,7 +19,7 @@ from combat import update_mob_timers, violence_update
 from game_time import time_update
 from mob import mobile_update, aggr_update, area_update, weather_update
 from music import song_update
-from player import tick_update
+from player import regen_update, tick_update
 from quest import quest_update, _intstr
 from gquest import gquest_update
 from stances import first_stance_tip  # [PRIMESUD]
@@ -29,13 +30,16 @@ from debug import DBG, dbg  # [PRIMESUD]
 # -- Return flags for update_handler (cf. 1stMud update.c) --------------------
 UPD_VIOLENCE = 1
 UPD_TICK     = 2
+UPD_REGEN    = 4
 
 # -- Countdown timers (cf. 1stMud static locals in update_handler) -------------
 _pulse_area     = 0
 _pulse_mobile   = 0
 _pulse_music    = 0
 _pulse_violence = 0
+_pulse_regen    = 0
 _pulse_tick     = 0
+_regen_phase    = 0
 
 
 def session_update(player):
@@ -65,7 +69,8 @@ def update_handler():
     static locals.  Returns bitmask of UPD_* flags so caller can handle
     PrimeSUD-specific display.
     """
-    global _pulse_area, _pulse_mobile, _pulse_music, _pulse_violence, _pulse_tick
+    global _pulse_area, _pulse_mobile, _pulse_music, _pulse_violence
+    global _pulse_regen, _pulse_tick, _regen_phase
 
     tr = terminal.tr
     player = world.chars[1]
@@ -107,6 +112,16 @@ def update_handler():
             tr.print("")
         violence_update(player)
         fired |= UPD_VIOLENCE
+
+    _pulse_regen -= 1
+    if _pulse_regen <= 0:
+        _pulse_regen = PULSE_REGEN
+        improve = _regen_phase == 0
+        _regen_phase += 1
+        if _regen_phase >= PULSE_TICK // PULSE_REGEN:
+            _regen_phase = 0
+        if regen_update(player, ROOM_DEFS[player["room"]], improve):
+            fired |= UPD_REGEN
 
     _pulse_tick -= 1
     if _pulse_tick <= 0:
