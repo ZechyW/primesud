@@ -1,11 +1,13 @@
 """Regression test for build_dist.PRESERVE_LOCALS.
 
 Without the preserved names, python-minifier renames `_best_hand_layout`'s
-captured locals into its comprehension variables and the nested closures bind
-to a cell object instead of the player dict -- `wear best` then crashes on
-device with a type error deep in `get_curr_stat`. Nothing in the .py symbol
-check or the area data check catches a miscompile inside a function body, so
-exercise the minified module directly.
+captured locals onto names its nested closure also binds as comprehension
+targets, and CPython 3.12+ then passes the closure cell where the player dict
+belongs (see build_dist.PRESERVE_LOCALS). That miscompile is desktop-only --
+MicroPython does not inline comprehensions -- but it is what stops the dist
+from being verifiable against CPython at all, and nothing in the .py symbol
+check or the area data check looks inside a function body. So exercise the
+minified module directly.
 """
 
 import sys

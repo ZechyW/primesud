@@ -41,11 +41,18 @@ AREA_BENCH_TARGETS = (
     "area_newthalos.txt",
 )
 AREA_BENCH_SCRIPT = Path("debug/area_load_bench.py")
-# python-minifier misbinds _best_hand_layout's nested closures when the
-# captured names collide with its renamed comprehension variables: the
-# minified build passes a cell object where a dict is expected and
-# `wear best` crashes. Keeping the captured names unrenamed avoids the
-# collision. Pinned by tests/test_minified_inventory.py.
+# python-minifier renames _best_hand_layout's captured locals onto names its
+# nested closure also binds as comprehension targets. Where an inlined
+# listcomp and a genexp bind that name in the same scope, CPython 3.12+
+# (PEP 709) stops resolving the free variable: `_strength_after_swap` then
+# receives the closure cell instead of the player dict.
+#
+# Only reproduced on desktop CPython. MicroPython does not inline
+# comprehensions, and `wear best` has been observed working on-device from a
+# minified build -- so this is not a known device bug. Preserve the names
+# anyway: the collision is gratuitous, it costs a few bytes, and without it
+# the dist cannot be verified against CPython (see
+# tests/test_minified_inventory.py).
 PRESERVE_LOCALS = {
     "inventory.py": ["player", "equip", "current", "locked", "small",
                      "scores"],
