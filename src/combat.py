@@ -2728,6 +2728,7 @@ def raw_kill(victim, killer):
     chprintln(victim, "A distant warmth draws you back.")
     wait(DEATH_MSG_DELAY)
     chprintln(victim, "You come to your senses. Alive, but barely.")
+    wait(DEATH_MSG_DELAY)
     chprintln(victim, "")
     from info import do_look  # lazy import to avoid circular dependency
     do_look(victim, [])
