@@ -33,6 +33,9 @@ POLL_MS          = 10                         # keyboard polling interval (ms)
 # areas) is immune, so the effective floor is ~12 around the Midgaard hub;
 # lower this for smaller-heap devices only alongside a smaller world.
 AREA_CACHE_MAX   = 12
+# Build-only switch: tools/build_dist.py --area-bench overrides this in the
+# transfer copy. Source/game builds stay on the normal startup path.
+AREA_LOAD_BENCH  = False
 AUTOSAVE_TICKS   = 4                          # autosave every N world ticks
 DEATH_MSG_DELAY  = 3                          # seconds between death flavour lines
 

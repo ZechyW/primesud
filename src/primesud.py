@@ -17,6 +17,7 @@ from config import (
     KEY_COMMANDS as _KEY_COMMANDS,
     CMD_HISTORY_MAX,
     FNKEY_SENTINELS,
+    AREA_LOAD_BENCH,
 )
 from util import gc_collect
 import world
@@ -38,6 +39,16 @@ from game_state import (
     save_game,
 )
 from prime_platform import ticks, wait_ms, clear_graphics
+
+
+def _run_area_load_bench(game):
+    """Run opt-in full-heap area-load probe from transfer-only source. [PRIMESUD]"""
+    with open("area_load_bench.txt") as f:
+        src = f.read()
+    ns = {}
+    exec(src, ns)
+    src = None
+    ns["run"](game)
 
 
 def _handle_version_mismatch(game):
@@ -302,6 +313,14 @@ class PrimeSud:
         init_world()
         with self:
             game = self.game
+
+            if AREA_LOAD_BENCH:
+                # Match normal pre-loop residency, then benchmark without
+                # loading or saving the player's game.
+                import mobprog, socials, namegen  # noqa: F401
+                gc_collect()
+                _run_area_load_bench(game)
+                return
 
             show_greeting()
 
