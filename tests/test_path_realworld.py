@@ -79,6 +79,7 @@ def real_world(tmp_path, monkeypatch):
     world._area_seq.clear()
     world._player_room = None
     world._seq_counter = 0
+    world._last_evict_area = None
     world._WORLD_READY = old_state["_WORLD_READY"]
 
 

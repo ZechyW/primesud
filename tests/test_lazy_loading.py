@@ -668,6 +668,7 @@ class TestResetLazy:
         _load_area("alpha")
         assert len(world.chars) > 0
         assert len(world.rooms._data) > 0
+        world._last_evict_area = "alpha"
 
         reset_lazy()
         assert len(world.chars) == 0
@@ -677,6 +678,7 @@ class TestResetLazy:
         assert len(ITEM_DEFS._data) == 0
         assert len(DOOR_DEFS) == 0
         assert not is_area_loaded("alpha")
+        assert world._last_evict_area is None
 
     def test_reset_repopulates_area_defs(self, fresh_world):
         fw = fresh_world

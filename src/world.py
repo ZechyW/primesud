@@ -348,8 +348,9 @@ _LOADING_ALL = False
 # -- Far-area eviction state (see maybe_evict) [PRIMESUD] -----------------------
 _PINNED = ("limbo",)       # corpse/coin/portal templates spawn on every kill
 _player_room = None        # maybe_evict fast path: room unchanged -> no work
-_area_seq = {}             # tag -> visit counter (LRU eviction order)
+_area_seq = {}             # tag -> visit/load counter (LRU eviction order)
 _seq_counter = 0
+_last_evict_area = None    # tag of the last area maybe_evict ran a pass for
 
 
 class LazyDict:
@@ -473,12 +474,12 @@ def _load_area(tag):
     Args:
         tag (str): Area tag (e.g. "midgaard").
     """
-    global _draining
+    global _draining, _seq_counter
     _loading_notice(tag)
     # [PRIMESUD] Defrag before the load's big allocations: measured ~375ms
     # net wall-clock win on a 265KB area at pressured heap (collect costs
     # 73-132ms, load runs ~500ms faster); worst case ~+75ms on a tiny
-    # area, imperceptible. BUILTINS.md sec. Area load performance.
+    # area, imperceptible. PERFORMANCE.md sec. Area loading.
     import gc
     gc.collect()
     # Explicit close: MicroPython has no refcounting, so open().read()
@@ -580,6 +581,13 @@ def _load_area(tag):
     _adef["room_vnums"] = _room_vnums
 
     _LOADED_AREAS.add(tag)
+    # [PRIMESUD] Stamp as most-recently-used.  maybe_evict orders victims by
+    # _area_seq (default 0), which is otherwise only set when the player
+    # *enters* an area -- so an area loaded any other way (border crossing
+    # mid-move, gate, quest lookup) would sort to the front of the eviction
+    # queue and be dropped on the very next step, then reloaded.
+    _seq_counter += 1
+    _area_seq[tag] = _seq_counter
 
     # Queue reset; drain iteratively to prevent stack overflow from
     # cross-area LazyDict lookups during create_object/create_mobile.
@@ -920,7 +928,7 @@ def maybe_evict(player, force=False):
         player (dict): Player state dict.
         force (bool): Check the cap even if the player's room did not change.
     """
-    global _player_room, _seq_counter
+    global _player_room, _seq_counter, _last_evict_area
     _rv = player["room"]
     if _rv == _player_room and not force:
         return
@@ -930,8 +938,13 @@ def maybe_evict(player, force=False):
     if _tag is None:
         return
     if _moved:
-        if _area_seq.get(_tag) == _seq_counter:
+        # Skip the keep-set rebuild while moving inside the area this pass
+        # already ran for.  Tracked by tag rather than by "_area_seq[_tag] ==
+        # _seq_counter": _load_area also stamps _area_seq now, so counter
+        # equality no longer implies a completed pass. [PRIMESUD]
+        if _tag == _last_evict_area:
             return
+        _last_evict_area = _tag
         _seq_counter += 1
         _area_seq[_tag] = _seq_counter
     if len(_LOADED_AREAS) <= config.AREA_CACHE_MAX:
@@ -986,9 +999,10 @@ save_pending = False
 
 def reset_lazy():
     """Reset mutable state and lazy loading for new/load game. [PRIMESUD]"""
-    global _player_room, _seq_counter, share_value
+    global _player_room, _seq_counter, _last_evict_area, share_value
     _player_room = None
     _seq_counter = 0
+    _last_evict_area = None
     _area_seq.clear()
     rooms._data.clear()
     chars.clear()
