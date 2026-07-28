@@ -683,7 +683,7 @@ def do_look(player, args):
     [PRIMESUD] Room output accumulated into a list and sent as one batched
     print (21/07/2026) -- perf deviation, 1stMud sends per line; player-visible
     output unchanged. The list is passed through unjoined (see pitfall 8 /
-    PRIME_STRING_FORMAT_BUG.md: no join over %-formatted lines).
+    PRIME_FIRMWARE_BUGS.md: no join over %-formatted lines).
 
     Args:
         player (dict): Player state dict.
@@ -868,7 +868,7 @@ def do_look(player, args):
     # Mobs: one per line (cf. 1stMud show_char_to_char in act_info.c)
     _show_char_to_char(player, live_mobs, out)
     # [PRIMESUD] list sent unjoined: terminal batch-renders it, and joining
-    # %-formatted lines trips the device heap bug (PRIME_STRING_FORMAT_BUG.md)
+    # %-formatted lines trips the device heap bug (PRIME_FIRMWARE_BUGS.md)
     chprintln(player, out)
 
 

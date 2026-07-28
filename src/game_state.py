@@ -102,7 +102,7 @@ def _serialize_world(hvar_name=None, file_name=None):
         file_name = SAVE_FILE
     player = world.chars[1]
     # No gc_collect() here: a collect adjacent to bulk int rendering is the
-    # G1 heap-corruption trigger (BUILTINS.md sec. G1 memory-corruption bug);
+    # G1 heap-corruption trigger (PRIME_FIRMWARE_BUGS.md sec. str(int)-GC bug);
     # sstr's cached digit path below is the validated fix.
     lines = ["v=" + sstr(SAVE_VERSION)]
     for key in _PLAYER_STRING_SAVE_KEYS:
@@ -113,7 +113,7 @@ def _serialize_world(hvar_name=None, file_name=None):
     for stat in _PLAYER_STAT_SAVE_KEYS:
         number_parts.append(sstr(player["perm_stat"][stat]))
     lines.append("p.n=" + "|".join(number_parts))
-    # cf. 1stMud ch->Class[] -- comma-joined ints (str+concat per PRIME_STRING_FORMAT_BUG)
+    # cf. 1stMud ch->Class[] -- comma-joined ints (str+concat per PRIME_FIRMWARE_BUGS)
     cls_str = ""
     for c in player["classes"]:
         cls_str = cls_str + ("," if cls_str else "") + sstr(c)

@@ -5,8 +5,8 @@ bugs have different device reach and this battery maps it).  Needs no
 game modules and no save file; swap it into the minimal "Python
 debug" appdir in place of save_bench.py (one probe .py per appdir).
 
-Background (docs/PRIME_STRING_FORMAT_BUG.md + docs/BUILTINS.md sec.
-G1 memory-corruption bug): two distinct string-subsystem defects are
+Background (docs/PRIME_FIRMWARE_BUGS.md): two distinct
+string-subsystem defects are
 confirmed on hardware --
   1. OUTPUT bug: %/.format() results get their first byte zeroed in
      comprehension/nested-dict contexts (near-deterministic,
@@ -82,7 +82,7 @@ ITERS = 20
 # survival acquittals do not transfer and the hunt cannot converge.
 # Phase B also zeroed the concat-built EXPECTED strings in place on
 # both devices (bystander corruption) before killing both.  Verdict:
-# no %/.format on-device at all; see PRIME_STRING_FORMAT_BUG.md.
+# no %/.format on-device at all; see PRIME_FIRMWARE_BUGS.md.
 START_PHASE = "A1s"
 
 _out = []

@@ -258,7 +258,7 @@ def install_color_print(tr):
         """Colour-aware print with word-wrap and per-run font recolouring. [PRIMESUD]"""
         # [PRIMESUD] a single list arg is a pre-split line batch, passed
         # through unjoined (join over %-formatted lines trips the device
-        # heap bug, PRIME_STRING_FORMAT_BUG.md).
+        # heap bug, PRIME_FIRMWARE_BUGS.md).
         if len(args) == 1 and type(args[0]) is list:
             if end == '\n' and tr.cursor_x == 0:
                 print_lines(args[0])

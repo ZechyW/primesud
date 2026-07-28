@@ -642,7 +642,7 @@ def chprintln(ch, txt):
 
     [PRIMESUD] txt may also be a list of lines -- passed through unjoined and
     batch-rendered by terminal.print_lines (avoids the device join-over-
-    formatted-strings bug, see PRIME_STRING_FORMAT_BUG.md).
+    formatted-strings bug, see PRIME_FIRMWARE_BUGS.md).
     """
     if txt is None:
         txt = ""

@@ -14,7 +14,7 @@ Do NOT add a per-step mark to do_run: the tick seam already covers it.
 
 Storage: a bytearray on the player dict (bit index = room vnum), sized from the
 static _AREA_FILES vnum ranges (max < 18000 -> ~2.2 KB). Persisted as an RLE
-run-length string (str()+concat only, per PRIME_STRING_FORMAT_BUG).
+run-length string (str()+concat only, per PRIME_FIRMWARE_BUGS).
 """
 from world import _AREA_FILES, AREA_ROOM_COUNTS
 from handler import chprintln
@@ -124,7 +124,7 @@ def encode_rle(player):
     """Serialise the mask as alternating 0/1 run counts (cf. 1stMud write_rle).
 
     Format: "<startbit> <run> <run> ... -1", e.g. "0 12 3 40 -1". str()+concat
-    only -- this string is persisted (PRIME_STRING_FORMAT_BUG).
+    only -- this string is persisted (PRIME_FIRMWARE_BUGS).
     """
     m = get_mask(player)
     bit = 0

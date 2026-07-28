@@ -43,8 +43,8 @@ def gc_collect():
 
 # -- Firmware-safe int rendering [PRIMESUD] ------------------------------------
 # The physical G1 corrupts its heap when bulk str(int) transients meet a
-# garbage collection (explicit or automatic) -- see docs/BUILTINS.md sec.
-# G1 memory-corruption bug.  int_str() renders ints by digit-table lookup +
+# garbage collection (explicit or automatic) -- see docs/PRIME_FIRMWARE_BUGS.md
+# sec. str(int)-GC bug.  int_str() renders ints by digit-table lookup +
 # concat, never touching the firmware int formatter; num_str() fronts it
 # with a persistent cache so repeat values (save payloads re-render the
 # same few hundred numbers every save) cost one dict hit, no allocation.

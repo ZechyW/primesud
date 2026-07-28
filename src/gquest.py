@@ -511,7 +511,7 @@ def do_gquest(player, args):
 # -- Persistence [PRIMESUD] ----------------------------------------------------
 
 def gq_save_lines():
-    """Serialise gquest state to save lines (str+concat per PRIME_STRING_FORMAT_BUG)."""
+    """Serialise gquest state to save lines (str+concat per PRIME_FIRMWARE_BUGS)."""
     gq = gquest_info
     line = ("g.gquest=" + sstr(gq["running"]) + "|" + sstr(gq["timer"])
             + "|" + sstr(gq["mob_count"]) + "|" + sstr(gq["minlevel"])
