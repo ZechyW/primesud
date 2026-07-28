@@ -54,8 +54,13 @@ There are no other players, no immortals, no clans -- and the design turns
 that into features rather than holes.
 
 - **Pickers replace typing** -- `kill`, `get`, `give`, `wear`, `cast`, `practice`,
-  `train`, `buy`, `sell`, `examine`, `open`/`unlock`, remort, chargen: given no argument,
-  each opens a numbered target menu instead of failing (docs/PRIME_UX.md).
+  `train`, `buy`, `sell`, `examine`, `open`/`unlock`, remort, chargen: given no
+  argument, each opens a numbered target menu instead of failing
+  (docs/PRIME_UX.md).
+- **Contextual quest hub** -- bare `quest` shows status away from questmasters;
+  at one, it offers valid quest actions and nested reward-shop pickers, while
+  completed quests auto-complete instead of accepting an accidental quit
+  (docs/PRIME_UX.md).
 - **Gear score and `wear best`** -- compatible equipment shares one combat-aware
   score used by `compare`; `wear best` equips strict per-slot upgrades and picks
   the best legal hand layout (shield, two-handed, dual wield) by combined score
@@ -117,7 +122,8 @@ worth trusting -- the engineering layer.
   moving; mob lookup uses the off-heap index and exact live room, while route
   search Dijkstras a precomputed border graph (`paths.idx`) for exact
   shortest routes with zero area loads at routing time (DESIGN.md "Lazy
-  area loading").
+  area loading").  Mob targets resolve deterministically -- 1stMud's random
+  saving-throw gate is dropped (docs/FIXES.md).
 - **World-wide object location** -- `locate object` searches plausible
   unloaded areas one at a time through the object index, then releases each
   transient load (DESIGN.md "Lazy area loading").

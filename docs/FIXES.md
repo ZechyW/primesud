@@ -504,3 +504,44 @@ current price.
 - The bank closes at hour 20, matching its stated 8pm closing time.
 - Score uses a 64-column-safe full-width bank row and shows the real share
   price.
+
+---
+
+## quest info: active quests omit their remaining time
+
+**Upstream:** `reference/1stMud4.5.3/src/quest.c`, `do_quest()`, lines 371-443.
+
+`HELP QUEST` says `quest info` reminds the player of the target and time
+remaining, but every active objective branch returns immediately after the
+target location. Only cooldown and return-to-questmaster states show time.
+
+PrimeSUD prints the remaining time for every active quest, matching the help
+text. The contextual bare-`quest` picker and completed-quest quit protection
+are separate `[PRIMESUD]` calculator UX extensions.
+
+
+---
+
+## path: random saving-throw gate on an information command
+
+**Upstream:** `reference/1stMud4.5.3/src/act_enter.c`, `do_path()`, lines 445-460.
+
+The mob-target disqualifier chain ends with
+`(IsNPC(victim) && saves_spell(ch->level, victim, DAM_OTHER))`, so an
+otherwise-valid target refuses to route on a failed roll. Nothing the player
+controls feeds that roll: `saves_spell` reads only the victim's level, saving
+throw, berserk state, immunities, and `has_spells`, plus the caster's raw
+level. No skill, stat, or equipment applies.
+
+The result on a free, instant, no-feedback command is pure friction --
+`path` prints the same `No such destination.` as a mistyped name, and the
+optimal play is to repeat it until the roll passes. `DAM_OTHER` also falls
+into the `magic` broad category in `check_immune`, so `IMM_MAGIC` mobs return
+`IS_IMMUNE` and save unconditionally, making them permanently unpathable.
+
+### PrimeSUD deviation -- implemented in `_mob_destination` in `path.py`
+
+The `saves_spell` clause is dropped; mob targets resolve deterministically.
+The level signal it encoded is already carried by the adjacent
+`victim->level >= ch->level + 3` gate, which is retained verbatim, as are
+every other disqualifier in the chain. Marked [PRIMESUD] at the site.
