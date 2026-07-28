@@ -34,7 +34,7 @@ performance.
 |---|---|
 | Move / MV | Ported (row was stale, corrected 11/07/2026): sector-based `movement_loss` costs deducted in move_char (movement.py), flying/water halving/doubling, regen, train/restore paths |
 | Race system | Ported: RACE_TABLE in races.py, race defaults merged at mob/player creation, check_immune in combat, race-aware stat caps (get_curr_stat/get_max_train in handler.py). Chargen: name, race, sex, class, alignment, weapon. Racial skills granted at creation. Creation-point group customisation not ported |
-| Class system | Ported: CLASS_TABLE (7 classes) in classes.py, remort/multiclass, chargen class picker, per-class THAC0 and HP/mana gain, skill groups + `gain`. Six classes come from 1stMud; Swordsman is [PRIMESUD]. Creation-point group customisation at chargen not ported |
+| Class system | Ported: CLASS_TABLE (6 classes) in classes.py, remort/multiclass, chargen class picker, per-class THAC0 and HP/mana gain, skill groups + `gain`. Creation-point group customisation at chargen not ported |
 | Stat rolling | Per-race base stats from RACE_TABLE; no chargen reroll |
 | Saving throws | `saving_throw = 0` baseline with `saves_spell`/`saves_dispel`/`check_dispel`; race/class modifiers and equipment bonuses deferred |
 | Deity / worship | Multiplayer-social; no solo hook. (Alignment itself IS ported: chargen choice, kill/spell drift, is_good/is_evil gates -- row split 19/07/2026, was stale as "Alignment / deity") |
@@ -64,7 +64,7 @@ performance.
 | EXP per level | `exp_per_level()` -- scales with creation points and race/class mult | Flat 1000 XP / level | Equivalent at 40 creation points, human baseline |
 | Level-up heal | Adds gains to `max_hit`/`max_mana`; current HP/MP unchanged | Fully restores current HP and MP | Eliminates "levelled at 1 HP mid-fight" |
 | Remort progression | `finish_remort` grants `100*lvl_bonus` hp/mana/move, `5*lvl_bonus` trains, `7*lvl_bonus` practices -- ~6000/300/420 at first remort | Same `lvl_bonus` formula, all three grants divided by `REMORT_POWER_DIV` (config.py, default 12) -- ~500 hp / 25 trains / 35 practices; `1` restores stock | Revisited 11/07/2026 (was "accepted, revisit after playtest"): 6000 hp against PrimeSUD's 50-hp creation baseline trivialised everything; ~500 keeps the power-fantasy bump without breaking content. Single knob keeps vitals/trains/practices proportional |
-| Guild rooms | Single class per guild room; midgaard has no paladin/ranger/swordsman guilds | Paladin shares the Cleric guild rooms; Ranger and Swordsman share the Warrior's; all four midgaard GMs are gain-capable (`areas/midgaard.are` room `G` trailers + mob `act_flags`; see docs/AREA_FILES.md "Deviations from stock QuickMUD") | Every class must be gain/remort-capable within the loaded-area set |
+| Guild rooms | Single class per guild room; midgaard has no paladin/ranger guilds | Paladin shares the Cleric guild rooms, Ranger shares the Warrior's; all four midgaard GMs are gain-capable (`areas/midgaard.are` room `G` trailers + mob `act_flags`; see docs/AREA_FILES.md "Deviations from stock QuickMUD") | Every class must be gain/remort-capable within the loaded-area set |
 | Pulse timing | `PULSE_VIOLENCE = 3xPPS`, `PULSE_MOBILE = 4xPPS`, `PULSE_TICK = 45xPPS` | `2xPPS`, `5xPPS`, `30xPPS` | Faster combat/regen; slower mob wander |
 | Gquest joining | 3-min GQUEST_WAITING window to gather joiners via `gquest join`; cancels with "Not enough people" if none join; ends running quest when last player leaves | No window -- quest starts running at announcement with the player auto-joined (same gates as manual join: no regular quest, level in range); auto-quest level band clamped to always include the player; runs until time expires; `gquest quit`/`join` still allow opt-out/rejoin (e.g. join after wrapping up a regular quest) | Single player -- window was dead time (kills don't credit until RUNNING), "not enough players" can't be a failure mode, joining has no penalty, and an unjoinable quest is dead content |
 | World-reset object counts | Incremental `pObjIndex->count` bumped at create/extract | Recomputed once per reset pass (`mob._object_count_map`) from the loaded world -- room floor items + one level of container `contents` + every char's inventory/equipment -- then incremented locally as the pass spawns | Sacrifice/quaff/decay/burnout extraction paths would drift a persistent counter and force it into the save file; lazy loading makes the computed count correct-by-construction (unloaded areas hold no instances) |
@@ -79,34 +79,6 @@ performance.
 | `do_group` roster | One `[%2d %s] %-16s %4ld/%4ld hp ... %5d xp` line per member (~70 chars) | Two lines per member: `[%2d %-4s] <name>` then an indented, column-aligned `hp/mana/mv/xp` stats line | The single line overflows the 64-col screen and wraps mid-value; the split fields stay vertically aligned down the list |
 | Movement lag | `move_char` applies `WAIT_STATE(ch, 1)` -- one pulse of recovery per step, so fast walking queues input behind the lag gate | No movement WaitState: steps cost movement points only, and `run` advances one step per pulse | Single-player pacing: nothing competes for pulses, so the `[Recovering...]` gate on plain walking was pure friction. Skill/combat lag unchanged |
 | Input queued during lag | Raw input accumulates unparsed in `d->inbuf` while `wait > 0` (comm.c:868-872 skips `read_from_buffer`); afterwards a strict FIFO, one command per pulse -- five spammed `trip`s all execute in order and a panicked `flee` typed mid-lag waits behind every one of them | Single-slot queue (`_pending_cmd`, primesud.py): latest submission during lag overwrites any earlier one and fires on the first post-lag pulse | Latest-wins makes the panic case work: `flee` (or its digit macro) replaces queued spam instead of joining the back of a fatal queue. Cost -- multi-command buffering during lag is lost; multi-step movement already has `run_buf` (cancelled on combat/keyboard input in both codebases). The `autoskill` engine yields any round with a queued command either way |
-
----
-
-## Swordsman / Sword Saint [PRIMESUD]
-
-Added 23/07/2026 as the first post-1.0 content class. Swordsman is a
-DEX-primary, non-caster single-sword duelist: sword is rating 1, dagger is
-the only sidearm, and other weapon skills are unavailable. THAC0 and HP sit
-between Thief and Warrior. Swordsman shares the Warrior guild rooms.
-
-Three unique skills condense classical Chinese sword forms without adding a
-second stance system:
-
-- `flow` / flowing form (level 12): one sword hit with +4 THAC0 accuracy,
-  90% damage, and 12-beat lag.
-- riposte (level 30): after a successful sword parry, `skill // 4` percent
-  chance for one immediate normal sword hit; ripostes cannot chain.
-- `drive` / driving form (level 42): one sword hit at 140% damage with
-  24-beat lag.
-
-All three skills add a small DEX bonus to their activation or proc chance:
-one percentage point per two DEX above 13, capped at +5. Riposte improvement
-is checked on both successful procs and failed eligible proc rolls.
-
-Each active skill chooses from a tone-specific message pool. Cosmetic
-combat flourishes use the last active form's flowing/driving pool. Form
-choice defaults to flowing before first use, persists across fights and
-target changes, and is not saved. Flourishes have no mechanical effect.
 
 ---
 

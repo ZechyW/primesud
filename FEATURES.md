@@ -174,11 +174,8 @@ Deliberate gameplay tweaks; each is a settled decision in DESIGN.md or a
 - **Faster pulses** -- combat rounds and regen ticks come quicker, mob wander
   slower (DESIGN.md "Pulse timing").
 - **Every class can remort in town** -- Paladin shares the Cleric guilds,
-  Ranger and Swordsman share the Warrior's, and all four Midgaard guildmasters can `gain`
+  Ranger shares the Warrior's, and all four Midgaard guildmasters can `gain`
   (DESIGN.md "Guild rooms").
-- **Swordsman / Sword Saint** -- a PrimeSUD-only single-sword duelist with
-  flowing form, passive riposte, driving form, and tone-matched cosmetic
-  combat flourishes (DESIGN.md "Swordsman / Sword Saint").
 - **Combat flow** -- after a kill you auto-retarget a mob already fighting
   you; fleeing auto-looks at the destination; backstab without ranks refuses
   instead of burning a lagged round.

@@ -5,8 +5,7 @@ from autoskill import do_autoskill  # [PRIMESUD]
 from combat import (do_kill, do_kick, do_backstab, do_murder, do_suicide,
                     do_berserk, do_bash, do_dirt, do_trip, do_flee,
                     do_rescue, do_disarm, do_surrender,
-                    do_sskill, do_stance, do_autostance, do_consider,
-                    do_flow, do_drive)
+                    do_sskill, do_stance, do_autostance, do_consider)
 from comm import (do_say, do_tell, do_reply, do_follow, do_ditch, do_order,
                   do_group, do_yell, do_emote)
 from config import POS_ORDER
@@ -459,8 +458,6 @@ _CMD_TABLE = [
     ("macro",      do_macro,      "dead",     False),  # [PRIMESUD] #349
     ("debug",      do_debug,      "dead",     False),  # [PRIMESUD] #350
     ("autoskill",  do_autoskill,  "dead",     False),  # [PRIMESUD] #351
-    ("flow",       do_flow,       "fighting", False),  # [PRIMESUD] #352
-    ("drive",      do_drive,      "fighting", False),  # [PRIMESUD] #353
 ]
 
 # [PRIMESUD] Free-text commands receive the verbatim argument tail -- like

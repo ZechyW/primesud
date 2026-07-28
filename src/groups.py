@@ -21,94 +21,88 @@ from skill_utils import skill_level
 from skills_table import SKILL_TABLE, SKILLS
 from util import num_str, pad_left, pad_right, zpad
 
-# Ported from 1stMud data/groups.dat. Rating 7-tuple order matches CLASS_TABLE
-# (mage, cleric, thief, warrior, paladin, ranger, swordsman); -1 = not
+# Ported verbatim from 1stMud data/groups.dat. Rating 6-tuple order matches
+# CLASS_TABLE (mage, cleric, thief, warrior, paladin, ranger); -1 = not
 # available to that class, 0 = free (basics). Members are skill names or
 # other group names, resolved below at import.
 # groups.dat lists "invis"; the skill is "invisibility" (1stMud skill_lookup
 # is prefix-based) -- stored under the full name.
 GROUP_TABLE = (
-    ("rom basics",      (0, 0, 0, 0, 0, 0, 0),
+    ("rom basics",      (0, 0, 0, 0, 0, 0),
      ("scrolls", "staves", "wands", "recall")),
-    ("mage basics",     (0, -1, -1, -1, -1, -1, -1), ("dagger",)),
-    ("cleric basics",   (-1, 0, -1, -1, -1, -1, -1), ("mace",)),
-    ("thief basics",    (-1, -1, 0, -1, -1, -1, -1), ("dagger", "steal")),
-    ("warrior basics",  (-1, -1, -1, 0, -1, -1, -1), ("sword", "second attack")),
-    ("paladin basics",  (-1, -1, -1, -1, 0, -1, -1), ("mace",)),
-    ("ranger basics",   (-1, -1, -1, -1, -1, 0, -1), ("sword", "second attack")),
-    ("swordsman basics",(-1, -1, -1, -1, -1, -1, 0),
-     ("sword", "second attack")),
-    ("mage default",    (40, -1, -1, -1, -1, -1, -1),
+    ("mage basics",     (0, -1, -1, -1, -1, -1), ("dagger",)),
+    ("cleric basics",   (-1, 0, -1, -1, -1, -1), ("mace",)),
+    ("thief basics",    (-1, -1, 0, -1, -1, -1), ("dagger", "steal")),
+    ("warrior basics",  (-1, -1, -1, 0, -1, -1), ("sword", "second attack")),
+    ("paladin basics",  (-1, -1, -1, -1, 0, -1), ("mace",)),
+    ("ranger basics",   (-1, -1, -1, -1, -1, 0), ("sword", "second attack")),
+    ("mage default",    (40, -1, -1, -1, -1, -1),
      ("lore", "beguiling", "combat", "detection", "enhancement", "illusion",
       "maladictions", "protective", "transportation", "weather")),
-    ("cleric default",  (-1, 40, -1, -1, -1, -1, -1),
+    ("cleric default",  (-1, 40, -1, -1, -1, -1),
      ("flail", "attack", "creation", "curative", "benedictions", "detection",
       "healing", "maladictions", "protective", "shield block",
       "transportation", "weather")),
-    ("thief default",   (-1, -1, 40, -1, -1, -1, -1),
+    ("thief default",   (-1, -1, 40, -1, -1, -1),
      ("mace", "sword", "backstab", "disarm", "dodge", "second attack", "trip",
       "hide", "peek", "pick lock", "sneak")),
-    ("warrior default", (-1, -1, -1, 40, -1, -1, -1),
+    ("warrior default", (-1, -1, -1, 40, -1, -1),
      ("weaponsmaster", "shield block", "bash", "disarm", "enhanced damage",
       "parry", "rescue", "third attack")),
-    ("paladin default", (-1, -1, -1, -1, 40, -1, -1),
+    ("paladin default", (-1, -1, -1, -1, 40, -1),
      ("flail", "attack", "creation", "curative", "benedictions", "detection",
       "healing", "maladictions", "protective", "shield block",
       "transportation", "weather")),
-    ("ranger default",  (-1, -1, -1, -1, -1, 40, -1),
+    ("ranger default",  (-1, -1, -1, -1, -1, 40),
      ("weaponsmaster", "shield block", "bash", "disarm", "enhanced damage",
       "parry", "rescue", "third attack")),
-    ("swordsman default", (-1, -1, -1, -1, -1, -1, 40),
-     ("dagger", "disarm", "dodge", "enhanced damage", "fast healing",
-      "flowing form", "hand to hand", "parry", "riposte", "shield block",
-      "driving form", "third attack")),
-    ("weaponsmaster",   (40, 40, 40, 20, 40, 20, -1),
+    ("weaponsmaster",   (40, 40, 40, 20, 40, 20),
      ("axe", "dagger", "flail", "mace", "polearm", "spear", "sword", "whip")),
-    ("attack",          (-1, 5, -1, 8, 5, 8, -1),
+    ("attack",          (-1, 5, -1, 8, 5, 8),
      ("demonfire", "dispel evil", "dispel good", "earthquake", "flamestrike",
       "heat metal", "ray of truth")),
-    ("beguiling",       (4, -1, 6, -1, -1, -1, -1),
+    ("beguiling",       (4, -1, 6, -1, -1, -1),
      ("calm", "charm person", "sleep")),
-    ("benedictions",    (-1, 4, -1, 8, 4, 8, -1),
+    ("benedictions",    (-1, 4, -1, 8, 4, 8),
      ("bless", "calm", "frenzy", "holy word", "remove curse")),
-    ("combat",          (6, -1, 10, 9, -1, 9, -1),
+    ("combat",          (6, -1, 10, 9, -1, 9),
      ("acid blast", "burning hands", "chain lightning", "chill touch",
       "fireball", "lightning bolt", "magic missile", "shocking grasp",
       "color spray")),
-    ("creation",        (4, 4, 8, 8, 4, 8, -1),
+    ("creation",        (4, 4, 8, 8, 4, 8),
      ("continual light", "create food", "create spring", "create water",
       "create rose", "floating disc")),
-    ("curative",        (-1, 4, -1, 8, 4, 8, -1),
+    ("curative",        (-1, 4, -1, 8, 4, 8),
      ("cure blindness", "cure disease", "cure poison")),
-    ("detection",       (4, 3, 6, -1, 3, -1, -1),
+    ("detection",       (4, 3, 6, -1, 3, -1),
      ("detect evil", "detect good", "detect hidden", "detect invis",
       "detect magic", "detect poison", "farsight", "identify",
       "know alignment", "locate object")),
-    ("draconian",       (8, -1, -1, -1, -1, -1, -1),
+    ("draconian",       (8, -1, -1, -1, -1, -1),
      ("acid breath", "fire breath", "frost breath", "gas breath",
       "lightning breath")),
-    ("enchantment",     (6, -1, -1, -1, -1, -1, -1),
+    ("enchantment",     (6, -1, -1, -1, -1, -1),
      ("enchant armor", "enchant weapon", "fireproof", "recharge")),
-    ("enhancement",     (5, -1, 9, 9, -1, 9, -1),
+    ("enhancement",     (5, -1, 9, 9, -1, 9),
      ("giant strength", "haste", "infravision", "refresh")),
-    ("harmful",         (-1, 3, -1, 6, 3, 6, -1),
+    ("harmful",         (-1, 3, -1, 6, 3, 6),
      ("cause critical", "cause light", "cause serious", "harm")),
-    ("healing",         (-1, 3, -1, 6, 3, 6, -1),
+    ("healing",         (-1, 3, -1, 6, 3, 6),
      ("cure critical", "cure light", "cure serious", "heal", "mass healing",
       "refresh")),
-    ("illusion",        (4, -1, 7, -1, -1, -1, -1),
+    ("illusion",        (4, -1, 7, -1, -1, -1),
      ("invisibility", "mass invis", "ventriloquate")),
-    ("maladictions",    (5, 5, 9, 9, 5, 9, -1),
+    ("maladictions",    (5, 5, 9, 9, 5, 9),
      ("blindness", "change sex", "curse", "energy drain", "plague", "poison",
       "slow", "weaken")),
-    ("protective",      (4, 4, 7, 8, 4, 8, -1),
+    ("protective",      (4, 4, 7, 8, 4, 8),
      ("armor", "cancellation", "dispel magic", "fireproof",
       "protection evil", "protection good", "sanctuary", "shield",
       "stone skin")),
-    ("transportation",  (4, 4, 8, 9, 4, 9, -1),
+    ("transportation",  (4, 4, 8, 9, 4, 9),
      ("fly", "gate", "nexus", "pass door", "portal", "summon", "teleport",
       "word of recall")),
-    ("weather",         (4, 4, 8, 8, 4, 8, -1),
+    ("weather",         (4, 4, 8, 8, 4, 8),
      ("call lightning", "control weather", "faerie fire", "faerie fog",
       "lightning bolt")),
 )
@@ -196,13 +190,15 @@ def add_default_groups(player):
 
 # -- do_grlist (cf. 1stMud do_grlist in skills.c) ----------------------------
 
-_GRLIST_COLS = 3
-_GRLIST_COL_W = 21  # [PRIMESUD] 3 x 21 = 63 fits the Prime's 64-col screen
-                     # and the 17-character "swordsman default" group.
+_GRLIST_COLS = 4
+_GRLIST_COL_W = 16  # [PRIMESUD] 4 x 16 = 64 exactly fits the Prime's 64-col
+                     # screen -- upstream's set_cols(Cd, ch, 4, COLS_CHAR, ch)
+                     # hardcodes 4 columns too, so the grid ports unchanged;
+                     # the longest name ("paladin default", 15 chars) fits.
 
 
 def _group_name_rows(names):
-    """Chunk group names into 3-wide padded columns for tpage. [PRIMESUD helper]"""
+    """Chunk group names into 4-wide padded columns for tpage. [PRIMESUD helper]"""
     rows = []
     for i in range(0, len(names), _GRLIST_COLS):
         row = names[i:i + _GRLIST_COLS]
@@ -242,10 +238,6 @@ def do_slist(player, args):
         args (list): Skill/spell or class name.
     """
     argument = " ".join(args)
-    sn = _skill_lookup_prefix(argument)
-    if sn != -1 and SKILLS[sn]["name"] == argument:
-        _slist_skill(player, sn)
-        return
     cl = class_lookup(argument)
     if cl != -1:
         # Single-pass level buckets like upstream's skill_list[level].
@@ -265,31 +257,25 @@ def do_slist(player, args):
         tpage(lines)
         return
 
+    sn = _skill_lookup_prefix(argument)
     if sn != -1:
-        _slist_skill(player, sn)
+        fields = []
+        for cl in range(len(CLASS_TABLE)):
+            level = SKILLS[sn]["skill_level"][cl]
+            fields.append("{W%3s: %3s{c  " %
+                          (class_name(player, cl)[:3],
+                           "n/a" if level > MAX_MORTAL_LEVEL else "%03d" % level))
+        # colors.capitalize -- str.capitalize missing on-device
+        name = capitalize(SKILLS[sn]["name"])
+        # [PRIMESUD] Upstream's six-class line is wider than the 64-col screen.
+        chprintln(player, "{c" + name + ": [ " + "".join(fields[:3]) + "{x")
+        chprintln(player, "{c" + " " * (len(name) + 4) +
+                  "".join(fields[3:]) + "]{x")
         return
 
     chprintln(player, "Syntax: slist <skill>")
     chprintln(player, "        slist <spell>")
     chprintln(player, "        slist <class>")
-
-
-def _slist_skill(player, sn):
-    """Show one skill across every class. [PRIMESUD display helper]"""
-    fields = []
-    for cl in range(len(CLASS_TABLE)):
-        level = SKILLS[sn]["skill_level"][cl]
-        level_str = "n/a" if level > MAX_MORTAL_LEVEL else zpad(level, 3)
-        fields.append("{W" + pad_left(class_name(player, cl)[:3], 3) + ": "
-                      + pad_left(level_str, 3) + "{c  ")
-    # colors.capitalize -- str.capitalize missing on-device
-    name = capitalize(SKILLS[sn]["name"])
-    prefix = name + ": [ "
-    for i in range(0, len(fields), 3):
-        lead = prefix if i == 0 else " " * len(prefix)
-        tail = " ]" if i + 3 >= len(fields) else ""
-        chprintln(player, "{c" + lead + "".join(fields[i:i + 3]) +
-                  tail + "{x")
 
 
 def _grlist_known(player):
@@ -370,7 +356,7 @@ def do_grlist(player, args):
     [PRIMESUD] The creation-point economy is not ported (see module
     docstring), so the no-argument branch's "Creation points: %d" trailer is
     dropped. Long listings go through the tpage pager (upstream sendpage /
-    Column buffering) in a 3 x 21 grid (see _GRLIST_COLS) sized to the
+    Column buffering) in a 4 x 16 grid (see _GRLIST_COLS) sized to the
     Prime's 64-col screen.
 
     Args:
@@ -386,10 +372,6 @@ def do_grlist(player, args):
     if argument == "all":
         _grlist_all(player)
         return
-    sn = _skill_lookup_prefix(argument)
-    if sn != -1 and SKILLS[sn]["name"] == argument:
-        _grlist_skill_groups(player, sn)
-        return
     cl = class_lookup(argument)
     if cl != -1:
         _grlist_class(player, cl)
@@ -398,6 +380,7 @@ def do_grlist(player, args):
     if gn != -1:
         _grlist_group_spells(player, gn)
         return
+    sn = _skill_lookup_prefix(argument)
     if sn != -1:
         _grlist_skill_groups(player, sn)
         return
