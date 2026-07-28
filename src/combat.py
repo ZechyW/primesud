@@ -1725,14 +1725,14 @@ def _weapon_procs(ch, victim, wobj, wtpl):
 
 
 _FLOWING_FORM_LINES = (
-    ("You yield a step, drawing the point of your sword back along $N's guard.",
-     "$n yields a step, drawing the point of $s sword back along $N's guard."),
+    ("You yield a step, drawing the point back along $N's guard.",
+     "$n yields a step, drawing the point back along $N's guard."),
     ("Your wrist turns softly; the edge rises through $N's opening.",
      "$n's wrist turns softly; the edge rises through $N's opening."),
-    ("You gather your sword at your centre, then unfold into a cut.",
-     "$n gathers $s sword at $s centre, then unfolds into a cut."),
-    ("The point of your sword traces a small circle and slips toward $N.",
-     "The point of $n's sword traces a small circle and slips toward $N."),
+    ("You gather the sword at your centre, then unfold into a cut.",
+     "$n gathers the sword at $s centre, then unfolds into a cut."),
+    ("Your point traces a small circle and slips toward $N.",
+     "$n's point traces a small circle and slips toward $N."),
 )
 
 _DRIVING_FORM_LINES = (
@@ -1747,25 +1747,25 @@ _DRIVING_FORM_LINES = (
 )
 
 _FLOWING_FLOURISHES = (
-    ("You yield half a step, your sword returning to your centre.",
-     "$n yields half a step, $s sword returning to $s centre."),
-    ("Your loose wrist guides the point of your sword through a quiet circle.",
-     "$n's loose wrist guides the point of $s sword through a quiet circle."),
-    ("Your blade moves with your body in one unbroken arc.",
-     "$n's blade moves with $s body in one unbroken arc."),
-    ("You gather your sword close, then let it drift outward.",
-     "$n gathers $s sword close, then lets it drift outward."),
+    ("You yield half a step, sword returning to your centre.",
+     "$n yields half a step, sword returning to $s centre."),
+    ("Your loose wrist guides the point through a quiet circle.",
+     "$n's loose wrist guides the point through a quiet circle."),
+    ("Blade and body travel together in one unbroken arc.",
+     "$n's blade and body travel together in one unbroken arc."),
+    ("You gather the sword close, then let it drift outward.",
+     "$n gathers the sword close, then lets it drift outward."),
 )
 
 _DRIVING_FLOURISHES = (
     ("You crowd $N's guard with short, sharp cuts.",
      "$n crowds $N's guard with short, sharp cuts."),
-    ("The point of your sword snaps from one line to the next.",
-     "The point of $n's sword snaps from one line to the next."),
+    ("Your point snaps from one line to the next.",
+     "$n's point snaps from one line to the next."),
     ("You step in behind the blade, pressing $N hard.",
      "$n steps in behind the blade, pressing $N hard."),
-    ("You turn from the waist and drive your sword through a heavy cut.",
-     "$n turns from the waist and drives $s sword through a heavy cut."),
+    ("Steel cuts a hard line as your waist turns.",
+     "Steel cuts a hard line as $n's waist turns."),
 )
 
 

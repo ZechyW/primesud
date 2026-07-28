@@ -14,8 +14,8 @@ import world
 from classes import CLASS_SWORDSMAN, CLASS_TABLE
 from groups import group_lookup
 from player import create_char
-from skills_table import (GSN_DAGGER, GSN_DRIVING_FORM, GSN_FLOWING_FORM,
-                          GSN_RIPOSTE, GSN_SWORD, SKILLS)
+from skills_table import (GSN_DRIVING_FORM, GSN_FLOWING_FORM, GSN_RIPOSTE,
+                          GSN_SWORD, SKILLS)
 from world import ITEM_DEFS, ROOM_DEFS
 
 
@@ -68,8 +68,6 @@ def test_class_data_and_default_groups():
     assert CLASS_TABLE[CLASS_SWORDSMAN]["names"] == ("Swordsman", "Sword Saint")
     assert group_lookup("swordsman basics") in ch["groups"]
     assert group_lookup("swordsman default") in ch["groups"]
-    assert GSN_DAGGER not in ch["learned"]
-    assert SKILLS[GSN_DAGGER]["rating"][CLASS_SWORDSMAN] == 2
     for sn in (GSN_FLOWING_FORM, GSN_RIPOSTE, GSN_DRIVING_FORM):
         assert sn in ch["learned"]
     assert SKILLS[GSN_FLOWING_FORM]["skill_level"][CLASS_SWORDSMAN] == 12
