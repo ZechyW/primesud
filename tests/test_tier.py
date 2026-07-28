@@ -271,6 +271,44 @@ class TestTierPerks:
         finally:
             _teardown()
 
+    def test_practice_picker_orders_highest_proficiency_first(self, monkeypatch):
+        import training
+        from world import ROOM_DEFS, MOB_DEFS
+
+        room = {"name": "Guild", "desc": "x", "items": [], "mobs": [2],
+                "area": "test", "sector": "inside", "flags": {}, "exits": {}}
+        ROOM_DEFS._data[3022] = room
+        world.rooms._data[3022] = room
+        MOB_DEFS._data[9900] = {"short_descr": "the teacher", "level": 60,
+                                "act_flags": {"practice": True}}
+        world.chars[2] = {"is_npc": True, "id": 2, "tpl": 9900, "room": 3022}
+        player = create_char(CLASS_WARRIOR)
+        player["room"] = 3022
+        player["practice"] = 5
+        for sn in player["learned"]:
+            player["learned"][sn] = 1
+        player["learned"][WEAPON_GSN_MAP["axe"]] = 45
+        player["learned"][WEAPON_GSN_MAP["dagger"]] = 30
+        player["learned"][WEAPON_GSN_MAP["sword"]] = 60
+        seen = {}
+
+        def pick(title, labels):
+            seen["title"] = title
+            seen["labels"] = labels
+            return -1
+
+        monkeypatch.setattr(training, "pick_from", pick)
+        monkeypatch.setattr(training, "print_practice_table", lambda _p: None)
+        monkeypatch.setattr(training, "chprintln", lambda *_args: None)
+        try:
+            training.do_practice(player, [])
+            assert seen["title"] == "Practice which skill?"
+            assert seen["labels"][:3] == [
+                "sword (60%)", "axe (45%)", "dagger (30%)",
+            ]
+        finally:
+            _teardown()
+
 
 class TestTierDisplay:
     def test_class_who_suffix(self):

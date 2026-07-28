@@ -163,7 +163,9 @@ def do_practice(player, args):
                            and skill_rating(player, sn) > 0)]
         if not practicable:
             return
-        names = [str(SKILLS[vnum]["name"]) + " (" + str(pct) + "%)" for vnum, pct in practicable]
+        # [PRIMESUD] Put skills closest to mastery first in the picker.
+        practicable.sort(key=lambda entry: -entry[1])
+        names = [str(SKILLS[vnum]["name"]) + " (" + num_str(pct) + "%)" for vnum, pct in practicable]
         chprintln(player, "")
         idx = pick_from("Practice which skill?", names)
         if idx < 0:
