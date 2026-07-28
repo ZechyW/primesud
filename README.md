@@ -41,10 +41,11 @@ python run_dist.py      # ANSI terminal, build minified dist first
 `run_source.py` for everyday use. `run_dist.py` builds `dist/` and runs the minified copy, catching anything minification broke.
 `run_graphical.py` uses the calculator's 320x240 atlas/GROB rendering path in
 a 2x Tkinter window. Drag down to open pixel scrollback, then drag or fling to
-navigate it; Page Up/Down also works. F1-F10 map to the calculator function-row
-macros.
+navigate it. Arrow keys map to the calculator navpad, Page Up/Down recall
+older/newer commands, Shift+Page Up/Down navigate scrollback, and F1-F10 map
+to the calculator function-row macros.
 
-Saves live in the repo root (`primesud.sav`, gitignored), shared between both runners, so `dist/` stays a clean transfer copy.
+Saves live in the repo root (`primesud.sav`, gitignored), shared between all runners, so `dist/` stays a clean transfer copy.
 
 ## Deploying to a calculator
 

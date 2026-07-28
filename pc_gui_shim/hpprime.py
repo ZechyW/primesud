@@ -78,40 +78,43 @@ def _on_close():
     if not _closed:
         _closed = True
         _pointer_down = False
-        _events.append("\x03")
+        _events.append(("interrupt", None))
 
 
 def _on_key(event):
-    special = {
-        "Return": "\n",
-        "KP_Enter": "\n",
-        "BackSpace": "\b",
-        "Escape": "\\e",
-        "Left": "\\L",
-        "Right": "\\R",
-        "Up": 12,
-        "Down": 13,
-        "Prior": 10,
-        "Next": 11,
-        "F1": 14,
-        "F2": 15,
-        "F3": 16,
-        "F4": 17,
-        "F5": 18,
-        "F6": 19,
-        "F7": 20,
-        "F8": 21,
-        "F9": 22,
-        "F10": 23,
+    key_bits = {
+        "Escape": 4,
+        "Left": 7,
+        "Right": 8,
+        "Up": 2,
+        "Down": 12,
+        "Return": 30,
+        "KP_Enter": 30,
+        "BackSpace": 19,
+        "F1": 21,
+        "F2": 22,
+        "F3": 23,
+        "F4": 24,
+        "F5": 25,
+        "F6": 26,
+        "F7": 27,
+        "F8": 28,
+        "F9": 29,
+        "F10": 20,
     }
-    value = special.get(event.keysym)
-    if value is None:
-        if event.state & 4 and event.keysym.lower() == "c":
-            value = "\x03"
-        elif (event.char == "\t"
-              or (len(event.char) == 1 and ord(event.char) >= 32)):
-            value = event.char
-    if value is not None:
+    value = None
+    if event.state & 4 and event.keysym.lower() == "c":
+        value = ("interrupt", None)
+    elif event.keysym == "Prior":
+        value = ("scroll_up", None) if event.state & 1 else ("bit", 1)
+    elif event.keysym == "Next":
+        value = ("scroll_down", None) if event.state & 1 else ("bit", 3)
+    elif event.keysym in key_bits:
+        value = ("bit", key_bits[event.keysym])
+    elif (event.char == "\t"
+          or (len(event.char) == 1 and ord(event.char) >= 32)):
+        value = ("char", event.char)
+    if value:
         _events.append(value)
     return "break"
 
@@ -154,25 +157,20 @@ def pump_events():
         _root.update()
     except Exception:
         _closed = True
-        _events.append("\x03")
-
-
-def wait_event():
-    """Return next desktop key event, blocking while pumping Tk."""
-    while not _events:
-        pump_events()
-        time.sleep(0.01)
-    return _events.popleft()
+        _events.append(("interrupt", None))
 
 
 def poll_event():
     """Return next desktop key event, or None."""
-    pump_events()
     return _events.popleft() if _events else None
 
 
 def has_events():
     return bool(_events)
+
+
+def clear_events():
+    _events.clear()
 
 
 def wait_ms(ms):
@@ -271,7 +269,8 @@ def eval(expr):
 
 
 def keyboard():
-    return 0
+    # Device scrollback uses keyboard() only as an event-availability gate.
+    return 1 if _events else 0
 
 
 def mouse():
@@ -318,20 +317,32 @@ def pixon(grob, x, y, color):
     _mark_dirty(grob)
 
 
-def fillrect(grob, x, y, width, height, color, border=None):
+def fillrect(grob, x, y, width, height, edge_color, fill_color=None):
     target = _grobs.get(grob)
     if target is None:
         return
+    if fill_color is None:
+        fill_color = edge_color
     x1 = max(0, x)
     y1 = max(0, y)
     x2 = min(target.width, x + width)
     y2 = min(target.height, y + height)
     if x1 >= x2 or y1 >= y2:
         return
-    row = _rgb(color) * (x2 - x1)
+    edge = _rgb(edge_color)
+    fill = _rgb(fill_color)
     for py in range(y1, y2):
+        interior = py != y and py != y + height - 1
+        row_color = fill if interior else edge
+        row = row_color * (x2 - x1)
         start = (py * target.width + x1) * 3
         target.pixels[start:start + len(row)] = row
+        if interior:
+            if x1 == x:
+                target.pixels[start:start + 3] = edge
+            if x2 == x + width:
+                end = (py * target.width + x2 - 1) * 3
+                target.pixels[end:end + 3] = edge
     _mark_dirty(grob)
 
 
