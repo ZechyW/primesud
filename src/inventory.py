@@ -78,7 +78,7 @@ def _loot_container_picker(player, container):
         ctpl = ITEM_DEFS[obj_vnum(cobj)]
         names.append(cobj.get("short_descr") or ctpl["short_descr"])
     if len(visible) > 1:
-        names.append("All")
+        names.append("[all]")
     cidx = pick_from("Take what?", names)
     if cidx < 0:
         return
@@ -202,7 +202,7 @@ def do_get(player, args):
             names.append((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"])
         has_all = len(loose) > 1
         if has_all:
-            names.append("All")
+            names.append("[all]")
         cont_start = len(names)
         for obj in conts:
             tpl = ITEM_DEFS[obj_vnum(obj)]
@@ -398,8 +398,13 @@ def do_drop(player, args):
             chprintln(player, "You are not carrying anything.")
             return
         names = [ITEM_DEFS[obj["vnum"]]["short_descr"] for obj in visible]
+        if len(visible) > 1:
+            names.append("[all]")
         idx = pick_from("Drop what?", names)
         if idx < 0:
+            return
+        if idx == len(visible):
+            do_drop(player, ["all"])
             return
         obj = visible[idx]
         if not can_drop_obj(player, obj):
@@ -1437,7 +1442,7 @@ def do_wear(player, args):
             return
         names = [tpl["short_descr"] for _, tpl, _ in equippable]
         if len(equippable) > 1:
-            names.append("All")
+            names.append("[all]")
         idx = pick_from("Wear what?", names)
         if idx < 0:
             return
@@ -1480,7 +1485,7 @@ def do_remove(player, args):
             return
         names = [ITEM_DEFS[obj["vnum"]]["short_descr"] for _, obj in worn]
         if len(worn) > 1:
-            names.append("All")
+            names.append("[all]")
         idx = pick_from("Remove what?", names)
         if idx < 0:
             return

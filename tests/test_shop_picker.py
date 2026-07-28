@@ -118,6 +118,24 @@ def test_bare_sell_only_lists_accepted_items(store, monkeypatch):
     assert sword in keeper["inv"]
 
 
+def test_bare_sell_all_sells_every_accepted_item(store, monkeypatch):
+    player, keeper = store
+    swords = [create_object(SWORD), create_object(SWORD)]
+    player["inv"] = list(swords)
+    seen = {}
+
+    def pick(title, labels):
+        seen["labels"] = labels
+        return len(labels) - 1
+
+    monkeypatch.setattr(shop, "pick_from", pick)
+    shop.do_sell(player, [])
+
+    assert seen["labels"] == ["[   50] a sword", "[   50] a sword", "[all]"]
+    assert player["inv"] == []
+    assert all(sword in keeper["inv"] for sword in swords)
+
+
 def test_cancelled_buy_changes_nothing(store, monkeypatch):
     player, keeper = store
     sword = create_object(SWORD)

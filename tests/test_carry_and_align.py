@@ -322,6 +322,25 @@ def test_wear_plain_item_unaffected_by_alignment(out):
 
 # -- Task 3: drop <n> gold/silver --------------------------------------------------
 
+def test_bare_drop_all_drops_every_visible_item(out, monkeypatch):
+    player = _make_player()
+    sword = {"vnum": SWORD_VNUM}
+    robe = {"vnum": ROBE_VNUM}
+    player["inv"] = [sword, robe]
+    seen = {}
+
+    def pick(title, labels):
+        seen["labels"] = labels
+        return len(labels) - 1
+
+    monkeypatch.setattr(inventory, "pick_from", pick)
+    inventory.do_drop(player, [])
+
+    assert seen["labels"] == ["a test sword", "a test robe", "[all]"]
+    assert player["inv"] == []
+    assert world.rooms[ROOM_VNUM]["items"] == [sword, robe]
+
+
 def test_drop_gold_creates_room_pile(out):
     player = _make_player(gold=100, silver=0)
     inventory.do_drop(player, ["40", "gold"])

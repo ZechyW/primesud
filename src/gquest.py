@@ -426,7 +426,8 @@ def do_gquest(player, args):
             ]
 
         idx = pick_from("Gquest: choose an action",
-                        [entry[0] for entry in actions])
+                        [entry[0] + " [gquest " + entry[1] + "]"
+                         for entry in actions])
         if idx < 0:
             return
         action = actions[idx][1]

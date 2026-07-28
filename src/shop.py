@@ -505,39 +505,8 @@ def do_list(player, args):
         chprintln(player, "You can't buy anything here.")
 
 
-def do_sell(player, args):
-    """Sell an item to a shopkeeper (cf. 1stMud do_sell in act_obj.c)."""
-    keeper, keeper_id = find_keeper(player)
-    if keeper is None:
-        return
-
-    if args:
-        obj = get_obj_list(args[0], player["inv"], ITEM_DEFS, player)
-        if obj is None:
-            act("$n tells you 'You don't have that item'.", keeper, None, player, TO_VICT)
-            player["reply"] = keeper["id"]
-            return
-    else:
-        sellables = []
-        labels = []
-        for carried in player["inv"]:
-            tpl = ITEM_DEFS[obj_vnum(carried)]
-            cost = get_cost(keeper, carried, False)
-            if (can_see_obj(player, carried) and can_see_obj(keeper, carried)
-                    and can_drop_obj(player, carried)
-                    and not item_extra_flags(carried, tpl).get("quest")
-                    and cost > 0):
-                sellables.append(carried)
-                labels.append("[" + pad_left(num_str(cost), 5) + "] "
-                              + (carried.get("short_descr") or tpl["short_descr"]))
-        if not sellables:
-            chprintln(player, "You have nothing this shop will buy.")
-            return
-        idx = pick_from("Sell what? [Price]", labels)
-        if idx < 0:
-            return
-        obj = sellables[idx]
-
+def _sell_one(player, keeper, obj):
+    """Sell one selected item through the normal shop checks. [PRIMESUD]"""
     tpl = ITEM_DEFS[obj_vnum(obj)]
     flags = item_extra_flags(obj, tpl)
 
@@ -589,6 +558,48 @@ def do_sell(player, args):
         else:
             obj["timer"] = randint(50, 100)
         keeper["inv"].append(obj)
+
+
+def do_sell(player, args):
+    """Sell an item to a shopkeeper (cf. 1stMud do_sell in act_obj.c)."""
+    keeper, keeper_id = find_keeper(player)
+    if keeper is None:
+        return
+
+    if args:
+        obj = get_obj_list(args[0], player["inv"], ITEM_DEFS, player)
+        if obj is None:
+            act("$n tells you 'You don't have that item'.", keeper, None, player, TO_VICT)
+            player["reply"] = keeper["id"]
+            return
+        _sell_one(player, keeper, obj)
+        return
+
+    sellables = []
+    labels = []
+    for carried in player["inv"]:
+        tpl = ITEM_DEFS[obj_vnum(carried)]
+        cost = get_cost(keeper, carried, False)
+        if (can_see_obj(player, carried) and can_see_obj(keeper, carried)
+                and can_drop_obj(player, carried)
+                and not item_extra_flags(carried, tpl).get("quest")
+                and cost > 0):
+            sellables.append(carried)
+            labels.append("[" + pad_left(num_str(cost), 5) + "] "
+                          + (carried.get("short_descr") or tpl["short_descr"]))
+    if not sellables:
+        chprintln(player, "You have nothing this shop will buy.")
+        return
+    if len(sellables) > 1:
+        labels.append("[all]")
+    idx = pick_from("Sell what? [Price]", labels)
+    if idx < 0:
+        return
+    if idx == len(sellables):
+        for obj in list(sellables):
+            _sell_one(player, keeper, obj)
+        return
+    _sell_one(player, keeper, sellables[idx])
 
 
 def do_value(player, args):

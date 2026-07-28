@@ -870,7 +870,9 @@ def do_quest(player, args):
         if same_giver and not _quest_can_complete(player):
             actions.append(("Give up quest", "quit"))
 
-        idx = pick_from("Quest: choose an action", [entry[0] for entry in actions])
+        idx = pick_from("Quest: choose an action",
+                        [entry[0] + " [quest " + entry[1] + "]"
+                         for entry in actions])
         if idx < 0:
             return
         action = actions[idx][1]

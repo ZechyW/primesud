@@ -202,8 +202,8 @@ def test_bare_quest_picker_hides_quit_when_completeable(
     do_quest(fresh, [])
 
     assert seen["title"] == "Quest: choose an action"
-    assert "Complete quest" in seen["labels"]
-    assert "Give up quest" not in seen["labels"]
+    assert "Complete quest [quest complete]" in seen["labels"]
+    assert "Give up quest [quest quit]" not in seen["labels"]
 
 
 def test_bare_quest_nested_buy_picker(fresh, monkeypatch):
@@ -547,22 +547,26 @@ def test_bare_gquest_picker_is_contextual(fresh, monkeypatch):
                         "pmobs": []})
     do_gquest(fresh, [])
     assert seen[-1] == (
-        "Gquest: choose an action", ["Quest info", "Join global quest"])
+        "Gquest: choose an action",
+        ["Quest info [gquest info]", "Join global quest [gquest join]"])
 
     gquest_info.update({"minlevel": fresh["level"] + 1,
                         "maxlevel": fresh["level"] + 5})
     do_gquest(fresh, [])
-    assert seen[-1][1] == ["Quest info"]
+    assert seen[-1][1] == ["Quest info [gquest info]"]
 
     gquest_info.update({"minlevel": 1, "maxlevel": 20,
                         "joined": True, "pmobs": [301, -1]})
     do_gquest(fresh, [])
     assert seen[-1][1] == [
-        "Remaining targets", "Quest info", "Give up global quest"]
+        "Remaining targets [gquest check]", "Quest info [gquest info]",
+        "Give up global quest [gquest quit]"]
 
     gquest_info["pmobs"] = [-1, -1]
     do_gquest(fresh, [])
-    assert seen[-1][1] == ["Complete global quest", "Quest info"]
+    assert seen[-1][1] == [
+        "Complete global quest [gquest complete]",
+        "Quest info [gquest info]"]
 
     gquest_info["running"] = GQUEST_OFF
     monkeypatch.setattr(
