@@ -67,7 +67,7 @@ def test_macro_defaults_and_keys_remain_configurable(out):
     by_name = {name: key for key, name in FNKEY_NAMES.items()}
     do_macro(None, ["default"])
     assert _MACRO_SUBST[by_name["xy"]] == "run"
-    assert _MACRO_SUBST[by_name["ln"]] == "quest info"
+    assert _MACRO_SUBST[by_name["ln"]] == "quest"
     assert _MACRO_SUBST[by_name["log"]] == "gquest check"
     assert _MACRO_SUBST["4"] == "give"
     assert _MACRO_SUBST["3"] == "train"

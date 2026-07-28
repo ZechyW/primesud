@@ -59,7 +59,7 @@ numpad):
 | sin | `sin` | `look`      |
 | cos | `cos` | `rest`      |
 | tan | `tan` | `stand`     |
-| ln  | `ln`  | `quest info`|
+| ln  | `ln`  | `quest`     |
 | log | `log` | `gquest check` |
 | x²  | `x2`  | `inventory` |
 | +/- | `pm`  | `equip`     |
