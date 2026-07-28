@@ -340,6 +340,14 @@ class PrimeSud:
 
             try:
                 game.game_loop()
+            except KeyboardInterrupt:
+                # [PRIMESUD] Show why input is blocked during the final save.
+                game.tr.print("")
+                game.tr.print("{D[Saving and quitting...]{x")
+                raise
+            else:
+                # [PRIMESUD] Normal `quit` takes the same quiet-save path.
+                game.tr.print("{D[Saving and quitting...]{x")
             finally:
                 save_game(game, quiet=True)
 

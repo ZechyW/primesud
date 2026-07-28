@@ -54,8 +54,8 @@ def session_update(player):
     player["_session"] = was + TICK_SECS
     hrs = player["_session"] // 3600
     if hrs != was // 3600:
-        chprintln(player, "{cYou have been playing for "
-                  + _intstr(hrs, "hour") + " this session.{x")
+        chprintln(player, "{c[You have been playing for "
+                  + _intstr(hrs, "hour") + " this session.]{x")
 
 
 def update_handler():
