@@ -12,7 +12,7 @@ from hunt import hunt_victim
 from combat import multi_hit
 from comm import add_follower
 from movement import move_char
-from item import create_object, item_wear_flags
+from item import create_object, ensure_item_extra_flags, item_wear_flags
 from game_time import init_weather, advance_weather, adjust_vectors, get_weather_echo
 from special import SPEC_TABLE
 from debug import DBG, dbg  # [PRIMESUD]
@@ -513,7 +513,9 @@ def reset_room(vnum, next_id, obj_counts, mob_counts):
                 # objects (new_format == false); converted stock data is all
                 # new-format, so olevel stays 0 and is skipped. [PRIMESUD]
                 obj = create_object(item_vnum)
-                obj.setdefault("extra_flags", {})["inventory"] = True
+                # Copy-on-write via the helper: a bare setdefault({}) would
+                # shadow the template's extra_flags (magic, sell_extract).
+                ensure_item_extra_flags(obj, ITEM_DEFS[item_vnum])["inventory"] = True
             else:
                 # cf. db.c:1660 -- non-shop limit: spawn while under the
                 # template limit, else a 1-in-5 over-limit trickle.  E carries

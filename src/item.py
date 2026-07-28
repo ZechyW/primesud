@@ -90,7 +90,14 @@ def promote_obj(player, obj):
 
 
 def item_extra_flags(obj, tpl):
-    """Return extra_flags for obj, preferring instance override over template. [PRIMESUD]"""
+    """Return extra_flags for obj, preferring instance override over template. [PRIMESUD]
+
+    The instance dict fully SHADOWS the template (no layering): to mutate,
+    always seed the instance via ensure_item_extra_flags / set_item_extra_flag
+    (copy-then-edit).  Never obj.setdefault("extra_flags", {}) -- an empty
+    override hides every template flag.  Same contract for the other
+    *_flags accessors below.
+    """
     if isinstance(obj, dict) and "extra_flags" in obj:
         return obj["extra_flags"]
     return tpl.get("extra_flags", {})

@@ -105,6 +105,31 @@ class TestUnloadArea:
         assert 100 not in world.rooms._data
         assert 100 not in MOB_DEFS._data
 
+    def test_reload_restocks_shop_with_template_flags(self, fresh_world):
+        """Delta-replay restock adds `inventory` copy-on-write: template
+        extra_flags survive on the instance, template stays untouched."""
+        fw = fresh_world
+        shop = {"keeper": 100, "buy_types": [], "profit_buy": 100,
+                "profit_sell": 100, "open_hour": 0, "close_hour": 23}
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}}},
+                         mobiles={100: _mob_tpl(shop=shop)},
+                         objects={150: _item_tpl(extra_flags={"magic": True})},
+                         resets=(("M", 100, 1, 100, 1), ("G", 150, 1)))
+        fw.setup()
+
+        _load_area("alpha")
+        _unload_area("alpha")
+        _load_area("alpha")
+
+        mid = _live_mobs(100)[0]
+        stock = [o for o in world.chars[mid]["inv"] if o["vnum"] == 150]
+        assert stock, "reload replay must restock the shopkeeper"
+        flags = stock[0]["extra_flags"]
+        assert flags.get("inventory")
+        assert flags.get("magic")
+        assert ITEM_DEFS._data[150]["extra_flags"] == {"magic": True}
+
     def test_reload_roundtrip_restores_state(self, fresh_world):
         fw = fresh_world
         fw.register_area("alpha", 100, 199,

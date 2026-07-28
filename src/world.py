@@ -666,7 +666,7 @@ def _apply_pending_deltas(tag, room_vnums):
     """
     from mob import create_mobile  # deferred: mob imports world
     from handler import room_is_dark, equip_char
-    from item import create_object
+    from item import create_object, ensure_item_extra_flags
     _rvnum_set = set(room_vnums)
     _resets = ()
     for _a in AREA_DEFS:
@@ -748,7 +748,10 @@ def _apply_pending_deltas(tag, room_vnums):
                 for _e in _eq:
                     _obj = create_object(_e[1])
                     if _shop:
-                        _obj.setdefault("extra_flags", {})["inventory"] = True
+                        # Copy-on-write via the helper: a bare setdefault({})
+                        # would shadow the template's extra_flags.
+                        ensure_item_extra_flags(
+                            _obj, ITEM_DEFS._data[_e[1]])["inventory"] = True
                     inst["inv"].append(_obj)
                     if _e[0] == "E":
                         equip_char(inst, _obj, _e[2])

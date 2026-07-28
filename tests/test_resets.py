@@ -138,7 +138,7 @@ class TestEGLimit:
             mobiles={7201: _mob_tpl(shop={"keeper": 7201, "buy_types": [],
                                           "profit_buy": 100, "profit_sell": 100,
                                           "open_hour": 0, "close_hour": 23})},
-            objects={7202: _obj_tpl()},
+            objects={7202: _obj_tpl(extra_flags={"magic": True})},
             resets=(("M", 7201, 99, 7200, 99), ("G", 7202, 1)))
         fresh_world.setup()
         # trickle off: a non-shop mob at limit 1 would stop, a shopkeeper won't
@@ -155,7 +155,12 @@ class TestEGLimit:
                 if (o["vnum"] if isinstance(o, dict) else o) == 7202:
                     stock += 1
                     assert o.get("extra_flags", {}).get("inventory")
+                    # inventory is added copy-on-write: template flags must
+                    # survive on the instance and the template stay untouched
+                    assert o["extra_flags"].get("magic")
         assert stock >= 4   # one per keeper spawn, never blocked by limit 1
+        tpl = world.ITEM_DEFS._data[7202]
+        assert tpl["extra_flags"] == {"magic": True}
 
 
 # ---------------------------------------------------------------------------
