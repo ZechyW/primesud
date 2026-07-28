@@ -15,6 +15,7 @@ from item import (get_obj_list, obj_vnum, create_object, item_extra_flags,
 from skills_table import GSN_HAGGLE
 from urandom import randint
 from util import num_str, pad_left
+from picker import pick_from
 
 
 # -- Money helpers (cf. 1stMud check_worth/deduct_cost/add_cost in handler.c) --
@@ -185,6 +186,80 @@ def _mult_argument(argument):
         return 1, argument
 
 
+def _pick_keeper_stock(player, keeper):
+    """Pick one visible shop item to buy. [PRIMESUD]"""
+    items = []
+    labels = []
+    i = 0
+    inv = keeper["inv"]
+    while i < len(inv):
+        obj = inv[i]
+        tpl = ITEM_DEFS[obj_vnum(obj)]
+        cost = get_cost(keeper, obj, True)
+        if can_see_obj(player, obj) and cost > 0:
+            flags = item_extra_flags(obj, tpl)
+            short = obj.get("short_descr") or tpl["short_descr"]
+            qty = "--"
+            if not flags.get("inventory"):
+                count = 1
+                while i + 1 < len(inv):
+                    nxt = inv[i + 1]
+                    if obj_vnum(nxt) != obj_vnum(obj):
+                        break
+                    nxt_tpl = ITEM_DEFS[obj_vnum(nxt)]
+                    nxt_sd = nxt.get("short_descr") or nxt_tpl["short_descr"]
+                    if short != nxt_sd:
+                        break
+                    count += 1
+                    i += 1
+                qty = pad_left(num_str(count), 2)
+            items.append(obj)
+            labels.append("[" + pad_left(num_str(tpl.get("level", 0)), 2)
+                          + " " + pad_left(num_str(cost), 5) + " " + qty
+                          + "] " + short)
+        i += 1
+    if not items:
+        chprintln(player, "You can't buy anything here.")
+        return None
+    idx = pick_from("Buy what? [Lv Price Qty]", labels)
+    return items[idx] if idx >= 0 else None
+
+
+def _pet_stock_room(room_vnum):
+    """Return a pet shop's stock room vnum, or None if bad shop. [PRIMESUD]
+
+    Pets live in the room after the shop (vnum + 1), except New Thalos
+    (9621), whose stock room is 9706 (cf. 1stMud/QuickMUD hack).
+    """
+    next_vnum = 9706 if room_vnum == 9621 else room_vnum + 1
+    if next_vnum in ROOM_DEFS and next_vnum in world.rooms:
+        return next_vnum
+    return None
+
+
+def _pick_pet(player):
+    """Pick one pet-shop animal to buy; returns the stock char. [PRIMESUD]"""
+    next_vnum = _pet_stock_room(player["room"])
+    if next_vnum is None:
+        chprintln(player, "Sorry, you can't buy that here.")
+        return None
+    pets = []
+    labels = []
+    for pid in world.rooms[next_vnum]["mobs"]:
+        pet = world.chars.get(pid)
+        if pet is not None and pet.get("act_flags", {}).get("pet"):
+            tpl = MOB_DEFS[pet["tpl"]]
+            pets.append(pet)
+            labels.append("[" + pad_left(num_str(pet["level"]), 2) + " "
+                          + pad_left(num_str(10 * pet["level"] * pet["level"]), 5)
+                          + "] " + tpl["short_descr"])
+    if not pets:
+        chprintln(player, "Sorry, we're out of pets right now.")
+        return None
+    idx = pick_from("Buy which pet? [Lv Price]", labels)
+    return pets[idx] if idx >= 0 else None
+
+
 # -- Commands ------------------------------------------------------------------
 
 def _buy_pet(player, args):
@@ -193,13 +268,8 @@ def _buy_pet(player, args):
     Pets live in the room after the shop room (vnum + 1), except New Thalos
     (9621), whose stock room is 9706.
     """
-
-    # hack to make new thalos pets work (cf. 1stMud/QuickMUD vnum 9621 -> 9706)
-    if player["room"] == 9621:
-        next_vnum = 9706
-    else:
-        next_vnum = player["room"] + 1
-    if next_vnum not in ROOM_DEFS or next_vnum not in world.rooms:
+    next_vnum = _pet_stock_room(player["room"])
+    if next_vnum is None:
         # 1stMud: bugf("Do_buy: bad pet shop at vnum %ld.")
         chprintln(player, "Sorry, you can't buy that here.")
         return
@@ -210,6 +280,16 @@ def _buy_pet(player, args):
         chprintln(player, "Sorry, you can't buy that here.")
         return
 
+    _buy_pet_stock(player, stock, args[1] if len(args) > 1 else None)
+
+
+def _buy_pet_stock(player, stock, name_arg):
+    """Purchase a resolved pet-shop stock char. [PRIMESUD]
+
+    Split from _buy_pet so the bare-`buy` picker can pass its chosen stock
+    char directly instead of round-tripping through a keyword (which could
+    resolve to the wrong pet on shared keywords).
+    """
     if player.get("pet") is not None:
         chprintln(player, "You already own a pet.")
         return
@@ -234,7 +314,6 @@ def _buy_pet(player, args):
 
     # cf. 1stMud: pet = create_mobile(pet->pIndexData) + ACT_PET/AFF_CHARM/
     # name/neck tag/add_follower/leader/pet linkage
-    name_arg = args[1] if len(args) > 1 else None
     pet = spawn_pet(stock["tpl"], player, name_arg=name_arg)
     chprintln(player, "Enjoy your pet.")
     act("$n bought $N as a pet.", player, None, pet, TO_ROOM)
@@ -242,12 +321,13 @@ def _buy_pet(player, args):
 
 def do_buy(player, args):
     """Purchase items from a shopkeeper or pet shop (cf. 1stMud do_buy in act_obj.c)."""
-    if not args:
-        chprintln(player, "Buy what?")
-        return
-
     # -- Pet shop (cf. 1stMud ROOM_PET_SHOP branch)
     if ROOM_DEFS[player["room"]].get("flags", {}).get("pet_shop"):
+        if not args:
+            stock = _pick_pet(player)
+            if stock is not None:
+                _buy_pet_stock(player, stock, None)
+            return
         _buy_pet(player, args)
         return
 
@@ -255,8 +335,15 @@ def do_buy(player, args):
     if keeper is None:
         return
 
-    number, arg = _mult_argument(" ".join(args))
-    obj = _get_obj_keeper(player, keeper, arg)
+    if args:
+        number, arg = _mult_argument(" ".join(args))
+        obj = _get_obj_keeper(player, keeper, arg)
+    else:
+        number = 1
+        arg = None
+        obj = _pick_keeper_stock(player, keeper)
+        if obj is None:
+            return
     cost = get_cost(keeper, obj, True)
 
     if number < 1 or number > 99:
@@ -332,7 +419,8 @@ def do_buy(player, args):
         else:
             t_obj = obj
             keeper["inv"].remove(t_obj)
-            obj = _get_obj_keeper(player, keeper, arg)
+            if arg is not None:
+                obj = _get_obj_keeper(player, keeper, arg)
 
         # Clear shop-assigned timer on bought items (cf. 1stMud ITEM_HAD_TIMER logic)
         if t_obj.get("timer", 0) > 0:
@@ -350,12 +438,8 @@ def do_list(player, args):
     """Display shopkeeper's or pet shop's stock (cf. 1stMud do_list in act_obj.c)."""
     # -- Pet shop (cf. 1stMud ROOM_PET_SHOP branch)
     if ROOM_DEFS[player["room"]].get("flags", {}).get("pet_shop"):
-        # hack to make new thalos pets work (cf. 1stMud/QuickMUD vnum 9621 -> 9706)
-        if player["room"] == 9621:
-            next_vnum = 9706
-        else:
-            next_vnum = player["room"] + 1
-        if next_vnum not in ROOM_DEFS or next_vnum not in world.rooms:
+        next_vnum = _pet_stock_room(player["room"])
+        if next_vnum is None:
             # 1stMud: bugf("Do_list: bad pet shop at vnum %ld.")
             chprintln(player, "You can't do that here.")
             return
@@ -423,19 +507,36 @@ def do_list(player, args):
 
 def do_sell(player, args):
     """Sell an item to a shopkeeper (cf. 1stMud do_sell in act_obj.c)."""
-    if not args:
-        chprintln(player, "Sell what?")
-        return
-
     keeper, keeper_id = find_keeper(player)
     if keeper is None:
         return
 
-    obj = get_obj_list(args[0], player["inv"], ITEM_DEFS, player)
-    if obj is None:
-        act("$n tells you 'You don't have that item'.", keeper, None, player, TO_VICT)
-        player["reply"] = keeper["id"]
-        return
+    if args:
+        obj = get_obj_list(args[0], player["inv"], ITEM_DEFS, player)
+        if obj is None:
+            act("$n tells you 'You don't have that item'.", keeper, None, player, TO_VICT)
+            player["reply"] = keeper["id"]
+            return
+    else:
+        sellables = []
+        labels = []
+        for carried in player["inv"]:
+            tpl = ITEM_DEFS[obj_vnum(carried)]
+            cost = get_cost(keeper, carried, False)
+            if (can_see_obj(player, carried) and can_see_obj(keeper, carried)
+                    and can_drop_obj(player, carried)
+                    and not item_extra_flags(carried, tpl).get("quest")
+                    and cost > 0):
+                sellables.append(carried)
+                labels.append("[" + pad_left(num_str(cost), 5) + "] "
+                              + (carried.get("short_descr") or tpl["short_descr"]))
+        if not sellables:
+            chprintln(player, "You have nothing this shop will buy.")
+            return
+        idx = pick_from("Sell what? [Price]", labels)
+        if idx < 0:
+            return
+        obj = sellables[idx]
 
     tpl = ITEM_DEFS[obj_vnum(obj)]
     flags = item_extra_flags(obj, tpl)

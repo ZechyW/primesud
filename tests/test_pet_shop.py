@@ -13,6 +13,7 @@ from handler import _char_base, get_char_room
 from shop import do_buy, do_list
 from mob import spawn_pet, create_mobile, scale_pet
 import world
+import shop
 from world import ROOM_DEFS, MOB_DEFS
 
 
@@ -119,6 +120,23 @@ class TestBuyPet:
         found = get_char_room("fido", world.rooms._data[SHOP_ROOM]["mobs"],
                               world.chars)
         assert found == pet["id"]
+
+    def test_bare_buy_uses_pet_picker(self, monkeypatch):
+        player = _make_player()
+        _stock_pet()
+        seen = {}
+
+        def pick(title, labels):
+            seen["title"] = title
+            seen["labels"] = labels
+            return 0
+
+        monkeypatch.setattr(shop, "pick_from", pick)
+        do_buy(player, [])
+
+        assert player["pet"] is not None
+        assert seen["title"] == "Buy which pet? [Lv Price]"
+        assert "a fat beagle" in seen["labels"][0]
 
     def test_buy_pet_only_one(self):
         player = _make_player()
