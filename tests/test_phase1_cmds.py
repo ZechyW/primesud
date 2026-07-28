@@ -260,7 +260,7 @@ class TestCompare:
         assert seen["title"] == "Wear what?"
         assert seen["labels"] == [
             "a sword", "a dagger", "a vest", "[all]",
-            "[best] Equip strongest gear",
+            "[best] (Equip strongest gear)",
         ]
         assert resolved == "wear best"
         assert scene["equip"]["body"] is not None
@@ -299,7 +299,7 @@ class TestCompare:
 
         resolved = inventory.do_wear(scene, [])
 
-        assert seen["labels"] == ["a vest", "[best] Equip strongest gear"]
+        assert seen["labels"] == ["a vest", "[best] (Equip strongest gear)"]
         assert resolved == "wear best"
         assert scene["equip"]["body"] is vest
 

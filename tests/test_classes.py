@@ -202,9 +202,13 @@ class TestGuildRooms:
         path = os.path.join(ROOT, _SRC, "area_midgaard.txt")
         with open(path) as f:
             text = f.read()
-        assert '"guild": (1, 4),' in text  # cleric rooms shared with paladin
-        assert '"guild": (3, 5, 6),' in text  # warrior rooms shared with ranger/swordsman
-        assert '"guild": (0,),' in text    # mage rooms mage-only
+        data = {}
+        exec(text, data)
+        guilds = {room["guild"] for room in data["ROOMS"].values()
+                  if "guild" in room}
+        assert (1, 4) in guilds       # cleric rooms shared with paladin
+        assert (3, 5, 6) in guilds    # warrior rooms shared with ranger/swordsman
+        assert (0,) in guilds         # mage rooms mage-only
 
 
 class TestRemort:
