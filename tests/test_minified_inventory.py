@@ -10,12 +10,10 @@ check or the area data check looks inside a function body. So exercise the
 minified module directly.
 """
 
-import sys
 import types
 
 import pytest
 
-sys.path.insert(0, "../tools")
 from tools import build_dist
 from test_phase1_cmds import out, scene  # noqa: F401
 
