@@ -1331,6 +1331,10 @@ def _best_hand_layout(player):
         if obj is not None and equip.get(flag) is not obj:
             wear_obj(player, obj, False)
             if equip.get(flag) is not obj:
+                # ponytail: abort leaves hands part-done, all items safe in
+                # inventory. Only known trigger: a primary that needs the
+                # not-yet-equipped secondary's +STR. Full fix would order
+                # adds by STR contribution.
                 return changed
             changed = True
     obj = best["secondary"]
