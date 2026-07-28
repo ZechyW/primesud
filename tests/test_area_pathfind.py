@@ -134,6 +134,27 @@ class TestAreaLevelComments:
         assert "None" in alpha_line
         assert "001" not in alpha_line
 
+    def test_special_ranges_sort_before_numeric_ranges(self, monkeypatch):
+        monkeypatch.setattr(world, "_AREA_FILES", [
+            ("starter.txt", "starter", "Starter", 100, 199),
+            ("all.txt", "all", "All Levels", 200, 299),
+            ("none.txt", "none", "No Levels", 300, 399),
+        ])
+        monkeypatch.setattr(world, "AREA_LEVELS", {
+            "starter": (1, 5), "all": (1, 50), "none": (1, 60),
+        })
+        monkeypatch.setattr(world, "AREA_BUILDERS", {})
+        monkeypatch.setattr(world, "AREA_LVL_COMMENTS",
+                            {"all": "All", "none": "None"})
+        lines = []
+        monkeypatch.setattr(info, "chprintln",
+                            lambda _player, text="": lines.append(text))
+
+        do_areas(_char_base(), [])
+
+        assert [next(i for i, line in enumerate(lines) if name in line)
+                for name in ("All Levels", "No Levels", "Starter")] == [2, 3, 4]
+
 
 def test_run_picker_matches_area_order_and_shows_levels(
         fresh_world, monkeypatch):

@@ -1836,11 +1836,12 @@ def _area_level_str(tag):
 
 
 def _sorted_area_files():
-    """Return static area entries in player-facing level/name order. [PRIMESUD]"""
+    """Return static areas with special ranges first, then level/name. [PRIMESUD]"""
     return sorted(
         world._AREA_FILES,
-        key=lambda a: world.AREA_LEVELS.get(
-            a[1], (1, MAX_LEVEL)) + (a[2].lower(),))
+        key=lambda a: ((a[1] not in world.AREA_LVL_COMMENTS,)
+                       + world.AREA_LEVELS.get(a[1], (1, MAX_LEVEL))
+                       + (a[2].lower(),)))
 
 
 def _extract_builder(credits):
@@ -2122,7 +2123,8 @@ def do_areas(player, args):
 
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified
     04/07/2026; directions column dropped for lazy-load 08/07/2026
-    [PRIMESUD]; sort switched to level range 28/07/2026 [PRIMESUD]] --
+    [PRIMESUD]; sort switched to special range, level, then name
+    28/07/2026 [PRIMESUD]] --
     clan restriction marker ("{G*") and its legend line not ported
     (no clans).
 
@@ -2162,8 +2164,8 @@ def do_areas(player, args):
     # Current room is always loaded, so this is a zero-load lookup.
     source_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
 
-    # [PRIMESUD] Order by level range (lo, hi), then name; 1stMud lists
-    # in area-file load order.
+    # [PRIMESUD] "All"/"None" ranges first, then level range and name;
+    # 1stMud lists in area-file load order.
     sorted_areas = _sorted_area_files()
 
     count = 0
