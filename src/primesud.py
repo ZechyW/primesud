@@ -14,11 +14,12 @@ from config import (
     POLL_MS,
     MS_PER_PULSE,
     AUTOSAVE_TICKS,
+    SOAK_AUTOSAVE,
     KEY_COMMANDS as _KEY_COMMANDS,
     CMD_HISTORY_MAX,
     FNKEY_SENTINELS,
 )
-from util import gc_collect
+from util import gc_collect, num_str
 import world
 from world import MOB_DEFS, init_world
 from handler import mob_condition
@@ -115,6 +116,8 @@ class Game:
         tick_count = 0
         now        = ticks()
         next_pulse = now + MS_PER_PULSE
+        soak_n     = 0    # [PRIMESUD] SOAK_AUTOSAVE save counter
+        soak_last  = now  # [PRIMESUD] SOAK_AUTOSAVE 1 Hz gate
 
         gc_collect()
 
@@ -273,6 +276,18 @@ class Game:
                 if world.save_pending:
                     save_game(self, quiet=True)
                     world.save_pending = False
+
+                # [PRIMESUD] debug soak (config.SOAK_AUTOSAVE): hammer the
+                # full save path once a second, report every 10 saves
+                if SOAK_AUTOSAVE:
+                    now = ticks()
+                    if now - soak_last >= 1000:
+                        soak_last = now
+                        save_game(self, quiet=True)
+                        soak_n += 1
+                        if soak_n % 10 == 0:
+                            tr.print("{Ysoak: " + num_str(soak_n) + " saves{x")
+                            show_prompt(player, self.input_buf)
 
             if not tr.has_queued_keys():
                 wait_ms(POLL_MS)

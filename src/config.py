@@ -1,7 +1,7 @@
 # fmt: off
 """Game configuration constants, key maps, and stat tables."""
 
-VERSION = "1.0.0"  # [PRIMESUD] shown by do_version; upstream has no PrimeSUD-side equivalent
+VERSION = "1.0.1"  # [PRIMESUD] shown by do_version; upstream has no PrimeSUD-side equivalent
 
 # -- Display ---------------------------------------------------------------------------
 DARK_MODE     = True
@@ -33,6 +33,9 @@ POLL_MS          = 10                         # keyboard polling interval (ms)
 AREA_CACHE_MAX   = 12
 AUTOSAVE_TICKS   = 4                          # autosave every N world ticks
 DEATH_MSG_DELAY  = 3                          # seconds between death flavour lines
+# [PRIMESUD] debug: 1 Hz full-save-path autosave hammer in game_loop, count
+# reported every 10 saves -- on-device firmware-bug soak harness. Ship False.
+SOAK_AUTOSAVE    = False
 
 
 # Quest/gquest durations are configured and balanced in real-world minutes
