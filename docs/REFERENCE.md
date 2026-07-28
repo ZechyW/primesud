@@ -745,3 +745,13 @@ Same `{X` escape syntax as 1stMud — embed in strings passed to `tr.print()`, h
 | `{c` | cyan | `{C` | bright cyan |
 | `{w` | light grey | `{W` | white |
 | `{x` / `{X` | reset to default | | |
+| `{?` / `` {` `` | random colour | | |
+
+`{?` and `` {` `` roll one of the 14 non-black codes above (1stMud's
+`random_color` draws the attribute from `CL_NONE`..`CL_BRIGHT` and the
+foreground from `FG_RED`..`FG_WHITE`, so black is excluded).  Resolved by
+`resolve_random` once per logical line before wrapping, so a span that wraps
+keeps a single colour, matching 1stMud's one-escape-per-code output.
+
+`{z` (random background) and `{Z` (all-random) are not ported — the renderer
+has no background colour support.

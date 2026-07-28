@@ -1,5 +1,7 @@
 """1stMud-style colour-code parsing and visible-width helpers."""
 
+from urandom import randint
+
 from config import TERMINAL_COLS
 
 COLOR_CODE = '{'
@@ -26,6 +28,14 @@ ANSI_COLORS = {
 }
 
 _RESET_CODES = ('x', 'X')
+
+# {? and {` = random attribute + random foreground (cf. 1stMud set_col_attr in
+# ansi.c).  random_color() draws the attribute from CL_NONE..CL_BRIGHT and the
+# foreground from FG_RED..FG_WHITE, so black is excluded and each case pair is
+# one hue -- our 16 codes minus 'd'/'D'.
+_RANDOM_CODES = '?`'
+_RANDOM_POOL = 'rgybmcwRGYBMCW'
+_RANDOM_MAX = len(_RANDOM_POOL) - 1
 
 
 def skipcol(s):
@@ -147,6 +157,36 @@ def strip_colors(text):
 def color_len(text):
     """Return the visible (non-color-code) length of text. [PRIMESUD]"""
     return len(strip_colors(text))
+
+
+def resolve_random(text):
+    """Replace each {? / {` with a freshly rolled concrete colour code. [PRIMESUD]
+
+    Called once per logical line before wrapping, so a span that wraps keeps a
+    single colour -- 1stMud emits one escape per code (cf. make_color in ansi.c).
+
+    Args:
+        text (str): Raw colour-coded line.
+
+    Returns:
+        str: Same line with every random code resolved; unchanged if none.
+    """
+    if '{?' not in text and '{`' not in text:
+        return text
+    parts = text.split(COLOR_CODE)
+    out = [parts[0]]
+    skip = False
+    for part in parts[1:]:
+        out.append(COLOR_CODE)
+        if not part:            # '{{' escape: next part opens with literal text
+            skip = True
+            continue
+        if skip:
+            skip = False
+        elif part[0] in _RANDOM_CODES:
+            part = _RANDOM_POOL[randint(0, _RANDOM_MAX)] + part[1:]
+        out.append(part)
+    return ''.join(out)
 
 
 def _wrap_raw_index(text, cols):

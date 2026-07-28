@@ -477,19 +477,18 @@ _FREETEXT_FUNS = (do_say, do_emote, do_tell, do_reply, do_yell, do_alias,
 
 # -- Interpreter ---------------------------------------------------------------
 
-# {? = random colour in 1stMud; we use {R as fallback until random colour ported
-# Index 2 is a template: "{RWhat is command '<cmd>'?{x" -- built by concatenation
+# Index 2 is a template: "{?What is command '<cmd>'?{x" -- built by concatenation
 # below (no % formatting on-device), so its list slot holds just the prefix.
 _HUH_CMD_MSG = 2
 _HUH_CMD_SUFFIX = "'?{x"
 _HUH_MESSAGES = [
-    "{RHuh?{x",
-    "{RPardon?{x",
-    "{RWhat is command '",
-    "{RInput error.{x",
-    "{RTry again.{x",
-    "{RI do not understand.{x",
-    "{RType commands for a list of commands.{x",
+    "{?Huh?{x",
+    "{?Pardon?{x",
+    "{?What is command '",
+    "{?Input error.{x",
+    "{?Try again.{x",
+    "{?I do not understand.{x",
+    "{?Type commands for a list of commands.{x",
 ]
 
 

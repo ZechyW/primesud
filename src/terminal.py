@@ -9,7 +9,7 @@ from config import (
     FLING_SMOOTH_NUM,
 )
 from colors import (COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full,
-                    color_parse_runs, strip_colors)
+                    color_parse_runs, resolve_random, strip_colors)
 from hpprime import dimgrob, fillrect, getpix, grobh, grobw, pixon, strblit2
 from util import pad_right
 
@@ -61,6 +61,7 @@ def install_color_print(tr):
     _CC = COLOR_CODE
     _ANSI = ANSI_COLORS
     _RST = _RESET_CODES
+    _rr = resolve_random
     _pxy = tr.print_xy
     _pch = tr._put_char
     # [PRIMESUD] int-keyed glyph x-offsets for the batch compose: bytes
@@ -149,7 +150,11 @@ def install_color_print(tr):
         for text in lines:
             if _CC not in text:
                 physical.extend(_wrap_plain(text, cols))
-            elif (len(text) - 2 * text.count(_CC) <= cols
+                continue
+            # [PRIMESUD] resolve {?/{` here, before wrapping, so a random-colour
+            # span that spills across pieces keeps one colour.
+            text = _rr(text)
+            if (len(text) - 2 * text.count(_CC) <= cols
                     and '{{' not in text):
                 physical.append(text)
             else:
@@ -293,6 +298,7 @@ def install_color_print(tr):
             return
         # Colour-first rendering: split+group in one pass, then render one
         # set_color/reset_color per distinct colour.
+        text = _rr(text)
         if len(text) - 2 * text.count(_CC) <= cols and '{{' not in text:
             pieces = (text,)
         else:
