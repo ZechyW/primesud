@@ -23,8 +23,7 @@ profiling showed the cost driver is Python *allocation* (~0.5ms each at
 full game heap, 14x the standalone cost), not the native draw calls
 (`strblit2` ~10us, heap-flat). Rule of thumb for hot loops: one avoided
 alloc buys ~49 blits -- no per-char str iteration, slices, or `%`
-formatting. Numbers and method: docs/BUILTINS.md sec. Text rendering
-performance.
+formatting. Numbers and method: docs/PERFORMANCE.md sec. Text rendering.
 
 ---
 

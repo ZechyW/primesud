@@ -36,7 +36,7 @@ Reusable terminal abstraction by Piotr Kowalewski (komame). Renders chars onto H
 python tools/check_ascii_py.py
 ```
 
-7. **File I/O calls are expensive (~20ms each).** Never loop `readline()` at runtime; use one `f.read()` (or `seek` + bounded read) and split in memory. Measured numbers in `docs/BUILTINS.md` sec. File I/O performance. Always use `with open(...) as f:` (works on-device): MicroPython has no refcounting, `open(f).read()` leaks the handle, and the Prime's small FD table exhausts as `OSError: 0` on a later `open()`.
+7. **File I/O calls are expensive (~20ms each).** Never loop `readline()` at runtime; use one `f.read()` (or `seek` + bounded read) and split in memory. Measured numbers in `docs/PERFORMANCE.md` sec. File I/O. Always use `with open(...) as f:` (works on-device): MicroPython has no refcounting, `open(f).read()` leaks the handle, and the Prime's small FD table exhausts as `OSError: 0` on a later `open()`.
 
 8. **No `%` and no `.format()` on-device, period. No bulk `str(int)` either.** Two distinct confirmed firmware heap bugs (physical hardware only; emulator clean):
    - **Format bug (G1 + G2):** any `%` or `.format()` call can zero the first byte of its output, corrupt unrelated *resident* strings, or hard-crash the calculator, depending on operator x context x device x heap layout. Layout-dependence makes shape-level "safe subsets" unprovable -- a construction that ran clean 30/30 in one session crashed 2/2 in another. Build ALL strings with concatenation. See `docs/PRIME_FIRMWARE_BUGS.md` sec. Format bug.
@@ -44,7 +44,7 @@ python tools/check_ascii_py.py
 
    Occasional single `str(x)` calls outside loops are fine. `str()` on values that are already strings is fine. `handler.chprintf`/`chprintlnf` remain safe to use: they format via `_safe_fmt`, a manual concat parser that never touches the firmware formatter (supports `%s`/`%c`/`%d`/`%%` with `-`/`0`/width).
 
-9. **Allocation dominates hot loops on device.** One small heap alloc costs ~0.5ms at full game heap (~35us standalone) -- ~49x a native `strblit2` call. In per-char/per-item loops avoid anything that allocates: iterate `s.encode()` (ints) instead of a str (1-char str alloc each), no slices, `%` formatting, or tuple churn. Measured numbers in `docs/BUILTINS.md` sec. Text rendering performance.
+9. **Allocation dominates hot loops on device.** One small heap alloc costs ~0.5ms at full game heap (~35us standalone) -- ~49x a native `strblit2` call. In per-char/per-item loops avoid anything that allocates: iterate `s.encode()` (ints) instead of a str (1-char str alloc each), no slices, `%` formatting, or tuple churn. Measured numbers in `docs/PERFORMANCE.md` sec. Text rendering.
 
 ## Colour codes
 
@@ -81,7 +81,7 @@ Google-style: one-line summary, then `Args:` / `Returns:` / `Raises:` as needed;
 Root: `README.md`, `CLAUDE.md`, `DESIGN.md` (intentional deviations + settled decisions), `FEATURES.md` (curated what's-different-from-1stMud index for readers -- one-liners pointing at DESIGN.md/docs; add a line when shipping a notable [PRIMESUD] feature), `TODO.md` (loose ends). Everything else lives in `docs/`:
 
 - 1stMud reference: `REFERENCE.md`, `COMMANDS.md`, `SKILLS.md`
-- Device limits/perf: `BUILTINS.md`, `PRIME_FIRMWARE_BUGS.md`, `PRIME_COLOURS.md`
+- Device limits/perf: `BUILTINS.md`, `PERFORMANCE.md`, `PRIME_FIRMWARE_BUGS.md`, `PRIME_COLOURS.md`
 - PrimeSUD systems: `AREA_FILES.md`, `PRIME_UX.md`, `FIXES.md`, `CROSS_RESETS.md`
 - Status/audits: `PARITY.md` (1stMud parity sweep; engine 1.0 release-gate checklist)
 

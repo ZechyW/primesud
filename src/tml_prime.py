@@ -153,7 +153,7 @@ class tml_prime(tml):
     # ------------------------------------------------------------------
     # Override: alloc-free glyph draw -- bytes iteration yields ints, so
     # no per-char str allocs (a small alloc costs ~0.5ms at full game
-    # heap; docs/BUILTINS.md sec. Text rendering performance).
+    # heap; docs/PERFORMANCE.md sec. Text rendering).
     # ------------------------------------------------------------------
 
     def print_xy(self, x, y, text):

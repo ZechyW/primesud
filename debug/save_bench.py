@@ -19,8 +19,8 @@ Segments mirror _serialize_world (game_state.py):
 
 Each segment runs N passes bare, then again with ~2.5MB of small live
 objects as ballast: alloc cost scales with live heap (~35us standalone
-vs ~490us at full game heap, BUILTINS.md sec. Text rendering
-performance), so bare numbers under-rank alloc-heavy segments; the
+vs ~490us at full game heap, PERFORMANCE.md sec. Text rendering),
+so bare numbers under-rank alloc-heavy segments; the
 ballast pass approximates game conditions.  hvset/hvget also run at
 1x/2x/4x payload size (bare heap) to check PPL parse-cost linearity.
 

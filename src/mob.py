@@ -78,7 +78,7 @@ def create_mobile(tpl_vnum):
     Flag dicts are merged in place into _char_base's empty dicts rather than
     built fresh and reassigned: create_mobile runs per spawn in area resets,
     and the merge-into-base form avoids ~27 heap allocs per mob (measured
-    3.2ms/mob on-device before; BUILTINS.md sec. Area load performance).
+    3.2ms/mob on-device before; PERFORMANCE.md sec. Area loading).
     [PRIMESUD]
 
     Args:
@@ -309,7 +309,7 @@ def _mob_count_maps():
     reset pass, incremented locally by reset_room as mobs spawn -- same
     pattern as _object_count_map, and closer to 1stMud's incremental
     pMobIndex->count than rescanning (the scans cost ~250ms per big-area
-    reset on-device; BUILTINS.md sec. Area load performance).
+    reset on-device; PERFORMANCE.md sec. Area loading).
 
     Returns:
         tuple: ({tpl_vnum: count}, {(room_vnum, tpl_vnum): count}).

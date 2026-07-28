@@ -67,7 +67,7 @@ def install_color_print(tr):
     # [PRIMESUD] int-keyed glyph x-offsets for the batch compose: bytes
     # iteration yields ints, so the per-char draw loop allocates nothing
     # (a small alloc costs ~0.5ms at full game heap on device --
-    # BUILTINS.md sec. Text rendering performance).
+    # PERFORMANCE.md sec. Text rendering).
     _bmap = {}
     for _ch, _ix in tr.char_map.items():
         _bmap[ord(_ch)] = _ix * tr.char_width
@@ -202,8 +202,8 @@ def install_color_print(tr):
             row += 1
 
         # [PRIMESUD] offscreen compose: draw into a scratch GROB, blit once.
-        # The screen updates atomically (BUILTINS.md sec. Text rendering
-        # performance).  With a scroll folded in, the scratch holds the
+        # The screen updates atomically (PERFORMANCE.md sec. Text
+        # rendering).  With a scroll folded in, the scratch holds the
         # whole text area: surviving G0 rows shifted up by n, batch below.
         cw = tr.char_width
         chh = tr.char_height

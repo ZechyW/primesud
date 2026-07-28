@@ -70,7 +70,8 @@ If the calculator reports "Insufficient memory," power-cycle it first -- Shift+O
 - [`docs/PRIME_UX.md`](docs/PRIME_UX.md) -- controls, shortcuts, scrollback, autosave, and other Prime-specific features.
 - [`DESIGN.md`](DESIGN.md) -- where PrimeSUD deliberately differs from its source.
 - [`TODO.md`](TODO.md) -- remaining work and planned features.
-- [`docs/BUILTINS.md`](docs/BUILTINS.md) -- device limitations and measured performance details.
+- [`docs/BUILTINS.md`](docs/BUILTINS.md) -- device Python availability and semantics.
+- [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) -- on-device benchmarks and resulting decisions.
 
 ## Credits
 
