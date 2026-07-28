@@ -27,16 +27,22 @@ Most multiplayer mechanics are cut or reworked for solo play.
 
 Calculator: an HP Prime (or the Virtual Calculator emulator) and the HP Connectivity Kit for file transfer.
 
-PC: Python 3, no runtime dependencies. The dist build also needs `python-minifier`.
+PC: Python 3, no runtime dependencies. Graphical mode needs Tkinter (included
+with standard Windows Python). The dist build also needs `python-minifier`.
 
 ## Running on a PC
 
 ```
-python run_source.py   # run src/ directly, no build
-python run_dist.py     # build the minified dist first, then run it
+python run_source.py    # ANSI terminal, run src/ directly
+python run_graphical.py # Tkinter window, source pixel-font renderer
+python run_dist.py      # ANSI terminal, build minified dist first
 ```
 
 `run_source.py` for everyday use. `run_dist.py` builds `dist/` and runs the minified copy, catching anything minification broke.
+`run_graphical.py` uses the calculator's 320x240 atlas/GROB rendering path in
+a 2x Tkinter window. Drag down to open pixel scrollback, then drag or fling to
+navigate it; Page Up/Down also works. F1-F10 map to the calculator function-row
+macros.
 
 Saves live in the repo root (`primesud.sav`, gitignored), shared between both runners, so `dist/` stays a clean transfer copy.
 
