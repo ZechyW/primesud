@@ -921,8 +921,9 @@ def maybe_evict(player, force=False):
     transition, builds a keep-set -- current area, its static neighbours,
     pinned areas, and any area owning or hosting a follower or combatant --
     and evicts the rest, least-recently-visited first, until at
-    AREA_CACHE_MAX loaded areas. ``force`` lets non-moving remote lookups
-    enforce the cap immediately.
+    AREA_CACHE_MAX loaded areas. ``force`` always reaches the cap check --
+    even if the player's room did not change, or a pass already ran for
+    the player's current area.
 
     Args:
         player (dict): Player state dict.
@@ -939,14 +940,16 @@ def maybe_evict(player, force=False):
         return
     if _moved:
         # Skip the keep-set rebuild while moving inside the area this pass
-        # already ran for.  Tracked by tag rather than by "_area_seq[_tag] ==
+        # already ran for -- unless forced, which always reaches the cap
+        # check below.  Tracked by tag rather than by "_area_seq[_tag] ==
         # _seq_counter": _load_area also stamps _area_seq now, so counter
         # equality no longer implies a completed pass. [PRIMESUD]
-        if _tag == _last_evict_area:
+        if _tag != _last_evict_area:
+            _last_evict_area = _tag
+            _seq_counter += 1
+            _area_seq[_tag] = _seq_counter
+        elif not force:
             return
-        _last_evict_area = _tag
-        _seq_counter += 1
-        _area_seq[_tag] = _seq_counter
     if len(_LOADED_AREAS) <= config.AREA_CACHE_MAX:
         return
     _keep = set(_PINNED)

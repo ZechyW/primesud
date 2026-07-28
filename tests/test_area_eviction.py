@@ -395,6 +395,30 @@ class TestMaybeEvict:
         assert is_area_loaded("limbo"), "pinned limbo never evicted"
         assert not is_area_loaded("a1")
 
+    def test_force_enforces_cap_after_same_area_move(self, fresh_world,
+                                                     monkeypatch):
+        """force=True must reach the cap check even when the player moved
+        within the area maybe_evict last ran a pass for."""
+        import config
+        monkeypatch.setattr(config, "AREA_CACHE_MAX", 1)
+        fw = fresh_world
+        fw.register_area("a0", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}},
+                                101: {"name": "R101", "exits": {}}})
+        fw.register_area("a1", 200, 299,
+                         rooms={200: {"name": "R200", "exits": {}}})
+        fw.setup()
+        player = _add_player(100)
+        _load_area("a0")
+        maybe_evict(player)          # pass for a0: _last_evict_area = "a0"
+
+        _load_area("a1")             # remote load pushes over the cap
+        player["room"] = 101         # moved, still inside a0
+        maybe_evict(player, True)
+
+        assert not is_area_loaded("a1"), "forced pass must enforce the cap"
+        assert is_area_loaded("a0")
+
     def test_under_cap_no_eviction(self, fresh_world, monkeypatch):
         import config
         monkeypatch.setattr(config, "AREA_CACHE_MAX", 12)
