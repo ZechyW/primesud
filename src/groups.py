@@ -262,9 +262,9 @@ def do_slist(player, args):
         fields = []
         for cl in range(len(CLASS_TABLE)):
             level = SKILLS[sn]["skill_level"][cl]
-            fields.append("{W%3s: %3s{c  " %
-                          (class_name(player, cl)[:3],
-                           "n/a" if level > MAX_MORTAL_LEVEL else "%03d" % level))
+            level_str = "n/a" if level > MAX_MORTAL_LEVEL else zpad(level, 3)
+            fields.append("{W" + pad_left(class_name(player, cl)[:3], 3) + ": "
+                          + pad_left(level_str, 3) + "{c  ")
         # colors.capitalize -- str.capitalize missing on-device
         name = capitalize(SKILLS[sn]["name"])
         # [PRIMESUD] Upstream's six-class line is wider than the 64-col screen.
