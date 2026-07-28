@@ -144,11 +144,9 @@ def force_roll(monkeypatch):
 def test_fire_destroys_food_with_message(out, force_roll):
     """fire_effect destroys a carried food item and broadcasts the $p message.
 
-    Uses a mob as the carrier (not the solo player) because 1stMud's act()
-    TO_ALL bit excludes its own `ch` argument from the broadcast -- the
-    owning character never sees their own item's destruction message, only
-    everyone else in the game does (cf. comm.c act_new "vch != ch"). The
-    solo player is the only other valid recipient in PrimeSUD.
+    Carrier is a mob sharing the player's room; under ROM's room-scoped
+    TO_ALL (see test_to_all_is_room_scoped_including_ch) the player receives
+    it as a bystander.
     """
     _make_player()
     mob = _make_mob(2)
@@ -314,3 +312,33 @@ def test_weapon_proc_flaming_wires_fire_effect(out, monkeypatch, force_roll):
     monkeypatch.setattr(combat, "damage", lambda *a, **kw: None)
     combat._weapon_procs(player, mob, wobj, ITEM_DEFS[9516])
     assert not mob["inv"]  # bread destroyed by the fire_effect(mob, ...) call
+
+
+# -- act() TO_ALL routing ---------------------------------------------------------
+
+def test_to_all_is_room_scoped_including_ch(out):
+    """TO_ALL reaches ch and ch's room only, never another room.
+
+    Guards the ROM 2.4 semantics restored in handler.py: TO_ALL is
+    TO_ROOM | TO_CHAR, not 1stMud's mud-wide BIT_E broadcast. Both flips
+    that redefinition caused are covered -- ch getting dropped (case 1) and
+    room chatter leaking world-wide (case 3). See docs/FIXES.md.
+    """
+    player = _make_player()
+
+    # 1. player is ch: 1stMud's "vch != ch" dropped this message entirely
+    handler.act("You feel $t.", player, "warm", None, handler.TO_ALL)
+    assert any("You feel warm." in l for l in out)
+
+    # 2. mob in the player's room: player receives it as a bystander
+    del out[:]
+    mob = _make_mob(2)
+    handler.act("$n barks.", mob, None, None, handler.TO_ALL)
+    assert any("barks" in l for l in out)
+
+    # 3. mob in another room: silent (the gangland-spam regression)
+    del out[:]
+    _stub_room(ROOM_VNUM + 1)
+    far = _make_mob(3, room=ROOM_VNUM + 1)
+    handler.act("$n barks.", far, None, None, handler.TO_ALL)
+    assert not out

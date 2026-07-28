@@ -547,3 +547,67 @@ The level signal it encoded is already carried by the adjacent
 every other disqualifier in the chain. Marked [PRIMESUD] at the site.
 `HELP PATH` lists only the deterministic disqualifiers and never mentions a
 roll, so the drop also brings the code in line with the player-facing text.
+
+
+---
+
+## act TO_ALL: ROM call sites inherited against a redefined constant
+
+**Upstream:** `reference/1stMud4.5.3/src/h/bits.h`, line 121;
+`reference/1stMud4.5.3/src/comm.c`, `act_new()`, lines 2288-2300.
+Compared against ROM 2.4 via `reference/quickmud/rom24-quickmud-master.zip`:
+`src/merc.h` line 487, `src/comm.c` `act_new()` line 2184.
+
+### The bug
+
+In ROM 2.4, `TO_ALL` is the plain enum value 4, and `act_new` loops only
+`ch->in_room->people`. `TO_ALL` matches none of the four skip conditions, so it
+means **everyone in ch's room, including ch** -- `TO_ROOM` plus the actor.
+
+1stMud redefined `TO_ALL` as `BIT_E` and gave it a separate branch in `act_new`
+that walks `descriptor_first`, a mud-wide broadcast which also excludes ch
+(`vch != ch`). It did not convert any of the call sites it inherited from ROM.
+The two sets are identical, one for one:
+
+| file | sites |
+|------|-------|
+| `effects.c` | 8 (acid/fire/cold/shock item destruction) |
+| `magic.c` | 8 (bless, holy aura, faerie fire, continual light, curse, invis object, poison weapon, remove curse) |
+| `music.c` | 2 (room jukebox lyric lines) |
+| `special.c` | 3 (troll gang taunt, ogre gang taunt, patrolman) |
+| `update.c` | 1 (object affect wear-off, floor case) |
+
+Every one was written against the room-scoped meaning, so the redefinition
+silently flips two things at each site:
+
+1. **Scope, room -> mud-wide.** Room chatter reaches every connected player.
+   Worst offender is `spec_troll_member` / `spec_ogre_member`: `update.c` runs
+   spec funs for every mob in the world, so the hood.are gang war broadcasts
+   `$n says 'Let's rock.'` to the whole mud, forever. In single-player the lone
+   player is always "everyone online", so it is unconditional spam from any
+   room in any area once hood.are has been visited and stays resident.
+
+2. **ch, included -> excluded.** A message whose only recipient was the actor is
+   dropped entirely. Player-cast `continual light` on an already-glowable
+   object, `poison weapon`, `remove curse`, and the bless/holy-aura family print
+   nothing at all.
+
+The `$n`/`$N` codes at those sites, the room-local `multi_hit` that follows the
+gang taunts, and the `TO_ROOM` used by every neighbouring spec fun
+(`spec_guard`, `spec_janitor`) all confirm the room-scoped reading.
+
+### PrimeSUD fix -- implemented in `handler.py`
+
+`TO_ALL` is defined as `TO_ROOM | TO_CHAR`, restoring ROM's meaning, and the
+`act_new` router's `TO_ALL | TO_ZONE` branch is narrowed to `TO_ZONE` alone.
+This corrects all ten ported call sites at once (`special.py` x2, `effects.py`
+x4, `magic.py` x4) with no call-site churn; `BIT_E` (16) is left unused.
+`TO_ZONE` keeps 1stMud's same-area descriptor semantics, which has no ROM
+ancestor and no such conflict.
+
+The `update.c` object-affect wear-off is not ported yet -- `skills_table.py`
+carries the `msg_obj` strings but nothing reads them -- so it inherits the fix
+whenever it lands.
+
+`music.py`'s `song_update` had already reasoned its way to the room-scoped
+behaviour independently and is unaffected.

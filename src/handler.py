@@ -36,7 +36,22 @@ TO_ROOM    = 1    # BIT_A
 TO_NOTVICT = 2    # BIT_B
 TO_VICT    = 4    # BIT_C
 TO_CHAR    = 8    # BIT_D
-TO_ALL     = 16   # BIT_E
+# [PRIMESUD] TO_ALL carries ROM 2.4 semantics -- "everyone in ch's room,
+# including ch" -- not 1stMud's BIT_E. In ROM, TO_ALL is the plain enum value 4
+# (merc.h:487) and act_new loops only ch->in_room->people, skipping no one
+# (comm.c:2184). 1stMud redefined it as BIT_E, a mud-wide descriptor broadcast
+# that also excludes ch (bits.h:121, comm.c:2288), but converted none of the
+# call sites it inherited from ROM -- effects.c x8, magic.c x8, music.c x2,
+# special.c x3, update.c x1, an identical one-for-one set. All of them were
+# written against the room-scoped meaning, so the redefinition is an
+# unconverted port regression, not intent: it leaks room chatter mud-wide
+# (hood.are gang taunts reaching every player) and silently drops messages
+# whose only recipient was ch (player-cast continual light, poison weapon,
+# remove curse print nothing). Every PrimeSUD TO_ALL site is one of those
+# inherited call sites, so the constant restores ROM's meaning here rather
+# than each site spelling out TO_ROOM | TO_CHAR. See docs/FIXES.md.
+# BIT_E (16) is consequently unused.
+TO_ALL     = TO_ROOM | TO_CHAR
 TO_DAMAGE  = 32   # BIT_F
 TO_ZONE    = 64   # BIT_G
 TO_SOCIALS = 128  # BIT_H
@@ -1016,14 +1031,12 @@ def _act_to_player(format, ch, arg1, arg2, type, min_pos):
             _perform_act(format, ch, arg1, arg2, type, vict)
             return
 
-    # TO_ALL / TO_ZONE: iterate all descriptors; player != ch
-    # (cf. 1stMud: for each desc, vch != ch, TO_ALL or same area)
-    if type & (TO_ALL | TO_ZONE):
+    # TO_ZONE: iterate all descriptors in ch's area; player != ch
+    # (cf. 1stMud: for each desc, vch != ch, same area).  [PRIMESUD] TO_ALL is
+    # not handled here -- it is ROM's room-scoped constant (see its definition
+    # above), so it routes through the TO_ROOM/TO_CHAR branches instead.
+    if type & TO_ZONE:
         if player is not ch and _sendok(player, min_pos):
-            if type & TO_ALL:
-                _perform_act(format, ch, arg1, arg2, type, player)
-                return
-            # TO_ZONE: same area check
             if isinstance(ch, dict) and ch.get("room") is not None:
                 ch_area = ROOM_DEFS.get(ch["room"], {}).get("area")
                 pl_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
@@ -1050,9 +1063,12 @@ def _act_trigger_mobs(format, ch, arg1, arg2, type):
 
     Mirrors act_new's recipient selection: TO_CHAR -> ch, TO_VICT -> the
     victim, TO_ROOM/TO_NOTVICT -> every room NPC except ch (and the victim for
-    NOTVICT).  TO_ALL/TO_ZONE reach only descriptors (players) in 1stMud, so no
-    mob recipients.  The trigger phrase is matched against the line as rendered
-    for that mob.
+    NOTVICT).  TO_ZONE reaches only descriptors (players) in 1stMud, so no mob
+    recipients; TO_ALL is ROM's room-scoped TO_ROOM | TO_CHAR here (see its
+    definition above), so its acts reach room NPCs through those bits --
+    matching ROM, where act_new's room loop visits mobs and fires
+    mp_act_trigger on them.  The trigger phrase is matched against the line as
+    rendered for that mob.
 
     The MOBtrigger latch is held off for the whole dispatch -- [PRIMESUD]
     stricter than 1stMud (which latches only emote/asound): a prog fired here
