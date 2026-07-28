@@ -2631,7 +2631,9 @@ points. These points may be saved up and used to buy incredible
 items from the quest master.
 
 The QUEST command is used for information about your current
-quest, to request a quest from a quest master, etc. Commands are
+quest, to request a quest from a quest master, etc. With no
+argument, QUEST opens a menu of valid actions when you are at a
+quest master; elsewhere it shows your quest status. Commands are
 as follows:
 
 QUEST INFO - If you are on a quest, this will remind you who or
@@ -2659,7 +2661,9 @@ be purchased with quest points.
 QUEST BUY <item> - Purchases an item from the questmaster and
 deducts the cost of the item from your quest points.
 
-QUEST QUIT - Quits the current quest and sets your timer to 18.
+QUEST QUIT - Quits the current quest and sets your timer to 15.
+If your quest is already complete, the quest master rewards you
+instead of letting you abandon it.
 
 QUEST SELL - Returns a quest item to the questor for 1/3 the
 price.
@@ -2667,7 +2671,7 @@ price.
 QUEST IDENTIFY - Identifies a quest object.
 
 
-Quest Code originnaly by Vassago of Moongate
+Quest Code originally by Vassago of Moongate
 Modified Code by Markanth markanth@firstmud.com
 #0|world|QUESTITEMS
 As you gain levels, the stats of Quest EQ will increase
@@ -2679,7 +2683,7 @@ modifiers on the item.
 Other notes:
 - Quest item level is always your level.
 - Armor values are always your level.
-- Skill in weapons has a minumum of your adept level.
+- Skill in weapons has a minimum of your adept level.
 - All quest items are burnproof and can't be sacced.
 - Quest items are always in perfect condition.
 - Quest items can be sold back to the questor or auctioned

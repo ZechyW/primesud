@@ -545,3 +545,5 @@ The `saves_spell` clause is dropped; mob targets resolve deterministically.
 The level signal it encoded is already carried by the adjacent
 `victim->level >= ch->level + 3` gate, which is retained verbatim, as are
 every other disqualifier in the chain. Marked [PRIMESUD] at the site.
+`HELP PATH` lists only the deterministic disqualifiers and never mentions a
+roll, so the drop also brings the code in line with the player-facing text.
