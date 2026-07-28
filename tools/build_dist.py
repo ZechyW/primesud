@@ -33,6 +33,15 @@ DIST_DIR = Path("dist/primesud.hpappdir")
 BOM = b"\xef\xbb\xbf"
 # Save files -- packaging these would overwrite on-calc data
 EXCLUDE = {"primesud.sav", "hvars.json"}
+# python-minifier misbinds _best_hand_layout's nested closures when the
+# captured names collide with its renamed comprehension variables: the
+# minified build passes a cell object where a dict is expected and
+# `wear best` crashes. Keeping the captured names unrenamed avoids the
+# collision. Pinned by tests/test_minified_inventory.py.
+PRESERVE_LOCALS = {
+    "inventory.py": ["player", "equip", "current", "locked", "small",
+                     "scores"],
+}
 RELEASE_DOCS = (
     (Path("README.md"), Path("README.md")),
     (Path("LICENSES.md"), Path("LICENSES.md")),
@@ -51,7 +60,7 @@ RELEASE_DOCS = (
 )
 
 
-def minify_source(source):
+def minify_source(source, preserve_locals=None):
     return python_minifier.minify(
         source,
         remove_annotations=True,
@@ -67,6 +76,7 @@ def minify_source(source):
         # rename_locals shrinks source + on-device qstr pool (-90KB).
         hoist_literals=True,
         rename_locals=True,
+        preserve_locals=preserve_locals,
         rename_globals=False,
         convert_posargs_to_args=False,
         remove_asserts=False,
@@ -155,7 +165,8 @@ def main():
         before = len(source.encode("utf-8"))
 
         try:
-            minified = minify_source(source)
+            minified = minify_source(source,
+                                     PRESERVE_LOCALS.get(src_file.name))
         except Exception as e:
             errors.append("%s: %s" % (src_file.name, e))
             shutil.copy2(src_file, dst_file)
