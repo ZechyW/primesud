@@ -1826,6 +1826,23 @@ def _print_area_levels(levels, comment=None):
     return lo_s + " " + hi_s
 
 
+def _area_level_str(tag):
+    """Return an area's normalized display-level range. [PRIMESUD]"""
+    levels = world.AREA_LEVELS.get(tag, (1, MAX_LEVEL))
+    lo = max(1, min(levels[0], MAX_LEVEL))
+    hi = max(1, min(levels[1], MAX_LEVEL))
+    return _print_area_levels(
+        (lo, hi), world.AREA_LVL_COMMENTS.get(tag))
+
+
+def _sorted_area_files():
+    """Return static area entries in player-facing level/name order. [PRIMESUD]"""
+    return sorted(
+        world._AREA_FILES,
+        key=lambda a: world.AREA_LEVELS.get(
+            a[1], (1, MAX_LEVEL)) + (a[2].lower(),))
+
+
 def _extract_builder(credits):
     """Extract builder name from area credits line (cf. 1stMud convert_area_credits in db2.c). [Verified: 03/07/2026]"""
     idx = credits.find("} ")
@@ -2105,8 +2122,9 @@ def do_areas(player, args):
 
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified
     04/07/2026; directions column dropped for lazy-load 08/07/2026
-    [PRIMESUD]] -- clan restriction marker ("{G*") and its legend line
-    not ported (no clans).
+    [PRIMESUD]; sort switched to level range 28/07/2026 [PRIMESUD]] --
+    clan restriction marker ("{G*") and its legend line not ported
+    (no clans).
 
     [PRIMESUD] 1stMud's stock layout appends a per-area path_to_area()
     directions column; the codebase's own MudFlag(DISABLE_AREA_DIRECTIONS)
@@ -2144,7 +2162,9 @@ def do_areas(player, args):
     # Current room is always loaded, so this is a zero-load lookup.
     source_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
 
-    sorted_areas = sorted(world._AREA_FILES, key=lambda a: a[2].lower())
+    # [PRIMESUD] Order by level range (lo, hi), then name; 1stMud lists
+    # in area-file load order.
+    sorted_areas = _sorted_area_files()
 
     count = 0
     for _fname, tag, name, _vlo, _vhi in sorted_areas:
@@ -2152,8 +2172,7 @@ def do_areas(player, args):
         lo = max(1, min(levels[0], MAX_LEVEL))
         hi = max(1, min(levels[1], MAX_LEVEL))
         if lo >= lo_lv and hi <= hi_lv:
-            lvl_str = _print_area_levels((lo, hi),
-                                         world.AREA_LVL_COMMENTS.get(tag))
+            lvl_str = _area_level_str(tag)
             builder = world.AREA_BUILDERS.get(tag, "")
             # [PRIMESUD] "here" marker, see docstring.
             here = "{G>{x" if tag == source_area else " "

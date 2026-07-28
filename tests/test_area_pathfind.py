@@ -135,6 +135,48 @@ class TestAreaLevelComments:
         assert "001" not in alpha_line
 
 
+def test_run_picker_matches_area_order_and_shows_levels(
+        fresh_world, monkeypatch):
+    world._AREA_FILES[:] = [
+        ("high.txt", "high", "Middle", 400, 499),
+        ("source.txt", "source", "Start", 100, 199),
+        ("zebra.txt", "zebra", "Zebra", 300, 399),
+        ("aardvark.txt", "aardvark", "Aardvark", 200, 299),
+    ]
+    monkeypatch.setattr(world, "AREA_LEVELS", {
+        "source": (1, 5),
+        "high": (20, 30),
+        "zebra": (10, 15),
+        "aardvark": (10, 15),
+    })
+    ROOM_DEFS._data[100] = {"area": "source"}
+    player = _char_base()
+    player["room"] = 100
+    seen = {}
+
+    def pick(title, labels):
+        seen["title"] = title
+        seen["labels"] = labels
+        return 0
+
+    def route(_player, tag):
+        seen["tag"] = tag
+        return "n"
+
+    monkeypatch.setattr(movement, "pick_from", pick)
+    monkeypatch.setattr(movement, "find_path_to_area", route)
+
+    movement.do_run(player, [])
+
+    assert seen["title"] == "Run to which area?"
+    assert seen["labels"] == [
+        "[010 015] Aardvark",
+        "[010 015] Zebra",
+        "[020 030] Middle",
+    ]
+    assert seen["tag"] == "aardvark"
+
+
 # ===== find_path_to_area: synthetic border-graph routing ====================
 
 class TestFindPathToAreaBorderGraph:

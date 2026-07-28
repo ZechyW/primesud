@@ -11,7 +11,8 @@ from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
                     MOVEMENT_LOSS, POS_ORDER,
                     SECT_AIR, SECT_WATER_NOSWIM,
                     R_RECALL, PULSE_PER_SECOND)
-from info import do_look, find_path_to_area
+from info import (do_look, find_path_to_area, _area_level_str,
+                  _sorted_area_files)
 from picker import pick_from
 from quest import quest_room_check
 from skills_table import (GSN_RECALL, GSN_PICK_LOCK, GSN_SNEAK, GSN_HIDE,
@@ -1521,13 +1522,13 @@ def do_run(player, args):
         # exactly the load-everything cost this is meant to avoid.
         # (1stMud prints "You run in place!" on no args)
         source_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
-        sorted_areas = sorted(world._AREA_FILES, key=lambda a: a[2].lower())
-        candidates = [(name, tag) for _fname, tag, name, _vlo, _vhi in sorted_areas
-                     if tag != source_area]
+        candidates = [area for area in _sorted_area_files()
+                      if area[1] != source_area]
         if not candidates:
             chprintln(player, "No accessible areas from here.")
             return
-        labels = [name for name, _tag in candidates]
+        labels = ["[" + _area_level_str(area[1]) + "] " + area[2]
+                  for area in candidates]
         idx = pick_from("Run to which area?", labels)
         if idx < 0:
             return
