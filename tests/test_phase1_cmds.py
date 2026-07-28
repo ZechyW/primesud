@@ -15,6 +15,7 @@ import info
 import inventory
 import world
 from handler import _char_base
+from skills_table import GSN_DAGGER, GSN_SWORD
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
 
 
@@ -63,9 +64,11 @@ def scene():
 
     ITEM_DEFS._data[8001] = {"type": "weapon", "keywords": "sword",
                              "short_descr": "a sword", "dice": (2, 6, 0),
+                             "weapon_type": "sword",
                              "wear_flags": {"take": True, "wield": True}}
     ITEM_DEFS._data[8002] = {"type": "weapon", "keywords": "dagger",
                              "short_descr": "a dagger", "dice": (1, 4, 0),
+                             "weapon_type": "dagger",
                              "wear_flags": {"take": True, "wield": True}}
     ITEM_DEFS._data[8003] = {"type": "armor", "keywords": "vest",
                              "short_descr": "a vest", "armor": (5, 5, 5, 0),
@@ -73,6 +76,7 @@ def scene():
 
     player = _char_base()
     player.update({"id": 1, "room": 3001, "level": 10,
+                   "learned": {GSN_SWORD: 80, GSN_DAGGER: 80},
                    "inv": [{"vnum": 8001}, {"vnum": 8002}, {"vnum": 8003}]})
     world.chars[1] = player
 
@@ -163,3 +167,334 @@ class TestCompare:
     def test_nothing_comparable(self, scene, out):
         inventory.do_compare(scene, ["sword"])
         assert out == ["You aren't wearing anything comparable."]
+
+    def test_scores_include_damage_affects(self, scene, out):
+        ITEM_DEFS[8002]["stat_bonuses"] = {"damroll": 6}
+        inventory.do_compare(scene, ["sword", "dagger"])
+        assert any("a sword [140] looks worse than a dagger [170]" in l.lower()
+                   for l in out)
+
+    def test_weapon_score_uses_combat_skill_floor_and_bonus(self, scene):
+        sword = scene["inv"][0]
+        scene["learned"][GSN_SWORD] = 0
+        assert inventory.gear_score(scene, sword) == 28
+        scene["learned"][GSN_SWORD] = 100
+        assert inventory.gear_score(scene, sword) == 168
+
+    def test_vs_weakest_paired_slot(self, scene, out):
+        for vnum, keyword, hitroll in (
+                (8004, "strongring", 3),
+                (8005, "weakring", 1),
+                (8006, "upgradering", 2)):
+            ITEM_DEFS._data[vnum] = {
+                "type": "jewelry", "keywords": keyword,
+                "short_descr": keyword, "level": 1,
+                "wear_flags": {"take": True, "finger": True},
+                "extra_flags": {}, "stat_bonuses": {"hitroll": hitroll},
+            }
+        strong = {"vnum": 8004}
+        weak = {"vnum": 8005}
+        upgrade = {"vnum": 8006}
+        scene["inv"] = [strong, weak]
+        inventory.equip_char(scene, strong, "finger_l")
+        inventory.equip_char(scene, weak, "finger_r")
+        scene["inv"].append(upgrade)
+
+        inventory.do_compare(scene, ["upgradering"])
+
+        assert any("upgradering [20] looks better than weakring [10]" in l.lower()
+                   for l in out)
+
+    def test_gear_score_armor_and_modifier_polarities(self, scene):
+        vest = scene["inv"][2]
+        ITEM_DEFS[8003]["armor"] = (5, 5, 5, 5)
+        ITEM_DEFS[8003]["stat_bonuses"] = {"ac": -2, "saves": -1}
+        assert inventory.gear_score(scene, vest) == 300
+
+        ITEM_DEFS[8003]["stat_bonuses"] = {"ac": 2, "saves": 1}
+        assert inventory.gear_score(scene, vest) == 100
+
+    def test_gear_score_enchanted_uses_runtime_affects(self, scene):
+        vest = scene["inv"][2]
+        ITEM_DEFS[8003]["armor"] = (0, 0, 0, 0)
+        ITEM_DEFS[8003]["stat_bonuses"] = {"damroll": 50}
+        vest["enchanted"] = True
+        vest["affect_list"] = [
+            {"where": "to_object", "location": "damroll", "modifier": 2,
+             "bitvector": ""},
+            {"where": "to_affects", "location": "none", "modifier": 0,
+             "bitvector": "haste"},
+        ]
+        assert inventory.gear_score(scene, vest) == 240
+
+    def test_wear_best_replaces_worse_gear(self, scene, out):
+        ITEM_DEFS._data[8004] = {
+            "type": "armor", "keywords": "plate", "short_descr": "a plate",
+            "armor": (6, 6, 6, 6), "level": 1,
+            "wear_flags": {"take": True, "body": True}, "extra_flags": {},
+        }
+        old = scene["inv"][2]
+        scene["inv"] = [old]
+        inventory.equip_char(scene, old, "body")
+        better = {"vnum": 8004}
+        scene["inv"].append(better)
+
+        inventory.do_wear(scene, ["best"])
+
+        assert scene["equip"]["body"] is better
+        assert old in scene["inv"]
+
+    def test_wear_best_replaces_weaker_paired_slot(self, scene, out):
+        for vnum, hitroll in ((8004, 3), (8005, 1), (8006, 2)):
+            ITEM_DEFS._data[vnum] = {
+                "type": "jewelry", "keywords": "ring" + str(vnum),
+                "short_descr": "a ring", "level": 1,
+                "wear_flags": {"take": True, "finger": True},
+                "extra_flags": {}, "stat_bonuses": {"hitroll": hitroll},
+            }
+        strong = {"vnum": 8004}
+        weak = {"vnum": 8005}
+        upgrade = {"vnum": 8006}
+        scene["inv"] = [strong, weak]
+        inventory.equip_char(scene, strong, "finger_l")
+        inventory.equip_char(scene, weak, "finger_r")
+        scene["inv"].append(upgrade)
+
+        inventory.do_wear(scene, ["best"])
+
+        assert scene["equip"]["finger_l"] is strong
+        assert scene["equip"]["finger_r"] is upgrade
+        assert weak in scene["inv"]
+
+    def test_wear_best_equips_duplicate_items(self, scene, out):
+        ITEM_DEFS._data[8004] = {
+            "type": "jewelry", "keywords": "ring", "short_descr": "a ring",
+            "level": 1, "wear_flags": {"take": True, "finger": True},
+            "extra_flags": {}, "stat_bonuses": {"hitroll": 2},
+        }
+        ring_a = {"vnum": 8004}
+        ring_b = {"vnum": 8004}
+        assert ring_a == ring_b  # equal dicts trip equality-based membership
+        scene["inv"] = [ring_a, ring_b]
+
+        inventory.do_wear(scene, ["best"])
+
+        assert scene["equip"]["finger_l"] is not None
+        assert scene["equip"]["finger_r"] is not None
+        assert scene["inv"] == []
+        assert not any("already wearing your best gear" in l for l in out)
+
+    def _hand_defs(self, scene):
+        # Real players have every slot pre-seeded with None (player.py).
+        for slot in ("wield", "secondary", "shield", "hold"):
+            scene["equip"].setdefault(slot, None)
+        ITEM_DEFS._data[8004] = {
+            "type": "weapon", "keywords": "sword2", "short_descr": "a sword2",
+            "level": 1, "weight": 20, "weapon_type": "sword",
+            "dice": (2, 6, 0),  # score 140 at skill 80
+            "wear_flags": {"take": True, "wield": True}, "extra_flags": {},
+        }
+        ITEM_DEFS._data[8005] = {
+            "type": "armor", "keywords": "buckler", "short_descr": "a buckler",
+            "level": 1, "armor": (3, 3, 3, 3),  # score 120
+            "wear_flags": {"take": True, "shield": True}, "extra_flags": {},
+        }
+        ITEM_DEFS._data[8006] = {
+            "type": "weapon", "keywords": "claymore", "short_descr": "a claymore",
+            "level": 1, "weight": 50, "weapon_type": "sword",
+            "dice": (4, 8, 0),  # score 360
+            "weapon_flags": {"two_hands": True},
+            "wear_flags": {"take": True, "wield": True}, "extra_flags": {},
+        }
+
+    def test_wear_best_two_hander_replaces_sword_and_shield(self, scene, out):
+        self._hand_defs(scene)
+        sword = {"vnum": 8004}
+        shield = {"vnum": 8005}
+        claymore = {"vnum": 8006}
+        scene["inv"] = [sword, shield]
+        inventory.equip_char(scene, sword, "wield")
+        inventory.equip_char(scene, shield, "shield")
+        scene["inv"].append(claymore)
+
+        inventory.do_wear(scene, ["best"])
+
+        assert scene["equip"]["wield"] is claymore
+        assert scene["equip"]["shield"] is None
+        assert sword in scene["inv"] and shield in scene["inv"]
+
+    def test_wear_best_keeps_shield_over_weaker_two_hander(self, scene, out):
+        self._hand_defs(scene)
+        ITEM_DEFS._data[8006]["dice"] = (2, 9, 0)  # score 200 < 140 + 120
+        sword = {"vnum": 8004}
+        shield = {"vnum": 8005}
+        claymore = {"vnum": 8006}
+        scene["inv"] = [sword, shield]
+        inventory.equip_char(scene, sword, "wield")
+        inventory.equip_char(scene, shield, "shield")
+        scene["inv"].append(claymore)
+
+        inventory.do_wear(scene, ["best"])
+
+        assert scene["equip"]["wield"] is sword
+        assert scene["equip"]["shield"] is shield
+        assert claymore in scene["inv"]
+
+    def test_wear_best_splits_two_hander_for_better_combo(self, scene, out):
+        self._hand_defs(scene)
+        ITEM_DEFS._data[8006]["dice"] = (2, 9, 0)  # score 200 < 140 + 120
+        sword = {"vnum": 8004}
+        shield = {"vnum": 8005}
+        claymore = {"vnum": 8006}
+        scene["inv"] = [claymore]
+        inventory.equip_char(scene, claymore, "wield")
+        scene["inv"].extend([sword, shield])
+
+        inventory.do_wear(scene, ["best"])
+
+        assert scene["equip"]["wield"] is sword
+        assert scene["equip"]["shield"] is shield
+        assert claymore in scene["inv"]
+
+    def test_wear_best_adopts_dual_wield(self, scene, out):
+        self._hand_defs(scene)
+        sword = {"vnum": 8004}
+        # dagger: score 60 at skill 80, light enough for the off-hand
+        ITEM_DEFS._data[8002]["weight"] = 5
+        dagger = {"vnum": 8002}
+        scene["inv"] = [sword]
+        inventory.equip_char(scene, sword, "wield")
+        scene["inv"].append(dagger)
+
+        inventory.do_wear(scene, ["best"])
+
+        assert scene["equip"]["wield"] is sword
+        assert scene["equip"]["secondary"] is dagger
+        assert any("off-hand" in l for l in out)
+
+    def test_wear_best_parks_wield_during_str_shield_swap(self, scene, out):
+        # Swapping one +STR shield for another dips STR below the kept
+        # wield's weight mid-apply; affect_modify would floor-drop it.
+        self._hand_defs(scene)
+        ITEM_DEFS._data[8007] = {
+            "type": "weapon", "keywords": "maul", "short_descr": "a maul",
+            "level": 1, "weight": 150, "weapon_type": "sword",
+            "dice": (2, 6, 0),
+            "wear_flags": {"take": True, "wield": True}, "extra_flags": {},
+        }
+        ITEM_DEFS._data[8008] = {
+            "type": "armor", "keywords": "oldstr", "short_descr": "an old shield",
+            "level": 1, "armor": (1, 1, 1, 1), "stat_bonuses": {"str": 2},
+            "wear_flags": {"take": True, "shield": True}, "extra_flags": {},
+        }
+        ITEM_DEFS._data[8009] = {
+            "type": "armor", "keywords": "newstr", "short_descr": "a new shield",
+            "level": 1, "armor": (2, 2, 2, 2), "stat_bonuses": {"str": 2},
+            "wear_flags": {"take": True, "shield": True}, "extra_flags": {},
+        }
+        maul = {"vnum": 8007}
+        old_shield = {"vnum": 8008}
+        new_shield = {"vnum": 8009}
+        scene["inv"] = [maul, old_shield]
+        inventory.equip_char(scene, old_shield, "shield")
+        inventory.equip_char(scene, maul, "wield")
+        scene["inv"].append(new_shield)
+
+        inventory.do_wear(scene, ["best"])
+
+        assert scene["equip"]["wield"] is maul
+        assert scene["equip"]["shield"] is new_shield
+        assert world.rooms[3001]["items"] == []
+
+    def test_wear_best_parks_wield_during_str_ring_swap(self, scene, out):
+        self._hand_defs(scene)
+        defs = (
+            (8007, "might", {"str": 3}),
+            (8008, "greatermight", {"str": 3, "hitroll": 2}),
+            (8010, "power", {"hitroll": 20}),
+        )
+        for vnum, keyword, bonuses in defs:
+            ITEM_DEFS._data[vnum] = {
+                "type": "jewelry", "keywords": keyword, "short_descr": keyword,
+                "level": 1, "wear_flags": {"take": True, "finger": True},
+                "extra_flags": {}, "stat_bonuses": bonuses,
+            }
+        ITEM_DEFS._data[8009] = {
+            "type": "weapon", "keywords": "maul", "short_descr": "a maul",
+            "level": 1, "weight": 150, "weapon_type": "sword",
+            "dice": (2, 6, 0),
+            "wear_flags": {"take": True, "wield": True}, "extra_flags": {},
+        }
+        might = {"vnum": 8007}
+        upgrade = {"vnum": 8008}
+        maul = {"vnum": 8009}
+        power = {"vnum": 8010}
+        scene["inv"] = [might, maul, power]
+        inventory.equip_char(scene, might, "finger_l")
+        inventory.equip_char(scene, power, "finger_r")
+        inventory.equip_char(scene, maul, "wield")
+        scene["inv"].append(upgrade)
+
+        inventory.do_wear(scene, ["best"])
+
+        assert scene["equip"]["finger_l"] is upgrade
+        assert scene["equip"]["wield"] is maul
+        assert might in scene["inv"]
+        assert world.rooms[3001]["items"] == []
+
+    def test_wear_best_does_not_remove_strength_supporting_wield(self, scene, out):
+        defs = (
+            (8004, "might", "a ring of might", "finger", {"str": 3}, 0),
+            (8005, "power", "a ring of power", "finger", {"hitroll": 20}, 0),
+            (8006, "upgrade", "an upgrade ring", "finger", {"hitroll": 10}, 0),
+            (8007, "heavy", "a heavy sword", "wield", {}, 150),
+        )
+        for vnum, keyword, short, flag, bonuses, weight in defs:
+            ITEM_DEFS._data[vnum] = {
+                "type": "weapon" if flag == "wield" else "jewelry",
+                "keywords": keyword, "short_descr": short, "level": 1,
+                "wear_flags": {"take": True, flag: True},
+                "extra_flags": {}, "stat_bonuses": bonuses,
+                "weight": weight, "weapon_type": "sword", "dice": (1, 4, 0),
+            }
+        might = {"vnum": 8004}
+        power = {"vnum": 8005}
+        upgrade = {"vnum": 8006}
+        sword = {"vnum": 8007}
+        scene["inv"] = [might, power, sword]
+        inventory.equip_char(scene, might, "finger_l")
+        inventory.equip_char(scene, power, "finger_r")
+        inventory.equip_char(scene, sword, "wield")
+        scene["inv"].append(upgrade)
+
+        inventory.do_wear(scene, ["best"])
+
+        assert scene["equip"]["finger_l"] is might
+        assert scene["equip"]["wield"] is sword
+        assert sword not in world.rooms[scene["room"]]["items"]
+
+    def test_wear_best_checks_weight_without_replaced_weapon(self, scene, out):
+        ITEM_DEFS._data[8004] = {
+            "type": "weapon", "keywords": "oldblade",
+            "short_descr": "an old blade", "level": 1, "weight": 150,
+            "weapon_type": "sword", "dice": (1, 4, 0),
+            "wear_flags": {"take": True, "wield": True}, "extra_flags": {},
+            "stat_bonuses": {"str": 3},
+        }
+        ITEM_DEFS._data[8005] = {
+            "type": "weapon", "keywords": "newblade",
+            "short_descr": "a new blade", "level": 1, "weight": 150,
+            "weapon_type": "sword", "dice": (10, 10, 0),
+            "wear_flags": {"take": True, "wield": True}, "extra_flags": {},
+        }
+        old = {"vnum": 8004}
+        new = {"vnum": 8005}
+        scene["inv"] = [old]
+        inventory.equip_char(scene, old, "wield")
+        scene["inv"].append(new)
+
+        inventory.do_wear(scene, ["best"])
+
+        assert scene["equip"]["wield"] is old
+        assert old not in scene["inv"]
+        assert new in scene["inv"]

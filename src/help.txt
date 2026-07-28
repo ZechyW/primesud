@@ -987,15 +987,13 @@ Syntax: compare <object-1> <object-2>
 Syntax: compare <object>
 
 COMPARE compares two objects in your inventory.  If both objects
-are weapons, it will report the one with the better average
-damage.  If both objects are armor, it will report the one with
-the better armor class.
+fit the same equipment slot, it reports each gear score and which
+one is better.  Gear score includes weapon damage and skill, all
+four armor classes, numeric modifiers, equipment affects,
+resistances, and implemented weapon powers.
 
 COMPARE with one argument compares an object in your inventory
-to the object you are currently wearing or wielding of the same
-type.
-
-COMPARE doesn't consider any special modifiers of the objects.
+to the object you are currently wearing in the same slot.
 #0|commands|CONSIDER
 Syntax: consider <character>
 
@@ -1791,6 +1789,7 @@ Syntax: hold   <object>
 Syntax: remove <object>
 Syntax: wear   <object>
 Syntax: wear   all
+Syntax: wear   best
 Syntax: wield  <object>
 
 Three of these commands will take an object from your inventory
@@ -1799,6 +1798,13 @@ wands, and staves.  WEAR is for armor.  WIELD is for weapons.
 
 WEAR ALL will attempt to HOLD, WEAR, or WIELD each suitable item
 in your inventory.
+
+WEAR BEST equips only items whose gear score improves the
+corresponding slot.  It keeps current equipment on ties and
+respects level, alignment, weight, and curse restrictions.
+Hands are chosen as a set: it switches between weapon and
+shield, two-handed, and dual-wield layouts whenever a legal
+combination has a better combined gear score.
 
 You may not be able to HOLD, WEAR, or WIELD an item if its
 alignment does not match yours, if it is too heavy for you, or

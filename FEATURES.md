@@ -54,8 +54,12 @@ There are no other players, no immortals, no clans -- and the design turns
 that into features rather than holes.
 
 - **Pickers replace typing** -- `kill`, `get`, `give`, `wear`, `cast`, `practice`,
-  `train`, `examine`, `open`/`unlock`, remort, chargen: given no argument,
+  `train`, `buy`, `sell`, `examine`, `open`/`unlock`, remort, chargen: given no argument,
   each opens a numbered target menu instead of failing (docs/PRIME_UX.md).
+- **Gear score and `wear best`** -- compatible equipment shares one combat-aware
+  score used by `compare`; `wear best` equips strict per-slot upgrades and picks
+  the best legal hand layout (shield, two-handed, dual wield) by combined score
+  (docs/PRIME_UX.md).
 - **Browsable help** -- bare `help` opens a category-then-entry browser driven
   by digits and Enter, reaching all 288 entries without alpha-shifting a
   keyword, and `help <letter>` picks from its matches instead of printing a

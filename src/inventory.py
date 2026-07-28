@@ -5,6 +5,7 @@ import terminal
 from handler import (get_curr_stat, is_name, equip_char, unequip_char, act,
                      get_char_room, can_see, can_see_obj, is_awake,
                      affect_strip, affect_join, chprintln,
+                     _item_armor_runtime, tpl_flag_affects,
                      is_good, is_evil, is_neutral,
                      TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT)
 from world import (OBJ_VNUM_SCHOOL_BANNER,
@@ -44,7 +45,7 @@ from skills_table import (GSN_SCROLLS, GSN_STAVES, GSN_WANDS, GSN_STEAL,
 from skills_table import SKILLS, WEAPON_GSN_MAP
 from terminal import tprint
 from urandom import randint
-from util import num_str
+from util import int_str, num_str
 from world import ITEM_DEFS, MOB_DEFS
 
 _CONTAINER_TYPES = CONTAINER_TYPES  # [PRIMESUD] shared definition now lives in item.py
@@ -844,6 +845,138 @@ _DUAL_SLOTS = {
     "wrist":  ("wrist_l",  "wrist_r"),
 }
 
+# [PRIMESUD] Balanced combat heuristic. Ten points equal one point of
+# do_compare's old raw armor/double-average weapon scale.
+_GEAR_MOD_WEIGHTS = {
+    "str": 30, "dex": 30, "int": 20, "wis": 20, "con": 30,
+    "hit": 1, "mana": 1, "move": 1,
+    "hitroll": 10, "damroll": 20,
+    # Base armor values are subtracted on equip, so positive protects.
+    # APPLY_AC modifiers are added to all four buckets, so negative protects.
+    "ac": -40,
+    # saves_spell subtracts saving_throw, so negative modifiers protect.
+    "saves": -20, "saving_rod": -20, "saving_petri": -20,
+    "saving_breath": -20, "saving_spell": -20,
+}
+
+_GEAR_AFFECT_WEIGHTS = {
+    "blind": -300,
+    "haste": 200,
+    "protect_evil": 80, "protect_good": 80,
+    "flying": 50,
+    "invisible": 40,
+    "pass_door": 30,
+    "dark_vision": 20, "detect_hidden": 20, "detect_invis": 20,
+    "infrared": 10,
+    "detect_evil": 5, "detect_good": 5, "detect_magic": 5,
+}
+
+_BEST_WEAR_FLAGS = (
+    "light", "finger", "neck", "body", "head", "legs", "feet", "hands",
+    "arms", "about", "waist", "wrist", "float",
+)
+
+# Hand slots are optimized together as one layout, not per-slot: see
+# _best_hand_layout.
+_HAND_FLAGS = ("wield", "secondary", "shield", "hold")
+
+
+def _wear_flag(obj, tpl):
+    """Return obj's wear command flag, or None. [PRIMESUD]"""
+    if tpl.get("type") == "light":
+        return "light"
+    for flag in item_wear_flags(obj, tpl):
+        if flag != "take":
+            return flag
+    return None
+
+
+def _gear_affect_score(af):
+    """Score one numeric/bitvector equipment affect. [PRIMESUD]"""
+    score = _GEAR_MOD_WEIGHTS.get(af.get("location"), 0) * af.get("modifier", 0)
+    bit = af.get("bitvector")
+    if not bit:
+        return score
+    where = af.get("where", "to_affects")
+    if where == "to_immune":
+        return score + 300
+    if where == "to_resist":
+        return score + 100
+    if where == "to_vuln":
+        return score - 100
+    if where == "to_affects":
+        return score + _GEAR_AFFECT_WEIGHTS.get(bit, 0)
+    return score
+
+
+def _item_stat_modifier(obj, tpl, location):
+    """Return one item's applied modifier for a location. [PRIMESUD]"""
+    total = 0
+    if not obj.get("enchanted"):
+        total += tpl.get("stat_bonuses", {}).get(location, 0)
+        for af in tpl_flag_affects(tpl):
+            if af.get("location") == location:
+                total += af.get("modifier", 0)
+    for af in obj.get("affect_list", []):
+        if af.get("location") == location:
+            total += af.get("modifier", 0)
+    return total
+
+
+def gear_score(player, obj):
+    """Return balanced combat score for one wearable item. [PRIMESUD]
+
+    Includes instance-scaled armor/dice, every applied numeric modifier,
+    live character/resistance flags, and implemented weapon procs. Scores
+    are intentionally heuristic; unknown or mechanically inert flags add 0.
+
+    Args:
+        player (dict): Player whose weapon skill supplies weapon context.
+        obj (dict): Item instance.
+
+    Returns:
+        int: Higher is better.
+    """
+    tpl = ITEM_DEFS[obj_vnum(obj)]
+    score = 0
+    itype = tpl.get("type")
+    if itype == "armor":
+        armor = _item_armor_runtime(tpl, obj)
+        if armor is not None:
+            # 1stMud do_compare summed only 3 AC buckets; exotic included here.
+            score += sum(armor) * 10
+    elif itype == "weapon":
+        dice_values = obj.get("dice") or tpl.get("dice", (0, 0, 0))
+        base = dice_values[0] * (dice_values[1] + 1) + 2 * dice_values[2]
+        sn = WEAPON_GSN_MAP.get(tpl.get("weapon_type", ""), -1)
+        # one_hit uses 20 + weapon proficiency for damage and sharp chance.
+        skill = 20 + _get_weapon_skill(player, sn)
+        base_score = base * skill // 10
+        score += base_score
+        flags = item_weapon_flags(obj, tpl)
+        level = obj.get("level", tpl.get("level", 0))
+        if flags.get("sharp"):
+            score += base_score * skill // 700
+        if flags.get("flaming"):
+            score += (level // 4 + 2) * 10
+        if flags.get("frost"):
+            score += (level // 6 + 3) * 10
+        if flags.get("shocking"):
+            score += (level // 5 + 3) * 10
+        if flags.get("vampiric"):
+            score += (level // 5 + 2) * 15
+        if flags.get("poison"):
+            score += 20
+
+    if not obj.get("enchanted"):
+        for loc, mod in tpl.get("stat_bonuses", {}).items():
+            score += _GEAR_MOD_WEIGHTS.get(loc, 0) * mod
+        for af in tpl_flag_affects(tpl):
+            score += _gear_affect_score(af)
+    for af in obj.get("affect_list", []):
+        score += _gear_affect_score(af)
+    return score
+
 # [PRIMESUD] (threshold, prefix, suffix) -- prefix/suffix split around the
 # item name, avoiding .format()/{}-placeholder use (pitfall 8)
 _WIELD_SKILL_MSG = (
@@ -1004,6 +1137,268 @@ def wear_obj(player, obj, fReplace):
         chprintln(player, pre + tpl["short_descr"] + suf)
 
 
+def _strength_after_swap(player, removed, added=()):
+    """Return STR after removing and adding items. [PRIMESUD]"""
+    delta = 0
+    for obj in removed:
+        delta -= _item_stat_modifier(obj, ITEM_DEFS[obj_vnum(obj)], "str")
+    for obj in added:
+        delta += _item_stat_modifier(obj, ITEM_DEFS[obj_vnum(obj)], "str")
+    if not delta:
+        return get_curr_stat(player, "str")
+    mods = player.setdefault("mod_stat", {})
+    old = mods.get("str", 0)
+    mods["str"] = old + delta
+    try:
+        return get_curr_stat(player, "str")
+    finally:
+        if old:
+            mods["str"] = old
+        else:
+            mods.pop("str", None)
+
+
+def _wield_holds_after_swap(player, removed, added=()):
+    """Return whether current weapon survives an item swap. [PRIMESUD]"""
+    wield = player["equip"].get("wield")
+    if wield is None or any(wield is obj for obj in removed):
+        return True
+    tpl = ITEM_DEFS[obj_vnum(wield)]
+    return (tpl.get("weight", 0)
+            <= STR_APP_WIELD[_strength_after_swap(
+                player, removed, added)] * 10)
+
+
+def _can_wear_best(player, obj, tpl):
+    """Return whether wear best may equip obj (sight/level/align). [PRIMESUD]"""
+    if (not can_see_obj(player, obj)
+            or tpl.get("level", 1) > player["level"]):
+        return False
+    extra = item_extra_flags(obj, tpl)
+    return not ((extra.get("anti_evil") and is_evil(player))
+                or (extra.get("anti_good") and is_good(player))
+                or (extra.get("anti_neutral") and is_neutral(player)))
+
+
+def _best_wear_candidate(player, flag):
+    """Return highest-scoring eligible inventory item for flag. [PRIMESUD]"""
+    best = None
+    best_score = 0
+    for obj in player["inv"]:
+        tpl = ITEM_DEFS[obj_vnum(obj)]
+        if (_wear_flag(obj, tpl) != flag
+                or not _can_wear_best(player, obj, tpl)):
+            continue
+        score = gear_score(player, obj)
+        if score > best_score:
+            best = obj
+            best_score = score
+    return best, best_score
+
+
+def _noremove_worn(obj):
+    """Return whether a worn item refuses removal. [PRIMESUD]"""
+    return item_extra_flags(obj, ITEM_DEFS[obj_vnum(obj)]).get("noremove")
+
+
+def _best_hand_layout(player):
+    """Re-arrange hand slots into the best-scoring legal layout. [PRIMESUD]
+
+    Enumerates wield/secondary/shield/hold combinations under the existing
+    equip rules (noremove locks, small-size two-hands vs shield, secondary
+    excludes shield and held item, do_second weight rules, STR wield limit
+    evaluated after the whole swap) and applies the layout with the highest
+    combined gear score if it strictly beats the current hands.
+
+    Returns:
+        bool: True if any hand slot changed.
+    """
+    equip = player["equip"]
+    current = {f: equip.get(f) for f in _HAND_FLAGS}
+    locked = {f: current[f] is not None and _noremove_worn(current[f])
+              for f in _HAND_FLAGS}
+    small = _get_size(player) < SIZE_RANK["large"]
+
+    # Score each item once; enumeration below revisits items many times.
+    scores = {}
+
+    def pool(flag, worn):
+        out = []
+        for obj in worn:
+            if obj is not None:
+                scores[id(obj)] = gear_score(player, obj)
+                out.append((scores[id(obj)], obj))
+        for obj in player["inv"]:
+            tpl = ITEM_DEFS[obj_vnum(obj)]
+            if _wear_flag(obj, tpl) == flag and _can_wear_best(player, obj, tpl):
+                scores[id(obj)] = gear_score(player, obj)
+                out.append((scores[id(obj)], obj))
+        return out
+
+    weapons = pool("wield", (current["wield"], current["secondary"]))
+    shields = pool("shield", (current["shield"],))
+    holds = pool("hold", (current["hold"],))
+    best_shield = None
+    for score, obj in shields:
+        if best_shield is None or score > best_shield[0]:
+            best_shield = (score, obj)
+    best_hold = None
+    for score, obj in holds:
+        if best_hold is None or score > best_hold[0]:
+            best_hold = (score, obj)
+
+    def try_layout(primary, secondary, shield, hold):
+        """Return (score, layout dict) if the combination is legal."""
+        if ((locked["wield"] and primary is not current["wield"])
+                or (locked["secondary"] and secondary is not current["secondary"])
+                or (locked["shield"] and shield is not current["shield"])
+                or (locked["hold"] and hold is not current["hold"])):
+            return None
+        if secondary is not None:
+            # cf. do_second: needs a primary, excludes shield and held item.
+            if (primary is None or primary is secondary
+                    or shield is not None or hold is not None):
+                return None
+        if primary is not None:
+            ptpl = ITEM_DEFS[obj_vnum(primary)]
+            if (small and shield is not None
+                    and item_weapon_flags(primary, ptpl).get("two_hands")):
+                return None
+        layout = {"wield": primary, "secondary": secondary,
+                  "shield": shield, "hold": hold}
+        kept = [o for o in layout.values() if o is not None]
+        removed = [o for o in current.values()
+                   if o is not None and not any(o is k for k in kept)]
+        added = [o for o in kept
+                 if not any(o is c for c in current.values())]
+        limit = STR_APP_WIELD[_strength_after_swap(player, removed, added)]
+        score = 0
+        if primary is not None:
+            pw = ITEM_DEFS[obj_vnum(primary)].get("weight", 0)
+            if pw > limit * 10:
+                return None
+            if secondary is not None:
+                sw = ITEM_DEFS[obj_vnum(secondary)].get("weight", 0)
+                # cf. do_second weight rules
+                if sw > limit // 2 or sw * 2 > pw:
+                    return None
+        for o in kept:
+            score += scores[id(o)]
+        return score, layout
+
+    base = 0
+    for o in current.values():
+        if o is not None:
+            base += scores[id(o)]
+
+    # ponytail: best shield/hold chosen by score alone; a worse shield whose
+    # STR bonus enables a heavier weapon is not explored.
+    best = None
+    best_score = base
+    shield_opts = (None, best_shield and best_shield[1])
+    hold_opts = (None, best_hold and best_hold[1])
+    for primary in [None] + [o for _s, o in weapons]:
+        for shield in shield_opts:
+            for hold in hold_opts:
+                for secondary in [None] + [o for _s, o in weapons]:
+                    opt = try_layout(primary, secondary, shield, hold)
+                    if opt is not None and opt[0] > best_score:
+                        best_score, best = opt
+    if best is None:
+        return False
+
+    # affect_modify floor-drops a too-heavy wield the moment STR dips, and
+    # removals run before adds. If a kept wield cannot survive the interim
+    # dip, park it in inventory across the swap; the equip phase re-wears
+    # it at post-add STR (shield/hold go on first).
+    removing = [current[f] for f in _HAND_FLAGS
+                if current[f] is not None and best[f] is not current[f]]
+    if (best["wield"] is not None and best["wield"] is current["wield"]
+            and not _wield_holds_after_swap(player, removing)):
+        if not remove_obj(player, "wield", True):
+            return False
+
+    for flag in _HAND_FLAGS:
+        cur = current[flag]
+        if cur is not None and best[flag] is not cur:
+            if not remove_obj(player, flag, True):
+                return False
+    changed = False
+    # Shield/hold first so their STR bonuses count for the wield check in
+    # wear_obj; layout legality already excludes hand conflicts.
+    for flag in ("shield", "hold", "wield"):
+        obj = best[flag]
+        if obj is not None and equip.get(flag) is not obj:
+            wear_obj(player, obj, False)
+            if equip.get(flag) is not obj:
+                return changed
+            changed = True
+    obj = best["secondary"]
+    if obj is not None and equip.get("secondary") is not obj:
+        # cf. do_second equip tail; align already filtered by _can_wear_best.
+        tpl = ITEM_DEFS[obj_vnum(obj)]
+        chprintln(player, "You wield " + tpl["short_descr"] + " in your off-hand.")
+        equip_char(player, obj, "secondary")
+        changed = True
+    return changed
+
+
+def _wear_best(player):
+    """Equip strictly better inventory gear by wear slot. [PRIMESUD]"""
+    changed = False
+    for flag in _BEST_WEAR_FLAGS:
+        slots = _DUAL_SLOTS.get(flag, (flag,))
+        while True:
+            candidate, candidate_score = _best_wear_candidate(player, flag)
+            if candidate is None:
+                break
+
+            target = None
+            target_score = 0
+            for slot in slots:
+                worn = player["equip"].get(slot)
+                if worn is None:
+                    if not _wield_holds_after_swap(player, (), (candidate,)):
+                        continue
+                    target = slot
+                    target_score = 0
+                    break
+                if _noremove_worn(worn):
+                    continue
+                if not _wield_holds_after_swap(player, (worn,), (candidate,)):
+                    continue
+                score = gear_score(player, worn)
+                if target is None or score < target_score:
+                    target = slot
+                    target_score = score
+            if target is None or candidate_score <= target_score:
+                break
+
+            outgoing = player["equip"].get(target)
+            if outgoing is not None:
+                # Removing +STR gear can interim-dip below the wield's
+                # weight, and affect_modify floor-drops it on the spot.
+                # Park the wield; _best_hand_layout re-equips it after.
+                if (not _wield_holds_after_swap(player, (outgoing,))
+                        and not remove_obj(player, "wield", True)):
+                    break
+                if not remove_obj(player, target, True):
+                    break
+            wear_obj(player, candidate, False)
+            # Identity check: `in` compares dicts by equality, and duplicate
+            # items (same vnum, fresh instances) are equal dicts.
+            if any(o is candidate for o in player["inv"]):
+                break
+            changed = True
+            if flag not in _DUAL_SLOTS:
+                break
+    # Hands last, so STR from freshly worn gear counts toward wield limits.
+    if _best_hand_layout(player):
+        changed = True
+    if not changed:
+        chprintln(player, "You are already wearing your best gear.")
+
+
 def do_wear(player, args):
     """Equip an item from inventory, or wear all wearable items (cf. 1stMud do_wear in act_obj.c).
 
@@ -1017,14 +1412,7 @@ def do_wear(player, args):
             if not can_see_obj(player, obj):  # cf. 1stMud get_obj_carry can_see_obj gate
                 continue
             tpl = ITEM_DEFS[obj["vnum"]]
-            if tpl.get("type") == "light":
-                slot = "light"
-            else:
-                try:
-                    slot = next(f for f in item_wear_flags(obj, tpl)
-                                if f != "take")
-                except StopIteration:
-                    slot = None
+            slot = _wear_flag(obj, tpl)
             if slot is not None and (slot in player["equip"] or slot in _DUAL_SLOTS):
                 equippable.append((obj, tpl, slot))
         if not equippable:
@@ -1043,6 +1431,9 @@ def do_wear(player, args):
         obj, tpl, slot = equippable[idx]
         wear_obj(player, obj, True)
         return "wear " + tpl.get("keywords", tpl["short_descr"]).split()[0]
+    if args[0] == "best":
+        _wear_best(player)
+        return
     if args[0] == "all":
         for obj in list(player["inv"]):
             if not can_see_obj(player, obj):  # cf. 1stMud do_wear all loop, act_obj.c:1724
@@ -1231,10 +1622,10 @@ def do_steal(player, args):
 
 
 def do_compare(player, args):
-    """Compare a carried weapon or armor piece against another (cf. 1stMud do_compare in act_info.c).
+    """Compare compatible carried equipment by gear score. [PRIMESUD]
 
-    With one arg: compares against the worn item of the same type sharing
-    a wear flag.  With two args: compares the two named carried items.
+    With one arg: compares against worn gear sharing its wear slot. With two
+    args: compares two named items sharing a wear slot.
 
     Args:
         player (dict): Player state dict.
@@ -1253,16 +1644,19 @@ def do_compare(player, args):
 
     if len(args) < 2:
         obj2 = None
-        wf1 = item_wear_flags(obj1, tpl1)
-        for o in player["equip"].values():
-            if o is None:
-                continue
-            tpl = ITEM_DEFS[obj_vnum(o)]
-            if (tpl.get("type") == tpl1.get("type")
-                    and any(f for f in item_wear_flags(o, tpl)
-                            if f != "take" and wf1.get(f))):
-                obj2 = o
-                break
+        obj2_score = None
+        flag1 = _wear_flag(obj1, tpl1)
+        if flag1 is not None:
+            for o in player["equip"].values():
+                if o is None:
+                    continue
+                tpl = ITEM_DEFS[obj_vnum(o)]
+                if (_wear_flag(o, tpl) == flag1
+                        and not item_extra_flags(o, tpl).get("noremove")):
+                    score = gear_score(player, o)
+                    if obj2_score is None or score < obj2_score:
+                        obj2_score = score
+                        obj2 = o
         if obj2 is None:
             chprintln(player, "You aren't wearing anything comparable.")
             return
@@ -1273,40 +1667,26 @@ def do_compare(player, args):
             return
     tpl2 = ITEM_DEFS[obj_vnum(obj2)]
 
-    msg = None
-    value1 = 0
-    value2 = 0
-
     if obj1 is obj2:
-        msg = "You compare $p to itself.  It looks about the same."
-    elif tpl1.get("type") != tpl2.get("type"):
-        msg = "You can't compare $p and $P."
+        score = int_str(gear_score(player, obj1))
+        act("You compare $p to itself.  Its gear score is " + score + ".",
+            player, obj1, obj2)
+        return
+    if (_wear_flag(obj1, tpl1) is None
+            or _wear_flag(obj1, tpl1) != _wear_flag(obj2, tpl2)):
+        act("You can't compare $p and $P.", player, obj1, obj2)
+        return
+
+    value1 = gear_score(player, obj1)
+    value2 = gear_score(player, obj2)
+    score1 = int_str(value1)
+    score2 = int_str(value2)
+    if value1 == value2:
+        msg = "$p [" + score1 + "] and $P [" + score2 + "] look about the same."
+    elif value1 > value2:
+        msg = "$p [" + score1 + "] looks better than $P [" + score2 + "]."
     else:
-        itype = tpl1.get("type")
-        if itype == "armor":
-            # 1stMud compares instance values (act_info.c:3331) -- quest gear scales
-            a1 = obj1.get("armor") or tpl1.get("armor", (0, 0, 0, 0))
-            a2 = obj2.get("armor") or tpl2.get("armor", (0, 0, 0, 0))
-            value1 = a1[0] + a1[1] + a1[2]
-            value2 = a2[0] + a2[1] + a2[2]
-        elif itype == "weapon":
-            # 1stMud new_format: (1 + dice_size) * dice_num, instance values (act_info.c:3337)
-            # [PRIMESUD] old-format branch dropped -- converter emits dice for all weapons
-            d1 = obj1.get("dice") or tpl1.get("dice", (0, 0, 0))
-            d2 = obj2.get("dice") or tpl2.get("dice", (0, 0, 0))
-            value1 = (1 + d1[1]) * d1[0]
-            value2 = (1 + d2[1]) * d2[0]
-        else:
-            msg = "You can't compare $p and $P."
-
-    if msg is None:
-        if value1 == value2:
-            msg = "$p and $P look about the same."
-        elif value1 > value2:
-            msg = "$p looks better than $P."
-        else:
-            msg = "$p looks worse than $P."
-
+        msg = "$p [" + score1 + "] looks worse than $P [" + score2 + "]."
     act(msg, player, obj1, obj2)
 
 

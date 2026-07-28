@@ -184,8 +184,9 @@ then the current input buffer (right-truncated to fit).  Implemented in
 
 ## Contextual target picker
 
-When a command (e.g. `kill`, `get`, `give`, `wear`, `practice`) is given without a
-target and multiple valid targets exist, a numbered menu is presented:
+When a command (e.g. `kill`, `get`, `give`, `wear`, `practice`, `buy`, `sell`)
+is given without a target and multiple valid targets exist, a numbered menu
+is presented:
 
 ```
 [Target] Choose a target:
@@ -197,7 +198,34 @@ target and multiple valid targets exist, a numbered menu is presented:
 The player types a digit and Enter.  Option 1 is the default and pre-selected.
 For bare `give`, the first picker includes carried items and available silver
 or gold. Choosing coins prompts for the amount, then the recipient picker.
+Bare `buy` lists visible shop stock with level, price, and quantity; pet shops
+list pets with level and price. Bare `sell` lists only carried items the
+shopkeeper accepts, with the offered price. Typed forms remain available for
+bulk purchases and custom pet names.
 Implemented in `picker.py:pick_from`; blocks until a valid choice is made.
+
+---
+
+## Gear score and `wear best`
+
+`compare` reports a numerical gear score for equipment sharing a wear slot.
+The balanced combat heuristic includes player-scaled weapon damage, all four
+base armor values, template and runtime numeric modifiers, equipment affects,
+resistance flags, and implemented weapon procs. Positive base armor protects
+because equip subtracts it from AC; negative `ac` modifiers protect because
+affect application adds them to all four AC buckets. Negative saving-throw
+modifiers are likewise beneficial. Unknown or mechanically inert flags score
+zero.
+
+`wear best` compares visible, level-appropriate, alignment-compatible inventory
+items against each occupied slot. It replaces only strict upgrades, keeps worn
+items on ties, fills paired finger/neck/wrist slots independently, and preserves
+`noremove` gear. Hand slots (wield/secondary/shield/hold) are optimized as one
+layout: every legal combination -- weapon and shield, two-handed, dual wield,
+held item -- is scored under the normal equip rules (noremove locks, small-size
+two-handed vs shield conflict, secondary weight rules, STR wield limit evaluated
+after the whole swap) and the best combined layout wins if it strictly beats the
+current hands.
 
 ---
 

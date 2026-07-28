@@ -36,7 +36,7 @@ close|close a door or container
 cls|clear the screen (alias for clear)
 commands|this list
 compact|toggle compact mode
-compare|compare an item with what you have equipped
+compare|compare compatible equipment by gear score
 consider|judge how dangerous a mob is to fight
 credits|the people behind the game
 debug|playtest tools: goto, load, slay, stat, ...
@@ -151,7 +151,7 @@ value|ask a shopkeeper what an item is worth
 version|show the game version
 visible|step out of hiding / cancel invisibility
 wake|wake up (yourself)
-wear|wear armor or clothing from your inventory
+wear|wear an item, or equip upgrades: wear best
 weather|show the current weather (must be outdoors)
 west|move west
 where|show area info, or find mobs: where <name>
