@@ -19,26 +19,28 @@ _DIR_DELTA = {
 _EXIT_CHAR        = {"n": "|", "s": "|", "e": "-", "w": "-"}
 _EXIT_CHAR_CLOSED = {"n": "I", "s": "I", "e": "=", "w": "="}  # cf. map_chars_closed in automap.c
 
-# cf. 1stMud show_map legend (automap.c); 16 entries for FULL_MAP_HALF_H=8 (GH_FULL=17)
-# Closed Doors omitted -- PrimeSUD skips closed exits in map traversal
+# cf. 1stMud show_map legend (automap.c); exactly 17 entries fit at
+# FULL_MAP_HALF_H=8 (GH_FULL=17) -- build_full_lines drops any past that.
+# Closed Doors omitted -- PrimeSUD skips closed exits in map traversal.
+# [PRIMESUD] 1stMud's blank spacer row dropped to make room for '%'.
 _FULL_LEGEND = [
     "   X   You are here",          # y=0
-    "",                             # y=1  blank (cf. 1stMud)
-    "   o   Normal Rooms",          # y=2
-    "   U   Room (up exit)",        # y=3
-    "   D   Room (down exit)",      # y=4
-    "   B   Room (up/down exit)",   # y=5
-    "   |-  Exits",                 # y=6
-    "   I=  Closed Doors",          # y=7
-    "   *   Field/Forest",          # y=8
-    "   !   Hills",                 # y=9
-    "   @   Mountain",              # y=10
-    "   =   Water",                 # y=11
-    "   ~   Air",                   # y=12
-    "   +   Desert",                # y=13
-    "   :   Road/Path",             # y=14
-    "   &   Swamp",                 # y=15
-    "   #   Cave",                  # y=16
+    "   o   Normal Rooms",          # y=1
+    "   U   Room (up exit)",        # y=2
+    "   D   Room (down exit)",      # y=3
+    "   B   Room (up/down exit)",   # y=4
+    "   |-  Exits",                 # y=5
+    "   I=  Closed Doors",          # y=6
+    "   *   Field/Forest",          # y=7
+    "   !   Hills",                 # y=8
+    "   @   Mountain",              # y=9
+    "   =   Water",                 # y=10
+    "   ~   Air",                   # y=11
+    "   +   Desert",                # y=12
+    "   :   Road/Path",             # y=13
+    "   &   Swamp",                 # y=14
+    "   #   Cave",                  # y=15
+    "   %   Unloaded area",         # y=16  [PRIMESUD]
 ]
 
 
@@ -46,7 +48,10 @@ def _room_char(room):
     """Map character for a room (cf. 1stMud `show_map` in automap.c: room character selection)."""
     # [PRIMESUD] 1stMud only shows U/D/B for explored rooms; we show them unconditionally.
     if room is None:
-        return 'o'
+        # [PRIMESUD] Room def not resident: an exit into an unloaded area (see
+        # _map_exits' _data note) or a dangling vnum.  '%' is unused by
+        # SECTOR_SYMBOLS, so it never masquerades as a real sector.
+        return '%'
     has_u = 'u' in room['exits']
     has_d = 'd' in room['exits']
     if has_u and has_d:
@@ -72,6 +77,13 @@ def _map_exits(rooms, start_vnum, grid, colors, start_gx, start_gy, max_depth,
     A dark destination (without observer infrared) is left blank and not
     traversed, standing in for 1stMud's can_see_room gate (can_see_room
     itself stays permissive elsewhere -- DESIGN.md "can_see_room").
+
+    [PRIMESUD] `rooms` must be the resident room dict (world.ROOM_DEFS._data),
+    never the LazyDict itself: a miss on the LazyDict lazy-loads the whole
+    owning area, so mapping a room near a border would load the neighbour
+    area on every look (and eviction would drop it again next step).  A
+    missing dest still draws its corridor and a '%' cell -- the exit stays
+    visible, and walking into it loads the area for real.
     """
     gh = len(grid)
     gw = len(grid[0]) if gh else 0

@@ -806,7 +806,9 @@ def do_look(player, args):
         desc_lines = _wrap_paragraphs(room["desc"], text_w)
 
         if automap_on:
-            map_lines = build_compact_lines(player, ROOM_DEFS)
+            # _data, not the LazyDict: mapping must not lazy-load neighbour
+            # areas (see _map_exits docstring). [PRIMESUD]
+            map_lines = build_compact_lines(player, ROOM_DEFS._data)
             n = max(len(map_lines), len(desc_lines))
             for i in range(n):
                 ml = map_lines[i] if i < len(map_lines) else ' ' * COMPACT_W
@@ -1684,7 +1686,8 @@ def do_map(player, args):
     if not check_blind(player):   # cf. 1stMud do_map automap.c:567
         return
     # [PRIMESUD] list sent unjoined: batch-rendered by terminal.print_lines
-    chprintln(player, list(build_full_lines(player, ROOM_DEFS)))
+    # _data: resident rooms only, no lazy-load (see _map_exits docstring). [PRIMESUD]
+    chprintln(player, list(build_full_lines(player, ROOM_DEFS._data)))
 
 
 def do_affects(player, args):
