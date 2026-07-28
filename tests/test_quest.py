@@ -122,11 +122,13 @@ def test_retrieve_flow(fresh):
     fresh["quest_obj"] = _QUEST_PIECES[0]
     token = {"vnum": _QUEST_PIECES[0]}
     # not carrying: complete refuses without reward
+    assert not quest._quest_can_complete(fresh)
     assert quest_complete(fresh, _questman(fresh)) is False
     # pickup flips to return state
     fresh["inv"].append(token)
     quest_obj_check(fresh, token)
     assert fresh["quest_status"] == QUEST_RETURN_RETRIEVE
+    assert quest._quest_can_complete(fresh)
     assert quest_complete(fresh, _questman(fresh)) is True
     assert fresh["quest_status"] == QUEST_NONE
     assert token not in fresh["inv"]  # token extracted on reward
@@ -157,6 +159,103 @@ def test_quit_penalizes(fresh):
     assert fresh["quest_status"] == QUEST_NONE
     # [PRIMESUD] lenient quit penalty: announced 15, not 1stMud's 30
     assert fresh["quest_time"] == mins_to_ticks(QUEST_TIME * 3 // 4)
+
+
+def test_quit_auto_completes_finished_quest(fresh):
+    fresh["quest_status"] = QUEST_RETURN_KILL
+    fresh["quest_giver"] = 200
+    fresh["quest_time"] = 10
+    before = fresh["quest_points"]
+
+    assert do_quest(fresh, ["quit"]) == "quest complete"
+
+    assert fresh["quest_status"] == QUEST_NONE
+    assert fresh["quest_points"] > before
+    assert fresh["quest_time"] == mins_to_ticks(QUEST_TIME)
+
+
+def test_return_retrieve_without_token_can_still_be_quit(fresh):
+    fresh["quest_status"] = QUEST_RETURN_RETRIEVE
+    fresh["quest_giver"] = 200
+    fresh["quest_time"] = 10
+    fresh["quest_obj"] = _QUEST_PIECES[0]
+
+    assert not quest._quest_can_complete(fresh)
+    assert do_quest(fresh, ["quit"]) is None
+    assert fresh["quest_status"] == QUEST_NONE
+    assert fresh["quest_time"] == mins_to_ticks(QUEST_TIME * 3 // 4)
+
+
+def test_bare_quest_picker_hides_quit_when_completeable(
+        fresh, monkeypatch):
+    fresh["quest_status"] = QUEST_RETURN_KILL
+    fresh["quest_giver"] = 200
+    fresh["quest_time"] = 10
+    seen = {}
+
+    def pick(title, labels):
+        seen["title"] = title
+        seen["labels"] = labels
+        return -1
+
+    monkeypatch.setattr(quest, "pick_from", pick)
+    do_quest(fresh, [])
+
+    assert seen["title"] == "Quest: choose an action"
+    assert "Complete quest" in seen["labels"]
+    assert "Give up quest" not in seen["labels"]
+
+
+def test_bare_quest_nested_buy_picker(fresh, monkeypatch):
+    fresh["quest_points"] = 1000
+    calls = []
+
+    def pick(title, labels):
+        calls.append((title, labels))
+        wanted = ("Buy quest reward" if title == "Quest: choose an action"
+                  else "shield")
+        return next(i for i, label in enumerate(labels)
+                    if wanted.lower() in label.lower())
+
+    monkeypatch.setattr(quest, "pick_from", pick)
+    assert do_quest(fresh, []) == "quest buy shield"
+
+    assert [call[0] for call in calls] == [
+        "Quest: choose an action", "Buy which quest reward?",
+    ]
+    assert fresh["quest_points"] == 250
+    assert any(o["vnum"] == 210 for o in fresh["inv"])
+
+
+def test_bare_quest_away_shows_info_without_picker(fresh, monkeypatch):
+    lines = []
+    monkeypatch.setattr(quest, "_find_spec_mob", lambda *_args: None)
+    monkeypatch.setattr(
+        quest, "pick_from",
+        lambda *_args: pytest.fail("away-from-questmaster picker opened"))
+    monkeypatch.setattr(
+        quest, "chprintln",
+        lambda _player, text="": lines.append(text))
+
+    assert do_quest(fresh, []) == "quest info"
+    assert any("aren't currently on a quest" in line for line in lines)
+
+
+def test_quest_info_includes_active_time(fresh, monkeypatch):
+    fresh["quest_status"] = QUEST_KILL
+    fresh["quest_time"] = mins_to_ticks(12)
+    fresh["quest_mob"] = 3062
+    fresh["quest_mob_name"] = "a target"
+    fresh["quest_room_name"] = "Somewhere"
+    fresh["quest_area_name"] = "Test Area"
+    lines = []
+    monkeypatch.setattr(
+        quest, "chprintln",
+        lambda _player, text="": lines.append(text))
+
+    do_quest(fresh, ["info"])
+
+    assert "You have 12 minutes remaining to complete this quest." in lines
 
 
 def test_qp_cap_32000(fresh):
@@ -215,6 +314,19 @@ def test_shop_sell_back_third(fresh):
     do_quest(fresh, ["buy", "shield"])
     assert fresh["quest_points"] == 0
     do_quest(fresh, ["sell", "shield"])
+    assert fresh["quest_points"] == 750 // 3
+    assert not any(o["vnum"] == 210 for o in fresh["inv"])
+
+
+def test_shop_sell_picker(fresh, monkeypatch):
+    fresh["quest_points"] = 750
+    do_quest(fresh, ["buy", "shield"])
+    monkeypatch.setattr(
+        quest, "pick_from",
+        lambda title, labels: next(
+            i for i, label in enumerate(labels) if "Shield" in label))
+
+    assert do_quest(fresh, ["sell"]) == "quest sell shield"
     assert fresh["quest_points"] == 750 // 3
     assert not any(o["vnum"] == 210 for o in fresh["inv"])
 

@@ -30,11 +30,12 @@ from classes import lvl_bonus
 from comm import do_function, do_say
 from config import MAX_LEVEL, mins_to_ticks, ticks_to_mins, on_minute
 from races import RACE_TABLE, race_lookup
-from handler import (chprintln, act, is_evil, is_good, is_name,
+from handler import (chprintln, act, is_evil, is_good, is_name, can_see_obj,
                      unequip_char, equip_char, TO_CHAR, TO_ROOM, TO_VICT,
                      TO_NOTVICT)
 from item import (create_object, obj_vnum, get_obj_list, item_extra_flags,
                   item_wear_flags)
+from picker import pick_from
 from urandom import randint
 from util import num_str, pad_right
 
@@ -295,6 +296,31 @@ def qobj_lookup(obj):
         if entry[1] == vnum:
             return i
     return -1
+
+
+def _quest_can_complete(player):
+    """Whether the current quest can receive its reward now. [PRIMESUD]"""
+    if player.get("quest_time", 0) <= 0:
+        return False
+    status = player.get("quest_status", QUEST_NONE)
+    if status in (QUEST_RETURN_KILL, QUEST_RETURN_FINDMOB,
+                  QUEST_RETURN_FINDROOM, QUEST_RETURN_DELIVER):
+        return True
+    if status != QUEST_RETURN_RETRIEVE:
+        return False
+    ovnum = player.get("quest_obj", 0)
+    return any(obj_vnum(obj) == ovnum for obj in player["inv"])
+
+
+def _pick_quest_table_item(title):
+    """Pick an item from the questmaster's reward table. [PRIMESUD]"""
+    labels = []
+    for _name, vnum, cost in QUEST_TABLE:
+        tpl = ITEM_DEFS.get(vnum)
+        labels.append("[" + num_str(cost) + "qp] "
+                      + (tpl["short_descr"] if tpl else "Unavailable"))
+    idx = pick_from(title, labels)
+    return QUEST_TABLE[idx][0] if idx >= 0 else None
 
 
 def obj_cost(obj):
@@ -802,8 +828,7 @@ def quest_update():
     else:
         player["quest_time"] -= 1
         if player["quest_time"] <= 0:
-            # [PRIMESUD] "{?" (random colour) rendered as {C
-            chprintln(player, "{WYou may now {Cquest{W again.{x")
+            chprintln(player, "{WYou may now {?quest{W again.{x")
 
 
 def _giver_name(player):
@@ -817,20 +842,55 @@ def do_quest(player, args):
     """Quest command: info/request/complete/quit and the questmaster shop
     list/buy/sell/identify (cf. 1stMud do_quest in quest.c).
 
-    Immortal-only branches (reset, typed request menu) not ported.
+    [PRIMESUD] Bare command opens a contextual picker at a questmaster;
+    elsewhere it shows quest info directly. Bare buy/sell/identify commands
+    open item pickers. Immortal-only branches (reset, typed request menu)
+    not ported.
     """
+    if not args:
+        questman = _find_spec_mob(player, "spec_questmaster")
+        if questman is None:
+            do_quest(player, ["info"])
+            return "quest info"
+
+        status = player.get("quest_status", QUEST_NONE)
+        same_giver = (status != QUEST_NONE
+                      and player.get("quest_giver", 0) == questman["tpl"])
+        actions = [("Quest status", "info")]
+        if status == QUEST_NONE and player.get("quest_time", 0) <= 0:
+            actions.append(("Request a quest", "request"))
+        if same_giver:
+            actions.append(("Complete quest", "complete"))
+        actions.extend((
+            ("List quest rewards", "list"),
+            ("Buy quest reward", "buy"),
+            ("Sell quest item", "sell"),
+            ("Identify quest reward", "identify"),
+        ))
+        if same_giver and not _quest_can_complete(player):
+            actions.append(("Give up quest", "quit"))
+
+        idx = pick_from("Quest: choose an action", [entry[0] for entry in actions])
+        if idx < 0:
+            return
+        action = actions[idx][1]
+        result = do_quest(player, [action])
+        if action in ("buy", "sell", "identify"):
+            return result
+        return result or "quest " + action
+
     arg1 = args[0].lower() if args else ""
     arg2 = args[1].lower() if len(args) > 1 else ""
-
-    if arg1 == "":
-        # 1stMud cmd_syntax lists "complate" [sic]; typo fixed [PRIMESUD]
-        chprintln(player, "Syntax: quest info|request|complete|list|buy|quit|sell|identify")
-        chprintln(player, "For more information, see 'HELP QUEST'.")
-        return
 
     if _prefix(arg1, "info"):
         status = player.get("quest_status", QUEST_NONE)
         chprintln(player, "")
+        if status > QUEST_NONE:
+            # [PRIMESUD] HELP QUEST promises the remaining time, but 1stMud's
+            # active-objective branches never print it (see docs/FIXES.md).
+            chprintln(player, "You have "
+                      + _intstr(ticks_to_mins(player.get("quest_time", 0)), "minute")
+                      + " remaining to complete this quest.")
         if status == QUEST_NONE:
             chprintln(player, "You aren't currently on a quest.")
             chprintln(player,
@@ -903,37 +963,62 @@ def do_quest(player, args):
         return
 
     if _prefix(arg1, "buy"):
+        picked = False
         if arg2 == "":
-            chprintln(player, "To buy an item, type 'quest buy <item>'.")
-            return
+            arg2 = _pick_quest_table_item("Buy which quest reward?")
+            if arg2 is None:
+                return
+            picked = True
         i = quest_lookup(arg2)
         if i == -1:
             mob_tell(player, questman,
                      "I don't have that item, " + player["name"] + ".")
-            return
+            return ("quest buy " + arg2) if picked else None
         name, vnum, cost = QUEST_TABLE[i]
         if player.get("quest_points", 0) < cost:
             mob_tell(player, questman,
                      "You need " + _intstr(cost, "questpoint") + " for that.")
-            return
+            return ("quest buy " + name) if picked else None
         # 1stMud vnum 0 = nohunger service -- [PRIMESUD] omitted from table
         obj = create_object(vnum)
         if obj is None:
             chprintln(player, "That object could not be found, contact an immortal.")
-            return
+            return ("quest buy " + name) if picked else None
         player["quest_points"] -= cost
         update_questobj(player, obj)  # cf. 1stMud obj_to_char quest hook
         act("$N gives $p to $n.", player, obj, questman, TO_ROOM)
         act("$N gives you $p.", player, obj, questman, TO_CHAR)
         player["inv"].append(obj)
         world.save_pending = True  # cf. 1stMud save_char_obj
-        return
+        return ("quest buy " + name) if picked else None
 
     if _prefix(arg1, "sell"):
+        picked = False
+        obj = None
         if arg2 == "":
-            chprintln(player, "To sell an item, type 'quest sell <item>'.")
-            return
-        obj = get_obj_list(arg2, player["inv"], ITEM_DEFS, player)
+            sellables = []
+            labels = []
+            for carried in player["inv"]:
+                i = qobj_lookup(carried)
+                tpl = ITEM_DEFS[obj_vnum(carried)]
+                if (i >= 0
+                        and can_see_obj(player, carried)
+                        and item_extra_flags(carried, tpl).get("quest")):
+                    sellables.append(carried)
+                    labels.append("[" + num_str(QUEST_TABLE[i][2] // 3)
+                                  + "qp] "
+                                  + (carried.get("short_descr")
+                                     or tpl["short_descr"]))
+            if not sellables:
+                chprintln(player, "You have no quest items to sell.")
+                return
+            idx = pick_from("Sell which quest item?", labels)
+            if idx < 0:
+                return
+            obj = sellables[idx]
+            picked = True
+        else:
+            obj = get_obj_list(arg2, player["inv"], ITEM_DEFS, player)
         if obj is None:
             chprintln(player, "Which item is that?")
             return
@@ -945,34 +1030,38 @@ def do_quest(player, args):
             mob_tell(player, questman,
                      "I only take items I sell, " + player["name"] + ".")
             return
+        name = QUEST_TABLE[i][0]
         cost = QUEST_TABLE[i][2]
         player["quest_points"] = player.get("quest_points", 0) + cost // 3
         act("$N takes $p from you for " + _intstr(cost // 3, "questpoint") + ".",
             player, obj, questman, TO_CHAR)
         player["inv"].remove(obj)  # cf. 1stMud extract_obj
         world.save_pending = True  # cf. 1stMud save_char_obj
-        return
+        return ("quest sell " + name) if picked else None
 
     if _prefix(arg1, "identify"):
+        picked = False
         if arg2 == "":
-            chprintln(player, "To identify an item, type 'quest identify <item>'.")
-            return
+            arg2 = _pick_quest_table_item("Identify which quest reward?")
+            if arg2 is None:
+                return
+            picked = True
         i = quest_lookup(arg2)
         if i == -1:
             mob_tell(player, questman, "I don't have that item.")
-            return
+            return ("quest identify " + arg2) if picked else None
         name, vnum, cost = QUEST_TABLE[i]
         obj = create_object(vnum)
         if obj is None:
             chprintln(player, "That object could not be found, contact an immortal.")
-            return
+            return ("quest identify " + name) if picked else None
         update_questobj(player, obj)
         act("$p costs $T.", player, obj, _intstr(cost, "questpoint"), TO_CHAR)
         from magic import spell_identify  # deferred: magic imports quest
         # cf. 1stMud spell_identify(0, ch->level, ch, obj, TAR_OBJ_INV)
         spell_identify(0, player["level"], player, obj, None)
         # temp object discarded (cf. 1stMud extract_obj)
-        return
+        return ("quest identify " + name) if picked else None
 
     if _prefix(arg1, "request"):
         # 1stMud imm-only typed request menu not ported
@@ -1008,11 +1097,16 @@ def do_quest(player, args):
         return
 
     if _prefix(arg1, "quit") or _prefix(arg1, "fail"):
-        act("You inform $N you wish to quit $S quest.", player, None, questman, TO_CHAR)
         if player.get("quest_giver", 0) != questman["tpl"]:
             mob_tell(player, questman,
                      "I never sent you on a quest! Perhaps you're thinking of someone else.")
             return
+        # [PRIMESUD] Protect a completed quest from an accidental quit:
+        # reward it instead. Applies to typed commands and picker choices.
+        if _quest_can_complete(player):
+            quest_complete(player, questman)
+            return "quest complete"
+        act("You inform $N you wish to quit $S quest.", player, None, questman, TO_CHAR)
         if is_quester(player):
             # [PRIMESUD] 1stMud sets QUEST_TIME*3/2 = 30 but announces
             # "15 minutes"; resolved toward the lenient announced value
