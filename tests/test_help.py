@@ -73,11 +73,12 @@ def test_motd_entry(help_out):
 
 
 def test_last_entry_prints_to_eof(help_out):
-    # last entry's body terminates on EOF, not a following '#' header
+    # last entry's body terminates on EOF, not a following '#' header;
+    # max-level player so the test holds whatever entry sits last
     with open(info.HELP_INDEX, "rb") as f:
         last = f.read().rstrip(b"\n").rsplit(b"\n", 1)[-1]
     keywords = last.split(b"|", 3)[3].decode()
-    info.do_help(PLAYER, [keywords.split(" ")[0].lower()])
+    info.do_help({"level": 60}, [keywords.split(" ")[0].lower()])
     text = "\n".join(help_out)
     assert "Help Keywords : %s" % keywords in text
     assert "No help found" not in text
