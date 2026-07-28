@@ -1,12 +1,13 @@
 """Shortest route to an area or mob (cf. 1stMud do_path in act_enter.c)."""
 
 import world
-from config import DAM_OTHER, MAX_MORTAL_LEVEL
+from config import MAX_MORTAL_LEVEL
 from gquest import gq_is_target
 from handler import can_see, can_see_room, chprintln, is_name
 from info import _route
-from magic import _find_unloaded_mob, saves_spell
+from magic import _find_unloaded_mob
 from quest import is_quester
+from util import num_str
 from world import MOB_DEFS, ROOM_DEFS
 
 
@@ -52,8 +53,15 @@ def _mob_destination(player, mob):
             or mob.get("level", 0) >= player.get("level", 1) + 3
             or (not mob.get("is_npc")
                 and mob.get("level", 0) >= MAX_MORTAL_LEVEL)
-            or mob.get("imm_flags", {}).get("summon")
-            or saves_spell(player.get("level", 1), mob, DAM_OTHER)):
+            # [PRIMESUD] 1stMud also gates on saves_spell(ch->level, victim,
+            # DAM_OTHER).  Dropped: no skill or stat feeds it, so it is pure
+            # level-difference RNG on a free, no-feedback info command --
+            # the optimal play is to spam path until it rolls through.  The
+            # level signal it encoded is already carried deterministically by
+            # the level + 3 gate above.  It also made DAM_OTHER-immune (i.e.
+            # IMM_MAGIC) mobs permanently unpathable, which pathing never
+            # intended.  See docs/FIXES.md.
+            or mob.get("imm_flags", {}).get("summon")):
         return None
     return dst
 
@@ -61,9 +69,10 @@ def _mob_destination(player, mob):
 def do_path(player, args):
     """Show the shortest route to an area or mob (cf. 1stMud do_path in act_enter.c).
 
-    [PRIMESUD] Fixes upstream's inverted mob-target condition and searches
-    unloaded mobs through mobs.idx. Routing runs over the precomputed
-    border graph (paths.idx) and never loads areas at routing time.
+    [PRIMESUD] Fixes upstream's inverted mob-target condition, drops its
+    random saving-throw gate (see _mob_destination), and searches unloaded
+    mobs through mobs.idx. Routing runs over the precomputed border graph
+    (paths.idx) and never loads areas at routing time.
 
     Args:
         player (dict): Player state dict.
@@ -76,6 +85,8 @@ def do_path(player, args):
         chprintln(player, "You must be somewhere to go anywhere.")
         return
 
+    # [PRIMESUD] Mob lookup and routing can briefly block input.
+    chprintln(player, "{D[Calculating path...]{x")
     argument = " ".join(args)
     try:
         target_tag, target_name = _area_lookup(argument)
@@ -97,8 +108,8 @@ def do_path(player, args):
         elif route is None:
             chprintln(player, "No path to destination.")
         else:
-            chprintln(player, "Shortest path to %s is %d steps: %s."
-                      % (target_name, steps, route))
+            chprintln(player, "Shortest path to " + target_name + " is "
+                      + num_str(steps) + " steps: " + route + ".")
     finally:
         # Unlike run/gate, path does not move the player and trigger eviction.
         world.maybe_evict(player, True)

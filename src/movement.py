@@ -1532,6 +1532,8 @@ def do_run(player, args):
         idx = pick_from("Run to which area?", labels)
         if idx < 0:
             return
+        # [PRIMESUD] Routing blocks input briefly on the calculator.
+        chprintln(player, "{D[Calculating path...]{x")
         buf = find_path_to_area(player, candidates[idx][1])
         if not buf:
             chprintln(player, "You cannot get there from here.")

@@ -153,6 +153,7 @@ def test_run_picker_matches_area_order_and_shows_levels(
     player = _char_base()
     player["room"] = 100
     seen = {}
+    lines = []
 
     def pick(title, labels):
         seen["title"] = title
@@ -160,11 +161,14 @@ def test_run_picker_matches_area_order_and_shows_levels(
         return 0
 
     def route(_player, tag):
+        assert lines == ["{D[Calculating path...]{x"]
         seen["tag"] = tag
         return "n"
 
     monkeypatch.setattr(movement, "pick_from", pick)
     monkeypatch.setattr(movement, "find_path_to_area", route)
+    monkeypatch.setattr(movement, "chprintln",
+                        lambda _player, text="": lines.append(text))
 
     movement.do_run(player, [])
 

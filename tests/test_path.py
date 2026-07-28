@@ -59,7 +59,8 @@ def test_area_path_loads_nothing_beyond_source_area(fresh_world, monkeypatch):
 
     path_cmd.do_path(player, ["gam"])
 
-    assert out == ["Shortest path to gamma is 2 steps: 2n."]
+    assert out == ["{D[Calculating path...]{x",
+                   "Shortest path to gamma is 2 steps: 2n."]
     assert world._LOADED_AREAS == {"alpha"}
 
 
@@ -92,7 +93,6 @@ def test_mob_path_uses_index_fallback_and_actual_room(fresh_world, monkeypatch):
         return 2, mob
 
     monkeypatch.setattr(path_cmd, "_find_unloaded_mob", find_mob)
-    monkeypatch.setattr(path_cmd, "saves_spell", lambda *args: False)
     out = []
     monkeypatch.setattr(path_cmd, "chprintln",
                         lambda _ch, text="": out.append(text))
@@ -100,7 +100,8 @@ def test_mob_path_uses_index_fallback_and_actual_room(fresh_world, monkeypatch):
     path_cmd.do_path(player, ["dragon"])
 
     assert calls == ["dragon"]
-    assert out == ["Shortest path to a red dragon is 2 steps: ne."]
+    assert out == ["{D[Calculating path...]{x",
+                   "Shortest path to a red dragon is 2 steps: ne."]
 
 
 def test_path_no_args_prints_syntax(fresh_world, monkeypatch):
@@ -125,7 +126,8 @@ def test_area_path_to_current_area_needs_no_walk(fresh_world, monkeypatch):
 
     path_cmd.do_path(player, ["alp"])
 
-    assert out == ["No need to walk to get there!"]
+    assert out == ["{D[Calculating path...]{x",
+                   "No need to walk to get there!"]
 
 
 def test_mob_path_in_current_room_needs_no_walk(fresh_world, monkeypatch):
@@ -138,14 +140,14 @@ def test_mob_path_in_current_room_needs_no_walk(fresh_world, monkeypatch):
     mob.update({"id": 2, "is_npc": True, "tpl": 150,
                 "room": 100, "level": 10})
     world.chars[2] = mob
-    monkeypatch.setattr(path_cmd, "saves_spell", lambda *args: False)
     out = []
     monkeypatch.setattr(path_cmd, "chprintln",
                         lambda _ch, text="": out.append(text))
 
     path_cmd.do_path(player, ["dragon"])
 
-    assert out == ["No need to walk to get there!"]
+    assert out == ["{D[Calculating path...]{x",
+                   "No need to walk to get there!"]
 
 
 def test_mob_path_within_current_area(fresh_world, monkeypatch):
@@ -166,14 +168,14 @@ def test_mob_path_within_current_area(fresh_world, monkeypatch):
     mob.update({"id": 2, "is_npc": True, "tpl": 150,
                 "room": 101, "level": 10})
     world.chars[2] = mob
-    monkeypatch.setattr(path_cmd, "saves_spell", lambda *args: False)
     out = []
     monkeypatch.setattr(path_cmd, "chprintln",
                         lambda _ch, text="": out.append(text))
 
     path_cmd.do_path(player, ["dragon"])
 
-    assert out == ["Shortest path to a red dragon is 1 steps: n."]
+    assert out == ["{D[Calculating path...]{x",
+                   "Shortest path to a red dragon is 1 steps: n."]
 
 
 def test_mob_path_invisible_mob_hidden_without_detect(fresh_world, monkeypatch):
@@ -188,19 +190,19 @@ def test_mob_path_invisible_mob_hidden_without_detect(fresh_world, monkeypatch):
     world.chars[2] = mob
     monkeypatch.setattr(path_cmd, "_find_unloaded_mob",
                         lambda _arg, _ch: (None, None))
-    monkeypatch.setattr(path_cmd, "saves_spell", lambda *args: False)
     out = []
     monkeypatch.setattr(path_cmd, "chprintln",
                         lambda _ch, text="": out.append(text))
 
     path_cmd.do_path(player, ["dragon"])
-    assert out == ["No such destination."]
+    assert out == ["{D[Calculating path...]{x", "No such destination."]
 
     # detect invis restores get_char_world visibility
     player["affected_by"] = {"detect_invis": True}
     out[:] = []
     path_cmd.do_path(player, ["dragon"])
-    assert out == ["No need to walk to get there!"]
+    assert out == ["{D[Calculating path...]{x",
+                   "No need to walk to get there!"]
 
 
 def test_area_path_unreachable_reports_no_path(fresh_world, monkeypatch):
@@ -222,7 +224,7 @@ def test_area_path_unreachable_reports_no_path(fresh_world, monkeypatch):
 
     path_cmd.do_path(player, ["bet"])
 
-    assert out == ["No path to destination."]
+    assert out == ["{D[Calculating path...]{x", "No path to destination."]
 
 
 def test_mob_path_applies_fixed_level_restriction(fresh_world, monkeypatch):
@@ -236,14 +238,38 @@ def test_mob_path_applies_fixed_level_restriction(fresh_world, monkeypatch):
     mob.update({"id": 2, "is_npc": True, "tpl": 250,
                 "room": 200, "level": 23})
     world.chars[2] = mob
-    monkeypatch.setattr(path_cmd, "saves_spell", lambda *args: False)
     out = []
     monkeypatch.setattr(path_cmd, "chprintln",
                         lambda _ch, text="": out.append(text))
 
     path_cmd.do_path(player, ["dragon"])
 
-    assert out == ["No such destination."]
+    assert out == ["{D[Calculating path...]{x", "No such destination."]
+
+
+def test_mob_path_is_deterministic(fresh_world, monkeypatch):
+    """[PRIMESUD] 1stMud's saves_spell gate is dropped: an eligible mob routes
+    every time, never a coin flip.  A magic-immune mob (IS_IMMUNE to DAM_OTHER,
+    which used to save unconditionally) must route too."""
+    _setup_chain(fresh_world, monkeypatch, ("alpha", "beta"))
+    player = _player()
+    _ = ROOM_DEFS[100]
+    world._ensure_area_by_tag("beta")
+    MOB_DEFS._data[250] = {"keywords": "red dragon",
+                           "short_descr": "a red dragon"}
+    mob = _char_base()
+    mob.update({"id": 2, "is_npc": True, "tpl": 250, "room": 200,
+                "level": 10, "imm_flags": {"magic": True}})
+    world.chars[2] = mob
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    for _ in range(30):
+        out[:] = []
+        path_cmd.do_path(player, ["dragon"])
+        assert out == ["{D[Calculating path...]{x",
+                       "Shortest path to a red dragon is 1 steps: n."]
 
 
 def _register_partitioned_world(fw, monkeypatch):
@@ -281,7 +307,8 @@ def test_area_path_through_partitioned_area(fresh_world, monkeypatch):
 
     path_cmd.do_path(player, ["cee"])
 
-    assert out == ["Shortest path to cee is 4 steps: news."]
+    assert out == ["{D[Calculating path...]{x",
+                   "Shortest path to cee is 4 steps: news."]
 
 
 def test_mob_path_through_partitioned_area(fresh_world, monkeypatch):
@@ -295,14 +322,14 @@ def test_mob_path_through_partitioned_area(fresh_world, monkeypatch):
     mob.update({"id": 2, "is_npc": True, "tpl": 350,
                 "room": 300, "level": 10})
     world.chars[2] = mob
-    monkeypatch.setattr(path_cmd, "saves_spell", lambda *args: False)
     out = []
     monkeypatch.setattr(path_cmd, "chprintln",
                         lambda _ch, text="": out.append(text))
 
     path_cmd.do_path(player, ["dragon"])
 
-    assert out == ["Shortest path to a red dragon is 4 steps: news."]
+    assert out == ["{D[Calculating path...]{x",
+                   "Shortest path to a red dragon is 4 steps: news."]
 
 
 def test_route_merges_direction_runs_across_boundaries(
@@ -330,7 +357,8 @@ def test_route_merges_direction_runs_across_boundaries(
     path_cmd.do_path(player, ["bet"])
 
     # source leg "2n" + cross-area "n" merge into a single "3n" run
-    assert out == ["Shortest path to beta is 3 steps: 3n."]
+    assert out == ["{D[Calculating path...]{x",
+                   "Shortest path to beta is 3 steps: 3n."]
 
 
 def test_merge_runs_unit():
