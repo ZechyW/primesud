@@ -244,6 +244,77 @@ class TestCompare:
         assert scene["equip"]["body"] is better
         assert old in scene["inv"]
 
+    def test_bare_wear_picker_offers_best(self, scene, out, monkeypatch):
+        seen = {}
+        scene["equip"].update({"wield": None, "body": None})
+
+        def pick(title, labels):
+            seen["title"] = title
+            seen["labels"] = labels
+            return len(labels) - 1
+
+        monkeypatch.setattr(inventory, "pick_from", pick)
+
+        resolved = inventory.do_wear(scene, [])
+
+        assert seen["title"] == "Wear what?"
+        assert seen["labels"] == [
+            "a sword", "a dagger", "a vest", "[all]",
+            "[best] Equip strongest gear",
+        ]
+        assert resolved == "wear best"
+        assert scene["equip"]["body"] is not None
+        assert scene["equip"]["wield"] is not None
+
+    def test_bare_wear_picker_all_entry_resolves(self, scene, out, monkeypatch):
+        """The [all] entry equips everything and records its typed form."""
+        scene["equip"].update({"wield": None, "body": None})
+        # index 3 == "[all]", the slot right after the three items
+        monkeypatch.setattr(inventory, "pick_from", lambda title, labels: 3)
+
+        resolved = inventory.do_wear(scene, [])
+
+        assert resolved == "wear all"
+        assert scene["equip"]["body"] is not None
+        assert scene["equip"]["wield"] is not None
+
+    def test_bare_wear_picker_single_item_offers_best_not_all(self, scene, out,
+                                                              monkeypatch):
+        """With one equippable item, [all] is absent and index 1 is [best].
+
+        Guards the index collision: len(equippable) == best_idx == 1 here, so
+        a positional `idx == len(equippable)` test for [all] would swallow the
+        [best] pick (or the item pick, if the branches were reordered).
+        """
+        seen = {}
+        vest = scene["inv"][2]
+        scene["inv"] = [vest]
+        scene["equip"].update({"body": None})
+
+        def pick(title, labels):
+            seen["labels"] = labels
+            return 1
+
+        monkeypatch.setattr(inventory, "pick_from", pick)
+
+        resolved = inventory.do_wear(scene, [])
+
+        assert seen["labels"] == ["a vest", "[best] Equip strongest gear"]
+        assert resolved == "wear best"
+        assert scene["equip"]["body"] is vest
+
+    def test_bare_wear_picker_single_item_picks_item(self, scene, out, monkeypatch):
+        """Picking the lone item wears it singly, not via the [all] loop."""
+        vest = scene["inv"][2]
+        scene["inv"] = [vest]
+        scene["equip"].update({"body": None})
+        monkeypatch.setattr(inventory, "pick_from", lambda title, labels: 0)
+
+        resolved = inventory.do_wear(scene, [])
+
+        assert resolved == "wear vest"
+        assert scene["equip"]["body"] is vest
+
     def test_wear_best_replaces_weaker_paired_slot(self, scene, out):
         for vnum, hitroll in ((8004, 3), (8005, 1), (8006, 2)):
             ITEM_DEFS._data[vnum] = {

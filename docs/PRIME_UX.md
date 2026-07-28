@@ -202,9 +202,11 @@ Bare `buy` lists visible shop stock with level, price, and quantity; pet shops
 list pets with level and price. Bare `sell` lists only carried items the
 shopkeeper accepts, with the offered price; multi-item `drop`, `wear`, and
 `sell` pickers include an `[all]` choice. Typed forms remain available for bulk
-purchases and custom pet names. Bare `quest` shows status directly away from a
-questmaster; at one, it opens a contextual action picker for status,
-request/completion, giving up, and the quest shop. Quest and global-quest action
+purchases and custom pet names. Bare `wear` also offers `[best] Equip strongest
+gear`, equivalent to `wear best`, and is the only picker to carry it. Bare
+`quest` shows status directly away from a questmaster; at one, it opens a
+contextual action picker for status, request/completion, giving up, and the
+quest shop. Quest and global-quest action
 labels include their equivalent typed command in brackets. Buy, sell, and
 identify open item pickers with quest-point prices. A completed quest cannot be
 accidentally abandoned: `quest quit` completes it instead when its reward is

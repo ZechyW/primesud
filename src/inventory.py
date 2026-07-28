@@ -1426,7 +1426,13 @@ def do_wear(player, args):
 
     Args:
         player (dict): Player state dict.
-        args (list): Parsed command arguments; first token may be "all".
+        args (list): Parsed command arguments; first token may be "all", or
+            "best" for the [PRIMESUD] strict-upgrade sweep.
+
+    Returns:
+        str or None: [PRIMESUD] For picker-resolved calls, the equivalent typed
+            command, so game_loop records the action rather than bare "wear"
+            in command history. None when nothing was resolved.
     """
     if not args:
         equippable = []
@@ -1441,19 +1447,28 @@ def do_wear(player, args):
             chprintln(player, "You have nothing wearable.")
             return
         names = [tpl["short_descr"] for _, tpl, _ in equippable]
+        # [PRIMESUD] bracketed bulk entries; guard each pick on the same
+        # condition that appended it -- with one equippable item no "[all]" is
+        # offered and len(equippable) collides with best_idx, so a positional
+        # `idx == len(equippable)` test alone would depend on branch order.
         if len(equippable) > 1:
             names.append("[all]")
+        best_idx = len(names)
+        names.append("[best] (Equip strongest gear)")
         idx = pick_from("Wear what?", names)
         if idx < 0:
             return
-        if idx == len(equippable):
+        if idx == best_idx:
+            _wear_best(player)
+            return "wear best"
+        if len(equippable) > 1 and idx == len(equippable):
             for obj, _, _ in list(equippable):
                 wear_obj(player, obj, False)
-            return
+            return "wear all"
         obj, tpl, slot = equippable[idx]
         wear_obj(player, obj, True)
         return "wear " + tpl.get("keywords", tpl["short_descr"]).split()[0]
-    if args[0] == "best":
+    if args[0] == "best":  # [PRIMESUD] gear-score strict-upgrade sweep
         _wear_best(player)
         return
     if args[0] == "all":
