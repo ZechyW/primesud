@@ -442,6 +442,38 @@ class TestCompare:
         assert might in scene["inv"]
         assert world.rooms[3001]["items"] == []
 
+    def test_wear_best_secondary_str_cannot_prop_up_primary(self, scene, out):
+        # A secondary needs the primary wielded first (do_second), so its
+        # +STR may not justify a primary too heavy to wield without it.
+        self._hand_defs(scene)
+        ITEM_DEFS._data[8007] = {
+            "type": "weapon", "keywords": "greatmaul",
+            "short_descr": "a great maul", "level": 1, "weight": 150,
+            "weapon_type": "sword", "dice": (4, 8, 0),
+            "weapon_flags": {"two_hands": True},
+            "wear_flags": {"take": True, "wield": True}, "extra_flags": {},
+        }
+        ITEM_DEFS._data[8008] = {
+            "type": "weapon", "keywords": "strblade",
+            "short_descr": "a strength blade", "level": 1, "weight": 5,
+            "weapon_type": "sword", "dice": (1, 4, 0),
+            "stat_bonuses": {"str": 3},
+            "wear_flags": {"take": True, "wield": True}, "extra_flags": {},
+        }
+        sword = {"vnum": 8004}
+        maul = {"vnum": 8007}
+        blade = {"vnum": 8008}
+        scene["inv"] = [sword]
+        inventory.equip_char(scene, sword, "wield")
+        scene["inv"].extend([maul, blade])
+
+        inventory.do_wear(scene, ["best"])
+
+        # maul+blade would score highest but is illegal; dual wield wins.
+        assert scene["equip"]["wield"] is sword
+        assert scene["equip"]["secondary"] is blade
+        assert maul in scene["inv"]
+
     def test_wear_best_does_not_remove_strength_supporting_wield(self, scene, out):
         defs = (
             (8004, "might", "a ring of might", "finger", {"str": 3}, 0),

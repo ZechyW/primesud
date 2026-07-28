@@ -1271,7 +1271,11 @@ def _best_hand_layout(player):
                    if o is not None and not any(o is k for k in kept)]
         added = [o for o in kept
                  if not any(o is c for c in current.values())]
-        limit = STR_APP_WIELD[_strength_after_swap(player, removed, added)]
+        # A secondary cannot exist without the primary already wielded
+        # (do_second), so its stat mods may not prop up either weight
+        # check: evaluate STR as of the moment the primary goes on.
+        limit = STR_APP_WIELD[_strength_after_swap(
+            player, removed, [o for o in added if o is not secondary])]
         score = 0
         if primary is not None:
             pw = ITEM_DEFS[obj_vnum(primary)].get("weight", 0)
@@ -1318,11 +1322,24 @@ def _best_hand_layout(player):
         if not remove_obj(player, "wield", True):
             return False
 
+    def bail(changed):
+        """Re-wield the old primary so a failed apply never leaves the
+        player weaponless; all other items are already back in inventory.
+        try_layout mirrors every wear_obj check, so this should be
+        unreachable."""
+        old = current["wield"]
+        if (equip.get("wield") is None and old is not None
+                and any(o is old for o in player["inv"])):
+            wear_obj(player, old, False)
+            if equip.get("wield") is old:
+                changed = True
+        return changed
+
     for flag in _HAND_FLAGS:
         cur = current[flag]
         if cur is not None and best[flag] is not cur:
             if not remove_obj(player, flag, True):
-                return False
+                return bail(False)
     changed = False
     # Shield/hold first so their STR bonuses count for the wield check in
     # wear_obj; layout legality already excludes hand conflicts.
@@ -1331,11 +1348,7 @@ def _best_hand_layout(player):
         if obj is not None and equip.get(flag) is not obj:
             wear_obj(player, obj, False)
             if equip.get(flag) is not obj:
-                # ponytail: abort leaves hands part-done, all items safe in
-                # inventory. Only known trigger: a primary that needs the
-                # not-yet-equipped secondary's +STR. Full fix would order
-                # adds by STR contribution.
-                return changed
+                return bail(changed)
             changed = True
     obj = best["secondary"]
     if obj is not None and equip.get("secondary") is not obj:
