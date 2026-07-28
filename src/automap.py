@@ -66,7 +66,11 @@ def _room_char(room):
 def _room_color(room):
     """Sector colour code for a room (cf. 1stMud `show_map` in automap.c: room color selection)."""
     if room is None:
-        return ''
+        # [PRIMESUD] Unloaded-area '%' cells and their corridors: silver --
+        # brighter than the full map's {D. fill so border exits stay
+        # discoverable, muted vs bright sector colours, and deterministic on
+        # the compact map (uncoloured chars inherit the previous cell there).
+        return '{w'
     return SECTOR_COLORS.get(room.get('sector', 'inside'), '')
 
 
@@ -160,7 +164,14 @@ def _colored_row(grid, colors, y, x0, x1, full=False):
         c = colors[y][x]
         ch = grid[y][x]
         if full:
-            row += (" " + c + ch + "{D") if c else " {D."
+            if c:
+                row += " " + c + ch + "{D"
+            else:
+                # cf. 1stMud show_map: '.' fills *empty* cells only; an
+                # occupied cell without a sector colour (jungle '?',
+                # unloaded-area '%', uncoloured corridors/doors) still
+                # renders its char, in the row's {D.
+                row += " {D" + (ch if ch != ' ' else '.')
         else:
             row += (c + ch) if c else ch
     return row
