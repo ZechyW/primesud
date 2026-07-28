@@ -61,6 +61,9 @@ that into features rather than holes.
   at one, it offers valid quest actions and nested reward-shop pickers, while
   completed quests auto-complete instead of accepting an accidental quit
   (docs/PRIME_UX.md).
+- **Contextual global-quest hub** -- bare `gquest` shows the next-event
+  countdown or valid actions for the running event, with completed events
+  protected from accidental give-up (docs/PRIME_UX.md).
 - **Gear score and `wear best`** -- compatible equipment shares one combat-aware
   score used by `compare`; `wear best` equips strict per-slot upgrades and picks
   the best legal hand layout (shield, two-handed, dual wield) by combined score

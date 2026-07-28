@@ -153,7 +153,7 @@ FNKEY_TABLE = {
     15: ('cos', 'rest'),      # cos key -- index 22
     16: ('tan', 'stand'),     # tan key -- index 23
     17: ('ln',  'quest'),     # ln  key -- index 24; bare quest = contextual hub
-    18: ('log', 'gquest check'), # log key -- index 25
+    18: ('log', 'gquest'),    # log key -- index 25; bare gquest = contextual hub
     19: ('x2',  'inventory'), # x2  key -- index 26
     20: ('pm',  'equip'),     # +/- key -- index 27
     21: ('()',  'wear'),      # ()  key -- index 28

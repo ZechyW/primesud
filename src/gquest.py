@@ -22,6 +22,7 @@ from handler import chprintln
 from quest import (chance, is_quester, mob_tell, quest_target_ok,
                    quest_area_def, _find_spec_mob, _intstr, _prefix,
                    _QUEST_AREA_EXCLUDE)
+from picker import pick_from
 from urandom import randint
 from util import sstr, num_str, pad_left, pad_right
 
@@ -396,19 +397,41 @@ def do_gquest(player, args):
     """Global quest command (cf. 1stMud do_gquest in gquest.c).
 
     [PRIMESUD] 'progress' (other players) and 'hist' (note-board history)
-    skipped; immortal 'end'/'next' skipped.
+    skipped; immortal 'end'/'next' skipped. Bare command opens a contextual
+    picker while a gquest runs, or shows the next-start countdown otherwise.
     """
     arg1 = args[0].lower() if args else ""
 
     if arg1 == "":
-        chprintln(player, "Syntax: gquest join     - join a global quest")
-        chprintln(player, "        gquest quit     - quit the global quest")
-        chprintln(player, "        gquest info     - show global quest info")
-        chprintln(player, "        gquest time     - show global quest time")
-        chprintln(player, "        gquest check    - show what targets you have left")
-        chprintln(player, "        gquest complete - completes the current quest")
-        chprintln(player, "        gquest start    - starts a gquest")
-        return
+        if gquest_info["running"] == GQUEST_OFF:
+            do_gquest(player, ["time"])
+            return "gquest time"
+
+        if not gquest_info["joined"]:
+            actions = [("Quest info", "info")]
+            if (player.get("fighting") is None and not is_quester(player)
+                    and gquest_info["minlevel"] <= player["level"]
+                    <= gquest_info["maxlevel"]):
+                actions.append(("Join global quest", "join"))
+        elif _count_killed() == gquest_info["mob_count"]:
+            actions = [
+                ("Complete global quest", "complete"),
+                ("Quest info", "info"),
+            ]
+        else:
+            actions = [
+                ("Remaining targets", "check"),
+                ("Quest info", "info"),
+                ("Give up global quest", "quit"),
+            ]
+
+        idx = pick_from("Gquest: choose an action",
+                        [entry[0] for entry in actions])
+        if idx < 0:
+            return
+        action = actions[idx][1]
+        do_gquest(player, [action])
+        return "gquest " + action
 
     if _prefix(arg1, "start"):
         start_gquest(player, args[1:])
@@ -446,6 +469,10 @@ def do_gquest(player, args):
             # [PRIMESUD] "Your not" typo fixed
             chprintln(player, "You're not in a global quest.")
             return
+        if _count_killed() == gquest_info["mob_count"]:
+            # [PRIMESUD] Protect a completed gquest from accidental give-up.
+            do_gquest(player, ["complete"])
+            return "gquest complete"
         gquest_info["joined"] = False
         gquest_info["pmobs"] = []
         chprintln(player,

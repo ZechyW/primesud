@@ -1613,16 +1613,21 @@ YELL sends a message to all awake players within your area.
 
 Type a channel name by itself to turn it off.
 #0|world|GQUEST 'GLOBAL QUEST'
-Global quests get run 3 ways:
+Global quests get run 2 ways:
 1) A player starts one from the Register's Office using:
    'gquest start <min Level> <max level> <#mobs>'
    Trivia points cost is based on the number of mobs chosen.
 2) The mud starts one automatically
-3) An immortal starts one
+
+With no argument, GQUEST opens a menu of valid actions while a
+global quest is running; otherwise it shows when the next one
+will start.
 
 Before you join a gquest you can type 'gquest info' to see if
 you want to take part, once you do type 'gquest join' to turn on
 your gquest flag.  You can type 'gquest quit' at any time.
+If your kill list is already complete, the registar rewards you
+instead of letting you abandon it.
 
 Questpoint and Gold Rewards are calculated when a gquest starts.
 You get an additional 3 Questpoints for each Gquest Mob you kill
@@ -1630,9 +1635,6 @@ plus a calculated chance of an extra Trivia Point.
 
 Once you have completed the gquest (check by using 'gquest
 check') you must type 'gquest complete' to make it official.
-
-Players not in the gquest can check participants status by
-typing 'gquest progress'.
 #51|unknown|GREETING1
 
 	    This is a mud based on.....

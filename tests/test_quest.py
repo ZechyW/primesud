@@ -524,10 +524,51 @@ def test_gquest_start_join_kill_complete(fresh):
     assert all(v == -1 for v in gquest_info["pmobs"])
     qp_before = fresh["quest_points"]
     gold_before = fresh["gold"]
-    do_gquest(fresh, ["complete"])
+    # [PRIMESUD] a finished gquest cannot be accidentally given up
+    assert do_gquest(fresh, ["quit"]) == "gquest complete"
     assert gquest_info["running"] == GQUEST_OFF
     assert fresh["quest_points"] > qp_before
     assert fresh["gold"] > gold_before
+
+
+def test_bare_gquest_picker_is_contextual(fresh, monkeypatch):
+    import gquest
+    from gquest import do_gquest, gquest_info, GQUEST_RUNNING, GQUEST_OFF
+    seen = []
+
+    def pick(title, labels):
+        seen.append((title, labels))
+        return -1
+
+    monkeypatch.setattr(gquest, "pick_from", pick)
+
+    gquest_info.update({"running": GQUEST_RUNNING, "mob_count": 2,
+                        "minlevel": 1, "maxlevel": 20, "joined": False,
+                        "pmobs": []})
+    do_gquest(fresh, [])
+    assert seen[-1] == (
+        "Gquest: choose an action", ["Quest info", "Join global quest"])
+
+    gquest_info.update({"minlevel": fresh["level"] + 1,
+                        "maxlevel": fresh["level"] + 5})
+    do_gquest(fresh, [])
+    assert seen[-1][1] == ["Quest info"]
+
+    gquest_info.update({"minlevel": 1, "maxlevel": 20,
+                        "joined": True, "pmobs": [301, -1]})
+    do_gquest(fresh, [])
+    assert seen[-1][1] == [
+        "Remaining targets", "Quest info", "Give up global quest"]
+
+    gquest_info["pmobs"] = [-1, -1]
+    do_gquest(fresh, [])
+    assert seen[-1][1] == ["Complete global quest", "Quest info"]
+
+    gquest_info["running"] = GQUEST_OFF
+    monkeypatch.setattr(
+        gquest, "pick_from",
+        lambda *_args: pytest.fail("countdown opened a picker"))
+    assert do_gquest(fresh, []) == "gquest time"
 
 
 def test_auto_gquest_always_joinable(fresh):

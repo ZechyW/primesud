@@ -60,7 +60,7 @@ numpad):
 | cos | `cos` | `rest`      |
 | tan | `tan` | `stand`     |
 | ln  | `ln`  | `quest`     |
-| log | `log` | `gquest check` |
+| log | `log` | `gquest` |
 | x²  | `x2`  | `inventory` |
 | +/- | `pm`  | `equip`     |
 | ( ) | `()`  | `wear`      |
@@ -207,7 +207,11 @@ request/completion, giving up, and the quest shop. Buy, sell, and identify
 open item pickers with quest-point prices. A completed quest cannot be
 accidentally abandoned: `quest quit` completes it instead when its reward is
 ready (including the carried-token check for retrieval quests). Practice
-picker entries put the highest current proficiency first.
+picker entries put the highest current proficiency first. Bare `gquest`
+shows the next-event countdown when no global quest is running. During one,
+it opens a contextual picker for information, remaining targets, joining,
+completion, or giving up as each becomes valid. A completed global quest
+cannot be accidentally abandoned: `gquest quit` completes it instead.
 Implemented in `picker.py:pick_from`; blocks until a valid choice is made.
 
 ---
