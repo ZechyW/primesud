@@ -1,0 +1,35 @@
+combat_bench: on-device phase benchmark
+mem free start: 7336288
+boot: load_world 23024ms source=file
+boot: chars=139 areas=2
+mem free after boot: 6736288
+typing_prompt(type): n=19 total=4053ms max=241ms min=187ms
+typing_prompt(backspace): n=19 total=3965ms max=235ms min=181ms
+mem free after typing_prompt: 6735824
+status_raw: n=20 total=2635ms max=137ms min=130ms
+mem free after status_raw: 6735648
+interpret_look: n=5 total=2199ms max=440ms min=439ms rounds=[440,440,440,440,439]
+mem free after interpret_look: 6735472
+chars loaded: 139
+combat_basic: mob vnum=3090 level=1
+combat_basic: n=10 total=3764ms max=401ms min=338ms rounds=[345,401,395,394,384,376,339,394,398,338]
+mem free after combat_basic: 6735168
+chars loaded: 139
+combat_busy: mob vnum=3090 count=4
+combat_busy: n=10 total=11241ms max=1262ms min=981ms rounds=[1154,1222,1001,1262,1184,1105,1107,1140,981,1085]
+mem free after combat_busy: 6734608
+chars loaded: 139
+combat_autoskill: autoskill-skipped -- rotation has no included entries for this character (learned skills/spells empty, or every candidate excluded)
+mem free after combat_autoskill: 6734320
+chars loaded: 139
+pulse_violence_only: n=10 total=4031ms max=507ms min=330ms rounds=[404,385,392,401,330,378,378,455,507,401]
+mem free after pulse_violence_only: 6734080
+chars loaded: 139
+pulse_aligned run 1: 540ms
+pulse_aligned run 2: 764ms
+pulse_aligned run 3: 524ms
+pulse_aligned: n=3 total=1828ms
+mem free after pulse_aligned: 6733680
+pulse_idle: n=5 total=94ms max=19ms min=18ms rounds=[19,18,19,19,19]
+mem free after pulse_idle: 6733392
+Done. Results in combat_bench.log

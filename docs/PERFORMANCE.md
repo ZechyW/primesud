@@ -285,6 +285,44 @@ three remaining hardware gates from the snapshot design PASS:
   eviction repopulates the pending caches for every newly-evicted
   area, then steady-state economics apply again.
 
+## Input-lag phase benchmark (G1, measured 30 Jul 2026)
+
+`debug/combat_bench.py` (`debug/combat_bench-1.log`): synthetic phase
+timings against the real save (139 chars, 2 areas loaded), real terminal
+rendering, no keyboard input. Companion to root `COMBAT_LAG.md`.
+
+| Phase | Cost |
+|---|---:|
+| `show_prompt` per keystroke | 187-241 ms (~210 typical) |
+| `tr.set_status`, prefix precomputed | 130-137 ms |
+| -> prompt prefix build share | ~78 ms |
+| `interpret("look")` | ~440 ms |
+| Violence round, 1 mob | 338-401 ms (~375 typical) |
+| Violence round, 4 mobs | 981-1262 ms (~1.1 s typical) |
+| `update_handler`, violence only | 330-507 ms |
+| `update_handler`, all 6 pulses aligned | 524-764 ms |
+| `update_handler`, idle floor | 18-19 ms/pulse |
+
+Conclusions:
+
+- **Every typed character costs ~210 ms**, all of it synchronous before
+  the next keyboard pump. Raw full-row status render is ~132 ms of that
+  (deterministic, 130-137 across 20 calls); prefix concatenation the
+  remaining ~78 ms. This is the general typing-sluggishness baseline and
+  the top optimisation target.
+- **Busy combat rounds stall ~1.1 s.** With the 4-deep firmware key FIFO,
+  typing `flee` + Enter (5 events) inside one such stall is guaranteed to
+  drop input; `8` + Enter (2 events) fits. Confirms COMBAT_LAG.md's
+  loss-vs-latency split.
+- Aligned 30-second pulse adds ~150-350 ms over a violence-only pulse --
+  real but secondary.
+- Idle `update_handler` floor is ~19 ms per 250 ms pulse
+  (`maybe_evict` + `mark_explored` + regen check), acceptable.
+- `combat_autoskill` self-skipped: the loaded save's rotation had no
+  included entries.
+- `load_world` at 23.0 s is the known area-load class (sec. Area
+  loading), not an input-lag item.
+
 ## Session and memory behaviour (G1, measured 27 Jul 2026)
 
 `debug/mem_soak.py` filled the heap with 32 KB pattern chunks to
