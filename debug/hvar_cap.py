@@ -26,6 +26,15 @@ This probe validates that before it reaches the game:
   dbl80K -- ~80KB backslash-free payload through doubled transport:
           regression + confirms the replace() pass costs nothing when
           there is nothing to double.
+  codec  -- snapshot-block build cost (the NEW save-path work): 10 and
+          40 records, bare heap, then again over ~2.5MB live ballast.
+          Alloc cost scales with live heap (~35us standalone vs ~490us
+          at full game heap, PERFORMANCE.md), and the codec is
+          alloc-heavy -- run 1 measured 240ms/30 records BARE, so the
+          on-device save lag likely lives here.  Runs LAST: repeated
+          small-alloc storms + collects are the G1 danger zone
+          (save_bench matrix verdicts); int rendering stays cached
+          (validated), ballast built without str(int).
 
 Run standalone on the physical HP Prime -- needs NO game modules.
 Only self-running probe .py in the appdir (Prime auto-imports all).
@@ -234,6 +243,68 @@ def build_replica(nrec):
     return "~".join(lines)
 
 
+def free():
+    return gc.mem_free() if hasattr(gc, "mem_free") else 0
+
+
+def ticks():
+    return int(ppleval("Ticks"))
+
+
+def time_n(name, fn, n=3):
+    ts = []
+    for i in range(n):
+        gc.collect()
+        t0 = ticks()
+        fn()
+        ts.append(ticks() - t0)
+        log(".. " + name + " pass " + int_str(i + 1) + " "
+            + int_str(ts[i]) + "ms")
+    return ts
+
+
+def fmt(name, ts):
+    lo = ts[0]
+    tot = 0
+    for t in ts:
+        tot += t
+        if t < lo:
+            lo = t
+    parts = []
+    for t in ts:
+        parts.append(int_str(t))
+    return (name + ": min=" + int_str(lo) + "ms avg="
+            + int_str(tot // len(ts)) + "ms  raw " + " ".join(parts))
+
+
+def codec_block(tpls):
+    """The new _serialize_world work: one it. line per record."""
+    lines = []
+    for vnum, tpl in tpls:
+        lines.append("it." + sstr(vnum) + "=2f4e7d7226b9|"
+                     + _snap_encode((tpl, {})))
+    return "~".join(lines)
+
+
+def make_ballast():
+    """~2.5MB of small live objects so the allocator scans a game-sized
+    heap.  No str(int) anywhere (G1 str(int)-GC bug)."""
+    ballast = []
+    start = free()
+    i = 0
+    while i < 200000:
+        ballast.append([i, "x", (i, i + 1)])
+        i += 1
+        if i % 1024 == 0:
+            f = free()
+            if start:
+                if start - f >= 2500000 or f < 1500000:
+                    break
+            elif i >= 60000:
+                break
+    return ballast
+
+
 MATRIX = (
     ("plain   ", "plain text 1234567890"),
     ("tilde   ", "before~mid~after"),
@@ -287,6 +358,28 @@ def main():
     t0 = int(ppleval("Ticks"))
     roundtrip("dbl80K", big, hvars_set_dbl)
     log("dbl80K set+get: " + int_str(int(ppleval("Ticks")) - t0) + "ms")
+
+    # -- codec build cost: bare, then ballast (alloc-heavy; LAST) ------
+    tpls10 = []
+    tpls40 = []
+    for i in range(40):
+        pair = (3000 + i, synth_tpl(3000 + i))
+        tpls40.append(pair)
+        if i < 10:
+            tpls10.append(pair)
+    blk = codec_block(tpls40)  # warm the int cache like a real 2nd save
+    log("codec: 40 records = " + int_str(len(blk)) + "B")
+    log(fmt("codec bare 10", time_n("cb10", lambda: codec_block(tpls10))))
+    log(fmt("codec bare 40", time_n("cb40", lambda: codec_block(tpls40))))
+    log("building ballast...")
+    f0 = free()
+    ballast = make_ballast()
+    log("ballast: " + int_str(len(ballast)) + " entries, "
+        + int_str(f0 - free()) + "B live delta")
+    log(fmt("codec ball 10", time_n("cB10", lambda: codec_block(tpls10))))
+    log(fmt("codec ball 40", time_n("cB40", lambda: codec_block(tpls40))))
+    ballast = None
+    gc.collect()
 
     try:
         hvars_set_raw(HVAR, "0")
