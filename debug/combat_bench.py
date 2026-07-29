@@ -37,7 +37,11 @@ from spawned mobs):
   4  interpret_look     -- commands.interpret("look", player) x5
   5  combat_basic      -- 1 mob, 10 violence_update() rounds
   6  combat_busy       -- 4 mobs vs. player, 10 rounds
-  7  combat_autoskill  -- 1 mob, PLR_AUTOSKILL on, 10 rounds (or skip+reason)
+  7  combat_autoskill  -- 1 mob, PLR_AUTOSKILL on, 10 rounds; if the loaded
+                        save's real rotation has no included entries, SIMULATES
+                        one (injects learned pct for 2-3 class/level-eligible
+                        candidates, restored after) before giving up (or
+                        skip+reason if even the simulated rotation is empty)
   8  pulse_violence_only -- update_handler() x10, only violence pulse due
   9  pulse_aligned     -- update_handler() x3, ALL six pulses due each call
   10 pulse_idle        -- update_handler() x5, only regen due (near no-op)
@@ -307,15 +311,69 @@ def scenario_combat_busy(player):
     _disengage(player, mobs)
 
 
+def _simulate_autoskill_candidates(player, limit=3):
+    """Find up to `limit` (sn, name, kind) entries this player's held
+    class(es)/level make eligible, mirroring autoskill._build_candidates'
+    own gates -- can_use_skill_spell (class/level), is_runtime_spell, spell
+    target + min_pos, and the fixed physical-skill list -- but dropping the
+    "already has nonzero learned pct" checks, since injecting that pct is
+    exactly what the caller is about to do. Used only when the real loaded
+    save's rotation has no included entries, to simulate a plausible
+    autoskill loadout for this scenario instead of skipping it. [PRIMESUD]
+
+    Returns:
+        list: up to `limit` (sn, name, kind) tuples, kind in
+            ('debuff', 'spell', 'skill'), that will become included once
+            player["learned"][sn] is set to a nonzero pct.
+    """
+    found = []
+    for sn in autoskill._DEBUFF_SNS:
+        if sn is None:
+            continue
+        if (autoskill.can_use_skill_spell(player, sn)
+                and autoskill.is_runtime_spell(sn)):
+            found.append((sn, autoskill.SKILLS[sn]["name"], "debuff"))
+            if len(found) >= limit:
+                return found
+
+    for sn, sk in autoskill.SKILL_TABLE:
+        if sn in autoskill._DEBUFF_SET or sn in autoskill._SKILL_HANDLERS:
+            continue
+        if sk.get("target") not in ("char_offensive", "obj_char_offensive"):
+            continue
+        if autoskill.POS_ORDER["fighting"] < autoskill.POS_ORDER.get(sk.get("min_pos"), 0):
+            continue
+        if not (autoskill.can_use_skill_spell(player, sn)
+                and autoskill.is_runtime_spell(sn)):
+            continue
+        found.append((sn, sk["name"], "spell"))
+        if len(found) >= limit:
+            return found
+
+    for sn in (autoskill.GSN_BASH, autoskill.GSN_TRIP, autoskill.GSN_DIRT,
+               autoskill.GSN_DISARM, autoskill.GSN_KICK):
+        if autoskill.can_use_skill_spell(player, sn):
+            found.append((sn, autoskill.SKILLS[sn]["name"], "skill"))
+            if len(found) >= limit:
+                return found
+
+    return found
+
+
 def scenario_combat_autoskill(player):
     """1 mob, PLR_AUTOSKILL enabled (player.py/autoskill.py's own enabling
     state: `player["flags"] |= PLR_AUTOSKILL`, cf. do_autoskill in
     autoskill.py). If the character's current rotation (autoskill.
     get_rotation, built from player["learned"] -- either the real loaded
     save's skills, or create_char()'s class/race defaults if no save was
-    present) has no included entry, this is logged as autoskill-skipped and
-    no combat is timed under this flag: firing a rotation entry that isn't
-    actually reachable would invent state rather than measure it."""
+    present) has no included entry, this SIMULATES a loadout instead of
+    giving up straight away: it injects a learned pct into 2-3 candidates
+    that _build_candidates would actually accept for this character's held
+    class(es) and level (via _simulate_autoskill_candidates), rebuilds the
+    rotation, and only skips (logging autoskill-skipped) if even that
+    simulated rotation has no included entry. Every injected/overwritten
+    field is restored to its pre-scenario value afterward, on both the
+    timed and the skip path, so later scenarios see clean state."""
     vnum = _pick_mob()
     if vnum < 0:
         log("combat_autoskill: SKIPPED -- no mob template available")
@@ -325,13 +383,46 @@ def scenario_combat_autoskill(player):
     player["flags"] = prev_flags | PLR_AUTOSKILL
     rotation = autoskill.get_rotation(player)
     included = [r for r in rotation if r[3]]
+
+    simulated = False
+    saved_learned = None
+    saved_rot = player.get("autoskill_rot")
+    if not included:
+        sim_cands = _simulate_autoskill_candidates(player)
+        if sim_cands:
+            saved_learned = {}
+            for sn, name, kind in sim_cands:
+                saved_learned[sn] = player["learned"].get(sn, 0)
+                player["learned"][sn] = 75
+            rotation = autoskill.get_rotation(player)
+            included = [r for r in rotation if r[3]]
+            simulated = True
+
     if not included:
         log("combat_autoskill: autoskill-skipped -- rotation has no "
             + "included entries for this character (learned skills/spells "
-            + "empty, or every candidate excluded)")
+            + "empty, or every candidate excluded), and no class/level-"
+            + "eligible skill or spell could be simulated either")
+        if saved_learned is not None:
+            for sn, orig in saved_learned.items():
+                if orig:
+                    player["learned"][sn] = orig
+                else:
+                    player["learned"].pop(sn, None)
+            if saved_rot is None:
+                player.pop("autoskill_rot", None)
+            else:
+                player["autoskill_rot"] = saved_rot
         player["flags"] = prev_flags
         combat._extract_char(mob, pull=True)
         return
+
+    if simulated:
+        names = []
+        for r in included:
+            names.append(r[1])
+        log("combat_autoskill: SIMULATED rotation -- " + ", ".join(names))
+
     log("combat_autoskill: rotation head=" + included[0][1]
         + " (" + included[0][2] + ")")
     _engage(player, [mob])
@@ -339,6 +430,17 @@ def scenario_combat_autoskill(player):
                   lambda: _restore_round(player, [mob]),
                   lambda: combat.violence_update(player))
     _disengage(player, [mob])
+
+    if saved_learned is not None:
+        for sn, orig in saved_learned.items():
+            if orig:
+                player["learned"][sn] = orig
+            else:
+                player["learned"].pop(sn, None)
+        if saved_rot is None:
+            player.pop("autoskill_rot", None)
+        else:
+            player["autoskill_rot"] = saved_rot
     player["flags"] = prev_flags
 
 
