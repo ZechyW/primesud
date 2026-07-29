@@ -1376,7 +1376,9 @@ def can_see_obj(ch, obj):
         bool: True if ch can see obj.
     """
     vnum = obj["vnum"] if isinstance(obj, dict) else obj
-    tpl = ITEM_DEFS[vnum]
+    # [PRIMESUD] item_tpl, not ITEM_DEFS[vnum]: snapshotted foreign gear must
+    # not drag its owner area back in on every look/list/get scan.
+    tpl = item_tpl(obj)
     if isinstance(obj, dict) and "extra_flags" in obj:
         flags = obj["extra_flags"]
     else:

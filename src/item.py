@@ -643,7 +643,11 @@ def get_obj_list(fragment, item_list, templates, viewer=None):
         vnum = obj_vnum(item)
         if viewer is not None and not can_see_obj(viewer, item):
             continue
-        if is_name(fragment, templates[vnum].get("keywords", "")):
+        # [PRIMESUD] dict instances resolve through item_tpl so snapshotted
+        # foreign gear doesn't drag its owner area in on keyword lookups;
+        # templates stays for plain-int room/mob vnums.
+        tpl = item_tpl(item) if isinstance(item, dict) else templates[vnum]
+        if is_name(fragment, tpl.get("keywords", "")):
             count += 1
             if count == nth:
                 return item
