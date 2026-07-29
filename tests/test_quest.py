@@ -40,7 +40,8 @@ def fresh():
     for k in ("quest_points", "quest_status", "quest_time", "quest_mob",
               "quest_obj", "quest_room", "quest_giver"):
         ch[k] = 0
-    for k in ("quest_mob_name", "quest_room_name", "quest_area_name"):
+    for k in ("quest_mob_name", "quest_obj_name", "quest_room_name",
+              "quest_area_name"):
         ch[k] = ""
     ch["trivia"] = 0
     world.chars[1] = ch
@@ -258,6 +259,26 @@ def test_quest_info_includes_active_time(fresh, monkeypatch):
     assert "You have 12 minutes remaining to complete this quest." in lines
 
 
+def test_quest_info_retrieve_uses_captured_obj_name(fresh, monkeypatch):
+    """Retrieve-quest info prints the generate-time captured name and never
+    loads the target item's area. [PRIMESUD]"""
+    fresh["quest_status"] = QUEST_RETRIEVE
+    fresh["quest_time"] = mins_to_ticks(10)
+    fresh["quest_obj"] = 5555  # ofcol-range vnum; area must stay unloaded
+    fresh["quest_obj_name"] = "the jeweled skull"
+    fresh["quest_room_name"] = "Somewhere"
+    fresh["quest_area_name"] = "Test Area"
+    lines = []
+    monkeypatch.setattr(
+        quest, "chprintln",
+        lambda _player, text="": lines.append(text))
+
+    do_quest(fresh, ["info"])
+
+    assert any("the jeweled skull" in ln for ln in lines)
+    assert not world.is_area_loaded("ofcol")
+
+
 def test_qp_cap_32000(fresh):
     fresh["quest_points"] = 31990
     fresh["quest_status"] = QUEST_RETURN_KILL
@@ -457,10 +478,12 @@ def test_end_quest_clears_state(fresh):
     fresh["quest_status"] = QUEST_KILL
     fresh["quest_mob"] = 1234
     fresh["quest_mob_name"] = "someone"
+    fresh["quest_obj_name"] = "a relic"
     end_quest(fresh, 5)
     assert fresh["quest_status"] == QUEST_NONE
     assert fresh["quest_mob"] == 0
     assert fresh["quest_mob_name"] == ""
+    assert fresh["quest_obj_name"] == ""
     assert fresh["quest_time"] == mins_to_ticks(5)
 
 

@@ -51,6 +51,8 @@ _WEATHER_PACK_FIELDS = ("temp", "temp_vector", "precip", "precip_vector",
 _PLAYER_STRING_SAVE_KEYS = (
     "name", "title", "race", "sex", "true_sex",
     "quest_mob_name", "quest_room_name", "quest_area_name",
+    # additive-safe: p.<key> string lines parse generically, unlike p.n
+    "quest_obj_name",
 )
 _PLAYER_NUMBER_SAVE_KEYS = (
     "level", "xp", "xp_next", "hit", "mana", "move",

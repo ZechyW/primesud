@@ -18,7 +18,7 @@ player dict for save simplicity:
     quest_obj        target obj template vnum, 0 if none
     quest_room       target room vnum, 0 if none
     quest_giver      questmaster template vnum, 0 if none
-    quest_mob_name / quest_room_name / quest_area_name
+    quest_mob_name / quest_obj_name / quest_room_name / quest_area_name
                      display names captured at generate time so 'quest info'
                      never forces an area load [PRIMESUD]
 """
@@ -162,6 +162,7 @@ def end_quest(player, time):
     player["quest_obj"] = 0
     player["quest_room"] = 0
     player["quest_mob_name"] = ""
+    player["quest_obj_name"] = ""
     player["quest_room_name"] = ""
     player["quest_area_name"] = ""
 
@@ -522,6 +523,9 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
         player["quest_mob"] = 0
         player["quest_mob_name"] = ""
         short = item_tpl(obj)["short_descr"]
+        # [PRIMESUD] captured at generate time, like quest_mob_name, so
+        # 'quest info' never forces a target-area load for the item name
+        player["quest_obj_name"] = short
         if randint(0, 1) == 0:
             mob_tell(player, questman,
                      "Vile pilferers have stolen " + short + " from the royal treasury!")
@@ -538,6 +542,7 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
         player["quest_mob"] = mvnum
         player["quest_mob_name"] = mob_name
         player["quest_obj"] = 0
+        player["quest_obj_name"] = ""
         variant = randint(0, 3)
         if variant == 0:
             mob_tell(player, questman,
@@ -582,6 +587,7 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
         player["quest_mob"] = mvnum
         player["quest_mob_name"] = mob_name
         short = item_tpl(obj)["short_descr"]
+        player["quest_obj_name"] = short  # [PRIMESUD] see QUEST_RETRIEVE note
         # [PRIMESUD] "Time is the essence" grammar fixed
         mob_tell(player, questman,
                  "Please deliver this " + short + " to my friend - " + mob_name
@@ -597,6 +603,7 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
         player["quest_mob"] = 0
         player["quest_mob_name"] = ""
         player["quest_obj"] = 0
+        player["quest_obj_name"] = ""
         # [PRIMESUD] "{n" (mud name) rendered as "the realm"
         mob_tell(player, questman,
                  "This quest tests your knowledge of the realm. Your goal is simple, seek out")
@@ -609,6 +616,7 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
         player["quest_mob"] = mvnum
         player["quest_mob_name"] = mob_name
         player["quest_obj"] = 0
+        player["quest_obj_name"] = ""
         mob_tell(player, questman,
                  "This quest tests your knowledge of the realm. Your goal is simple, seek out")
         mob_tell(player, questman,
@@ -920,8 +928,10 @@ def do_quest(player, args):
             chprintln(player, "You have "
                       + _intstr(player.get("quest_points", 0), "quest point") + ".")
         elif status == QUEST_RETRIEVE and player.get("quest_obj", 0):
+            # [PRIMESUD] captured name, not ITEM_DEFS[vnum]: a live template
+            # read would load the target area on every 'quest info'
             chprintln(player, "You are on a quest to recover the fabled "
-                      + ITEM_DEFS[player["quest_obj"]]["short_descr"] + "!")
+                      + (player.get("quest_obj_name") or "?") + "!")
             chprintln(player,
                       "Rumor has it this " + _QOBJ_DESC[randint(0, len(_QOBJ_DESC) - 1)]
                       + " was last seen in the area known as "

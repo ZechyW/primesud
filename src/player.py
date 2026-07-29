@@ -17,7 +17,7 @@ from urandom import randint
 from races import RACE_TABLE, race_lookup
 from util import num_str
 import world
-from world import ROOM_DEFS, AREA_DEFS, ITEM_DEFS, item_tpl, item_tpl_get
+from world import ROOM_DEFS, AREA_DEFS, item_tpl, item_tpl_get
 
 _EQUIP_SAVE_ORDER = (
     "light", "finger_l", "finger_r", "neck_1", "neck_2", "body", "head",
@@ -107,6 +107,7 @@ def create_char(class_idx=CLASS_WARRIOR, race_name="Human"):
         "quest_room":   0,
         "quest_giver":  0,
         "quest_mob_name":  "",
+        "quest_obj_name":  "",
         "quest_room_name": "",
         "quest_area_name": "",
         "flags":    PLR_DEFAULTS,  # PLR_* bits; [DEVIATION] separate from act_flags
@@ -210,7 +211,6 @@ from handler import (get_curr_stat, affect_remove, affect_modify, _char_base,
                    _apply_item_modifiers, _item_armor_runtime,
                    act, affect_find, affect_join, chprintln, is_affected,
                    unequip_char, TO_CHAR, TO_ROOM)
-from world import ITEM_DEFS
 
 
 def reset_char(player):
