@@ -188,3 +188,59 @@ class TestSnapshotEndToEnd:
         # -- a second save_world call
         assert game_state.save_world(quiet=True)
         _assert_foreign_unloaded()
+
+    def test_snapshot_object_program_fires_while_owner_unloaded(
+            self, fresh_world):
+        """An obj program on foreign gear runs from its snapshot's captured
+        source after save/load, without the owner area (or its OBJPROGS
+        table) ever loading (SNAPSHOT_PLAN.md sec. Object programs)."""
+        import mobprog
+        fw = fresh_world
+        fw.register_area(
+            "home", 900, 999,
+            rooms={HOME_ROOM: {"name": "Home", "exits": {}}})
+        fw.register_area(
+            "alpha", 100, 199,
+            rooms={100: {"name": "R100", "exits": {}}},
+            objects={GEM: _item_tpl(
+                "gem", short_descr="a gem", keywords="gem",
+                obj_triggers=(("greet", 190, "100"),))},
+            objprogs={190: "obj echo The gem hums."})
+        fw.setup()
+
+        world._load_area("home")
+        world._load_area("alpha")
+        player = create_char()
+        player["name"] = "Tester"
+        player["room"] = HOME_ROOM
+        player["_macros"] = {}
+        world.chars[1] = player
+        player["inv"] = [create_object(GEM)]
+
+        world._unload_area("alpha")
+        assert game_state.save_world(quiet=True)
+
+        world.reset_lazy()
+        player2 = create_char()
+        player2["_macros"] = {}
+        player2["room"] = HOME_ROOM
+        world.chars[1] = player2
+        assert game_state.load_world() == "file"
+        assert not world.is_area_loaded("alpha")
+        assert world.ITEM_SNAPSHOTS[GEM][2] == {190: "obj echo The gem hums."}
+
+        gem2 = player2["inv"][0]
+        fired = []
+        orig_flow = mobprog.program_flow
+
+        def _capture_flow(pv, code, *a, **kw):
+            fired.append((pv, code))
+        mobprog.program_flow = _capture_flow
+        try:
+            octx = {"obj": gem2, "carrier": player2, "room": None}
+            mobprog._run_oprog(octx, 190, player2, None, None)
+        finally:
+            mobprog.program_flow = orig_flow
+
+        assert fired == [(190, "obj echo The gem hums.")]
+        assert not world.is_area_loaded("alpha")

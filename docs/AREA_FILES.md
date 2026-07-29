@@ -691,6 +691,20 @@ Valid object triggers are `act`, `fight`, `give`, `greet`, `grall`, `random`,
 only preserves this data; interpreter and trigger dispatch are added by later
 phases of `PROGS_PLAN.md`.
 
+Snapshot interplay [PRIMESUD]: when an item that outlives its owner area's
+eviction carries `obj_triggers`, its `world.ITEM_SNAPSHOTS` entry captures the
+referenced `OBJPROGS` sources, and `mobprog._run_oprog` falls back to that map
+when the resident table misses -- so the program still fires (and survives
+save/load via the `it.*` save section) while the owner stays unloaded. See
+DESIGN.md sec. Item template snapshots.
+
+Generated staleness digest [PRIMESUD]: `tools/gen_area_adj.py` also emits
+`CONTENT_REVISION` into `world.py`'s generated block -- a sha256 prefix over
+every area's `OBJECTS` + `OBJPROGS` mapping (canonicalized via the snapshot
+codec). Item snapshots stamped with an older revision are ignored in favour of
+one corrective area load after any content change, so re-run the generator
+after editing area data or stale caches will not be detected.
+
 ---
 
 ## Conventions

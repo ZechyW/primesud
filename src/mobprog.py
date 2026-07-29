@@ -574,6 +574,14 @@ def _run_oprog(octx, prog_vnum, ch, arg1, arg2):
     """Fetch an obj program's source and run it (cf. the OPROG program_flow call sites). [PRIMESUD]"""
     code = world.OBJPROGS.get(prog_vnum)
     if code is None:
+        # [PRIMESUD] Snapshot fallback: the item's ITEM_SNAPSHOTS entry
+        # captures the program source its obj_triggers reference at
+        # eviction/save, so the trigger still fires while the owner area
+        # stays unloaded (SNAPSHOT_PLAN.md sec. Object programs).
+        _entry = world.ITEM_SNAPSHOTS.get(obj_vnum(octx["obj"]))
+        if _entry is not None:
+            code = _entry[2].get(prog_vnum)
+    if code is None:
         dbg("mobprog: missing objprog " + str(prog_vnum))
         return
     if "prog" in DBG:  # live trigger-fire trace (cf. 1stMud ptrace ring buffer)
