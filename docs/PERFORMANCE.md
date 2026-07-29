@@ -323,6 +323,31 @@ Conclusions:
 - `load_world` at 23.0 s is the known area-load class (sec. Area
   loading), not an input-lag item.
 
+A/B after the Phase B fixes (`combat_bench-2.log` after colour-band
+cache + prompt prefix cache + violence FIFO drains; `combat_bench-3.log`
+after offscreen status compose):
+
+| Phase | run 1 | run 2 | run 3 |
+|---|---:|---:|---:|
+| `show_prompt` per keystroke | ~210 ms | ~145 ms | ~84 ms (max 150) |
+| `tr.set_status` raw | ~132 ms | ~123 ms | ~72 ms |
+| Violence round, 1 mob | ~375 ms | ~360 ms | ~360 ms |
+| Violence round, 4 mobs | ~1.1 s | ~1.08 s | ~1.07 s |
+| Violence round, autoskill (sim) | n/a | invalid (mana drain) | 375-620 ms steady |
+
+- Direct `set_color` A/B (`set_color_ab` scenario, 1050 fg pixels):
+  pixon repaint ~4 ms/call, cached-band blit ~1 ms/call. The pixon loop
+  was a minor cost, not the dominant one -- the band cache is kept for
+  its ~9 ms/status-line saving, but the big status win was the offscreen
+  compose (123 -> 72 ms) and the prefix cache (~70 ms/keystroke).
+- Remaining ~72 ms `set_status` cost is spread across Python-side
+  strip/truncate/group loops and per-call `dimgrob`; diminishing
+  returns vs the combat-round render tax, which is untouched by Phase B
+  (per-line `wrapped_print` straight to screen) and is Phase C's target
+  (violence-round batching through `print_lines`).
+- Violence FIFO drain checkpoints did not measurably change round cost
+  (within run-to-run noise).
+
 ## Session and memory behaviour (G1, measured 27 Jul 2026)
 
 `debug/mem_soak.py` filled the heap with 32 KB pattern chunks to
