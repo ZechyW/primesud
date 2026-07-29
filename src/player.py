@@ -17,7 +17,7 @@ from urandom import randint
 from races import RACE_TABLE, race_lookup
 from util import num_str
 import world
-from world import ROOM_DEFS, AREA_DEFS, ITEM_DEFS
+from world import ROOM_DEFS, AREA_DEFS, ITEM_DEFS, item_tpl, item_tpl_get
 
 _EQUIP_SAVE_ORDER = (
     "light", "finger_l", "finger_r", "neck_1", "neck_2", "body", "head",
@@ -251,7 +251,7 @@ def reset_char(player):
             obj = player["equip"].get(slot)
             if obj is None:
                 continue
-            tpl = ITEM_DEFS.get(obj["vnum"])
+            tpl = item_tpl_get(obj)
             if tpl is None:
                 continue
             armor = _item_armor_runtime(tpl, obj)
@@ -602,7 +602,7 @@ def _light_burnout(tr, player):
     light = (player.get("equip") or {}).get("light")
     if not isinstance(light, dict):
         return
-    if ITEM_DEFS[light["vnum"]].get("type") != "light":
+    if item_tpl(light).get("type") != "light":
         return
     fuel = light.get("light_hours")
     if fuel is None or fuel <= 0:

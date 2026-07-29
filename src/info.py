@@ -34,7 +34,7 @@ from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_l
 from skills_table import SKILL_TABLE, SKILLS, GSN_PEEK
 from urandom import randint
 from util import free_mem, gc_collect, num_str, pad_left, pad_right, zpad
-from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS
+from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS, item_tpl
 from debug import DBG, dbg  # [PRIMESUD]
 from explored import roomcount, TOP_EXPLORED, _pct2
 from prime_platform import ticks  # [PRIMESUD] 'debug time' channel timings
@@ -403,7 +403,7 @@ def _show_char_to_char_1(player, mob_id):
                 chprintln(player, "")
                 chprintln(player, upper(tpl["short_descr"]) + " is using:")
                 found = True
-            ctpl = ITEM_DEFS[obj_vnum(obj)]
+            ctpl = item_tpl(obj)
             chprintln(player, label + ctpl["short_descr"])
     # cf. 1stMud peek check (act_info.c:459-465)
     if randint(1, 100) < get_skill(player, GSN_PEEK):
@@ -419,7 +419,7 @@ def _show_char_to_char_1(player, mob_id):
             order = []
             for obj in inv:
                 s = ((isinstance(obj, dict) and obj.get("short_descr"))
-                     or ITEM_DEFS[obj_vnum(obj)]["short_descr"])
+                     or item_tpl(obj)["short_descr"])
                 if s in seen:
                     seen[s] += 1
                 else:
@@ -448,7 +448,7 @@ def _look_in(player, args):
     if obj is None:
         chprintln(player, "You do not see that here.")
         return
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     if tpl.get("type") == "drink":
         # cf. 1stMud do_look 'in' ITEM_DRINK_CON case, act_info.c:1205-1220
         left = liquid_left(obj, tpl)
@@ -489,7 +489,7 @@ def _show_container(player, obj, tpl):
         chprintln(player, "  Nothing.")
         return
     for cobj in visible:
-        ctpl = ITEM_DEFS[obj_vnum(cobj)]
+        ctpl = item_tpl(cobj)
         chprintln(player, "  " + (cobj.get("short_descr") or ctpl["short_descr"]))
 
 
@@ -838,7 +838,7 @@ def do_look(player, args):
         # cf. 1stMud show_list_to_char: skip items the viewer can't see
         if not can_see_obj(player, obj):
             continue
-        tpl = ITEM_DEFS[obj_vnum(obj)]
+        tpl = item_tpl(obj)
         flags = item_extra_flags(obj, tpl)
         # cf. 1stMud format_obj_to_char flag order (act_info.c:53-64)
         flag_str = ""
@@ -1755,7 +1755,7 @@ def do_affects(player, args):
             obj = player.get("equip", {}).get(slot)
             if obj is None:
                 continue
-            tpl = ITEM_DEFS[obj["vnum"]]
+            tpl = item_tpl(obj)
             short_descr = tpl.get("short_descr", "")
             # Runtime object affects first (cf. 1stMud obj->affect_first)
             for paf in obj.get("affect_list", []):
@@ -2306,7 +2306,7 @@ def do_examine(player, args):
         labels = [MOB_DEFS[world.chars[i]["tpl"]]["short_descr"] for i in mobs]
         for o in objs:
             labels.append((isinstance(o, dict) and o.get("short_descr"))
-                          or ITEM_DEFS[obj_vnum(o)]["short_descr"])
+                          or item_tpl(o)["short_descr"])
         if not labels:
             chprintln(player, "Examine what?")
             return
@@ -2317,7 +2317,7 @@ def do_examine(player, args):
             _show_char_to_char_1(player, mobs[idx])
             return
         obj = objs[idx - len(mobs)]
-        tpl = ITEM_DEFS[obj_vnum(obj)]
+        tpl = item_tpl(obj)
         inst_desc = isinstance(obj, dict) and obj.get("description")
         for line in _wrap_paragraphs(inst_desc or tpl.get("description", tpl["short_descr"]),
                                      TERMINAL_COLS):
@@ -2340,7 +2340,7 @@ def _examine_extras(player, obj):
     04/07/2026; jukebox do_play "list" branch added and re-verified 20/07/2026;
     legacy sparse money fallback added and re-verified 21/07/2026]
     """
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     obj_type = tpl.get("type")
     if obj_type == "money":
         silver = obj.get("silver", tpl.get("silver", 0))

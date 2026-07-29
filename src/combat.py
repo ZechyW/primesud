@@ -84,7 +84,7 @@ from skills_table import (
 from hunt import hunt_victim
 from urandom import randint
 from util import wait, pad_right
-from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
+from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS, item_tpl
 
 
 # -- Violence update (called every PULSE_VIOLENCE) -----------------------------
@@ -474,7 +474,7 @@ def _get_weapon_sn(ch, slot="wield"):
     wobj = ch["equip"].get(slot)
     if wobj is None:
         return GSN_HAND_TO_HAND, None
-    tpl = ITEM_DEFS[wobj["vnum"]]
+    tpl = item_tpl(wobj)
     sn = WEAPON_GSN_MAP.get(tpl.get("weapon_type", ""), -1)
     return sn, tpl
 
@@ -1423,13 +1423,13 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         if not ch.get("is_npc"):
             flags = ch.get("flags", PLR_DEFAULTS)
             if (corpse is not None and isinstance(corpse, dict)
-                    and ITEM_DEFS[obj_vnum(corpse)].get("type") == "npc_corpse"):
+                    and item_tpl(corpse).get("type") == "npc_corpse"):
                 contents = corpse.get("contents", [])
 
                 # 1stMud: if (PLR_AUTOLOOT && corpse->content_first) do_get("all corpse")
                 if flags & PLR_AUTOLOOT and contents:
                     for cobj in list(contents):
-                        ctpl = ITEM_DEFS[obj_vnum(cobj)]
+                        ctpl = item_tpl(cobj)
                         corpse["contents"].remove(cobj)
                         chprintln(ch, "You get " + str(cobj.get("short_descr") or ctpl["short_descr"]) + ".")
                         if not apply_money_pickup(ch, cobj, ctpl):
@@ -1439,7 +1439,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                 if (flags & PLR_AUTOGOLD and corpse.get("contents")
                         and not (flags & PLR_AUTOLOOT)):
                     for cobj in list(corpse["contents"]):
-                        ctpl = ITEM_DEFS[obj_vnum(cobj)]
+                        ctpl = item_tpl(cobj)
                         if ctpl.get("type") == "money":
                             corpse["contents"].remove(cobj)
                             chprintln(ch, "You get " + str(cobj.get("short_descr") or ctpl["short_descr"]) + ".")
@@ -2259,7 +2259,7 @@ def multi_hit(ch, victim, dt=TYPE_UNDEFINED):
     # Offhand weapon (cf. 1stMud multi_hit WEAR_SECONDARY in fight.c)
     # [PRIMESUD] ensures that secondary item is a weapon before allowing hit
     secondary_obj = ch["equip"].get("secondary")
-    if secondary_obj is not None and ITEM_DEFS[secondary_obj["vnum"]].get("type") == "weapon":
+    if secondary_obj is not None and item_tpl(secondary_obj).get("type") == "weapon":
         one_hit(ch, victim, dt=dt, secondary=True)
 
     # 1stMud: if (ch->fighting != victim) return;
@@ -2599,7 +2599,7 @@ def make_corpse(ch):
         for obj in list(ch.get("equip", {}).values()) + list(ch.get("inv", [])):
             if obj is None:
                 continue
-            obj_tpl = ITEM_DEFS[obj["vnum"]]
+            obj_tpl = item_tpl(obj)
             flags = item_extra_flags(obj, obj_tpl)
             # 1stMud: if (IsSet(obj->extra_flags, ITEM_INVENTORY)) extract_obj(obj)
             if flags.get("inventory"):
@@ -2978,7 +2978,7 @@ def group_gain(ch, victim):
             obj = gch["equip"].get(slot)
             if obj is None:
                 continue
-            ef = item_extra_flags(obj, ITEM_DEFS[obj_vnum(obj)])
+            ef = item_extra_flags(obj, item_tpl(obj))
             if ((ef.get("anti_evil") and is_evil(ch))
                     or (ef.get("anti_good") and is_good(ch))
                     or (ef.get("anti_neutral") and is_neutral(ch))):
@@ -3661,7 +3661,7 @@ def disarm(ch, victim):
     if wobj is None:
         return
 
-    obj_tpl = ITEM_DEFS[wobj["vnum"]]
+    obj_tpl = item_tpl(wobj)
     flags = item_extra_flags(wobj, obj_tpl)
     if flags.get("noremove"):
         act("$S weapon won't budge!", ch, None, victim, TO_CHAR)

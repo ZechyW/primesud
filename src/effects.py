@@ -7,7 +7,7 @@ lazy imports below, matching the existing combat.py<->magic.py pattern).
 """
 
 import world
-from world import ITEM_DEFS
+from world import ITEM_DEFS, item_tpl
 from handler import act, chprintln, affect_join, affect_to_char, unequip_char, TO_ROOM, TO_ALL
 from item import obj_vnum, item_extra_flags, item_affect_to_obj, create_object, item_type
 from skill_utils import DazeState
@@ -132,7 +132,7 @@ def _spill_contents(obj, obj_effect_fn, level, dam, owner, room):
 
 def _acid_obj(obj, level, dam, owner, room, container, worn=False):
     """Object-level acid effect (cf. 1stMud acid_effect TARGET_OBJ in effects.c)."""
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     flags = item_extra_flags(obj, tpl)
     if flags.get("burn_proof") or flags.get("nopurge") or randint(0, 4) == 0:
         return
@@ -225,7 +225,7 @@ def acid_effect(vo, level, dam, target):
 
 def _fire_obj(obj, level, dam, owner, room, container):
     """Object-level fire effect (cf. 1stMud fire_effect TARGET_OBJ in effects.c)."""
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     flags = item_extra_flags(obj, tpl)
     if flags.get("burn_proof") or flags.get("nopurge") or randint(0, 4) == 0:
         return
@@ -313,7 +313,7 @@ def fire_effect(vo, level, dam, target):
 
 def _cold_obj(obj, level, dam, owner, room, container):
     """Object-level cold effect (cf. 1stMud cold_effect TARGET_OBJ in effects.c)."""
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     flags = item_extra_flags(obj, tpl)
     if flags.get("burn_proof") or flags.get("nopurge") or randint(0, 4) == 0:
         return
@@ -387,7 +387,7 @@ def cold_effect(vo, level, dam, target):
 
 def _poison_obj(obj, level, dam, container):
     """Object-level poison effect (cf. 1stMud poison_effect TARGET_OBJ in effects.c)."""
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     flags = item_extra_flags(obj, tpl)
     if flags.get("burn_proof") or flags.get("bless") or randint(0, 4) == 0:
         return
@@ -455,7 +455,7 @@ def poison_effect(vo, level, dam, target):
 
 def _shock_obj(obj, level, dam, owner, room, container):
     """Object-level shock effect (cf. 1stMud shock_effect TARGET_OBJ in effects.c)."""
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     flags = item_extra_flags(obj, tpl)
     if flags.get("burn_proof") or flags.get("nopurge") or randint(0, 4) == 0:
         return

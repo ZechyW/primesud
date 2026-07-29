@@ -15,7 +15,7 @@ from skills_table import SKILLS
 from handler import (act, chprintln, is_awake, can_see,
                      TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL)
 from item import obj_vnum, item_wear_flags
-from world import ITEM_DEFS, ROOM_DEFS
+from world import ITEM_DEFS, ROOM_DEFS, item_tpl
 
 
 def _spec_find_player(ch):
@@ -323,7 +323,7 @@ def spec_janitor(ch):
     if rs is None:
         return False
     for trash in rs["items"]:
-        tpl = ITEM_DEFS[obj_vnum(trash)]
+        tpl = item_tpl(trash)
         if "take" not in item_wear_flags(trash, tpl):
             continue
         # [PRIMESUD] can_loot check not ported (no corpse ownership)
@@ -622,7 +622,7 @@ def spec_fido(ch):
     if rs is None:
         return False
     for corpse in list(rs.get("items", [])):
-        tpl = ITEM_DEFS[obj_vnum(corpse)]
+        tpl = item_tpl(corpse)
         if tpl.get("type") != "npc_corpse":
             continue
         act("$n savagely devours a corpse.", ch, None, None, TO_ROOM)

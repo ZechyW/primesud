@@ -224,7 +224,7 @@ def _debug_purge(player, args):
         _extract_char(inst, pull=True)
     items = world.rooms[rvnum]["items"]
     items[:] = [obj for obj in items
-                if item_extra_flags(obj, world.ITEM_DEFS[obj_vnum(obj)]).get("nopurge")]
+                if item_extra_flags(obj, world.item_tpl(obj)).get("nopurge")]
     terminal.tr.print("Ok.")
 
 
@@ -314,10 +314,10 @@ def _debug_owhere(player, args):
 
     def _sd(obj):
         return ((isinstance(obj, dict) and obj.get("short_descr"))
-                or world.ITEM_DEFS[obj_vnum(obj)]["short_descr"])
+                or world.item_tpl(obj)["short_descr"])
 
     def _report(obj, where):
-        tpl = world.ITEM_DEFS[obj_vnum(obj)]
+        tpl = world.item_tpl(obj)
         if is_name(frag, tpl.get("keywords", "")):
             count[0] += 1
             terminal.tr.print(pad_left(num_str(count[0]), 3) + ") " + _sd(obj)
@@ -799,7 +799,7 @@ def _debug_flag(player, args):
             terminal.tr.print("You can't find that object.")
             return
         obj = promote_obj(player, obj)
-        tpl = world.ITEM_DEFS[obj["vnum"]]
+        tpl = world.item_tpl(obj)
         if "extra".startswith(field):
             target = ensure_item_extra_flags(obj, tpl)
         elif "wear".startswith(field):
@@ -943,7 +943,7 @@ def _debug_clone(player, args):
         world.rooms[player["room"]]["items"].append(clone)
     terminal.tr.print("You clone "
                       + (obj.get("short_descr")
-                         or world.ITEM_DEFS[obj["vnum"]].get("short_descr", "it")) + ".")
+                         or world.item_tpl(obj).get("short_descr", "it")) + ".")
 
 
 def _pstat_trigs(trigs):

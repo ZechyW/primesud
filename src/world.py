@@ -432,6 +432,56 @@ def _vnum_to_tag(vnum):
     return None
 
 
+# [PRIMESUD] Marker key: the instance carries a full copy of its template's
+# fields (see item.snapshot_item) and never needs the template again.  Written
+# LAST by snapshot_item, so its presence means the copy is complete.  Nothing
+# else may set it.
+SNAP_KEY = "snap"
+
+
+def item_tpl(obj):
+    """Return obj's item template -- or obj itself once it is self-contained. [PRIMESUD]
+
+    Replaces the bare ITEM_DEFS[obj_vnum(obj)] idiom.  That idiom defeats the
+    instance-first item_* accessors: the LazyDict subscript loads (and resets)
+    the whole owning area before any accessor gets to prefer the instance.
+    Snapshotted instances short-circuit it, so carrying gear from an evicted
+    area no longer drags the area back onto the heap.
+
+    A snapshotted instance IS its own template: snapshot_item copies exactly
+    the keys the template had, so returning obj keeps every caller working
+    unchanged -- both the instance-first item_* accessors and the many sites
+    that read tpl["short_descr"] / tpl.get("type") straight off the template.
+    Instance overrides simply shadow the copied values in the same dict, which
+    is the behaviour those accessors already implement.
+
+    ponytail: marker + one lookup seam, not a signature change.  The drift-free
+    version is inverting control -- item_*(obj) fetching the template itself,
+    lazily, only when the field is missing -- which needs all 14 accessor
+    signatures plus every caller that threads tpl for other reasons.  Refactor
+    through here if the marker ever gets out of step.
+    """
+    if isinstance(obj, dict):
+        if SNAP_KEY in obj:
+            return obj
+        return ITEM_DEFS[obj["vnum"]]
+    return ITEM_DEFS[obj]
+
+
+def item_tpl_get(obj):
+    """item_tpl, but None for an unknown vnum instead of KeyError. [PRIMESUD]
+
+    For the handful of callers that tolerate a template-less object (synthetic
+    or legacy vnums outside every area's range) rather than treating the miss
+    as a bug.
+    """
+    if isinstance(obj, dict):
+        if SNAP_KEY in obj:
+            return obj
+        return ITEM_DEFS.get(obj["vnum"])
+    return ITEM_DEFS.get(obj)
+
+
 def _ensure_area(vnum):
     """Load the area owning vnum if not already loaded. [PRIMESUD]"""
     tag = _vnum_to_tag(vnum)
@@ -799,6 +849,41 @@ def _retry_pending_deltas():
             _apply_pending_deltas(_a["tag"], _a["room_vnums"])
 
 
+def _snapshot_foreign_objs(lo, hi, rvnum_set):
+    """Snapshot live objects owned by an unloading area but held outside it. [PRIMESUD]
+
+    Objects still sitting in the area's own rooms are skipped: they are
+    serialized to _pending_room_items and reload alongside their template.
+
+    ponytail: linear scan of every live object per eviction (~787 on a full
+    save, one vnum range check each).  Eviction fires on area change, not per
+    pulse, so this stays off the hot path; index objects by owning area if it
+    ever shows up in a profile.
+    """
+    from item import snapshot_item  # deferred: item imports world
+
+    def _walk(items):
+        for _o in items:
+            if not isinstance(_o, dict):
+                continue
+            _v = _o.get("vnum")
+            if (_v is not None and lo <= _v <= hi and SNAP_KEY not in _o):
+                # _data, not the LazyDict: we are mid-eviction, and a miss
+                # here must not re-trigger the load we are undoing.
+                _t = ITEM_DEFS._data.get(_v)
+                if _t is not None:
+                    snapshot_item(_o, _t)
+            _walk(_o.get("contents", []))
+
+    for _cid in chars:
+        _ch = chars[_cid]
+        _walk(_ch.get("inv", []))
+        _walk([_e for _e in _ch.get("equip", {}).values() if _e is not None])
+    for _rv in rooms._data:
+        if _rv not in rvnum_set:
+            _walk(rooms._data[_rv].get("items", []))
+
+
 def _unload_area(tag):
     """Evict one loaded area: buffer live state as save deltas, drop defs. [PRIMESUD]
 
@@ -827,6 +912,14 @@ def _unload_area(tag):
         if _t == tag:
             _lo, _hi = _l, _h
             break
+
+    # [PRIMESUD] Decouple this area's objects that live somewhere else before
+    # the templates go: carried gear, floor items left in other areas, and
+    # anything nested in a container.  Scoped by template OWNERSHIP, not by
+    # location -- an item picked up here and dropped two areas away is exactly
+    # the case that would otherwise reload us on the next look.
+    if _lo is not None:
+        _snapshot_foreign_objs(_lo, _hi, _rvnum_set)
 
     # Remove our cross-area reset entries from resident foreign rooms, or
     # reload would append them a second time (duplicate mobs/objects).

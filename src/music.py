@@ -1,7 +1,7 @@
 """Jukebox songs: play command, song index, and the music pulse (cf. 1stMud music.c)."""
 
 import world
-from world import ITEM_DEFS
+from world import ITEM_DEFS, item_tpl
 from item import obj_vnum, item_type
 from handler import act, chprintln, can_see_obj, TO_CHAR
 from config import POS_ORDER
@@ -87,7 +87,7 @@ def _find_jukebox(player):
     """Find a visible jukebox in the player's room (cf. 1stMud do_play juke scan in music.c). [PRIMESUD]"""
     rs = world.rooms[player["room"]]
     for obj in rs["items"]:
-        tpl = ITEM_DEFS[obj_vnum(obj)]
+        tpl = item_tpl(obj)
         if item_type(obj, tpl) == "jukebox" and can_see_obj(player, obj):
             return obj
     return None
@@ -116,7 +116,7 @@ def _do_play_list(player, juke, rest):
     match_text = " ".join(remainder).lower()
     match = bool(match_text)
 
-    tpl = ITEM_DEFS[obj_vnum(juke)]
+    tpl = item_tpl(juke)
     short = juke.get("short_descr", tpl.get("short_descr", "it"))
     out_lines = [short + " has the following songs available:"]
     for name, group, off, length, lines in _load_songs():
@@ -272,7 +272,7 @@ def song_update():
         return
     for rvnum, room in world.rooms.items():
         for obj in room.get("items", []):
-            tpl = ITEM_DEFS[obj_vnum(obj)]
+            tpl = item_tpl(obj)
             if item_type(obj, tpl) != "jukebox":
                 continue
             queue = obj.get("juke_queue")

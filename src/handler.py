@@ -11,7 +11,7 @@ from skills_table import GSN_SNEAK
 from terminal import tprint
 from urandom import randint
 import world
-from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
+from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS, item_tpl
 from game_time import time_info, SUN_SET, SUN_DARK
 from debug import DBG  # [PRIMESUD] "holylight" debug toggle = 1stMud PLR_HOLYLIGHT
 from util import int_str
@@ -318,7 +318,7 @@ def affect_modify(char, af, add):
     global _affect_depth
     wield = char.get("equip", {}).get("wield")
     if (_affect_depth == 0 and not char.get("is_npc") and wield is not None
-            and ITEM_DEFS[wield["vnum"]].get("weight", 0)
+            and item_tpl(wield).get("weight", 0)
                 > STR_APP_WIELD[get_curr_stat(char, "str")] * 10):
         _affect_depth += 1
         act("You drop $p.", char, wield, None, TO_CHAR)
@@ -439,7 +439,7 @@ def affect_check(char, where, vector):
                 return
         # Template flag_affects -- non-enchanted only (cf. 1stMud handler.c:1121-1146)
         if not obj.get("enchanted"):
-            tpl = ITEM_DEFS[obj["vnum"]]
+            tpl = item_tpl(obj)
             for paf in tpl_flag_affects(tpl):
                 if paf.get("where", "to_affects") == where and paf.get("bitvector") == vector:
                     char.setdefault(key, {})[vector] = True
@@ -604,7 +604,7 @@ def unequip_char(char, slot):
     bit it just cleared.
     """
     obj = char["equip"][slot]
-    tpl = ITEM_DEFS[obj["vnum"]]
+    tpl = item_tpl(obj)
     armor = _item_armor_runtime(tpl, obj)
     if armor is not None:
         a = char.get("armor") or (100, 100, 100, 100)
@@ -616,7 +616,7 @@ def unequip_char(char, slot):
 
 def equip_char(char, obj, slot):
     """Seat obj in slot and apply stat_bonuses (cf. 1stMud equip_char in handler.c)."""
-    tpl = ITEM_DEFS[obj["vnum"]]
+    tpl = item_tpl(obj)
     char["inv"].remove(obj)
     char["equip"][slot] = obj
     armor = _item_armor_runtime(tpl, obj)
@@ -821,7 +821,7 @@ def _obj_keywords(obj):
     if "keywords" in obj:
         return obj["keywords"]
     if "vnum" in obj and obj["vnum"] in ITEM_DEFS:
-        return ITEM_DEFS[obj["vnum"]].get("keywords", "")
+        return item_tpl(obj).get("keywords", "")
     return ""
 
 
@@ -832,7 +832,7 @@ def _obj_short(obj):
     if "short_descr" in obj:
         return obj["short_descr"]
     if "vnum" in obj and obj["vnum"] in ITEM_DEFS:
-        return ITEM_DEFS[obj["vnum"]].get("short_descr", "something")
+        return item_tpl(obj).get("short_descr", "something")
     return "something"
 
 
@@ -1190,7 +1190,7 @@ def _is_lit_light(obj):
     semantics (cf. 1stMud): 0 = dead, absent/negative = infinite, positive =
     hours left -- so a dead (0) light is not lit and everything else is.
     """
-    tpl = ITEM_DEFS[obj["vnum"] if isinstance(obj, dict) else obj]
+    tpl = item_tpl(obj)
     if tpl.get("type") != "light":
         return False
     fuel = obj.get("light_hours") if isinstance(obj, dict) else None

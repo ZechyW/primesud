@@ -105,6 +105,47 @@ class TestUnloadArea:
         assert 100 not in world.rooms._data
         assert 100 not in MOB_DEFS._data
 
+    def test_snapshots_objects_held_outside_the_area(self, fresh_world):
+        """Carried/dropped gear is decoupled before its template goes.
+
+        Reading it back must not reload the area -- that reload is the whole
+        reason the snapshot exists (see world._snapshot_foreign_objs).
+        """
+        from item import create_object
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}}},
+                         objects={110: _item_tpl(
+                             "alpha trinket", short_descr="an alpha trinket",
+                             extra_flags={"glow": True})})
+        fw.register_area("beta", 200, 299,
+                         rooms={200: {"name": "R200", "exits": {}}})
+        fw.setup()
+        _load_area("alpha")
+        _load_area("beta")
+
+        player = _add_player(200)
+        player["inv"] = [create_object(110)]
+        # ...and one left on the floor of the OTHER area, the case a
+        # player-scoped sweep would miss.
+        dropped = create_object(110)
+        world.rooms._data[200]["items"].append(dropped)
+
+        _unload_area("alpha")
+        assert not is_area_loaded("alpha")
+
+        for obj in (player["inv"][0], dropped):
+            tpl = world.item_tpl(obj)
+            assert tpl["short_descr"] == "an alpha trinket"
+            assert tpl.get("extra_flags", {}).get("glow")
+            assert tpl.get("weight") == 1
+        assert not is_area_loaded("alpha"), "reading gear reloaded the area"
+
+        # Template dict is copied, not aliased: mutating the instance's flags
+        # must not write through to anything shared.
+        player["inv"][0]["extra_flags"]["glow"] = False
+        assert dropped["extra_flags"].get("glow")
+
     def test_reload_restocks_shop_with_template_flags(self, fresh_world):
         """Delta-replay restock adds `inventory` copy-on-write: template
         extra_flags survive on the instance, template stays untouched."""

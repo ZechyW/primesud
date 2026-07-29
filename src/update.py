@@ -1,7 +1,7 @@
 """World-state update loops (cf. 1stMud update.c)."""
 
 import world
-from world import ITEM_DEFS, ROOM_DEFS
+from world import ITEM_DEFS, ROOM_DEFS, item_tpl
 from item import obj_vnum, item_affect_remove
 from handler import unequip_char, chprintln
 from urandom import randint
@@ -158,7 +158,7 @@ def _obj_affect_update(obj):
     affects = obj.get("affect_list")
     if not affects:
         return
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     for af in list(affects):
         dur = af.get("duration", -1)
         if dur > 0:
@@ -171,7 +171,7 @@ def _obj_affect_update(obj):
 
 def _decay_message(obj):
     """Return decay message string for a timer-expired object (cf. 1stMud obj_update switch in update.c)."""
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     itype = tpl.get("type", "")
     short = obj.get("short_descr", tpl.get("short_descr", "something"))
     if itype == "fountain":
@@ -285,7 +285,7 @@ def obj_update(tr, player):
             tr.print(_decay_message(obj))
             # PC corpse or floating item: spill contents to player inv
             # (cf. 1stMud update.c:908-915, obj_to_char path)
-            tpl = ITEM_DEFS[obj_vnum(obj)]
+            tpl = item_tpl(obj)
             itype = tpl.get("type", "")
             if itype == "pc_corpse" or tpl.get("wear_flags", {}).get("float"):
                 for inner in obj.get("contents", []):
@@ -309,7 +309,7 @@ def obj_update(tr, player):
             tr.print(_decay_message(obj))
             # Floating equipped container: spill contents to room
             # (cf. 1stMud update.c:910-913)
-            tpl = ITEM_DEFS[obj_vnum(obj)]
+            tpl = item_tpl(obj)
             if tpl.get("wear_flags", {}).get("float"):
                 room = world.rooms.get(player["room"])
                 if room:

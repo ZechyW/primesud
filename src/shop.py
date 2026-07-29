@@ -1,7 +1,7 @@
 """Shop system: buy, sell, list, and value commands (cf. 1stMud do_buy/do_sell/do_list/do_value in act_obj.c)."""
 
 import world
-from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
+from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS, item_tpl
 from handler import (act, chprintln, is_name, can_see, can_see_obj,
                    get_char_room, TO_CHAR, TO_VICT, TO_ROOM)
 from skill_utils import get_skill, check_improve
@@ -91,7 +91,7 @@ def get_cost(keeper, obj, buy):
     if shop is None or obj is None:
         return 0
 
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     cost_base = obj.get("cost", tpl.get("value", 0))
 
     if buy:
@@ -107,7 +107,7 @@ def get_cost(keeper, obj, buy):
         if not item_extra_flags(obj, tpl).get("sell_extract"):
             for inv_obj in keeper["inv"]:
                 if obj_vnum(inv_obj) == obj_vnum(obj):
-                    inv_tpl = ITEM_DEFS[obj_vnum(inv_obj)]
+                    inv_tpl = item_tpl(inv_obj)
                     inv_sd = inv_obj.get("short_descr") or inv_tpl["short_descr"]
                     obj_sd = obj.get("short_descr") or tpl["short_descr"]
                     if inv_sd == obj_sd:
@@ -166,7 +166,7 @@ def _get_obj_keeper(player, keeper, arg):
                     nxt = inv[i + 1]
                     if obj_vnum(nxt) != vnum:
                         break
-                    nxt_tpl = ITEM_DEFS[obj_vnum(nxt)]
+                    nxt_tpl = item_tpl(nxt)
                     nxt_sd = nxt.get("short_descr") or nxt_tpl["short_descr"]
                     if obj_sd != nxt_sd:
                         break
@@ -194,7 +194,7 @@ def _pick_keeper_stock(player, keeper):
     inv = keeper["inv"]
     while i < len(inv):
         obj = inv[i]
-        tpl = ITEM_DEFS[obj_vnum(obj)]
+        tpl = item_tpl(obj)
         cost = get_cost(keeper, obj, True)
         if can_see_obj(player, obj) and cost > 0:
             flags = item_extra_flags(obj, tpl)
@@ -206,7 +206,7 @@ def _pick_keeper_stock(player, keeper):
                     nxt = inv[i + 1]
                     if obj_vnum(nxt) != obj_vnum(obj):
                         break
-                    nxt_tpl = ITEM_DEFS[obj_vnum(nxt)]
+                    nxt_tpl = item_tpl(nxt)
                     nxt_sd = nxt.get("short_descr") or nxt_tpl["short_descr"]
                     if short != nxt_sd:
                         break
@@ -355,7 +355,7 @@ def do_buy(player, args):
         player["reply"] = keeper["id"]
         return
 
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     flags = item_extra_flags(obj, tpl)
 
     if not flags.get("inventory"):
@@ -363,7 +363,7 @@ def do_buy(player, args):
         obj_sd = obj.get("short_descr") or tpl["short_descr"]
         for inv_obj in keeper["inv"]:
             if obj_vnum(inv_obj) == obj_vnum(obj):
-                inv_tpl = ITEM_DEFS[obj_vnum(inv_obj)]
+                inv_tpl = item_tpl(inv_obj)
                 inv_sd = inv_obj.get("short_descr") or inv_tpl["short_descr"]
                 if obj_sd == inv_sd:
                     count += 1
@@ -490,7 +490,7 @@ def do_list(player, args):
                         nxt = inv[i + 1]
                         if obj_vnum(nxt) != vnum:
                             break
-                        nxt_tpl = ITEM_DEFS[obj_vnum(nxt)]
+                        nxt_tpl = item_tpl(nxt)
                         nxt_sd = nxt.get("short_descr") or nxt_tpl["short_descr"]
                         if short != nxt_sd:
                             break
@@ -507,7 +507,7 @@ def do_list(player, args):
 
 def _sell_one(player, keeper, obj):
     """Sell one selected item through the normal shop checks. [PRIMESUD]"""
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     flags = item_extra_flags(obj, tpl)
 
     if not can_drop_obj(player, obj):
@@ -578,7 +578,7 @@ def do_sell(player, args):
     sellables = []
     labels = []
     for carried in player["inv"]:
-        tpl = ITEM_DEFS[obj_vnum(carried)]
+        tpl = item_tpl(carried)
         cost = get_cost(keeper, carried, False)
         if (can_see_obj(player, carried) and can_see_obj(keeper, carried)
                 and can_drop_obj(player, carried)
@@ -618,7 +618,7 @@ def do_value(player, args):
         player["reply"] = keeper["id"]
         return
 
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
 
     if not can_see_obj(keeper, obj):
         act("$n doesn't see what you are offering.", keeper, None, player, TO_VICT)

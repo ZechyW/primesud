@@ -24,7 +24,7 @@ player dict for save simplicity:
 """
 
 import world
-from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, AREA_DEFS, AREA_LEVELS
+from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, AREA_DEFS, AREA_LEVELS, item_tpl
 from world import _ensure_area_by_tag
 from classes import lvl_bonus
 from comm import do_function, do_say
@@ -56,6 +56,11 @@ QUEST_TIME = 20  # cf. 1stMud defines.h; base cooldown between quests
 
 # Quest token objects (cf. 1stMud OBJ_VNUM_QUEST1..4 in vnums.h)
 _QUEST_PIECES = (214, 215, 216, 217)
+
+# [PRIMESUD] Vnum range of the quest area (cf. world._AREA_FILES "quest").
+# update_questobj gates on this to avoid a LazyDict template read per item.
+_QUEST_VNUM_LO = 200
+_QUEST_VNUM_HI = 249
 
 # Questmaster shop vnums (cf. 1stMud OBJ_VNUM_QUEST_* in vnums.h)
 _OBJ_QUEST_AURA   = 201
@@ -330,7 +335,7 @@ def obj_cost(obj):
         return QUEST_TABLE[i][2]
     if isinstance(obj, dict) and "cost" in obj:
         return obj["cost"]
-    return ITEM_DEFS[obj_vnum(obj)].get("cost", 0)
+    return item_tpl(obj).get("cost", 0)
 
 
 def _add_apply(obj, location, modifier, level):
@@ -358,7 +363,15 @@ def update_questobj(ch, obj):
     If obj is currently equipped, use update_all_qobjs instead so the
     char's stat modifiers are reapplied.
     """
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    vnum = obj_vnum(obj)
+    # [PRIMESUD] Vnum gate before the template read: 1stMud tests ITEM_QUEST
+    # alone, but ITEM_DEFS is a LazyDict -- reading a template pulls in (and
+    # resets) its whole area.  Callers sweep every carried item, so on load a
+    # single non-quest souvenir would drag several areas onto the heap.  The
+    # quest area owns 200-249 and no other area file sets the 'quest' flag.
+    if not (_QUEST_VNUM_LO <= vnum <= _QUEST_VNUM_HI):
+        return
+    tpl = ITEM_DEFS[vnum]
     if not item_extra_flags(obj, tpl).get("quest"):
         return
     lvl = ch["level"]
@@ -377,7 +390,6 @@ def update_questobj(ch, obj):
         ef["burn_proof"] = True
         obj["extra_flags"] = ef
 
-    vnum = obj_vnum(obj)
     if vnum in (_OBJ_QUEST_BPLATE, _OBJ_QUEST_SHIELD):
         _add_apply(obj, "damroll", pbonus, lvl)
         _add_apply(obj, "hitroll", pbonus, lvl)
@@ -428,7 +440,7 @@ def update_all_qobjs(ch):
         obj = ch["equip"].get(slot)
         if obj is None:
             continue
-        if item_extra_flags(obj, ITEM_DEFS[obj_vnum(obj)]).get("quest"):
+        if item_extra_flags(obj, item_tpl(obj)).get("quest"):
             # cf. 1stMud: unequip/equip cycle reapplies stat modifiers
             unequip_char(ch, slot)
             update_questobj(ch, obj)
@@ -502,7 +514,7 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
         player["quest_obj"] = obj_vnum(obj)
         player["quest_mob"] = 0
         player["quest_mob_name"] = ""
-        short = ITEM_DEFS[obj_vnum(obj)]["short_descr"]
+        short = item_tpl(obj)["short_descr"]
         if randint(0, 1) == 0:
             mob_tell(player, questman,
                      "Vile pilferers have stolen " + short + " from the royal treasury!")
@@ -562,7 +574,7 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
         player["quest_obj"] = obj_vnum(obj)
         player["quest_mob"] = mvnum
         player["quest_mob_name"] = mob_name
-        short = ITEM_DEFS[obj_vnum(obj)]["short_descr"]
+        short = item_tpl(obj)["short_descr"]
         # [PRIMESUD] "Time is the essence" grammar fixed
         mob_tell(player, questman,
                  "Please deliver this " + short + " to my friend - " + mob_name
@@ -1002,7 +1014,7 @@ def do_quest(player, args):
             labels = []
             for carried in player["inv"]:
                 i = qobj_lookup(carried)
-                tpl = ITEM_DEFS[obj_vnum(carried)]
+                tpl = item_tpl(carried)
                 if (i >= 0
                         and can_see_obj(player, carried)
                         and item_extra_flags(carried, tpl).get("quest")):
@@ -1024,7 +1036,7 @@ def do_quest(player, args):
         if obj is None:
             chprintln(player, "Which item is that?")
             return
-        if not item_extra_flags(obj, ITEM_DEFS[obj_vnum(obj)]).get("quest"):
+        if not item_extra_flags(obj, item_tpl(obj)).get("quest"):
             mob_tell(player, questman, "That is not a quest item.")
             return
         i = qobj_lookup(obj)

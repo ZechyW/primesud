@@ -46,7 +46,7 @@ from skills_table import SKILLS, WEAPON_GSN_MAP
 from terminal import tprint
 from urandom import randint
 from util import int_str, num_str
-from world import ITEM_DEFS, MOB_DEFS
+from world import ITEM_DEFS, MOB_DEFS, item_tpl
 
 _CONTAINER_TYPES = CONTAINER_TYPES  # [PRIMESUD] shared definition now lives in item.py
 
@@ -59,7 +59,7 @@ def _loot_container_picker(player, container):
     cf. 1stMud do_get CONT_CLOSED check (act_obj.c:280) -- closed containers
     can't be looted, checked before the no-arg [loot] picker shown here.
     """
-    cont_tpl = ITEM_DEFS[obj_vnum(container)]
+    cont_tpl = item_tpl(container)
     if item_container_flags(container, cont_tpl).get("closed"):
         kw = cont_tpl.get("keywords", cont_tpl["short_descr"])
         act("The $d is closed.", player, None, kw, TO_CHAR)
@@ -75,7 +75,7 @@ def _loot_container_picker(player, container):
         return
     names = []
     for cobj in visible:
-        ctpl = ITEM_DEFS[obj_vnum(cobj)]
+        ctpl = item_tpl(cobj)
         names.append(cobj.get("short_descr") or ctpl["short_descr"])
     if len(visible) > 1:
         names.append("[all]")
@@ -84,7 +84,7 @@ def _loot_container_picker(player, container):
         return
     if cidx == len(visible):
         for cobj in list(visible):
-            ctpl = ITEM_DEFS[obj_vnum(cobj)]
+            ctpl = item_tpl(cobj)
             if not _check_carry_get(player, cobj, ctpl):
                 continue
             container["contents"].remove(cobj)
@@ -95,7 +95,7 @@ def _loot_container_picker(player, container):
                 quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
         return
     cobj = visible[cidx]
-    ctpl = ITEM_DEFS[obj_vnum(cobj)]
+    ctpl = item_tpl(cobj)
     if not _check_carry_get(player, cobj, ctpl):
         return
     container["contents"].remove(cobj)
@@ -114,7 +114,7 @@ def _obj_number(obj):
     everything else contributes 1.  [PRIMESUD] gem/jewelry types added to
     the zero-count set alongside PrimeSUD's corpse split of ITEM_CONTAINER.
     """
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     n = 0 if tpl.get("type") in _CONTAINER_TYPES + ("money", "gem", "jewelry") else 1
     if isinstance(obj, dict):
         for c in obj.get("contents", []):
@@ -187,25 +187,25 @@ def do_get(player, args):
         # cf. 1stMud get_obj_list can_see_obj gate: unseen (dark/invis/
         # vis_death) room items drop out of the picker
         loose = [obj for obj in reversed(rs["items"])
-                 if ITEM_DEFS[obj_vnum(obj)].get("type") not in _CONTAINER_TYPES
-                 and "take" in item_wear_flags(obj, ITEM_DEFS[obj_vnum(obj)])
+                 if item_tpl(obj).get("type") not in _CONTAINER_TYPES
+                 and "take" in item_wear_flags(obj, item_tpl(obj))
                  and can_see_obj(player, obj)]
         conts = [obj for obj in rs["items"]
-                 if ITEM_DEFS[obj_vnum(obj)].get("type") in _CONTAINER_TYPES
+                 if item_tpl(obj).get("type") in _CONTAINER_TYPES
                  and can_see_obj(player, obj)]
         if not loose and not conts:
             chprintln(player, "There is nothing here to pick up.")
             return
         names = []
         for obj in loose:
-            tpl = ITEM_DEFS[obj_vnum(obj)]
+            tpl = item_tpl(obj)
             names.append((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"])
         has_all = len(loose) > 1
         if has_all:
             names.append("[all]")
         cont_start = len(names)
         for obj in conts:
-            tpl = ITEM_DEFS[obj_vnum(obj)]
+            tpl = item_tpl(obj)
             names.append(
                 ((isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"])
                 + " {W[loot]{x")
@@ -214,7 +214,7 @@ def do_get(player, args):
             return
         if idx < len(loose):
             obj = loose[idx]
-            tpl = ITEM_DEFS[obj_vnum(obj)]
+            tpl = item_tpl(obj)
             if not _check_carry_get(player, obj, tpl):
                 return
             rs["items"].remove(obj)
@@ -228,7 +228,7 @@ def do_get(player, args):
             return "get " + tpl.get("keywords", tpl["short_descr"]).split()[0]
         if has_all and idx == len(loose):
             for obj in list(loose):
-                tpl = ITEM_DEFS[obj_vnum(obj)]
+                tpl = item_tpl(obj)
                 if not _check_carry_get(player, obj, tpl):
                     continue
                 rs["items"].remove(obj)
@@ -246,7 +246,7 @@ def do_get(player, args):
         filter_kw = arg[4:] if arg.startswith("all.") else None
         found = False
         for obj in list(rs["items"]):
-            tpl = ITEM_DEFS[obj_vnum(obj)]
+            tpl = item_tpl(obj)
             if tpl.get("type") in _CONTAINER_TYPES:  # [PRIMESUD] skip containers; use "get all <container>"
                 continue
             if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
@@ -277,9 +277,9 @@ def do_get(player, args):
         if cont_obj is None:
             cont_obj = get_obj_list(cont_arg, player["inv"], ITEM_DEFS, player)
         if (cont_obj is not None and isinstance(cont_obj, dict)
-                and ITEM_DEFS[obj_vnum(cont_obj)].get("type") in _CONTAINER_TYPES):
+                and item_tpl(cont_obj).get("type") in _CONTAINER_TYPES):
             item_arg = args[0]
-            cont_tpl = ITEM_DEFS[obj_vnum(cont_obj)]
+            cont_tpl = item_tpl(cont_obj)
             # cf. 1stMud do_get CONT_CLOSED check, act_obj.c:280
             if item_container_flags(cont_obj, cont_tpl).get("closed"):
                 kw = cont_tpl.get("keywords", cont_tpl["short_descr"])
@@ -292,7 +292,7 @@ def do_get(player, args):
                     chprintln(player, "It is empty.")
                 else:
                     for cobj in list(contents):
-                        ctpl = ITEM_DEFS[obj_vnum(cobj)]
+                        ctpl = item_tpl(cobj)
                         if not can_see_obj(player, cobj):  # cf. 1stMud do_get all-from-container loop, act_obj.c:311
                             continue
                         if not _check_carry_get(player, cobj, ctpl, cont_carried):
@@ -309,7 +309,7 @@ def do_get(player, args):
                 chprintln(player, "I see nothing like that in the " + (
                     cont_obj.get("short_descr") or cont_tpl["short_descr"]) + ".")
                 return
-            ctpl = ITEM_DEFS[obj_vnum(cobj)]
+            ctpl = item_tpl(cobj)
             if not _check_carry_get(player, cobj, ctpl, cont_carried):
                 return
             cont_obj["contents"].remove(cobj)
@@ -323,7 +323,7 @@ def do_get(player, args):
     if obj is None:
         chprintln(player, "I see no " + arg + " here.")
         return
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     if "take" not in item_wear_flags(obj, tpl):
         chprintln(player, "You can't take that.")
         return
@@ -363,10 +363,10 @@ def _drop_coins(player, amount, coin):
 
     rs = world.rooms[player["room"]]
     for obj in list(rs["items"]):
-        if not isinstance(obj, dict) or ITEM_DEFS[obj_vnum(obj)].get("type") != "money":
+        if not isinstance(obj, dict) or item_tpl(obj).get("type") != "money":
             continue
         rs["items"].remove(obj)
-        tpl = ITEM_DEFS[obj_vnum(obj)]
+        tpl = item_tpl(obj)
         silver_amt += obj.get("silver", tpl.get("silver", 0))
         gold += obj.get("gold", tpl.get("gold", 0))
 
@@ -397,7 +397,7 @@ def do_drop(player, args):
         if not visible:
             chprintln(player, "You are not carrying anything.")
             return
-        names = [ITEM_DEFS[obj["vnum"]]["short_descr"] for obj in visible]
+        names = [item_tpl(obj)["short_descr"] for obj in visible]
         if len(visible) > 1:
             names.append("[all]")
         idx = pick_from("Drop what?", names)
@@ -410,7 +410,7 @@ def do_drop(player, args):
         if not can_drop_obj(player, obj):
             chprintln(player, "You can't let go of it.")
             return
-        tpl = ITEM_DEFS[obj["vnum"]]
+        tpl = item_tpl(obj)
         player["inv"].remove(obj)
         ritems = world.rooms[player["room"]]["items"]
         ritems.append(obj)
@@ -428,7 +428,7 @@ def do_drop(player, args):
         filter_kw = arg[4:] if arg.startswith("all.") else None
         found = False
         for obj in list(player["inv"]):
-            tpl = ITEM_DEFS[obj["vnum"]]
+            tpl = item_tpl(obj)
             if filter_kw and not is_name(filter_kw, tpl.get("keywords", "")):
                 continue
             if not can_see_obj(player, obj):  # cf. 1stMud do_drop all loop, act_obj.c:602
@@ -458,7 +458,7 @@ def do_drop(player, args):
     if not can_drop_obj(player, obj):
         chprintln(player, "You can't let go of it.")
         return
-    tpl = ITEM_DEFS[obj["vnum"]]
+    tpl = item_tpl(obj)
     player["inv"].remove(obj)
     ritems = world.rooms[player["room"]]["items"]
     ritems.append(obj)
@@ -495,7 +495,7 @@ def do_put(player, args):
     if cont_obj is None:
         chprintln(player, "I see no " + cont_arg + " here.")
         return
-    cont_tpl = ITEM_DEFS[obj_vnum(cont_obj)]
+    cont_tpl = item_tpl(cont_obj)
     if _item_type(cont_obj, cont_tpl) != "container":
         chprintln(player, "That's not a container.")
         return
@@ -515,7 +515,7 @@ def do_put(player, args):
     if not can_drop_obj(player, obj):
         chprintln(player, "You can't let go of it.")
         return
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     # cf. 1stMud do_put act_obj.c:397 -- quest items only fit quest containers
     if (item_extra_flags(obj, tpl).get("quest")
             and not item_extra_flags(cont_obj, cont_tpl).get("quest")):
@@ -642,7 +642,7 @@ def do_give(player, args):
             if can_see_obj(player, carried):
                 giveables.append(carried)
                 labels.append(carried.get("short_descr")
-                              or ITEM_DEFS[obj_vnum(carried)]["short_descr"])
+                              or item_tpl(carried)["short_descr"])
         if not giveables:
             chprintln(player, "You have nothing to give.")
             return
@@ -686,7 +686,7 @@ def do_give(player, args):
         if victim is None:
             chprintln(player, "They aren't here.")
             return
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
 
     # Quest delivery (cf. 1stMud do_give act_obj.c:772)
     if (is_quester(player)
@@ -802,13 +802,15 @@ def do_inventory(player, args):
         chprintln(player, out)
         return
     counts = {}
+    reps = {}   # vnum -> a representative instance, for item_tpl [PRIMESUD]
     for obj in player["inv"]:
         v = obj["vnum"]
         counts[v] = counts.get(v, 0) + 1
+        reps[v] = obj
     # [PRIMESUD] obj vnum overlay under holylight (upstream imms use stat)
     show_vnums = "holylight" in DBG
     for v, n in counts.items():
-        tpl = ITEM_DEFS[v]
+        tpl = item_tpl(reps[v])
         flags = _obj_flags(tpl)
         name = tpl["short_descr"]
         # cf. 1stMud act_info.c:66 quest obj marker; [PRIMESUD] vnum match
@@ -942,7 +944,7 @@ def gear_score(player, obj):
     Returns:
         int: Higher is better.
     """
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     score = 0
     itype = tpl.get("type")
     if itype == "armor":
@@ -1011,7 +1013,7 @@ def remove_obj(player, slot, fReplace):
         return True
     if not fReplace:
         return False
-    tpl = ITEM_DEFS[obj["vnum"]]
+    tpl = item_tpl(obj)
     if item_extra_flags(obj, tpl).get("noremove"):
         chprintln(player, "You can't remove " + tpl["short_descr"] + ".")
         return False
@@ -1056,7 +1058,7 @@ def wear_obj(player, obj, fReplace):
         obj (dict): Item instance from inventory.
         fReplace (bool): Auto-remove current occupant if True; skip silently if False.
     """
-    tpl = ITEM_DEFS[obj["vnum"]]
+    tpl = item_tpl(obj)
     if player["level"] < tpl.get("level", 1):
         chprintln(player, "You must be level " + str(tpl.get("level", 1)) + " to use this object.")
         return
@@ -1120,7 +1122,7 @@ def wear_obj(player, obj, fReplace):
         # cf. 1stMud wear_obj shield-vs-two-hand-weapon check, act_obj.c:1602-1608
         wobj = player["equip"].get("wield")
         if wobj is not None:
-            wtpl = ITEM_DEFS[wobj["vnum"]]
+            wtpl = item_tpl(wobj)
             if (_get_size(player) < SIZE_RANK["large"]
                     and item_weapon_flags(wobj, wtpl).get("two_hands")):
                 chprintln(player, "Your hands are tied up with your weapon!")
@@ -1146,9 +1148,9 @@ def _strength_after_swap(player, removed, added=()):
     """Return STR after removing and adding items. [PRIMESUD]"""
     delta = 0
     for obj in removed:
-        delta -= _item_stat_modifier(obj, ITEM_DEFS[obj_vnum(obj)], "str")
+        delta -= _item_stat_modifier(obj, item_tpl(obj), "str")
     for obj in added:
-        delta += _item_stat_modifier(obj, ITEM_DEFS[obj_vnum(obj)], "str")
+        delta += _item_stat_modifier(obj, item_tpl(obj), "str")
     if not delta:
         return get_curr_stat(player, "str")
     mods = player.setdefault("mod_stat", {})
@@ -1168,7 +1170,7 @@ def _wield_holds_after_swap(player, removed, added=()):
     wield = player["equip"].get("wield")
     if wield is None or any(wield is obj for obj in removed):
         return True
-    tpl = ITEM_DEFS[obj_vnum(wield)]
+    tpl = item_tpl(wield)
     return (tpl.get("weight", 0)
             <= STR_APP_WIELD[_strength_after_swap(
                 player, removed, added)] * 10)
@@ -1190,7 +1192,7 @@ def _best_wear_candidate(player, flag):
     best = None
     best_score = 0
     for obj in player["inv"]:
-        tpl = ITEM_DEFS[obj_vnum(obj)]
+        tpl = item_tpl(obj)
         if (_wear_flag(obj, tpl) != flag
                 or not _can_wear_best(player, obj, tpl)):
             continue
@@ -1203,7 +1205,7 @@ def _best_wear_candidate(player, flag):
 
 def _noremove_worn(obj):
     """Return whether a worn item refuses removal. [PRIMESUD]"""
-    return item_extra_flags(obj, ITEM_DEFS[obj_vnum(obj)]).get("noremove")
+    return item_extra_flags(obj, item_tpl(obj)).get("noremove")
 
 
 def _best_hand_layout(player):
@@ -1234,7 +1236,7 @@ def _best_hand_layout(player):
                 scores[id(obj)] = gear_score(player, obj)
                 out.append((scores[id(obj)], obj))
         for obj in player["inv"]:
-            tpl = ITEM_DEFS[obj_vnum(obj)]
+            tpl = item_tpl(obj)
             if _wear_flag(obj, tpl) == flag and _can_wear_best(player, obj, tpl):
                 scores[id(obj)] = gear_score(player, obj)
                 out.append((scores[id(obj)], obj))
@@ -1265,7 +1267,7 @@ def _best_hand_layout(player):
                     or shield is not None or hold is not None):
                 return None
         if primary is not None:
-            ptpl = ITEM_DEFS[obj_vnum(primary)]
+            ptpl = item_tpl(primary)
             if (small and shield is not None
                     and item_weapon_flags(primary, ptpl).get("two_hands")):
                 return None
@@ -1283,11 +1285,11 @@ def _best_hand_layout(player):
             player, removed, [o for o in added if o is not secondary])]
         score = 0
         if primary is not None:
-            pw = ITEM_DEFS[obj_vnum(primary)].get("weight", 0)
+            pw = item_tpl(primary).get("weight", 0)
             if pw > limit * 10:
                 return None
             if secondary is not None:
-                sw = ITEM_DEFS[obj_vnum(secondary)].get("weight", 0)
+                sw = item_tpl(secondary).get("weight", 0)
                 # cf. do_second weight rules
                 if sw > limit // 2 or sw * 2 > pw:
                     return None
@@ -1358,7 +1360,7 @@ def _best_hand_layout(player):
     obj = best["secondary"]
     if obj is not None and equip.get("secondary") is not obj:
         # cf. do_second equip tail; align already filtered by _can_wear_best.
-        tpl = ITEM_DEFS[obj_vnum(obj)]
+        tpl = item_tpl(obj)
         chprintln(player, "You wield " + tpl["short_descr"] + " in your off-hand.")
         equip_char(player, obj, "secondary")
         changed = True
@@ -1439,7 +1441,7 @@ def do_wear(player, args):
         for obj in player["inv"]:
             if not can_see_obj(player, obj):  # cf. 1stMud get_obj_carry can_see_obj gate
                 continue
-            tpl = ITEM_DEFS[obj["vnum"]]
+            tpl = item_tpl(obj)
             slot = _wear_flag(obj, tpl)
             if slot is not None and (slot in player["equip"] or slot in _DUAL_SLOTS):
                 equippable.append((obj, tpl, slot))
@@ -1498,7 +1500,7 @@ def do_remove(player, args):
         if not worn:
             chprintln(player, "You aren't wearing anything.")
             return
-        names = [ITEM_DEFS[obj["vnum"]]["short_descr"] for _, obj in worn]
+        names = [item_tpl(obj)["short_descr"] for _, obj in worn]
         if len(worn) > 1:
             names.append("[all]")
         idx = pick_from("Remove what?", names)
@@ -1510,7 +1512,7 @@ def do_remove(player, args):
             return
         slot, obj = worn[idx]
         remove_obj(player, slot, True)
-        return "remove " + ITEM_DEFS[obj["vnum"]].get("keywords", ITEM_DEFS[obj["vnum"]]["short_descr"]).split()[0]
+        return "remove " + item_tpl(obj).get("keywords", item_tpl(obj)["short_descr"]).split()[0]
     if args[0] == "all":
         for slot, obj in list(player["equip"].items()):
             if obj is not None and can_see_obj(player, obj):  # cf. 1stMud do_remove all loop, act_obj.c:1763
@@ -1520,7 +1522,7 @@ def do_remove(player, args):
     # cf. 1stMud get_obj_wear (handler.c:2052) -- worn lookup gates on can_see_obj
     for slot, obj in player["equip"].items():
         if (obj is not None and can_see_obj(player, obj)
-                and is_name(target, ITEM_DEFS[obj["vnum"]].get("keywords", ""))):
+                and is_name(target, item_tpl(obj).get("keywords", ""))):
             remove_obj(player, slot, True)
             return
     chprintln(player, "You do not have that item.")
@@ -1541,7 +1543,7 @@ def do_equipment(player, args):
     for slot, label in WEAR_LABELS:
         obj = player["equip"].get(slot)
         if obj is not None:
-            tpl = ITEM_DEFS[obj["vnum"]]
+            tpl = item_tpl(obj)
             line = label + _obj_flags(tpl) + "{Y" + tpl["short_descr"] + "{x"
             if show_vnums:  # [PRIMESUD]
                 line += " {D[" + str(obj["vnum"]) + "]{x"
@@ -1639,7 +1641,7 @@ def do_steal(player, args):
         chprintln(player, "You can't find it.")
         return
 
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     if (not can_drop_obj(player, obj)
             or item_extra_flags(obj, tpl).get("inventory")
             or tpl.get("level", 0) > player["level"]):
@@ -1677,7 +1679,7 @@ def do_compare(player, args):
     if obj1 is None:
         chprintln(player, "You do not have that item.")
         return
-    tpl1 = ITEM_DEFS[obj_vnum(obj1)]
+    tpl1 = item_tpl(obj1)
 
     if len(args) < 2:
         obj2 = None
@@ -1687,7 +1689,7 @@ def do_compare(player, args):
             for o in player["equip"].values():
                 if o is None:
                     continue
-                tpl = ITEM_DEFS[obj_vnum(o)]
+                tpl = item_tpl(o)
                 if (_wear_flag(o, tpl) == flag1
                         and not item_extra_flags(o, tpl).get("noremove")):
                     score = gear_score(player, o)
@@ -1702,7 +1704,7 @@ def do_compare(player, args):
         if obj2 is None:
             chprintln(player, "You do not have that item.")
             return
-    tpl2 = ITEM_DEFS[obj_vnum(obj2)]
+    tpl2 = item_tpl(obj2)
 
     if obj1 is obj2:
         score = int_str(gear_score(player, obj1))
@@ -1740,7 +1742,7 @@ def do_second(player, args):
             or player["equip"].get("hold") is not None):
         chprintln(player, "You cannot use a secondary weapon while using a shield or holding an item")
         return
-    tpl = ITEM_DEFS[obj["vnum"]]
+    tpl = item_tpl(obj)
     if player["level"] < tpl.get("level", 1):
         chprintln(player, "You must be level " + str(tpl.get("level", 1)) + " to use this object.")
         return
@@ -1751,7 +1753,7 @@ def do_second(player, args):
     if tpl.get("weight", 0) > wield_limit // 2:
         chprintln(player, "This weapon is too heavy to be used as a secondary weapon by you.")
         return
-    primary_tpl = ITEM_DEFS[player["equip"]["wield"]["vnum"]]
+    primary_tpl = item_tpl(player["equip"]["wield"])
     if tpl.get("weight", 0) * 2 > primary_tpl.get("weight", 0):
         chprintln(player, "Your secondary weapon has to be considerably lighter than the primary one.")
         return
@@ -1772,7 +1774,7 @@ def do_quaff(player, args):
     if obj is None:
         chprintln(player, "You do not have that potion.")
         return
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     if _item_type(obj, tpl) != "potion":
         chprintln(player, "You can quaff only potions.")
         return
@@ -1813,7 +1815,7 @@ def do_envenom(player, args):
         return
 
     obj = _promote_obj(player, obj)
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     itype = _item_type(obj, tpl)
 
     if itype in ("food", "drink"):
@@ -1883,7 +1885,7 @@ def do_eat(player, args):
     if obj is None:
         chprintln(player, "You do not have that item.")
         return
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     # Check instance type override first (death_cry may set obj["type"]="trash")
     otype = _item_type(obj, tpl)
     if otype not in ("food", "pill"):
@@ -1939,7 +1941,7 @@ def _is_poisoned_food(obj, tpl):
 def _first_room_fountain(player):
     """Return the first fountain in the current room (cf. 1stMud do_drink/do_fill fountain scan in act_obj.c)."""
     for obj in world.rooms[player["room"]]["items"]:
-        if ITEM_DEFS[obj_vnum(obj)].get("type") == "fountain":
+        if item_tpl(obj).get("type") == "fountain":
             return obj
     return None
 
@@ -1960,7 +1962,7 @@ def do_drink(player, args):
         if obj is None:
             chprintln(player, "You can't find it.")
             return
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     otype = tpl.get("type")
     if otype == "fountain":
         liq = _liquid_type(obj, tpl)
@@ -2007,11 +2009,11 @@ def do_fill(player, args):
     if fountain is None:
         chprintln(player, "There is no fountain here!")
         return
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     if tpl.get("type") != "drink":
         chprintln(player, "You can't fill that.")
         return
-    ftpl = ITEM_DEFS[obj_vnum(fountain)]
+    ftpl = item_tpl(fountain)
     left = _liquid_left(obj, tpl)
     fliq = _liquid_type(fountain, ftpl)
     if left != 0 and _liquid_type(obj, tpl) != fliq:
@@ -2043,7 +2045,7 @@ def do_pour(player, args):
     if out is None:
         chprintln(player, "You don't have that item.")
         return
-    tpl = ITEM_DEFS[obj_vnum(out)]
+    tpl = item_tpl(out)
     if tpl.get("type") != "drink":
         chprintln(player, "That's not a drink container.")
         return
@@ -2072,7 +2074,7 @@ def do_pour(player, args):
         # a container; no such targets exist in PrimeSUD
         chprintln(player, "Pour into what?")
         return
-    dtpl = ITEM_DEFS[obj_vnum(dest)]
+    dtpl = item_tpl(dest)
     if dtpl.get("type") != "drink":
         chprintln(player, "You can only pour into other drink containers.")
         return
@@ -2124,7 +2126,7 @@ def do_recite(player, args):
     if scroll is None:
         chprintln(player, "You do not have that scroll.")
         return
-    tpl = ITEM_DEFS[scroll["vnum"]]
+    tpl = item_tpl(scroll)
     if tpl["type"] != "scroll":
         chprintln(player, "You can recite only scrolls.")
         return
@@ -2157,7 +2159,7 @@ def do_brandish(player, args):
     if staff is None:
         chprintln(player, "You hold nothing in your hand.")
         return
-    tpl = ITEM_DEFS[staff["vnum"]]
+    tpl = item_tpl(staff)
     if tpl["type"] != "staff":
         chprintln(player, "You can brandish only with a staff.")
         return
@@ -2205,7 +2207,7 @@ def do_zap(player, args):
     if wand is None:
         chprintln(player, "You hold nothing in your hand.")
         return
-    tpl = ITEM_DEFS[wand["vnum"]]
+    tpl = item_tpl(wand)
     if tpl["type"] != "wand":
         chprintln(player, "You can zap only with a wand.")
         return
@@ -2228,7 +2230,7 @@ def do_zap(player, args):
         if victim is not None:
             chprintln(player, "You zap " + MOB_DEFS[victim["tpl"]]["short_descr"] + " with " + tpl["short_descr"] + ".")
         else:
-            chprintln(player, "You zap " + ITEM_DEFS[obj["vnum"]]["short_descr"] + " with " + tpl["short_descr"] + ".")
+            chprintln(player, "You zap " + item_tpl(obj)["short_descr"] + " with " + tpl["short_descr"] + ".")
         if player["level"] < tpl.get("level", 1) or randint(1, 100) >= 20 + get_skill(player, GSN_WANDS) * 4 // 5:
             chprintln(player, "Your efforts with " + tpl["short_descr"] + " produce only smoke and sparks.")
             check_improve(player, GSN_WANDS, False, 2)
@@ -2296,7 +2298,7 @@ def do_outfit(player, args):
         _equip("wield", wield_vnum)
 
     wobj = player["equip"].get("wield")
-    if not (wobj and ITEM_DEFS[wobj["vnum"]].get("weapon_flags", {}).get("two_hands")):
+    if not (wobj and item_tpl(wobj).get("weapon_flags", {}).get("two_hands")):
         _equip("shield", OBJ_VNUM_SCHOOL_SHIELD)
 
     chprintln(player, "You have been equipped by the gods.")
@@ -2310,7 +2312,7 @@ def _sacrifice_one(player, obj, rs):
         obj: Item instance dict from rs["items"].
         rs (dict): Current room state dict.
     """
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
 
     if tpl.get("type") == "pc_corpse" and obj.get("contents"):
         chprintln(player, "Your deity wouldn't like that.")

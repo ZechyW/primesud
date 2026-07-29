@@ -534,7 +534,7 @@ def death_trigger(mob, ch):
 
 def _obj_trigs(obj):
     """Template obj_triggers tuple for *obj* (instance dict or vnum), or None. [PRIMESUD]"""
-    tpl = world.ITEM_DEFS.get(obj_vnum(obj)) if obj is not None else None
+    tpl = world.item_tpl_get(obj) if obj is not None else None
     return tpl.get("obj_triggers") if tpl else None
 
 
@@ -1429,7 +1429,7 @@ def _eval_char_flag(check, word, lval_char, lval_obj, rest=""):
 
 def _obj_type(obj):
     """Template item-type word for an obj (instance dict or vnum). [PRIMESUD]"""
-    tpl = world.ITEM_DEFS.get(obj_vnum(obj))
+    tpl = world.item_tpl(obj)
     return tpl.get("type", "") if tpl else ""
 
 
@@ -2375,7 +2375,7 @@ def _obj_has_nopurge(obj):
     if isinstance(obj, dict) and "extra_flags" in obj:
         ef = obj["extra_flags"]
     else:
-        tpl = world.ITEM_DEFS.get(obj_vnum(obj))
+        tpl = world.item_tpl(obj)
         ef = tpl.get("extra_flags", {}) if tpl else {}
     return bool(ef.get("nopurge"))
 
@@ -2658,7 +2658,7 @@ def _mp_oload(mob, args, pv, cl):
     obj = create_object(vnum)
     to_room = arg3[:1] in ("R", "r")
     to_wear = arg3[:1] in ("W", "w")
-    can_take = "take" in item_wear_flags(obj, world.ITEM_DEFS[vnum])
+    can_take = "take" in item_wear_flags(obj, world.item_tpl(obj))
     if (to_wear or not to_room) and can_take:
         mob["inv"].append(obj)
         if to_wear:
@@ -3047,7 +3047,7 @@ def _obj_level(obj):
     """Object level, instance override then template (cf. obj->level). [PRIMESUD]"""
     if isinstance(obj, dict) and "level" in obj:
         return obj["level"]
-    tpl = world.ITEM_DEFS.get(obj_vnum(obj))
+    tpl = world.item_tpl(obj)
     return tpl.get("level", 0) if tpl else 0
 
 
@@ -3463,7 +3463,7 @@ def _op_attrib(octx, args, pv):
             return
     label = "objprog: opattrib obj " + str(obj_vnum(o))
     chlev = chv.get("level", 0)
-    tpl = world.ITEM_DEFS.get(obj_vnum(o)) or {}
+    tpl = world.item_tpl_get(o) or {}
     cur_vals = list(o.get("values", tpl.get("values", (0, 0, 0, 0, 0))))
     while len(cur_vals) < 5:
         cur_vals.append(0)

@@ -22,7 +22,7 @@ from item import (get_obj_list, get_obj_here, create_object, obj_vnum,
                   promote_obj, item_type as _item_type)
 from urandom import randint
 import world
-from world import ROOM_DEFS, ITEM_DEFS
+from world import ROOM_DEFS, ITEM_DEFS, item_tpl, item_tpl_get
 
 
 def _exit_to(exit_val):
@@ -62,13 +62,11 @@ def _has_boat(ch):
     which does not recurse into containers.
     """
     for obj in ch.get("inv", []):
-        vnum = obj.get("vnum") if isinstance(obj, dict) else obj
-        if ITEM_DEFS.get(vnum, {}).get("type") == "boat":
+        if (item_tpl_get(obj) or {}).get("type") == "boat":
             return True
     for obj in ch.get("equip", {}).values():
         if obj is not None:
-            vnum = obj.get("vnum") if isinstance(obj, dict) else obj
-            if ITEM_DEFS.get(vnum, {}).get("type") == "boat":
+            if (item_tpl_get(obj) or {}).get("type") == "boat":
                 return True
     return False
 
@@ -462,7 +460,7 @@ def do_enter(ch, args):
         rs["items"][rs["items"].index(portal)] = inst
         portal = inst
 
-    tpl = ITEM_DEFS[obj_vnum(portal)]
+    tpl = item_tpl(portal)
     gate = portal.get("gate_flags", tpl.get("gate_flags", {}))
     exit_flags = portal.get("exit_flags", tpl.get("exit_flags", {}))
     if tpl.get("type") != "portal" or exit_flags.get("closed"):
@@ -651,7 +649,7 @@ def _open_container(player, obj):
     before falling back to door resolution, matching 1stMud's obj-then-door
     lookup order.
     """
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     if _item_type(obj, tpl) != "container":
         chprintln(player, "That's not a container.")
         return
@@ -677,7 +675,7 @@ def _close_container(player, obj):
     """Container branch of do_close (cf. 1stMud do_close ITEM_CONTAINER branch
     in act_move.c:531-550). [PRIMESUD] split out, see _open_container.
     """
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     if _item_type(obj, tpl) != "container":
         chprintln(player, "That's not a container.")
         return
@@ -702,7 +700,7 @@ def _lock_container(player, obj):
 
     Unlike the door branch, 1stMud prints no "*Click*" for containers.
     """
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     if _item_type(obj, tpl) != "container":
         chprintln(player, "That's not a container.")
         return
@@ -737,7 +735,7 @@ def _unlock_container(player, obj):
 
     Unlike the door branch, 1stMud prints no "*Click*" for containers.
     """
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     if _item_type(obj, tpl) != "container":
         chprintln(player, "That's not a container.")
         return
@@ -767,7 +765,7 @@ def _pick_container(player, obj):
     """Container branch of do_pick (cf. 1stMud do_pick ITEM_CONTAINER branch
     in act_move.c:839-866). [PRIMESUD] split out, see _open_container.
     """
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     if _item_type(obj, tpl) != "container":
         chprintln(player, "That's not a container.")
         return

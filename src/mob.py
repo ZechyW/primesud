@@ -4,7 +4,7 @@ from urandom import randint
 
 from config import SIZE_RANK, POS_FROM_SHORT
 import world
-from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, AREA_DEFS, DOOR_DEFS
+from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, AREA_DEFS, DOOR_DEFS, item_tpl
 from races import RACE_TABLE, race_lookup
 from handler import (affect_remove, equip_char, act, chprintln, _char_base, is_awake,
                      TO_ROOM, can_see, room_is_dark)
@@ -688,7 +688,7 @@ def mobile_update(tr, player):
             obj_best = None
             best_cost = 1
             for obj in room_items:
-                obj_tpl = ITEM_DEFS[obj["vnum"]]
+                obj_tpl = item_tpl(obj)
                 cost = obj.get("cost", 0)
                 # can_loot(ch, obj) always true here: an NPC looter against an
                 # unowned floor item short-circuits true (cf. 1stMud can_loot,

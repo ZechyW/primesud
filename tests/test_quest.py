@@ -351,6 +351,16 @@ def test_update_all_qobjs_rescales_on_levelup(fresh):
     assert len([a for a in obj["affect_list"] if a["location"] == "damroll"]) == 1
 
 
+def test_rescale_quest_gear_skips_foreign_vnums(fresh):
+    """Non-quest gear must not pull its area in through ITEM_DEFS. [PRIMESUD]"""
+    from quest import rescale_quest_gear
+    # 5300 lives in area "mirror"; unloaded here unless the gate leaks.
+    assert not world.is_area_loaded("mirror")
+    fresh["inv"].append({"vnum": 5300, "cost": 310, "affect_list": []})
+    rescale_quest_gear(fresh)
+    assert not world.is_area_loaded("mirror")
+
+
 def _fake_room_mob(fresh, tpl_vnum, mob_id=99):
     """Register a live mob of tpl_vnum in the player's room."""
     victim = _char_base()

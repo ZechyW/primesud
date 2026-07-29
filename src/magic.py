@@ -39,7 +39,7 @@ from skills_table import SKILLS, SKILL_TABLE
 from terminal import tprint
 from urandom import randint
 from game_time import init_weather, RAND_FACTOR, MAX_VECTOR
-from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
+from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS, item_tpl, item_tpl_get
 
 TARGET_NONE = "none"
 TARGET_CHAR = "char"
@@ -118,7 +118,7 @@ def _item_name(obj):
     [Verified: 03/07/2026]"""
     if obj is None:
         return "item"
-    tpl = ITEM_DEFS.get(obj_vnum(obj), {})
+    tpl = world.item_tpl_get(obj) or {}
     return tpl.get("short_descr", "item")
 
 
@@ -422,7 +422,7 @@ OBJ_INDEX_FILE = "objs.idx"  # [PRIMESUD] template keywords + reset spawn areas
 def _locate_obj_list(obj_list, location, wanted, level, ch, found, max_found):
     """Scan an object tree for locate-object matches. [PRIMESUD]"""
     for obj in obj_list:
-        tpl = ITEM_DEFS[obj_vnum(obj)]
+        tpl = item_tpl(obj)
         if (can_see_obj(ch, obj)
                 and is_name(wanted, tpl.get("keywords", ""))
                 and not item_extra_flags(obj, tpl).get("no_locate")
@@ -675,7 +675,7 @@ def spell_detect_poison(sn, level, ch, vo, target):
     """Detect poison on object target (cf. 1stMud spell_detect_poison in magic.c).
     [Verified: 03/07/2026] -- 1stMud reads value[3]; PrimeSUD food/drink
     poison state stored as "poisoned" flag."""
-    tpl = ITEM_DEFS[obj_vnum(vo)]
+    tpl = item_tpl(vo)
     poisoned = bool(vo.get("poisoned") or tpl.get("poisoned"))
     if tpl.get("type") in ("drink", "food"):
         chprintln(ch, "You smell poisonous fumes." if poisoned else "It looks delicious.")
@@ -691,7 +691,7 @@ def spell_identify(sn, level, ch, vo, target):
     to_affects/immune/resist/vuln bitvector lines not ported (only
     to_object bitvectors exist in PrimeSUD item affects); weapon-type
     wording matched and re-verified 07/07/2026."""
-    tpl = ITEM_DEFS[obj_vnum(vo)]
+    tpl = item_tpl(vo)
     flags = item_extra_flags(vo, tpl)
     chprintln(ch, "Object '" + tpl.get("keywords", "") + "' is type " + tpl.get("type", "unknown")
              + ", extra flags " + (" ".join(sorted(flags)) or "none") + ".")
@@ -755,7 +755,7 @@ def spell_fireproof(sn, level, ch, vo, target):
     """Fireproof object target (cf. 1stMud spell_fireproof in magic.c).
     [Verified: 03/07/2026] -- TO_ROOM "protective aura" echo not ported
     (single-player)."""
-    tpl = ITEM_DEFS[obj_vnum(vo)]
+    tpl = item_tpl(vo)
     flags = item_extra_flags(vo, tpl)
     if flags.get("burn_proof"):
         chprintln(ch, _item_name(vo) + " is already protected from burning.")
@@ -769,7 +769,7 @@ def spell_enchant_armor(sn, level, ch, vo, target):
     """Enchant armor item (cf. 1stMud spell_enchant_armor in magic.c).
     [Verified: 03/07/2026] -- TO_ROOM echoes not ported (single-player);
     carried check via inv membership (1stMud checks wear_loc == WEAR_NONE)."""
-    tpl = ITEM_DEFS[obj_vnum(vo)]
+    tpl = item_tpl(vo)
     if tpl.get("type") != "armor":
         chprintln(ch, "That isn't an armor.")
         return False
@@ -849,7 +849,7 @@ def spell_enchant_weapon(sn, level, ch, vo, target):
     """Enchant weapon item (cf. 1stMud spell_enchant_weapon in magic.c).
     [Verified: 03/07/2026] -- TO_ROOM echoes not ported (single-player);
     carried check via inv membership (1stMud checks wear_loc == WEAR_NONE)."""
-    tpl = ITEM_DEFS[obj_vnum(vo)]
+    tpl = item_tpl(vo)
     if tpl.get("type") != "weapon":
         chprintln(ch, "That isn't a weapon.")
         return False
@@ -994,7 +994,7 @@ def spell_bless(sn, level, ch, vo, target):
     [Verified: 03/07/2026; caster saving_throw adjust for worn blessed items
     added and re-verified 10/07/2026]"""
     if target == TARGET_OBJ:
-        tpl = ITEM_DEFS[obj_vnum(vo)]
+        tpl = item_tpl(vo)
         flags = item_extra_flags(vo, tpl)
         if flags.get("bless"):
             chprintln(ch, _item_name(vo) + " is already blessed.")
@@ -1087,7 +1087,7 @@ def spell_poison(sn, level, ch, vo, target):
     [Verified: 03/07/2026; weapon envenom (to_weapon affect) added and
     re-verified 04/07/2026]"""
     if target == TARGET_OBJ:
-        tpl = ITEM_DEFS[obj_vnum(vo)]
+        tpl = item_tpl(vo)
         flags = item_extra_flags(vo, tpl)
         if tpl.get("type") in ("food", "drink"):
             if flags.get("bless") or flags.get("burn_proof"):
@@ -1128,7 +1128,7 @@ def spell_curse(sn, level, ch, vo, target):
     [Verified: 03/07/2026; caster saving_throw adjust for worn cursed items
     added and re-verified 10/07/2026]"""
     if target == TARGET_OBJ:
-        tpl = ITEM_DEFS[obj_vnum(vo)]
+        tpl = item_tpl(vo)
         flags = item_extra_flags(vo, tpl)
         if flags.get("evil"):
             chprintln(ch, _item_name(vo) + " is already filled with evil.")
@@ -1502,7 +1502,7 @@ def spell_continual_light(sn, level, ch, vo, target):
         if obj is None:
             chprintln(ch, "You don't see that here.")
             return False
-        tpl = ITEM_DEFS[obj_vnum(obj)]
+        tpl = item_tpl(obj)
         flags = item_extra_flags(obj, tpl)
         if flags.get("glow"):
             act("$p is already glowing.", ch, obj, None, TO_CHAR)
@@ -1559,7 +1559,7 @@ def spell_create_water(sn, level, ch, vo, target):
     """Fill drink container with water (cf. 1stMud spell_create_water in magic.c).
     [Verified: 03/07/2026; drink/fill/pour ported 04/07/2026] --
     "water" keyword append not ported."""
-    tpl = ITEM_DEFS[obj_vnum(vo)]
+    tpl = item_tpl(vo)
     if tpl.get("type") != "drink":
         chprintln(ch, "It is unable to hold water.")
         return False
@@ -1807,7 +1807,7 @@ def spell_floating_disc(sn, level, ch, vo, target):
     [Verified: 03/07/2026; float-slot equip added and re-verified 03/07/2026]"""
     floating = ch.get("equip", {}).get("float")
     if floating is not None and item_extra_flags(
-            floating, ITEM_DEFS[obj_vnum(floating)]).get("noremove"):
+            floating, item_tpl(floating)).get("noremove"):
         act("You can't remove $p.", ch, floating, None, TO_CHAR)
         return False
     disc = create_object(OBJ_VNUM_DISC)
@@ -1819,7 +1819,7 @@ def spell_floating_disc(sn, level, ch, vo, target):
     chprintln(ch, "You create a floating disc.")
     from inventory import remove_obj  # lazy import to avoid circular dependency
     if remove_obj(ch, "float", True):
-        tpl = ITEM_DEFS[obj_vnum(disc)]
+        tpl = item_tpl(disc)
         chprintln(ch, "You release " + tpl["short_descr"] + " and it floats next to you.")
         equip_char(ch, disc, "float")
     return True
@@ -2007,7 +2007,7 @@ def spell_heat_metal(sn, level, ch, vo, target):
                 if o is not None]
 
     for obj_lose, slot in targets:
-        tpl = ITEM_DEFS[obj_vnum(obj_lose)]
+        tpl = item_tpl(obj_lose)
         obj_level = obj_lose.get("level", tpl.get("level", 0))
         if not (randint(1, 2 * level) > obj_level
                 and not saves_spell(level, victim, DAM_FIRE)
@@ -2160,7 +2160,7 @@ def spell_invis(sn, level, ch, vo, target):
     """Invisibility (cf. 1stMud spell_invis in magic.c).
     [Verified: 03/07/2026]"""
     if target == TARGET_OBJ:
-        tpl = ITEM_DEFS[obj_vnum(vo)]
+        tpl = item_tpl(vo)
         flags = item_extra_flags(vo, tpl)
         if flags.get("invis"):
             act("$p is already invisible.", ch, vo, None, TO_CHAR)
@@ -2325,7 +2325,7 @@ def spell_recharge(sn, level, ch, vo, target):
     """Recharge wand/staff (cf. 1stMud spell_recharge in magic.c).
     [Verified: 03/07/2026] -- 1stMud prints the partial-success glow twice
     to the caster (duplicated TO_CHAR, magic.c:3923); fixed to TO_ROOM [PRIMESUD]."""
-    tpl = ITEM_DEFS[obj_vnum(vo)]
+    tpl = item_tpl(vo)
     if tpl.get("type") not in ("wand", "staff"):
         chprintln(ch, "That item does not carry charges.")
         return False
@@ -2389,7 +2389,7 @@ def spell_remove_curse(sn, level, ch, vo, target):
     (magic.c:4005), which does not recurse into containers.
     """
     if target == TARGET_OBJ:
-        tpl = ITEM_DEFS[obj_vnum(vo)]
+        tpl = item_tpl(vo)
         flags = item_extra_flags(vo, tpl)
         if flags.get("nodrop") or flags.get("noremove"):
             if not flags.get("nouncurse") and not saves_dispel(level + 2, tpl.get("level", 0), 0):
@@ -2408,7 +2408,7 @@ def spell_remove_curse(sn, level, ch, vo, target):
         act("$n looks more relaxed.", vo, None, None, TO_ROOM)
         found = True
     for obj in list(vo.get("inv", [])):
-        tpl = ITEM_DEFS[obj_vnum(obj)]
+        tpl = item_tpl(obj)
         flags = item_extra_flags(obj, tpl)
         if (flags.get("nodrop") or flags.get("noremove")) and not flags.get("nouncurse"):
             if not saves_dispel(level, tpl.get("level", 0), 0):
@@ -2901,7 +2901,7 @@ def _consume_warp_stone(ch):
         bool: True if the component was present and consumed.
     """
     stone = ch["equip"].get("hold")
-    if stone is None or ITEM_DEFS[obj_vnum(stone)].get("type") != "warp_stone":
+    if stone is None or item_tpl(stone).get("type") != "warp_stone":
         chprintln(ch, "You lack the proper component for this spell.")
         return False
     act("You draw upon the power of $p.", ch, stone, None, TO_CHAR)
@@ -3424,7 +3424,7 @@ def _mob_pick_name(mob):
 
 def _obj_pick_name(obj):
     """Return the first keyword or short_descr word for an item. [PRIMESUD]"""
-    tpl = ITEM_DEFS[obj_vnum(obj)]
+    tpl = item_tpl(obj)
     words = tpl.get("keywords", "").split()
     if words:
         return words[0]
@@ -3460,7 +3460,7 @@ def _pick_cast_target_name(player, sn):
         opts = []
         names = []
         for obj in player["inv"]:
-            tpl = ITEM_DEFS[obj_vnum(obj)]
+            tpl = item_tpl(obj)
             opts.append(tpl["short_descr"])
             names.append(_obj_pick_name(obj))
         if not opts:
@@ -3480,7 +3480,7 @@ def _pick_cast_target_name(player, sn):
             opts.append(MOB_DEFS[mob["tpl"]]["short_descr"])
             names.append(_mob_pick_name(mob))
         for obj in rs["items"]:
-            tpl = ITEM_DEFS[obj_vnum(obj)]
+            tpl = item_tpl(obj)
             opts.append(tpl["short_descr"])
             names.append(_obj_pick_name(obj))
         if not opts:
@@ -3510,7 +3510,7 @@ def _resolve_item_spell_sn(spell_name, item_obj):
 
 def validate_item_spell_payload(item_obj):
     """Validate normalized magical item payload before consume/decrement."""
-    tpl = ITEM_DEFS[obj_vnum(item_obj)]
+    tpl = item_tpl(item_obj)
     level = item_spell_level(item_obj, tpl)
     if level is None:
         _dev_item_fail(item_obj, "missing spell_level")
