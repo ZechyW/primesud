@@ -155,7 +155,9 @@ def _get_obj_keeper(player, keeper, arg):
     while i < len(inv):
         obj = inv[i]
         vnum = obj_vnum(obj)
-        tpl = ITEM_DEFS[vnum]
+        # [PRIMESUD] item_tpl, not ITEM_DEFS[vnum]: keeper stock can hold
+        # foreign-area templates snapshotted after their owner is evicted.
+        tpl = item_tpl(obj)
         if can_see_obj(keeper, obj) and can_see_obj(player, obj):
             if is_name(arg, tpl.get("keywords", "")):
                 count += 1
@@ -469,7 +471,9 @@ def do_list(player, args):
     while i < len(inv):
         obj = inv[i]
         vnum = obj_vnum(obj)
-        tpl = ITEM_DEFS[vnum]
+        # [PRIMESUD] item_tpl, not ITEM_DEFS[vnum]: keeper stock can hold
+        # foreign-area templates snapshotted after their owner is evicted.
+        tpl = item_tpl(obj)
         cost = get_cost(keeper, obj, True)
 
         if can_see_obj(player, obj) and cost > 0:

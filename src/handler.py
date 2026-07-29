@@ -11,7 +11,7 @@ from skills_table import GSN_SNEAK
 from terminal import tprint
 from urandom import randint
 import world
-from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS, item_tpl
+from world import MOB_DEFS, ROOM_DEFS, item_tpl, item_tpl_get
 from game_time import time_info, SUN_SET, SUN_DARK
 from debug import DBG  # [PRIMESUD] "holylight" debug toggle = 1stMud PLR_HOLYLIGHT
 from util import int_str
@@ -820,8 +820,12 @@ def _obj_keywords(obj):
         return ""
     if "keywords" in obj:
         return obj["keywords"]
-    if "vnum" in obj and obj["vnum"] in ITEM_DEFS:
-        return item_tpl(obj).get("keywords", "")
+    if "vnum" in obj:
+        # [PRIMESUD] item_tpl_get, not `vnum in ITEM_DEFS`: the membership
+        # test itself loads the owning area for snapshotted foreign gear.
+        tpl = item_tpl_get(obj)
+        if tpl is not None:
+            return tpl.get("keywords", "")
     return ""
 
 
@@ -831,8 +835,10 @@ def _obj_short(obj):
         return "something"
     if "short_descr" in obj:
         return obj["short_descr"]
-    if "vnum" in obj and obj["vnum"] in ITEM_DEFS:
-        return item_tpl(obj).get("short_descr", "something")
+    if "vnum" in obj:
+        tpl = item_tpl_get(obj)
+        if tpl is not None:
+            return tpl.get("short_descr", "something")
     return "something"
 
 

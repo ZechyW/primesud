@@ -496,7 +496,7 @@ def _show_container(player, obj, tpl):
 def _look_scan_items(player, target, number, count, items):
     """Scan an item list for extra_desc or name match (cf. 1stMud `do_look` in act_info.c: item scan loop).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; instance extra_descs check added and re-verified 05/07/2026; can_see_obj gate added and re-verified 10/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; instance extra_descs check added and re-verified 05/07/2026; can_see_obj gate added and re-verified 10/07/2026; item_tpl seam re-verified 29/07/2026]
 
     Returns:
         tuple: (found, count) where found is True if the Nth match was displayed.
@@ -505,8 +505,9 @@ def _look_scan_items(player, target, number, count, items):
         # cf. act_info.c:1234/1263 -- both look-item loops gate on can_see_obj
         if not can_see_obj(player, obj):
             continue
-        vnum = obj_vnum(obj)
-        tpl = ITEM_DEFS[vnum]
+        # [PRIMESUD] item_tpl, not ITEM_DEFS[vnum]: the bare subscript loads
+        # the owning area for snapshotted foreign gear.
+        tpl = item_tpl(obj)
         # Check instance extra_descs first (cf. 1stMud obj->ed_first, act_info.c:1248)
         if isinstance(obj, dict):
             pdesc = _get_ed(target, obj.get("extra_descs", []))
