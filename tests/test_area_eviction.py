@@ -12,27 +12,11 @@ Covers:
 - Eviction-time ITEM_SNAPSHOTS registry materialization (DESIGN.md sec.
   Item template snapshots)
 """
-import pytest
-
 import world
 from world import (
     ROOM_DEFS, MOB_DEFS, ITEM_DEFS, DOOR_DEFS,
     _load_area, _unload_area, maybe_evict, is_area_loaded,
 )
-
-
-@pytest.fixture(autouse=True)
-def _clear_item_snapshots():
-    """Keep ITEM_SNAPSHOTS from leaking between tests. [PRIMESUD]
-
-    Unlike ROOM_DEFS/MOB_DEFS/ITEM_DEFS etc., the shared fresh_world fixture
-    (tests/conftest.py) does not snapshot/restore world.ITEM_SNAPSHOTS --
-    it is out of this task's owned-files scope to extend that fixture, so
-    this module clears the registry itself around every test instead.
-    """
-    world.ITEM_SNAPSHOTS.clear()
-    yield
-    world.ITEM_SNAPSHOTS.clear()
 
 
 def _mob_tpl(level=1, **overrides):

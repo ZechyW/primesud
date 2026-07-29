@@ -86,6 +86,7 @@ def fresh_world(tmp_path):
         "_VNUM_RANGES": list(world._VNUM_RANGES),
         "_pending_mob_saves": dict(world._pending_mob_saves),
         "_pending_room_items": dict(world._pending_room_items),
+        "ITEM_SNAPSHOTS": dict(world.ITEM_SNAPSHOTS),
         "mob_stats": dict(world.mob_stats),
         "area_stats": dict(world.area_stats),
         "share_value": world.share_value,
@@ -109,6 +110,7 @@ def fresh_world(tmp_path):
     world._VNUM_RANGES.clear()
     world._pending_mob_saves.clear()
     world._pending_room_items.clear()
+    world.ITEM_SNAPSHOTS.clear()
     # Derived caches over pending tokens / snapshot records: cleared both
     # here and at teardown, never snapshotted -- they rebuild on demand,
     # and stale entries could otherwise serve a previous test's template
@@ -181,7 +183,8 @@ def fresh_world(tmp_path):
     world._LOADED_AREAS.clear()
     world._LOADED_AREAS.update(old_state["_LOADED_AREAS"])
     for name in ("_TAG_TO_FILE", "_TAG_TO_NAME", "_pending_mob_saves",
-                 "_pending_room_items", "mob_stats", "area_stats",
+                 "_pending_room_items", "ITEM_SNAPSHOTS",
+                 "mob_stats", "area_stats",
                  "DOOR_DEFS", "MOBPROGS",
                  "OBJPROGS", "ROOMPROGS", "chars"):
         d = getattr(world, name)

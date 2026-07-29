@@ -9,8 +9,6 @@ info.do_look's extra-desc scan, and shop browse/list over a foreign-stocked
 keeper. Each step re-asserts that the owner areas are still unloaded, so a
 regression pinpoints exactly which path dragged an area back in.
 """
-import pytest
-
 import world
 import game_state
 from item import create_object, get_obj_list
@@ -18,19 +16,6 @@ from handler import _char_base, can_see_obj
 from player import create_char, reset_char
 import info
 import shop
-
-
-@pytest.fixture(autouse=True)
-def _clear_item_snapshots():
-    """Keep ITEM_SNAPSHOTS from leaking between tests. [PRIMESUD]
-
-    Same convention as test_area_eviction.py / test_snapshot_save.py: fresh_world
-    does not snapshot/restore world.ITEM_SNAPSHOTS, so this module clears it
-    itself.
-    """
-    world.ITEM_SNAPSHOTS.clear()
-    yield
-    world.ITEM_SNAPSHOTS.clear()
 
 
 def _item_tpl(name="test item", **overrides):

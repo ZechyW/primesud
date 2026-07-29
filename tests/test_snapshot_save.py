@@ -19,24 +19,10 @@ Covers:
 - A resident-owner item gets its it.* line from resident data even with
   no pre-existing registry entry
 """
-import pytest
-
 import world
 import game_state
 from item import create_object, serialize_item_token
 from player import create_char
-
-
-@pytest.fixture(autouse=True)
-def _clear_item_snapshots():
-    """Keep ITEM_SNAPSHOTS from leaking between tests. [PRIMESUD]
-
-    Same convention as test_area_eviction.py: fresh_world does not
-    snapshot/restore world.ITEM_SNAPSHOTS, so this module clears it itself.
-    """
-    world.ITEM_SNAPSHOTS.clear()
-    yield
-    world.ITEM_SNAPSHOTS.clear()
 
 
 def _item_tpl(name="test item", **overrides):
