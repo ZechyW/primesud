@@ -364,11 +364,13 @@ def item_spell_name(obj, tpl):
 def _str_escape(s):
     """Escape string for embedding in item token field value. [PRIMESUD]
 
-    Escapes backslash, semicolon (field sep), and square brackets (contents
-    scope delimiters). ponytail: only these 4 chars; MUD text never uses them.
+    Escapes backslash, semicolon (field sep), caret (contents sep), and
+    square brackets (contents scope delimiters). ponytail: only these 5
+    chars; MUD text never uses them.
     """
     s = s.replace("\\", "\\\\")
     s = s.replace(";", "\\;")
+    s = s.replace("^", "\\^")
     s = s.replace("[", "\\[")
     s = s.replace("]", "\\]")
     return s
@@ -388,8 +390,13 @@ def _str_unescape(s):
     return "".join(out)
 
 
-def _split_token_fields(token):
-    """Split token into fields on ';', respecting backslash escapes and '[...]' brackets. [PRIMESUD]"""
+def _split_token_fields(token, sep=";"):
+    """Split token on sep at bracket depth 0, respecting backslash escapes and '[...]' brackets. [PRIMESUD]
+
+    sep=";" splits a token into fields; sep="^" splits a co:[...] payload
+    into sibling item tokens (a nested child's own co:[...] keeps its '^'
+    separators bracket-protected).
+    """
     fields = []
     depth = 0
     buf = []
@@ -407,7 +414,7 @@ def _split_token_fields(token):
             depth += 1
         elif ch == "]":
             depth -= 1
-        if ch == ";" and depth == 0:
+        if ch == sep and depth == 0:
             fields.append("".join(buf))
             buf = []
         else:
@@ -556,7 +563,9 @@ def parse_item_token(token):
             obj["silver"] = int(value)
         elif key == "co":
             inner = value[1:-1] if (value.startswith("[") and value.endswith("]")) else value
-            obj["contents"] = [parse_item_token(t) for t in inner.split("^") if t]
+            # depth-aware split: a child's own co:[...] protects its '^' seps
+            obj["contents"] = [parse_item_token(t)
+                               for t in _split_token_fields(inner, "^") if t]
     if "vnum" not in obj:
         raise ValueError("item token missing v")
     if not obj["affect_list"]:

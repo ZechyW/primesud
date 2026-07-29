@@ -1123,14 +1123,14 @@ def _retry_pending_deltas():
             _apply_pending_deltas(_a["tag"], _a["room_vnums"])
 
 
-def _snap_token_fields(token):
-    """Split a serialized item token on ';', honouring '\\' escapes and
-    '[...]' bracket depth -- structural split only, no unescaping. [PRIMESUD]
+def _snap_token_fields(token, sep=";"):
+    """Split a serialized item token on sep at bracket depth 0, honouring
+    '\\' escapes -- structural split only, no unescaping. [PRIMESUD]
 
     Mirrors item._split_token_fields' delimiter rules exactly (same escape
-    char and bracket depth tracking) so the deferred-token vnum walker below
-    finds the same field boundaries a real parse_item_token would, without
-    building the field-value dict parse_item_token builds.
+    char, bracket depth tracking, and sep parameter) so the deferred-token
+    vnum walker below finds the same boundaries a real parse_item_token
+    would, without building the field-value dict parse_item_token builds.
     """
     fields = []
     depth = 0
@@ -1148,7 +1148,7 @@ def _snap_token_fields(token):
             depth += 1
         elif ch == "]":
             depth -= 1
-        elif ch == ";" and depth == 0:
+        elif ch == sep and depth == 0:
             fields.append(token[start:i])
             start = i + 1
         i += 1
@@ -1163,9 +1163,9 @@ def _snap_token_vnums(token, out):
     "v:<n>;...;co:[<item>^<item>...]" shape) for its own vnum and every
     nested "co:" content vnum, without constructing item dicts (SNAPSHOT_
     PLAN.md sec. Deferred-token VNUM scan).  The nested "co:" content is
-    split on "^" with a flat, non-bracket-aware split -- deliberately
-    matching item.parse_item_token's own inner.split("^"), so this walker
-    always agrees with what a real parse of the same token would see.
+    split on "^" at bracket depth 0 -- matching item.parse_item_token's own
+    _split_token_fields(inner, "^"), so this walker always agrees with what
+    a real parse of the same token would see.
     """
     for field in _snap_token_fields(token):
         if field[:2] == "v:":
@@ -1174,7 +1174,7 @@ def _snap_token_vnums(token, out):
                 out.append(int(digits))
         elif field[:4] == "co:[":
             inner = field[4:-1] if field.endswith("]") else field[4:]
-            for sub in inner.split("^"):
+            for sub in _snap_token_fields(inner, "^"):
                 if sub:
                     _snap_token_vnums(sub, out)
 
