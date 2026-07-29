@@ -45,6 +45,10 @@ from spawned mobs):
   8  pulse_violence_only -- update_handler() x10, only violence pulse due
   9  pulse_aligned     -- update_handler() x3, ALL six pulses due each call
   10 pulse_idle        -- update_handler() x5, only regen due (near no-op)
+  11 set_color_ab      -- pixon font repaint vs COLORFONT-band blit, x10
+                        each (runs first, right after boot: it repaints the
+                        live FONT_GROB and must end with font + colour state
+                        back at the defaults before anything else renders)
 """
 import gc
 
@@ -53,8 +57,9 @@ import terminal
 terminal.init_terminal()
 
 from prime_platform import ticks, hvars_set  # noqa: E402
+from hpprime import dimgrob, getpix, grobh, grobw, pixon, strblit2  # noqa: E402
 from util import int_str, num_str  # noqa: E402
-from config import R_STARTING_ROOM  # noqa: E402
+from config import R_STARTING_ROOM, FONT_GROB, COLOR_GROB  # noqa: E402
 from handler import PLR_AUTOSKILL, PLR_DEFAULTS  # noqa: E402
 import world  # noqa: E402
 import game_state  # noqa: E402
@@ -206,6 +211,90 @@ def _disengage(player, mobs):
 
 
 # -- Scenarios ---------------------------------------------------------------
+
+AB_GROB = 3  # scratch for set_color_ab's two colour bands (4-9 in use, config.py)
+
+
+def scenario_set_color_ab():
+    """A/B the two set_color paint strategies against the live FONT_GROB:
+    (A) the pre-cache pixon per-foreground-pixel repaint loop, (B) one
+    native strblit2 from a pre-painted colour band (the COLORFONT_GROB
+    approach, using AB_GROB so the live cache is untouched). Replicates
+    terminal.install_color_print's own fg-pixel scan. Alternates two
+    colours each iteration so neither path can early-out.
+
+    Runs FIRST after boot: it repaints FONT_GROB behind the live
+    terminal's back, so it must (and does) end by restoring the default
+    font from COLOR_GROB -- at this point in the run nothing coloured has
+    printed yet, so the terminal's tracked colour state (None) still
+    matches the restored font."""
+    font_w = grobw(FONT_GROB)
+    font_h = grobh(FONT_GROB)
+    cw = terminal.tr.char_width
+    _w_x = (ord("W") - 32) * cw + cw // 2
+    font_fg = getpix(FONT_GROB, _w_x, terminal.tr.char_height // 2)
+    fg_rows = [
+        [x for x in range(font_w) if getpix(FONT_GROB, x, y) == font_fg]
+        for y in range(font_h)
+    ]
+    npix = 0
+    for xs in fg_rows:
+        npix += len(xs)
+    log("set_color_ab: font " + int_str(font_w) + "x" + int_str(font_h)
+        + " fg_pixels=" + int_str(npix))
+
+    c_a = 0xFF0000  # {R red
+    c_b = 0x6495ED  # {B cornflowerblue
+
+    def _repaint(color):
+        _po = pixon
+        for y, xs in enumerate(fg_rows):
+            for x in xs:
+                _po(FONT_GROB, x, y, color)
+
+    n = 10
+    total = 0
+    mx = 0
+    mn = 999999999
+    for i in range(n):
+        color = c_a if i % 2 == 0 else c_b
+        t0 = ticks()
+        _repaint(color)
+        dt = ticks() - t0
+        total += dt
+        if dt > mx:
+            mx = dt
+        if dt < mn:
+            mn = dt
+    _log_stats("set_color_ab(pixon)", n, total, mx, mn, None)
+
+    # Pre-paint the two bands (untimed), like the lazy cache's first use.
+    dimgrob(AB_GROB, font_w, font_h * 2, 0)
+    _repaint(c_a)
+    strblit2(AB_GROB, 0, 0, font_w, font_h, FONT_GROB, 0, 0, font_w, font_h)
+    _repaint(c_b)
+    strblit2(AB_GROB, 0, font_h, font_w, font_h, FONT_GROB, 0, 0, font_w, font_h)
+
+    total = 0
+    mx = 0
+    mn = 999999999
+    for i in range(n):
+        band = i % 2
+        t0 = ticks()
+        strblit2(FONT_GROB, 0, 0, font_w, font_h,
+                 AB_GROB, 0, band * font_h, font_w, font_h)
+        dt = ticks() - t0
+        total += dt
+        if dt > mx:
+            mx = dt
+        if dt < mn:
+            mn = dt
+    _log_stats("set_color_ab(blit)", n, total, mx, mn, None)
+
+    # Restore the default-colour font (same blit reset_color uses).
+    strblit2(FONT_GROB, 0, 0, font_w, font_h,
+             COLOR_GROB, 0, 0, font_w, font_h)
+
 
 def scenario_typing_prompt(player):
     """show_prompt() over typing then backspacing a fixed string, ~40 calls."""
@@ -540,6 +629,10 @@ def main():
 
     gc.collect()
     log("mem free after boot: " + int_str(free()))
+
+    scenario_set_color_ab()
+    gc.collect()
+    log("mem free after set_color_ab: " + int_str(free()))
 
     scenario_typing_prompt(player)
     gc.collect()
