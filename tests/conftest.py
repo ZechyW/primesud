@@ -109,6 +109,12 @@ def fresh_world(tmp_path):
     world._VNUM_RANGES.clear()
     world._pending_mob_saves.clear()
     world._pending_room_items.clear()
+    # Derived caches over pending tokens / snapshot records: cleared both
+    # here and at teardown, never snapshotted -- they rebuild on demand,
+    # and stale entries could otherwise serve a previous test's template
+    # for a reused vnum at the same CONTENT_REVISION.
+    world._PENDING_VNUM_CACHE.clear()
+    world._SNAP_ENC_CACHE.clear()
     world.mob_stats.clear()
     world.area_stats.clear()
     world.share_value = 100
@@ -168,6 +174,8 @@ def fresh_world(tmp_path):
     # so mutate, don't rebind -- except world.areas, which world.py itself
     # rebinds)
     world._AREA_FILES[:] = old_area_files
+    world._PENDING_VNUM_CACHE.clear()
+    world._SNAP_ENC_CACHE.clear()
     world._LOADED_AREAS.clear()
     world._LOADED_AREAS.update(old_state["_LOADED_AREAS"])
     for name in ("_TAG_TO_FILE", "_TAG_TO_NAME", "_pending_mob_saves",

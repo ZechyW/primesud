@@ -461,3 +461,93 @@ class TestSaveTiming:
             "lines", "snap", "sweep", "join", "hvset", "verify", "fwrite"]
         for _seg, ms in game_state._SAVE_TIMING:
             assert isinstance(ms, int) and ms >= 0
+
+
+# ===== Save-path caches (encoded it. lines, pending-token vnum scans) =======
+
+class TestSavePathCaches:
+    def _world_with_gear(self, fw):
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}}},
+                         objects={110: _item_tpl("gem", short_descr="a gem")})
+        fw.register_area("beta", 200, 299,
+                         rooms={200: {"name": "R200", "exits": {}}})
+        fw.setup()
+        world._load_area("alpha")
+        world._load_area("beta")
+        player = _make_player(200)
+        player["inv"] = [create_object(110)]
+        world._unload_area("alpha")
+        return player
+
+    def test_second_save_reuses_cached_it_line(self, fresh_world):
+        """A revision-matched cache entry is used verbatim -- proven by
+        poisoning it and finding the poison in the next payload. [PRIMESUD]"""
+        self._world_with_gear(fresh_world)
+        assert game_state.save_world(quiet=True)
+        rev, line = world._SNAP_ENC_CACHE[110]
+        first = line
+        world._SNAP_ENC_CACHE[110] = (rev, "it.110=" + rev + "|POISON")
+        assert game_state.save_world(quiet=True)
+        with open(game_state.SAVE_FILE, "r") as f:
+            assert "it.110=" + rev + "|POISON" in f.read()
+        # A revision mismatch must miss and re-encode the real line.
+        world._SNAP_ENC_CACHE[110] = ("stale-rev", "it.110=stale-rev|POISON")
+        assert game_state.save_world(quiet=True)
+        with open(game_state.SAVE_FILE, "r") as f:
+            payload = f.read()
+        assert "POISON" not in payload
+        assert first in payload
+
+    def test_load_prefills_encoded_line_cache(self, fresh_world):
+        self._world_with_gear(fresh_world)
+        assert game_state.save_world(quiet=True)
+        expected = world._SNAP_ENC_CACHE[110][1]
+
+        world.reset_lazy()
+        assert world._SNAP_ENC_CACHE == {}
+        player2 = create_char()
+        player2["_macros"] = {}
+        world.chars[1] = player2
+        assert game_state.load_world() == "file"
+        assert world._SNAP_ENC_CACHE[110] == (world.CONTENT_REVISION, expected)
+
+    def test_pending_cache_invalidates_on_replaced_string(self, fresh_world):
+        """Replacing a _pending_room_items string (new identity) rescans;
+        the same string object never rescans. [PRIMESUD]"""
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}}},
+                         objects={110: _item_tpl("gem"),
+                                   111: _item_tpl("ring")})
+        fw.register_area("beta", 200, 299,
+                         rooms={200: {"name": "R200", "exits": {}}})
+        fw.setup()
+        world._load_area("beta")
+        _make_player(200)
+
+        raw = "v:110"
+        world._pending_room_items[200] = raw
+        all1, foreign1 = world._snap_pending_cached(200, raw)
+        assert all1 == [110] and foreign1 == [110]
+        # Same string object: served from cache (identity check).
+        assert world._snap_pending_cached(200, raw)[0] is all1
+        # Replaced wholesale, as load_world/eviction do: rescan.
+        raw2 = "v:111"
+        world._pending_room_items[200] = raw2
+        all2, _f = world._snap_pending_cached(200, raw2)
+        assert all2 == [111]
+
+    def test_pending_cache_entry_dropped_when_area_load_consumes(
+            self, fresh_world):
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}}},
+                         objects={110: _item_tpl("gem")})
+        fw.setup()
+        world._pending_room_items[100] = "v:110"
+        world._snap_pending_cached(100, world._pending_room_items[100])
+        assert 100 in world._PENDING_VNUM_CACHE
+        world._load_area("alpha")
+        assert 100 not in world._pending_room_items
+        assert 100 not in world._PENDING_VNUM_CACHE

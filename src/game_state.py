@@ -299,24 +299,39 @@ def _serialize_world(hvar_name=None, file_name=None):
     # line is omitted and the VNUM falls back to its normal lazy area load
     # on next boot -- not an error.
     for _it_vnum in sorted(world._snap_save_vnums()):
+        _it_entry = None
         if _it_vnum in world.ITEM_DEFS._data:
-            _it_tpl = world.ITEM_DEFS._data[_it_vnum]
             _it_rev = world.CONTENT_REVISION
+        else:
+            _it_entry = world.ITEM_SNAPSHOTS.get(_it_vnum)
+            if _it_entry is None:
+                continue  # no source: normal lazy-load fallback next boot
+            _it_rev = _it_entry[0]
+        # [PRIMESUD] Encoded-line cache (world._SNAP_ENC_CACHE): reuse the
+        # line while the revision we would stamp matches the cached one --
+        # the codec is deterministic and templates immutable per build, so
+        # a matching revision guarantees byte-identical output. On-device
+        # the encode was ~1s of every save (debug/save_smoke-1.log).
+        _it_cached = world._SNAP_ENC_CACHE.get(_it_vnum)
+        if _it_cached is not None and _it_cached[0] == _it_rev:
+            lines.append(_it_cached[1])
+            continue
+        if _it_entry is None:
+            _it_tpl = world.ITEM_DEFS._data[_it_vnum]
             _it_progs = {}
             for _it_trig in _it_tpl.get("obj_triggers", ()):
                 _it_pv = _it_trig[1]
                 if _it_pv in world.OBJPROGS:
                     _it_progs[_it_pv] = world.OBJPROGS[_it_pv]
         else:
-            _it_entry = world.ITEM_SNAPSHOTS.get(_it_vnum)
-            if _it_entry is None:
-                continue  # no source: normal lazy-load fallback next boot
             _it_rev, _it_tpl, _it_progs = _it_entry
         try:
             _it_enc = world._snap_encode((_it_tpl, _it_progs))
         except ValueError:
             continue  # unsupported value type: skip the line, keep save valid
-        lines.append("it." + sstr(_it_vnum) + "=" + _it_rev + "|" + _it_enc)
+        _it_line = "it." + sstr(_it_vnum) + "=" + _it_rev + "|" + _it_enc
+        world._SNAP_ENC_CACHE[_it_vnum] = (_it_rev, _it_line)
+        lines.append(_it_line)
     if _timed:
         _SAVE_TIMING.append(("snap", ticks() - _tmark))
         _tmark = ticks()
@@ -566,6 +581,11 @@ def load_world():
                         and isinstance(it_record[0], dict)
                         and isinstance(it_record[1], dict)):
                     world.ITEM_SNAPSHOTS[it_vnum] = (it_rev, it_record[0], it_record[1])
+                    # [PRIMESUD] Prefill the encoded-line cache from the
+                    # raw save bytes (deterministic codec: re-encoding
+                    # this entry reproduces them), so the first save
+                    # after boot skips the encode too.
+                    world._SNAP_ENC_CACHE[it_vnum] = (it_rev, key + "=" + val)
             except ValueError:
                 pass
         elif key.startswith("a."):

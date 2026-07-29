@@ -452,6 +452,17 @@ def _vnum_to_tag(vnum):
 # Item template snapshots.
 ITEM_SNAPSHOTS = {}
 
+# [PRIMESUD] Save-time encoded-line cache: item_vnum -> (revision,
+# "it.<vnum>=<revision>|<record>" line). Templates are immutable within a
+# build (CONTENT_REVISION is constant per session) and the codec is
+# deterministic, so each record encodes once: _serialize_world reuses the
+# line while the revision it would stamp matches, and load_world prefills
+# entries from the raw save bytes. A registry restamp changes the
+# revision and misses; an eviction rebuild would re-encode to identical
+# bytes, so a stale hit is byte-equal. Owned here (not game_state) so
+# reset_lazy clears it with the rest of the world state.
+_SNAP_ENC_CACHE = {}
+
 
 # -- Typed snapshot codec [PRIMESUD] -------------------------------------------
 # Encodes item templates + referenced obj-program source for the future
@@ -1113,6 +1124,7 @@ def _apply_pending_deltas(tag, room_vnums):
         if _rv not in _rvnum_set:
             continue
         _raw = _pending_room_items.pop(_rv)
+        _PENDING_VNUM_CACHE.pop(_rv, None)
         if _rv in rooms._data:
             rooms._data[_rv]["items"] = [parse_item_token(v)
                                          for v in _raw.split("|") if v]
@@ -1193,6 +1205,39 @@ def _snap_pending_vnums(raw, out):
             _snap_token_vnums(tok, out)
 
 
+# [PRIMESUD] Per-room cache over _snap_pending_vnums: rvnum ->
+# (raw_string, all_vnums, foreign_vnums). Pending token strings are only
+# ever replaced wholesale (load_world "r." lines, eviction re-serialize),
+# never mutated in place, so identity of the raw string validates an
+# entry and the bracket-aware per-char token scan runs once per distinct
+# string instead of on every save: rescanning every pending line each
+# save cost ~9s of an 11.7s full-world save on-device
+# (debug/save_smoke-1.log).
+_PENDING_VNUM_CACHE = {}
+
+
+def _snap_pending_cached(rv, raw):
+    """Return (all_vnums, foreign_vnums) for one pending room line. [PRIMESUD]
+
+    foreign_vnums is the subset whose owning area differs from the
+    room's own area (_snap_save_vnums's filter, hoisted here so its
+    per-vnum _vnum_to_tag range scans are cached alongside the token
+    scan).
+    """
+    _ent = _PENDING_VNUM_CACHE.get(rv)
+    if _ent is not None and _ent[0] is raw:
+        return _ent[1], _ent[2]
+    _found = []
+    _snap_pending_vnums(raw, _found)
+    _own = _vnum_to_tag(rv)
+    _foreign = []
+    for _v in _found:
+        if _vnum_to_tag(_v) != _own:
+            _foreign.append(_v)
+    _PENDING_VNUM_CACHE[rv] = (raw, _found, _foreign)
+    return _found, _foreign
+
+
 def _snap_save_vnums():
     """Compute the persisted item-template snapshot VNUM set fresh. [PRIMESUD]
 
@@ -1243,12 +1288,7 @@ def _snap_save_vnums():
             _walk_foreign(_items, _vnum_to_tag(_rv))
 
     for _rv in _pending_room_items:
-        _own_tag = _vnum_to_tag(_rv)
-        _found = []
-        _snap_pending_vnums(_pending_room_items[_rv], _found)
-        for _v in _found:
-            if _vnum_to_tag(_v) != _own_tag:
-                needed.add(_v)
+        needed.update(_snap_pending_cached(_rv, _pending_room_items[_rv])[1])
 
     return needed
 
@@ -1286,9 +1326,7 @@ def _snap_live_vnums():
     for _rv in rooms._data:
         _walk(rooms._data[_rv].get("items", []))
     for _rv in _pending_room_items:
-        _found = []
-        _snap_pending_vnums(_pending_room_items[_rv], _found)
-        found.update(_found)
+        found.update(_snap_pending_cached(_rv, _pending_room_items[_rv])[0])
 
     return found
 
@@ -1343,9 +1381,7 @@ def _materialize_item_snapshots(lo, hi, rvnum_set):
             _walk(rooms._data[_rv].get("items", []))
     for _rv in _pending_room_items:
         if _rv not in rvnum_set:
-            _found = []
-            _snap_pending_vnums(_pending_room_items[_rv], _found)
-            for _v in _found:
+            for _v in _snap_pending_cached(_rv, _pending_room_items[_rv])[0]:
                 if lo <= _v <= hi:
                     _vnums.add(_v)
 
@@ -1600,6 +1636,8 @@ def reset_lazy():
     MOB_DEFS._data.clear()
     ITEM_DEFS._data.clear()
     ITEM_SNAPSHOTS.clear()
+    _SNAP_ENC_CACHE.clear()
+    _PENDING_VNUM_CACHE.clear()
     DOOR_DEFS.clear()
     MOBPROGS.clear()
     OBJPROGS.clear()
