@@ -266,6 +266,25 @@ the first save skips the one-time 4.5 s token rescan; its remaining
 overhead (1333 ms, spread evenly across the ln.* segments) is
 `util.num_str` cache warm-up, not a cache miss.
 
+### Item-snapshot device gates (G1, measured 30 Jul 2026)
+
+`debug/snapshot_gates.py` (`debug/snapshot_gates-1.log`), real save, all
+three remaining hardware gates from the snapshot design PASS:
+
+- **Heap across travel/eviction:** 13-area tour x 4 cycles at
+  `AREA_CACHE_MAX` 12; cycle-end `mem_free` after collect settled
+  5336832 -> 5333088 -> 5332976 -> 5332928 -- a converging warm-up
+  tail (-3744/-112/-48 B), no downward drift. Cycle cost ~100 s
+  (13 loads + 13 evictions once the tour exceeds the cap; area load
+  cost itself is the known multi-second item, sec. Area loading).
+- **Stale-revision corrective load:** exactly one owner-area load
+  (869 ms), vnum resident after, snapshot entry pruned.
+- **Snapshot obj prog from unloaded owner:** fires via the
+  `_run_oprog` fallback in 85 ms; owner area never loads.
+- Save over the post-tour state: 4161 ms -- first save after mass
+  eviction repopulates the pending caches for every newly-evicted
+  area, then steady-state economics apply again.
+
 ## Session and memory behaviour (G1, measured 27 Jul 2026)
 
 `debug/mem_soak.py` filled the heap with 32 KB pattern chunks to

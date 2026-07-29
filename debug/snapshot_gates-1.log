@@ -1,0 +1,15 @@
+snapshot_gates: item-snapshot device gates
+mem free start: 7361232
+load_world: 22966ms source=file
+areas loaded: 2, snapshots: 20
+gate1: touring 13 areas x 4 cycles (cap 12)
+gate1 cycle 1: 50297ms  mem=5336832 loaded=12
+gate1 cycle 2: 101714ms  mem=5333088 loaded=12
+gate1 cycle 3: 100729ms  mem=5332976 loaded=12
+gate1 cycle 4: 98081ms  mem=5332928 loaded=12
+setup: v2=17700 (pestates) v3=1 (limbo)  snap2=True snap3=True
+gate2: PASS loads=['pestates'] ms=869 resident=True pruned=True
+gate3: PASS fired=1 ms=85 owner_loaded=False
+save over gate state: ok=True 4161ms
+mem free end: 5288480
+Done. Results in snapshot_gates.log
