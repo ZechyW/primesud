@@ -11,14 +11,8 @@ track is open on top of it.
   startup owner-load and save/readback gates already passed 29/07/2026,
   docs/PERFORMANCE.md sec. Save path): heap after travel/eviction cycles;
   one content-revision mismatch causing exactly one corrective load;
-  snapshot obj program firing from an unloaded owner. If save size bites,
-  first lever is field-name tags inside the snapshot codec -- never
-  silently dropping `description`/`extra_descs`.
-
-## Tests
-
-- Fold `world.ITEM_SNAPSHOTS` save/restore into the shared `fresh_world`
-  fixture (tests/conftest.py). Currently guarded per-module: autouse
-  clearing fixture in test_area_eviction.py, `reset_lazy()` in
-  test_snapshot_codec.py. Fine today, but any new module touching the
-  registry silently leaks entries between tests until this lands.
+  snapshot obj program firing from an unloaded owner. Probe ready:
+  debug/snapshot_gates.py (all gates pass on desktop 30/07/2026; swap it
+  in for save_smoke.py in the debug appdir -- only one self-running .py).
+  If save size bites, first lever is field-name tags inside the snapshot
+  codec -- never silently dropping `description`/`extra_descs`.
