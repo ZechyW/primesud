@@ -959,7 +959,10 @@ def _obj_name(obj):
         vnum = obj.get("vnum")
     else:
         vnum = obj
-    tpl = world.ITEM_DEFS.get(vnum)
+    # [PRIMESUD] item_tpl_get, not ITEM_DEFS.get: snapshotted foreign gear
+    # must not reload its owner area for prog text expansion (cf. handler.py
+    # _obj_keywords/_obj_short)
+    tpl = world.item_tpl_get(vnum)
     return _first(tpl.get("keywords", "")) if tpl else "something"
 
 
@@ -972,7 +975,7 @@ def _obj_keywords(obj):
         vnum = obj.get("vnum")
     else:
         vnum = obj
-    tpl = world.ITEM_DEFS.get(vnum)
+    tpl = world.item_tpl_get(vnum)  # [PRIMESUD] see _obj_name
     return tpl.get("keywords", "") if tpl else ""
 
 
@@ -985,7 +988,7 @@ def _obj_short(obj):
         vnum = obj.get("vnum")
     else:
         vnum = obj
-    tpl = world.ITEM_DEFS.get(vnum)
+    tpl = world.item_tpl_get(vnum)  # [PRIMESUD] see _obj_name
     return tpl.get("short_descr", "something") if tpl else "something"
 
 
