@@ -1,0 +1,491 @@
+"""Combat/input-lag phase benchmark: synthetic, real terminal, real heap. [PRIMESUD]
+
+Companion probe to COMBAT_LAG.md (repo root). Measures the coarse phase
+costs that document names as suspects -- status/prompt rendering, room
+render via interpret, and combat pulse cost at three shapes (single mob,
+busy room, autoskill-on) -- plus update_handler() at three pulse shapes
+(violence only, all six periodic pulses aligned on one call, near-idle).
+No human input: every scenario drives the same APIs the real game loop
+calls, with fixed synthetic timing loops instead of a keyboard/GETKEY poll.
+
+Unlike snapshot_gates.py, this probe does NOT stub terminal.tr: rendering
+cost is a prime suspect in the lag investigation, so status/print calls
+must hit the real tml_prime blit path. terminal.init_terminal() is called
+immediately after `import terminal`, before any other game import, so nothing
+prints to an uninitialised terminal.
+
+Setup mirrors save_smoke.py/snapshot_gates.py: copy the REAL primesud.sav
+into this debug appdir first (Connectivity Kit) -- it is only read.
+SAVE_VAR is redirected to "smoketest" before world.init_world()/load_world()
+so create_char()'s reset_lazy and the load never touch the real save slot;
+SAVE_FILE is redirected to combat_bench.sav after load_world() so nothing
+this probe does (no scenario here calls save_world(), but the redirect is
+cheap insurance) can touch the real save file either.
+
+Ship the full game closure (src/*.py + src/*.txt + src/*.idx) EXCEPT
+src/primesud.py (its module level launches the game). Only ONE
+self-running .py may be in the appdir (Prime auto-imports all): this probe
+OR snapshot_gates.py OR save_smoke.py, never more than one at a time.
+Results printed and written to combat_bench.log.
+
+Scenarios (run in this order -- typing/status/interpret first so their
+numbers are clean-heap; combat scenarios run after and reflect heap churn
+from spawned mobs):
+  1  boot              -- load_world() timing (like snapshot_gates)
+  2  typing_prompt     -- show_prompt() over ~40 type+backspace calls
+  3  status_raw        -- terminal.tr.set_status() alone, prefix precomputed
+  4  interpret_look     -- commands.interpret("look", player) x5
+  5  combat_basic      -- 1 mob, 10 violence_update() rounds
+  6  combat_busy       -- 4 mobs vs. player, 10 rounds
+  7  combat_autoskill  -- 1 mob, PLR_AUTOSKILL on, 10 rounds (or skip+reason)
+  8  pulse_violence_only -- update_handler() x10, only violence pulse due
+  9  pulse_aligned     -- update_handler() x3, ALL six pulses due each call
+  10 pulse_idle        -- update_handler() x5, only regen due (near no-op)
+"""
+import gc
+
+import terminal
+
+terminal.init_terminal()
+
+from prime_platform import ticks, hvars_set  # noqa: E402
+from util import int_str, num_str  # noqa: E402
+from config import R_STARTING_ROOM  # noqa: E402
+from handler import PLR_AUTOSKILL, PLR_DEFAULTS  # noqa: E402
+import world  # noqa: E402
+import game_state  # noqa: E402
+import mobprog  # noqa: E402
+from player import create_char, show_prompt  # noqa: E402
+import combat  # noqa: E402
+import update  # noqa: E402
+import commands  # noqa: E402
+import autoskill  # noqa: E402
+
+LOG = "combat_bench.log"
+
+_out = []
+
+
+def log(msg):
+    print(msg)
+    _out.append(msg)
+    try:
+        with open(LOG, "w") as f:
+            f.write("\n".join(_out) + "\n")
+    except Exception:
+        pass
+
+
+def free():
+    return gc.mem_free() if hasattr(gc, "mem_free") else 0
+
+
+def _log_stats(label, n, total, mx, mn, rounds):
+    """Log one scenario's aggregate timing, plus a per-round list when
+    n <= 12 (kept as a fixed small list per CLAUDE.md pitfall 9, never
+    unbounded). [PRIMESUD]"""
+    msg = (label + ": n=" + int_str(n) + " total=" + int_str(total)
+           + "ms max=" + int_str(mx) + "ms min=" + int_str(mn) + "ms")
+    if rounds:
+        parts = []
+        for r in rounds:
+            parts.append(int_str(r))
+        msg += " rounds=[" + ",".join(parts) + "]"
+    log(msg)
+
+
+def _timed_rounds(label, n, restore_fn, call_fn):
+    """Run call_fn() n times, calling restore_fn() (untimed) before each
+    round, and log aggregate + (n<=12) per-round timings. [PRIMESUD]"""
+    total = 0
+    mx = 0
+    mn = 999999999
+    keep_rounds = n <= 12
+    rounds = [] if keep_rounds else None
+    for _ in range(n):
+        if restore_fn is not None:
+            restore_fn()
+        t0 = ticks()
+        call_fn()
+        dt = ticks() - t0
+        total += dt
+        if dt > mx:
+            mx = dt
+        if dt < mn:
+            mn = dt
+        if keep_rounds:
+            rounds.append(dt)
+    _log_stats(label, n, total, mx, mn, rounds)
+
+
+# -- Mob selection ---------------------------------------------------------
+
+def _pick_mob():
+    """Pick a low-level mob vnum with no off_flags and no spec_fun ("no
+    specials") from whatever areas load_world() already pulled in; falls
+    back to loading further areas (like snapshot_gates._pick_item_area)
+    if none of those areas define a plain mob. [PRIMESUD]
+
+    Returns:
+        int: A mob template vnum, or -1 if the world defines no mobs at all.
+    """
+    best = -1
+    best_level = None
+    for v, tpl in world.MOB_DEFS._data.items():
+        if tpl.get("spec_fun") or tpl.get("off_flags"):
+            continue
+        lvl = tpl.get("level", 1)
+        if best_level is None or lvl < best_level or (lvl == best_level and v < best):
+            best = v
+            best_level = lvl
+    if best >= 0:
+        return best
+    for entry in world._AREA_FILES:
+        tag = entry[1]
+        if tag in world._LOADED_AREAS:
+            continue
+        world._ensure_area_by_tag(tag)
+        for v, tpl in world.MOB_DEFS._data.items():
+            if not tpl.get("spec_fun") and not tpl.get("off_flags"):
+                return v
+    for v in world.MOB_DEFS._data:
+        return v
+    return -1
+
+
+# -- Combat engage/restore/disengage ----------------------------------------
+
+def _engage(player, mobs):
+    """One-time combat entry (cf. combat.set_fighting side effects: sleep
+    strip, stance autodrop, Swordsman form default) for player vs. mobs[0],
+    and each mob vs. player. [PRIMESUD]"""
+    for m in mobs:
+        combat.set_fighting(m, player)
+    combat.set_fighting(player, mobs[0])
+
+
+def _restore_round(player, mobs):
+    """Reset hit/wait/daze/pos to full before a timed round, and repair
+    fighting links if a previous round's damage killed and extracted a
+    combatant. Repair is needed because resetting hit to max_hit happens
+    BEFORE violence_update runs each round, but one round can still deal
+    more than max_hit in damage (multiple hits, crits) and kill mid-round --
+    without this, a scenario could silently stop measuring real combat
+    partway through its round count. [PRIMESUD]"""
+    room = player["room"]
+    room_mobs = world.rooms[room]["mobs"]
+    for m in mobs:
+        if m["id"] not in world.chars:
+            world.chars[m["id"]] = m
+        if m["id"] not in room_mobs:
+            room_mobs.append(m["id"])
+        m["room"] = room
+        m["fighting"] = player["id"]
+        m["pos"] = "fighting"
+        m["hit"] = m["max_hit"]
+        m["wait"] = 0
+        m["daze"] = 0
+    player["fighting"] = mobs[0]["id"]
+    player["pos"] = "fighting"
+    player["hit"] = player["max_hit"]
+    player["wait"] = 0
+
+
+def _disengage(player, mobs):
+    """Stop combat and extract every spawned mob, leaving the mob harmlessly
+    -- same removal path debug.py's _debug_purge uses for NPCs. [PRIMESUD]"""
+    if player.get("fighting") is not None:
+        combat.stop_fighting(player, both=True)
+    for m in mobs:
+        if m["id"] in world.chars:
+            combat._extract_char(m, pull=True)
+
+
+# -- Scenarios ---------------------------------------------------------------
+
+def scenario_typing_prompt(player):
+    """show_prompt() over typing then backspacing a fixed string, ~40 calls."""
+    text = "flee flee flee flee"
+    buf = ""
+    total = 0
+    mx = 0
+    mn = 999999999
+    n = 0
+    for ch in text:
+        buf += ch
+        t0 = ticks()
+        show_prompt(player, buf)
+        dt = ticks() - t0
+        total += dt
+        if dt > mx:
+            mx = dt
+        if dt < mn:
+            mn = dt
+        n += 1
+    _log_stats("typing_prompt(type)", n, total, mx, mn, None)
+
+    total = 0
+    mx = 0
+    mn = 999999999
+    n = 0
+    while buf:
+        buf = buf[:-1]
+        t0 = ticks()
+        show_prompt(player, buf)
+        dt = ticks() - t0
+        total += dt
+        if dt > mx:
+            mx = dt
+        if dt < mn:
+            mn = dt
+        n += 1
+    _log_stats("typing_prompt(backspace)", n, total, mx, mn, None)
+
+
+def scenario_status_raw(player):
+    """terminal.tr.set_status() alone, with the prefix built once outside
+    the timed loop -- isolates status-render cost from show_prompt's
+    per-call prefix concatenation (COMBAT_LAG.md "Per-character prompt
+    rendering")."""
+    prefix = ("{R" + num_str(player["hit"]) + "/" + num_str(player["max_hit"])
+              + "hp {M" + num_str(player["mana"]) + "/" + num_str(player["max_mana"])
+              + "mn {B" + num_str(player["move"]) + "/" + num_str(player["max_move"])
+              + "mv{x " + num_str(player["xp_next"] - player["xp"]) + "tnl>flee")
+    total = 0
+    mx = 0
+    mn = 999999999
+    n = 20
+    for _ in range(n):
+        t0 = ticks()
+        terminal.tr.set_status(prefix)
+        dt = ticks() - t0
+        total += dt
+        if dt > mx:
+            mx = dt
+        if dt < mn:
+            mn = dt
+    _log_stats("status_raw", n, total, mx, mn, None)
+
+
+def scenario_interpret_look(player):
+    """commands.interpret("look", player) x5 -- representative command +
+    room-render path outside combat."""
+    _timed_rounds("interpret_look", 5, None,
+                  lambda: commands.interpret("look", player))
+
+
+def scenario_combat_basic(player):
+    """1 mob, 10 timed violence_update() rounds."""
+    vnum = _pick_mob()
+    if vnum < 0:
+        log("combat_basic: SKIPPED -- no mob template available")
+        return
+    mob = mobprog._spawn_mob_at(vnum, player["room"])
+    log("combat_basic: mob vnum=" + int_str(vnum) + " level="
+        + int_str(world.MOB_DEFS._data.get(vnum, {}).get("level", 1)))
+    _engage(player, [mob])
+    _timed_rounds("combat_basic", 10,
+                  lambda: _restore_round(player, [mob]),
+                  lambda: combat.violence_update(player))
+    _disengage(player, [mob])
+
+
+def scenario_combat_busy(player):
+    """4 mobs vs. player (player targets the first), 10 timed rounds."""
+    vnum = _pick_mob()
+    if vnum < 0:
+        log("combat_busy: SKIPPED -- no mob template available")
+        return
+    mobs = []
+    for _ in range(4):
+        mobs.append(mobprog._spawn_mob_at(vnum, player["room"]))
+    log("combat_busy: mob vnum=" + int_str(vnum) + " count=" + int_str(len(mobs)))
+    _engage(player, mobs)
+    _timed_rounds("combat_busy", 10,
+                  lambda: _restore_round(player, mobs),
+                  lambda: combat.violence_update(player))
+    _disengage(player, mobs)
+
+
+def scenario_combat_autoskill(player):
+    """1 mob, PLR_AUTOSKILL enabled (player.py/autoskill.py's own enabling
+    state: `player["flags"] |= PLR_AUTOSKILL`, cf. do_autoskill in
+    autoskill.py). If the character's current rotation (autoskill.
+    get_rotation, built from player["learned"] -- either the real loaded
+    save's skills, or create_char()'s class/race defaults if no save was
+    present) has no included entry, this is logged as autoskill-skipped and
+    no combat is timed under this flag: firing a rotation entry that isn't
+    actually reachable would invent state rather than measure it."""
+    vnum = _pick_mob()
+    if vnum < 0:
+        log("combat_autoskill: SKIPPED -- no mob template available")
+        return
+    mob = mobprog._spawn_mob_at(vnum, player["room"])
+    prev_flags = player.get("flags", PLR_DEFAULTS)
+    player["flags"] = prev_flags | PLR_AUTOSKILL
+    rotation = autoskill.get_rotation(player)
+    included = [r for r in rotation if r[3]]
+    if not included:
+        log("combat_autoskill: autoskill-skipped -- rotation has no "
+            + "included entries for this character (learned skills/spells "
+            + "empty, or every candidate excluded)")
+        player["flags"] = prev_flags
+        combat._extract_char(mob, pull=True)
+        return
+    log("combat_autoskill: rotation head=" + included[0][1]
+        + " (" + included[0][2] + ")")
+    _engage(player, [mob])
+    _timed_rounds("combat_autoskill", 10,
+                  lambda: _restore_round(player, [mob]),
+                  lambda: combat.violence_update(player))
+    _disengage(player, [mob])
+    player["flags"] = prev_flags
+
+
+def scenario_pulse_violence_only(player):
+    """update_handler() x10 with only the violence pulse forced due each
+    round; area/mobile/music/regen/tick countdowns suppressed."""
+    vnum = _pick_mob()
+    if vnum < 0:
+        log("pulse_violence_only: SKIPPED -- no mob template available")
+        return
+    mob = mobprog._spawn_mob_at(vnum, player["room"])
+    _engage(player, [mob])
+    update._pulse_area = 100000
+    update._pulse_mobile = 100000
+    update._pulse_music = 100000
+    update._pulse_regen = 100000
+    update._pulse_tick = 100000
+
+    def _restore():
+        _restore_round(player, [mob])
+        update._pulse_violence = 1
+
+    _timed_rounds("pulse_violence_only", 10, _restore,
+                  lambda: update.update_handler())
+    _disengage(player, [mob])
+
+
+def scenario_pulse_aligned(player):
+    """update_handler() x3, forcing ALL six pulses (area, music, mobile,
+    violence, regen, tick) due on every call -- the 30-second alignment
+    COMBAT_LAG.md flags as a combined-pulse hitch candidate. Each call is
+    logged individually (not just aggregated) since one call is the whole
+    scenario each time."""
+    vnum = _pick_mob()
+    if vnum < 0:
+        log("pulse_aligned: SKIPPED -- no mob template available")
+        return
+    mob = mobprog._spawn_mob_at(vnum, player["room"])
+    _engage(player, [mob])
+    total = 0
+    for i in range(3):
+        _restore_round(player, [mob])
+        update._pulse_area = 1
+        update._pulse_mobile = 1
+        update._pulse_music = 1
+        update._pulse_violence = 1
+        update._pulse_regen = 1
+        update._pulse_tick = 1
+        t0 = ticks()
+        update.update_handler()
+        dt = ticks() - t0
+        total += dt
+        log("pulse_aligned run " + int_str(i + 1) + ": " + int_str(dt) + "ms")
+    log("pulse_aligned: n=3 total=" + int_str(total) + "ms")
+    _disengage(player, [mob])
+
+
+def scenario_pulse_idle(player):
+    """update_handler() x5, no combat, only regen forced due each round --
+    near-no-op baseline (maybe_evict + mark_explored + regen check only)."""
+    if player.get("fighting") is not None:
+        combat.stop_fighting(player, both=True)
+    update._pulse_area = 100000
+    update._pulse_mobile = 100000
+    update._pulse_music = 100000
+    update._pulse_violence = 100000
+    update._pulse_tick = 100000
+
+    def _restore():
+        update._pulse_regen = 1
+
+    _timed_rounds("pulse_idle", 5, _restore, lambda: update.update_handler())
+
+
+def main():
+    gc.collect()
+    log("combat_bench: on-device phase benchmark")
+    log("mem free start: " + int_str(free()))
+
+    # Redirect the save slot before ANY game write can touch the real one.
+    game_state.SAVE_VAR = "smoketest"
+
+    world.init_world()  # before create_char: its reset_lazy clears chars
+
+    player = create_char()
+    player["_macros"] = {}
+    player["room"] = R_STARTING_ROOM
+    world.chars[1] = player
+
+    t0 = ticks()
+    src = game_state.load_world()
+    dt = ticks() - t0
+    log("boot: load_world " + int_str(dt) + "ms source=" + str(src))
+    log("boot: chars=" + int_str(len(world.chars))
+        + " areas=" + int_str(len(world._LOADED_AREAS)))
+    game_state.SAVE_FILE = "combat_bench.sav"
+
+    gc.collect()
+    log("mem free after boot: " + int_str(free()))
+
+    scenario_typing_prompt(player)
+    gc.collect()
+    log("mem free after typing_prompt: " + int_str(free()))
+
+    scenario_status_raw(player)
+    gc.collect()
+    log("mem free after status_raw: " + int_str(free()))
+
+    scenario_interpret_look(player)
+    gc.collect()
+    log("mem free after interpret_look: " + int_str(free()))
+
+    log("chars loaded: " + int_str(len(world.chars)))
+    scenario_combat_basic(player)
+    gc.collect()
+    log("mem free after combat_basic: " + int_str(free()))
+
+    log("chars loaded: " + int_str(len(world.chars)))
+    scenario_combat_busy(player)
+    gc.collect()
+    log("mem free after combat_busy: " + int_str(free()))
+
+    log("chars loaded: " + int_str(len(world.chars)))
+    scenario_combat_autoskill(player)
+    gc.collect()
+    log("mem free after combat_autoskill: " + int_str(free()))
+
+    log("chars loaded: " + int_str(len(world.chars)))
+    scenario_pulse_violence_only(player)
+    gc.collect()
+    log("mem free after pulse_violence_only: " + int_str(free()))
+
+    log("chars loaded: " + int_str(len(world.chars)))
+    scenario_pulse_aligned(player)
+    gc.collect()
+    log("mem free after pulse_aligned: " + int_str(free()))
+
+    scenario_pulse_idle(player)
+    gc.collect()
+    log("mem free after pulse_idle: " + int_str(free()))
+
+    try:
+        hvars_set("smoketest", "0")
+        hvars_set("smoketest_bak", "0")
+    except Exception:
+        pass
+    log("Done. Results in " + LOG)
+
+
+main()
