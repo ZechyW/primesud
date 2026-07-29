@@ -9,7 +9,7 @@ from config import (
     FLING_SMOOTH_NUM,
 )
 from colors import (COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full,
-                    color_parse_runs, resolve_random, strip_colors)
+                    resolve_random, strip_colors)
 from hpprime import dimgrob, fillrect, getpix, grobh, grobw, pixon, strblit2
 from util import pad_right
 
@@ -350,11 +350,18 @@ def install_color_print(tr):
 
     tr.print = wrapped_print
     orig_set_status = tr.set_status
-    _cpr = color_parse_runs
     _sc = strip_colors
 
     def wrapped_set_status(text):
-        """Colour-aware status bar renderer with visible-width truncation. [PRIMESUD]"""
+        """Colour-aware status bar renderer with visible-width truncation. [PRIMESUD]
+
+        Composes offscreen into SCRATCH_GROB and blits once, same idiom as
+        print_lines above -- glyph-by-glyph straight to the screen GROB
+        measured ~123ms/call on device; this cuts it to ~10ms
+        (PERFORMANCE.md sec. Text rendering). SCRATCH_GROB is shared with
+        print_lines, but each use composes and blits within a single call
+        (no cross-call state), so there is no conflict.
+        """
         length = tr.columns - 6
         if _CC not in text:
             if current_fg[0] is not None:
@@ -376,20 +383,42 @@ def install_color_print(tr):
                     trunc_i += 1
             text = text[:trunc_i]
             plain = plain[:length]
+        # [PRIMESUD] status row spans only the left `length` columns --
+        # the rightmost 6 columns are the shift/alpha/lock indicator band
+        # (tml._refresh_indicators), never touched by set_status.  Compose
+        # scratch is exactly that width so the indicators are left alone.
         row = tr.rows + 1
-        runs = _cpr(text)
-        x = 0
-        for colour, seg in runs:
+        cw = tr.char_width
+        chh = tr.char_height
+        w = length * cw
+        dimgrob(SCRATCH_GROB, w, chh, tr.back_color)
+        colour_order, groups = _group_piece(text)
+        bget = _bmap.get
+        _sb = strblit2
+        for colour in colour_order:
             if colour is None:
                 reset_color()
             else:
                 set_color(colour)
-            _pxy(x, row, seg)
-            x += len(seg)
-        # Pad remaining with spaces in default colour.
-        if x < length:
-            reset_color()
-            _pxy(x, row, ' ' * (length - x))
+            for x, seg in groups[colour]:
+                px = x * cw
+                for bch in seg.encode():
+                    fx = bget(bch, -1)
+                    if fx >= 0:
+                        _sb(SCRATCH_GROB, px, 0, cw, chh,
+                            FONT_GROB, fx, 0, cw, chh)
+                    px += cw
+        # [PRIMESUD] no separate pad-with-spaces pass: the dimgrob fill
+        # above already leaves every untouched cell at tr.back_color, so
+        # a shorter new status fully overwrites a longer old one once the
+        # final blit below covers the whole `w`-wide row.
+        _sb(0, 0, row * chh, w, chh, SCRATCH_GROB, 0, 0, w, chh)
+        # [PRIMESUD] deliberate normalisation: the old code only reset to
+        # the default colour when padding ran (x < length); when the run
+        # filled the row exactly it left the last colour active.  Always
+        # resetting here is harmless (the next print/status call sets its
+        # own colour state first) and keeps the contract simple.
+        reset_color()
         tr.status_text = pad_right(plain, length)
 
     tr.set_status = wrapped_set_status
