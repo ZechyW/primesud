@@ -1172,6 +1172,105 @@ def _snap_pending_vnums(raw, out):
             _snap_token_vnums(tok, out)
 
 
+def _snap_save_vnums():
+    """Compute the persisted item-template snapshot VNUM set fresh. [PRIMESUD]
+
+    Recomputes rather than dumping the whole ITEM_SNAPSHOTS registry
+    (SNAPSHOT_PLAN.md sec. Serialization): the player's inventory/equipment
+    VNUMs are always included, recursively through contents; a loaded
+    room's item VNUMs are included only where the template owner differs
+    from the room's own area, recursively; a deferred `_pending_room_items`
+    token's VNUMs follow the same foreign-owner rule, found via the
+    existing token walker (_snap_pending_vnums) rather than a second
+    scanner. Own-area room/pending items are omitted -- they reload
+    alongside their template when that area loads.
+
+    Returns:
+        set: distinct item template VNUMs that need an
+        `it.<vnum>=<revision>|<record>` save line.
+    """
+    needed = set()
+
+    def _walk_always(items):
+        for _o in items:
+            if not isinstance(_o, dict):
+                continue
+            _v = _o.get("vnum")
+            if _v is not None:
+                needed.add(_v)
+            _walk_always(_o.get("contents", []))
+
+    def _walk_foreign(items, own_tag):
+        for _o in items:
+            if not isinstance(_o, dict):
+                continue
+            _v = _o.get("vnum")
+            if _v is not None and _vnum_to_tag(_v) != own_tag:
+                needed.add(_v)
+            _walk_foreign(_o.get("contents", []), own_tag)
+
+    _player = chars.get(1)
+    if _player is not None:
+        _walk_always(_player.get("inv", []))
+        _walk_always([_e for _e in _player.get("equip", {}).values()
+                      if _e is not None])
+
+    for _rv in rooms._data:
+        _items = rooms._data[_rv].get("items")
+        if _items:
+            _walk_foreign(_items, _vnum_to_tag(_rv))
+
+    for _rv in _pending_room_items:
+        _own_tag = _vnum_to_tag(_rv)
+        _found = []
+        _snap_pending_vnums(_pending_room_items[_rv], _found)
+        for _v in _found:
+            if _vnum_to_tag(_v) != _own_tag:
+                needed.add(_v)
+
+    return needed
+
+
+def _snap_live_vnums():
+    """Return every item VNUM referenced by any live object or deferred
+    room token, regardless of ownership. [PRIMESUD]
+
+    Runtime marks for the save-time cold mark/sweep (SNAPSHOT_PLAN.md sec.
+    Runtime pruning): player, surviving NPC/shop inventories and
+    equipment, loaded-room items, and `_pending_room_items` tokens -- all
+    recursively, unfiltered by owner area (unlike `_snap_save_vnums`,
+    which only wants the foreign subset that needs a save line). A
+    registry entry outside this set is not held live by anything and may
+    be dropped once its owning area is not resident to rebuild it from.
+
+    Returns:
+        set: every VNUM currently referenced anywhere live or deferred.
+    """
+    found = set()
+
+    def _walk(items):
+        for _o in items:
+            if not isinstance(_o, dict):
+                continue
+            _v = _o.get("vnum")
+            if _v is not None:
+                found.add(_v)
+            _walk(_o.get("contents", []))
+
+    for _cid in chars:
+        _ch = chars[_cid]
+        _walk(_ch.get("inv", []))
+        _walk([_e for _e in _ch.get("equip", {}).values() if _e is not None])
+    for _rv in rooms._data:
+        _walk(rooms._data[_rv].get("items", []))
+    for _rv in _pending_room_items:
+        _found = []
+        _snap_pending_vnums(_pending_room_items[_rv], _found)
+        found.update(_found)
+
+    return found
+
+
 def _materialize_item_snapshots(lo, hi, rvnum_set):
     """Snapshot [lo, hi]-owned items that survive outside an unloading area. [PRIMESUD]
 

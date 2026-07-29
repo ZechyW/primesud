@@ -272,6 +272,44 @@ def _serialize_world(hvar_name=None, file_name=None):
     # Re-serialize pending room items for unloaded areas (not in world.rooms)
     for rvnum in sorted(world._pending_room_items):
         lines.append("r." + sstr(rvnum) + ".items=" + sstr(world._pending_room_items[rvnum]))
+    # [PRIMESUD] Item-template snapshots (SNAPSHOT_PLAN.md sec.
+    # Serialization). One deduplicated "it.<vnum>=<revision>|<record>" line
+    # per VNUM world._snap_save_vnums() says is required (player gear
+    # always, foreign-owner room/pending items only) -- never the whole
+    # ITEM_SNAPSHOTS registry. Resident template data wins when the owning
+    # area is loaded; otherwise the current registry snapshot answers
+    # (orphans keep their already-stamped revision). Neither source: the
+    # line is omitted and the VNUM falls back to its normal lazy area load
+    # on next boot -- not an error.
+    for _it_vnum in sorted(world._snap_save_vnums()):
+        if _it_vnum in world.ITEM_DEFS._data:
+            _it_tpl = world.ITEM_DEFS._data[_it_vnum]
+            _it_rev = world.CONTENT_REVISION
+            _it_progs = {}
+            for _it_trig in _it_tpl.get("obj_triggers", ()):
+                _it_pv = _it_trig[1]
+                if _it_pv in world.OBJPROGS:
+                    _it_progs[_it_pv] = world.OBJPROGS[_it_pv]
+        else:
+            _it_entry = world.ITEM_SNAPSHOTS.get(_it_vnum)
+            if _it_entry is None:
+                continue  # no source: normal lazy-load fallback next boot
+            _it_rev, _it_tpl, _it_progs = _it_entry
+        try:
+            _it_enc = world._snap_encode((_it_tpl, _it_progs))
+        except ValueError:
+            continue  # unsupported value type: skip the line, keep save valid
+        lines.append("it." + sstr(_it_vnum) + "=" + _it_rev + "|" + _it_enc)
+    # Cold mark/sweep (SNAPSHOT_PLAN.md sec. Runtime pruning): free registry
+    # entries no live object or deferred token references once their owning
+    # area is not resident to rebuild them from. Runs on every save,
+    # primary or backup; never touches a VNUM the block above just wrote --
+    # every save-marked VNUM is also runtime-marked.
+    _it_live = world._snap_live_vnums()
+    for _it_vnum in [_k for _k in world.ITEM_SNAPSHOTS
+                     if _k not in _it_live
+                     and world._vnum_to_tag(_k) not in world._LOADED_AREAS]:
+        del world.ITEM_SNAPSHOTS[_it_vnum]
     for i in range(len(lines)):
         if not isinstance(lines[i], str):
             raise Exception("non-str save line " + sstr(i))
@@ -473,6 +511,27 @@ def load_world():
         elif key.startswith("r.") and key.endswith(".items"):
             rvnum = int(key.split(".")[1])
             world._pending_room_items[rvnum] = val
+        elif key.startswith("it."):
+            # [PRIMESUD] Item-template snapshot cache line (SNAPSHOT_PLAN.md
+            # sec. Save/load): "it.<vnum>=<revision>|<record>". Populates
+            # ITEM_SNAPSHOTS only -- never touches ITEM_DEFS or loads an
+            # area. A malformed record (bad vnum, missing "|", codec
+            # ValueError, wrong decoded shape) is skipped individually: this
+            # is an optional cache, so a corrupt line must never make the
+            # rest of the save unloadable. Line order within the save is
+            # irrelevant -- item-token parsing (p.inv/p.eq/r.*.items above)
+            # needs no template, so ITEM_SNAPSHOTS only has to be populated
+            # before reset_char runs after load_world returns.
+            try:
+                it_vnum = int(key[3:])
+                it_rev, it_enc = val.split("|", 1)
+                it_record = world._snap_decode(it_enc)
+                if (isinstance(it_record, tuple) and len(it_record) == 2
+                        and isinstance(it_record[0], dict)
+                        and isinstance(it_record[1], dict)):
+                    world.ITEM_SNAPSHOTS[it_vnum] = (it_rev, it_record[0], it_record[1])
+            except ValueError:
+                pass
         elif key.startswith("a."):
             tag = key[2:]
             parts = val.split("|")
