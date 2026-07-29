@@ -49,6 +49,9 @@ from spawned mobs):
                         each (runs first, right after boot: it repaints the
                         live FONT_GROB and must end with font + colour state
                         back at the defaults before anything else renders)
+  12 interpret_look_batched -- scenario 4 with output batched (render-share A/B)
+  13 scan_skeleton     -- violence snapshot+scan replica, no combat, x10
+  14 combat_basic_batched -- scenario 5 with output batched (render-share A/B)
 """
 import gc
 
@@ -372,6 +375,77 @@ def scenario_interpret_look(player):
                   lambda: commands.interpret("look", player))
 
 
+def scenario_scan_skeleton(player):
+    """Isolate violence_update's full-world snapshot+scan cost: replicate
+    its `[chars[k] for k in sorted(chars)]` snapshot and the cheap
+    per-char field checks every non-fighting char pays, with no combat.
+    If this alone is a large share of the ~360ms 1v1 round, the scan --
+    not attacks or rendering -- is the optimisation target."""
+    chars = world.chars
+
+    def _scan():
+        n_fight = 0
+        for ch in [chars[k] for k in sorted(chars)]:
+            if ch["is_npc"] and ch["fighting"] is None and is_awake_stub(ch) and ch.get("hunting") is not None:
+                continue
+            if ch["fighting"] is None:
+                continue
+            n_fight += 1
+        return n_fight
+
+    # combat.is_awake equivalent without importing private helpers here.
+    def is_awake_stub(ch):
+        return ch.get("pos") not in ("sleeping", "stunned", "incap", "mortal", "dead")
+
+    _timed_rounds("scan_skeleton", 10, None, _scan)
+
+
+def scenario_combat_basic_batched(player):
+    """Same as combat_basic but with the round's output batched via
+    tr.begin_batch()/end_batch() -- direct same-shape A/B of the
+    violence-round output batching, without update_handler overhead."""
+    vnum = _pick_mob()
+    if vnum < 0:
+        log("combat_basic_batched: SKIPPED -- no mob template available")
+        return
+    if not hasattr(terminal.tr, "begin_batch"):
+        log("combat_basic_batched: SKIPPED -- no batch support")
+        return
+    mob = mobprog._spawn_mob_at(vnum, player["room"])
+    _engage(player, [mob])
+
+    def _round():
+        terminal.tr.begin_batch()
+        try:
+            combat.violence_update(player)
+        finally:
+            terminal.tr.end_batch()
+
+    _timed_rounds("combat_basic_batched", 10,
+                  lambda: _restore_round(player, [mob]), _round)
+    _disengage(player, [mob])
+
+
+def scenario_interpret_look_batched(player):
+    """interpret("look") with output batched -- A/B against
+    interpret_look to size the render share of a multi-line command
+    before committing to interpret-level batching (needs
+    flush-before-blocking-input hooks in the game proper; this probe
+    call is safe because "look" never blocks)."""
+    if not hasattr(terminal.tr, "begin_batch"):
+        log("interpret_look_batched: SKIPPED -- no batch support")
+        return
+
+    def _lk():
+        terminal.tr.begin_batch()
+        try:
+            commands.interpret("look", player)
+        finally:
+            terminal.tr.end_batch()
+
+    _timed_rounds("interpret_look_batched", 5, None, _lk)
+
+
 def scenario_combat_basic(player):
     """1 mob, 10 timed violence_update() rounds."""
     vnum = _pick_mob()
@@ -651,10 +725,23 @@ def main():
     gc.collect()
     log("mem free after interpret_look: " + int_str(free()))
 
+    scenario_interpret_look_batched(player)
+    gc.collect()
+    log("mem free after interpret_look_batched: " + int_str(free()))
+
+    scenario_scan_skeleton(player)
+    gc.collect()
+    log("mem free after scan_skeleton: " + int_str(free()))
+
     log("chars loaded: " + int_str(len(world.chars)))
     scenario_combat_basic(player)
     gc.collect()
     log("mem free after combat_basic: " + int_str(free()))
+
+    log("chars loaded: " + int_str(len(world.chars)))
+    scenario_combat_basic_batched(player)
+    gc.collect()
+    log("mem free after combat_basic_batched: " + int_str(free()))
 
     log("chars loaded: " + int_str(len(world.chars)))
     scenario_combat_busy(player)

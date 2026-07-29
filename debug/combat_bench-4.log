@@ -1,0 +1,41 @@
+combat_bench: on-device phase benchmark
+mem free start: 7307728
+boot: load_world 22919ms source=file
+boot: chars=139 areas=2
+mem free after boot: 6731504
+set_color_ab: font 475x10 fg_pixels=1050
+set_color_ab(pixon): n=10 total=39ms max=4ms min=3ms
+set_color_ab(blit): n=10 total=10ms max=1ms min=1ms
+mem free after set_color_ab: 6731184
+typing_prompt(type): n=19 total=1644ms max=150ms min=70ms
+typing_prompt(backspace): n=19 total=1525ms max=95ms min=65ms
+mem free after typing_prompt: 6730592
+status_raw: n=20 total=1426ms max=72ms min=71ms
+mem free after status_raw: 6730464
+interpret_look: n=5 total=2145ms max=440ms min=425ms rounds=[440,426,428,426,425]
+mem free after interpret_look: 6730256
+chars loaded: 139
+combat_basic: mob vnum=3090 level=1
+combat_basic: n=10 total=3595ms max=383ms min=324ms rounds=[332,383,376,378,365,358,324,375,380,324]
+mem free after combat_basic: 6729888
+chars loaded: 139
+combat_busy: mob vnum=3090 count=4
+combat_busy: n=10 total=10730ms max=1197ms min=944ms rounds=[1102,1165,958,1197,1126,1056,1061,1089,944,1032]
+mem free after combat_busy: 6729584
+chars loaded: 139
+combat_autoskill: SIMULATED rotation -- chill touch, cause light, magic missile
+combat_autoskill: rotation head=chill touch (spell)
+combat_autoskill: n=10 total=5966ms max=1217ms min=375ms rounds=[1217,621,562,574,583,440,375,567,586,441]
+mem free after combat_autoskill: 6721648
+chars loaded: 139
+pulse_violence_only: n=10 total=4159ms max=489ms min=346ms rounds=[395,434,440,346,484,374,361,467,489,369]
+mem free after pulse_violence_only: 6721392
+chars loaded: 139
+pulse_aligned run 1: 509ms
+pulse_aligned run 2: 612ms
+pulse_aligned run 3: 503ms
+pulse_aligned: n=3 total=1624ms
+mem free after pulse_aligned: 6720864
+pulse_idle: n=5 total=99ms max=21ms min=19ms rounds=[21,19,21,19,19]
+mem free after pulse_idle: 6720704
+Done. Results in combat_bench.log
