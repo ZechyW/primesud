@@ -11,7 +11,9 @@ from world import (
 )
 from colors import upper
 from comm import die_follower, do_emote, do_function, nuke_pets, stop_follower
+import terminal
 from config import (
+    KEY_COMMANDS,
     LEVEL_HERO,
     MAX_MORTAL_LEVEL,
     PULSE_VIOLENCE,
@@ -95,12 +97,14 @@ def violence_update(player):
     TRIG_FIGHT/TRIG_HPCNT wired and re-verified 09/07/2026; [PRIMESUD]
     autoskill hook added 18/07/2026; worn-obj + room TRIG_FIGHT wired and
     re-verified 20/07/2026; post-multi_hit victim re-fetch (fight.c:86) fixed
-    and re-verified 21/07/2026]
+    and re-verified 21/07/2026; [PRIMESUD] keyboard-drain checkpoints added
+    30/07/2026]
 
     Args:
         player (dict): Player state dict.
     """
     chars = world.chars
+    _pump = getattr(terminal.tr, "_pump_keyboard", None)  # tests stub tr without it
 
     room_trig = False  # room TRIG_FIGHT at most once per pulse (cf. fight.c:65)
     # Need to copy to list first as chars could get modified during iteration (on deaths)
@@ -126,6 +130,12 @@ def violence_update(player):
             multi_hit(ch, victim)
         else:
             stop_fighting(ch, both=False)
+
+        # [PRIMESUD] drain firmware key FIFO (4-deep) between combatants so
+        # long rounds cannot drop input; local 16-entry queue holds them for
+        # the game loop.
+        if _pump:
+            _pump(KEY_COMMANDS)
 
         # 1stMud: victim = ch->fighting; if victim == NULL: continue
         # (fight.c:86 re-fetches: multi_hit may have killed and retargeted,

@@ -14,6 +14,7 @@ TERMINAL_ROWS = 22   # character rows    (5x10 font, 240 px high, excl. status b
 FONT_GROB     = 9    # grob tml blits font glyphs from (HP Prime default)
 COLOR_GROB    = 8    # unmodified font copy; restored into FONT_GROB on colour reset
 SCRATCH_GROB  = 5    # offscreen compose buffer for batched renders (6=save, 7=history)
+COLORFONT_GROB = 4   # [PRIMESUD] per-colour font cache bands (one FONT_GROB-sized band per colour seen)
 
 # -- Timing -- pulse system (1stMud convention) -----------------------------------------
 PULSE_PER_SECOND = 4                          # base pulse rate

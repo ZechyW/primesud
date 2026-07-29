@@ -641,6 +641,12 @@ def _tick_affects(ch, tr):
 
 # -- Display -------------------------------------------------------------------
 
+# [PRIMESUD] single-slot cache for show_prompt's coloured prefix: [key, prefix,
+# avail]; most keypresses leave hit/mana/move/tnl unchanged, so rebuilding
+# the prefix (concatenation + color_len scan) on every call is wasted work.
+_PROMPT_CACHE = [None, "", 0]
+
+
 def show_prompt(player, buf):
     """Update the terminal status bar with the current HP/MP/XP prompt.
 
@@ -648,9 +654,18 @@ def show_prompt(player, buf):
         player (dict): Player state dict.
         buf (str): Current input buffer shown on the right of the prompt.
     """
-    prefix = ("{R" + num_str(player["hit"]) + "/" + num_str(player["max_hit"])
-              + "hp {M" + num_str(player["mana"]) + "/" + num_str(player["max_mana"])
-              + "mn {B" + num_str(player["move"]) + "/" + num_str(player["max_move"])
-              + "mv{x " + num_str(player["xp_next"] - player["xp"]) + "tnl>")
-    avail = max(1, TERMINAL_COLS - 6 - color_len(prefix))
+    key = (player["hit"], player["max_hit"], player["mana"], player["max_mana"],
+           player["move"], player["max_move"], player["xp_next"] - player["xp"])
+    if key == _PROMPT_CACHE[0]:
+        prefix = _PROMPT_CACHE[1]
+        avail = _PROMPT_CACHE[2]
+    else:
+        prefix = ("{R" + num_str(player["hit"]) + "/" + num_str(player["max_hit"])
+                  + "hp {M" + num_str(player["mana"]) + "/" + num_str(player["max_mana"])
+                  + "mn {B" + num_str(player["move"]) + "/" + num_str(player["max_move"])
+                  + "mv{x " + num_str(player["xp_next"] - player["xp"]) + "tnl>")
+        avail = max(1, TERMINAL_COLS - 6 - color_len(prefix))
+        _PROMPT_CACHE[0] = key
+        _PROMPT_CACHE[1] = prefix
+        _PROMPT_CACHE[2] = avail
     terminal.tr.set_status(prefix + buf[-avail:])

@@ -2,7 +2,7 @@
 
 from tml_prime import tml_prime as tml
 from config import (
-    TERMINAL_COLS, FONT_GROB, COLOR_GROB, SCRATCH_GROB,
+    TERMINAL_COLS, FONT_GROB, COLOR_GROB, SCRATCH_GROB, COLORFONT_GROB,
     DARK_MODE, BG_COLOR, TAB_SIZE, FONT,
     SCROLLBACK_SIZE, SCROLL_STEP, SWIPE_THRESHOLD, TOUCH_SCROLL_STEP,
     FLING_FRAME_MS, FLING_MIN_VELOCITY, FLING_DECAY_NUM, FLING_DECAY_DEN,
@@ -33,6 +33,10 @@ def install_color_print(tr):
     font_h = grobh(FONT_GROB)
     dimgrob(COLOR_GROB, font_w, font_h, 0)
     strblit2(COLOR_GROB, 0, 0, font_w, font_h, FONT_GROB, 0, 0, font_w, font_h)
+    # [PRIMESUD] one FONT_GROB-sized band per colour ever seen -- ANSI_COLORS
+    # has 16 distinct entries and resolve_random only ever emits codes from
+    # that table, so 16 bands is a hard upper bound.
+    dimgrob(COLORFONT_GROB, font_w, font_h * len(ANSI_COLORS), 0)
     _w_x = (ord('W') - 32) * tr.char_width + tr.char_width // 2
     font_fg = getpix(FONT_GROB, _w_x, tr.char_height // 2)
     fg_rows = [
@@ -40,15 +44,33 @@ def install_color_print(tr):
         for y in range(font_h)
     ]
     current_fg = [None]
+    _bands = {}  # [PRIMESUD] colour int -> cached band row in COLORFONT_GROB
+    _max_bands = len(ANSI_COLORS)
 
     def set_color(color):
+        # [PRIMESUD] the pixon repaint loop below cost ~30-40ms of Python
+        # per-pixel writes at full game heap; a cached colour now costs one
+        # native strblit2 blit instead (PERFORMANCE.md sec. Text rendering).
         if color == current_fg[0]:
             return
         current_fg[0] = color
+        band = _bands.get(color)
+        if band is not None:
+            strblit2(FONT_GROB, 0, 0, font_w, font_h,
+                     COLORFONT_GROB, 0, band * font_h, font_w, font_h)
+            return
         _po = pixon
         for y, xs in enumerate(fg_rows):
             for x in xs:
                 _po(FONT_GROB, x, y, color)
+        if len(_bands) < _max_bands:
+            band = len(_bands)
+            _bands[color] = band
+            strblit2(COLORFONT_GROB, 0, band * font_h, font_w, font_h,
+                     FONT_GROB, 0, 0, font_w, font_h)
+        # else: unreachable (ANSI_COLORS/resolve_random bound colours to
+        # _max_bands distinct values) -- repaint above already ran, just
+        # skip caching this defensively.
 
     def reset_color():
         if current_fg[0] is None:
