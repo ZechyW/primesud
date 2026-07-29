@@ -84,7 +84,7 @@ from skills_table import (
 from hunt import hunt_victim
 from urandom import randint
 from util import wait, pad_right
-from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS, item_tpl
+from world import MOB_DEFS, ROOM_DEFS, item_tpl
 
 
 # -- Violence update (called every PULSE_VIOLENCE) -----------------------------
@@ -2452,7 +2452,9 @@ def _death_cry(ch):
     """Death flavour message, body-part drop, and adjacent-room cry
     (cf. 1stMud death_cry in fight.c).
     [Verified: 05/07/2026; PC form_flags/part_flags added and re-verified
-    05/07/2026; material-pointer fallthrough re-verified 23/07/2026] -- part-flag gated message/object selection,
+    05/07/2026; material-pointer fallthrough re-verified 23/07/2026;
+    food-check routed through item_tpl (no behaviour change) 29/07/2026]
+    -- part-flag gated message/object selection,
     poison-food/trash-downgrade, and adjacent-room broadcast added per
     fight.c. PCs now get form_flags/part_flags from RACE_TABLE via
     player.py create_char (cf. 1stMud nanny.c:533-534 / save.c:723-724),
@@ -2485,7 +2487,10 @@ def _death_cry(ch):
         obj["description"] = pre_desc + name + suf_desc
         # 1stMud: if (obj->item_type == ITEM_FOOD) { poison, or downgrade
         # to ITEM_TRASH if not FORM_EDIBLE }
-        if ITEM_DEFS[vnum].get("type") == "food":
+        # [PRIMESUD] item_tpl, not ITEM_DEFS[vnum]: consistent with the
+        # snapshot-aware template-read sweep (limbo is resident in practice,
+        # so this is uniformity, not a reload fix).
+        if item_tpl(vnum).get("type") == "food":
             form_flags = ch.get("form_flags", {})
             if form_flags.get("poison"):
                 obj["poisoned"] = True  # 1stMud: obj->value[3] = 1
