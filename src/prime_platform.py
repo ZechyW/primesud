@@ -31,5 +31,16 @@ def hvars_get(name):
 
 
 def hvars_set(name, value):
-    """Write a PPL home variable through HVars. [PRIMESUD]"""
-    ppl_eval('HVars("' + name + '"):="' + value + '"')
+    """Write a PPL home variable through HVars. [PRIMESUD]
+
+    Backslashes are doubled before embedding: the PPL parser interprets
+    backslash escapes inside string literals ("\\t" -> tab, "\\n" -> LF,
+    "\\\\" -> "\\"; an unknown sequence like "\\q" fails the whole eval
+    SILENTLY, leaving the HVar at its previous value) -- device-confirmed
+    29/07/2026, debug/hvar_cap-2.log / -3.log. Doubling round-trips any
+    payload byte except a raw '"' (which callers must keep out of value;
+    the snapshot codec escapes it away). The read path returns stored
+    bytes verbatim, so hvars_get needs no inverse.
+    """
+    ppl_eval('HVars("' + name + '"):="' + value.replace("\\", "\\\\")
+             + '"')

@@ -464,8 +464,10 @@ ITEM_SNAPSHOTS = {}
 # escape sequences (see _snap_escape) so encoded output physically contains
 # no "~", '"', "\n", or "\r" at all: load_world splits the payload with a
 # naive data.split("~"), and hvars_set embeds it in a PPL
-# HVars("..."):="..." string literal where backslash is NOT an escape --
-# a merely backslash-prefixed quote/newline would still break both. Every
+# HVars("..."):="..." string literal that cannot hold a raw '"'. The PPL
+# parser interprets backslash escapes inside that literal (device-confirmed
+# 29/07/2026, debug/hvar_cap-2.log); hvars_set doubles backslashes in
+# transit, so the two-char sequences below round-trip unchanged. Every
 # value is self-delimiting, so sibling values need no separator and decode
 # never scans ahead blindly.
 #
@@ -481,9 +483,10 @@ ITEM_SNAPSHOTS = {}
 
 # Escape map: unsafe byte -> two safe bytes. The unsafe byte itself never
 # survives into encoded output (prefixing it with "\" would NOT be enough:
-# load_world's data.split("~") and the PPL string literal in hvars_set both
-# ignore backslashes). Real area data hits all of these: quotes and
-# newlines appear in template descriptions. [PRIMESUD]
+# load_world's data.split("~") ignores backslashes, and the PPL literal in
+# hvars_set would collapse the pair -- hvars_set's backslash doubling
+# protects these sequences in transit). Real area data hits all of these:
+# quotes and newlines appear in template descriptions. [PRIMESUD]
 _SNAP_ESC = {"\\": "\\\\", "~": "\\t", '"': "\\q", "\n": "\\n", "\r": "\\r"}
 _SNAP_UNESC = {"\\": "\\", "t": "~", "q": '"', "n": "\n", "r": "\r"}
 
@@ -492,7 +495,8 @@ def _snap_escape(s):
     """Replace payload-unsafe bytes with backslash sequences. [PRIMESUD]
 
     The result contains no raw "~", '"', "\\n", or "\\r" -- safe inside
-    both the naive "~"-split save payload and a PPL HVars string literal.
+    the naive "~"-split save payload and, via hvars_set's backslash
+    doubling, inside a PPL HVars string literal.
     """
     if ("\\" not in s and "~" not in s and '"' not in s
             and "\n" not in s and "\r" not in s):

@@ -1,0 +1,49 @@
+hvar_cap v3: backslash-doubling transport validation
+ctrl raw bs-t (EXPECT MISMATCH): MISMATCH sent=4 rb=3 div@1
+ctrl raw bs-t (EXPECT MISMATCH) want codes @1: 97 92 116 98
+ctrl raw bs-t (EXPECT MISMATCH) got  codes @1: 97 9 98
+ctrl: escape interpretation active, as run 2
+dblmx plain   : ok (21B)
+dblmx tilde   : ok (16B)
+dblmx esc-bsq : ok (4B)
+dblmx esc-bst : ok (4B)
+dblmx esc-bsbs: ok (4B)
+dblmx esc-bsn : ok (4B)
+dblmx esc-bsr : ok (4B)
+dblmx bs-solo : ok (3B)
+dblmx bs-tail : ok (9B)
+dblmx raw-tab : ok (3B)
+dblmx raw-nl  : ok (3B)
+dblmx colour  : ok (26B)
+dblmx punct   : ok (29B)
+dblmx mixed   : ok (39B)
+dblmx: all clean
+dblrep: 17821B, 40 records
+dblrep 1: ok (17821B)
+dblrep 2: ok (17821B)
+dblrep 3: ok (17821B)
+dblrep 4: ok (17821B)
+dblrep 5: ok (17821B)
+dblrep: 0/5 failed
+dbl80K: ok (82080B)
+dbl80K set+get: 164ms
+codec: 40 records = 17759B
+.. cb10 pass 1 88ms
+.. cb10 pass 2 88ms
+.. cb10 pass 3 88ms
+codec bare 10: min=88ms avg=88ms  raw 88 88 88
+.. cb40 pass 1 349ms
+.. cb40 pass 2 348ms
+.. cb40 pass 3 349ms
+codec bare 40: min=348ms avg=348ms  raw 349 348 349
+building ballast...
+ballast: 35840 entries, 2556128B live delta
+.. cB10 pass 1 89ms
+.. cB10 pass 2 88ms
+.. cB10 pass 3 88ms
+codec ball 10: min=88ms avg=88ms  raw 89 88 88
+.. cB40 pass 1 348ms
+.. cB40 pass 2 348ms
+.. cB40 pass 3 348ms
+codec ball 40: min=348ms avg=348ms  raw 348 348 348
+Done. Results in hvar_cap.log
