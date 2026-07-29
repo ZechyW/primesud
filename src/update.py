@@ -106,11 +106,30 @@ def update_handler():
     if _pulse_violence <= 0:
         _pulse_violence = PULSE_VIOLENCE
         update_mob_timers()
-        if player["fighting"] is not None:
-            # [PRIMESUD] blank separator before combat round output
-            # (display concern; blank-before-block matches interpret)
-            tr.print("")
-        violence_update(player)
+        # [PRIMESUD] batch the round's separator + violence_update output
+        # into one blit instead of dozens of per-line screen draws -- a
+        # busy combat round measured ~1.07s on device, mostly per-line
+        # wrapped_print (PERFORMANCE.md sec. Input-lag phase benchmark).
+        # try/finally so an exception mid-round can never leave the
+        # terminal stuck in batch mode. getattr guard: tests stub tr
+        # without begin_batch/end_batch.
+        _bb = getattr(tr, "begin_batch", None)
+        if _bb:
+            _bb()
+            try:
+                if player["fighting"] is not None:
+                    # [PRIMESUD] blank separator before combat round output
+                    # (display concern; blank-before-block matches interpret)
+                    tr.print("")
+                violence_update(player)
+            finally:
+                tr.end_batch()
+        else:
+            if player["fighting"] is not None:
+                # [PRIMESUD] blank separator before combat round output
+                # (display concern; blank-before-block matches interpret)
+                tr.print("")
+            violence_update(player)
         fired |= UPD_VIOLENCE
 
     _pulse_regen -= 1

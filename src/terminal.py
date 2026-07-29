@@ -281,8 +281,64 @@ def install_color_print(tr):
         tr.cursor_x = 0
         tr.cursor_y = row
 
+    # [PRIMESUD] Combat-round batching: one violence pulse produces many
+    # complete-line tprint calls (per-hit messages, deaths, mob triggers).
+    # Buffering them and flushing through print_lines cuts a busy round
+    # from dozens of per-line screen draws to one blit -- ~4x faster than
+    # per-line wrapped_print for the same content (PERFORMANCE.md sec.
+    # Text rendering; ~1.07s combat round measured mostly in per-line
+    # draws, PERFORMANCE.md sec. Input-lag phase benchmark).
+    _batch_buf = []
+    _batch_on = [False]
+
+    def begin_batch():
+        """Start buffering complete-line tprint output for one flush. [PRIMESUD]"""
+        _batch_on[0] = True
+
+    def end_batch():
+        """Flush buffered lines through print_lines, then clear the buffer. [PRIMESUD]
+
+        Safe to call with nothing buffered, or when batching was never
+        started (idempotent) -- combat_update's try/finally always calls
+        this even after an exception mid-round.
+        """
+        _batch_on[0] = False
+        if _batch_buf:
+            if tr.cursor_x == 0:
+                print_lines(_batch_buf)
+            else:
+                # Defensive: violence output starts at column 0 in
+                # practice, but if something left a partial line pending,
+                # fall back to the normal per-line path instead of
+                # corrupting print_lines' row math.
+                for line in _batch_buf:
+                    wrapped_print(line)
+            del _batch_buf[:]
+
+    tr.begin_batch = begin_batch
+    tr.end_batch = end_batch
+
     def wrapped_print(*args, sep=' ', end='\n'):
         """Colour-aware print with word-wrap and per-run font recolouring. [PRIMESUD]"""
+        if _batch_on[0]:
+            is_list = len(args) == 1 and type(args[0]) is list
+            if end == '\n':
+                if is_list:
+                    _batch_buf.extend(args[0])
+                else:
+                    text = sep.join(str(a) for a in args)
+                    if '\n' in text:
+                        _batch_buf.extend(text.split('\n'))
+                    else:
+                        _batch_buf.append(text)
+                return
+            # Partial-line print (end != '\n'): flush what is buffered so
+            # far, in order, then fall through to render THIS call on the
+            # normal immediate path below. Not expected mid-violence
+            # (combat output is complete-line), but keeps output order
+            # exact if it ever happens (e.g. a forced picker prompt).
+            end_batch()
+            _batch_on[0] = True
         # [PRIMESUD] a single list arg is a pre-split line batch, passed
         # through unjoined (join over %-formatted lines trips the device
         # heap bug, PRIME_FIRMWARE_BUGS.md).
