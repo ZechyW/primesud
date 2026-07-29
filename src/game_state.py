@@ -1,7 +1,7 @@
 """Game lifecycle helpers for new, load, save, and migration UX."""
 
 from util import sstr
-from prime_platform import hvars_get, hvars_set
+from prime_platform import hvars_get, hvars_set, ticks
 from config import SAVE_VAR, FNKEY_NAMES, R_STARTING_ROOM
 from game_time import time_info, SUN_DARK, SUN_RISE, SUN_LIGHT, SUN_SET
 from item import serialize_item_token, parse_item_token
@@ -80,6 +80,11 @@ _PLAYER_STAT_SAVE_KEYS = ("str", "dex", "int", "wis", "con")
 #     not exist yet (i.e. no save found); load_char treats this as no-save.
 SAVE_FILE = "primesud.sav"
 
+# [PRIMESUD] (segment, ms) pairs from the most recent _serialize_world
+# call while the "save" debug channel is on -- read by perf probes
+# (debug/save_smoke.py). Stays empty when the channel is off.
+_SAVE_TIMING = []
+
 
 def _serialize_world(hvar_name=None, file_name=None):
     """Serialise world state to a PPL HVars variable (cf. 1stMud save_char_obj in save.c).
@@ -102,6 +107,13 @@ def _serialize_world(hvar_name=None, file_name=None):
         hvar_name = SAVE_VAR
     if file_name is None:
         file_name = SAVE_FILE
+    # [PRIMESUD] Segment timing behind the "save" debug channel; a few
+    # boolean checks when off, ticks() bookends per segment when on.
+    global _SAVE_TIMING
+    _timed = "save" in DBG
+    if _timed:
+        _SAVE_TIMING = []
+        _tmark = ticks()
     player = world.chars[1]
     # No gc_collect() here: a collect adjacent to bulk int rendering is the
     # G1 heap-corruption trigger (PRIME_FIRMWARE_BUGS.md sec. str(int)-GC bug);
@@ -274,6 +286,9 @@ def _serialize_world(hvar_name=None, file_name=None):
     # Re-serialize pending room items for unloaded areas (not in world.rooms)
     for rvnum in sorted(world._pending_room_items):
         lines.append("r." + sstr(rvnum) + ".items=" + sstr(world._pending_room_items[rvnum]))
+    if _timed:
+        _SAVE_TIMING.append(("lines", ticks() - _tmark))
+        _tmark = ticks()
     # [PRIMESUD] Item-template snapshots (DESIGN.md sec. Item template
     # snapshots). One deduplicated "it.<vnum>=<revision>|<record>" line
     # per VNUM world._snap_save_vnums() says is required (player gear
@@ -302,6 +317,9 @@ def _serialize_world(hvar_name=None, file_name=None):
         except ValueError:
             continue  # unsupported value type: skip the line, keep save valid
         lines.append("it." + sstr(_it_vnum) + "=" + _it_rev + "|" + _it_enc)
+    if _timed:
+        _SAVE_TIMING.append(("snap", ticks() - _tmark))
+        _tmark = ticks()
     # Cold mark/sweep (DESIGN.md sec. Item template snapshots): free
     # registry
     # entries no live object or deferred token references once their owning
@@ -313,16 +331,31 @@ def _serialize_world(hvar_name=None, file_name=None):
                      if _k not in _it_live
                      and world._vnum_to_tag(_k) not in world._LOADED_AREAS]:
         del world.ITEM_SNAPSHOTS[_it_vnum]
+    if _timed:
+        _SAVE_TIMING.append(("sweep", ticks() - _tmark))
+        _tmark = ticks()
     for i in range(len(lines)):
         if not isinstance(lines[i], str):
             raise Exception("non-str save line " + sstr(i))
     payload = "~".join(lines)
+    if _timed:
+        _SAVE_TIMING.append(("join", ticks() - _tmark))
+        _tmark = ticks()
     hvars_set(hvar_name, payload)
+    if _timed:
+        _SAVE_TIMING.append(("hvset", ticks() - _tmark))
+        _tmark = ticks()
     saved = hvars_get(hvar_name)
-    if saved != payload:
+    _match = saved == payload
+    if _timed:
+        _SAVE_TIMING.append(("verify", ticks() - _tmark))
+        _tmark = ticks()
+    if not _match:
         raise Exception("save verification failed (readback mismatch)")
     with open(file_name, "w") as f:
         f.write(payload)
+    if _timed:
+        _SAVE_TIMING.append(("fwrite", ticks() - _tmark))
 
 
 # -- Manual backup slot (cf. 1stMud do_backup/backup_char_obj in

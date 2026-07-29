@@ -434,3 +434,30 @@ class TestResidentOwnerFallback:
         decoded = world._snap_decode(enc)
         assert decoded[0]["short_descr"] == "resident gear"
         assert decoded[0]["weight"] == 7
+
+
+# ===== Save segment timing ("save" debug channel) ===========================
+
+class TestSaveTiming:
+    def test_debug_save_channel_populates_segments(self, fresh_world):
+        """The "save" debug channel fills game_state._SAVE_TIMING with one
+        (segment, ms) pair per _serialize_world stage, in order. [PRIMESUD]"""
+        from debug import DBG
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}}},
+                         objects={110: _item_tpl("gem", short_descr="a gem")})
+        fw.setup()
+        world._load_area("alpha")
+        player = _make_player(100)
+        player["inv"] = [create_object(110)]
+
+        DBG.add("save")
+        try:
+            assert game_state.save_world(quiet=True)
+        finally:
+            DBG.discard("save")
+        assert [seg for seg, _ in game_state._SAVE_TIMING] == [
+            "lines", "snap", "sweep", "join", "hvset", "verify", "fwrite"]
+        for _seg, ms in game_state._SAVE_TIMING:
+            assert isinstance(ms, int) and ms >= 0
