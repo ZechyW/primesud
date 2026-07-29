@@ -376,7 +376,9 @@ def update_questobj(ch, obj):
     # quest area owns 200-249 and no other area file sets the 'quest' flag.
     if not (_QUEST_VNUM_LO <= vnum <= _QUEST_VNUM_HI):
         return
-    tpl = ITEM_DEFS[vnum]
+    # [PRIMESUD] item_tpl, not ITEM_DEFS[vnum]: a snapshotted quest item must
+    # not reload the quest area just to rescale.
+    tpl = item_tpl(obj)
     if not item_extra_flags(obj, tpl).get("quest"):
         return
     lvl = ch["level"]
