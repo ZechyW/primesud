@@ -17,9 +17,12 @@ write lands on smoketest_bak) and SAVE_FILE to save_smoke.sav after
 load. The real primesud.sav copy is only read.
 
 Ship the full game closure (src/*.py + src/*.txt + src/*.idx) in the
-appdir alongside this probe; terminal.tr is stubbed, so no font file is
-needed. Only self-running probe .py in the appdir (Prime auto-imports
-all). Results printed and written to save_smoke.log.
+appdir alongside this probe -- EXCEPT src/primesud.py: its module level
+ends in PrimeSud().run(), so auto-import would launch the real game
+(whose quit path saves to the REAL slot, outside this probe's
+redirect). terminal.tr is stubbed, so no font file is needed. Only
+self-running .py in the appdir (Prime auto-imports all) must be this
+probe. Results printed and written to save_smoke.log.
 """
 import gc
 
