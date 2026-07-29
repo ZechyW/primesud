@@ -336,7 +336,7 @@ AREA_ROOM_COUNTS = {
     "newthalos":  257,
 }
 
-CONTENT_REVISION = "6c4e941c5fb5"
+CONTENT_REVISION = "2f4e7d7226b9"
 # -- END GENERATED --
 
 # -- Lazy loading state -------------------------------------------------------
@@ -457,10 +457,14 @@ ITEM_SNAPSHOTS = {}
 # eval/repr/JSON: save data must not become executable code, and HP Prime has
 # no verified JSON module. Supports exactly the value types generated area
 # data uses: None, bool, int, str, list, tuple, dict (str/int/bool/None keys).
-# One-character type tag per value; raw backslash/"~"/'"' are escaped so the
-# record is safe both inside the "~"-joined save payload and inside a PPL
-# HVars("..."):="..." string literal. Every value is self-delimiting, so
-# sibling values need no separator and decode never scans ahead blindly.
+# One-character type tag per value; unsafe bytes are REPLACED by two-char
+# escape sequences (see _snap_escape) so encoded output physically contains
+# no "~", '"', "\n", or "\r" at all: load_world splits the payload with a
+# naive data.split("~"), and hvars_set embeds it in a PPL
+# HVars("..."):="..." string literal where backslash is NOT an escape --
+# a merely backslash-prefixed quote/newline would still break both. Every
+# value is self-delimiting, so sibling values need no separator and decode
+# never scans ahead blindly.
 #
 # Grammar (tag immediately followed by its payload):
 #   n            None
@@ -472,23 +476,28 @@ ITEM_SNAPSHOTS = {}
 #   d<n>:<...>   dict of n (key, value) encoded pairs, back to back -- keys
 #                sorted by their own encoded form for deterministic output
 
-def _snap_escape(s):
-    """Escape backslash/~/" so the result holds neither raw. [PRIMESUD]
+# Escape map: unsafe byte -> two safe bytes. The unsafe byte itself never
+# survives into encoded output (prefixing it with "\" would NOT be enough:
+# load_world's data.split("~") and the PPL string literal in hvars_set both
+# ignore backslashes). Real area data hits all of these: quotes and
+# newlines appear in template descriptions. [PRIMESUD]
+_SNAP_ESC = {"\\": "\\\\", "~": "\\t", '"': "\\q", "\n": "\\n", "\r": "\\r"}
+_SNAP_UNESC = {"\\": "\\", "t": "~", "q": '"', "n": "\n", "r": "\r"}
 
-    Safe both inside a "~"-joined save line and a PPL string literal.
+
+def _snap_escape(s):
+    """Replace payload-unsafe bytes with backslash sequences. [PRIMESUD]
+
+    The result contains no raw "~", '"', "\\n", or "\\r" -- safe inside
+    both the naive "~"-split save payload and a PPL HVars string literal.
     """
-    if "\\" not in s and "~" not in s and '"' not in s:
+    if ("\\" not in s and "~" not in s and '"' not in s
+            and "\n" not in s and "\r" not in s):
         return s
     parts = []
     for ch in s:
-        if ch == "\\":
-            parts.append("\\\\")
-        elif ch == "~":
-            parts.append("\\~")
-        elif ch == '"':
-            parts.append('\\"')
-        else:
-            parts.append(ch)
+        esc = _SNAP_ESC.get(ch)
+        parts.append(esc if esc is not None else ch)
     return "".join(parts)
 
 
@@ -496,7 +505,9 @@ def _snap_unescape(s):
     """Inverse of _snap_escape. [PRIMESUD]
 
     Raises:
-        ValueError: a trailing/dangling escape character.
+        ValueError: a trailing/dangling escape character, or an escape
+            sequence outside the fixed _SNAP_UNESC map (strict: unknown
+            sequences are corruption, not passthrough).
     """
     if "\\" not in s:
         return s
@@ -509,7 +520,10 @@ def _snap_unescape(s):
             i += 1
             if i >= n:
                 raise ValueError("_snap_unescape: dangling escape")
-            parts.append(s[i])
+            orig = _SNAP_UNESC.get(s[i])
+            if orig is None:
+                raise ValueError("_snap_unescape: bad escape " + s[i])
+            parts.append(orig)
         else:
             parts.append(ch)
         i += 1

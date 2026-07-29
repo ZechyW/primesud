@@ -36,6 +36,7 @@ class TestUnitRoundTrips:
         "with~tilde",
         'with"quote',
         "with\nnewline",
+        "with\rcarriage\r\nreturn",
         "mixed \\ ~ \" \n all together",
         [],
         (),
@@ -94,22 +95,26 @@ class TestDelimiterSafety:
         '"',
         "~~~",
         '"""',
+        "line1\nline2\r",
         'mix "of" ~ delims~"and"~backslash\\',
         {"short_descr": 'A "glowing" ~rune~ blade\\'},
-        ["~", '"', "\\"],
+        {"description": 'She said "hi".\nSecond line.\r\n'},
+        ["~", '"', "\\", "\n", "\r"],
     ])
-    def test_no_raw_delimiters_in_encoded_output(self, value):
+    def test_no_unsafe_bytes_in_encoded_output(self, value):
         encoded = _snap_encode(value)
-        # Every literal "~" or '"' in the encoded string must be preceded
-        # by an escaping backslash (the length-prefix header itself never
-        # contains either character).
-        for i, ch in enumerate(encoded):
-            if ch in ("~", '"'):
-                assert i > 0 and encoded[i - 1] == "\\", (
-                    "unescaped %r at index %d in %r" % (ch, i, encoded))
+        # The unsafe bytes must be ABSENT entirely, not merely
+        # backslash-prefixed: load_world splits the payload with a naive
+        # data.split("~"), and hvars_set embeds it in a PPL string literal
+        # where backslash is not an escape -- a prefixed '"'/newline would
+        # still break both. Real template descriptions contain quotes and
+        # newlines.
+        for ch in ("~", '"', "\n", "\r"):
+            assert ch not in encoded, (
+                "raw %r in encoded output %r" % (ch, encoded))
 
     def test_round_trip_survives_delimiters(self):
-        value = {"a": '~"\\', "b": ['"~\\', "~~"]}
+        value = {"a": '~"\\', "b": ['"~\\', "~~", "a\nb\rc"]}
         assert _snap_decode(_snap_encode(value)) == value
 
 
@@ -139,6 +144,11 @@ class TestMalformedInput:
         # A string record whose escaped payload ends mid-escape.
         with pytest.raises(ValueError):
             _snap_decode("s1:\\")
+
+    def test_unknown_escape_sequence_raises(self):
+        # Strict map: "\z" is corruption, not a passthrough for "z".
+        with pytest.raises(ValueError):
+            _snap_decode("s2:\\z")
 
 
 # ===== Registry lifecycle ====================================================
