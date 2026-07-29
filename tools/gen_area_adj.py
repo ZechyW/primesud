@@ -10,6 +10,7 @@ changes:
 Idempotent: running twice with unchanged area data produces byte-identical
 output the second time.
 """
+import hashlib
 import os
 import sys
 
@@ -79,6 +80,15 @@ def main():
     lvl_comments = {}
     room_counts = {}
     adjacency = dict((tag, set()) for tag in tags)
+    # Global item-content digest (SNAPSHOT_PLAN.md sec. "Template drift"):
+    # one hash over every area's OBJECTS + OBJPROGS mapping, in area_files
+    # order, so a snapshot cached from a previous content revision is
+    # detected and refreshed. Reuses world._snap_encode for canonicalization
+    # (sorted dict keys, self-delimiting records) instead of a second
+    # serializer -- its output is already deterministic and it is the same
+    # codec that will encode saved snapshot records, so "digest matches"
+    # and "codec can represent this data" are checked by the same code path.
+    digest_parts = []
     mismatches = []
     blind_exit_count = 0
     unclaimed_exits = []  # (tag, room_vnum, dir, target_vnum): points outside
@@ -97,6 +107,10 @@ def main():
         world_levels = world.AREA_LEVELS.get(tag)
         if world_levels is None or tuple(world_levels) != file_levels:
             mismatches.append((tag, world_levels, file_levels))
+
+        digest_parts.append(world._snap_encode(tag))
+        digest_parts.append(world._snap_encode(ns.get("OBJECTS", {})))
+        digest_parts.append(world._snap_encode(ns.get("OBJPROGS", {})))
 
         builders[tag] = extract_builder(area.get("credits", ""))
         if area.get("lvl_comment"):
@@ -143,6 +157,9 @@ def main():
     comment_items = [(tag, lvl_comments[tag]) for tag in tags
                      if tag in lvl_comments]
 
+    content_revision = hashlib.sha256(
+        "".join(digest_parts).encode("utf-8")).hexdigest()[:12]
+
     block_lines = [BEGIN]
     block_lines.append("# AREA_BUILDERS: {tag: builder name}, extracted from each area's credits")
     block_lines.append("# line (cf. info._extract_builder). AREA_LVL_COMMENTS: {tag: level")
@@ -153,7 +170,11 @@ def main():
     block_lines.append("# do_areas/do_run consult this data without loading area files at")
     block_lines.append("# runtime. AREA_ROOM_COUNTS: {tag: explorable room count} for")
     block_lines.append("# do_explored/score (cf. 1stMud arearooms/top_explored); world total")
-    block_lines.append("# = sum of values. Regenerate with: python tools/gen_area_adj.py")
+    block_lines.append("# = sum of values. CONTENT_REVISION: sha256 (12 hex chars) over every")
+    block_lines.append("# area's OBJECTS + OBJPROGS mapping in area_files order, via")
+    block_lines.append("# world._snap_encode (SNAPSHOT_PLAN.md); item snapshots compare this")
+    block_lines.append("# string to detect stale cached template data after a content update.")
+    block_lines.append("# Regenerate with: python tools/gen_area_adj.py")
     block_lines.append("# [PRIMESUD]")
     block_lines.extend(format_dict_block(
         "AREA_BUILDERS", builder_items, lambda v: '"%s"' % v))
@@ -167,6 +188,8 @@ def main():
     block_lines.append("")
     block_lines.extend(format_dict_block(
         "AREA_ROOM_COUNTS", room_count_items, lambda v: str(v)))
+    block_lines.append("")
+    block_lines.append('CONTENT_REVISION = "%s"' % content_revision)
     block_lines.append(END)
     new_block = "\n".join(block_lines)
 
@@ -205,6 +228,7 @@ def main():
     print("Blind exits (\"to\": None): %d" % blind_exit_count)
     print("Total explorable rooms (top_explored): %d"
           % sum(room_counts.values()))
+    print("CONTENT_REVISION: %s" % content_revision)
 
     if unclaimed_exits:
         print()

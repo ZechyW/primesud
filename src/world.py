@@ -2,6 +2,7 @@
 
 import terminal
 import config
+from util import sstr
 
 # Well-known VNUMs referenced by game logic (cf. area_limbo, area_school).
 # Names match 1stMud's vnums.h (OBJ_VNUM_*) for easy comparison against the
@@ -162,7 +163,11 @@ AREA_LEVELS = {
 # do_areas/do_run consult this data without loading area files at
 # runtime. AREA_ROOM_COUNTS: {tag: explorable room count} for
 # do_explored/score (cf. 1stMud arearooms/top_explored); world total
-# = sum of values. Regenerate with: python tools/gen_area_adj.py
+# = sum of values. CONTENT_REVISION: sha256 (12 hex chars) over every
+# area's OBJECTS + OBJPROGS mapping in area_files order, via
+# world._snap_encode (SNAPSHOT_PLAN.md); item snapshots compare this
+# string to detect stale cached template data after a content update.
+# Regenerate with: python tools/gen_area_adj.py
 # [PRIMESUD]
 AREA_BUILDERS = {
     "pestates":   "1stMud",
@@ -330,6 +335,8 @@ AREA_ROOM_COUNTS = {
     "midgaard":   143,
     "newthalos":  257,
 }
+
+CONTENT_REVISION = "6c4e941c5fb5"
 # -- END GENERATED --
 
 # -- Lazy loading state -------------------------------------------------------
@@ -437,6 +444,231 @@ def _vnum_to_tag(vnum):
 # LAST by snapshot_item, so its presence means the copy is complete.  Nothing
 # else may set it.
 SNAP_KEY = "snap"
+
+
+# [PRIMESUD] Runtime cache: item_vnum -> (validated_revision, template_dict,
+# objprog_dict). Lets a surviving item instance (player gear, foreign room,
+# deferred room token) keep answering item_tpl() after its owning area is
+# evicted, without a flat per-instance copy. See SNAPSHOT_PLAN.md. Phase A
+# only wires up the container, the codec below, and CONTENT_REVISION --
+# nothing populates or reads this dict yet (Phase C/D wire up eviction and
+# save/load).
+ITEM_SNAPSHOTS = {}
+
+
+# -- Typed snapshot codec [PRIMESUD] -------------------------------------------
+# Encodes item templates + referenced obj-program source for the future
+# "it.<vnum>=<revision>|<record>" save section (SNAPSHOT_PLAN.md sec. 5). No
+# eval/repr/JSON: save data must not become executable code, and HP Prime has
+# no verified JSON module. Supports exactly the value types generated area
+# data uses: None, bool, int, str, list, tuple, dict (str/int/bool/None keys).
+# One-character type tag per value; raw backslash/"~"/'"' are escaped so the
+# record is safe both inside the "~"-joined save payload and inside a PPL
+# HVars("..."):="..." string literal. Every value is self-delimiting, so
+# sibling values need no separator and decode never scans ahead blindly.
+#
+# Grammar (tag immediately followed by its payload):
+#   n            None
+#   T / F        True / False
+#   i<digits>    int, e.g. "i-42" / "i0" (leading "-" optional)
+#   s<len>:<esc> str, <len> = byte length of the escaped payload that follows
+#   l<n>:<...>   list of n encoded values, back to back
+#   t<n>:<...>   tuple of n encoded values, back to back
+#   d<n>:<...>   dict of n (key, value) encoded pairs, back to back -- keys
+#                sorted by their own encoded form for deterministic output
+
+def _snap_escape(s):
+    """Escape backslash/~/" so the result holds neither raw. [PRIMESUD]
+
+    Safe both inside a "~"-joined save line and a PPL string literal.
+    """
+    if "\\" not in s and "~" not in s and '"' not in s:
+        return s
+    parts = []
+    for ch in s:
+        if ch == "\\":
+            parts.append("\\\\")
+        elif ch == "~":
+            parts.append("\\~")
+        elif ch == '"':
+            parts.append('\\"')
+        else:
+            parts.append(ch)
+    return "".join(parts)
+
+
+def _snap_unescape(s):
+    """Inverse of _snap_escape. [PRIMESUD]
+
+    Raises:
+        ValueError: a trailing/dangling escape character.
+    """
+    if "\\" not in s:
+        return s
+    parts = []
+    i = 0
+    n = len(s)
+    while i < n:
+        ch = s[i]
+        if ch == "\\":
+            i += 1
+            if i >= n:
+                raise ValueError("_snap_unescape: dangling escape")
+            parts.append(s[i])
+        else:
+            parts.append(ch)
+        i += 1
+    return "".join(parts)
+
+
+def _snap_encode_into(value, parts):
+    """Append value's encoded form onto parts (list of str chunks). [PRIMESUD]
+
+    Raises:
+        ValueError: value's type (or a nested value's type) is not one of
+            the supported snapshot types.
+    """
+    t = type(value)
+    if value is None:
+        parts.append("n")
+    elif t is bool:  # checked before int: Python bools are ints
+        parts.append("T" if value else "F")
+    elif t is int:
+        parts.append("i")
+        parts.append(sstr(value))
+    elif t is str:
+        esc = _snap_escape(value)
+        parts.append("s")
+        parts.append(sstr(len(esc)))
+        parts.append(":")
+        parts.append(esc)
+    elif t is list or t is tuple:
+        parts.append("l" if t is list else "t")
+        parts.append(sstr(len(value)))
+        parts.append(":")
+        for item in value:
+            _snap_encode_into(item, parts)
+    elif t is dict:
+        pairs = []
+        for k, v in value.items():
+            pairs.append((_snap_encode(k), v))
+        pairs.sort(key=lambda kv: kv[0])
+        parts.append("d")
+        parts.append(sstr(len(pairs)))
+        parts.append(":")
+        for kenc, v in pairs:
+            parts.append(kenc)
+            _snap_encode_into(v, parts)
+    else:
+        raise ValueError("_snap_encode: unsupported type " + str(t))
+
+
+def _snap_encode(value):
+    """Encode value into a self-delimiting typed snapshot record. [PRIMESUD]
+
+    Supports None, bool, int, str, list, tuple, and dict (of the same
+    supported types, recursively). Deterministic: dict keys are sorted by
+    their own encoded form, so equal values always encode identically.
+
+    Raises:
+        ValueError: value contains an unsupported type anywhere.
+    """
+    parts = []
+    _snap_encode_into(value, parts)
+    return "".join(parts)
+
+
+def _snap_decode_len(s, pos):
+    """Read a decimal length/count field up to its ":" terminator. [PRIMESUD]
+
+    Returns:
+        tuple: (parsed int, index just past the ":").
+
+    Raises:
+        ValueError: no digits found, or the ":" terminator is missing.
+    """
+    start = pos
+    n = len(s)
+    while pos < n and s[pos].isdigit():
+        pos += 1
+    if pos == start or pos >= n or s[pos] != ":":
+        raise ValueError("_snap_decode: bad length field")
+    return int(s[start:pos]), pos + 1
+
+
+def _snap_decode_at(s, pos):
+    """Decode one value starting at s[pos]. [PRIMESUD]
+
+    Returns:
+        tuple: (decoded value, index just past it).
+
+    Raises:
+        ValueError: truncated record, unknown type tag, or a malformed
+            length/int field.
+    """
+    n = len(s)
+    if pos >= n:
+        raise ValueError("_snap_decode: truncated record")
+    tag = s[pos]
+    pos += 1
+    if tag == "n":
+        return None, pos
+    if tag == "T":
+        return True, pos
+    if tag == "F":
+        return False, pos
+    if tag == "i":
+        start = pos
+        if pos < n and s[pos] == "-":
+            pos += 1
+        digit_start = pos
+        while pos < n and s[pos].isdigit():
+            pos += 1
+        if pos == digit_start:
+            raise ValueError("_snap_decode: bad int")
+        return int(s[start:pos]), pos
+    if tag == "s":
+        length, pos = _snap_decode_len(s, pos)
+        if pos + length > n:
+            raise ValueError("_snap_decode: truncated string")
+        raw = s[pos:pos + length]
+        return _snap_unescape(raw), pos + length
+    if tag == "l" or tag == "t":
+        count, pos = _snap_decode_len(s, pos)
+        items = []
+        for _i in range(count):
+            v, pos = _snap_decode_at(s, pos)
+            items.append(v)
+        return (items if tag == "l" else tuple(items)), pos
+    if tag == "d":
+        count, pos = _snap_decode_len(s, pos)
+        result = {}
+        for _i in range(count):
+            k, pos = _snap_decode_at(s, pos)
+            v, pos = _snap_decode_at(s, pos)
+            result[k] = v
+        return result, pos
+    raise ValueError("_snap_decode: unknown type tag " + tag)
+
+
+def _snap_decode(s):
+    """Decode a full record produced by _snap_encode. [PRIMESUD]
+
+    Raises:
+        ValueError: malformed input of any kind. Never raises anything
+            else and never returns a partially-decoded value -- callers
+            treat a bad "it.<vnum>=..." save line as an optional cache
+            miss, not a load failure.
+    """
+    try:
+        value, pos = _snap_decode_at(s, 0)
+    except ValueError:
+        raise
+    except (IndexError, TypeError, KeyError):
+        raise ValueError("_snap_decode: malformed record")
+    if pos != len(s):
+        raise ValueError("_snap_decode: trailing data")
+    return value
 
 
 def item_tpl(obj):
@@ -1115,6 +1347,7 @@ def reset_lazy():
     ROOM_DEFS._data.clear()
     MOB_DEFS._data.clear()
     ITEM_DEFS._data.clear()
+    ITEM_SNAPSHOTS.clear()
     DOOR_DEFS.clear()
     MOBPROGS.clear()
     OBJPROGS.clear()
