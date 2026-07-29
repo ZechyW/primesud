@@ -1,0 +1,11 @@
+save_smoke: full-game load + timed saves
+mem free start: 7088912
+load_world: 12268ms source=file
+areas loaded: 0, snapshots: 28
+mem free after load: 6507360
+save 1: ok=True total=1333ms  ln.plr1=282 ln.rle=145 ln.plr2=321 ln.mob=10 ln.room=480 snap=4 sweep=6 join=10 hvset=32 verify=10 fwrite=25
+save 2: ok=True total=879ms  ln.plr1=168 ln.rle=113 ln.plr2=255 ln.mob=11 ln.room=246 snap=4 sweep=6 join=10 hvset=32 verify=10 fwrite=16
+save 3: ok=True total=881ms  ln.plr1=168 ln.rle=113 ln.plr2=255 ln.mob=10 ln.room=247 snap=5 sweep=6 join=10 hvset=33 verify=10 fwrite=17
+payload: 23062B, it-lines=19
+mem free end: 5814288
+Done. Results in save_smoke.log

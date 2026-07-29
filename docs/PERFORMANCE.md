@@ -252,17 +252,19 @@ allocations and `gc_collect()` dominate; HVars and file I/O are negligible.
 ### Full-game save, post-cache (G1, measured 29 Jul 2026)
 
 `debug/save_smoke.py` through the real game code on the real 23 KB
-full-world save (`debug/save_smoke-1/-2/-3.log`), `_serialize_world`
+full-world save (`debug/save_smoke-1/-2/-3/-4.log`), `_serialize_world`
 segment timing via the "save" DBG channel. Before caches: 11.7 s steady,
 dominated by re-scanning every `_pending_room_items` token line (snap
 5.6 s + sweep 4.5 s) and re-rendering every pending mob part
 (ln.mob 750 ms). After `_PENDING_VNUM_CACHE` / `_SNAP_ENC_CACHE` /
 `_PENDING_MOB_CACHE` (DESIGN.md sec. Item template snapshots,
-"Save-path caches"): ~0.9 s steady, all in genuinely-changing data --
-ln.plr1 168 / ln.rle 113 / ln.plr2 254 / ln.room 249 / hvset 33, snap
-and sweep ~5 ms each. `load_world` prewarms the pending-token cache
-(7.7 s -> 12.2 s load), so the first save matches steady state instead
-of paying a one-time 4.5 s scan.
+"Save-path caches"): 879/881 ms steady (save_smoke-4.log), all in
+genuinely-changing data -- ln.plr1 168 / ln.rle 113 / ln.plr2 255 /
+ln.mob 10 / ln.room 246 / hvset 32, snap and sweep ~5 ms each.
+`load_world` prewarms the pending-token cache (7.7 s -> 12.3 s load), so
+the first save skips the one-time 4.5 s token rescan; its remaining
+overhead (1333 ms, spread evenly across the ln.* segments) is
+`util.num_str` cache warm-up, not a cache miss.
 
 ## Session and memory behaviour (G1, measured 27 Jul 2026)
 
