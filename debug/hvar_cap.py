@@ -1,36 +1,34 @@
-"""HVar content-transform hunt: which payload bytes PPL mangles. [PRIMESUD]
+"""HVar backslash-doubling transport fix: on-device validation. [PRIMESUD]
 
-hvar_cap run 1 (hvar_cap-1.log, 29/07) falsified the length-cap
-hypothesis: 80KB stores and reads back byte-identical, hvset ~1ms/KB.
-Re-read of the device failure: "it." lines are appended LAST by
-_serialize_world and "condition" sorts last among template keys, so a
-payload ending "...conditioni90d0:" is a COMPLETE payload, not a cut.
-The readback mismatch is therefore a content difference somewhere
-earlier -- either PPL transforming a char class the old save format
-never contained (snapshot escape sequences \\q \\t \\\\, colour codes,
-punctuation) or the G1 heap-corruption family biting the giant
-literal/readback (stochastic).  Run 1's payload was plain alnum --
-exactly why it stayed clean.
+Run 2 (hvar_cap-2.log, 29/07) found the save-failure root cause: PPL
+string literals INTERPRET backslash escapes -- \\t -> tab, \\n -> LF,
+\\r -> CR, \\\\ -> \\, and an unknown sequence like \\q makes the whole
+eval fail SILENTLY (HVar keeps its previous value).  The snapshot
+codec's escape choice assumed PPL ignores backslashes -- false.  A
+payload carrying codec escapes is either transformed (readback
+mismatch) or rejected outright (stale HVar, also a mismatch).  The
+run-1 alnum payload contained no backslash, which is why it was clean.
+
+Proposed game fix (prime_platform.hvars_set, one line): double every
+backslash in the embedded literal; the PPL parser un-doubles, so the
+stored value equals the original.  The read path returns stored bytes
+verbatim (run 2: transformed chars read back raw), so hvars_get needs
+no change.  Relies only on \\\\ -> \\, confirmed on-device.
+
+This probe validates that before it reaches the game:
+  ctrl -- one UNdoubled \\t roundtrip, expected MISMATCH: confirms
+          escape interpretation is active this session.
+  dblmx -- every nasty string from the run-2 matrix through the
+          doubled transport; all must round-trip byte-identical.
+  dblrep -- codec-built 40-record replica payload (escapes, colour
+          codes, punctuation) through doubled transport, x5 with
+          collects.
+  dbl80K -- ~80KB backslash-free payload through doubled transport:
+          regression + confirms the replace() pass costs nothing when
+          there is nothing to double.
 
 Run standalone on the physical HP Prime -- needs NO game modules.
 Only self-running probe .py in the appdir (Prime auto-imports all).
-
-Sections (log flushed per line):
-  matrix  -- per-char-class roundtrip: each candidate string set/get
-             through HVars alone; mismatch logs lengths, divergence
-             offset, and char codes both sides.  Includes a raw '"'
-             case marked EXPECTED-BAD (PPL literal cannot hold it;
-             codec escapes it) to record the failure mode.
-  replica -- realistic save payload built with the inlined snapshot
-             codec over templates whose strings contain tildes,
-             quotes, newlines, backslashes, colour codes (so the
-             payload carries real escape sequences), joined with "~"
-             like _serialize_world.  10 roundtrips with a gc.collect
-             between -- a deterministic transform fails every pass at
-             the same offset; G1-family corruption fails some passes
-             at moving offsets.
-  sanity  -- one 80KB plain roundtrip (run-1 regression check).
-
 Results printed and written to hvar_cap.log.  Uses HVar "hvcap";
 reset to "0" at the end.
 """
@@ -53,25 +51,27 @@ def log(msg):
         pass
 
 
-# Inlined from prime_platform.py (keep in sync).
-def hvars_set(name, value):
+def hvars_set_raw(name, value):
+    """Current game wrapper (prime_platform.py) -- known bad for
+    backslash payloads; kept for the control case."""
     ppleval('HVars("' + name + '"):="' + value + '"')
+
+
+def hvars_set_dbl(name, value):
+    """Proposed fix: backslashes doubled so the PPL literal parser
+    un-doubles them back to the original bytes."""
+    ppleval('HVars("' + name + '"):="'
+            + value.replace("\\", "\\\\") + '"')
 
 
 def hvars_get(name):
     return ppleval('HVars("' + name + '")')
 
 
-def hvars_dim(name):
-    return int(ppleval('DIM(HVars("' + name + '"))'))
-
-
 _DIG = ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
 
 
 def int_str(n):
-    """Digit-table concat, never the firmware int formatter (G1
-    str(int)-GC bug avoidance)."""
     if n == 0:
         return "0"
     neg = n < 0
@@ -97,7 +97,6 @@ def common_prefix(a, b):
 
 
 def dump_at(tag, want, got, pos):
-    """Char codes around the divergence, both sides."""
     for s, nm in ((want, "want"), (got, "got ")):
         cs = []
         i = pos - 8
@@ -113,21 +112,12 @@ def dump_at(tag, want, got, pos):
             + " ".join(cs))
 
 
-def roundtrip(tag, s):
-    """One set/get/compare; full diagnostics on mismatch.
-
-    Returns:
-        bool: True when the readback matched byte for byte.
-    """
+def roundtrip(tag, s, setter):
     try:
-        hvars_set(HVAR, s)
+        setter(HVAR, s)
     except Exception as e:
         log(tag + ": set EXC " + str(e))
         return False
-    try:
-        stored = hvars_dim(HVAR)
-    except Exception:
-        stored = -1
     try:
         rb = hvars_get(HVAR)
     except Exception as e:
@@ -140,9 +130,8 @@ def roundtrip(tag, s):
         log(tag + ": MISMATCH non-str readback " + str(type(rb)))
         return False
     cut = common_prefix(s, rb)
-    log(tag + ": MISMATCH sent=" + int_str(len(s)) + " stored="
-        + int_str(stored) + " rb=" + int_str(len(rb)) + " div@"
-        + int_str(cut))
+    log(tag + ": MISMATCH sent=" + int_str(len(s)) + " rb="
+        + int_str(len(rb)) + " div@" + int_str(cut))
     dump_at(tag, s, rb, cut)
     return False
 
@@ -217,8 +206,6 @@ def _snap_encode(value):
 
 
 def synth_tpl(vnum):
-    """Template whose strings exercise every escape class the codec
-    emits, plus colour codes and punctuation the run-1 payload lacked."""
     return {
         "name": "test item " + int_str(vnum),
         "short_descr": "{Ga \"gleaming\" item " + int_str(vnum) + "{x",
@@ -238,8 +225,6 @@ def synth_tpl(vnum):
 
 
 def build_replica(nrec):
-    """Save-shaped payload: a few plain lines, then nrec it. records,
-    "~"-joined -- same section order as _serialize_world."""
     lines = ["v=10", "p.name=Probe", "p.title= the {RTester{x",
              "g.time=14|12|6|1462"]
     for i in range(nrec):
@@ -258,50 +243,53 @@ MATRIX = (
     ("esc-bsn ", "a\\nb"),
     ("esc-bsr ", "a\\rb"),
     ("bs-solo ", "a\\b"),
+    ("bs-tail ", "trailing\\"),
+    ("raw-tab ", "a\tb"),
+    ("raw-nl  ", "a\nb"),
     ("colour  ", "{Ggreen{x {rred{x {Bblue{x"),
-    ("punct1  ", "|=:.,;!?@#&*+-/"),
-    ("punct2  ", "()[]<>^_`"),
-    ("braces  ", "{}{}{}"),
-    ("squote  ", "it's a probe's test"),
-    ("pct     ", "100% and 50%"),
-    ("dollar  ", "$5 and $10"),
+    ("punct   ", "|=:.,;!?@#&*+-/()[]<>^_`{}'%$"),
     ("mixed   ", "s9:conditioni90d0:~it.3001=2f4e|t2:d15:"),
 )
 
 
 def main():
-    log("hvar_cap v2: content-transform hunt")
+    log("hvar_cap v3: backslash-doubling transport validation")
 
-    # -- matrix --------------------------------------------------------
+    # -- control: interpretation still active? -------------------------
+    ok = roundtrip("ctrl raw bs-t (EXPECT MISMATCH)", "a\\tb",
+                   hvars_set_raw)
+    log("ctrl: escape interpretation " + ("NOT active?!" if ok
+                                          else "active, as run 2"))
+
+    # -- doubled matrix ------------------------------------------------
     bad = []
     for tag, s in MATRIX:
-        if not roundtrip("mx " + tag, s):
+        if not roundtrip("dblmx " + tag, s, hvars_set_dbl):
             bad.append(tag.strip())
-    # Raw double quote: codec escapes these away; recorded here only to
-    # capture PPL's failure mode for the docs.
-    log("mx rawquote (EXPECTED-BAD): probing...")
-    roundtrip("mx rawquote", 'a"b')
-    log("matrix: " + (int_str(len(bad)) + " bad: " + " ".join(bad)
-                      if bad else "all clean"))
+    log("dblmx: " + (int_str(len(bad)) + " bad: " + " ".join(bad)
+                     if bad else "all clean"))
 
-    # -- replica x10 ---------------------------------------------------
+    # -- doubled replica x5 --------------------------------------------
     rep = build_replica(40)
-    log("replica: " + int_str(len(rep)) + "B, 40 records")
+    log("dblrep: " + int_str(len(rep)) + "B, 40 records")
     fails = 0
-    for i in range(10):
+    for i in range(5):
         gc.collect()
-        if not roundtrip("rep " + int_str(i + 1), rep):
+        if not roundtrip("dblrep " + int_str(i + 1), rep,
+                         hvars_set_dbl):
             fails += 1
-    log("replica: " + int_str(fails) + "/10 failed"
-        + ("" if fails in (0, 10) else " (STOCHASTIC -- G1 family?)"))
+    log("dblrep: " + int_str(fails) + "/5 failed")
 
-    # -- sanity: run-1 plain 80KB regression ---------------------------
-    blk = "abcdefghijklmnopqrstuvwxyz0123456789" * 8  # 288B
-    big = blk * 285  # ~82KB
-    roundtrip("sanity 80K", big)
+    # -- doubled 80KB backslash-free regression + replace() cost -------
+    blk = "abcdefghijklmnopqrstuvwxyz0123456789" * 8
+    big = blk * 285
+    gc.collect()
+    t0 = int(ppleval("Ticks"))
+    roundtrip("dbl80K", big, hvars_set_dbl)
+    log("dbl80K set+get: " + int_str(int(ppleval("Ticks")) - t0) + "ms")
 
     try:
-        hvars_set(HVAR, "0")
+        hvars_set_raw(HVAR, "0")
     except Exception:
         pass
     log("Done. Results in " + LOG)

@@ -1,0 +1,68 @@
+hvar_cap v2: content-transform hunt
+mx plain   : ok (21B)
+mx tilde   : ok (16B)
+mx esc-bsq : MISMATCH sent=4 stored=16 rb=16 div@0
+mx esc-bsq  want codes @0: 97 92 113 98
+mx esc-bsq  got  codes @0: 98 101 102 111 114 101 126 109
+mx esc-bst : MISMATCH sent=4 stored=3 rb=3 div@1
+mx esc-bst  want codes @1: 97 92 116 98
+mx esc-bst  got  codes @1: 97 9 98
+mx esc-bsbs: MISMATCH sent=4 stored=3 rb=3 div@2
+mx esc-bsbs want codes @2: 97 92 92 98
+mx esc-bsbs got  codes @2: 97 92 98
+mx esc-bsn : MISMATCH sent=4 stored=3 rb=3 div@1
+mx esc-bsn  want codes @1: 97 92 110 98
+mx esc-bsn  got  codes @1: 97 10 98
+mx esc-bsr : MISMATCH sent=4 stored=3 rb=3 div@1
+mx esc-bsr  want codes @1: 97 92 114 98
+mx esc-bsr  got  codes @1: 97 13 98
+mx bs-solo : MISMATCH sent=3 stored=3 rb=3 div@1
+mx bs-solo  want codes @1: 97 92 98
+mx bs-solo  got  codes @1: 97 13 98
+mx colour  : ok (26B)
+mx punct1  : ok (15B)
+mx punct2  : ok (9B)
+mx braces  : ok (6B)
+mx squote  : ok (19B)
+mx pct     : ok (12B)
+mx dollar  : ok (10B)
+mx mixed   : ok (39B)
+mx rawquote (EXPECTED-BAD): probing...
+mx rawquote: MISMATCH sent=3 stored=39 rb=39 div@0
+mx rawquote want codes @0: 97 34 98
+mx rawquote got  codes @0: 115 57 58 99 111 110 100 105
+matrix: 6 bad: esc-bsq esc-bst esc-bsbs esc-bsn esc-bsr bs-solo
+replica: 17821B, 40 records
+rep 1: MISMATCH sent=17821 stored=39 rb=39 div@0
+rep 1 want codes @0: 118 61 49 48 126 112 46 110
+rep 1 got  codes @0: 115 57 58 99 111 110 100 105
+rep 2: MISMATCH sent=17821 stored=39 rb=39 div@0
+rep 2 want codes @0: 118 61 49 48 126 112 46 110
+rep 2 got  codes @0: 115 57 58 99 111 110 100 105
+rep 3: MISMATCH sent=17821 stored=39 rb=39 div@0
+rep 3 want codes @0: 118 61 49 48 126 112 46 110
+rep 3 got  codes @0: 115 57 58 99 111 110 100 105
+rep 4: MISMATCH sent=17821 stored=39 rb=39 div@0
+rep 4 want codes @0: 118 61 49 48 126 112 46 110
+rep 4 got  codes @0: 115 57 58 99 111 110 100 105
+rep 5: MISMATCH sent=17821 stored=39 rb=39 div@0
+rep 5 want codes @0: 118 61 49 48 126 112 46 110
+rep 5 got  codes @0: 115 57 58 99 111 110 100 105
+rep 6: MISMATCH sent=17821 stored=39 rb=39 div@0
+rep 6 want codes @0: 118 61 49 48 126 112 46 110
+rep 6 got  codes @0: 115 57 58 99 111 110 100 105
+rep 7: MISMATCH sent=17821 stored=39 rb=39 div@0
+rep 7 want codes @0: 118 61 49 48 126 112 46 110
+rep 7 got  codes @0: 115 57 58 99 111 110 100 105
+rep 8: MISMATCH sent=17821 stored=39 rb=39 div@0
+rep 8 want codes @0: 118 61 49 48 126 112 46 110
+rep 8 got  codes @0: 115 57 58 99 111 110 100 105
+rep 9: MISMATCH sent=17821 stored=39 rb=39 div@0
+rep 9 want codes @0: 118 61 49 48 126 112 46 110
+rep 9 got  codes @0: 115 57 58 99 111 110 100 105
+rep 10: MISMATCH sent=17821 stored=39 rb=39 div@0
+rep 10 want codes @0: 118 61 49 48 126 112 46 110
+rep 10 got  codes @0: 115 57 58 99 111 110 100 105
+replica: 10/10 failed
+sanity 80K: ok (82080B)
+Done. Results in hvar_cap.log

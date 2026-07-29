@@ -1,0 +1,81 @@
+hvar_cap: HVar length cap + save I/O timings, N=3
+cap 1024: set...
+cap 1024: stored=1024 rb=1024 match=True
+cap 2048: set...
+cap 2048: stored=2048 rb=2048 match=True
+cap 4096: set...
+cap 4096: stored=4096 rb=4096 match=True
+cap 8192: set...
+cap 8192: stored=8192 rb=8192 match=True
+cap 12288: set...
+cap 12288: stored=12288 rb=12288 match=True
+cap 16384: set...
+cap 16384: stored=16384 rb=16384 match=True
+cap 24576: set...
+cap 24576: stored=24576 rb=24576 match=True
+cap 32768: set...
+cap 32768: stored=32768 rb=32768 match=True
+cap 49152: set...
+cap 49152: stored=49152 rb=49152 match=True
+cap 65536: set...
+cap 65536: stored=65536 rb=65536 match=True
+cap 81920: set...
+cap 81920: stored=81920 rb=81920 match=True
+NO CAP up to 81920 bytes
+t 1024 hvset : min=2ms avg=2ms  raw 3 3 2
+t 1024 hvget+cmp: min=1ms avg=1ms  raw 1 1 2
+t 1024 fwrite: min=7ms avg=8ms  raw 10 7 7
+t 1024 fread : min=2ms avg=2ms  raw 2 2 2
+t 2048 hvset : min=3ms avg=3ms  raw 3 3 3
+t 2048 hvget+cmp: min=1ms avg=1ms  raw 2 1 2
+t 2048 fwrite: min=7ms avg=7ms  raw 8 7 7
+t 2048 fread : min=2ms avg=2ms  raw 3 3 2
+t 4096 hvset : min=5ms avg=5ms  raw 6 5 6
+t 4096 hvget+cmp: min=2ms avg=2ms  raw 2 3 2
+t 4096 fwrite: min=8ms avg=8ms  raw 8 8 8
+t 4096 fread : min=2ms avg=2ms  raw 3 3 2
+t 8192 hvset : min=9ms avg=9ms  raw 9 9 9
+t 8192 hvget+cmp: min=3ms avg=3ms  raw 4 3 4
+t 8192 fwrite: min=9ms avg=10ms  raw 11 9 10
+t 8192 fread : min=4ms avg=4ms  raw 4 4 4
+t 12288 hvset : min=12ms avg=12ms  raw 12 12 13
+t 12288 hvget+cmp: min=4ms avg=4ms  raw 5 4 4
+t 12288 fwrite: min=11ms avg=11ms  raw 12 11 11
+t 12288 fread : min=5ms avg=5ms  raw 5 5 5
+t 16384 hvset : min=17ms avg=17ms  raw 17 17 17
+t 16384 hvget+cmp: min=6ms avg=6ms  raw 6 6 6
+t 16384 fwrite: min=13ms avg=13ms  raw 14 13 13
+t 16384 fread : min=6ms avg=6ms  raw 6 6 6
+t 24576 hvset : min=24ms avg=24ms  raw 24 25 25
+t 24576 hvget+cmp: min=8ms avg=8ms  raw 8 8 9
+t 24576 fwrite: min=16ms avg=17ms  raw 18 16 17
+t 24576 fread : min=9ms avg=9ms  raw 9 9 9
+t 32768 hvset : min=32ms avg=32ms  raw 32 32 32
+t 32768 hvget+cmp: min=11ms avg=11ms  raw 11 11 11
+t 32768 fwrite: min=19ms avg=20ms  raw 22 19 19
+t 32768 fread : min=12ms avg=12ms  raw 13 13 12
+t 49152 hvset : min=48ms avg=48ms  raw 48 48 48
+t 49152 hvget+cmp: min=16ms avg=16ms  raw 16 16 16
+t 49152 fwrite: min=39ms avg=41ms  raw 39 44 42
+t 49152 fread : min=22ms avg=23ms  raw 24 23 22
+t 65536 hvset : min=64ms avg=64ms  raw 65 64 64
+t 65536 hvget+cmp: min=21ms avg=21ms  raw 22 21 21
+t 65536 fwrite: min=53ms avg=54ms  raw 53 54 56
+t 65536 fread : min=37ms avg=37ms  raw 38 37 38
+t 81920 hvset : min=79ms avg=79ms  raw 79 79 79
+t 81920 hvget+cmp: min=26ms avg=26ms  raw 26 26 26
+t 81920 fwrite: min=63ms avg=66ms  raw 63 69 68
+t 81920 fread : min=52ms avg=52ms  raw 53 52 52
+chunk target 32768B
+chunk 1024 set: min=345ms avg=345ms  raw 346 345 346  stored=32768
+chunk 1024 get: 74ms roundtrip=True
+chunk 1024 plainget: 9ms len=32768 match=True
+chunk 2048 set: min=187ms avg=187ms  raw 187 188 187  stored=32768
+chunk 2048 get: 47ms roundtrip=True
+chunk 2048 plainget: 9ms len=32768 match=True
+chunk 4096 set: min=108ms avg=108ms  raw 108 109 108  stored=32768
+chunk 4096 get: 30ms roundtrip=True
+chunk 4096 plainget: 10ms len=32768 match=True
+codec block: 30 records, 12149B
+codec build: min=240ms avg=240ms  raw 240 240 240
+Done. Results in hvar_cap.log
