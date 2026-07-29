@@ -76,6 +76,16 @@ Engine 1.0 was tagged as `v1.0.0` on 23/07/2026. Content track is now open:
      range, duplicating `world._AREA_FILES`. Derive it at import or add a
      drift assert next to the existing `AREA_LEVELS` cross-check.
 
+- `parse_item_token` nested-`co:` mis-split (found 29/07/2026 during
+  snapshot work). Nested container contents are `^`-joined and re-split
+  with a flat `inner.split("^")` -- no bracket-depth tracking -- so a
+  container holding >=2 children where one child has its own nested
+  `co:[...]` contents would slice the inner item's `^` separators across
+  siblings. Save-format-affecting; fix in `parse_item_token` itself.
+  NOTE: `world._snap_token_vnums` deliberately mirrors the flat split so
+  the eviction/save walkers agree with the real parser -- update it in
+  the same commit when fixing, or the walkers drift.
+
 ## Magic
 
 (nothing outstanding)
@@ -98,7 +108,11 @@ Engine 1.0 was tagged as `v1.0.0` on 23/07/2026. Content track is now open:
 
 ## Tests
 
-(nothing outstanding)
+- Fold `world.ITEM_SNAPSHOTS` save/restore into the shared `fresh_world`
+  fixture (tests/conftest.py). Currently guarded per-module: autouse
+  clearing fixture in test_area_eviction.py, `reset_lazy()` in
+  test_snapshot_codec.py. Fine today, but any new module touching the
+  registry silently leaks entries between tests until this lands.
 
 ## Platform
 
