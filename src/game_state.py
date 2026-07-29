@@ -274,14 +274,25 @@ def _serialize_world(hvar_name=None, file_name=None):
         for r in rooms:
             room_parts.append(sstr(r))
         mob_parts.append(sstr(tpl_vnum) + "," + "|".join(room_parts))
-    # Re-serialize pending mob deltas for unloaded areas (not in world.chars)
+    # Re-serialize pending mob deltas for unloaded areas (not in world.chars).
+    # [PRIMESUD] world._PENDING_MOB_CACHE holds each template's part string,
+    # validated by room-list identity (prefilled at load from the raw save
+    # entry) -- re-rendering every pending template cost ln.mob=750ms of a
+    # 1.6s save on-device (debug/save_smoke-3.log).
     for tpl_vnum in sorted(world._pending_mob_saves):
         if tpl_vnum in tpl_rooms:
             continue
+        _pm_rooms = world._pending_mob_saves[tpl_vnum]
+        _pm = world._PENDING_MOB_CACHE.get(tpl_vnum)
+        if _pm is not None and _pm[0] is _pm_rooms:
+            mob_parts.append(_pm[1])
+            continue
         room_parts = []
-        for r in world._pending_mob_saves[tpl_vnum]:
+        for r in _pm_rooms:
             room_parts.append(sstr(r))
-        mob_parts.append(sstr(tpl_vnum) + "," + "|".join(room_parts))
+        _pm_part = sstr(tpl_vnum) + "," + "|".join(room_parts)
+        world._PENDING_MOB_CACHE[tpl_vnum] = (_pm_rooms, _pm_part)
+        mob_parts.append(_pm_part)
     if mob_parts:
         lines.append("m=" + ";".join(mob_parts))
     if _timed:
@@ -641,7 +652,13 @@ def load_world():
             for entry in val.split(";"):
                 if "," in entry:
                     tpl, rooms = entry.split(",", 1)
-                    mob_saves[int(tpl)] = [int(r) for r in rooms.split("|") if r]
+                    _tpl_i = int(tpl)
+                    _rl = [int(r) for r in rooms.split("|") if r]
+                    mob_saves[_tpl_i] = _rl
+                    # [PRIMESUD] Prefill the part-string cache from the raw
+                    # save entry (the serializer's exact output), keyed to
+                    # this list object -- first save renders nothing.
+                    world._PENDING_MOB_CACHE[_tpl_i] = (_rl, entry)
 
     # Buffer mob saves for deferred application: _load_area will apply
     # each area's deltas when it actually loads (player enters the area).

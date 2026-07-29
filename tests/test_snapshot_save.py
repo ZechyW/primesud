@@ -552,3 +552,47 @@ class TestSavePathCaches:
         world._load_area("alpha")
         assert 100 not in world._pending_room_items
         assert 100 not in world._PENDING_VNUM_CACHE
+
+    def test_pending_mob_cache_hit_and_identity_miss(self, fresh_world):
+        """An identity-matched _PENDING_MOB_CACHE part is used verbatim
+        (poison test); a fresh list re-renders. [PRIMESUD]"""
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}}})
+        fw.setup()
+        world._load_area("alpha")
+        _make_player(100)
+        # Pending template for an unloaded (unregistered-range) area.
+        rl = [901, 902]
+        world._pending_mob_saves[900] = rl
+        world._PENDING_MOB_CACHE[900] = (rl, "900,POISON")
+        assert game_state.save_world(quiet=True)
+        with open(game_state.SAVE_FILE, "r") as f:
+            assert "900,POISON" in f.read()
+        # New list object: identity miss, real render replaces the poison.
+        world._pending_mob_saves[900] = [901, 902]
+        assert game_state.save_world(quiet=True)
+        with open(game_state.SAVE_FILE, "r") as f:
+            payload = f.read()
+        assert "POISON" not in payload
+        assert "900,901|902" in payload
+
+    def test_load_prefills_pending_mob_cache(self, fresh_world):
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}}})
+        fw.setup()
+        world._load_area("alpha")
+        _make_player(100)
+        world._pending_mob_saves[900] = [901, 902]
+        assert game_state.save_world(quiet=True)
+
+        world.reset_lazy()
+        assert world._PENDING_MOB_CACHE == {}
+        player2 = create_char()
+        player2["_macros"] = {}
+        world.chars[1] = player2
+        assert game_state.load_world() == "file"
+        assert world._PENDING_MOB_CACHE[900] == (
+            world._pending_mob_saves[900], "900,901|902")
+        assert world._PENDING_MOB_CACHE[900][0] is world._pending_mob_saves[900]

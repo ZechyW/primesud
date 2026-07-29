@@ -114,6 +114,7 @@ def fresh_world(tmp_path):
     # and stale entries could otherwise serve a previous test's template
     # for a reused vnum at the same CONTENT_REVISION.
     world._PENDING_VNUM_CACHE.clear()
+    world._PENDING_MOB_CACHE.clear()
     world._SNAP_ENC_CACHE.clear()
     world.mob_stats.clear()
     world.area_stats.clear()
@@ -175,6 +176,7 @@ def fresh_world(tmp_path):
     # rebinds)
     world._AREA_FILES[:] = old_area_files
     world._PENDING_VNUM_CACHE.clear()
+    world._PENDING_MOB_CACHE.clear()
     world._SNAP_ENC_CACHE.clear()
     world._LOADED_AREAS.clear()
     world._LOADED_AREAS.update(old_state["_LOADED_AREAS"])

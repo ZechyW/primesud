@@ -1022,6 +1022,7 @@ def _apply_pending_deltas(tag, room_vnums):
         if _tpl not in MOB_DEFS._data:
             # Stale save: template no longer exists in the area file.
             del _pending_mob_saves[_tpl]
+            _PENDING_MOB_CACHE.pop(_tpl, None)
             continue
         # The mayor's route state is process-local. Restoring a mid-route
         # room without its matching route position makes the restarted path
@@ -1029,6 +1030,7 @@ def _apply_pending_deltas(tag, room_vnums):
         # reset room instead, matching upstream's non-persistent NPCs.
         if MOB_DEFS._data.get(_tpl, {}).get("spec_fun") == "spec_mayor":
             del _pending_mob_saves[_tpl]
+            _PENDING_MOB_CACHE.pop(_tpl, None)
             continue
         _saved = _pending_mob_saves[_tpl]
         # Owned pets are persisted via p.pet, not m. lines -- never count or
@@ -1118,6 +1120,7 @@ def _apply_pending_deltas(tag, room_vnums):
             _pending_mob_saves[_tpl] = _saved
         else:
             del _pending_mob_saves[_tpl]
+            _PENDING_MOB_CACHE.pop(_tpl, None)
 
     from item import parse_item_token  # deferred: item imports world
     for _rv in list(_pending_room_items):
@@ -1214,6 +1217,17 @@ def _snap_pending_vnums(raw, out):
 # save cost ~9s of an 11.7s full-world save on-device
 # (debug/save_smoke-1.log).
 _PENDING_VNUM_CACHE = {}
+
+# [PRIMESUD] Per-template cache over the pending mob-save serializer:
+# tpl_vnum -> (rooms_list, "tpl,room|room" part string). Same identity
+# rule as _PENDING_VNUM_CACHE: room lists are only ever installed
+# wholesale (load_world "m" line, eviction re-serialize) or reassigned
+# as the same object (_apply_pending_deltas' idempotent partial-match
+# keep), never mutated in place. Prefilled at load straight from the
+# raw save entry, so the steady-state serializer renders nothing:
+# re-rendering every pending template cost ln.mob=750ms of a 1.6s save
+# on-device (debug/save_smoke-3.log).
+_PENDING_MOB_CACHE = {}
 
 
 def _snap_pending_cached(rv, raw):
@@ -1638,6 +1652,7 @@ def reset_lazy():
     ITEM_SNAPSHOTS.clear()
     _SNAP_ENC_CACHE.clear()
     _PENDING_VNUM_CACHE.clear()
+    _PENDING_MOB_CACHE.clear()
     DOOR_DEFS.clear()
     MOBPROGS.clear()
     OBJPROGS.clear()
