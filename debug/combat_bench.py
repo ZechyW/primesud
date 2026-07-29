@@ -197,6 +197,11 @@ def _restore_round(player, mobs):
     player["fighting"] = mobs[0]["id"]
     player["pos"] = "fighting"
     player["hit"] = player["max_hit"]
+    # Mana/move too: autoskill casts every round, and draining to zero
+    # mid-scenario would silently turn later rounds into plain melee
+    # (combat_bench-2.log rounds decayed 1225ms -> ~300ms exactly this way).
+    player["mana"] = player["max_mana"]
+    player["move"] = player["max_move"]
     player["wait"] = 0
 
 
