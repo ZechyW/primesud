@@ -66,58 +66,6 @@ def create_object(vnum):
     return obj
 
 
-# [PRIMESUD] Every field an item template can carry (union over all area data,
-# 1357 templates).  snapshot_item copies each one the template actually has,
-# so a decoupled instance answers every item_* accessor without the template.
-# Add new template fields here or they silently stop surviving eviction.
-_SNAP_FIELDS = (
-    "keywords", "short_descr", "description", "material", "type",
-    "level", "weight", "value", "condition", "extra_descs", "values",
-    "extra_flags", "wear_flags", "weapon_flags", "container_flags",
-    "stat_bonuses", "flag_affects", "no_sac",
-    "armor", "dice", "weapon_type", "dam_type",
-    "spell_level", "spells", "spell", "charges", "max_charges",
-    "food_hours", "food_hunger", "poisoned", "light_hours",
-    "liquid_total", "liquid_left", "liquid_type",
-    "container_max_weight", "container_max_item_weight",
-    "container_weight_mult", "container_key",
-    "silver", "gold", "obj_triggers",
-)
-
-
-def snapshot_item(obj, tpl):
-    """Copy tpl's fields onto obj so it outlives its area's eviction. [PRIMESUD]
-
-    Mirrors 1stMud create_object, which copies name/short_descr/description/
-    material/item_type/extra_flags/wear_flags/value[0..4]/weight/cost/level
-    onto every OBJ_DATA (db.c:2075-2095) and leaves only pIndexData shared.
-    PrimeSUD defers the copy to eviction instead of doing it at creation:
-    ~787 instances are live at once but only a handful sit outside their own
-    area, and paying ~12 extra dict slots on all of them would cost more heap
-    than the Prime has to spare.
-
-    Mutable dicts are copied, not aliased -- ensure_item_*/set_item_* seed a
-    mutable override only when the key is ABSENT, so an aliased template dict
-    would sail straight through them and corrupt the shared template.  The
-    copy is affordable precisely because this runs on a handful of objects.
-
-    Args:
-        obj (dict): Live item instance.
-        tpl (dict): Its template, while still resident.
-
-    Returns:
-        dict: obj, with SNAP_KEY set once every field is in place.
-    """
-    if world.SNAP_KEY in obj:
-        return obj
-    for _k in _SNAP_FIELDS:
-        if _k in tpl and _k not in obj:
-            _v = tpl[_k]
-            obj[_k] = dict(_v) if isinstance(_v, dict) else _v
-    obj[world.SNAP_KEY] = 1  # last: presence means the copy is complete
-    return obj
-
-
 def promote_obj(player, obj):
     """Swap a plain-vnum item for a mutable instance dict in place. [PRIMESUD]
 

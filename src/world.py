@@ -439,20 +439,15 @@ def _vnum_to_tag(vnum):
     return None
 
 
-# [PRIMESUD] Marker key: the instance carries a full copy of its template's
-# fields (see item.snapshot_item) and never needs the template again.  Written
-# LAST by snapshot_item, so its presence means the copy is complete.  Nothing
-# else may set it.
-SNAP_KEY = "snap"
-
-
 # [PRIMESUD] Runtime cache: item_vnum -> (validated_revision, template_dict,
 # objprog_dict). Lets a surviving item instance (player gear, foreign room,
 # deferred room token) keep answering item_tpl() after its owning area is
-# evicted, without a flat per-instance copy. See SNAPSHOT_PLAN.md. Phase A
-# only wires up the container, the codec below, and CONTENT_REVISION --
-# nothing populates or reads this dict yet (Phase C/D wire up eviction and
-# save/load).
+# evicted, without a flat per-instance copy. One entry per VNUM regardless of
+# instance count -- item instances carry no marker/reference of their own,
+# the VNUM is the key. Populated at eviction (_materialize_item_snapshots)
+# and consulted by item_tpl/item_tpl_get; a snapshot answers a lookup only
+# while its stamped revision equals CONTENT_REVISION, except for the
+# one-time orphan fallback documented on item_tpl. See SNAPSHOT_PLAN.md.
 ITEM_SNAPSHOTS = {}
 
 
@@ -672,46 +667,72 @@ def _snap_decode(s):
 
 
 def item_tpl(obj):
-    """Return obj's item template -- or obj itself once it is self-contained. [PRIMESUD]
+    """Return obj's item template dict. [PRIMESUD]
 
     Replaces the bare ITEM_DEFS[obj_vnum(obj)] idiom.  That idiom defeats the
     instance-first item_* accessors: the LazyDict subscript loads (and resets)
     the whole owning area before any accessor gets to prefer the instance.
-    Snapshotted instances short-circuit it, so carrying gear from an evicted
-    area no longer drags the area back onto the heap.
 
-    A snapshotted instance IS its own template: snapshot_item copies exactly
-    the keys the template had, so returning obj keeps every caller working
-    unchanged -- both the instance-first item_* accessors and the many sites
-    that read tpl["short_descr"] / tpl.get("type") straight off the template.
-    Instance overrides simply shadow the copied values in the same dict, which
-    is the behaviour those accessors already implement.
+    Resolution order (SNAPSHOT_PLAN.md sec. Runtime lifecycle, Lookup) -- no
+    LazyDict membership test (``vnum in ITEM_DEFS``) anywhere in this chain,
+    since that itself triggers a load:
 
-    ponytail: marker + one lookup seam, not a signature change.  The drift-free
-    version is inverting control -- item_*(obj) fetching the template itself,
-    lazily, only when the field is missing -- which needs all 14 accessor
-    signatures plus every caller that threads tpl for other reasons.  Refactor
-    through here if the marker ever gets out of step.
+    1. resident ``ITEM_DEFS._data`` -- a loaded area's current data always
+       wins, so a pre-existing item adopts updated template stats as soon as
+       its home area (re)loads;
+    2. a current ``ITEM_SNAPSHOTS`` entry (stamped revision ==
+       CONTENT_REVISION) -- lets carried/dropped/deferred gear answer without
+       reloading its evicted owner area;
+    3. the normal lazy ``ITEM_DEFS[vnum]`` load -- intentional: no snapshot
+       was current, so the owning area (if any) loads once;
+    4. orphan fallback -- the lazy load ran and the vnum is STILL absent (its
+       owning area no longer defines it, or never did).  A stale snapshot
+       entry answers anyway rather than losing a valid saved/carried item,
+       and gets restamped to CONTENT_REVISION in place (one assignment, no
+       retry ladder) so later lookups skip the pointless reload.
+
+    KeyError only when none of the above can answer.
+
+    Genuine instance overrides continue to win through the existing
+    instance-first item_* accessors (item_extra_flags, item_current_charges,
+    etc.) -- this seam only supplies the template those accessors fall back
+    to.
     """
-    if isinstance(obj, dict):
-        if SNAP_KEY in obj:
-            return obj
-        return ITEM_DEFS[obj["vnum"]]
-    return ITEM_DEFS[obj]
+    vnum = obj["vnum"] if isinstance(obj, dict) else obj
+    if vnum in ITEM_DEFS._data:
+        return ITEM_DEFS._data[vnum]
+    entry = ITEM_SNAPSHOTS.get(vnum)
+    if entry is not None and entry[0] == CONTENT_REVISION:
+        return entry[1]
+    try:
+        return ITEM_DEFS[vnum]
+    except KeyError:
+        if entry is not None:
+            ITEM_SNAPSHOTS[vnum] = (CONTENT_REVISION, entry[1], entry[2])
+            return entry[1]
+        raise
 
 
 def item_tpl_get(obj):
     """item_tpl, but None for an unknown vnum instead of KeyError. [PRIMESUD]
 
-    For the handful of callers that tolerate a template-less object (synthetic
-    or legacy vnums outside every area's range) rather than treating the miss
-    as a bug.
+    Same resolution order as item_tpl; for the handful of callers that
+    tolerate a template-less object (synthetic or legacy vnums outside every
+    area's range) rather than treating the miss as a bug.
     """
-    if isinstance(obj, dict):
-        if SNAP_KEY in obj:
-            return obj
-        return ITEM_DEFS.get(obj["vnum"])
-    return ITEM_DEFS.get(obj)
+    vnum = obj["vnum"] if isinstance(obj, dict) else obj
+    if vnum in ITEM_DEFS._data:
+        return ITEM_DEFS._data[vnum]
+    entry = ITEM_SNAPSHOTS.get(vnum)
+    if entry is not None and entry[0] == CONTENT_REVISION:
+        return entry[1]
+    tpl = ITEM_DEFS.get(vnum)
+    if tpl is not None:
+        return tpl
+    if entry is not None:
+        ITEM_SNAPSHOTS[vnum] = (CONTENT_REVISION, entry[1], entry[2])
+        return entry[1]
+    return None
 
 
 def _ensure_area(vnum):
@@ -796,6 +817,13 @@ def _load_area(tag):
     # [PRIMESUD]
     MOBPROGS.update(_ns.get("MOBPROGS", {}))
     OBJPROGS.update(_ns.get("OBJPROGS", {}))
+    # [PRIMESUD] Fresh resident definitions supersede cached snapshots: drop
+    # registry entries this load just made resident again, freeing their
+    # template copies.  Orphan entries (vnums the area no longer defines)
+    # are retained; the next eviction rebuilds any still-required snapshots
+    # from current data (SNAPSHOT_PLAN.md sec. Area load).
+    for _v in [_k for _k in ITEM_SNAPSHOTS if _k in _ns["OBJECTS"]]:
+        del ITEM_SNAPSHOTS[_v]
     ROOMPROGS.update(_ns.get("ROOMPROGS", {}))
     # Partition resets to per-room lists (cf. 1stMud pRoom->reset_first).
     # Cross-area resets (target room in a different area) are deferred to
@@ -1081,30 +1109,108 @@ def _retry_pending_deltas():
             _apply_pending_deltas(_a["tag"], _a["room_vnums"])
 
 
-def _snapshot_foreign_objs(lo, hi, rvnum_set):
-    """Snapshot live objects owned by an unloading area but held outside it. [PRIMESUD]
+def _snap_token_fields(token):
+    """Split a serialized item token on ';', honouring '\\' escapes and
+    '[...]' bracket depth -- structural split only, no unescaping. [PRIMESUD]
 
-    Objects still sitting in the area's own rooms are skipped: they are
-    serialized to _pending_room_items and reload alongside their template.
+    Mirrors item._split_token_fields' delimiter rules exactly (same escape
+    char and bracket depth tracking) so the deferred-token vnum walker below
+    finds the same field boundaries a real parse_item_token would, without
+    building the field-value dict parse_item_token builds.
+    """
+    fields = []
+    depth = 0
+    start = 0
+    escaped = False
+    n = len(token)
+    i = 0
+    while i < n:
+        ch = token[i]
+        if escaped:
+            escaped = False
+        elif ch == "\\":
+            escaped = True
+        elif ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+        elif ch == ";" and depth == 0:
+            fields.append(token[start:i])
+            start = i + 1
+        i += 1
+    fields.append(token[start:])
+    return fields
+
+
+def _snap_token_vnums(token, out):
+    """Append the vnum(s) referenced by one serialized item token onto out. [PRIMESUD]
+
+    Walks a single item token (item.serialize_item_token's
+    "v:<n>;...;co:[<item>^<item>...]" shape) for its own vnum and every
+    nested "co:" content vnum, without constructing item dicts (SNAPSHOT_
+    PLAN.md sec. Deferred-token VNUM scan).  The nested "co:" content is
+    split on "^" with a flat, non-bracket-aware split -- deliberately
+    matching item.parse_item_token's own inner.split("^"), so this walker
+    always agrees with what a real parse of the same token would see.
+    """
+    for field in _snap_token_fields(token):
+        if field[:2] == "v:":
+            digits = field[2:]
+            if digits:
+                out.append(int(digits))
+        elif field[:4] == "co:[":
+            inner = field[4:-1] if field.endswith("]") else field[4:]
+            for sub in inner.split("^"):
+                if sub:
+                    _snap_token_vnums(sub, out)
+
+
+def _snap_pending_vnums(raw, out):
+    """Append every vnum referenced by a raw _pending_room_items value onto out. [PRIMESUD]"""
+    for tok in raw.split("|"):
+        if tok:
+            _snap_token_vnums(tok, out)
+
+
+def _materialize_item_snapshots(lo, hi, rvnum_set):
+    """Snapshot [lo, hi]-owned items that survive outside an unloading area. [PRIMESUD]
+
+    Replaces the flat per-instance snapshot_item WIP with one shared
+    ITEM_SNAPSHOTS registry entry per distinct surviving VNUM (SNAPSHOT_
+    PLAN.md sec. Decisions 1 & 3, Runtime lifecycle: Area eviction).  Call
+    this from _unload_area AFTER characters dying with the area have already
+    been deleted from `chars` (so the inventory/equipment walk below only
+    ever sees survivors) and BEFORE this area's ITEM_DEFS/OBJPROGS entries
+    are dropped (the registry copy is read from resident data, never a lazy
+    load -- a miss here must not re-trigger the load eviction is undoing).
+
+    Scans, for distinct owned-vnum membership only:
+
+    - inventory/equipment (recursively through contents) of every surviving
+      character;
+    - items (recursively) in loaded rooms outside rvnum_set;
+    - _pending_room_items tokens buffered for rooms outside rvnum_set.
+
+    Objects still sitting in the area's own rooms are skipped: those rooms
+    and items are serialized to _pending_room_items afterwards and reload
+    alongside their template.  Pre-existing registry entries owned by this
+    range that are NOT in the freshly collected set (stale from a prior
+    eviction) are pruned.
 
     ponytail: linear scan of every live object per eviction (~787 on a full
     save, one vnum range check each).  Eviction fires on area change, not per
     pulse, so this stays off the hot path; index objects by owning area if it
     ever shows up in a profile.
     """
-    from item import snapshot_item  # deferred: item imports world
+    _vnums = set()
 
     def _walk(items):
         for _o in items:
             if not isinstance(_o, dict):
                 continue
             _v = _o.get("vnum")
-            if (_v is not None and lo <= _v <= hi and SNAP_KEY not in _o):
-                # _data, not the LazyDict: we are mid-eviction, and a miss
-                # here must not re-trigger the load we are undoing.
-                _t = ITEM_DEFS._data.get(_v)
-                if _t is not None:
-                    snapshot_item(_o, _t)
+            if _v is not None and lo <= _v <= hi:
+                _vnums.add(_v)
             _walk(_o.get("contents", []))
 
     for _cid in chars:
@@ -1114,6 +1220,29 @@ def _snapshot_foreign_objs(lo, hi, rvnum_set):
     for _rv in rooms._data:
         if _rv not in rvnum_set:
             _walk(rooms._data[_rv].get("items", []))
+    for _rv in _pending_room_items:
+        if _rv not in rvnum_set:
+            _found = []
+            _snap_pending_vnums(_pending_room_items[_rv], _found)
+            for _v in _found:
+                if lo <= _v <= hi:
+                    _vnums.add(_v)
+
+    for _v in _vnums:
+        # _data, not the LazyDict: mid-eviction, a miss must not re-trigger
+        # the load we are undoing.
+        _tpl = ITEM_DEFS._data.get(_v)
+        if _tpl is None:
+            continue
+        _progs = {}
+        for _trig in _tpl.get("obj_triggers", ()):
+            _pv = _trig[1]
+            if _pv in OBJPROGS:
+                _progs[_pv] = OBJPROGS[_pv]
+        ITEM_SNAPSHOTS[_v] = (CONTENT_REVISION, dict(_tpl), _progs)
+
+    for _v in [_k for _k in ITEM_SNAPSHOTS if lo <= _k <= hi and _k not in _vnums]:
+        del ITEM_SNAPSHOTS[_v]
 
 
 def _unload_area(tag):
@@ -1144,14 +1273,6 @@ def _unload_area(tag):
         if _t == tag:
             _lo, _hi = _l, _h
             break
-
-    # [PRIMESUD] Decouple this area's objects that live somewhere else before
-    # the templates go: carried gear, floor items left in other areas, and
-    # anything nested in a container.  Scoped by template OWNERSHIP, not by
-    # location -- an item picked up here and dropped two areas away is exactly
-    # the case that would otherwise reload us on the next look.
-    if _lo is not None:
-        _snapshot_foreign_objs(_lo, _hi, _rvnum_set)
 
     # Remove our cross-area reset entries from resident foreign rooms, or
     # reload would append them a second time (duplicate mobs/objects).
@@ -1206,6 +1327,16 @@ def _unload_area(tag):
         for _inst in chars.values():
             if _inst.get("fighting") in _dead_set:
                 _inst["fighting"] = None
+
+    # [PRIMESUD] Decouple this area's objects that live somewhere else before
+    # the templates go: carried gear (chars dying with this area were just
+    # deleted above, so only survivors are walked), floor items left in
+    # other areas, deferred foreign-room tokens, and anything nested in a
+    # container.  Scoped by template OWNERSHIP, not by location -- an item
+    # picked up here and dropped two areas away is exactly the case that
+    # would otherwise reload us on the next look.
+    if _lo is not None:
+        _materialize_item_snapshots(_lo, _hi, _rvnum_set)
 
     # Buffer floor items (mirrors the r.<vnum>.items= save lines).
     from item import serialize_item_token  # deferred: item imports world
