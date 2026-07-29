@@ -16,10 +16,6 @@ Engine 1.0 was tagged as `v1.0.0` on 23/07/2026. Content track is now open:
 
 ## Items
 
-- `_QUEST_VNUM_LO/HI` (quest.py) hardcodes the quest area's 200-249
-  range, duplicating `world._AREA_FILES`. Derive it at import or add a
-  drift assert next to the existing `AREA_LEVELS` cross-check.
-
 - Item snapshot device gates (registry design landed 29/07/2026; see
   DESIGN.md sec. Item template snapshots). Measure on hardware before the
   next content release: startup from `primesud.sav` with no item-only owner
@@ -29,16 +25,6 @@ Engine 1.0 was tagged as `v1.0.0` on 23/07/2026. Content track is now open:
   exactly one corrective load; snapshot obj program firing from an unloaded
   owner. If save size bites, first lever is field-name tags inside the
   snapshot codec -- never silently dropping `description`/`extra_descs`.
-
-- `parse_item_token` nested-`co:` mis-split (found 29/07/2026 during
-  snapshot work). Nested container contents are `^`-joined and re-split
-  with a flat `inner.split("^")` -- no bracket-depth tracking -- so a
-  container holding >=2 children where one child has its own nested
-  `co:[...]` contents would slice the inner item's `^` separators across
-  siblings. Save-format-affecting; fix in `parse_item_token` itself.
-  NOTE: `world._snap_token_vnums` deliberately mirrors the flat split so
-  the eviction/save walkers agree with the real parser -- update it in
-  the same commit when fixing, or the walkers drift.
 
 ## Magic
 

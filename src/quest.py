@@ -57,10 +57,15 @@ QUEST_TIME = 20  # cf. 1stMud defines.h; base cooldown between quests
 # Quest token objects (cf. 1stMud OBJ_VNUM_QUEST1..4 in vnums.h)
 _QUEST_PIECES = (214, 215, 216, 217)
 
-# [PRIMESUD] Vnum range of the quest area (cf. world._AREA_FILES "quest").
-# update_questobj gates on this to avoid a LazyDict template read per item.
-_QUEST_VNUM_LO = 200
-_QUEST_VNUM_HI = 249
+# [PRIMESUD] Vnum range of the quest area, derived from the "quest" entry in
+# world._AREA_FILES so the two can never drift.  update_questobj gates on
+# this to avoid a LazyDict template read per item.
+_QUEST_VNUM_LO = _QUEST_VNUM_HI = 0
+for _a in world._AREA_FILES:
+    if _a[1] == "quest":
+        _QUEST_VNUM_LO, _QUEST_VNUM_HI = _a[3], _a[4]
+        break
+del _a
 
 # Questmaster shop vnums (cf. 1stMud OBJ_VNUM_QUEST_* in vnums.h)
 _OBJ_QUEST_AURA   = 201
