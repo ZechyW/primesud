@@ -458,7 +458,8 @@ class TestSaveTiming:
         finally:
             DBG.discard("save")
         assert [seg for seg, _ in game_state._SAVE_TIMING] == [
-            "lines", "snap", "sweep", "join", "hvset", "verify", "fwrite"]
+            "ln.plr1", "ln.rle", "ln.plr2", "ln.mob", "ln.room",
+            "snap", "sweep", "join", "hvset", "verify", "fwrite"]
         for _seg, ms in game_state._SAVE_TIMING:
             assert isinstance(ms, int) and ms >= 0
 

@@ -165,8 +165,14 @@ def _serialize_world(hvar_name=None, file_name=None):
     # key means pure heuristic default (see autoskill.py)
     if "autoskill_rot" in player:
         lines.append("p.autoskill_rot=" + ",".join(player["autoskill_rot"]))
+    if _timed:
+        _SAVE_TIMING.append(("ln.plr1", ticks() - _tmark))
+        _tmark = ticks()
     # cf. 1stMud write_rle (explored.c) -- RLE run-length string, str()+concat
     lines.append("p.explored=" + encode_rle(player))
+    if _timed:
+        _SAVE_TIMING.append(("ln.rle", ticks() - _tmark))
+        _tmark = ticks()
     af_parts = []
     for af in player.get("affect_list", []):
         af_parts.append(
@@ -229,6 +235,9 @@ def _serialize_world(hvar_name=None, file_name=None):
         lines.append("s.a." + sstr(_tag) + "=" + sstr(_stat[0]) + "|" + sstr(_stat[1]))
     for _gql in gq_save_lines():  # [PRIMESUD] gquest state
         lines.append(_gql)
+    if _timed:
+        _SAVE_TIMING.append(("ln.plr2", ticks() - _tmark))
+        _tmark = ticks()
     # Build reset-room map for single-instance mobs (gl=1): if the only live
     # instance is already in its reset room, omit it -- reset_area() will
     # restore it there on load without any save entry needed.
@@ -275,6 +284,9 @@ def _serialize_world(hvar_name=None, file_name=None):
         mob_parts.append(sstr(tpl_vnum) + "," + "|".join(room_parts))
     if mob_parts:
         lines.append("m=" + ";".join(mob_parts))
+    if _timed:
+        _SAVE_TIMING.append(("ln.mob", ticks() - _tmark))
+        _tmark = ticks()
     for rvnum in sorted(world.rooms):
         rs = world.rooms[rvnum]
         if not rs["items"]:
@@ -287,7 +299,7 @@ def _serialize_world(hvar_name=None, file_name=None):
     for rvnum in sorted(world._pending_room_items):
         lines.append("r." + sstr(rvnum) + ".items=" + sstr(world._pending_room_items[rvnum]))
     if _timed:
-        _SAVE_TIMING.append(("lines", ticks() - _tmark))
+        _SAVE_TIMING.append(("ln.room", ticks() - _tmark))
         _tmark = ticks()
     # [PRIMESUD] Item-template snapshots (DESIGN.md sec. Item template
     # snapshots). One deduplicated "it.<vnum>=<revision>|<record>" line
@@ -634,6 +646,13 @@ def load_world():
     # Buffer mob saves for deferred application: _load_area will apply
     # each area's deltas when it actually loads (player enters the area).
     world._pending_mob_saves.update(mob_saves)
+
+    # [PRIMESUD] Prewarm the pending-token vnum cache so the first save
+    # after boot skips the one-time ~4.5s token rescan (save_smoke-2.log
+    # save 1 snap=4518ms) -- the cost lands in the already-signposted
+    # load screen instead of the first mid-play autosave.
+    for _rv in world._pending_room_items:
+        world._snap_pending_cached(_rv, world._pending_room_items[_rv])
 
     # Player room access triggers the player's area load, which applies
     # pending deltas for that area via _apply_pending_deltas.

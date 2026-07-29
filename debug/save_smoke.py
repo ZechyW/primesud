@@ -4,12 +4,14 @@ Loads the REAL primesud.sav (copy it from the game appdir into this
 debug appdir first, Connectivity Kit) through the full game code, then
 runs three timed save_world passes with the "save" debug channel on, so
 game_state._SAVE_TIMING attributes the cost per segment:
-  lines / snap / sweep / join / hvset / verify / fwrite
-"snap" is the item-template snapshot block (codec) -- the suspected
-save-lag source (348ms/40 records in hvar_cap run 3). This is also the
-end-to-end validation of the hvars_set backslash-doubling fix against
-the exact payload that failed on 29/07: ok=True means the readback
-verification passed.
+  ln.plr1 / ln.rle / ln.plr2 / ln.mob / ln.room (main save-line build,
+  split to attribute the ~1.5s steady "lines" cost from save_smoke-2)
+  / snap / sweep / join / hvset / verify / fwrite
+load_world now includes the pending-token cache prewarm, so its time
+absorbs what used to be save 1's one-time snap spike (4518ms in
+save_smoke-2). This probe also end-to-end validates the hvars_set
+backslash-doubling fix against the exact payload that failed on 29/07:
+ok=True means the readback verification passed.
 
 Safety: the game's real HVar/save are never written -- SAVE_VAR is
 redirected to "smoketest" BEFORE load_world (so even a migration _bak
