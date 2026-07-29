@@ -80,7 +80,7 @@ def main():
     lvl_comments = {}
     room_counts = {}
     adjacency = dict((tag, set()) for tag in tags)
-    # Global item-content digest (SNAPSHOT_PLAN.md sec. "Template drift"):
+    # Global item-content digest (DESIGN.md sec. Item template snapshots):
     # one hash over every area's OBJECTS + OBJPROGS mapping, in area_files
     # order, so a snapshot cached from a previous content revision is
     # detected and refreshed. Reuses world._snap_encode for canonicalization
@@ -172,8 +172,9 @@ def main():
     block_lines.append("# do_explored/score (cf. 1stMud arearooms/top_explored); world total")
     block_lines.append("# = sum of values. CONTENT_REVISION: sha256 (12 hex chars) over every")
     block_lines.append("# area's OBJECTS + OBJPROGS mapping in area_files order, via")
-    block_lines.append("# world._snap_encode (SNAPSHOT_PLAN.md); item snapshots compare this")
-    block_lines.append("# string to detect stale cached template data after a content update.")
+    block_lines.append("# world._snap_encode (DESIGN.md sec. Item template snapshots); item")
+    block_lines.append("# snapshots compare this string to detect stale cached template data")
+    block_lines.append("# after a content update.")
     block_lines.append("# Regenerate with: python tools/gen_area_adj.py")
     block_lines.append("# [PRIMESUD]")
     block_lines.extend(format_dict_block(

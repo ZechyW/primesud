@@ -1,5 +1,5 @@
 """Tests for item-template snapshot persistence through save/load
-(SNAPSHOT_PLAN.md Phase D).
+(DESIGN.md sec. Item template snapshots).
 
 Covers:
 - Player inventory/equipment (incl. nested contents) round-trips through

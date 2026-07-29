@@ -274,8 +274,8 @@ def _serialize_world(hvar_name=None, file_name=None):
     # Re-serialize pending room items for unloaded areas (not in world.rooms)
     for rvnum in sorted(world._pending_room_items):
         lines.append("r." + sstr(rvnum) + ".items=" + sstr(world._pending_room_items[rvnum]))
-    # [PRIMESUD] Item-template snapshots (SNAPSHOT_PLAN.md sec.
-    # Serialization). One deduplicated "it.<vnum>=<revision>|<record>" line
+    # [PRIMESUD] Item-template snapshots (DESIGN.md sec. Item template
+    # snapshots). One deduplicated "it.<vnum>=<revision>|<record>" line
     # per VNUM world._snap_save_vnums() says is required (player gear
     # always, foreign-owner room/pending items only) -- never the whole
     # ITEM_SNAPSHOTS registry. Resident template data wins when the owning
@@ -302,7 +302,8 @@ def _serialize_world(hvar_name=None, file_name=None):
         except ValueError:
             continue  # unsupported value type: skip the line, keep save valid
         lines.append("it." + sstr(_it_vnum) + "=" + _it_rev + "|" + _it_enc)
-    # Cold mark/sweep (SNAPSHOT_PLAN.md sec. Runtime pruning): free registry
+    # Cold mark/sweep (DESIGN.md sec. Item template snapshots): free
+    # registry
     # entries no live object or deferred token references once their owning
     # area is not resident to rebuild them from. Runs on every save,
     # primary or backup; never touches a VNUM the block above just wrote --
@@ -514,10 +515,10 @@ def load_world():
             rvnum = int(key.split(".")[1])
             world._pending_room_items[rvnum] = val
         elif key.startswith("it."):
-            # [PRIMESUD] Item-template snapshot cache line (SNAPSHOT_PLAN.md
-            # sec. Save/load): "it.<vnum>=<revision>|<record>". Populates
-            # ITEM_SNAPSHOTS only -- never touches ITEM_DEFS or loads an
-            # area. A malformed record (bad vnum, missing "|", codec
+            # [PRIMESUD] Item-template snapshot cache line (DESIGN.md sec.
+            # Item template snapshots): "it.<vnum>=<revision>|<record>".
+            # Populates ITEM_SNAPSHOTS only -- never touches ITEM_DEFS or
+            # loads an area. A malformed record (bad vnum, missing "|", codec
             # ValueError, wrong decoded shape) is skipped individually: this
             # is an optional cache, so a corrupt line must never make the
             # rest of the save unloadable. Line order within the save is

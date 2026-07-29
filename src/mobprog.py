@@ -577,7 +577,7 @@ def _run_oprog(octx, prog_vnum, ch, arg1, arg2):
         # [PRIMESUD] Snapshot fallback: the item's ITEM_SNAPSHOTS entry
         # captures the program source its obj_triggers reference at
         # eviction/save, so the trigger still fires while the owner area
-        # stays unloaded (SNAPSHOT_PLAN.md sec. Object programs).
+        # stays unloaded (DESIGN.md sec. Item template snapshots).
         _entry = world.ITEM_SNAPSHOTS.get(obj_vnum(octx["obj"]))
         if _entry is not None:
             code = _entry[2].get(prog_vnum)

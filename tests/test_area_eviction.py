@@ -9,7 +9,8 @@ Covers:
 - Cross-area resets survive owner evict+reload without duplication
 - maybe_evict: cap + LRU order, keep-set (followers, pinned), fast path
 - item_tpl/item_tpl_get registry lookup order (resident/snapshot/lazy/orphan)
-- Eviction-time ITEM_SNAPSHOTS registry materialization (SNAPSHOT_PLAN.md)
+- Eviction-time ITEM_SNAPSHOTS registry materialization (DESIGN.md sec.
+  Item template snapshots)
 """
 import pytest
 
@@ -250,8 +251,7 @@ class TestUnloadArea:
     def test_deferred_pending_token_foreign_item_produces_entries(self, fresh_world):
         """_pending_room_items for a foreign (unloaded) room is scanned for
         vnums, including one nested inside a co: container field, without
-        building item dicts (SNAPSHOT_PLAN.md sec. Deferred-token VNUM
-        scan)."""
+        building item dicts (DESIGN.md sec. Item template snapshots)."""
         from item import create_object, serialize_item_token
         fw = fresh_world
         fw.register_area("alpha", 100, 199,
@@ -300,8 +300,9 @@ class TestUnloadArea:
 
     def test_deleted_npc_items_not_snapshotted(self, fresh_world):
         """Gear held only by an NPC that dies with its own area's eviction
-        must not leave a registry entry (SNAPSHOT_PLAN.md sec. Decisions 3,
-        "do not snapshot inventory of NPCs the same eviction deletes")."""
+        must not leave a registry entry (DESIGN.md sec. Item template
+        snapshots: do not snapshot inventory of NPCs the same eviction
+        deletes)."""
         fw = fresh_world
         fw.register_area("alpha", 100, 199,
                          rooms={100: {"name": "R100", "exits": {}}},
@@ -470,8 +471,8 @@ class TestUnloadArea:
 
 # ===== item_tpl / item_tpl_get registry lookup order ========================
 # resident ITEM_DEFS._data -> current ITEM_SNAPSHOTS entry -> lazy
-# ITEM_DEFS[vnum] load -> orphan snapshot fallback + restamp (SNAPSHOT_PLAN.md
-# sec. Runtime lifecycle, Lookup).
+# ITEM_DEFS[vnum] load -> orphan snapshot fallback + restamp (DESIGN.md
+# sec. Item template snapshots).
 
 class TestItemTplRegistry:
 
@@ -603,8 +604,8 @@ class TestItemTplRegistry:
     def test_area_load_prunes_now_resident_entries_keeps_orphans(self, fresh_world):
         """Loading an area drops registry entries it just made resident
         (fresh data supersedes the cache) but retains orphan entries for
-        vnums the area no longer defines (SNAPSHOT_PLAN.md sec. Area
-        load)."""
+        vnums the area no longer defines (DESIGN.md sec. Item template
+        snapshots)."""
         from item import create_object
         fw = fresh_world
         fw.register_area("alpha", 100, 199,

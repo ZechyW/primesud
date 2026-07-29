@@ -1,4 +1,5 @@
-"""End-to-end guard for SNAPSHOT_PLAN.md Phase E (sec. Tests, End to end).
+"""End-to-end guards for item-template snapshots (DESIGN.md sec. Item
+template snapshots).
 
 A player carries/wears gear from two evicted foreign areas (one item nested
 inside a container). Those areas are evicted, the world is saved, reset, and
@@ -161,7 +162,7 @@ class TestSnapshotEndToEnd:
         _assert_foreign_unloaded()
 
         # -- shop browse/list over foreign keeper stock: NPCs aren't
-        # persisted (SNAPSHOT_PLAN.md sec. Serialization), so spawn the
+        # persisted (DESIGN.md sec. Item template snapshots), so spawn the
         # keeper fresh in the now-loaded home area, stocked with a vnum
         # that is only reachable through the registry -- built by hand,
         # not create_object, since ITEM_DEFS[vnum] would itself reload
@@ -193,7 +194,7 @@ class TestSnapshotEndToEnd:
             self, fresh_world):
         """An obj program on foreign gear runs from its snapshot's captured
         source after save/load, without the owner area (or its OBJPROGS
-        table) ever loading (SNAPSHOT_PLAN.md sec. Object programs)."""
+        table) ever loading (DESIGN.md sec. Item template snapshots)."""
         import mobprog
         fw = fresh_world
         fw.register_area(

@@ -165,8 +165,9 @@ AREA_LEVELS = {
 # do_explored/score (cf. 1stMud arearooms/top_explored); world total
 # = sum of values. CONTENT_REVISION: sha256 (12 hex chars) over every
 # area's OBJECTS + OBJPROGS mapping in area_files order, via
-# world._snap_encode (SNAPSHOT_PLAN.md); item snapshots compare this
-# string to detect stale cached template data after a content update.
+# world._snap_encode (DESIGN.md sec. Item template snapshots); item
+# snapshots compare this string to detect stale cached template data
+# after a content update.
 # Regenerate with: python tools/gen_area_adj.py
 # [PRIMESUD]
 AREA_BUILDERS = {
@@ -447,13 +448,15 @@ def _vnum_to_tag(vnum):
 # the VNUM is the key. Populated at eviction (_materialize_item_snapshots)
 # and consulted by item_tpl/item_tpl_get; a snapshot answers a lookup only
 # while its stamped revision equals CONTENT_REVISION, except for the
-# one-time orphan fallback documented on item_tpl. See SNAPSHOT_PLAN.md.
+# one-time orphan fallback documented on item_tpl. See DESIGN.md sec.
+# Item template snapshots.
 ITEM_SNAPSHOTS = {}
 
 
 # -- Typed snapshot codec [PRIMESUD] -------------------------------------------
 # Encodes item templates + referenced obj-program source for the future
-# "it.<vnum>=<revision>|<record>" save section (SNAPSHOT_PLAN.md sec. 5). No
+# "it.<vnum>=<revision>|<record>" save section (DESIGN.md sec. Item
+# template snapshots). No
 # eval/repr/JSON: save data must not become executable code, and HP Prime has
 # no verified JSON module. Supports exactly the value types generated area
 # data uses: None, bool, int, str, list, tuple, dict (str/int/bool/None keys).
@@ -687,7 +690,7 @@ def item_tpl(obj):
     instance-first item_* accessors: the LazyDict subscript loads (and resets)
     the whole owning area before any accessor gets to prefer the instance.
 
-    Resolution order (SNAPSHOT_PLAN.md sec. Runtime lifecycle, Lookup) -- no
+    Resolution order (DESIGN.md sec. Item template snapshots) -- no
     LazyDict membership test (``vnum in ITEM_DEFS``) anywhere in this chain,
     since that itself triggers a load:
 
@@ -835,7 +838,7 @@ def _load_area(tag):
     # registry entries this load just made resident again, freeing their
     # template copies.  Orphan entries (vnums the area no longer defines)
     # are retained; the next eviction rebuilds any still-required snapshots
-    # from current data (SNAPSHOT_PLAN.md sec. Area load).
+    # from current data (DESIGN.md sec. Item template snapshots).
     for _v in [_k for _k in ITEM_SNAPSHOTS if _k in _ns["OBJECTS"]]:
         del ITEM_SNAPSHOTS[_v]
     ROOMPROGS.update(_ns.get("ROOMPROGS", {}))
@@ -1161,8 +1164,8 @@ def _snap_token_vnums(token, out):
 
     Walks a single item token (item.serialize_item_token's
     "v:<n>;...;co:[<item>^<item>...]" shape) for its own vnum and every
-    nested "co:" content vnum, without constructing item dicts (SNAPSHOT_
-    PLAN.md sec. Deferred-token VNUM scan).  The nested "co:" content is
+    nested "co:" content vnum, without constructing item dicts (DESIGN.md
+    sec. Item template snapshots).  The nested "co:" content is
     split on "^" at bracket depth 0 -- matching item.parse_item_token's own
     _split_token_fields(inner, "^"), so this walker always agrees with what
     a real parse of the same token would see.
@@ -1190,7 +1193,8 @@ def _snap_save_vnums():
     """Compute the persisted item-template snapshot VNUM set fresh. [PRIMESUD]
 
     Recomputes rather than dumping the whole ITEM_SNAPSHOTS registry
-    (SNAPSHOT_PLAN.md sec. Serialization): the player's inventory/equipment
+    (DESIGN.md sec. Item template snapshots): the player's inventory/
+    equipment
     VNUMs are always included, recursively through contents; a loaded
     room's item VNUMs are included only where the template owner differs
     from the room's own area, recursively; a deferred `_pending_room_items`
@@ -1249,8 +1253,8 @@ def _snap_live_vnums():
     """Return every item VNUM referenced by any live object or deferred
     room token, regardless of ownership. [PRIMESUD]
 
-    Runtime marks for the save-time cold mark/sweep (SNAPSHOT_PLAN.md sec.
-    Runtime pruning): player, surviving NPC/shop inventories and
+    Runtime marks for the save-time cold mark/sweep (DESIGN.md sec. Item
+    template snapshots): player, surviving NPC/shop inventories and
     equipment, loaded-room items, and `_pending_room_items` tokens -- all
     recursively, unfiltered by owner area (unlike `_snap_save_vnums`,
     which only wants the foreign subset that needs a save line). A
@@ -1289,8 +1293,8 @@ def _materialize_item_snapshots(lo, hi, rvnum_set):
     """Snapshot [lo, hi]-owned items that survive outside an unloading area. [PRIMESUD]
 
     Replaces the flat per-instance snapshot_item WIP with one shared
-    ITEM_SNAPSHOTS registry entry per distinct surviving VNUM (SNAPSHOT_
-    PLAN.md sec. Decisions 1 & 3, Runtime lifecycle: Area eviction).  Call
+    ITEM_SNAPSHOTS registry entry per distinct surviving VNUM (DESIGN.md
+    sec. Item template snapshots).  Call
     this from _unload_area AFTER characters dying with the area have already
     been deleted from `chars` (so the inventory/equipment walk below only
     ever sees survivors) and BEFORE this area's ITEM_DEFS/OBJPROGS entries
