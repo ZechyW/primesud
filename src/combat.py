@@ -2430,7 +2430,12 @@ def _advance_target(player, mob_instances, room_state):
             next_id = mid
             break
     if next_id is not None:
-        player["fighting"] = next_id
+        # [PRIMESUD] full set_fighting, not a direct write: raw_kill's
+        # stop_fighting(both=True) just cleared the player's fighting/pos/
+        # stance and removed them from world.FIGHTERS; re-engaging must
+        # restore all of those, exactly as the next mob's damage() ->
+        # set_fighting would have in 1stMud's no-retarget flow.
+        set_fighting(player, mob_instances[next_id])
     else:
         stop_fighting(player, both=False)
 
