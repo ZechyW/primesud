@@ -92,9 +92,9 @@ class TestBackup:
         # above, which reflects the post-write update the live session sees.
         assert player2["backup"] == 0
 
-    def test_save_pumps_keyboard_and_restores_status(self, tmp_path, monkeypatch):
+    def test_save_pumps_keyboard_and_prints_notice(self, tmp_path, monkeypatch):
         """[PRIMESUD] save stall UX: firmware FIFO drained at every segment
-        boundary, [Saving...] indicator shown and prior status restored."""
+        boundary, dim [Saving...] scrollback notice, status bar untouched."""
         import game_state
         import terminal
         monkeypatch.setattr(game_state, "SAVE_FILE", str(tmp_path / "s.sav"))
@@ -102,17 +102,17 @@ class TestBackup:
         pumps = []
         monkeypatch.setattr(terminal.tr, "_pump_keyboard",
                             lambda kc=None: pumps.append(kc), raising=False)
+        printed = []
+        monkeypatch.setattr(terminal.tr, "print",
+                            lambda *a, **kw: printed.append(a))
         statuses = []
-        orig_set = terminal.tr.set_status
-        spy = lambda text: (statuses.append(text), orig_set(text))
-        monkeypatch.setattr(terminal.tr, "set_status", spy)
-        orig_set("{R10/10hp{x prompt> ")
+        monkeypatch.setattr(terminal.tr, "set_status",
+                            lambda text: statuses.append(text))
 
         assert game_state.save_world(quiet=True)
         assert len(pumps) >= 12  # entry + one per segment boundary (post-split)
-        assert statuses[0] == "{c[Saving...]{x"
-        # restored WITH colour codes (status_text_raw, not the plain copy)
-        assert statuses[-1] == "{R10/10hp{x prompt> "
+        assert ("{D[Saving...]{x",) in printed
+        assert statuses == []  # no status-bar takeover (too loud, reverted)
 
     def test_check_silent_under_an_hour_with_no_backup(self, out):
         player = _make_player()

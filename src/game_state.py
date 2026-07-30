@@ -506,18 +506,12 @@ def backup_world():
 
 def save_world(quiet=False):
     """Save world state and optionally print success."""
-    # [PRIMESUD] Status-bar indicator for the ~0.9s save stall (quiet
-    # autosaves included): an explained pause reads as working, an
-    # unlabelled input freeze reads as lag. Restore follows the pager/
-    # autoskill-editor pattern (tr.status_text holds the plain copy).
-    _tr = terminal.tr
-    # status_text_raw keeps colour codes; plain status_text is the
-    # fallback for stubs that only track the tml-level copy.
-    _old_status = getattr(_tr, "status_text_raw", None)
-    if _old_status is None:
-        _old_status = getattr(_tr, "status_text", None)
-    if _old_status is not None:
-        _tr.set_status("{c[Saving...]{x")
+    # [PRIMESUD] Scrolling notice for the save stall (quiet autosaves
+    # included): an explained pause reads as working, an unlabelled input
+    # freeze reads as lag. Dim scrollback line, same register as the
+    # "[Loading area: ...]" notice -- a full status-bar takeover proved
+    # too loud once the post-diet save got quick.
+    tprint("{D[Saving...]{x")
     try:
         _serialize_world()
         if not quiet:
@@ -530,9 +524,6 @@ def save_world(quiet=False):
     except Exception as e:
         tprint("Save failed: " + str(e))
         return False
-    finally:
-        if _old_status is not None:
-            _tr.set_status(_old_status)
 
 
 def load_world():

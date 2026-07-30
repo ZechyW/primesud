@@ -323,10 +323,13 @@ deferred and merged into one save on the first non-fighting pulse, so the
 ~0.9 s save stall never lands mid-combat.  Mob HP and fight state never
 persist anyway, so nothing of value is lost by waiting.
 
-Every save (quiet autosaves included) shows a `[Saving...]` status-bar
-indicator and drains the keyboard between serialisation phases: keys
-typed during the stall are never lost, their echo just arrives when the
-prompt returns.
+Every save (quiet autosaves included) prints a dim `{D[Saving...]{x`
+scrollback notice -- same register as the `[Loading area: ...]` line --
+and drains the keyboard between serialisation phases: keys typed during
+the stall are never lost, their echo just arrives when the prompt
+returns.  (A status-bar takeover was tried first and reverted: too loud
+once the post-diet save got quick, a distracting flash rather than an
+indicator.)
 
 Interval configurable via `config.py:AUTOSAVE_TICKS`.
 
