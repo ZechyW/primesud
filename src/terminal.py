@@ -233,9 +233,9 @@ def install_color_print(tr):
         composes the whole batch into SCRATCH_GROB, then reveals this
         call's NEW rows one text-row at a time (REVEAL_MS_PER_LINE
         apart) for an old-school streaming feel -- shared _pace_row
-        state, so cadence carries across calls. Rows already on screen
-        before this call (scroll-shifted survivors) always blit
-        instantly first; any locally-queued key -- drained by the same
+        state, so cadence carries across calls. Each row lands at the
+        live cursor position, scrolling the screen one row at a time
+        as it fills; any locally-queued key -- drained by the same
         _pump_keyboard the game loop's poll_char uses -- fast-forwards
         every remaining row in one blit and latches pacing off until
         the next status/prompt update. With pacing off or latched, the
@@ -360,10 +360,20 @@ def install_color_print(tr):
         # and every scratch row is new).
         n_new = row - top
         if REVEAL_MS_PER_LINE > 0 and not _reveal[0]:
+            # [PRIMESUD] incremental reveal: each new row lands at the
+            # cursor's live position, scrolling the screen itself one
+            # row when it hits the bottom -- what a real terminal does
+            # -- instead of jumping the survivors up by the whole batch
+            # scroll first and slowly filling the vacated gap. The
+            # scroll is the same overlapping G0 self-blit + bottom fill
+            # tml._scroll_up uses, done raw here because the history
+            # ring was already captured from the pristine G0 above
+            # (tr._scroll_up would double-book it). Converges to the
+            # scratch's final state: after all rows the cumulative
+            # shift equals the folded scroll n.
+            cy0 = tr.cursor_y  # original cursor, incl. pending lazy scroll
+            shift = 0
             prefix_h = (top - base) * chh
-            if prefix_h:
-                _sb(0, 0, base * chh, tr.width, prefix_h,
-                    SCRATCH_GROB, 0, 0, tr.width, prefix_h)
             for i in range(n_new):
                 # _pace_row pumps the keyboard and latches the skip the
                 # moment a key is queued, so a mid-wait keypress
@@ -371,12 +381,23 @@ def install_color_print(tr):
                 # the wait started.
                 _pace_row()
                 if _reveal[0]:
-                    rem = n_new - i
-                    _sb(0, 0, (top + i) * chh, tr.width, rem * chh,
-                        SCRATCH_GROB, 0, prefix_h + i * chh, tr.width,
-                        rem * chh)
+                    # Fast-forward: the scratch holds the final text
+                    # area; one full blit lands everything pending,
+                    # whatever the reveal's progress so far.
+                    _sb(0, 0, base * chh, tr.width, h,
+                        SCRATCH_GROB, 0, 0, tr.width, h)
                     break
-                _sb(0, 0, (top + i) * chh, tr.width, chh,
+                r = cy0 + i - shift
+                d = r - tr.rows + 1
+                if d > 0:  # d <= 2: one row of scroll, +1 for a pending
+                    shift += d  # blank echo line (cursor_y == rows + 1)
+                    r = tr.rows - 1
+                    keep = (tr.rows - d) * chh
+                    _sb(0, 0, 0, tr.width, keep,
+                        0, 0, d * chh, tr.width, keep)
+                    fillrect(0, 0, keep, tr.width, d * chh,
+                             tr.back_color, tr.back_color)
+                _sb(0, 0, r * chh, tr.width, chh,
                     SCRATCH_GROB, 0, prefix_h + i * chh, tr.width, chh)
         else:
             _sb(0, 0, base * chh, tr.width, h, SCRATCH_GROB, 0, 0, tr.width, h)

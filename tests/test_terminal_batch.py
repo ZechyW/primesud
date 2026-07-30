@@ -60,6 +60,12 @@ class _Terminal:
         self.scrolled += 1
         self.cursor_y -= 1
 
+    def _pump_keyboard(self, key_commands=None):
+        pass
+
+    def has_queued_keys(self):
+        return False
+
 
 def _installed(monkeypatch, rows=4, cursor_y=0):
     palettes = []
@@ -176,6 +182,28 @@ def test_scrolloff_past_screen_fills_hist_blank(monkeypatch):
     assert (tr._hist_write, tr._hist_count) == (3, 3)
     assert _chars(blits) == _expand([(0, 0, "one"), (0, 1, "two")])
     assert (tr.cursor_x, tr.cursor_y) == (0, 2)
+
+
+def test_paced_reveal_scrolls_one_row_at_a_time(monkeypatch):
+    tr, _, blits, _ = _installed(monkeypatch, rows=4, cursor_y=3)
+    monkeypatch.setattr(terminal, "REVEAL_MS_PER_LINE", 1)
+
+    tr.print("{Rone{x\n{Gtwo{x")
+
+    # No whole-batch jump: every scratch->screen blit is a single row,
+    # landing at the live bottom row.
+    assert [b for b in blits if b[0] == 0 and b[5] == _SCRATCH] == [
+        (0, 0, 3, 64, 1, _SCRATCH, 0, 2, 64, 1),
+        (0, 0, 3, 64, 1, _SCRATCH, 0, 3, 64, 1)]
+    # The screen itself scrolls one row between them (G0 self-blit +
+    # vacated-row fill), tml._scroll_up shape.
+    assert [b for b in blits if b[0] == 0 and b[5] == 0] == [
+        (0, 0, 0, 64, 3, 0, 0, 1, 64, 3)]
+    assert tr.fills == [(0, 0, 3, 64, 1, 0xFFFFFF, 0xFFFFFF)]
+    # History still captured once, from the pristine pre-reveal screen.
+    assert [b for b in blits if b[0] == _HIST] == [
+        (_HIST, 0, 0, 64, 1, 0, 0, 0, 64, 1)]
+    assert (tr.cursor_x, tr.cursor_y) == (0, 4)
 
 
 def test_list_arg_batches_without_join(monkeypatch):
