@@ -33,12 +33,19 @@ UPD_TICK     = 2
 UPD_REGEN    = 4
 
 # -- Countdown timers (cf. 1stMud static locals in update_handler) -------------
-_pulse_area     = 0
-_pulse_mobile   = 0
-_pulse_music    = 0
-_pulse_violence = 0
-_pulse_regen    = 0
-_pulse_tick     = 0
+# [PRIMESUD] Staggered initial phases (1stMud inits all to 0, so every timer
+# fires on the same pulse each 30s and the worst pulse pays the sum of all
+# updaters).  Countdown reload preserves phase, so these one-time offsets
+# hold forever.  Two timers collide iff their offsets are congruent mod
+# gcd(period_i, period_j); the values below are distinct under every pairwise
+# gcd (4, 8, 20, 24, 120), so no two timers ever share a pulse (verified by
+# simulation over 240k pulses).  Note init 0 fires pulse 1, same as init 1.
+_pulse_violence = 1
+_pulse_mobile   = 2
+_pulse_music    = 3
+_pulse_regen    = 4
+_pulse_tick     = 6
+_pulse_area     = 7
 _regen_phase    = 0
 
 
