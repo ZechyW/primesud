@@ -4,9 +4,15 @@ Loads the REAL primesud.sav (copy it from the game appdir into this
 debug appdir first, Connectivity Kit) through the full game code, then
 runs three timed save_world passes with the "save" debug channel on, so
 game_state._SAVE_TIMING attributes the cost per segment:
-  ln.plr1 / ln.rle / ln.plr2 / ln.mob / ln.room (main save-line build,
-  split to attribute the ~1.5s steady "lines" cost from save_smoke-2)
+  ln.plr1 (scalars) / ln.pinv (inv+eq tokens) / ln.plearn (learned)
+  / ln.rle / ln.paff (affects/pet/macros/aliases) / ln.wstate
+  (area age+weather, time) / ln.stats (kill+explore stats, gquests)
+  / ln.mob / ln.room (resident items) / ln.rpend (pending passthrough)
   / snap / sweep / join / hvset / verify / fwrite
+(Split further 30/07 for the next save diet: the old ln.plr2 255ms /
+ln.room 246ms buckets each mixed unrelated costs.) A per-prefix payload
+breakdown (line count + bytes) prints after the saves so ms/item and
+hvset's ~1.1ms/KB attribution fall out of the same run.
 load_world now includes the pending-token cache prewarm, so its time
 absorbs what used to be save 1's one-time snap spike (4518ms in
 save_smoke-2). This probe also end-to-end validates the hvars_set
@@ -102,9 +108,32 @@ def main():
 
     payload = hvars_get("smoketest")
     if isinstance(payload, str):
-        n_it = payload.count("~it.")
-        log("payload: " + int_str(len(payload)) + "B, it-lines="
-            + int_str(n_it))
+        log("payload: " + int_str(len(payload)) + "B total")
+        # Per-prefix breakdown: first matching prefix wins, "other" catches
+        # the rest (v=, p.pos, ...). Maps onto the timing segments above.
+        groups = ["p.inv", "p.eq", "p.learned", "p.explored", "s.m.",
+                  "s.a.", "p.", "a.", "g.", "m=", "r.", "it."]
+        stats = {}
+        for line in payload.split("~"):
+            for pre in groups:
+                if line.startswith(pre):
+                    break
+            else:
+                pre = "other"
+            n, b = stats.get(pre, (0, 0))
+            stats[pre] = (n + 1, b + len(line))
+        for pre in groups + ["other"]:
+            if pre in stats:
+                n, b = stats[pre]
+                log("  " + pre + " lines=" + int_str(n)
+                    + " bytes=" + int_str(b))
+        # r. lines merge resident + pending; split from live world state.
+        n_res = 0
+        for rv in world.rooms:
+            if world.rooms[rv]["items"]:
+                n_res += 1
+        log("  r. resident-rooms=" + int_str(n_res)
+            + " pending-rooms=" + int_str(len(world._pending_room_items)))
     else:
         log("payload readback non-str: " + str(type(payload)))
     log("mem free end: " + int_str(free()))

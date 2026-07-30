@@ -157,6 +157,11 @@ def _serialize_world(hvar_name=None, file_name=None):
     lines.append("p.stance=" + st_str)
     armor = player["armor"]
     lines.append("p.armor=" + sstr(armor[0]) + "|" + sstr(armor[1]) + "|" + sstr(armor[2]) + "|" + sstr(armor[3]))
+    if _timed:
+        _SAVE_TIMING.append(("ln.plr1", ticks() - _tmark))
+        _tmark = ticks()
+    if _pump:
+        _pump(KEY_COMMANDS)
     inv_parts = []
     for o in player["inv"]:
         inv_parts.append(serialize_item_token(o))
@@ -167,6 +172,11 @@ def _serialize_world(hvar_name=None, file_name=None):
         val = serialize_item_token(obj) if obj is not None else ""
         equip_parts.append(val)
     lines.append("p.eq=" + "|".join(equip_parts))
+    if _timed:
+        _SAVE_TIMING.append(("ln.pinv", ticks() - _tmark))
+        _tmark = ticks()
+    if _pump:
+        _pump(KEY_COMMANDS)
     learned_parts = []
     for sk in sorted(player["learned"]):
         learned_parts.append(sstr(sk) + ":" + sstr(player["learned"][sk]))
@@ -176,7 +186,7 @@ def _serialize_world(hvar_name=None, file_name=None):
     if "autoskill_rot" in player:
         lines.append("p.autoskill_rot=" + ",".join(player["autoskill_rot"]))
     if _timed:
-        _SAVE_TIMING.append(("ln.plr1", ticks() - _tmark))
+        _SAVE_TIMING.append(("ln.plearn", ticks() - _tmark))
         _tmark = ticks()
     if _pump:
         _pump(KEY_COMMANDS)
@@ -231,6 +241,11 @@ def _serialize_world(hvar_name=None, file_name=None):
     if player.get("home_owned"):
         lines.append("p.home_name=" + sstr(player.get("home_name", "")))
         lines.append("p.home_desc=" + sstr(player.get("home_desc", "")))
+    if _timed:
+        _SAVE_TIMING.append(("ln.paff", ticks() - _tmark))
+        _tmark = ticks()
+    if _pump:
+        _pump(KEY_COMMANDS)
     for _as in world.areas:
         # HP Prime G1 has unstable percent-format strings in save payloads.
         _aparts = [sstr(_as["age"])]
@@ -241,6 +256,11 @@ def _serialize_world(hvar_name=None, file_name=None):
         lines.append("a." + sstr(_as["tag"]) + "=" + "|".join(_aparts))
     lines.append("g.time=" + sstr(time_info["hour"]) + "|" + sstr(time_info["day"]) + "|" + sstr(time_info["month"]) + "|" + sstr(time_info["year"]))
     lines.append("g.share=" + sstr(world.share_value))
+    if _timed:
+        _SAVE_TIMING.append(("ln.wstate", ticks() - _tmark))
+        _tmark = ticks()
+    if _pump:
+        _pump(KEY_COMMANDS)
     for _vnum in sorted(world.mob_stats):
         _stat = world.mob_stats[_vnum]
         lines.append("s.m." + sstr(_vnum) + "=" + sstr(_stat[0]) + "|" + sstr(_stat[1]))
@@ -250,7 +270,7 @@ def _serialize_world(hvar_name=None, file_name=None):
     for _gql in gq_save_lines():  # [PRIMESUD] gquest state
         lines.append(_gql)
     if _timed:
-        _SAVE_TIMING.append(("ln.plr2", ticks() - _tmark))
+        _SAVE_TIMING.append(("ln.stats", ticks() - _tmark))
         _tmark = ticks()
     if _pump:
         _pump(KEY_COMMANDS)
@@ -324,11 +344,16 @@ def _serialize_world(hvar_name=None, file_name=None):
         for o in rs["items"]:
             item_parts.append(serialize_item_token(o))
         lines.append("r." + sstr(rvnum) + ".items=" + "|".join(item_parts))
+    if _timed:
+        _SAVE_TIMING.append(("ln.room", ticks() - _tmark))
+        _tmark = ticks()
+    if _pump:
+        _pump(KEY_COMMANDS)
     # Re-serialize pending room items for unloaded areas (not in world.rooms)
     for rvnum in sorted(world._pending_room_items):
         lines.append("r." + sstr(rvnum) + ".items=" + sstr(world._pending_room_items[rvnum]))
     if _timed:
-        _SAVE_TIMING.append(("ln.room", ticks() - _tmark))
+        _SAVE_TIMING.append(("ln.rpend", ticks() - _tmark))
         _tmark = ticks()
     if _pump:
         _pump(KEY_COMMANDS)

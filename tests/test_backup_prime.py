@@ -109,7 +109,7 @@ class TestBackup:
         orig_set("{R10/10hp{x prompt> ")
 
         assert game_state.save_world(quiet=True)
-        assert len(pumps) >= 7  # entry + one per segment boundary
+        assert len(pumps) >= 12  # entry + one per segment boundary (post-split)
         assert statuses[0] == "{c[Saving...]{x"
         # restored WITH colour codes (status_text_raw, not the plain copy)
         assert statuses[-1] == "{R10/10hp{x prompt> "

@@ -261,6 +261,10 @@ dominated by re-scanning every `_pending_room_items` token line (snap
 "Save-path caches"): 879/881 ms steady (save_smoke-4.log), all in
 genuinely-changing data -- ln.plr1 168 / ln.rle 113 / ln.plr2 255 /
 ln.mob 10 / ln.room 246 / hvset 32, snap and sweep ~5 ms each.
+(Segments split finer on 30/07 for the next diet -- plr1 into
+plr1/pinv/plearn, plr2 into paff/wstate/stats, room into room/rpend --
+and save_smoke.py now prints a per-prefix payload breakdown; re-run it
+on-device before choosing diet targets.)
 `load_world` prewarms the pending-token cache (7.7 s -> 12.3 s load), so
 the first save skips the one-time 4.5 s token rescan; its remaining
 overhead (1333 ms, spread evenly across the ln.* segments) is
