@@ -272,9 +272,34 @@ plr1 55 / paff 52 / plearn 36 / hvset 36 / mob 12 / fwrite 17 / join 10
 / verify 11 / wstate 7 / room 0 / snap 4 / sweep 6. Warm-up save 1437 ms
 (num_str cache, as before). Both hot segments are alloc-bound line
 builds (~2.4-5 ms/line at ~0.5 ms/alloc), not data cost -- the cached
-m= block builds one 7.7 KB line from 100+ parts in 12 ms. Caveat: 0
-resident rooms this run, so per-item `serialize_item_token` cost
-(ln.room) is unmeasured; in play some rpend shifts to room.
+m= block builds one 7.7 KB line from 100+ parts in 12 ms.
+
+### Save diet round 2 (G1, measured 30 Jul 2026)
+
+Three caches from the smoke-5 attribution (DESIGN.md sec. Item template
+snapshots, "Save-path caches" round 2): pending-room lines (identity),
+kill-stat lines (value-pair -- the lists mutate in place), and the RLE
+explored-mask encode (player-held, revisits never invalidate).
+
+- All-pending config (save_smoke-6.log, same shape as smoke-5): 937 ->
+  **373 ms** steady; rpend 247->2, stats 250->43 (residue is the gquest
+  lines + dict walk), rle 113->1.
+- 3 areas resident, 37 resident item rooms (save_smoke-7.log): **834 ms**
+  steady. The caches hold (rpend 1 / stats 46 / rle 2), but live-data
+  serialization takes over: ln.room 271 (37 rooms of per-item
+  `serialize_item_token`, ~7 ms/room) and ln.mob 137 (live NPC position
+  walk), plus honest snap 20 / sweep 36 with real foreign-item scans.
+  First save after the loads: 2187 ms (cache warm-up, as always).
+
+Uncached remainder is live data: player segments ~220 ms (plr1/pinv/
+plearn/paff), room+mob ~410 ms when areas are resident, I/O floor
+~80 ms. Room-item and mob-position caching would need dirty flags at
+many scattered mutation sites (pickup/drop/loot/decay/resets; wander) --
+parked as measure-first candidates, not clear wins: the ~0.83 s worst
+case already runs behind the [Saving...] indicator with FIFO drains.
+Note: smoke-4/-5/-6 ran without `init_world()`, so their snap/sweep
+numbers used empty vnum ranges (foreign-item semantics slightly off,
+~5 ms class); smoke-7 is the faithful configuration.
 `load_world` prewarms the pending-token cache (7.7 s -> 12.3 s load), so
 the first save skips the one-time 4.5 s token rescan; its remaining
 overhead (1333 ms, spread evenly across the ln.* segments) is
@@ -287,7 +312,8 @@ Mid-fight saves had negative value anyway: mob HP/fight state never
 persists, so they only snapshotted the player's transient combat damage.
 Since 30/07 the save is no longer keyboard-dead: `_serialize_world`
 drains the firmware FIFO at each segment boundary (worst pump gap = the
-largest single segment, ~255 ms steady) and `save_world` shows a
+largest single segment, ~270 ms steady post-diet, sec. Save diet round
+2) and `save_world` shows a
 `[Saving...]` status indicator for the duration. Typed keys replay after
 the save; only their echo is delayed.
 
