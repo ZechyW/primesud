@@ -81,6 +81,7 @@ def main():
     game_state.SAVE_VAR = "smoketest"
     DBG.add("save")
 
+    world.init_world()  # before create_char: its reset_lazy clears chars
     player = create_char()
     player["_macros"] = {}
     player["room"] = R_STARTING_ROOM
