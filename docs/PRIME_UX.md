@@ -321,11 +321,35 @@ are remapped for the editor by passing a private `key_commands` dict to
 
 ---
 
+## Streaming output reveal
+
+All multi-row output — room looks, combat rounds, help/pager pages, the
+greeting — streams onto the screen one text row at a time at
+`config.py:REVEAL_MS_PER_LINE` (25 ms/row, tuned on device 30/07/2026;
+0 disables).  The first row of a burst is instant; cadence is time-based
+and shared across calls, so consecutive bursts hold rhythm instead of
+doubling rows at burst boundaries.
+
+Pressing any key during a reveal latches pacing off: the remainder blits
+instantly and the key is kept as pending input, so type-to-skip never
+eats a keystroke.  The latch holds until the prompt returns (any
+`set_status` call re-arms the first-row-instant rule).
+
+`config.py:REVEAL_MS_PER_CHAR` (default 0/off) adds left-to-right
+per-character streaming within each revealed row on top.
+
+---
+
 ## Autosave
 
 The player's state is saved automatically every 4 world ticks (≈ 2 minutes at
 the default pulse rate).  A manual `save` command is also available.  Save data
 is stored in the PPL home variable `primesud_save` via `HVars`.
+
+While the player is fighting, due autosaves (and after-kill saves) are
+deferred and merged into one save on the first non-fighting pulse, so the
+~0.9 s save stall never lands mid-combat.  Mob HP and fight state never
+persist anyway, so nothing of value is lost by waiting.
 
 Interval configurable via `config.py:AUTOSAVE_TICKS`.
 

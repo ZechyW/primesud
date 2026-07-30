@@ -25,6 +25,47 @@ full game heap, 14x the standalone cost), not the native draw calls
 alloc buys ~49 blits -- no per-char str iteration, slices, or `%`
 formatting. Numbers and method: docs/PERFORMANCE.md sec. Text rendering.
 
+**Input responsiveness (settled 30/07/2026).** The game loop is
+cooperative and single-threaded; the firmware key FIFO holds only 4
+presses, so the real latency metric is the longest gap between
+`_pump_keyboard` calls, not average pulse time. The settled architecture
+(measured history: docs/PERFORMANCE.md sec. Input-lag phase benchmark):
+
+- **Typing path:** prompt prefix cache (`player.py` `_PROMPT_CACHE`) +
+  offscreen status compose (`terminal.py` `wrapped_set_status`) +
+  colour-band font cache took a keystroke from ~210 to ~84 ms.
+- **Violence rounds** drain the firmware FIFO between combatants
+  (`combat.py` checkpoints) and render each round through one
+  `begin_batch`/`end_batch`, so long rounds delay input but no longer
+  drop it.
+- **Active-fighter index** (`world.FIGHTERS`): `violence_update` scans
+  only fighting/hunting char ids. `set_fighting`/`stop_fighting` are the
+  ONLY sanctioned mutation chokepoints for `ch["fighting"]`; the scan is
+  stale-tolerant (lazily discards evicted/cleared entries), so
+  clear-to-None and char-deletion paths need no index bookkeeping. The
+  measured win is small (~6-20 ms in-context; the ~100 ms estimate was a
+  tight-loop artifact) but it is kept for O(fighters) scaling.
+  Corollary recorded the hard way: "scan-shaped" cost estimates from
+  standalone loops overstate in-context cost -- measure in-context first.
+- **Autosave defers while fighting** (`primesud.py` `game_loop`): both
+  triggers gate on `player["fighting"] is None` and merge into one save
+  on the first non-fighting pulse, removing a guaranteed ~880 ms
+  mid-combat stall. Safe because mob HP/fight state never persists and
+  kill-saves already cover real progress.
+- **Pulse timers are phase-staggered** (`update.py`, derived at runtime)
+  so the six periodic updaters never share a pulse; the 30-second
+  all-updater pile-up is gone by construction. Periods are unchanged.
+- **Streaming reveal** (`terminal.py`): all output paths stream at
+  `REVEAL_MS_PER_LINE` (25 ms/row, device-tuned) with shared cross-call
+  cadence; any key latches pacing off instantly (key kept as input) and
+  `set_status` re-arms it. Optional per-char streaming behind
+  `REVEAL_MS_PER_CHAR` (default off). A deliberate feel feature, not a
+  cost: benches including it must subtract the pacing budget or set the
+  knob to 0. UX detail: docs/PRIME_UX.md sec. Streaming output reveal.
+- Measured dead ends, do not revisit without new evidence:
+  interpret-level batching (`look` render share ~nil) and
+  `mobile_update` scan reduction (same disproved scan-shape reasoning).
+
 ---
 
 ## Not ported

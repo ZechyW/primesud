@@ -149,6 +149,9 @@ worth trusting -- the engineering layer.
   Symb/Help step command history, Shift-minus or a touch swipe opens a 250-row
   scrollback, and a persistent status bar shows hp/mana/xp plus the live input
   buffer (docs/PRIME_UX.md).
+- **Streaming output reveal** -- multi-row output (looks, combat rounds, help
+  pages) streams in at 25ms/row for a terminal feel; any key skips the rest
+  instantly and is kept as input (terminal.py, docs/PRIME_UX.md).
 - **Session clock in place of a battery gauge** -- the Prime exposes no battery
   level to PPL or Python, so `time` reports how long the current sitting has
   run and an hourly notice announces it unprompted (update.py, info.py).

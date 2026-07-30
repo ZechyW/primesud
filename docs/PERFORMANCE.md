@@ -392,6 +392,20 @@ Phase C/D A/B (`combat_bench-4.log` after violence-round output batching;
 - Remaining 1-mob round cost (~355 ms) is attack chain + per-line rendering;
   needs per-hit profiling to subdivide further. Diminishing returns.
 
+Bench conventions (for future runs):
+
+- Probe is `debug/combat_bench.py`; deploy its copy into the debug appdir
+  payload, only ONE self-running probe .py per appdir (this OR
+  snapshot_gates.py OR save_smoke.py). Copy the real `primesud.sav` in
+  first -- the probe reads it read-only (SAVE_VAR redirected). Logs come
+  back as `combat_bench.log` -> save as `debug/combat_bench-N.log` and
+  commit with a `docs(perf)` entry.
+- **Pacing comparability:** runs 1-6 measured `interpret`/look paths
+  UNPACED; the global streaming reveal (settled after run 6) adds
+  `REVEAL_MS_PER_LINE` (~25 ms) per row to every multi-row path. A/B
+  against runs 1-6 must subtract that budget or set the knob to 0 for
+  the run.
+
 ## Session and memory behaviour (G1, measured 27 Jul 2026)
 
 `debug/mem_soak.py` filled the heap with 32 KB pattern chunks to
