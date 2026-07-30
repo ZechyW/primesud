@@ -116,6 +116,11 @@ class tml_prime:
     def has_queued_keys(self):
         return not _q.empty()
 
+    def peek_queued_events(self):
+        # No translated-event queue on PC (keys come straight off _q);
+        # the save echo preview is a device-only concern.
+        return []
+
     def read_key(self, code=False):
         """Blocking single-key read (pager etc.); esc arrives as '\\e'."""
         while True:

@@ -316,7 +316,9 @@ drains the firmware FIFO at each segment boundary (worst pump gap = the
 largest single segment, ~270 ms steady post-diet, sec. Save diet round
 2) and `save_world` prints a dim
 `[Saving...]` scrollback notice first. Typed keys replay after
-the save; only their echo is delayed.
+the save, and boundaries whose drain queued new keys redraw the prompt
+with an echo preview (`_save_echo`), so the echo lags by at most one
+segment rather than the whole save.
 
 ### Item-snapshot device gates (G1, measured 30 Jul 2026)
 

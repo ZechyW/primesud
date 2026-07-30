@@ -314,6 +314,15 @@ class tml_prime(tml):
         """Return True if translated key events are waiting. [PRIMESUD]"""
         return self._key_queue_count > 0
 
+    def peek_queued_events(self):
+        """Snapshot queued key events, oldest first; nothing dequeued. [PRIMESUD]"""
+        out = []
+        i = self._key_queue_head
+        for _ in range(self._key_queue_count):
+            out.append(self._key_queue[i])
+            i = (i + 1) % _KEY_QUEUE_SIZE
+        return out
+
     def _translate_key_press(self, bit, key_commands=None):
         """Update modifier state or return translated press event. [PRIMESUD]"""
         if bit == 36:  # Alpha

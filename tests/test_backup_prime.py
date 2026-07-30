@@ -114,6 +114,70 @@ class TestBackup:
         assert ("{D[Saving...]{x",) in printed
         assert statuses == []  # no status-bar takeover (too loud, reverted)
 
+    def test_save_echo_hook_fires_once_per_new_key(self, tmp_path, monkeypatch):
+        """[PRIMESUD] echo preview: the pump wrapper calls SAVE_ECHO_HOOK
+        only at boundaries whose drain queued new keys -- idle boundaries
+        stay redraw-free, and one keypress means one redraw."""
+        import game_state
+        import terminal
+        monkeypatch.setattr(game_state, "SAVE_FILE", str(tmp_path / "s.sav"))
+        _make_player()
+        tr = terminal.tr
+        monkeypatch.setattr(tr, "_key_queue_count", 0, raising=False)
+        pumps = [0]
+
+        def fake_pump(kc=None):
+            pumps[0] += 1
+            if pumps[0] == 3:  # a key arrives during the third segment
+                tr._key_queue_count += 1
+
+        monkeypatch.setattr(tr, "_pump_keyboard", fake_pump, raising=False)
+        echoes = []
+        monkeypatch.setattr(game_state, "SAVE_ECHO_HOOK",
+                            lambda: echoes.append(pumps[0]))
+        assert game_state.save_world(quiet=True)
+        assert echoes == [3]
+
+    def test_save_echo_previews_typed_keys(self, monkeypatch):
+        """[PRIMESUD] _save_echo: queued events filter into a prompt preview
+        (typed chars only, backspace applied, stops at Enter); macro subst
+        mirrored for the first char on an empty buffer."""
+        import game_state
+        import terminal
+
+        class _Game:
+            input_buf = "ki"
+
+        game = _Game()
+        game_state.init_game_state(game)  # wires SAVE_ECHO_HOOK closure
+        try:
+            _make_player()
+            shown = []
+            monkeypatch.setattr(game_state, "show_prompt",
+                                lambda player, buf: shown.append(buf))
+            events = [
+                ("l", None),
+                (12, None),          # history sentinel -- skipped
+                ("north", False),    # fn-key buffer load -- skipped
+                ("x", None),
+                ("\b", None),        # erases the x
+                ("l", None),
+                ("\n", None),
+                ("z", None),         # after Enter: next command, hidden
+            ]
+            monkeypatch.setattr(terminal.tr, "peek_queued_events",
+                                lambda: events)
+            game_state.SAVE_ECHO_HOOK()
+            assert shown == ["kill"]
+            # backspaces beyond the typed preview trim the existing buffer,
+            # and a first char typed onto an empty buffer macro-substitutes
+            monkeypatch.setitem(game_state._MACRO_SUBST, "q", "quaff heal")
+            events[:] = [("\b", None), ("\b", None), ("q", None)]
+            game_state.SAVE_ECHO_HOOK()
+            assert shown[-1] == "quaff heal"
+        finally:
+            game_state.SAVE_ECHO_HOOK = None
+
     def test_check_silent_under_an_hour_with_no_backup(self, out):
         player = _make_player()
         player["played"] = 1000

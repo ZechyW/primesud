@@ -14,7 +14,7 @@ from macros import _MACRO_SUBST
 from quest import rescale_quest_gear
 from gquest import gq_save_lines, gq_load_line, gq_reset
 from mob import reset_area, create_area_states, spawn_pet
-from player import create_char, reset_char, _EQUIP_SAVE_ORDER
+from player import create_char, reset_char, show_prompt, _EQUIP_SAVE_ORDER
 from picker import pick_from
 from classes import CLASS_TABLE
 from races import race_lookup, PC_RACE_ORDER, RACE_TABLE
@@ -85,6 +85,12 @@ SAVE_FILE = "primesud.sav"
 # (debug/save_smoke.py). Stays empty when the channel is off.
 _SAVE_TIMING = []
 
+# [PRIMESUD] Set by init_game_state to a _save_echo closure over the Game:
+# redraws the prompt with keys typed during a save (preview-only -- the
+# queue is not consumed). Called from _serialize_world's pump wrapper when
+# a drain queues new keys.
+SAVE_ECHO_HOOK = None
+
 
 def _serialize_world(hvar_name=None, file_name=None):
     """Serialise world state to a PPL HVars variable (cf. 1stMud save_char_obj in save.c).
@@ -121,7 +127,21 @@ def _serialize_world(hvar_name=None, file_name=None):
     # worst pump gap at the largest single segment (~255ms) so typing
     # through a save loses nothing; the keys replay after the save.
     # Same pattern as the violence_update checkpoints in combat.py.
-    _pump = getattr(terminal.tr, "_pump_keyboard", None)  # tests stub tr without it
+    _pump_raw = getattr(terminal.tr, "_pump_keyboard", None)  # tests stub tr without it
+    _pump = None
+    if _pump_raw:
+        _tr = terminal.tr
+        def _pump(kc):
+            # [PRIMESUD] Echo preview: when a drain queues new keys, redraw
+            # the prompt with them (SAVE_ECHO_HOOK) so typing through a save
+            # shows at the next segment boundary, not after the save. Count
+            # compare keeps idle boundaries redraw-free; the PC shim has no
+            # translated-event queue, so getattr keeps this device-only.
+            n0 = getattr(_tr, "_key_queue_count", None)
+            _pump_raw(kc)
+            if (SAVE_ECHO_HOOK and n0 is not None
+                    and _tr._key_queue_count != n0):
+                SAVE_ECHO_HOOK()
     if _pump:
         _pump(KEY_COMMANDS)
     player = world.chars[1]
@@ -793,9 +813,49 @@ def load_world():
     return _source
 
 
+def _save_echo(game):
+    """Redraw the prompt with keys typed during a save. [PRIMESUD]
+
+    Called via SAVE_ECHO_HOOK from the save's segment-boundary pump
+    whenever a drain queues new keys. Preview-only: the queue is
+    untouched, so game_loop still processes every event normally after
+    the save; this just makes the echo appear at the next boundary
+    (~270ms worst) instead of after the whole save. Skips key-command
+    events (auto_submit set), int sentinels and multi-char strings;
+    stops at the first Enter -- what follows belongs to the next
+    command and would render misleadingly merged.
+    """
+    typed = ""
+    bs = 0
+    for event in terminal.tr.peek_queued_events():
+        if event is None or event[1] is not None:
+            continue
+        char = event[0]
+        if not isinstance(char, str) or len(char) != 1:
+            continue
+        if char == "\n":
+            break
+        if char == "\b":
+            if typed:
+                typed = typed[:-1]
+            else:
+                bs += 1
+        else:
+            typed += char
+    buf = game.input_buf[:-bs] if bs else game.input_buf
+    if typed and not buf:
+        # Mirror game_loop's empty-buffer macro substitution
+        buf = _MACRO_SUBST.get(typed[0], typed[0]) + typed[1:]
+    else:
+        buf += typed
+    show_prompt(world.chars[1], buf)
+
+
 def init_game_state(game):
     """Initialise mutable game state fields. [PRIMESUD]"""
     game._backup_ok = False
+    global SAVE_ECHO_HOOK
+    SAVE_ECHO_HOOK = lambda: _save_echo(game)
 
 
 # Weapon pick order for new_game (cf. 1stMud const.c weapon_table -- the
