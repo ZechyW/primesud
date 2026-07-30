@@ -141,7 +141,9 @@ worth trusting -- the engineering layer.
 - **Save system** -- autosave to the calculator's HVar store every ~2 minutes
   and after every kill, deferred while fighting so the ~0.9s save stall never
   eats combat keystrokes; compact line format; saved deltas for unloaded areas
-  are buffered and replayed when the area loads; `backup` writes a manual
+  are buffered and replayed when the area loads; keys typed during the
+  save stall are never lost and echo live via a peek-only prompt preview
+  (docs/PRIME_UX.md "Autosave"); `backup` writes a manual
   second slot, restored by renaming the file in the calculator's file
   manager (game_state.py, world.py).
 - **Keypad UX** -- D-pad keys move directly, digit/decimal keys plus two
