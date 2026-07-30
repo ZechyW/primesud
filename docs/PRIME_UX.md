@@ -328,7 +328,11 @@ during the stall are never lost, and their echo appears live -- when a
 drain picks up new keys, the prompt is redrawn with a preview of the
 typed text (`_save_echo` in game_state.py; peek-only, the events still
 replay normally after the save), so typing through a save feels
-responsive at segment-boundary granularity (~270 ms worst).  Saves are
+responsive at segment-boundary granularity (~270 ms worst).  The replay
+itself coalesces into a single prompt repaint (`prompt_dirty` in
+game_loop: buffer-only edits defer the redraw until the key queue
+drains), so the post-save prompt matches the preview with no visible
+intermediate states.  Saves are
 otherwise silent: a per-save `{D[Saving...]{x` scrollback notice and,
 before that, a status-bar takeover were both tried and removed -- once
 the echo preview kept typing responsive, an indicator every ~2 minutes
