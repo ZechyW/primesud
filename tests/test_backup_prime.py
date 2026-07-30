@@ -92,9 +92,10 @@ class TestBackup:
         # above, which reflects the post-write update the live session sees.
         assert player2["backup"] == 0
 
-    def test_save_pumps_keyboard_and_prints_notice(self, tmp_path, monkeypatch):
+    def test_save_pumps_keyboard_quietly(self, tmp_path, monkeypatch):
         """[PRIMESUD] save stall UX: firmware FIFO drained at every segment
-        boundary, dim [Saving...] scrollback notice, status bar untouched."""
+        boundary; no scrollback notice or status-bar takeover -- the echo
+        preview (_save_echo) is the responsiveness signal now."""
         import game_state
         import terminal
         monkeypatch.setattr(game_state, "SAVE_FILE", str(tmp_path / "s.sav"))
@@ -111,7 +112,7 @@ class TestBackup:
 
         assert game_state.save_world(quiet=True)
         assert len(pumps) >= 12  # entry + one per segment boundary (post-split)
-        assert ("{D[Saving...]{x",) in printed
+        assert printed == []  # quiet: no per-autosave scrollback notice
         assert statuses == []  # no status-bar takeover (too loud, reverted)
 
     def test_save_echo_hook_fires_once_per_new_key(self, tmp_path, monkeypatch):

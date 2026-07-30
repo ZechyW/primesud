@@ -323,16 +323,20 @@ deferred and merged into one save on the first non-fighting pulse, so the
 ~0.9 s save stall never lands mid-combat.  Mob HP and fight state never
 persist anyway, so nothing of value is lost by waiting.
 
-Every save (quiet autosaves included) prints a dim `{D[Saving...]{x`
-scrollback notice -- same register as the `[Loading area: ...]` line --
-and drains the keyboard between serialisation phases: keys typed during
-the stall are never lost, and their echo appears live -- when a drain
-picks up new keys, the prompt is redrawn with a preview of the typed
-text (`_save_echo` in game_state.py; peek-only, the events still replay
-normally after the save), so typing through a save feels responsive at
-segment-boundary granularity (~270 ms worst).  (A status-bar takeover
-was tried first and reverted: too loud once the post-diet save got
-quick, a distracting flash rather than an indicator.)
+Every save drains the keyboard between serialisation phases: keys typed
+during the stall are never lost, and their echo appears live -- when a
+drain picks up new keys, the prompt is redrawn with a preview of the
+typed text (`_save_echo` in game_state.py; peek-only, the events still
+replay normally after the save), so typing through a save feels
+responsive at segment-boundary granularity (~270 ms worst).  Saves are
+otherwise silent: a per-save `{D[Saving...]{x` scrollback notice and,
+before that, a status-bar takeover were both tried and removed -- once
+the echo preview kept typing responsive, an indicator every ~2 minutes
+was flow-breaking noise rather than information.  The quit path still
+prints `[Saving and quitting...]`, where input really is done for good,
+and the load path prints `[Restoring save data...]` over the save-parse
++ cache-prewarm stretch that precedes the first `[Loading area: ...]`
+notice.
 
 Interval configurable via `config.py:AUTOSAVE_TICKS`.
 

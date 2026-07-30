@@ -526,12 +526,11 @@ def backup_world():
 
 def save_world(quiet=False):
     """Save world state and optionally print success."""
-    # [PRIMESUD] Scrolling notice for the save stall (quiet autosaves
-    # included): an explained pause reads as working, an unlabelled input
-    # freeze reads as lag. Dim scrollback line, same register as the
-    # "[Loading area: ...]" notice -- a full status-bar takeover proved
-    # too loud once the post-diet save got quick.
-    tprint("{D[Saving...]{x")
+    # [PRIMESUD] No scrollback notice here: the echo preview (_save_echo)
+    # keeps typing responsive through the stall, so a per-autosave
+    # "[Saving...]" line became noise -- flow-breaking, not informative.
+    # The quit path keeps its "[Saving and quitting...]" line (primesud.py):
+    # there input really is done for good.
     try:
         _serialize_world()
         if not quiet:
@@ -592,6 +591,11 @@ def load_world():
         except Exception:
             _backup_ok = False
         return (None, _backup_ok)
+
+    # [PRIMESUD] Signpost the parse + cache-prewarm stretch: without it the
+    # gap between the greeting and the first "[Loading area: ...]" notice
+    # (dominated by the pending-token prewarm below) reads as a hang.
+    tprint("{D[Restoring save data...]{x")
 
     if player["_macros"] is not None:
         player["_macros"].clear()

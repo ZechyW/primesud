@@ -296,8 +296,7 @@ plearn/paff), room+mob ~410 ms when areas are resident, I/O floor
 ~80 ms. Room-item and mob-position caching would need dirty flags at
 many scattered mutation sites (pickup/drop/loot/decay/resets; wander) --
 parked as measure-first candidates, not clear wins: the ~0.83 s worst
-case already runs behind the [Saving...] scrollback notice with FIFO
-drains.
+case already runs with FIFO drains and a live echo preview.
 Note: smoke-4/-5/-6 ran without `init_world()`, so their snap/sweep
 numbers used empty vnum ranges (foreign-item semantics slightly off,
 ~5 ms class); smoke-7 is the faithful configuration.
@@ -314,11 +313,13 @@ persists, so they only snapshotted the player's transient combat damage.
 Since 30/07 the save is no longer keyboard-dead: `_serialize_world`
 drains the firmware FIFO at each segment boundary (worst pump gap = the
 largest single segment, ~270 ms steady post-diet, sec. Save diet round
-2) and `save_world` prints a dim
-`[Saving...]` scrollback notice first. Typed keys replay after
-the save, and boundaries whose drain queued new keys redraw the prompt
-with an echo preview (`_save_echo`), so the echo lags by at most one
-segment rather than the whole save.
+2). Typed keys replay after the save, and boundaries whose drain queued
+new keys redraw the prompt with an echo preview (`_save_echo`), so the
+echo lags by at most one segment rather than the whole save. With the
+preview keeping typing responsive, the per-save `[Saving...]` scrollback
+notice was removed as noise (31/07); `load_world` prints a
+`[Restoring save data...]` notice over its parse + prewarm stretch
+instead.
 
 ### Item-snapshot device gates (G1, measured 30 Jul 2026)
 
