@@ -204,7 +204,8 @@ Deliberate gameplay tweaks; each is a settled decision in DESIGN.md or a
   help, the greeting) appears one line at a time (~25ms/line) instead of
   all at once, old-terminal style; any keypress during the reveal
   fast-forwards the rest instantly until the prompt returns, and the key
-  still counts as input (config.py `REVEAL_MS_PER_LINE`, terminal.py).
+  still counts as input; optional per-char left-to-right streaming on top
+  (config.py `REVEAL_MS_PER_LINE` / `REVEAL_MS_PER_CHAR`, terminal.py).
 - **Floor lights illuminate** -- a dropped torch or conjured light ball lights
   the room; stock ROM only counts worn lights (DESIGN.md "Room light
   counter").

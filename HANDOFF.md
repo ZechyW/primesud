@@ -63,8 +63,11 @@ Shipped since run 6, desktop-suite green, NOT on device yet:
   redraw, pager/autoskill indicators) clears the latch and re-arms the
   first-row-instant rule. Verified on the PC graphical stack: all five
   render paths + cross-call cadence at exact budget, latch <10ms.
-  Char-by-char streaming deliberately deferred until the line cadence
-  has been felt on device.
+  Cadence is time-based (last-row tick), so consecutive bursts hold
+  rhythm instead of doubling rows at burst boundaries. Char-by-char
+  streaming shipped behind `REVEAL_MS_PER_CHAR` (default 0/off): each
+  revealed row's cells blit left to right, complete-line prints
+  routing through print_lines when enabled.
   NOTE: this workstation has no appdir scaffolding -- the debug payload
   is now STALE (`src/primesud.py`, `src/terminal.py`, `src/config.py`);
   redeploy before the next device session.
@@ -79,8 +82,8 @@ Shipped since run 6, desktop-suite green, NOT on device yet:
    scroll-boundary + shift/alpha indicators clean, a real low-HP
    `flee`-spam test (the founding complaint), and combat spanning a
    120s autosave boundary (save must land after the fight, never
-   during). Judge whether 25ms/row cadence wants tuning and whether
-   char-by-char streaming is still wanted on top.
+   during). Judge whether the 30ms/row cadence wants tuning and
+   whether to turn on `REVEAL_MS_PER_CHAR` char streaming on top.
 2. Then per repo convention harvest `COMBAT_LAG.md`'s durable decisions
    into `DESIGN.md`/docs and DELETE both it and this handoff (git
    history keeps full text).

@@ -7,6 +7,7 @@ from config import (
     SCROLLBACK_SIZE, SCROLL_STEP, SWIPE_THRESHOLD, TOUCH_SCROLL_STEP,
     FLING_FRAME_MS, FLING_MIN_VELOCITY, FLING_DECAY_NUM, FLING_DECAY_DEN,
     FLING_SMOOTH_NUM, KEY_COMMANDS, REVEAL_MS_PER_LINE,
+    REVEAL_MS_PER_CHAR,
 )
 from colors import (COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full,
                     resolve_random, strip_colors)
@@ -236,7 +237,9 @@ def install_color_print(tr):
         apart) for an old-school streaming feel -- shared _pace_row
         state, so cadence carries across calls. Each row lands at the
         live cursor position, scrolling the screen one row at a time
-        as it fills; any locally-queued key -- drained by the same
+        as it fills; with REVEAL_MS_PER_CHAR set, each row's cells
+        additionally stream left to right. Any locally-queued key --
+        drained by the same
         _pump_keyboard the game loop's poll_char uses -- fast-forwards
         every remaining row in one blit and latches pacing off until
         the next status/prompt update. With pacing off or latched, the
@@ -360,7 +363,8 @@ def install_color_print(tr):
         # instantly below; n == 0 case: base == top, so prefix_h == 0
         # and every scratch row is new).
         n_new = row - top
-        if REVEAL_MS_PER_LINE > 0 and not _reveal[0]:
+        if (REVEAL_MS_PER_LINE > 0 or REVEAL_MS_PER_CHAR > 0) \
+                and not _reveal[0]:
             # [PRIMESUD] incremental reveal: each new row lands at the
             # cursor's live position, scrolling the screen itself one
             # row when it hits the bottom -- what a real terminal does
@@ -398,8 +402,33 @@ def install_color_print(tr):
                         0, 0, d * chh, tr.width, keep)
                     fillrect(0, 0, keep, tr.width, d * chh,
                              tr.back_color, tr.back_color)
-                _sb(0, 0, r * chh, tr.width, chh,
-                    SCRATCH_GROB, 0, prefix_h + i * chh, tr.width, chh)
+                sy = prefix_h + i * chh
+                if REVEAL_MS_PER_CHAR > 0:
+                    # [PRIMESUD] char streaming: blit the row's visible
+                    # cells left to right, one reveal wait apart. The
+                    # remainder blit afterwards squares the row with the
+                    # scratch (clears any stale cells past the text).
+                    t = physical[i]
+                    wv = len(_sc(t)) if _CC in t else len(t)
+                    px = 0
+                    for _k in range(wv):
+                        if _reveal_wait(REVEAL_MS_PER_CHAR):
+                            _reveal[0] = True
+                            break
+                        _sb(0, px, r * chh, cw, chh,
+                            SCRATCH_GROB, px, sy, cw, chh)
+                        px += cw
+                    if _reveal[0]:
+                        _sb(0, 0, base * chh, tr.width, h,
+                            SCRATCH_GROB, 0, 0, tr.width, h)
+                        break
+                    if px < tr.width:
+                        _sb(0, px, r * chh, tr.width - px, chh,
+                            SCRATCH_GROB, px, sy, tr.width - px, chh)
+                    _reveal[1] = ticks()  # next row paces from row end
+                else:
+                    _sb(0, 0, r * chh, tr.width, chh,
+                        SCRATCH_GROB, 0, sy, tr.width, chh)
         else:
             _sb(0, 0, base * chh, tr.width, h, SCRATCH_GROB, 0, 0, tr.width, h)
         tr.cursor_x = 0
@@ -481,6 +510,13 @@ def install_color_print(tr):
             lines = text.split('\n')
             for idx, line in enumerate(lines):
                 wrapped_print(line, end='\n' if idx < len(lines) - 1 else end)
+            return
+        # [PRIMESUD] char streaming: complete lines route through
+        # print_lines so the per-char reveal lives in one place; the
+        # fast paths below draw whole runs at once. Partial-line prints
+        # (end != '\n' or mid-row cursor) stay on the immediate paths.
+        if REVEAL_MS_PER_CHAR > 0 and end == '\n' and tr.cursor_x == 0:
+            print_lines([text])
             return
         if _CC not in text:
             # Fast path: skip color_wrap and all colour-code scanning.

@@ -206,6 +206,22 @@ def test_paced_reveal_scrolls_one_row_at_a_time(monkeypatch):
     assert (tr.cursor_x, tr.cursor_y) == (0, 4)
 
 
+def test_char_streaming_blits_cells_left_to_right(monkeypatch):
+    tr, _, blits, _ = _installed(monkeypatch)
+    monkeypatch.setattr(terminal, "REVEAL_MS_PER_CHAR", 1)
+
+    tr.print("{Rone{x")
+
+    # One cell blit per visible char, then a remainder blit squaring
+    # the rest of the row with the scratch background.
+    assert [b for b in blits if b[0] == 0 and b[5] == _SCRATCH] == [
+        (0, 0, 0, 1, 1, _SCRATCH, 0, 0, 1, 1),
+        (0, 1, 0, 1, 1, _SCRATCH, 1, 0, 1, 1),
+        (0, 2, 0, 1, 1, _SCRATCH, 2, 0, 1, 1),
+        (0, 3, 0, 61, 1, _SCRATCH, 3, 0, 61, 1)]
+    assert (tr.cursor_x, tr.cursor_y) == (0, 1)
+
+
 def test_list_arg_batches_without_join(monkeypatch):
     tr, palettes, blits, _ = _installed(monkeypatch)
 
