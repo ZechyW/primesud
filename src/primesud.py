@@ -126,6 +126,12 @@ class Game:
         tick_count = 0
         now        = ticks()
         next_pulse = now + MS_PER_PULSE
+        # [PRIMESUD] Buffer-only edits (typed char, backspace, Esc, history)
+        # set this instead of redrawing the prompt; the draw happens once the
+        # key queue is empty. Coalesces the post-save replay burst -- and any
+        # fast-typing burst -- into one repaint, so the echo preview never
+        # visibly "regresses" through intermediate buffer states.
+        prompt_dirty = False
 
         gc_collect()
 
@@ -178,12 +184,12 @@ class Game:
                         show_prompt(player, self.input_buf)
                 elif char == "\b":
                     self.input_buf = self.input_buf[:-1]
-                    show_prompt(player, self.input_buf)
+                    prompt_dirty = True
                 elif char == "\\e":
                     self.input_buf = ""
                     self._hist_pos   = None  # [PRIMESUD] ESC commits to the empty buffer
                     self._hist_saved = ""
-                    show_prompt(player, self.input_buf)
+                    prompt_dirty = True
                 elif char == _HIST_UP:  # [PRIMESUD] recall older command
                     if self._cmd_history:
                         if self._hist_pos is None:
@@ -192,7 +198,7 @@ class Game:
                         elif self._hist_pos > 0:
                             self._hist_pos -= 1
                         self.input_buf = self._cmd_history[self._hist_pos]
-                        show_prompt(player, self.input_buf)
+                        prompt_dirty = True
                 elif char == _HIST_DN:  # [PRIMESUD] recall newer command / restore saved
                     if self._hist_pos is not None:
                         if self._hist_pos < len(self._cmd_history) - 1:
@@ -202,7 +208,7 @@ class Game:
                             self.input_buf = self._hist_saved
                             self._hist_pos   = None
                             self._hist_saved = ""
-                        show_prompt(player, self.input_buf)
+                        prompt_dirty = True
                 elif auto_submit is True:  # [PRIMESUD] hardware key -- immediate submit
                     if player.get("run_buf"):
                         # [PRIMESUD] keyboard input cancels run
@@ -224,14 +230,20 @@ class Game:
                         show_prompt(player, self.input_buf)
                 elif auto_submit is False:  # [PRIMESUD] hardware key -- load into buffer
                     self.input_buf = char
-                    show_prompt(player, self.input_buf)
+                    prompt_dirty = True
                 elif char is not None and char not in ("\\L", "\\R", "\\SR"):
                     subst = _MACRO_SUBST.get(char)
                     if subst is not None and not self.input_buf:
                         self.input_buf = subst
                     elif char not in FNKEY_SENTINELS:
                         self.input_buf += char
-                    show_prompt(player, self.input_buf)
+                    prompt_dirty = True
+
+            # [PRIMESUD] Deferred prompt redraw: flush buffer edits in one
+            # repaint once the key queue drains (see prompt_dirty above).
+            if prompt_dirty and not tr.has_queued_keys():
+                show_prompt(player, self.input_buf)
+                prompt_dirty = False
 
             now = ticks()
             if now >= next_pulse:
