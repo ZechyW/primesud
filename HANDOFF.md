@@ -49,9 +49,14 @@ Shipped since run 6, desktop-suite green, NOT on device yet:
   mid-combat keyboard-dead stall. Rationale: mob HP/fight state never
   persists, so mid-fight saves only snapshotted transient player damage
   (negative value). Kill-saves already cover real progress.
+- **Reveal safety-valve fix** (`terminal.py` `_reveal_wait`): the
+  `_REVEAL_MAX_ITERS` bound now counts consecutive zero-clock-progress
+  spins, not total spins -- a fixed total truncated the reveal to ~12ms
+  /line on the fast PC shim (~6us/spin). Device behaviour unchanged
+  (slow spins always advance the clock); frozen-clock protection kept.
   NOTE: this workstation has no appdir scaffolding -- the debug payload
-  is now STALE (`src/primesud.py`); redeploy before the next device
-  session.
+  is now STALE (`src/primesud.py`, `src/terminal.py`); redeploy before
+  the next device session.
 
 ## Immediate next step (needs physical G1 + Connectivity Kit)
 

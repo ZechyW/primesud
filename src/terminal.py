@@ -92,10 +92,12 @@ def install_color_print(tr):
     # it so a queued hardware command key fast-forwards identically to a
     # plain character key.
     _KC = KEY_COMMANDS
-    # [PRIMESUD] delay-loop safety valve: bounds the spin below even if
-    # Ticks() were ever frozen or non-monotonic (a pc_shim/emulator
-    # quirk, not seen on real firmware), so a stalled clock degrades to
-    # "reveals faster than intended" instead of a hang.
+    # [PRIMESUD] delay-loop safety valve: bounds CONSECUTIVE spins with
+    # no clock progress, so a frozen Ticks() (a pc_shim/emulator quirk,
+    # not seen on real firmware) degrades to "reveals faster than
+    # intended" instead of a hang. Counting total spins instead was
+    # wrong: a fast host (PC shim, ~6us/spin) burns any fixed total
+    # before 25ms of real time elapses, silently truncating the reveal.
     _REVEAL_MAX_ITERS = 2000
 
     def _reveal_wait(ms):
@@ -108,13 +110,19 @@ def install_color_print(tr):
         with nothing queued.
         """
         t0 = ticks()
+        last = t0
         i = 0
         while i < _REVEAL_MAX_ITERS:
             tr._pump_keyboard(_KC)
             if tr.has_queued_keys():
                 return True
-            if ticks() - t0 >= ms:
+            t = ticks()
+            dt = t - t0
+            if dt >= ms or dt < 0:  # elapsed, or clock wrapped/regressed
                 return False
+            if t != last:  # clock alive -- only count stalled spins
+                last = t
+                i = 0
             i += 1
         return False
     # [PRIMESUD] int-keyed glyph x-offsets for the batch compose: bytes
