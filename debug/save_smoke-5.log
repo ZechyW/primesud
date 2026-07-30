@@ -1,0 +1,24 @@
+save_smoke: full-game load + timed saves
+mem free start: 7077296
+load_world: 15035ms source=file
+areas loaded: 0, snapshots: 31
+mem free after load: 6416768
+save 1: ok=True total=1437ms  ln.plr1=88 ln.pinv=138 ln.plearn=57 ln.rle=149 ln.paff=53 ln.wstate=8 ln.stats=351 ln.mob=13 ln.room=1 ln.rpend=480 snap=4 sweep=6 join=10 hvset=37 verify=11 fwrite=25
+save 2: ok=True total=937ms  ln.plr1=55 ln.pinv=71 ln.plearn=36 ln.rle=113 ln.paff=52 ln.wstate=7 ln.stats=250 ln.mob=12 ln.room=0 ln.rpend=247 snap=4 sweep=6 join=10 hvset=36 verify=11 fwrite=17
+save 3: ok=True total=938ms  ln.plr1=55 ln.pinv=70 ln.plearn=36 ln.rle=114 ln.paff=54 ln.wstate=7 ln.stats=250 ln.mob=13 ln.room=1 ln.rpend=247 snap=4 sweep=6 join=10 hvset=36 verify=11 fwrite=17
+payload: 26592B total
+  p.inv lines=1 bytes=122
+  p.eq lines=1 bytes=225
+  p.learned lines=1 bytes=132
+  p.explored lines=1 bytes=337
+  s.m. lines=44 bytes=533
+  s.a. lines=8 bytes=123
+  p. lines=37 bytes=706
+  g. lines=5 bytes=175
+  m= lines=1 bytes=7679
+  r. lines=102 bytes=8092
+  it. lines=21 bytes=8242
+  other lines=1 bytes=4
+  r. resident-rooms=0 pending-rooms=102
+mem free end: 5560080
+Done. Results in save_smoke.log

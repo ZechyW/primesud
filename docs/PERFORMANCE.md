@@ -263,8 +263,18 @@ genuinely-changing data -- ln.plr1 168 / ln.rle 113 / ln.plr2 255 /
 ln.mob 10 / ln.room 246 / hvset 32, snap and sweep ~5 ms each.
 (Segments split finer on 30/07 for the next diet -- plr1 into
 plr1/pinv/plearn, plr2 into paff/wstate/stats, room into room/rpend --
-and save_smoke.py now prints a per-prefix payload breakdown; re-run it
-on-device before choosing diet targets.)
+and save_smoke.py now prints a per-prefix payload breakdown.)
+
+Fine-grained run (save_smoke-5.log, G1, 30/07, 26.6 KB payload, 0 areas
+resident): 937 ms steady = stats 250 (44 s.m. + 8 s.a. lines + gquest)
+/ rpend 247 (102 pending-room passthrough lines) / rle 113 / pinv 70 /
+plr1 55 / paff 52 / plearn 36 / hvset 36 / mob 12 / fwrite 17 / join 10
+/ verify 11 / wstate 7 / room 0 / snap 4 / sweep 6. Warm-up save 1437 ms
+(num_str cache, as before). Both hot segments are alloc-bound line
+builds (~2.4-5 ms/line at ~0.5 ms/alloc), not data cost -- the cached
+m= block builds one 7.7 KB line from 100+ parts in 12 ms. Caveat: 0
+resident rooms this run, so per-item `serialize_item_token` cost
+(ln.room) is unmeasured; in play some rpend shifts to room.
 `load_world` prewarms the pending-token cache (7.7 s -> 12.3 s load), so
 the first save skips the one-time 4.5 s token rescan; its remaining
 overhead (1333 ms, spread evenly across the ln.* segments) is
