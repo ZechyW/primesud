@@ -357,6 +357,18 @@ save-shaped churn+collect cycles). Covers both bugs: the serializer
 now runs on `util.sstr`/`num_str`/`int_str` (str(int)-GC bug) and all
 game output is concat-built with zero `%`/`.format()` (format bug).
 
+Survivor found 31 Jul 2026: `scan.py` held its distance strings in a
+module-level table (`"nearby to the %s."`) and applied `%` to the
+hoisted variable, so `check_ascii_py.py`'s direct-`%`-on-literal rule
+never saw it -- a live `%` on every `scan` that spotted a mob, for the
+whole life of the project.  Fixed to concat, and the checker now also
+flags any string literal carrying a printf conversion spec unless it is
+a docstring or an argument to `chprintf`/`chprintlnf` (0 false
+positives across `src/`).  Rest of the sweep was clean: no `.format()`,
+no f-strings, 37 other `%` sites all numeric modulo, every `open()` in
+a `with`, no bulk `str(int)` loops, `gc.collect()` sites all away from
+int-render bursts, `ppleval` fed only int-derived strings.
+
 ## Related PPL parse bug (unrelated mechanism, same fragile bridge)
 
 Community-documented: numeric literals with a plus-sign exponent

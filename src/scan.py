@@ -5,21 +5,23 @@ from config import DIR_ALIASES, EXIT_NAMES
 from handler import chprintln, can_see
 from world import ROOM_DEFS, MOB_DEFS
 
+# [PRIMESUD] depth>0 entries are prefixes completed with the direction plus
+# "."; 1stMud's "%s" slots cannot survive the device format bug (CLAUDE.md
+# pitfall 8, docs/PRIME_FIRMWARE_BUGS.md).
 _DISTANCE = (
     "right here.",
-    "nearby to the %s.",
-    "not far %s.",
-    "off in the distance %s.",
+    "nearby to the ",
+    "not far ",
+    "off in the distance ",
 )
 
 
 def _scan_char_line(victim, depth, door):
     """Build one scan result line (cf. 1stMud scan_char in scan.c)."""
     tpl = MOB_DEFS[victim["tpl"]]
-    direction = EXIT_NAMES.get(door, door)
     suffix = _DISTANCE[depth]
     if depth > 0:
-        suffix = suffix % direction
+        suffix = suffix + EXIT_NAMES.get(door, door) + "."
     return tpl["short_descr"] + ", " + suffix
 
 
