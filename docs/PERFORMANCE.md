@@ -266,12 +266,16 @@ the first save skips the one-time 4.5 s token rescan; its remaining
 overhead (1333 ms, spread evenly across the ln.* segments) is
 `util.num_str` cache warm-up, not a cache miss.
 
-The ~880 ms save is a synchronous keyboard-dead stall, so autosaves
-(tick-timer and after-kill `save_pending`) are deferred while the player
-is fighting and fire on the first non-fighting pulse (`game_loop` in
-primesud.py). Mid-fight saves had negative value anyway: mob HP/fight
-state never persists, so they only snapshotted the player's transient
-combat damage.
+The ~880 ms save is synchronous, so autosaves (tick-timer and
+after-kill `save_pending`) are deferred while the player is fighting and
+fire on the first non-fighting pulse (`game_loop` in primesud.py).
+Mid-fight saves had negative value anyway: mob HP/fight state never
+persists, so they only snapshotted the player's transient combat damage.
+Since 30/07 the save is no longer keyboard-dead: `_serialize_world`
+drains the firmware FIFO at each segment boundary (worst pump gap = the
+largest single segment, ~255 ms steady) and `save_world` shows a
+`[Saving...]` status indicator for the duration. Typed keys replay after
+the save; only their echo is delayed.
 
 ### Item-snapshot device gates (G1, measured 30 Jul 2026)
 

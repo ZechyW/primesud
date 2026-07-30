@@ -323,6 +323,11 @@ deferred and merged into one save on the first non-fighting pulse, so the
 ~0.9 s save stall never lands mid-combat.  Mob HP and fight state never
 persist anyway, so nothing of value is lost by waiting.
 
+Every save (quiet autosaves included) shows a `[Saving...]` status-bar
+indicator and drains the keyboard between serialisation phases: keys
+typed during the stall are never lost, their echo just arrives when the
+prompt returns.
+
 Interval configurable via `config.py:AUTOSAVE_TICKS`.
 
 ---
