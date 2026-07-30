@@ -100,6 +100,8 @@ def main():
     counts = {}
     for rv in world._pending_room_items:
         tag = world._vnum_to_tag(rv)
+        if tag is None:  # room outside every area range: nothing to load
+            continue
         counts[tag] = counts.get(tag, 0) + 1
     for tag in sorted(counts, key=lambda t: -counts[t])[:2]:
         t0 = ticks()
