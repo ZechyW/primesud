@@ -41,8 +41,8 @@ Default digit and decimal bindings (`config.py:DEFAULT_MACROS`):
 | 7   | `kill`    |
 | 8   | `flee`    |
 | 9   | `cast`    |
-| 4   | `give`    |
-| 5   | `get`     |
+| 4   | `buy`     |
+| 5   | `sell`    |
 | 6   | `drop`    |
 | 1   | `score`   |
 | 2   | `practice`|
