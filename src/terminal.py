@@ -6,11 +6,12 @@ from config import (
     DARK_MODE, BG_COLOR, TAB_SIZE, FONT,
     SCROLLBACK_SIZE, SCROLL_STEP, SWIPE_THRESHOLD, TOUCH_SCROLL_STEP,
     FLING_FRAME_MS, FLING_MIN_VELOCITY, FLING_DECAY_NUM, FLING_DECAY_DEN,
-    FLING_SMOOTH_NUM,
+    FLING_SMOOTH_NUM, KEY_COMMANDS, REVEAL_MS_PER_LINE,
 )
 from colors import (COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full,
                     resolve_random, strip_colors)
 from hpprime import dimgrob, fillrect, getpix, grobh, grobw, pixon, strblit2
+from prime_platform import ticks
 from util import pad_right
 
 
@@ -86,6 +87,36 @@ def install_color_print(tr):
     _rr = resolve_random
     _pxy = tr.print_xy
     _pch = tr._put_char
+    # [PRIMESUD] same key-command mapping the game loop passes to
+    # poll_char (see primesud.py) -- paced reveal pumps the keyboard with
+    # it so a queued hardware command key fast-forwards identically to a
+    # plain character key.
+    _KC = KEY_COMMANDS
+    # [PRIMESUD] delay-loop safety valve: bounds the spin below even if
+    # Ticks() were ever frozen or non-monotonic (a pc_shim/emulator
+    # quirk, not seen on real firmware), so a stalled clock degrades to
+    # "reveals faster than intended" instead of a hang.
+    _REVEAL_MAX_ITERS = 2000
+
+    def _reveal_wait(ms):
+        """Pace one line of a combat-output reveal. [PRIMESUD]
+
+        Pumps the keyboard every spin so a hardware key lands in the
+        local queue the same way the main loop's poll_char would.
+        Returns True the instant a key is queued (caller should
+        fast-forward the remaining reveal), False once `ms` has elapsed
+        with nothing queued.
+        """
+        t0 = ticks()
+        i = 0
+        while i < _REVEAL_MAX_ITERS:
+            tr._pump_keyboard(_KC)
+            if tr.has_queued_keys():
+                return True
+            if ticks() - t0 >= ms:
+                return False
+            i += 1
+        return False
     # [PRIMESUD] int-keyed glyph x-offsets for the batch compose: bytes
     # iteration yields ints, so the per-char draw loop allocates nothing
     # (a small alloc costs ~0.5ms at full game heap on device --
@@ -161,12 +192,26 @@ def install_color_print(tr):
             tr.cursor_y += 1
             s = s[space:]
 
-    def print_lines(lines):
+    def print_lines(lines, paced=False):
         """Render complete lines offscreen, then blit once. [PRIMESUD]
 
         Groups segments by colour (one font repaint per distinct colour),
         composes the whole batch into SCRATCH_GROB, and updates the screen
         with a single blit -- no visible char-by-char fill-in.
+
+        Args:
+            lines: complete physical or logical lines to render.
+            paced: when True (end_batch's combat flush) and
+                REVEAL_MS_PER_LINE > 0, reveal this call's NEW lines one
+                text-row at a time instead of one instant blit -- an
+                old-school "line at a time" combat feel. Rows already on
+                screen before this call (scroll-shifted survivors) always
+                blit instantly first; any locally-queued key -- drained
+                by the same _pump_keyboard the game loop's poll_char
+                uses -- fast-forwards every remaining row in one blit.
+                Default False: every other caller (wrapped_print's list
+                and multi-line paths) keeps today's single-blit
+                behaviour unchanged.
         """
         physical = []
         for text in lines:
@@ -277,7 +322,35 @@ def install_color_print(tr):
                         _sb(SCRATCH_GROB, px, py, cw, chh,
                             FONT_GROB, fx, 0, cw, chh)
                     px += cw
-        _sb(0, 0, base * chh, tr.width, h, SCRATCH_GROB, 0, 0, tr.width, h)
+        # [PRIMESUD] paced reveal. `row` is top + len(physical) (the
+        # compose loop above increments it once per physical line), so
+        # n_new == len(physical) is exactly this call's NEW line count --
+        # never an already-on-screen row, even when a scroll folded
+        # older survivors into the same scratch (base == 0 case: those
+        # survivors occupy scratch/screen rows [0, top), always blit
+        # instantly below; n == 0 case: base == top, so prefix_h == 0
+        # and every scratch row is new).
+        n_new = row - top
+        if paced and REVEAL_MS_PER_LINE > 0 and n_new > 1:
+            prefix_h = (top - base) * chh
+            if prefix_h:
+                _sb(0, 0, base * chh, tr.width, prefix_h,
+                    SCRATCH_GROB, 0, 0, tr.width, prefix_h)
+            for i in range(n_new):
+                # No delay before the first row; _reveal_wait pumps the
+                # keyboard and returns True the moment a key is queued,
+                # so a mid-wait keypress fast-forwards just as promptly
+                # as one queued before the wait started.
+                if i > 0 and _reveal_wait(REVEAL_MS_PER_LINE):
+                    rem = n_new - i
+                    _sb(0, 0, (top + i) * chh, tr.width, rem * chh,
+                        SCRATCH_GROB, 0, prefix_h + i * chh, tr.width,
+                        rem * chh)
+                    break
+                _sb(0, 0, (top + i) * chh, tr.width, chh,
+                    SCRATCH_GROB, 0, prefix_h + i * chh, tr.width, chh)
+        else:
+            _sb(0, 0, base * chh, tr.width, h, SCRATCH_GROB, 0, 0, tr.width, h)
         tr.cursor_x = 0
         tr.cursor_y = row
 
@@ -305,7 +378,7 @@ def install_color_print(tr):
         _batch_on[0] = False
         if _batch_buf:
             if tr.cursor_x == 0:
-                print_lines(_batch_buf)
+                print_lines(_batch_buf, paced=True)
             else:
                 # Defensive: violence output starts at column 0 in
                 # practice, but if something left a partial line pending,

@@ -39,6 +39,7 @@ AREA_CACHE_MAX   = 12
 AREA_LOAD_BENCH  = False
 AUTOSAVE_TICKS   = 4                          # autosave every N world ticks
 DEATH_MSG_DELAY  = 3                          # seconds between death flavour lines
+REVEAL_MS_PER_LINE = 25                       # [PRIMESUD] paced combat-output reveal; 0 disables
 
 
 # Quest/gquest durations are configured and balanced in real-world minutes
