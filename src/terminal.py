@@ -127,30 +127,31 @@ def install_color_print(tr):
         return False
 
     # [PRIMESUD] streaming-reveal state shared by every output path:
-    # [skip_latch, row_seen].  skip_latch: a key arrived during a reveal
-    # wait -- draw everything instantly until control returns to input
-    # (any set_status call resets; the key itself stays queued as
-    # pending input).  row_seen: a row has rendered since the last
-    # reset, so the first row of a burst always lands instantly and
-    # only rows after it pace -- across calls, not per call, so a
-    # screen printed one tr.print per line streams the same as one
-    # batched print_lines call.
-    _reveal = [False, False]
+    # [skip_latch, last_row_ticks].  skip_latch: a key arrived during a
+    # reveal wait -- draw everything instantly until control returns to
+    # input (any set_status call resets; the key itself stays queued as
+    # pending input).  last_row_ticks: when the last row was revealed;
+    # cadence is time-based, so it carries across calls AND bursts -- a
+    # burst starting right after another waits its share instead of
+    # printing its first row on top of the previous burst's last row,
+    # while a row after idle time (typed command echo, a combat round
+    # two seconds later) still lands instantly.
+    _reveal = [False, 0]
 
     def _pace_row():
         """Pace one physical row of the streaming output reveal. [PRIMESUD]
 
-        Waits REVEAL_MS_PER_LINE before the row unless pacing is
-        disabled, latched off by a key, or this is the first row since
-        the last prompt/status update.
+        Waits out whatever remains of REVEAL_MS_PER_LINE since the last
+        revealed row, unless pacing is disabled or latched off by a key.
         """
         if REVEAL_MS_PER_LINE <= 0 or _reveal[0]:
             return
-        if not _reveal[1]:
-            _reveal[1] = True
-            return
-        if _reveal_wait(REVEAL_MS_PER_LINE):
-            _reveal[0] = True
+        dt = ticks() - _reveal[1]
+        if 0 <= dt < REVEAL_MS_PER_LINE:  # wrapped clock -> instant
+            if _reveal_wait(REVEAL_MS_PER_LINE - dt):
+                _reveal[0] = True
+                return
+        _reveal[1] = ticks()
     # [PRIMESUD] int-keyed glyph x-offsets for the batch compose: bytes
     # iteration yields ints, so the per-char draw loop allocates nothing
     # (a small alloc costs ~0.5ms at full game heap on device --
@@ -549,10 +550,10 @@ def install_color_print(tr):
         """
         # [PRIMESUD] every set_status caller (show_prompt, pager page
         # indicator, autoskill picker) marks control back at input --
-        # reset the streaming reveal: clear the type-to-skip latch and
-        # let the next burst's first row land instantly again.
+        # clear the streaming reveal's type-to-skip latch so the next
+        # burst paces again. Cadence itself is time-based (_reveal[1]),
+        # so it needs no reset here.
         _reveal[0] = False
-        _reveal[1] = False
         length = tr.columns - 6
         if _CC not in text:
             if current_fg[0] is not None:
