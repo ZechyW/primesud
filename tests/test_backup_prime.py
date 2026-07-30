@@ -139,9 +139,9 @@ class TestBackup:
         assert echoes == [3]
 
     def test_save_echo_previews_typed_keys(self, monkeypatch):
-        """[PRIMESUD] _save_echo: queued events filter into a prompt preview
-        (typed chars only, backspace applied, stops at Enter); macro subst
-        mirrored for the first char on an empty buffer."""
+        """[PRIMESUD] _save_echo: queued events replay onto a prompt preview
+        mirroring game_loop's buffer edits (backspace, Esc-clear, macro and
+        fnkey substitution), stopping at Enter."""
         import game_state
         import terminal
 
@@ -157,8 +157,9 @@ class TestBackup:
                                 lambda player, buf: shown.append(buf))
             events = [
                 ("l", None),
-                (12, None),          # history sentinel -- skipped
-                ("north", False),    # fn-key buffer load -- skipped
+                (12, None),          # history sentinel -- no macro, no text
+                ("north", False),    # key-command event -- skipped
+                (14, None),          # fnkey macro on non-empty buffer -- no-op
                 ("x", None),
                 ("\b", None),        # erases the x
                 ("l", None),
@@ -169,12 +170,19 @@ class TestBackup:
                                 lambda: events)
             game_state.SAVE_ECHO_HOOK()
             assert shown == ["kill"]
-            # backspaces beyond the typed preview trim the existing buffer,
-            # and a first char typed onto an empty buffer macro-substitutes
+            # backspaces walk into the existing buffer; a macro key hit on
+            # the emptied buffer substitutes, then backspace edits the
+            # expansion (exactly as the post-save replay will)
             monkeypatch.setitem(game_state._MACRO_SUBST, "q", "quaff heal")
-            events[:] = [("\b", None), ("\b", None), ("q", None)]
+            events[:] = [("\b", None), ("\b", None), ("q", None),
+                         ("\b", None)]
             game_state.SAVE_ECHO_HOOK()
-            assert shown[-1] == "quaff heal"
+            assert shown[-1] == "quaff hea"
+            # Esc clears, then an fnkey int sentinel loads its macro
+            monkeypatch.setitem(game_state._MACRO_SUBST, 14, "look")
+            events[:] = [("\\e", None), (14, None)]
+            game_state.SAVE_ECHO_HOOK()
+            assert shown[-1] == "look"
         finally:
             game_state.SAVE_ECHO_HOOK = None
 

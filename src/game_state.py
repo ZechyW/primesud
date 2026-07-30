@@ -820,34 +820,35 @@ def _save_echo(game):
     whenever a drain queues new keys. Preview-only: the queue is
     untouched, so game_loop still processes every event normally after
     the save; this just makes the echo appear at the next boundary
-    (~270ms worst) instead of after the whole save. Skips key-command
-    events (auto_submit set), int sentinels and multi-char strings;
-    stops at the first Enter -- what follows belongs to the next
-    command and would render misleadingly merged.
+    (~270ms worst) instead of after the whole save. Mirrors game_loop's
+    per-event buffer edits -- backspace, Esc-clear, macro substitution
+    for typed chars and fnkey int sentinels -- skipping key-command
+    events and stopping at the first Enter: what follows belongs to the
+    next command and would render misleadingly merged.
     """
-    typed = ""
-    bs = 0
+    buf = game.input_buf
     for event in terminal.tr.peek_queued_events():
         if event is None or event[1] is not None:
-            continue
+            continue  # key-command events: processed after the save
         char = event[0]
-        if not isinstance(char, str) or len(char) != 1:
-            continue
         if char == "\n":
             break
-        if char == "\b":
-            if typed:
-                typed = typed[:-1]
+        if char == "\\e":
+            buf = ""
+        elif char == "\b":
+            buf = buf[:-1]
+        elif isinstance(char, str) and len(char) == 1:
+            subst = _MACRO_SUBST.get(char)
+            if subst is not None and not buf:
+                buf = subst
             else:
-                bs += 1
-        else:
-            typed += char
-    buf = game.input_buf[:-bs] if bs else game.input_buf
-    if typed and not buf:
-        # Mirror game_loop's empty-buffer macro substitution
-        buf = _MACRO_SUBST.get(typed[0], typed[0]) + typed[1:]
-    else:
-        buf += typed
+                buf += char
+        elif not buf:
+            # Int sentinels: fnkey macros load onto an empty buffer;
+            # history/scrollback ints miss the dict and preview nothing.
+            subst = _MACRO_SUBST.get(char)
+            if subst is not None:
+                buf = subst
     show_prompt(world.chars[1], buf)
 
 
