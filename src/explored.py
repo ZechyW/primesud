@@ -88,7 +88,12 @@ def mark_explored(player):
         return
     player["_last_marked_room"] = room
     m = get_mask(player)
-    m[room >> 3] |= 1 << (room & 7)
+    _bit = 1 << (room & 7)
+    if not (m[room >> 3] & _bit):
+        # [PRIMESUD] only a genuinely new room dirties the RLE cache, so
+        # revisits (the steady state) keep encode_rle free.
+        m[room >> 3] |= _bit
+        player.pop("_rle_cache", None)
 
 
 def roomcount(player):
@@ -125,7 +130,15 @@ def encode_rle(player):
 
     Format: "<startbit> <run> <run> ... -1", e.g. "0 12 3 40 -1". str()+concat
     only -- this string is persisted (PRIME_FIRMWARE_BUGS).
+
+    [PRIMESUD] Result cached on the player (_rle_cache) until a mask bit
+    actually changes (mark_explored / decode_rle / explored reset): the
+    full-mask encode cost ln.rle=113ms of a 937ms save (smoke-5), and at
+    high exploration extent every save re-encoded an unchanged mask.
     """
+    _cached = player.get("_rle_cache")
+    if _cached is not None:
+        return _cached
     m = get_mask(player)
     bit = 0
     count = 0
@@ -140,11 +153,14 @@ def encode_rle(player):
             bit = b
     parts.append(num_str(count))
     parts.append("-1")
-    return " ".join(parts)
+    _out = " ".join(parts)
+    player["_rle_cache"] = _out
+    return _out
 
 
 def decode_rle(player, s):
     """Rebuild the mask from an RLE string (cf. 1stMud read_rle)."""
+    player.pop("_rle_cache", None)  # [PRIMESUD] mask rebuilt below
     m = get_mask(player)
     for i in range(len(m)):
         m[i] = 0
@@ -219,6 +235,7 @@ def do_explored(player, args):
         for i in range(len(m)):
             m[i] = 0
         player["_last_marked_room"] = None
+        player.pop("_rle_cache", None)  # [PRIMESUD] mask changed
         chprintln(player, "Your explored rooms were set to 0.")
     elif "list".startswith(arg):
         rows = []

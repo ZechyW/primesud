@@ -540,6 +540,63 @@ class TestSavePathCaches:
         assert 100 not in world._pending_room_items
         assert 100 not in world._PENDING_VNUM_CACHE
 
+    def test_pending_room_line_cache_hit_and_identity_miss(self, fresh_world):
+        """[PRIMESUD] the finished r.<vnum>.items line is reused while the
+        raw pending string is the same object; a replaced string re-renders."""
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}}},
+                         objects={110: _item_tpl("gem")})
+        fw.register_area("beta", 200, 299,
+                         rooms={200: {"name": "R200", "exits": {}}})
+        fw.setup()
+        world._load_area("beta")
+        _make_player(200)
+        world._pending_room_items[100] = "v:110"
+        assert game_state.save_world(quiet=True)
+        raw, line = world._PENDING_ROOM_LINE_CACHE[100]
+        assert line == "r.100.items=v:110"
+        # Poisoned cache entry with matching identity is used verbatim.
+        world._PENDING_ROOM_LINE_CACHE[100] = (raw, "r.100.items=POISON")
+        assert game_state.save_world(quiet=True)
+        with open(game_state.SAVE_FILE, "r") as f:
+            assert "r.100.items=POISON" in f.read()
+        # Replaced string (new identity, as eviction does): re-render.
+        world._pending_room_items[100] = "v:110|v:110"
+        assert game_state.save_world(quiet=True)
+        with open(game_state.SAVE_FILE, "r") as f:
+            payload = f.read()
+        assert "POISON" not in payload
+        assert "r.100.items=v:110|v:110" in payload
+
+    def test_stat_line_cache_refreshes_on_value_change(self, fresh_world):
+        """[PRIMESUD] kill-stat lines are value-pair keyed: in-place [k,d]
+        mutation (raw_kill's `+= 1`) must re-render, unchanged pairs reuse."""
+        fw = fresh_world
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}}})
+        fw.setup()
+        world._load_area("alpha")
+        _make_player(100)
+        world.mob_stats[3050] = [1, 0]
+        world.area_stats["alpha"] = [2, 1]
+        assert game_state.save_world(quiet=True)
+        assert world._MOB_STAT_LINE_CACHE[3050] == (1, 0, "s.m.3050=1|0")
+        # Poison with matching pair: used verbatim (cache hit proven).
+        world._MOB_STAT_LINE_CACHE[3050] = (1, 0, "s.m.3050=POISON")
+        assert game_state.save_world(quiet=True)
+        with open(game_state.SAVE_FILE, "r") as f:
+            assert "s.m.3050=POISON" in f.read()
+        # In-place mutation, exactly as raw_kill does: pair mismatch re-renders.
+        world.mob_stats[3050][0] += 1
+        world.area_stats["alpha"][1] += 1
+        assert game_state.save_world(quiet=True)
+        with open(game_state.SAVE_FILE, "r") as f:
+            payload = f.read()
+        assert "POISON" not in payload
+        assert "s.m.3050=2|0" in payload
+        assert "s.a.alpha=2|2" in payload
+
     def test_pending_mob_cache_hit_and_identity_miss(self, fresh_world):
         """An identity-matched _PENDING_MOB_CACHE part is used verbatim
         (poison test); a fresh list re-renders. [PRIMESUD]"""

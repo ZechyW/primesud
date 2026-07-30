@@ -261,12 +261,27 @@ def _serialize_world(hvar_name=None, file_name=None):
         _tmark = ticks()
     if _pump:
         _pump(KEY_COMMANDS)
+    # [PRIMESUD] value-pair keyed line caches (world._MOB_STAT_LINE_CACHE):
+    # the stat lists mutate in place, so only entries fought since the
+    # last save re-render (ln.stats was 250ms of a 937ms save, smoke-5).
     for _vnum in sorted(world.mob_stats):
         _stat = world.mob_stats[_vnum]
-        lines.append("s.m." + sstr(_vnum) + "=" + sstr(_stat[0]) + "|" + sstr(_stat[1]))
+        _sc = world._MOB_STAT_LINE_CACHE.get(_vnum)
+        if _sc is not None and _sc[0] == _stat[0] and _sc[1] == _stat[1]:
+            lines.append(_sc[2])
+            continue
+        _sl = "s.m." + sstr(_vnum) + "=" + sstr(_stat[0]) + "|" + sstr(_stat[1])
+        world._MOB_STAT_LINE_CACHE[_vnum] = (_stat[0], _stat[1], _sl)
+        lines.append(_sl)
     for _tag in sorted(world.area_stats):
         _stat = world.area_stats[_tag]
-        lines.append("s.a." + sstr(_tag) + "=" + sstr(_stat[0]) + "|" + sstr(_stat[1]))
+        _sc = world._AREA_STAT_LINE_CACHE.get(_tag)
+        if _sc is not None and _sc[0] == _stat[0] and _sc[1] == _stat[1]:
+            lines.append(_sc[2])
+            continue
+        _sl = "s.a." + sstr(_tag) + "=" + sstr(_stat[0]) + "|" + sstr(_stat[1])
+        world._AREA_STAT_LINE_CACHE[_tag] = (_stat[0], _stat[1], _sl)
+        lines.append(_sl)
     for _gql in gq_save_lines():  # [PRIMESUD] gquest state
         lines.append(_gql)
     if _timed:
@@ -349,9 +364,19 @@ def _serialize_world(hvar_name=None, file_name=None):
         _tmark = ticks()
     if _pump:
         _pump(KEY_COMMANDS)
-    # Re-serialize pending room items for unloaded areas (not in world.rooms)
+    # Re-serialize pending room items for unloaded areas (not in world.rooms).
+    # [PRIMESUD] world._PENDING_ROOM_LINE_CACHE holds each finished line,
+    # validated by raw-string identity (same rule as _PENDING_MOB_CACHE):
+    # rebuilding ~100 passthrough lines cost ln.rpend=247ms (smoke-5).
     for rvnum in sorted(world._pending_room_items):
-        lines.append("r." + sstr(rvnum) + ".items=" + sstr(world._pending_room_items[rvnum]))
+        _pr_raw = world._pending_room_items[rvnum]
+        _pr = world._PENDING_ROOM_LINE_CACHE.get(rvnum)
+        if _pr is not None and _pr[0] is _pr_raw:
+            lines.append(_pr[1])
+            continue
+        _pr_line = "r." + sstr(rvnum) + ".items=" + sstr(_pr_raw)
+        world._PENDING_ROOM_LINE_CACHE[rvnum] = (_pr_raw, _pr_line)
+        lines.append(_pr_line)
     if _timed:
         _SAVE_TIMING.append(("ln.rpend", ticks() - _tmark))
         _tmark = ticks()

@@ -1128,6 +1128,7 @@ def _apply_pending_deltas(tag, room_vnums):
             continue
         _raw = _pending_room_items.pop(_rv)
         _PENDING_VNUM_CACHE.pop(_rv, None)
+        _PENDING_ROOM_LINE_CACHE.pop(_rv, None)
         if _rv in rooms._data:
             rooms._data[_rv]["items"] = [parse_item_token(v)
                                          for v in _raw.split("|") if v]
@@ -1228,6 +1229,21 @@ _PENDING_VNUM_CACHE = {}
 # re-rendering every pending template cost ln.mob=750ms of a 1.6s save
 # on-device (debug/save_smoke-3.log).
 _PENDING_MOB_CACHE = {}
+
+# [PRIMESUD] Per-room cache over the finished pending-room save line:
+# rvnum -> (raw_str, "r.<rvnum>.items=<raw>"). Same identity rule as
+# _PENDING_VNUM_CACHE (raw strings installed wholesale, never mutated
+# in place). Rebuilding ~100 passthrough lines every save cost
+# ln.rpend=247ms of a 937ms save (debug/save_smoke-5.log).
+_PENDING_ROOM_LINE_CACHE = {}
+
+# [PRIMESUD] Kill-stat save-line caches: vnum/tag -> (kills, deaths,
+# line). Value-pair keyed, NOT identity: the [kills, deaths] lists
+# mutate in place (combat.py raw_kill), so a fresh line renders only
+# for entries fought since the last save. Full re-render cost
+# ln.stats=250ms of a 937ms save (debug/save_smoke-5.log).
+_MOB_STAT_LINE_CACHE = {}
+_AREA_STAT_LINE_CACHE = {}
 
 
 def _snap_pending_cached(rv, raw):
@@ -1658,6 +1674,9 @@ def reset_lazy():
     _SNAP_ENC_CACHE.clear()
     _PENDING_VNUM_CACHE.clear()
     _PENDING_MOB_CACHE.clear()
+    _PENDING_ROOM_LINE_CACHE.clear()
+    _MOB_STAT_LINE_CACHE.clear()
+    _AREA_STAT_LINE_CACHE.clear()
     DOOR_DEFS.clear()
     MOBPROGS.clear()
     OBJPROGS.clear()

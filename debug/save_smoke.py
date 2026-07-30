@@ -93,6 +93,20 @@ def main():
         + ", snapshots: " + int_str(len(world.ITEM_SNAPSHOTS)))
     log("mem free after load: " + int_str(free()))
 
+    # Load the two areas owning the most pending-room lines: their items
+    # become resident, so ln.room (per-item serialize_item_token, uncached)
+    # is measured alongside the pending-line caches -- save_smoke-5 ran
+    # with 0 resident rooms and left ln.room unattributed.
+    counts = {}
+    for rv in world._pending_room_items:
+        tag = world._vnum_to_tag(rv)
+        counts[tag] = counts.get(tag, 0) + 1
+    for tag in sorted(counts, key=lambda t: -counts[t])[:2]:
+        t0 = ticks()
+        world._load_area(tag)
+        log("loaded " + str(tag) + ": " + int_str(ticks() - t0)
+            + "ms (had " + int_str(counts[tag]) + " pending rooms)")
+
     # Real primesud.sav stays read-only; saves go to a scratch file.
     game_state.SAVE_FILE = "save_smoke.sav"
 

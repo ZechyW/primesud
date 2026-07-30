@@ -106,6 +106,27 @@ def test_mark_explored_cached():
     assert roomcount(p) == 3
 
 
+def test_rle_cache_invalidation():
+    """[PRIMESUD] encode_rle caches until a bit actually changes: revisits
+    keep the cache, a new room / decode / reset drop it."""
+    p = _blank_player(room=3001)
+    mark_explored(p)
+    s1 = encode_rle(p)
+    assert p["_rle_cache"] == s1
+    assert encode_rle(p) is s1              # served from cache
+    p["_last_marked_room"] = None
+    mark_explored(p)                        # revisit: bit already set
+    assert p.get("_rle_cache") == s1        # cache survives
+    p["room"] = 3002
+    mark_explored(p)                        # new room: cache dropped
+    assert "_rle_cache" not in p
+    s2 = encode_rle(p)
+    assert s2 != s1
+    decode_rle(p, s1)                       # load path drops it too
+    assert "_rle_cache" not in p
+    assert encode_rle(p) == s1
+
+
 def test_mark_explored_out_of_range_noop():
     p = _blank_player(room=_MAX_VNUM + 500)
     mark_explored(p)
