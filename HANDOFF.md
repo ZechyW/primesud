@@ -69,8 +69,12 @@ Shipped since run 6, desktop-suite green, NOT on device yet:
   revealed row's cells blit left to right, complete-line prints
   routing through print_lines when enabled.
   NOTE: this workstation has no appdir scaffolding -- the debug payload
-  is now STALE (`src/primesud.py`, `src/terminal.py`, `src/config.py`);
-  redeploy before the next device session.
+  is now STALE (`src/primesud.py`, `src/terminal.py`, `src/config.py`,
+  `src/update.py`); redeploy before the next device session.
+- Pulse timers phase-staggered (cd0f2ee): updaters never share a pulse;
+  the 30s all-six pile-up is gone by construction. Bench scenario
+  `pulse_aligned` still forces alignment explicitly, so it stays valid
+  as a worst-case measure but no longer reflects live play.
 
 ## Immediate next step (needs physical G1 + Connectivity Kit)
 
