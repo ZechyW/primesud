@@ -33,19 +33,54 @@ UPD_TICK     = 2
 UPD_REGEN    = 4
 
 # -- Countdown timers (cf. 1stMud static locals in update_handler) -------------
-# [PRIMESUD] Staggered initial phases (1stMud inits all to 0, so every timer
-# fires on the same pulse each 30s and the worst pulse pays the sum of all
-# updaters).  Countdown reload preserves phase, so these one-time offsets
-# hold forever.  Two timers collide iff their offsets are congruent mod
-# gcd(period_i, period_j); the values below are distinct under every pairwise
-# gcd (4, 8, 20, 24, 120), so no two timers ever share a pulse (verified by
-# simulation over 240k pulses).  Note init 0 fires pulse 1, same as init 1.
-_pulse_violence = 1
-_pulse_mobile   = 2
-_pulse_music    = 3
-_pulse_regen    = 4
-_pulse_tick     = 6
-_pulse_area     = 7
+def _gcd(a, b):
+    # [PRIMESUD] inline Euclid: math.gcd/arith.gcd unverified on-device
+    while b:
+        a, b = b, a % b
+    return a
+
+
+def _stagger_offsets(periods):
+    """Initial phase offsets so no two countdown timers share a pulse. [PRIMESUD]
+
+    1stMud inits all timers to 0, so every timer fires together each
+    LCM-of-periods pulses and the worst pulse pays the sum of all
+    updaters.  Countdown reload preserves phase, so one-time offsets
+    hold forever.  Two timers collide iff their offsets are congruent
+    mod gcd(period_i, period_j); greedy picks each timer's smallest
+    non-congruent offset.  Most-frequent-first ordering keeps offsets
+    small (first-fire delay under 2s).  Note init 0 fires pulse 1,
+    same as init 1, so candidates start at 1.
+
+    Args:
+        periods: timer periods in pulses, most frequent first.
+
+    Returns:
+        List of offsets, same order as periods.  If the periods admit
+        no perfect stagger the colliding timer takes its least-bad
+        offset (tests guard the perfect case for shipped config).
+    """
+    offsets = []
+    for p in periods:
+        best, best_hits = 1, len(periods)
+        for o in range(1, p + 1):
+            hits = 0
+            for q, oq in zip(periods, offsets):
+                g = _gcd(p, q)
+                if o % g == oq % g:
+                    hits += 1
+            if hits < best_hits:
+                best, best_hits = o, hits
+            if hits == 0:
+                break
+        offsets.append(best)
+    return offsets
+
+
+(_pulse_violence, _pulse_mobile, _pulse_music, _pulse_regen,
+ _pulse_tick, _pulse_area) = _stagger_offsets(
+    (PULSE_VIOLENCE, PULSE_MOBILE, PULSE_MUSIC, PULSE_REGEN,
+     PULSE_TICK, PULSE_AREA))
 _regen_phase    = 0
 
 
