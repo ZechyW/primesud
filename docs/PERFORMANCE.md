@@ -266,6 +266,13 @@ the first save skips the one-time 4.5 s token rescan; its remaining
 overhead (1333 ms, spread evenly across the ln.* segments) is
 `util.num_str` cache warm-up, not a cache miss.
 
+The ~880 ms save is a synchronous keyboard-dead stall, so autosaves
+(tick-timer and after-kill `save_pending`) are deferred while the player
+is fighting and fire on the first non-fighting pulse (`game_loop` in
+primesud.py). Mid-fight saves had negative value anyway: mob HP/fight
+state never persists, so they only snapshotted the player's transient
+combat damage.
+
 ### Item-snapshot device gates (G1, measured 30 Jul 2026)
 
 `debug/snapshot_gates.py` (`debug/snapshot_gates-1.log`), real save, all
@@ -347,6 +354,43 @@ after offscreen status compose):
   (violence-round batching through `print_lines`).
 - Violence FIFO drain checkpoints did not measurably change round cost
   (within run-to-run noise).
+
+Phase C/D A/B (`combat_bench-4.log` after violence-round output batching;
+`combat_bench-5.log` adds `scan_skeleton` + batched A/B scenarios;
+`combat_bench-6.log` after active-fighter index + paced reveal):
+
+| Phase | run 5 | run 6 | delta |
+|---|---:|---:|---:|
+| Violence round, 1 mob (unbatched) | 360.6 ms | 354.6 ms | -6 ms |
+| Violence round, 4 mobs (unbatched) | 1025.7 ms | 1006.1 ms | -20 ms |
+| Autoskill round, steady (r2-10) | 587 ms | 570 ms | -17 ms |
+| 1-mob round, batched | 392 ms | 444 ms | +52 ms (pacing) |
+| `update_handler`, violence only | 435 ms | 516 ms | +81 ms (pacing) |
+| Aligned pulse | 634 ms | 701 ms | +67 ms (pacing) |
+| `interpret("look")`, batched | 427 ms | 857 ms | +430 ms (pacing) |
+| Typing / status / idle / `scan_skeleton` | -- | -- | unchanged |
+
+- **Full-world scan attribution was wrong.** `combat_basic` is a clean A/B
+  (same save, 139 chars, unbatched, only scan-vs-index differs): the old
+  `[chars[k] for k in sorted(chars)]` snapshot cost **~6-20 ms in-context**,
+  not the ~100 ms `scan_skeleton` suggested. `scan_skeleton`'s steady ~110 ms
+  is a tight-loop artifact -- note its own ramp 30 -> 115 ms across 10
+  back-to-back iterations; its fresh-heap first iteration (30 ms) is closer
+  to truth. The index is kept (no cost, O(fighters) scaling for larger
+  loaded worlds), but the measured win is marginal.
+  - Corollary: `mobile_update`'s "~100 ms class" estimate came from the same
+    scan-shape reasoning and is likely also single-digit ms in-context.
+    Measure in-context before touching it.
+- **Paced reveal costs exactly its design figure**: ~25 ms per text row
+  beyond the first on every batched path (+52 ms on a 1-mob round, +430 ms
+  on a 17-row `look`). Deliberate delay, key-skippable in play; synthetic
+  bench runs never skip, so batched/pulse numbers now include it -- not a
+  regression.
+- Run-5 finding (unchanged in 6): `interpret_look` vs `interpret_look_batched`
+  were identical (~427 ms), so `look`'s render share is ~nil and
+  interpret-level batching is a measured dead end.
+- Remaining 1-mob round cost (~355 ms) is attack chain + per-line rendering;
+  needs per-hit profiling to subdivide further. Diminishing returns.
 
 ## Session and memory behaviour (G1, measured 27 Jul 2026)
 

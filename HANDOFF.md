@@ -25,39 +25,46 @@ Shipped, device-validated (runs 1-5, G1):
   `tr.begin_batch()`/`end_batch()`): neutral for 2-line rounds, wins on
   line-heavy ones; kept as the substrate for the paced reveal.
 
-Shipped, awaiting device validation:
+Shipped, bench-validated on device (run 6, `combat_bench-6.log`,
+reviewed 30/07 -- results recorded in `docs/PERFORMANCE.md` sec.
+Input-lag phase benchmark):
 
-- **Active-fighter index** (`world.FIGHTERS`; commit `4eefb22`): replaces
-  the ~100ms full-world sorted scan in `violence_update`. Membership at
-  `set_fighting`/`stop_fighting` (audited as the only None<->id writers);
-  stale ids self-clean; `debug fidx` channel sweeps + heals + logs.
-  `violence_update` is `[Verified:]` -- tag extended twice on 30/07
-  (drain checkpoints, index scan); both were pre-approved targeted perf
-  edits, flagged to the user, no objection raised.
-- **Paced combat reveal** (`terminal.py` `print_lines(paced=True)` via
-  `end_batch`; commit `dcdded4`): batched round output reveals one text
-  row at a time, `REVEAL_MS_PER_LINE = 25` (config.py, 0 disables),
-  keyboard pumped during delays, any queued key fast-forwards the rest
-  in one blit. FEATURES.md line added.
+- **Active-fighter index** (`world.FIGHTERS`; commit `4eefb22`): works,
+  no regression, but the ~100ms expectation was WRONG -- the old scan
+  cost ~6-20ms in-context (`combat_basic` clean A/B run 5 vs 6);
+  `scan_skeleton`'s ~110ms steady state is a tight-loop artifact. Index
+  kept for O(fighters) scaling; win recorded honestly. Corollary:
+  `mobile_update`'s "~100ms class" estimate used the same reasoning --
+  demoted to measure-first.
+- **Paced combat reveal** (commit `dcdded4`): pacing costs exactly
+  ~25ms/row on every batched path (+52ms 1-mob round, +430ms 17-row
+  batched look). Deliberate, key-skippable in play; benched as designed.
+
+Shipped since run 6, desktop-suite green, NOT on device yet:
+
+- **Autosave deferred while fighting** (`primesud.py` `game_loop`): both
+  triggers (tick-timer, after-kill `save_pending`) gate on
+  `player["fighting"] is None`, accumulate during combat, one merged
+  save on the first non-fighting pulse. Removes the guaranteed ~880ms
+  mid-combat keyboard-dead stall. Rationale: mob HP/fight state never
+  persists, so mid-fight saves only snapshotted transient player damage
+  (negative value). Kill-saves already cover real progress.
+  NOTE: this workstation has no appdir scaffolding -- the debug payload
+  is now STALE (`src/primesud.py`); redeploy before the next device
+  session.
 
 ## Immediate next step (needs physical G1 + Connectivity Kit)
 
-1. Rerun `combat_bench` -> `combat_bench-6.log`. Expectations:
-   - `combat_basic` ~360 -> ~260ms, `combat_busy` ~1.07s -> ~970ms,
-     `combat_autoskill` down ~100ms (index win; these call
-     `violence_update` directly -- no batching/pacing in their numbers).
-   - `pulse_violence_only`/`pulse_aligned` now INCLUDE deliberate reveal
-     delay (~25ms per line beyond the first, no key pending in synthetic
-     runs) -- do not misread as regression.
-   - `scan_skeleton` (~100ms) is the OLD scan cost kept as reference.
-2. Manual play session -- the reveal is a feel feature, logs can't judge
-   it: line-at-a-time cadence, type-to-skip snapping, death/autoloot/
+1. Redeploy payload (staleness check per convention below), then manual
+   play session -- the reveal is a feel feature, logs can't judge it:
+   line-at-a-time cadence, type-to-skip snapping, death/autoloot/
    multi-line ordering, scroll-boundary + shift/alpha indicators clean,
-   and a real low-HP `flee`-spam test (the founding complaint).
-3. Record run 6 + Phase D outcomes in `docs/PERFORMANCE.md`; then per
-   repo convention harvest `COMBAT_LAG.md`'s durable decisions into
-   `DESIGN.md`/docs and DELETE both it and this handoff (git history
-   keeps full text).
+   a real low-HP `flee`-spam test (the founding complaint), and combat
+   spanning a 120s autosave boundary (save must land after the fight,
+   never during).
+2. Then per repo convention harvest `COMBAT_LAG.md`'s durable decisions
+   into `DESIGN.md`/docs and DELETE both it and this handoff (git
+   history keeps full text).
 
 ## Bench/probe conventions (established this stream)
 
@@ -73,18 +80,18 @@ Shipped, awaiting device validation:
 
 ## Open decision queue (after validation, user call on stop-vs-continue)
 
-Roughly by value; user leaned "reassess after playing a fight":
+Reordered 30/07 after run-6 findings (autosave defer DONE, mobile scan
+demoted):
 
-1. `mobile_update` full-world scan every 5s (~100ms class). NOT index-
-   shaped: wander/despawn legitimately needs all NPCs -- cheaper
-   iteration (drop sorted()/snapshot allocs) or per-area lists; measure
-   first.
-2. Autosave 880ms stall every 120s -> defer-while-fighting (smallest
-   fix, COMBAT_LAG.md candidate 4).
-3. 30s aligned pulse ~550-700ms -> phase-offset stagger (candidate 3;
-   changes update ordering, needs regression care).
-4. Attack-chain ~245ms/round residue -> needs per-hit profiling,
-   diminishing returns.
+1. 30s aligned pulse ~550-700ms -> phase-offset stagger (COMBAT_LAG.md
+   candidate 3; changes update ordering, needs regression care).
+2. Attack-chain ~245ms/round residue (now ~all of the 355ms 1-mob
+   round) -> needs per-hit profiling, diminishing returns.
+3. `mobile_update` full-world scan every 5s -- DEMOTED: its "~100ms
+   class" estimate came from the same scan-shape reasoning run 6
+   disproved for violence (~6-20ms in-context there). Measure
+   in-context first; likely a dead end. NOT index-shaped anyway
+   (wander/despawn needs all NPCs).
 - Interpret-level batching: MEASURED DEAD END (look render share ~0,
   combat_bench-5) -- do not revisit without new evidence.
 - `combat_autoskill` first-round ~2x spike: warm-up (rotation build +
