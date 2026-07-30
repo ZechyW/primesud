@@ -63,6 +63,7 @@ def install_color_print(tr):
 
     def wrapped_set_status(text):
         tr.status_text = text  # tracked so the pager can restore it
+        tr.status_text_raw = text  # device keeps a coloured copy; mirror it
         sys.stdout.write('\r' + _to_ansi(text) + _RST + '\033[K')
         sys.stdout.flush()
         tr._at_prompt = True

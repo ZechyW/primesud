@@ -106,13 +106,13 @@ class TestBackup:
         orig_set = terminal.tr.set_status
         spy = lambda text: (statuses.append(text), orig_set(text))
         monkeypatch.setattr(terminal.tr, "set_status", spy)
-        orig_set("prompt> ")
+        orig_set("{R10/10hp{x prompt> ")
 
         assert game_state.save_world(quiet=True)
         assert len(pumps) >= 7  # entry + one per segment boundary
-        assert statuses[0] == "{Y[Saving...]{x"
-        assert statuses[-1] == "prompt> "
-        assert terminal.tr.status_text == "prompt> "
+        assert statuses[0] == "{c[Saving...]{x"
+        # restored WITH colour codes (status_text_raw, not the plain copy)
+        assert statuses[-1] == "{R10/10hp{x prompt> "
 
     def test_check_silent_under_an_hour_with_no_backup(self, out):
         player = _make_player()

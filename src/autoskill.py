@@ -306,7 +306,8 @@ def _edit_rotation(player):
         return
 
     tr = terminal.tr
-    old_status = tr.status_text
+    # raw copy keeps colour codes; plain status_text is the stub fallback
+    old_status = getattr(tr, "status_text_raw", tr.status_text)
     sb0 = tr._scrollback_ms
     _force_numeric_keys()
     sel = 0

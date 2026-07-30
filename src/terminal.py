@@ -595,6 +595,10 @@ def install_color_print(tr):
             if current_fg[0] is not None:
                 reset_color()
             orig_set_status(text)
+            # [PRIMESUD] raw (coloured) copy alongside tml's plain
+            # status_text, so restore sites (save indicator, pager,
+            # autoskill editor) can redraw without losing colour.
+            tr.status_text_raw = text
             return
         # Colour-aware: truncate to visible width, then render runs.
         plain = _sc(text)
@@ -648,6 +652,8 @@ def install_color_print(tr):
         # own colour state first) and keeps the contract simple.
         reset_color()
         tr.status_text = pad_right(plain, length)
+        # [PRIMESUD] raw copy (post-truncation) for colour-true restores.
+        tr.status_text_raw = text
 
     tr.set_status = wrapped_set_status
 

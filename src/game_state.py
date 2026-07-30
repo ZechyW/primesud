@@ -461,9 +461,13 @@ def save_world(quiet=False):
     # unlabelled input freeze reads as lag. Restore follows the pager/
     # autoskill-editor pattern (tr.status_text holds the plain copy).
     _tr = terminal.tr
-    _old_status = getattr(_tr, "status_text", None)
+    # status_text_raw keeps colour codes; plain status_text is the
+    # fallback for stubs that only track the tml-level copy.
+    _old_status = getattr(_tr, "status_text_raw", None)
+    if _old_status is None:
+        _old_status = getattr(_tr, "status_text", None)
     if _old_status is not None:
-        _tr.set_status("{Y[Saving...]{x")
+        _tr.set_status("{c[Saving...]{x")
     try:
         _serialize_world()
         if not quiet:
