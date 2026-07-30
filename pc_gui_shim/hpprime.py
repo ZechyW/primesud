@@ -184,10 +184,23 @@ def wait_ms(ms):
         time.sleep(min(remaining, 0.01))
 
 
+_FRAME_S = 0.016  # min seconds between canvas presents (~60fps)
+_last_present = 0.0
+
+
 def _present():
-    global _dirty, _display_image
+    # Throttled: a full present (PPM encode + PhotoImage + zoom) costs
+    # ~5ms, and the streaming reveal pumps once per char wait -- an
+    # unthrottled present floors every REVEAL_MS_PER_CHAR wait at ~5ms.
+    # Dirty state persists, so the frame lands on a pump within
+    # _FRAME_S of the last draw; the game loop pumps continuously.
+    global _dirty, _display_image, _last_present
     if not _dirty or _root is None:
         return
+    now = time.monotonic()
+    if now - _last_present < _FRAME_S:
+        return
+    _last_present = now
     screen = _grobs[0]
     header = ("P6\n" + str(screen.width) + " " + str(screen.height)
               + "\n255\n").encode("ascii")

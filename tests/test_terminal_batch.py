@@ -9,9 +9,10 @@ _PATH = os.path.join(_ROOT, "src", "terminal.py")
 _SPEC = importlib.util.spec_from_file_location("src_terminal_batch", _PATH)
 terminal = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(terminal)
-# Streaming reveal off: the fakes below have no keyboard pump, and these
-# tests assert the single-blit compose shape.
+# Streaming reveal off regardless of config: these tests assert the
+# single-blit compose shape (individual tests re-enable via monkeypatch).
 terminal.REVEAL_MS_PER_LINE = 0
+terminal.REVEAL_MS_PER_CHAR = 0
 
 _SCRATCH = terminal.SCRATCH_GROB
 _FONT = terminal.FONT_GROB
