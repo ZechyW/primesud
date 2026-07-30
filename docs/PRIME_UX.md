@@ -34,37 +34,9 @@ auto-submitted — the player still presses Enter, allowing arguments to be
 appended first).  With a non-empty buffer, digits and the decimal key type
 normally, so numeric arguments still work.
 
-Default digit and decimal bindings (`config.py:DEFAULT_MACROS`):
-
-| Key | Command   |
-|-----|-----------|
-| 7   | `kill`    |
-| 8   | `flee`    |
-| 9   | `cast`    |
-| 4   | `buy`     |
-| 5   | `sell`    |
-| 6   | `drop`    |
-| 1   | `score`   |
-| 2   | `practice`|
-| 3   | `train`   |
-| 0   | `macro`   |
-| .   | `help`    |
-
-Function-key bindings (`config.py:FNKEY_TABLE`; the two key rows above the
-numpad):
-
-| Key | Name  | Command     |
-|-----|-------|-------------|
-| xʸ  | `xy`  | `run`       |
-| sin | `sin` | `look`      |
-| cos | `cos` | `rest`      |
-| tan | `tan` | `stand`     |
-| ln  | `ln`  | `quest`     |
-| log | `log` | `gquest` |
-| x²  | `x2`  | `inventory` |
-| +/- | `pm`  | `equip`     |
-| ( ) | `()`  | `wear`      |
-| ,   | `,`   | `remove`    |
+Default bindings live in `config.py` (`DEFAULT_MACROS` for digits and the
+decimal key, `DEFAULT_FNKEY_MACROS` for the two function-key rows above the
+numpad) — see that file for the current mapping, or `macro` in-game.
 
 Bindings are live-editable with the `macro` command:
 
