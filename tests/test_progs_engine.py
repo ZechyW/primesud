@@ -31,6 +31,7 @@ def prog_world(monkeypatch):
     old_ch = dict(world.chars); old_md = dict(MOB_DEFS._data)
     old_id = dict(ITEM_DEFS._data); old_mp = dict(MOBPROGS)
     old_op = dict(OBJPROGS); old_rp = dict(ROOMPROGS)
+    old_fx = set(world.FIGHTERS)
 
     def _room(vnum, exits):
         r = {"name": "Room %d" % vnum, "desc": "x", "exits": exits,
@@ -82,6 +83,7 @@ def prog_world(monkeypatch):
     ROOM_DEFS._data.clear(); ROOM_DEFS._data.update(old_rd)
     world.rooms._data.clear(); world.rooms._data.update(old_wr)
     world.chars.clear(); world.chars.update(old_ch)
+    world.FIGHTERS.clear(); world.FIGHTERS.update(old_fx)
     MOB_DEFS._data.clear(); MOB_DEFS._data.update(old_md)
     ITEM_DEFS._data.clear(); ITEM_DEFS._data.update(old_id)
     MOBPROGS.clear(); MOBPROGS.update(old_mp)
@@ -504,6 +506,11 @@ def test_fight_fires_worn_obj_and_room_once(prog_world):
     ROOMPROGS[9314] = "room echo The room trembles."
     player["fighting"] = 2
     mob["fighting"] = 1
+    # Direct fighting writes bypass set_fighting's autodrop/sleep-strip/stance
+    # side effects (unwanted for this trigger-focused test) -- add to the
+    # active-fighter index explicitly so violence_update visits both.
+    world.FIGHTERS.add(player["id"])
+    world.FIGHTERS.add(mob["id"])
     combat.violence_update(player)
     assert sum(1 for l in out if "The sword thirsts." in l) == 1
     # both combatants are in 9001; the room fires at most once per pulse

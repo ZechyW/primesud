@@ -83,6 +83,7 @@ from skills_table import (
     GSN_TRIP, GSN_POISON, GSN_SWORD, GSN_FLOWING_FORM, GSN_RIPOSTE,
     GSN_DRIVING_FORM,
 )
+from debug import DBG, dbg  # [PRIMESUD]
 from hunt import hunt_victim
 from urandom import randint
 from util import wait, pad_right
@@ -98,7 +99,7 @@ def violence_update(player):
     autoskill hook added 18/07/2026; worn-obj + room TRIG_FIGHT wired and
     re-verified 20/07/2026; post-multi_hit victim re-fetch (fight.c:86) fixed
     and re-verified 21/07/2026; [PRIMESUD] keyboard-drain checkpoints added
-    30/07/2026]
+    30/07/2026; [PRIMESUD] active-fighter index scan added 30/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -107,8 +108,22 @@ def violence_update(player):
     _pump = getattr(terminal.tr, "_pump_keyboard", None)  # tests stub tr without it
 
     room_trig = False  # room TRIG_FIGHT at most once per pulse (cf. fight.c:65)
-    # Need to copy to list first as chars could get modified during iteration (on deaths)
-    for ch in [chars[k] for k in sorted(chars)]:
+    # [PRIMESUD] Scan only the active-fighter index instead of every loaded
+    # char (139-char full-world scan cost ~100ms/round on device). sorted()
+    # both snapshots to a list (FIGHTERS/chars can be mutated during
+    # iteration -- deaths, stop_fighting, programs) and preserves the old
+    # deterministic id-order iteration for the chars that would have acted.
+    for cid in sorted(world.FIGHTERS):
+        ch = chars.get(cid)
+        # [PRIMESUD] stale-tolerant: ch may have been extracted/evicted
+        # without going through stop_fighting (e.g. far-area eviction
+        # deletes chars wholesale), or a direct writer may have cleared
+        # fighting/hunting without updating the index. Either way the
+        # entry is no longer useful -- drop it and move on.
+        if ch is None or (ch["fighting"] is None and ch.get("hunting") is None):
+            world.FIGHTERS.discard(cid)
+            continue
+
         # 1stMud: IsNPC(ch) && ch->fighting == NULL && IsAwake(ch) && ch->hunting != NULL
         if ch["is_npc"] and ch["fighting"] is None and is_awake(ch) and ch.get("hunting") is not None:
             hunt_victim(ch)
@@ -167,6 +182,12 @@ def violence_update(player):
         if not room_trig and mobprog.has_rtrigger(ch["room"], "fight"):
             room_trig = True
             mobprog.rpercent_trigger(ch["room"], victim, None, None, "fight")
+
+    if "fidx" in DBG:  # [PRIMESUD] costs nothing when the channel is off
+        for cid, cch in chars.items():
+            if cch["fighting"] is not None and cid not in world.FIGHTERS:
+                dbg("fidx: missing " + str(cid))
+                world.FIGHTERS.add(cid)
 
 
 def check_assist(ch, victim):
@@ -2353,6 +2374,9 @@ def set_fighting(ch, victim):
                 break
 
     ch["fighting"] = victim["id"]
+    # [PRIMESUD] active-fighter index -- if you ever set ch['fighting']
+    # directly elsewhere, you MUST update world.FIGHTERS too.
+    world.FIGHTERS.add(ch["id"])
     ch["pos"] = "fighting"
     if (not ch["is_npc"] and classes.is_class(ch, classes.CLASS_SWORDSMAN)
             and "_sword_form" not in ch):
@@ -2374,6 +2398,8 @@ def stop_fighting(ch, both=False):
     for char in world.chars.values():
         if char is ch or (both and char["fighting"] == ch["id"]):
             char["fighting"] = None
+            # [PRIMESUD] active-fighter index -- mirrors the set_fighting add.
+            world.FIGHTERS.discard(char["id"])
             # 1stMud: fch->position = IsNPC(fch) ? fch->default_pos : POS_STANDING;
             if char["is_npc"]:
                 char["pos"] = _DEFAULT_POS.get(

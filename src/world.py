@@ -1626,6 +1626,10 @@ _WORLD_READY = False
 # -- Mutable runtime state (mutated by reset_area / game functions) ------------
 rooms = LazyDict(load_all_on_iter=False)
 chars = {}
+# [PRIMESUD] ids of chars currently fighting (or hunting, if anything ever
+# sets it) -- violence_update scans only this set; membership maintained by
+# combat.set_fighting/stop_fighting, stale ids self-clean in violence_update.
+FIGHTERS = set()
 areas = []
 save_pending = False
 
@@ -1639,6 +1643,7 @@ def reset_lazy():
     _area_seq.clear()
     rooms._data.clear()
     chars.clear()
+    FIGHTERS.clear()
     _LOADED_AREAS.clear()
     _pending_mob_saves.clear()
     _pending_room_items.clear()

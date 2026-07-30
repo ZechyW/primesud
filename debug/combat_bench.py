@@ -193,11 +193,13 @@ def _restore_round(player, mobs):
             room_mobs.append(m["id"])
         m["room"] = room
         m["fighting"] = player["id"]
+        world.FIGHTERS.add(m["id"])  # [PRIMESUD] direct write -- keep index in sync
         m["pos"] = "fighting"
         m["hit"] = m["max_hit"]
         m["wait"] = 0
         m["daze"] = 0
     player["fighting"] = mobs[0]["id"]
+    world.FIGHTERS.add(player["id"])  # [PRIMESUD] direct write -- keep index in sync
     player["pos"] = "fighting"
     player["hit"] = player["max_hit"]
     # Mana/move too: autoskill casts every round, and draining to zero

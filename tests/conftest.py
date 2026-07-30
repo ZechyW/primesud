@@ -100,6 +100,7 @@ def fresh_world(tmp_path):
         "AREA_DEFS": list(world.AREA_DEFS),
         "rooms": dict(world.rooms._data),
         "chars": dict(world.chars),
+        "FIGHTERS": set(world.FIGHTERS),
         "areas": list(world.areas),
         "_WORLD_READY": world._WORLD_READY,
     }
@@ -131,6 +132,7 @@ def fresh_world(tmp_path):
     del world.AREA_DEFS[:]
     world.rooms._data.clear()
     world.chars.clear()
+    world.FIGHTERS.clear()
     world.areas = []
     world._WORLD_READY = False
     world._area_seq.clear()
@@ -186,7 +188,7 @@ def fresh_world(tmp_path):
                  "_pending_room_items", "ITEM_SNAPSHOTS",
                  "mob_stats", "area_stats",
                  "DOOR_DEFS", "MOBPROGS",
-                 "OBJPROGS", "ROOMPROGS", "chars"):
+                 "OBJPROGS", "ROOMPROGS", "chars", "FIGHTERS"):
         d = getattr(world, name)
         d.clear()
         d.update(old_state[name])

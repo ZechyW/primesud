@@ -158,6 +158,9 @@ def hunt_victim(ch):
     violence_update (combat.py) and mobile_update (mob.py) already call
     this whenever "hunting" is set.
 
+    [PRIMESUD] if you ever set ch['hunting'], also world.FIGHTERS.add(ch['id'])
+    or hunt_victim will never run: violence_update only scans world.FIGHTERS.
+
     Args:
         ch (dict): NPC instance state dict, or None.
     """

@@ -18,7 +18,7 @@ from util import num_str, pad_left, pad_right
 # call sites are in per-mob per-pulse loops.
 DBG = set()
 
-_CHANNELS = ("spawn", "move", "tick", "reset", "save", "time", "prog")
+_CHANNELS = ("spawn", "move", "tick", "reset", "save", "time", "prog", "fidx")
 
 
 def dbg(msg):

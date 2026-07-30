@@ -1,0 +1,48 @@
+combat_bench: on-device phase benchmark
+mem free start: 7305440
+boot: load_world 23059ms source=file
+boot: chars=139 areas=2
+mem free after boot: 6729184
+set_color_ab: font 475x10 fg_pixels=1050
+set_color_ab(pixon): n=10 total=39ms max=4ms min=3ms
+set_color_ab(blit): n=10 total=10ms max=1ms min=1ms
+mem free after set_color_ab: 6728864
+typing_prompt(type): n=19 total=1647ms max=151ms min=70ms
+typing_prompt(backspace): n=19 total=1526ms max=94ms min=66ms
+mem free after typing_prompt: 6728272
+status_raw: n=20 total=1431ms max=73ms min=71ms
+mem free after status_raw: 6728144
+interpret_look: n=5 total=2148ms max=441ms min=426ms rounds=[441,427,428,426,426]
+mem free after interpret_look: 6727936
+interpret_look_batched: n=5 total=2134ms max=430ms min=426ms rounds=[430,426,426,426,426]
+mem free after interpret_look_batched: 6727616
+scan_skeleton: n=10 total=854ms max=107ms min=29ms rounds=[29,50,84,82,87,99,106,103,107,107]
+mem free after scan_skeleton: 6727440
+chars loaded: 139
+combat_basic: mob vnum=3090 level=1
+combat_basic: n=10 total=3606ms max=384ms min=325ms rounds=[334,384,377,377,367,359,325,376,382,325]
+mem free after combat_basic: 6727120
+chars loaded: 139
+combat_basic_batched: n=10 total=3921ms max=469ms min=302ms rounds=[307,425,372,372,302,469,376,463,371,464]
+mem free after combat_basic_batched: 6726896
+chars loaded: 139
+combat_busy: mob vnum=3090 count=4
+combat_busy: n=10 total=10257ms max=1147ms min=922ms rounds=[1052,1025,987,1099,1015,1026,1043,1147,941,922]
+mem free after combat_busy: 6726592
+chars loaded: 139
+combat_autoskill: SIMULATED rotation -- chill touch, cause light, magic missile
+combat_autoskill: rotation head=chill touch (spell)
+combat_autoskill: n=10 total=6550ms max=1267ms min=482ms rounds=[1267,482,583,584,610,544,610,575,635,660]
+mem free after combat_autoskill: 6717376
+chars loaded: 139
+pulse_violence_only: n=10 total=4354ms max=496ms min=309ms rounds=[481,435,480,412,375,379,496,491,309,496]
+mem free after pulse_violence_only: 6717136
+chars loaded: 139
+pulse_aligned run 1: 663ms
+pulse_aligned run 2: 541ms
+pulse_aligned run 3: 697ms
+pulse_aligned: n=3 total=1901ms
+mem free after pulse_aligned: 6716736
+pulse_idle: n=5 total=98ms max=21ms min=19ms rounds=[20,19,21,19,19]
+mem free after pulse_idle: 6716576
+Done. Results in combat_bench.log
