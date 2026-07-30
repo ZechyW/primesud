@@ -1976,16 +1976,19 @@ def do_consider(player, args):
         if mob_id is None:
             chprintln(player, "They're not here.")
             return
-    elif not live:
-        chprintln(player, "Consider killing whom?")
-        return
     else:
-        # [PRIMESUD] picker menu when no args (1stMud prints "Consider killing whom?" and stops)
-        names = [MOB_DEFS[world.chars[i]["tpl"]]["short_descr"] for i in live]
+        # [PRIMESUD] picker menu when no args (1stMud prints "Consider killing whom?"
+        # and stops). Offers only mobs the player can actually see, so an
+        # undetected hide/invis mob is not betrayed by the menu.
+        vis = [i for i in live if can_see(player, world.chars[i])]
+        if not vis:
+            chprintln(player, "Consider killing whom?")
+            return
+        names = [MOB_DEFS[world.chars[i]["tpl"]]["short_descr"] for i in vis]
         idx = pick_from("Consider killing whom?", names)
         if idx < 0:
             return
-        mob_id = live[idx]
+        mob_id = vis[idx]
 
     victim = world.chars[mob_id]
 

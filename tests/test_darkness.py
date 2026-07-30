@@ -536,6 +536,55 @@ class TestObjectVisibilityGates:
         assert look_out == ["a chest holds:", "  Nothing."]
 
 
+class TestConsiderPicker:
+    """The no-arg consider picker offers only mobs the player can see, so an
+    undetected invis mob is not betrayed by the menu (combat.do_consider)."""
+
+    def _scene(self, monkeypatch, **aff):
+        import combat
+        _room(1, sector="inside")
+        MOB_DEFS._data[700] = {"short_descr": "a plain rat", "keywords": "rat",
+                               "level": 1, "affected_by": {}}
+        MOB_DEFS._data[701] = {"short_descr": "a ghostly wraith",
+                               "keywords": "wraith", "level": 1,
+                               "affected_by": {"invisible": True}}
+        world.chars[2] = {"id": 2, "is_npc": True, "tpl": 700, "room": 1,
+                          "level": 1, "affected_by": {}}
+        world.chars[3] = {"id": 3, "is_npc": True, "tpl": 701, "room": 1,
+                          "level": 1, "affected_by": {"invisible": True}}
+        world.rooms._data[1]["mobs"] = [2, 3]
+        offered = []
+        monkeypatch.setattr(combat, "pick_from",
+                            lambda title, opts: offered.append(opts) or -1)
+        p = _look_player(1)
+        p["affected_by"] = dict(aff)
+        combat.do_consider(p, [])
+        return offered
+
+    def test_invis_mob_absent_without_detect(self, fresh_world, monkeypatch):
+        assert self._scene(monkeypatch) == [["a plain rat"]]
+
+    def test_invis_mob_offered_with_detect(self, fresh_world, monkeypatch):
+        assert self._scene(monkeypatch, detect_invis=True) == [
+            ["a plain rat", "a ghostly wraith"]]
+
+    def test_no_visible_mobs_prints_prompt(self, fresh_world, monkeypatch):
+        import combat
+        out = []
+        monkeypatch.setattr(combat, "chprintln", lambda ch, msg: out.append(msg))
+        monkeypatch.setattr(combat, "pick_from",
+                            lambda title, opts: pytest.fail("picker shown"))
+        _room(1, sector="inside")
+        MOB_DEFS._data[702] = {"short_descr": "a ghostly wraith",
+                               "keywords": "wraith", "level": 1,
+                               "affected_by": {"invisible": True}}
+        world.chars[4] = {"id": 4, "is_npc": True, "tpl": 702, "room": 1,
+                          "level": 1, "affected_by": {"invisible": True}}
+        world.rooms._data[1]["mobs"] = [4]
+        combat.do_consider(_look_player(1), [])
+        assert out == ["Consider killing whom?"]
+
+
 class TestDoMapBlind:
     def test_blind_refuses_map(self, fresh_world, look_out):
         import info
