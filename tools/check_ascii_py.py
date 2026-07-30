@@ -7,6 +7,7 @@ exempt.
 
 import ast
 from pathlib import Path
+import re
 import sys
 
 
@@ -14,19 +15,45 @@ DEFAULT_PATHS = ("src", "tools")
 SKIP_PARTS = {".git", "__pycache__"}
 BOM = b"\xef\xbb\xbf"
 
+# printf conversion spec in a string literal; only chprintf & friends may
+# carry one (they format via handler._safe_fmt, never the firmware formatter)
+CONV_SPEC = re.compile(r"%[-0-9.]*[sdcxfu]")
+SAFE_FORMATTERS = {"chprintf", "chprintlnf", "printf", "_safe_fmt"}
+
+
+def _exempt_literals(tree):
+    """Ids of str literals allowed to hold conversion specs: docstrings and
+    safe-formatter arguments."""
+    exempt = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef,
+                             ast.AsyncFunctionDef)):
+            doc = node.body[0] if node.body else None
+            if (isinstance(doc, ast.Expr) and isinstance(doc.value, ast.Constant)
+                    and isinstance(doc.value.value, str)):
+                exempt.add(id(doc.value))
+        elif isinstance(node, ast.Call):
+            name = (node.func.id if isinstance(node.func, ast.Name)
+                    else getattr(node.func, "attr", ""))
+            if name in SAFE_FORMATTERS:
+                for arg in node.args:
+                    exempt.add(id(arg))
+    return exempt
+
 
 def format_violations(source):
     """Format-bug call sites in on-device source: line-numbered reasons.
 
     Flags a str-literal left operand of %, any .format() attribute call,
-    and f-strings. ponytail: a hoisted variable holding a format string
-    (fmt % args) is not caught; add simple assignment tracking if one
-    ever slips through review.
+    f-strings, and any other string literal carrying a printf conversion
+    spec. The last rule is what catches a format string hoisted into a
+    variable or table before the % is applied (scan.py's _DISTANCE was one).
     """
     try:
         tree = ast.parse(source)
     except SyntaxError as exc:
         return ["line " + str(exc.lineno) + ": syntax error (unparseable)"]
+    exempt = _exempt_literals(tree)
     hits = []
     for node in ast.walk(tree):
         if (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mod)
@@ -38,6 +65,10 @@ def format_violations(source):
             hits.append("line " + str(node.lineno) + ": .format() call")
         elif isinstance(node, ast.JoinedStr):
             hits.append("line " + str(node.lineno) + ": f-string")
+        elif (isinstance(node, ast.Constant) and isinstance(node.value, str)
+                and id(node) not in exempt and CONV_SPEC.search(node.value)):
+            hits.append("line " + str(node.lineno)
+                        + ": conversion spec in string literal")
     return hits
 
 
