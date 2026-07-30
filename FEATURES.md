@@ -200,10 +200,11 @@ Deliberate gameplay tweaks; each is a settled decision in DESIGN.md or a
 - **Combat flow** -- after a kill you auto-retarget a mob already fighting
   you; fleeing auto-looks at the destination; backstab without ranks refuses
   instead of burning a lagged round.
-- **Paced combat-round reveal** -- a round's batched output appears one line
-  at a time (~25ms/line) instead of all at once; typing during the reveal
-  fast-forwards the rest instantly (config.py `REVEAL_MS_PER_LINE`,
-  terminal.py).
+- **Streaming output reveal** -- all game output (combat rounds, looks,
+  help, the greeting) appears one line at a time (~25ms/line) instead of
+  all at once, old-terminal style; any keypress during the reveal
+  fast-forwards the rest instantly until the prompt returns, and the key
+  still counts as input (config.py `REVEAL_MS_PER_LINE`, terminal.py).
 - **Floor lights illuminate** -- a dropped torch or conjured light ball lights
   the room; stock ROM only counts worn lights (DESIGN.md "Room light
   counter").

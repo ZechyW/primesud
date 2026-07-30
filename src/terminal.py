@@ -101,7 +101,7 @@ def install_color_print(tr):
     _REVEAL_MAX_ITERS = 2000
 
     def _reveal_wait(ms):
-        """Pace one line of a combat-output reveal. [PRIMESUD]
+        """Delay one row of the streaming output reveal. [PRIMESUD]
 
         Pumps the keyboard every spin so a hardware key lands in the
         local queue the same way the main loop's poll_char would.
@@ -125,6 +125,32 @@ def install_color_print(tr):
                 i = 0
             i += 1
         return False
+
+    # [PRIMESUD] streaming-reveal state shared by every output path:
+    # [skip_latch, row_seen].  skip_latch: a key arrived during a reveal
+    # wait -- draw everything instantly until control returns to input
+    # (any set_status call resets; the key itself stays queued as
+    # pending input).  row_seen: a row has rendered since the last
+    # reset, so the first row of a burst always lands instantly and
+    # only rows after it pace -- across calls, not per call, so a
+    # screen printed one tr.print per line streams the same as one
+    # batched print_lines call.
+    _reveal = [False, False]
+
+    def _pace_row():
+        """Pace one physical row of the streaming output reveal. [PRIMESUD]
+
+        Waits REVEAL_MS_PER_LINE before the row unless pacing is
+        disabled, latched off by a key, or this is the first row since
+        the last prompt/status update.
+        """
+        if REVEAL_MS_PER_LINE <= 0 or _reveal[0]:
+            return
+        if not _reveal[1]:
+            _reveal[1] = True
+            return
+        if _reveal_wait(REVEAL_MS_PER_LINE):
+            _reveal[0] = True
     # [PRIMESUD] int-keyed glyph x-offsets for the batch compose: bytes
     # iteration yields ints, so the per-char draw loop allocates nothing
     # (a small alloc costs ~0.5ms at full game heap on device --
@@ -200,26 +226,20 @@ def install_color_print(tr):
             tr.cursor_y += 1
             s = s[space:]
 
-    def print_lines(lines, paced=False):
-        """Render complete lines offscreen, then blit once. [PRIMESUD]
+    def print_lines(lines):
+        """Render complete lines offscreen, then reveal row by row. [PRIMESUD]
 
         Groups segments by colour (one font repaint per distinct colour),
-        composes the whole batch into SCRATCH_GROB, and updates the screen
-        with a single blit -- no visible char-by-char fill-in.
-
-        Args:
-            lines: complete physical or logical lines to render.
-            paced: when True (end_batch's combat flush) and
-                REVEAL_MS_PER_LINE > 0, reveal this call's NEW lines one
-                text-row at a time instead of one instant blit -- an
-                old-school "line at a time" combat feel. Rows already on
-                screen before this call (scroll-shifted survivors) always
-                blit instantly first; any locally-queued key -- drained
-                by the same _pump_keyboard the game loop's poll_char
-                uses -- fast-forwards every remaining row in one blit.
-                Default False: every other caller (wrapped_print's list
-                and multi-line paths) keeps today's single-blit
-                behaviour unchanged.
+        composes the whole batch into SCRATCH_GROB, then reveals this
+        call's NEW rows one text-row at a time (REVEAL_MS_PER_LINE
+        apart) for an old-school streaming feel -- shared _pace_row
+        state, so cadence carries across calls. Rows already on screen
+        before this call (scroll-shifted survivors) always blit
+        instantly first; any locally-queued key -- drained by the same
+        _pump_keyboard the game loop's poll_char uses -- fast-forwards
+        every remaining row in one blit and latches pacing off until
+        the next status/prompt update. With pacing off or latched, the
+        whole compose lands in one blit.
         """
         physical = []
         for text in lines:
@@ -330,7 +350,7 @@ def install_color_print(tr):
                         _sb(SCRATCH_GROB, px, py, cw, chh,
                             FONT_GROB, fx, 0, cw, chh)
                     px += cw
-        # [PRIMESUD] paced reveal. `row` is top + len(physical) (the
+        # [PRIMESUD] streaming reveal. `row` is top + len(physical) (the
         # compose loop above increments it once per physical line), so
         # n_new == len(physical) is exactly this call's NEW line count --
         # never an already-on-screen row, even when a scroll folded
@@ -339,17 +359,18 @@ def install_color_print(tr):
         # instantly below; n == 0 case: base == top, so prefix_h == 0
         # and every scratch row is new).
         n_new = row - top
-        if paced and REVEAL_MS_PER_LINE > 0 and n_new > 1:
+        if REVEAL_MS_PER_LINE > 0 and not _reveal[0]:
             prefix_h = (top - base) * chh
             if prefix_h:
                 _sb(0, 0, base * chh, tr.width, prefix_h,
                     SCRATCH_GROB, 0, 0, tr.width, prefix_h)
             for i in range(n_new):
-                # No delay before the first row; _reveal_wait pumps the
-                # keyboard and returns True the moment a key is queued,
-                # so a mid-wait keypress fast-forwards just as promptly
-                # as one queued before the wait started.
-                if i > 0 and _reveal_wait(REVEAL_MS_PER_LINE):
+                # _pace_row pumps the keyboard and latches the skip the
+                # moment a key is queued, so a mid-wait keypress
+                # fast-forwards just as promptly as one queued before
+                # the wait started.
+                _pace_row()
+                if _reveal[0]:
                     rem = n_new - i
                     _sb(0, 0, (top + i) * chh, tr.width, rem * chh,
                         SCRATCH_GROB, 0, prefix_h + i * chh, tr.width,
@@ -386,7 +407,7 @@ def install_color_print(tr):
         _batch_on[0] = False
         if _batch_buf:
             if tr.cursor_x == 0:
-                print_lines(_batch_buf, paced=True)
+                print_lines(_batch_buf)
             else:
                 # Defensive: violence output starts at column 0 in
                 # practice, but if something left a partial line pending,
@@ -448,6 +469,10 @@ def install_color_print(tr):
             lines = _wrap_plain(text, cols)
             n = len(lines)
             for idx, line in enumerate(lines):
+                # [PRIMESUD] stream: pace rows that start at column 0;
+                # continuations of a partial line (end='') never pace.
+                if tr.cursor_x == 0:
+                    _pace_row()
                 if line:
                     _draw_run(line)
                 auto_wrapped = line and tr.cursor_x == 0
@@ -465,6 +490,8 @@ def install_color_print(tr):
         n = len(pieces)
         for idx, piece in enumerate(pieces):
             colour_order, groups = _group_piece(piece)
+            if tr.cursor_x == 0:  # [PRIMESUD] stream: pace each new row
+                _pace_row()
             if groups:
                 # [PRIMESUD] lazy scroll: resolve any pending scroll before
                 # drawing via print_xy (bypasses _put_char's check).
@@ -499,6 +526,12 @@ def install_color_print(tr):
         print_lines, but each use composes and blits within a single call
         (no cross-call state), so there is no conflict.
         """
+        # [PRIMESUD] every set_status caller (show_prompt, pager page
+        # indicator, autoskill picker) marks control back at input --
+        # reset the streaming reveal: clear the type-to-skip latch and
+        # let the next burst's first row land instantly again.
+        _reveal[0] = False
+        _reveal[1] = False
         length = tr.columns - 6
         if _CC not in text:
             if current_fg[0] is not None:

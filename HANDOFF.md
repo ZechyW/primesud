@@ -54,19 +54,33 @@ Shipped since run 6, desktop-suite green, NOT on device yet:
   spins, not total spins -- a fixed total truncated the reveal to ~12ms
   /line on the fast PC shim (~6us/spin). Device behaviour unchanged
   (slow spins always advance the clock); frozen-clock protection kept.
+- **Global streaming reveal** (`terminal.py`): the paced reveal now
+  covers ALL output paths (per-line prints, list/multiline prints,
+  colour path, end_batch) with shared cross-call cadence -- greeting,
+  looks, help, pager pages all stream at `REVEAL_MS_PER_LINE`/row. A
+  key during any reveal wait latches pacing off (instant blit of the
+  remainder, key kept as pending input); any `set_status` call (prompt
+  redraw, pager/autoskill indicators) clears the latch and re-arms the
+  first-row-instant rule. Verified on the PC graphical stack: all five
+  render paths + cross-call cadence at exact budget, latch <10ms.
+  Char-by-char streaming deliberately deferred until the line cadence
+  has been felt on device.
   NOTE: this workstation has no appdir scaffolding -- the debug payload
-  is now STALE (`src/primesud.py`, `src/terminal.py`); redeploy before
-  the next device session.
+  is now STALE (`src/primesud.py`, `src/terminal.py`, `src/config.py`);
+  redeploy before the next device session.
 
 ## Immediate next step (needs physical G1 + Connectivity Kit)
 
 1. Redeploy payload (staleness check per convention below), then manual
    play session -- the reveal is a feel feature, logs can't judge it:
-   line-at-a-time cadence, type-to-skip snapping, death/autoloot/
-   multi-line ordering, scroll-boundary + shift/alpha indicators clean,
-   a real low-HP `flee`-spam test (the founding complaint), and combat
-   spanning a 120s autosave boundary (save must land after the fight,
-   never during).
+   line-at-a-time cadence on EVERYTHING (greeting, look, help/pager
+   pages, combat rounds), type-to-skip snapping + latch holding until
+   the prompt returns, death/autoloot/multi-line ordering,
+   scroll-boundary + shift/alpha indicators clean, a real low-HP
+   `flee`-spam test (the founding complaint), and combat spanning a
+   120s autosave boundary (save must land after the fight, never
+   during). Judge whether 25ms/row cadence wants tuning and whether
+   char-by-char streaming is still wanted on top.
 2. Then per repo convention harvest `COMBAT_LAG.md`'s durable decisions
    into `DESIGN.md`/docs and DELETE both it and this handoff (git
    history keeps full text).
@@ -104,11 +118,16 @@ demoted):
 
 ## Watch items / loose ends
 
-- Paced reveal in tests: pc_shim shadows `src/terminal.py` for the whole
-  suite except `tests/test_terminal_batch.py`, which never enters the
-  paced path. If a future test drives `end_batch` through the real
-  closure, the delay loop is iteration-bounded (`_REVEAL_MAX_ITERS`) so
-  it cannot hang, but it will sleep-spin ~25ms/line with a live clock.
+- Streaming reveal in tests: pc_shim shadows `src/terminal.py` for the
+  whole suite except `tests/test_terminal_batch.py`, which now sets
+  `terminal.REVEAL_MS_PER_LINE = 0` at load (its fakes have no keyboard
+  pump, and it asserts single-blit compose shape). Any future test
+  driving the real closures should do the same or provide
+  `_pump_keyboard`/`has_queued_keys`.
+- Bench comparability: runs 1-6 measured `interpret`/look paths
+  UNPACED; the global reveal adds ~25ms/row to every multi-row output
+  in future runs. A/B against old numbers must subtract the pacing
+  budget or set `REVEAL_MS_PER_LINE = 0` for the run.
 - Direct `["fighting"]` writes bypass the index -- chokepoint comments
   exist at both sites in combat.py; `tests/test_progs_engine.py` shows
   the sanctioned fixture pattern (`world.FIGHTERS.add(...)`).
