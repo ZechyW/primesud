@@ -15,7 +15,7 @@ init_terminal()
 import macros
 from macros import do_macro, _MACRO_SUBST
 from colors import color_len, color_parse_runs, strip_colors
-from config import FNKEY_NAMES, TERMINAL_COLS
+from config import DEFAULT_FNKEY_MACROS, DEFAULT_MACROS, FNKEY_NAMES, TERMINAL_COLS
 
 
 @pytest.fixture(autouse=True)
@@ -66,12 +66,12 @@ def test_unset_requires_one_valid_key(out):
 def test_macro_defaults_and_keys_remain_configurable(out):
     by_name = {name: key for key, name in FNKEY_NAMES.items()}
     do_macro(None, ["default"])
-    assert _MACRO_SUBST[by_name["xy"]] == "run"
-    assert _MACRO_SUBST[by_name["ln"]] == "quest"
-    assert _MACRO_SUBST[by_name["log"]] == "gquest"
-    assert _MACRO_SUBST["4"] == "give"
-    assert _MACRO_SUBST["3"] == "train"
-    assert _MACRO_SUBST["."] == "help"
+    # Assert against the config tables, not literals -- default retunes
+    # shouldn't break this test (it guards restore + configurability).
+    for key, cmd in DEFAULT_MACROS.items():
+        assert _MACRO_SUBST[key] == cmd
+    for key, cmd in DEFAULT_FNKEY_MACROS.items():
+        assert _MACRO_SUBST[key] == cmd
 
     do_macro(None, ["xy", "scan"])
     assert _MACRO_SUBST[by_name["xy"]] == "scan"

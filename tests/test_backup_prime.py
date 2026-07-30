@@ -92,6 +92,28 @@ class TestBackup:
         # above, which reflects the post-write update the live session sees.
         assert player2["backup"] == 0
 
+    def test_save_pumps_keyboard_and_restores_status(self, tmp_path, monkeypatch):
+        """[PRIMESUD] save stall UX: firmware FIFO drained at every segment
+        boundary, [Saving...] indicator shown and prior status restored."""
+        import game_state
+        import terminal
+        monkeypatch.setattr(game_state, "SAVE_FILE", str(tmp_path / "s.sav"))
+        _make_player()
+        pumps = []
+        monkeypatch.setattr(terminal.tr, "_pump_keyboard",
+                            lambda kc=None: pumps.append(kc), raising=False)
+        statuses = []
+        orig_set = terminal.tr.set_status
+        spy = lambda text: (statuses.append(text), orig_set(text))
+        monkeypatch.setattr(terminal.tr, "set_status", spy)
+        orig_set("prompt> ")
+
+        assert game_state.save_world(quiet=True)
+        assert len(pumps) >= 7  # entry + one per segment boundary
+        assert statuses[0] == "{Y[Saving...]{x"
+        assert statuses[-1] == "prompt> "
+        assert terminal.tr.status_text == "prompt> "
+
     def test_check_silent_under_an_hour_with_no_backup(self, out):
         player = _make_player()
         player["played"] = 1000

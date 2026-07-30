@@ -2,7 +2,7 @@
 
 from util import sstr
 from prime_platform import hvars_get, hvars_set, ticks
-from config import SAVE_VAR, FNKEY_NAMES, R_STARTING_ROOM
+from config import SAVE_VAR, FNKEY_NAMES, KEY_COMMANDS, R_STARTING_ROOM
 from game_time import time_info, SUN_DARK, SUN_RISE, SUN_LIGHT, SUN_SET
 from item import serialize_item_token, parse_item_token
 import terminal
@@ -114,6 +114,16 @@ def _serialize_world(hvar_name=None, file_name=None):
     if _timed:
         _SAVE_TIMING = []
         _tmark = ticks()
+    # [PRIMESUD] Keyboard-service checkpoints: the save is the longest
+    # keyboard-dead stall left (~0.9s steady, docs/PERFORMANCE.md sec.
+    # Save path) and the firmware FIFO holds only 4 presses. Draining it
+    # into the 16-entry local queue at each segment boundary caps the
+    # worst pump gap at the largest single segment (~255ms) so typing
+    # through a save loses nothing; the keys replay after the save.
+    # Same pattern as the violence_update checkpoints in combat.py.
+    _pump = getattr(terminal.tr, "_pump_keyboard", None)  # tests stub tr without it
+    if _pump:
+        _pump(KEY_COMMANDS)
     player = world.chars[1]
     # No gc_collect() here: a collect adjacent to bulk int rendering is the
     # G1 heap-corruption trigger (PRIME_FIRMWARE_BUGS.md sec. str(int)-GC bug);
@@ -168,11 +178,15 @@ def _serialize_world(hvar_name=None, file_name=None):
     if _timed:
         _SAVE_TIMING.append(("ln.plr1", ticks() - _tmark))
         _tmark = ticks()
+    if _pump:
+        _pump(KEY_COMMANDS)
     # cf. 1stMud write_rle (explored.c) -- RLE run-length string, str()+concat
     lines.append("p.explored=" + encode_rle(player))
     if _timed:
         _SAVE_TIMING.append(("ln.rle", ticks() - _tmark))
         _tmark = ticks()
+    if _pump:
+        _pump(KEY_COMMANDS)
     af_parts = []
     for af in player.get("affect_list", []):
         af_parts.append(
@@ -238,6 +252,8 @@ def _serialize_world(hvar_name=None, file_name=None):
     if _timed:
         _SAVE_TIMING.append(("ln.plr2", ticks() - _tmark))
         _tmark = ticks()
+    if _pump:
+        _pump(KEY_COMMANDS)
     # Build reset-room map for single-instance mobs (gl=1): if the only live
     # instance is already in its reset room, omit it -- reset_area() will
     # restore it there on load without any save entry needed.
@@ -298,6 +314,8 @@ def _serialize_world(hvar_name=None, file_name=None):
     if _timed:
         _SAVE_TIMING.append(("ln.mob", ticks() - _tmark))
         _tmark = ticks()
+    if _pump:
+        _pump(KEY_COMMANDS)
     for rvnum in sorted(world.rooms):
         rs = world.rooms[rvnum]
         if not rs["items"]:
@@ -312,6 +330,8 @@ def _serialize_world(hvar_name=None, file_name=None):
     if _timed:
         _SAVE_TIMING.append(("ln.room", ticks() - _tmark))
         _tmark = ticks()
+    if _pump:
+        _pump(KEY_COMMANDS)
     # [PRIMESUD] Item-template snapshots (DESIGN.md sec. Item template
     # snapshots). One deduplicated "it.<vnum>=<revision>|<record>" line
     # per VNUM world._snap_save_vnums() says is required (player gear
@@ -358,6 +378,8 @@ def _serialize_world(hvar_name=None, file_name=None):
     if _timed:
         _SAVE_TIMING.append(("snap", ticks() - _tmark))
         _tmark = ticks()
+    if _pump:
+        _pump(KEY_COMMANDS)
     # Cold mark/sweep (DESIGN.md sec. Item template snapshots): free
     # registry
     # entries no live object or deferred token references once their owning
@@ -372,6 +394,8 @@ def _serialize_world(hvar_name=None, file_name=None):
     if _timed:
         _SAVE_TIMING.append(("sweep", ticks() - _tmark))
         _tmark = ticks()
+    if _pump:
+        _pump(KEY_COMMANDS)
     for i in range(len(lines)):
         if not isinstance(lines[i], str):
             raise Exception("non-str save line " + sstr(i))
@@ -432,6 +456,14 @@ def backup_world():
 
 def save_world(quiet=False):
     """Save world state and optionally print success."""
+    # [PRIMESUD] Status-bar indicator for the ~0.9s save stall (quiet
+    # autosaves included): an explained pause reads as working, an
+    # unlabelled input freeze reads as lag. Restore follows the pager/
+    # autoskill-editor pattern (tr.status_text holds the plain copy).
+    _tr = terminal.tr
+    _old_status = getattr(_tr, "status_text", None)
+    if _old_status is not None:
+        _tr.set_status("{Y[Saving...]{x")
     try:
         _serialize_world()
         if not quiet:
@@ -444,6 +476,9 @@ def save_world(quiet=False):
     except Exception as e:
         tprint("Save failed: " + str(e))
         return False
+    finally:
+        if _old_status is not None:
+            _tr.set_status(_old_status)
 
 
 def load_world():
