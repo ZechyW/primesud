@@ -279,13 +279,19 @@ class Game:
 
                 if fired & UPD_TICK:
                     tick_count += 1
-                    if tick_count >= AUTOSAVE_TICKS:
-                        save_game(self, quiet=True)
-                        tick_count = 0
 
-                if world.save_pending:
+                # [PRIMESUD] Defer saves while fighting: a save is a ~880ms
+                # keyboard-dead stall (docs/PERFORMANCE.md sec. Save path),
+                # and a mid-fight snapshot only captures the player's
+                # transient combat damage -- mob HP/fight state never
+                # persists. Both triggers accumulate and fire on the first
+                # non-fighting pulse; one save covers both.
+                if player["fighting"] is None and (
+                        world.save_pending or tick_count >= AUTOSAVE_TICKS):
                     save_game(self, quiet=True)
                     world.save_pending = False
+                    if tick_count >= AUTOSAVE_TICKS:
+                        tick_count = 0
 
             if not tr.has_queued_keys():
                 wait_ms(POLL_MS)

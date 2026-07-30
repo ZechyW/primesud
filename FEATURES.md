@@ -139,7 +139,8 @@ worth trusting -- the engineering layer.
   template, and saves serialize just the divergent fields as compact tokens
   -- the core memory/save-size strategy (item.py).
 - **Save system** -- autosave to the calculator's HVar store every ~2 minutes
-  and after every kill; compact line format; saved deltas for unloaded areas
+  and after every kill, deferred while fighting so the ~0.9s save stall never
+  eats combat keystrokes; compact line format; saved deltas for unloaded areas
   are buffered and replayed when the area loads; `backup` writes a manual
   second slot, restored by renaming the file in the calculator's file
   manager (game_state.py, world.py).
