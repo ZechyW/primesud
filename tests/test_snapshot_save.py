@@ -427,7 +427,8 @@ class TestResidentOwnerFallback:
 class TestSaveTiming:
     def test_debug_save_channel_populates_segments(self, fresh_world):
         """The "save" debug channel fills game_state._SAVE_TIMING with one
-        (segment, ms) pair per _serialize_world stage, in order. [PRIMESUD]"""
+        (segment, ms, free) triple per _serialize_world stage, in order.
+        `free` is 0 on desktop CPython (no gc.mem_free). [PRIMESUD]"""
         from debug import DBG
         fw = fresh_world
         fw.register_area("alpha", 100, 199,
@@ -443,12 +444,13 @@ class TestSaveTiming:
             assert game_state.save_world(quiet=True)
         finally:
             DBG.discard("save")
-        assert [seg for seg, _ in game_state._SAVE_TIMING] == [
+        assert [seg for seg, _, _ in game_state._SAVE_TIMING] == [
             "ln.plr1", "ln.pinv", "ln.plearn", "ln.rle", "ln.paff",
             "ln.wstate", "ln.stats", "ln.mob", "ln.room", "ln.rpend",
             "snap", "sweep", "join", "hvset", "verify", "fwrite"]
-        for _seg, ms in game_state._SAVE_TIMING:
+        for _seg, ms, free in game_state._SAVE_TIMING:
             assert isinstance(ms, int) and ms >= 0
+            assert isinstance(free, int) and free >= 0
 
 
 # ===== Save-path caches (encoded it. lines, pending-token vnum scans) =======

@@ -1,5 +1,7 @@
 """Game lifecycle helpers for new, load, save, and migration UX."""
 
+import gc
+
 from util import sstr
 from prime_platform import hvars_get, hvars_set, ticks
 from config import SAVE_VAR, FNKEY_NAMES, KEY_COMMANDS, R_STARTING_ROOM
@@ -85,6 +87,15 @@ SAVE_FILE = "primesud.sav"
 # (debug/save_smoke.py). Stays empty when the channel is off.
 _SAVE_TIMING = []
 
+
+def _gc_free():
+    """Free heap bytes; 0 where unavailable (desktop CPython). [PRIMESUD]"""
+    try:
+        return gc.mem_free()
+    except AttributeError:
+        return 0
+
+
 # [PRIMESUD] Set by init_game_state to a _save_echo closure over the Game:
 # redraws the prompt with keys typed during a save (preview-only -- the
 # queue is not consumed). Called from _serialize_world's pump wrapper when
@@ -117,9 +128,20 @@ def _serialize_world(hvar_name=None, file_name=None):
     # boolean checks when off, ticks() bookends per segment when on.
     global _SAVE_TIMING
     _timed = "save" in DBG
+    # [PRIMESUD] Marks are (segment, ms, free) triples: free is gc.mem_free()
+    # at the boundary, so a RISE between consecutive marks means a collect
+    # fired mid-serialize. That is the documented precondition for both G1
+    # heap bugs (docs/PRIME_FIRMWARE_BUGS.md), and the save path is meant to
+    # take none -- debug/save_smoke.py reports any it sees.
+    _tmark = [0]
+
+    def _seg(name):
+        _SAVE_TIMING.append((name, ticks() - _tmark[0], _gc_free()))
+        _tmark[0] = ticks()
+
     if _timed:
         _SAVE_TIMING = []
-        _tmark = ticks()
+        _tmark[0] = ticks()
     # [PRIMESUD] Keyboard-service checkpoints: the save is the longest
     # keyboard-dead stall left (~0.9s steady, docs/PERFORMANCE.md sec.
     # Save path) and the firmware FIFO holds only 4 presses. Draining it
@@ -178,8 +200,7 @@ def _serialize_world(hvar_name=None, file_name=None):
     armor = player["armor"]
     lines.append("p.armor=" + sstr(armor[0]) + "|" + sstr(armor[1]) + "|" + sstr(armor[2]) + "|" + sstr(armor[3]))
     if _timed:
-        _SAVE_TIMING.append(("ln.plr1", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("ln.plr1")
     if _pump:
         _pump(KEY_COMMANDS)
     inv_parts = []
@@ -193,8 +214,7 @@ def _serialize_world(hvar_name=None, file_name=None):
         equip_parts.append(val)
     lines.append("p.eq=" + "|".join(equip_parts))
     if _timed:
-        _SAVE_TIMING.append(("ln.pinv", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("ln.pinv")
     if _pump:
         _pump(KEY_COMMANDS)
     learned_parts = []
@@ -206,15 +226,13 @@ def _serialize_world(hvar_name=None, file_name=None):
     if "autoskill_rot" in player:
         lines.append("p.autoskill_rot=" + ",".join(player["autoskill_rot"]))
     if _timed:
-        _SAVE_TIMING.append(("ln.plearn", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("ln.plearn")
     if _pump:
         _pump(KEY_COMMANDS)
     # cf. 1stMud write_rle (explored.c) -- RLE run-length string, str()+concat
     lines.append("p.explored=" + encode_rle(player))
     if _timed:
-        _SAVE_TIMING.append(("ln.rle", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("ln.rle")
     if _pump:
         _pump(KEY_COMMANDS)
     af_parts = []
@@ -262,8 +280,7 @@ def _serialize_world(hvar_name=None, file_name=None):
         lines.append("p.home_name=" + sstr(player.get("home_name", "")))
         lines.append("p.home_desc=" + sstr(player.get("home_desc", "")))
     if _timed:
-        _SAVE_TIMING.append(("ln.paff", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("ln.paff")
     if _pump:
         _pump(KEY_COMMANDS)
     for _as in world.areas:
@@ -277,8 +294,7 @@ def _serialize_world(hvar_name=None, file_name=None):
     lines.append("g.time=" + sstr(time_info["hour"]) + "|" + sstr(time_info["day"]) + "|" + sstr(time_info["month"]) + "|" + sstr(time_info["year"]))
     lines.append("g.share=" + sstr(world.share_value))
     if _timed:
-        _SAVE_TIMING.append(("ln.wstate", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("ln.wstate")
     if _pump:
         _pump(KEY_COMMANDS)
     # [PRIMESUD] value-pair keyed line caches (world._MOB_STAT_LINE_CACHE):
@@ -305,8 +321,7 @@ def _serialize_world(hvar_name=None, file_name=None):
     for _gql in gq_save_lines():  # [PRIMESUD] gquest state
         lines.append(_gql)
     if _timed:
-        _SAVE_TIMING.append(("ln.stats", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("ln.stats")
     if _pump:
         _pump(KEY_COMMANDS)
     # Build reset-room map for single-instance mobs (gl=1): if the only live
@@ -367,8 +382,7 @@ def _serialize_world(hvar_name=None, file_name=None):
     if mob_parts:
         lines.append("m=" + ";".join(mob_parts))
     if _timed:
-        _SAVE_TIMING.append(("ln.mob", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("ln.mob")
     if _pump:
         _pump(KEY_COMMANDS)
     for rvnum in sorted(world.rooms):
@@ -380,8 +394,7 @@ def _serialize_world(hvar_name=None, file_name=None):
             item_parts.append(serialize_item_token(o))
         lines.append("r." + sstr(rvnum) + ".items=" + "|".join(item_parts))
     if _timed:
-        _SAVE_TIMING.append(("ln.room", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("ln.room")
     if _pump:
         _pump(KEY_COMMANDS)
     # Re-serialize pending room items for unloaded areas (not in world.rooms).
@@ -398,8 +411,7 @@ def _serialize_world(hvar_name=None, file_name=None):
         world._PENDING_ROOM_LINE_CACHE[rvnum] = (_pr_raw, _pr_line)
         lines.append(_pr_line)
     if _timed:
-        _SAVE_TIMING.append(("ln.rpend", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("ln.rpend")
     if _pump:
         _pump(KEY_COMMANDS)
     # [PRIMESUD] Item-template snapshots (DESIGN.md sec. Item template
@@ -446,8 +458,7 @@ def _serialize_world(hvar_name=None, file_name=None):
         world._SNAP_ENC_CACHE[_it_vnum] = (_it_rev, _it_line)
         lines.append(_it_line)
     if _timed:
-        _SAVE_TIMING.append(("snap", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("snap")
     if _pump:
         _pump(KEY_COMMANDS)
     # Cold mark/sweep (DESIGN.md sec. Item template snapshots): free
@@ -462,8 +473,7 @@ def _serialize_world(hvar_name=None, file_name=None):
                      and world._vnum_to_tag(_k) not in world._LOADED_AREAS]:
         del world.ITEM_SNAPSHOTS[_it_vnum]
     if _timed:
-        _SAVE_TIMING.append(("sweep", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("sweep")
     if _pump:
         _pump(KEY_COMMANDS)
     for i in range(len(lines)):
@@ -471,23 +481,20 @@ def _serialize_world(hvar_name=None, file_name=None):
             raise Exception("non-str save line " + sstr(i))
     payload = "~".join(lines)
     if _timed:
-        _SAVE_TIMING.append(("join", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("join")
     hvars_set(hvar_name, payload)
     if _timed:
-        _SAVE_TIMING.append(("hvset", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("hvset")
     saved = hvars_get(hvar_name)
     _match = saved == payload
     if _timed:
-        _SAVE_TIMING.append(("verify", ticks() - _tmark))
-        _tmark = ticks()
+        _seg("verify")
     if not _match:
         raise Exception("save verification failed (readback mismatch)")
     with open(file_name, "w") as f:
         f.write(payload)
     if _timed:
-        _SAVE_TIMING.append(("fwrite", ticks() - _tmark))
+        _seg("fwrite")
 
 
 # -- Manual backup slot (cf. 1stMud do_backup/backup_char_obj in
