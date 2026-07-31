@@ -99,7 +99,8 @@ def violence_update(player):
     autoskill hook added 18/07/2026; worn-obj + room TRIG_FIGHT wired and
     re-verified 20/07/2026; post-multi_hit victim re-fetch (fight.c:86) fixed
     and re-verified 21/07/2026; [PRIMESUD] keyboard-drain checkpoints added
-    30/07/2026; [PRIMESUD] active-fighter index scan added 30/07/2026]
+    30/07/2026; [PRIMESUD] active-fighter index scan added 30/07/2026; bare
+    str() swept 01/08/2026]
 
     Args:
         player (dict): Player state dict.
@@ -186,7 +187,7 @@ def violence_update(player):
     if "fidx" in DBG:  # [PRIMESUD] costs nothing when the channel is off
         for cid, cch in chars.items():
             if cch["fighting"] is not None and cid not in world.FIGHTERS:
-                dbg("fidx: missing " + str(cid))
+                dbg("fidx: missing " + num_str(cid))
                 world.FIGHTERS.add(cid)
 
 
@@ -1144,7 +1145,8 @@ def is_safe_spell(ch, victim, area):
 
 def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
     """Print damage message from ch's attack on victim (cf. 1stMud dam_message in fight.c).
-    [Verified: 02/07/2026; PLR_AUTODAMAGE gate added and re-verified 04/07/2026]
+    [Verified: 02/07/2026; PLR_AUTODAMAGE gate added and re-verified 04/07/2026;
+    bare str() swept 01/08/2026]
     -- room/observer (buf1) messages and self-hit branch not ported (single-player).
 
     Single-player: only the player sees messages, as attacker (ch=player) or victim (ch=mob).
@@ -1167,7 +1169,7 @@ def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
     # cf. 1stMud SEE_DAMAGE(ch): damage tag only for player viewers with
     # PLR_AUTODAMAGE ("{x" otherwise); TO_CHAR line sees ch's flag, TO_VICT
     # line sees victim's flag
-    tag = " {W[{R" + str(dam) + "{W]{x"
+    tag = " {W[{R" + num_str(dam) + "{W]{x"
     tag_ch = tag if (not ch["is_npc"]
                      and ch.get("flags", PLR_DEFAULTS) & PLR_AUTODAMAGE) else "{x"
     tag_vict = tag if (not victim["is_npc"]
@@ -1198,7 +1200,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
     [Verified: 02/07/2026; stance re-checks and stop_follower added and
     re-verified 03/07/2026; tprint->chprintln output routing re-verified
     04/07/2026; TRIG_KILL/TRIG_DEATH mobprogs wired and re-verified
-    09/07/2026] -- force/static/flame shields, drunk reduction,
+    09/07/2026; bare str() swept 01/08/2026] -- force/static/flame shields, drunk reduction,
     arena/war, PvP, and wiznet not ported (noted inline);
     autoloot/autogold/autosac inlined instead of do_get/do_sacrifice
     dispatch; randomize_damage applied (1stMud discards it -- see FIXES.md).
@@ -1462,7 +1464,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                     for cobj in list(contents):
                         ctpl = item_tpl(cobj)
                         corpse["contents"].remove(cobj)
-                        chprintln(ch, "You get " + str(cobj.get("short_descr") or ctpl["short_descr"]) + ".")
+                        chprintln(ch, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
                         if not apply_money_pickup(ch, cobj, ctpl):
                             ch["inv"].append(cobj)
 
@@ -1473,7 +1475,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                         ctpl = item_tpl(cobj)
                         if ctpl.get("type") == "money":
                             corpse["contents"].remove(cobj)
-                            chprintln(ch, "You get " + str(cobj.get("short_descr") or ctpl["short_descr"]) + ".")
+                            chprintln(ch, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
                             apply_money_pickup(ch, cobj, ctpl)
 
                 # 1stMud: if (PLR_AUTOSAC) { if (autoloot && still has contents) skip; else sacrifice }
@@ -1485,7 +1487,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                         if silver == 1:
                             chprintln(ch, "Your deity gives you one silver coin for your sacrifice.")
                         else:
-                            chprintln(ch, "Your deity gives you " + str(silver) + " silver coins for your sacrifice.")
+                            chprintln(ch, "Your deity gives you " + num_str(silver) + " silver coins for your sacrifice.")
                         ch["silver"] = ch.get("silver", 0) + silver
                         short = corpse.get("short_descr", "a corpse")
                         chprintln(ch, "You sacrifice " + short + " to your deity.")
@@ -2561,7 +2563,7 @@ def _death_cry(ch):
 def create_money(gold, silver):
     """Create a coin item for the given gold/silver amounts (cf. 1stMud create_money in handler.c).
     [Verified: 02/07/2026; mixed-pile singular/plural fixed and re-verified
-    31/07/2026] -- weight not tracked; zero/negative input returns
+    31/07/2026; bare str() swept 01/08/2026] -- weight not tracked; zero/negative input returns
     None instead of 1stMud's bug-log + clamp to 1.
 
     Args:
@@ -2589,7 +2591,7 @@ def create_money(gold, silver):
         return obj
     if silver == 0:
         obj = create_object(OBJ_VNUM_GOLD_SOME)
-        obj["short_descr"] = str(gold) + " gold coins"
+        obj["short_descr"] = num_str(gold) + " gold coins"
         obj["silver"] = 0
         obj["gold"] = gold
         # 1stMud quirk: multi-gold pile cost is gold count, not gold * 100
@@ -2597,7 +2599,7 @@ def create_money(gold, silver):
         return obj
     if gold == 0:
         obj = create_object(OBJ_VNUM_SILVER_SOME)
-        obj["short_descr"] = str(silver) + " silver coins"
+        obj["short_descr"] = num_str(silver) + " silver coins"
         obj["silver"] = silver
         obj["gold"] = 0
         obj["cost"] = silver
@@ -2890,7 +2892,7 @@ def advance_level(player):
 
 def gain_exp(ch, gain):
     """Add XP to ch and level up as needed (cf. 1stMud gain_exp in update.c).
-    [Verified: 02/07/2026] -- [PRIMESUD] per-level XP model (xp/xp_next) replaces
+    [Verified: 02/07/2026; bare str() swept 01/08/2026] -- [PRIMESUD] per-level XP model (xp/xp_next) replaces
     1stMud cumulative exp; wiznet/announce and per-level save not ported.
 
     Args:
@@ -2911,7 +2913,7 @@ def gain_exp(ch, gain):
         # 1stMud: if (ch->level >= LEVEL_HERO) "Congratulations, you are now a %s!"
         # (high_level_name: "HERO" at LEVEL_HERO, "HERO+n" above; immortal tiers not ported)
         if ch["level"] >= LEVEL_HERO:
-            nm = "HERO" if ch["level"] == LEVEL_HERO else "HERO+" + str(ch["level"] - LEVEL_HERO)
+            nm = "HERO" if ch["level"] == LEVEL_HERO else "HERO+" + num_str(ch["level"] - LEVEL_HERO)
             chprintln(ch, "Congratulations, you are now a " + nm + "!")
         advance_level(ch)
 
@@ -3893,7 +3895,7 @@ def do_sskill(ch, args):
             continue
 
         if prereq[0] == STANCE_NORMAL:
-            chprintln(ch, pad_right(name, 9) + ": {Y" + str(get_stance(ch, stance)) + "%{x")
+            chprintln(ch, pad_right(name, 9) + ": {Y" + num_str(get_stance(ch, stance)) + "%{x")
             continue
 
         if prereq[0] == STANCE_CURRENT:
@@ -3903,7 +3905,7 @@ def do_sskill(ch, args):
 
         if (get_stance(ch, prereq[0]) >= 200
                 and get_stance(ch, prereq[1]) >= 200):
-            chprintln(ch, pad_right(name, 9) + ": {Y" + str(get_stance(ch, stance)) + "%{x")
+            chprintln(ch, pad_right(name, 9) + ": {Y" + num_str(get_stance(ch, stance)) + "%{x")
         else:
             chprintln(ch, pad_right(name, 9) + ": {yrequires master in "
                       + stance_name(prereq[0]) + " and " + stance_name(prereq[1]) + ".{x")
@@ -3949,7 +3951,7 @@ def _stance_status(ch):
     auto = get_stance(ch, STANCE_AUTODROP)
     if valid_stance(cur):
         chprintln(ch, "Stance    : {Y" + stance_name(cur) + "{x ("
-                  + str(get_stance(ch, cur)) + "%)")
+                  + num_str(get_stance(ch, cur)) + "%)")
     else:
         chprintln(ch, "Stance    : {wnone{x")
     if valid_stance(auto):

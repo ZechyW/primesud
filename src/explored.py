@@ -195,10 +195,10 @@ def _pct2(part, whole):
         return "0.00"
     hp = (part * 10000 + whole // 2) // whole   # rounded hundredths of a percent
     whole_pct, frac = divmod(hp, 100)
-    f = str(frac)
+    f = num_str(frac)
     if len(f) < 2:
         f = "0" + f
-    return str(whole_pct) + "." + f
+    return num_str(whole_pct) + "." + f
 
 
 def _pct0(part, whole):
@@ -219,16 +219,16 @@ def do_explored(player, args):
     if not arg:
         rcnt = roomcount(player)
         # [PRIMESUD] "ROM" rendered as the realm name, per quest.py {n precedent.
-        chprintln(player, "The realm has {G" + str(TOP_EXPLORED)
+        chprintln(player, "The realm has {G" + num_str(TOP_EXPLORED)
                   + "{x explorable rooms.")
-        chprintln(player, "You have explored {G" + str(rcnt) + " ("
+        chprintln(player, "You have explored {G" + num_str(rcnt) + " ("
                   + _pct2(rcnt, TOP_EXPLORED) + "%){x of the mud{x")
         tag = _tag_for_vnum(player.get("room"))
         acnt = areacount(player, tag)
         arooms = arearooms(tag)
-        chprintln(player, "This area has {G" + str(arooms)
+        chprintln(player, "This area has {G" + num_str(arooms)
                   + "{x explorable rooms.")
-        chprintln(player, "You have explored {G" + str(acnt) + " ("
+        chprintln(player, "You have explored {G" + num_str(acnt) + " ("
                   + _pct2(acnt, arooms) + "%){x rooms in this area.{x")
     elif arg == "reset":
         m = get_mask(player)

@@ -4,6 +4,7 @@ import world
 from game_time import time_info
 from handler import chprintln
 from urandom import randint
+from util import num_str
 from world import ROOM_DEFS
 
 MAX_SHARES = 10000
@@ -12,10 +13,10 @@ MAX_GOLD = 99999999
 
 def do_balance(ch, args):
     """Display bank, carried money, and shares (cf. 1stMud do_balance in economy.c)."""
-    chprintln(ch, "Balance : " + str(ch["gold_bank"]) + " gold")
-    chprintln(ch, "On Hand : " + str(ch["gold"]) + " gold, " + str(ch["silver"]) + " silver")
-    chprintln(ch, "Shares  : " + str(ch["shares"] * world.share_value)
-              + " gold in " + str(ch["shares"]) + " shares")
+    chprintln(ch, "Balance : " + num_str(ch["gold_bank"]) + " gold")
+    chprintln(ch, "On Hand : " + num_str(ch["gold"]) + " gold, " + num_str(ch["silver"]) + " silver")
+    chprintln(ch, "Shares  : " + num_str(ch["shares"] * world.share_value)
+              + " gold in " + num_str(ch["shares"]) + " shares")
 
 
 def _syntax(ch):
@@ -93,11 +94,11 @@ def do_bank(ch, args):
         do_balance(ch, [])
         return
     if op == "check":
-        chprintln(ch, "The current shareprice is " + str(world.share_value) + ".")
+        chprintln(ch, "The current shareprice is " + num_str(world.share_value) + ".")
         if ch["shares"]:
-            chprintln(ch, "You currently have " + str(ch["shares"]) + " shares, ("
-                      + str(world.share_value) + " a share) worth a total of "
-                      + str(ch["shares"] * world.share_value) + " gold.")
+            chprintln(ch, "You currently have " + num_str(ch["shares"]) + " shares, ("
+                      + num_str(world.share_value) + " a share) worth a total of "
+                      + num_str(ch["shares"] * world.share_value) + " gold.")
         return
     if len(args) < 2:
         prompts = {"deposit": "Deposit how much?", "withdraw": "Withdraw how much?",
@@ -115,45 +116,45 @@ def do_bank(ch, args):
         cost = amount * 100
         from shop import check_worth, deduct_cost
         if not check_worth(ch, cost):
-            chprintln(ch, "How can you deposit " + str(amount)
-                      + " gold when you only have " + str(ch["gold"]) + " gold, "
-                      + str(ch["silver"]) + " silver?")
+            chprintln(ch, "How can you deposit " + num_str(amount)
+                      + " gold when you only have " + num_str(ch["gold"]) + " gold, "
+                      + num_str(ch["silver"]) + " silver?")
             return
         if amount <= 0:
             chprintln(ch, "Only positive figures are allowed.")
             return
         if ch["gold_bank"] + amount > MAX_GOLD:
             chprintln(ch, "I'm sorry, our accounts can only hold up to "
-                      + str(MAX_GOLD) + " gold!")
+                      + num_str(MAX_GOLD) + " gold!")
             return
         deduct_cost(ch, cost)
         ch["gold_bank"] = max(0, ch["gold_bank"] + amount)
-        chprintln(ch, "You deposit " + str(amount) + " gold.  Your new balance is "
-                  + str(ch["gold_bank"]) + " gold.")
+        chprintln(ch, "You deposit " + num_str(amount) + " gold.  Your new balance is "
+                  + num_str(ch["gold_bank"]) + " gold.")
     elif op == "withdraw":
         amount = _amount(raw, ch["gold_bank"])
         if ch["gold_bank"] < amount:
-            chprintln(ch, "How can you withdraw " + str(amount)
-                      + " gold when your balance is " + str(ch["gold_bank"]) + " gold?")
+            chprintln(ch, "How can you withdraw " + num_str(amount)
+                      + " gold when your balance is " + num_str(ch["gold_bank"]) + " gold?")
             return
         if amount <= 0:
             chprintln(ch, "Only positive figures are allowed.")
             return
         if ch["gold"] + amount > MAX_GOLD:
-            chprintln(ch, "I'm sorry you can only carry " + str(MAX_GOLD) + " gold!")
+            chprintln(ch, "I'm sorry you can only carry " + num_str(MAX_GOLD) + " gold!")
             return
         ch["gold_bank"] = max(0, ch["gold_bank"] - amount)
         ch["gold"] = min(MAX_GOLD, ch["gold"] + amount)
-        chprintln(ch, "You withdraw " + str(amount) + " gold.  Your new balance is "
-                  + str(ch["gold_bank"]) + " gold.")
+        chprintln(ch, "You withdraw " + num_str(amount) + " gold.  Your new balance is "
+                  + num_str(ch["gold_bank"]) + " gold.")
     elif op == "buy":
         shares = MAX_SHARES - ch["shares"] if raw == "all" else _atoi(raw)
         if ch["shares"] + shares > MAX_SHARES:
-            chprintln(ch, "You can't buy more than " + str(MAX_SHARES) + " shares.")
+            chprintln(ch, "You can't buy more than " + num_str(MAX_SHARES) + " shares.")
             return
         cost = shares * world.share_value
         if cost > ch["gold_bank"]:
-            chprintln(ch, str(shares) + " shares will cost you " + str(cost)
+            chprintln(ch, num_str(shares) + " shares will cost you " + num_str(cost)
                       + ", deposit more money.")
             return
         if shares <= 0:
@@ -161,12 +162,12 @@ def do_bank(ch, args):
             return
         ch["gold_bank"] = max(0, ch["gold_bank"] - cost)
         ch["shares"] = min(MAX_SHARES, ch["shares"] + shares)
-        chprintln(ch, "You buy " + str(shares) + " shares for " + str(cost)
-                  + " gold, you now have " + str(ch["shares"]) + " shares.")
+        chprintln(ch, "You buy " + num_str(shares) + " shares for " + num_str(cost)
+                  + " gold, you now have " + num_str(ch["shares"]) + " shares.")
     elif op == "sell":
         shares = ch["shares"] if raw == "all" else _atoi(raw)
         if shares > ch["shares"]:
-            chprintln(ch, "You only have " + str(ch["shares"]) + " shares.")
+            chprintln(ch, "You only have " + num_str(ch["shares"]) + " shares.")
             return
         if shares <= 0:
             chprintln(ch, "If you want to buy shares you have to say so...")
@@ -178,8 +179,8 @@ def do_bank(ch, args):
             return
         ch["gold_bank"] = max(0, ch["gold_bank"] + value)
         ch["shares"] = max(0, ch["shares"] - shares)
-        chprintln(ch, "You sell " + str(shares) + " shares for " + str(value)
-                  + " gold, you now have " + str(ch["shares"]) + " shares.")
+        chprintln(ch, "You sell " + num_str(shares) + " shares for " + num_str(value)
+                  + " gold, you now have " + num_str(ch["shares"]) + " shares.")
     else:
         _syntax(ch)
         return

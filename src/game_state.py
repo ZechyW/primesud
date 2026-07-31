@@ -571,7 +571,7 @@ def save_world(quiet=False):
                 dbg("autosave")
         return True
     except Exception as e:
-        tprint("Save failed: " + str(e))
+        tprint("Save failed: " + str(e))  # str-ok
         return False
 
 

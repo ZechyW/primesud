@@ -8,7 +8,7 @@ from skill_utils import WaitState
 from magic import SPELL_FUNS, TARGET_CHAR, _skill_lookup
 from skills_table import SKILLS
 from shop import check_worth, deduct_cost, add_cost
-from util import pad_left
+from util import num_str, pad_left
 
 # (name, descr, spell name for _skill_lookup or None=mana, words, cost in gold)
 # cf. 1stMud healer_table in healer.c
@@ -44,7 +44,7 @@ def do_heal(player, args):
         act("$N says 'I offer the following spells:'", player, None, mob, TO_CHAR)
         for name, descr, _spell, _words, cost in _HEALER_TABLE:
             chprintln(player, "  " + pad_left(name, 12) + ": " + pad_left(descr, 24)
-                      + " " + str(cost) + " gold")
+                      + " " + num_str(cost) + " gold")
         chprintln(player, "  Type heal <type> to be healed.")
         return
 

@@ -576,9 +576,9 @@ def _give_coins(player, amount, coin, rest, victim=None):
         return
     player[wallet] -= amount
     victim[wallet] = victim.get(wallet, 0) + amount
-    act("$n gives you " + str(amount) + " " + wallet + ".", player, None, victim, TO_VICT)
+    act("$n gives you " + num_str(amount) + " " + wallet + ".", player, None, victim, TO_VICT)
     act("$n gives $N some coins.", player, None, victim, TO_NOTVICT)
-    act("You give $N " + str(amount) + " " + wallet + ".", player, None, victim, TO_CHAR)
+    act("You give $N " + num_str(amount) + " " + wallet + ".", player, None, victim, TO_CHAR)
 
     # TRIG_BRIBE: amount normalised to silver (cf. p_bribe_trigger, act_obj.c:710)
     if victim.get("is_npc"):
@@ -598,16 +598,16 @@ def _give_coins(player, amount, coin, rest, victim=None):
             # 1stMud: changer gives the original amount back via do_give
             victim[wallet] -= amount
             player[wallet] += amount
-            act("$n gives you " + str(amount) + " " + wallet + ".", victim, None, player, TO_VICT)
+            act("$n gives you " + num_str(amount) + " " + wallet + ".", victim, None, player, TO_VICT)
         elif can_see(victim, player):
             out = "gold" if silver else "silver"
             player[out] += change
-            act("$n gives you " + str(change) + " " + out + ".", victim, None, player, TO_VICT)
+            act("$n gives you " + num_str(change) + " " + out + ".", victim, None, player, TO_VICT)
             if silver:
                 rem = 95 * amount // 100 - change * 100
                 if rem > 0:
                     player["silver"] += rem
-                    act("$n gives you " + str(rem) + " silver.", victim, None, player, TO_VICT)
+                    act("$n gives you " + num_str(rem) + " silver.", victim, None, player, TO_VICT)
             act("$n tells you 'Thank you, come again.'", victim, None, player, TO_VICT)
 
 
@@ -636,7 +636,7 @@ def do_give(player, args):
             amount = player.get(coin, 0)
             if amount:
                 giveables.append(coin)
-                labels.append(cap + " coins (" + str(amount)
+                labels.append(cap + " coins (" + num_str(amount)
                               + " available)")
         for carried in player["inv"]:
             if can_see_obj(player, carried):
@@ -796,7 +796,7 @@ def do_inventory(player, args):
     max_carry = can_carry_n(player)
     # [PRIMESUD] output accumulated and sent as one unjoined list --
     # batch-rendered by terminal.print_lines
-    out = ["{YYou are carrying {W" + str(len(player["inv"])) + "/" + str(max_carry)
+    out = ["{YYou are carrying {W" + num_str(len(player["inv"])) + "/" + num_str(max_carry)
            + "{Y items:{x"]
     if not player["inv"]:
         chprintln(player, out)
@@ -817,7 +817,7 @@ def do_inventory(player, args):
         if is_quester(player) and v == player.get("quest_obj", 0):
             name = "{r[{RTARGET{r] {x" + name
         if show_vnums:  # [PRIMESUD]
-            name += " {D[" + str(v) + "]{x"
+            name += " {D[" + num_str(v) + "]{x"
         out.append("  " + flags + name + " x" + num_str(n) if n > 1 else "  " + flags + name)
     chprintln(player, out)
 
@@ -1097,7 +1097,7 @@ def wear_obj(player, obj, fReplace):
     """
     tpl = item_tpl(obj)
     if player["level"] < tpl.get("level", 1):
-        chprintln(player, "You must be level " + str(tpl.get("level", 1)) + " to use this object.")
+        chprintln(player, "You must be level " + num_str(tpl.get("level", 1)) + " to use this object.")
         return
 
     if tpl.get("type") == "light":
@@ -1587,7 +1587,7 @@ def do_equipment(player, args):
             tpl = item_tpl(obj)
             line = label + _obj_flags(tpl) + "{Y" + tpl["short_descr"] + "{x"
             if show_vnums:  # [PRIMESUD]
-                line += " {D[" + str(obj["vnum"]) + "]{x"
+                line += " {D[" + num_str(obj["vnum"]) + "]{x"
             out.append(line)
         else:
             out.append(label + "nothing")
@@ -1788,7 +1788,7 @@ def do_second(player, args):
         return
     tpl = item_tpl(obj)
     if player["level"] < tpl.get("level", 1):
-        chprintln(player, "You must be level " + str(tpl.get("level", 1)) + " to use this object.")
+        chprintln(player, "You must be level " + num_str(tpl.get("level", 1)) + " to use this object.")
         return
     if player["equip"].get("wield") is None:
         chprintln(player, "You need to wield a primary weapon, before using a secondary one!")
@@ -2379,7 +2379,7 @@ def _sacrifice_one(player, obj, rs):
     if silver == 1:
         chprintln(player, "Your deity gives you one silver coin for your sacrifice.")
     else:
-        chprintln(player, "Your deity gives you " + str(silver) + " silver coins for your sacrifice.")
+        chprintln(player, "Your deity gives you " + num_str(silver) + " silver coins for your sacrifice.")
 
     player["silver"] = player.get("silver", 0) + silver
 

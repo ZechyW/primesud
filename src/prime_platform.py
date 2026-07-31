@@ -16,7 +16,7 @@ def wait_ms(ms):
     recurring str(int) transients feed the G1 GC-corruption bug (CLAUDE.md
     pitfall 8); the cache makes repeat delays allocation-free.
     """
-    ppl_eval("WAIT(" + (num_str(ms) if type(ms) is int else str(ms)) + "/1e3)")
+    ppl_eval("WAIT(" + (num_str(ms) if type(ms) is int else str(ms)) + "/1e3)")  # str-ok
 
 
 def clear_graphics(first=1, last=8):

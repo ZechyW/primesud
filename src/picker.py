@@ -3,6 +3,7 @@
 from hpprime import eval as ppleval
 import terminal
 from terminal import tprint
+from util import num_str
 
 _MAX_OPTS = 10
 
@@ -45,12 +46,12 @@ def _render(title, options, page, max_page):
     shown = options[page * _MAX_OPTS : page * _MAX_OPTS + _MAX_OPTS]
     tprint("{Y" + title + "{x")
     for i, opt in enumerate(shown):
-        label = str(i + 1) if i < 9 else "0"
+        label = num_str(i + 1) if i < 9 else "0"
         suffix = " {C(default){x" if i == 0 else ""
         tprint("  {y" + label + "){x " + opt + suffix)
     if max_page > 0:
         tprint(
-            "{wPage " + str(page + 1) + "/" + str(max_page + 1) + " [+] next  [-] prev  [Esc] cancel{x"
+            "{wPage " + num_str(page + 1) + "/" + num_str(max_page + 1) + " [+] next  [-] prev  [Esc] cancel{x"
         )
     else:
         tprint("{w[Esc] cancel{x")
@@ -121,7 +122,7 @@ def pick_from(title, options, start_page=0):
                         elif n_shown == 1:
                             rang = "1"
                         else:
-                            rang = "1-" + str(n_shown)
+                            rang = "1-" + num_str(n_shown)
                         tprint("")
                         tprint("{wEnter " + rang + " (or Esc to cancel).{x")
                         break

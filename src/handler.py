@@ -14,7 +14,7 @@ import world
 from world import MOB_DEFS, ROOM_DEFS, item_tpl, item_tpl_get
 from game_time import time_info, SUN_SET, SUN_DARK
 from debug import DBG  # [PRIMESUD] "holylight" debug toggle = 1stMud PLR_HOLYLIGHT
-from util import int_str
+from util import int_str, sstr
 
 # -- Alignment helpers (cf. 1stMud IsGood/IsEvil/IsNeutral in macro.h) ----------------
 
@@ -716,11 +716,11 @@ def _safe_fmt(fmt, args):
         arg = args[ai]
         ai += 1
         if c == "d":
-            s = int_str(arg) if type(arg) is int else str(arg)
+            s = int_str(arg) if type(arg) is int else str(arg)  # str-ok
         elif c == "c":
-            s = chr(arg) if type(arg) is int else (arg if type(arg) is str else str(arg))
+            s = chr(arg) if type(arg) is int else (arg if type(arg) is str else str(arg))  # str-ok
         elif c == "s":
-            s = arg if type(arg) is str else str(arg)
+            s = arg if type(arg) is str else sstr(arg)
         else:
             raise ValueError("unsupported format: %" + c)
         if width > len(s):

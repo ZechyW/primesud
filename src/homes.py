@@ -5,6 +5,7 @@ from colors import color_len
 from handler import chprintln
 from item import create_object, obj_vnum
 from movement import perform_recall
+from util import num_str
 
 HOUSE_PRICE = 5000000
 HOUSE_TRIVIA = 40
@@ -106,11 +107,11 @@ def do_home(player, argument):
             chprintln(player, "You must be at the Player Estates office.")
             return
         if player["gold"] < HOUSE_PRICE:
-            chprintln(player, "{wIt costs " + str(HOUSE_PRICE)
+            chprintln(player, "{wIt costs " + num_str(HOUSE_PRICE)
                       + " gold to buy a home.{x")
             return
         if player["trivia"] < HOUSE_TRIVIA:
-            chprintln(player, "It costs " + str(HOUSE_TRIVIA)
+            chprintln(player, "It costs " + num_str(HOUSE_TRIVIA)
                       + " trivia points to buy a house.")
             return
         player["gold"] -= HOUSE_PRICE

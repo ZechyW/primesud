@@ -39,6 +39,7 @@ from skills_table import SKILLS, SKILL_TABLE
 from terminal import tprint
 from urandom import randint
 from game_time import init_weather, RAND_FACTOR, MAX_VECTOR
+from util import num_str
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS, item_tpl, item_tpl_get
 
 TARGET_NONE = "none"
@@ -529,7 +530,7 @@ def _locate_candidate_areas(wanted):
     # containing "v:250") fall through to the exact parsed check.
     needles = []
     for v in vnums:
-        needles.append("v:" + str(v))
+        needles.append("v:" + num_str(v))
     from item import parse_item_token  # deferred: item imports world
     for room_vnum, raw in world._pending_room_items.items():
         for token in raw.split("|"):
@@ -690,27 +691,27 @@ def spell_identify(sn, level, ch, vo, target):
     weight multiplier, weapon flags line not ported (data not modeled);
     to_affects/immune/resist/vuln bitvector lines not ported (only
     to_object bitvectors exist in PrimeSUD item affects); weapon-type
-    wording matched and re-verified 07/07/2026."""
+    wording matched and re-verified 07/07/2026; bare str() swept 01/08/2026."""
     tpl = item_tpl(vo)
     flags = item_extra_flags(vo, tpl)
     chprintln(ch, "Object '" + tpl.get("keywords", "") + "' is type " + tpl.get("type", "unknown")
              + ", extra flags " + (" ".join(sorted(flags)) or "none") + ".")
-    chprintln(ch, "Weight is " + str(tpl.get("weight", 0) // 10) + ", value is "
-             + str(vo.get("cost", tpl.get("value", 0))) + ", level is "
-             + str(vo.get("level", tpl.get("level", 0))) + ".")  # instance level (quest gear scales)
+    chprintln(ch, "Weight is " + num_str(tpl.get("weight", 0) // 10) + ", value is "
+             + num_str(vo.get("cost", tpl.get("value", 0))) + ", level is "
+             + num_str(vo.get("level", tpl.get("level", 0))) + ".")  # instance level (quest gear scales)
     if tpl.get("type") in ("scroll", "potion", "pill"):
         spells = item_spells(vo, tpl)
         if spells:
-            chprintln(ch, "Level " + str(item_spell_level(vo, tpl)) + " spells of: '" + "' '".join(spells) + "'.")
+            chprintln(ch, "Level " + num_str(item_spell_level(vo, tpl)) + " spells of: '" + "' '".join(spells) + "'.")
     elif tpl.get("type") in ("wand", "staff"):
-        line = "Has " + str(item_current_charges(vo, tpl)) + " charges of level " + str(item_spell_level(vo, tpl))
+        line = "Has " + num_str(item_current_charges(vo, tpl)) + " charges of level " + num_str(item_spell_level(vo, tpl))
         spell_name = item_spell_name(vo, tpl)
         if spell_name:
             line += " '" + spell_name + "'"
         chprintln(ch, line + ".")
     elif tpl.get("type") == "container":
         # [PRIMESUD] capacity / weight multiplier not modeled; max weight and flags only
-        chprintln(ch, "Maximum weight: " + str(tpl.get("container_max_weight", 0))
+        chprintln(ch, "Maximum weight: " + num_str(tpl.get("container_max_weight", 0))
                   + "#  flags: " + (" ".join(sorted(tpl.get("container_flags", {}))) or "none"))
     elif tpl.get("type") == "weapon":
         # Per-class display names (magic.c:3244-3274); 1stMud's loader turns
@@ -723,25 +724,25 @@ def spell_identify(sn, level, ch, vo, target):
         chprintln(ch, "Weapon type is " + wt + ".")
         # 1stMud new_format: instance value[1]/[2] (quest gear scales dice)
         d = vo.get("dice") or tpl.get("dice", (0, 0, 0))
-        chprintln(ch, "Damage is " + str(d[0]) + "d" + str(d[1])
-                  + " (average " + str((1 + d[1]) * d[0] // 2) + ").")
+        chprintln(ch, "Damage is " + num_str(d[0]) + "d" + num_str(d[1])
+                  + " (average " + num_str((1 + d[1]) * d[0] // 2) + ").")
         # [PRIMESUD] weapon flags line skipped -- weapon flags not ported
     elif tpl.get("type") == "armor":
         a = tpl.get("armor", (0, 0, 0, 0))
-        chprintln(ch, "Armor class is " + str(a[0]) + " pierce, " + str(a[1])
-                  + " bash, " + str(a[2]) + " slash, and " + str(a[3]) + " vs. magic.")
+        chprintln(ch, "Armor class is " + num_str(a[0]) + " pierce, " + num_str(a[1])
+                  + " bash, " + num_str(a[2]) + " slash, and " + num_str(a[3]) + " vs. magic.")
     if not vo.get("enchanted"):  # template affects hidden once enchanted (magic.c:3301)
         for loc, mod in tpl.get("stat_bonuses", {}).items():
             if mod != 0:
-                chprintln(ch, "Affects " + loc + " by " + str(mod) + ".")
+                chprintln(ch, "Affects " + loc + " by " + num_str(mod) + ".")
     for af in item_affect_list(vo):
         loc = af.get("location", "none")
         mod = af.get("modifier", 0)
         if loc == "none" or mod == 0:  # magic.c:3349
             continue
-        line = "Affects " + loc + " by " + str(mod)
+        line = "Affects " + loc + " by " + num_str(mod)
         if af.get("duration", -1) > -1:
-            line += ", " + str(af["duration"]) + " hours."
+            line += ", " + num_str(af["duration"]) + " hours."
         else:
             line += "."
         chprintln(ch, line)

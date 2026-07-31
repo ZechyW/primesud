@@ -22,6 +22,7 @@ from skills_table import (SKILL_TABLE, SKILLS, GSN_BLINDNESS, GSN_CURSE,
 from config import POS_ORDER
 from combat import do_bash, do_trip, do_dirt, do_disarm, do_kick
 from magic import do_cast
+from util import num_str
 import world
 
 _LEARNED_FLOOR = 75
@@ -241,8 +242,8 @@ def _row_dicts(player):
 
 def _format_row(pos_in_page, name, pct, included, is_new):
     """Render one numbered rotation row, picker-style (1-9 then 0). [PRIMESUD]"""
-    label = str(pos_in_page + 1) if pos_in_page < 9 else "0"
-    line = "  " + label + ") " + name + " " + str(pct) + "%"
+    label = num_str(pos_in_page + 1) if pos_in_page < 9 else "0"
+    line = "  " + label + ") " + name + " " + num_str(pct) + "%"
     if not included:
         line += " {D(off){x"
     if is_new:
@@ -280,8 +281,8 @@ def _update_status(tr, work, sel):
     tag = "" if entry["included"] else " (off)"
     # Key legend lives in the printed header (_print_rotation_rows); the
     # status line only fits the selection within columns-6 chars.
-    tr.set_status("> " + str(sel + 1) + ") " + entry["name"] + tag
-                  + "  [" + str(sel + 1) + "/" + str(len(work)) + "]")
+    tr.set_status("> " + num_str(sel + 1) + ") " + entry["name"] + tag
+                  + "  [" + num_str(sel + 1) + "/" + num_str(len(work)) + "]")
 
 
 def _save_rotation(player, work):

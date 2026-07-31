@@ -1,6 +1,7 @@
 """General-purpose output pager (cf. 1stMud sendpage/show_string in comm.c). [PRIMESUD]"""
 
 import terminal
+from util import num_str
 
 _ESC = "\\e"  # tml key_map escape char (literal backslash-e, not \x1b)
 
@@ -49,7 +50,7 @@ def tpage(lines):
                 for line in lines[start:start + page_rows]:
                     tr.print(line)
                 shown = page
-                tr.set_status("-- page " + str(page + 1) + "/" + str(total)
+                tr.set_status("-- page " + num_str(page + 1) + "/" + num_str(total)
                               + "  [Enter] next  [-] back  [Esc] done --")
             key = tr.read_key()
             if key == "\n" or key == "+":

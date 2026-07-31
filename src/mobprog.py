@@ -123,6 +123,7 @@ from quest import is_quester
 from races import race_lookup
 from skill_utils import get_skill
 from skills_table import SKILLS
+from util import num_str, sstr
 
 # -- Interpreter limits (cf. programs.c:1942/1950) -----------------------------
 MAX_NESTED_LEVEL = 12
@@ -234,7 +235,7 @@ def num_eval(lval, oper, rval):
         return lval < rval
     if oper == "!=":
         return lval != rval
-    dbg("mobprog: invalid oper '" + str(oper) + "'")
+    dbg("mobprog: invalid oper '" + oper + "'")
     return False
 
 
@@ -277,11 +278,11 @@ def _run_prog(mob, prog_vnum, ch, arg1, arg2):
     """Fetch a program's source and run it (cf. the program_flow call sites). [PRIMESUD]"""
     code = world.MOBPROGS.get(prog_vnum)
     if code is None:
-        dbg("mobprog: missing prog " + str(prog_vnum))
+        dbg("mobprog: missing prog " + num_str(prog_vnum))
         return
     if "prog" in DBG:  # live trigger-fire trace (cf. 1stMud ptrace ring buffer)
-        dbg("prog " + str(prog_vnum) + " fires, mob " + str(mob.get("tpl", 0))
-            + " room " + str(mob.get("room", 0)))
+        dbg("prog " + num_str(prog_vnum) + " fires, mob " + num_str(mob.get("tpl", 0))
+            + " room " + sstr(mob.get("room", 0)))  # sstr: room is None for extracted mobs
     program_flow(prog_vnum, code, mob, ch, arg1, arg2)
 
 
@@ -582,11 +583,11 @@ def _run_oprog(octx, prog_vnum, ch, arg1, arg2):
         if _entry is not None:
             code = _entry[2].get(prog_vnum)
     if code is None:
-        dbg("mobprog: missing objprog " + str(prog_vnum))
+        dbg("mobprog: missing objprog " + num_str(prog_vnum))
         return
     if "prog" in DBG:  # live trigger-fire trace (cf. 1stMud ptrace ring buffer)
-        dbg("objprog " + str(prog_vnum) + " fires, obj "
-            + str(obj_vnum(octx["obj"])) + " room " + str(_octx_room(octx)))
+        dbg("objprog " + num_str(prog_vnum) + " fires, obj "
+            + num_str(obj_vnum(octx["obj"])) + " room " + sstr(_octx_room(octx)))  # sstr: room can be None
     program_flow(prog_vnum, code, None, ch, arg1, arg2, obj=octx)
 
 
@@ -594,10 +595,10 @@ def _run_rprog(rvnum, prog_vnum, ch, arg1, arg2):
     """Fetch a room program's source and run it (cf. the RPROG program_flow call sites). [PRIMESUD]"""
     code = world.ROOMPROGS.get(prog_vnum)
     if code is None:
-        dbg("mobprog: missing roomprog " + str(prog_vnum))
+        dbg("mobprog: missing roomprog " + num_str(prog_vnum))
         return
     if "prog" in DBG:
-        dbg("roomprog " + str(prog_vnum) + " fires, room " + str(rvnum))
+        dbg("roomprog " + num_str(prog_vnum) + " fires, room " + num_str(rvnum))
     program_flow(prog_vnum, code, None, ch, arg1, arg2, room=rvnum)
 
 
@@ -1516,27 +1517,27 @@ def cmd_eval(check, line, mob, ch, arg1, arg2, rch, prog_vnum):
     if check in _COUNT_FLAG:
         lval = _count_people_room(mob, _COUNT_FLAG[check])
         if len(toks) < 2 or toks[0] not in _EVAL_OPS:
-            dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+            dbg("prog " + num_str(prog_vnum) + " syntax error '" + line + "'")
             return False
         return num_eval(lval, toks[0], _atoi(toks[1]))
     if check == "order":
         if len(toks) < 2 or toks[0] not in _EVAL_OPS:
-            dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+            dbg("prog " + num_str(prog_vnum) + " syntax error '" + line + "'")
             return False
         return num_eval(_get_order_mob(mob), toks[0], _atoi(toks[1]))
     if check == "hour":
         if len(toks) < 2 or toks[0] not in _EVAL_OPS:
-            dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+            dbg("prog " + num_str(prog_vnum) + " syntax error '" + line + "'")
             return False
         return num_eval(time_info["hour"], toks[0], _atoi(toks[1]))
 
     # -- everything else needs a $-code target --
     if len(buf) < 2 or buf[0] != "$":
-        dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+        dbg("prog " + num_str(prog_vnum) + " syntax error '" + line + "'")
         return False
     code = buf[1]
     if code not in ("i", "n", "t", "r", "o", "p", "q"):
-        dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+        dbg("prog " + num_str(prog_vnum) + " syntax error '" + line + "'")
         return False
     lval_char, lval_obj = _resolve_target(code, mob, ch, arg1, arg2)
     if rch is not None and code == "r":
@@ -1555,14 +1556,14 @@ def cmd_eval(check, line, mob, ch, arg1, arg2, rch, prog_vnum):
 
     if check in _CHAR_NUM:
         if len(toks) < 3 or toks[1] not in _EVAL_OPS:
-            dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+            dbg("prog " + num_str(prog_vnum) + " syntax error '" + line + "'")
             return False
         lval = _char_num_lval(check, lval_char, lval_obj)
         return num_eval(lval, toks[1], _atoi(toks[2]))
 
     # Unreachable for well-formed KNOWN_CHECKS vocabulary (all checks are
     # implemented as of PROGS_PLAN Phase 3); kept as a guard.
-    dbg("prog " + str(prog_vnum) + " check '" + check + "' not ported")
+    dbg("prog " + num_str(prog_vnum) + " check '" + check + "' not ported")
     return False
 
 
@@ -1739,31 +1740,31 @@ def _cmd_eval_other(check, line, kind, origin, ch, arg1, arg2, rch, prog_vnum):
     if check in _COUNT_FLAG:
         if check == "clones":
             # cf. cmd_eval_obj/_room "received CHK_CLONES" bug -> false
-            dbg("prog " + str(prog_vnum) + " clones check in " + kind + "prog")
+            dbg("prog " + num_str(prog_vnum) + " clones check in " + kind + "prog")
             return False
         lval = _count_people_other(rvnum, _COUNT_FLAG[check])
         if len(toks) < 2 or toks[0] not in _EVAL_OPS:
-            dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+            dbg("prog " + num_str(prog_vnum) + " syntax error '" + line + "'")
             return False
         return num_eval(lval, toks[0], _atoi(toks[1]))
     if check == "order":
         if kind == "room":
             # cf. cmd_eval_room "received CHK_ORDER." bug -> false
-            dbg("prog " + str(prog_vnum) + " order check in roomprog")
+            dbg("prog " + num_str(prog_vnum) + " order check in roomprog")
             return False
         if len(toks) < 2 or toks[0] not in _EVAL_OPS:
-            dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+            dbg("prog " + num_str(prog_vnum) + " syntax error '" + line + "'")
             return False
         return num_eval(_get_order_obj(origin), toks[0], _atoi(toks[1]))
     if check == "hour":
         if len(toks) < 2 or toks[0] not in _EVAL_OPS:
-            dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+            dbg("prog " + num_str(prog_vnum) + " syntax error '" + line + "'")
             return False
         return num_eval(time_info["hour"], toks[0], _atoi(toks[1]))
 
     # -- everything else needs a $-code target --
     if len(buf) < 2 or buf[0] != "$":
-        dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+        dbg("prog " + num_str(prog_vnum) + " syntax error '" + line + "'")
         return False
     code = buf[1]
     lval_char = None
@@ -1773,7 +1774,7 @@ def _cmd_eval_other(check, line, kind, origin, ch, arg1, arg2, rch, prog_vnum):
             lval_obj = origin["obj"]
         else:
             # cf. cmd_eval_room "received code case 'i'." -> both lvals NULL
-            dbg("prog " + str(prog_vnum) + " $i in roomprog")
+            dbg("prog " + num_str(prog_vnum) + " $i in roomprog")
             return False
     elif code == "n":
         lval_char = ch
@@ -1789,7 +1790,7 @@ def _cmd_eval_other(check, line, kind, origin, ch, arg1, arg2, rch, prog_vnum):
         tid = st.get(tkey)
         lval_char = world.chars.get(tid) if tid is not None else None
     else:
-        dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+        dbg("prog " + num_str(prog_vnum) + " syntax error '" + line + "'")
         return False
     if lval_char is None and lval_obj is None:
         return False
@@ -1797,7 +1798,7 @@ def _cmd_eval_other(check, line, kind, origin, ch, arg1, arg2, rch, prog_vnum):
     if check == "isvisible":
         # upstream cmd_eval_obj/_room have no CHK_ISVISIBLE case; the keyword
         # falls through to the numeric section and bugs out false
-        dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+        dbg("prog " + num_str(prog_vnum) + " syntax error '" + line + "'")
         return False
     if check in _CHAR_BOOL:
         # istarget reads mob.get("mprog_target"); shim the origin's target in
@@ -1807,7 +1808,7 @@ def _cmd_eval_other(check, line, kind, origin, ch, arg1, arg2, rch, prog_vnum):
     if check == "hunter":
         # absent from cmd_eval_obj/_room: the keyword falls through their
         # switches to the numeric section and bugs out false
-        dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+        dbg("prog " + num_str(prog_vnum) + " syntax error '" + line + "'")
         return False
     if check in _CHAR_FLAG:
         if len(toks) < 2:
@@ -1817,7 +1818,7 @@ def _cmd_eval_other(check, line, kind, origin, ch, arg1, arg2, rch, prog_vnum):
 
     if check in _CHAR_NUM:
         if len(toks) < 3 or toks[1] not in _EVAL_OPS:
-            dbg("prog " + str(prog_vnum) + " syntax error '" + line + "'")
+            dbg("prog " + num_str(prog_vnum) + " syntax error '" + line + "'")
             return False
         if check == "room" and lval_char is None and lval_obj is not None:
             # upstream reads lval_obj->in_room/carried_by; PrimeSUD objects
@@ -1831,7 +1832,7 @@ def _cmd_eval_other(check, line, kind, origin, ch, arg1, arg2, rch, prog_vnum):
 
     # Unreachable for well-formed KNOWN_CHECKS vocabulary (all checks are
     # implemented as of PROGS_PLAN Phase 3); kept as a guard.
-    dbg("prog " + str(prog_vnum) + " check '" + check + "' not ported")
+    dbg("prog " + num_str(prog_vnum) + " check '" + check + "' not ported")
     return False
 
 
@@ -2006,8 +2007,8 @@ def _split_first(data):
 
 def _buggy(prog_vnum, kind, ovnum, msg):
     """Report a malformed program and abort it (cf. buggy_prog, programs.c)."""
-    dbg("mobprog: " + msg + ", " + str(kind) + " " + str(ovnum)
-        + " prog " + str(prog_vnum))
+    dbg("mobprog: " + msg + ", " + kind + " " + num_str(ovnum)
+        + " prog " + num_str(prog_vnum))
 
 
 def _dispatch(prog_vnum, mob, ctrl, expanded, call_level=0, obj=None, room=None):
@@ -2022,7 +2023,7 @@ def _dispatch(prog_vnum, mob, ctrl, expanded, call_level=0, obj=None, room=None)
         parts = expanded.split(None, 1)
         rest = parts[1] if len(parts) > 1 else ""
         if mob is None:
-            dbg("prog " + str(prog_vnum) + " mob command in non MOBprog")
+            dbg("prog " + num_str(prog_vnum) + " mob command in non MOBprog")
             return
         mob_interpret(mob, rest, prog_vnum, call_level)
         return
@@ -2030,7 +2031,7 @@ def _dispatch(prog_vnum, mob, ctrl, expanded, call_level=0, obj=None, room=None)
         parts = expanded.split(None, 1)
         rest = parts[1] if len(parts) > 1 else ""
         if obj is None:
-            dbg("prog " + str(prog_vnum) + " obj command in non OBJprog")
+            dbg("prog " + num_str(prog_vnum) + " obj command in non OBJprog")
             return
         obj_interpret(obj, rest, prog_vnum)
         return
@@ -2038,12 +2039,12 @@ def _dispatch(prog_vnum, mob, ctrl, expanded, call_level=0, obj=None, room=None)
         parts = expanded.split(None, 1)
         rest = parts[1] if len(parts) > 1 else ""
         if room is None:
-            dbg("prog " + str(prog_vnum) + " room command in non ROOMprog")
+            dbg("prog " + num_str(prog_vnum) + " room command in non ROOMprog")
             return
         room_interpret(room, rest, prog_vnum)
         return
     if mob is None:
-        dbg("prog " + str(prog_vnum) + " normal mud command in non-MOBprog")
+        dbg("prog " + num_str(prog_vnum) + " normal mud command in non-MOBprog")
         return
     interpret(expanded, mob)
 
@@ -2080,12 +2081,12 @@ def program_flow(prog_vnum, code, mob, ch, arg1=None, arg2=None, call_level=0,
     # HP Prime's small stack.
     global _call_depth
     if _call_depth >= MAX_CALL_LEVEL:
-        dbg("prog " + str(prog_vnum) + " exceeded max call level")
+        dbg("prog " + num_str(prog_vnum) + " exceeded max call level")
         return
     origins = (mob is not None) + (obj is not None) + (room is not None)
     if origins != 1:
         # cf. p_act_trigger "Multiple program types" bug guard
-        dbg("prog " + str(prog_vnum) + " has " + str(origins)
+        dbg("prog " + num_str(prog_vnum) + " has " + num_str(origins)
             + " origins (need exactly 1)")
         return
     if mob is not None:
@@ -2478,7 +2479,7 @@ def _mp_kill(mob, args, pv, cl):
     if victim is mob or victim.get("is_npc") or mob.get("pos") == "fighting":
         return
     if mob.get("affected_by", {}).get("charm") and mob.get("master") == victim.get("id"):
-        dbg("mobprog: charmed mob attacking master, mob " + str(mob.get("tpl", 0)))
+        dbg("mobprog: charmed mob attacking master, mob " + num_str(mob.get("tpl", 0)))
         return
     multi_hit(mob, victim)
 
@@ -2645,7 +2646,7 @@ def _mp_mload(mob, args, pv, cl):
         return
     vnum = _atoi(arg)
     if vnum not in world.MOB_DEFS:
-        dbg("mobprog: mpmload bad mob " + str(vnum))
+        dbg("mobprog: mpmload bad mob " + num_str(vnum))
         return
     _spawn_mob_at(vnum, mob.get("room"))
 
@@ -2657,7 +2658,7 @@ def _mp_oload(mob, args, pv, cl):
         return
     vnum = _atoi(parts[0])
     if vnum not in world.ITEM_DEFS:
-        dbg("mobprog: mpoload bad obj " + str(vnum))
+        dbg("mobprog: mpoload bad obj " + num_str(vnum))
         return
     # arg2 = level (ignored: create_object has no per-load level scaling in
     # PrimeSUD); arg3 = R (to room) / W (worn).
@@ -2697,10 +2698,10 @@ def _mp_purge(mob, args, pv, cl):
         if obj is not None:
             _detach_obj(mob, obj)
         else:
-            dbg("mobprog: mppurge bad arg, mob " + str(mob.get("tpl", 0)))
+            dbg("mobprog: mppurge bad arg, mob " + num_str(mob.get("tpl", 0)))
         return
     if not victim.get("is_npc"):
-        dbg("mobprog: mppurge PC, mob " + str(mob.get("tpl", 0)))
+        dbg("mobprog: mppurge PC, mob " + num_str(mob.get("tpl", 0)))
         return
     _extract_char(victim, pull=True)
 
@@ -2771,7 +2772,7 @@ def _mp_remove(mob, args, pv, cl):
     if victim is None:
         return
     _remove_objs(victim, parts[1] if len(parts) > 1 else "",
-                 "mobprog: mpremove invalid object, mob " + str(mob.get("tpl", 0)))
+                 "mobprog: mpremove invalid object, mob " + num_str(mob.get("tpl", 0)))
 
 
 # -- movement / redirection ----------------------------------------------------
@@ -2906,7 +2907,7 @@ def _mp_call(mob, args, pv, cl):
     prog_vnum = _atoi(parts[0])
     code = world.MOBPROGS.get(prog_vnum)
     if code is None:
-        dbg("mobprog: mpcall invalid prog " + str(prog_vnum))
+        dbg("mobprog: mpcall invalid prog " + num_str(prog_vnum))
         return
     vch = _get_char_room(mob, parts[1]) if len(parts) > 1 and parts[1] else None
     obj1 = get_obj_here(mob, parts[2]) if len(parts) > 2 and parts[2] else None
@@ -2986,7 +2987,7 @@ def _mp_refund(mob, args, pv, cl):
     amount, wallet = stash
     mob[wallet] = mob.get(wallet, 0) - amount
     victim[wallet] = victim.get(wallet, 0) + amount
-    act("$n returns your " + str(amount) + " " + wallet + ".", mob, None, victim, TO_VICT)
+    act("$n returns your " + num_str(amount) + " " + wallet + ".", mob, None, victim, TO_VICT)
     act("$n returns some coins to $N.", mob, None, victim, TO_NOTVICT)
 
 
@@ -3043,7 +3044,7 @@ def mob_interpret(mob, argument, prog_vnum=0, call_level=0):
         if name[0] == command[0] and name.startswith(command):
             fn(mob, rest, prog_vnum, call_level)
             return
-    dbg("mobprog: invalid cmd '" + command + "' from mob " + str(mob.get("tpl", 0)))
+    dbg("mobprog: invalid cmd '" + command + "' from mob " + num_str(mob.get("tpl", 0)))
 
 
 # -- op-command set (cf. prog_cmds.c obj_cmd_table) ----------------------------
@@ -3163,7 +3164,7 @@ def _op_mload(octx, args, pv):
         return
     vnum = _atoi(arg)
     if vnum not in world.MOB_DEFS:
-        dbg("objprog: opmload bad mob " + str(vnum))
+        dbg("objprog: opmload bad mob " + num_str(vnum))
         return
     _spawn_mob_at(vnum, rvnum)
 
@@ -3189,7 +3190,7 @@ def _op_oload(octx, args, pv):
             return
     vnum = _atoi(parts[0])
     if vnum not in world.ITEM_DEFS:
-        dbg("objprog: opoload bad obj " + str(vnum))
+        dbg("objprog: opoload bad obj " + num_str(vnum))
         return
     rvnum = _octx_room(octx)
     if rvnum is None:
@@ -3234,10 +3235,10 @@ def _op_purge(octx, args, pv):
                 if it is not None and is_name(arg, _obj_keywords(it)):
                     carrier["equip"][slot] = None
                     return
-        dbg("objprog: oppurge bad argument from obj " + str(obj_vnum(o)))
+        dbg("objprog: oppurge bad argument from obj " + num_str(obj_vnum(o)))
         return
     if not victim.get("is_npc"):
-        dbg("objprog: oppurge PC from obj " + str(obj_vnum(o)))
+        dbg("objprog: oppurge PC from obj " + num_str(obj_vnum(o)))
         return
     _extract_char(victim, pull=True)
 
@@ -3374,7 +3375,7 @@ def _op_call(octx, args, pv):
     prog_vnum = _atoi(parts[0])
     code = world.OBJPROGS.get(prog_vnum)
     if code is None:
-        dbg("objprog: opcall invalid prog " + str(prog_vnum))
+        dbg("objprog: opcall invalid prog " + num_str(prog_vnum))
         return
     rvnum = _octx_room(octx)
     vch = _char_at(rvnum, parts[1]) if len(parts) > 1 and parts[1] else None
@@ -3414,7 +3415,7 @@ def _op_remove(octx, args, pv):
         return
     _remove_objs(victim, parts[1] if len(parts) > 1 else "",
                  "objprog: opremove invalid object from obj "
-                 + str(obj_vnum(octx["obj"])))
+                 + num_str(obj_vnum(octx["obj"])))
 
 
 def _attrib_num(spec, cur, chlev, label):
@@ -3472,7 +3473,7 @@ def _op_attrib(octx, args, pv):
         chv = _char_at(_octx_room(octx), target)
         if chv is None:
             return
-    label = "objprog: opattrib obj " + str(obj_vnum(o))
+    label = "objprog: opattrib obj " + num_str(obj_vnum(o))
     chlev = chv.get("level", 0)
     tpl = world.item_tpl_get(o) or {}
     cur_vals = list(o.get("values", tpl.get("values", (0, 0, 0, 0, 0))))
@@ -3593,7 +3594,7 @@ def obj_interpret(octx, argument, prog_vnum=0):
             fn(octx, rest, prog_vnum)
             return
     dbg("objprog: invalid cmd '" + command + "' from obj "
-        + str(obj_vnum(octx["obj"])))
+        + num_str(obj_vnum(octx["obj"])))
 
 
 # -- rp-command set (cf. prog_cmds.c room_cmd_table) ---------------------------
@@ -3692,7 +3693,7 @@ def _rp_mload(rvnum, args, pv):
         return
     vnum = _atoi(arg)
     if vnum not in world.MOB_DEFS:
-        dbg("roomprog: rpmload bad mob " + str(vnum))
+        dbg("roomprog: rpmload bad mob " + num_str(vnum))
         return
     _spawn_mob_at(vnum, rvnum)
 
@@ -3713,7 +3714,7 @@ def _rp_oload(rvnum, args, pv):
         return
     vnum = _atoi(parts[0])
     if vnum not in world.ITEM_DEFS:
-        dbg("roomprog: rpoload bad obj " + str(vnum))
+        dbg("roomprog: rpoload bad obj " + num_str(vnum))
         return
     world.rooms[rvnum]["items"].append(create_object(vnum))
 
@@ -3737,10 +3738,10 @@ def _rp_purge(rvnum, args, pv):
             if vobj in rs.get("items", []):
                 rs["items"].remove(vobj)
         else:
-            dbg("roomprog: rppurge bad argument from room " + str(rvnum))
+            dbg("roomprog: rppurge bad argument from room " + num_str(rvnum))
         return
     if not victim.get("is_npc"):
-        dbg("roomprog: rppurge PC from room " + str(rvnum))
+        dbg("roomprog: rppurge PC from room " + num_str(rvnum))
         return
     _extract_char(victim, pull=True)
 
@@ -3855,7 +3856,7 @@ def _rp_call(rvnum, args, pv):
     prog_vnum = _atoi(parts[0])
     code = world.ROOMPROGS.get(prog_vnum)
     if code is None:
-        dbg("roomprog: rpcall invalid prog " + str(prog_vnum))
+        dbg("roomprog: rpcall invalid prog " + num_str(prog_vnum))
         return
     vch = _char_at(rvnum, parts[1]) if len(parts) > 1 and parts[1] else None
     obj1 = _obj_at(rvnum, parts[2]) if len(parts) > 2 and parts[2] else None
@@ -3892,7 +3893,7 @@ def _rp_remove(rvnum, args, pv):
     if victim is None:
         return
     _remove_objs(victim, parts[1] if len(parts) > 1 else "",
-                 "roomprog: rpremove invalid object from room " + str(rvnum))
+                 "roomprog: rpremove invalid object from room " + num_str(rvnum))
 
 
 def _rp_peace(rvnum, args, pv):
@@ -3991,4 +3992,4 @@ def room_interpret(rvnum, argument, prog_vnum=0):
         if name[0] == command[0] and name.startswith(command):
             fn(rvnum, rest, prog_vnum)
             return
-    dbg("roomprog: invalid cmd '" + command + "' from room " + str(rvnum))
+    dbg("roomprog: invalid cmd '" + command + "' from room " + num_str(rvnum))

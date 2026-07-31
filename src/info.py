@@ -87,7 +87,7 @@ def do_where(player, args):
     if not args:
         # [PRIMESUD] "Recomended" typo in 1stMud fixed; labels re-padded
         # by one to keep the colons aligned
-        chprintln(player, "You are in zone   : " + str(area.get("name", tag)))
+        chprintln(player, "You are in zone   : " + area.get("name", tag))
         if area.get("lvl_comment"):
             chprintln(player, "Recommended Levels: [" + pad_right(area["lvl_comment"], 7) + "]")
         else:
@@ -347,7 +347,8 @@ def do_version(player, args):
 def do_wimpy(player, args):
     """Set the hp threshold below which the player auto-flees in combat (cf. 1stMud do_wimpy in act_info.c).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
+    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
+    bare str() swept 01/08/2026]
 
     Args:
         player (dict): Player state dict.
@@ -367,7 +368,7 @@ def do_wimpy(player, args):
         chprintln(player, "Such cowardice ill becomes you.")
         return
     player["wimpy"] = wimpy
-    chprintln(player, "Wimpy set to " + str(wimpy) + " hit points.")
+    chprintln(player, "Wimpy set to " + num_str(wimpy) + " hit points.")
 
 
 def _get_ed(name, extra_descs):
@@ -679,7 +680,7 @@ def do_look(player, args):
     pitch-black gate ignores infrared (matching the source): infrared reveals
     living things via _show_char_to_char, not the room description.
 
-    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check); check_blind + pitch-black/red-eyes + can_see_obj room-item filter added and re-verified 08/07/2026; pitch-black infrared gate dropped + char-list shared via _show_char_to_char to match act_info.c:1114 (infrared shows chars not room desc), re-verified 08/07/2026; PLR_HOLYLIGHT leg of the act_info.c:1115 condition added as debug channel and re-verified 10/07/2026; COMM_BRIEF "auto" gate added and re-verified 20/07/2026]
+    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check); check_blind + pitch-black/red-eyes + can_see_obj room-item filter added and re-verified 08/07/2026; pitch-black infrared gate dropped + char-list shared via _show_char_to_char to match act_info.c:1114 (infrared shows chars not room desc), re-verified 08/07/2026; PLR_HOLYLIGHT leg of the act_info.c:1115 condition added as debug channel and re-verified 10/07/2026; COMM_BRIEF "auto" gate added and re-verified 20/07/2026; bare str() swept 01/08/2026]
 
     [PRIMESUD] Room output accumulated into a list and sent as one batched
     print (21/07/2026) -- perf deviation, 1stMud sends per line; player-visible
@@ -754,7 +755,7 @@ def do_look(player, args):
             if count == 1:
                 chprintln(player, "You only see one " + target + " here.")
             else:
-                chprintln(player, "You only see " + str(count) + " of those here.")
+                chprintln(player, "You only see " + num_str(count) + " of those here.")
             return
 
         # Direction look (cf. 1stMud do_look lines 1330-1362)
@@ -795,7 +796,7 @@ def do_look(player, args):
     show_vnums = "holylight" in DBG
     out = []
     if show_vnums:
-        out.append("{Y" + room["name"] + " {D[" + str(player["room"]) + "]{x")
+        out.append("{Y" + room["name"] + " {D[" + num_str(player["room"]) + "]{x")
     else:
         out.append("{Y" + room["name"] + "{x")
 
@@ -858,7 +859,7 @@ def do_look(player, args):
         inst_desc = isinstance(obj, dict) and obj.get("description")
         line = flag_str + "{Y" + (inst_desc or tpl.get("description") or tpl["short_descr"]) + "{x"
         if show_vnums:  # [PRIMESUD]
-            line += " {D[" + str(obj_vnum(obj)) + "]{x"
+            line += " {D[" + num_str(obj_vnum(obj)) + "]{x"
         if line in seen:
             seen[line] += 1
         else:
@@ -930,7 +931,8 @@ def do_score(player, args):
     re-verified 21/07/2026; [PRIMESUD] AC bars paired 2-per-row and the
     values/AC separator dropped (approved) so the box fits the 22-row
     screen, 21/07/2026; output batched via list chprintln 22/07/2026;
-    gold/silver order corrected and alignment shown 23/07/2026]
+    gold/silver order corrected and alignment shown 23/07/2026;
+    bare str() swept 01/08/2026]
     -- data fields (age, hours, thac0, AC bars)
     verified; box layout adapted for the 64-col screen [PRIMESUD].
     """
@@ -965,7 +967,7 @@ def do_score(player, args):
     def _free_mem():
         # Since memory is mentioned here, also use `score` as a point to do gc
         gc_collect()
-        return "{G(Mem. free: " + str(free_mem()) + "){x"
+        return "{G(Mem. free: " + free_mem() + "){x"
 
     p = player
     ps = p["perm_stat"]
@@ -989,7 +991,7 @@ def do_score(player, args):
     # cf. 1stMud act_info.c:1841 "Explored : %.0f of %d rooms (%.2f%% of the
     # world)" -- rendered as a centered full-width box row [PRIMESUD].
     _rcnt = roomcount(p)
-    _expl_txt = ("{cExplored : {w" + str(_rcnt) + "{c of {w" + str(TOP_EXPLORED)
+    _expl_txt = ("{cExplored : {w" + num_str(_rcnt) + "{c of {w" + num_str(TOP_EXPLORED)
                  + "{c rooms ({w" + _pct2(_rcnt, TOP_EXPLORED)
                  + "%{c of the world){x")
     _ev = color_len(_expl_txt)
@@ -1003,7 +1005,7 @@ def do_score(player, args):
     level = p["level"]
     tier = p.get("tier", 0)
     if tier:
-        level = str(level) + " (T" + str(tier) + ")"
+        level = num_str(level) + " (T" + num_str(tier) + ")"
 
     lines = [
         _SCORE_SEP_OUTER,
@@ -1083,10 +1085,10 @@ def do_score(player, args):
         # [PRIMESUD] Full-width row fits max values and displays the intended
         # share price; upstream passes shares twice where share_value is meant.
         _shares = p.get("shares", 0)
-        _bank_txt = ("{CBank: {w" + str(p.get("gold_bank", 0))
-                     + " gold {C| Shares: {w" + str(_shares) + " {C("
-                     + str(_shares * world.share_value) + " gold @ "
-                     + str(world.share_value) + "){x")
+        _bank_txt = ("{CBank: {w" + num_str(p.get("gold_bank", 0))
+                     + " gold {C| Shares: {w" + num_str(_shares) + " {C("
+                     + num_str(_shares * world.share_value) + " gold @ "
+                     + num_str(world.share_value) + "){x")
         _bv = color_len(_bank_txt)
         _blp = max(0, (_SCORE_INNER - _bv) // 2)
         _brp = max(0, _SCORE_INNER - _bv - _blp)
@@ -1127,13 +1129,14 @@ def do_title(player, argument):
 def do_worth(player, args):
     """Show gold, silver, experience and quest/trivia points (cf. 1stMud do_worth in act_info.c).
 
-    [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026] -- IsNPC branch not applicable (single player);
+    [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
+    bare str() swept 01/08/2026] -- IsNPC branch not applicable (single player);
     "exp to level" uses the per-level xp model (xp_next - xp) in place of
     1stMud's (level+1)*exp_per_level - exp [PRIMESUD].
     """
-    chprintln(player, "You have " + str(player["gold"]) + " gold, " + str(player["silver"])
-           + " silver, and " + str(player["xp"]) + " experience ("
-           + str(player["xp_next"] - player["xp"]) + " exp to level).")
+    chprintln(player, "You have " + num_str(player["gold"]) + " gold, " + num_str(player["silver"])
+           + " silver, and " + num_str(player["xp"]) + " experience ("
+           + num_str(player["xp_next"] - player["xp"]) + " exp to level).")
     chprintln(player, "You have earned " + count_str(player.get("quest_points", 0), "questpoint")
            + " and " + count_str(player.get("trivia", 0), "trivia point") + ".")
 
@@ -1154,18 +1157,18 @@ def do_time(player, args):
     # (day+1, suffix) pair but passes only ordinal_string(day+1); the stray %d
     # is a slip -- rendered here as a single ordinal ("first", "21st", ...).
     chprintln(player,
-              "It is " + str(hour12) + " o'clock " + ampm
+              "It is " + num_str(hour12) + " o'clock " + ampm
               + ", Day of " + day_name[(time_info["day"] + 1) % DAYS_IN_WEEK]
               + ", " + ordinal_string(time_info["day"] + 1)
               + " the Month of " + month_name[time_info["month"]]
-              + ", year " + str(time_info["year"]) + ".")
+              + ", year " + num_str(time_info["year"]) + ".")
     # cf. 1stMud (pcdata->played + elapsed) / HOUR . ((.../36) % 100);
     # PrimeSUD tracks played in real seconds (update.py), HOUR = 3600.
     played = player.get("played", 0)
     cents = (played // 36) % 100
-    cs = str(cents) if cents >= 10 else "0" + str(cents)
+    cs = num_str(cents) if cents >= 10 else "0" + num_str(cents)
     chprintln(player, "You have played approximately "
-              + str(played // 3600) + "." + cs + " hours.")
+              + num_str(played // 3600) + "." + cs + " hours.")
     # [PRIMESUD] Current sitting, tracked unsaved in update.py.  No battery
     # level is readable on the Prime, so this is the player's only gauge of
     # how long the calculator has been awake.
@@ -1211,7 +1214,7 @@ def _parse_skill_range(player, args):
         chprintln(player, "Arguments must be numerical or all.")
         return (False, 1, MAX_MORTAL_LEVEL, False)
     if max_lev < 1 or max_lev > MAX_MORTAL_LEVEL:
-        chprintln(player, "Levels must be between 1 and " + str(MAX_MORTAL_LEVEL) + ".")
+        chprintln(player, "Levels must be between 1 and " + num_str(MAX_MORTAL_LEVEL) + ".")
         return (False, 1, MAX_MORTAL_LEVEL, False)
     min_lev = 1
     if len(args) > 1:
@@ -1222,7 +1225,7 @@ def _parse_skill_range(player, args):
             chprintln(player, "Arguments must be numerical or all.")
             return (False, 1, MAX_MORTAL_LEVEL, False)
         if max_lev < 1 or max_lev > MAX_MORTAL_LEVEL:
-            chprintln(player, "Levels must be between 1 and " + str(MAX_MORTAL_LEVEL) + ".")
+            chprintln(player, "Levels must be between 1 and " + num_str(MAX_MORTAL_LEVEL) + ".")
             return (False, 1, MAX_MORTAL_LEVEL, False)
         if min_lev > max_lev:
             chprintln(player, "That would be silly.")
@@ -1484,7 +1487,8 @@ def do_help(player, args):
     timing instrumentation added 05/07/2026; one-shot idx read + substring
     pre-filter re-verified 05/07/2026; output batched via list chprintln
     22/07/2026; category field added and re-verified 22/07/2026; bare-help
-    browser and single-letter picker added, rest re-verified 25/07/2026]
+    browser and single-letter picker added, rest re-verified 25/07/2026;
+    bare str() swept 01/08/2026]
     """
     if not args:
         # [PRIMESUD] Bare help browses by category rather than printing the
@@ -1562,8 +1566,8 @@ def do_help(player, args):
         chprintln(player, out)
     if "time" in DBG:  # [PRIMESUD] 'debug time' channel
         t3 = ticks()
-        dbg("help: idx=" + str(t1 - t0) + "ms read=" + str(t2 - t1) +
-            "ms print=" + str(t3 - t2) + "ms")
+        dbg("help: idx=" + num_str(t1 - t0) + "ms read=" + num_str(t2 - t1) +
+            "ms print=" + num_str(t3 - t2) + "ms")
 
 
 # [PRIMESUD] Picker rows render as "  N) <label>", and row 1 of each page
@@ -1697,7 +1701,7 @@ def do_affects(player, args):
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
     racial-ability section added and re-verified 06/07/2026; equipment-spells
     section added and re-verified 06/07/2026; output batched via list
-    chprintln 22/07/2026]
+    chprintln 22/07/2026; bare str() swept 01/08/2026]
 
     Args:
         player (dict): Player state dict.
@@ -1726,12 +1730,12 @@ def do_affects(player, args):
                 line = "{xSpell: {c" + _pad_color(name, 19) + "{x"
             if show_detail:
                 dur = aff["duration"]
-                line += (": modifies " + str(aff["location"])
-                         + " by " + str(aff["modifier"]) + " ")
+                line += (": modifies " + aff["location"]
+                         + " by " + num_str(aff["modifier"]) + " ")
                 if dur < 0:
                     line += "permanently"
                 else:
-                    line += "for " + str(dur) + " hours"
+                    line += "for " + num_str(dur) + " hours"
             out.append(line)
             last_type = sn
         found = True
@@ -1863,7 +1867,7 @@ def _compress_path(parent, source, target):
 
     [PRIMESUD] Emits "<count><dir>" runs (e.g. "3s2en") matching do_run's
     parser; 1stMud's own run-length prepending is inconsistent/buggy.
-    [Verified: 03/07/2026]
+    [Verified: 03/07/2026; bare str() swept 01/08/2026]
     """
     path = []
     v = target
@@ -1881,11 +1885,11 @@ def _compress_path(parent, source, target):
             count += 1
         else:
             if count > 1:
-                parts.append(str(count))
+                parts.append(num_str(count))
             parts.append(path[i - 1])
             count = 1
     if count > 1:
-        parts.append(str(count))
+        parts.append(num_str(count))
     parts.append(path[-1])
     return "".join(parts)
 
@@ -1976,7 +1980,7 @@ def _merge_runs(parts):
     out = []
     for d, count in runs:
         if count > 1:
-            out.append(str(count))
+            out.append(num_str(count))
         out.append(d)
     return "".join(out)
 
@@ -2128,7 +2132,7 @@ def do_areas(player, args):
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified
     04/07/2026; directions column dropped for lazy-load 08/07/2026
     [PRIMESUD]; sort switched to special range, level, then name
-    28/07/2026 [PRIMESUD]] --
+    28/07/2026 [PRIMESUD]; bare str() swept 01/08/2026] --
     clan restriction marker ("{G*") and its legend line not ported
     (no clans).
 
@@ -2189,7 +2193,7 @@ def do_areas(player, args):
     if count == 0:
         chprintln(player, "{W" + _center_fill("[ {RNo areas meeting those criteria.{W ]") + "{x")
     else:
-        chprintln(player, "{W" + _center_fill("[ {R" + str(count) + " areas found{W ]") + "{x")
+        chprintln(player, "{W" + _center_fill("[ {R" + num_str(count) + " areas found{W ]") + "{x")
 
 
 MOB_INDEX_FILE = "mobs.idx"  # [PRIMESUD] prebuilt mob display metadata
@@ -2265,7 +2269,7 @@ def _area_stats(stat_index):
     for rank, entry in enumerate(ranked, 1):
         count, tag = entry
         levels = world.AREA_LEVELS.get(tag, (1, MAX_LEVEL))
-        lvl = str(levels[0]) + "-" + str(levels[1])
+        lvl = num_str(levels[0]) + "-" + num_str(levels[1])
         lines.append(pad_left(num_str(rank), 3) + ") "
                      + pad_right(world._TAG_TO_NAME.get(tag, tag)[:25], 25)
                      + " " + pad_left(lvl, 7) + " " + pad_left(num_str(count), 7))
@@ -2340,7 +2344,8 @@ def _examine_extras(player, obj):
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified
     04/07/2026; jukebox do_play "list" branch added and re-verified 20/07/2026;
     legacy sparse money fallback added and re-verified 21/07/2026;
-    mixed-pile singular/plural fixed and re-verified 31/07/2026]
+    mixed-pile singular/plural fixed and re-verified 31/07/2026;
+    bare str() swept 01/08/2026]
     """
     tpl = item_tpl(obj)
     obj_type = tpl.get("type")
@@ -2353,12 +2358,12 @@ def _examine_extras(player, obj):
             elif gold == 1:
                 chprintln(player, "Wow. One gold coin.")
             else:
-                chprintln(player, "There are " + str(gold) + " gold coins in the pile.")
+                chprintln(player, "There are " + num_str(gold) + " gold coins in the pile.")
         elif gold == 0:
             if silver == 1:
                 chprintln(player, "Wow. One silver coin.")
             else:
-                chprintln(player, "There are " + str(silver) + " silver coins in the pile.")
+                chprintln(player, "There are " + num_str(silver) + " silver coins in the pile.")
         else:
             # [PRIMESUD] Singular/plural fix -- 1stMud prints "%ld gold and %ld
             # silver coins", so the noun only ever attached to the silver half.

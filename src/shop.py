@@ -309,7 +309,7 @@ def _buy_pet_stock(player, stock, name_arg):
     roll = randint(1, 100)
     if roll < get_skill(player, GSN_HAGGLE):
         cost -= cost // 2 * roll // 100
-        chprintln(player, "You haggle the price down to " + str(cost) + " coins.")
+        chprintln(player, "You haggle the price down to " + num_str(cost) + " coins.")
         check_improve(player, GSN_HAGGLE, True, 4)
 
     deduct_cost(player, cost)
@@ -406,11 +406,11 @@ def do_buy(player, args):
         check_improve(player, GSN_HAGGLE, True, 4)
 
     if number > 1:
-        act("$n buys $p[" + str(number) + "].", player, obj, None, TO_ROOM)
-        act("You buy $p for " + str(cost * number) + " silver.", player, obj, None, TO_CHAR)
+        act("$n buys $p[" + num_str(number) + "].", player, obj, None, TO_ROOM)
+        act("You buy $p for " + num_str(cost * number) + " silver.", player, obj, None, TO_CHAR)
     else:
         act("$n buys $p.", player, obj, None, TO_ROOM)
-        act("You buy $p for " + str(cost) + " silver.", player, obj, None, TO_CHAR)
+        act("You buy $p for " + num_str(cost) + " silver.", player, obj, None, TO_CHAR)
 
     deduct_cost(player, cost * number)
     add_cost(keeper, cost * number)

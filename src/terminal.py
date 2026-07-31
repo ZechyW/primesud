@@ -13,7 +13,7 @@ from colors import (COLOR_CODE, ANSI_COLORS, _RESET_CODES, color_wrap_full,
                     resolve_random, strip_colors)
 from hpprime import dimgrob, fillrect, getpix, grobh, grobw, pixon, strblit2
 from prime_platform import ticks
-from util import pad_right
+from util import pad_right, sstr
 
 
 def _wrap_plain(text, width):
@@ -479,7 +479,7 @@ def install_color_print(tr):
                 if is_list:
                     _batch_buf.extend(args[0])
                 else:
-                    text = sep.join(str(a) for a in args)
+                    text = sep.join(sstr(a) for a in args)
                     if '\n' in text:
                         _batch_buf.extend(text.split('\n'))
                     else:
@@ -502,7 +502,7 @@ def install_color_print(tr):
                 for line in args[0]:
                     wrapped_print(line)
             return
-        text = sep.join(str(a) for a in args)
+        text = sep.join(sstr(a) for a in args)
         if '\n' in text and end == '\n' and tr.cursor_x == 0:
             print_lines(text.split('\n'))
             return

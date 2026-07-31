@@ -3,6 +3,7 @@
 from urandom import randint
 import world
 from world import ROOM_DEFS
+from util import num_str
 
 # -- Constants (cf. 1stMud defines.h) ------------------------------------------
 HOURS_IN_DAY = 24
@@ -182,12 +183,12 @@ def ordinal_string(n):
     if n == 3:
         return "third"
     if n % 10 == 1:
-        return str(n) + "st"
+        return num_str(n) + "st"
     if n % 10 == 2:
-        return str(n) + "nd"
+        return num_str(n) + "nd"
     if n % 10 == 3:
-        return str(n) + "rd"
-    return str(n) + "th"
+        return num_str(n) + "rd"
+    return num_str(n) + "th"
 
 
 # -- Weather (cf. 1stMud weather.c; mud_info defaults in data_table.c) ----------

@@ -3,6 +3,7 @@
 import world
 from handler import act, chprintln, _pers, TO_ROOM
 from picker import pick_from
+from util import num_str
 
 # -- Stance constants (cf. 1stMud STANCE_* in defines.h:516-529) ---------------
 STANCE_NONE     = -1
@@ -282,6 +283,6 @@ def autodrop(ch):
     if not valid_stance(get_stance(ch, STANCE_CURRENT)):
         set_stance(ch, STANCE_CURRENT, stance)
         chprintln(ch, "You autodrop into the " + stance_name(stance) + " stance. ("
-                  + str(get_stance(ch, stance)) + "%)")
+                  + num_str(get_stance(ch, stance)) + "%)")
         act("$n autodrops into the $T stance.", ch, None, stance_name(stance),
             TO_ROOM)

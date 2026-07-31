@@ -70,9 +70,9 @@ def do_train(player, args):
         names = []
         for k, lng in all_opts:
             if k in ("max_hit", "max_mana"):
-                names.append(lng + " (max: " + str(player[k]) + ")")
+                names.append(lng + " (max: " + num_str(player[k]) + ")")
             else:
-                names.append(lng + " (" + str(player["perm_stat"][k]) + "/" + str(get_max_train(player, k)) + ")")
+                names.append(lng + " (" + num_str(player["perm_stat"][k]) + "/" + num_str(get_max_train(player, k)) + ")")
         idx = pick_from("Train which?", names)
         if idx < 0:
             return
@@ -165,7 +165,7 @@ def do_practice(player, args):
             return
         # [PRIMESUD] Put skills closest to mastery first in the picker.
         practicable.sort(key=lambda entry: -entry[1])
-        names = [str(SKILLS[vnum]["name"]) + " (" + num_str(pct) + "%)" for vnum, pct in practicable]
+        names = [SKILLS[vnum]["name"] + " (" + num_str(pct) + "%)" for vnum, pct in practicable]
         chprintln(player, "")
         idx = pick_from("Practice which skill?", names)
         if idx < 0:

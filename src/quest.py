@@ -550,7 +550,7 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
                      "The realm's most heinous criminal, " + mob_name + ", has escaped from the dungeon!")
             mob_tell(player, questman,
                      "Since the escape, " + mob_name + " has murdered "
-                     + str(randint(2, 20)) + " civilians!")
+                     + num_str(randint(2, 20)) + " civilians!")
             mob_tell(player, questman,
                      "The penalty for this crime is death, and you are to deliver the sentence!")
         elif variant == 2:
@@ -840,7 +840,7 @@ def quest_update():
             end_quest(player, QUEST_TIME - 2)
             chprintln(player,
                       "{RYou have run out of time for your quest!"
-                      "  You may quest again in " + str(ticks_to_mins(player["quest_time"]))
+                      "  You may quest again in " + num_str(ticks_to_mins(player["quest_time"]))
                       + " minutes.{x")
         elif (player["quest_time"] < mins_to_ticks(6)
                 and on_minute(player["quest_time"])):

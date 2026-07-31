@@ -587,7 +587,7 @@ def _snap_encode_into(value, parts):
             parts.append(kenc)
             _snap_encode_into(v, parts)
     else:
-        raise ValueError("_snap_encode: unsupported type " + str(t))
+        raise ValueError("_snap_encode: unsupported type " + str(t))  # str-ok
 
 
 def _snap_encode(value):

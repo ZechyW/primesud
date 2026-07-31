@@ -11,6 +11,7 @@ from config import (LEVEL_HERO, LEVEL_IMMORTAL, MAX_LEVEL, MAX_MORTAL_LEVEL,
 from races import RACE_TABLE, race_lookup
 from skills_table import SKILLS
 from urandom import randint
+from util import num_str
 
 CLASS_MAGE    = 0
 CLASS_CLERIC  = 1
@@ -355,13 +356,13 @@ def class_who(ch):
         return "Mob"
     name = class_name(ch, prime_class(ch))
     if len(classes) > 1:
-        name = name[:2] + "+" + str(len(classes) - 1)
+        name = name[:2] + "+" + num_str(len(classes) - 1)
     else:
         name = name[:4]
     # [PRIMESUD] prestige tier suffix (see finish_tier_reset in training.py)
     tier = ch.get("tier", 0)
     if tier:
-        name = name + "*" + str(tier)
+        name = name + "*" + num_str(tier)
     return name
 
 

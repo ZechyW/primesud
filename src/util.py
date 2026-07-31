@@ -6,7 +6,7 @@ from hpprime import eval as ppl_eval
 
 def wait(seconds):
     """Wait for seconds via PPL WAIT."""
-    ppl_eval("WAIT(" + (num_str(seconds) if type(seconds) is int else str(seconds)) + ")")
+    ppl_eval("WAIT(" + (num_str(seconds) if type(seconds) is int else str(seconds)) + ")")  # str-ok
 
 
 def fmt_bytes(n, precision=1):
@@ -109,7 +109,7 @@ def sstr(v):
         return num_str(v)
     if t is str:
         return v
-    return str(v)
+    return str(v)  # str-ok
 
 
 # str.ljust/rjust are missing on-device and %-padding is banned (see

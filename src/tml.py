@@ -22,7 +22,7 @@ class tml:
             del afiles
         # [PRIMESUD] %-format calls converted to concat: %/.format corrupt
         # the heap on physical hardware (CLAUDE.md pitfall 8)
-        ftype = ppleval('G' + str(grob) + ':=AFiles("' + font + '.font")')
+        ftype = ppleval('G' + str(grob) + ':=AFiles("' + font + '.font")')  # str-ok
         try:
             with FileIO(font + '.font','rb') as ffile:
                 ffile.seek(-1,2)
@@ -63,7 +63,7 @@ class tml:
         self.symb_key_map = symb_key_map
         
         if dark_mode:
-            ppleval('INVERT_P(G' + str(grob) + ')')
+            ppleval('INVERT_P(G' + str(grob) + ')')  # str-ok
         else:
             self.back_color = 0xFFFFFF
         fillrect(0, 0, 0, 320, 240, self.back_color, self.back_color)
@@ -76,7 +76,7 @@ class tml:
 
     def print(self, *args, sep=' ', end='\n'):
         # Output text based on the provided arguments
-        text = sep.join(str(arg) for arg in args) + end
+        text = sep.join(str(arg) for arg in args) + end  # str-ok
         for char in text:
             self._put_char(char)
 
@@ -423,7 +423,7 @@ class tml:
         if s is None:
             x0 = self.cursor_x * self.char_width
             y0 = self.cursor_y * self.char_height
-            s = ('INVERT_P(' + str(x0) + ',' + str(y0) + ','
-                 + str(x0 + self.char_width - 1) + ',' + str(y0 + self.char_height - 1) + ')')
+            s = ('INVERT_P(' + str(x0) + ',' + str(y0) + ','  # str-ok
+                 + str(x0 + self.char_width - 1) + ',' + str(y0 + self.char_height - 1) + ')')  # str-ok
             self._cursor_ppl[k] = s
         ppleval(s)

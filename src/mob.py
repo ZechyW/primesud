@@ -16,6 +16,7 @@ from item import create_object, ensure_item_extra_flags, item_wear_flags
 from game_time import init_weather, advance_weather, adjust_vectors, get_weather_echo
 from special import SPEC_TABLE
 from debug import DBG, dbg  # [PRIMESUD]
+from util import num_str
 
 
 # Area age thresholds (cf. 1stMud area_update: age < 3 skip; age >= 15 reset
@@ -208,14 +209,14 @@ def spawn_pet(tpl_vnum, owner, name_arg=None, hp=None, announce=True):
 
     if name_arg:
         # cf. 1stMud replace_strf(&pet->name, "%s %s", pet->name, arg)
-        pet["keywords"] = MOB_DEFS[tpl_vnum].get("keywords", "") + " " + str(name_arg)
-        pet["pet_name"] = str(name_arg)      # [PRIMESUD] persisted for save/load
+        pet["keywords"] = MOB_DEFS[tpl_vnum].get("keywords", "") + " " + name_arg
+        pet["pet_name"] = name_arg           # [PRIMESUD] persisted for save/load
 
     # cf. 1stMud: description += "A neck tag says 'I belong to <name>'."
     _desc = MOB_DEFS[tpl_vnum].get("description", "")
     if _desc and not _desc.endswith("\n"):
         _desc = _desc + "\n"
-    pet["description"] = _desc + "A neck tag says 'I belong to " + str(owner.get("name", "")) + "'."
+    pet["description"] = _desc + "A neck tag says 'I belong to " + owner.get("name", "") + "'."
 
     if hp is not None:
         pet["hit"] = max(1, min(int(hp), pet["max_hit"]))
@@ -280,7 +281,7 @@ def scale_pet(owner, evolve=False, reset=False):
             desc = target_tpl.get("description", "")
             if desc and not desc.endswith("\n"):
                 desc += "\n"
-            pet["description"] = desc + "A neck tag says 'I belong to " + str(owner.get("name", "")) + "'."
+            pet["description"] = desc + "A neck tag says 'I belong to " + owner.get("name", "") + "'."
             # Evolution metadata authorizes an ordinary mob template as a pet
             # form; pet-shop stock often gains ACT_PET dynamically from its room.
             pet["act_flags"]["pet"] = True
@@ -500,7 +501,7 @@ def reset_room(vnum, next_id, obj_counts, mob_counts):
             tpl_counts[tpl_vnum] = tpl_counts.get(tpl_vnum, 0) + 1
             room_counts[_rk] = room_counts.get(_rk, 0) + 1
             if "spawn" in DBG:  # [PRIMESUD]
-                dbg("spawn mob " + str(tpl_vnum) + " " + inst["name"] + " @" + str(room_vnum))
+                dbg("spawn mob " + num_str(tpl_vnum) + " " + inst["name"] + " @" + num_str(room_vnum))
             last_mob_id = next_id
             last_spawned = True
             next_id += 1
@@ -510,7 +511,7 @@ def reset_room(vnum, next_id, obj_counts, mob_counts):
                 # Only reachable via bad area data (E/G before any M in this
                 # room's reset list); conversion rejects it, mirror upstream's
                 # runtime guard anyway instead of KeyError-ing on chars[None].
-                dbg("reset_room: E/G with no mob @" + str(vnum))
+                dbg("reset_room: E/G with no mob @" + num_str(vnum))
                 last_spawned = False
                 continue
             mob = world.chars[last_mob_id]
@@ -554,7 +555,7 @@ def reset_room(vnum, next_id, obj_counts, mob_counts):
             rs["items"].append(obj)
             obj_counts[obj_tpl] = obj_counts.get(obj_tpl, 0) + 1
             if "spawn" in DBG:  # [PRIMESUD]
-                dbg("spawn obj " + str(obj_tpl) + " @" + str(vnum))
+                dbg("spawn obj " + num_str(obj_tpl) + " @" + num_str(vnum))
             last_spawned = True
         elif cmd == "P":
             # cf. db.c:1532 -- fill a container in this room up to arg4 items.
@@ -680,7 +681,7 @@ def mobile_update(tr, player):
             world.rooms[inst["room"]]["mobs"].remove(mob_id)
             del world.chars[mob_id]
             if "move" in DBG:  # [PRIMESUD]
-                dbg("despawn " + inst["name"] + " @" + str(inst["room"]))
+                dbg("despawn " + inst["name"] + " @" + num_str(inst["room"]))
             continue
         # Special function dispatch (cf. 1stMud update.c:429-433)
         tpl = MOB_DEFS[inst["tpl"]]
@@ -756,7 +757,7 @@ def mobile_update(tr, player):
         # update.c:503)
         move_char(inst, direction)
         if "move" in DBG and inst["room"] != old_room:  # [PRIMESUD]
-            dbg("move " + inst["name"] + " " + str(old_room) + ">" + str(inst["room"]))
+            dbg("move " + inst["name"] + " " + num_str(old_room) + ">" + num_str(inst["room"]))
 
 
 def aggr_update(tr, player):

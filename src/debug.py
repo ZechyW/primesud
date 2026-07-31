@@ -7,7 +7,7 @@ from config import MAX_LEVEL
 from pager import tpage
 from skills_table import (GSN_PLAGUE, GSN_POISON, GSN_BLINDNESS, GSN_CURSE,
                           GSN_SLEEP)
-from util import num_str, pad_left, pad_right
+from util import num_str, pad_left, pad_right, sstr
 
 # Game-module imports (combat, handler, item, info, mob, game_state) stay
 # function-local throughout this file: handler/info/mob/update import debug
@@ -28,7 +28,7 @@ def dbg(msg):
 
 def _val(v):
     """Stringify one dict value, truncated to keep the screen usable. [PRIMESUD]"""
-    s = str(v)
+    s = sstr(v)
     if len(s) > 160:
         s = s[:157] + "..."
     return s
@@ -38,7 +38,7 @@ def _dump(title, d):
     """Print a dict as sorted key/value lines (cf. 1stMud show_struct in tables.c). [PRIMESUD]"""
     terminal.tr.print("{D-- " + title + " --{x")
     for k in sorted(d.keys()):
-        terminal.tr.print("{D" + str(k) + ":{x " + _val(d[k]))
+        terminal.tr.print("{D" + k + ":{x " + _val(d[k]))
 
 
 def _debug_stat(player, args):
@@ -72,7 +72,7 @@ def _debug_stat(player, args):
             if mob_id is None:
                 terminal.tr.print("No such mob here.")
             else:
-                _dump("mob inst " + str(mob_id), world.chars[mob_id])
+                _dump("mob inst " + num_str(mob_id), world.chars[mob_id])
     elif "obj".startswith(what):
         if target is None:
             terminal.tr.print("Stat which object?")
@@ -87,30 +87,30 @@ def _debug_stat(player, args):
             if obj is None:
                 terminal.tr.print("No such object here.")
             elif isinstance(obj, dict):
-                _dump("obj inst (tpl " + str(obj_vnum(obj)) + ")", obj)
+                _dump("obj inst (tpl " + num_str(obj_vnum(obj)) + ")", obj)
             else:
                 # Plain-vnum room item: no instance state, show template.
-                _dump("obj tpl " + str(obj), world.ITEM_DEFS[obj])
+                _dump("obj tpl " + num_str(obj), world.ITEM_DEFS[obj])
     elif "room".startswith(what):
         vnum = int(target) if target is not None and target.isdigit() else player["room"]
         rdef = world.ROOM_DEFS.get(vnum)
         if rdef is None:
-            terminal.tr.print("No room " + str(vnum) + ".")
+            terminal.tr.print("No room " + num_str(vnum) + ".")
             return
-        _dump("room def " + str(vnum), rdef)
+        _dump("room def " + num_str(vnum), rdef)
         rs = world.rooms.get(vnum)
         if rs is not None:
-            _dump("room state " + str(vnum), rs)
+            _dump("room state " + num_str(vnum), rs)
     elif "area".startswith(what):
         tag = target if target is not None else world.ROOM_DEFS[player["room"]].get("area")
         found = False
         for area in world.areas:
             if area.get("tag") == tag:
-                _dump("area state " + str(tag), area)
+                _dump("area state " + tag, area)
                 found = True
                 break
         if not found:
-            terminal.tr.print("No area '" + str(tag) + "'.")
+            terminal.tr.print("No area '" + tag + "'.")
     else:
         terminal.tr.print("Stat what? (player, mob, obj, room, area)")
 
@@ -326,15 +326,15 @@ def _debug_owhere(player, args):
     # Loaded room state only -- ._data avoids triggering a full world load
     for rvnum in sorted(world.rooms._data):
         for obj in world.rooms._data[rvnum]["items"]:
-            _report(obj, "in room " + str(rvnum))
+            _report(obj, "in room " + num_str(rvnum))
             if isinstance(obj, dict):
                 for inner in obj.get("contents", []):
-                    _report(inner, "in " + str(_sd(obj)) + " [room " + str(rvnum) + "]")
+                    _report(inner, "in " + _sd(obj) + " [room " + num_str(rvnum) + "]")
     for obj in player["inv"]:
         _report(obj, "carried by you")
         if isinstance(obj, dict):
             for inner in obj.get("contents", []):
-                _report(inner, "in " + str(_sd(obj)) + " (carried)")
+                _report(inner, "in " + _sd(obj) + " (carried)")
     for slot in player["equip"]:
         obj = player["equip"][slot]
         if obj is not None:
@@ -353,8 +353,8 @@ def _debug_memory(player, args):
 
     gc.collect()
     try:
-        terminal.tr.print("Heap:  " + str(gc.mem_alloc()) + " used, "
-                          + str(gc.mem_free()) + " free")
+        terminal.tr.print("Heap:  " + num_str(gc.mem_alloc()) + " used, "
+                          + num_str(gc.mem_free()) + " free")
     except AttributeError:
         terminal.tr.print("Heap:  n/a (desktop)")
     # ._data lengths: len() on a LazyDict would force-load every area
@@ -362,12 +362,12 @@ def _debug_memory(player, args):
     for a in world.AREA_DEFS:
         if world.is_area_loaded(a["tag"]):
             loaded += 1
-    terminal.tr.print("Areas: " + str(loaded) + "/" + str(len(world.AREA_DEFS)) + " loaded")
-    terminal.tr.print("Mobs:  " + str(len(world.MOB_DEFS._data)) + " tpl, "
-                      + str(len(world.chars)) + " inst")
-    terminal.tr.print("Objs:  " + str(len(world.ITEM_DEFS._data)) + " tpl")
-    terminal.tr.print("Rooms: " + str(len(world.ROOM_DEFS._data)) + " def, "
-                      + str(len(world.rooms._data)) + " active")
+    terminal.tr.print("Areas: " + num_str(loaded) + "/" + num_str(len(world.AREA_DEFS)) + " loaded")
+    terminal.tr.print("Mobs:  " + num_str(len(world.MOB_DEFS._data)) + " tpl, "
+                      + num_str(len(world.chars)) + " inst")
+    terminal.tr.print("Objs:  " + num_str(len(world.ITEM_DEFS._data)) + " tpl")
+    terminal.tr.print("Rooms: " + num_str(len(world.ROOM_DEFS._data)) + " def, "
+                      + num_str(len(world.rooms._data)) + " active")
 
 
 def _debug_heapmap(player, args):
@@ -412,7 +412,7 @@ def _debug_heapmap(player, args):
     finally:
         world._LOADING_ALL = False
     if start is not None:
-        terminal.tr.print("Free: " + str(gc.mem_free()))
+        terminal.tr.print("Free: " + num_str(gc.mem_free()))
     terminal.tr.print("(* = already loaded before heapmap)")
 
 
@@ -464,7 +464,7 @@ def _debug_advance(player, args):
         return
     level = int(args[1])
     if level < 1 or level > MAX_LEVEL:
-        terminal.tr.print("Level must be 1 to " + str(MAX_LEVEL) + ".")
+        terminal.tr.print("Level must be 1 to " + num_str(MAX_LEVEL) + ".")
         return
 
     if level <= victim["level"]:
@@ -491,7 +491,7 @@ def _debug_advance(player, args):
         advance_level(victim)
     victim["xp"] = 0
     victim["xp_next"] = exp_per_level(victim)
-    terminal.tr.print("You are now level " + str(victim["level"]) + ".")
+    terminal.tr.print("You are now level " + num_str(victim["level"]) + ".")
     save_world(quiet=True)
 
 
@@ -987,12 +987,12 @@ def _debug_pstat(player, args):
         if tpl is None:
             terminal.tr.print("No such room.")
             return
-        terminal.tr.print("Room #" + pad_right(str(vnum), 6) + " ["
+        terminal.tr.print("Room #" + pad_right(num_str(vnum), 6) + " ["
                           + tpl.get("name", "") + "]")
         rs = world.rooms._data.get(vnum) or {}
         tgt = rs.get("rprog_target")
-        terminal.tr.print("Delay   " + pad_right(str(rs.get("rprog_delay", 0)), 6)
-                          + " [" + ("No target" if tgt is None else str(tgt)) + "]")
+        terminal.tr.print("Delay   " + pad_right(num_str(rs.get("rprog_delay", 0)), 6)
+                          + " [" + ("No target" if tgt is None else num_str(tgt)) + "]")
         _pstat_trigs(tpl.get("room_triggers"))
         return
     if "object".startswith(sub):
@@ -1013,11 +1013,11 @@ def _debug_pstat(player, args):
         if tpl is None:
             terminal.tr.print("No such object.")
             return
-        terminal.tr.print("Object #" + pad_right(str(vnum), 6) + " ["
+        terminal.tr.print("Object #" + pad_right(num_str(vnum), 6) + " ["
                           + tpl.get("short_descr", "") + "]")
         tgt = obj.get("oprog_target") if obj is not None else None
-        terminal.tr.print("Delay   " + pad_right(str((obj or {}).get("oprog_delay", 0)), 6)
-                          + " [" + ("No target" if tgt is None else str(tgt)) + "]")
+        terminal.tr.print("Delay   " + pad_right(num_str((obj or {}).get("oprog_delay", 0)), 6)
+                          + " [" + ("No target" if tgt is None else num_str(tgt)) + "]")
         _pstat_trigs(tpl.get("obj_triggers"))
         return
     if "mobile".startswith(sub) and rest:
@@ -1034,14 +1034,14 @@ def _debug_pstat(player, args):
         vnum = inst["tpl"]
     tpl = world.MOB_DEFS.get(vnum)
     if tpl is None:
-        terminal.tr.print("No mob template " + str(vnum) + ".")
+        terminal.tr.print("No mob template " + num_str(vnum) + ".")
         return
-    terminal.tr.print("Mobile #" + pad_right(str(vnum), 6) + " ["
+    terminal.tr.print("Mobile #" + pad_right(num_str(vnum), 6) + " ["
                       + tpl.get("short_descr", "") + "]")
     if inst is not None:
         tgt = inst.get("mprog_target")
-        terminal.tr.print("Delay   " + pad_right(str(inst.get("mprog_delay", 0)), 6)
-                          + " [" + ("No target" if tgt is None else str(tgt)) + "]")
+        terminal.tr.print("Delay   " + pad_right(num_str(inst.get("mprog_delay", 0)), 6)
+                          + " [" + ("No target" if tgt is None else num_str(tgt)) + "]")
     _pstat_trigs(tpl.get("mob_triggers"))
 
 
