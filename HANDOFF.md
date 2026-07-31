@@ -91,6 +91,34 @@ minutes apart."*
 **This is inference, not yet proof.** Phases C and D below are built to
 settle it.
 
+### 5. save_smoke-9 (G1, 31/07): not a leak; 5 collect rolls survived clean
+
+`debug/save_smoke-9.log`, run with the real 31/07 32.5 KB save:
+
+- **Phase C: transient garbage, ~100% reclaimed.** One collect returned
+  4,351,056 B in 267 ms; free rose above the post-load baseline. Not a
+  leak -- the exposure is *when* the collect fires, not lost memory.
+- **Phase D: 60 saves, 4 auto-collects, zero deaths.** ~420 KB burned per
+  save (bigger save than -8; `ln.room` now dominant at ~970 ms). Every
+  auto-collect fired on the 14th save, **always inside `hvset`**, cost
+  ~200 ms, restored free to ~6.2 MB with no drift across cycles.
+- With phase C's explicit collect that is 5 collects walking save-shaped
+  garbage with no death. At the documented 25-30% per-collect rate, clean
+  survival odds were 17-24% -- evidence leaning against the hypothesis,
+  but not an acquittal (survival does not transfer between layouts).
+- Real-play projection: one auto-collect per ~14 autosaves, ~28 min of
+  play. Matches the crash cadence.
+
+**Coverage gap found:** back-to-back saves tip the heap over at the same
+deterministic spot every cycle (mid-`hvset`), so -9 only ever rolled the
+dice there. Real play interleaves ~2 min of gameplay allocation between
+autosaves, so the collect can land at ANY allocation site with save
+garbage still on the heap. The pump/echo path itself was audited clean of
+both bug signatures (no `%`/`.format()`, no bulk `str(int)`; `show_prompt`
+is a guaranteed `_PROMPT_CACHE` hit mid-save), and "player typing through
+a save" is exactly what pump+echo models -- the gap is collect landing
+site, not player activity.
+
 ## The prepped probe -- run this next
 
 `debug/save_smoke.py`, staged and ready. Phases run in order; `log()`
@@ -113,6 +141,11 @@ rewrites the log file on every call, so everything up to a death survives.
   either between saves or across marks within one. Each is a death roll at
   ~25-30% in probe conditions, so 5 is >80% odds of a kill if the crash is
   this bug. **A death in phase D is the crash reproduced on the bench.**
+  Since -9: each save is preceded by a gameplay-shaped churn gap
+  (`(i % 8) * CHURN_STEP` bytes of combat-message-style small strings) so
+  the tip-over collect lands at a different site each cycle instead of
+  always mid-`hvset` -- including mid-churn, the real-play scenario -9
+  never rolled. A churn-site death is the strongest possible signal.
 
 Supporting change: `_SAVE_TIMING` marks are now `(segment, ms, free)`
 triples, `free` being `gc.mem_free()` at that boundary. Free memory falls
@@ -144,7 +177,11 @@ Rebuild it there:
    `SAVE_VAR` to `smoketest` before `load_world` and `SAVE_FILE` to
    `save_smoke.sav` after, so the real slot is never written.
 4. Transfer via Connectivity Kit, run, retrieve `save_smoke.log`, commit it
-   as `debug/save_smoke-9.log`.
+   as `debug/save_smoke-10.log`.
+
+(Bundle on this workstation refreshed 31/07 against the churn-gap probe;
+`primesud.sav` inside it is the fresh 31/07 32.5 KB copy from the repo
+root.)
 
 A correctly prepped bundle holds 54 `.py` (53 from `src/` + `save_smoke.py`,
 no `primesud.py`), the 3 `.hpapp*` binaries, `primesud.sav`, and the data

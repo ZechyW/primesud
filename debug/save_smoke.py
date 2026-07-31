@@ -46,6 +46,15 @@ a death survives):
        here it is driven flat out until TARGET_COLLECTS auto-collects
        have been survived. A death in this phase is the crash
        reproduced on the bench.
+       Since save_smoke-9: each save is preceded by a gameplay-shaped
+       churn gap ((i % 8) * CHURN_STEP bytes of combat-message-style
+       small-string garbage). save_smoke-9's four auto-collects all
+       landed mid-hvset -- back-to-back saves tip the heap over at the
+       same deterministic (and apparently safe) spot every cycle. Real
+       play interleaves ~2 min of gameplay allocation between
+       autosaves, so the collect can land at ANY allocation site with
+       save-shaped garbage still on the heap; the varying churn gap
+       rotates the tip-over point to model that.
 
 See TODO.md sec. Save path lost its soak cover and
 docs/PRIME_FIRMWARE_BUGS.md.
@@ -77,6 +86,11 @@ SAVES_PER_MODE = 3
 # hit, whichever comes first.
 TARGET_COLLECTS = 5
 MAX_DRIVE_SAVES = 60
+# Phase D churn gap: save i burns (i % 8) * CHURN_STEP bytes of
+# gameplay-shaped garbage before saving, cycling the tip-over point
+# through 0..420KB of the ~420KB/save span so the auto-collect lands
+# somewhere different each cycle (see phase D note above).
+CHURN_STEP = 60000
 _ECHO = [False]
 # Pumps and echoes actually executed in the last save. Reported per save:
 # a mode that silently no-ops (the reason the pre-31/07 harness measured a
@@ -155,6 +169,40 @@ def log(msg):
 
 def free():
     return gc.mem_free() if hasattr(gc, "mem_free") else 0
+
+
+def _churn_gap(target):
+    """Burn ~target bytes of gameplay-shaped garbage between saves.
+
+    Combat-round-style small strings (int_str + concat, the game's
+    validated render path), built into a short list and dropped, the way
+    act()/show_prompt output churns in play. Returns (burned, collected):
+    free() can only RISE mid-churn if an auto-collect fired -- that is
+    the real-play scenario of a collect landing at a gameplay allocation
+    site with save-shaped garbage still on the heap, the roll the
+    back-to-back drive never makes.
+    """
+    if not hasattr(gc, "mem_free"):
+        return 0, False  # desktop: free() is a constant 0, loop cannot end
+    start = free()
+    low = start
+    lines = []
+    n = 0
+    while True:
+        f = free()
+        if f > low + 1024:
+            return start - low, True
+        if f < low:
+            low = f
+        if start - f >= target:
+            return start - f, False
+        n += 1
+        v = n % 997
+        lines.append("You hit a beggar for " + int_str(v) + " damage.")
+        lines.append("{R" + int_str(v) + "/" + int_str(v + 5) + "hp {M"
+                     + int_str(v * 3) + "mn{x")
+        if len(lines) > 32:
+            lines = []
 
 
 def collects(marks):
@@ -319,7 +367,7 @@ def main():
     # is ~10-20 autosaves apart at 2 min each; here it is driven flat out.
     # An auto-collect shows as free RISING, either between saves or across
     # marks within one. Runs in pump+echo, the real game's shape.
-    log("-- phase D: drive to exhaustion (pump+echo, target "
+    log("-- phase D: drive to exhaustion (pump+echo, churn gaps, target "
         + int_str(TARGET_COLLECTS) + " auto-collects, cap "
         + int_str(MAX_DRIVE_SAVES) + " saves)")
     tr = _TRPump()
@@ -331,14 +379,30 @@ def main():
     while seen < TARGET_COLLECTS and i < MAX_DRIVE_SAVES:
         i += 1
         tr._key_queue_count = 0
+        f0 = free()
+        if f0 > prev_end:
+            seen += 1
+            log("  (AUTO-COLLECT between saves, +" + int_str(f0 - prev_end)
+                + ") seen=" + int_str(seen))
+        # Churn gap before the save. Target logged BEFORE churning, result
+        # after, so a death mid-churn is attributable to the churn site --
+        # a churn-site death is the strongest possible signal here.
+        _ct = (i % 8) * CHURN_STEP
+        if _ct:
+            log("  churn " + int_str(i) + ": target " + int_str(_ct)
+                + "B, free " + int_str(f0))
+            t0 = ticks()
+            _burned, _hit = _churn_gap(_ct)
+            if _hit:
+                seen += 1
+            log("    burned " + int_str(_burned) + "B in "
+                + int_str(ticks() - t0) + "ms"
+                + (" AUTO-COLLECT mid-churn seen=" + int_str(seen)
+                   if _hit else ""))
         start = free()
         # Logged BEFORE the save, so a death mid-save still leaves the
         # save number and the heap state that preceded it in the file.
-        log("  save " + int_str(i) + ": start free " + int_str(start)
-            + (" (AUTO-COLLECT between saves, +"
-               + int_str(start - prev_end) + ")" if start > prev_end else ""))
-        if start > prev_end:
-            seen += 1
+        log("  save " + int_str(i) + ": start free " + int_str(start))
         t0 = ticks()
         ok = game_state.save_world(quiet=True)
         total = ticks() - t0
