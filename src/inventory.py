@@ -930,6 +930,70 @@ def _item_stat_modifier(obj, tpl, location):
     return total
 
 
+def gear_score_components(tpl, armor=None, dice=None, weapon_flags=None,
+                          level=None, include_template_affects=True):
+    """Return static score and player-specific weapon inputs. [PRIMESUD]
+
+    Args:
+        tpl (dict): Item template.
+        armor (tuple): Optional runtime armor override.
+        dice (tuple): Optional runtime weapon-dice override.
+        weapon_flags (dict): Optional runtime weapon-flag override.
+        level (int): Optional runtime item-level override.
+        include_template_affects (bool): Include template stat/flag affects.
+
+    Returns:
+        tuple: static_score, weapon_base, weapon_type, sharp.
+    """
+    score = 0
+    weapon_base = 0
+    weapon_type = ""
+    sharp = False
+    itype = tpl.get("type")
+    if itype == "armor":
+        values = armor if armor is not None else tpl.get("armor")
+        if values is not None:
+            # 1stMud do_compare summed only 3 AC buckets; exotic included here.
+            score += sum(values) * 10
+    elif itype == "weapon":
+        values = dice if dice is not None else tpl.get("dice", (0, 0, 0))
+        weapon_base = values[0] * (values[1] + 1) + 2 * values[2]
+        weapon_type = tpl.get("weapon_type", "")
+        flags = weapon_flags if weapon_flags is not None else tpl.get("weapon_flags", {})
+        item_level = tpl.get("level", 0) if level is None else level
+        sharp = bool(flags.get("sharp"))
+        if flags.get("flaming"):
+            score += (item_level // 4 + 2) * 10
+        if flags.get("frost"):
+            score += (item_level // 6 + 3) * 10
+        if flags.get("shocking"):
+            score += (item_level // 5 + 3) * 10
+        if flags.get("vampiric"):
+            score += (item_level // 5 + 2) * 15
+        if flags.get("poison"):
+            score += 20
+
+    if include_template_affects:
+        for loc, mod in tpl.get("stat_bonuses", {}).items():
+            score += _GEAR_MOD_WEIGHTS.get(loc, 0) * mod
+        for af in tpl_flag_affects(tpl):
+            score += _gear_affect_score(af)
+    return score, weapon_base, weapon_type, sharp
+
+
+def gear_score_weapon(player, weapon_base, weapon_type, sharp):
+    """Return player-specific score for indexed weapon inputs. [PRIMESUD]"""
+    if not weapon_base:
+        return 0
+    sn = WEAPON_GSN_MAP.get(weapon_type, -1)
+    # one_hit uses 20 + weapon proficiency for damage and sharp chance.
+    skill = 20 + _get_weapon_skill(player, sn)
+    base_score = weapon_base * skill // 10
+    if sharp:
+        base_score += base_score * skill // 700
+    return base_score
+
+
 def gear_score(player, obj):
     """Return balanced combat score for one wearable item. [PRIMESUD]
 
@@ -945,41 +1009,14 @@ def gear_score(player, obj):
         int: Higher is better.
     """
     tpl = item_tpl(obj)
-    score = 0
-    itype = tpl.get("type")
-    if itype == "armor":
-        armor = _item_armor_runtime(tpl, obj)
-        if armor is not None:
-            # 1stMud do_compare summed only 3 AC buckets; exotic included here.
-            score += sum(armor) * 10
-    elif itype == "weapon":
-        dice_values = obj.get("dice") or tpl.get("dice", (0, 0, 0))
-        base = dice_values[0] * (dice_values[1] + 1) + 2 * dice_values[2]
-        sn = WEAPON_GSN_MAP.get(tpl.get("weapon_type", ""), -1)
-        # one_hit uses 20 + weapon proficiency for damage and sharp chance.
-        skill = 20 + _get_weapon_skill(player, sn)
-        base_score = base * skill // 10
-        score += base_score
-        flags = item_weapon_flags(obj, tpl)
-        level = obj.get("level", tpl.get("level", 0))
-        if flags.get("sharp"):
-            score += base_score * skill // 700
-        if flags.get("flaming"):
-            score += (level // 4 + 2) * 10
-        if flags.get("frost"):
-            score += (level // 6 + 3) * 10
-        if flags.get("shocking"):
-            score += (level // 5 + 3) * 10
-        if flags.get("vampiric"):
-            score += (level // 5 + 2) * 15
-        if flags.get("poison"):
-            score += 20
-
-    if not obj.get("enchanted"):
-        for loc, mod in tpl.get("stat_bonuses", {}).items():
-            score += _GEAR_MOD_WEIGHTS.get(loc, 0) * mod
-        for af in tpl_flag_affects(tpl):
-            score += _gear_affect_score(af)
+    score, weapon_base, weapon_type, sharp = gear_score_components(
+        tpl,
+        armor=_item_armor_runtime(tpl, obj),
+        dice=obj.get("dice") or tpl.get("dice", (0, 0, 0)),
+        weapon_flags=item_weapon_flags(obj, tpl),
+        level=obj.get("level", tpl.get("level", 0)),
+        include_template_affects=not obj.get("enchanted"))
+    score += gear_score_weapon(player, weapon_base, weapon_type, sharp)
     for af in obj.get("affect_list", []):
         score += _gear_affect_score(af)
     return score
@@ -1176,15 +1213,19 @@ def _wield_holds_after_swap(player, removed, added=()):
                 player, removed, added)] * 10)
 
 
+def gear_flags_legal(player, extra):
+    """Return whether anti-alignment flags permit player use. [PRIMESUD]"""
+    return not ((extra.get("anti_evil") and is_evil(player))
+                or (extra.get("anti_good") and is_good(player))
+                or (extra.get("anti_neutral") and is_neutral(player)))
+
+
 def _can_wear_best(player, obj, tpl):
     """Return whether wear best may equip obj (sight/level/align). [PRIMESUD]"""
     if (not can_see_obj(player, obj)
             or tpl.get("level", 1) > player["level"]):
         return False
-    extra = item_extra_flags(obj, tpl)
-    return not ((extra.get("anti_evil") and is_evil(player))
-                or (extra.get("anti_good") and is_good(player))
-                or (extra.get("anti_neutral") and is_neutral(player)))
+    return gear_flags_legal(player, item_extra_flags(obj, tpl))
 
 
 def _best_wear_candidate(player, flag):

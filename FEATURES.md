@@ -47,6 +47,9 @@ Things with no upstream equivalent.
   mana/lag/fizzle cost; rotation is player-editable via a navpad-driven
   blocking editor (`autoskill edit`). Survival (heal, quaff, flee) stays
   manual (autoskill.py; DESIGN.md "Autoskill combat automation").
+- **Mob and gear recommendations** -- `recommend` finds level-appropriate
+  fightable reset mobs and strict gear-score upgrades with known loot, shop,
+  floor, or container sources without loading target areas (docs/PRIME_UX.md).
 
 ## Reimagined for one player
 

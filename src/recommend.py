@@ -1,0 +1,470 @@
+"""Zero-load mob and gear recommendations. [PRIMESUD]"""
+
+import world
+from config import STR_APP_WIELD
+from handler import chprintln, get_curr_stat
+from inventory import (_can_wear_best, _wear_flag, gear_flags_legal,
+                       gear_score, gear_score_weapon)
+from pager import tpage
+from picker import pick_from
+from quest import QUEST_DELIVER, QUEST_FINDMOB
+from util import num_str, pad_left, pad_right
+from world import item_tpl
+
+
+MOB_INDEX_FILE = "mobs.idx"
+GEAR_INDEX_FILE = "gear.idx"
+
+_GEAR_SLOTS = (
+    "light", "finger", "neck", "body", "head", "legs", "feet", "hands",
+    "arms", "about", "waist", "wrist", "wield", "shield", "hold", "float",
+)
+_PAIRED_SLOTS = ("finger", "neck", "wrist")
+_HAND_SLOTS = ("wield", "shield", "hold")
+_SOURCE_ORDER = {"shop": 0, "floor": 1, "container": 2, "loot": 3}
+
+
+def _index_lines(data):
+    """Yield non-comment index rows without allocating an all-lines list."""
+    start = 0
+    size = len(data)
+    while start < size:
+        end = data.find("\n", start)
+        if end < 0:
+            end = size
+        if end > start and data[start] != "#":
+            line = data[start:end]
+            if line and line[-1] == "\r":
+                line = line[:-1]
+            yield line
+        start = end + 1
+
+
+def _current_tag(player):
+    """Return player's resident area tag without lazy loading."""
+    room = world.ROOM_DEFS._data.get(player.get("room"))
+    if room is not None and room.get("area"):
+        return room["area"]
+    return world._vnum_to_tag(player.get("room", 0))
+
+
+def _area_name(tag):
+    """Return static area display name."""
+    return world._TAG_TO_NAME.get(tag, tag)
+
+
+def _mob_candidates(player):
+    """Read and rank fightable mob rows without loading an area."""
+    try:
+        with open(MOB_INDEX_FILE) as f:
+            data = f.read()
+    except OSError:
+        return None
+
+    level = player.get("level", 1)
+    lowest = max(1, level - 5)
+    highest = level + 1
+    current = _current_tag(player)
+    protected = 0
+    if player.get("quest_status") in (QUEST_DELIVER, QUEST_FINDMOB):
+        protected = player.get("quest_mob", 0)
+    rows = []
+    order = 0
+    for line in _index_lines(data):
+        parts = line.split("|")
+        if len(parts) < 7:
+            # Legacy six-field rows carry no fightability metadata.
+            continue
+        try:
+            vnum = int(parts[0])
+            mob_level = int(parts[2])
+        except (TypeError, ValueError):
+            continue
+        if vnum == protected or mob_level < lowest or mob_level > highest:
+            continue
+        tags = [tag for tag in parts[6].split(",") if tag]
+        if not tags:
+            continue
+        tag = current if current in tags else tags[0]
+        stats = world.mob_stats.get(vnum)
+        kills = stats[0] if stats else 0
+        deaths = stats[1] if stats else 0
+        rows.append({
+            "vnum": vnum, "level": mob_level, "name": parts[4],
+            "tag": tag, "extra": len(tags) - 1, "kills": kills,
+            "deaths": deaths, "bad": bool(stats and kills > deaths),
+            "order": order,
+        })
+        order += 1
+
+    low = max(1, level - 2)
+    while low > lowest:
+        count = 0
+        for row in rows:
+            if row["level"] >= low:
+                count += 1
+        if count >= 5:
+            break
+        low -= 1
+    rows = [row for row in rows if row["level"] >= low]
+    rows.sort(key=lambda row: (
+        row["bad"], row["tag"] != current,
+        abs(row["level"] - level), row["level"], row["order"]))
+    return rows[:10]
+
+
+def _show_mobs(player):
+    """Render level-appropriate static mob recommendations."""
+    rows = _mob_candidates(player)
+    if rows is None:
+        chprintln(player, "Mob recommendations are unavailable.")
+        return
+    if not rows:
+        chprintln(player, "No suitable known mob targets near your level.")
+        return
+    lines = ["Lv  Record  Mob                          Area"]
+    for row in rows:
+        if row["kills"] or row["deaths"]:
+            record = (num_str(row["kills"]) + "/"
+                      + num_str(row["deaths"])
+                      + ("!" if row["bad"] else ""))
+        else:
+            record = "-"
+        if len(record) > 7:
+            record = record[:6] + ("!" if row["bad"] else "")
+        # "+n" flags a mob that also spawns in n other areas.
+        suffix = (" +" + num_str(row["extra"])) if row["extra"] else ""
+        lines.append(
+            pad_left(num_str(row["level"]), 2) + " "
+            + pad_left(record, 7) + " "
+            + pad_right(row["name"][:28], 28) + " "
+            + _area_name(row["tag"])[:22 - len(suffix)] + suffix)
+    lines.append("Known reset sites; availability is not live.")
+    lines.append("Use path <mob> or path <area> after choosing.")
+    tpage(lines)
+
+
+def _owned_baselines(player):
+    """Return best legal owned score baseline for each wear category."""
+    scores = {}
+    for slot in _GEAR_SLOTS:
+        scores[slot] = []
+    owned = player.get("inv", []) + [
+        obj for obj in player.get("equip", {}).values() if obj is not None]
+    for obj in owned:
+        tpl = item_tpl(obj)
+        slot = _wear_flag(obj, tpl)
+        if slot in scores and _can_wear_best(player, obj, tpl):
+            scores[slot].append(gear_score(player, obj))
+    baselines = {}
+    for slot in _GEAR_SLOTS:
+        values = scores[slot]
+        values.sort(reverse=True)
+        if slot in _PAIRED_SLOTS:
+            baselines[slot] = values[1] if len(values) > 1 else (
+                min(values[0], 0) if values else 0)
+        else:
+            baselines[slot] = values[0] if values else 0
+    return baselines
+
+
+def _source_key(kind, tag, price, funds, source_level, player_level,
+                source_vnum, room_vnum, current, area_order):
+    """Return deterministic acquisition-suitability order."""
+    if tag == current:
+        bucket = 0
+        detail = 0
+    elif kind == "shop" and price <= funds:
+        bucket = 1
+        detail = 0
+    elif kind == "floor" or kind == "container":
+        bucket = 2
+        detail = _SOURCE_ORDER[kind]
+    elif kind == "loot":
+        bucket = 3
+        detail = abs(source_level - player_level)
+    else:
+        bucket = 4
+        detail = 0
+    return (bucket, detail, _SOURCE_ORDER.get(kind, 9),
+            area_order.get(tag, len(area_order)), source_vnum, room_vnum)
+
+
+def _candidate_key(row):
+    """Return gear candidate ordering: gain, source, VNUM."""
+    return (-row["gain"], row["source_key"], row["vnum"])
+
+
+_MAX_ALT_SOURCES = 2
+
+
+def _alt_key(row):
+    """Return rendered-source identity; detail lines omit the room."""
+    return (row["kind"], row["source_vnum"], row["source_name"], row["tag"])
+
+
+def _keep_alt(alts, source, primary):
+    """Insert a non-primary source into a bounded ranked alternate list.
+
+    Sources indistinguishable in rendered detail (same kind, source, and
+    area; rooms are not shown) collapse to their best-ranked row.
+    """
+    source.pop("alts", None)
+    key = _alt_key(source)
+    if key == _alt_key(primary):
+        return
+    for index, alt in enumerate(alts):
+        if _alt_key(alt) == key:
+            if source["source_key"] < alt["source_key"]:
+                alts[index] = source
+                alts.sort(key=lambda alt: alt["source_key"])
+            return
+    alts.append(source)
+    alts.sort(key=lambda alt: alt["source_key"])
+    if len(alts) > _MAX_ALT_SOURCES:
+        alts.pop()
+
+
+def _keep_candidate(rows, candidate, limit):
+    """Keep bounded distinct-item results; extra sources become ranked alts."""
+    for index, row in enumerate(rows):
+        if row["vnum"] == candidate["vnum"]:
+            if candidate["source_key"] < row["source_key"]:
+                candidate["alts"] = [alt for alt in row["alts"]
+                                     if _alt_key(alt) != _alt_key(candidate)]
+                _keep_alt(candidate["alts"], row, candidate)
+                rows[index] = candidate
+                rows.sort(key=_candidate_key)
+            else:
+                _keep_alt(row["alts"], candidate, row)
+            return
+    candidate["alts"] = []
+    rows.append(candidate)
+    rows.sort(key=_candidate_key)
+    if len(rows) > limit:
+        rows.pop()
+
+
+def _scan_gear(player, wanted_slot=None):
+    """Scan needed gear.idx slot segments, retaining only displayed candidates.
+
+    gear.idx is segmented by wear slot (help.dat pattern): a comment header,
+    then one directory line of per-slot segment byte lengths in _GEAR_SLOTS
+    order, then the segments. Each read is one seek plus one bounded read,
+    so peak transient heap is the largest needed segment, never the file.
+    """
+    try:
+        f = open(GEAR_INDEX_FILE)
+    except OSError:
+        return None
+
+    with f:
+        head = f.read(512)
+        cut = head.find("\n")
+        end = head.find("\n", cut + 1) if cut >= 0 else -1
+        if end < 0:
+            return None
+        try:
+            sizes = [int(v) for v in head[cut + 1:end].split(",")]
+        except (TypeError, ValueError):
+            return None
+        if len(sizes) != len(_GEAR_SLOTS) or min(sizes) < 0:
+            return None
+
+        baselines = _owned_baselines(player)
+        current = _current_tag(player)
+        player_level = player.get("level", 1)
+        loot_low = max(1, player_level - 2)
+        loot_high = player_level + 1
+        wield_limit = STR_APP_WIELD[get_curr_stat(player, "str")] * 10
+        funds = player.get("gold", 0) * 100 + player.get("silver", 0)
+        area_order = {}
+        for index, entry in enumerate(world._AREA_FILES):
+            area_order[entry[1]] = index
+        results = {}
+        if wanted_slot is None:
+            for slot in _GEAR_SLOTS:
+                results[slot] = []
+        else:
+            results[wanted_slot] = []
+
+        pos = end + 1
+        for seg_index in range(len(_GEAR_SLOTS)):
+            slot = _GEAR_SLOTS[seg_index]
+            size = sizes[seg_index]
+            seg_pos = pos
+            pos += size
+            if not size or slot not in results:
+                continue
+            f.seek(seg_pos)
+            data = f.read(size)
+            _scan_segment(player, data, slot, results, baselines, current,
+                          player_level, loot_low, loot_high, wield_limit,
+                          funds, area_order,
+                          10 if wanted_slot is not None else 1)
+    return results
+
+
+def _scan_segment(player, data, slot, results, baselines, current,
+                  player_level, loot_low, loot_high, wield_limit, funds,
+                  area_order, limit):
+    """Score and rank one slot segment's rows into results[slot]."""
+    for line in _index_lines(data):
+        parts = line.split("|")
+        if len(parts) != 17 or parts[1] != slot:
+            continue
+        try:
+            vnum = int(parts[0])
+            item_level = int(parts[2])
+            static_score = int(parts[3])
+            weapon_base = int(parts[4])
+            sharp = parts[6] == "1"
+            weight = int(parts[7])
+            source_vnum = int(parts[11])
+            source_level = int(parts[12])
+            room_vnum = int(parts[13])
+            price = int(parts[16])
+        except (TypeError, ValueError):
+            continue
+        if item_level > player_level:
+            continue
+        flags = {}
+        for flag in parts[8].split(","):
+            if flag:
+                flags[flag] = True
+        if not gear_flags_legal(player, flags):
+            continue
+        if slot == "wield" and weight > wield_limit:
+            continue
+        kind = parts[10]
+        if (kind == "loot"
+                and not (loot_low <= source_level <= loot_high)):
+            continue
+        if kind not in _SOURCE_ORDER:
+            continue
+        score = static_score + gear_score_weapon(
+            player, weapon_base, parts[5], sharp)
+        gain = score - baselines[slot]
+        if gain <= 0:
+            continue
+        tag = parts[15]
+        source_key = _source_key(
+            kind, tag, price, funds, source_level, player_level,
+            source_vnum, room_vnum, current, area_order)
+        candidate = {
+            "vnum": vnum, "slot": slot, "gain": gain, "name": parts[9],
+            "kind": kind, "source_vnum": source_vnum,
+            "source_level": source_level, "source_name": parts[14],
+            "tag": tag, "price": price, "source_key": source_key,
+        }
+        _keep_candidate(results[slot], candidate, limit)
+
+
+def _comma_num(value):
+    """Render positive int with comma groups without firmware formatting."""
+    digits = num_str(value)
+    first = len(digits) % 3
+    if not first:
+        first = 3
+    out = digits[:first]
+    index = first
+    while index < len(digits):
+        out += "," + digits[index:index + 3]
+        index += 3
+    return out
+
+
+def _source_summary(row):
+    """Return compact summary source text."""
+    return row["kind"] + ": " + row["source_name"]
+
+
+def _source_detail(row):
+    """Return detailed acquisition text."""
+    area = _area_name(row["tag"])
+    if row["kind"] == "loot":
+        return ("  loot from " + row["source_name"] + " (L"
+                + num_str(row["source_level"]) + "), " + area)
+    if row["kind"] == "shop":
+        return ("  buy from " + row["source_name"] + ", " + area + ": "
+                + _comma_num(row["price"]) + " silver")
+    if row["kind"] == "container":
+        return "  inside " + row["source_name"] + ", " + area
+    return "  floor in " + row["source_name"] + ", " + area
+
+
+def _show_gear(player, slot=None):
+    """Render strict static gear upgrades.
+
+    Summary mode opens a picker over the per-category best upgrades; choosing
+    a row drills into that slot's detail. Returns the resolved command string
+    ("recommend gear <slot>") when the player drills in, else None.
+    """
+    results = _scan_gear(player, slot)
+    if results is None:
+        chprintln(player, "Gear recommendations are unavailable.")
+        return None
+    if slot is not None:
+        rows = results[slot]
+        if not rows:
+            chprintln(player, "No known static " + slot + " upgrades for you.")
+            return None
+        lines = []
+        for row in rows:
+            lines.append(slot + " +" + num_str(row["gain"]) + "  "
+                         + row["name"][:48])
+            lines.append(_source_detail(row)[:64])
+            for alt in row["alts"]:
+                lines.append(("  also" + _source_detail(alt)[1:])[:64])
+        lines.append("Known source, not current availability.")
+        if slot in _HAND_SLOTS:
+            lines.append("Hand item is a candidate; wear best decides layout.")
+        tpage(lines)
+        return None
+
+    rows = []
+    for category in _GEAR_SLOTS:
+        if results[category]:
+            rows.append(results[category][0])
+    if not rows:
+        chprintln(player, "No known static gear upgrades for you.")
+        return None
+    options = []
+    for row in rows:
+        options.append(
+            pad_right(row["slot"], 8)
+            + pad_left("+" + num_str(row["gain"]), 5) + " "
+            + pad_right(row["name"][:22], 22) + " "
+            + _source_summary(row)[:16])
+    choice = pick_from("Gear upgrades (known sources, not live):", options)
+    if choice < 0:
+        return None
+    picked = rows[choice]["slot"]
+    _show_gear(player, picked)
+    return "recommend gear " + picked
+
+
+def do_recommend(player, args):
+    """Recommend static mob targets or gear upgrades. [PRIMESUD]"""
+    if not args:
+        choice = pick_from("Recommend:", ("Mobs to fight", "Gear upgrades"))
+        if choice < 0:
+            return
+        if choice == 0:
+            _show_mobs(player)
+            return "recommend mobs"
+        resolved = _show_gear(player)
+        return resolved if resolved else "recommend gear"
+
+    mode = args[0].lower()
+    if mode == "mobs" and len(args) == 1:
+        _show_mobs(player)
+        return
+    if mode == "gear":
+        if len(args) == 1:
+            return _show_gear(player)
+        slot = args[1].lower()
+        if len(args) == 2 and slot in _GEAR_SLOTS:
+            _show_gear(player, slot)
+            return
+    chprintln(player, "Usage: recommend [mobs|gear [slot]]")

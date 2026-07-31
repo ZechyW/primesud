@@ -2812,7 +2812,8 @@ def _find_unloaded_mob(tail, ch):
     for line in data.split("\n"):
         if not line or line[0] == "#":
             continue  # blank / header comment
-        parts = line.split("|", 5)
+        # fight_tags may follow spawn_tags; field 5 keeps its old meaning.
+        parts = line.split("|")
         if len(parts) < 6 or not is_name(tail, parts[3]):
             continue
         for tag in parts[5].split(","):

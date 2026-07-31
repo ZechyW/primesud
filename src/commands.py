@@ -21,6 +21,7 @@ from info import (do_look, do_examine, do_read, do_score, do_skills, do_spells,
                   do_mobdeaths, do_mobkills, do_areakills, do_areadeaths)
 from economy import do_bank, do_balance
 from path import do_path
+from recommend import do_recommend
 from inventory import (do_get, do_drop, do_inventory, do_wear, do_remove,
                        do_equipment, do_second, do_quaff, do_recite,
                        do_brandish, do_zap, do_eat, do_outfit, do_put,
@@ -461,6 +462,7 @@ _CMD_TABLE = [
     ("autoskill",  do_autoskill,  "dead",     False),  # [PRIMESUD] #351
     ("flow",       do_flow,       "fighting", False),  # [PRIMESUD] #352
     ("drive",      do_drive,      "fighting", False),  # [PRIMESUD] #353
+    ("recommend",  do_recommend,  "resting",  False),  # [PRIMESUD] #354
 ]
 
 # [PRIMESUD] Free-text commands receive the verbatim argument tail -- like

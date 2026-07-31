@@ -105,6 +105,7 @@ quest|personal quest status and commands
 quit|leave the game (progress is saved)
 read|read a sign or scroll (alias for look)
 recall|pray for transport to the recall point
+recommend|find level-appropriate mobs or known gear upgrades
 recite|recite a magical scroll at a target
 remort|be reborn into a new class at max level
 remove|take off a worn or wielded item

@@ -3591,3 +3591,25 @@ disarm, dodge, enhanced damage, fast healing, hand to hand, parry, shield
 block, third attack, and all three unique sword skills. Dagger can be gained
 later as their only sidearm.
 High Dexterity gives all three unique skills a small activation bonus.
+#0|commands|RECOMMEND
+Syntax: recommend
+        recommend mobs
+        recommend gear
+        recommend gear <slot>
+
+RECOMMEND MOBS lists reset-backed, generally fightable opponents near your
+level. Each mob's stored record against you helps rank them: shown as the
+mob's kills / the mob's deaths, with ! marking a mob that is ahead. Use PATH
+afterward to choose a route.
+
+RECOMMEND GEAR opens a numbered summary of strict gear-score upgrades over
+your best compatible owned items; pick a row to see that slot's detail, or
+use RECOMMEND GEAR <slot> directly. Detail rows list up to two alternate
+sources. Sources cover ordinary mob loot, shops, floor items, and items
+inside floor containers. Nested items in mob-carried containers use the
+holder as their level-filtered loot source. A source is known from area
+resets; it may not be available right now.
+
+Gear slots are: light, finger, neck, body, head, legs, feet, hands, arms,
+about, waist, wrist, wield, shield, hold, and float. Hand results are
+candidates only; WEAR BEST remains the final layout authority.

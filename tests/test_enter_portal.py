@@ -222,7 +222,8 @@ def test_portal_targets_unloaded_area_mob(out, monkeypatch, tmp_path):
     _held_stone(player)
     player["_target_name"] = "dragon"
     idx = tmp_path / "mobs.idx"
-    idx.write_text("9402|testarea|10|red dragon|a red dragon|testarea\n")
+    idx.write_text(
+        "9402|testarea|10|red dragon|a red dragon|testarea|otherarea\n")
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
     loaded = []
 

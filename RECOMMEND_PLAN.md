@@ -1,6 +1,12 @@
 # Recommend Command Plan
 
-Status: proposal; no implementation yet.
+Status: implemented on desktop; G1 heap/latency check pending.
+
+Desktop verification on 31 July 2026 (post-review: `gear.idx` segmented per
+wear slot for bounded seek reads; gear summary is a drill-in picker; detail
+rows keep up to two alternate sources; mob rows mark extra spawn areas):
+generated indexes reproduced deterministically, Python sources passed the
+ASCII/BOM check, and all 1,495 tests passed.
 
 ## Decision
 
@@ -44,7 +50,8 @@ must never iterate `MOB_DEFS`, `ITEM_DEFS`, or `ROOM_DEFS`.
   - loot carried or worn by a suitable mob;
   - ordinary shop stock;
   - floor-reset items;
-  - items reset inside a floor container.
+  - items reset inside a floor container;
+  - nested items carried by a suitable mob, represented as that mob's loot.
 - Use the same scoring rules as `compare` and `wear best`.
 - Account for player level, alignment, weapon skill, strength, owned gear, and
   recorded experience with a mob where those data already exist.
@@ -133,10 +140,23 @@ Static source coverage:
 | Mob loot | `M` followed by `E`/`G` | 724 | 1,829 |
 | Shop stock | shopkeeper `M` followed by `E`/`G` | 155 | 175 |
 | Floor | `O` | 35 | 42 |
-| Container | `O` container followed by `P` | 39 | 40 |
+| Container | `P` inside an `O`/`E`/`G`-reset object | 39 | 40 |
 
 Counts overlap because some items have several source kinds. There are 43
 wearables with more than one kind of static source.
+
+The 1,202 relationship count keys on (item, source kind, effective source
+VNUM), with a floor item's room VNUM acting as its source VNUM. The shipped
+index keys on the finer documented (item, kind, source VNUM, room, tag)
+relationship, so repeated reset sites -- mostly the same mob/item pair
+recurring across rooms -- emit additional rows: 1,890 emitted rows, or 1,193
+under the audit key after filtering. Nine non-fightable loot relationships
+are removed from the audited 1,202; four carried-container relationships are
+represented as level-filtered loot from their holder rather than unactionable
+container-only sources. The generator models the device pipeline -- world's
+per-room reset partitioning followed by reset_room's room-scoped
+last-mob/last-spawned walk -- including a floor container and `P` reset in the
+same room separated by an intervening `M`.
 
 This is enough coverage for a useful first version. The 76 resetless wearables
 include special creation/reward cases and should remain absent until each
@@ -182,11 +202,13 @@ The reset stream provides exact static provenance:
 - if that mob template has `shop`, reset handling marks those objects as
   shop inventory instead of death loot;
 - `O` places an object on a room floor;
-- `P` places an object inside the preceding floor-reset container.
+- `P` places an object inside an earlier reset container in the same room.
 
 NPC death transfers non-shop inventory and equipment into the corpse, so
 ordinary `E`/`G` relationships are valid loot recommendations. Shop inventory
 is deliberately omitted from corpses and is valid only as a purchase source.
+When `P` fills an object carried by a fightable mob, its nested item is also
+represented as loot from that holder, preserving holder level and identity.
 
 Reset metadata describes potential availability. A mob may currently be dead,
 an item may already have been taken, or reset limits may suppress an instance.
@@ -210,19 +232,21 @@ Example layout:
 
 ```text
 [Lv  Record] Mob                         Area
- 14     3/0  a dwarven guard             Dwarven Kingdom
+ 14    3/0!  a dwarven guard             Dwarven Kingdom
  15       -  a cave troll                Moria
- 16    0/1!  the black knight            High Tower
+ 16     0/1  the black knight            High Tower
 ```
 
 `Record` is mob kills / mob deaths, matching the stored mob-perspective
-counters. In the solo world these usually describe the player's encounters,
-though NPC-on-NPC combat can also affect them. `!` marks an unfavorable stored
-record. No record prints `-`.
+counters: `3/0` means the mob has killed the player three times and never
+died. In the solo world these usually describe the player's encounters,
+though NPC-on-NPC combat can also affect them. `!` marks an unfavorable
+stored record (the mob is ahead). No record prints `-`.
 
 Show at most ten rows through `tpage`. One row represents one mob template.
 When a template has multiple viable spawn tags, prefer the current area, then
-the earliest tag in `_AREA_FILES` order.
+the earliest tag in `_AREA_FILES` order; a `+n` suffix after the area name
+marks n additional spawn areas.
 
 Do not calculate or print a speedwalk for every row. That would add cost and,
 for exact mob locations, force area loads. The footer should say:
@@ -243,8 +267,12 @@ body       +140 black dragon plate       shop: armorer
 wield       +55 a silver longsword       loot: dwarven guard
 ```
 
-Use `tpage`. Omit categories with no known strict upgrade. If every category
-is omitted:
+The summary renders through the blocking picker (one option per category, at
+most sixteen): choosing a row drills into that slot's detail, and the resolved
+`recommend gear <slot>` string is returned for command-history replay; a
+cancelled picker records the summary itself (`recommend gear`), since that
+was the content shown. Omit categories with no known strict upgrade.
+If every category is omitted:
 
 ```text
 No known static gear upgrades for you.
@@ -262,11 +290,16 @@ wield shield hold float
 Do not expose concrete paired slots such as `finger_l`; `finger`, `neck`, and
 `wrist` are the player-facing categories already used by wear logic.
 
-For detail rows, show source area and price when applicable:
+For detail rows, show source area and price when applicable, plus up to two
+ranked alternate sources per item so multi-source items stay visible.
+Alternates that would render identically to the primary or to each other
+(same kind, source, and area -- rooms are not shown) collapse to their
+best-ranked row:
 
 ```text
 head +90  a jeweled war helm
   loot from a cave troll (L14), Moria
+  also buy from the armorer, Midgaard: 12,500 silver
 
 body +70  polished field plate
   buy from the armorer, Midgaard: 12,500 silver
@@ -396,7 +429,12 @@ room_vnum|source_name|tag|price
 ```
 
 The physical file keeps each record on one line; the wrapped schema above is
-for documentation only.
+for documentation only. Rows are grouped into one contiguous segment per wear
+slot in fixed `_GEAR_SLOTS` order, after a comment header and one directory
+line of comma-separated per-slot segment byte lengths (the `help.dat` +
+`help.idx` pattern, folded into a single file). Runtime seeks and reads only
+the segments a command needs, so peak transient heap is the largest needed
+segment (~56 KB for wield today), never the whole ~178 KB file.
 
 Field meanings:
 
@@ -431,7 +469,9 @@ Include:
 - `E`/`G` items attached to an ordinary fightable mob reset;
 - `E`/`G` stock attached to a shopkeeper;
 - wearable `O` floor objects;
-- wearable `P` objects inside a floor-reset container.
+- wearable `P` objects inside an `O`-placed floor container;
+- wearable `P` objects inside an `E`/`G` object carried by a fightable mob,
+  represented as loot from that mob.
 
 Deduplicate identical `(item, source kind, source VNUM, room, tag)`
 relationships.
@@ -445,9 +485,10 @@ and the existing wand/staff charge adjustment where applicable, matching
 `get_cost()`. Price is informational; unaffordable gear may still be a future
 upgrade, but affordable shop sources rank first among equal-score sources.
 
-For `P`, retain both container VNUM/name and hosting room VNUM/tag. Only
-converted stock's supported pattern is indexed: a `P` item inside an
-`O`-placed container in the same room.
+For `P` inside an `O`-placed container, retain container VNUM/name and hosting
+room VNUM/tag. For `P` inside a mob-carried `E`/`G` object, emit the holder's
+ordinary loot source VNUM, level, name, room, and tag; the holder is the
+actionable acquisition bottleneck.
 
 ### Excluded sources
 
@@ -471,9 +512,11 @@ runtime state; they are not promises of a repeatable external source.
 
 1. Scores the player's legal owned items and builds compact per-category
    baselines.
-2. Reads `gear.idx` once with `f.read()`.
-3. Walks rows with a newline cursor rather than `data.split("\n")`, avoiding a
-   second list containing every line.
+2. Reads the small directory line, then seek + one bounded read per needed
+   slot segment -- all sixteen sequentially for the summary, one for
+   `recommend gear <slot>`. The whole file is never resident at once.
+3. Walks each segment's rows with a newline cursor rather than
+   `data.split("\n")`, avoiding a second list containing every line.
 4. Applies item eligibility and source suitability.
 5. Retains only the best summary row per category, or top ten rows for one
    requested category.
@@ -490,9 +533,10 @@ reclaimed soon enough; do not assume it is needed from desktop behavior.
 Loot sources are eligible only when carrier level fits the same mob-level
 window used by `recommend mobs`.
 
-Shop, floor, and container sources are not filtered by mob level. Their area
-name is shown so the player can judge travel risk. Area level ranges may be
-used as a tie-breaker but must not hide a legal upgrade.
+Shop, floor, and floor-container sources are not filtered by mob level. Their
+area name is shown so the player can judge travel risk. Mob-carried nested
+items are loot and use the normal carrier-level filter. Area level ranges may
+be used as a tie-breaker but must not hide a legal upgrade.
 
 For one item with several sources, choose:
 
@@ -502,6 +546,9 @@ For one item with several sources, choose:
 4. loot with the smallest carrier/player level difference;
 5. unaffordable shop;
 6. stable source kind, area order, and VNUM tie-breaks.
+
+Runner-up sources are not discarded: each retained item keeps up to two
+lower-ranked alternates for its detail rows.
 
 Across different items, order first by descending score gain. The command is
 an upgrade finder, not an acquisition-cost optimizer.
@@ -547,7 +594,7 @@ has its own generated schema and tests.
 Append `recommend` to the PrimeSUD extension section of `_CMD_TABLE` in
 `src/commands.py`, at minimum position `resting`. Add its import normally. No
 alias is needed. Because command lookup is first-prefix, `rec` remains
-`recall`; `reco` is the shortest unambiguous prefix.
+`recite`; `reco` is the shortest unambiguous prefix.
 
 Add one description row to `src/commands.txt`.
 
@@ -650,7 +697,8 @@ This is the central regression guard.
 - Every emitted item and source VNUM resolves during desktop generation.
 - `E`/`G` follows the correct preceding `M`.
 - Shopkeeper E/G rows become `shop`, never `loot`.
-- `P` rows require a supported floor container.
+- `P` rows require a same-room reset container; mob-carried contents become
+  holder loot with the holder's level.
 - Output ordering is deterministic.
 - Names contain no delimiter/newline leakage.
 - Regenerating produces no git diff.

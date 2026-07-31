@@ -213,6 +213,32 @@ two-handed vs shield conflict, secondary weight rules, STR wield limit evaluated
 after the whole swap) and the best combined layout wins if it strictly beats the
 current hands.
 
+### Recommendations
+
+Bare `recommend` opens a mobs/gear picker. `recommend mobs` reads generated
+fightable reset metadata and lists up to ten opponents from level -2 through
+level +1, widening only the lower edge to level -5 when fewer than five exist.
+It ranks favorable or unseen personal records first, then the current area and
+level proximity. A `+n` after the area marks a mob that also spawns in n other
+areas. Results are known reset sites, not live availability.
+
+`recommend gear` opens a picker over the best strict external upgrade in each
+player-facing wear category; choosing a row drills into that slot's detail
+(the resolved `recommend gear <slot>` form is what command history replays).
+`recommend gear <slot>` shows up to ten candidates, each with up to two
+ranked, display-distinct alternate acquisition sources ("also ..."). Owned instance scores
+form the baseline, including runtime enhancements. Indexed candidates use the
+same canonical armor, affect, proc, weapon-skill, alignment, level, and wield
+weight rules as `compare` and `wear best`. Sources cover fightable mob loot,
+including nested items in mob-carried containers, ordinary shops, floor
+resets, and items inside floor-reset containers. Hand items are candidates
+because hypothetical combined layouts remain the job of `wear best`.
+
+Both modes scan generated `.idx` files, retain only displayed rows, load no
+area, and keep no parsed cache. `gear.idx` is segmented by wear slot behind a
+byte-length directory line; gear modes seek and read only the segments they
+need, one bounded read per slot.
+
 ---
 
 ## Help browser
