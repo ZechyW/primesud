@@ -453,6 +453,60 @@ class TestSaveTiming:
             assert isinstance(free, int) and free >= 0
 
 
+# ===== Post-save gated collect (_GC_FREE_FLOOR) =============================
+
+class TestPostSaveCollectGate:
+    """Threshold-gated tail collect in _serialize_world. [PRIMESUD]
+
+    Desktop CPython has no gc.mem_free, so the gate only ever fires
+    on-device; these tests monkeypatch it onto the gc module to drive
+    both sides of the threshold.
+    """
+
+    def _saveable_world(self, fw):
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}}})
+        fw.setup()
+        world._load_area("alpha")
+        _make_player(100)
+
+    def test_fires_below_floor(self, fresh_world, monkeypatch):
+        self._saveable_world(fresh_world)
+        calls = []
+        monkeypatch.setattr(game_state.gc, "mem_free",
+                            lambda: game_state._GC_FREE_FLOOR - 1,
+                            raising=False)
+        monkeypatch.setattr(game_state.gc, "collect",
+                            lambda: calls.append(1))
+        assert game_state.save_world(quiet=True)
+        assert calls, "free below floor must trigger the post-save collect"
+
+    def test_skipped_at_floor(self, fresh_world, monkeypatch):
+        self._saveable_world(fresh_world)
+        calls = []
+        monkeypatch.setattr(game_state.gc, "mem_free",
+                            lambda: game_state._GC_FREE_FLOOR,
+                            raising=False)
+        monkeypatch.setattr(game_state.gc, "collect",
+                            lambda: calls.append(1))
+        assert game_state.save_world(quiet=True)
+        assert not calls, "free at/above floor must skip the collect"
+
+    def test_gcpost_segment_marked_when_fired(self, fresh_world, monkeypatch):
+        from debug import DBG
+        self._saveable_world(fresh_world)
+        monkeypatch.setattr(game_state.gc, "mem_free",
+                            lambda: game_state._GC_FREE_FLOOR - 1,
+                            raising=False)
+        monkeypatch.setattr(game_state.gc, "collect", lambda: None)
+        DBG.add("save")
+        try:
+            assert game_state.save_world(quiet=True)
+        finally:
+            DBG.discard("save")
+        assert game_state._SAVE_TIMING[-1][0] == "gcpost"
+
+
 # ===== Save-path caches (encoded it. lines, pending-token vnum scans) =======
 
 class TestSavePathCaches:

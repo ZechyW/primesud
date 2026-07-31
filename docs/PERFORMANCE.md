@@ -321,6 +321,30 @@ notice was removed as noise (31/07); `load_world` prints a
 `[Restoring save data...]` notice over its parse + prewarm stretch
 instead.
 
+### Save-path heap churn and gated collect (G1, measured 31 Jul 2026)
+
+`debug/save_smoke.py` phases C/D (`save_smoke-8/-9/-10.log`), real 31/07
+save (31,082 B payload):
+
+- Each save burns ~420 KB of heap (~13x payload amplification): 307 KB
+  with the smaller -8 save, 418-434 KB with the 31/07 save (49 resident
+  item rooms). Free falls monotonically across saves -- the serialize
+  takes zero collects of its own.
+- The garbage is fully transient: one explicit collect reclaimed
+  4,351,056 B in ~270 ms, restoring free above the post-load baseline
+  (identical result in -9 and -10). No leak, no drift across cycles.
+- Undirected, the reclaim was an auto-collect at whatever allocation hit
+  the empty heap -- every ~14 back-to-back saves on the bench, or
+  mid-gameplay in real play. 12 such collects across -9/-10 (hvset x6,
+  sweep x1, mid-churn gameplay-shaped x2, explicit x2, between-saves x1)
+  all ran clean: `int_str`/`sstr` save garbage is not the convicted
+  `str(int)` shape (docs/PRIME_FIRMWARE_BUGS.md sec. Remediation status).
+- Since 31/07 `_serialize_world` ends with a threshold-gated collect
+  (`_GC_FREE_FLOOR` = 1.5 MB, timing mark `gcpost`): fires ~once per 11
+  autosaves (~22 min), hides the ~270 ms inside the save stall, and
+  keeps enough headroom (next save ~430 KB + ~2 min of gameplay churn)
+  that random mid-gameplay auto-collects should essentially never fire.
+
 ### Item-snapshot device gates (G1, measured 30 Jul 2026)
 
 `debug/snapshot_gates.py` (`debug/snapshot_gates-1.log`), real save, all

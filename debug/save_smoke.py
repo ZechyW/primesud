@@ -56,8 +56,12 @@ a death survives):
        save-shaped garbage still on the heap; the varying churn gap
        rotates the tip-over point to model that.
 
-See TODO.md sec. Save path lost its soak cover and
-docs/PRIME_FIRMWARE_BUGS.md.
+Since 31/07 the game ships a threshold-gated collect at the save tail
+(game_state._GC_FREE_FLOOR, timing mark "gcpost"), so runs against
+current code see deliberate [gcpost] rises roughly every 7-11 phase-D
+saves instead of arbitrary-site autos; results -8/-9/-10 predate it.
+
+See TODO.md sec. G1 crash watch and docs/PRIME_FIRMWARE_BUGS.md.
 
 Safety: the game's real HVar/save are never written -- SAVE_VAR is
 redirected to "smoketest" BEFORE load_world (so even a migration _bak

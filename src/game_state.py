@@ -87,6 +87,21 @@ SAVE_FILE = "primesud.sav"
 # (debug/save_smoke.py). Stays empty when the channel is off.
 _SAVE_TIMING = []
 
+# [PRIMESUD] Post-save collect floor: serialization burns ~420 KB of
+# transient garbage per save at ~13x payload amplification and takes no
+# collects of its own (save_smoke-8/-9/-10), so without intervention the
+# reclaim is an AUTO-collect at an arbitrary mid-gameplay allocation site
+# -- a surprise ~270 ms stall and an uncontrolled roll of the
+# str(int)-GC dice (docs/PRIME_FIRMWARE_BUGS.md). When free heap ends a
+# save below this floor, _serialize_world collects right there: the one
+# site the bench validated (12 collects over save-shaped garbage across
+# save_smoke-9/-10, every site, zero deaths -- int_str/sstr garbage is
+# not the convicted str(int) shape), with the ~270 ms hidden inside the
+# save stall. Floor covers the next save's ~430 KB plus ~2 min of
+# gameplay churn, so the random auto-collect should essentially never
+# fire in play; fires ~once per 11 autosaves (~22 min).
+_GC_FREE_FLOOR = 1500000
+
 
 def _gc_free():
     """Free heap bytes; 0 where unavailable (desktop CPython). [PRIMESUD]"""
@@ -131,8 +146,10 @@ def _serialize_world(hvar_name=None, file_name=None):
     # [PRIMESUD] Marks are (segment, ms, free) triples: free is gc.mem_free()
     # at the boundary, so a RISE between consecutive marks means a collect
     # fired mid-serialize. That is the documented precondition for both G1
-    # heap bugs (docs/PRIME_FIRMWARE_BUGS.md), and the save path is meant to
-    # take none -- debug/save_smoke.py reports any it sees.
+    # heap bugs (docs/PRIME_FIRMWARE_BUGS.md), and the serialize itself is
+    # meant to take none -- debug/save_smoke.py reports any it sees. The
+    # deliberate exception is the gated tail collect (_GC_FREE_FLOOR),
+    # which marks itself "gcpost".
     _tmark = [0]
 
     def _seg(name):
@@ -495,6 +512,12 @@ def _serialize_world(hvar_name=None, file_name=None):
         f.write(payload)
     if _timed:
         _seg("fwrite")
+    # [PRIMESUD] Threshold-gated post-save collect; see _GC_FREE_FLOOR.
+    # Device-only: _gc_free() reads 0 on desktop CPython, gate never fires.
+    if 0 < _gc_free() < _GC_FREE_FLOOR:
+        gc.collect()
+        if _timed:
+            _seg("gcpost")
 
 
 # -- Manual backup slot (cf. 1stMud do_backup/backup_char_obj in

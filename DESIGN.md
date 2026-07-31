@@ -66,6 +66,17 @@ presses, so the real latency metric is the longest gap between
   interpret-level batching (`look` render share ~nil) and
   `mobile_update` scan reduction (same disproved scan-shape reasoning).
 
+**Save-path heap policy (settled 31/07/2026).** Serialization burns
+~420 KB of transient garbage per save (~13x payload; zero retained -- one
+collect reclaims ~100%). The serialize itself takes no collects; reclaim
+happens via a threshold-gated collect at the save's tail
+(`game_state._GC_FREE_FLOOR`), pinning the collect to the one site
+bench-validated clean (12 collects over save-shaped garbage,
+`debug/save_smoke-9/-10.log`) instead of a random mid-gameplay
+auto-collect. Explicit collects remain banned before/inside churn rich in
+raw `str(int)`/formatter transients per docs/PRIME_FIRMWARE_BUGS.md.
+Measurements: docs/PERFORMANCE.md sec. Save-path heap churn.
+
 ---
 
 ## Not ported

@@ -324,7 +324,13 @@ precomputed tables -- sporadic single calls are background-level risk,
 ~1000-call storms are the repro; payload chunking does NOT mitigate
 (`chunked` died; the formatter call count is the exposure, not string
 size); never call `gc.collect()` immediately after such a burst; keep
-alloc churn low in hot paths (already policy).  `"%d" %` formatting is
+alloc churn low in hot paths (already policy).  Bench addendum (31 Jul,
+save_smoke-9/-10): collects over *validated-path* garbage
+(`int_str`/`sstr` concat, the save's shape) ran clean 12/12 at every
+landing site tried, so the save path now takes a deliberate
+threshold-gated collect at its tail (`game_state._GC_FREE_FLOOR`) --
+the ban stands for churn rich in raw `str(int)`/formatter transients,
+not for the validated replacement shapes.  `"%d" %` formatting is
 acquitted for the CRASH bug (13.8K bulk conversions clean) -- but
 remains banned everywhere for the separate format bug (sec. Format
 bug); the two bugs are distinct and both real.  A validated `str(int)`
@@ -368,6 +374,19 @@ positives across `src/`).  Rest of the sweep was clean: no `.format()`,
 no f-strings, 37 other `%` sites all numeric modulo, every `open()` in
 a `with`, no bulk `str(int)` loops, `gc.collect()` sites all away from
 int-render bursts, `ppleval` fed only int-derived strings.
+
+31 Jul follow-up (`debug/save_smoke-9/-10.log`, real save): the
+unexplained 31/07 crash prompted a drive-to-exhaustion bench.  Save-path
+garbage is fully transient (~420 KB/save, ~13x payload; one collect
+reclaims ~100%), and 12 collects walked it clean across two heap
+histories and every landing site tried (`hvset`, `sweep`, mid-gameplay
+churn, explicit).  At the probe-era 25-30%-per-collect death rate, clean
+survival odds were 1-3% -- the auto-collect-over-save-garbage hypothesis
+is downgraded from prime suspect to residual, and the crash stays an
+unexplained one-off (watch entry in TODO.md sec. G1 crash watch).  The
+save path now ends with a threshold-gated collect (docs/PERFORMANCE.md
+sec. Save-path heap churn) so reclaim happens at the bench-validated
+site instead of a random mid-gameplay auto-collect.
 
 ## Related PPL parse bug (unrelated mechanism, same fragile bridge)
 
