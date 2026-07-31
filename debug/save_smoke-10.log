@@ -1,0 +1,227 @@
+save_smoke: full-game load + timed saves
+mem free start: 7066256
+load_world: 22776ms source=file
+areas loaded: 1, snapshots: 27
+mem free after load: 6316080
+loaded haon: 5686ms (had 13 pending rooms)
+loaded hood: 9149ms (had 12 pending rooms)
+-- mode baseline (free 6017040)
+  save 1: ok=True total=4248ms collects=0 free 6010848->5547296 pumps=0 echoes=0
+    ln.plr1=97 ln.pinv=143 ln.plearn=57 ln.rle=153 ln.paff=76 ln.wstate=8 ln.stats=404 ln.mob=564 ln.room=1110 ln.rpend=294 snap=36 sweep=53 join=7 hvset=42 verify=13 fwrite=29
+  save 2: ok=True total=2771ms collects=0 free 5537936->5137232 pumps=0 echoes=0
+    ln.plr1=57 ln.pinv=73 ln.plearn=38 ln.rle=1 ln.paff=74 ln.wstate=7 ln.stats=49 ln.mob=160 ln.room=972 ln.rpend=2 snap=36 sweep=53 join=8 hvset=42 verify=13 fwrite=28
+  save 3: ok=True total=2768ms collects=0 free 5127136->4726432 pumps=0 echoes=0
+    ln.plr1=57 ln.pinv=73 ln.plearn=37 ln.rle=1 ln.paff=74 ln.wstate=7 ln.stats=49 ln.mob=160 ln.room=973 ln.rpend=1 snap=37 sweep=53 join=8 hvset=42 verify=12 fwrite=27
+-- mode pump (free 4718704)
+  save 1: ok=True total=2766ms collects=0 free 4712688->4311984 pumps=13 echoes=0
+    ln.plr1=57 ln.pinv=73 ln.plearn=38 ln.rle=1 ln.paff=74 ln.wstate=7 ln.stats=49 ln.mob=160 ln.room=972 ln.rpend=2 snap=36 sweep=54 join=8 hvset=42 verify=12 fwrite=28
+  save 2: ok=True total=2765ms collects=0 free 4299568->3898864 pumps=13 echoes=0
+    ln.plr1=57 ln.pinv=73 ln.plearn=38 ln.rle=1 ln.paff=74 ln.wstate=7 ln.stats=49 ln.mob=160 ln.room=972 ln.rpend=1 snap=36 sweep=54 join=8 hvset=42 verify=13 fwrite=29
+  save 3: ok=True total=2761ms collects=0 free 3885520->3484816 pumps=13 echoes=0
+    ln.plr1=57 ln.pinv=74 ln.plearn=38 ln.rle=1 ln.paff=74 ln.wstate=7 ln.stats=49 ln.mob=160 ln.room=972 ln.rpend=2 snap=37 sweep=53 join=8 hvset=42 verify=13 fwrite=28
+-- mode pump+echo (free 3473888)
+  save 1: ok=True total=2905ms collects=0 free 3464960->3057904 pumps=13 echoes=13
+    ln.plr1=116 ln.pinv=76 ln.plearn=42 ln.rle=6 ln.paff=79 ln.wstate=14 ln.stats=56 ln.mob=168 ln.room=980 ln.rpend=11 snap=46 sweep=64 join=19 hvset=42 verify=12 fwrite=28
+  save 2: ok=True total=2846ms collects=0 free 3042000->2634944 pumps=13 echoes=13
+    ln.plr1=59 ln.pinv=76 ln.plearn=42 ln.rle=5 ln.paff=79 ln.wstate=13 ln.stats=55 ln.mob=168 ln.room=981 ln.rpend=12 snap=47 sweep=65 join=20 hvset=42 verify=13 fwrite=27
+  save 3: ok=True total=2843ms collects=0 free 2618032->2210976 pumps=13 echoes=13
+    ln.plr1=59 ln.pinv=77 ln.plearn=41 ln.rle=5 ln.paff=79 ln.wstate=13 ln.stats=56 ln.mob=168 ln.room=981 ln.rpend=11 snap=47 sweep=65 join=20 hvset=42 verify=12 fwrite=27
+payload: 31082B total
+  p.inv lines=1 bytes=122
+  p.eq lines=1 bytes=225
+  p.learned lines=1 bytes=132
+  p.explored lines=1 bytes=363
+  s.m. lines=48 bytes=581
+  s.a. lines=9 bytes=141
+  p. lines=38 bytes=779
+  g. lines=5 bytes=185
+  m= lines=1 bytes=8833
+  r. lines=109 bytes=8291
+  it. lines=31 bytes=11181
+  other lines=1 bytes=4
+  r. resident-rooms=49 pending-rooms=60
+mem free end: 2028128
+-- phase C: reclaim test (one explicit collect after churn)
+  free before: 2015568
+  free after:  6367104 (269ms, reclaimed 4351056)
+-- phase D: drive to exhaustion (pump+echo, churn gaps, target 5 auto-collects, cap 60 saves)
+  churn 1: target 60000B, free 6352864
+    burned 60336B in 10312ms
+  save 1: start free 6278144
+    ok=True total=2868ms end free 5860240 used 417904 in-save collects=0 seen=0
+  churn 2: target 120000B, free 5851856
+    burned 120560B in 18703ms
+  save 2: start free 5716096
+    ok=True total=2866ms end free 5297840 used 418256 in-save collects=0 seen=0
+  churn 3: target 180000B, free 5289104
+    burned 180048B in 27022ms
+  save 3: start free 5093152
+    ok=True total=2862ms end free 4674512 used 418640 in-save collects=0 seen=0
+  churn 4: target 240000B, free 4665392
+    burned 240480B in 35167ms
+  save 4: start free 4408304
+    ok=True total=2865ms end free 3989312 used 418992 in-save collects=0 seen=0
+  churn 5: target 300000B, free 3979840
+    burned 300560B in 43288ms
+  save 5: start free 3661712
+    ok=True total=2870ms end free 3242368 used 419344 in-save collects=0 seen=0
+  churn 6: target 360000B, free 3232544
+    burned 360160B in 51431ms
+  save 6: start free 2854352
+    ok=True total=2875ms end free 2434656 used 419696 in-save collects=0 seen=0
+  churn 7: target 420000B, free 2424480
+    burned 420240B in 59730ms
+  save 7: start free 1985456
+    ok=True total=2879ms end free 1565408 used 420048 in-save collects=0 seen=0
+  save 8: start free 1554880
+    ok=True total=2875ms end free 1134608 used 420272 in-save collects=0 seen=0
+  churn 9: target 60000B, free 1123856
+    burned 60336B in 10387ms
+  save 9: start free 1043696
+    ok=True total=2875ms end free 623072 used 420624 in-save collects=0 seen=0
+  churn 10: target 120000B, free 612000
+    burned 120560B in 18830ms
+  save 10: start free 470800
+    ok=True total=2870ms end free 49824 used 420976 in-save collects=0 seen=0
+  churn 11: target 180000B, free 38432
+    burned 27360B in 5438ms AUTO-COLLECT mid-churn seen=1
+  save 11: start free 6351808
+    ok=True total=2878ms end free 5930384 used 421424 in-save collects=0 seen=1
+  churn 12: target 240000B, free 5918512
+    burned 240480B in 35149ms
+  save 12: start free 5655824
+    ok=True total=2868ms end free 5234032 used 421792 in-save collects=0 seen=1
+  churn 13: target 300000B, free 5221792
+    burned 300560B in 43250ms
+  save 13: start free 4898320
+    ok=True total=2868ms end free 4476160 used 422160 in-save collects=0 seen=1
+  churn 14: target 360000B, free 4463552
+    burned 360160B in 51362ms
+  save 14: start free 4079776
+    ok=True total=2871ms end free 3657264 used 422512 in-save collects=0 seen=1
+  churn 15: target 420000B, free 3644304
+    burned 420240B in 59657ms
+  save 15: start free 3199680
+    ok=True total=2876ms end free 2776816 used 422864 in-save collects=0 seen=1
+  save 16: start free 2763504
+    ok=True total=2876ms end free 2340416 used 423088 in-save collects=0 seen=1
+  churn 17: target 60000B, free 2326880
+    burned 60336B in 10369ms
+  save 17: start free 2241072
+    ok=True total=2873ms end free 1817616 used 423456 in-save collects=0 seen=1
+  churn 18: target 120000B, free 1803712
+    burned 120560B in 18802ms
+  save 18: start free 1656912
+    ok=True total=2869ms end free 1233088 used 423824 in-save collects=0 seen=1
+  churn 19: target 180000B, free 1218816
+    burned 180048B in 27149ms
+  save 19: start free 1011824
+    ok=True total=2868ms end free 587648 used 424176 in-save collects=0 seen=1
+  churn 20: target 240000B, free 573056
+    burned 240480B in 35312ms
+  save 20: start free 304928
+    ok=True total=3082ms end free 6139232 used -5834304 in-save collects=1 [hvset] seen=2
+  churn 21: target 300000B, free 6123952
+    burned 300560B in 43126ms
+  save 21: start free 5794976
+    ok=True total=2863ms end free 5370064 used 424912 in-save collects=0 seen=2
+  churn 22: target 360000B, free 5354704
+    burned 360160B in 51183ms
+  save 22: start free 4964848
+    ok=True total=2865ms end free 4539568 used 425280 in-save collects=0 seen=2
+  churn 23: target 420000B, free 4523840
+    burned 420240B in 59423ms
+  save 23: start free 4073712
+    ok=True total=2870ms end free 3648064 used 425648 in-save collects=0 seen=2
+  save 24: start free 3631968
+    ok=True total=2873ms end free 3206096 used 425872 in-save collects=0 seen=2
+  churn 25: target 60000B, free 3189776
+    burned 60336B in 10328ms
+  save 25: start free 3098464
+    ok=True total=2866ms end free 2672240 used 426224 in-save collects=0 seen=2
+  churn 26: target 120000B, free 2655568
+    burned 120560B in 18714ms
+  save 26: start free 2503264
+    ok=True total=2864ms end free 2076688 used 426576 in-save collects=0 seen=2
+  churn 27: target 180000B, free 2059664
+    burned 180048B in 27006ms
+  save 27: start free 1847104
+    ok=True total=2862ms end free 1420160 used 426944 in-save collects=0 seen=2
+  churn 28: target 240000B, free 1402768
+    burned 240480B in 35127ms
+  save 28: start free 1129072
+    ok=True total=2864ms end free 701760 used 427312 in-save collects=0 seen=2
+  churn 29: target 300000B, free 684032
+    burned 300560B in 43213ms
+  save 29: start free 349584
+    ok=True total=3073ms end free 6136448 used -5786864 in-save collects=1 [hvset] seen=3
+  churn 30: target 360000B, free 6118032
+    burned 360160B in 51097ms
+  save 30: start free 5723184
+    ok=True total=2865ms end free 5295136 used 428048 in-save collects=0 seen=3
+  churn 31: target 420000B, free 5276640
+    burned 420240B in 59306ms
+  save 31: start free 4821008
+    ok=True total=2868ms end free 4392608 used 428400 in-save collects=0 seen=3
+  save 32: start free 4373760
+    ok=True total=2865ms end free 3945136 used 428624 in-save collects=0 seen=3
+  churn 33: target 60000B, free 3926064
+    burned 60336B in 10304ms
+  save 33: start free 3829216
+    ok=True total=2861ms end free 3400240 used 428976 in-save collects=0 seen=3
+  churn 34: target 120000B, free 3380816
+    burned 120560B in 18661ms
+  save 34: start free 3222944
+    ok=True total=2858ms end free 2793584 used 429360 in-save collects=0 seen=3
+  churn 35: target 180000B, free 2773776
+    burned 180048B in 26926ms
+  save 35: start free 2555712
+    ok=True total=2857ms end free 2126000 used 429712 in-save collects=0 seen=3
+  churn 36: target 240000B, free 2105840
+    burned 240480B in 35017ms
+  save 36: start free 1826640
+    ok=True total=2859ms end free 1396576 used 430064 in-save collects=0 seen=3
+  churn 37: target 300000B, free 1376064
+    burned 300560B in 43074ms
+  save 37: start free 1036016
+    ok=True total=2860ms end free 605584 used 430432 in-save collects=0 seen=3
+  churn 38: target 360000B, free 584752
+    burned 360160B in 51095ms
+  save 38: start free 184432
+    ok=True total=3072ms end free 6075120 used -5890688 in-save collects=1 [sweep] seen=4
+  churn 39: target 420000B, free 6053600
+    burned 420240B in 59215ms
+  save 39: start free 5592400
+    ok=True total=2872ms end free 5161216 used 431184 in-save collects=0 seen=4
+  save 40: start free 5139584
+    ok=True total=2862ms end free 4708208 used 431376 in-save collects=0 seen=4
+  churn 41: target 60000B, free 4686384
+    burned 60336B in 10279ms
+  save 41: start free 4584000
+    ok=True total=2859ms end free 4152240 used 431760 in-save collects=0 seen=4
+  churn 42: target 120000B, free 4130032
+    burned 120560B in 18622ms
+  save 42: start free 3966656
+    ok=True total=2857ms end free 3534544 used 432112 in-save collects=0 seen=4
+  churn 43: target 180000B, free 3511984
+    burned 180048B in 26856ms
+  save 43: start free 3288400
+    ok=True total=2854ms end free 2855936 used 432464 in-save collects=0 seen=4
+  churn 44: target 240000B, free 2833024
+    burned 240480B in 34923ms
+  save 44: start free 2548256
+    ok=True total=2853ms end free 2115408 used 432848 in-save collects=0 seen=4
+  churn 45: target 300000B, free 2092112
+    burned 300560B in 42949ms
+  save 45: start free 1746560
+    ok=True total=2858ms end free 1313360 used 433200 in-save collects=0 seen=4
+  churn 46: target 360000B, free 1289712
+    burned 360160B in 50958ms
+  save 46: start free 883856
+    ok=True total=2859ms end free 450336 used 433520 in-save collects=0 seen=4
+  churn 47: target 420000B, free 426368
+    burned 403056B in 57729ms AUTO-COLLECT mid-churn seen=5
+  save 47: start free 6329552
+    ok=True total=2870ms end free 5895584 used 433968 in-save collects=0 seen=5
+  drive done: 47 saves, 5 auto-collects survived, free 5870912
+Done. Results in save_smoke.log
