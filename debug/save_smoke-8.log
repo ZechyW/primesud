@@ -1,0 +1,44 @@
+save_smoke: full-game load + timed saves
+mem free start: 7070512
+load_world: 15840ms source=file
+areas loaded: 1, snapshots: 31
+mem free after load: 7128176
+loaded midgaard: 7718ms (had 18 pending rooms)
+loaded haon: 5879ms (had 13 pending rooms)
+-- mode baseline (free 6167024)
+  save 1: ok=True total=3360ms collects=0 free 6161136->5791840 pumps=0 echoes=0
+    ln.plr1=91 ln.pinv=144 ln.plearn=59 ln.rle=151 ln.paff=55 ln.wstate=8 ln.stats=370 ln.mob=481 ln.room=354 ln.rpend=328 snap=21 sweep=37 join=7 hvset=41 verify=12 fwrite=28
+  save 2: ok=True total=1996ms collects=0 free 5782544->5475520 pumps=0 echoes=0
+    ln.plr1=58 ln.pinv=74 ln.plearn=38 ln.rle=1 ln.paff=55 ln.wstate=7 ln.stats=46 ln.mob=137 ln.room=273 ln.rpend=1 snap=21 sweep=37 join=7 hvset=41 verify=12 fwrite=18
+  save 3: ok=True total=1992ms collects=0 free 5465424->5158400 pumps=0 echoes=0
+    ln.plr1=58 ln.pinv=74 ln.plearn=38 ln.rle=1 ln.paff=54 ln.wstate=7 ln.stats=46 ln.mob=137 ln.room=273 ln.rpend=2 snap=20 sweep=37 join=7 hvset=41 verify=12 fwrite=18
+-- mode pump (free 5150672)
+  save 1: ok=True total=1991ms collects=0 free 5144672->4837648 pumps=13 echoes=0
+    ln.plr1=58 ln.pinv=74 ln.plearn=39 ln.rle=2 ln.paff=55 ln.wstate=7 ln.stats=46 ln.mob=137 ln.room=273 ln.rpend=1 snap=21 sweep=38 join=7 hvset=40 verify=12 fwrite=20
+  save 2: ok=True total=1987ms collects=0 free 4825248->4518224 pumps=13 echoes=0
+    ln.plr1=58 ln.pinv=75 ln.plearn=38 ln.rle=1 ln.paff=54 ln.wstate=7 ln.stats=46 ln.mob=138 ln.room=273 ln.rpend=2 snap=21 sweep=37 join=7 hvset=41 verify=12 fwrite=18
+  save 3: ok=True total=1982ms collects=0 free 4504864->4197840 pumps=13 echoes=0
+    ln.plr1=58 ln.pinv=75 ln.plearn=38 ln.rle=2 ln.paff=54 ln.wstate=8 ln.stats=46 ln.mob=137 ln.room=273 ln.rpend=2 snap=20 sweep=36 join=7 hvset=41 verify=12 fwrite=17
+-- mode pump+echo (free 4186912)
+  save 1: ok=True total=2130ms collects=0 free 4178000->3864624 pumps=13 echoes=13
+    ln.plr1=117 ln.pinv=78 ln.plearn=42 ln.rle=6 ln.paff=60 ln.wstate=13 ln.stats=53 ln.mob=145 ln.room=281 ln.rpend=12 snap=32 sweep=49 join=20 hvset=40 verify=12 fwrite=19
+  save 2: ok=True total=2067ms collects=0 free 3848688->3535312 pumps=13 echoes=13
+    ln.plr1=60 ln.pinv=77 ln.plearn=42 ln.rle=6 ln.paff=60 ln.wstate=14 ln.stats=53 ln.mob=145 ln.room=282 ln.rpend=12 snap=31 sweep=49 join=19 hvset=40 verify=11 fwrite=18
+  save 3: ok=True total=2067ms collects=0 free 3518384->3205008 pumps=13 echoes=13
+    ln.plr1=60 ln.pinv=77 ln.plearn=42 ln.rle=6 ln.paff=59 ln.wstate=13 ln.stats=53 ln.mob=145 ln.room=282 ln.rpend=12 snap=31 sweep=48 join=19 hvset=40 verify=13 fwrite=20
+payload: 29490B total
+  p.inv lines=1 bytes=122
+  p.eq lines=1 bytes=225
+  p.learned lines=1 bytes=132
+  p.explored lines=1 bytes=337
+  s.m. lines=44 bytes=533
+  s.a. lines=8 bytes=123
+  p. lines=37 bytes=706
+  g. lines=5 bytes=175
+  m= lines=1 bytes=7628
+  r. lines=102 bytes=8092
+  it. lines=31 bytes=11181
+  other lines=1 bytes=4
+  r. resident-rooms=37 pending-rooms=65
+mem free end: 3026368
+Done. Results in save_smoke.log

@@ -19,17 +19,36 @@ save_smoke-2). This probe also end-to-end validates the hvars_set
 backslash-doubling fix against the exact payload that failed on 29/07:
 ok=True means the readback verification passed.
 
-Each mark also carries gc.mem_free() at that boundary, and the saves run
-in three modes -- baseline (no segment checkpoints, the shape the 28/07
-soak validated), pump (checkpoints, no echo), pump+echo (checkpoints
-plus a prompt redraw at each). "collects=" counts boundaries where free
-memory ROSE, which can only mean a collect fired mid-serialize. Collects
-appearing in the later modes but not baseline confirms that the
-save-stall UX work pushed the save path into taking collects it was
-tuned to avoid -- the documented precondition for both G1 heap bugs
-(docs/PRIME_FIRMWARE_BUGS.md, TODO.md sec. Save path lost its soak
-cover). Desktop CPython has no gc.mem_free, so free reads 0 there and
-only the device run answers the question.
+Each mark also carries gc.mem_free() at that boundary. "collects=" counts
+boundaries where free memory ROSE, which can only mean a collect fired
+mid-serialize. Desktop CPython has no gc.mem_free, so free reads 0 there
+and only a device run answers anything.
+
+Phases, in order (log() rewrites the file every call, so everything up to
+a death survives):
+
+  A/B  three save modes -- baseline (no segment checkpoints, the shape
+       the 28/07 soak validated), pump (checkpoints, no echo), pump+echo
+       (checkpoints plus a prompt redraw at each), then the payload
+       breakdown. save_smoke-8 settled this: 0 collects in all modes,
+       pump costs 0 bytes, echo costs +6,352 B/save (+2%). The
+       save-stall UX work is not what pressures the heap.
+  C    one explicit collect, measured. save_smoke-8 showed every save
+       burning exactly 307,024 B with free falling monotonically and
+       never recovering. This says whether that is transient garbage (a
+       collect hands it back) or retained (a leak). Doubles as a probe:
+       an explicit collect right after churn is the documented
+       worst-case roll for the str(int)-GC bug.
+  D    drive to exhaustion. The save path takes no collects of its own,
+       so the collect that eventually walks save-shaped garbage is an
+       AUTO one at whatever moment the heap fills -- the documented
+       trigger. In play that is ~10-20 autosaves apart (2 min each);
+       here it is driven flat out until TARGET_COLLECTS auto-collects
+       have been survived. A death in this phase is the crash
+       reproduced on the bench.
+
+See TODO.md sec. Save path lost its soak cover and
+docs/PRIME_FIRMWARE_BUGS.md.
 
 Safety: the game's real HVar/save are never written -- SAVE_VAR is
 redirected to "smoketest" BEFORE load_world (so even a migration _bak
@@ -52,6 +71,12 @@ import terminal
 # drain yields 1-4; the translated queue caps at _KEY_QUEUE_SIZE = 16).
 KEYS_PER_BOUNDARY = 1
 SAVES_PER_MODE = 3
+# Phase D drive: keep saving until this many auto-collects have been seen
+# (each one is a death roll, ~25-30% in probe conditions -- 5 rolls is
+# >80% odds of a kill if the crash really is this bug) or the save cap is
+# hit, whichever comes first.
+TARGET_COLLECTS = 5
+MAX_DRIVE_SAVES = 60
 _ECHO = [False]
 # Pumps and echoes actually executed in the last save. Reported per save:
 # a mode that silently no-ops (the reason the pre-31/07 harness measured a
@@ -268,6 +293,67 @@ def main():
     else:
         log("payload readback non-str: " + str(type(payload)))
     log("mem free end: " + int_str(free()))
+
+    # -- Phase C: is the per-save heap cost garbage or a leak? ---------------
+    # save_smoke-8: every save burned exactly 307,024 B and free fell
+    # monotonically 6.17M -> 3.20M over 9 saves with zero collects. If one
+    # collect hands most of that back it was transient garbage (bad, but the
+    # heap recovers); if little comes back it is retained, and the game dies
+    # of exhaustion eventually no matter what the GC bug does.
+    # This collect is also itself a probe: an explicit collect right after a
+    # churn burst is the documented worst-case roll, so if the crash is the
+    # str(int)-GC bug it can land right here.
+    log("-- phase C: reclaim test (one explicit collect after churn)")
+    _before = free()
+    log("  free before: " + int_str(_before))
+    t0 = ticks()
+    gc.collect()
+    log("  free after:  " + int_str(free()) + " (" + int_str(ticks() - t0)
+        + "ms, reclaimed " + int_str(free() - _before) + ")")
+
+    # -- Phase D: drive to heap exhaustion ----------------------------------
+    # The save path takes no collects of its own, so the collect that
+    # eventually walks save-shaped garbage is an AUTO one, fired whenever
+    # the heap happens to fill -- documented as the trigger ("died the
+    # moment heap exhaustion forced the first auto-collect"). In play that
+    # is ~10-20 autosaves apart at 2 min each; here it is driven flat out.
+    # An auto-collect shows as free RISING, either between saves or across
+    # marks within one. Runs in pump+echo, the real game's shape.
+    log("-- phase D: drive to exhaustion (pump+echo, target "
+        + int_str(TARGET_COLLECTS) + " auto-collects, cap "
+        + int_str(MAX_DRIVE_SAVES) + " saves)")
+    tr = _TRPump()
+    terminal.tr = tr
+    _ECHO[0] = True
+    seen = 0
+    prev_end = free()
+    i = 0
+    while seen < TARGET_COLLECTS and i < MAX_DRIVE_SAVES:
+        i += 1
+        tr._key_queue_count = 0
+        start = free()
+        # Logged BEFORE the save, so a death mid-save still leaves the
+        # save number and the heap state that preceded it in the file.
+        log("  save " + int_str(i) + ": start free " + int_str(start)
+            + (" (AUTO-COLLECT between saves, +"
+               + int_str(start - prev_end) + ")" if start > prev_end else ""))
+        if start > prev_end:
+            seen += 1
+        t0 = ticks()
+        ok = game_state.save_world(quiet=True)
+        total = ticks() - t0
+        marks = game_state._SAVE_TIMING
+        gcs = collects(marks)
+        if gcs:
+            seen += len(gcs)
+        prev_end = marks[-1][2]
+        log("    ok=" + str(ok) + " total=" + int_str(total)
+            + "ms end free " + int_str(prev_end) + " used "
+            + int_str(start - prev_end) + " in-save collects="
+            + int_str(len(gcs)) + (" [" + " ".join(gcs) + "]" if gcs else "")
+            + " seen=" + int_str(seen))
+    log("  drive done: " + int_str(i) + " saves, " + int_str(seen)
+        + " auto-collects survived, free " + int_str(free()))
 
     try:
         hvars_set("smoketest", "0")
