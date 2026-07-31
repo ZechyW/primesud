@@ -26,7 +26,9 @@ Things with no upstream equivalent.
   deliberately not ported (DESIGN.md).
 - **Area speedwalk** -- `run` with no argument opens a picker of known areas
   and auto-walks a computed path there, pathfinding over a static area graph
-  (movement.py, info.py).
+  (movement.py, info.py).  A route just reported by `path` heads that picker
+  as its default, so `path <mob>` then `run` walks you to a mob -- no
+  retyping the speedwalk, no re-route.
 - **Automatic door handling** -- walking into a closed door opens it (unlocking
   with a carried key if needed) and re-closes/re-locks it behind you and your
   followers (movement.py).

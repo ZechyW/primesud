@@ -3,8 +3,11 @@
 import os
 import sys
 
+import pytest
+
 import config
 import info
+import movement
 import path as path_cmd
 import world
 from handler import _char_base
@@ -175,7 +178,7 @@ def test_mob_path_within_current_area(fresh_world, monkeypatch):
     path_cmd.do_path(player, ["dragon"])
 
     assert out == ["{D[Calculating path...]{x",
-                   "Shortest path to a red dragon is 1 steps: n."]
+                   "Shortest path to a red dragon is 1 step: n."]
 
 
 def test_mob_path_invisible_mob_hidden_without_detect(fresh_world, monkeypatch):
@@ -269,7 +272,7 @@ def test_mob_path_is_deterministic(fresh_world, monkeypatch):
         out[:] = []
         path_cmd.do_path(player, ["dragon"])
         assert out == ["{D[Calculating path...]{x",
-                       "Shortest path to a red dragon is 1 steps: n."]
+                       "Shortest path to a red dragon is 1 step: n."]
 
 
 def _register_partitioned_world(fw, monkeypatch):
@@ -359,6 +362,73 @@ def test_route_merges_direction_runs_across_boundaries(
     # source leg "2n" + cross-area "n" merge into a single "3n" run
     assert out == ["{D[Calculating path...]{x",
                    "Shortest path to beta is 3 steps: 3n."]
+
+
+def test_path_result_leads_run_picker(fresh_world, monkeypatch):
+    """[PRIMESUD] do_path hands its route to the no-args `run` picker as the
+    default entry, and it expires the moment the player leaves the room it
+    was computed in."""
+    _setup_chain(fresh_world, monkeypatch, ("alpha", "beta", "gamma"))
+    player = _player()
+    monkeypatch.setattr(path_cmd, "chprintln", lambda _ch, text="": None)
+    monkeypatch.setattr(movement, "chprintln", lambda _ch, text="": None)
+    monkeypatch.setattr(movement, "find_path_to_area",
+                        lambda *_a: pytest.fail("stored route was re-routed"))
+    shown = []
+    picked = [0]
+
+    def fake_pick(title, labels, *_a):
+        shown.append((title, labels))
+        return picked[0]
+
+    monkeypatch.setattr(movement, "pick_from", fake_pick)
+
+    path_cmd.do_path(player, ["gam"])
+    assert player["last_path"] == ("gamma", "2n", 2, 100)
+
+    movement.do_run(player, [])
+    assert shown[0][0] == "Run where?"
+    assert shown[0][1][0] == "{Cgamma{x (2 steps)"
+    assert player["run_buf"] == [("move", "n"), ("move", "n")]
+
+    # Route is only valid from where it was computed: one room on, it is gone
+    # and the picker is areas-only again.
+    movement.free_runbuf(player)
+    player["room"] = 200
+    picked[0] = -1
+
+    movement.do_run(player, [])
+    assert shown[1][0] == "Run to which area?"
+    assert not any(label.startswith("{C") for label in shown[1][1])
+
+
+def test_run_picker_offers_route_with_no_areas(fresh_world, monkeypatch):
+    """[PRIMESUD] A stored route keeps the `run` picker alive even when it is
+    the only entry -- a lone area has no other area to offer."""
+    _setup_chain(fresh_world, monkeypatch, ("alpha", "beta"))
+    player = _player()
+    monkeypatch.setattr(path_cmd, "chprintln", lambda _ch, text="": None)
+    out = []
+    monkeypatch.setattr(movement, "chprintln",
+                        lambda _ch, text="": out.append(text))
+    shown = []
+    monkeypatch.setattr(movement, "pick_from",
+                        lambda title, labels, *_a: shown.append((title, labels)) or 0)
+
+    path_cmd.do_path(player, ["bet"])
+    # Empty the area list only after routing: _area_lookup needs beta to
+    # resolve the target.
+    monkeypatch.setattr(movement, "_sorted_area_files", lambda: [])
+    movement.do_run(player, [])
+
+    assert shown == [("Run where?", ["{Cbeta{x (1 step)"])]
+    assert player["run_buf"] == [("move", "n")]
+
+    # Without the route it is the "nowhere to go" message again.
+    movement.free_runbuf(player)
+    del player["last_path"]
+    movement.do_run(player, [])
+    assert out[-1] == "No accessible areas from here."
 
 
 def test_merge_runs_unit():

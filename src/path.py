@@ -74,6 +74,10 @@ def do_path(player, args):
     mobs through mobs.idx. Routing runs over the precomputed border graph
     (paths.idx) and never loads areas at routing time.
 
+    [PRIMESUD] Side effect: a computed route is stashed in
+    player["last_path"] so the no-args `run` picker can offer it as the
+    default destination (see movement.do_run).
+
     Args:
         player (dict): Player state dict.
         args (list): Destination area or mob name words.
@@ -108,8 +112,18 @@ def do_path(player, args):
         elif route is None:
             chprintln(player, "No path to destination.")
         else:
+            # [PRIMESUD] singular/plural fixed; 1stMud always prints "steps"
             chprintln(player, "Shortest path to " + target_name + " is "
-                      + num_str(steps) + " steps: " + route + ".")
+                      + num_str(steps) + (" step: " if steps == 1
+                                          else " steps: ") + route + ".")
+            # [PRIMESUD] Offer the route as the default entry in the no-args
+            # `run` picker (movement.do_run).  Transient: saving is a
+            # whitelist (game_state._PLAYER_STRING_SAVE_KEYS and friends), so
+            # this never persists, and the stored room vnum invalidates it the
+            # moment the player moves, since the route is only valid from
+            # where it was computed.
+            player["last_path"] = (target_name, route, steps,
+                                   player.get("room"))
     finally:
         # Unlike run/gate, path does not move the player and trigger eviction.
         world.maybe_evict(player, True)

@@ -14,6 +14,7 @@ from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
 from info import (do_look, find_path_to_area, _area_level_str,
                   _sorted_area_files)
 from picker import pick_from
+from util import num_str
 from quest import quest_room_check
 from skills_table import (GSN_RECALL, GSN_PICK_LOCK, GSN_SNEAK, GSN_HIDE,
                           GSN_INVIS, GSN_MASS_INVIS, SKILLS)
@@ -1491,7 +1492,9 @@ def do_run(player, args):
     the chosen one via info.find_path_to_area -- exact shortest route
     over the precomputed border graph (paths.idx), zero area loads at
     routing time; areas along the walk load lazily as the run enters
-    them, and far-area eviction trims behind per pulse.
+    them, and far-area eviction trims behind per pulse.  A route just
+    computed by do_path leads that list and needs no re-route; it is
+    dropped once the player leaves the room it was computed in.
 
     Steps are consumed one-per-pulse by run_buf_step() in game_loop
     (cf. 1stMud read_from_buffer consuming run_buf in comm.c).
@@ -1522,20 +1525,37 @@ def do_run(player, args):
         source_area = ROOM_DEFS.get(player.get("room"), {}).get("area")
         candidates = [area for area in _sorted_area_files()
                       if area[1] != source_area]
-        if not candidates:
+        # [PRIMESUD] A route from do_path leads the list (and so is the
+        # picker default), letting `path <mob>` feed `run` -- mob rooms are
+        # otherwise unreachable from this area-only picker.  Only valid from
+        # the room it was computed in, so any movement drops it.
+        last_path = player.get("last_path")
+        if last_path and last_path[3] != player.get("room"):
+            last_path = None
+        if not candidates and last_path is None:
             chprintln(player, "No accessible areas from here.")
             return
         labels = ["[" + _area_level_str(area[1]) + "] " + area[2]
                   for area in candidates]
-        idx = pick_from("Run to which area?", labels)
+        if last_path:
+            labels.insert(0, "{C" + last_path[0] + "{x ("
+                          + num_str(last_path[2])
+                          + (" step)" if last_path[2] == 1
+                             else " steps)"))
+        idx = pick_from("Run where?" if last_path else "Run to which area?",
+                        labels)
         if idx < 0:
             return
-        # [PRIMESUD] Routing blocks input briefly on the calculator.
-        chprintln(player, "{D[Calculating path...]{x")
-        buf = find_path_to_area(player, candidates[idx][1])
-        if not buf:
-            chprintln(player, "You cannot get there from here.")
-            return
+        if last_path and idx == 0:
+            buf = last_path[1]
+        else:
+            # [PRIMESUD] Routing blocks input briefly on the calculator.
+            chprintln(player, "{D[Calculating path...]{x")
+            buf = find_path_to_area(
+                player, candidates[idx - 1 if last_path else idx][1])
+            if not buf:
+                chprintln(player, "You cannot get there from here.")
+                return
     else:
         buf = "".join(args)
 

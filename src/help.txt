@@ -2039,6 +2039,11 @@ running are received as if they were entered one at a time.
 This means that anything that can happen during normal walking
 can also happen while running.  All rooms are shown in brief
 mode while running.
+
+With no <direction list>, RUN offers a menu of areas and walks you
+to the one you pick.  A route just shown by PATH heads that menu as
+the default, so PATH <mob> then RUN walks you to that mob.  See
+HELP PATH.
 #0|commands|KEYS KEYPAD CALCULATOR
 PrimeSUD adapts the HP Prime's physical keys as game shortcuts:
 
@@ -2464,6 +2469,10 @@ PATH shows the shortest walking route to an area or mob without
 moving you. Mob destinations cannot be quest targets, protected by
 summoning immunity, in a restricted room, or three or more levels
 above you.
+
+RUN with no argument then offers that route as its default
+destination, so PATH <mob> followed by RUN walks you there. The
+route is only kept while you stay in the room you typed PATH in.
 #0|commands|OUTFIT
 The outfit command, usable by levels 5 and below, equips your
 character with a new set of sub issue gear (banner, weapon,
