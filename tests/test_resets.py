@@ -213,6 +213,101 @@ class TestPReset:
         assert sum(1 for c in cont.get("contents", []) if c["vnum"] == 8002) == 2
 
 
+class TestPCarriedContainer:
+    """P into a mob-carried container (cf. db.c:1554 in_room == NULL case).
+
+    Stock patterns: mahntor's key ring worn by the Ring-Keeper, moria's
+    python-carried cartographer corpse (whose fill also gates the map G
+    that follows).
+    """
+
+    def _mob(self, tag="pct"):
+        for ch in world.chars.values():
+            if ch.get("is_npc") and ch.get("tpl") == 8101:
+                return ch
+        return None
+
+    def test_fills_worn_container(self, fresh_world):
+        # mahntor pattern: E ring to waist, P keys into it
+        fresh_world.register_area(
+            "pct", 8100, 8199,
+            rooms={8100: _room()},
+            mobiles={8101: _mob_tpl()},
+            objects={
+                8102: _obj_tpl(type="container", keywords="ring"),
+                8103: _obj_tpl(keywords="key", type="key"),
+            },
+            resets=(("M", 8101, 9, 8100, 9), ("E", 8102, "waist", 1),
+                    ("P", 8103, 1, 8102, 1)))
+        fresh_world.setup()
+        world._load_area("pct")
+        holder = self._mob()
+        cont = holder["equip"]["waist"]
+        assert cont["vnum"] == 8102
+        assert [c["vnum"] for c in cont.get("contents", [])] == [8103]
+
+    def test_fills_inventory_container_and_following_g_spawns(self,
+                                                              fresh_world):
+        # moria pattern: G corpse, P coins into it, G map -- the map's G
+        # depends on the P succeeding (last stays true).  Type is not
+        # checked: the corpse is npc_corpse, not container.
+        fresh_world.register_area(
+            "pct", 8100, 8199,
+            rooms={8100: _room()},
+            mobiles={8101: _mob_tpl()},
+            objects={
+                8102: _obj_tpl(type="npc_corpse", keywords="corpse"),
+                8103: _obj_tpl(keywords="coins", type="money"),
+                8104: _obj_tpl(keywords="map"),
+            },
+            resets=(("M", 8101, 9, 8100, 9), ("G", 8102, 1),
+                    ("P", 8103, -1, 8102, 1), ("G", 8104, 1)))
+        fresh_world.setup()
+        world._load_area("pct")
+        holder = self._mob()
+        vnums = [o["vnum"] for o in holder["inv"]]
+        assert 8102 in vnums and 8104 in vnums
+        cont = next(o for o in holder["inv"] if o["vnum"] == 8102)
+        assert [c["vnum"] for c in cont.get("contents", [])] == [8103]
+
+    def test_carried_search_gated_on_last(self, fresh_world):
+        # db.c:1554 -- a carried container is only a valid target while the
+        # previous reset succeeded; a failed P (bogus container) breaks the
+        # chain, so the second P must not fill the carried ring.
+        fresh_world.register_area(
+            "pct", 8100, 8199,
+            rooms={8100: _room()},
+            mobiles={8101: _mob_tpl()},
+            objects={
+                8102: _obj_tpl(type="container", keywords="ring"),
+                8103: _obj_tpl(keywords="key", type="key"),
+            },
+            resets=(("M", 8101, 9, 8100, 9), ("E", 8102, "waist", 1),
+                    ("P", 8103, 1, 8199, 1),   # 8199: no such container
+                    ("P", 8103, 1, 8102, 1)))
+        fresh_world.setup()
+        world._load_area("pct")
+        cont = self._mob()["equip"]["waist"]
+        assert cont.get("contents", []) == []
+
+    def test_eg_without_mob_skips_instead_of_crashing(self, fresh_world):
+        # G partitioned after a foreign O lands in a mob-less room list;
+        # upstream bugf+skips (db.c:1592), we must not KeyError chars[None].
+        fresh_world.register_area(
+            "pct", 8100, 8199,
+            rooms={8100: _room()},
+            mobiles={},
+            objects={
+                8102: _obj_tpl(type="container", keywords="chest"),
+                8103: _obj_tpl(keywords="gem"),
+            },
+            resets=(("O", 8102, 8100), ("G", 8103, 1)))
+        fresh_world.setup()
+        world._load_area("pct")  # must not raise
+        floor = world.rooms._data[8100]["items"]
+        assert [o["vnum"] for o in floor if isinstance(o, dict)] == [8102]
+
+
 # ---------------------------------------------------------------------------
 # R exit shuffle (decision 5)
 # ---------------------------------------------------------------------------

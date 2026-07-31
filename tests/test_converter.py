@@ -274,6 +274,41 @@ S
         assert ns["RESETS"] == (("M", 9000, 1, 8020, 1),
                                 ("O", 9001, 8020))
 
+    def test_reset_g_without_mob_in_room_list_rejected(self, tmp_path):
+        # A G after a foreign-room O partitions into the O's mob-less room
+        # list, which reset_room can't serve; upstream fix_exits exit(1)s
+        # on the same shape (iLastRoom NULL, db.c:1173).
+        self.check_raises(tmp_path, """#ROOMS
+#8020
+Test Room~
+A bare test room.
+~
+0 0 0
+S
+#0
+#RESETS
+O 0 9001 1 8020
+G 0 9002 1
+S
+""", "no preceding M")
+
+    def test_reset_p_without_container_source_rejected(self, tmp_path):
+        # P before any O/E/G in its room list has no container instance to
+        # fill (fix_exits iLastObj NULL, db.c:1161).
+        self.check_raises(tmp_path, """#ROOMS
+#8020
+Test Room~
+A bare test room.
+~
+0 0 0
+S
+#0
+#RESETS
+M 0 9000 1 8020 1
+P 0 9002 1 9003 1
+S
+""", "container source")
+
     def test_object_f_bad_where_letter(self, tmp_path):
         self.check_raises(tmp_path, """#OBJECTS
 #8014

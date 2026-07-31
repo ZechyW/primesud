@@ -1889,6 +1889,48 @@ def convert(are_path, out_path=None):
                 "reset to the room-owning area"
             )
 
+    # Per-room reset-list coherence (cf. 1stMud fix_exits, db.c:1136-1181):
+    # partition resets by the running room context exactly as world._load_area
+    # does, then require each room list to satisfy what reset_room assumes --
+    # E/G need a preceding M (LastMob), P needs a preceding O or E/G
+    # (iLastObj).  Upstream exit(1)s at boot on violation; we reject at
+    # conversion so bad sequencing can't silently drop content at runtime.
+    cur_room = None
+    room_state = {}  # room vnum -> [seen_mob, seen_obj]
+    for reset in resets:
+        cmd = reset[0]
+        if cmd == "M":
+            cur_room = reset[3]
+        elif cmd == "O":
+            cur_room = reset[2]
+        elif cmd == "R":
+            cur_room = reset[1]
+        if cur_room is None:
+            raise ValueError(
+                "RESETS '" + cmd + "' precedes any M/O/R room context "
+                "(cf. db.c load_resets rVnum == -1)"
+            )
+        state = room_state.setdefault(cur_room, [False, False])
+        if cmd == "M":
+            state[0] = True
+        elif cmd == "O":
+            state[1] = True
+        elif cmd in ("E", "G"):
+            if not state[0]:
+                raise ValueError(
+                    "RESETS '" + cmd + "' in room " + str(cur_room) +
+                    "'s reset list has no preceding M "
+                    "(cf. fix_exits iLastRoom NULL, db.c:1173)"
+                )
+            state[1] = True
+        elif cmd == "P":
+            if not state[1]:
+                raise ValueError(
+                    "RESETS 'P' in room " + str(cur_room) +
+                    "'s reset list has no preceding O/E/G container source "
+                    "(cf. fix_exits iLastObj NULL, db.c:1161)"
+                )
+
     # [PRIMESUD] Bake #SPECIALS and #SHOPS entries directly into their target
     # mob's MOBILES dict ("spec_fun" / "shop" keys) instead of emitting them
     # as standalone SPECIALS/SHOPS sections merged at runtime by world.py.

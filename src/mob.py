@@ -505,6 +505,14 @@ def reset_room(vnum, next_id, obj_counts, mob_counts):
             last_spawned = True
             next_id += 1
         elif (cmd == "E" or cmd == "G") and last_spawned:
+            if last_mob_id is None:
+                # cf. db.c:1592 -- 'E'/'G' with no LastMob: log and skip.
+                # Only reachable via bad area data (E/G before any M in this
+                # room's reset list); conversion rejects it, mirror upstream's
+                # runtime guard anyway instead of KeyError-ing on chars[None].
+                dbg("reset_room: E/G with no mob @" + str(vnum))
+                last_spawned = False
+                continue
             mob = world.chars[last_mob_id]
             item_vnum = entry[1]
             if MOB_DEFS[mob["tpl"]].get("shop"):
@@ -552,15 +560,29 @@ def reset_room(vnum, next_id, obj_counts, mob_counts):
             # cf. db.c:1532 -- fill a container in this room up to arg4 items.
             item_vnum, arg2, cont_vnum, arg4 = entry[1], entry[2], entry[3], entry[4]
             plimit = _decode_limit(arg2, False)  # P: only -1 unlimited, not 0
-            # [PRIMESUD] restrict the container search to this room's items:
-            # 1stMud get_obj_type scans the global object list, but converted
-            # stock P always targets a container O-placed in the same room, and
-            # a global scan would fight lazy loading.  Most-recent instance =
-            # last match (room items are appended newest-last).
+            # [PRIMESUD] room-scoped stand-in for 1stMud's get_obj_type global
+            # scan: this room's floor items, then -- gated on last, matching
+            # db.c:1554's carried-container (in_room == NULL) case -- the
+            # room's mobs' inventory and equipment (e.g. mahntor's key ring
+            # worn by the Ring-Keeper, moria's python-carried corpse).  Stock
+            # P always targets a container O-placed or E/G-given in the
+            # resetting room (all areas verified 31/07/2026), so the room
+            # scope loses nothing while keeping lazy loading intact.
+            # Most-recent instance = last match (floor items and inventories
+            # are appended newest-last).
             container = None
             for o in rs.get("items", []):
                 if isinstance(o, dict) and o["vnum"] == cont_vnum:
                     container = o
+            if container is None and last_spawned:
+                for mid in rs.get("mobs", []):
+                    holder = world.chars[mid]
+                    for o in holder.get("inv", []):
+                        if isinstance(o, dict) and o["vnum"] == cont_vnum:
+                            container = o
+                    for o in holder.get("equip", {}).values():
+                        if o is not None and o["vnum"] == cont_vnum:
+                            container = o
             if container is None:
                 last_spawned = False
                 continue

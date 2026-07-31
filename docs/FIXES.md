@@ -611,3 +611,49 @@ whenever it lands.
 
 `music.py`'s `song_update` had already reasoned its way to the room-scoped
 behaviour independently and is unaffected.
+
+---
+
+## P-reset: mob-carried containers were never filled (PrimeSUD-side regression, fixed)
+
+**Upstream:** `reference/1stMud4.5.3/src/db.c`, `reset_room` case `'P'`, lines 1532-1578
+
+### The divergence
+
+Not an upstream bug -- a PrimeSUD deviation whose stated rationale was wrong.
+Upstream's `P` reset locates its container via `get_obj_type` (global scan for
+the most recent instance) and explicitly accepts a **mob-carried** container:
+`(LastObj->in_room == NULL && !last)` (db.c:1554) only rejects a carried
+container when the previous reset in the walk failed.  PrimeSUD's port
+searched **the resetting room's floor items only**, on the documented claim
+that "converted stock P always fills a container O-placed in the same room".
+
+That claim was false.  A full-world scan (31/07/2026) found 19 stock `P`
+resets targeting containers E/G-given to a mob in the same room, all silently
+skipped, plus one knock-on `G` skip (`last` cleared by the failed `P`):
+
+- **mahntor** -- 8 door keys (2351-2358) inside the Ring-Keeper's key ring
+  (2382, worn at waist).  Progression-blocking: the keys gate the
+  closed+locked+**pickproof** doors of the 2388-2399 wing and have no other
+  spawn source.
+- **hitower** -- Mad Alchemist's pouch (spoon + 4 potions), spell binder's
+  holstered wand, illusionist's beltpouch dust.
+- **moria** -- coins in the cartographer's corpse carried by the huge python,
+  plus the knock-on skip of the Moria level-2 map `G` that follows.
+- **chapel** -- black marble ring inside the mummified head.
+- **gnome** -- grain + peanuts in the scientist's wicker basket.
+
+### PrimeSUD fix -- implemented in `mob.py`, `tools/are_to_primesud.py`
+
+1. `reset_room` `'P'`: when the floor search misses, search the room's mobs'
+   inventory and equipment for the container -- gated on `last_spawned`,
+   mirroring db.c:1554.  Still room-scoped (never touches unloaded areas), so
+   the lazy-loading rationale for avoiding a true global scan survives.
+2. `reset_room` `'E'/'G'`: null-LastMob guard (log + skip) mirroring
+   db.c:1592, replacing a latent `KeyError` on `world.chars[None]`.
+3. Converter: `fix_exits`-style per-room reset-list checks (db.c:1136-1181) --
+   `E`/`G` require a preceding `M` in their partitioned room list, `P` a
+   preceding `O`/`E`/`G` -- rejected at conversion time as upstream rejects
+   them at boot, so future data cannot silently drop content again.
+
+`DESIGN.md` "P-reset container target" row updated to match.
