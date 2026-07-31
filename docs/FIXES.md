@@ -657,3 +657,48 @@ skipped, plus one knock-on `G` skip (`last` cleared by the failed `P`):
    them at boot, so future data cannot silently drop content again.
 
 `DESIGN.md` "P-reset container target" row updated to match.
+
+---
+
+## coin messages: unconditional or wrongly-gated plurals ("1 gold pieces", "1 silver coins")
+
+**Upstream:** `reference/1stMud4.5.3/src/act_obj.c`, `do_steal` line 2317,
+`do_sell` line 2883, `do_value` line 2953; `reference/1stMud4.5.3/src/handler.c`,
+`create_money()` line 2258 (mixed-pile `OBJ_VNUM_COINS` template);
+`reference/1stMud4.5.3/src/act_info.c`, line 1420 (examine money pile).
+
+### The bug
+
+Five money messages hard-code (or mis-gate) the plural coin noun:
+
+- `do_sell`: `"You sell $p for %ld silver and %ld gold piece%s."` gates the `s`
+  on **total cost**, not the gold part -- selling for 100 silver (cost 100,
+  gold_part 1) prints "1 gold pieces", and cost 1 (0 gold) prints
+  "0 silver and 0 gold piece".
+- `do_value`: `"... %ld silver and %ld gold coins for $p'."` -- unconditional
+  plural: "1 gold coins".
+- `do_steal`: `"Bingo!  You got %d gold coins."` (and the silver/mixed
+  variants) -- unconditional plural.
+- `create_money` mixed pile: the `OBJ_VNUM_COINS` short-descr template is
+  `"%d silver coins and %d gold coins"` -- "1 silver coins and 5 gold coins".
+- examine pile: `"There are %ld gold and %ld silver coins in the pile."` --
+  noun only attaches to the silver half, and is unconditionally plural.
+
+In all five, the silver half of sell/value/steal already prints bare
+("%ld silver"), with no noun at all.
+
+### PrimeSUD fix — implemented in `shop.py`, `inventory.py`, `combat.py`, `info.py` (7bc0280)
+
+Two treatments, by whether the message names an object:
+
+1. `do_sell` / `do_value` (`shop.py`) and `do_steal` (`inventory.py`): drop the
+   coin noun entirely -- "N silver and N gold". Silver already went bare
+   upstream, and any gating of the noun misreads at some value, so symmetry
+   beats repair.
+2. `create_money` (`combat.py`) and `_examine_extras` (`info.py`) keep the noun
+   -- they name an object/pile, and the `*_ONE` fallback objects are
+   "A gold coin" -- but pluralise each half independently via
+   `util.count_str`: "1 silver coin and 5 gold coins".
+
+All sites `[PRIMESUD]`-commented; the two `[Verified:]` functions
+(`create_money`, `_examine_extras`) have their tags extended.
