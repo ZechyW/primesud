@@ -1,0 +1,169 @@
+save_smoke: full-game load + timed saves
+mem free start: 7068256
+load_world: 22712ms source=file
+areas loaded: 1, snapshots: 27
+mem free after load: 6317584
+loaded haon: 5688ms (had 13 pending rooms)
+loaded hood: 9130ms (had 12 pending rooms)
+-- mode baseline (free 6018512)
+  save 1: ok=True total=4244ms collects=0 free 6012320->5548768 pumps=0 echoes=0
+    ln.plr1=97 ln.pinv=143 ln.plearn=58 ln.rle=153 ln.paff=76 ln.wstate=8 ln.stats=403 ln.mob=562 ln.room=1108 ln.rpend=294 snap=36 sweep=53 join=7 hvset=42 verify=13 fwrite=30
+  save 2: ok=True total=2768ms collects=0 free 5539408->5138704 pumps=0 echoes=0
+    ln.plr1=57 ln.pinv=74 ln.plearn=38 ln.rle=1 ln.paff=74 ln.wstate=8 ln.stats=49 ln.mob=160 ln.room=970 ln.rpend=1 snap=36 sweep=53 join=8 hvset=42 verify=12 fwrite=27
+  save 3: ok=True total=2766ms collects=0 free 5128608->4727904 pumps=0 echoes=0
+    ln.plr1=57 ln.pinv=73 ln.plearn=37 ln.rle=2 ln.paff=73 ln.wstate=8 ln.stats=49 ln.mob=160 ln.room=970 ln.rpend=1 snap=36 sweep=54 join=7 hvset=42 verify=12 fwrite=29
+-- mode pump (free 4720176)
+  save 1: ok=True total=2763ms collects=0 free 4714160->4313456 pumps=13 echoes=0
+    ln.plr1=56 ln.pinv=74 ln.plearn=38 ln.rle=1 ln.paff=73 ln.wstate=7 ln.stats=49 ln.mob=160 ln.room=970 ln.rpend=1 snap=36 sweep=54 join=7 hvset=42 verify=12 fwrite=28
+  save 2: ok=True total=2762ms collects=0 free 4301040->3900336 pumps=13 echoes=0
+    ln.plr1=57 ln.pinv=73 ln.plearn=38 ln.rle=1 ln.paff=74 ln.wstate=7 ln.stats=49 ln.mob=161 ln.room=970 ln.rpend=2 snap=36 sweep=53 join=8 hvset=42 verify=12 fwrite=27
+  save 3: ok=True total=2757ms collects=0 free 3886992->3486288 pumps=13 echoes=0
+    ln.plr1=57 ln.pinv=73 ln.plearn=37 ln.rle=1 ln.paff=74 ln.wstate=7 ln.stats=49 ln.mob=161 ln.room=970 ln.rpend=2 snap=36 sweep=53 join=8 hvset=42 verify=12 fwrite=28
+-- mode pump+echo (free 3475360)
+  save 1: ok=True total=2905ms collects=0 free 3466432->3059376 pumps=13 echoes=13
+    ln.plr1=116 ln.pinv=76 ln.plearn=41 ln.rle=5 ln.paff=79 ln.wstate=13 ln.stats=56 ln.mob=168 ln.room=978 ln.rpend=11 snap=46 sweep=64 join=20 hvset=42 verify=12 fwrite=28
+  save 2: ok=True total=2843ms collects=0 free 3043472->2636416 pumps=13 echoes=13
+    ln.plr1=59 ln.pinv=76 ln.plearn=41 ln.rle=5 ln.paff=79 ln.wstate=13 ln.stats=55 ln.mob=168 ln.room=978 ln.rpend=11 snap=47 sweep=64 join=19 hvset=42 verify=13 fwrite=27
+  save 3: ok=True total=2840ms collects=0 free 2619504->2212448 pumps=13 echoes=13
+    ln.plr1=58 ln.pinv=76 ln.plearn=41 ln.rle=6 ln.paff=79 ln.wstate=13 ln.stats=55 ln.mob=168 ln.room=979 ln.rpend=11 snap=47 sweep=64 join=19 hvset=42 verify=13 fwrite=28
+payload: 31082B total
+  p.inv lines=1 bytes=122
+  p.eq lines=1 bytes=225
+  p.learned lines=1 bytes=132
+  p.explored lines=1 bytes=363
+  s.m. lines=48 bytes=581
+  s.a. lines=9 bytes=141
+  p. lines=38 bytes=779
+  g. lines=5 bytes=185
+  m= lines=1 bytes=8833
+  r. lines=109 bytes=8291
+  it. lines=31 bytes=11181
+  other lines=1 bytes=4
+  r. resident-rooms=49 pending-rooms=60
+mem free end: 2029600
+-- phase C: reclaim test (one explicit collect after churn)
+  free before: 2017040
+  free after:  6368576 (267ms, reclaimed 4351056)
+-- phase D: drive to exhaustion (pump+echo, target 5 auto-collects, cap 60 saves)
+  save 1: start free 6354416
+    ok=True total=2872ms end free 5936672 used 417744 in-save collects=0 seen=0
+  save 2: start free 5928448
+    ok=True total=2860ms end free 5510480 used 417968 in-save collects=0 seen=0
+  save 3: start free 5502032
+    ok=True total=2858ms end free 5083840 used 418192 in-save collects=0 seen=0
+  save 4: start free 5075168
+    ok=True total=2848ms end free 4656752 used 418416 in-save collects=0 seen=0
+  save 5: start free 4647856
+    ok=True total=2846ms end free 4229232 used 418624 in-save collects=0 seen=0
+  save 6: start free 4220128
+    ok=True total=2845ms end free 3801296 used 418832 in-save collects=0 seen=0
+  save 7: start free 3791984
+    ok=True total=2841ms end free 3372928 used 419056 in-save collects=0 seen=0
+  save 8: start free 3363392
+    ok=True total=2837ms end free 2944112 used 419280 in-save collects=0 seen=0
+  save 9: start free 2934352
+    ok=True total=2838ms end free 2514848 used 419504 in-save collects=0 seen=0
+  save 10: start free 2504608
+    ok=True total=2833ms end free 2084848 used 419760 in-save collects=0 seen=0
+  save 11: start free 2074640
+    ok=True total=2831ms end free 1654672 used 419968 in-save collects=0 seen=0
+  save 12: start free 1644256
+    ok=True total=2825ms end free 1224080 used 420176 in-save collects=0 seen=0
+  save 13: start free 1213456
+    ok=True total=2822ms end free 793056 used 420400 in-save collects=0 seen=0
+  save 14: start free 782240
+    ok=True total=2819ms end free 361648 used 420592 in-save collects=0 seen=0
+  save 15: start free 350608
+    ok=True total=3032ms end free 6174192 used -5823584 in-save collects=1 [hvset] seen=1
+  save 16: start free 6162624
+    ok=True total=2867ms end free 5741552 used 421072 in-save collects=0 seen=1
+  save 17: start free 5730032
+    ok=True total=2855ms end free 5308736 used 421296 in-save collects=0 seen=1
+  save 18: start free 5296992
+    ok=True total=2855ms end free 4875472 used 421520 in-save collects=0 seen=1
+  save 19: start free 4863504
+    ok=True total=2846ms end free 4441760 used 421744 in-save collects=0 seen=1
+  save 20: start free 4429568
+    ok=True total=2843ms end free 4007600 used 421968 in-save collects=0 seen=1
+  save 21: start free 3995184
+    ok=True total=2840ms end free 3572992 used 422192 in-save collects=0 seen=1
+  save 22: start free 3560352
+    ok=True total=2835ms end free 3137952 used 422400 in-save collects=0 seen=1
+  save 23: start free 3125104
+    ok=True total=2834ms end free 2702496 used 422608 in-save collects=0 seen=1
+  save 24: start free 2689440
+    ok=True total=2830ms end free 2266608 used 422832 in-save collects=0 seen=1
+  save 25: start free 2253328
+    ok=True total=2828ms end free 1830272 used 423056 in-save collects=0 seen=1
+  save 26: start free 1816768
+    ok=True total=2823ms end free 1393488 used 423280 in-save collects=0 seen=1
+  save 27: start free 1379760
+    ok=True total=2821ms end free 956256 used 423504 in-save collects=0 seen=1
+  save 28: start free 942336
+    ok=True total=2821ms end free 518640 used 423696 in-save collects=0 seen=1
+  save 29: start free 504496
+    ok=True total=3031ms end free 6172016 used -5667520 in-save collects=1 [hvset] seen=2
+  save 30: start free 6157344
+    ok=True total=2866ms end free 5733168 used 424176 in-save collects=0 seen=2
+  save 31: start free 5718544
+    ok=True total=2855ms end free 5294144 used 424400 in-save collects=0 seen=2
+  save 32: start free 5279296
+    ok=True total=2858ms end free 4854672 used 424624 in-save collects=0 seen=2
+  save 33: start free 4839600
+    ok=True total=2845ms end free 4414768 used 424832 in-save collects=0 seen=2
+  save 34: start free 4399488
+    ok=True total=2841ms end free 3974448 used 425040 in-save collects=0 seen=2
+  save 35: start free 3958960
+    ok=True total=2836ms end free 3533696 used 425264 in-save collects=0 seen=2
+  save 36: start free 3517984
+    ok=True total=2834ms end free 3092496 used 425488 in-save collects=0 seen=2
+  save 37: start free 3076560
+    ok=True total=2833ms end free 2650848 used 425712 in-save collects=0 seen=2
+  save 38: start free 2634688
+    ok=True total=2828ms end free 2208752 used 425936 in-save collects=0 seen=2
+  save 39: start free 2192368
+    ok=True total=2826ms end free 1766208 used 426160 in-save collects=0 seen=2
+  save 40: start free 1749600
+    ok=True total=2823ms end free 1323216 used 426384 in-save collects=0 seen=2
+  save 41: start free 1306384
+    ok=True total=2815ms end free 879792 used 426592 in-save collects=0 seen=2
+  save 42: start free 862288
+    ok=True total=2816ms end free 435520 used 426768 in-save collects=0 seen=2
+  save 43: start free 418304
+    ok=True total=3023ms end free 6200400 used -5782096 in-save collects=1 [hvset] seen=3
+  save 44: start free 6182624
+    ok=True total=2865ms end free 5755360 used 427264 in-save collects=0 seen=3
+  save 45: start free 5737648
+    ok=True total=2857ms end free 5310176 used 427472 in-save collects=0 seen=3
+  save 46: start free 5292256
+    ok=True total=2857ms end free 4864560 used 427696 in-save collects=0 seen=3
+  save 47: start free 4846416
+    ok=True total=2846ms end free 4418496 used 427920 in-save collects=0 seen=3
+  save 48: start free 4400128
+    ok=True total=2843ms end free 3971984 used 428144 in-save collects=0 seen=3
+  save 49: start free 3953392
+    ok=True total=2835ms end free 3525024 used 428368 in-save collects=0 seen=3
+  save 50: start free 3506208
+    ok=True total=2835ms end free 3077616 used 428592 in-save collects=0 seen=3
+  save 51: start free 3058576
+    ok=True total=2833ms end free 2629760 used 428816 in-save collects=0 seen=3
+  save 52: start free 2610496
+    ok=True total=2828ms end free 2181472 used 429024 in-save collects=0 seen=3
+  save 53: start free 2162000
+    ok=True total=2824ms end free 1732768 used 429232 in-save collects=0 seen=3
+  save 54: start free 1713088
+    ok=True total=2821ms end free 1283632 used 429456 in-save collects=0 seen=3
+  save 55: start free 1263728
+    ok=True total=2816ms end free 834048 used 429680 in-save collects=0 seen=3
+  save 56: start free 813952
+    ok=True total=2813ms end free 384080 used 429872 in-save collects=0 seen=3
+  save 57: start free 363760
+    ok=True total=3027ms end free 6167280 used -5803520 in-save collects=1 [hvset] seen=4
+  save 58: start free 6146432
+    ok=True total=2867ms end free 5716080 used 430352 in-save collects=0 seen=4
+  save 59: start free 5695280
+    ok=True total=2857ms end free 5264704 used 430576 in-save collects=0 seen=4
+  save 60: start free 5243680
+    ok=True total=2855ms end free 4812880 used 430800 in-save collects=0 seen=4
+  drive done: 60 saves, 4 auto-collects survived, free 4791376
+Done. Results in save_smoke.log
