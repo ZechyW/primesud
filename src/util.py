@@ -83,6 +83,23 @@ def num_str(n):
     return s
 
 
+def count_str(n, word):
+    """Return "N word(s)", pluralising the word (cf. 1stMud intstr in db2.c). [PRIMESUD]
+
+    Named count_str, not intstr, to stay clear of int_str above (pitfall-8
+    digit renderer); the upstream mapping lives in this docstring.
+    """
+    if n == 1:
+        return num_str(n) + " " + word
+    if word[-1:] == "y":
+        # Bug-faithful: upstream has no vowel check either, so "day" -> "daies"
+        return num_str(n) + " " + word[:-1] + "ies"
+    if word[-1:] == "s":
+        # "ss" takes -es; a word already ending in a lone "s" is left alone
+        return num_str(n) + " " + word + ("es" if word[-2:] == "ss" else "")
+    return num_str(n) + " " + word + "s"
+
+
 def sstr(v):
     """Safe str() for save payloads: cached digit path for ints, pass-through
     for strs, plain str() for anything else (bools keep their str() form). [PRIMESUD]

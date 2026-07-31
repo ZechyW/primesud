@@ -14,7 +14,7 @@ from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
 from info import (do_look, find_path_to_area, _area_level_str,
                   _sorted_area_files)
 from picker import pick_from
-from util import num_str
+from util import count_str
 from quest import quest_room_check
 from skills_table import (GSN_RECALL, GSN_PICK_LOCK, GSN_SNEAK, GSN_HIDE,
                           GSN_INVIS, GSN_MASS_INVIS, SKILLS)
@@ -1539,9 +1539,7 @@ def do_run(player, args):
                   for area in candidates]
         if last_path:
             labels.insert(0, "{C" + last_path[0] + "{x ("
-                          + num_str(last_path[2])
-                          + (" step)" if last_path[2] == 1
-                             else " steps)"))
+                          + count_str(last_path[2], "step") + ")")
         idx = pick_from("Run where?" if last_path else "Run to which area?",
                         labels)
         if idx < 0:

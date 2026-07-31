@@ -50,6 +50,8 @@ python tools/check_ascii_py.py
 
 Embed `{G`, `{r`, `{x`, etc. directly in strings passed to `tr.print()` -- handled by `colors.py`. Build the strings with concatenation only (`"{G" + name + "{x"`, `"hp: " + num_str(hp)`) -- `%` and `.format()` are banned on-device per pitfall 8, which also conveniently sidesteps `.format()`'s brace conflict with `{X` colour delimiters. Full table in docs/REFERENCE.md sec. Colour codes.
 
+For counted nouns ("3 minutes", "1 quest point") use `util.count_str(n, word)` -- the port of 1stMud `intstr`, and the SSOT for pluralisation. Don't hand-roll `("" if n == 1 else "s")`; that idiom split the codebase in two once already. Colour code between the number and the word (`"{W" + num_str(n) + "{R hour"`) is the one case it can't express -- leave those inline.
+
 When porting 1stMud code using `CTAG(_CONSTANT)` (e.g. `CTAG(_MOBILES)`), default colour per constant documented in docs/REFERENCE.md sec. CTAG colour scheme. Use that table to pick equivalent `{X` code.
 
 ## Porting from 1stmud

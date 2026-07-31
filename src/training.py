@@ -6,7 +6,7 @@ from classes import (CLASS_TABLE, MAX_REMORT, calc_max_level,
                      exp_per_level, is_class, lvl_bonus, skill_adept_cap)
 from handler import (get_curr_stat, get_max_train, act, chprintln,
                    TO_CHAR, TO_ROOM, affect_remove, unequip_char)
-from util import num_str, pad_right
+from util import count_str, num_str, pad_right
 from config import (INT_APP_LEARN, MAX_MORTAL_LEVEL, REMORT_POWER_DIV,
                     R_STARTING_ROOM, TERMINAL_COLS)
 from info import print_practice_table
@@ -65,8 +65,8 @@ def do_train(player, args):
         all_opts = stat_opts + vital_opts
         # [PRIMESUD] Picker UI -- 1stMud prints "You can train: ..." then falls through
         # [PRIMESUD] Singular/plural fix -- 1stMud always prints "sessions"
-        chprintln(player, "You have " + num_str(player["train"])
-                  + " training session" + ("" if player["train"] == 1 else "s") + ".")
+        chprintln(player, "You have "
+                  + count_str(player["train"], "training session") + ".")
         names = []
         for k, lng in all_opts:
             if k in ("max_hit", "max_mana"):
@@ -148,8 +148,8 @@ def do_practice(player, args):
     if not args:
         print_practice_table(player)
         # [PRIMESUD] Singular/plural fix -- 1stMud always prints "sessions"
-        chprintln(player, "You have " + num_str(player["practice"])
-                  + " practice session" + ("" if player["practice"] == 1 else "s") + " left.")
+        chprintln(player, "You have "
+                  + count_str(player["practice"], "practice session") + " left.")
         if teacher is None or player["practice"] < 1:
             return
         # [PRIMESUD] Picker UI for practicing skills
@@ -694,8 +694,8 @@ def do_gain(player, args):
                              + " " + num_str(skill_level(player, sn)))
         _print_two_col(player, items)
         # cf. 1stMud intstr(ch->train, "train")
-        chprintln(player, "You have " + num_str(player["train"])
-                  + " train" + ("" if player["train"] == 1 else "s") + " left.")
+        chprintln(player, "You have "
+                  + count_str(player["train"], "train") + " left.")
         return
 
     if "convert".startswith(args[0]):

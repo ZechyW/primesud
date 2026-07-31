@@ -20,7 +20,8 @@ from game_time import time_update
 from mob import mobile_update, aggr_update, area_update, weather_update
 from music import song_update
 from player import regen_update, tick_update
-from quest import quest_update, _intstr
+from quest import quest_update
+from util import count_str
 from gquest import gquest_update
 from stances import first_stance_tip  # [PRIMESUD]
 from explored import mark_explored  # [PRIMESUD]
@@ -101,7 +102,7 @@ def session_update(player):
     hrs = player["_session"] // 3600
     if hrs != was // 3600:
         chprintln(player, "{c[You have been playing for "
-                  + _intstr(hrs, "hour") + " this session.]{x")
+                  + count_str(hrs, "hour") + " this session.]{x")
 
 
 def update_handler():

@@ -20,11 +20,11 @@ from config import (MAX_LEVEL, MAX_MORTAL_LEVEL, GQUEST_INITIAL_DELAY,
                     mins_to_ticks, ticks_to_mins, on_minute)
 from handler import chprintln
 from quest import (chance, is_quester, mob_tell, quest_target_ok,
-                   quest_area_def, _find_spec_mob, _intstr, _prefix,
+                   quest_area_def, _find_spec_mob, _prefix,
                    _QUEST_AREA_EXCLUDE)
 from picker import pick_from
 from urandom import randint
-from util import sstr, num_str, pad_left, pad_right
+from util import sstr, count_str, num_str, pad_left, pad_right
 
 # cf. 1stMud gquest_t in defines.h
 GQUEST_OFF     = 0
@@ -209,11 +209,11 @@ def generate_gquest(who_name):
             gquest_info["joined"] = True
             gquest_info["pmobs"] = list(gquest_info["mobs"])
             chprintln(player,
-                      "You have " + _intstr(ticks_to_mins(gquest_info["timer"]), "minute")
+                      "You have " + count_str(ticks_to_mins(gquest_info["timer"]), "minute")
                       + " to complete the task!")
         else:
             chprintln(player,
-                      "You have " + _intstr(ticks_to_mins(gquest_info["timer"]), "minute")
+                      "You have " + count_str(ticks_to_mins(gquest_info["timer"]), "minute")
                       + " to join and complete the task!")
     return True
 
@@ -354,7 +354,7 @@ def gquest_update():
                 if mins % 20 == 0 or mins in (1, 5):
                     chprintln(player,
                               "{WA global quest will begin in about "
-                              + _intstr(mins, "minute") + ".{x")
+                              + count_str(mins, "minute") + ".{x")
     elif running == GQUEST_RUNNING:
         # [PRIMESUD] 1stMud ends the quest here if no players remain; kept
         # running so the (single) player can join or rejoin until time runs
@@ -364,11 +364,11 @@ def gquest_update():
             if player is not None:
                 chprintln(player,
                           "Time has run out on the Global Quest, next quest will start in "
-                          + _intstr(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
+                          + count_str(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
             return
         if (player is not None and on_minute(gquest_info["timer"])
                 and ticks_to_mins(gquest_info["timer"]) in (1, 2, 3, 4, 5, 10, 15)):
-            chprintln(player, _intstr(ticks_to_mins(gquest_info["timer"]), "minute")
+            chprintln(player, count_str(ticks_to_mins(gquest_info["timer"]), "minute")
                       + " remaining in the global quest.")
         gquest_info["timer"] -= 1
 
@@ -441,7 +441,7 @@ def do_gquest(player, args):
     if gquest_info["running"] == GQUEST_OFF:
         chprintln(player,
                   "There is no global quest running.  The next Gquest will start in "
-                  + _intstr(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
+                  + count_str(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
         return
 
     if _prefix(arg1, "join"):
@@ -486,7 +486,7 @@ def do_gquest(player, args):
         chprintln(player, "Levels      : " + str(gquest_info["minlevel"])
                   + " - " + str(gquest_info["maxlevel"]))
         chprintln(player, "Status      : Running for "
-                  + _intstr(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
+                  + count_str(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
         chprintln(player, "[ Quest Rewards ]")
         chprintln(player, "Qp Reward   : " + str(gquest_info["qpoints"]))
         chprintln(player, "Gold Reward : " + str(gquest_info["gold"]))
@@ -496,7 +496,7 @@ def do_gquest(player, args):
 
     if _prefix(arg1, "time"):
         chprintln(player, "The Global Quest is Running for "
-                  + _intstr(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
+                  + count_str(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
         return
 
     if _prefix(arg1, "check"):
@@ -518,7 +518,7 @@ def do_gquest(player, args):
             # [PRIMESUD] 1stMud intstr(..., "minute") slip fixed to "mob"
             chprintln(player,
                       "You haven't finished just yet, theres still "
-                      + _intstr(gquest_info["mob_count"] - killed, "mob") + " to kill.")
+                      + count_str(gquest_info["mob_count"] - killed, "mob") + " to kill.")
             return
         chprintln(player, "YES! You have completed the global quest.")
         # 1stMud: post_gquest note-board history -- [PRIMESUD] skipped
@@ -529,7 +529,7 @@ def do_gquest(player, args):
         end_gquest()
         chprintln(player,
                   "You have completed the global quest, next gquest in "
-                  + _intstr(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
+                  + count_str(ticks_to_mins(gquest_info["timer"]), "minute") + ".")
         world.save_pending = True
         return
 

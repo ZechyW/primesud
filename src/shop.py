@@ -548,7 +548,11 @@ def _sell_one(player, keeper, obj):
 
     silver_part = cost - (cost // 100) * 100
     gold_part = cost // 100
-    msg = "You sell $p for " + str(silver_part) + " silver and " + str(gold_part) + " gold piece" + ("" if cost == 1 else "s") + "."
+    # [PRIMESUD] Bare "gold", no "piece(s)" -- silver already goes bare, and every
+    # way of gating the noun misreads at some value (1stMud keys it off cost, so
+    # 100 silver prints "1 gold pieces"). Matches do_value below.
+    msg = ("You sell $p for " + num_str(silver_part) + " silver and "
+           + num_str(gold_part) + " gold.")
     act(msg, player, obj, None, TO_CHAR)
     add_cost(player, cost)
     deduct_cost(keeper, cost)
@@ -639,7 +643,10 @@ def do_value(player, args):
 
     silver_part = cost - (cost // 100) * 100
     gold_part = cost // 100
-    msg = "$n tells you 'I'll give you " + str(silver_part) + " silver and " + str(gold_part) + " gold coins for $p'."
+    # [PRIMESUD] Bare "gold", no "coins" -- 1stMud's unconditional plural prints
+    # "1 gold coins". Matches do_sell above.
+    msg = ("$n tells you 'I'll give you " + num_str(silver_part) + " silver and "
+           + num_str(gold_part) + " gold for $p'.")
     act(msg, keeper, obj, player, TO_VICT)
     player["reply"] = keeper["id"]
 

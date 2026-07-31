@@ -1667,12 +1667,15 @@ def do_steal(player, args):
         player["silver"] += silver
         victim["gold"] -= gold
         victim["silver"] -= silver
+        # [PRIMESUD] Bare "gold"/"silver", no "coins" -- 1stMud's unconditional
+        # plural prints "1 gold coins". Matches do_sell/do_value in shop.py.
         if silver <= 0:
-            chprintln(player, "Bingo!  You got " + str(gold) + " gold coins.")
+            chprintln(player, "Bingo!  You got " + num_str(gold) + " gold.")
         elif gold <= 0:
-            chprintln(player, "Bingo!  You got " + str(silver) + " silver coins.")
+            chprintln(player, "Bingo!  You got " + num_str(silver) + " silver.")
         else:
-            chprintln(player, "Bingo!  You got " + str(silver) + " silver and " + str(gold) + " gold coins.")
+            chprintln(player, "Bingo!  You got " + num_str(silver) + " silver and "
+                      + num_str(gold) + " gold.")
         check_improve(player, GSN_STEAL, True, 2)
         return
 

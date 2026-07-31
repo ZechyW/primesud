@@ -37,7 +37,7 @@ from item import (create_object, obj_vnum, get_obj_list, item_extra_flags,
                   item_wear_flags)
 from picker import pick_from
 from urandom import randint
-from util import num_str, pad_right
+from util import count_str, num_str, pad_right
 
 # -- Quest types (cf. 1stMud quest_t in defines.h) -----------------------------
 QUEST_RETURN_FINDMOB  = -5
@@ -113,11 +113,6 @@ def add_qp(ch, qp):
     # 1stMud: BONUS_QP event multiplier -- [PRIMESUD] bonus events not ported
     ch["quest_points"] = ch.get("quest_points", 0) + qp
     return qp
-
-
-def _intstr(n, word):
-    """Return "N word(s)" (cf. 1stMud intstr in string.c)."""
-    return str(n) + " " + word + ("" if n == 1 else "s")
 
 
 def mob_tell(player, mob, text):
@@ -633,7 +628,7 @@ def generate_quest(player, questman, qtype=QUEST_NONE):
     mob_tell(player, questman,
              "The location is in the general area of " + area_name + ".")
     mob_tell(player, questman,
-             "You have " + _intstr(ticks_to_mins(player["quest_time"]), "minute")
+             "You have " + count_str(ticks_to_mins(player["quest_time"]), "minute")
              + " to complete this quest.")
     # 1stMud: "May %s go with you!" (ch->deity->name) -- [PRIMESUD] no deities
     mob_tell(player, questman, "May the gods go with you!")
@@ -687,7 +682,7 @@ def quest_reward(player, questman, rtype):
     # 1stMud: act("$N congratulates $n.", TO_ROOM) -- no audience, skipped
     mob_tell(player, questman,
              "Congratulations on completing your quest! As a reward, I am giving you {W"
-             + _intstr(pointreward, "quest point") + "{x, and {Y" + str(reward) + "{x gold.")
+             + count_str(pointreward, "quest point") + "{x, and {Y" + num_str(reward) + "{x gold.")
     if chance(pointreward // 5):
         chprintln(player, "You gain an extra {YTrivia {RPoint{x!")
         player["trivia"] = player.get("trivia", 0) + 1
@@ -918,15 +913,15 @@ def do_quest(player, args):
             # [PRIMESUD] HELP QUEST promises the remaining time, but 1stMud's
             # active-objective branches never print it (see docs/FIXES.md).
             chprintln(player, "You have "
-                      + _intstr(ticks_to_mins(player.get("quest_time", 0)), "minute")
+                      + count_str(ticks_to_mins(player.get("quest_time", 0)), "minute")
                       + " remaining to complete this quest.")
         if status == QUEST_NONE:
             chprintln(player, "You aren't currently on a quest.")
             chprintln(player,
-                      "There are " + _intstr(ticks_to_mins(player.get("quest_time", 0)), "minute")
+                      "There are " + count_str(ticks_to_mins(player.get("quest_time", 0)), "minute")
                       + " remaining until you can go on another quest.")
             chprintln(player, "You have "
-                      + _intstr(player.get("quest_points", 0), "quest point") + ".")
+                      + count_str(player.get("quest_points", 0), "quest point") + ".")
         elif status == QUEST_RETRIEVE and player.get("quest_obj", 0):
             # [PRIMESUD] captured name, not ITEM_DEFS[vnum]: a live template
             # read would load the target area on every 'quest info'
@@ -968,7 +963,7 @@ def do_quest(player, args):
             # [PRIMESUD] "{5ALMOST" (blink) rendered as {W
             chprintln(player, "{RYour quest is {WALMOST{R complete!{x")
             chprintln(player,
-                      "{RYou have " + _intstr(ticks_to_mins(player.get("quest_time", 0)), "minute")
+                      "{RYou have " + count_str(ticks_to_mins(player.get("quest_time", 0)), "minute")
                       + " to get back to " + _giver_name(player)
                       + " before your time runs out!{x")
         return
@@ -1008,7 +1003,7 @@ def do_quest(player, args):
         name, vnum, cost = QUEST_TABLE[i]
         if player.get("quest_points", 0) < cost:
             mob_tell(player, questman,
-                     "You need " + _intstr(cost, "questpoint") + " for that.")
+                     "You need " + count_str(cost, "questpoint") + " for that.")
             return ("quest buy " + name) if picked else None
         # 1stMud vnum 0 = nohunger service -- [PRIMESUD] omitted from table
         obj = create_object(vnum)
@@ -1064,7 +1059,7 @@ def do_quest(player, args):
         name = QUEST_TABLE[i][0]
         cost = QUEST_TABLE[i][2]
         player["quest_points"] = player.get("quest_points", 0) + cost // 3
-        act("$N takes $p from you for " + _intstr(cost // 3, "questpoint") + ".",
+        act("$N takes $p from you for " + count_str(cost // 3, "questpoint") + ".",
             player, obj, questman, TO_CHAR)
         player["inv"].remove(obj)  # cf. 1stMud extract_obj
         world.save_pending = True  # cf. 1stMud save_char_obj
@@ -1087,7 +1082,7 @@ def do_quest(player, args):
             chprintln(player, "That object could not be found, contact an immortal.")
             return ("quest identify " + name) if picked else None
         update_questobj(player, obj)
-        act("$p costs $T.", player, obj, _intstr(cost, "questpoint"), TO_CHAR)
+        act("$p costs $T.", player, obj, count_str(cost, "questpoint"), TO_CHAR)
         from magic import spell_identify  # deferred: magic imports quest
         # cf. 1stMud spell_identify(0, ch->level, ch, obj, TAR_OBJ_INV)
         spell_identify(0, player["level"], player, obj, None)
@@ -1145,7 +1140,7 @@ def do_quest(player, args):
             mob_tell(player, questman,
                      "Your quest is over, but for your cowardly behavior,"
                      " you may not quest again for "
-                     + _intstr(ticks_to_mins(player["quest_time"]), "minute") + ".")
+                     + count_str(ticks_to_mins(player["quest_time"]), "minute") + ".")
         else:
             chprintln(player, "You aren't on a quest!")
         return

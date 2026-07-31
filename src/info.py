@@ -28,12 +28,12 @@ from player import (PLR_AUTOMAP, PLR_AUTOSKILL, PLR_AUTOLOOT, PLR_AUTOSAC,
                     PLR_AUTODAMAGE, PLR_DEFAULTS, _EQUIP_SAVE_ORDER,
                     COMM_BRIEF, COMM_COMPACT, COMM_SHOW_AFFECTS, set_title)
 from gquest import gq_is_player_target
-from quest import is_quester, _intstr
+from quest import is_quester
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
     spell_mana, get_skill, check_improve
 from skills_table import SKILL_TABLE, SKILLS, GSN_PEEK
 from urandom import randint
-from util import free_mem, gc_collect, num_str, pad_left, pad_right, zpad
+from util import count_str, free_mem, gc_collect, num_str, pad_left, pad_right, zpad
 from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS, item_tpl
 from debug import DBG, dbg  # [PRIMESUD]
 from explored import roomcount, TOP_EXPLORED, _pct2
@@ -1134,8 +1134,8 @@ def do_worth(player, args):
     chprintln(player, "You have " + str(player["gold"]) + " gold, " + str(player["silver"])
            + " silver, and " + str(player["xp"]) + " experience ("
            + str(player["xp_next"] - player["xp"]) + " exp to level).")
-    chprintln(player, "You have earned " + _intstr(player.get("quest_points", 0), "questpoint")
-           + " and " + _intstr(player.get("trivia", 0), "trivia point") + ".")
+    chprintln(player, "You have earned " + count_str(player.get("quest_points", 0), "questpoint")
+           + " and " + count_str(player.get("trivia", 0), "trivia point") + ".")
 
 
 def do_time(player, args):
@@ -1172,8 +1172,8 @@ def do_time(player, args):
     session = player.get("_session", 0)
     sh = session // 3600
     chprintln(player, "This session: "
-              + ((_intstr(sh, "hour") + ", ") if sh else "")
-              + _intstr((session % 3600) // 60, "minute") + ".")
+              + ((count_str(sh, "hour") + ", ") if sh else "")
+              + count_str((session % 3600) // 60, "minute") + ".")
 
 
 def do_weather(player, args):
@@ -2339,7 +2339,8 @@ def _examine_extras(player, obj):
     re-resolves via do_look "in <arg>", which can match a different object.
     [Verified: 03/07/2026; tprint->chprintln output routing re-verified
     04/07/2026; jukebox do_play "list" branch added and re-verified 20/07/2026;
-    legacy sparse money fallback added and re-verified 21/07/2026]
+    legacy sparse money fallback added and re-verified 21/07/2026;
+    mixed-pile singular/plural fixed and re-verified 31/07/2026]
     """
     tpl = item_tpl(obj)
     obj_type = tpl.get("type")
@@ -2359,7 +2360,10 @@ def _examine_extras(player, obj):
             else:
                 chprintln(player, "There are " + str(silver) + " silver coins in the pile.")
         else:
-            chprintln(player, "There are " + str(gold) + " gold and " + str(silver) + " silver coins in the pile.")
+            # [PRIMESUD] Singular/plural fix -- 1stMud prints "%ld gold and %ld
+            # silver coins", so the noun only ever attached to the silver half.
+            chprintln(player, "There are " + count_str(gold, "gold coin") + " and "
+                      + count_str(silver, "silver coin") + " in the pile.")
     elif obj_type in _CONTAINER_TYPES:
         _show_container(player, obj, tpl)
     elif obj_type == "jukebox":

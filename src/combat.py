@@ -86,7 +86,7 @@ from skills_table import (
 from debug import DBG, dbg  # [PRIMESUD]
 from hunt import hunt_victim
 from urandom import randint
-from util import wait, pad_right
+from util import wait, count_str, num_str, pad_right
 from world import MOB_DEFS, ROOM_DEFS, item_tpl
 
 
@@ -2560,7 +2560,8 @@ def _death_cry(ch):
 
 def create_money(gold, silver):
     """Create a coin item for the given gold/silver amounts (cf. 1stMud create_money in handler.c).
-    [Verified: 02/07/2026] -- weight not tracked; zero/negative input returns
+    [Verified: 02/07/2026; mixed-pile singular/plural fixed and re-verified
+    31/07/2026] -- weight not tracked; zero/negative input returns
     None instead of 1stMud's bug-log + clamp to 1.
 
     Args:
@@ -2602,7 +2603,10 @@ def create_money(gold, silver):
         obj["cost"] = silver
         return obj
     obj = create_object(OBJ_VNUM_COINS)
-    obj["short_descr"] = str(silver) + " silver coins and " + str(gold) + " gold coins"
+    # [PRIMESUD] Singular/plural fix -- 1stMud names this pile "1 silver coins
+    # and 5 gold coins"; the *_ONE objects it falls back on are "A silver coin".
+    obj["short_descr"] = (count_str(silver, "silver coin") + " and "
+                          + count_str(gold, "gold coin"))
     obj["silver"] = silver
     obj["gold"] = gold
     obj["cost"] = gold * 100 + silver
@@ -2870,10 +2874,9 @@ def advance_level(player):
     from mob import scale_pet  # deferred: mob imports combat
     scale_pet(player)
 
-    chprintln(player, "You gain " + str(add_hp) + " hit "
-              + ("point" if add_hp == 1 else "points") + ", " + str(add_mp)
-              + " mana, " + str(add_mv) + " move, and " + str(add_prac) + " "
-              + ("practice" if add_prac == 1 else "practices") + ".")
+    chprintln(player, "You gain " + count_str(add_hp, "hit point") + ", "
+              + num_str(add_mp) + " mana, " + num_str(add_mv) + " move, and "
+              + count_str(add_prac, "practice") + ".")
     learned = player.get("learned", {})
     for _sn, data in SKILL_TABLE:
         # cf. 1stMud advance_level: skill_level(ch, sn) == ch->level (class-aware)
@@ -3011,8 +3014,7 @@ def group_gain(ch, victim):
         # 1stMud: if (mud_info.bonus.status == BONUS_XP) ...
         # [PRIMESUD] skip bonus XP event (not ported)
         # [PRIMESUD] singular/plural fixed; 1stMud always prints "points"
-        chprintln(gch, "You receive " + str(xp) + " experience "
-                  + ("point" if xp == 1 else "points") + ".")
+        chprintln(gch, "You receive " + count_str(xp, "experience point") + ".")
         gain_exp(gch, xp)
 
         # 1stMud: quest mob check (IsQuester && quest.mob == victim);

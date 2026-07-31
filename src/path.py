@@ -7,7 +7,7 @@ from handler import can_see, can_see_room, chprintln, is_name
 from info import _route
 from magic import _find_unloaded_mob
 from quest import is_quester
-from util import num_str
+from util import count_str
 from world import MOB_DEFS, ROOM_DEFS
 
 
@@ -114,8 +114,7 @@ def do_path(player, args):
         else:
             # [PRIMESUD] singular/plural fixed; 1stMud always prints "steps"
             chprintln(player, "Shortest path to " + target_name + " is "
-                      + num_str(steps) + (" step: " if steps == 1
-                                          else " steps: ") + route + ".")
+                      + count_str(steps, "step") + ": " + route + ".")
             # [PRIMESUD] Offer the route as the default entry in the no-args
             # `run` picker (movement.do_run).  Transient: saving is a
             # whitelist (game_state._PLAYER_STRING_SAVE_KEYS and friends), so
