@@ -388,6 +388,15 @@ save path now ends with a threshold-gated collect (docs/PERFORMANCE.md
 sec. Save-path heap churn) so reclaim happens at the bench-validated
 site instead of a random mid-gameplay auto-collect.
 
+01 Aug follow-up: a src-wide sweep converted every remaining bare
+`str()` call to `num_str`/`sstr` (or a `# str-ok` audited exemption),
+including `str(int)`-in-loop sites the earlier static audits had missed
+(route RLE builder in info.py, mobprog trace) -- plausible candidates
+for the 31/07 one-off.  `tools/check_ascii_py.py` now flags any bare
+`str()` in `src/`, so the class cannot silently return.  Heap stability
+with the sweep applied has NOT been re-soaked on-device; the 28 Jul
+soak numbers predate it.
+
 ## Related PPL parse bug (unrelated mechanism, same fragile bridge)
 
 Community-documented: numeric literals with a plus-sign exponent

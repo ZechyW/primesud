@@ -24,6 +24,11 @@ churn). Nothing left to chase actively.
   dumps 4096 small strings at once and can land mid-save. Right shape,
   acquitted creation path (`int_str` concat, not `str(int)`).
   Low-moderate.
+- 01/08 update: the src-wide bare-`str()` sweep (0de25e7) removed the
+  remaining `str(int)`-in-loop sites the static audits had missed (route
+  RLE builder in info.py, mobprog trace) -- a plausible retro-fix for
+  this crash. Unproven until a post-sweep device heap soak
+  (docs/PRIME_FIRMWARE_BUGS.md sec. Remediation status).
 
 ## Input-lag stream leftovers (30/07/2026, measure-first)
 
