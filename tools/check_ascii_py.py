@@ -1,8 +1,11 @@
 """Check project Python files are ASCII-only and BOM-free.
 
 src/ files additionally must not use %-formatting, .format(), or f-strings
-(firmware format bug, CLAUDE.md pitfall 8). tools/ runs on the dev PC and is
-exempt.
+(firmware format bug, CLAUDE.md pitfall 8), nor bare str() calls (str(int)-GC
+heap bug; render ints via util.num_str/int_str, mixed values via util.sstr).
+A trailing `# str-ok` comment exempts an audited line: argument provably
+neither int nor str, or a site that must not depend on util (tml.py).
+tools/ runs on the dev PC and is exempt.
 """
 
 import ast
@@ -45,15 +48,17 @@ def format_violations(source):
     """Format-bug call sites in on-device source: line-numbered reasons.
 
     Flags a str-literal left operand of %, any .format() attribute call,
-    f-strings, and any other string literal carrying a printf conversion
-    spec. The last rule is what catches a format string hoisted into a
-    variable or table before the % is applied (scan.py's _DISTANCE was one).
+    f-strings, any other string literal carrying a printf conversion
+    spec, and bare str() calls without a `# str-ok` marker. The literal
+    rule is what catches a format string hoisted into a variable or table
+    before the % is applied (scan.py's _DISTANCE was one).
     """
     try:
         tree = ast.parse(source)
     except SyntaxError as exc:
         return ["line " + str(exc.lineno) + ": syntax error (unparseable)"]
     exempt = _exempt_literals(tree)
+    lines = source.splitlines()
     hits = []
     for node in ast.walk(tree):
         if (isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mod)
@@ -65,6 +70,11 @@ def format_violations(source):
             hits.append("line " + str(node.lineno) + ": .format() call")
         elif isinstance(node, ast.JoinedStr):
             hits.append("line " + str(node.lineno) + ": f-string")
+        elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                and node.func.id == "str"
+                and "# str-ok" not in lines[node.lineno - 1]):
+            hits.append("line " + str(node.lineno)
+                        + ": bare str() call (num_str/sstr, or # str-ok)")
         elif (isinstance(node, ast.Constant) and isinstance(node.value, str)
                 and id(node) not in exempt and CONV_SPEC.search(node.value)):
             hits.append("line " + str(node.lineno)
