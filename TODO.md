@@ -23,12 +23,15 @@ churn). Nothing left to chase actively.
 - Second-order residual: `util.num_str`'s `_NCACHE.clear()` at >4096
   dumps 4096 small strings at once and can land mid-save. Right shape,
   acquitted creation path (`int_str` concat, not `str(int)`).
-  Low-moderate.
+  Downgraded to low 01/08: the post-sweep soak rolled the
+  clear-and-rebuild 20 times with an explicit collect after each, all
+  clean (`debug/str_soak-1.log` phase B).
 - 01/08 update: the src-wide bare-`str()` sweep (0de25e7) removed the
   remaining `str(int)`-in-loop sites the static audits had missed (route
   RLE builder in info.py, mobprog trace) -- a plausible retro-fix for
-  this crash. Unproven until a post-sweep device heap soak
-  (docs/PRIME_FIRMWARE_BUGS.md sec. Remediation status).
+  this crash. Device heap soak with the sweep applied passed same day:
+  70 clean collects, canaries clean (docs/PRIME_FIRMWARE_BUGS.md sec.
+  Remediation status, 01 Aug follow-up).
 
 ## Input-lag stream leftovers (30/07/2026, measure-first)
 
@@ -39,6 +42,14 @@ profiling before any code:
 
 - Attack-chain cost (~245 ms of the ~355 ms 1-mob round) -- needs
   per-hit profiling to subdivide; diminishing returns expected.
+- `info._route` ~4.0s per call on-device (str_soak-1 phase A: 50 routes
+  ~201.5s per iteration, near-constant across source rooms -- so
+  dominated by the fixed per-call cost, i.e. `_parse_index` re-reading
+  and re-parsing paths.idx every call, not by Dijkstra). Every `path`
+  command and route-led run pays it. Obvious fix: parse once, cache
+  `(segs, xedges)` at module level (paths.idx is static per build);
+  needs a device number for the resident-dict footprint before
+  committing.
 - `mobile_update` 5s full-world scan -- its "~100 ms class" estimate
   used the scan-shape reasoning run 6 disproved (violence scan was
   ~6-20 ms in-context); likely single-digit ms, likely a dead end. Not

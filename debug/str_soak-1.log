@@ -1,0 +1,164 @@
+str_soak: post-sweep heap soak (route/ncache/sstr/save)
+mem free start: 7092032
+load_world: 15646ms source=file
+areas loaded: 1, rooms 25, free 7181120
+-- phase A: route hammer (20 iters x 50 tags)
+.. A 1/20 src 9400: 50 routes (556ch, 0 unreachable) 201444ms
+.. A 1 collect ok, free 7266928
+.. A 2/20 src 9401: 50 routes (605ch, 0 unreachable) 201536ms
+.. A 2 collect ok, free 7266800
+.. A 3/20 src 9402: 50 routes (654ch, 0 unreachable) 201600ms
+.. A 3 collect ok, free 7266640
+.. A 4/20 src 9403: 50 routes (605ch, 0 unreachable) 201536ms
+.. A 4 collect ok, free 7266512
+.. A 5/20 src 9404: 50 routes (654ch, 0 unreachable) 201603ms
+.. A 5 collect ok, free 7266384
+.. A 6/20 src 9405: 50 routes (703ch, 0 unreachable) 201668ms
+.. A 6 collect ok, free 7266256
+.. A 7/20 src 9406: 50 routes (654ch, 0 unreachable) 201591ms
+.. A 7 collect ok, free 7266064
+.. A 8/20 src 9407: 50 routes (605ch, 0 unreachable) 201542ms
+.. A 8 collect ok, free 7265936
+.. A 9/20 src 9408: 50 routes (654ch, 0 unreachable) 201619ms
+.. A 9 collect ok, free 7265776
+.. A 10/20 src 9409: 50 routes (703ch, 0 unreachable) 201676ms
+.. A 10 collect ok, free 7265648
+.. A 11/20 src 9410: 50 routes (703ch, 0 unreachable) 201727ms
+.. A 11 collect ok, free 7265504
+.. A 12/20 src 9411: 50 routes (654ch, 0 unreachable) 201678ms
+.. A 12 collect ok, free 7265360
+.. A 13/20 src 9412: 50 routes (605ch, 0 unreachable) 201615ms
+.. A 13 collect ok, free 7265216
+.. A 14/20 src 9413: 50 routes (654ch, 0 unreachable) 201677ms
+.. A 14 collect ok, free 7265072
+.. A 15/20 src 9414: 50 routes (703ch, 0 unreachable) 201720ms
+.. A 15 collect ok, free 7264800
+.. A 16/20 src 9415: 50 routes (703ch, 0 unreachable) 201729ms
+.. A 16 collect ok, free 7264656
+.. A 17/20 src 9416: 50 routes (654ch, 0 unreachable) 201678ms
+.. A 17 collect ok, free 7264512
+.. A 18/20 src 9417: 50 routes (605ch, 0 unreachable) 201614ms
+.. A 18 collect ok, free 7264368
+.. A 19/20 src 9418: 50 routes (654ch, 0 unreachable) 201683ms
+.. A 19 collect ok, free 7264224
+.. A 20/20 src 9419: 50 routes (703ch, 0 unreachable) 201724ms
+.. A 20 collect ok, free 7264080
+canary A: 0 bad of 200
+-- phase B: ncache overflow (20 iters x 4200 fresh ints)
+.. B 1/20 cache 113
+.. B 1 collect ok, free 7259552
+.. B 2/20 cache 217
+.. B 2 collect ok, free 7255360
+.. B 3/20 cache 321
+.. B 3 collect ok, free 7250608
+.. B 4/20 cache 425
+.. B 4 collect ok, free 7246128
+.. B 5/20 cache 529
+.. B 5 collect ok, free 7241344
+.. B 6/20 cache 633
+.. B 6 collect ok, free 7237920
+.. B 7/20 cache 737
+.. B 7 collect ok, free 7232672
+.. B 8/20 cache 841
+.. B 8 collect ok, free 7229248
+.. B 9/20 cache 945
+.. B 9 collect ok, free 7223392
+.. B 10/20 cache 1049
+.. B 10 collect ok, free 7219680
+.. B 11/20 cache 1153
+.. B 11 collect ok, free 7216240
+.. B 12/20 cache 1257
+.. B 12 collect ok, free 7209568
+.. B 13/20 cache 1361
+.. B 13 collect ok, free 7206128
+.. B 14/20 cache 1465
+.. B 14 collect ok, free 7202688
+.. B 15/20 cache 1569
+.. B 15 collect ok, free 7199248
+.. B 16/20 cache 1673
+.. B 16 collect ok, free 7191536
+.. B 17/20 cache 1777
+.. B 17 collect ok, free 7188096
+.. B 18/20 cache 1881
+.. B 18 collect ok, free 7184656
+.. B 19/20 cache 1985
+.. B 19 collect ok, free 7181216
+.. B 20/20 cache 2089
+.. B 20 collect ok, free 7177776
+canary B: 0 bad of 200
+-- phase C: sstr storm (20 iters x 3000 mixed tokens)
+.. C 1/20 ok
+.. C 1 collect ok, free 7144832
+.. C 2/20 ok
+.. C 2 collect ok, free 7107936
+.. C 3/20 ok
+.. C 3 collect ok, free 7251168
+.. C 4/20 ok
+.. C 4 collect ok, free 7219648
+.. C 5/20 ok
+.. C 5 collect ok, free 7188064
+.. C 6/20 ok
+.. C 6 collect ok, free 7155440
+.. C 7/20 ok
+.. C 7 collect ok, free 7118544
+.. C 8/20 ok
+.. C 8 collect ok, free 7094432
+.. C 9/20 ok
+.. C 9 collect ok, free 7234608
+.. C 10/20 ok
+.. C 10 collect ok, free 7203008
+.. C 11/20 ok
+.. C 11 collect ok, free 7174640
+.. C 12/20 ok
+.. C 12 collect ok, free 7142000
+.. C 13/20 ok
+.. C 13 collect ok, free 7105088
+.. C 14/20 ok
+.. C 14 collect ok, free 7247632
+.. C 15/20 ok
+.. C 15 collect ok, free 7216864
+.. C 16/20 ok
+.. C 16 collect ok, free 7185264
+.. C 17/20 ok
+.. C 17 collect ok, free 7152624
+.. C 18/20 ok
+.. C 18 collect ok, free 7115712
+.. C 19/20 ok
+.. C 19 collect ok, free 7091616
+.. C 20/20 ok
+.. C 20 collect ok, free 7229920
+canary C: 0 bad of 200
+-- phase D: save drive (10 saves, churn gaps, explicit collect each)
+.. D 1/10 churned 120064B, free 7068192
+.. D 1 save ok=True 1620ms
+.. D 1 collect ok, free 7199520
+.. D 2/10 churned 120064B, free 7069824
+.. D 2 save ok=True 484ms
+.. D 2 collect ok, free 7199360
+.. D 3/10 churned 120064B, free 7069472
+.. D 3 save ok=True 483ms
+.. D 3 collect ok, free 7199200
+.. D 4/10 churned 120064B, free 7069120
+.. D 4 save ok=True 484ms
+.. D 4 collect ok, free 7199040
+.. D 5/10 churned 120064B, free 7068736
+.. D 5 save ok=True 483ms
+.. D 5 collect ok, free 7198880
+.. D 6/10 churned 120064B, free 7068384
+.. D 6 save ok=True 482ms
+.. D 6 collect ok, free 7198720
+.. D 7/10 churned 120064B, free 7068032
+.. D 7 save ok=True 483ms
+.. D 7 collect ok, free 7198560
+.. D 8/10 churned 120064B, free 7067680
+.. D 8 save ok=True 483ms
+.. D 8 collect ok, free 7198400
+.. D 9/10 churned 120064B, free 7067328
+.. D 9 save ok=True 482ms
+.. D 9 collect ok, free 7198240
+.. D 10/10 churned 120064B, free 7066944
+.. D 10 save ok=True 484ms
+.. D 10 collect ok, free 7198048
+canary D: 0 bad of 200
+mem free end: 7161600
+Done. Results in str_soak.log

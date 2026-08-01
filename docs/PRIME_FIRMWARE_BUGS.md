@@ -393,9 +393,17 @@ site instead of a random mid-gameplay auto-collect.
 including `str(int)`-in-loop sites the earlier static audits had missed
 (route RLE builder in info.py, mobprog trace) -- plausible candidates
 for the 31/07 one-off.  `tools/check_ascii_py.py` now flags any bare
-`str()` in `src/`, so the class cannot silently return.  Heap stability
-with the sweep applied has NOT been re-soaked on-device; the 28 Jul
-soak numbers predate it.
+`str()` in `src/`, so the class cannot silently return.  Soak-validated
+on the G1 same day (`debug/str_soak-1.log`, probe `debug/str_soak.py`):
+70 explicit collects over real post-sweep code paths -- 20 route-hammer
+iterations (Dijkstra + `_compress_path`/`_merge_runs` RLE via
+`num_str`), 20 `_NCACHE` clear-and-rebuild cycles (the >4096 clear fired
+once per iteration, confirmed by the cache-length arithmetic in the
+log), 20 `sstr` mixed-token storms, and 10 real `save_world` passes with
+churn gaps -- all clean, resident (int, str) canaries 0 bad of 200 after
+every phase, free heap ending above its start.  That beats the 60-collect
+`cachedstr` validation standard at probe-era death rates (~25-30% per
+collect), so the sweep is considered heap-stable on-device.
 
 ## Related PPL parse bug (unrelated mechanism, same fragile bridge)
 
