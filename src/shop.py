@@ -45,35 +45,33 @@ def find_keeper(player):
     """Find NPC shopkeeper in player's room, check visibility (cf. 1stMud find_keeper in act_obj.c).
 
     Returns:
-        tuple: (keeper_inst, keeper_id) or (None, None) if no usable shopkeeper.
+        dict: keeper char instance, or None if no usable shopkeeper.
     """
     rs = world.rooms[player["room"]]
     keeper = None
-    keeper_id = None
     for mid in rs["mobs"]:
         inst = world.chars[mid]
         if inst["is_npc"] and MOB_DEFS[inst["tpl"]].get("shop"):
             keeper = inst
-            keeper_id = mid
             break
 
     if keeper is None:
         chprintln(player, "You can't do that here.")
-        return None, None
+        return None
 
     shop = MOB_DEFS[keeper["tpl"]]["shop"]
     if time_info["hour"] < shop.get("open_hour", 0):
         do_function(keeper, do_say, "Sorry, I am closed. Come back later.")
-        return None, None
+        return None
     if time_info["hour"] > shop.get("close_hour", 23):
         do_function(keeper, do_say, "Sorry, I am closed. Come back tomorrow.")
-        return None, None
+        return None
 
     if not can_see(keeper, player):
         do_function(keeper, do_say, "I don't trade with folks I can't see.")
-        return None, None
+        return None
 
-    return keeper, keeper_id
+    return keeper
 
 
 def get_cost(keeper, obj, buy):
@@ -333,7 +331,7 @@ def do_buy(player, args):
         _buy_pet(player, args)
         return
 
-    keeper, keeper_id = find_keeper(player)
+    keeper = find_keeper(player)
     if keeper is None:
         return
 
@@ -459,7 +457,7 @@ def do_list(player, args):
             chprintln(player, "Sorry, we're out of pets right now.")
         return
 
-    keeper, keeper_id = find_keeper(player)
+    keeper = find_keeper(player)
     if keeper is None:
         return
 
@@ -570,7 +568,7 @@ def _sell_one(player, keeper, obj):
 
 def do_sell(player, args):
     """Sell an item to a shopkeeper (cf. 1stMud do_sell in act_obj.c)."""
-    keeper, keeper_id = find_keeper(player)
+    keeper = find_keeper(player)
     if keeper is None:
         return
 
@@ -616,7 +614,7 @@ def do_value(player, args):
         chprintln(player, "Value what?")
         return
 
-    keeper, keeper_id = find_keeper(player)
+    keeper = find_keeper(player)
     if keeper is None:
         return
 
@@ -625,8 +623,6 @@ def do_value(player, args):
         act("$n tells you 'You don't have that item'.", keeper, None, player, TO_VICT)
         player["reply"] = keeper["id"]
         return
-
-    tpl = item_tpl(obj)
 
     if not can_see_obj(keeper, obj):
         act("$n doesn't see what you are offering.", keeper, None, player, TO_VICT)
@@ -657,7 +653,7 @@ def do_appraise(player, args):
         chprintln(player, "Appraise what?")
         return
 
-    keeper, keeper_id = find_keeper(player)
+    keeper = find_keeper(player)
     if keeper is None:
         return
 

@@ -26,9 +26,9 @@ from picker import pick_from
 from urandom import randint
 from util import sstr, count_str, num_str, pad_left, pad_right
 
-# cf. 1stMud gquest_t in defines.h
+# cf. 1stMud gquest_t in defines.h; 1 = upstream GQUEST_WAITING, a state
+# [PRIMESUD] never enters (join window removed -- see DESIGN.md "Gquest joining")
 GQUEST_OFF     = 0
-GQUEST_WAITING = 1  # [PRIMESUD] unused live state; kept for legacy save load
 GQUEST_RUNNING = 2
 
 # cf. 1stMud GQuestInfo gquest_info; "joined"/"pmobs" fold the per-player
@@ -571,11 +571,6 @@ def gq_load_line(key, val):
         gquest_info["cost"] = int(parts[7] or 0)
         gquest_info["joined"] = parts[8] == "1"
         gquest_info["who"] = parts[9]
-        # [PRIMESUD] legacy save from before the join window was removed:
-        # promote to running with a fresh run timer
-        if gquest_info["running"] == GQUEST_WAITING:
-            gquest_info["running"] = GQUEST_RUNNING
-            gquest_info["timer"] = mins_to_ticks(5 * gquest_info["mob_count"])
         return True
     if key == "g.gqmobs":
         gquest_info["mobs"] = [int(v) for v in val.split(",") if v]

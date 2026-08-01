@@ -347,13 +347,6 @@ def item_current_charges(obj, tpl):
     return tpl.get("charges", tpl.get("max_charges"))
 
 
-def item_max_charges(obj, tpl):
-    """Return maximum charges for wand/staff, preferring instance state. [PRIMESUD]"""
-    if isinstance(obj, dict) and "max_charges" in obj:
-        return obj["max_charges"]
-    return tpl.get("max_charges", tpl.get("charges"))
-
-
 def item_spell_name(obj, tpl):
     """Return single spell name for wand/staff payloads. [PRIMESUD]"""
     if isinstance(obj, dict) and "spell" in obj:

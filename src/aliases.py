@@ -108,7 +108,7 @@ def do_alias(player, argument):
         tprint("Alias text may not contain '~'.")
         return None
 
-    for pos, pair in enumerate(aliases):
+    for pair in aliases:
         if pair[0] == arg:
             pair[1] = argument
             tprint(arg + " is now realiased to '" + argument + "'.")

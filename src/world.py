@@ -31,7 +31,6 @@ OBJ_VNUM_SCHOOL_DAGGER  = 3701
 OBJ_VNUM_SCHOOL_SWORD   = 3702
 OBJ_VNUM_SCHOOL_VEST    = 3703
 OBJ_VNUM_SCHOOL_SHIELD  = 3704
-OBJ_VNUM_DIPLOMA        = 3715  # [PRIMESUD] no vnums.h entry upstream
 OBJ_VNUM_SCHOOL_BANNER  = 3716
 OBJ_VNUM_SCHOOL_STAFF   = 3718  # weapon_table's spear-class item is the staff,
                                 # not 3717 (SCHOOL_SPEAR, unused upstream)

@@ -4,10 +4,7 @@ from config import MAP_HALF_W, MAP_HALF_H, FULL_MAP_HALF_W, FULL_MAP_HALF_H, COM
 from handler import room_is_dark
 
 # Compact automap (shown side-by-side with room description)
-GW = MAP_HALF_W * 2 + 1
-GH = MAP_HALF_H * 2 + 1
 _CW = MAP_HALF_W * 2 + 1   # compact content width  (11 with default config)
-_CH = MAP_HALF_H * 2 - 3   # compact content height  (9 with default config)
 COMPACT_W = _CW + 2         # including | borders    (13 with default config)
 
 _DIR_DELTA = {
@@ -178,7 +175,7 @@ def _colored_row(grid, colors, y, x0, x1, full=False):
 
 
 def build_compact_lines(player, rooms):
-    """Bordered compact map: (_CH+2) rows x COMPACT_W cols (cf. 1stMud `show_map` in automap.c: compact output)."""
+    """Bordered compact map: MAP_HALF_H*2-1 rows x COMPACT_W cols (cf. 1stMud `show_map` in automap.c: compact output)."""
     grid, colors = _build_grid(player, rooms, MAP_HALF_W, MAP_HALF_H, COMPACT_MAP_DEPTH)
     cx, cy = MAP_HALF_W, MAP_HALF_H
     r_w = MAP_HALF_W

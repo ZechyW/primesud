@@ -1,7 +1,8 @@
 # Dead / Legacy Code Sweep (interim)
 
-Status: sweep complete; evidence/report only. No production code changed.
-Awaiting scope decision before cleanup edits.
+Status: CLOSED 01/08. All candidates resolved -- deletes applied, retains
+decided (upstream-parity data kept: SECT_*, CON_APP_SHOCK, race points,
+TO_SOCIALS, CLASS_PALADIN/RANGER).
 
 Update 2026-08-01: candidates re-verified against 1stMud 4.5.3 source for
 hidden bugs / fidelity gaps. Three items flipped to retain (dead upstream too,
@@ -25,7 +26,7 @@ deletes confirmed safe with evidence noted inline.
   "quirk contradicts nothing" case `CLAUDE.md` says to keep. Deleting would be
   a deviation, not cleanup.
 
-### Obsolete gquest waiting-state conversion
+### Obsolete gquest waiting-state conversion -- DONE (deleted 01/08)
 
 - `src/gquest.py:31` declares `GQUEST_WAITING` as unused live state.
 - Only runtime use is `src/gquest.py:574-578`, converting old waiting saves.
@@ -37,7 +38,7 @@ deletes confirmed safe with evidence noted inline.
 - Verified 01/08: version gate at `game_state.py:617` confirmed to return
   before any gquest line parses; conversion branch unreachable. Safe.
 
-### Unreferenced helper
+### Unreferenced helper -- DONE (deleted 01/08)
 
 - `src/item.py:350-354` `item_max_charges()` has no reference outside its own
   definition across `src/`, `tests/`, `tools/`, and shims.
@@ -48,7 +49,7 @@ deletes confirmed safe with evidence noted inline.
   (`item.py:49-51`), and all live readers (`shop.py:121`, `magic.py:2337`
   recharge, `item.py:768`) are already instance-aware. Safe.
 
-### Shopkeeper ID returned but never consumed
+### Shopkeeper ID returned but never consumed -- DONE (simplified 01/08)
 
 - `src/shop.py:44-76` `find_keeper()` builds and returns `(keeper, keeper_id)`.
 - All five callers unpack `keeper_id` but never use it; no external callers.
@@ -115,7 +116,17 @@ unported -- single-player, no immortals); `get_obj_list`/`obj_vnum` (autoloot
 implemented inline using the corpse returned by `raw_kill`,
 `combat.py:1453-1469`, a deliberate `[PRIMESUD]` deviation).
 
-### Unused constants
+### Unused constants -- RESOLVED 01/08 (split)
+
+Deleted: automap `GW`/`GH`/`_CH` (PrimeSUD-local geometry, no upstream
+names) and `OBJ_VNUM_DIPLOMA` (no upstream constant). Retained for upstream
+parity -- same category as CLASS_PALADIN/RANGER (upstream-named bindings
+over live game data or genuine upstream tables): 13 `SECT_*` strings
+(defines.h sector_t names; all 15 sectors live in MOVEMENT_LOSS),
+`CON_APP_SHOCK` (upstream con_app[].shock table -- unread upstream too),
+`TO_SOCIALS` (live upstream; placeholder for the unported CTAG colour
+prefix, handler.py:932), `CLASS_PALADIN`/`CLASS_RANGER` (live playable
+classes; ordinal symmetry with used CLASS_SWORDSMAN = 6).
 
 Exact-token scan found bindings with no repository references:
 
@@ -141,7 +152,7 @@ Verified 01/08, no fidelity gaps behind these:
 - `CLASS_PALADIN`/`CLASS_RANGER`: not checked against upstream class list;
   trivially re-derivable either way, low stakes.
 
-### Data retained for an unported creation-point system
+### Data retained for an unported creation-point system -- RETAIN (decided 01/08: upstream races.dat parity)
 
 - Six PC-race entries in `src/races.py:51-231` store a `"points"` value.
 - Runtime never reads that key; `groups.py` and `classes.py` explicitly say
@@ -177,10 +188,10 @@ comment); 1502 tests pass, ASCII lint clean.
 - Constraint: `one_hit` is `[Verified]` -- targeted fidelity-restoring edit,
   highlight for human review.
 
-## Lower-value cleanup
+## Lower-value cleanup -- DONE (applied 01/08)
 
-- `src/shop.py:629`: `tpl = item_tpl(obj)` in `do_value()` is unused.
-- `src/aliases.py:111`: `pos` from `enumerate()` is unused; iterate pairs.
+- `src/shop.py:629`: `tpl = item_tpl(obj)` in `do_value()` is unused. Deleted.
+- `src/aliases.py:111`: `pos` from `enumerate()` is unused; iterates pairs now.
 - Loop variables such as `combat.py:3579` `_attempt` are intentionally ignored
   and already named accordingly; no meaningful cleanup.
 
