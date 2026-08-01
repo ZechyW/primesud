@@ -1,7 +1,7 @@
 """Zero-load mob and gear recommendations. [PRIMESUD]"""
 
 import world
-from combat import _get_size
+from combat import _get_size, _get_weapon_skill
 from config import SIZE_RANK, STR_APP_WIELD
 from handler import chprintln, get_curr_stat
 from inventory import (_can_wear_best, _wear_flag, _weapon_dice_part,
@@ -11,12 +11,16 @@ from item import item_weapon_flags
 from pager import tpage
 from picker import pick_from
 from quest import QUEST_DELIVER, QUEST_FINDMOB
+from skills_table import WEAPON_GSN_MAP
 from util import num_str, pad_left, pad_right
 from world import item_tpl
 
 
 FOES_INDEX_FILE = "foes.idx"
 GEAR_INDEX_FILE = "gear.idx"
+# Largest single gear.idx read: fits the wield segment (~56KB) whole, and
+# packs the other 15 segments into ~3 more reads in summary mode.
+_CHUNK = 57344
 
 _GEAR_SLOTS = (
     "light", "finger", "neck", "body", "head", "legs", "feet", "hands",
@@ -298,8 +302,9 @@ def _scan_gear(player, wanted_slot=None):
 
     gear.idx is segmented by wear slot (help.dat pattern): a comment header,
     then one directory line of per-slot segment byte lengths in _GEAR_SLOTS
-    order, then the segments. Each read is one seek plus one bounded read,
-    so peak transient heap is the largest needed segment, never the file.
+    order, then the segments. Consecutive needed segments are read in
+    bounded <=_CHUNK chunks, so peak transient heap stays around one chunk,
+    never the file.
     """
     try:
         f = open(GEAR_INDEX_FILE)
@@ -307,7 +312,7 @@ def _scan_gear(player, wanted_slot=None):
         return None
 
     with f:
-        head = f.read(512)
+        head = f.read(1024)
         cut = head.find("\n")
         end = head.find("\n", cut + 1) if cut >= 0 else -1
         if end < 0:
@@ -337,44 +342,68 @@ def _scan_gear(player, wanted_slot=None):
             results[wanted_slot] = []
 
         pos = end + 1
+        needed = []
         for seg_index in range(len(_GEAR_SLOTS)):
             slot = _GEAR_SLOTS[seg_index]
             size = sizes[seg_index]
-            seg_pos = pos
+            if size and slot in results:
+                needed.append((slot, pos, size))
             pos += size
-            if not size or slot not in results:
-                continue
-            f.seek(seg_pos)
-            data = f.read(size)
-            _scan_segment(player, data, slot, results, baselines, current,
-                          player_level, loot_low, loot_high, wield_limit,
-                          funds, area_order,
-                          10 if wanted_slot is not None else 1)
+        limit = 10 if wanted_slot is not None else 1
+        # Segments are contiguous, so consecutive needed ones pack into
+        # <=_CHUNK-byte reads: each seek+read pair costs ~40ms on-device,
+        # and chunking drops the 16 summary-mode reads to ~4.
+        index = 0
+        while index < len(needed):
+            run_start = needed[index][1]
+            stop = index + 1
+            while (stop < len(needed)
+                    and needed[stop][1] + needed[stop][2] - run_start
+                        <= _CHUNK):
+                stop += 1
+            run_end = needed[stop - 1][1] + needed[stop - 1][2]
+            f.seek(run_start)
+            data = f.read(run_end - run_start)
+            while index < stop:
+                slot, seg_pos, seg_size = needed[index]
+                off = seg_pos - run_start
+                _scan_segment(player, data, off, off + seg_size, slot,
+                              results, baselines, current, player_level,
+                              loot_low, loot_high, wield_limit, funds,
+                              area_order, limit)
+                index += 1
+            data = None
     return results
 
 
-def _scan_segment(player, data, slot, results, baselines, current,
-                  player_level, loot_low, loot_high, wield_limit, funds,
-                  area_order, limit):
+def _scan_segment(player, data, pos, stop, slot, results, baselines,
+                  current, player_level, loot_low, loot_high, wield_limit,
+                  funds, area_order, limit):
     """Score and rank one slot segment's rows into results[slot].
 
-    Segments carry "@min_level|bytes" band headers (5-level item bands,
-    ascending; rows inside a band sorted by max-score bound, descending).
-    The walk breaks at the first band above the player's level and jumps
-    past a band's remaining rows once the bound cannot beat the owned
-    baseline, so only a handful of rows are fully parsed. Data without
-    headers or ordering still scans correctly, just without the shortcuts.
+    Scans data[pos:stop] (the segment may share a chunked read with its
+    neighbours). Segments carry "@min_level|bytes" band headers (5-level
+    item bands, ascending; rows inside a band sorted by max-score bound,
+    descending). The walk breaks at the first band above the player's
+    level and jumps past a band's remaining rows once the bound cannot
+    beat the skip floor -- the owned baseline, raised to the weakest kept
+    score once results[slot] is full (strict <, so equal-bound alternate
+    sources of a kept item still parse). Wield bands hold
+    "@=type|max_static|max_wmax|bytes" sub-segments whose adept-skill
+    bound is rescaled to the player's proficiency, skipping a whole
+    unlearnt weapon type without parsing a row. Data without headers or
+    ordering still scans correctly, just without the shortcuts.
     """
     baseline = baselines[slot]
+    floor = baseline + 1
+    rows = results[slot]
     small = _get_size(player) < SIZE_RANK["large"]
     sb_pct = shield_block_pct(player)
-    size = len(data)
-    pos = 0
-    band_end = -1
-    while pos < size:
+    jump_end = -1
+    while pos < stop:
         end = data.find("\n", pos)
-        if end < 0:
-            end = size
+        if end < 0 or end > stop:
+            end = stop
         line = data[pos:end]
         pos = end + 1
         if not line or line[0] == "#":
@@ -382,12 +411,30 @@ def _scan_segment(player, data, slot, results, baselines, current,
         if line[-1] == "\r":
             line = line[:-1]
         if line[0] == "@":
-            band_end = -1
+            jump_end = -1
             parts = line.split("|")
+            if line[1:2] == "=":
+                # Weapon-type sub-segment header. _weapon_score at skill s
+                # is at most its adept (s=120) value times s*(s+20)/16800;
+                # the sharp term only shrinks that ratio. +4 absorbs the
+                # few points of floor-division slack, and scaled//10
+                # mirrors the two-hander bound widening below.
+                try:
+                    sub_end = pos + int(parts[3])
+                    eff = 20 + _get_weapon_skill(
+                        player, WEAPON_GSN_MAP.get(parts[0][2:], -1))
+                    scaled = int(parts[2]) * eff * (eff + 20) // 16800
+                    if int(parts[1]) + scaled + scaled // 10 + 4 < floor:
+                        pos = sub_end
+                    else:
+                        jump_end = sub_end
+                except (TypeError, ValueError, IndexError):
+                    pass
+                continue
             try:
                 if int(parts[0][1:]) > player_level:
                     return
-                band_end = pos + int(parts[1])
+                jump_end = pos + int(parts[1])
             except (TypeError, ValueError, IndexError):
                 pass
             continue
@@ -412,11 +459,12 @@ def _scan_segment(player, data, slot, results, baselines, current,
             # Two-hander rows may add the no-shield 11/10 dice bonus below;
             # widen the bound so the band skip stays conservative.
             bound += bound // 10
-        if static_score + bound <= baseline:
-            # Bound-sorted band: no later row in it can be a strict upgrade.
-            if band_end >= 0:
-                pos = band_end
-                band_end = -1
+        if static_score + bound < floor:
+            # Bound-sorted band/type group: no later row in it can beat
+            # the floor either.
+            if jump_end >= 0:
+                pos = jump_end
+                jump_end = -1
             continue
         if item_level > player_level:
             continue
@@ -454,7 +502,12 @@ def _scan_segment(player, data, slot, results, baselines, current,
             "source_level": source_level, "source_name": parts[14],
             "tag": tag, "price": price, "source_key": source_key,
         }
-        _keep_candidate(results[slot], candidate, limit)
+        _keep_candidate(rows, candidate, limit)
+        if len(rows) == limit:
+            # Full result list: only rows beating the weakest kept score
+            # matter now. Alternate sources of a kept item tie its bound,
+            # so the strict < above still lets them parse into alts.
+            floor = rows[-1]["gain"] + baseline
 
 
 def _comma_num(value):

@@ -7,6 +7,20 @@ segments, band read) replaces the mobs.idx scan; `gear.idx` gained 5-level
 item bands sorted by max-score bound with break/jump shortcuts. Awaiting
 G1 re-check.
 
+02/08/2026 perf round (approved plan): wield weapon-type sub-segments
+(`@=type|max_static|max_wmax|bytes`, adept bound rescaled to player
+proficiency for arithmetic type skips), full-result floor early-stop
+(jump threshold rises to the weakest kept score once a slot's list is
+full), and chunked contiguous segment reads (summary: 16 seeks+reads ->
+~4). PC-side row-split counts on the shipped index with save-like
+baselines (L10, sword 80): summary 985 -> 642, wield detail 350 -> 287.
+Reject profile shows the residue is loot rows outside the source-level
+window (197 splits, and they suppress the early-stop floor) plus
+unlearnt-weapon rows adept-bound-sorted past the jump. Candidate next
+levers if G1 still slow: loot rows source-level-banded in the builder;
+row fields reordered so rejects parse a short split (partial-split
+reject). Awaiting G1 re-check and go/no-go on the levers.
+
 Desktop verification on 31 July 2026 (post-review: `gear.idx` segmented per
 wear slot for bounded seek reads; gear summary is a drill-in picker; detail
 rows keep up to two alternate sources; mob rows mark extra spawn areas):
