@@ -699,8 +699,8 @@ def rgive_trigger(rvnum, ch, dropped, ttype):
 
 def _carried_objs(c):
     """Every object *c* carries, worn included (cf. carrying_first walk). [PRIMESUD]"""
-    objs = list(c.get("inv", []))
-    for o in (c.get("equip") or {}).values():
+    objs = list(c["inv"])
+    for o in c["equip"].values():
         if o is not None:
             objs.append(o)
     return objs
@@ -1318,7 +1318,7 @@ def _eval_char_bool(check, code, lval_char, lval_obj, mob):
     if check == "isneutral":
         return c is not None and -350 < c.get("alignment", 0) < 350
     if check == "ischarm":
-        return c is not None and bool(c.get("affected_by", {}).get("charm"))
+        return c is not None and bool(c["affected_by"].get("charm"))
     if check == "isfollow":
         if c is None or c.get("master") is None:
             return False
@@ -1370,9 +1370,9 @@ def _eval_char_flag(check, word, lval_char, lval_obj, rest=""):
     if check == "pos":
         return c is not None and c.get("pos") == word
     if check == "act":
-        return c is not None and bool(c.get("is_npc")) and bool(c.get("act_flags", {}).get(word))
+        return c is not None and bool(c.get("is_npc")) and bool(c["act_flags"].get(word))
     if check == "affected":
-        return c is not None and bool(c.get("affected_by", {}).get(word))
+        return c is not None and bool(c["affected_by"].get(word))
     if check == "plr":
         # cf. CHK_PLR: player act-field bits; PrimeSUD keeps them in the
         # player-only "flags" bitmask (see handler.py PLR_*)
@@ -1380,9 +1380,9 @@ def _eval_char_flag(check, word, lval_char, lval_obj, rest=""):
         return (c is not None and not c.get("is_npc") and bit is not None
                 and bool(c.get("flags", 0) & bit))
     if check == "imm":
-        return c is not None and bool(c.get("imm_flags", {}).get(word))
+        return c is not None and bool(c["imm_flags"].get(word))
     if check == "off":
-        return c is not None and bool(c.get("off_flags", {}).get(word))
+        return c is not None and bool(c["off_flags"].get(word))
     if check == "carries":
         # number -> any carried (worn included, cf. has_item); name -> unworn
         # inventory by keyword, self-visibility gated (cf. get_obj_carry)
@@ -1392,14 +1392,14 @@ def _eval_char_flag(check, word, lval_char, lval_obj, rest=""):
             v = _atoi(word)
             return any(obj_vnum(o) == v for o in _carried_objs(c))
         return any(is_name(word, _obj_keywords(o)) and _can_see_obj(c, o)
-                   for o in c.get("inv", []))
+                   for o in c["inv"])
     if check == "wears":
         # number -> worn vnum (cf. has_item fWear); name -> worn by keyword
         # (cf. get_obj_wear; the obj-origin eval skips its can_see_obj gate --
         # self-viewer visibility applied uniformly here)
         if c is None:
             return False
-        worn = [o for o in (c.get("equip") or {}).values() if o is not None]
+        worn = [o for o in c["equip"].values() if o is not None]
         if _is_number(word):
             v = _atoi(word)
             return any(obj_vnum(o) == v for o in worn)
@@ -1411,9 +1411,9 @@ def _eval_char_flag(check, word, lval_char, lval_obj, rest=""):
         return c is not None and any(_obj_type(o) == word
                                      for o in _carried_objs(c))
     if check == "uses":
-        worn = [o for o in ((c or {}).get("equip") or {}).values()
-                if o is not None]
-        return c is not None and any(_obj_type(o) == word for o in worn)
+        return c is not None and any(
+            o is not None and _obj_type(o) == word
+            for o in c["equip"].values())
     if check == "skill":
         # cf. CHK_SKILL: players only; "<skill> <min%>".  Prefix lookup like
         # upstream skill_lookup (multi-word names arrive truncated to one
@@ -2312,12 +2312,12 @@ def _get_obj_world(mob, arg):
                     for sub in it.get("contents", []):
                         yield sub
         for c in world.chars.values():
-            for it in c.get("inv", []):
+            for it in c["inv"]:
                 yield it
                 if isinstance(it, dict):
                     for sub in it.get("contents", []):
                         yield sub
-            for it in (c.get("equip") or {}).values():
+            for it in c["equip"].values():
                 if it is not None:
                     yield it
 
@@ -2373,10 +2373,10 @@ def _detach_obj(mob, obj):
     if rs is not None and obj in rs.get("items", []):
         rs["items"].remove(obj)
         return
-    if obj in mob.get("inv", []):
+    if obj in mob["inv"]:
         mob["inv"].remove(obj)
         return
-    for slot, o in list(mob.get("equip", {}).items()):
+    for slot, o in list(mob["equip"].items()):
         if o is obj:
             mob["equip"][slot] = None
             return
@@ -2478,7 +2478,7 @@ def _mp_kill(mob, args, pv, cl):
         return
     if victim is mob or victim.get("is_npc") or mob.get("pos") == "fighting":
         return
-    if mob.get("affected_by", {}).get("charm") and mob.get("master") == victim.get("id"):
+    if mob["affected_by"].get("charm") and mob.get("master") == victim.get("id"):
         dbg("mobprog: charmed mob attacking master, mob " + num_str(mob.get("tpl", 0)))
         return
     multi_hit(mob, victim)
@@ -2593,7 +2593,7 @@ def _peace_room(rvnum):
     for c in list(_persons_at(rvnum)):
         if c.get("fighting") is not None:
             stop_fighting(c, both=True)
-        if c.get("is_npc") and c.get("act_flags", {}).get("aggressive"):
+        if c.get("is_npc") and c["act_flags"].get("aggressive"):
             c["act_flags"]["aggressive"] = False
 
 
@@ -2688,7 +2688,7 @@ def _mp_purge(mob, args, pv, cl):
         for mid in list(rs.get("mobs", [])):
             v = world.chars.get(mid)
             if (v is not None and v is not mob and v.get("is_npc")
-                    and not v.get("act_flags", {}).get("nopurge")):
+                    and not v["act_flags"].get("nopurge")):
                 _extract_char(v, pull=True)
         rs["items"] = [o for o in rs.get("items", []) if _obj_has_nopurge(o)]
         return
@@ -2714,20 +2714,20 @@ def _mp_junk(mob, args, pv, cl):
     if al != "all" and not al.startswith("all."):
         # cf. 1stMud do_mpjunk single-item path gates on the mob's own sight
         # (get_obj_wear ch/true + get_obj_carry ch/ch, prog_cmds.c:344-350)
-        for slot, o in list(mob.get("equip", {}).items()):
+        for slot, o in list(mob["equip"].items()):
             if o is not None and _can_see_obj(mob, o) and is_name(arg, _obj_keywords(o)):
                 mob["equip"][slot] = None
                 return
-        o = get_obj_list(arg, mob.get("inv", []), world.ITEM_DEFS, mob)
+        o = get_obj_list(arg, mob["inv"], world.ITEM_DEFS, mob)
         if o is None:
             return
         mob["inv"].remove(o)
     else:
         name = arg[4:] if al.startswith("all.") else ""
-        for o in list(mob.get("inv", [])):
+        for o in list(mob["inv"]):
             if not name or is_name(name, _obj_keywords(o)):
                 mob["inv"].remove(o)
-        for slot, o in list(mob.get("equip", {}).items()):
+        for slot, o in list(mob["equip"].items()):
             if o is not None and (not name or is_name(name, _obj_keywords(o))):
                 mob["equip"][slot] = None
 
@@ -2756,10 +2756,10 @@ def _remove_objs(victim, spec, label):
         dbg(label)
         return
     vnum = _atoi(spec) if _is_number(spec) else 0
-    for o in list(victim.get("inv", [])):
+    for o in list(victim["inv"]):
         if fall or obj_vnum(o) == vnum:
             victim["inv"].remove(o)
-    for slot, o in list(victim.get("equip", {}).items()):
+    for slot, o in list(victim["equip"].items()):
         if o is not None and (fall or obj_vnum(o) == vnum):
             victim["equip"][slot] = None
 
@@ -3077,10 +3077,10 @@ def _octx_detach(octx):
     o = octx["obj"]
     c = octx.get("carrier")
     if c is not None:
-        if o in c.get("inv", []):
+        if o in c["inv"]:
             c["inv"].remove(o)
         else:
-            for slot, it in list(c.get("equip", {}).items()):
+            for slot, it in list(c["equip"].items()):
                 if it is o:
                     c["equip"][slot] = None
     else:
@@ -3213,7 +3213,7 @@ def _op_purge(octx, args, pv):
         if rs is None:
             return
         for c in list(_persons_at(rvnum)):
-            if c.get("is_npc") and not c.get("act_flags", {}).get("nopurge"):
+            if c.get("is_npc") and not c["act_flags"].get("nopurge"):
                 _extract_char(c, pull=True)
         rs["items"] = [it for it in rs.get("items", [])
                        if _obj_has_nopurge(it) or it is o]
@@ -3227,11 +3227,11 @@ def _op_purge(octx, args, pv):
             return
         carrier = octx.get("carrier")
         if carrier is not None:
-            vobj = get_obj_list(arg, carrier.get("inv", []), world.ITEM_DEFS, carrier)
+            vobj = get_obj_list(arg, carrier["inv"], world.ITEM_DEFS, carrier)
             if vobj is not None:
                 carrier["inv"].remove(vobj)
                 return
-            for slot, it in list(carrier.get("equip", {}).items()):
+            for slot, it in list(carrier["equip"].items()):
                 if it is not None and is_name(arg, _obj_keywords(it)):
                     carrier["equip"][slot] = None
                     return
@@ -3727,7 +3727,7 @@ def _rp_purge(rvnum, args, pv):
     arg = _first(args)
     if not arg:
         for c in list(_persons_at(rvnum)):
-            if c.get("is_npc") and not c.get("act_flags", {}).get("nopurge"):
+            if c.get("is_npc") and not c["act_flags"].get("nopurge"):
                 _extract_char(c, pull=True)
         rs["items"] = [it for it in rs.get("items", []) if _obj_has_nopurge(it)]
         return

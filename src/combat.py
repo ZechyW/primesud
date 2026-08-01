@@ -175,7 +175,7 @@ def violence_update(player):
         # worn-item then room TRIG_FIGHT, the room at most once per pulse;
         # the prog's triggering char is ch's opponent (cf. fight.c:99-113)
         import mobprog  # deferred: keep mobprog off the boot path
-        for obj in (ch.get("equip") or {}).values():
+        for obj in ch["equip"].values():
             if obj is not None and mobprog.has_otrigger(obj, "fight"):
                 mobprog.opercent_trigger(
                     {"obj": obj, "room": ch["room"], "carrier": ch},

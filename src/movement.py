@@ -62,10 +62,10 @@ def _has_boat(ch):
     Direct children only -- matches 1stMud carrying_first (act_move.c:131),
     which does not recurse into containers.
     """
-    for obj in ch.get("inv", []):
+    for obj in ch["inv"]:
         if (item_tpl_get(obj) or {}).get("type") == "boat":
             return True
-    for obj in ch.get("equip", {}).values():
+    for obj in ch["equip"].values():
         if obj is not None:
             if (item_tpl_get(obj) or {}).get("type") == "boat":
                 return True
@@ -136,7 +136,7 @@ def move_char(ch, direction):
         chprintln(ch, "Alas, you cannot go that way.")
         return
 
-    aff = ch.get("affected_by", {})
+    aff = ch["affected_by"]
 
     # -- Closed door (with pass_door / nopass) --
     auto_door = None
@@ -296,7 +296,7 @@ def move_char(ch, direction):
 
     for fch in followers:
         # 1stMud: charmed follower below standing -> do_stand
-        if (fch.get("affected_by", {}).get("charm")
+        if (fch["affected_by"].get("charm")
                 and POS_ORDER[fch["pos"]] < POS_ORDER["standing"]):
             fch["pos"] = "standing"
 
@@ -306,7 +306,7 @@ def move_char(ch, direction):
         # 1stMud: ROOM_LAW blocks aggressive pets from entering the city
         if (to_room.get("flags", {}).get("law")
                 and fch.get("is_npc")
-                and fch.get("act_flags", {}).get("aggressive")):
+                and fch["act_flags"].get("aggressive")):
             act("You can't bring $N into the city.", ch, None, fch, TO_CHAR)
             act("You aren't allowed in the city.", fch, None, None, TO_CHAR)
             continue
@@ -424,7 +424,7 @@ def get_random_room(ch):
                     and not flags.get("private") and not flags.get("solitary")
                     and not flags.get("safe")
                     and (ch["is_npc"]
-                         or ch.get("act_flags", {}).get("aggressive")
+                         or ch["act_flags"].get("aggressive")
                          or not flags.get("law"))):
                 candidates.append(vnum)
         if candidates:
@@ -471,7 +471,7 @@ def do_enter(ch, args):
     # 1stMud: curse or no_recall room bars exit unless GATE_NOCURSE
     old_flags = ROOM_DEFS.get(old_vnum, {}).get("flags", {})
     if (not gate.get("nocurse")
-            and (ch.get("affected_by", {}).get("curse")
+            and (ch["affected_by"].get("curse")
                  or old_flags.get("no_recall"))):
         chprintln(ch, "Something prevents you from leaving...")
         return
@@ -493,7 +493,7 @@ def do_enter(ch, args):
         act("$p doesn't seem to go anywhere.", ch, portal, None, TO_CHAR)
         return
 
-    if (ch["is_npc"] and ch.get("act_flags", {}).get("aggressive")
+    if (ch["is_npc"] and ch["act_flags"].get("aggressive")
             and dest_flags.get("law")):
         chprintln(ch, "Something prevents you from leaving...")
         return
@@ -546,13 +546,13 @@ def do_enter(ch, args):
     for fch in followers:
         if portal.get("charges") == -1:  # spent mid-loop
             continue
-        if (fch.get("affected_by", {}).get("charm")
+        if (fch["affected_by"].get("charm")
                 and POS_ORDER[fch["pos"]] < POS_ORDER["standing"]):
             fch["pos"] = "standing"
         if fch["pos"] != "standing":
             continue
         if (dest_flags.get("law") and fch.get("is_npc")
-                and fch.get("act_flags", {}).get("aggressive")):
+                and fch["act_flags"].get("aggressive")):
             act("You can't bring $N into the city.", ch, None, fch, TO_CHAR)
             act("You aren't allowed in the city.", fch, None, None, TO_CHAR)
             continue
@@ -1111,7 +1111,7 @@ def do_stand(player, args):
     """
     pos = player.get("pos", "standing")
     if pos == "sleeping":
-        if player.get("affected_by", {}).get("sleep"):
+        if player["affected_by"].get("sleep"):
             chprintln(player, "You can't wake up!")
             return
         chprintln(player, "You wake and stand up.")
@@ -1141,7 +1141,7 @@ def do_rest(player, args):
         chprintln(player, "You are already fighting!")
         return
     if pos == "sleeping":
-        if player.get("affected_by", {}).get("sleep"):
+        if player["affected_by"].get("sleep"):
             chprintln(player, "You can't wake up!")
             return
         chprintln(player, "You wake up and start resting.")
@@ -1171,7 +1171,7 @@ def do_sit(player, args):
         chprintln(player, "Maybe you should finish this fight first?")
         return
     if pos == "sleeping":
-        if player.get("affected_by", {}).get("sleep"):
+        if player["affected_by"].get("sleep"):
             chprintln(player, "You can't wake up!")
             return
         chprintln(player, "You wake and sit up.")
@@ -1232,7 +1232,7 @@ def do_wake(player, args):
         act("$N is already awake.", player, None, victim, TO_CHAR)
         return
 
-    if victim.get("affected_by", {}).get("sleep"):
+    if victim["affected_by"].get("sleep"):
         act("You can't wake $M!", player, None, victim, TO_CHAR)
         return
 
@@ -1256,7 +1256,7 @@ def do_sneak(player, args):
     chprintln(player, "You attempt to move silently.")
     affect_strip(player, GSN_SNEAK)
 
-    if player.get("affected_by", {}).get("sneak"):
+    if player["affected_by"].get("sneak"):
         return
 
     if randint(1, 100) < get_skill(player, GSN_SNEAK):
@@ -1286,7 +1286,7 @@ def do_hide(player, args):
     """
     chprintln(player, "You attempt to hide.")
 
-    aff = player.setdefault("affected_by", {})
+    aff = player["affected_by"]
     aff.pop("hide", None)
 
     if randint(1, 100) < get_skill(player, GSN_HIDE):
@@ -1306,7 +1306,7 @@ def do_visible(player, args):
     affect_strip(player, GSN_INVIS)
     affect_strip(player, GSN_MASS_INVIS)
     affect_strip(player, GSN_SNEAK)
-    aff = player.get("affected_by", {})
+    aff = player["affected_by"]
     aff.pop("hide", None)
     aff.pop("invisible", None)
     aff.pop("sneak", None)
@@ -1332,7 +1332,7 @@ def perform_recall(player, location, what="recall"):
         return True
 
     if room.get("flags", {}).get("no_recall") \
-            or player.get("affected_by", {}).get("curse"):
+            or player["affected_by"].get("curse"):
         # 1stMud: act "$g has forsaken you." ($g = deity name; no deities here)
         chprintln(player, "Your deity has forsaken you.")
         return False

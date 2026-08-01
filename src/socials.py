@@ -220,7 +220,7 @@ def check_social(player, command, argument):
     act(vict_found, player, None, victim, TO_VICT)
 
     if (not player.get("is_npc") and victim.get("is_npc")
-            and not victim.get("affected_by", {}).get("charm")
+            and not victim["affected_by"].get("charm")
             and is_awake(victim)):
         roll = randint(0, 15)  # cf. 1stMud number_bits(4)
         if roll <= 8:

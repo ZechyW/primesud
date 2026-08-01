@@ -589,7 +589,7 @@ def _give_coins(player, amount, coin, rest, victim=None):
             bribe_trigger(victim, player, amount if silver else amount * 100)
 
     # Money changer (cf. 1stMud ACT_IS_CHANGER branch)
-    if victim.get("act_flags", {}).get("changer"):
+    if victim["act_flags"].get("changer"):
         change = (95 * amount // 100 // 100) if silver else (95 * amount)
         if change < 1 and can_see(victim, player):
             act("$n tells you 'I'm sorry, you did not give me enough to change.'",
@@ -1189,7 +1189,7 @@ def _strength_after_swap(player, removed, added=()):
         delta += _item_stat_modifier(obj, item_tpl(obj), "str")
     if not delta:
         return get_curr_stat(player, "str")
-    mods = player.setdefault("mod_stat", {})
+    mods = player["mod_stat"]
     old = mods.get("str", 0)
     mods["str"] = old + delta
     try:
@@ -1637,7 +1637,7 @@ def do_steal(player, args):
         # Failure -- victim notices
         chprintln(player, "Oops.")
         affect_strip(player, GSN_SNEAK)
-        player.get("affected_by", {}).pop("sneak", None)
+        player["affected_by"].pop("sneak", None)
 
         yells = (
             player["name"] + " is a lousy thief!",
@@ -1679,7 +1679,7 @@ def do_steal(player, args):
         return
 
     # cf. 1stMud act_obj.c:2324 -- thief is the viewer, not the victim
-    obj = get_obj_list(what, victim.get("inv", []), ITEM_DEFS, player)
+    obj = get_obj_list(what, victim["inv"], ITEM_DEFS, player)
     if obj is None:
         chprintln(player, "You can't find it.")
         return

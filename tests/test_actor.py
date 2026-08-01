@@ -9,10 +9,13 @@ import world
 def scene(monkeypatch):
     seen = []
     monkeypatch.setattr(handler, "tprint", lambda msg: seen.append(msg))
-    player = {"id": 1, "room": 100, "name": "Player", "pos": "standing"}
-    mob = {"id": 2, "room": 100, "name": "a goblin", "is_npc": True,
-           "sex": "male", "pos": "standing"}
-    other = {"id": 3, "room": 100, "name": "Victim", "pos": "standing"}
+    player = handler._char_base()
+    player.update({"id": 1, "room": 100, "name": "Player", "pos": "standing"})
+    mob = handler._char_base()
+    mob.update({"id": 2, "room": 100, "name": "a goblin", "is_npc": True,
+                "sex": "male", "pos": "standing"})
+    other = handler._char_base()
+    other.update({"id": 3, "room": 100, "name": "Victim", "pos": "standing"})
     monkeypatch.setattr(world, "chars", {1: player, 2: mob, 3: other})
     return {"seen": seen, "player": player, "mob": mob, "other": other}
 

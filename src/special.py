@@ -334,7 +334,7 @@ def spec_janitor(ch):
         if tpl.get("type") in ("drink", "trash") or cost < 10:
             act("$n picks up some trash.", ch, None, None, TO_ROOM)
             rs["items"].remove(trash)
-            ch.setdefault("inv", []).append(trash)
+            ch["inv"].append(trash)
             return True
     return False
 
@@ -362,7 +362,7 @@ _GANG_TAUNTS = (
 
 def _spec_gang_member(ch, rival_group, rival_taunt):
     """Attack a rival gang member in the room (cf. 1stMud spec_troll_member/spec_ogre_member in special.c)."""
-    aff = ch.get("affected_by", {})
+    aff = ch["affected_by"]
     if (not is_awake(ch) or aff.get("calm") or aff.get("charm")
             or ch.get("fighting") is not None):
         return False
@@ -406,7 +406,7 @@ def spec_ogre_member(ch):
 
 def spec_patrolman(ch):
     """Break up fights, whistling for backup (cf. 1stMud spec_patrolman in special.c)."""
-    aff = ch.get("affected_by", {})
+    aff = ch["affected_by"]
     if (not is_awake(ch) or aff.get("calm") or aff.get("charm")
             or ch.get("fighting") is not None):
         return False
@@ -427,7 +427,7 @@ def spec_patrolman(ch):
                           == world.MOB_DEFS.get(ch["tpl"], {}).get("spec_fun")):
         return False
 
-    eq = ch.get("equip", {})
+    eq = ch["equip"]
     whistle = None
     for slot in ("neck_1", "neck_2"):
         obj = eq.get(slot)

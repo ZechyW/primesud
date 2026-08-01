@@ -111,7 +111,7 @@ def do_where(player, args):
             mob = world.chars.get(mob_id)
             if mob is None:
                 continue
-            aff = mob.get("affected_by", {})
+            aff = mob["affected_by"]
             if aff.get("hide") or aff.get("sneak") or not can_see(player, mob):
                 continue
             tpl = MOB_DEFS[mob["tpl"]]
@@ -413,7 +413,7 @@ def _show_char_to_char_1(player, mob_id):
         chprintln(player, "")
         chprintln(player, "You peek at the inventory:")
         check_improve(player, GSN_PEEK, True, 4)
-        inv = inst.get("inv", [])
+        inv = inst["inv"]
         if not inv:
             chprintln(player, "     Nothing.")
         else:
@@ -612,7 +612,7 @@ def _show_char_to_char(player, mob_ids, out=None):
         out (list): [PRIMESUD] optional accumulator for batched room output.
     """
     emit = out.append if out is not None else lambda line: chprintln(player, line)
-    p_aff = player.get("affected_by", {})
+    p_aff = player["affected_by"]
     # [PRIMESUD] mob vnum overlay under holylight (upstream imms use stat)
     show_vnums = "holylight" in DBG
     dark = (player["room"] in ROOM_DEFS._data and room_is_dark(player["room"]))
@@ -623,14 +623,14 @@ def _show_char_to_char(player, mob_ids, out=None):
         # cf. 1stMud show_char_to_char (act_info.c:481): can_see -> full line;
         # else a dark-room char with AFF_INFRARED shows glowing eyes
         if not can_see(player, inst):
-            if dark and inst.get("affected_by", {}).get("infrared"):
+            if dark and inst["affected_by"].get("infrared"):
                 emit("You see glowing red eyes watching YOU!")
             continue
         tpl = MOB_DEFS[inst["tpl"]]
         # Build AFF prefix string (cf. 1stMud show_char_to_char_0, act_info.c:191-214)
         # Race defaults merged into inst at create_mobile; spell AFF bits land
         # in "affected_by" via affect_modify, so both show here.
-        aff = inst.get("affected_by", {})
+        aff = inst["affected_by"]
         prefix = ""
         if aff.get("invisible"):    prefix += "({cInvis{x) "
         if aff.get("hide"):         prefix += "({DHide{x) "
@@ -837,7 +837,7 @@ def do_look(player, args):
     # (cf. 1stMud format_obj_to_char + show_list_to_char in act_info.c)
     seen = {}
     order = []
-    p_aff = player.get("affected_by", {})
+    p_aff = player["affected_by"]
     for obj in rs["items"]:
         # cf. 1stMud show_list_to_char: skip items the viewer can't see
         if not can_see_obj(player, obj):
@@ -1713,7 +1713,7 @@ def do_affects(player, args):
     # [PRIMESUD] output accumulated and sent as one unjoined list --
     # batch-rendered by terminal.print_lines
     out = []
-    affects = player.get("affect_list", [])
+    affects = player["affect_list"]
     if affects:
         out.append("You are affected by the following spells:")
         # cf. 1stMud: modifier/duration detail only at trust >= 20
@@ -1746,7 +1746,7 @@ def do_affects(player, args):
     # gated on the bits actually being set on the char (IsAffected).
     _race = race_lookup(player.get("race", "Human")) or RACE_TABLE["Human"]
     race_aff = _race.get("aff", {})
-    affected_by = player.get("affected_by", {})
+    affected_by = player["affected_by"]
     if race_aff and any(affected_by.get(f) for f in race_aff):
         out.append("You are affected by the following racial abilities:")
         for flag_name in sorted(race_aff):
@@ -1759,7 +1759,7 @@ def do_affects(player, args):
     if active and active != set(race_aff):
         printed = False
         for slot in _EQUIP_SAVE_ORDER:
-            obj = player.get("equip", {}).get(slot)
+            obj = player["equip"].get(slot)
             if obj is None:
                 continue
             tpl = item_tpl(obj)

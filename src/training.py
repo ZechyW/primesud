@@ -468,7 +468,7 @@ def finish_remort(player, new_class, new_race=None, new_sex=None):
     player["classes"].append(new_class)
     b = lvl_bonus(player)
 
-    for af in list(player.get("affect_list", [])):
+    for af in list(player["affect_list"]):
         affect_remove(player, af)
     for slot in player["equip"]:
         if player["equip"][slot] is not None:
@@ -555,7 +555,7 @@ def finish_tier_reset(player, new_class, new_race=None, new_sex=None):
     tier = player.get("tier", 0) + 1
     player["tier"] = tier
 
-    for af in list(player.get("affect_list", [])):
+    for af in list(player["affect_list"]):
         affect_remove(player, af)
     for slot in player["equip"]:
         if player["equip"][slot] is not None:

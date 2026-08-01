@@ -239,22 +239,31 @@ comment); 1502 tests pass, ASCII lint clean.
 - `ruff` and `pyflakes` are not installed; scans used Python AST plus exact
   repository token/reference checks.
 
-# Class C scan -- unnecessary guards (01/08; slice 1 applied 01/08)
+# Class C scan -- unnecessary guards (01/08; FULLY APPLIED 01/08)
 
-Status update 01/08: go given, `[Verified]` permission granted for the
-combat.py/handler.py slice. Applied: all 63 char-receiver flag/container
+Status update 01/08 (second pass): sweep COMPLETE across src. Measurement
+gate waived (user call: mechanical net gain regardless of magnitude); one
+overall on-device playtest replaces the per-slice G1 probe. Applied on top
+of the combat.py slice: 205 script conversions across 22 files (per-file
+receiver whitelists; three patterns: `.get(K, {}/[])`, `.setdefault(K,
+{}/[])`, `(x.get(K) or {})` -- the or-form allocates whenever the dict is
+empty, since `{}` is falsy) plus 5 hand edits (game_state save-path x3;
+magic.py:1372 dead tpl imm_flags fallback; mobprog `uses` check rewrite).
+Retained by classification: template receivers (`tpl`, `MOB_DEFS[...]`),
+object receivers (`obj.get("affect_list"...)` -- obj dicts are sparse),
+`path.py:64` (`mob` can be a mobs.idx record, not a live char),
+`game_state.py:670` (load path parses raw save data; also once-per-boot).
+`learned` still EXCLUDED (absent from `_char_base`; only `create_char`
+overlays it -- guard is load-bearing on NPC-reachable paths).
+
+Earlier slice (same day): all 63 char-receiver flag/container
 `.get(K, {}/[])` sites in combat.py converted to direct subscript;
 `get_curr_stat` double-alloc removed; `max_stats` inline tuple default
 hoisted to `_MAX_STATS_DEFAULT` (MicroPython const-tuple folding is
 version-dependent, so an inline literal may allocate per call on-device).
 Test fixtures routed through `_char_base()` (runtime-fidelity call, user
-approved). `learned` is EXCLUDED from all conversion: absent from
-`_char_base`, only `create_char` overlays it, so the guard is load-bearing
-on any NPC-reachable path. Save policy recorded in DESIGN.md (bump
-`SAVE_VERSION`, never migrate in core; migrations ship as standalone
-tools). Remaining ~150 sites: per-receiver classification deferred to the
-phase-3 go (post-G1 measurement) -- classifying now would rot as lines
-drift, and the measurement gate may kill the remainder.
+approved). Save policy recorded in DESIGN.md (bump `SAVE_VERSION`, never
+migrate in core; migrations ship as standalone tools).
 
 Different question from the sweep above. That pass asked "is this code
 reachable?". This one asks "is this *check* necessary, given that we control

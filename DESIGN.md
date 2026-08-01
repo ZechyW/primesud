@@ -84,6 +84,20 @@ compat story: a mismatched save is backed up and rejected, never
 converted. If a player-save migration is ever worth doing, it ships as a
 standalone tool outside the core codebase.
 
+**Char-dict access convention (settled 01/08/2026).** Every live char dict
+routes through `handler._char_base()`, which guarantees the flag/container
+keys (act_flags, imm_flags, res_flags, vuln_flags, affected_by, off_flags,
+form_flags, part_flags, perm_stat, mod_stat, affect_list, stance, inv,
+equip). Code reading those keys on a live char uses direct subscript
+(`ch["act_flags"]`), never `.get(k, {})`/`.get(k, [])`/`setdefault`/
+`(... or {})` -- an allocating default costs ~0.5 ms per call at full game
+heap (docs/PERFORMANCE.md) and the guard is dead. Defensive `.get` stays
+for: template dicts (`tpl`, `MOB_DEFS`/`ITEM_DEFS`/`ROOM_DEFS` values --
+generated area files prune empty flag dicts), object dicts (sparse),
+`learned` (not in `_char_base`; mobs never get it), raw save-parse data,
+and mobs.idx records. Test fixtures build chars via `_char_base()` +
+`update()`, not hand-rolled literals.
+
 ---
 
 ## Not ported

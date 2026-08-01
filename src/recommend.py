@@ -149,8 +149,8 @@ def _owned_baselines(player):
     scores = {}
     for slot in _GEAR_SLOTS:
         scores[slot] = []
-    owned = player.get("inv", []) + [
-        obj for obj in player.get("equip", {}).values() if obj is not None]
+    owned = player["inv"] + [
+        obj for obj in player["equip"].values() if obj is not None]
     for obj in owned:
         tpl = item_tpl(obj)
         slot = _wear_flag(obj, tpl)

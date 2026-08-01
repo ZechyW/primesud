@@ -156,20 +156,20 @@ def _skill_eligible(player, victim, sn):
     if sn == GSN_BASH:
         return POS_ORDER.get(victim.get("pos", "standing"), 0) >= POS_ORDER["fighting"]
     if sn == GSN_TRIP:
-        if victim.get("affected_by", {}).get("flying"):
+        if victim["affected_by"].get("flying"):
             return False
         if POS_ORDER.get(victim.get("pos", "standing"), 0) < POS_ORDER["fighting"]:
             return False
-        if (player.get("affected_by", {}).get("charm")
+        if (player["affected_by"].get("charm")
                 and player.get("master") == victim.get("id")):
             return False
         return True
     if sn == GSN_DIRT:
-        return not victim.get("affected_by", {}).get("blind")
+        return not victim["affected_by"].get("blind")
     if sn == GSN_DISARM:
-        if victim.get("equip", {}).get("wield") is None:
+        if victim["equip"].get("wield") is None:
             return False
-        if (player.get("equip", {}).get("wield") is None
+        if (player["equip"].get("wield") is None
                 and get_skill(player, GSN_HAND_TO_HAND) == 0):
             return False
         return True

@@ -141,7 +141,7 @@ def _build_grid(player, rooms, half_w, half_h, max_depth):
     gh = half_h * 2 + 1
     grid = [[' '] * gw for _ in range(gh)]
     colors = [[''] * gw for _ in range(gh)]
-    infrared = bool(player.get("affected_by", {}).get("infrared"))
+    infrared = bool(player["affected_by"].get("infrared"))
     _map_exits(rooms, player["room"], grid, colors, half_w, half_h, max_depth,
                infrared)
     grid[half_h][half_w] = 'X'

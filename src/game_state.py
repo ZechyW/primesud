@@ -210,7 +210,7 @@ def _serialize_world(hvar_name=None, file_name=None):
     lines.append("p.groups=" + grp_str)
     # cf. 1stMud ch->stance[] (fwrite_char "Stances" line) -- comma-joined ints
     st_str = ""
-    for s in player.get("stance", []):
+    for s in player["stance"]:
         st_str = st_str + ("," if st_str else "") + sstr(s)
     lines.append("p.stance=" + st_str)
     armor = player["armor"]
@@ -252,7 +252,7 @@ def _serialize_world(hvar_name=None, file_name=None):
     if _pump:
         _pump(KEY_COMMANDS)
     af_parts = []
-    for af in player.get("affect_list", []):
+    for af in player["affect_list"]:
         af_parts.append(
             sstr(af.get("type", "")) + ","
             + sstr(af.get("level", 0)) + ","
@@ -272,7 +272,7 @@ def _serialize_world(hvar_name=None, file_name=None):
         lines.append("p.pet=" + sstr(pet["tpl"]) + "|" + sstr(pet["hit"])
                      + "|" + sstr(pet.get("pet_name", "")))
         pet_af_parts = []
-        for af in pet.get("affect_list", []):
+        for af in pet["affect_list"]:
             pet_af_parts.append(
                 sstr(af.get("type", "")) + ","
                 + sstr(af.get("level", 0)) + ","

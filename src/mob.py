@@ -258,9 +258,9 @@ def scale_pet(owner, evolve=False, reset=False):
         return None
 
     if reset:
-        for af in list(pet.get("affect_list", [])):
+        for af in list(pet["affect_list"]):
             affect_remove(pet, af)
-        pet.setdefault("affected_by", {})["charm"] = True
+        pet["affected_by"]["charm"] = True
 
     old_tpl = MOB_DEFS[pet["tpl"]]
     target = old_tpl.get("evolves_to") if evolve else None
@@ -377,9 +377,9 @@ def _object_count_map():
         for o in rs.get("items", []):
             _tally(o)
     for ch in world.chars.values():
-        for o in ch.get("inv", []):
+        for o in ch["inv"]:
             _tally(o)
-        for e in ch.get("equip", {}).values():
+        for e in ch["equip"].values():
             if e is not None:
                 _tally(e)
     return counts
@@ -578,10 +578,10 @@ def reset_room(vnum, next_id, obj_counts, mob_counts):
             if container is None and last_spawned:
                 for mid in rs.get("mobs", []):
                     holder = world.chars[mid]
-                    for o in holder.get("inv", []):
+                    for o in holder["inv"]:
                         if isinstance(o, dict) and o["vnum"] == cont_vnum:
                             container = o
-                    for o in holder.get("equip", {}).values():
+                    for o in holder["equip"].values():
                         if o is not None and o["vnum"] == cont_vnum:
                             container = o
             if container is None:
@@ -664,7 +664,7 @@ def mobile_update(tr, player):
     for mob_id, inst in list(world.chars.items()):
         if not inst.get("is_npc"):
             continue
-        if inst.get("affected_by", {}).get("charm"):
+        if inst["affected_by"].get("charm"):
             # Charmed mobs (pets) neither wander nor despawn
             # (cf. 1stMud IsAffected(ch, AFF_CHARM) skips in update.c)
             continue
@@ -721,7 +721,7 @@ def mobile_update(tr, player):
                     best_cost = cost
             if obj_best is not None:
                 room_items.remove(obj_best)
-                inst.setdefault("inv", []).append(obj_best)
+                inst["inv"].append(obj_best)
                 act("$n gets $p.", inst, obj_best, None, TO_ROOM)
         if act_flags.get("sentinel"):
             continue
@@ -793,14 +793,14 @@ def aggr_update(tr, player):
         # cf. update.c:962-966 -- gate conditions on the aggressive mob
         if not ch.get("is_npc"):
             continue
-        act_flags = ch.get("act_flags", {})
+        act_flags = ch["act_flags"]
         if not act_flags.get("aggressive"):
             continue
-        if ch.get("affected_by", {}).get("calm"):          # cf. IsAffected(ch, AFF_CALM)
+        if ch["affected_by"].get("calm"):          # cf. IsAffected(ch, AFF_CALM)
             continue
         if ch["fighting"] is not None:
             continue
-        if ch.get("affected_by", {}).get("charm"):          # cf. IsAffected(ch, AFF_CHARM)
+        if ch["affected_by"].get("charm"):          # cf. IsAffected(ch, AFF_CHARM)
             continue
         if not is_awake(ch):
             continue

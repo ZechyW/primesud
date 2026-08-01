@@ -1036,7 +1036,7 @@ def _apply_pending_deltas(tag, room_vnums):
         # cull them against saved template positions. [PRIMESUD]
         _ids = sorted(i for i, inst in chars.items()
                       if inst.get("is_npc") and inst["tpl"] == _tpl
-                      and not (inst.get("act_flags", {}).get("pet")
+                      and not (inst["act_flags"].get("pet")
                                and inst.get("master") is not None))
         for _mid in _ids[len(_saved):]:
             _old = chars[_mid]["room"]
@@ -1307,8 +1307,8 @@ def _snap_save_vnums():
 
     _player = chars.get(1)
     if _player is not None:
-        _walk_always(_player.get("inv", []))
-        _walk_always([_e for _e in _player.get("equip", {}).values()
+        _walk_always(_player["inv"])
+        _walk_always([_e for _e in _player["equip"].values()
                       if _e is not None])
 
     for _rv in rooms._data:
@@ -1350,8 +1350,8 @@ def _snap_live_vnums():
 
     for _cid in chars:
         _ch = chars[_cid]
-        _walk(_ch.get("inv", []))
-        _walk([_e for _e in _ch.get("equip", {}).values() if _e is not None])
+        _walk(_ch["inv"])
+        _walk([_e for _e in _ch["equip"].values() if _e is not None])
     for _rv in rooms._data:
         _walk(rooms._data[_rv].get("items", []))
     for _rv in _pending_room_items:
@@ -1403,8 +1403,8 @@ def _materialize_item_snapshots(lo, hi, rvnum_set):
 
     for _cid in chars:
         _ch = chars[_cid]
-        _walk(_ch.get("inv", []))
-        _walk([_e for _e in _ch.get("equip", {}).values() if _e is not None])
+        _walk(_ch["inv"])
+        _walk([_e for _e in _ch["equip"].values() if _e is not None])
     for _rv in rooms._data:
         if _rv not in rvnum_set:
             _walk(rooms._data[_rv].get("items", []))

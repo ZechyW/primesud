@@ -217,7 +217,7 @@ def _debug_purge(player, args):
         inst = world.chars.get(mid)
         if inst is None:
             continue
-        if inst.get("act_flags", {}).get("nopurge"):
+        if inst["act_flags"].get("nopurge"):
             continue
         if mid == player.get("pet"):
             continue
@@ -263,7 +263,7 @@ def _debug_peace(player, args):
         if inst["fighting"] is not None:
             stop_fighting(inst, both=True)
         # cf. RemBit(rch->act, ACT_AGGRESSIVE)
-        inst.get("act_flags", {}).pop("aggressive", None)
+        inst["act_flags"].pop("aggressive", None)
     terminal.tr.print("Ok.")
 
 

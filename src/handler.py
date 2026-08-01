@@ -289,7 +289,7 @@ def affect_modify(char, af, add):
         mod = -mod
     loc = af.get("location", "none")
     if loc in ("str", "dex", "int", "wis", "con"):
-        ms = char.setdefault("mod_stat", {})
+        ms = char["mod_stat"]
         ms[loc] = ms.get(loc, 0) + mod
     elif loc == "sex":
         # [PRIMESUD] 1stMud adds mod unclamped (APPLY_SEX, handler.c:975) and
@@ -318,7 +318,7 @@ def affect_modify(char, af, add):
     # (reverses the weapon's stat_bonuses), so _affect_depth guards against a
     # +str weapon dropping twice -- same role as 1stMud's static depth counter.
     global _affect_depth
-    wield = char.get("equip", {}).get("wield")
+    wield = char["equip"].get("wield")
     if (_affect_depth == 0 and not char.get("is_npc") and wield is not None
             and item_tpl(wield).get("weight", 0)
                 > STR_APP_WIELD[get_curr_stat(char, "str")] * 10):
@@ -346,7 +346,7 @@ def affect_find(char, sn):
     (cf. 1stMud affect_find in handler.c)
     [Verified: 23/06/2026]
     """
-    for af in char.get("affect_list", []):
+    for af in char["affect_list"]:
         if af.get("type") == sn:
             return af
     return None
@@ -360,7 +360,7 @@ def affect_to_char(char, af):
         af (dict): Affect with type, level, duration, location, modifier, bitvector, where.
     """
     cur = dict(af)
-    char.setdefault("affect_list", []).append(cur)
+    char["affect_list"].append(cur)
     affect_modify(char, cur, True)
 
 
@@ -380,7 +380,7 @@ def affect_join(char, af):
         char (dict): Character state dict.
         af (dict): New affect to merge or create.
     """
-    for old in char.get("affect_list", []):
+    for old in char["affect_list"]:
         if old.get("type") == af.get("type"):
             af = dict(af)
             af["level"] = (af["level"] + old.get("level", 0)) // 2
@@ -393,7 +393,7 @@ def affect_join(char, af):
 
 def affect_remove(char, af):
     """Remove one active affect from a character (cf. 1stMud affect_remove in handler.c)."""
-    affects = char.get("affect_list", [])
+    affects = char["affect_list"]
     if af not in affects:
         return
     affect_modify(char, af, False)
@@ -426,13 +426,13 @@ def affect_check(char, where, vector):
         return
 
     # Check char affects (cf. 1stMud: scan ch->affect_first)
-    for paf in char.get("affect_list", []):
+    for paf in char["affect_list"]:
         if paf.get("where", "to_affects") == where and paf.get("bitvector") == vector:
             char.setdefault(key, {})[vector] = True
             return
 
     # Check equipped item affects (cf. 1stMud: scan ch->carrying_first where wear_loc != -1)
-    for obj in char.get("equip", {}).values():
+    for obj in char["equip"].values():
         if obj is None:
             continue
         for paf in obj.get("affect_list", []):
@@ -450,7 +450,7 @@ def affect_check(char, where, vector):
 
 def affect_strip(char, sn):
     """Remove all affects of type sn (cf. 1stMud affect_strip in handler.c)."""
-    for af in list(char.get("affect_list", [])):
+    for af in list(char["affect_list"]):
         if af.get("type") == sn:
             affect_remove(char, af)
 
@@ -1232,7 +1232,7 @@ def room_light(room_vnum):
     for ch in world.chars.values():
         if ch.get("room") != room_vnum:
             continue
-        eq = ch.get("equip", {}).get("light")
+        eq = ch["equip"].get("light")
         if eq is not None and _is_lit_light(eq):
             total += 1
     rs = world.rooms._data.get(room_vnum)  # runtime state only; no lazy-load
@@ -1312,8 +1312,8 @@ def can_see(ch, victim):
     if not ch.get("is_npc") and "holylight" in DBG:
         return True
 
-    ch_aff = ch.get("affected_by", {})
-    v_aff = victim.get("affected_by", {})
+    ch_aff = ch["affected_by"]
+    v_aff = victim["affected_by"]
 
     if ch_aff.get("blind"):
         return False
@@ -1400,7 +1400,7 @@ def can_see_obj(ch, obj):
     if not ch.get("is_npc") and "holylight" in DBG:
         return True
 
-    ch_aff = ch.get("affected_by", {})
+    ch_aff = ch["affected_by"]
 
     # cf. handler.c:2461 -- a quester always sees their quest object (so a
     # retrieve token in a dark room stays visible). [PRIMESUD] matched by
@@ -1453,7 +1453,7 @@ def check_blind(ch):
     """
     if not ch.get("is_npc") and "holylight" in DBG:
         return True
-    if ch.get("affected_by", {}).get("blind"):
+    if ch["affected_by"].get("blind"):
         chprintln(ch, "You can't see a thing!")
         return False
     return True

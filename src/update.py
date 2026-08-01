@@ -314,7 +314,7 @@ def obj_update(tr, player):
     for cid, ch in world.chars.items():
         if not ch.get("is_npc"):
             continue
-        for obj in list(ch.get("inv", [])):
+        for obj in list(ch["inv"]):
             _tick_contents(obj.get("contents", []))
             _obj_affect_update(obj)
             if (oprogs and mobprog.pulse_obj(obj, ch["room"], ch, True)
@@ -332,7 +332,7 @@ def obj_update(tr, player):
                 ch["inv"].remove(obj)
 
     # -- Player inventory + equipment (cf. 1stMud obj->carried_by, !IsNPC path) --
-    for obj in list(player.get("inv", [])):
+    for obj in list(player["inv"]):
         _tick_contents(obj.get("contents", []))
         _obj_affect_update(obj)
         if (oprogs and mobprog.pulse_obj(obj, player["room"], player, True)
@@ -354,7 +354,7 @@ def obj_update(tr, player):
                     player["inv"].append(inner)
             player["inv"].remove(obj)
 
-    for slot, obj in list((player.get("equip") or {}).items()):
+    for slot, obj in list(player["equip"].items()):
         if obj is None:
             continue
         _tick_contents(obj.get("contents", []))

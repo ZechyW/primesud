@@ -209,9 +209,9 @@ def acid_effect(vo, level, dam, target):
 
     if target == TARGET_CHAR:
         victim = vo
-        for obj in list(victim.get("inv", [])):
+        for obj in list(victim["inv"]):
             _acid_obj(obj, level, dam, victim, None, ("list", victim["inv"]))
-        for slot, obj in list(victim.get("equip", {}).items()):
+        for slot, obj in list(victim["equip"].items()):
             if obj is not None:
                 _acid_obj(obj, level, dam, victim, None, ("equip", victim, slot), worn=True)
         return None
@@ -285,7 +285,7 @@ def fire_effect(vo, level, dam, target):
     if target == TARGET_CHAR:
         from magic import saves_spell  # late import: magic imports effects
         victim = vo
-        if (not victim.get("affected_by", {}).get("blind")
+        if (not victim["affected_by"].get("blind")
                 and not saves_spell(level // 4 + dam // 20, victim, DAM_FIRE)):
             act("$n is blinded by smoke!", victim, None, None, TO_ROOM)
             chprintln(victim, "Your eyes tear up from smoke...you can't see a thing!")
@@ -297,9 +297,9 @@ def fire_effect(vo, level, dam, target):
         # [PRIMESUD] gain_condition(victim, COND_THIRST, dam/20) not ported --
         # hunger/thirst condition tracking doesn't exist (see do_drink note
         # in inventory.py).
-        for obj in list(victim.get("inv", [])):
+        for obj in list(victim["inv"]):
             _fire_obj(obj, level, dam, victim, None, ("list", victim["inv"]))
-        for slot, obj in list(victim.get("equip", {}).items()):
+        for slot, obj in list(victim["equip"].items()):
             if obj is not None:
                 _fire_obj(obj, level, dam, victim, None, ("equip", victim, slot))
         return None
@@ -371,9 +371,9 @@ def cold_effect(vo, level, dam, target):
         # [PRIMESUD] gain_condition(victim, COND_HUNGER, dam/20) not ported --
         # hunger/thirst condition tracking doesn't exist (see do_drink note
         # in inventory.py).
-        for obj in list(victim.get("inv", [])):
+        for obj in list(victim["inv"]):
             _cold_obj(obj, level, dam, victim, None, ("list", victim["inv"]))
-        for slot, obj in list(victim.get("equip", {}).items()):
+        for slot, obj in list(victim["equip"].items()):
             if obj is not None:
                 _cold_obj(obj, level, dam, victim, None, ("equip", victim, slot))
         return None
@@ -439,9 +439,9 @@ def poison_effect(vo, level, dam, target):
                 "level": level, "duration": level // 2,
                 "location": "str", "modifier": -1, "bitvector": "poison",
             })
-        for obj in list(victim.get("inv", [])):
+        for obj in list(victim["inv"]):
             _poison_obj(obj, level, dam, ("list", victim["inv"]))
-        for slot, obj in list(victim.get("equip", {}).items()):
+        for slot, obj in list(victim["equip"].items()):
             if obj is not None:
                 _poison_obj(obj, level, dam, ("equip", victim, slot))
         return None
@@ -505,9 +505,9 @@ def shock_effect(vo, level, dam, target):
         if not saves_spell(level // 4 + dam // 20, victim, DAM_LIGHTNING):
             chprintln(victim, "Your muscles stop responding.")
             DazeState(victim, max(12, level // 4 + dam // 20))
-        for obj in list(victim.get("inv", [])):
+        for obj in list(victim["inv"]):
             _shock_obj(obj, level, dam, victim, None, ("list", victim["inv"]))
-        for slot, obj in list(victim.get("equip", {}).items()):
+        for slot, obj in list(victim["equip"].items()):
             if obj is not None:
                 _shock_obj(obj, level, dam, victim, None, ("equip", victim, slot))
         return None

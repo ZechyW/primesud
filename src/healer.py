@@ -32,7 +32,7 @@ def do_heal(player, args):
     mob = None
     for mid in world.rooms[player["room"]]["mobs"]:
         inst = world.chars.get(mid)
-        if inst is not None and inst.get("act_flags", {}).get("healer"):
+        if inst is not None and inst["act_flags"].get("healer"):
             mob = inst
             break
 

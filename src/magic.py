@@ -155,7 +155,7 @@ def saves_spell(level, victim, dam_type):
     """Return True when victim saves against spell (cf. 1stMud saves_spell in magic.c).
     [Verified: 03/07/2026]"""
     save = 50 + (victim.get("level", 1) - level) * 5 - victim.get("saving_throw", 0) * 2
-    if victim.get("affected_by", {}).get("berserk"):
+    if victim["affected_by"].get("berserk"):
         save += victim.get("level", 1) // 2
 
     res = check_immune(victim, dam_type)
@@ -193,7 +193,7 @@ def check_dispel(dis_level, victim, sn):
     [Verified: 03/07/2026]"""
     if not is_affected(victim, sn):
         return False
-    for af in list(victim.get("affect_list", [])):
+    for af in list(victim["affect_list"]):
         if af.get("type") != sn:
             continue
         if not saves_dispel(dis_level, af.get("level", 0), af.get("duration", 0)):
@@ -282,7 +282,7 @@ def spell_earthquake(sn, level, ch, vo, target):
         victim = world.chars.get(mob_id)
         if victim is None or victim is ch or is_safe_spell(ch, victim, True):
             continue
-        dam = 0 if victim.get("affected_by", {}).get("flying") else level + dice(2, 8)
+        dam = 0 if victim["affected_by"].get("flying") else level + dice(2, 8)
         damage(ch, victim, dam, sn, DAM_BASH, True)
     return True
 
@@ -378,7 +378,7 @@ def spell_teleport(sn, level, ch, vo, target):
     room = ROOM_DEFS.get(victim.get("room"))
     if (room is None
             or room.get("flags", {}).get("no_recall")
-            or (victim is not ch and victim.get("imm_flags", {}).get("summon"))
+            or (victim is not ch and victim["imm_flags"].get("summon"))
             or (ch.get("is_npc") is not True and victim.get("fighting") is not None)
             or (victim is not ch and saves_spell(level - 5, victim, DAM_OTHER))):
         chprintln(ch, "You failed.")
@@ -412,7 +412,7 @@ def spell_teleport(sn, level, ch, vo, target):
 def spell_farsight(sn, level, ch, vo, target):
     """Farsight spell (cf. 1stMud spell_farsight in magic2.c).
     [Verified: 03/07/2026]"""
-    if ch.get("affected_by", {}).get("blind"):
+    if ch["affected_by"].get("blind"):
         chprintln(ch, "Maybe it would help if you could see?")
         return False
     do_scan(ch, ch.get("_target_name", "").split())
@@ -445,10 +445,10 @@ def _scan_locate_areas(tags, wanted, level, ch, found, max_found,
     """Scan objects hosted by selected loaded areas. [PRIMESUD]"""
     loc = "one is carried by you"
     if include_player:
-        if _locate_obj_list(ch.get("inv", []), loc, wanted, level, ch,
+        if _locate_obj_list(ch["inv"], loc, wanted, level, ch,
                             found, max_found):
             return
-        for obj in ch.get("equip", {}).values():
+        for obj in ch["equip"].values():
             if obj is not None and _locate_obj_list(
                     [obj], loc, wanted, level, ch, found, max_found):
                 return
@@ -481,10 +481,10 @@ def _scan_locate_areas(tags, wanted, level, ch, found, max_found,
             # invisible carrier: upstream falls to the room branch, and a
             # carried obj has no room (magic.c:3536-3549)
             mloc = "one is in somewhere"
-        if _locate_obj_list(mob.get("inv", []), mloc, wanted, level, ch,
+        if _locate_obj_list(mob["inv"], mloc, wanted, level, ch,
                             found, max_found):
             return
-        for obj in mob.get("equip", {}).values():
+        for obj in mob["equip"].values():
             if obj is not None and _locate_obj_list(
                     [obj], mloc, wanted, level, ch, found, max_found):
                 return
@@ -776,7 +776,7 @@ def spell_enchant_armor(sn, level, ch, vo, target):
     if tpl.get("type") != "armor":
         chprintln(ch, "That isn't an armor.")
         return False
-    if vo not in ch.get("inv", []):
+    if vo not in ch["inv"]:
         chprintln(ch, "The item must be carried to be enchanted.")
         return False
     if item_extra_flags(vo, tpl).get("quest"):
@@ -856,7 +856,7 @@ def spell_enchant_weapon(sn, level, ch, vo, target):
     if tpl.get("type") != "weapon":
         chprintln(ch, "That isn't a weapon.")
         return False
-    if vo not in ch.get("inv", []):
+    if vo not in ch["inv"]:
         chprintln(ch, "The item must be carried to be enchanted.")
         return False
     if item_extra_flags(vo, tpl).get("quest"):
@@ -1014,7 +1014,7 @@ def spell_bless(sn, level, ch, vo, target):
             return False
         item_affect_to_obj(vo, _new_obj_affect(sn, level, 6 + level, "saves", -1, "bless"), tpl)
         chprintln(ch, _item_name(vo) + " glows with a holy aura.")
-        if any(vo is e for e in ch.get("equip", {}).values()):
+        if any(vo is e for e in ch["equip"].values()):
             # cf. 1stMud: if (obj->wear_loc != WEAR_NONE) ch->saving_throw -= 1
             # (magic.c:758-759) -- note this adjusts the CASTER's saving throw,
             # not the wearer's, exactly as upstream.
@@ -1065,7 +1065,7 @@ def spell_weaken(sn, level, ch, vo, target):
 def spell_faerie_fire(sn, level, ch, vo, target):
     """Faerie fire spell (cf. 1stMud spell_faerie_fire in magic.c).
     [Verified: 03/07/2026]"""
-    if vo.get("affected_by", {}).get("faerie_fire"):
+    if vo["affected_by"].get("faerie_fire"):
         return False
     affect_to_char(vo, _new_affect(sn, level, level, "ac", 2 * level, "faerie_fire"))
     chprintln(vo, "You are surrounded by a pink outline.")
@@ -1076,7 +1076,7 @@ def spell_faerie_fire(sn, level, ch, vo, target):
 def spell_blindness(sn, level, ch, vo, target):
     """Blindness spell (cf. 1stMud spell_blindness in magic.c).
     [Verified: 03/07/2026]"""
-    if vo.get("affected_by", {}).get("blind") or saves_spell(level, vo, DAM_OTHER):
+    if vo["affected_by"].get("blind") or saves_spell(level, vo, DAM_OTHER):
         chprintln(ch, "You failed.")
         return False
     affect_to_char(vo, _new_affect(sn, level, 1 + level, "hitroll", -4, "blind"))
@@ -1148,13 +1148,13 @@ def spell_curse(sn, level, ch, vo, target):
             return False
         item_affect_to_obj(vo, _new_obj_affect(sn, level, 2 * level, "saves", 1, "evil"), tpl)
         chprintln(ch, _item_name(vo) + " glows with a malevolent aura.")
-        if any(vo is e for e in ch.get("equip", {}).values()):
+        if any(vo is e for e in ch["equip"].values()):
             # cf. 1stMud: if (obj->wear_loc != WEAR_NONE) ch->saving_throw += 1
             # (magic.c:1668-1669) -- adjusts the CASTER's saving throw, not the
             # wearer's, exactly as upstream.
             ch["saving_throw"] = ch.get("saving_throw", 0) + 1
         return True
-    if vo.get("affected_by", {}).get("curse") or saves_spell(level, vo, DAM_NEGATIVE):
+    if vo["affected_by"].get("curse") or saves_spell(level, vo, DAM_NEGATIVE):
         return False
     mod = level // 8
     affect_to_char(vo, _new_affect(sn, level, 2 * level, "hitroll", -mod, "curse"))
@@ -1296,10 +1296,10 @@ def spell_dispel_magic(sn, level, ch, vo, target):
         return False
     found = _dispel_all(level, vo)
     sanc_sn = _skill_lookup("sanctuary")
-    if (vo.get("affected_by", {}).get("sanctuary")
+    if (vo["affected_by"].get("sanctuary")
             and not saves_dispel(level, vo.get("level", 1), -1)
             and not is_affected(vo, sanc_sn)):
-        vo.get("affected_by", {}).pop("sanctuary", None)
+        vo["affected_by"].pop("sanctuary", None)
         act("The white aura around $n's body vanishes.", vo, None, None, TO_ROOM)
         found = True
     if found:
@@ -1369,13 +1369,14 @@ def spell_calm(sn, level, ch, vo, target):
             continue
         if mob.get("is_npc"):
             tpl = MOB_DEFS.get(mob.get("tpl"), {})
-            if mob.get("imm_flags", tpl.get("imm_flags", {})).get("magic"):
+            # tpl fallback dropped: create_mobile seeds imm_flags (_char_base invariant)
+            if mob["imm_flags"].get("magic"):
                 bail = True
                 break
             if tpl.get("act_flags", {}).get("undead"):
                 bail = True
                 break
-        if mob.get("affected_by", {}).get("calm") or mob.get("affected_by", {}).get("berserk"):
+        if mob["affected_by"].get("calm") or mob["affected_by"].get("berserk"):
             bail = True
             break
         if is_affected(mob, _skill_lookup("frenzy")):
@@ -1388,7 +1389,7 @@ def spell_calm(sn, level, ch, vo, target):
         affect_to_char(mob, _new_affect(sn, level, level // 4, "hitroll", mod, "calm"))
         affect_to_char(mob, _new_affect(sn, level, level // 4, "damroll", mod, "calm"))
     if not bail and not ch.get("is_npc"):
-        if not (ch.get("affected_by", {}).get("calm") or ch.get("affected_by", {}).get("berserk")
+        if not (ch["affected_by"].get("calm") or ch["affected_by"].get("berserk")
                 or is_affected(ch, _skill_lookup("frenzy"))):
             found = True
             chprintln(ch, "A wave of calm passes over you.")
@@ -1405,7 +1406,7 @@ def spell_cancellation(sn, level, ch, vo, target):
     victim = vo
     level += 2
     if ((not ch.get("is_npc") and victim.get("is_npc")
-            and not (ch.get("affected_by", {}).get("charm")
+            and not (ch["affected_by"].get("charm")
                      and ch.get("master") == victim.get("id")))
             or (ch.get("is_npc") and not victim.get("is_npc"))):
         chprintln(ch, "You failed, try dispel magic.")
@@ -1448,10 +1449,10 @@ def spell_charm_person(sn, level, ch, vo, target):
     if victim is ch:
         chprintln(ch, "You like yourself even better!")
         return False
-    if (victim.get("affected_by", {}).get("charm")
-            or ch.get("affected_by", {}).get("charm")
+    if (victim["affected_by"].get("charm")
+            or ch["affected_by"].get("charm")
             or level < victim.get("level", 1)
-            or victim.get("imm_flags", {}).get("charm")
+            or victim["imm_flags"].get("charm")
             or saves_spell(level, victim, DAM_CHARM)):
         return False
     room = ROOM_DEFS.get(ch.get("room"))
@@ -1542,7 +1543,7 @@ def spell_create_rose(sn, level, ch, vo, target):
     rose = create_object(OBJ_VNUM_ROSE)
     act("$n has created a beautiful red rose.", ch, rose, None, TO_ROOM)
     chprintln(ch, "You create a beautiful red rose.")
-    ch.setdefault("inv", []).append(rose)
+    ch["inv"].append(rose)
     return True
 
 
@@ -1606,7 +1607,7 @@ def spell_demonfire(sn, level, ch, vo, target):
 def spell_detect_evil(sn, level, ch, vo, target):
     """Detect evil (cf. 1stMud spell_detect_evil in magic.c).
     [Verified: 03/07/2026]"""
-    if vo.get("affected_by", {}).get("detect_evil"):
+    if vo["affected_by"].get("detect_evil"):
         if vo is ch:
             chprintln(ch, "You can already sense evil.")
         else:
@@ -1622,7 +1623,7 @@ def spell_detect_evil(sn, level, ch, vo, target):
 def spell_detect_good(sn, level, ch, vo, target):
     """Detect good (cf. 1stMud spell_detect_good in magic.c).
     [Verified: 03/07/2026]"""
-    if vo.get("affected_by", {}).get("detect_good"):
+    if vo["affected_by"].get("detect_good"):
         if vo is ch:
             chprintln(ch, "You can already sense good.")
         else:
@@ -1638,7 +1639,7 @@ def spell_detect_good(sn, level, ch, vo, target):
 def spell_detect_hidden(sn, level, ch, vo, target):
     """Detect hidden (cf. 1stMud spell_detect_hidden in magic.c).
     [Verified: 03/07/2026] -- 1stMud's trailing space after "can be." dropped [PRIMESUD]."""
-    if vo.get("affected_by", {}).get("detect_hidden"):
+    if vo["affected_by"].get("detect_hidden"):
         if vo is ch:
             chprintln(ch, "You are already as alert as you can be.")
         else:
@@ -1654,7 +1655,7 @@ def spell_detect_hidden(sn, level, ch, vo, target):
 def spell_detect_invis(sn, level, ch, vo, target):
     """Detect invis (cf. 1stMud spell_detect_invis in magic.c).
     [Verified: 03/07/2026]"""
-    if vo.get("affected_by", {}).get("detect_invis"):
+    if vo["affected_by"].get("detect_invis"):
         if vo is ch:
             chprintln(ch, "You can already see invisible.")
         else:
@@ -1670,7 +1671,7 @@ def spell_detect_invis(sn, level, ch, vo, target):
 def spell_detect_magic(sn, level, ch, vo, target):
     """Detect magic (cf. 1stMud spell_detect_magic in magic.c).
     [Verified: 03/07/2026]"""
-    if vo.get("affected_by", {}).get("detect_magic"):
+    if vo["affected_by"].get("detect_magic"):
         if vo is ch:
             chprintln(ch, "You can already sense magical auras.")
         else:
@@ -1795,7 +1796,7 @@ def spell_faerie_fog(sn, level, ch, vo, target):
         sneak_sn = _skill_lookup("sneak")
         if sneak_sn is not None:
             affect_strip(mob, sneak_sn)
-        aff = mob.get("affected_by", {})
+        aff = mob["affected_by"]
         aff.pop("hide", None)
         aff.pop("invisible", None)
         aff.pop("sneak", None)
@@ -1808,7 +1809,7 @@ def spell_faerie_fog(sn, level, ch, vo, target):
 def spell_floating_disc(sn, level, ch, vo, target):
     """Create and float a disc container (cf. 1stMud spell_floating_disc in magic.c).
     [Verified: 03/07/2026; float-slot equip added and re-verified 03/07/2026]"""
-    floating = ch.get("equip", {}).get("float")
+    floating = ch["equip"].get("float")
     if floating is not None and item_extra_flags(
             floating, item_tpl(floating)).get("noremove"):
         act("You can't remove $p.", ch, floating, None, TO_CHAR)
@@ -1817,7 +1818,7 @@ def spell_floating_disc(sn, level, ch, vo, target):
     # value[0] capacity / value[3] max weight collapse into one field [PRIMESUD]
     disc["container_max_weight"] = ch.get("level", 1) * 10
     disc["timer"] = ch.get("level", 1) * 2 - randint(0, level // 2)
-    ch.setdefault("inv", []).append(disc)
+    ch["inv"].append(disc)
     act("$n has created a floating black disc.", ch, None, None, TO_ROOM)
     chprintln(ch, "You create a floating disc.")
     from inventory import remove_obj  # lazy import to avoid circular dependency
@@ -1831,7 +1832,7 @@ def spell_floating_disc(sn, level, ch, vo, target):
 def spell_fly(sn, level, ch, vo, target):
     """Fly spell (cf. 1stMud spell_fly in magic.c).
     [Verified: 03/07/2026]"""
-    if vo.get("affected_by", {}).get("flying"):
+    if vo["affected_by"].get("flying"):
         if vo is ch:
             chprintln(ch, "You are already airborne.")
         else:
@@ -1846,7 +1847,7 @@ def spell_fly(sn, level, ch, vo, target):
 def spell_frenzy(sn, level, ch, vo, target):
     """Frenzy spell (cf. 1stMud spell_frenzy in magic.c).
     [Verified: 03/07/2026]"""
-    if is_affected(vo, sn) or vo.get("affected_by", {}).get("berserk"):
+    if is_affected(vo, sn) or vo["affected_by"].get("berserk"):
         if vo is ch:
             chprintln(ch, "You are already in a frenzy.")
         else:
@@ -1930,7 +1931,7 @@ def spell_gate(sn, level, ch, vo, target):
                 and victim.get("tpl") == ch.get("quest_mob", 0))
             or victim.get("level", 0) >= level + 3
             or (not victim.get("is_npc") and victim.get("level", 0) >= MAX_MORTAL_LEVEL)
-            or (victim.get("is_npc") and victim.get("imm_flags", {}).get("summon"))
+            or (victim.get("is_npc") and victim["imm_flags"].get("summon"))
             or (victim.get("is_npc") and saves_spell(level, victim, DAM_OTHER))):
         chprintln(ch, "You failed.")
         return False
@@ -1959,7 +1960,7 @@ def spell_gate(sn, level, ch, vo, target):
 def spell_haste(sn, level, ch, vo, target):
     """Haste spell (cf. 1stMud spell_haste in magic.c).
     [Verified: 03/07/2026]"""
-    if is_affected(vo, sn) or vo.get("affected_by", {}).get("haste") or vo.get("off_flags", {}).get("fast"):
+    if is_affected(vo, sn) or vo["affected_by"].get("haste") or vo["off_flags"].get("fast"):
         if vo is ch:
             chprintln(ch, "You can't move any faster!")
         else:
@@ -1968,7 +1969,7 @@ def spell_haste(sn, level, ch, vo, target):
     # 1stMud: if slowed, haste spends its energy dispelling slow and does NOT
     # apply haste afterward -- returns False in both cases (dispel success or
     # failure). This matches 1stMud magic.c:2908-2918 exactly.
-    if vo.get("affected_by", {}).get("slow"):
+    if vo["affected_by"].get("slow"):
         slow_sn = _skill_lookup("slow")
         if slow_sn is not None and not check_dispel(level, vo, slow_sn):
             if vo is not ch:
@@ -1992,7 +1993,7 @@ def spell_heat_metal(sn, level, ch, vo, target):
     spell_heat_metal in magic.c).
     [Verified: 10/07/2026; full equipment drop/sear mechanic ported]"""
     victim = vo
-    if saves_spell(level + 2, victim, DAM_FIRE) or victim.get("imm_flags", {}).get("fire"):
+    if saves_spell(level + 2, victim, DAM_FIRE) or victim["imm_flags"].get("fire"):
         chprintln(ch, "Your spell had no effect.")
         chprintln(victim, "You feel momentarily warmer.")
         return False
@@ -2005,8 +2006,8 @@ def spell_heat_metal(sn, level, ch, vo, target):
     # in place. slot is None for carried (unworn) items (cf. 1stMud's single
     # carrying_first walk, split here into inv/equip per PrimeSUD's
     # separate carried/worn structures).
-    targets = [(o, None) for o in list(victim.get("inv", []))]
-    targets += [(o, slot) for slot, o in list(victim.get("equip", {}).items())
+    targets = [(o, None) for o in list(victim["inv"])]
+    targets += [(o, slot) for slot, o in list(victim["equip"].items())
                 if o is not None]
 
     for obj_lose, slot in targets:
@@ -2147,7 +2148,7 @@ def spell_holy_word(sn, level, ch, vo, target):
 def spell_infravision(sn, level, ch, vo, target):
     """Infravision (cf. 1stMud spell_infravision in magic.c).
     [Verified: 03/07/2026]"""
-    if vo.get("affected_by", {}).get("infrared"):
+    if vo["affected_by"].get("infrared"):
         if vo is ch:
             chprintln(ch, "You can already see in the dark.")
         else:
@@ -2171,7 +2172,7 @@ def spell_invis(sn, level, ch, vo, target):
         item_affect_to_obj(vo, _new_obj_affect(sn, level, level + 12, "none", 0, "invis"), tpl)
         act("$p fades out of sight.", ch, vo, None, TO_ALL)
         return True
-    if vo.get("affected_by", {}).get("invisible"):
+    if vo["affected_by"].get("invisible"):
         return False
     act("$n fades out of existence.", vo, None, None, TO_ROOM)
     affect_to_char(vo, _new_affect(sn, level, level + 12, "none", 0, "invisible"))
@@ -2237,7 +2238,7 @@ def spell_mass_invis(sn, level, ch, vo, target):
     for gch in members:
         if gch is None:
             continue
-        if not is_same_group(gch, ch) or gch.get("affected_by", {}).get("invisible"):
+        if not is_same_group(gch, ch) or gch["affected_by"].get("invisible"):
             continue
         act("$n slowly fades out of existence.", gch, None, None, TO_ROOM)
         chprintln(gch, "You slowly fade out of existence.")
@@ -2249,7 +2250,7 @@ def spell_mass_invis(sn, level, ch, vo, target):
 def spell_pass_door(sn, level, ch, vo, target):
     """Pass door (cf. 1stMud spell_pass_door in magic.c).
     [Verified: 03/07/2026]"""
-    if vo.get("affected_by", {}).get("pass_door"):
+    if vo["affected_by"].get("pass_door"):
         if vo is ch:
             chprintln(ch, "You are already out of phase.")
         else:
@@ -2264,7 +2265,7 @@ def spell_pass_door(sn, level, ch, vo, target):
 def spell_protection_evil(sn, level, ch, vo, target):
     """Protection from evil (cf. 1stMud spell_protection_evil in magic.c).
     [Verified: 03/07/2026]"""
-    if vo.get("affected_by", {}).get("protect_evil") or vo.get("affected_by", {}).get("protect_good"):
+    if vo["affected_by"].get("protect_evil") or vo["affected_by"].get("protect_good"):
         if vo is ch:
             chprintln(ch, "You are already protected.")
         else:
@@ -2280,7 +2281,7 @@ def spell_protection_evil(sn, level, ch, vo, target):
 def spell_protection_good(sn, level, ch, vo, target):
     """Protection from good (cf. 1stMud spell_protection_good in magic.c).
     [Verified: 03/07/2026]"""
-    if vo.get("affected_by", {}).get("protect_good") or vo.get("affected_by", {}).get("protect_evil"):
+    if vo["affected_by"].get("protect_good") or vo["affected_by"].get("protect_evil"):
         if vo is ch:
             chprintln(ch, "You are already protected.")
         else:
@@ -2366,7 +2367,7 @@ def spell_recharge(sn, level, ch, vo, target):
         return False
     act("$p glows brightly and explodes!", ch, vo, None, TO_CHAR)
     act("$p glows brightly and explodes!", ch, vo, None, TO_ROOM)
-    if vo in ch.get("inv", []):
+    if vo in ch["inv"]:
         ch["inv"].remove(vo)
     return False
 
@@ -2410,7 +2411,7 @@ def spell_remove_curse(sn, level, ch, vo, target):
         chprintln(vo, "You feel better.")
         act("$n looks more relaxed.", vo, None, None, TO_ROOM)
         found = True
-    for obj in list(vo.get("inv", [])):
+    for obj in list(vo["inv"]):
         tpl = item_tpl(obj)
         flags = item_extra_flags(obj, tpl)
         if (flags.get("nodrop") or flags.get("noremove")) and not flags.get("nouncurse"):
@@ -2427,7 +2428,7 @@ def spell_remove_curse(sn, level, ch, vo, target):
 def spell_sanctuary(sn, level, ch, vo, target):
     """Sanctuary (cf. 1stMud spell_sanctuary in magic.c).
     [Verified: 03/07/2026]"""
-    if vo.get("affected_by", {}).get("sanctuary"):
+    if vo["affected_by"].get("sanctuary"):
         if vo is ch:
             chprintln(ch, "You are already in sanctuary.")
         else:
@@ -2452,7 +2453,7 @@ def spell_shocking_grasp(sn, level, ch, vo, target):
 def spell_sleep(sn, level, ch, vo, target):
     """Sleep spell (cf. 1stMud spell_sleep in magic.c).
     [Verified: 03/07/2026]"""
-    if (vo.get("affected_by", {}).get("sleep")
+    if (vo["affected_by"].get("sleep")
             or (vo.get("is_npc") and MOB_DEFS.get(vo.get("tpl"), {}).get("act_flags", {}).get("undead"))
             or (level + 2) < vo.get("level", 1)
             or saves_spell(level - 4, vo, DAM_CHARM)):
@@ -2468,18 +2469,18 @@ def spell_sleep(sn, level, ch, vo, target):
 def spell_slow(sn, level, ch, vo, target):
     """Slow spell (cf. 1stMud spell_slow in magic.c).
     [Verified: 03/07/2026]"""
-    if is_affected(vo, sn) or vo.get("affected_by", {}).get("slow"):
+    if is_affected(vo, sn) or vo["affected_by"].get("slow"):
         if vo is ch:
             chprintln(ch, "You can't move any slower!")
         else:
             act("$N can't get any slower than that.", ch, None, vo, TO_CHAR)
         return False
-    if saves_spell(level, vo, DAM_OTHER) or vo.get("imm_flags", {}).get("magic"):
+    if saves_spell(level, vo, DAM_OTHER) or vo["imm_flags"].get("magic"):
         if vo is not ch:
             chprintln(ch, "Nothing seemed to happen.")
         chprintln(vo, "You feel momentarily lethargic.")
         return False
-    if vo.get("affected_by", {}).get("haste"):
+    if vo["affected_by"].get("haste"):
         haste_sn = _skill_lookup("haste")
         if haste_sn is not None and not check_dispel(level, vo, haste_sn):
             if vo is not ch:
@@ -2557,7 +2558,7 @@ def spell_summon(sn, level, ch, vo, target):
             or tpl.get("act_flags", {}).get("aggressive")
             or victim.get("level", 0) >= level + 3
             or victim.get("fighting") is not None
-            or victim.get("imm_flags", {}).get("summon")
+            or victim["imm_flags"].get("summon")
             or tpl.get("shop") is not None
             or saves_spell(level, victim, DAM_OTHER)):
         chprintln(ch, "You failed.")
@@ -2891,7 +2892,7 @@ def _warp_victim(level, ch, check_from=False):
             # [PRIMESUD] vnum match instead of instance pointer
             or (is_quester(ch) and victim.get("tpl") == ch.get("quest_mob", 0))
             or victim.get("level", 0) >= level + 3
-            or victim.get("imm_flags", {}).get("summon")
+            or victim["imm_flags"].get("summon")
             or saves_spell(level, victim, DAM_NONE)):
         return None
     return victim

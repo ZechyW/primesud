@@ -247,7 +247,7 @@ def _pick_pet(player):
     labels = []
     for pid in world.rooms[next_vnum]["mobs"]:
         pet = world.chars.get(pid)
-        if pet is not None and pet.get("act_flags", {}).get("pet"):
+        if pet is not None and pet["act_flags"].get("pet"):
             tpl = MOB_DEFS[pet["tpl"]]
             pets.append(pet)
             labels.append("[" + pad_left(num_str(pet["level"]), 2) + " "
@@ -276,7 +276,7 @@ def _buy_pet(player, args):
 
     pet_id = get_char_room(args[0], world.rooms[next_vnum]["mobs"], world.chars)
     stock = world.chars.get(pet_id) if pet_id is not None else None
-    if stock is None or not stock.get("act_flags", {}).get("pet"):
+    if stock is None or not stock["act_flags"].get("pet"):
         chprintln(player, "Sorry, you can't buy that here.")
         return
 
@@ -446,7 +446,7 @@ def do_list(player, args):
         found = False
         for pid in world.rooms[next_vnum]["mobs"]:
             pet = world.chars.get(pid)
-            if pet is not None and pet.get("act_flags", {}).get("pet"):
+            if pet is not None and pet["act_flags"].get("pet"):
                 if not found:
                     found = True
                     chprintln(player, "Pets for sale:")

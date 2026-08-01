@@ -223,7 +223,7 @@ def reset_char(player):
     # -- Reset to baselines (cf. 1stMud handler.c lines 512-528)
     # cf. 1stMud: ch->sex = ch->pcdata->true_sex (handler.c:518)
     player["sex"] = player.get("true_sex", player.get("sex", "neutral"))
-    for k in player.get("mod_stat", {}):
+    for k in player["mod_stat"]:
         player["mod_stat"][k] = 0
     player["max_hit"] = player["perm_hit"]
     player["max_mana"] = player["perm_mana"]
@@ -255,7 +255,7 @@ def reset_char(player):
             _apply_item_modifiers(player, obj, tpl, True)
 
         # -- Re-apply character spell affects (cf. 1stMud handler.c lines 671-734)
-        for af in player.get("affect_list", []):
+        for af in player["affect_list"]:
             affect_modify(player, af, True)
     finally:
         handler._affect_depth -= 1
@@ -280,7 +280,7 @@ def _regen_tail(gain, char, rate):
         int: Adjusted gain.
     """
     gain = gain * rate // 100
-    aff = char.get("affected_by", {})
+    aff = char["affected_by"]
     if aff.get("poison"):
         gain //= 4
     if aff.get("plague"):
@@ -310,7 +310,7 @@ def _mob_hp_regen(mob):
     if hit >= max_hit:  # already full -- early out
         return
     gain = 5 + mob.get("level", 1)
-    if mob.get("affected_by", {}).get("regeneration"):
+    if mob["affected_by"].get("regeneration"):
         gain *= 2
     pos = mob.get("pos", "standing")
     if pos == "sleeping":
@@ -363,7 +363,7 @@ def _char_disease_tick(ch):
         chprintln(ch, "You writhe in agony from the plague.")
         af = affect_find(ch, GSN_PLAGUE)
         if af is None:
-            ch.get("affected_by", {}).pop("plague", None)
+            ch["affected_by"].pop("plague", None)
             return
         if af["level"] == 1:
             return
@@ -386,7 +386,7 @@ def _char_disease_tick(ch):
                 if vch is None:
                     continue
                 if (not saves_spell(plague["level"] - 2, vch, DAM_DISEASE)
-                        and not vch.get("affected_by", {}).get("plague")
+                        and not vch["affected_by"].get("plague")
                         and randint(0, 15) == 0):  # cf. 1stMud number_bits(4) == 0
                     chprintln(vch, "You feel hot and feverish.")
                     act("$n shivers and looks very ill.", vch, None, None, TO_ROOM)
@@ -398,7 +398,7 @@ def _char_disease_tick(ch):
         damage(ch, ch, dam, GSN_PLAGUE, DAM_DISEASE, False)
         return
 
-    aff = ch.get("affected_by", {})
+    aff = ch["affected_by"]
     if aff.get("poison") and not aff.get("slow"):
         poison = affect_find(ch, GSN_POISON)
         if poison is not None:
@@ -593,7 +593,7 @@ def _light_burnout(tr, player):
         tr: Terminal for flicker / burnout messages.
         player (dict): Player state dict.
     """
-    light = (player.get("equip") or {}).get("light")
+    light = player["equip"].get("light")
     if not isinstance(light, dict):
         return
     if item_tpl(light).get("type") != "light":
@@ -622,7 +622,7 @@ def _tick_affects(ch, tr):
         ch (dict): Character (player or mob instance).
         tr: Terminal for wear-off messages, or None to tick silently (mobs).
     """
-    for aff in list(ch.get("affect_list", [])):
+    for aff in list(ch["affect_list"]):
         if aff["duration"] > 0:
             aff["duration"] -= 1
         elif aff["duration"] == 0:

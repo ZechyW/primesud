@@ -259,7 +259,7 @@ def stop_follower(ch):
 
     master = world.chars.get(ch["master"])
 
-    if ch.get("affected_by", {}).get("charm"):
+    if ch["affected_by"].get("charm"):
         ch["affected_by"].pop("charm", None)
         affect_strip(ch, GSN_CHARM_PERSON)
 
@@ -339,7 +339,7 @@ def do_follow(ch, args):
         return
     victim = world.chars[mob_id]
 
-    if ch.get("affected_by", {}).get("charm") and ch.get("master") is not None:
+    if ch["affected_by"].get("charm") and ch.get("master") is not None:
         act("But you'd rather follow $N!", ch, None,
             world.chars.get(ch["master"]), TO_CHAR)
         return
@@ -371,7 +371,7 @@ def do_ditch(ch, args):
         return
     victim = world.chars[mob_id]
 
-    if ch.get("affected_by", {}).get("charm") and ch.get("master") is not None:
+    if ch["affected_by"].get("charm") and ch.get("master") is not None:
         act("But you'd rather follow $N!", ch, None,
             world.chars.get(ch["master"]), TO_CHAR)
         return
@@ -440,7 +440,7 @@ def do_order(ch, args):
         chprintln(ch, "That will NOT be done.")
         return
 
-    if ch.get("affected_by", {}).get("charm"):
+    if ch["affected_by"].get("charm"):
         chprintln(ch, "You feel like taking, not giving, orders.")
         return
 
@@ -462,7 +462,7 @@ def do_order(ch, args):
 
         # 1stMud: victim == ch -> "Aye aye, right away!" (unreachable: mob-only lookup)
 
-        if (not victim.get("affected_by", {}).get("charm")
+        if (not victim["affected_by"].get("charm")
                 or victim.get("master") != ch["id"]):
             chprintln(ch, "Do it yourself!")
             return
@@ -472,7 +472,7 @@ def do_order(ch, args):
         och = world.chars.get(och_id)
         if och is None:
             continue
-        if (och.get("affected_by", {}).get("charm")
+        if (och["affected_by"].get("charm")
                 and och.get("master") == ch["id"]
                 and (f_all or och is victim)):
             found = True
@@ -558,11 +558,11 @@ def do_group(ch, args):
         act("$N isn't following you.", ch, None, victim, TO_CHAR)
         return
 
-    if victim.get("affected_by", {}).get("charm"):
+    if victim["affected_by"].get("charm"):
         chprintln(ch, "You can't remove charmed mobs from your group.")
         return
 
-    if ch.get("affected_by", {}).get("charm"):
+    if ch["affected_by"].get("charm"):
         act("You like your master too much to leave $m!", ch, None,
             victim, TO_VICT)
         return
