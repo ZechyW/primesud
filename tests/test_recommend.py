@@ -241,8 +241,9 @@ def test_indexed_weapon_score_matches_fresh_instance(
             == inventory.gear_score(indexed_player, {"vnum": 500}))
 
 
-def test_gear_skips_unlearnt_weapon(indexed_player, tmp_path, monkeypatch):
-    """Weapons without the matching skill learnt are never recommended."""
+def test_gear_downweights_unlearnt_weapon(indexed_player, tmp_path,
+                                          monkeypatch):
+    """Expected-hit weighting ranks a learnt weapon over bigger unlearnt dice."""
     path = tmp_path / "gear.idx"
     _write_gear_idx(path, (
         _gear_row(600, slot="wield", score=0, weapon_base=20,
@@ -255,7 +256,59 @@ def test_gear_skips_unlearnt_weapon(indexed_player, tmp_path, monkeypatch):
 
     rows = recommend._scan_gear(indexed_player, "wield")["wield"]
 
-    assert [row["vnum"] for row in rows] == [601]
+    # dagger 10 base at 80% scores 85; sword 20 base at 0% only 11
+    assert [row["vnum"] for row in rows] == [601, 600]
+    assert [row["gain"] for row in rows] == [85, 11]
+
+
+def test_two_hander_pays_owned_shield_cost(indexed_player, tmp_path,
+                                           monkeypatch):
+    """A two-hander row is charged for the shield it would force off."""
+    world.ITEM_DEFS._data[500] = {
+        "type": "armor", "wear_flags": {"take": True, "shield": True},
+        "level": 1, "armor": (5, 5, 5, 5),
+    }
+    indexed_player["inv"] = [{"vnum": 500}]
+    indexed_player["learned"][WEAPON_GSN_MAP["sword"]] = 80
+    path = tmp_path / "gear.idx"
+    _write_gear_idx(path, (
+        _gear_row(600, slot="wield", score=0, weapon_base=20,
+                  weapon_type="sword"),
+        _gear_row(601, slot="wield", score=0, weapon_base=20,
+                  weapon_type="sword", flags="two_hands"),
+    ))
+    monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
+
+    rows = recommend._scan_gear(indexed_player, "wield")["wield"]
+    # both score 171; the 2H gains the no-shield 10% but pays half the
+    # owned shield (200) plus its block value
+    assert [row["vnum"] for row in rows] == [600, 601]
+
+    indexed_player["inv"] = []
+    rows = recommend._scan_gear(indexed_player, "wield")["wield"]
+    # no shield owned: nothing to forfeit, the no-shield bonus leads
+    assert [row["vnum"] for row in rows] == [601, 600]
+
+
+def test_owned_two_hander_baseline_pays_shield_cost(indexed_player):
+    """Owned two-hander baselines use the same shield economics as rows."""
+    world.ITEM_DEFS._data[500] = {
+        "type": "armor", "wear_flags": {"take": True, "shield": True},
+        "level": 1, "armor": (5, 5, 5, 5),
+    }
+    world.ITEM_DEFS._data[501] = {
+        "type": "weapon", "wear_flags": {"take": True, "wield": True},
+        "level": 1, "weapon_type": "sword", "dice": (2, 9, 0),
+        "weapon_flags": {"two_hands": True},
+    }
+    indexed_player["inv"] = [{"vnum": 500}, {"vnum": 501}]
+    indexed_player["learned"][WEAPON_GSN_MAP["sword"]] = 80
+
+    baselines = recommend._owned_baselines(indexed_player)
+
+    # weapon 171 + 17 no-shield bonus - (shield 200 + block 5) // 2
+    assert baselines["shield"] == 200
+    assert baselines["wield"] == 86
 
 
 def test_runtime_owned_affect_suppresses_index_candidate(

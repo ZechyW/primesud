@@ -1,11 +1,13 @@
 """Zero-load mob and gear recommendations. [PRIMESUD]"""
 
 import world
-from config import STR_APP_WIELD
+from combat import _get_size
+from config import SIZE_RANK, STR_APP_WIELD
 from handler import chprintln, get_curr_stat
-from inventory import (_can_wear_best, _wear_flag, gear_flags_legal,
-                       gear_score, gear_score_weapon, gear_score_weapon_max,
-                       weapon_learnt)
+from inventory import (_can_wear_best, _wear_flag, _weapon_dice_part,
+                       gear_flags_legal, gear_score, gear_score_weapon,
+                       gear_score_weapon_max, shield_block_pct)
+from item import item_weapon_flags
 from pager import tpage
 from picker import pick_from
 from quest import QUEST_DELIVER, QUEST_FINDMOB
@@ -178,13 +180,21 @@ def _owned_baselines(player):
     scores = {}
     for slot in _GEAR_SLOTS:
         scores[slot] = []
+    small = _get_size(player) < SIZE_RANK["large"]
+    wield_2h = []
     owned = player["inv"] + [
         obj for obj in player["equip"].values() if obj is not None]
     for obj in owned:
         tpl = item_tpl(obj)
         slot = _wear_flag(obj, tpl)
         if slot in scores and _can_wear_best(player, obj, tpl):
-            scores[slot].append(gear_score(player, obj))
+            score = gear_score(player, obj)
+            if (slot == "wield" and small
+                    and item_weapon_flags(obj, tpl).get("two_hands")):
+                # Scored after the shield baseline exists (loop below).
+                wield_2h.append((score, _weapon_dice_part(player, obj)))
+            else:
+                scores[slot].append(score)
     baselines = {}
     for slot in _GEAR_SLOTS:
         values = scores[slot]
@@ -194,6 +204,15 @@ def _owned_baselines(player):
                 min(values[0], 0) if values else 0)
         else:
             baselines[slot] = values[0] if values else 0
+    # Owned two-handers forfeit the shield: same economics as candidate
+    # rows in _scan_segment (+10% dice, minus half the shield + block).
+    sb_pct = shield_block_pct(player)
+    for score, dice_part in wield_2h:
+        block = score * sb_pct // 100
+        adjusted = (score + dice_part // 10
+                    - (baselines["shield"] + block) // 2)
+        if adjusted > baselines["wield"]:
+            baselines["wield"] = adjusted
     return baselines
 
 
@@ -347,6 +366,8 @@ def _scan_segment(player, data, slot, results, baselines, current,
     headers or ordering still scans correctly, just without the shortcuts.
     """
     baseline = baselines[slot]
+    small = _get_size(player) < SIZE_RANK["large"]
+    sb_pct = shield_block_pct(player)
     size = len(data)
     pos = 0
     band_end = -1
@@ -386,15 +407,18 @@ def _scan_segment(player, data, slot, results, baselines, current,
             price = int(parts[16])
         except (TypeError, ValueError):
             continue
-        if static_score + gear_score_weapon_max(weapon_base, sharp) <= baseline:
+        bound = gear_score_weapon_max(weapon_base, sharp)
+        if slot == "wield":
+            # Two-hander rows may add the no-shield 11/10 dice bonus below;
+            # widen the bound so the band skip stays conservative.
+            bound += bound // 10
+        if static_score + bound <= baseline:
             # Bound-sorted band: no later row in it can be a strict upgrade.
             if band_end >= 0:
                 pos = band_end
                 band_end = -1
             continue
         if item_level > player_level:
-            continue
-        if weapon_base and not weapon_learnt(player, parts[5]):
             continue
         flags = {}
         for flag in parts[8].split(","):
@@ -410,8 +434,13 @@ def _scan_segment(player, data, slot, results, baselines, current,
             continue
         if kind not in _SOURCE_ORDER:
             continue
-        score = static_score + gear_score_weapon(
-            player, weapon_base, parts[5], sharp)
+        wscore = gear_score_weapon(player, weapon_base, parts[5], sharp)
+        score = static_score + wscore
+        if flags.get("two_hands") and small:
+            # Forfeits the shield (cf. _best_hand_layout economics): +10%
+            # dice, minus half the owned shield's score plus its block value.
+            block = score * sb_pct // 100
+            score += wscore // 10 - (baselines["shield"] + block) // 2
         gain = score - baseline
         if gain <= 0:
             continue

@@ -70,8 +70,10 @@ that into features rather than holes.
   countdown or valid actions for the running event, with completed events
   protected from accidental give-up (docs/PRIME_UX.md).
 - **Gear score and `wear best`** -- compatible equipment shares one combat-aware
-  score used by `compare`; `wear best` equips strict per-slot upgrades and picks
-  the best legal hand layout (shield, two-handed, dual wield) by combined score
+  score used by `compare`; weapon scores carry an expected-hit weighting from
+  proficiency, and `wear best` picks the best legal hand layout (shield,
+  two-handed, dual wield) by combat-weighted value: defence at half weight,
+  shield block and the shieldless 11/10 damage bonus modelled from one_hit
   (docs/PRIME_UX.md).
 - **Browsable help** -- bare `help` opens a category-then-entry browser driven
   by digits and Enter, reaching all 288 entries without alpha-shifting a

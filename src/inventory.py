@@ -35,7 +35,8 @@ from quest import (quest_obj_check, is_quester, QUEST_DELIVER,
                    QUEST_RETURN_DELIVER, _giver_name)
 from skill_utils import WaitState, check_improve, get_skill
 from skills_table import (GSN_SCROLLS, GSN_STAVES, GSN_WANDS, GSN_STEAL,
-                          GSN_SNEAK, GSN_ENVENOM, GSN_POISON)
+                          GSN_SNEAK, GSN_ENVENOM, GSN_POISON,
+                          GSN_SHIELD_BLOCK)
 from skills_table import SKILLS, WEAPON_GSN_MAP
 from terminal import tprint
 from urandom import randint
@@ -990,7 +991,10 @@ def _weapon_score(weapon_base, sharp, skill):
     base_score = weapon_base * skill // 10
     if sharp:
         base_score += base_score * skill // 700
-    return base_score
+    # Expected-hit weighting: one_hit's THAC0 skill terms make relative hit
+    # rates track (skill + 20) / 140 (sim-calibrated on save data), reaching
+    # exactly 1 at adept (skill 120) so gear_score_weapon_max still bounds.
+    return base_score * (skill + 20) // 140
 
 
 def gear_score_weapon(player, weapon_base, weapon_type, sharp):
@@ -1002,13 +1006,24 @@ def gear_score_weapon(player, weapon_base, weapon_type, sharp):
     return _weapon_score(weapon_base, sharp, 20 + _get_weapon_skill(player, sn))
 
 
-def weapon_learnt(player, weapon_type):
-    """Return whether player has weapon_type's skill learnt. [PRIMESUD]
+def shield_block_pct(player):
+    """Equal-level shield block chance (cf. check_shield_block). [PRIMESUD]"""
+    return get_skill(player, GSN_SHIELD_BLOCK) // 5 + 3
 
-    Unknown types map to exotic (sn -1), swung at 3 * level per
-    get_weapon_skill, so they always count as learnt.
+
+def _weapon_dice_part(player, obj):
+    """Skill-scaled dice component of a weapon instance's score. [PRIMESUD]
+
+    The part one_hit multiplies by 11/10 when no shield is worn; static
+    affects and proc bonuses are excluded.
     """
-    return _get_weapon_skill(player, WEAPON_GSN_MAP.get(weapon_type, -1)) > 0
+    tpl = item_tpl(obj)
+    _, weapon_base, weapon_type, sharp = gear_score_components(
+        tpl,
+        dice=obj.get("dice") or tpl.get("dice", (0, 0, 0)),
+        weapon_flags=item_weapon_flags(obj, tpl),
+        level=obj.get("level", tpl.get("level", 0)))
+    return gear_score_weapon(player, weapon_base, weapon_type, sharp)
 
 
 def gear_score_weapon_max(weapon_base, sharp):
@@ -1250,14 +1265,13 @@ def gear_flags_legal(player, extra):
 
 
 def _can_wear_best(player, obj, tpl):
-    """Return whether wear best may equip obj (sight/level/align/skill). [PRIMESUD]"""
+    """Return whether wear best may equip obj (sight/level/align). [PRIMESUD]
+
+    No proficiency filter: the expected-hit weighting in _weapon_score
+    already sinks unlearnt weapons to their true combat worth.
+    """
     if (not can_see_obj(player, obj)
             or tpl.get("level", 1) > player["level"]):
-        return False
-    # No-proficiency weapons are wieldable by hand ("wear <weapon>") but
-    # never auto-equipped; recommend applies the same filter.
-    if (tpl.get("type") == "weapon"
-            and not weapon_learnt(player, tpl.get("weapon_type", ""))):
         return False
     return gear_flags_legal(player, item_extra_flags(obj, tpl))
 
@@ -1303,6 +1317,7 @@ def _best_hand_layout(player):
 
     # Score each item once; enumeration below revisits items many times.
     scores = {}
+    dice_parts = {}
 
     def pool(flag, worn):
         out = []
@@ -1315,6 +1330,9 @@ def _best_hand_layout(player):
             if _wear_flag(obj, tpl) == flag and _can_wear_best(player, obj, tpl):
                 scores[id(obj)] = gear_score(player, obj)
                 out.append((scores[id(obj)], obj))
+        if flag == "wield":
+            for _score, obj in out:
+                dice_parts[id(obj)] = _weapon_dice_part(player, obj)
         return out
 
     weapons = pool("wield", (current["wield"], current["secondary"]))
@@ -1328,6 +1346,29 @@ def _best_hand_layout(player):
     for score, obj in holds:
         if best_hold is None or score > best_hold[0]:
             best_hold = (score, obj)
+
+    sb_pct = shield_block_pct(player)
+
+    def layout_value(primary, secondary, shield, hold):
+        """Combat-weighted layout worth: offense full, defence halved."""
+        total = 0
+        for o in (primary, secondary):
+            if o is not None:
+                total += scores[id(o)]
+                if shield is None:
+                    # one_hit: shieldless swings deal dice damage * 11 // 10
+                    total += dice_parts.get(id(o), 0) // 10
+        if hold is not None:
+            total += scores[id(hold)]
+        if shield is not None:
+            # check_shield_block negates sb_pct% of incoming melee at equal
+            # level; incoming tier approximated by the primary's own score.
+            block = (scores[id(primary)] if primary is not None else 0) \
+                * sb_pct // 100
+            # ponytail: defence at half weight -- surviving loses to taking
+            # the mob down; retune the divisor if shields feel mispriced.
+            total += (scores[id(shield)] + block) // 2
+        return total
 
     def try_layout(primary, secondary, shield, hold):
         """Return (score, layout dict) if the combination is legal."""
@@ -1358,7 +1399,6 @@ def _best_hand_layout(player):
         # check: evaluate STR as of the moment the primary goes on.
         limit = STR_APP_WIELD[_strength_after_swap(
             player, removed, [o for o in added if o is not secondary])]
-        score = 0
         if primary is not None:
             pw = item_tpl(primary).get("weight", 0)
             if pw > limit * 10:
@@ -1368,14 +1408,10 @@ def _best_hand_layout(player):
                 # cf. do_second weight rules
                 if sw > limit // 2 or sw * 2 > pw:
                     return None
-        for o in kept:
-            score += scores[id(o)]
-        return score, layout
+        return layout_value(primary, secondary, shield, hold), layout
 
-    base = 0
-    for o in current.values():
-        if o is not None:
-            base += scores[id(o)]
+    base = layout_value(current["wield"], current["secondary"],
+                        current["shield"], current["hold"])
 
     # ponytail: best shield/hold chosen by score alone; a worse shield whose
     # STR bonus enables a heavier weapon is not explored.

@@ -203,6 +203,14 @@ affect application adds them to all four AC buckets. Negative saving-throw
 modifiers are likewise beneficial. Unknown or mechanically inert flags score
 zero.
 
+Weapon dice scores carry an expected-hit weighting of `(skill + 20) / 140`
+(skill = 20 + proficiency, mirroring `one_hit`'s floor), calibrated against
+measured hit-rate ratios so a barely-practiced weapon scores near its true
+combat worth instead of its dice; the factor reaches exactly 1 at adept, so
+`gear_score_weapon_max` band bounds in `gear.idx` are unaffected. There is no
+proficiency cutoff -- unlearnt weapons simply rank where their expected damage
+puts them. Static affect bonuses are not skill-scaled.
+
 `wear best` compares visible, level-appropriate, alignment-compatible inventory
 items against each occupied slot. It replaces only strict upgrades, keeps worn
 items on ties, fills paired finger/neck/wrist slots independently, and preserves
@@ -211,7 +219,13 @@ layout: every legal combination -- weapon and shield, two-handed, dual wield,
 held item -- is scored under the normal equip rules (noremove locks, small-size
 two-handed vs shield conflict, secondary weight rules, STR wield limit evaluated
 after the whole swap) and the best combined layout wins if it strictly beats the
-current hands.
+current hands. Layout value is combat-weighted rather than a plain sum:
+shieldless layouts add `one_hit`'s 11/10 dice-damage bonus, a shield adds its
+equal-level `check_shield_block` value (`skill/5 + 3` percent of the primary's
+score), and the shield's total counts at half weight -- staying alive is worth
+less than taking the opponent down. `recommend gear` applies the same
+economics to two-handed candidates and owned two-handers for small frames:
+plus the no-shield bonus, minus half the owned shield plus its block value.
 
 ### Recommendations
 

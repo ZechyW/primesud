@@ -41,7 +41,9 @@ class TestCompare:
     def test_scores_include_damage_affects(self, scene, out):
         ITEM_DEFS[8002]["stat_bonuses"] = {"damroll": 6}
         inventory.do_compare(scene, ["sword", "dagger"])
-        assert any("a sword [140] looks worse than a dagger [170]" in l.lower()
+        # skill 80: dice parts carry the (skill + 20) / 140 hit weighting;
+        # the flat damroll bonus does not.
+        assert any("a sword [120] looks worse than a dagger [162]" in l.lower()
                    for l in out)
 
     def test_vs_weakest_paired_slot(self, scene, out):
@@ -72,8 +74,10 @@ class TestCompare:
 class TestGearScore:
     def test_weapon_score_uses_combat_skill_floor_and_bonus(self, scene):
         sword = scene["inv"][0]
+        # 2d6 -> base 14; score = 14 * skill // 10 * (skill + 20) // 140,
+        # skill = 20 + proficiency (one_hit floor + expected-hit weighting).
         scene["learned"][GSN_SWORD] = 0
-        assert inventory.gear_score(scene, sword) == 28
+        assert inventory.gear_score(scene, sword) == 8
         scene["learned"][GSN_SWORD] = 100
         assert inventory.gear_score(scene, sword) == 168
 
@@ -272,7 +276,8 @@ class TestWearBest:
 
     def test_wear_best_keeps_shield_over_weaker_two_hander(self, scene, out):
         self._hand_defs(scene)
-        ITEM_DEFS._data[8006]["dice"] = (2, 9, 0)  # score 200 < 140 + 120
+        # claymore 146 (incl. no-shield bonus) < sword 120 + shield 61
+        ITEM_DEFS._data[8006]["dice"] = (1, 12, 0)
         sword = {"vnum": 8004}
         shield = {"vnum": 8005}
         claymore = {"vnum": 8006}
@@ -289,7 +294,8 @@ class TestWearBest:
 
     def test_wear_best_splits_two_hander_for_better_combo(self, scene, out):
         self._hand_defs(scene)
-        ITEM_DEFS._data[8006]["dice"] = (2, 9, 0)  # score 200 < 140 + 120
+        # claymore 146 (incl. no-shield bonus) < sword 120 + shield 61
+        ITEM_DEFS._data[8006]["dice"] = (1, 12, 0)
         sword = {"vnum": 8004}
         shield = {"vnum": 8005}
         claymore = {"vnum": 8006}
@@ -478,11 +484,15 @@ class TestWearBest:
         assert old not in scene["inv"]
         assert new in scene["inv"]
 
-    def test_wear_best_skips_unlearnt_weapon(self, scene, out):
-        """No-proficiency weapons are never auto-equipped."""
-        # Huge sword outscores the dagger even at base skill 20, so only
-        # the learnt filter can make the dagger win.
-        ITEM_DEFS[8001]["dice"] = (10, 10, 0)
+    def test_wear_best_downweights_unlearnt_weapon(self, scene, out):
+        """Expected-hit weighting beats bigger dice on an unlearnt weapon."""
+        # 3d6 sword (4x the dagger's dice) at skill 20 scores 12; the
+        # learnt 1d4 dagger scores 42 -- the hit weighting decides it.
+        # Weights make either dual-wield combo illegal (do_second rules),
+        # so the primary pick alone carries the assertion.
+        ITEM_DEFS[8001]["dice"] = (3, 6, 0)
+        ITEM_DEFS[8001]["weight"] = 30
+        ITEM_DEFS[8002]["weight"] = 40
         dagger = scene["inv"][1]
         scene["learned"] = {GSN_DAGGER: 80}
         scene["equip"].update({"wield": None})
