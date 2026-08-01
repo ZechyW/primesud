@@ -626,8 +626,8 @@ def _show_char_to_char(player, mob_ids, out=None):
             continue
         tpl = MOB_DEFS[inst["tpl"]]
         # Build AFF prefix string (cf. 1stMud show_char_to_char_0, act_info.c:191-214)
-        # Race defaults merged into inst at create_mobile; dynamic spell AFF bits
-        # from inst["affects"] are not yet tracked here.
+        # Race defaults merged into inst at create_mobile; spell AFF bits land
+        # in "affected_by" via affect_modify, so both show here.
         aff = inst.get("affected_by", {})
         prefix = ""
         if aff.get("invisible"):    prefix += "({cInvis{x) "

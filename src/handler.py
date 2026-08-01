@@ -103,8 +103,7 @@ def _char_base():
     "flags" key.  1stMud uses a single act bitfield for both.
     [DEVIATION] is_npc bool replaces NULL pcdata pointer check.
     [DEVIATION] room/fighting stored as vnum/id, not pointers.
-    [DEVIATION] affect_list (list) + affects (dict) replace affect linked list;
-    affects dict is a [PRIMESUD] O(1) shortcut derived from affect_list.
+    [DEVIATION] affect_list (list) replaces the affect linked list.
     """
     return {
         # -- Identity (cf. .name, .id, .level, .sex, .race, .alignment, .size)
@@ -155,7 +154,6 @@ def _char_base():
         "part_flags":  {},
         # -- Affects (cf. .affect linked list)
         "affect_list": [],
-        "affects":     {},
         # -- Stances (cf. .stance[MAX_STANCE]; slots 0-10 trained %, 11 current
         #    stance id, 12 autodrop stance id -- zeroed as in 1stMud new_char)
         "stance":      [0] * 13,

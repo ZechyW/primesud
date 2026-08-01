@@ -1535,7 +1535,9 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False,
     re-verified 03/07/2026; instance weapon dice read (quest gear) added
     with permission and re-verified 03/07/2026; WEAPON_SHARP and weapon
     procs (poison/vampiric/flaming/frost/shocking) added and re-verified
-    04/07/2026; [PRIMESUD] form attack modifiers added 23/07/2026] --
+    04/07/2026; [PRIMESUD] form attack modifiers added 23/07/2026; dead
+    never-written NPC m_hitroll term removed, restoring fight.c THAC0
+    formula, and re-verified 01/08/2026] --
     old-format mob damage fallback skipped.
 
     Args:
@@ -1563,10 +1565,9 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False,
     sk_vnum, wtpl = _get_weapon_sn(ch, slot)
     skill = 20 + _get_weapon_skill(ch, sk_vnum)
 
-    # THAC0 -- mob attackers add affect-based hitroll bonus
-    extra_hr = ch.get("affects", {}).get("m_hitroll", 0) if ch["is_npc"] else 0
+    # THAC0
     thac0 = get_thac0(ch)
-    thac0 -= (get_hitroll(ch) + extra_hr) * skill // 100
+    thac0 -= get_hitroll(ch) * skill // 100
     thac0 += 5 * (100 - skill) // 100
     thac0 -= accuracy_bonus
 
