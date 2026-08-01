@@ -15,6 +15,7 @@ from classes import (
 )
 from combat import get_thac0, interpolate, _cdiv
 from config import LEVEL_IMMORTAL
+from handler import _char_base
 from player import create_char
 from races import RACE_TABLE
 from skills_table import (SKILL_TABLE, SKILLS, GSN_BASH, GSN_SANCTUARY,
@@ -22,8 +23,9 @@ from skills_table import (SKILL_TABLE, SKILLS, GSN_BASH, GSN_SANCTUARY,
 
 
 def _pc(*cls, **kw):
-    ch = {"is_npc": False, "level": kw.get("level", 1), "classes": list(cls),
-          "race": "Human"}
+    ch = _char_base()
+    ch.update({"is_npc": False, "level": kw.get("level", 1),
+               "classes": list(cls), "race": "Human"})
     return ch
 
 
@@ -105,7 +107,8 @@ class TestThac0:
         assert get_thac32(multi) == -10
 
     def test_npc_act_flag_curves(self):
-        mob = {"is_npc": True, "level": 32, "act_flags": {"warrior": True}}
+        mob = _char_base()
+        mob.update({"is_npc": True, "level": 32, "act_flags": {"warrior": True}})
         assert get_thac0(mob) == -5
         mob["act_flags"] = {"mage": True}
         assert get_thac0(mob) == 6
@@ -231,8 +234,9 @@ class TestRemort:
                                 "hp_dice": (1, 1, 100), "hitroll": 0,
                                 "damage": (1, 4, 0), "armor": (0, 0, 0, 0)}
         # "fighting" present: stop_fighting(both=True) indexes it on every char
-        trainer = {"is_npc": True, "id": 2, "tpl": 9900, "room": 3022,
-                   "fighting": None}
+        trainer = _char_base()
+        trainer.update({"is_npc": True, "id": 2, "tpl": 9900, "room": 3022,
+                        "fighting": None})
         world.chars[2] = trainer
 
         player = create_char(CLASS_WARRIOR)

@@ -190,6 +190,10 @@ def _item_armor_runtime(tpl, obj=None):
 # Dict, not tuple.index() -- get_curr_stat runs in combat loops.
 _STAT_IDX = {"str": 0, "dex": 1, "int": 2, "wis": 3, "con": 4}
 
+# Module const, not an inline default: an inline tuple literal may allocate
+# per call on-device (MicroPython const-tuple folding is version-dependent).
+_MAX_STATS_DEFAULT = (18, 18, 18, 18, 18)
+
 
 def get_curr_stat(char, stat):
     """Effective stat value: base + affect modifiers (cf. 1stMud get_curr_stat in handler.c).
@@ -201,11 +205,11 @@ def get_curr_stat(char, stat):
     Returns:
         int: Clamped stat value in [3, max] where max depends on race and class.
     """
-    v = char.get("perm_stat", {}).get(stat, 10) + char.get("mod_stat", {}).get(stat, 0)
+    v = char["perm_stat"].get(stat, 10) + char["mod_stat"].get(stat, 0)
     if char.get("is_npc") or char.get("level", 1) > LEVEL_IMMORTAL:
         return max(3, min(MAX_STATS, v))
     _race = race_lookup(char.get("race", "Human")) or RACE_TABLE["Human"]
-    _max = _race.get("max_stats", (18, 18, 18, 18, 18))
+    _max = _race.get("max_stats", _MAX_STATS_DEFAULT)
     cap = _max[_STAT_IDX.get(stat, 0)] + 4
     if is_prime_stat(char, stat):
         cap += 2
@@ -231,7 +235,7 @@ def get_max_train(ch, stat):
     if ch.get("is_npc") or ch.get("level", 1) > LEVEL_IMMORTAL:
         return MAX_STATS
     _race = race_lookup(ch.get("race", "Human")) or RACE_TABLE["Human"]
-    _max = _race.get("max_stats", (18, 18, 18, 18, 18))
+    _max = _race.get("max_stats", _MAX_STATS_DEFAULT)
     cap = _max[_STAT_IDX.get(stat, 0)]
     if is_prime_stat(ch, stat):
         if ch.get("race", "Human") == "Human":

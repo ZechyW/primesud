@@ -16,6 +16,7 @@ from groups import (GROUP_TABLE, GROUP_SKILLS, GROUP_SUBGROUPS, gn_add,
                     group_lookup, group_rating, do_grlist)
 from player import create_char
 from skills_table import SKILLS, GSN_BASH, GSN_SANCTUARY, GSN_RECALL, WEAPON_GSN_MAP
+from handler import _char_base
 
 
 def _sn(name):
@@ -115,7 +116,9 @@ class TestDoGain:
         world.rooms._data[3022] = room
         MOB_DEFS._data[9901] = {"short_descr": "the guildmaster", "level": 60,
                                 "act_flags": {"gain": True}}
-        world.chars[2] = {"is_npc": True, "id": 2, "tpl": 9901, "room": 3022}
+        c2 = _char_base()
+        c2.update({"is_npc": True, "id": 2, "tpl": 9901, "room": 3022})
+        world.chars[2] = c2
 
         player = create_char(CLASS_WARRIOR)
         player["room"] = 3022

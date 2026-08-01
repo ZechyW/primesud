@@ -77,6 +77,13 @@ auto-collect. Explicit collects remain banned before/inside churn rich in
 raw `str(int)`/formatter transients per docs/PRIME_FIRMWARE_BUGS.md.
 Measurements: docs/PERFORMANCE.md sec. Save-path heap churn.
 
+**Save compatibility policy (settled 01/08/2026).** Bump `SAVE_VERSION`,
+never migrate in core. The version gate plus backup prompt
+(`game_state.py` load path, `primesud.py` boot prompt) is the whole
+compat story: a mismatched save is backed up and rejected, never
+converted. If a player-save migration is ever worth doing, it ships as a
+standalone tool outside the core codebase.
+
 ---
 
 ## Not ported

@@ -19,6 +19,7 @@ from config import MAX_STATS, SKILL_ADEPT
 from handler import get_max_train
 from player import create_char
 from skills_table import SKILLS, GSN_BASH, GSN_RECALL, WEAPON_GSN_MAP
+from handler import _char_base
 
 
 def _hero(monkeypatch, pick=0, classes=(CLASS_WARRIOR, CLASS_MAGE), race_pick=0):
@@ -36,8 +37,10 @@ def _hero(monkeypatch, pick=0, classes=(CLASS_WARRIOR, CLASS_MAGE), race_pick=0)
                             "hp_dice": (1, 1, 100), "hitroll": 0,
                             "damage": (1, 4, 0), "armor": (0, 0, 0, 0)}
     # "fighting" present: stop_fighting(both=True) indexes it on every char
-    world.chars[2] = {"is_npc": True, "id": 2, "tpl": 9900, "room": 3022,
-                      "fighting": None}
+    c2 = _char_base()
+    c2.update({"is_npc": True, "id": 2, "tpl": 9900, "room": 3022,
+               "fighting": None})
+    world.chars[2] = c2
 
     player = create_char(CLASS_WARRIOR)
     player["classes"] = list(classes)
@@ -241,8 +244,9 @@ class TestTierPerks:
     def test_mastered_skill_dormant_until_reheld(self):
         # bash: mage skill_level 53 -> unusable even at 100%; re-holding
         # a warrior class instantly reactivates it (skill_level unchanged)
-        ch = {"is_npc": False, "level": 50, "classes": [CLASS_MAGE],
-              "race": "Human", "learned": {GSN_BASH: 100}, "tier": 1}
+        ch = _char_base()
+        ch.update({"is_npc": False, "level": 50, "classes": [CLASS_MAGE],
+                   "race": "Human", "learned": {GSN_BASH: 100}, "tier": 1})
         assert not can_use_skill_spell(ch, GSN_BASH)
         ch["classes"].append(CLASS_WARRIOR)
         assert can_use_skill_spell(ch, GSN_BASH)
@@ -257,7 +261,9 @@ class TestTierPerks:
         world.rooms._data[3022] = room
         MOB_DEFS._data[9900] = {"short_descr": "the teacher", "level": 60,
                                 "act_flags": {"practice": True}}
-        world.chars[2] = {"is_npc": True, "id": 2, "tpl": 9900, "room": 3022}
+        c2 = _char_base()
+        c2.update({"is_npc": True, "id": 2, "tpl": 9900, "room": 3022})
+        world.chars[2] = c2
         player = create_char(CLASS_WARRIOR)
         player["room"] = 3022
         player["tier"] = 1
@@ -281,7 +287,9 @@ class TestTierPerks:
         world.rooms._data[3022] = room
         MOB_DEFS._data[9900] = {"short_descr": "the teacher", "level": 60,
                                 "act_flags": {"practice": True}}
-        world.chars[2] = {"is_npc": True, "id": 2, "tpl": 9900, "room": 3022}
+        c2 = _char_base()
+        c2.update({"is_npc": True, "id": 2, "tpl": 9900, "room": 3022})
+        world.chars[2] = c2
         player = create_char(CLASS_WARRIOR)
         player["room"] = 3022
         player["practice"] = 5
@@ -312,8 +320,9 @@ class TestTierPerks:
 
 class TestTierDisplay:
     def test_class_who_suffix(self):
-        ch = {"is_npc": False, "level": 1, "classes": [CLASS_WARRIOR],
-              "race": "Human", "prime_class": 0}
+        ch = _char_base()
+        ch.update({"is_npc": False, "level": 1, "classes": [CLASS_WARRIOR],
+                   "race": "Human", "prime_class": 0})
         assert class_who(ch) == "Warr"
         ch["tier"] = 2
         assert class_who(ch) == "Warr*2"

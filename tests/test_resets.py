@@ -19,6 +19,7 @@ import world
 from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS
 import mob
 from mob import _decode_limit, _object_count_map, _reset_randomize_exits
+from handler import _char_base
 
 
 # ---------------------------------------------------------------------------
@@ -78,8 +79,10 @@ class TestObjectCountMap:
             100, {"vnum": 100},
             {"vnum": 200, "contents": [{"vnum": 300}, 300]},
         ], "mobs": []}
-        world.chars[1] = {"is_npc": False, "inv": [{"vnum": 100}],
-                          "equip": {"body": {"vnum": 400}, "head": None}}
+        c1 = _char_base()
+        c1.update({"is_npc": False, "inv": [{"vnum": 100}],
+                   "equip": {"body": {"vnum": 400}, "head": None}})
+        world.chars[1] = c1
         counts = _object_count_map()
         assert counts[100] == 3   # two on floor + one in inventory
         assert counts[200] == 1
@@ -352,7 +355,9 @@ class TestRoomDark:
         ITEM_DEFS._data[500] = {"type": "light", "light_hours": -1,
                                 "keywords": "torch", "short_descr": "a torch"}
         self._room_def(1, sector="field", flags={"dark": True})
-        world.chars[1] = {"room": 1, "equip": {"light": {"vnum": 500}}}
+        c1 = _char_base()
+        c1.update({"room": 1, "equip": {"light": {"vnum": 500}}})
+        world.chars[1] = c1
         assert room_light(1) == 1
         assert room_is_dark(1) is False   # light overrides the dark flag
 
@@ -361,7 +366,9 @@ class TestRoomDark:
         ITEM_DEFS._data[501] = {"type": "light", "light_hours": 0,
                                 "keywords": "torch", "short_descr": "a torch"}
         self._room_def(2)
-        world.chars[1] = {"room": 2, "equip": {"light": {"vnum": 501}}}
+        c1 = _char_base()
+        c1.update({"room": 2, "equip": {"light": {"vnum": 501}}})
+        world.chars[1] = c1
         assert room_light(2) == 0
 
     def test_dark_flag_forces_dark(self, fresh_world):

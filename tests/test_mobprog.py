@@ -48,15 +48,18 @@ def test_num_eval_bad_operator_false(monkeypatch):
 # -- expand_arg ----------------------------------------------------------------
 
 def _mob(**kw):
-    m = {"name": "big guard", "short_descr": "the big guard", "is_npc": True,
-         "sex": "male", "level": 10, "mprog_target": None, "affected_by": {}}
+    m = _char_base()
+    m.update({"name": "big guard", "short_descr": "the big guard",
+              "is_npc": True, "sex": "male", "level": 10,
+              "mprog_target": None, "affected_by": {}})
     m.update(kw)
     return m
 
 
 def _pc(**kw):
-    c = {"name": "John Doe", "short_descr": None, "is_npc": False,
-         "sex": "female", "level": 5, "affected_by": {}}
+    c = _char_base()
+    c.update({"name": "John Doe", "short_descr": None, "is_npc": False,
+              "sex": "female", "level": 5, "affected_by": {}})
     c.update(kw)
     return c
 

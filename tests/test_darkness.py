@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 import world
 from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS
 from game_time import time_info, SUN_DARK, SUN_LIGHT, SUN_RISE, SUN_SET
+from handler import _char_base
 
 
 def _room(vnum, sector="field", flags=None):
@@ -27,7 +28,9 @@ def _room(vnum, sector="field", flags=None):
 
 
 def _char(room, **aff):
-    return {"room": room, "equip": {"light": None}, "affected_by": dict(aff)}
+    c = _char_base()
+    c.update({"room": room, "equip": {"light": None}, "affected_by": dict(aff)})
+    return c
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +72,9 @@ class TestRoomIsDark:
         ITEM_DEFS._data[500] = {"type": "light", "light_hours": -1,
                                 "keywords": "torch", "short_descr": "a torch"}
         _room(5, sector="field", flags={"dark": True})
-        world.chars[1] = {"room": 5, "equip": {"light": {"vnum": 500}}}
+        c1 = _char_base()
+        c1.update({"room": 5, "equip": {"light": {"vnum": 500}}})
+        world.chars[1] = c1
         try:
             assert room_is_dark(5) is False
         finally:
@@ -277,9 +282,11 @@ class TestCheckBlind:
 
 def _look_player(room):
     from handler import PLR_DEFAULTS
-    return {"id": 1, "name": "Tester", "room": room, "level": 10,
-            "flags": PLR_DEFAULTS & ~(PLR_DEFAULTS),  # 0: no automap/autoexit
-            "inv": [], "equip": {}, "affected_by": {}}
+    c = _char_base()
+    c.update({"id": 1, "name": "Tester", "room": room, "level": 10,
+              "flags": PLR_DEFAULTS & ~(PLR_DEFAULTS),  # 0: no automap/autoexit
+              "inv": [], "equip": {}, "affected_by": {}})
+    return c
 
 
 @pytest.fixture
@@ -313,9 +320,11 @@ class TestLookDark:
         MOB_DEFS._data[900] = {"short_descr": "a cave bat",
                                "long_descr": "A cave bat flaps here.",
                                "start_pos": "stand"}
-        world.chars[2] = {"id": 2, "is_npc": True, "tpl": 900, "room": 1,
-                          "pos": "standing", "fighting": None,
-                          "affected_by": {}}
+        c2 = _char_base()
+        c2.update({"id": 2, "is_npc": True, "tpl": 900, "room": 1,
+                   "pos": "standing", "fighting": None,
+                   "affected_by": {}})
+        world.chars[2] = c2
         world.rooms._data[1]["mobs"].append(2)
         p = _look_player(1)
         p["affected_by"] = {"infrared": True}
@@ -334,8 +343,10 @@ class TestLookDark:
     def test_red_eyes_for_infrared_mob(self, fresh_world, look_out):
         import info
         _room(1, flags={"dark": True})
-        world.chars[2] = {"id": 2, "is_npc": True, "room": 1,
-                          "affected_by": {"infrared": True}}
+        c2 = _char_base()
+        c2.update({"id": 2, "is_npc": True, "room": 1,
+                   "affected_by": {"infrared": True}})
+        world.chars[2] = c2
         world.rooms._data[1]["mobs"].append(2)
         info.do_look(_look_player(1), [])
         assert look_out == ["It is pitch black ... ",
@@ -344,8 +355,10 @@ class TestLookDark:
     def test_no_red_eyes_for_plain_mob(self, fresh_world, look_out):
         import info
         _room(1, flags={"dark": True})
-        world.chars[2] = {"id": 2, "is_npc": True, "room": 1,
-                          "affected_by": {}}
+        c2 = _char_base()
+        c2.update({"id": 2, "is_npc": True, "room": 1,
+                   "affected_by": {}})
+        world.chars[2] = c2
         world.rooms._data[1]["mobs"].append(2)
         info.do_look(_look_player(1), [])
         assert look_out == ["It is pitch black ... "]
@@ -367,7 +380,9 @@ class TestExitsDark:
         _room(2, flags={"dark": True})
         ROOM_DEFS._data[2]["name"] = "Black Pit"
         ROOM_DEFS._data[1]["exits"] = {"n": 2}
-        info.do_exits({"room": 1, "affected_by": {}}, [])
+        c = _char_base()
+        c.update({"room": 1, "affected_by": {}})
+        info.do_exits(c, [])
         joined = " ".join(look_out)
         assert "Too dark to tell" in joined
         assert "Black Pit" not in joined
@@ -378,7 +393,9 @@ class TestExitsDark:
         _room(2, sector="inside")
         ROOM_DEFS._data[2]["name"] = "Marble Foyer"
         ROOM_DEFS._data[1]["exits"] = {"n": 2}
-        info.do_exits({"room": 1, "affected_by": {}}, [])
+        c = _char_base()
+        c.update({"room": 1, "affected_by": {}})
+        info.do_exits(c, [])
         joined = " ".join(look_out)
         assert "Marble Foyer" in joined
         assert "Too dark to tell" not in joined
@@ -391,16 +408,20 @@ class TestAggroShield:
     def test_non_infrared_mob_blinded_in_dark(self, fresh_world):
         from handler import can_see
         _room(1, flags={"dark": True})
-        mob = {"id": 2, "is_npc": True, "room": 1, "affected_by": {}}
-        player = {"id": 1, "room": 1, "affected_by": {}}
+        mob = _char_base()
+        mob.update({"id": 2, "is_npc": True, "room": 1, "affected_by": {}})
+        player = _char_base()
+        player.update({"id": 1, "room": 1, "affected_by": {}})
         assert can_see(mob, player) is False
 
     def test_infrared_mob_sees_in_dark(self, fresh_world):
         from handler import can_see
         _room(1, flags={"dark": True})
-        mob = {"id": 2, "is_npc": True, "room": 1,
-               "affected_by": {"infrared": True}}
-        player = {"id": 1, "room": 1, "affected_by": {}}
+        mob = _char_base()
+        mob.update({"id": 2, "is_npc": True, "room": 1,
+                    "affected_by": {"infrared": True}})
+        player = _char_base()
+        player.update({"id": 1, "room": 1, "affected_by": {}})
         assert can_see(mob, player) is True
 
 
@@ -434,8 +455,10 @@ class TestHolylight:
         # cf. handler.c:2403/2458 -- the PLR_HOLYLIGHT leg is !IsNPC only
         from handler import can_see
         _room(1, flags={"dark": True})
-        mob = {"id": 2, "is_npc": True, "room": 1, "affected_by": {}}
-        player = {"id": 1, "room": 1, "affected_by": {}}
+        mob = _char_base()
+        mob.update({"id": 2, "is_npc": True, "room": 1, "affected_by": {}})
+        player = _char_base()
+        player.update({"id": 1, "room": 1, "affected_by": {}})
         assert can_see(mob, player) is False
 
     def test_check_blind_passes(self, fresh_world, holylight, monkeypatch):
@@ -548,10 +571,14 @@ class TestConsiderPicker:
         MOB_DEFS._data[701] = {"short_descr": "a ghostly wraith",
                                "keywords": "wraith", "level": 1,
                                "affected_by": {"invisible": True}}
-        world.chars[2] = {"id": 2, "is_npc": True, "tpl": 700, "room": 1,
-                          "level": 1, "affected_by": {}}
-        world.chars[3] = {"id": 3, "is_npc": True, "tpl": 701, "room": 1,
-                          "level": 1, "affected_by": {"invisible": True}}
+        c2 = _char_base()
+        c2.update({"id": 2, "is_npc": True, "tpl": 700, "room": 1,
+                   "level": 1, "affected_by": {}})
+        world.chars[2] = c2
+        c3 = _char_base()
+        c3.update({"id": 3, "is_npc": True, "tpl": 701, "room": 1,
+                   "level": 1, "affected_by": {"invisible": True}})
+        world.chars[3] = c3
         world.rooms._data[1]["mobs"] = [2, 3]
         offered = []
         monkeypatch.setattr(combat, "pick_from",
@@ -578,8 +605,10 @@ class TestConsiderPicker:
         MOB_DEFS._data[702] = {"short_descr": "a ghostly wraith",
                                "keywords": "wraith", "level": 1,
                                "affected_by": {"invisible": True}}
-        world.chars[4] = {"id": 4, "is_npc": True, "tpl": 702, "room": 1,
-                          "level": 1, "affected_by": {"invisible": True}}
+        c4 = _char_base()
+        c4.update({"id": 4, "is_npc": True, "tpl": 702, "room": 1,
+                   "level": 1, "affected_by": {"invisible": True}})
+        world.chars[4] = c4
         world.rooms._data[1]["mobs"] = [4]
         combat.do_consider(_look_player(1), [])
         assert out == ["Consider killing whom?"]

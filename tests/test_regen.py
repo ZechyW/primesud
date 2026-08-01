@@ -56,19 +56,23 @@ def _regen_cycle(player, room, improve=False):
 class TestRegenTail:
     def test_poison_then_haste_stack(self):
         # 100 -> poison /4 = 25 -> haste /2 = 12
-        c = {"affected_by": {"poison": True, "haste": True}}
+        c = _char_base()
+        c.update({"affected_by": {"poison": True, "haste": True}})
         assert player_mod._regen_tail(100, c, 100) == 12
 
     def test_plague(self):
-        c = {"affected_by": {"plague": True}}
+        c = _char_base()
+        c.update({"affected_by": {"plague": True}})
         assert player_mod._regen_tail(100, c, 100) == 12  # 100//8
 
     def test_slow_same_as_haste(self):
-        c = {"affected_by": {"slow": True}}
+        c = _char_base()
+        c.update({"affected_by": {"slow": True}})
         assert player_mod._regen_tail(100, c, 100) == 50
 
     def test_heal_rate_multiplies(self):
-        c = {"affected_by": {}}
+        c = _char_base()
+        c.update({"affected_by": {}})
         assert player_mod._regen_tail(100, c, 110) == 110
         assert player_mod._regen_tail(100, c, 100) == 100
 

@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
 import world
 from combat import _advance_target, xp_compute
+from handler import _char_base
 
 
 class TestXpComputeAlignmentDrift:
@@ -18,15 +19,19 @@ class TestXpComputeAlignmentDrift:
         # gch align -300, victim align 0 -> else branch (|diff| <= 500).
         # C: change = ((-300*83)/500)*10/10 = -49 (trunc); align = -300-(-49) = -251
         # Python floor division would give -50 -> -250.
-        gch = {"level": 10, "alignment": -300}
-        victim = {"level": 10, "alignment": 0, "act_flags": {}}
+        gch = _char_base()
+        gch.update({"level": 10, "alignment": -300})
+        victim = _char_base()
+        victim.update({"level": 10, "alignment": 0, "act_flags": {}})
         xp_compute(gch, victim, 10)
         assert gch["alignment"] == -251
 
     def test_positive_alignment_drift_unchanged(self):
         # Positive path was already correct: change = (300*83)/500*10/10 = 49
-        gch = {"level": 10, "alignment": 300}
-        victim = {"level": 10, "alignment": 0, "act_flags": {}}
+        gch = _char_base()
+        gch.update({"level": 10, "alignment": 300})
+        victim = _char_base()
+        victim.update({"level": 10, "alignment": 0, "act_flags": {}})
         xp_compute(gch, victim, 10)
         assert gch["alignment"] == 251
 
@@ -43,9 +48,12 @@ class TestAdvanceTargetFighterIndex:
             world.FIGHTERS.discard(1)
             # is_npc=True keeps set_fighting's autodrop/first-stance-pick and
             # Swordsman-form branches quiet; _advance_target itself doesn't care.
-            player = {"id": 1, "room": 9001, "fighting": None,
-                      "is_npc": True, "pos": "standing"}
-            mobs = {2: {"id": 2, "fighting": 1}}
+            player = _char_base()
+            player.update({"id": 1, "room": 9001, "fighting": None,
+                           "is_npc": True, "pos": "standing"})
+            mob2 = _char_base()
+            mob2.update({"id": 2, "fighting": 1})
+            mobs = {2: mob2}
             rooms = {9001: {"mobs": [2]}}
             _advance_target(player, mobs, rooms)
             assert player["fighting"] == 2

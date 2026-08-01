@@ -8,10 +8,12 @@ swallowed by that fill.
 """
 
 from automap import build_compact_lines, build_full_lines
+from handler import _char_base
 
 
 _ROOMS = {100: {"name": "Border", "exits": {"n": 101}, "sector": "city"}}
-_PLAYER = {"room": 100, "affected_by": {}}
+_PLAYER = _char_base()
+_PLAYER.update({"room": 100, "affected_by": {}})
 
 
 def _cells(lines):

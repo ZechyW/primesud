@@ -17,6 +17,7 @@ from world import (
     ROOM_DEFS, MOB_DEFS, ITEM_DEFS, DOOR_DEFS,
     _load_area, _unload_area, maybe_evict, is_area_loaded,
 )
+from handler import _char_base
 
 
 def _mob_tpl(level=1, **overrides):
@@ -52,7 +53,9 @@ def _live_mobs(tpl):
 
 
 def _add_player(room):
-    world.chars[1] = {"is_npc": False, "room": room, "fighting": None}
+    c = _char_base()
+    c.update({"is_npc": False, "room": room, "fighting": None})
+    world.chars[1] = c
     return world.chars[1]
 
 
@@ -272,9 +275,11 @@ class TestUnloadArea:
 
         p1 = _add_player(200)
         p1["inv"] = [create_object(110)]
-        world.chars[2] = {"is_npc": True, "tpl": 250, "room": 200,
-                          "fighting": None, "inv": [create_object(110)],
-                          "equip": {}}
+        c2 = _char_base()
+        c2.update({"is_npc": True, "tpl": 250, "room": 200,
+                   "fighting": None, "inv": [create_object(110)],
+                   "equip": {}})
+        world.chars[2] = c2
         world.rooms._data[200]["mobs"] = [2]
 
         _unload_area("alpha")
@@ -731,8 +736,10 @@ class TestMaybeEvict:
         player = _add_player(100)
         _load_area("a0")
         # Charmed follower: template owned by a0, standing in a0
-        world.chars[50] = {"is_npc": True, "tpl": 100, "room": 100,
-                           "master": 1, "fighting": None}
+        c50 = _char_base()
+        c50.update({"is_npc": True, "tpl": 100, "room": 100,
+                    "master": 1, "fighting": None})
+        world.chars[50] = c50
         world.rooms._data[100]["mobs"].append(50)
 
         for room in (200, 300):
@@ -748,8 +755,10 @@ class TestMaybeEvict:
         self._register_chain(fresh_world, 3)
         player = _add_player(100)
         _load_area("a0")
-        world.chars[50] = {"is_npc": True, "tpl": 100, "room": 100,
-                           "fighting": 1}
+        c50 = _char_base()
+        c50.update({"is_npc": True, "tpl": 100, "room": 100,
+                    "fighting": 1})
+        world.chars[50] = c50
         world.rooms._data[100]["mobs"].append(50)
         player["fighting"] = 50
 

@@ -1,8 +1,12 @@
 # Dead / Legacy Code Sweep (interim)
 
-Status: CLOSED 01/08. All candidates resolved -- deletes applied, retains
-decided (upstream-parity data kept: SECT_*, CON_APP_SHOCK, race points,
-TO_SOCIALS, CLASS_PALADIN/RANGER).
+Status: dead/legacy pass CLOSED 01/08. All candidates resolved -- deletes
+applied, retains decided (upstream-parity data kept: SECT_*, CON_APP_SHOCK,
+race points, TO_SOCIALS, CLASS_PALADIN/RANGER).
+
+Reopened 01/08 for a second, different pass: the **Class C scan** (unnecessary
+*guards*, not unreachable code) -- see bottom section. Findings recorded;
+no edits applied, awaiting go/no-go plus `[Verified]` permission.
 
 Update 2026-08-01: candidates re-verified against 1stMud 4.5.3 source for
 hidden bugs / fidelity gaps. Three items flipped to retain (dead upstream too,
@@ -234,3 +238,169 @@ comment); 1502 tests pass, ASCII lint clean.
 - No `if False`, `if 0`, or `while False` runtime blocks found.
 - `ruff` and `pyflakes` are not installed; scans used Python AST plus exact
   repository token/reference checks.
+
+# Class C scan -- unnecessary guards (01/08; slice 1 applied 01/08)
+
+Status update 01/08: go given, `[Verified]` permission granted for the
+combat.py/handler.py slice. Applied: all 63 char-receiver flag/container
+`.get(K, {}/[])` sites in combat.py converted to direct subscript;
+`get_curr_stat` double-alloc removed; `max_stats` inline tuple default
+hoisted to `_MAX_STATS_DEFAULT` (MicroPython const-tuple folding is
+version-dependent, so an inline literal may allocate per call on-device).
+Test fixtures routed through `_char_base()` (runtime-fidelity call, user
+approved). `learned` is EXCLUDED from all conversion: absent from
+`_char_base`, only `create_char` overlays it, so the guard is load-bearing
+on any NPC-reachable path. Save policy recorded in DESIGN.md (bump
+`SAVE_VERSION`, never migrate in core; migrations ship as standalone
+tools). Remaining ~150 sites: per-receiver classification deferred to the
+phase-3 go (post-G1 measurement) -- classifying now would rot as lines
+drift, and the measurement gate may kill the remainder.
+
+Different question from the sweep above. That pass asked "is this code
+reachable?". This one asks "is this *check* necessary, given that we control
+the app, the source, and the data pipeline?" -- and ranks by **device cost**,
+not line count. A compat shim in a cold path is worth ~0; a redundant guard in
+a combat loop is worth real milliseconds.
+
+Triage classes used (from the 01/08 discussion):
+
+- **A -- delete free:** readers for data shapes nothing in-repo can produce.
+  Sweep above already ate the only real one (`GQUEST_WAITING`). Last remaining:
+  `recommend.py:75` six-field row guard (`mobs.idx` is GENERATED, all rows
+  7 fields). ~2 lines, cold path, low priority.
+- **B -- keep, and not a shim:** `game_state.py:616` version gate plus
+  `primesud.py:54` backup prompt. Reads no old format -- hard-rejects,
+  snapshots, prompts. Value is *highest* in dev (frequent SAVE_VERSION bumps,
+  single G1 test save). ~20 lines, boot-only, zero runtime.
+- **C -- measure first:** defensive guards in per-tick / per-char / per-alloc
+  paths. Only these move the needle. Everything below is Class C.
+
+Policy proposal (kills the category rather than instances), for `DESIGN.md`:
+
+> Save policy until engine 1.0: bump `SAVE_VERSION`, never migrate. The
+> version gate plus backup prompt is the whole compat story.
+
+## The cost rule
+
+`d.get(k, {})` builds that dict on **every call** -- arguments are evaluated
+before the call and `{}` is mutable, so it cannot be constant-folded.
+`d.get(k, 0)` / `d.get(k, "")` / `d.get(k, (18, 18, 18))` fold to constants and
+cost nothing. The hunt is therefore exactly `{}` and `[]` defaults.
+
+Price: **one small heap allocation is ~490 us at full game heap** (~35 us
+standalone), per `docs/PERFORMANCE.md` sec. Text rendering -- "for hot paths,
+one avoided allocation buys ~49 native blit calls".
+
+## C1 -- Eager mutable defaults on char dicts (204 sites) -- CANDIDATE
+
+`_char_base()` (`handler.py:108-163`) hard-codes all 45 char keys. Every char
+in `world.chars` passes through it:
+
+- `create_char` (`player.py:68`)
+- `create_mobile` (`mob.py:107`)
+- load path too -- `game_state.py:1099` builds via `create_char`, then overlays
+  saved fields; it never constructs a bare dict
+
+Nothing deletes those keys. The only `del`/`pop` of a flag key repo-wide is on
+*item* dicts (`item.py:302,565`, `magic.py:819,907` -- `vo` there is an object,
+confirmed by the adjacent `vo["extra_flags"]` / `ch["inv"].remove(vo)`).
+
+So on a char receiver the default is unreachable, and the allocation is pure
+waste:
+
+```python
+ch.get("affected_by", {}).get("charm")   # allocates a dict, always
+ch["affected_by"].get("charm")           # same result, no allocation
+```
+
+Counts by receiver (`ch`/`rch`/`victim`/`player`/`vch`/`mob`/`pet`/`inst`/
+`target`/`gch`):
+
+- **133** flag-dict sites (`act_flags`, `affected_by`, `off_flags`,
+  `imm_flags`, `res_flags`, `vuln_flags`, `form_flags`, `part_flags`,
+  `perm_stat`, `mod_stat`)
+- **71** container sites (`inv`, `equip`, `affect_list`, `stance`, `learned`)
+
+`combat.py` alone holds 54 flag-dict sites, **all** char receivers -- the
+hottest file in the game. Densest stretches: `combat.py:2096-2149` (attack
+speed / berserk), `3179-3519` (bash/trip/kick_dirt/disarm skill checks),
+`1028-1137` (is_safe / killing paths).
+
+The codebase already carries both idioms for the same invariant:
+`mob.py:116` writes `ch["act_flags"]` directly, `mob.py:796` writes
+`ch.get("act_flags", {})`.
+
+Safest mechanical transform -- kill only the allocation, keep inner defaults:
+
+```python
+char.get("perm_stat", {}).get(stat, 10)   # before
+char["perm_stat"].get(stat, 10)           # after -- do NOT also drop `, 10`
+```
+
+## C2 -- Template receivers are the opposite -- RETAIN (8 sites)
+
+The "we control the data pipeline" argument reverses here. Generated area
+files **omit empty flag dicts**: `area_limbo.txt` mob 30 carries `act_flags`
+and `form_flags`/`part_flags` but has no `affected_by`, `off_flags`,
+`imm_flags`, `res_flags`, or `vuln_flags`. The converter emits them
+(`are_to_primesud.py:623-624`) and the emitter prunes falsy values to save
+device space. `build_dist.py:101` `_share_area_flag_dicts` only *shares*
+duplicate all-True dicts -- it does not strip keys, so it is not the cause.
+
+`tpl.get("off_flags", {})` on a MOB_DEFS/ITEM_DEFS/ROOM_DEFS value is
+load-bearing. 8 such sites (e.g. `mob.py:707`, `quest.py:185,190,193`).
+Retain every one. Any sweep of C1 must classify receivers, not pattern-match
+the string.
+
+## C3 -- `get_curr_stat` (`handler.py:204`) -- CANDIDATE
+
+```python
+v = char.get("perm_stat", {}).get(stat, 10) + char.get("mod_stat", {}).get(stat, 0)
+```
+
+Two allocations per call for two `_char_base`-guaranteed keys. The function is
+documented as running in combat loops (`handler.py:190` comment: "get_curr_stat
+runs in combat loops", which is why `_STAT_IDX` is a dict and not
+`tuple.index()`). Highest cost-per-line-changed in the scan.
+
+Note `_race.get("max_stats", (18, 18, 18, 18, 18))` on line 208 is a *constant
+tuple* default -- folded, no allocation. Leave it.
+
+## C4 -- `promote_obj` / `isinstance(obj, dict)` -- RETAIN
+
+18 `isinstance` checks in `item.py`, 17 `promote_obj` call sites. The
+`and "key" in obj` half of those accessors is **required by design** --
+instances are sparse copy-on-write (`item.py:64` liquid fields, `item.py:54-63`
+light fuel stay template-only until mutated). Only the `isinstance` half guards
+against plain-int vnums, it is a cheap early return, and it is not per-tick.
+Not worth the churn; consistent with the sweep's existing `promote_obj` retain.
+
+## Not to be touched
+
+- `.get(k, 0)` / `.get(k, "")` / constant-tuple defaults -- no allocation.
+- Template and ROOM_DEFS receivers -- see C2.
+- I/O `try/except` -- `OSError: 0` FD exhaustion is a real device failure mode,
+  not a legacy data shape.
+
+## Gates before applying
+
+1. **`[Verified]` permission required.** Most of `combat.py` is `[Verified]`.
+   This is not a documented-TODO fidelity fix, so it falls outside the standing
+   pre-approval and needs explicit human sign-off. Behaviour is unchanged by
+   construction (same value returned), but the tag rule still applies.
+2. **Do not extrapolate the arithmetic.** `PERFORMANCE.md` warns against
+   projecting probe numbers into the game. 490 us is per-allocation, not a
+   per-round total; not all 204 sites execute per round.
+
+Proposed slice: convert the ~54 `combat.py` sites plus `handler.py:204` first
+(highest density, one file family), instrument a combat-round probe on G1, and
+only sweep the remaining ~150 if measured gain justifies it. `python -m pytest -q`
+(1502 tests) plus `python tools/check_ascii_py.py` cover the transform.
+
+## Class C scan notes
+
+- Receiver classification was done by variable name plus constructor tracing,
+  not by pattern alone; a few `.get(K, {})` sites use other receiver names and
+  still need per-site classification before any sweep.
+- Invariant verified three ways: `_char_base` key list, all `_char_base()`
+  callers, and a repo-wide search for `del`/`pop` of the guarded keys.
