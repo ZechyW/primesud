@@ -22,7 +22,7 @@ MOB_TPL = 9403
 
 # Real area_limbo.txt #12/#13/#16 templates, stubbed here so tests don't
 # depend on the on-disk area file or global lazy-load state (cf.
-# tests/test_bugs.py _stub_item_tpl pattern).
+# tests/test_bug_regressions.py _stub_item_tpl pattern).
 I_HEAD  = 12
 I_HEART = 13
 I_GUTS  = 16

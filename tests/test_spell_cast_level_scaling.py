@@ -101,8 +101,7 @@ class TestSpellCastLevelScaling:
             return True
 
         armor_sn = _skill_lookup("armor")
-        if armor_sn is None:
-            pytest.skip("armor spell not in skill table")
+        assert armor_sn is not None, "armor spell not in skill table"
 
         npc = _make_npc(level=20)
         npc["id"] = 1
@@ -137,8 +136,7 @@ class TestSpellCastLevelScaling:
             return True
 
         armor_sn = _skill_lookup("armor")
-        if armor_sn is None:
-            pytest.skip("armor spell not in skill table")
+        assert armor_sn is not None, "armor spell not in skill table"
 
         # Mage (CLASS_MAGE = 0) is a caster
         player = _make_player(level=20, classes=[CLASS_MAGE])
@@ -173,8 +171,7 @@ class TestSpellCastLevelScaling:
             return True
 
         armor_sn = _skill_lookup("armor")
-        if armor_sn is None:
-            pytest.skip("armor spell not in skill table")
+        assert armor_sn is not None, "armor spell not in skill table"
 
         # Warrior (CLASS_WARRIOR = 3) is NOT a caster
         player = _make_player(level=20, classes=[CLASS_WARRIOR])
@@ -210,8 +207,7 @@ class TestSpellCastLevelScaling:
             return True
 
         armor_sn = _skill_lookup("armor")
-        if armor_sn is None:
-            pytest.skip("armor spell not in skill table")
+        assert armor_sn is not None, "armor spell not in skill table"
 
         # Thief (CLASS_THIEF = 2) is NOT a caster
         player = _make_player(level=20, classes=[CLASS_THIEF])
@@ -246,8 +242,7 @@ class TestSpellCastLevelScaling:
             return True
 
         armor_sn = _skill_lookup("armor")
-        if armor_sn is None:
-            pytest.skip("armor spell not in skill table")
+        assert armor_sn is not None, "armor spell not in skill table"
 
         # Warrior + Cleric = non-caster + caster -> should get full level (has_spells = True)
         player = _make_player(level=20, classes=[CLASS_WARRIOR, CLASS_CLERIC])
@@ -282,8 +277,7 @@ class TestSpellCastLevelScaling:
             return True
 
         armor_sn = _skill_lookup("armor")
-        if armor_sn is None:
-            pytest.skip("armor spell not in skill table")
+        assert armor_sn is not None, "armor spell not in skill table"
 
         # Warrior + Thief = non-caster + non-caster -> should get scaled level
         player = _make_player(level=20, classes=[CLASS_WARRIOR, CLASS_THIEF])
@@ -318,8 +312,7 @@ class TestSpellCastLevelScaling:
             return True
 
         armor_sn = _skill_lookup("armor")
-        if armor_sn is None:
-            pytest.skip("armor spell not in skill table")
+        assert armor_sn is not None, "armor spell not in skill table"
 
         player = _make_player(level=20, classes=[CLASS_WARRIOR])
         player["id"] = 1
@@ -352,8 +345,7 @@ class TestSpellCastLevelScaling:
             return True
 
         armor_sn = _skill_lookup("armor")
-        if armor_sn is None:
-            pytest.skip("armor spell not in skill table")
+        assert armor_sn is not None, "armor spell not in skill table"
 
         player = _make_player(level=50, classes=[CLASS_WARRIOR])
         player["id"] = 1

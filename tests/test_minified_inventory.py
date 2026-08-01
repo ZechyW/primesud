@@ -15,7 +15,7 @@ import types
 import pytest
 
 from tools import build_dist
-from test_phase1_cmds import out, scene  # noqa: F401
+from scene_fixture import out, scene  # noqa: F401
 
 _HAND_SLOTS = ("wield", "secondary", "shield", "hold")
 

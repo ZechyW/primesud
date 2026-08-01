@@ -1,8 +1,8 @@
-"""Tests for all bugs listed in BUGS.md.
+"""Regression guards for the 18 bugs once tracked in BUGS.md (now deleted).
 
-Bugs #1 and #2 are fixed -- tests verify the fix.
-Bugs #3-18 are unfixed -- tests demonstrate the bug exists (marked xfail).
-When a bug is fixed, remove the xfail marker and the test becomes a regression guard.
+All 18 are fixed; each test verifies the fix still holds.  Named for the
+subject, not the tracker: new regressions belong here whether or not they
+ever had a bug number.
 """
 import os
 import sys
@@ -427,15 +427,13 @@ class TestBug6HasteOnSlowed:
         ch = _make_char(level=50)
         vo = _make_char(level=10)
         slow_sn = _skill_lookup("slow")
-        if slow_sn is None:
-            pytest.skip("slow spell not in skill table")
+        assert slow_sn is not None, "slow spell not in skill table"
 
         affect_to_char(vo, _new_affect(slow_sn, 1, 100, "dex", -2, "slow"))
         assert vo["affected_by"].get("slow") is True
 
         haste_sn = _skill_lookup("haste")
-        if haste_sn is None:
-            pytest.skip("haste spell not in skill table")
+        assert haste_sn is not None, "haste spell not in skill table"
 
         result = spell_haste(haste_sn, 50, ch, vo, "char")
 
@@ -458,8 +456,7 @@ class TestBug7StoneSkinSelfOnly:
         """Casting stone skin when already active should fail."""
         ch = _make_char()
         sn = _skill_lookup("stone skin")
-        if sn is None:
-            pytest.skip("stone skin not in skill table")
+        assert sn is not None, "stone skin not in skill table"
 
         affect_to_char(ch, _new_affect(sn, 20, 20, "ac", -40))
         result = spell_stone_skin(sn, 20, ch, ch, "char")
@@ -469,8 +466,7 @@ class TestBug7StoneSkinSelfOnly:
         """Casting stone skin when not active should succeed."""
         ch = _make_char()
         sn = _skill_lookup("stone skin")
-        if sn is None:
-            pytest.skip("stone skin not in skill table")
+        assert sn is not None, "stone skin not in skill table"
 
         base_armor = ch["armor"]
         result = spell_stone_skin(sn, 20, ch, ch, "char")
@@ -609,8 +605,7 @@ class TestBug11ChillTouchStacks:
         from handler import affect_join
         vo = _make_char(level=1)
         sn = _skill_lookup("chill touch")
-        if sn is None:
-            pytest.skip("chill touch not in skill table")
+        assert sn is not None, "chill touch not in skill table"
 
         for _ in range(10):
             affect_join(vo, _new_affect(sn, 50, 6, "str", -1))
@@ -633,8 +628,7 @@ class TestBug12ObjCastSpellTargetName:
         from magic import SKILLS, SPELL_FUNS
         sn_name = "armor"
         sn = _skill_lookup(sn_name)
-        if sn is None:
-            pytest.skip("armor spell not in skill table")
+        assert sn is not None, "armor spell not in skill table"
         captured = {}
         orig_fun = SPELL_FUNS.get(SKILLS[sn].get("spell_fun", "spell_null"))
 

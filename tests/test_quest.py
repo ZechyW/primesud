@@ -154,8 +154,9 @@ def test_timeout_penalizes(fresh):
 
 def test_quit_penalizes(fresh):
     do_quest(fresh, ["request"])
-    if not is_quester(fresh):  # rare "no quests available" roll
-        pytest.skip("no quest target rolled")
+    # Unconditional: test_request_assigns_quest asserts the same thing off the
+    # same fixture, so a skip here would only hide a real regression.
+    assert is_quester(fresh)
     do_quest(fresh, ["quit"])
     assert fresh["quest_status"] == QUEST_NONE
     # [PRIMESUD] lenient quit penalty: announced 15, not 1stMud's 30
@@ -611,6 +612,7 @@ def test_bare_gquest_picker_is_contextual(fresh, monkeypatch):
 def test_auto_gquest_always_joinable(fresh):
     # [PRIMESUD] auto band is clamped to the player's level and auto-joins
     from gquest import auto_gquest, gq_reset, gquest_info, GQUEST_OFF
+    started = 0
     for lvl in (1, 3, 5, 8, 25, 51):
         for _ in range(5):  # randomized band: sample a few rolls
             fresh["level"] = lvl
@@ -618,8 +620,12 @@ def test_auto_gquest_always_joinable(fresh):
             auto_gquest()
             if gquest_info["running"] == GQUEST_OFF:
                 continue  # not enough targets at this band; quest ended
+            started += 1
             assert gquest_info["minlevel"] <= lvl <= gquest_info["maxlevel"]
             assert gquest_info["joined"]
+    # Without this the test is vacuous: an auto_gquest that never starts a
+    # quest would `continue` through all 30 rolls and pass green.
+    assert started, "auto_gquest started no quest in 30 rolls across 6 levels"
     gq_reset()
 
 
