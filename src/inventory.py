@@ -1,33 +1,26 @@
 """Inventory, equipment, item-use, and starter-outfit commands."""
 
-import world
 import terminal
+import world
+from combat import (_get_weapon_skill, is_safe, multi_hit, number_fuzzy,
+                    create_money, _get_size)
+from comm import do_yell
+from config import (STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS,
+                    MAX_LEVEL, MAX_MORTAL_LEVEL, TYPE_UNDEFINED,
+                    ATTACK_TABLE, DAM_BASH, SIZE_RANK)
+from debug import DBG  # [PRIMESUD] holylight vnum overlay
 from handler import (get_curr_stat, is_name, equip_char, unequip_char, act,
                      get_char_room, can_see, can_see_obj, is_awake,
                      affect_strip, affect_join, chprintln,
                      _item_armor_runtime, tpl_flag_affects,
                      is_good, is_evil, is_neutral,
                      TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT)
-from world import (OBJ_VNUM_SCHOOL_BANNER,
-                   OBJ_VNUM_SCHOOL_MACE, OBJ_VNUM_SCHOOL_DAGGER, OBJ_VNUM_SCHOOL_SWORD,
-                   OBJ_VNUM_SCHOOL_VEST, OBJ_VNUM_SCHOOL_SHIELD,
-                   OBJ_VNUM_SCHOOL_STAFF, OBJ_VNUM_SCHOOL_AXE, OBJ_VNUM_SCHOOL_FLAIL,
-                   OBJ_VNUM_SCHOOL_WHIP, OBJ_VNUM_SCHOOL_POLEARM)
-from combat import (_get_weapon_skill, is_safe, multi_hit, number_fuzzy,
-                    create_money, _get_size)
-from comm import do_yell
-from debug import DBG  # [PRIMESUD] holylight vnum overlay
-from skill_utils import WaitState, check_improve, get_skill
-from config import (STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS,
-                    MAX_LEVEL, MAX_MORTAL_LEVEL, TYPE_UNDEFINED,
-                    ATTACK_TABLE, DAM_BASH, SIZE_RANK)
 from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   item_extra_flags, item_wear_flags, apply_money_pickup,
                   can_drop_obj, can_carry_n, can_carry_w, get_obj_weight,
                   get_carry_weight,
                   item_weapon_flags, item_affect_to_obj,
-                  item_container_flags, set_item_container_flag,
-                  CONTAINER_TYPES,
+                  item_container_flags, CONTAINER_TYPES,
                   item_type as _item_type,
                   promote_obj as _promote_obj,
                   liquid_left as _liquid_left,
@@ -35,11 +28,12 @@ from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   liquid_type as _liquid_type,
                   set_liquid as _set_liquid,
                   liq_sip as _liq_sip)
-from magic import (_skill_lookup, cast_item_spells, validate_item_spell_payload,
+from magic import (cast_item_spells, validate_item_spell_payload,
                    _new_affect, _skill_lookup)
 from picker import pick_from
 from quest import (quest_obj_check, is_quester, QUEST_DELIVER,
                    QUEST_RETURN_DELIVER, _giver_name)
+from skill_utils import WaitState, check_improve, get_skill
 from skills_table import (GSN_SCROLLS, GSN_STAVES, GSN_WANDS, GSN_STEAL,
                           GSN_SNEAK, GSN_ENVENOM, GSN_POISON)
 from skills_table import SKILLS, WEAPON_GSN_MAP
@@ -47,6 +41,11 @@ from terminal import tprint
 from urandom import randint
 from util import int_str, num_str
 from world import ITEM_DEFS, MOB_DEFS, item_tpl
+from world import (OBJ_VNUM_SCHOOL_BANNER,
+                   OBJ_VNUM_SCHOOL_MACE, OBJ_VNUM_SCHOOL_DAGGER, OBJ_VNUM_SCHOOL_SWORD,
+                   OBJ_VNUM_SCHOOL_VEST, OBJ_VNUM_SCHOOL_SHIELD,
+                   OBJ_VNUM_SCHOOL_STAFF, OBJ_VNUM_SCHOOL_AXE, OBJ_VNUM_SCHOOL_FLAIL,
+                   OBJ_VNUM_SCHOOL_WHIP, OBJ_VNUM_SCHOOL_POLEARM)
 
 _CONTAINER_TYPES = CONTAINER_TYPES  # [PRIMESUD] shared definition now lives in item.py
 

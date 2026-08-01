@@ -7,7 +7,7 @@ NPCs have no "classes" key.
 """
 
 from config import (LEVEL_HERO, LEVEL_IMMORTAL, MAX_LEVEL, MAX_MORTAL_LEVEL,
-                     MAX_REMORT, SKILL_ADEPT)
+                    SKILL_ADEPT)
 from races import RACE_TABLE, race_lookup
 from skills_table import SKILLS
 from urandom import randint

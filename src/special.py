@@ -3,19 +3,18 @@
 Signature: spec_fun(ch) -> bool, matching 1stMud Spec_Fun macro.
 """
 
-from urandom import randint
-
 import world
+from combat import do_backstab, do_flee, do_murder, is_safe, multi_hit
 from config import TYPE_UNDEFINED, POS_ORDER
 from game_time import time_info
-from combat import do_backstab, do_flee, do_murder, is_safe, multi_hit
-from magic import SPELL_FUNS, TARGET_CHAR, _skill_lookup
-from movement import move_char, do_open, do_close
-from skills_table import SKILLS
 from handler import (act, chprintln, is_awake, can_see,
                      TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL)
 from item import obj_vnum, item_wear_flags
-from world import ITEM_DEFS, ROOM_DEFS, item_tpl
+from magic import SPELL_FUNS, TARGET_CHAR, _skill_lookup
+from movement import move_char, do_open, do_close
+from skills_table import SKILLS
+from urandom import randint
+from world import ROOM_DEFS, item_tpl
 
 
 def _spec_find_player(ch):

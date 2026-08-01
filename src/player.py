@@ -1,36 +1,30 @@
 """Player creation, progression, and prompt."""
 
+import terminal
+import world
 from classes import CLASS_TABLE, CLASS_WARRIOR, exp_per_level, has_spells, class_name
 from colors import color_len
-import terminal
-from terminal import tprint
-from config import TERMINAL_COLS, REGEN_SECS, TICK_SECS
-from config import R_STARTING_ROOM
-from config import POS_ORDER
 from config import DAM_DISEASE, DAM_NONE, DAM_POISON, TYPE_UNDEFINED
+from config import POS_ORDER
+from config import R_STARTING_ROOM
+from config import TERMINAL_COLS, REGEN_SECS, TICK_SECS
 from groups import add_base_groups, add_default_groups, gn_add, group_lookup
-from skill_utils import check_improve, get_skill
-from stances import STANCE_CURRENT, STANCE_AUTODROP, STANCE_NONE
-from skills_table import (SKILLS, GSN_RECALL, GSN_FAST_HEALING, GSN_MEDITATION,
-                         GSN_PLAGUE, GSN_POISON)
-from urandom import randint
+# Player flag bits (PLR_*/COMM_*) live in handler.py; import them from there.
+from handler import PLR_DEFAULTS
 from races import RACE_TABLE, race_lookup
+from skill_utils import check_improve, get_skill
+from skills_table import (SKILLS, GSN_RECALL, GSN_FAST_HEALING, GSN_MEDITATION,
+                          GSN_PLAGUE, GSN_POISON)
+from stances import STANCE_CURRENT, STANCE_AUTODROP, STANCE_NONE
+from urandom import randint
 from util import num_str
-import world
-from world import ROOM_DEFS, AREA_DEFS, item_tpl, item_tpl_get
+from world import ROOM_DEFS, item_tpl, item_tpl_get
 
 _EQUIP_SAVE_ORDER = (
     "light", "finger_l", "finger_r", "neck_1", "neck_2", "body", "head",
     "legs", "feet", "hands", "arms", "shield", "about", "waist", "wrist_l",
     "wrist_r", "wield", "hold", "float", "secondary",
 )
-
-# Player flag bits live in handler.py (import-cycle: player -> handler);
-# re-exported here so callers can import from either module.
-from handler import (PLR_AUTOMAP, PLR_AUTOSKILL, PLR_AUTOASSIST, PLR_AUTOEXIT,
-                     PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOSPLIT,
-                     PLR_AUTODAMAGE, PLR_DEFAULTS,
-                     COMM_BRIEF, COMM_COMPACT, COMM_SHOW_AFFECTS)
 
 # -- Player model --------------------------------------------------------------
 

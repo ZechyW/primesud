@@ -276,7 +276,7 @@ class TestCheckBlind:
 # ---------------------------------------------------------------------------
 
 def _look_player(room):
-    from player import PLR_DEFAULTS
+    from handler import PLR_DEFAULTS
     return {"id": 1, "name": "Tester", "room": room, "level": 10,
             "flags": PLR_DEFAULTS & ~(PLR_DEFAULTS),  # 0: no automap/autoexit
             "inv": [], "equip": {}, "affected_by": {}}

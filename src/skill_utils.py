@@ -1,9 +1,9 @@
 """Skill/spell helper functions (cf. 1stMud multiclass.c and magic.c)."""
 
 import classes
-from skills_table import SKILL_TABLE, SKILLS
-from config import MAX_MORTAL_LEVEL, INT_APP_LEARN
+from config import INT_APP_LEARN
 from handler import get_curr_stat, chprintln
+from skills_table import SKILL_TABLE, SKILLS
 from urandom import randint
 
 

@@ -1,21 +1,13 @@
 """Combat rounds, damage resolution, skills, and fight state."""
 
+import classes
+import terminal
 import world
-from world import (
-    OBJ_VNUM_CORPSE_NPC, OBJ_VNUM_CORPSE_PC,
-    OBJ_VNUM_SILVER_ONE,
-    OBJ_VNUM_GOLD_ONE,
-    OBJ_VNUM_SILVER_SOME,
-    OBJ_VNUM_GOLD_SOME,
-    OBJ_VNUM_COINS,
-)
 from colors import upper
 from comm import die_follower, do_emote, do_function, nuke_pets, stop_follower
-import terminal
 from config import (
     KEY_COMMANDS,
     LEVEL_HERO,
-    MAX_MORTAL_LEVEL,
     PULSE_VIOLENCE,
     POS_ORDER,
     POS_FROM_SHORT,
@@ -48,33 +40,27 @@ from config import (
     XP_BASE,
     SIZE_RANK,
 )
-import classes
+from debug import DBG, dbg  # [PRIMESUD]
+from effects import TARGET_CHAR, fire_effect, cold_effect, shock_effect
+from gquest import gq_kill_check
 from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
                      is_awake, can_see, affect_to_char, affect_remove, affect_strip,
                      affect_join, is_affected,
                      chprintln, get_char_room, unequip_char,
                      TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT,
-                     is_good, is_evil, is_neutral)
-from effects import TARGET_CHAR, fire_effect, cold_effect, shock_effect
+                     is_good, is_evil, is_neutral,
+                     PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOASSIST,
+                     PLR_AUTODAMAGE, PLR_DEFAULTS)
+from hunt import hunt_victim
 from item import (create_object, item_extra_flags,
-                  set_item_extra_flag, get_obj_list, obj_vnum,
-                  apply_money_pickup, item_weapon_flags, item_affect_find)
-from gquest import gq_kill_check
+                  set_item_extra_flag, apply_money_pickup, item_weapon_flags,
+                  item_affect_find)
 from picker import pick_from
-from player import (reset_char, PLR_AUTOLOOT, PLR_AUTOSAC, PLR_AUTOGOLD, PLR_AUTOASSIST,
-                    PLR_AUTODAMAGE, PLR_DEFAULTS)
+from player import reset_char
 from quest import (QUEST_DELIVER, QUEST_FINDMOB, is_quester, quest_kill_check,
                    update_all_qobjs)
-from races import RACE_TABLE, race_lookup
+from races import race_lookup
 from skill_utils import get_skill, check_improve, skill_level, WaitState, DazeState
-from stances import (STANCE_TABLE, MAX_STANCE,
-                     STANCE_NONE, STANCE_NORMAL, STANCE_VIPER, STANCE_CRANE,
-                     STANCE_CRAB, STANCE_MONGOOSE, STANCE_BULL, STANCE_MANTIS,
-                     STANCE_DRAGON, STANCE_TIGER, STANCE_MONKEY, STANCE_SWALLOW,
-                     STANCE_CURRENT, STANCE_AUTODROP,
-                     valid_stance, get_stance, set_stance, in_stance,
-                     stance_name, stance_lookup, can_use_stance,
-                     improve_stance, autodrop)
 from skills_table import (
     SKILL_TABLE, SKILLS, WEAPON_GSN_MAP,
     GSN_BACKSTAB, GSN_BASH, GSN_BERSERK, GSN_DIRT, GSN_DISARM,
@@ -83,11 +69,25 @@ from skills_table import (
     GSN_TRIP, GSN_POISON, GSN_SWORD, GSN_FLOWING_FORM, GSN_RIPOSTE,
     GSN_DRIVING_FORM,
 )
-from debug import DBG, dbg  # [PRIMESUD]
-from hunt import hunt_victim
+from stances import (STANCE_TABLE, MAX_STANCE,
+                     STANCE_NONE, STANCE_NORMAL, STANCE_VIPER, STANCE_CRANE,
+                     STANCE_CRAB, STANCE_MONGOOSE, STANCE_BULL, STANCE_MANTIS,
+                     STANCE_DRAGON, STANCE_TIGER, STANCE_MONKEY, STANCE_SWALLOW,
+                     STANCE_CURRENT, STANCE_AUTODROP,
+                     valid_stance, get_stance, set_stance, in_stance,
+                     stance_name, stance_lookup, can_use_stance,
+                     improve_stance, autodrop)
 from urandom import randint
 from util import wait, count_str, num_str, pad_right
 from world import MOB_DEFS, ROOM_DEFS, item_tpl
+from world import (
+    OBJ_VNUM_CORPSE_NPC, OBJ_VNUM_CORPSE_PC,
+    OBJ_VNUM_SILVER_ONE,
+    OBJ_VNUM_GOLD_ONE,
+    OBJ_VNUM_SILVER_SOME,
+    OBJ_VNUM_GOLD_SOME,
+    OBJ_VNUM_COINS,
+)
 
 
 # -- Violence update (called every PULSE_VIOLENCE) -----------------------------

@@ -1,28 +1,28 @@
 """Magic command handling and spell dispatch (cf. 1stMud magic.c)."""
 
 import world
-from handler import (is_name, is_affected, affect_to_char, affect_join, affect_strip, is_awake,
-                   can_see, can_see_obj, can_see_room, act, chprintln, get_char_room, equip_char,
-                   unequip_char, tpl_flag_affects, get_curr_stat,
-                   TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
-                   is_good, is_evil, is_neutral)
-from world import (OBJ_VNUM_MUSHROOM, OBJ_VNUM_LIGHT_BALL, OBJ_VNUM_SPRING,
-                   OBJ_VNUM_DISC, OBJ_VNUM_PORTAL, OBJ_VNUM_ROSE)
-from colors import upper
 from classes import has_spells
-from comm import add_follower, stop_follower
+from colors import upper
 from combat import (is_safe, is_safe_spell, check_immune, dice, number_fuzzy,
                     multi_hit, damage, stop_fighting, update_pos, is_same_group,
                     gain_exp)
-from effects import acid_effect, fire_effect, cold_effect, poison_effect, shock_effect
-from skill_utils import WaitState, check_improve, get_skill
+from comm import add_follower, stop_follower
 from config import (POS_ORDER, DAM_ACID, DAM_BASH, DAM_CHARM, DAM_COLD,
                     DAM_DISEASE, DAM_DROWNING, DAM_ENERGY, DAM_FIRE,
                     DAM_HARM, DAM_HOLY, DAM_LIGHT, DAM_LIGHTNING,
                     DAM_NEGATIVE, DAM_NONE, DAM_OTHER, DAM_PIERCE, DAM_POISON,
                     DAM_SLASH, IS_IMMUNE, IS_RESISTANT, IS_VULNERABLE)
 from config import R_RECALL, MAX_MORTAL_LEVEL, SEX_VALUES
+from effects import acid_effect, fire_effect, cold_effect, poison_effect, shock_effect
+from game_time import init_weather, RAND_FACTOR, MAX_VECTOR
 from gquest import gq_is_target
+from handler import (is_name, is_affected, affect_to_char, affect_join, affect_strip,
+                     is_awake,
+                     can_see, can_see_obj, can_see_room, act, chprintln, get_char_room,
+                     equip_char,
+                     unequip_char, tpl_flag_affects, get_curr_stat,
+                     TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
+                     is_good, is_evil, is_neutral)
 from info import do_look
 from item import (get_obj_list, obj_vnum, item_spell_level,
                   item_spells, item_spell_name, item_extra_flags,
@@ -34,13 +34,15 @@ from movement import perform_recall, get_random_room
 from picker import pick_from
 from quest import is_quester
 from scan import do_scan
+from skill_utils import WaitState, check_improve, get_skill
 from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
 from skills_table import SKILLS, SKILL_TABLE
 from terminal import tprint
 from urandom import randint
-from game_time import init_weather, RAND_FACTOR, MAX_VECTOR
 from util import num_str
-from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS, item_tpl, item_tpl_get
+from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS, item_tpl
+from world import (OBJ_VNUM_MUSHROOM, OBJ_VNUM_LIGHT_BALL, OBJ_VNUM_SPRING,
+                   OBJ_VNUM_DISC, OBJ_VNUM_PORTAL, OBJ_VNUM_ROSE)
 
 TARGET_NONE = "none"
 TARGET_CHAR = "char"

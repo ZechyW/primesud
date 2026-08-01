@@ -16,9 +16,9 @@ init_terminal()
 import handler
 import info
 import world
-from handler import _char_base
-from player import (COMM_BRIEF, COMM_COMPACT, COMM_SHOW_AFFECTS, PLR_DEFAULTS,
-                    create_char, set_title)
+from handler import (_char_base, COMM_BRIEF, COMM_COMPACT, COMM_SHOW_AFFECTS,
+                     PLR_DEFAULTS)
+from player import create_char, set_title
 from world import ROOM_DEFS, MOB_DEFS
 
 
@@ -95,7 +95,7 @@ def test_brief_suppresses_desc_on_auto_look_only(out):
 def test_brief_does_not_suppress_exits_items_mobs(out):
     player = _make_player()
     player["flags"] |= COMM_BRIEF
-    from player import PLR_AUTOEXIT
+    from handler import PLR_AUTOEXIT
     player["flags"] |= PLR_AUTOEXIT
     info.do_look(player, ["auto"])
     assert any("[Exits:" in l for l in out)

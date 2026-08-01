@@ -7,13 +7,14 @@ lazy imports below, matching the existing combat.py<->magic.py pattern).
 """
 
 import world
-from world import ITEM_DEFS, item_tpl
-from handler import act, chprintln, affect_join, affect_to_char, unequip_char, TO_ROOM, TO_ALL
-from item import obj_vnum, item_extra_flags, item_affect_to_obj, create_object, item_type
+from config import DAM_FIRE, DAM_COLD, DAM_LIGHTNING, DAM_POISON
+from handler import act, chprintln, affect_join, affect_to_char, unequip_char, TO_ROOM, \
+    TO_ALL
+from item import item_extra_flags, item_affect_to_obj, create_object, item_type
 from skill_utils import DazeState
 from skills_table import SKILL_TABLE, GSN_POISON
-from config import DAM_FIRE, DAM_COLD, DAM_LIGHTNING, DAM_POISON
 from urandom import randint
+from world import item_tpl
 
 TARGET_NONE = "none"
 TARGET_CHAR = "char"

@@ -2,43 +2,45 @@
 
 import terminal
 import world
-from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
-                    get_char_room, mob_condition, is_good, is_evil, can_see,
-                    can_see_obj, room_is_dark, check_blind,
-                    act, chprintln, TO_CHAR,
-                    number_argument as _number_argument, tpl_flag_affects)
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from classes import class_long, class_short
 from colors import color_len, upper, draw_line
 from combat import get_thac0
-from game_time import (time_info, day_name, month_name, ordinal_string,
-                       weather_report_line, DAYS_IN_WEEK, HOURS_IN_DAY)
-from races import RACE_TABLE, race_lookup
-from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, POS_FROM_SHORT, SECTOR_COLORS,
+from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, POS_FROM_SHORT,
+                    SECTOR_COLORS,
                     MAX_MORTAL_LEVEL, MAX_LEVEL, DIR_ALIASES,
                     AC_PIERCE, AC_BASH, AC_SLASH, AC_EXOTIC,
                     WEAR_LABELS, VERSION)
+from debug import DBG, dbg  # [PRIMESUD]
+from explored import roomcount, TOP_EXPLORED, _pct2
+from game_time import (time_info, day_name, month_name, ordinal_string,
+                       weather_report_line, DAYS_IN_WEEK, HOURS_IN_DAY)
+from gquest import gq_is_player_target
+from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name,
+                     get_char_room, mob_condition, is_good, is_evil, can_see,
+                     can_see_obj, room_is_dark, check_blind,
+                     act, chprintln, TO_CHAR,
+                     number_argument as _number_argument, tpl_flag_affects,
+                     PLR_AUTOMAP, PLR_AUTOSKILL, PLR_AUTOLOOT, PLR_AUTOSAC,
+                     PLR_AUTOGOLD, PLR_AUTOSPLIT, PLR_AUTOASSIST, PLR_AUTOEXIT,
+                     PLR_AUTODAMAGE, PLR_DEFAULTS,
+                     COMM_BRIEF, COMM_COMPACT, COMM_SHOW_AFFECTS)
 from item import (get_obj_here, obj_vnum, item_extra_flags,
                   item_container_flags, liquid_color, liquid_left,
                   liquid_total, liquid_type)
 from music import do_play
+from pager import tpage
 from picker import pick_from, _MAX_OPTS as _PICKER_PAGE
-from player import (PLR_AUTOMAP, PLR_AUTOSKILL, PLR_AUTOLOOT, PLR_AUTOSAC,
-                    PLR_AUTOGOLD, PLR_AUTOSPLIT, PLR_AUTOASSIST, PLR_AUTOEXIT,
-                    PLR_AUTODAMAGE, PLR_DEFAULTS, _EQUIP_SAVE_ORDER,
-                    COMM_BRIEF, COMM_COMPACT, COMM_SHOW_AFFECTS, set_title)
-from gquest import gq_is_player_target
+from player import _EQUIP_SAVE_ORDER, set_title
+from prime_platform import ticks  # [PRIMESUD] 'debug time' channel timings
 from quest import is_quester
+from races import RACE_TABLE, race_lookup
 from skill_utils import can_use_skill_spell, is_spell, is_runtime_spell, skill_level, \
     spell_mana, get_skill, check_improve
 from skills_table import SKILL_TABLE, SKILLS, GSN_PEEK
 from urandom import randint
 from util import count_str, free_mem, gc_collect, num_str, pad_left, pad_right, zpad
-from world import ROOM_DEFS, ITEM_DEFS, MOB_DEFS, item_tpl
-from debug import DBG, dbg  # [PRIMESUD]
-from explored import roomcount, TOP_EXPLORED, _pct2
-from prime_platform import ticks  # [PRIMESUD] 'debug time' channel timings
-from pager import tpage
+from world import ROOM_DEFS, MOB_DEFS, item_tpl
 
 
 def _wrap(text, width):

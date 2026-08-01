@@ -29,7 +29,8 @@ from magic import (
     spell_teleport, obj_cast_spell,
     _skill_lookup, _new_affect, check_dispel,
 )
-from player import create_char, PLR_AUTOLOOT, PLR_DEFAULTS
+from handler import PLR_AUTOLOOT, PLR_DEFAULTS
+from player import create_char
 import world
 from world import ITEM_DEFS, ROOM_DEFS, MOB_DEFS
 

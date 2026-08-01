@@ -1,10 +1,10 @@
 """Item creation, lookup, flags, spell payloads, and save tokens."""
 
 import world
-from world import ITEM_DEFS, MOB_DEFS, item_tpl, item_tpl_get
 from config import STR_APP_CARRY
-from util import sstr
 from handler import is_name, number_argument, can_see_obj, get_curr_stat
+from util import sstr
+from world import ITEM_DEFS, item_tpl
 
 # Item types that can hold contents, for loot/look-in purposes [PRIMESUD]:
 # matches 1stMud's do_get/get_obj_list acceptance of ITEM_CONTAINER plus

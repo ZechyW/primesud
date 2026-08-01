@@ -9,9 +9,8 @@ _SRC = os.environ.get("PRIMESUD_SRC", "src")
 sys.path.insert(0, os.path.join(ROOT, _SRC))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
-from handler import _char_base
-from player import (PLR_AUTOEXIT, PLR_AUTODAMAGE, PLR_AUTOASSIST,
-                    PLR_DEFAULTS)
+from handler import (_char_base, PLR_AUTOEXIT, PLR_AUTODAMAGE, PLR_AUTOASSIST,
+                     PLR_DEFAULTS)
 import combat
 from combat import check_assist, dam_message
 from config import TYPE_HIT

@@ -1,11 +1,8 @@
 """World-state update loops (cf. 1stMud update.c)."""
 
-import world
-from world import ITEM_DEFS, ROOM_DEFS, item_tpl
-from item import obj_vnum, item_affect_remove
-from handler import unequip_char, chprintln
-from urandom import randint
 import terminal
+import world
+from combat import update_mob_timers, violence_update
 from config import (
     PULSE_VIOLENCE,
     PULSE_MOBILE,
@@ -15,18 +12,21 @@ from config import (
     PULSE_AREA,
     TICK_SECS,
 )
-from combat import update_mob_timers, violence_update
+from debug import DBG, dbg  # [PRIMESUD]
+from economy import bank_update
+from explored import mark_explored  # [PRIMESUD]
 from game_time import time_update
+from gquest import gquest_update
+from handler import unequip_char, chprintln
+from item import item_affect_remove
 from mob import mobile_update, aggr_update, area_update, weather_update
 from music import song_update
 from player import regen_update, tick_update
 from quest import quest_update
-from util import count_str
-from gquest import gquest_update
 from stances import first_stance_tip  # [PRIMESUD]
-from explored import mark_explored  # [PRIMESUD]
-from economy import bank_update
-from debug import DBG, dbg  # [PRIMESUD]
+from urandom import randint
+from util import count_str
+from world import ROOM_DEFS, item_tpl
 
 # -- Return flags for update_handler (cf. 1stMud update.c) --------------------
 UPD_VIOLENCE = 1

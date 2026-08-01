@@ -2,31 +2,30 @@
 
 import gc
 
-from util import sstr
-from prime_platform import hvars_get, hvars_set, ticks
-from config import SAVE_VAR, FNKEY_NAMES, KEY_COMMANDS, R_STARTING_ROOM
-from game_time import time_info, SUN_DARK, SUN_RISE, SUN_LIGHT, SUN_SET
-from item import serialize_item_token, parse_item_token
 import terminal
-from terminal import tprint
 import world
-from world import ROOM_DEFS, AREA_DEFS, MOB_DEFS
-from inventory import do_outfit
-from macros import _MACRO_SUBST
-from quest import rescale_quest_gear
-from gquest import gq_save_lines, gq_load_line, gq_reset
-from mob import reset_area, create_area_states, spawn_pet
-from player import create_char, reset_char, show_prompt, _EQUIP_SAVE_ORDER
-from picker import pick_from
 from classes import CLASS_TABLE
-from races import race_lookup, PC_RACE_ORDER, RACE_TABLE
-from skills_table import WEAPON_GSN_MAP
 from colors import capitalize
+from config import SAVE_VAR, FNKEY_NAMES, KEY_COMMANDS, R_STARTING_ROOM
 from debug import DBG, dbg
+from explored import encode_rle, decode_rle
+from game_time import time_info, SUN_DARK, SUN_RISE, SUN_LIGHT, SUN_SET
+from gquest import gq_save_lines, gq_load_line, gq_reset
 from handler import affect_to_char, chprintln
 from info import do_help
-from explored import encode_rle, decode_rle
-
+from inventory import do_outfit
+from item import serialize_item_token, parse_item_token
+from macros import _MACRO_SUBST
+from mob import create_area_states, spawn_pet
+from picker import pick_from
+from player import create_char, reset_char, show_prompt, _EQUIP_SAVE_ORDER
+from prime_platform import hvars_get, hvars_set, ticks
+from quest import rescale_quest_gear
+from races import race_lookup, PC_RACE_ORDER, RACE_TABLE
+from skills_table import WEAPON_GSN_MAP
+from terminal import tprint
+from util import sstr
+from world import AREA_DEFS, MOB_DEFS
 
 # -- Save format version --------------------------------------------------------
 # Increment SAVE_VERSION whenever a core mechanic changes in a way that makes

@@ -1,14 +1,14 @@
 """Training, practice, and remort command handlers."""
 
 import world
-from classes import (CLASS_TABLE, MAX_REMORT, calc_max_level,
+from classes import (CLASS_TABLE, calc_max_level,
                      char_classes, class_lookup, class_name,
                      exp_per_level, is_class, lvl_bonus, skill_adept_cap)
 from handler import (get_curr_stat, get_max_train, act, chprintln,
                    TO_CHAR, TO_ROOM, affect_remove, unequip_char)
 from util import count_str, num_str, pad_right
-from config import (INT_APP_LEARN, MAX_MORTAL_LEVEL, REMORT_POWER_DIV,
-                    R_STARTING_ROOM, TERMINAL_COLS)
+from config import (INT_APP_LEARN, MAX_MORTAL_LEVEL, MAX_REMORT,
+                    REMORT_POWER_DIV, R_STARTING_ROOM, TERMINAL_COLS)
 from info import print_practice_table
 from inventory import do_outfit
 from picker import pick_from

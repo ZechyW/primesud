@@ -1,12 +1,12 @@
 """Jukebox songs: play command, song index, and the music pulse (cf. 1stMud music.c)."""
 
 import world
-from world import ITEM_DEFS, item_tpl
-from item import obj_vnum, item_type
-from handler import act, chprintln, can_see_obj, TO_CHAR
 from config import POS_ORDER
+from handler import act, chprintln, can_see_obj, TO_CHAR
+from item import item_type
 from pager import tpage
 from util import pad_right
+from world import item_tpl
 
 MUSIC_FILE = "music.txt"  # [PRIMESUD] canonical source; idx via tools/build_music_idx.py
 MUSIC_INDEX = "music.idx"  # [PRIMESUD] '<offset>|<length>|<lines>|<name>|<group>' per entry, music.dat order

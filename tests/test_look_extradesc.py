@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(ROOT, _SRC))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
 from handler import _char_base, is_name
-from player import PLR_DEFAULTS
+from handler import PLR_DEFAULTS
 import info
 import world
 from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS
