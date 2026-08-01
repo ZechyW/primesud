@@ -602,6 +602,19 @@ class TestCompare:
         assert old not in scene["inv"]
         assert new in scene["inv"]
 
+    def test_wear_best_skips_unlearnt_weapon(self, scene, out):
+        """No-proficiency weapons are never auto-equipped."""
+        # Huge sword outscores the dagger even at base skill 20, so only
+        # the learnt filter can make the dagger win.
+        ITEM_DEFS[8001]["dice"] = (10, 10, 0)
+        dagger = scene["inv"][1]
+        scene["learned"] = {GSN_DAGGER: 80}
+        scene["equip"].update({"wield": None})
+
+        inventory.do_wear(scene, ["best"])
+
+        assert scene["equip"]["wield"] is dagger
+
 
 class TestGetPickerHistory:
     def test_get_picker_all_resolves(self, scene, out, monkeypatch):

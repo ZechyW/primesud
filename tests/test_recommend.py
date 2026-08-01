@@ -241,6 +241,23 @@ def test_indexed_weapon_score_matches_fresh_instance(
             == inventory.gear_score(indexed_player, {"vnum": 500}))
 
 
+def test_gear_skips_unlearnt_weapon(indexed_player, tmp_path, monkeypatch):
+    """Weapons without the matching skill learnt are never recommended."""
+    path = tmp_path / "gear.idx"
+    _write_gear_idx(path, (
+        _gear_row(600, slot="wield", score=0, weapon_base=20,
+                  weapon_type="sword"),
+        _gear_row(601, slot="wield", score=0, weapon_base=10,
+                  weapon_type="dagger"),
+    ))
+    monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
+    indexed_player["learned"][WEAPON_GSN_MAP["dagger"]] = 80
+
+    rows = recommend._scan_gear(indexed_player, "wield")["wield"]
+
+    assert [row["vnum"] for row in rows] == [601]
+
+
 def test_runtime_owned_affect_suppresses_index_candidate(
         indexed_player, tmp_path, monkeypatch):
     world.ITEM_DEFS._data[500] = {

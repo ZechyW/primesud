@@ -1002,6 +1002,15 @@ def gear_score_weapon(player, weapon_base, weapon_type, sharp):
     return _weapon_score(weapon_base, sharp, 20 + _get_weapon_skill(player, sn))
 
 
+def weapon_learnt(player, weapon_type):
+    """Return whether player has weapon_type's skill learnt. [PRIMESUD]
+
+    Unknown types map to exotic (sn -1), swung at 3 * level per
+    get_weapon_skill, so they always count as learnt.
+    """
+    return _get_weapon_skill(player, WEAPON_GSN_MAP.get(weapon_type, -1)) > 0
+
+
 def gear_score_weapon_max(weapon_base, sharp):
     """Return gear_score_weapon at 100% proficiency: an upper bound. [PRIMESUD]
 
@@ -1241,9 +1250,14 @@ def gear_flags_legal(player, extra):
 
 
 def _can_wear_best(player, obj, tpl):
-    """Return whether wear best may equip obj (sight/level/align). [PRIMESUD]"""
+    """Return whether wear best may equip obj (sight/level/align/skill). [PRIMESUD]"""
     if (not can_see_obj(player, obj)
             or tpl.get("level", 1) > player["level"]):
+        return False
+    # No-proficiency weapons are wieldable by hand ("wear <weapon>") but
+    # never auto-equipped; recommend applies the same filter.
+    if (tpl.get("type") == "weapon"
+            and not weapon_learnt(player, tpl.get("weapon_type", ""))):
         return False
     return gear_flags_legal(player, item_extra_flags(obj, tpl))
 

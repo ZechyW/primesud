@@ -4,7 +4,8 @@ import world
 from config import STR_APP_WIELD
 from handler import chprintln, get_curr_stat
 from inventory import (_can_wear_best, _wear_flag, gear_flags_legal,
-                       gear_score, gear_score_weapon, gear_score_weapon_max)
+                       gear_score, gear_score_weapon, gear_score_weapon_max,
+                       weapon_learnt)
 from pager import tpage
 from picker import pick_from
 from quest import QUEST_DELIVER, QUEST_FINDMOB
@@ -392,6 +393,8 @@ def _scan_segment(player, data, slot, results, baselines, current,
                 band_end = -1
             continue
         if item_level > player_level:
+            continue
+        if weapon_base and not weapon_learnt(player, parts[5]):
             continue
         flags = {}
         for flag in parts[8].split(","):
