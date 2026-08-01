@@ -79,7 +79,14 @@ deletes confirmed safe with evidence noted inline.
   immortal/clan/access-controlled rooms become real, the shared predicate is
   already in place.
 
-### Unused imports
+### Unused imports -- DONE (applied 01/08)
+
+Applied via auto-optimiser + manual follow-up (ae8470d). The optimiser also
+stripped the transitive re-exports the scan had excluded, so those were
+retired for good: PLR_*/COMM_* flags now import from handler.py everywhere
+(player.py re-export gone), MAX_REMORT from config (classes.py pass-through
+gone). Lesson: re-export patterns don't survive auto-optimisers; import from
+the definition site.
 
 AST name-use scan found 22 unused import bindings after excluding intentional
 player-flag re-exports:
