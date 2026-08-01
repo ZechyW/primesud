@@ -379,6 +379,42 @@ class TestBug4CorpseContentsDestroyed:
         assert sword in room["items"], \
             "corpse contents should drop to room floor on decay"
 
+    def test_spilled_litter_gets_timer_and_pickup_clears_it(self):
+        """[PRIMESUD] timerless spill gets a litter timer; do_get clears it,
+        preserving template extra_flags (docs/FIXES.md world litter)."""
+        from inventory import _get_triggers
+        from update import obj_update
+
+        _stub_item_tpl(10, itype="npc_corpse")
+        _stub_item_tpl(100, itype="weapon", extra_flags={"glow": True})
+        _stub_item_tpl(101, itype="potion")
+        room = _stub_room(3001)
+        sword = _stub_item_instance(100)
+        potion = _stub_item_instance(101, timer=500)
+        corpse = _stub_item_instance(10, timer=1, short_descr="corpse of a mob",
+                                     contents=[sword, potion])
+        room["items"] = [corpse]
+
+        class FakeTr:
+            def print(self, *a, **kw):
+                pass
+
+        player = _make_char(room=3001)
+        obj_update(FakeTr(), player)
+
+        assert 25 <= sword["timer"] <= 40
+        assert sword["extra_flags"] == {"glow": True, "litter": True}
+        # Canonical timers are untouched and never flagged.
+        assert potion["timer"] == 499
+        assert "extra_flags" not in potion
+
+        _get_triggers(player, sword)
+        assert "timer" not in sword
+        assert sword["extra_flags"] == {"glow": True}
+        # Non-litter pickup (fresh corpse loot) keeps its canonical timer.
+        _get_triggers(player, potion)
+        assert potion["timer"] == 499
+
 
 # ===========================================================================
 # Bug #5 -- Unequip clears bitvector flags shared with spells  (UNFIXED)

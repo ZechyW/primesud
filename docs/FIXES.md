@@ -702,3 +702,38 @@ Two treatments, by whether the message names an object:
 
 All sites `[PRIMESUD]`-commented; the two `[Verified:]` functions
 (`create_money`, `_examine_extras`) have their tags extended.
+
+---
+
+## obj_update: timerless mob-loot spill accumulates as permanent world litter
+
+**Upstream:** `reference/1stMud4.5.3/src/update.c`, `obj_update()` (corpse
+decay spill); `reference/1stMud4.5.3/src/fight.c`, `make_corpse()` (only
+potions, scrolls, and rot-death items get a content timer).
+
+### The bug (upstream-masked)
+
+When an NPC corpse decays, its contents spill to the room floor keeping
+whatever timer they had -- and `make_corpse` stamps timers only on
+potions/scrolls/rot-death items, so weapons, armour, containers, and coins
+spill with no timer and never decay. 1stMud gets away with it because a
+reboot rebuilds the world; PrimeSUD persists floor items across saves
+(`r.<vnum>.items` lines), so mob-vs-mob combat areas accumulate loot
+forever (measured: 299 persisted floor items, 186 in gangland alone).
+
+### PrimeSUD fix — implemented in `update.py`, `inventory.py` (02/08/2026)
+
+Mirrors 1stMud's own `ITEM_HAD_TIMER` shop idiom (`act_obj.c` sell/buy-back,
+already ported in `shop.py`):
+
+1. `obj_update` room spill: a spilled item with no timer gets
+   `timer = randint(25, 40)` plus a `litter` extra flag (set via
+   `set_item_extra_flag`, round-trips saves as `ef:` names).
+2. `_get_triggers` (the chokepoint every `do_get` path calls): picking up a
+   litter-flagged item pops the flag and the timer -- looted goods become
+   the player's for keeps, and re-dropping them stays persistent (home
+   decoration promise in `homes.py` intact).
+
+Items with a canonical timer never carry the flag, so potions looted from
+the floor still rot in inventory as upstream intends. Scavenger mobs that
+grab litter tick it down in the NPC-inventory loop instead -- acceptable.

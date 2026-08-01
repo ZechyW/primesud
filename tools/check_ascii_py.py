@@ -5,6 +5,9 @@ src/ files additionally must not use %-formatting, .format(), or f-strings
 heap bug; render ints via util.num_str/int_str, mixed values via util.sstr).
 A trailing `# str-ok` comment exempts an audited line: argument provably
 neither int nor str, or a site that must not depend on util (tml.py).
+src/ also must not call .setdefault() on an item *_flags dict: instance
+flag dicts shadow the template whole (item.py contract), so an empty
+default silently erases every template flag.
 tools/ runs on the dev PC and is exempt.
 """
 
@@ -22,6 +25,12 @@ BOM = b"\xef\xbb\xbf"
 # carry one (they format via handler._safe_fmt, never the firmware formatter)
 CONV_SPEC = re.compile(r"%[-0-9.]*[sdcxfu]")
 SAFE_FORMATTERS = {"chprintf", "chprintlnf", "printf", "_safe_fmt"}
+
+# Item instance flag dicts fully SHADOW the template (item.py contract):
+# .setdefault("extra_flags", {}) hides every template flag. Mutate via
+# item.ensure_item_extra_flags / set_item_extra_flag (copy-then-edit).
+SHADOWED_FLAG_KEYS = {"extra_flags", "weapon_flags", "container_flags",
+                      "wear_flags"}
 
 
 def _exempt_literals(tree):
@@ -75,6 +84,13 @@ def format_violations(source):
                 and "# str-ok" not in lines[node.lineno - 1]):
             hits.append("line " + str(node.lineno)
                         + ": bare str() call (num_str/sstr, or # str-ok)")
+        elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "setdefault" and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and node.args[0].value in SHADOWED_FLAG_KEYS):
+            hits.append("line " + str(node.lineno)
+                        + ": setdefault on a template-shadowing *_flags dict"
+                          " (use item.ensure/set_item_extra_flag)")
         elif (isinstance(node, ast.Constant) and isinstance(node.value, str)
                 and id(node) not in exempt and CONV_SPEC.search(node.value)):
             hits.append("line " + str(node.lineno)

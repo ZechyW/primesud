@@ -18,7 +18,7 @@ from explored import mark_explored  # [PRIMESUD]
 from game_time import time_update
 from gquest import gquest_update
 from handler import unequip_char, chprintln
-from item import item_affect_remove
+from item import item_affect_remove, set_item_extra_flag
 from mob import mobile_update, aggr_update, area_update, weather_update
 from music import song_update
 from player import regen_update, tick_update
@@ -307,6 +307,16 @@ def obj_update(tr, player):
                     tr.print(_decay_message(obj))
                 # Drop contents to room floor (cf. 1stMud obj_update in update.c)
                 for inner in obj.get("contents", []):
+                    if inner.get("timer", -1) <= 0:
+                        # [PRIMESUD] no permanent world litter: unlike 1stMud,
+                        # saves persist floor items, so timerless spill (gear,
+                        # coins) would accumulate forever. The litter flag lets
+                        # pickup (_get_triggers) clear the timer again; items
+                        # with a canonical timer (potion/scroll/rot_death) are
+                        # untouched.
+                        inner["timer"] = randint(25, 40)
+                        set_item_extra_flag(inner, item_tpl(inner), "litter",
+                                            True)
                     room["items"].append(inner)
                 room["items"].remove(obj)
 

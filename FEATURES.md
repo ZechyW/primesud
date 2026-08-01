@@ -141,6 +141,10 @@ worth trusting -- the engineering layer.
   least-recently-visited are unloaded again, buffering mob positions and
   floor items exactly like a save; areas holding your pet, followers, or
   combatants are never evicted (DESIGN.md "Far-area eviction").
+- **No permanent world litter** -- gear spilled from a decayed corpse rots
+  away in a few dozen ticks unless picked up (then it is yours for keeps,
+  and re-dropping it stays persistent); in 1stMud the pile just waits for
+  the reboot PrimeSUD never has (docs/FIXES.md).
 - **Minimal item instances** -- an object instance carries only its vnum and
   the fields that have diverged; everything else reads through to the
   template, and saves serialize just the divergent fields as compact tokens

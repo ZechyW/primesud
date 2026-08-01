@@ -160,6 +160,12 @@ def _check_carry_get(player, obj, tpl, from_carried=False):
 def _get_triggers(player, obj):
     """Obj then room TRIG_GET after a successful pickup (cf. get_obj,
     act_obj.c:165-168). [PRIMESUD] shared by every do_get pickup path."""
+    # [PRIMESUD] litter decay is floor-only (see obj_update spill): picking
+    # the item up makes it the player's for keeps, like a shop buy-back
+    # clearing a had_timer stamp. Flag only ever set on the instance dict.
+    ef = obj.get("extra_flags")
+    if ef is not None and ef.pop("litter", None):
+        obj.pop("timer", None)
     import mobprog  # deferred: keep mobprog off the boot path
     if mobprog.has_otrigger(obj, "get"):
         mobprog.ogive_trigger(

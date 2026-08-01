@@ -98,6 +98,16 @@ generated area files prune empty flag dicts), object dicts (sparse),
 and mobs.idx records. Test fixtures build chars via `_char_base()` +
 `update()`, not hand-rolled literals.
 
+**Item-dict flag-override convention (settled 02/08/2026).** An item
+instance's `extra_flags`/`weapon_flags`/`container_flags`/`wear_flags`
+dict fully SHADOWS its template -- there is no layering, so
+`obj.setdefault("extra_flags", {})` silently erases every template flag
+for that instance. Mutate only via `item.ensure_item_extra_flags` /
+`set_item_extra_flag` (copy-then-edit); read via the `item_*_flags`
+accessors. Deliberate full wipes (enchant failure) assign `= {}`
+directly. `tools/check_ascii_py.py` rejects the setdefault form in src/;
+the authoritative contract lives in the `item_extra_flags` docstring.
+
 **Dead-code sweep outcomes (settled 01/08/2026).** Full dead/legacy pass
 plus guard pass ran 01/08 (plan doc deleted per project rule; full text in
 git history). Durable retain decisions, so later sweeps don't re-litigate:
