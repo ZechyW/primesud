@@ -20,13 +20,15 @@ def _fn(name, label=None):
 # final cell span the unused trailing columns.
 _MACRO_SECTIONS = (
     (
+        (_fn("vars", "Vars"), _fn("tool", "Toolbox"), _fn("tmpl", "Templt"),
+         _fn("math", "Math"), _fn("abc", "a b/c"), (None, "Del")),
         (_fn("xy", "x^y"), _fn("sin"), _fn("cos"), _fn("tan"),
          _fn("ln"), _fn("log")),
         (_fn("x2", "x^2"), _fn("pm", "+/-"), _fn("()"), _fn(","),
          (None, "Enter")),
     ),
     (
-        ((None, "EEX"), ("7", "7"), ("8", "8"), ("9", "9"),
+        (_fn("eex", "EEX"), ("7", "7"), ("8", "8"), ("9", "9"),
          (None, "/", "[Recall]")),
         ((None, "ALPHA"), ("4", "4"), ("5", "5"), ("6", "6"), (None, "*")),
         ((None, "Shift"), ("1", "1"), ("2", "2"), ("3", "3"), (None, "-")),
@@ -109,14 +111,24 @@ def _print_key_error():
 def do_macro(player, args):
     """Display or set function-key and digit-key macros. [PRIMESUD]"""
     if not args:
+        # [PRIMESUD] Exactly TERMINAL_ROWS grid lines, filling the screen.
+        # terminal.print_lines scrolls lazily -- the cursor parks one row
+        # past the bottom and the pending scroll is consumed by the next
+        # batch -- so a 22-line batch lands on rows 0-21 with no row lost
+        # to the cursor. A 23rd line would scroll the leading border off.
+        last_section = len(_MACRO_SECTIONS) - 1
         for section_i in range(len(_MACRO_SECTIONS)):
             section = _MACRO_SECTIONS[section_i]
             widths = _macro_widths(len(section[0]))
             tprint(_macro_sep(widths, "=" if section_i else "-"))
-            for row in section:
+            for row_i in range(len(section)):
+                row = section[row_i]
                 for line in _macro_row(row, widths):
                     tprint(line)
-                tprint(_macro_sep(_row_widths(row, widths)))
+                # The next section's '=' boundary closes the last row of a
+                # non-final section -- one rule there, not two. [PRIMESUD]
+                if section_i == last_section or row_i != len(section) - 1:
+                    tprint(_macro_sep(_row_widths(row, widths)))
         return None
     if args[0] == "default":
         if len(args) != 1:

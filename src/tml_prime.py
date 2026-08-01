@@ -20,6 +20,12 @@ _FN_PM    = 20  # +/- key -- index 27
 _FN_PAREN = 21  # ()  key -- index 28
 _FN_COMMA = 22  # ,   key -- index 29
 _FN_XY    = 23  # x^y key -- index 20
+_FN_EEX   = 24  # EEX key -- index 31, left of numpad
+_FN_VARS  = 25  # Vars      key -- index 14, three rows above numpad
+_FN_TOOL  = 26  # Toolbox   key -- index 15
+_FN_TMPL  = 27  # Templates key -- index 16
+_FN_MATH  = 28  # Math symbols key -- index 17
+_FN_ABC   = 29  # a b/c     key -- index 18
 
 _KEY_QUEUE_SIZE = 16
 
@@ -85,11 +91,11 @@ class tml_prime(tml):
             4: ['\\e','\\e','\\e','\\e'],
             7: ['\\L','\\L','\\L','\\L'],
             8: ['\\R','\\R','\\R','\\R'],
-            14: [None,'a',None,'A'],
-            15: [None,'b',None,'B'],
-            16: [None,'c',None,'C'],
-            17: [None,'d',None,'D'],
-            18: [None,'e',None,'E'],
+            14: [_FN_VARS,'a',None,'A'],
+            15: [_FN_TOOL,'b',None,'B'],
+            16: [_FN_TMPL,'c',None,'C'],
+            17: [_FN_MATH,'d',None,'D'],
+            18: [_FN_ABC,'e',None,'E'],
             19: ['\b','\b','\b','\b'],
             20: [_FN_XY,'f',None,'F'],
             21: [_FN_SIN,'g',None,'G'],
@@ -102,7 +108,7 @@ class tml_prime(tml):
             28: [_FN_PAREN,'n',"'",'N'],
             29: [_FN_COMMA,'o',None,'O'],
             30: ['\n','\n','\n','\n'],
-            31: [None,'p',None,'P'],
+            31: [_FN_EEX,'p',None,'P'],
             32: ['7','q','&','Q'],
             33: ['8','r','{}','R'],
             34: ['9','s','!','S'],

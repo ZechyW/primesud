@@ -84,19 +84,25 @@ def test_grid_matches_physical_layout_and_truncates_preview(out):
     do_macro(None, [])
 
     plain = [strip_colors(line) for line in out]
-    assert len(out) == 20
+    # 22 == TERMINAL_ROWS, a full screen -- see the note in do_macro. The
+    # single rule at the section boundary (not two) is what buys the top
+    # key row.
+    assert len(out) == 22
     assert all(color_len(line) == TERMINAL_COLS for line in out)
-    assert all(label in plain[1] for label in ("x^y", "sin", "cos", "tan", "ln", "log"))
-    assert all(label in plain[4] for label in ("x^2", "+/-", "()", ",", "Enter"))
-    assert plain[1].count("|") == 7
-    assert plain[4].count("|") == 6
-    assert plain[6].count("+") == 6
-    assert all(label in plain[8] for label in ("EEX", "7", "8", "9", "/"))
-    assert "[Recall]" in plain[9]
-    assert "On" in plain[17]
-    assert "[Exit]" in plain[18]
-    assert "help" in plain[18]
-    assert "cast fir..." in plain[9]
+    assert all(label in plain[1] for label in ("Vars", "Toolbox", "Templt",
+                                               "Math", "a b/c", "Del"))
+    assert all(label in plain[4] for label in ("x^y", "sin", "cos", "tan", "ln", "log"))
+    assert all(label in plain[7] for label in ("x^2", "+/-", "()", ",", "Enter"))
+    assert plain[4].count("|") == 7
+    assert plain[7].count("|") == 6
+    assert plain[8].count("+") == 0      # no rule below the last row of a section
+    assert plain[9].count("+") == 6      # the '=' boundary closes it instead
+    assert all(label in plain[10] for label in ("EEX", "7", "8", "9", "/"))
+    assert "[Recall]" in plain[11]
+    assert "On" in plain[19]
+    assert "[Exit]" in plain[20]
+    assert "help" in plain[20]
+    assert "cast fir..." in plain[11]
     assert "cast fireball" not in "".join(plain)
 
 
@@ -109,7 +115,7 @@ def test_macro_display_treats_color_codes_as_literal_text(out):
 
     out[:] = []
     do_macro(None, [])
-    assert "{{Rch..." in out[9]
+    assert "{{Rch..." in out[11]
     assert all(sum(len(segment) for _, segment in color_parse_runs(line))
                == TERMINAL_COLS for line in out)
 

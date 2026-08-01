@@ -153,8 +153,9 @@ worth trusting -- the engineering layer.
   (docs/PRIME_UX.md "Autosave"); `backup` writes a manual
   second slot, restored by renaming the file in the calculator's file
   manager (game_state.py, world.py).
-- **Keypad UX** -- D-pad keys move directly, digit/decimal keys plus two
-  function-key rows (x^y..log, x2..comma) are rebindable command macros,
+- **Keypad UX** -- D-pad keys move directly, digit/decimal keys plus three
+  function-key rows (Vars..a b/c, x^y..log, x2..comma) and EEX are rebindable
+  command macros,
   Symb/Help step command history, Shift-minus or a touch swipe opens a 250-row
   scrollback, and a persistent status bar shows hp/mana/xp plus the live input
   buffer (docs/PRIME_UX.md).

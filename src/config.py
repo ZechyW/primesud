@@ -167,6 +167,12 @@ FNKEY_TABLE = {
     21: ('()',  'wear'),      # ()  key -- index 28
     22: (',',   'remove'),    # ,   key -- index 29
     23: ('xy',  'run'),       # x^y key -- index 20
+    24: ('eex', 'recommend'), # EEX key -- index 31
+    25: ('vars', None),       # Vars      key -- index 14
+    26: ('tool', None),       # Toolbox   key -- index 15
+    27: ('tmpl', None),       # Templates key -- index 16
+    28: ('math', None),       # Math sym  key -- index 17
+    29: ('abc',  None),       # a b/c     key -- index 18
 }
 FNKEY_SENTINELS      = frozenset(FNKEY_TABLE)
 FNKEY_NAMES          = {k: v[0] for k, v in FNKEY_TABLE.items()}
