@@ -1899,14 +1899,28 @@ def _compress_path(parent, source, target):
 PATH_INDEX_FILE = "paths.idx"
 
 
+# Parsed-index cache keyed by filename: paths.idx is static per build, and
+# on-device the per-call re-parse dominated _route at ~4s/call
+# (debug/str_soak-1.log phase A). Filename keying keeps the test
+# monkeypatches of PATH_INDEX_FILE working (each points at a unique tmp file).
+_INDEX_CACHE = None  # (fname, segs, xedges)
+
+
 def _parse_index():
     """Read paths.idx in one f.read() and parse both record types. [PRIMESUD]
+
+    Parses once per PATH_INDEX_FILE value and returns the cached dicts
+    after that; callers treat them as read-only.
 
     Returns:
         tuple: (segs, xedges) where segs maps entry vnum ->
             [(exit_vnum, dist, dirs), ...] intra-area segments and xedges
             maps exit vnum -> [(dir, to_vnum), ...] cross-area exits.
     """
+    global _INDEX_CACHE
+    c = _INDEX_CACHE
+    if c is not None and c[0] == PATH_INDEX_FILE:
+        return c[1], c[2]
     segs = {}
     xedges = {}
     with open(PATH_INDEX_FILE) as f:
@@ -1921,6 +1935,7 @@ def _parse_index():
         elif parts[0] == "X":
             xedges.setdefault(int(parts[1]), []).append(
                 (parts[2], int(parts[3])))
+    _INDEX_CACHE = (PATH_INDEX_FILE, segs, xedges)
     return segs, xedges
 
 
