@@ -107,6 +107,10 @@ for that instance. Mutate only via `item.ensure_item_extra_flags` /
 accessors. Deliberate full wipes (enchant failure) assign `= {}`
 directly. `tools/check_ascii_py.py` rejects the setdefault form in src/;
 the authoritative contract lives in the `item_extra_flags` docstring.
+Items only: mobs eagerly merge race+template flags into instance-owned
+dicts at spawn (`create_mobile`), and runtime room state is a disjoint
+`{"items", "mobs"}` dict beside `ROOM_DEFS` -- neither shadows, so no
+parallel helpers exist or are needed.
 
 **Dead-code sweep outcomes (settled 01/08/2026).** Full dead/legacy pass
 plus guard pass ran 01/08 (plan doc deleted per project rule; full text in
