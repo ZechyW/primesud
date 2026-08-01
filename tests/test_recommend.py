@@ -23,9 +23,28 @@ def _player(level=10, room=1):
     return player
 
 
-def _mob_row(vnum, level, name, tags="test"):
-    return (str(vnum) + "|test|" + str(level) + "|mob|" + name
-            + "|" + tags + "|" + tags)
+def _fight_row(vnum, level, name, tags="test"):
+    return str(vnum) + "|" + str(level) + "|" + name + "|" + tags
+
+
+def _write_fight_idx(path, rows):
+    """Write rows in the level-segmented fight.idx layout."""
+    def _row_level(row):
+        try:
+            return max(0, int(row.split("|")[1]))
+        except (IndexError, ValueError):
+            return 0
+    ordered = sorted(rows, key=_row_level)
+    top = max([_row_level(row) for row in ordered], default=0)
+    sizes = [0] * (top + 1)
+    blob = ""
+    for row in ordered:
+        line = row + "\n"
+        sizes[_row_level(row)] += len(line)
+        blob += line
+    path.write_bytes(("# test fight.idx\n"
+                      + ",".join(str(size) for size in sizes) + "\n"
+                      + blob).encode())
 
 
 def _gear_row(vnum, slot="body", level=1, score=100, kind="floor",
@@ -98,18 +117,18 @@ def test_command_registration_keeps_existing_prefix_order():
 
 
 def test_mob_window_widens_lower_only(indexed_player, tmp_path, monkeypatch):
-    path = tmp_path / "mobs.idx"
-    path.write_text("\n".join((
-        _mob_row(100, 11, "upper"),
-        _mob_row(101, 10, "same"),
-        _mob_row(102, 9, "lower one"),
-        _mob_row(103, 8, "lower two"),
-        _mob_row(104, 7, "widened"),
-        _mob_row(105, 5, "limit"),
-        _mob_row(106, 12, "too high"),
-        _mob_row(107, 4, "too low"),
-    )))
-    monkeypatch.setattr(recommend, "MOB_INDEX_FILE", str(path))
+    path = tmp_path / "fight.idx"
+    _write_fight_idx(path, (
+        _fight_row(100, 11, "upper"),
+        _fight_row(101, 10, "same"),
+        _fight_row(102, 9, "lower one"),
+        _fight_row(103, 8, "lower two"),
+        _fight_row(104, 7, "widened"),
+        _fight_row(105, 5, "limit"),
+        _fight_row(106, 12, "too high"),
+        _fight_row(107, 4, "too low"),
+    ))
+    monkeypatch.setattr(recommend, "FIGHT_INDEX_FILE", str(path))
 
     rows = recommend._mob_candidates(indexed_player)
 
@@ -117,19 +136,19 @@ def test_mob_window_widens_lower_only(indexed_player, tmp_path, monkeypatch):
     assert all(row["level"] <= 11 for row in rows)
 
 
-def test_mob_filters_legacy_empty_tags_quest_and_malformed(
+def test_mob_filters_empty_tags_quest_and_malformed(
         indexed_player, tmp_path, monkeypatch):
     indexed_player["quest_status"] = recommend.QUEST_FINDMOB
     indexed_player["quest_mob"] = 102
-    path = tmp_path / "mobs.idx"
-    path.write_text("\n".join((
-        "100|test|10|mob|legacy|test",
-        "101|test|10|mob|no fight|test|",
-        _mob_row(102, 10, "protected"),
-        _mob_row(103, 10, "eligible"),
-        "bad|row|x|mob|broken|test|test",
-    )))
-    monkeypatch.setattr(recommend, "MOB_INDEX_FILE", str(path))
+    path = tmp_path / "fight.idx"
+    _write_fight_idx(path, (
+        "100|10|too few",
+        "101|10|no fight|",
+        _fight_row(102, 10, "protected"),
+        _fight_row(103, 10, "eligible"),
+        "bad|10|broken|test",
+    ))
+    monkeypatch.setattr(recommend, "FIGHT_INDEX_FILE", str(path))
 
     assert [row["vnum"] for row in
             recommend._mob_candidates(indexed_player)] == [103]
@@ -137,14 +156,14 @@ def test_mob_filters_legacy_empty_tags_quest_and_malformed(
 
 def test_mob_ranking_record_current_area_and_no_load(
         indexed_player, tmp_path, monkeypatch):
-    path = tmp_path / "mobs.idx"
-    path.write_text("\n".join((
-        _mob_row(100, 10, "far", "far"),
-        _mob_row(101, 10, "current", "test"),
-        _mob_row(102, 10, "bad", "test"),
-    )))
+    path = tmp_path / "fight.idx"
+    _write_fight_idx(path, (
+        _fight_row(100, 10, "far", "far"),
+        _fight_row(101, 10, "current", "test"),
+        _fight_row(102, 10, "bad", "test"),
+    ))
     world.mob_stats[102] = [2, 0]
-    monkeypatch.setattr(recommend, "MOB_INDEX_FILE", str(path))
+    monkeypatch.setattr(recommend, "FIGHT_INDEX_FILE", str(path))
     monkeypatch.setattr(world, "_ensure_area_by_tag",
                         lambda *_args: pytest.fail("area loaded"))
     before = set(world._LOADED_AREAS)
@@ -155,11 +174,26 @@ def test_mob_ranking_record_current_area_and_no_load(
     assert world._LOADED_AREAS == before
 
 
+def test_corrupt_fight_directory_fails_softly(indexed_player, tmp_path,
+                                              monkeypatch, capture):
+    pages, lines = capture
+    path = tmp_path / "fight.idx"
+    path.write_bytes(b"# header only, no directory line")
+    monkeypatch.setattr(recommend, "FIGHT_INDEX_FILE", str(path))
+    recommend.do_recommend(indexed_player, ["mobs"])
+
+    path.write_bytes(b"# header\nnot,numbers,here\n")
+    recommend.do_recommend(indexed_player, ["mobs"])
+
+    assert pages == []
+    assert lines == ["Mob recommendations are unavailable."] * 2
+
+
 def test_missing_indexes_fail_softly(indexed_player, tmp_path, monkeypatch,
                                      capture):
     pages, lines = capture
-    monkeypatch.setattr(recommend, "MOB_INDEX_FILE",
-                        str(tmp_path / "missing-mobs.idx"))
+    monkeypatch.setattr(recommend, "FIGHT_INDEX_FILE",
+                        str(tmp_path / "missing-fight.idx"))
     monkeypatch.setattr(recommend, "GEAR_INDEX_FILE",
                         str(tmp_path / "missing-gear.idx"))
 
@@ -285,6 +319,37 @@ def test_alt_sources_dedupe_rendered_identity(indexed_player, tmp_path,
     assert [alt["source_vnum"] for alt in rows[0]["alts"]] == [21]
 
 
+def test_banded_gear_segment_breaks_and_jumps(indexed_player, tmp_path,
+                                              monkeypatch):
+    # Band headers drive the shortcuts: a bound below the baseline jumps
+    # past the band's remaining (bound-sorted) rows, and a band above the
+    # player's level ends the segment even if a mislabeled row inside
+    # would have been eligible.
+    def _seg(*rows):
+        return "".join(row + "\n" for row in rows)
+
+    band0 = _seg(_gear_row(600, score=150),
+                 _gear_row(601, score=0),
+                 _gear_row(602, score=120))
+    band5 = _seg(_gear_row(603, score=130, level=5))
+    band15 = _seg(_gear_row(604, score=999, level=1))
+    body = ("@0|" + str(len(band0)) + "\n" + band0
+            + "@5|" + str(len(band5)) + "\n" + band5
+            + "@15|" + str(len(band15)) + "\n" + band15)
+    blobs = ["" for _slot in recommend._GEAR_SLOTS]
+    blobs[recommend._GEAR_SLOTS.index("body")] = body
+    path = tmp_path / "gear.idx"
+    path.write_bytes(("# test gear.idx\n"
+                      + ",".join(str(len(blob)) for blob in blobs) + "\n"
+                      + "".join(blobs)).encode())
+    monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
+
+    rows = recommend._scan_gear(indexed_player, "body")["body"]
+
+    # 602 sits after the 601 bound-jump; 604 sits past the level break.
+    assert [row["vnum"] for row in rows] == [600, 603]
+
+
 def test_gear_detail_is_bounded_to_ten(indexed_player, tmp_path, monkeypatch):
     path = tmp_path / "gear.idx"
     _write_gear_idx(path, [
@@ -301,12 +366,12 @@ def test_gear_detail_is_bounded_to_ten(indexed_player, tmp_path, monkeypatch):
 def test_mob_multi_area_marker(indexed_player, tmp_path, monkeypatch,
                                capture):
     pages, _lines = capture
-    path = tmp_path / "mobs.idx"
-    path.write_text("\n".join((
-        _mob_row(100, 10, "roamer", "far,test"),
-        _mob_row(101, 10, "homebody", "test"),
-    )))
-    monkeypatch.setattr(recommend, "MOB_INDEX_FILE", str(path))
+    path = tmp_path / "fight.idx"
+    _write_fight_idx(path, (
+        _fight_row(100, 10, "roamer", "far,test"),
+        _fight_row(101, 10, "homebody", "test"),
+    ))
+    monkeypatch.setattr(recommend, "FIGHT_INDEX_FILE", str(path))
 
     recommend._show_mobs(indexed_player)
 
@@ -401,17 +466,24 @@ def test_generator_emits_fight_tags_and_all_source_kinds(
     build_mob_index.main()
 
     mob_rows = (tmp_path / "mobs.idx").read_text().splitlines()
-    assert next(row for row in mob_rows if row.startswith("100|")).endswith(
-        "|test|test")
+    assert "100|test|10|fighter|a fighter|test" in mob_rows
     assert next(row for row in mob_rows if row.startswith("101|")).endswith(
-        "|test|")
-    assert next(row for row in mob_rows if row.startswith("102|")).endswith(
-        "|test|")
+        "|test")
+    fight_lines = (tmp_path / "fight.idx").read_text().splitlines()
+    fight_sizes = [int(v) for v in fight_lines[1].split(",")]
+    # Only mob 100 is fightable (101 is a shopkeeper, 102 sits in a safe
+    # room); its level-10 segment is the last and only non-empty one.
+    assert fight_lines[2:] == ["100|10|a fighter|test"]
+    assert len(fight_sizes) == 11
+    assert fight_sizes[10] == len(fight_lines[2]) + 1
+    assert sum(fight_sizes) == fight_sizes[10]
+
     gear_lines = (tmp_path / "gear.idx").read_text().splitlines()
     sizes = [int(v) for v in gear_lines[1].split(",")]
     assert len(sizes) == len(recommend._GEAR_SLOTS)
     assert sum(sizes) == sum(len(line) + 1 for line in gear_lines[2:])
-    gear_rows = [row.split("|") for row in gear_lines[2:]]
+    gear_rows = [row.split("|") for row in gear_lines[2:]
+                 if not row.startswith("@")]
     assert {row[10] for row in gear_rows} == {
         "loot", "shop", "floor", "container"}
     # Segments follow _GEAR_SLOTS order, so slot column is grouped.
@@ -426,6 +498,34 @@ def test_generator_emits_fight_tags_and_all_source_kinds(
     assert nested[10:13] == ["loot", "100", "10"]
     assert nested[14] == "a fighter"
 
+    # Band invariants the runtime shortcuts rely on: every row sits under a
+    # header, headers partition each slot segment exactly, bands ascend, and
+    # rows inside a band descend by max-score bound.
+    text = (tmp_path / "gear.idx").read_text()
+    body = text.split("\n", 2)[2]
+    offset = 0
+    for size in sizes:
+        segment = body[offset:offset + size]
+        offset += size
+        pos = 0
+        last_band = -1
+        while pos < len(segment):
+            end = segment.index("\n", pos)
+            header = segment[pos:end]
+            assert header.startswith("@")
+            band_level, band_bytes = header[1:].split("|")
+            assert int(band_level) > last_band
+            last_band = int(band_level)
+            band = segment[end + 1:end + 1 + int(band_bytes)]
+            pos = end + 1 + int(band_bytes)
+            bounds = []
+            for row in band.splitlines():
+                parts = row.split("|")
+                assert int(parts[2]) // 5 * 5 == int(band_level)
+                bounds.append(int(parts[3]) + inventory.gear_score_weapon_max(
+                    int(parts[4]), parts[6] == "1"))
+            assert bounds == sorted(bounds, reverse=True)
+
 
 def test_shipped_indexes_reproduce(tmp_path, monkeypatch):
     source = Path(build_mob_index.APPDIR)
@@ -433,5 +533,5 @@ def test_shipped_indexes_reproduce(tmp_path, monkeypatch):
 
     build_mob_index.main()
 
-    for name in ("mobs.idx", "objs.idx", "gear.idx"):
+    for name in ("mobs.idx", "objs.idx", "fight.idx", "gear.idx"):
         assert (tmp_path / name).read_bytes() == (source / name).read_bytes()

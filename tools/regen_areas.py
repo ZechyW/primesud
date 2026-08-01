@@ -30,7 +30,7 @@ def main():
 
     for script, label in (
             ("tools/gen_area_adj.py", "world.py static tables"),
-            ("tools/build_mob_index.py", "mob, object, and gear indexes"),
+            ("tools/build_mob_index.py", "mob, object, fight, and gear indexes"),
             ("tools/build_path_index.py", "path index"),
             ("tools/check_ascii_py.py", "ASCII check")):
         print("==> " + label, flush=True)

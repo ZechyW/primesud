@@ -980,17 +980,33 @@ def gear_score_components(tpl, armor=None, dice=None, weapon_flags=None,
     return score, weapon_base, weapon_type, sharp
 
 
+def _weapon_score(weapon_base, sharp, skill):
+    """Return weapon score at one effective skill value. [PRIMESUD]"""
+    base_score = weapon_base * skill // 10
+    if sharp:
+        base_score += base_score * skill // 700
+    return base_score
+
+
 def gear_score_weapon(player, weapon_base, weapon_type, sharp):
     """Return player-specific score for indexed weapon inputs. [PRIMESUD]"""
     if not weapon_base:
         return 0
     sn = WEAPON_GSN_MAP.get(weapon_type, -1)
     # one_hit uses 20 + weapon proficiency for damage and sharp chance.
-    skill = 20 + _get_weapon_skill(player, sn)
-    base_score = weapon_base * skill // 10
-    if sharp:
-        base_score += base_score * skill // 700
-    return base_score
+    return _weapon_score(weapon_base, sharp, 20 + _get_weapon_skill(player, sn))
+
+
+def gear_score_weapon_max(weapon_base, sharp):
+    """Return gear_score_weapon at 100% proficiency: an upper bound. [PRIMESUD]
+
+    gear.idx sorts each level band by static_score + this bound, descending,
+    so the recommend scan can stop a band once the bound cannot beat the
+    owned baseline.
+    """
+    if not weapon_base:
+        return 0
+    return _weapon_score(weapon_base, sharp, 120)
 
 
 def gear_score(player, obj):

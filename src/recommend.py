@@ -4,7 +4,7 @@ import world
 from config import STR_APP_WIELD
 from handler import chprintln, get_curr_stat
 from inventory import (_can_wear_best, _wear_flag, gear_flags_legal,
-                       gear_score, gear_score_weapon)
+                       gear_score, gear_score_weapon, gear_score_weapon_max)
 from pager import tpage
 from picker import pick_from
 from quest import QUEST_DELIVER, QUEST_FINDMOB
@@ -12,7 +12,7 @@ from util import num_str, pad_left, pad_right
 from world import item_tpl
 
 
-MOB_INDEX_FILE = "mobs.idx"
+FIGHT_INDEX_FILE = "fight.idx"
 GEAR_INDEX_FILE = "gear.idx"
 
 _GEAR_SLOTS = (
@@ -54,16 +54,45 @@ def _area_name(tag):
 
 
 def _mob_candidates(player):
-    """Read and rank fightable mob rows without loading an area."""
-    try:
-        with open(MOB_INDEX_FILE) as f:
-            data = f.read()
-    except OSError:
-        return None
+    """Read and rank fightable mob rows without loading an area.
 
+    fight.idx groups fightable rows into one contiguous segment per mob
+    level behind a directory line of per-level byte lengths, so the widest
+    possible band [level-5, level+1] is one seek plus one bounded read --
+    never a full-file scan (per-row split allocs dominate on-device).
+    """
     level = player.get("level", 1)
     lowest = max(1, level - 5)
     highest = level + 1
+    try:
+        with open(FIGHT_INDEX_FILE) as f:
+            head = f.read(2048)
+            cut = head.find("\n")
+            end = head.find("\n", cut + 1) if cut >= 0 else -1
+            if end < 0:
+                return None
+            try:
+                sizes = [int(v) for v in head[cut + 1:end].split(",")]
+            except (TypeError, ValueError):
+                return None
+            if not sizes or min(sizes) < 0:
+                return None
+            top = len(sizes) - 1
+            low_seg = lowest if lowest <= top else top + 1
+            high_seg = highest if highest <= top else top
+            skip = 0
+            for index in range(low_seg):
+                skip += sizes[index]
+            length = 0
+            for index in range(low_seg, high_seg + 1):
+                length += sizes[index]
+            data = ""
+            if length:
+                f.seek(end + 1 + skip)
+                data = f.read(length)
+    except OSError:
+        return None
+
     current = _current_tag(player)
     protected = 0
     if player.get("quest_status") in (QUEST_DELIVER, QUEST_FINDMOB):
@@ -72,17 +101,16 @@ def _mob_candidates(player):
     order = 0
     for line in _index_lines(data):
         parts = line.split("|")
-        if len(parts) < 7:
-            # Legacy six-field rows carry no fightability metadata.
+        if len(parts) < 4:
             continue
         try:
             vnum = int(parts[0])
-            mob_level = int(parts[2])
+            mob_level = int(parts[1])
         except (TypeError, ValueError):
             continue
         if vnum == protected or mob_level < lowest or mob_level > highest:
             continue
-        tags = [tag for tag in parts[6].split(",") if tag]
+        tags = [tag for tag in parts[3].split(",") if tag]
         if not tags:
             continue
         tag = current if current in tags else tags[0]
@@ -90,7 +118,7 @@ def _mob_candidates(player):
         kills = stats[0] if stats else 0
         deaths = stats[1] if stats else 0
         rows.append({
-            "vnum": vnum, "level": mob_level, "name": parts[4],
+            "vnum": vnum, "level": mob_level, "name": parts[2],
             "tag": tag, "extra": len(tags) - 1, "kills": kills,
             "deaths": deaths, "bad": bool(stats and kills > deaths),
             "order": order,
@@ -308,8 +336,39 @@ def _scan_gear(player, wanted_slot=None):
 def _scan_segment(player, data, slot, results, baselines, current,
                   player_level, loot_low, loot_high, wield_limit, funds,
                   area_order, limit):
-    """Score and rank one slot segment's rows into results[slot]."""
-    for line in _index_lines(data):
+    """Score and rank one slot segment's rows into results[slot].
+
+    Segments carry "@min_level|bytes" band headers (5-level item bands,
+    ascending; rows inside a band sorted by max-score bound, descending).
+    The walk breaks at the first band above the player's level and jumps
+    past a band's remaining rows once the bound cannot beat the owned
+    baseline, so only a handful of rows are fully parsed. Data without
+    headers or ordering still scans correctly, just without the shortcuts.
+    """
+    baseline = baselines[slot]
+    size = len(data)
+    pos = 0
+    band_end = -1
+    while pos < size:
+        end = data.find("\n", pos)
+        if end < 0:
+            end = size
+        line = data[pos:end]
+        pos = end + 1
+        if not line or line[0] == "#":
+            continue
+        if line[-1] == "\r":
+            line = line[:-1]
+        if line[0] == "@":
+            band_end = -1
+            parts = line.split("|")
+            try:
+                if int(parts[0][1:]) > player_level:
+                    return
+                band_end = pos + int(parts[1])
+            except (TypeError, ValueError, IndexError):
+                pass
+            continue
         parts = line.split("|")
         if len(parts) != 17 or parts[1] != slot:
             continue
@@ -325,6 +384,12 @@ def _scan_segment(player, data, slot, results, baselines, current,
             room_vnum = int(parts[13])
             price = int(parts[16])
         except (TypeError, ValueError):
+            continue
+        if static_score + gear_score_weapon_max(weapon_base, sharp) <= baseline:
+            # Bound-sorted band: no later row in it can be a strict upgrade.
+            if band_end >= 0:
+                pos = band_end
+                band_end = -1
             continue
         if item_level > player_level:
             continue
@@ -344,7 +409,7 @@ def _scan_segment(player, data, slot, results, baselines, current,
             continue
         score = static_score + gear_score_weapon(
             player, weapon_base, parts[5], sharp)
-        gain = score - baselines[slot]
+        gain = score - baseline
         if gain <= 0:
             continue
         tag = parts[15]

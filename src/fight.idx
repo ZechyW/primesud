@@ -1,0 +1,887 @@
+# vnum|level|short_descr|fight_tags per fightable mob, grouped by level; line 2 lists per-level segment byte lengths for levels 0..N -- built by tools/build_mob_index.py, do not edit
+178,790,457,1185,749,1487,1033,1172,1496,825,1603,622,1079,571,558,1375,457,579,575,284,1314,413,620,322,431,848,318,258,230,126,1005,269,145,189,130,337,85,134,104,40,160,75,225,70,164,241,118,32,63,33,136,540,221,72,43,26,44,24,22,64,110
+3713|0|the snail|mud_school
+5333|0|the beastly fido|mirror
+3062|0|the beastly fido|midgaard
+3066|0|an alley cat|midgaard
+3122|0|the duckling|midgaard
+3123|0|the sparrow|midgaard
+6601|1|a teddy bear|daycare
+6605|1|an old doll|daycare
+6608|1|the spoiled brat|daycare
+101|1|a smurf|smurf
+102|1|a smurf|smurf
+5100|1|the goblin slave|drow
+309|1|the cute rabbit|plains,haon
+3400|1|the bony skeleton|chapel
+3702|1|the monster|mud_school
+3703|1|the wimpy monster|mud_school
+3704|1|the aggressive monster|mud_school
+3705|1|the wimpy aggressive monster|mud_school
+3709|1|the rabbit|mud_school
+3712|1|the fox|mud_school
+9203|1|a tiny elemental|canyon
+5332|1|the janitor|mirror
+7001|1|the small bat|sewer
+7003|1|the small spider|sewer
+1302|1|Edgar|hitower
+1319|1|a small kitten|hitower
+3061|1|the janitor|midgaard
+3065|1|the beggar|midgaard
+3121|1|the swan|midgaard
+3124|1|the duck|midgaard
+3144|1|the town crier|midgaard
+9509|1|a beggar|newthalos
+9547|1|the dirt devil|newthalos
+6602|2|a raggedy anne doll|daycare
+9404|2|The revolving drunk|mobfact
+8907|2|a small bunny|grove
+1509|2|a rat|gnome
+3706|2|the big creature|mud_school
+3710|2|the lizard|mud_school
+1103|2|a toddler|shire
+9225|2|an eddie|canyon
+6005|2|the brown fox|haon
+5325|2|a small bunny|mirror
+2322|2|the Harem Girl|mahntor
+3064|2|the drunk|midgaard
+9507|2|a panhandler|newthalos
+9543|2|the alley cat|newthalos
+9544|2|the vulture|newthalos
+9560|2|a servant boy|newthalos
+2806|3|a fat worm|trollden
+6600|3|the dwarven youth|daycare
+6603|3|a toy soldier|daycare
+6604|3|the ugly bear|daycare
+9406|3|The factory worker|mobfact
+9407|3|The factory worker|mobfact
+103|3|Brainy Smurf|smurf
+104|3|Handy Smurf|smurf
+105|3|Sleepy Smurf|smurf
+106|3|Hefty Smurf|smurf
+107|3|Grumpy Smurf|smurf
+108|3|Jokey Smurf|smurf
+109|3|Smurfette|smurf
+3603|3|a dusty skeleton|grave
+3604|3|a dusty skeleton|grave
+8307|3|a rather small beast|marsh
+6510|3|the dwarven peon|dwarven
+5003|3|The small scorpion|eastern
+5009|3|The slave|eastern
+7810|3|an old hermit|valley
+3413|3|the rock slug|chapel
+5207|3|The horned lizard|thalos
+1500|3|a gnome child|gnome
+1517|3|the hobgoblin soldier|gnome
+1522|3|a gnome prisoner|gnome
+1523|3|a human prisoner|gnome
+3711|3|the boar|mud_school
+3720|3|the diploma beast|mud_school
+1122|3|a halfling youth|shire
+9201|3|the mountain climber|canyon
+9216|3|a small snowflake|canyon
+9217|3|a small rock|canyon
+6102|3|the large, grey wolf|haon
+6103|3|the large, black wolf|haon
+4002|3|the centipede|moria
+619|3|the boy|ofcol2
+620|3|the girl|ofcol2
+7005|3|the maggot|sewer
+3120|3|the sexton|midgaard
+9508|3|a panhandler|newthalos
+9551|3|a harem girl|newthalos
+9405|4|The toxic slime|mobfact
+3600|4|Henry the Gardener|grave
+3601|4|the rotting zombie|grave
+3605|4|the rotting zombie|grave
+8908|4|a harmless snake|grove
+3502|4|the small boy|midennir
+301|4|Sorbus the Hermit|plains
+5002|4|The coral snake|eastern
+7813|4|a wolf|valley
+3401|4|the undead zombie|chapel
+1510|4|a large rat|gnome
+9301|4|a poor mudder|galaxy
+3715|4|the bear|mud_school
+3716|4|the wolf|mud_school
+1124|4|a local gossip|shire
+1127|4|a chic urbanite|shire
+9215|4|a flame|canyon
+9218|4|a small spark|canyon
+4003|4|the kobold|moria
+5301|4|the pet lamia|mirror
+5318|4|a beautiful masseuse|mirror
+5326|4|a harmless snake|mirror
+7006|4|the slithering snake|sewer
+9545|4|the old man|newthalos
+9567|4|a horse|newthalos
+9568|4|a tourist|newthalos
+304|5|the citizen|ofcol
+2803|5|a baby troll|trollden
+6606|5|the nanny|daycare
+1000|5|A fairy dragon|air
+8000|5|a juve|mega1
+8904|5|a doe|grove
+6301|5|the young spider|arachnos
+6304|5|the orc|arachnos
+5000|5|The dervish|eastern
+5012|5|The dark dwarf|eastern
+5017|5|The rabid camel|eastern
+2101|5|a troll gang member|hood
+2102|5|an ogre gang member|hood
+2108|5|a pitbull|hood
+2001|5|a bat|catacomb
+2227|5|A human slave|draconia
+2242|5|the draconian fool|draconia
+1601|5|a killer frog|wyvern
+7800|5|a cooshee|valley
+3414|5|The mad etcher|chapel
+1501|5|a gnome woman|gnome
+1513|5|a black bat|gnome
+1520|5|a hobgoblin miner|gnome
+1524|5|a hermit|gnome
+3701|5|the blob|mud_school
+3714|5|the beast|mud_school
+1104|5|a nursemaid|shire
+1115|5|the mill worker|shire
+1126|5|a trainee|shire
+1128|5|a country bumpkin|shire
+9205|5|a small elemental|canyon
+9223|5|a particle|canyon
+9236|5|a little imp|canyon
+8700|5|A horrible asp|pyramid
+6100|5|the vicious warg|haon
+6101|5|the ferocious warg|haon
+4004|5|the orc|moria
+4054|5|the centipede|moria
+5300|5|the baby beholder|mirror
+5302|5|a citizen of Thalos|mirror
+5304|5|a female citizen of Thalos|mirror
+5319|5|a man|mirror
+5322|5|a doe|mirror
+611|5|Farmer Sara|ofcol2
+617|5|the citizen|ofcol2
+618|5|the citizen|ofcol2
+621|5|the maid|ofcol2
+627|5|a page|ofcol2
+7002|5|the great sewer rat|sewer
+7044|5|the lemure blob|sewer
+3063|5|the vagabond|midgaard
+9537|5|the tax collector|newthalos
+9564|5|the mercenary|newthalos
+9577|5|the giant hornet|newthalos
+303|6|the citizen|ofcol
+2801|6|the young troll|trollden
+9401|6|The mutant beastly fido|mobfact
+3602|6|the ghastly ghoul|grave
+8905|6|a deer|grove
+3501|6|the goblin|midennir
+6303|6|the Wolf Spider|arachnos
+6306|6|the drone spider|arachnos
+5013|6|the myconoid|eastern
+2206|6|a concubine|draconia
+912|6|A serving boy|olympus
+923|6|A citizen|olympus
+1702|6|a trapper|wyvern
+1712|6|an old centaur|wyvern
+7805|6|a valley elf scout|valley
+7806|6|a valley elf|valley
+7814|6|an antelope|valley
+3402|6|The ghoul|chapel
+3409|6|some cave weeds|chapel
+3416|6|The half-decomposed body|chapel
+1502|6|a gnome man|gnome
+1511|6|a giant rat|gnome
+1108|6|a bull|shire
+1114|6|the Miller|shire
+1125|6|a halfling beauty|shire
+9222|6|an elemental mist|canyon
+9224|6|a dust cloud|canyon
+6000|6|John the Lumberjack|haon
+4052|6|the hobgoblin|moria
+4105|6|a centipede|moria
+5316|6|a young scholar|mirror
+5323|6|a deer|mirror
+609|6|Granny Jenkins|ofcol2
+625|6|a servant|ofcol2
+7046|6|Herald|sewer
+7202|6|the junior mindflayer|sewer
+7203|6|the ugly wererat|sewer
+2800|7|the guardian beast|trollden
+2807|7|the roving beast|trollden
+3506|7|the goblin lieutenant|midennir
+6311|7|the Hermit|arachnos
+5015|7|The dustdigger|eastern
+2105|7|a doll|hood
+2002|7|a templar page|catacomb
+2200|7|the dragon hatchling|draconia
+1710|7|a centaur|wyvern
+1711|7|a centaur|wyvern
+7803|7|a valley elf sentry|valley
+7804|7|a valley elf sentry|valley
+3415|7|The spectral etcher's wife|chapel
+1503|7|a gnome scientist|gnome
+1514|7|the zombie gnome|gnome
+1518|7|the hobgoblin bodyguard|gnome
+1526|7|the cook|gnome
+1102|7|Farmer Gamgee|shire
+9221|7|a mud monster|canyon
+8701|7|A hooded cobra snake|pyramid
+4001|7|the garter snake|moria
+4005|7|the large orc|moria
+4051|7|the warrior|moria
+4104|7|the orc|moria
+4107|7|the green kobold|moria
+4150|7|the blue bat|moria
+4151|7|the red bat|moria
+4152|7|the green bat|moria
+4153|7|the white bat|moria
+4154|7|the black bat|moria
+626|7|a squire|ofcol2
+1311|7|a broom|hitower
+1315|7|a young apprentice magic user|hitower
+1316|7|a young apprentice|hitower
+1317|7|a young apprentice|hitower
+1318|7|A young apprentice|hitower
+9530|7|Mustafah|newthalos
+9535|7|the skinny kid|newthalos
+9542|7|the wandering prophet|newthalos
+2802|8|the medium troll|trollden
+2808|8|the medium troll|trollden
+6607|8|the armed guard|daycare
+1001|8|A griffin|air
+112|8|Azreal|smurf
+8314|8|a marsh wolf|marsh
+8906|8|a stag|grove
+3500|8|the wyvern|midennir
+3504|8|the bard|midennir
+3505|8|the dark horseman|midennir
+6308|8|the slave of Arachnos|arachnos
+9000|8|the tridrone|nirvana
+6507|8|the dwarven miner|dwarven
+5001|8|The dervish|eastern
+5011|8|The drider|eastern
+5014|8|The myconoid shaman|eastern
+2106|8|a patrolman|hood
+2003|8|a spelunker|catacomb
+925|8|A Cook|olympus
+1704|8|a hunter|wyvern
+7801|8|a valley elf|valley
+7802|8|a valley elf|valley
+1504|8|a gnome guard|gnome
+1507|8|a small troll|gnome
+9302|8|a beautiful star|galaxy
+1110|8|a shiriff|shire
+1111|8|a shiriff|shire
+1123|8|a seasoned adventurer|shire
+9214|8|a puddle|canyon
+9220|8|a lava beast|canyon
+8703|8|A pyramid watcher|pyramid
+6002|8|the brown bear|haon
+6318|8|the huge, poisonous spider|haon
+4056|8|the orc|moria
+4103|8|the thief|moria
+4159|8|the small troll|moria
+5315|8|the librarian|mirror
+5324|8|a stag|mirror
+5329|8|bard of Thalos|mirror
+7717|8|A tortured mindflayer prisoner|astral
+7004|8|the giant earth beetle|sewer
+7201|8|the senior mindflayer|sewer
+1301|8|a lost adventurer|hitower
+1320|8|a student|hitower
+1322|8|a student of spells|hitower
+1345|8|a cloth golem|hitower
+3005|8|the thief|midgaard
+9548|8|the lamia|newthalos
+9570|8|the cryohydra|newthalos
+9571|8|the minotaur lizard|newthalos
+9572|8|the death dog|newthalos
+9573|8|the spotted lion|newthalos
+9403|9|The Cityguard head|mobfact
+8312|9|the Marsh Hag|marsh
+3507|9|the goblin leader|midennir
+6509|9|the dwarven doctor|dwarven
+6511|9|the dwarf|dwarven
+6512|9|the unwanted son|dwarven
+2004|9|a graverobber|catacomb
+2240|9|a Draconian zombie|draconia
+1602|9|the stone gargoyle|wyvern
+1606|9|a carnivorous plant|wyvern
+1714|9|an elder centaur|wyvern
+5201|9|The lamia|thalos
+9314|9|a baby draco|galaxy
+9219|9|a small blob of acid|canyon
+8706|9|The magic carpet|pyramid
+4057|9|the mountain lion|moria
+4106|9|the Warrior|moria
+4158|9|the snake|moria
+4160|9|the orc|moria
+5330|9|bard of Thalos|mirror
+1300|9|a shadow guardian|hitower
+1312|9|a pair of disembodied hands|hitower
+1324|9|a student of spells|hitower
+1326|9|a young mage|hitower
+9531|9|Fatima|newthalos
+9549|9|the raggety dervish|newthalos
+9575|9|the chimera|newthalos
+350|10|the pet dragon|ofcol
+110|10|Papa Smurf|smurf
+111|10|Gargamel|smurf
+8308|10|the Will-O-Wisp|marsh
+8001|10|a punk|mega1
+8004|10|a dunk|mega1
+8909|10|a druid|grove
+5101|10|the drow commoner|drow
+3503|10|the Innkeeper|midennir
+6307|10|the ethereal spider|arachnos
+6309|10|the quasit|arachnos
+6316|10|the young dragon wormkin|arachnos
+6513|10|the unwanted daughter|dwarven
+5008|10|The nomad warrior|eastern
+2107|10|a vandal|hood
+2109|10|a punk|hood
+2005|10|some mist|catacomb
+2006|10|It|catacomb
+2241|10|the phase dragon|draconia
+1603|10|an angry gargoyle|wyvern
+1607|10|a gruesome ogre|wyvern
+1608|10|a shadow|wyvern
+1715|10|a centaur guard|wyvern
+3407|10|The nightgaunt|chapel
+1521|10|the treasurer|gnome
+9303|10|a young nebula|galaxy
+9304|10|a speedy comet|galaxy
+9206|10|a medium elemental|canyon
+8704|10|A tomb thief|pyramid
+6115|10|Shargugh|haon
+4200|10|the Pawn of the Black Court|chess2
+4201|10|the Pawn of the White Court|chess2
+4053|10|the snake|moria
+4055|10|the large hobgoblin|moria
+4102|10|the guardian snake|moria
+5306|10|the fanatic priest|mirror
+5327|10|a druid|mirror
+5328|10|a druidess|mirror
+7704|10|A poor soulless being|astral
+7716|10|An imprisoned githzerai|astral
+2307|10|the Ogre Villager|mahntor
+7007|10|the evil wanderer|sewer
+7011|10|the shadowy morkoth|sewer
+7045|10|Jones|sewer
+1304|10|a mage|hitower
+1335|10|a dancing sword|hitower
+9520|10|a construction worker|newthalos
+9533|10|A nomad merchant|newthalos
+9561|10|the sultan's guard|newthalos
+9562|10|the sultans guard|newthalos
+9578|10|the pegasus|newthalos
+9588|10|the mimic|newthalos
+9592|10|the bodyguard|newthalos
+2805|11|the large female troll|trollden
+8310|11|a large snake|marsh
+9001|11|the quadrone|nirvana
+2104|11|a bruiser|hood
+2111|11|a thug|hood
+2007|11|a skeleton|catacomb
+5111|11|the drow scout|thalos
+5202|11|The mimic|thalos
+5203|11|The mimic|thalos
+5204|11|The mimic|thalos
+5205|11|The mimic|thalos
+5206|11|The mimic|thalos
+9312|11|the Pleiades|galaxy
+8702|11|A wily little mongoose|pyramid
+4000|11|the huge python|moria
+4157|11|the Mage|moria
+7705|11|A githyanki hunter|astral
+7710|11|An evil gish|astral
+7711|11|An evil gish|astral
+7008|11|the homonculus|sewer
+1308|11|The cook's assistant|hitower
+9529|11|Aziz|newthalos
+9402|12|Foreman Floyd|mobfact
+8321|12|a gargoyle|marsh
+6305|12|the Queen Wasp|arachnos
+6501|12|the dwarven worker|dwarven
+5007|12|The nomad commander|eastern
+2008|12|a templar|catacomb
+2009|12|a mysterious wraith|catacomb
+1604|12|the elite gargoyle|wyvern
+1609|12|an evil wight|wyvern
+1706|12|a ranger|wyvern
+1716|12|the centaur chief|wyvern
+3403|12|The wraith|chapel
+3406|12|the Mi-Go|chapel
+5110|12|the drow guard|thalos
+1515|12|the fire bat|gnome
+1519|12|the king of the hobgoblins|gnome
+1131|12|the receptionist|shire
+9233|12|an illusionist|canyon
+8707|12|A mummy|pyramid
+4050|12|the warrior|moria
+4101|12|the troll|moria
+4155|12|the thief|moria
+610|12|Jack|ofcol2
+7000|12|the horrifying mudmonster|sewer
+7010|12|the evil chreffn|sewer
+7013|12|the horrifying mudmonster|sewer
+7042|12|the guardian naga|sewer
+7204|12|the gigantic rat|sewer
+1314|12|the mage|hitower
+1344|12|a flesh golem|hitower
+3142|12|the secretary|midgaard
+9532|12|Kareem|newthalos
+9536|12|the dockworker|newthalos
+9574|12|the behir|newthalos
+9586|12|the nightmare|newthalos
+9587|12|the wolverine|newthalos
+2804|13|the giant troll|trollden
+8318|13|a shambling mound|marsh
+8902|13|an elder druid|grove
+8903|13|an elder druidess|grove
+6317|13|the medium dragon wormkin|arachnos
+300|13|Aruncus the Druid|plains
+2103|13|the Troll gang leader|hood
+2110|13|the Ogre gang leader|hood
+2010|13|the templar officer|catacomb
+2011|13|zombie|catacomb
+2201|13|the Draconian|draconia
+1605|13|the gargoyle shaman|wyvern
+9234|13|an alchemist|canyon
+4058|13|the hill giant|moria
+4100|13|the Mage|moria
+7719|13|A massive blast of fire|astral
+624|13|a bard|ofcol2
+7043|13|the scaled basilisk|sewer
+8302|14|a green troll|marsh
+8005|14|a tap|mega1
+5102|14|the drow warrior noble|drow
+6310|14|the Bird Spider|arachnos
+9002|14|the pentadrone|nirvana
+5006|14|The nomad leader|eastern
+2012|14|the shadow|catacomb
+911|14|an apprentice musician|olympus
+924|14|a pegasus|olympus
+1610|14|A burly minotaur|wyvern
+1512|14|the troll|gnome
+1112|14|the Thain|shire
+8708|14|A sandman|pyramid
+4156|14|the troll|moria
+2303|14|the Rock Toad|mahntor
+7041|14|the sea hag|sewer
+7200|14|the master mindflayer|sewer
+1321|14|an instructor of magic|hitower
+1330|14|a scribe|hitower
+8320|15|a marsh giant|marsh
+5103|15|the drow mage noble|drow
+6515|15|the man in waiting|dwarven
+6517|15|the giant snake|dwarven
+2013|15|The vampire|catacomb
+2014|15|the evil necromancer|catacomb
+1612|15|the savage minotaur|wyvern
+1614|15|the black pudding|wyvern
+7807|15|a valley elf elder|valley
+7808|15|a valley elf elder|valley
+3405|15|the priest|chapel
+1505|15|the chief gnome|gnome
+9305|15|a red supergiant|galaxy
+9306|15|a white dwarf|galaxy
+9318|15|Gemini|galaxy
+9207|15|a large elemental|canyon
+8712|15|A hieracosphinx|pyramid
+6319|15|the Queen Spider|haon
+5331|15|the cityguard|mirror
+5334|15|the cityguard|mirror
+7706|15|A githyanki warrior|astral
+7707|15|A githyanki guardian|astral
+2302|15|the Cave Dweller|mahntor
+2305|15|the Mistling|mahntor
+2308|15|the Ogre Warrior|mahntor
+2315|15|the Minotaur Citizen|mahntor
+1313|15|a pair of disembodied eyes|hitower
+1323|15|a spell teacher|hitower
+1328|15|a spell teacher|hitower
+1331|15|a scribe|hitower
+1347|15|a clay golem|hitower
+1350|15|an animated skeleton|hitower
+1355|15|a grey cat|hitower
+1361|15|a white cat|hitower
+3060|15|the cityguard|midgaard
+3067|15|the cityguard|midgaard
+3068|15|the cityguard|midgaard
+3071|15|the cityguard|midgaard
+3072|15|the cityguard|midgaard
+3141|15|the cityguard|midgaard
+3161|15|Lister|midgaard
+9519|15|the foreman|newthalos
+9553|15|a eunuch|newthalos
+9576|15|the couatl|newthalos
+8301|16|a swamp troll|marsh
+8309|16|the monstrous snake|marsh
+8003|16|a Citi-Def Militiaman|mega1
+6506|16|the giant|dwarven
+6514|16|the barracks guard|dwarven
+2015|16|the grand templar|catacomb
+1615|16|a lesser golem|wyvern
+9235|16|a baby rainbow dragon|canyon
+7715|16|An insubstantial ghost|astral
+2313|16|the White Yeti|mahntor
+1309|16|The prisoner|hitower
+1333|16|the scribe's assistant|hitower
+1339|16|a wooden golem|hitower
+1358|16|a black cat|hitower
+8002|17|a Futsie|mega1
+5104|17|the drow priestess|drow
+6313|17|The guardian|arachnos
+9003|17|the decaton|nirvana
+1613|17|the captain|wyvern
+3411|17|The X-ist flesh eater|chapel
+9310|17|the wild Pegasus|galaxy
+1116|17|the elven warrior|shire
+1117|17|the dwarven prince|shire
+9231|17|an elemental magician|canyon
+6116|17|the elder druid|haon
+5303|17|an imperial cityguard|mirror
+5320|17|An imperial cityguard|mirror
+5321|17|an imperial cityguard|mirror
+7703|17|An invisible stalker|astral
+1310|17|the Jailor|hitower
+1327|17|the battle mistress|hitower
+3140|17|the captain|midgaard
+6505|18|the giant lizard|dwarven
+5004|18|The giant, purple sand worm|eastern
+2207|18|A bodyguard|draconia
+2226|18|a large hydra|draconia
+1616|18|the ancient wyvern|wyvern
+9307|18|a horsehead nebula|galaxy
+9308|18|poor Andromeda|galaxy
+1100|18|the Elven Wizard|shire
+9232|18|a rainbow warrior|canyon
+8705|18|Ali Baba|pyramid
+4204|18|the Black Knight|chess2
+4205|18|the White Knight|chess2
+7701|18|A pitch-black nightmare|astral
+1325|18|a wizard|hitower
+1343|18|a bronze golem|hitower
+1351|18|an undead giant|hitower
+9506|18|Brother John|newthalos
+9552|18|the jailer|newthalos
+8009|19|Ernie Ramirez|mega1
+1617|19|the spectre|wyvern
+9309|19|the mighty Hercules|galaxy
+9311|19|Orion the hunter|galaxy
+8713|19|A gynosphinx|pyramid
+600|19|the Ofcol cityguard|ofcol2
+623|19|the Ofcol cityguard|ofcol2
+634|19|the Ofcol cityguard|ofcol2
+2309|19|the Ogre Guard|mahntor
+8303|20|an ogre|marsh
+8313|20|a Death Slaad|marsh
+8006|20|a rookie judge|mega1
+8012|20|a bite fighter|mega1
+8900|20|The Hierophant|grove
+8901|20|The Hierophant|grove
+9004|20|the nonaton|nirvana
+6500|20|the dwarven guard|dwarven
+9101|20|the screaming, filthy harpy|dylan
+2016|20|the prism dragon|catacomb
+2243|20|the Draconian Queen|draconia
+7809|20|the pyrohydra|valley
+3408|20|The hunting horror|chapel
+3410|20|Snapper Joe|chapel
+3412|20|the spirit of King Crotus|chapel
+1101|20|the Keeper of the Ring|shire
+9204|20|the elemental guardian|canyon
+8709|20|The efreeti|pyramid
+5307|20|the priest of Thalos|mirror
+5309|20|the mayor of Thalos|mirror
+7712|20|A warlock of the Gith|astral
+629|20|Chaplain Jerrold|ofcol2
+2301|20|the Old Treant|mahntor
+2306|20|the Swamp Wraith|mahntor
+2310|20|The Ogre Shaman|mahntor
+2312|20|the Plains Barbarian|mahntor
+2314|20|the Ice Worm|mahntor
+2323|20|the Minotaur Butler|mahntor
+1307|20|Ezmerelda|hitower
+1329|20|an aged wizard|hitower
+1342|20|a granite golem|hitower
+1352|20|an ugly witch|hitower
+1357|20|a black robed apprentice|hitower
+1360|20|a white robed apprentice|hitower
+3069|20|the cityguard|midgaard
+9504|20|the receptionist|newthalos
+9554|20|Nichole, the sultan's favorite|newthalos
+9585|20|the gardener|newthalos
+9589|20|the mayor|newthalos
+9590|20|the chef|newthalos
+8306|21|a huge hairy beast|marsh
+5105|21|The drow master|drow
+6508|21|the dwarven mine leader|dwarven
+632|21|an attendant of the dragon|ofcol2
+633|21|a Dragonknight|ofcol2
+2317|21|the Minotaur Warrior|mahntor
+1341|21|the golem maker|hitower
+1348|21|the master of illusions|hitower
+9556|21|the guildguard|newthalos
+9557|21|the guildguard|newthalos
+9558|21|the guildguard|newthalos
+9559|21|the guildguard|newthalos
+8007|22|Wallaby Gleep|mega1
+9005|22|the octon|nirvana
+2203|22|a powerful mage|draconia
+2204|22|the holy Draconian|draconia
+926|22|The Jailer|olympus
+9315|22|Aries|galaxy
+9316|22|Taurus|galaxy
+9317|22|Gemini|galaxy
+9319|22|Cancer|galaxy
+9320|22|Leo|galaxy
+9321|22|Virgo|galaxy
+9322|22|Libra|galaxy
+9323|22|Scorpio|galaxy
+9324|22|Sagittarius|galaxy
+9325|22|Capricorn|galaxy
+9326|22|Aquarius|galaxy
+9327|22|Pisces the mermaid|galaxy
+9328|22|Pisces the fish|galaxy
+9202|22|the cyclops|canyon
+9227|22|the Magneto|canyon
+2316|22|the Minotaur Guard|mahntor
+1332|22|the master scribe|hitower
+1337|22|the master summoner|hitower
+5106|23|The weapons master|drow
+9102|23|the screaming harpy leader|dylan
+9229|23|the Rock Monster|canyon
+8714|23|A criosphinx|pyramid
+1303|23|the golem|hitower
+1334|23|the Enchanter|hitower
+1338|23|the master charmer|hitower
+1340|23|the master spell binder|hitower
+1353|23|the Librarian|hitower
+3143|23|the mayor|midgaard
+8304|24|the Swamp Thing|marsh
+5107|24|the matron mother|drow
+6302|24|Yevaud|arachnos
+9006|24|the septon|nirvana
+305|24|Shudde-M'ell|plains
+9105|24|the gigantic roc|dylan
+2017|24|The DarkenBeast|catacomb
+9228|24|the Ice Bandit|canyon
+8710|24|A caryatid|pyramid
+4206|24|the Black Bishop|chess2
+4207|24|the White Bishop|chess2
+7702|24|An evil night hag|astral
+1336|24|the Mad Alchemist|hitower
+1354|24|the master's apprentice|hitower
+8008|25|Pinkerton Throt|mega1
+8011|25|Judge Beddows|mega1
+6312|25|the Donjonkeeper|arachnos
+9103|25|the ghostly air elemental|dylan
+922|25|a roc|olympus
+7811|25|Talemon|valley
+7812|25|the guardian daemon|valley
+5200|25|The mighty beholder|thalos
+5208|25|The stone golem|thalos
+9313|25|the Head of Draco|galaxy
+1121|25|the battle master|shire
+6112|25|the huge, green dragon|haon
+7708|25|A githyanki knight|astral
+7709|25|A githyanki protector|astral
+2300|25|the Dark Ethereal Knight|mahntor
+2304|25|the Weeping Willow|mahntor
+2311|25|the Ogre Chieftain|mahntor
+2318|25|the Minotaur Gatekeeper|mahntor
+2319|25|the High Minotaur Guard|mahntor
+1346|25|an adamantite golem|hitower
+1349|25|the Necromancer|hitower
+1363|25|A calico cat|hitower
+9538|25|Gord|newthalos
+9539|25|Caramon|newthalos
+9540|25|Raistlin|newthalos
+9541|25|Curley GreenLeaf|newthalos
+5108|26|the matron mother|drow
+6314|26|Arachnos|arachnos
+6315|26|the Ki-Rin|arachnos
+9007|26|the hexton|nirvana
+2205|26|the Draconian King|draconia
+909|26|A Golden Maiden|olympus
+9330|26|Cassiopeia the Queen|galaxy
+9331|26|Cepheus the King|galaxy
+9226|26|the Blue Flame|canyon
+2320|26|the Royal Minotaur Guard|mahntor
+9104|27|the mysterious efreeti|dylan
+2202|27|the dragon master|draconia
+9329|27|Ursa Major the bear|galaxy
+8715|27|An androsphinx|pyramid
+4202|27|the Black Rook|chess2
+4203|27|the White Rook|chess2
+602|27|Captain Derrick|ofcol2
+603|27|Captain Jacklyn|ofcol2
+9008|28|the quinton|nirvana
+9106|28|the gigantic roc|dylan
+3404|28|The guardian vampire|chapel
+9230|28|the Hurricane|canyon
+8711|28|The djinn|pyramid
+7718|28|The enslaved red dragon|astral
+2321|28|the Elite Minotaur Guard|mahntor
+6502|29|the wraith|dwarven
+6516|29|the mazekeeper|dwarven
+630|29|a Dragonlord|ofcol2
+2324|29|the Minotaur Ring-Keeper|mahntor
+8305|30|a gnoll|marsh
+8010|30|Judge Eckersely|mega1
+5005|30|the brass dragon|eastern
+5010|30|The dracolich|eastern
+9332|30|Polaris, the polar star|galaxy
+9208|30|the Earth Ruler|canyon
+9209|30|the Fire Ruler|canyon
+9210|30|The Air Ruler|canyon
+9211|30|The Lightning Ruler|canyon
+9212|30|The Water Ruler|canyon
+5308|30|the stone golem|mirror
+7713|30|The lich-queen|astral
+628|30|the Priestess of Ofcol|ofcol2
+2325|30|Gorak|mahntor
+2326|30|Darkoth|mahntor
+2327|30|Tyrgoth|mahntor
+2328|30|Amyrok|mahntor
+2329|30|Sumaron|mahntor
+2330|30|Nasturn|mahntor
+2331|30|Belrak|mahntor
+2332|30|Dorgar|mahntor
+10402|30|the pile of gold coins|tohell
+1356|30|the master of Neutrality|hitower
+1359|30|the master of the black robes|hitower
+1362|30|The master of goodness|hitower
+3024|30|the sorcerer|midgaard
+3025|30|the knight templar|midgaard
+3026|30|the assassin|midgaard
+3027|30|the knight|midgaard
+3163|30|the thief|midgaard
+9569|30|Shelbye|newthalos
+9581|30|the high priest|newthalos
+9591|30|the Ixitxachitl|newthalos
+9107|31|the ugly, wicked witch|dylan
+9522|31|the statue of Alander|newthalos
+9523|31|the statue of Zump|newthalos
+9524|31|the statue of Nightshade|newthalos
+9525|31|the statue of Satin|newthalos
+9526|31|the statue of Shandra|newthalos
+9582|31|The Royal Guard|newthalos
+4208|32|the Black Queen|chess2
+4209|32|the White Queen|chess2
+7040|32|the red dragon|sewer
+10409|32|a damned soul|tohell
+9555|32|Allah|newthalos
+9009|33|the tertian|nirvana
+601|33|Marshall Diana|ofcol2
+2333|33|Mahn-Tor|mahntor
+10414|33|bloody severed arm|tohell
+10415|33|bloody severed foot|tohell
+10416|33|bloody severed nose|tohell
+918|34|Samuel the Armourer|olympus
+920|34|a chimera|olympus
+10410|34|a tortured soul|tohell
+9527|34|the statue of Furey|newthalos
+5109|35|the yochlol|drow
+910|35|A Soldier|olympus
+913|35|A hound of war|olympus
+5305|35|Gordon the Brave|mirror
+7714|35|Lord Gith|astral
+10413|35|skeletal warrior|tohell
+10421|35|the manes|tohell
+10422|35|the prisoner Raiden|tohell
+9521|35|the statue of Nati|newthalos
+9528|35|the statue of Landru|newthalos
+9550|35|The Sultan|newthalos
+9010|36|secundus|nirvana
+4210|36|the Black King|chess2
+4211|36|the White King|chess2
+2223|37|the Great White Dragon|draconia
+7700|37|The Astral Guardian|astral
+10405|37|the gold bar|tohell
+10420|37|pile of bones|tohell
+8717|38|Ramses the Damned|pyramid
+10423|38|a prisoner in Hell|tohell
+10424|38|a prisoner in Hell|tohell
+2222|39|the Great Black Dragon|draconia
+9011|40|Primus|nirvana
+10403|40|the male Dee|tohell
+10404|40|the female Dee|tohell
+10425|40|demonguard|tohell
+10447|40|jury member|tohell
+10453|40|weeds|tohell
+2225|41|the Ancient Green Dragon|draconia
+8716|41|The great sphinx|pyramid
+631|42|The Ancient Gold Dragon|ofcol2
+10406|42|a scrumptious chicken pot pie|tohell
+10407|42|a yummy beef pot pie|tohell
+10408|42|a yummy vegetable pot pie|tohell
+10426|42|the burning fool|tohell
+10463|42|frantic lady|tohell
+10441|43|Secretary of Hell|tohell
+10469|43|side of frozen beef|tohell
+10418|44|the lost soul|tohell
+10419|44|the crispy critter|tohell
+10442|44|office worker from Hell|tohell
+10443|44|records worker|tohell
+10444|44|Santa Claus|tohell
+2221|45|the Great Red Dragon|draconia
+10401|45|the Guardian of Hell|tohell
+10417|45|the blood from the fountain|tohell
+10427|45|male construction worker|tohell
+10432|45|the hell hound|tohell
+10470|45|guard dog|tohell
+3011|45|Hassan|midgaard
+10411|46|the half-eaten person|tohell
+10428|46|the female construction worker|tohell
+10431|46|the wall of fire|tohell
+10433|47|the frozen body|tohell
+10430|48|the fire devil|tohell
+10446|48|a bowl of blood|tohell
+10435|49|the trapped soul|tohell
+916|50|the Alchemist|olympus
+917|50|Clive the Weapons Master|olympus
+10412|50|the living wall|tohell
+1364|50|The Grand Mistress|hitower
+902|51|Prometheus|olympus
+10436|51|the half frozen body|tohell
+10450|51|Complaints Officer|tohell
+10452|51|maintenance worker|tohell
+10455|51|horse carcass|tohell
+10456|51|stomach dragon|tohell
+10457|51|rancid turkey leg|tohell
+10458|51|reactor specialist|tohell
+10459|51|reactor worker|tohell
+10460|51|Homer Simpson|tohell
+10461|51|devil's food cake|tohell
+10462|51|mad cook|tohell
+10464|51|nuclear technician|tohell
+10465|51|stray proton|tohell
+10466|51|radiation|tohell
+10468|51|the Greater Fire Demon|tohell
+10471|51|juicy steak|tohell
+2220|52|Tiamat|draconia
+10434|52|the ice devil|tohell
+10437|52|the killer penguin|tohell
+10438|52|the I-scream worker|tohell
+10439|52|the Ice Screamer|tohell
+10448|52|Judge Whopper|tohell
+10449|52|Lawyer from Hell|tohell
+10440|53|the Demonic Foreman|tohell
+10445|53|High Priest of Hell|tohell
+10467|54|the Chief Engineer of Hell|tohell
+908|55|Hephaestus|olympus
+903|56|Hermes|olympus
+907|56|Athena|olympus
+1200|57|Heimdall|immort
+905|58|Apollo|olympus
+904|59|Poseidon|olympus
+906|59|Ares|olympus
+921|59|Hera|olympus
+901|60|Zeus|olympus
+914|60|Odin|olympus
+919|60|Ra the Sun God|olympus
+4212|60|the Ghost of Caliph Omar|chess2

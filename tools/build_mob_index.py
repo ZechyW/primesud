@@ -26,7 +26,7 @@ sys.path.insert(0, APPDIR)
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
 import world
-from inventory import _wear_flag, gear_score_components
+from inventory import _wear_flag, gear_score_components, gear_score_weapon_max
 from mob import _FLAG_MERGE, _REMOVE_KEY
 from races import RACE_TABLE, race_lookup
 
@@ -184,14 +184,44 @@ def main():
         assert "|" not in short, "pipe in short_descr of mob %d" % vnum
         lines.append(str(vnum) + "|" + home_tags[vnum] + "|"
                      + str(mob.get("level", 0)) + "|" + kw + "|" + short
-                     + "|" + ",".join(spawn_tags.get(vnum, ()))
-                     + "|" + ",".join(fight_tags.get(vnum, ())))
+                     + "|" + ",".join(spawn_tags.get(vnum, ())))
     out_path = os.path.join(OUTDIR, "mobs.idx")
-    header = ("# vnum|home_tag|level|keywords|short_descr|spawn_tags|fight_tags per mob"
+    header = ("# vnum|home_tag|level|keywords|short_descr|spawn_tags per mob"
                " template -- built by tools/build_mob_index.py, do not edit\n")
     with open(out_path, "w", newline="\n") as f:
         f.write(header + "\n".join(lines) + "\n")
     print("Wrote", out_path, "-", len(lines), "mobs,",
+          os.path.getsize(out_path), "bytes")
+
+    # fight.idx: fightable rows only, one contiguous segment per mob level,
+    # so `recommend mobs` seeks and reads just its level band instead of
+    # scanning 1,000 rows (per-row split allocs dominate on-device).
+    fight_rows = []
+    for vnum in vnums:
+        tags = fight_tags.get(vnum)
+        if not tags:
+            continue
+        mob = all_mobiles[vnum]
+        short = " ".join(mob.get("short_descr", "").split())
+        fight_rows.append((max(0, mob.get("level", 0)),
+                           str(vnum) + "|" + str(mob.get("level", 0)) + "|"
+                           + short + "|" + ",".join(tags) + "\n"))
+    # Stable sort: within a level, mobs.idx cheapest-area order is kept.
+    fight_rows.sort(key=lambda row: row[0])
+    top_level = fight_rows[-1][0] if fight_rows else 0
+    level_sizes = [0] * (top_level + 1)
+    for level, row in fight_rows:
+        level_sizes[level] += len(row)
+    out_path = os.path.join(OUTDIR, "fight.idx")
+    header = ("# vnum|level|short_descr|fight_tags per fightable mob, grouped"
+              " by level; line 2 lists per-level segment byte lengths for"
+              " levels 0..N -- built by tools/build_mob_index.py, do not"
+              " edit\n")
+    with open(out_path, "w", newline="\n") as f:
+        f.write(header
+                + ",".join(str(size) for size in level_sizes) + "\n"
+                + "".join(row for _level, row in fight_rows))
+    print("Wrote", out_path, "-", len(fight_rows), "fightable mobs,",
           os.path.getsize(out_path), "bytes")
 
     obj_spawn_tags = {}
@@ -346,21 +376,52 @@ def main():
     slot_order = {}
     for index, slot in enumerate(_GEAR_SLOTS):
         slot_order[slot] = index
+
+    def _bound(row):
+        return int(row[3]) + gear_score_weapon_max(int(row[4]), row[6] == "1")
+
+    # Within a slot, rows are grouped into 5-level item-level bands (bands
+    # ascending) and sorted inside each band by score upper bound,
+    # descending. The runtime walker breaks at the first band above the
+    # player's level and jumps past a band's remainder once the bound cannot
+    # beat the owned baseline, so it fully parses only a handful of rows.
     gear_rows.sort(key=lambda row: (
-        slot_order[row[1]], int(row[0]), _SOURCE_ORDER[row[10]],
-        area_order[row[15]], int(row[11]), int(row[13])))
+        slot_order[row[1]], int(row[2]) // 5, -_bound(row), int(row[0]),
+        _SOURCE_ORDER[row[10]], area_order[row[15]], int(row[11]),
+        int(row[13])))
     # One contiguous segment per wear slot so the runtime can seek and read
     # only the slots it needs instead of the whole file (help.dat pattern).
+    # Each band is prefixed by "@<min_level>|<row bytes>" for the jumps.
     segments = []
     for slot in _GEAR_SLOTS:
-        segments.append("".join(
-            "|".join(row) + "\n" for row in gear_rows if row[1] == slot))
+        chunks = []
+        band = None
+        band_rows = []
+
+        def _flush():
+            if band is not None:
+                blob = "".join(band_rows)
+                chunks.append("@" + str(band * 5) + "|" + str(len(blob))
+                              + "\n" + blob)
+
+        for row in gear_rows:
+            if row[1] != slot:
+                continue
+            row_band = int(row[2]) // 5
+            if row_band != band:
+                _flush()
+                band = row_band
+                band_rows = []
+            band_rows.append("|".join(row) + "\n")
+        _flush()
+        segments.append("".join(chunks))
     out_path = os.path.join(OUTDIR, "gear.idx")
     header = (
         "# item_vnum|slot|item_level|static_score|weapon_base|weapon_type|"
         "sharp|weight|item_flags|item_name|source_kind|source_vnum|"
         "source_level|room_vnum|source_name|tag|price -- one segment per"
-        " wear slot in fixed slot order; line 2 lists segment byte lengths"
+        " wear slot in fixed slot order; line 2 lists segment byte lengths;"
+        " @min_level|bytes headers open 5-level bands sorted by max score"
         " -- built by tools/build_mob_index.py, do not edit\n")
     with open(out_path, "w", newline="\n") as f:
         f.write(header
