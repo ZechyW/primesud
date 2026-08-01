@@ -601,3 +601,35 @@ class TestCompare:
         assert scene["equip"]["wield"] is old
         assert old not in scene["inv"]
         assert new in scene["inv"]
+
+
+class TestGetPickerHistory:
+    def test_get_picker_all_resolves(self, scene, out, monkeypatch):
+        """The [all] entry returns its typed form for history replay."""
+        rs = world.rooms[3001]
+        rs["items"] = [{"vnum": 8001}, {"vnum": 8002}]
+        # index 2 == "[all]", the slot right after the two items
+        monkeypatch.setattr(inventory, "pick_from", lambda title, labels: 2)
+
+        assert inventory.do_get(scene, []) == "get all"
+        assert rs["items"] == []
+
+    def test_get_loot_picker_resolves(self, scene, out, monkeypatch):
+        """Loot picker choices resolve to typed get-from-container forms."""
+        ITEM_DEFS._data[8007] = {
+            "type": "container", "keywords": "chest box",
+            "short_descr": "a chest", "wear_flags": {},
+        }
+        chest = {"vnum": 8007,
+                 "contents": [{"vnum": 8001}, {"vnum": 8002}]}
+        world.rooms[3001]["items"] = [chest]
+
+        picks = iter((0, 2))  # the chest, then [all]
+        monkeypatch.setattr(inventory, "pick_from",
+                            lambda title, labels: next(picks))
+        assert inventory.do_get(scene, []) == "get all chest"
+        assert chest["contents"] == []
+
+        chest["contents"] = [{"vnum": 8001}, {"vnum": 8002}]
+        picks = iter((0, 1))  # the chest, then the dagger
+        assert inventory.do_get(scene, []) == "get dagger chest"

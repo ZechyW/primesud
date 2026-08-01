@@ -57,6 +57,10 @@ def _loot_container_picker(player, container):
 
     cf. 1stMud do_get CONT_CLOSED check (act_obj.c:280) -- closed containers
     can't be looted, checked before the no-arg [loot] picker shown here.
+
+    Returns:
+        str or None: Resolved "get ..." command for history replay, or None
+            when nothing was taken.
     """
     cont_tpl = item_tpl(container)
     if item_container_flags(container, cont_tpl).get("closed"):
@@ -81,6 +85,7 @@ def _loot_container_picker(player, container):
     cidx = pick_from("Take what?", names)
     if cidx < 0:
         return
+    cont_kw = cont_tpl.get("keywords", cont_tpl["short_descr"]).split()[0]
     if cidx == len(visible):
         for cobj in list(visible):
             ctpl = item_tpl(cobj)
@@ -92,7 +97,7 @@ def _loot_container_picker(player, container):
                 player["inv"].append(cobj)
                 _get_triggers(player, cobj)
                 quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
-        return
+        return "get all " + cont_kw
     cobj = visible[cidx]
     ctpl = item_tpl(cobj)
     if not _check_carry_get(player, cobj, ctpl):
@@ -103,6 +108,7 @@ def _loot_container_picker(player, container):
         player["inv"].append(cobj)
         _get_triggers(player, cobj)
         quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
+    return "get " + ctpl.get("keywords", ctpl["short_descr"]).split()[0] + " " + cont_kw
 
 
 def _obj_number(obj):
@@ -237,9 +243,8 @@ def do_get(player, args):
                     player["inv"].append(obj)
                     _get_triggers(player, obj)
                     quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
-            return
-        _loot_container_picker(player, conts[idx - cont_start])
-        return
+            return "get all"
+        return _loot_container_picker(player, conts[idx - cont_start])
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
         filter_kw = arg[4:] if arg.startswith("all.") else None
