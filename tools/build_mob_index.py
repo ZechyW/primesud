@@ -193,7 +193,7 @@ def main():
     print("Wrote", out_path, "-", len(lines), "mobs,",
           os.path.getsize(out_path), "bytes")
 
-    # fight.idx: fightable rows only, one contiguous segment per mob level,
+    # foes.idx: fightable rows only, one contiguous segment per mob level,
     # so `recommend mobs` seeks and reads just its level band instead of
     # scanning 1,000 rows (per-row split allocs dominate on-device).
     fight_rows = []
@@ -212,7 +212,7 @@ def main():
     level_sizes = [0] * (top_level + 1)
     for level, row in fight_rows:
         level_sizes[level] += len(row)
-    out_path = os.path.join(OUTDIR, "fight.idx")
+    out_path = os.path.join(OUTDIR, "foes.idx")
     header = ("# vnum|level|short_descr|fight_tags per fightable mob, grouped"
               " by level; line 2 lists per-level segment byte lengths for"
               " levels 0..N -- built by tools/build_mob_index.py, do not"

@@ -235,7 +235,7 @@ resets, and items inside floor-reset containers. Hand items are candidates
 because hypothetical combined layouts remain the job of `wear best`.
 
 Both modes scan generated `.idx` files, retain only displayed rows, load no
-area, and keep no parsed cache. `fight.idx` is segmented by mob level behind
+area, and keep no parsed cache. `foes.idx` is segmented by mob level behind
 a byte-length directory line, so the mob mode reads only its level band in
 one seek plus one bounded read. `gear.idx` is segmented by wear slot the same
 way; inside a segment, 5-level item bands sorted by maximum possible score

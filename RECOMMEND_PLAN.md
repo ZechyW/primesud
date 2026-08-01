@@ -2,7 +2,7 @@
 
 Status: implemented on desktop; G1 heap/latency check pending. First G1
 check (01/08/2026) measured 10+ s per mode: full-file scans were dominated
-by per-row split allocation. Re-shaped same day -- `fight.idx` (per-level
+by per-row split allocation. Re-shaped same day -- `foes.idx` (per-level
 segments, band read) replaces the mobs.idx scan; `gear.idx` gained 5-level
 item bands sorted by max-score bound with break/jump shortcuts. Awaiting
 G1 re-check.

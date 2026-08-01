@@ -12,7 +12,7 @@ from util import num_str, pad_left, pad_right
 from world import item_tpl
 
 
-FIGHT_INDEX_FILE = "fight.idx"
+FOES_INDEX_FILE = "foes.idx"
 GEAR_INDEX_FILE = "gear.idx"
 
 _GEAR_SLOTS = (
@@ -56,7 +56,7 @@ def _area_name(tag):
 def _mob_candidates(player):
     """Read and rank fightable mob rows without loading an area.
 
-    fight.idx groups fightable rows into one contiguous segment per mob
+    foes.idx groups fightable rows into one contiguous segment per mob
     level behind a directory line of per-level byte lengths, so the widest
     possible band [level-5, level+1] is one seek plus one bounded read --
     never a full-file scan (per-row split allocs dominate on-device).
@@ -65,7 +65,7 @@ def _mob_candidates(player):
     lowest = max(1, level - 5)
     highest = level + 1
     try:
-        with open(FIGHT_INDEX_FILE) as f:
+        with open(FOES_INDEX_FILE) as f:
             head = f.read(2048)
             cut = head.find("\n")
             end = head.find("\n", cut + 1) if cut >= 0 else -1

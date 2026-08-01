@@ -27,8 +27,8 @@ def _fight_row(vnum, level, name, tags="test"):
     return str(vnum) + "|" + str(level) + "|" + name + "|" + tags
 
 
-def _write_fight_idx(path, rows):
-    """Write rows in the level-segmented fight.idx layout."""
+def _write_foes_idx(path, rows):
+    """Write rows in the level-segmented foes.idx layout."""
     def _row_level(row):
         try:
             return max(0, int(row.split("|")[1]))
@@ -42,7 +42,7 @@ def _write_fight_idx(path, rows):
         line = row + "\n"
         sizes[_row_level(row)] += len(line)
         blob += line
-    path.write_bytes(("# test fight.idx\n"
+    path.write_bytes(("# test foes.idx\n"
                       + ",".join(str(size) for size in sizes) + "\n"
                       + blob).encode())
 
@@ -117,8 +117,8 @@ def test_command_registration_keeps_existing_prefix_order():
 
 
 def test_mob_window_widens_lower_only(indexed_player, tmp_path, monkeypatch):
-    path = tmp_path / "fight.idx"
-    _write_fight_idx(path, (
+    path = tmp_path / "foes.idx"
+    _write_foes_idx(path, (
         _fight_row(100, 11, "upper"),
         _fight_row(101, 10, "same"),
         _fight_row(102, 9, "lower one"),
@@ -128,7 +128,7 @@ def test_mob_window_widens_lower_only(indexed_player, tmp_path, monkeypatch):
         _fight_row(106, 12, "too high"),
         _fight_row(107, 4, "too low"),
     ))
-    monkeypatch.setattr(recommend, "FIGHT_INDEX_FILE", str(path))
+    monkeypatch.setattr(recommend, "FOES_INDEX_FILE", str(path))
 
     rows = recommend._mob_candidates(indexed_player)
 
@@ -140,15 +140,15 @@ def test_mob_filters_empty_tags_quest_and_malformed(
         indexed_player, tmp_path, monkeypatch):
     indexed_player["quest_status"] = recommend.QUEST_FINDMOB
     indexed_player["quest_mob"] = 102
-    path = tmp_path / "fight.idx"
-    _write_fight_idx(path, (
+    path = tmp_path / "foes.idx"
+    _write_foes_idx(path, (
         "100|10|too few",
         "101|10|no fight|",
         _fight_row(102, 10, "protected"),
         _fight_row(103, 10, "eligible"),
         "bad|10|broken|test",
     ))
-    monkeypatch.setattr(recommend, "FIGHT_INDEX_FILE", str(path))
+    monkeypatch.setattr(recommend, "FOES_INDEX_FILE", str(path))
 
     assert [row["vnum"] for row in
             recommend._mob_candidates(indexed_player)] == [103]
@@ -156,14 +156,14 @@ def test_mob_filters_empty_tags_quest_and_malformed(
 
 def test_mob_ranking_record_current_area_and_no_load(
         indexed_player, tmp_path, monkeypatch):
-    path = tmp_path / "fight.idx"
-    _write_fight_idx(path, (
+    path = tmp_path / "foes.idx"
+    _write_foes_idx(path, (
         _fight_row(100, 10, "far", "far"),
         _fight_row(101, 10, "current", "test"),
         _fight_row(102, 10, "bad", "test"),
     ))
     world.mob_stats[102] = [2, 0]
-    monkeypatch.setattr(recommend, "FIGHT_INDEX_FILE", str(path))
+    monkeypatch.setattr(recommend, "FOES_INDEX_FILE", str(path))
     monkeypatch.setattr(world, "_ensure_area_by_tag",
                         lambda *_args: pytest.fail("area loaded"))
     before = set(world._LOADED_AREAS)
@@ -174,12 +174,12 @@ def test_mob_ranking_record_current_area_and_no_load(
     assert world._LOADED_AREAS == before
 
 
-def test_corrupt_fight_directory_fails_softly(indexed_player, tmp_path,
+def test_corrupt_foes_directory_fails_softly(indexed_player, tmp_path,
                                               monkeypatch, capture):
     pages, lines = capture
-    path = tmp_path / "fight.idx"
+    path = tmp_path / "foes.idx"
     path.write_bytes(b"# header only, no directory line")
-    monkeypatch.setattr(recommend, "FIGHT_INDEX_FILE", str(path))
+    monkeypatch.setattr(recommend, "FOES_INDEX_FILE", str(path))
     recommend.do_recommend(indexed_player, ["mobs"])
 
     path.write_bytes(b"# header\nnot,numbers,here\n")
@@ -192,8 +192,8 @@ def test_corrupt_fight_directory_fails_softly(indexed_player, tmp_path,
 def test_missing_indexes_fail_softly(indexed_player, tmp_path, monkeypatch,
                                      capture):
     pages, lines = capture
-    monkeypatch.setattr(recommend, "FIGHT_INDEX_FILE",
-                        str(tmp_path / "missing-fight.idx"))
+    monkeypatch.setattr(recommend, "FOES_INDEX_FILE",
+                        str(tmp_path / "missing-foes.idx"))
     monkeypatch.setattr(recommend, "GEAR_INDEX_FILE",
                         str(tmp_path / "missing-gear.idx"))
 
@@ -366,12 +366,12 @@ def test_gear_detail_is_bounded_to_ten(indexed_player, tmp_path, monkeypatch):
 def test_mob_multi_area_marker(indexed_player, tmp_path, monkeypatch,
                                capture):
     pages, _lines = capture
-    path = tmp_path / "fight.idx"
-    _write_fight_idx(path, (
+    path = tmp_path / "foes.idx"
+    _write_foes_idx(path, (
         _fight_row(100, 10, "roamer", "far,test"),
         _fight_row(101, 10, "homebody", "test"),
     ))
-    monkeypatch.setattr(recommend, "FIGHT_INDEX_FILE", str(path))
+    monkeypatch.setattr(recommend, "FOES_INDEX_FILE", str(path))
 
     recommend._show_mobs(indexed_player)
 
@@ -469,14 +469,14 @@ def test_generator_emits_fight_tags_and_all_source_kinds(
     assert "100|test|10|fighter|a fighter|test" in mob_rows
     assert next(row for row in mob_rows if row.startswith("101|")).endswith(
         "|test")
-    fight_lines = (tmp_path / "fight.idx").read_text().splitlines()
-    fight_sizes = [int(v) for v in fight_lines[1].split(",")]
+    foes_lines = (tmp_path / "foes.idx").read_text().splitlines()
+    foes_sizes = [int(v) for v in foes_lines[1].split(",")]
     # Only mob 100 is fightable (101 is a shopkeeper, 102 sits in a safe
     # room); its level-10 segment is the last and only non-empty one.
-    assert fight_lines[2:] == ["100|10|a fighter|test"]
-    assert len(fight_sizes) == 11
-    assert fight_sizes[10] == len(fight_lines[2]) + 1
-    assert sum(fight_sizes) == fight_sizes[10]
+    assert foes_lines[2:] == ["100|10|a fighter|test"]
+    assert len(foes_sizes) == 11
+    assert foes_sizes[10] == len(foes_lines[2]) + 1
+    assert sum(foes_sizes) == foes_sizes[10]
 
     gear_lines = (tmp_path / "gear.idx").read_text().splitlines()
     sizes = [int(v) for v in gear_lines[1].split(",")]
@@ -533,5 +533,5 @@ def test_shipped_indexes_reproduce(tmp_path, monkeypatch):
 
     build_mob_index.main()
 
-    for name in ("mobs.idx", "objs.idx", "fight.idx", "gear.idx"):
+    for name in ("mobs.idx", "objs.idx", "foes.idx", "gear.idx"):
         assert (tmp_path / name).read_bytes() == (source / name).read_bytes()

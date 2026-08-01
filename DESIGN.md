@@ -315,7 +315,7 @@ Single ROM 2.4 (QuickMUD-dialect) pipeline: `areas/*.are` are editable working c
 ## Lazy area loading
 
 **Recommendation indexes (settled 31/07/2026; re-shaped 01/08/2026).**
-`fight.idx` holds one slim row (`vnum|level|short_descr|fight_tags`) per
+`foes.idx` holds one slim row (`vnum|level|short_descr|fight_tags`) per
 fightable reset-backed mob, grouped into per-level segments behind a
 byte-length directory line, so `recommend mobs` seeks and reads only its
 level band. `gear.idx` stores canonical-score components plus one row per
