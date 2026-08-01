@@ -98,6 +98,27 @@ generated area files prune empty flag dicts), object dicts (sparse),
 and mobs.idx records. Test fixtures build chars via `_char_base()` +
 `update()`, not hand-rolled literals.
 
+**Dead-code sweep outcomes (settled 01/08/2026).** Full dead/legacy pass
+plus guard pass ran 01/08 (plan doc deleted per project rule; full text in
+git history). Durable retain decisions, so later sweeps don't re-litigate:
+
+- *Upstream-parity data stays even when unread.* Upstream-named bindings
+  over live game data or genuine upstream tables are retained: `SECT_*`
+  strings, `CON_APP_SHOCK` (unread upstream too), `TO_SOCIALS`,
+  `CLASS_PALADIN`/`CLASS_RANGER`, and the race-table `"points"` values
+  (races.dat parity; creation points unported).
+- *Hunt pipeline dormancy is bug-faithful.* Stock 1stMud 4.5.3 never
+  assigns a non-NULL `ch->hunting` (only NULL clears; `do_hunt` just
+  reports a direction). The dormant plumbing mirrors upstream; deleting it
+  would be a deviation.
+- *Stone skin's `vo is not ch` branch* is equally dead upstream
+  (self-target spell keeps the alternate message in magic.c too). Kept.
+- *`can_see_room` call-site terms* stay despite the hook being
+  unconditionally `True` (see can_see_room entry): the shared predicate is
+  the extension point if access-controlled rooms become real.
+- Lesson: re-export patterns don't survive auto-optimisers -- import from
+  the definition site, not through pass-through modules.
+
 ---
 
 ## Not ported
