@@ -3725,10 +3725,12 @@ def disarm(ch, victim):
     if flags.get("noremove"):
         act("$S weapon won't budge!", ch, None, victim, TO_CHAR)
         act("$n tries to disarm you, but your weapon won't budge!", ch, None, victim, TO_VICT)
+        act("$n tries to disarm $N, but fails.", ch, None, victim, TO_NOTVICT)
         return
 
     act("$n DISARMS you and sends your weapon flying!", ch, None, victim, TO_VICT)
     act("You disarm $N!", ch, None, victim, TO_CHAR)
+    act("$n disarms $N!", ch, None, victim, TO_NOTVICT)
 
     # 1stMud: obj_from_char -- unequip (reverses stat/AC modifiers), off char
     unequip_char(victim, "wield")
@@ -3804,6 +3806,7 @@ def do_disarm(ch, args):
     else:
         act("You fail to disarm $N.", ch, None, victim, TO_CHAR)
         act("$n tries to disarm you, but fails.", ch, None, victim, TO_VICT)
+        act("$n tries to disarm $N, but fails.", ch, None, victim, TO_NOTVICT)
         if not ch["is_npc"]:
             check_improve(ch, GSN_DISARM, False, 1)
 

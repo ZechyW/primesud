@@ -64,6 +64,7 @@ def _clean_world_state():
     old_wrooms = dict(world.rooms._data)
     old_chars = dict(world.chars)
     old_mobs = dict(MOB_DEFS._data)
+    old_items = dict(world.ITEM_DEFS._data)
     MOB_DEFS._data[MOB_TPL] = {
         "short_descr": "a test dog", "long_descr": "A test dog is here.",
         "keywords": "dog test", "level": 5, "race": "Human",
@@ -81,6 +82,8 @@ def _clean_world_state():
     world.chars.update(old_chars)
     MOB_DEFS._data.clear()
     MOB_DEFS._data.update(old_mobs)
+    world.ITEM_DEFS._data.clear()
+    world.ITEM_DEFS._data.update(old_items)
 
 
 @pytest.fixture
@@ -219,6 +222,24 @@ def test_dam_message_player_attacker_lines_unchanged(out):
     dam_message(player, mob, 10, TYPE_HIT, False)
     assert _observer_lines(out) == []
     assert any(l.startswith("{GYou hit") for l in out)
+
+
+def test_disarm_observer_line(out):
+    from item import create_object
+    from handler import equip_char
+
+    _player, atk, vic = _two_mobs()
+    world.ITEM_DEFS._data[9010] = {
+        "short_descr": "a sword", "keywords": "sword", "type": "weapon",
+        "weight": 10, "value": 0, "level": 1,
+        "wear_flags": {"take": True, "wield": True}, "extra_flags": {},
+        "weapon": ("sword", 1, 4, "slash", {}),
+    }
+    sword = create_object(9010)
+    vic["inv"].append(sword)
+    equip_char(vic, sword, "wield")
+    combat.disarm(atk, vic)
+    assert any("A test dog disarms a test dog!" in l for l in out)
 
 
 def test_dam_message_self_hit(out):
