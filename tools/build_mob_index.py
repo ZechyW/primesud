@@ -381,12 +381,20 @@ def main():
     def _bound(row):
         return int(row[3]) + gear_score_weapon_max(int(row[4]), row[6] == "1")
 
-    def _emit_bands(rows, band_of, sigil, wield_subs):
+    def _row_line(row):
+        # The slot (index 1) is implied by the segment and not emitted.
+        return "|".join(row[:1] + row[2:]) + "\n"
+
+    def _emit_bands(rows, band_of, sigil, wield_subs, level_subs=False):
         """Emit rows as "<sigil><min_level>|<bytes>" bands; rows must be
-        pre-sorted by band (ascending), then weapon type when wield_subs,
-        then bound descending. Wield bands hold
-        "@=<type>|<max_static>|<max_wmax>|<row bytes>" type sub-segments
-        (max_wmax = best adept-skill weapon bound in the group)."""
+        pre-sorted by band (ascending), then exact source level when
+        level_subs / weapon type when wield_subs, then bound descending.
+        Wield bands hold "@=<type>|<max_static>|<max_wmax>|<row bytes>"
+        type sub-segments (max_wmax = best adept-skill weapon bound in
+        the group); loot bands hold "@@=<source_level>|<row bytes>" exact
+        source-level sub-segments, so the runtime parses no row whose
+        carrier level misses the loot window (a 5-level band can overlap
+        the 4-level window only partially)."""
         chunks = []
         index = 0
         while index < len(rows):
@@ -395,7 +403,21 @@ def main():
             while index < len(rows) and band_of(rows[index]) == band:
                 band_rows.append(rows[index])
                 index += 1
-            if wield_subs:
+            if level_subs:
+                parts = []
+                sub = 0
+                while sub < len(band_rows):
+                    level = band_rows[sub][10]
+                    group = []
+                    while (sub < len(band_rows)
+                           and band_rows[sub][10] == level):
+                        group.append(band_rows[sub])
+                        sub += 1
+                    blob = "".join(_row_line(row) for row in group)
+                    parts.append("@@=" + level + "|" + str(len(blob))
+                                 + "\n" + blob)
+                blob = "".join(parts)
+            elif wield_subs:
                 parts = []
                 sub = 0
                 while sub < len(band_rows):
@@ -405,7 +427,7 @@ def main():
                            and band_rows[sub][5] == wtype):
                         group.append(band_rows[sub])
                         sub += 1
-                    blob = "".join("|".join(row) + "\n" for row in group)
+                    blob = "".join(_row_line(row) for row in group)
                     parts.append(
                         "@=" + wtype + "|"
                         + str(max(int(row[3]) for row in group)) + "|"
@@ -414,7 +436,7 @@ def main():
                         + "|" + str(len(blob)) + "\n" + blob)
                 blob = "".join(parts)
             else:
-                blob = "".join("|".join(row) + "\n" for row in band_rows)
+                blob = "".join(_row_line(row) for row in band_rows)
             chunks.append(sigil + str(band * 5) + "|" + str(len(blob))
                           + "\n" + blob)
         return "".join(chunks)
@@ -436,26 +458,32 @@ def main():
     segments = []
     for slot in _GEAR_SLOTS:
         subs = slot == "wield"
+        # Loot bands sub-group by exact source level, not weapon type: the
+        # loot window admits at most 4 levels, so the surviving row volume
+        # is too small for type skips to pay for their headers.
         loot = [row for row in gear_rows
                 if row[1] == slot and row[9] == "loot"]
         loot.sort(key=lambda row: (
-            int(row[10]) // 5, row[5] if subs else "") + _tiebreak(row))
+            int(row[10]) // 5, int(row[10])) + _tiebreak(row))
         other = [row for row in gear_rows
                  if row[1] == slot and row[9] != "loot"]
         other.sort(key=lambda row: (
             int(row[2]) // 5, row[5] if subs else "") + _tiebreak(row))
         segments.append(
-            _emit_bands(loot, lambda row: int(row[10]) // 5, "@@", subs)
+            _emit_bands(loot, lambda row: int(row[10]) // 5, "@@", False,
+                        level_subs=True)
             + _emit_bands(other, lambda row: int(row[2]) // 5, "@", subs))
     out_path = os.path.join(OUTDIR, "gear.idx")
     header = (
-        "# item_vnum|slot|item_level|static_score|weapon_base|weapon_type|"
+        "# item_vnum|item_level|static_score|weapon_base|weapon_type|"
         "sharp|weight|item_flags|source_kind|source_level|source_vnum|"
         "room_vnum|tag|price|item_name|source_name -- one segment per wear"
-        " slot in fixed slot order; line 2 lists segment byte lengths;"
-        " loot rows lead in @@min_source_level|bytes bands, then non-loot"
-        " in @min_item_level|bytes bands, all sorted by max score; wield"
-        " bands hold @=type|max_static|max_wmax|bytes sub-segments"
+        " slot in fixed slot order (the slot is implied by the segment);"
+        " line 2 lists segment byte lengths; loot rows lead in"
+        " @@min_source_level|bytes bands holding @@=source_level|bytes"
+        " exact-level sub-segments, then non-loot in @min_item_level|bytes"
+        " bands, all sorted by max score; wield item bands hold"
+        " @=type|max_static|max_wmax|bytes sub-segments"
         " -- built by tools/build_mob_index.py, do not edit\n")
     with open(out_path, "w", newline="\n") as f:
         f.write(header

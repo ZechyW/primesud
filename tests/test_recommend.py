@@ -47,12 +47,13 @@ def _write_foes_idx(path, rows):
                       + blob).encode())
 
 
-def _gear_row(vnum, slot="body", level=1, score=100, kind="floor",
+def _gear_row(vnum, level=1, score=100, kind="floor",
               source_vnum=0, source_level=0, room=1, source="Test Room",
               tag="test", price=0, flags="", weapon_base=0,
               weapon_type="", sharp=0, weight=0):
+    """Return one slotless gear.idx row (the slot is implied by the segment)."""
     return "|".join((
-        str(vnum), slot, str(level), str(score), str(weapon_base),
+        str(vnum), str(level), str(score), str(weapon_base),
         weapon_type, str(sharp), str(weight), flags, kind,
         str(source_level), str(source_vnum), str(room), tag, str(price),
         "item " + str(vnum), source,
@@ -60,11 +61,16 @@ def _gear_row(vnum, slot="body", level=1, score=100, kind="floor",
 
 
 def _write_gear_idx(path, rows):
-    """Write rows in the segmented gear.idx layout (malformed rows -> body)."""
+    """Write rows in the segmented gear.idx layout.
+
+    Rows are plain strings (routed to the body segment) or (slot, row)
+    tuples for other segments.
+    """
     segments = {slot: [] for slot in recommend._GEAR_SLOTS}
     for row in rows:
-        parts = row.split("|")
-        slot = parts[1] if len(parts) > 1 and parts[1] in segments else "body"
+        slot = "body"
+        if not isinstance(row, str):
+            slot, row = row
         segments[slot].append(row + "\n")
     blobs = ["".join(segments[slot]) for slot in recommend._GEAR_SLOTS]
     path.write_bytes(("# test gear.idx\n"
@@ -246,10 +252,10 @@ def test_gear_downweights_unlearnt_weapon(indexed_player, tmp_path,
     """Expected-hit weighting ranks a learnt weapon over bigger unlearnt dice."""
     path = tmp_path / "gear.idx"
     _write_gear_idx(path, (
-        _gear_row(600, slot="wield", score=0, weapon_base=20,
-                  weapon_type="sword"),
-        _gear_row(601, slot="wield", score=0, weapon_base=10,
-                  weapon_type="dagger"),
+        ("wield", _gear_row(600, score=0, weapon_base=20,
+                            weapon_type="sword")),
+        ("wield", _gear_row(601, score=0, weapon_base=10,
+                            weapon_type="dagger")),
     ))
     monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
     indexed_player["learned"][WEAPON_GSN_MAP["dagger"]] = 80
@@ -272,10 +278,10 @@ def test_two_hander_pays_owned_shield_cost(indexed_player, tmp_path,
     indexed_player["learned"][WEAPON_GSN_MAP["sword"]] = 80
     path = tmp_path / "gear.idx"
     _write_gear_idx(path, (
-        _gear_row(600, slot="wield", score=0, weapon_base=20,
-                  weapon_type="sword"),
-        _gear_row(601, slot="wield", score=0, weapon_base=20,
-                  weapon_type="sword", flags="two_hands"),
+        ("wield", _gear_row(600, score=0, weapon_base=20,
+                            weapon_type="sword")),
+        ("wield", _gear_row(601, score=0, weapon_base=20,
+                            weapon_type="sword", flags="two_hands")),
     ))
     monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
 
@@ -361,8 +367,13 @@ def test_gear_filters_and_source_order(indexed_player, tmp_path, monkeypatch):
     assert len(rows) == 1
     assert rows[0]["vnum"] == 600
     assert rows[0]["kind"] == "floor"
-    assert [alt["kind"] for alt in rows[0]["alts"]] == ["shop"]
+    # Summary mode keeps a single winner without alt bookkeeping; alt
+    # retention is covered by the detail-mode tests.
+    assert rows[0]["alts"] == []
     assert world._LOADED_AREAS == before
+
+    detail = recommend._scan_gear(indexed_player, "body")["body"]
+    assert [alt["kind"] for alt in detail[0]["alts"]] == ["shop"]
 
 
 def test_alt_sources_dedupe_rendered_identity(indexed_player, tmp_path,
@@ -431,9 +442,9 @@ def test_wield_type_header_skips_unlearnt_type(indexed_player, tmp_path,
     indexed_player["inv"] = [{"vnum": 500}]
     indexed_player["learned"][WEAPON_GSN_MAP["dagger"]] = 80
 
-    sword = _gear_row(600, slot="wield", score=0, weapon_base=1000,
+    sword = _gear_row(600, score=0, weapon_base=1000,
                       weapon_type="sword") + "\n"
-    dagger = _gear_row(601, slot="wield", score=0, weapon_base=12,
+    dagger = _gear_row(601, score=0, weapon_base=12,
                        weapon_type="dagger") + "\n"
     band = ("@=dagger|0|144|" + str(len(dagger)) + "\n" + dagger
             + "@=sword|0|240|" + str(len(sword)) + "\n" + sword)
@@ -480,6 +491,34 @@ def test_loot_band_outside_window_skips_unparsed(indexed_player, tmp_path,
     assert [row["vnum"] for row in rows] == [601]
 
 
+def test_loot_level_sub_band_skips_boundary_rows(indexed_player, tmp_path,
+                                                 monkeypatch):
+    """Inside an admitted @@ band, an @@=source-level group outside the
+    loot window is skipped whole -- its mislabeled in-window row is never
+    parsed."""
+    low = _gear_row(600, score=500, kind="loot", source_vnum=20,
+                    source_level=10, source="mislabeled mob") + "\n"
+    ok = _gear_row(601, score=150, kind="loot", source_vnum=21,
+                   source_level=10, source="a fair fight") + "\n"
+    band = ("@@=6|" + str(len(low)) + "\n" + low
+            + "@@=10|" + str(len(ok)) + "\n" + ok)
+    body = "@@5|" + str(len(band)) + "\n" + band
+    blobs = ["" for _slot in recommend._GEAR_SLOTS]
+    blobs[recommend._GEAR_SLOTS.index("body")] = body
+    path = tmp_path / "gear.idx"
+    path.write_bytes(("# test gear.idx\n"
+                      + ",".join(str(len(blob)) for blob in blobs) + "\n"
+                      + "".join(blobs)).encode())
+    monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
+
+    rows = recommend._scan_gear(indexed_player, "body")["body"]
+
+    # The @@5 band overlaps the L10 window [8, 11], but the @@=6 group
+    # inside it does not: its row is skipped unparsed even though it
+    # claims source level 10; the @@=10 group scans normally.
+    assert [row["vnum"] for row in rows] == [601]
+
+
 def test_full_results_raise_skip_floor(indexed_player, tmp_path, monkeypatch):
     """A full ten-row slot raises the jump floor to the weakest kept score:
     rows bounded below it jump the band (the mislabeled 200 is never
@@ -514,7 +553,7 @@ def test_summary_scan_chunks_contiguous_reads(indexed_player, tmp_path,
     """Summary mode packs consecutive segments into bounded chunk reads."""
     path = tmp_path / "gear.idx"
     _write_gear_idx(path, [
-        _gear_row(600 + index, slot=slot, score=100)
+        (slot, _gear_row(600 + index, score=100))
         for index, slot in enumerate(recommend._GEAR_SLOTS)])
     monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
 
@@ -701,7 +740,7 @@ def test_generator_emits_fight_tags_and_all_source_kinds(
         ("E", 200, "body", 1), ("G", 206, 1),
         ("P", 207, 1, 206, 1),
         ("E", 208, "wield", 1), ("G", 209, 1),
-        ("M", 101, 1, 101, 1), ("G", 201, 1),
+        ("M", 101, 1, 101, 1), ("G", 201, 1), ("G", 209, 1),
         ("O", 202, 101), ("O", 203, 101), ("P", 204, 1, 203, 1),
         ("G", 205, 1),
         ("M", 102, 1, 103, 1),
@@ -734,27 +773,31 @@ def test_generator_emits_fight_tags_and_all_source_kinds(
     assert sum(sizes) == sum(len(line) + 1 for line in gear_lines[2:])
     gear_rows = [row.split("|") for row in gear_lines[2:]
                  if not row.startswith("@")]
-    assert {row[9] for row in gear_rows} == {
+    assert {row[8] for row in gear_rows} == {
         "loot", "shop", "floor", "container"}
-    # Segments follow _GEAR_SLOTS order, so slot column is grouped.
-    slot_seq = [row[1] for row in gear_rows]
-    assert slot_seq == sorted(
-        slot_seq, key=list(recommend._GEAR_SLOTS).index)
     assert sum(1 for row in gear_rows if row[0] == "200") == 1
-    shops = [row for row in gear_rows if row[9] == "shop"]
-    assert sorted(row[0] for row in shops) == ["201", "205"]
-    assert all(row[11] == "101" and row[14] == "120" for row in shops)
+    shops = [row for row in gear_rows if row[8] == "shop"]
+    assert sorted(row[0] for row in shops) == ["201", "205", "209"]
+    assert all(row[10] == "101" and row[13] == "120" for row in shops)
     nested = next(row for row in gear_rows if row[0] == "207")
-    assert nested[9:12] == ["loot", "10", "100"]
-    assert nested[16] == "a fighter"
+    assert nested[8:11] == ["loot", "10", "100"]
+    assert nested[15] == "a fighter"
+
+    # Slot routing: the segment implies the slot, so check the two weapons
+    # landed in the wield segment.
+    text = (tmp_path / "gear.idx").read_text()
+    body = text.split("\n", 2)[2]
+    wield_index = list(recommend._GEAR_SLOTS).index("wield")
+    wield_segment = body[sum(sizes[:wield_index]):][:sizes[wield_index]]
+    assert sorted(row.split("|")[0] for row in wield_segment.splitlines()
+                  if not row.startswith("@")) == ["208", "209", "209"]
 
     # Band invariants the runtime shortcuts rely on: every row sits under a
     # header, headers partition each slot segment exactly, loot rows lead
-    # in ascending @@source-level bands followed by non-loot in ascending
-    # @item-level bands, rows inside a band (or wield type group) descend
-    # by max-score bound, and wield type headers carry honest group maxima.
-    text = (tmp_path / "gear.idx").read_text()
-    body = text.split("\n", 2)[2]
+    # in ascending @@source-level bands of ascending exact-level @@= groups
+    # followed by non-loot in ascending @item-level bands, rows inside a
+    # group descend by max-score bound, and wield type headers carry honest
+    # group maxima.
     offset = 0
     saw_type_header = False
     saw_loot_band = False
@@ -783,7 +826,26 @@ def test_generator_emits_fight_tags_and_all_source_kinds(
             band = segment[end + 1:end + 1 + int(band_bytes)]
             pos = end + 1 + int(band_bytes)
             groups = []
-            if band.startswith("@="):
+            if loot_band:
+                # Loot bands hold exact source-level sub-segments.
+                assert band.startswith("@@=")
+                sub_pos = 0
+                last_level = -1
+                while sub_pos < len(band):
+                    sub_end = band.index("\n", sub_pos)
+                    sub = band[sub_pos:sub_end]
+                    assert sub.startswith("@@=")
+                    sub_level, sub_bytes = sub[3:].split("|")
+                    group = [row.split("|") for row in
+                             band[sub_end + 1:sub_end + 1
+                                  + int(sub_bytes)].splitlines()]
+                    sub_pos = sub_end + 1 + int(sub_bytes)
+                    assert int(sub_level) > last_level
+                    last_level = int(sub_level)
+                    assert group and all(
+                        int(row[9]) == int(sub_level) for row in group)
+                    groups.append(group)
+            elif band.startswith("@="):
                 saw_type_header = True
                 sub_pos = 0
                 while sub_pos < len(band):
@@ -796,12 +858,12 @@ def test_generator_emits_fight_tags_and_all_source_kinds(
                              band[sub_end + 1:sub_end + 1
                                   + int(sub_bytes)].splitlines()]
                     sub_pos = sub_end + 1 + int(sub_bytes)
-                    assert group and all(row[5] == wtype for row in group)
+                    assert group and all(row[4] == wtype for row in group)
                     assert int(max_static) == max(
-                        int(row[3]) for row in group)
+                        int(row[2]) for row in group)
                     assert int(max_wmax) == max(
                         inventory.gear_score_weapon_max(
-                            int(row[4]), row[6] == "1") for row in group)
+                            int(row[3]), row[5] == "1") for row in group)
                     groups.append(group)
             else:
                 groups.append([row.split("|")
@@ -810,14 +872,14 @@ def test_generator_emits_fight_tags_and_all_source_kinds(
                 bounds = []
                 for parts in group:
                     if loot_band:
-                        assert parts[9] == "loot"
-                        assert int(parts[10]) // 5 * 5 == int(band_level)
+                        assert parts[8] == "loot"
+                        assert int(parts[9]) // 5 * 5 == int(band_level)
                     else:
-                        assert parts[9] != "loot"
-                        assert int(parts[2]) // 5 * 5 == int(band_level)
-                    bounds.append(int(parts[3])
+                        assert parts[8] != "loot"
+                        assert int(parts[1]) // 5 * 5 == int(band_level)
+                    bounds.append(int(parts[2])
                                   + inventory.gear_score_weapon_max(
-                                      int(parts[4]), parts[6] == "1"))
+                                      int(parts[3]), parts[5] == "1"))
                 assert bounds == sorted(bounds, reverse=True)
     assert saw_type_header  # the wield segment exercised the @= path
     assert saw_loot_band  # loot sources exercised the @@ path

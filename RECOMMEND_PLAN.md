@@ -26,10 +26,21 @@ is only parsed for keep-grade rows. Same PC probe: summary 642 -> 487
 row splits (at roughly half the allocs each; ~250 full-split
 equivalents vs the original 985), wield detail 287 -> 213. Remaining
 residue is boundary-band loot rows (5-level bands vs 4-level window)
-and genuine tie/candidate churn. Awaiting G1 re-check. Next levers if
-still slow: drop the redundant slot field from rows; a limit==1 fast
-path that skips alt bookkeeping in summary mode; static/wmax sub-splits
-of wield type groups.
+and genuine tie/candidate churn. First G1 re-check (02/08/2026, via
+debug/recommend_bench.py on the real save): I/O floor solved (82ms of
+8.0s summary), but parse/score still 8.0s summary / 3.0s wield detail /
+2.3s mobs -- round 3 shipped same day: rows drop the slot field (implied
+by the segment; 16 fields, rejects from split("|", 8)), loot bands hold
+"@@=source_level|bytes" exact-level sub-segments (boundary-band rows
+skip unparsed; loot wield type subs dropped -- post-window volume too
+small to pay for headers), and summary mode keeps a single winner per
+slot with no alt bookkeeping or loser-tie dicts. Same PC probe: summary
+487 -> 425 splits (zero loot-window tail parses, was the residue), wield
+213 -> 167, gear.idx 183KB -> 174KB. Awaiting second G1 re-check. Next
+levers if still slow: static/wmax sub-splits of wield type groups (the
+remaining "upper" rejects are learnt-type rows whose adept bound passes
+but skill-scaled score fails -- only sub-splits of the static component
+can cut those); foes.idx-side work for the 2.3s recommend mobs scan.
 
 Desktop verification on 31 July 2026 (post-review: `gear.idx` segmented per
 wear slot for bounded seek reads; gear summary is a drill-in picker; detail

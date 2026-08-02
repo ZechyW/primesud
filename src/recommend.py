@@ -384,20 +384,24 @@ def _scan_segment(player, data, pos, stop, slot, results, baselines,
     Scans data[pos:stop] (the segment may share a chunked read with its
     neighbours). Loot rows lead the segment in "@@min_source_level|bytes"
     5-level source-level bands, skipped whole when they cannot intersect
-    the loot window; non-loot rows follow in "@min_level|bytes" item-level
-    bands (ascending), where the walk breaks at the first band above the
-    player's level -- safe only because loot comes first. Rows inside a
-    band sort by max-score bound, descending, so the walk jumps a band's
-    remaining rows once the bound cannot beat the skip floor -- the owned
-    baseline, raised to the weakest kept score once results[slot] is full
-    (strict <, so equal-bound alternate sources of a kept item still
-    parse). Wield bands hold "@=type|max_static|max_wmax|bytes"
-    sub-segments whose adept-skill bound is rescaled to the player's
-    proficiency, skipping a whole unlearnt weapon type without parsing a
-    row. Rows reject from a short partial split (reject fields lead the
-    row; display strings trail and are only parsed for kept candidates).
-    Data without headers or ordering still scans correctly, just without
-    the shortcuts.
+    the loot window; admitted bands hold "@@=source_level|bytes"
+    exact-level sub-segments, so boundary-band rows whose carrier level
+    misses the window are skipped unparsed too. Non-loot rows follow in
+    "@min_level|bytes" item-level bands (ascending), where the walk
+    breaks at the first band above the player's level -- safe only
+    because loot comes first. Rows inside a band sort by max-score bound,
+    descending, so the walk jumps a band's remaining rows once the bound
+    cannot beat the skip floor -- the owned baseline, raised to the
+    weakest kept score once results[slot] is full (strict <, so
+    equal-bound alternate sources of a kept item still parse). Wield item
+    bands hold "@=type|max_static|max_wmax|bytes" sub-segments whose
+    adept-skill bound is rescaled to the player's proficiency, skipping a
+    whole unlearnt weapon type without parsing a row. Rows reject from a
+    short partial split (reject fields lead the row; the slot is implied
+    by the segment; display strings trail and are only parsed for kept
+    candidates). Summary mode (limit 1) keeps a single winner per slot
+    with empty alts and no alt bookkeeping. Data without headers or
+    ordering still scans correctly, just without the shortcuts.
     """
     baseline = baselines[slot]
     floor = baseline + 1
@@ -419,6 +423,21 @@ def _scan_segment(player, data, pos, stop, slot, results, baselines,
             jump_end = -1
             parts = line.split("|")
             if line[1:2] == "@":
+                if line[2:3] == "=":
+                    # "@@=source_level|bytes": exact source-level group
+                    # inside an admitted loot band; skip it whole when the
+                    # level misses the loot window (a 5-level band can
+                    # overlap the 4-level window only partially).
+                    try:
+                        sub_end = pos + int(parts[1])
+                        sub_level = int(parts[0][3:])
+                        if sub_level < loot_low or sub_level > loot_high:
+                            pos = sub_end
+                        else:
+                            jump_end = sub_end
+                    except (TypeError, ValueError, IndexError):
+                        pass
+                    continue
                 # "@@min_source_level|bytes": 5-level source-level band of
                 # loot rows; skip it whole unless it can intersect the
                 # loot window.
@@ -457,18 +476,19 @@ def _scan_segment(player, data, pos, stop, slot, results, baselines,
             except (TypeError, ValueError, IndexError):
                 pass
             continue
-        # Partial split: fields 0-8 decide every score-based reject, so
+        # Partial split: fields 0-7 decide every score-based reject, so
         # most rows never allocate their source/display tail (per-row
-        # allocs dominate the on-device scan).
-        parts = line.split("|", 9)
-        if len(parts) != 10 or parts[1] != slot:
+        # allocs dominate the on-device scan). The slot is implied by the
+        # segment and not stored in the row.
+        parts = line.split("|", 8)
+        if len(parts) != 9:
             continue
         try:
-            item_level = int(parts[2])
-            static_score = int(parts[3])
-            weapon_base = int(parts[4])
-            sharp = parts[6] == "1"
-            weight = int(parts[7])
+            item_level = int(parts[1])
+            static_score = int(parts[2])
+            weapon_base = int(parts[3])
+            sharp = parts[5] == "1"
+            weight = int(parts[6])
         except (TypeError, ValueError):
             continue
         bound = gear_score_weapon_max(weapon_base, sharp)
@@ -487,13 +507,13 @@ def _scan_segment(player, data, pos, stop, slot, results, baselines,
             continue
         if slot == "wield" and weight > wield_limit:
             continue
-        wscore = gear_score_weapon(player, weapon_base, parts[5], sharp)
+        wscore = gear_score_weapon(player, weapon_base, parts[4], sharp)
         score = static_score + wscore
         if score + wscore // 10 < floor:
             # wscore//10 is the most the two-hander branch can add back.
             continue
         flags = {}
-        for flag in parts[8].split(","):
+        for flag in parts[7].split(","):
             if flag:
                 flags[flag] = True
         if not gear_flags_legal(player, flags):
@@ -506,7 +526,7 @@ def _scan_segment(player, data, pos, stop, slot, results, baselines,
         if score < floor:
             continue
         # Survivor: parse the source/display tail.
-        rest = parts[9].split("|")
+        rest = parts[8].split("|")
         if len(rest) != 8:
             continue
         kind = rest[0]
@@ -527,6 +547,25 @@ def _scan_segment(player, data, pos, stop, slot, results, baselines,
         source_key = _source_key(
             kind, tag, price, funds, source_level, player_level,
             source_vnum, room_vnum, current, area_order)
+        if limit == 1:
+            # Summary fast path: a single winner needs no alt bookkeeping
+            # or candidate dict for losing ties -- just a key compare
+            # matching _candidate_key ordering.
+            if rows:
+                row = rows[0]
+                if ((-score, source_key, vnum)
+                        >= (-(row["gain"] + baseline), row["source_key"],
+                            row["vnum"])):
+                    continue
+            rows[:] = [{
+                "vnum": vnum, "slot": slot, "gain": score - baseline,
+                "name": rest[6], "kind": kind, "source_vnum": source_vnum,
+                "source_level": source_level, "source_name": rest[7],
+                "tag": tag, "price": price, "source_key": source_key,
+                "alts": [],
+            }]
+            floor = score
+            continue
         candidate = {
             "vnum": vnum, "slot": slot, "gain": score - baseline,
             "name": rest[6], "kind": kind, "source_vnum": source_vnum,
