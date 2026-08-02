@@ -54,11 +54,6 @@ profiling before any code:
   used the scan-shape reasoning run 6 disproved (violence scan was
   ~6-20 ms in-context); likely single-digit ms, likely a dead end. Not
   index-shaped anyway (wander/despawn needs all NPCs).
-- `load_world` from a real save = ~11.9 s on G1 / ~4.1 s on G2
-  (recommend_bench boot lines, 02/08). Boot-time only, but it dwarfs
-  every in-game latency now that the recommend scans are fixed. Same
-  suspect shape as the old text indexes: per-token parse/alloc churn in
-  save deserialization. Needs its own measure-first stream.
 - Save live-data serialization (post-diet residue, save_smoke-7): with
   areas resident, ln.room ~270 ms (per-item serialize_item_token) +
   ln.mob ~140 ms (live NPC walk) dominate the ~0.83 s save. Caching

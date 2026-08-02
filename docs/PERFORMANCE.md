@@ -410,6 +410,49 @@ three remaining hardware gates from the snapshot design PASS:
   eviction repopulates the pending caches for every newly-evicted
   area, then steady-state economics apply again.
 
+### Boot load phase split (G1, measured 02 Aug 2026)
+
+`debug/loadworld_bench.py` decomposed `load_world()`'s 13.0 s boot
+(keyidx_bench-1.log baseline, real 27 KB / 194-line save) into
+attributable phases, then re-ran after the byte-walk rewrite of the two
+dominant parsers (0b7946e). Raw captures:
+[`loadworld_bench-1.log`](../debug/loadworld_bench-1.log) (before) and
+[`loadworld_bench-2.log`](../debug/loadworld_bench-2.log) (after).
+
+| Phase | before | after |
+|:------|-------:|------:|
+| read + split | ~190 ms | ~190 ms |
+| `_snap_decode` (39 `it.*` records, 13.2 KB) | 6606 ms | 1587 ms |
+| `m=` parse (344 mob entries, 8.8 KB) | 2189 ms | ~400 ms |
+| area load (hood, 56 KB) | 1951 ms | 1947 ms |
+| parse-loop remainder (p.* fields, caches, pet) | ~2240 ms | ~2220 ms |
+| **boot total** (area + `load_world_rest`) | **12984 ms** | **6154 ms** |
+
+- Both parsers lost to the same allocation floor (sec. Recommend scans):
+  the old `_snap_decode` walked its record with per-char str indexing +
+  `int(slice)` at ~0.5 ms/byte; the `m=` branch paid split-token churn
+  plus ~1,000 `int()` parses. Byte-walk rewrites (index bytes for
+  unboxed ints, accumulate digits, slice only real payloads) recover
+  4.2x and ~5x respectively. The bench's `m_parse` phase is a frozen
+  replica of the OLD split parse and now serves as a built-in control:
+  it read 2185 ms in the after-run, pinning device conditions equal.
+- `_snap_decode`'s remaining 1587 ms is dominated by real payload
+  allocation (the decoded dicts/lists/strings themselves), i.e. near
+  the floor for eager decode; further gains would need lazy decode,
+  rejected for UX (mid-play hitches vs the signposted load screen).
+- Area load is unchanged and normal for hood's size class (sec. Area
+  loading) -- not a save-parse item.
+- Boot creep explained: `it.*` snapshot lines accrete as more item
+  templates are touched, and each encoded byte cost ~0.5 ms at boot
+  (11.9 s at the 02/08 recommend_bench run vs 13.0 s days later).
+  Post-rewrite the per-byte cost is ~4x lower, so the creep slope
+  flattens by the same factor.
+- Load-bearing invariant made explicit by the rewrite: the snapshot
+  encoder's length prefix counts chars of the escaped str, the decoder
+  counts bytes -- equal only while save content stays ASCII (guaranteed
+  today: area files are ASCII-only source, names are sanitized to
+  ASCII letters). The old str-based decoder was accidentally immune.
+
 ## Input-lag phase benchmark (G1, measured 30 Jul 2026)
 
 `debug/combat_bench.py` (`debug/combat_bench-1.log`): synthetic phase
