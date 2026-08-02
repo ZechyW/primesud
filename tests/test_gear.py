@@ -112,7 +112,7 @@ class TestWearPicker:
         def pick(title, labels):
             seen["title"] = title
             seen["labels"] = labels
-            return len(labels) - 1
+            return 0
 
         monkeypatch.setattr(inventory, "pick_from", pick)
 
@@ -120,8 +120,8 @@ class TestWearPicker:
 
         assert seen["title"] == "Wear what?"
         assert seen["labels"] == [
-            "a sword", "a dagger", "a vest", "[all]",
-            "[best] (Equip strongest gear)",
+            "[best] (Equip strongest gear)", "[all]",
+            "a sword", "a dagger", "a vest",
         ]
         assert resolved == "wear best"
         assert scene["equip"]["body"] is not None
@@ -130,8 +130,7 @@ class TestWearPicker:
     def test_bare_wear_picker_all_entry_resolves(self, scene, out, monkeypatch):
         """The [all] entry equips everything and records its typed form."""
         scene["equip"].update({"wield": None, "body": None})
-        # index 3 == "[all]", the slot right after the three items
-        monkeypatch.setattr(inventory, "pick_from", lambda title, labels: 3)
+        monkeypatch.setattr(inventory, "pick_from", lambda title, labels: 1)
 
         resolved = inventory.do_wear(scene, [])
 
@@ -141,12 +140,7 @@ class TestWearPicker:
 
     def test_bare_wear_picker_single_item_offers_best_not_all(self, scene, out,
                                                               monkeypatch):
-        """With one equippable item, [all] is absent and index 1 is [best].
-
-        Guards the index collision: len(equippable) == best_idx == 1 here, so
-        a positional `idx == len(equippable)` test for [all] would swallow the
-        [best] pick (or the item pick, if the branches were reordered).
-        """
+        """With one equippable item, [all] is absent and [best] stays first."""
         seen = {}
         vest = scene["inv"][2]
         scene["inv"] = [vest]
@@ -154,13 +148,13 @@ class TestWearPicker:
 
         def pick(title, labels):
             seen["labels"] = labels
-            return 1
+            return 0
 
         monkeypatch.setattr(inventory, "pick_from", pick)
 
         resolved = inventory.do_wear(scene, [])
 
-        assert seen["labels"] == ["a vest", "[best] (Equip strongest gear)"]
+        assert seen["labels"] == ["[best] (Equip strongest gear)", "a vest"]
         assert resolved == "wear best"
         assert scene["equip"]["body"] is vest
 
@@ -169,12 +163,30 @@ class TestWearPicker:
         vest = scene["inv"][2]
         scene["inv"] = [vest]
         scene["equip"].update({"body": None})
-        monkeypatch.setattr(inventory, "pick_from", lambda title, labels: 0)
+        monkeypatch.setattr(inventory, "pick_from", lambda title, labels: 1)
 
         resolved = inventory.do_wear(scene, [])
 
         assert resolved == "wear vest"
         assert scene["equip"]["body"] is vest
+
+    def test_remove_picker_all_leads_and_resolves(self, scene, out,
+                                                   monkeypatch):
+        sword, _dagger, vest = scene["inv"]
+        scene["inv"] = []
+        scene["equip"].update({"wield": sword, "body": vest})
+        seen = {}
+
+        def pick(title, labels):
+            seen["labels"] = labels
+            return 0
+
+        monkeypatch.setattr(inventory, "pick_from", pick)
+
+        assert inventory.do_remove(scene, []) == "remove all"
+        assert seen["labels"] == ["[all]", "a sword", "a vest"]
+        assert scene["equip"]["wield"] is None
+        assert scene["equip"]["body"] is None
 
 
 class TestWearBest:
@@ -507,10 +519,16 @@ class TestGetPickerHistory:
         """The [all] entry returns its typed form for history replay."""
         rs = world.rooms[3001]
         rs["items"] = [{"vnum": 8001}, {"vnum": 8002}]
-        # index 2 == "[all]", the slot right after the two items
-        monkeypatch.setattr(inventory, "pick_from", lambda title, labels: 2)
+        seen = {}
+
+        def pick(title, labels):
+            seen["labels"] = labels
+            return 0
+
+        monkeypatch.setattr(inventory, "pick_from", pick)
 
         assert inventory.do_get(scene, []) == "get all"
+        assert seen["labels"] == ["[all]", "a dagger", "a sword"]
         assert rs["items"] == []
 
     def test_get_loot_picker_resolves(self, scene, out, monkeypatch):
@@ -523,12 +541,12 @@ class TestGetPickerHistory:
                  "contents": [{"vnum": 8001}, {"vnum": 8002}]}
         world.rooms[3001]["items"] = [chest]
 
-        picks = iter((0, 2))  # the chest, then [all]
+        picks = iter((0, 0))  # the chest, then [all]
         monkeypatch.setattr(inventory, "pick_from",
                             lambda title, labels: next(picks))
-        assert inventory.do_get(scene, []) == "get all chest"
+        assert inventory.do_get(scene, []) == "get all chest box"
         assert chest["contents"] == []
 
         chest["contents"] = [{"vnum": 8001}, {"vnum": 8002}]
-        picks = iter((0, 1))  # the chest, then the dagger
-        assert inventory.do_get(scene, []) == "get dagger chest"
+        picks = iter((0, 2))  # the chest, then the dagger
+        assert inventory.do_get(scene, []) == "get dagger chest box"

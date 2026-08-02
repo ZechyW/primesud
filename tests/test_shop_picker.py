@@ -88,8 +88,9 @@ def test_bare_buy_picks_stock_item(store, monkeypatch):
         return 1
 
     monkeypatch.setattr(shop, "pick_from", pick)
-    shop.do_buy(player, [])
+    resolved = shop.do_buy(player, [])
 
+    assert resolved == "buy a shield"
     assert [obj["vnum"] for obj in player["inv"]] == [SHIELD]
     assert seen["title"] == "Buy what? [Lv Price Qty]"
     assert "a sword" in seen["labels"][0]
@@ -109,8 +110,9 @@ def test_bare_sell_only_lists_accepted_items(store, monkeypatch):
         return 0
 
     monkeypatch.setattr(shop, "pick_from", pick)
-    shop.do_sell(player, [])
+    resolved = shop.do_sell(player, [])
 
+    assert resolved == "sell a sword"
     assert seen["labels"] == ["[   50] a sword"]
     assert sword not in player["inv"]
     assert potion in player["inv"]
@@ -126,12 +128,24 @@ def test_bare_sell_all_sells_every_accepted_item(store, monkeypatch):
 
     def pick(title, labels):
         seen["labels"] = labels
-        return len(labels) - 1
+        return 0
 
     monkeypatch.setattr(shop, "pick_from", pick)
-    shop.do_sell(player, [])
+    resolved = shop.do_sell(player, [])
 
-    assert seen["labels"] == ["[   50] a sword", "[   50] a sword", "[all]"]
+    assert resolved == "sell all"
+    assert seen["labels"] == ["[all]", "[   50] a sword", "[   50] a sword"]
+    assert player["inv"] == []
+    assert all(sword in keeper["inv"] for sword in swords)
+
+
+def test_typed_sell_all_replays_picker_action(store):
+    player, keeper = store
+    swords = [create_object(SWORD), create_object(SWORD)]
+    player["inv"] = list(swords)
+
+    shop.do_sell(player, ["all"])
+
     assert player["inv"] == []
     assert all(sword in keeper["inv"] for sword in swords)
 

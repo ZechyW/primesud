@@ -77,17 +77,18 @@ def _loot_container_picker(player, container):
     if not visible:
         chprintln(player, "It is empty.")
         return
-    names = []
+    has_all = len(visible) > 1
+    names = ["[all]"] if has_all else []
     for cobj in visible:
         ctpl = item_tpl(cobj)
         names.append(cobj.get("short_descr") or ctpl["short_descr"])
-    if len(visible) > 1:
-        names.append("[all]")
     cidx = pick_from("Take what?", names)
     if cidx < 0:
         return
-    cont_kw = cont_tpl.get("keywords", cont_tpl["short_descr"]).split()[0]
-    if cidx == len(visible):
+    # [PRIMESUD] the container token may be multi-word -- the typed parser joins
+    # args[1:] for it, so the full keywords string replays fine.
+    cont_kw = cont_tpl.get("keywords", cont_tpl["short_descr"])
+    if has_all and cidx == 0:
         for cobj in list(visible):
             ctpl = item_tpl(cobj)
             if not _check_carry_get(player, cobj, ctpl):
@@ -99,7 +100,7 @@ def _loot_container_picker(player, container):
                 _get_triggers(player, cobj)
                 quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
         return "get all " + cont_kw
-    cobj = visible[cidx]
+    cobj = visible[cidx - (1 if has_all else 0)]
     ctpl = item_tpl(cobj)
     if not _check_carry_get(player, cobj, ctpl):
         return
@@ -109,6 +110,8 @@ def _loot_container_picker(player, container):
         player["inv"].append(cobj)
         _get_triggers(player, cobj)
         quest_obj_check(player, cobj)  # cf. 1stMud get_obj quest hook
+    # [PRIMESUD] typed `get <item> <container>` reads the item token from args[0]
+    # only, so the item keyword must stay single-word (unlike the container).
     return "get " + ctpl.get("keywords", ctpl["short_descr"]).split()[0] + " " + cont_kw
 
 
@@ -208,13 +211,12 @@ def do_get(player, args):
         if not loose and not conts:
             chprintln(player, "There is nothing here to pick up.")
             return
-        names = []
+        has_all = len(loose) > 1
+        names = ["[all]"] if has_all else []
+        loose_start = len(names)
         for obj in loose:
             tpl = item_tpl(obj)
             names.append(obj_short(obj, tpl))
-        has_all = len(loose) > 1
-        if has_all:
-            names.append("[all]")
         cont_start = len(names)
         for obj in conts:
             tpl = item_tpl(obj)
@@ -222,20 +224,7 @@ def do_get(player, args):
         idx = pick_from("Pick up what?", names)
         if idx < 0:
             return
-        if idx < len(loose):
-            obj = loose[idx]
-            tpl = item_tpl(obj)
-            if not _check_carry_get(player, obj, tpl):
-                return
-            rs["items"].remove(obj)
-            chprintln(player, "You get " + obj_short(obj, tpl) + ".")
-            if apply_money_pickup(player, obj, tpl):
-                return
-            player["inv"].append(obj)
-            _get_triggers(player, obj)
-            quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
-            return "get " + tpl.get("keywords", tpl["short_descr"]).split()[0]
-        if has_all and idx == len(loose):
+        if has_all and idx == 0:
             for obj in list(loose):
                 tpl = item_tpl(obj)
                 if not _check_carry_get(player, obj, tpl):
@@ -247,6 +236,24 @@ def do_get(player, args):
                     _get_triggers(player, obj)
                     quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
             return "get all"
+        if idx < cont_start:
+            obj = loose[idx - loose_start]
+            tpl = item_tpl(obj)
+            if not _check_carry_get(player, obj, tpl):
+                return
+            rs["items"].remove(obj)
+            chprintln(player, "You get " + obj_short(obj, tpl) + ".")
+            # [PRIMESUD] picker-resolved history strings carry the FULL keywords
+            # string: replay goes through is_name all-words prefix matching,
+            # which disambiguates items sharing a first keyword. Over-long
+            # entries only clip in the prompt's display.
+            resolved = "get " + tpl.get("keywords", tpl["short_descr"])
+            if apply_money_pickup(player, obj, tpl):
+                return resolved
+            player["inv"].append(obj)
+            _get_triggers(player, obj)
+            quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
+            return resolved
         return _loot_container_picker(player, conts[idx - cont_start])
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
@@ -404,21 +411,22 @@ def do_drop(player, args):
         if not visible:
             chprintln(player, "You are not carrying anything.")
             return
-        names = [obj_short(obj, item_tpl(obj)) for obj in visible]
-        if len(visible) > 1:
-            names.append("[all]")
+        has_all = len(visible) > 1
+        names = (["[all]"] if has_all else []) + [
+            obj_short(obj, item_tpl(obj)) for obj in visible]
         idx = pick_from("Drop what?", names)
         if idx < 0:
             return
-        if idx == len(visible):
+        if has_all and idx == 0:
             do_drop(player, ["all"])
-            return
-        obj = visible[idx]
+            return "drop all"
+        obj = visible[idx - (1 if has_all else 0)]
         if not can_drop_obj(player, obj):
             chprintln(player, "You can't let go of it.")
             return
         tpl = item_tpl(obj)
         sd = obj_short(obj, tpl)
+        resolved = "drop " + tpl.get("keywords", tpl["short_descr"])
         player["inv"].remove(obj)
         ritems = world.rooms[player["room"]]["items"]
         ritems.append(obj)
@@ -429,8 +437,8 @@ def do_drop(player, args):
         if obj in ritems and item_extra_flags(obj, tpl).get("melt_drop"):
             ritems.remove(obj)
             chprintln(player, sd + " dissolves into smoke.")
-            return
-        return "drop " + tpl.get("keywords", tpl["short_descr"]).split()[0]
+            return resolved
+        return resolved
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
         filter_kw = arg[4:] if arg.startswith("all.") else None
@@ -1576,28 +1584,27 @@ def do_wear(player, args):
         if not equippable:
             chprintln(player, "You have nothing wearable.")
             return
-        names = [obj_short(o, t) for o, t, _ in equippable]
-        # [PRIMESUD] bracketed bulk entries; guard each pick on the same
-        # condition that appended it -- with one equippable item no "[all]" is
-        # offered and len(equippable) collides with best_idx, so a positional
-        # `idx == len(equippable)` test alone would depend on branch order.
-        if len(equippable) > 1:
+        # [PRIMESUD] Bulk actions lead the picker. Redundant "[all]" stays
+        # hidden when only one item is equippable.
+        has_all = len(equippable) > 1
+        names = ["[best] (Equip strongest gear)"]
+        if has_all:
             names.append("[all]")
-        best_idx = len(names)
-        names.append("[best] (Equip strongest gear)")
+        item_start = len(names)
+        names.extend(obj_short(o, t) for o, t, _ in equippable)
         idx = pick_from("Wear what?", names)
         if idx < 0:
             return
-        if idx == best_idx:
+        if idx == 0:
             _wear_best(player)
             return "wear best"
-        if len(equippable) > 1 and idx == len(equippable):
+        if has_all and idx == 1:
             for obj, _, _ in list(equippable):
                 wear_obj(player, obj, False)
             return "wear all"
-        obj, tpl, slot = equippable[idx]
+        obj, tpl, slot = equippable[idx - item_start]
         wear_obj(player, obj, True)
-        return "wear " + tpl.get("keywords", tpl["short_descr"]).split()[0]
+        return "wear " + tpl.get("keywords", tpl["short_descr"])
     if args[0] == "best":  # [PRIMESUD] gear-score strict-upgrade sweep
         _wear_best(player)
         return
@@ -1628,19 +1635,19 @@ def do_remove(player, args):
         if not worn:
             chprintln(player, "You aren't wearing anything.")
             return
-        names = [obj_short(obj, item_tpl(obj)) for _, obj in worn]
-        if len(worn) > 1:
-            names.append("[all]")
+        has_all = len(worn) > 1
+        names = (["[all]"] if has_all else []) + [
+            obj_short(obj, item_tpl(obj)) for _, obj in worn]
         idx = pick_from("Remove what?", names)
         if idx < 0:
             return
-        if idx == len(worn):
+        if has_all and idx == 0:
             for slot, obj in list(worn):
                 remove_obj(player, slot, True)
-            return
-        slot, obj = worn[idx]
+            return "remove all"
+        slot, obj = worn[idx - (1 if has_all else 0)]
         remove_obj(player, slot, True)
-        return "remove " + item_tpl(obj).get("keywords", item_tpl(obj)["short_descr"]).split()[0]
+        return "remove " + item_tpl(obj).get("keywords", item_tpl(obj)["short_descr"])
     if args[0] == "all":
         for slot, obj in list(player["equip"].items()):
             if obj is not None and can_see_obj(player, obj):  # cf. 1stMud do_remove all loop, act_obj.c:1763

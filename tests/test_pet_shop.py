@@ -132,8 +132,9 @@ class TestBuyPet:
             return 0
 
         monkeypatch.setattr(shop, "pick_from", pick)
-        do_buy(player, [])
+        resolved = do_buy(player, [])
 
+        assert resolved == "buy beagle dog pet"
         assert player["pet"] is not None
         assert seen["title"] == "Buy which pet? [Lv Price]"
         assert "a fat beagle" in seen["labels"][0]

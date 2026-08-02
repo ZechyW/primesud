@@ -213,6 +213,16 @@ def test_get_created_gold_coin_credits_wallet(out):
     assert player["gold"] == 2 and player["inv"] == []
 
 
+def test_get_money_picker_resolves_history(out, monkeypatch):
+    player = _make_player(gold=0, silver=0)
+    world.rooms[ROOM_VNUM]["items"].append(
+        inventory.create_object(world.OBJ_VNUM_GOLD_ONE))
+    monkeypatch.setattr(inventory, "pick_from", lambda title, labels: 0)
+
+    assert inventory.do_get(player, []) == "get coin gold gcash"
+    assert player["gold"] == 1
+
+
 # -- Task 1: do_put container capacity -------------------------------------------
 
 def test_put_item_too_heavy_for_container(out):
@@ -331,12 +341,13 @@ def test_bare_drop_all_drops_every_visible_item(out, monkeypatch):
 
     def pick(title, labels):
         seen["labels"] = labels
-        return len(labels) - 1
+        return 0
 
     monkeypatch.setattr(inventory, "pick_from", pick)
-    inventory.do_drop(player, [])
+    resolved = inventory.do_drop(player, [])
 
-    assert seen["labels"] == ["a test sword", "a test robe", "[all]"]
+    assert seen["labels"] == ["[all]", "a test sword", "a test robe"]
+    assert resolved == "drop all"
     assert player["inv"] == []
     assert world.rooms[ROOM_VNUM]["items"] == [sword, robe]
 

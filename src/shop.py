@@ -328,6 +328,12 @@ def do_buy(player, args):
             stock = _pick_pet(player)
             if stock is not None:
                 _buy_pet_stock(player, stock, None)
+                tpl = MOB_DEFS[stock["tpl"]]
+                # [PRIMESUD] picker-resolved history strings carry the FULL
+                # keywords string: replay goes through is_name all-words prefix
+                # matching, which disambiguates entries sharing a first keyword.
+                # Over-long entries only clip in the prompt's display.
+                return "buy " + tpl.get("keywords", tpl["short_descr"])
             return
         _buy_pet(player, args)
         return
@@ -339,22 +345,25 @@ def do_buy(player, args):
     if args:
         number, arg = _mult_argument(" ".join(args))
         obj = _get_obj_keeper(player, keeper, arg)
+        resolved = None
     else:
         number = 1
         arg = None
         obj = _pick_keeper_stock(player, keeper)
         if obj is None:
             return
+        tpl = item_tpl(obj)
+        resolved = "buy " + tpl.get("keywords", tpl["short_descr"])
     cost = get_cost(keeper, obj, True)
 
     if number < 1 or number > 99:
         act("$n tells you 'Get real!", keeper, None, player, TO_VICT)
-        return
+        return resolved
 
     if cost <= 0 or obj is None or not can_see_obj(player, obj):
         act("$n tells you 'I don't sell that -- try 'list''.", keeper, None, player, TO_VICT)
         player["reply"] = keeper["id"]
-        return
+        return resolved
 
     tpl = item_tpl(obj)
     flags = item_extra_flags(obj, tpl)
@@ -371,7 +380,7 @@ def do_buy(player, args):
         if count < number:
             act("$n tells you 'I don't have that many in stock.", keeper, None, player, TO_VICT)
             player["reply"] = keeper["id"]
-            return
+            return resolved
 
     if not check_worth(player, cost * number):
         if number > 1:
@@ -379,23 +388,23 @@ def do_buy(player, args):
         else:
             act("$n tells you 'You can't afford to buy $p'.", keeper, obj, player, TO_VICT)
         player["reply"] = keeper["id"]
-        return
+        return resolved
 
     if obj_level(obj, tpl) > player["level"]:
         act("$n tells you 'You can't use $p yet'.", keeper, obj, player, TO_VICT)
         player["reply"] = keeper["id"]
-        return
+        return resolved
 
     carry_n = len(player["inv"]) + sum(1 for e in player["equip"].values() if e is not None)
     if carry_n + number > can_carry_n(player):
         chprintln(player, "You can't carry that many items.")
-        return
+        return resolved
 
     carry_w = sum(get_obj_weight(o) for o in player["inv"])
     carry_w += sum(get_obj_weight(e) for e in player["equip"].values() if e is not None)
     if get_obj_weight(obj) * number + carry_w > can_carry_w(player):
         chprintln(player, "You can't carry that much weight.")
-        return
+        return resolved
 
     # Haggle (cf. 1stMud do_buy haggle block)
     roll = randint(1, 100)
@@ -433,6 +442,7 @@ def do_buy(player, args):
         player["inv"].append(t_obj)
         if cost < t_obj.get("cost", 0):
             t_obj["cost"] = cost
+    return resolved
 
 
 def do_list(player, args):
@@ -573,8 +583,10 @@ def do_sell(player, args):
     if keeper is None:
         return
 
-    if args:
-        obj = get_obj_list(args[0], player["inv"], ITEM_DEFS, player)
+    # [PRIMESUD] upstream one_argument takes the first word only; the multi-word
+    # join here lets picker-resolved "sell <full keywords>" history entries replay.
+    if args and args[0] != "all":
+        obj = get_obj_list(" ".join(args), player["inv"], ITEM_DEFS, player)
         if obj is None:
             act("$n tells you 'You don't have that item'.", keeper, None, player, TO_VICT)
             player["reply"] = keeper["id"]
@@ -597,16 +609,26 @@ def do_sell(player, args):
     if not sellables:
         chprintln(player, "You have nothing this shop will buy.")
         return
-    if len(sellables) > 1:
-        labels.append("[all]")
-    idx = pick_from("Sell what? [Price]", labels)
-    if idx < 0:
-        return
-    if idx == len(sellables):
+    # [PRIMESUD] upstream has no "sell all"; this branch lets the picker's
+    # resolved "sell all" history entry replay.
+    if args:
         for obj in list(sellables):
             _sell_one(player, keeper, obj)
         return
-    _sell_one(player, keeper, sellables[idx])
+    has_all = len(sellables) > 1
+    if has_all:
+        labels.insert(0, "[all]")
+    idx = pick_from("Sell what? [Price]", labels)
+    if idx < 0:
+        return
+    if has_all and idx == 0:
+        for obj in list(sellables):
+            _sell_one(player, keeper, obj)
+        return "sell all"
+    obj = sellables[idx - (1 if has_all else 0)]
+    tpl = item_tpl(obj)
+    _sell_one(player, keeper, obj)
+    return "sell " + tpl.get("keywords", tpl["short_descr"])
 
 
 def do_value(player, args):

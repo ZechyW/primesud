@@ -2096,7 +2096,11 @@ def do_kill(player, args):
     # [PRIMESUD] check_killer not ported
     multi_hit(player, victim)
     if not args:
-        return "kill " + MOB_DEFS[victim["tpl"]].get("keywords", "").split()[0]
+        # [PRIMESUD] full keywords string, like the inventory/shop pickers --
+        # and the short_descr fallback avoids split()[0] blowing up on a
+        # keywordless template
+        vtpl = MOB_DEFS[victim["tpl"]]
+        return "kill " + vtpl.get("keywords", vtpl["short_descr"])
 
 
 def mob_hit(ch, victim, dt=TYPE_UNDEFINED):
