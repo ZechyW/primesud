@@ -313,9 +313,10 @@ def _debug_owhere(player, args):
     frag = " ".join(args)
     count = [0]
 
+    from item import obj_short
+
     def _sd(obj):
-        return ((isinstance(obj, dict) and obj.get("short_descr"))
-                or world.item_tpl(obj)["short_descr"])
+        return obj_short(obj, world.item_tpl(obj))
 
     def _report(obj, where):
         tpl = world.item_tpl(obj)

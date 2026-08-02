@@ -28,7 +28,8 @@ from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name
 import keyidx  # [PRIMESUD] binary mob keyword/metadata index
 from item import (get_obj_here, obj_vnum, item_extra_flags,
                   item_container_flags, liquid_color, liquid_left,
-                  liquid_total, liquid_type)
+                  liquid_total, liquid_type, obj_short,
+                  item_type as _item_type)
 from music import do_play
 from pager import tpage
 from picker import pick_from, _MAX_OPTS as _PICKER_PAGE
@@ -117,7 +118,7 @@ def do_where(player, args):
                 continue
             tpl = MOB_DEFS[mob["tpl"]]
             if is_name(target, tpl.get("keywords", "")):
-                rows.append((tpl["short_descr"], room["name"]))
+                rows.append((mob.get("name") or tpl["short_descr"], room["name"]))
     if not rows:
         act("You didn't find any $T.", player, None, target, TO_CHAR)
         return
@@ -405,10 +406,10 @@ def _show_char_to_char_1(player, mob_id):
         if obj is not None:
             if not found:
                 chprintln(player, "")
-                chprintln(player, upper(tpl["short_descr"]) + " is using:")
+                chprintln(player, upper(inst.get("name") or tpl["short_descr"]) + " is using:")
                 found = True
             ctpl = item_tpl(obj)
-            chprintln(player, label + ctpl["short_descr"])
+            chprintln(player, label + obj_short(obj, ctpl))
     # cf. 1stMud peek check (act_info.c:459-465)
     if randint(1, 100) < get_skill(player, GSN_PEEK):
         chprintln(player, "")
@@ -422,8 +423,7 @@ def _show_char_to_char_1(player, mob_id):
             seen = {}
             order = []
             for obj in inv:
-                s = ((isinstance(obj, dict) and obj.get("short_descr"))
-                     or item_tpl(obj)["short_descr"])
+                s = obj_short(obj, item_tpl(obj))
                 if s in seen:
                     seen[s] += 1
                 else:
@@ -453,7 +453,7 @@ def _look_in(player, args):
         chprintln(player, "You do not see that here.")
         return
     tpl = item_tpl(obj)
-    if tpl.get("type") == "drink":
+    if _item_type(obj, tpl) == "drink":
         # cf. 1stMud do_look 'in' ITEM_DRINK_CON case, act_info.c:1205-1220
         left = liquid_left(obj, tpl)
         if left <= 0:
@@ -471,7 +471,7 @@ def _look_in(player, args):
         chprintln(player, "It's " + frac + "filled with  a "
                   + liquid_color(liquid_type(obj, tpl)) + " liquid.")
         return
-    if tpl.get("type") not in _CONTAINER_TYPES:
+    if _item_type(obj, tpl) not in _CONTAINER_TYPES:
         chprintln(player, "That is not a container.")
         return
     # cf. 1stMud do_look 'in' CONT_CLOSED check, act_info.c:1225 (containers
@@ -653,7 +653,8 @@ def _show_char_to_char(player, mob_ids, out=None):
         if pos == start_pos and inst["fighting"] is None and tpl.get("long_descr"):
             line = tpl["long_descr"]
         else:
-            name = tpl["short_descr"]
+            # [PRIMESUD] instance name wins -- pets rename on evolve
+            name = inst.get("name") or tpl["short_descr"]
             name = upper(name) if name else name
             if inst["fighting"] is not None or pos == "fighting":
                 if inst["fighting"] == player["id"]:
@@ -666,7 +667,7 @@ def _show_char_to_char(player, mob_ids, out=None):
                         line = name + " is here, fighting thin air??"
                     else:
                         line = (name + " is here, fighting "
-                                + MOB_DEFS[tgt["tpl"]]["short_descr"] + ".")
+                                + (tgt.get("name") or MOB_DEFS[tgt["tpl"]]["short_descr"]) + ".")
             else:
                 line = name + _POS_LINES.get(pos, " is here.")
         if show_vnums:  # [PRIMESUD] template vnum; instance id via debug stat mob
@@ -1764,7 +1765,7 @@ def do_affects(player, args):
             if obj is None:
                 continue
             tpl = item_tpl(obj)
-            short_descr = tpl.get("short_descr", "")
+            short_descr = obj_short(obj, tpl)
             # Runtime object affects first (cf. 1stMud obj->affect_first)
             for paf in obj.get("affect_list", []):
                 if paf.get("where", "to_affects") != "to_affects":
@@ -2332,10 +2333,10 @@ def do_examine(player, args):
         mobs = [i for i in rs["mobs"] if can_see(player, world.chars[i])]
         objs = [o for o in (list(rs["items"]) + player["inv"] + equipped)
                 if can_see_obj(player, o)]
-        labels = [MOB_DEFS[world.chars[i]["tpl"]]["short_descr"] for i in mobs]
+        labels = [world.chars[i].get("name") or MOB_DEFS[world.chars[i]["tpl"]]["short_descr"]
+                  for i in mobs]
         for o in objs:
-            labels.append((isinstance(o, dict) and o.get("short_descr"))
-                          or item_tpl(o)["short_descr"])
+            labels.append(obj_short(o, item_tpl(o)))
         if not labels:
             chprintln(player, "Examine what?")
             return
@@ -2372,7 +2373,7 @@ def _examine_extras(player, obj):
     bare str() swept 01/08/2026]
     """
     tpl = item_tpl(obj)
-    obj_type = tpl.get("type")
+    obj_type = _item_type(obj, tpl)
     if obj_type == "money":
         silver = obj.get("silver", tpl.get("silver", 0))
         gold = obj.get("gold", tpl.get("gold", 0))

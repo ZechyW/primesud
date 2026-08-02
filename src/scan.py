@@ -22,7 +22,8 @@ def _scan_char_line(victim, depth, door):
     suffix = _DISTANCE[depth]
     if depth > 0:
         suffix = suffix + EXIT_NAMES.get(door, door) + "."
-    return tpl["short_descr"] + ", " + suffix
+    # [PRIMESUD] instance name wins -- pets rename on evolve
+    return (victim.get("name") or tpl["short_descr"]) + ", " + suffix
 
 
 def scan_list(room_vnum, ch, depth, door):

@@ -464,7 +464,7 @@ def do_enter(ch, args):
     tpl = item_tpl(portal)
     gate = portal.get("gate_flags", tpl.get("gate_flags", {}))
     exit_flags = portal.get("exit_flags", tpl.get("exit_flags", {}))
-    if tpl.get("type") != "portal" or exit_flags.get("closed"):
+    if _item_type(portal, tpl) != "portal" or exit_flags.get("closed"):
         chprintln(ch, "You can't seem to find a way in.")
         return
 

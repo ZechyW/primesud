@@ -34,7 +34,7 @@ from handler import (chprintln, act, is_evil, is_good, is_name, can_see_obj,
                      unequip_char, equip_char, TO_CHAR, TO_ROOM, TO_VICT,
                      TO_NOTVICT)
 from item import (create_object, obj_vnum, get_obj_list, item_extra_flags,
-                  item_wear_flags)
+                  item_wear_flags, item_type as _item_type)
 from picker import pick_from
 from urandom import randint
 from util import count_str, num_str, pad_right
@@ -401,7 +401,7 @@ def update_questobj(ch, obj):
         _add_apply(obj, "mana", max(50, lvl), lvl)
         _add_apply(obj, "move", max(50, lvl), lvl)
 
-    itype = tpl.get("type")
+    itype = _item_type(obj, tpl)
     if itype == "container":
         # 1stMud: negative weight + capacity scaling --
         # [PRIMESUD] container weight/capacity not modeled

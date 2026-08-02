@@ -1440,7 +1440,9 @@ def _eval_char_flag(check, word, lval_char, lval_obj, rest=""):
 
 
 def _obj_type(obj):
-    """Template item-type word for an obj (instance dict or vnum). [PRIMESUD]"""
+    """Item-type word for an obj, instance override then template. [PRIMESUD]"""
+    if isinstance(obj, dict) and "type" in obj:
+        return obj["type"]
     tpl = world.item_tpl(obj)
     return tpl.get("type", "") if tpl else ""
 

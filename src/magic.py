@@ -30,7 +30,9 @@ from item import (get_obj_list, obj_vnum, item_spell_level,
                   item_current_charges, item_affect_list,
                   item_affect_find, item_affect_remove, item_affect_to_obj,
                   set_item_extra_flag, create_object, promote_obj,
-                  item_weapon_flags, can_drop_obj)
+                  item_weapon_flags, can_drop_obj,
+                  item_type as _item_type, obj_level, obj_short,
+                  item_container_flags)
 from movement import perform_recall, get_random_room
 from picker import pick_from
 from quest import is_quester
@@ -62,7 +64,7 @@ def _enchant_copy_template(vo, tpl):
     for af in tpl_flag_affects(tpl):
         cur = dict(af)
         cur["type"] = ""
-        cur["level"] = tpl.get("level", 0)
+        cur["level"] = obj_level(vo, tpl)
         cur["duration"] = -1
         item_affect_to_obj(vo, cur, tpl)
 
@@ -122,6 +124,9 @@ def _item_name(obj):
     [Verified: 03/07/2026]"""
     if obj is None:
         return "item"
+    # [PRIMESUD] instance short_descr wins (corpses, money, body parts)
+    if isinstance(obj, dict) and obj.get("short_descr"):
+        return obj["short_descr"]
     tpl = world.item_tpl_get(obj) or {}
     return tpl.get("short_descr", "item")
 
@@ -431,7 +436,7 @@ def _locate_obj_list(obj_list, location, wanted, level, ch, found, max_found):
                 and is_name(wanted, tpl.get("keywords", ""))
                 and not item_extra_flags(obj, tpl).get("no_locate")
                 and randint(1, 100) <= 2 * level
-                and ch.get("level", 1) >= tpl.get("level", 0)):
+                and ch.get("level", 1) >= obj_level(obj, tpl)):
             found.append(location)
             if len(found) >= max_found:
                 return True
@@ -477,7 +482,7 @@ def _scan_locate_areas(tags, wanted, level, ch, found, max_found,
                 and world._vnum_to_tag(mob.get("tpl")) not in tags):
             continue
         if can_see(ch, mob):
-            mloc = "one is carried by " + MOB_DEFS[mob["tpl"]]["short_descr"]
+            mloc = "one is carried by " + (mob.get("name") or MOB_DEFS[mob["tpl"]]["short_descr"])
         else:
             # invisible carrier: upstream falls to the room branch, and a
             # carried obj has no room (magic.c:3536-3549)
@@ -674,7 +679,7 @@ def spell_detect_poison(sn, level, ch, vo, target):
     poison state stored as "poisoned" flag."""
     tpl = item_tpl(vo)
     poisoned = bool(vo.get("poisoned") or tpl.get("poisoned"))
-    if tpl.get("type") in ("drink", "food"):
+    if _item_type(vo, tpl) in ("drink", "food"):
         chprintln(ch, "You smell poisonous fumes." if poisoned else "It looks delicious.")
     else:
         chprintln(ch, "It doesn't look poisoned.")
@@ -690,26 +695,27 @@ def spell_identify(sn, level, ch, vo, target):
     wording matched and re-verified 07/07/2026; bare str() swept 01/08/2026."""
     tpl = item_tpl(vo)
     flags = item_extra_flags(vo, tpl)
-    chprintln(ch, "Object '" + tpl.get("keywords", "") + "' is type " + tpl.get("type", "unknown")
+    otype = _item_type(vo, tpl) or "unknown"
+    chprintln(ch, "Object '" + tpl.get("keywords", "") + "' is type " + otype
              + ", extra flags " + (" ".join(sorted(flags)) or "none") + ".")
     chprintln(ch, "Weight is " + num_str(tpl.get("weight", 0) // 10) + ", value is "
              + num_str(vo.get("cost", tpl.get("value", 0))) + ", level is "
              + num_str(vo.get("level", tpl.get("level", 0))) + ".")  # instance level (quest gear scales)
-    if tpl.get("type") in ("scroll", "potion", "pill"):
+    if otype in ("scroll", "potion", "pill"):
         spells = item_spells(vo, tpl)
         if spells:
             chprintln(ch, "Level " + num_str(item_spell_level(vo, tpl)) + " spells of: '" + "' '".join(spells) + "'.")
-    elif tpl.get("type") in ("wand", "staff"):
+    elif otype in ("wand", "staff"):
         line = "Has " + num_str(item_current_charges(vo, tpl)) + " charges of level " + num_str(item_spell_level(vo, tpl))
         spell_name = item_spell_name(vo, tpl)
         if spell_name:
             line += " '" + spell_name + "'"
         chprintln(ch, line + ".")
-    elif tpl.get("type") == "container":
+    elif otype == "container":
         # [PRIMESUD] capacity / weight multiplier not modeled; max weight and flags only
         chprintln(ch, "Maximum weight: " + num_str(tpl.get("container_max_weight", 0))
-                  + "#  flags: " + (" ".join(sorted(tpl.get("container_flags", {}))) or "none"))
-    elif tpl.get("type") == "weapon":
+                  + "#  flags: " + (" ".join(sorted(item_container_flags(vo, tpl))) or "none"))
+    elif otype == "weapon":
         # Per-class display names (magic.c:3244-3274); 1stMud's loader turns
         # unknown weapon words into exotic before identify ever sees them.
         wt = tpl.get("weapon_type", "")
@@ -723,7 +729,7 @@ def spell_identify(sn, level, ch, vo, target):
         chprintln(ch, "Damage is " + num_str(d[0]) + "d" + num_str(d[1])
                   + " (average " + num_str((1 + d[1]) * d[0] // 2) + ").")
         # [PRIMESUD] weapon flags line skipped -- weapon flags not ported
-    elif tpl.get("type") == "armor":
+    elif otype == "armor":
         a = tpl.get("armor", (0, 0, 0, 0))
         chprintln(ch, "Armor class is " + num_str(a[0]) + " pierce, " + num_str(a[1])
                   + " bash, " + num_str(a[2]) + " slash, and " + num_str(a[3]) + " vs. magic.")
@@ -767,7 +773,7 @@ def spell_enchant_armor(sn, level, ch, vo, target):
     [Verified: 03/07/2026] -- TO_ROOM echoes not ported (single-player);
     carried check via inv membership (1stMud checks wear_loc == WEAR_NONE)."""
     tpl = item_tpl(vo)
-    if tpl.get("type") != "armor":
+    if _item_type(vo, tpl) != "armor":
         chprintln(ch, "That isn't an armor.")
         return False
     if vo not in ch["inv"]:
@@ -847,7 +853,7 @@ def spell_enchant_weapon(sn, level, ch, vo, target):
     [Verified: 03/07/2026] -- TO_ROOM echoes not ported (single-player);
     carried check via inv membership (1stMud checks wear_loc == WEAR_NONE)."""
     tpl = item_tpl(vo)
-    if tpl.get("type") != "weapon":
+    if _item_type(vo, tpl) != "weapon":
         chprintln(ch, "That isn't a weapon.")
         return False
     if vo not in ch["inv"]:
@@ -998,7 +1004,7 @@ def spell_bless(sn, level, ch, vo, target):
             return False
         if flags.get("evil"):
             paf = item_affect_find(vo, _skill_lookup("curse"))
-            if not saves_dispel(level, paf.get("level", tpl.get("level", 0)) if paf else tpl.get("level", 0), 0):
+            if not saves_dispel(level, paf.get("level", obj_level(vo, tpl)) if paf else obj_level(vo, tpl), 0):
                 if paf is not None:
                     item_affect_remove(vo, paf, tpl)
                 set_item_extra_flag(vo, tpl, "evil", False)
@@ -1086,14 +1092,14 @@ def spell_poison(sn, level, ch, vo, target):
     if target == TARGET_OBJ:
         tpl = item_tpl(vo)
         flags = item_extra_flags(vo, tpl)
-        if tpl.get("type") in ("food", "drink"):
+        if _item_type(vo, tpl) in ("food", "drink"):
             if flags.get("bless") or flags.get("burn_proof"):
                 chprintln(ch, "Your spell fails to corrupt " + _item_name(vo) + ".")
                 return False
             vo["poisoned"] = True
             chprintln(ch, _item_name(vo) + " is infused with poisonous vapors.")
             return False  # 1stMud returns false here (magic.c:3710)
-        if tpl.get("type") == "weapon":
+        if _item_type(vo, tpl) == "weapon":
             wf = item_weapon_flags(vo, tpl)
             if (wf.get("flaming") or wf.get("frost") or wf.get("vampiric")
                     or wf.get("sharp") or wf.get("vorpal") or wf.get("shocking")
@@ -1132,7 +1138,7 @@ def spell_curse(sn, level, ch, vo, target):
             return False
         if flags.get("bless"):
             paf = item_affect_find(vo, _skill_lookup("bless"))
-            if not saves_dispel(level, paf.get("level", tpl.get("level", 0)) if paf else tpl.get("level", 0), 0):
+            if not saves_dispel(level, paf.get("level", obj_level(vo, tpl)) if paf else obj_level(vo, tpl), 0):
                 if paf is not None:
                     item_affect_remove(vo, paf, tpl)
                 set_item_extra_flag(vo, tpl, "bless", False)
@@ -1558,7 +1564,7 @@ def spell_create_water(sn, level, ch, vo, target):
     [Verified: 03/07/2026; drink/fill/pour ported 04/07/2026] --
     "water" keyword append not ported."""
     tpl = item_tpl(vo)
-    if tpl.get("type") != "drink":
+    if _item_type(vo, tpl) != "drink":
         chprintln(ch, "It is unable to hold water.")
         return False
     liq = vo.get("liquid_type", tpl.get("liquid_type", "water"))
@@ -1818,7 +1824,7 @@ def spell_floating_disc(sn, level, ch, vo, target):
     from inventory import remove_obj  # lazy import to avoid circular dependency
     if remove_obj(ch, "float", True):
         tpl = item_tpl(disc)
-        chprintln(ch, "You release " + tpl["short_descr"] + " and it floats next to you.")
+        chprintln(ch, "You release " + obj_short(disc, tpl) + " and it floats next to you.")
         equip_char(ch, disc, "float")
     return True
 
@@ -2006,8 +2012,8 @@ def spell_heat_metal(sn, level, ch, vo, target):
 
     for obj_lose, slot in targets:
         tpl = item_tpl(obj_lose)
-        obj_level = obj_lose.get("level", tpl.get("level", 0))
-        if not (randint(1, 2 * level) > obj_level
+        olevel = obj_level(obj_lose, tpl)
+        if not (randint(1, 2 * level) > olevel
                 and not saves_spell(level, victim, DAM_FIRE)
                 and not item_extra_flags(obj_lose, tpl).get("nonmetal")
                 and not item_extra_flags(obj_lose, tpl).get("burn_proof")):
@@ -2015,8 +2021,8 @@ def spell_heat_metal(sn, level, ch, vo, target):
         # cf. 1stMud number_range(1, obj->level): an inverted range returns
         # `from` (db.c:2682), but Python randint(1, 0) raises ValueError --
         # clamp level-0 items to the same result of 1. [PRIMESUD]
-        sear_max = obj_level if obj_level > 1 else 1
-        itype = tpl.get("type")
+        sear_max = olevel if olevel > 1 else 1
+        itype = _item_type(obj_lose, tpl)
         if itype == "armor":
             if slot is not None:
                 if (can_drop_obj(victim, obj_lose)
@@ -2324,7 +2330,7 @@ def spell_recharge(sn, level, ch, vo, target):
     [Verified: 03/07/2026] -- 1stMud prints the partial-success glow twice
     to the caster (duplicated TO_CHAR, magic.c:3923); fixed to TO_ROOM [PRIMESUD]."""
     tpl = item_tpl(vo)
-    if tpl.get("type") not in ("wand", "staff"):
+    if _item_type(vo, tpl) not in ("wand", "staff"):
         chprintln(ch, "That item does not carry charges.")
         return False
     spell_lvl = tpl.get("spell_level", 0)
@@ -2390,7 +2396,7 @@ def spell_remove_curse(sn, level, ch, vo, target):
         tpl = item_tpl(vo)
         flags = item_extra_flags(vo, tpl)
         if flags.get("nodrop") or flags.get("noremove"):
-            if not flags.get("nouncurse") and not saves_dispel(level + 2, tpl.get("level", 0), 0):
+            if not flags.get("nouncurse") and not saves_dispel(level + 2, obj_level(vo, tpl), 0):
                 set_item_extra_flag(vo, tpl, "nodrop", False)
                 set_item_extra_flag(vo, tpl, "noremove", False)
                 act("$p glows blue.", ch, vo, None, TO_ALL)
@@ -2409,7 +2415,7 @@ def spell_remove_curse(sn, level, ch, vo, target):
         tpl = item_tpl(obj)
         flags = item_extra_flags(obj, tpl)
         if (flags.get("nodrop") or flags.get("noremove")) and not flags.get("nouncurse"):
-            if not saves_dispel(level, tpl.get("level", 0), 0):
+            if not saves_dispel(level, obj_level(obj, tpl), 0):
                 set_item_extra_flag(obj, tpl, "nodrop", False)
                 set_item_extra_flag(obj, tpl, "noremove", False)
                 act("Your $p glows blue.", vo, obj, None, TO_CHAR)
@@ -3450,7 +3456,7 @@ def _pick_cast_target_name(player, sn):
         names = []
         for mob_id in rs["mobs"]:
             mob = world.chars[mob_id]
-            opts.append(MOB_DEFS[mob["tpl"]]["short_descr"])
+            opts.append(mob.get("name") or MOB_DEFS[mob["tpl"]]["short_descr"])
             names.append(_mob_pick_name(mob))
         if not opts:
             return ""
@@ -3464,7 +3470,7 @@ def _pick_cast_target_name(player, sn):
         names = []
         for obj in player["inv"]:
             tpl = item_tpl(obj)
-            opts.append(tpl["short_descr"])
+            opts.append(obj_short(obj, tpl))
             names.append(_obj_pick_name(obj))
         if not opts:
             return ""
@@ -3480,11 +3486,11 @@ def _pick_cast_target_name(player, sn):
         names = []
         for mob_id in rs["mobs"]:
             mob = world.chars[mob_id]
-            opts.append(MOB_DEFS[mob["tpl"]]["short_descr"])
+            opts.append(mob.get("name") or MOB_DEFS[mob["tpl"]]["short_descr"])
             names.append(_mob_pick_name(mob))
         for obj in rs["items"]:
             tpl = item_tpl(obj)
-            opts.append(tpl["short_descr"])
+            opts.append(obj_short(obj, tpl))
             names.append(_obj_pick_name(obj))
         if not opts:
             return ""
@@ -3519,7 +3525,7 @@ def validate_item_spell_payload(item_obj):
         _dev_item_fail(item_obj, "missing spell_level")
         return None
     payload = []
-    if tpl.get("type") in ("wand", "staff"):
+    if _item_type(item_obj, tpl) in ("wand", "staff"):
         spell_name = item_spell_name(item_obj, tpl)
         if spell_name:
             payload.append(spell_name)

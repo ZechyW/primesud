@@ -18,7 +18,8 @@ from explored import mark_explored  # [PRIMESUD]
 from game_time import time_update
 from gquest import gquest_update
 from handler import unequip_char, chprintln
-from item import item_affect_remove, set_item_extra_flag
+from item import (item_affect_remove, set_item_extra_flag, item_wear_flags,
+                  item_type as _item_type)
 from mob import mobile_update, aggr_update, area_update, weather_update
 from music import song_update
 from player import regen_update, tick_update
@@ -234,7 +235,7 @@ def _obj_affect_update(obj):
 def _decay_message(obj):
     """Return decay message string for a timer-expired object (cf. 1stMud obj_update switch in update.c)."""
     tpl = item_tpl(obj)
-    itype = tpl.get("type", "")
+    itype = _item_type(obj, tpl) or ""
     short = obj.get("short_descr", tpl.get("short_descr", "something"))
     if itype == "fountain":
         return short + " dries up."
@@ -358,8 +359,8 @@ def obj_update(tr, player):
             # PC corpse or floating item: spill contents to player inv
             # (cf. 1stMud update.c:908-915, obj_to_char path)
             tpl = item_tpl(obj)
-            itype = tpl.get("type", "")
-            if itype == "pc_corpse" or tpl.get("wear_flags", {}).get("float"):
+            itype = _item_type(obj, tpl) or ""
+            if itype == "pc_corpse" or item_wear_flags(obj, tpl).get("float"):
                 for inner in obj.get("contents", []):
                     player["inv"].append(inner)
             player["inv"].remove(obj)
@@ -382,7 +383,7 @@ def obj_update(tr, player):
             # Floating equipped container: spill contents to room
             # (cf. 1stMud update.c:910-913)
             tpl = item_tpl(obj)
-            if tpl.get("wear_flags", {}).get("float"):
+            if item_wear_flags(obj, tpl).get("float"):
                 room = world.rooms.get(player["room"])
                 if room:
                     for inner in obj.get("contents", []):

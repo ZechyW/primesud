@@ -1199,7 +1199,9 @@ def _is_lit_light(obj):
     hours left -- so a dead (0) light is not lit and everything else is.
     """
     tpl = item_tpl(obj)
-    if tpl.get("type") != "light":
+    # instance type override wins (item.item_type; inlined -- item imports handler)
+    otype = obj["type"] if isinstance(obj, dict) and "type" in obj else tpl.get("type")
+    if otype != "light":
         return False
     fuel = obj.get("light_hours") if isinstance(obj, dict) else None
     if fuel is None:
@@ -1520,7 +1522,8 @@ def mob_condition(inst, tpl):
     """
     _hm = inst.get("max_hit", 1)
     pct = inst["hit"] * 100 // _hm if _hm > 0 else -1
-    name = tpl["short_descr"]
+    # [PRIMESUD] instance name wins -- pets rename on evolve (mob.pet_evolve)
+    name = inst.get("name") or tpl["short_descr"]
     if pct >= 100: wound = name + " is in excellent condition."
     elif pct >= 90:  wound = name + " has a few scratches."
     elif pct >= 75:  wound = name + " has some small wounds and bruises."

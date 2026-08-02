@@ -9,7 +9,7 @@ from config import TYPE_UNDEFINED, POS_ORDER
 from game_time import time_info
 from handler import (act, chprintln, is_awake, can_see,
                      TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL)
-from item import obj_vnum, item_wear_flags
+from item import obj_vnum, item_wear_flags, item_type as _item_type
 from magic import SPELL_FUNS, TARGET_CHAR, _skill_lookup
 from movement import move_char, do_open, do_close
 from skills_table import SKILLS
@@ -331,7 +331,7 @@ def spec_janitor(ch):
             cost = trash.get("cost", tpl.get("value", 0))
         else:
             cost = tpl.get("value", 0)
-        if tpl.get("type") in ("drink", "trash") or cost < 10:
+        if _item_type(trash, tpl) in ("drink", "trash") or cost < 10:
             act("$n picks up some trash.", ch, None, None, TO_ROOM)
             rs["items"].remove(trash)
             ch["inv"].append(trash)
@@ -622,7 +622,7 @@ def spec_fido(ch):
         return False
     for corpse in list(rs.get("items", [])):
         tpl = item_tpl(corpse)
-        if tpl.get("type") != "npc_corpse":
+        if _item_type(corpse, tpl) != "npc_corpse":
             continue
         act("$n savagely devours a corpse.", ch, None, None, TO_ROOM)
         for inner in corpse.get("contents", []):

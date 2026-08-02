@@ -942,3 +942,63 @@ class TestBug18CrossAreaMobSavesDropped:
                       and inst["room"] == 200]
         assert len(mob_in_200) == 0, \
             "cross-area mob should NOT be placed (accepted limitation)"
+
+
+# ===========================================================================
+# Instance overrides must beat item templates in display and gating  (FIXED)
+# Money/corpse/body-part/estate-key name themselves on the instance; enchant
+# writes instance extra_flags and level.  Reading the template instead leaked
+# money's literal "%d silver coins" out of `get all` and hid enchant flags.
+# ===========================================================================
+
+class TestInstanceOverridesBeatTemplate:
+
+    def _room_with(self, monkeypatch, player, obj):
+        _stub_room(3001)
+        world.rooms._data[3001]["items"] = [obj]
+        player["room"] = 3001
+
+    def test_get_all_uses_instance_short_descr(self, monkeypatch):
+        import inventory
+        _stub_item_tpl(90001, itype="money", short_descr="%d silver coins",
+                       wear_flags={"take": True}, silver=0)
+        obj = _stub_item_instance(90001, short_descr="42 silver coins", silver=42)
+        player = _make_char()
+        self._room_with(monkeypatch, player, obj)
+        lines = []
+        monkeypatch.setattr(inventory, "chprintln",
+                            lambda ch, s="": (lines.extend(s) if type(s) is list
+                                              else lines.append(s)))
+        inventory.do_get(player, ["all"])
+        assert "You get 42 silver coins." in lines
+        assert not any("%d" in ln for ln in lines)
+
+    def test_inventory_shows_instance_name_and_enchant_flags(self, monkeypatch):
+        import inventory
+        _stub_item_tpl(90002, itype="trash", short_descr="a template name",
+                       wear_flags={"take": True})
+        obj = _stub_item_instance(90002, short_descr="the head of a goblin",
+                                  extra_flags={"glow": True, "magic": True})
+        player = _make_char(inv=[obj])
+        lines = []
+        monkeypatch.setattr(inventory, "chprintln",
+                            lambda ch, s="": (lines.extend(s) if type(s) is list
+                                              else lines.append(s)))
+        inventory.do_inventory(player, [])
+        body = [ln for ln in lines if "head of a goblin" in ln]
+        assert body, lines
+        assert "(Glowing)" in body[0] and "(Magical)" in body[0]
+
+    def test_wear_level_gate_reads_instance_level(self, monkeypatch):
+        import inventory
+        _stub_item_tpl(90003, itype="armor", short_descr="a plain cap",
+                       level=1, wear_flags={"take": True, "head": True})
+        obj = _stub_item_instance(90003, level=40)   # enchanted past the player
+        player = _make_char(level=20, inv=[obj])
+        lines = []
+        monkeypatch.setattr(inventory, "chprintln",
+                            lambda ch, s="": (lines.extend(s) if type(s) is list
+                                              else lines.append(s)))
+        inventory.wear_obj(player, obj, True)
+        assert any("must be level 40" in ln for ln in lines), lines
+        assert player["equip"].get("head") is None

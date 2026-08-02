@@ -54,7 +54,7 @@ from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
 from hunt import hunt_victim
 from item import (create_object, item_extra_flags,
                   set_item_extra_flag, apply_money_pickup, item_weapon_flags,
-                  item_affect_find)
+                  item_affect_find, item_type as _item_type)
 from picker import pick_from
 from player import reset_char
 from quest import (QUEST_DELIVER, QUEST_FINDMOB, is_quester, quest_kill_check,
@@ -1473,7 +1473,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                         and not (flags & PLR_AUTOLOOT)):
                     for cobj in list(corpse["contents"]):
                         ctpl = item_tpl(cobj)
-                        if ctpl.get("type") == "money":
+                        if _item_type(cobj, ctpl) == "money":
                             corpse["contents"].remove(cobj)
                             chprintln(ch, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
                             apply_money_pickup(ch, cobj, ctpl)
@@ -2661,9 +2661,9 @@ def make_corpse(ch):
             if flags.get("inventory"):
                 continue
             # 1stMud: potion/scroll decay timers set on death drop
-            if obj_tpl.get("type") == "potion":
+            if _item_type(obj, obj_tpl) == "potion":
                 obj["timer"] = randint(500, 1000)
-            elif obj_tpl.get("type") == "scroll":
+            elif _item_type(obj, obj_tpl) == "scroll":
                 obj["timer"] = randint(1000, 2500)
             # 1stMud: if (IsSet(obj->extra_flags, ITEM_ROT_DEATH) && !floating)
             if flags.get("rot_death"):

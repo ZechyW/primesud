@@ -11,7 +11,8 @@ from magic import spell_identify
 from mob import spawn_pet
 from item import (get_obj_list, obj_vnum, create_object, item_extra_flags,
                   ensure_item_extra_flags, can_drop_obj, can_carry_n,
-                  can_carry_w, get_obj_weight)
+                  can_carry_w, get_obj_weight, item_type as _item_type,
+                  obj_level)
 from skills_table import GSN_HAGGLE
 from urandom import randint
 from util import num_str, pad_left
@@ -96,7 +97,7 @@ def get_cost(keeper, obj, buy):
         cost = cost_base * shop["profit_buy"] // 100
     else:
         cost = 0
-        item_type = tpl.get("type", "")
+        item_type = _item_type(obj, tpl) or ""
         for bt in shop["buy_types"]:
             if item_type == bt:
                 cost = cost_base * shop["profit_sell"] // 100
@@ -115,7 +116,7 @@ def get_cost(keeper, obj, buy):
                             cost = cost * 3 // 4
 
     # Wand/staff charge adjustment (cf. 1stMud get_cost value[1]/value[2] check)
-    if tpl.get("type") in ("staff", "wand"):
+    if _item_type(obj, tpl) in ("staff", "wand"):
         max_ch = obj.get("max_charges", tpl.get("max_charges", 0))
         cur_ch = obj.get("charges", tpl.get("charges", 0))
         if max_ch == 0:
@@ -214,7 +215,7 @@ def _pick_keeper_stock(player, keeper):
                     i += 1
                 qty = pad_left(num_str(count), 2)
             items.append(obj)
-            labels.append("[" + pad_left(num_str(tpl.get("level", 0)), 2)
+            labels.append("[" + pad_left(num_str(obj_level(obj, tpl)), 2)
                           + " " + pad_left(num_str(cost), 5) + " " + qty
                           + "] " + short)
         i += 1
@@ -252,7 +253,7 @@ def _pick_pet(player):
             pets.append(pet)
             labels.append("[" + pad_left(num_str(pet["level"]), 2) + " "
                           + pad_left(num_str(10 * pet["level"] * pet["level"]), 5)
-                          + "] " + tpl["short_descr"])
+                          + "] " + (pet.get("name") or tpl["short_descr"]))
     if not pets:
         chprintln(player, "Sorry, we're out of pets right now.")
         return None
@@ -380,7 +381,7 @@ def do_buy(player, args):
         player["reply"] = keeper["id"]
         return
 
-    if tpl.get("level", 0) > player["level"]:
+    if obj_level(obj, tpl) > player["level"]:
         act("$n tells you 'You can't use $p yet'.", keeper, obj, player, TO_VICT)
         player["reply"] = keeper["id"]
         return
@@ -484,7 +485,7 @@ def do_list(player, args):
                 short = obj.get("short_descr") or tpl["short_descr"]
 
                 if flags.get("inventory"):
-                    chprintln(player, "[" + pad_left(num_str(tpl.get("level", 0)), 2) + " "
+                    chprintln(player, "[" + pad_left(num_str(obj_level(obj, tpl)), 2) + " "
                               + pad_left(num_str(cost), 5) + " -- ] " + short)
                 else:
                     count = 1
@@ -498,7 +499,7 @@ def do_list(player, args):
                             break
                         count += 1
                         i += 1
-                    chprintln(player, "[" + pad_left(num_str(tpl.get("level", 0)), 2) + " "
+                    chprintln(player, "[" + pad_left(num_str(obj_level(obj, tpl)), 2) + " "
                               + pad_left(num_str(cost), 5) + " " + pad_left(num_str(count), 2)
                               + " ] " + short)
         i += 1
@@ -555,7 +556,7 @@ def _sell_one(player, keeper, obj):
     add_cost(player, cost)
     deduct_cost(keeper, cost)
 
-    if tpl.get("type") == "trash" or flags.get("sell_extract"):
+    if _item_type(obj, tpl) == "trash" or flags.get("sell_extract"):
         player["inv"].remove(obj)
     else:
         player["inv"].remove(obj)

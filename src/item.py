@@ -30,6 +30,29 @@ def item_type(obj, tpl):
     return tpl.get("type")
 
 
+def obj_short(obj, tpl):
+    """Return the effective short description, checking instance override first. [PRIMESUD]
+
+    Money piles, corpses, death_cry body parts, and estate keys name
+    themselves on the instance; the template text is a placeholder there
+    (e.g. money's literal '%d silver coins').
+    """
+    if isinstance(obj, dict) and obj.get("short_descr"):
+        return obj["short_descr"]
+    return tpl["short_descr"]
+
+
+def obj_level(obj, tpl, default=0):
+    """Return the effective item level, checking instance override first. [PRIMESUD]
+
+    Instance level is set by enchant weapon/armor and quest-gear rescaling
+    (cf. 1stMud obj->level, which every level gate reads).
+    """
+    if isinstance(obj, dict) and "level" in obj:
+        return obj["level"]
+    return tpl.get("level", default)
+
+
 def create_object(vnum):
     """Create an item instance from a template (cf. 1stMud create_object in db.c).
 
@@ -731,7 +754,7 @@ def prog_obj_value(obj, idx):
     def f(field, dflt=0):
         return inst.get(field, tpl.get(field, dflt))
 
-    itype = tpl.get("type", "")
+    itype = item_type(obj, tpl) or ""
     if itype == "weapon":
         if idx == 0:
             return _WEAPON_CLASS_NUM.get(tpl.get("weapon_type", ""), 0)
