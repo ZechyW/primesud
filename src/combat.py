@@ -3710,7 +3710,8 @@ def do_rescue(ch, args):
 
 def disarm(ch, victim):
     """Remove victim's weapon (cf. 1stMud disarm in fight.c).
-    [Verified: 02/07/2026] -- ROOM_ARENA keep-item branch not ported.
+    [Verified: 03/08/2026] -- ROOM_ARENA keep-item branch not ported;
+    can_see_obj gate on the NPC pickup not modeled (mob visibility).
 
     Args:
         ch (dict): Attacker.
@@ -3751,7 +3752,8 @@ def disarm(ch, victim):
 
 def do_disarm(ch, args):
     """Attempt to disarm opponent's weapon (cf. 1stMud do_disarm in fight.c).
-    [Verified: 04/07/2026] -- check_killer not ported.
+    [Verified: 03/08/2026] -- check_killer and act_sound (skill sounds,
+    globally unported) not ported.
 
     Args:
         ch (dict): Acting character.
