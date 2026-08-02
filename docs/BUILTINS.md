@@ -176,6 +176,9 @@ bytes incl. 0xF3/CR/0x1A/NUL content):
   data can return MORE than `n` bytes (`read(16)` on gear.bin returned
   20). Treat `n` as a lower bound; slice or bound by computed offsets.
 - `seek(off)` is byte-addressed and exact.
+- `uio.open` is NOT an escape hatch: identical behaviour (str result,
+  char-counted sized reads; probed G1 02/08/2026). uio also exposes
+  BytesIO / FileIO / StringIO / TextIOWrapper.
 
 Pattern in use: `recommend._as_bytes()` casts every gear.bin read; the
 scanner indexes by computed record offsets so over-returned tails are
