@@ -46,6 +46,28 @@ a deduplicated string table in one read -- per-winner seek+read pairs
 would have cost ~40 ms each. Device binary-read semantics (`"rb"`
 returns str, char-counted sized reads) in docs/BUILTINS.md.
 
+### Keyword index scans (G1, measured 02 Aug 2026)
+
+The same recipe applied to the last two hot text indexes (mobs.idx /
+objs.idx -> KX01 mobs.bin / objs.bin, `src/keyidx.py`; measured via
+`debug/keyidx_bench.py`, log `keyidx_bench-1.log`). Name search is a
+native `find()` sweep of a lowercased keyword blob with word-boundary
+checks, so a miss never allocates at all; only confirmed candidates pay
+the slice + `is_name` cost:
+
+| Lookup | KX01 (G1) | Notes |
+|:-------|----------:|:------|
+| mob name hit ("guard", 50 records) | 287 ms | ~72 ms sweep + ~4 ms per candidate confirm |
+| mob name miss | 72 ms | ~40 ms of it whole-file read (45 KB) |
+| obj name hit ("sword", 45 records) | 302 ms | objs.bin, 1,358 records |
+| `_mob_stats` full record walk | 110 ms | 1,003 records, 30-vnum counts dict |
+
+Old text scans were never device-timed but shared the shape of the
+measured 2.4 s foes.idx scan at ~1.6x the line count (~4 s class).
+Candidate counts matched PC ground truth exactly, which also proves
+firmware `bytes.find(needle, start)` honours its start argument
+(keyidx guards against the alternative rather than hanging).
+
 ## Area loading
 
 ### Initial load probe (measured 25 Jul 2026)
