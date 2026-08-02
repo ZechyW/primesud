@@ -1136,9 +1136,12 @@ def is_safe_spell(ch, victim, area):
 def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
     """Print damage message from ch's attack on victim (cf. 1stMud dam_message in fight.c).
     [Verified: 04/07/2026]
-    -- room/observer (buf1) messages and self-hit branch not ported (single-player).
+    -- MudFlag(DISABLE_AUTODAM) global tag kill-switch not ported (mud_info);
+    bugf on out-of-range dt not ported (attack_noun is passed in, see below).
 
-    Single-player: only the player sees messages, as attacker (ch=player) or victim (ch=mob).
+    Single-player: the player sees messages as attacker (TO_CHAR, ch=player),
+    victim (TO_VICT, ch=mob), or onlooker (TO_NOTVICT -- or TO_ROOM for a
+    self-hit -- when two mobs fight in the player's room).
 
     # [PRIMESUD] attack_noun passed explicitly; 1stMud resolves it internally via
     # attack_table[dt - TYPE_HIT].noun, but PrimeSUD uses string-keyed dam_type
@@ -1164,23 +1167,66 @@ def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
     tag_vict = tag if (not victim["is_npc"]
                        and victim.get("flags", PLR_DEFAULTS) & PLR_AUTODAMAGE) else "{x"
 
-    # 1stMud dam_message: TO_CHAR goes to attacker, TO_VICT goes to defender
-    # (cf. fight.c:2610-2693). Routing replaces is_npc branching.
-    # [PRIMESUD] ch == victim (self-hit) branch not ported.
+    # Observer (buf1) line. 1stMud sends it with a trailing "$t" and TO_DAMAGE
+    # so each viewer's own PLR_AUTODAMAGE decides whether the tag renders
+    # (comm.c:1868-1880); the only possible observer here is the solo player,
+    # so the tag is resolved inline like tag_ch/tag_vict above ("" is what $t
+    # renders to for a viewer without the flag).
+    # [PRIMESUD] perf guard: build/send the line only when the player is
+    # actually an onlooker -- mob-vs-mob fights tick world-wide, and act()'s
+    # own routing would discard the line after we had paid to build it.
+    player = world.chars.get(1)
+    show_room = (player is not None and player is not ch and player is not victim
+                 and player.get("room") == ch.get("room"))
+    tag_room = ""
+    if show_room and player.get("flags", PLR_DEFAULTS) & PLR_AUTODAMAGE:
+        tag_room = tag
+
+    # 1stMud dam_message: TO_CHAR goes to attacker, TO_VICT goes to defender,
+    # TO_NOTVICT (TO_ROOM on a self-hit) to onlookers (cf. fight.c:2610-2696).
+    # Routing replaces is_npc branching.
+    # ch is victim is reachable: chain lightning grounding out through its own
+    # caster (magic.py spell_lightning_bolt, cf. magic.c:1195).
+    self_hit = ch is victim
     if attack_noun is None and not immune:
         # dt == TYPE_HIT: bare hit, no attack noun (misses included -- 1stMud
-        # has no separate miss branch; dam 0 resolves to miss/misses verbs)
-        act("{GYou " + vs + "{G $N" + punct + tag_ch, ch, None, victim, TO_CHAR)
-        act("{R$n " + vp + "{R you" + punct + tag_vict, ch, None, victim, TO_VICT)
+        # has no separate miss branch; dam 0 resolves to miss/misses verbs).
+        # Observer line takes vp (plural verb), like the TO_VICT line.
+        if self_hit:
+            if show_room:
+                # [PRIMESUD] 1stMud writes "$melf", which perform_act renders as
+                # "$m" + literal "elf" ("himelf"); typo fixed to "$mself".
+                act("{B$n " + vp + "{B $mself" + punct + tag_room, ch, None, None, TO_ROOM)
+            act("{GYou " + vs + "{G yourself" + punct + tag_ch, ch, None, None, TO_CHAR)
+        else:
+            if show_room:
+                act("{B$n " + vp + "{B $N" + punct + tag_room, ch, None, victim, TO_NOTVICT)
+            act("{GYou " + vs + "{G $N" + punct + tag_ch, ch, None, victim, TO_CHAR)
+            act("{R$n " + vp + "{R you" + punct + tag_vict, ch, None, victim, TO_VICT)
     else:
         # 1stMud: dt == TYPE_HIT under immunity resolves attack_table[0].noun = "hit"
         noun = attack_noun if attack_noun else "hit"
         if immune:
-            act("{G$N is unaffected by your " + noun + "!{x", ch, None, victim, TO_CHAR)
-            act("{R$n's " + noun + " is powerless against you.{x", ch, None, victim, TO_VICT)
+            if self_hit:
+                if show_room:
+                    act("{B$n is unaffected by $s own " + noun + ".{x", ch, None, None, TO_ROOM)
+                act("{GLuckily, you are immune to that.{x", ch, None, None, TO_CHAR)
+            else:
+                if show_room:
+                    act("{B$N is unaffected by $n's " + noun + "!{x", ch, None, victim, TO_NOTVICT)
+                act("{G$N is unaffected by your " + noun + "!{x", ch, None, victim, TO_CHAR)
+                act("{R$n's " + noun + " is powerless against you.{x", ch, None, victim, TO_VICT)
         else:
-            act("{GYour " + noun + " " + vp + "{G $N" + punct + tag_ch, ch, None, victim, TO_CHAR)
-            act("{R$n's " + noun + " " + vp + "{R you" + punct + tag_vict, ch, None, victim, TO_VICT)
+            if self_hit:
+                if show_room:
+                    # 1stMud uses "$m" (not the reflexive) here -- kept bug-faithful
+                    act("{B$n's " + noun + " " + vp + "{B $m" + punct + tag_room, ch, None, None, TO_ROOM)
+                act("{GYour " + noun + " " + vp + "{G you" + punct + tag_ch, ch, None, None, TO_CHAR)
+            else:
+                if show_room:
+                    act("{B$n's " + noun + " " + vp + "{B $N" + punct + tag_room, ch, None, victim, TO_NOTVICT)
+                act("{GYour " + noun + " " + vp + "{G $N" + punct + tag_ch, ch, None, victim, TO_CHAR)
+                act("{R$n's " + noun + " " + vp + "{R you" + punct + tag_vict, ch, None, victim, TO_VICT)
 
 
 def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):

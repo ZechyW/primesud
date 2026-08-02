@@ -150,6 +150,86 @@ def test_dam_message_tag_follows_autodamage(out):
     assert any("[{R7{W]" in l for l in out)
 
 
+# -- dam_message room-observer (buf1) lines ------------------------------------
+
+def _observer_lines(out):
+    """Observer (buf1) lines are the CTAG(_OHIT) == {B ones."""
+    return [l for l in out if l.startswith("{B")]
+
+
+def _two_mobs():
+    """Player watching two mobs fight in room 9001."""
+    return _make_player(), _make_mob(2), _make_mob(3)
+
+
+def test_dam_message_observer_noun_hit(out):
+    _player, atk, vic = _two_mobs()
+    dam_message(atk, vic, 10, TYPE_HIT, False, "slash")
+    obs = _observer_lines(out)
+    assert len(obs) == 1
+    assert "A test dog's slash hits" in obs[0]
+    assert "a test dog." in obs[0]
+
+
+def test_dam_message_observer_bare_hit_uses_plural_verb(out):
+    _player, atk, vic = _two_mobs()
+    dam_message(atk, vic, 10, TYPE_HIT, False)
+    obs = _observer_lines(out)
+    assert len(obs) == 1
+    assert "A test dog hits" in obs[0]
+
+
+def test_dam_message_observer_miss(out):
+    _player, atk, vic = _two_mobs()
+    dam_message(atk, vic, 0, TYPE_HIT, False)
+    obs = _observer_lines(out)
+    assert len(obs) == 1
+    assert "A test dog misses" in obs[0]
+
+
+def test_dam_message_observer_immune(out):
+    _player, atk, vic = _two_mobs()
+    dam_message(atk, vic, 0, TYPE_HIT, True, "slash")
+    obs = _observer_lines(out)
+    assert len(obs) == 1
+    assert "A test dog is unaffected by a test dog's slash!" in obs[0]
+
+
+def test_dam_message_observer_tag_follows_autodamage(out):
+    player, atk, vic = _two_mobs()
+    dam_message(atk, vic, 10, TYPE_HIT, False, "slash")
+    assert "[{R10{W]" in _observer_lines(out)[0]
+    del out[:]
+    player["flags"] &= ~PLR_AUTODAMAGE
+    dam_message(atk, vic, 10, TYPE_HIT, False, "slash")
+    assert "10" not in _observer_lines(out)[0]
+
+
+def test_dam_message_no_observer_line_from_another_room(out):
+    _make_player(room=9002)
+    atk = _make_mob(2)
+    vic = _make_mob(3)
+    dam_message(atk, vic, 10, TYPE_HIT, False, "slash")
+    assert out == []
+
+
+def test_dam_message_player_attacker_lines_unchanged(out):
+    player = _make_player()
+    mob = _make_mob(2)
+    dam_message(player, mob, 10, TYPE_HIT, False)
+    assert _observer_lines(out) == []
+    assert any(l.startswith("{GYou hit") for l in out)
+
+
+def test_dam_message_self_hit(out):
+    _player, atk, _vic = _two_mobs()
+    dam_message(atk, atk, 10, TYPE_HIT, False, "lightning bolt")
+    obs = _observer_lines(out)
+    assert len(obs) == 1
+    assert "A test dog's lightning bolt hits" in obs[0]
+    assert " it." in obs[0]  # $m, not $N
+
+
 # -- autoassist: player joins the pet's fight -----------------------------------
 
 def _pet_fight_scene():
