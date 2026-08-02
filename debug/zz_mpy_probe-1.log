@@ -1,0 +1,5 @@
+zz_mpy_probe: can firmware import .mpy? (mpy-cross 1.9.4, format v3)
+mpytoy: IMPORT FAILED ImportError("no module named 'mpytoy'",)
+mpytoy2: IMPORT FAILED ImportError("no module named 'mpytoy2'",)
+VERDICT: .mpy loading DEAD on this firmware -- track closed
+Done. Results in zz_mpy_probe.log
