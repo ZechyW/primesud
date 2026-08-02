@@ -220,7 +220,7 @@ def _show_mobs(player):
         chprintln(player, "Mob recommendations are unavailable.")
         return
     if not rows:
-        chprintln(player, "No suitable known mob targets near your level.")
+        chprintln(player, "No suitable mob targets near your level.")
         return
     lines = ["Lv  Record  Mob                          Area"]
     for row in rows:
@@ -239,8 +239,7 @@ def _show_mobs(player):
             + pad_left(record, 7) + " "
             + pad_right(row["name"][:28], 28) + " "
             + _area_name(row["tag"])[:22 - len(suffix)] + suffix)
-    lines.append("Known reset sites; availability is not live.")
-    lines.append("Use path <mob> or path <area> after choosing.")
+    lines.append("{wUse path <mob> or path <area> after choosing.{x")
     tpage(lines)
 
 
@@ -666,23 +665,17 @@ def _comma_num(value):
     return out
 
 
-def _source_summary(row):
-    """Return compact summary source text."""
-    return row["kind"] + ": " + row["source_name"]
-
-
 def _source_detail(row):
     """Return detailed acquisition text."""
-    area = _area_name(row["tag"])
     if row["kind"] == "loot":
-        return ("  loot from " + row["source_name"] + " (L"
-                + num_str(row["source_level"]) + "), " + area)
+        return ("loot: " + row["source_name"] + " (L"
+                + num_str(row["source_level"]) + ")")
     if row["kind"] == "shop":
-        return ("  buy from " + row["source_name"] + ", " + area + ": "
-                + _comma_num(row["price"]) + " silver")
+        return ("shop: " + row["source_name"] + " ("
+                + _comma_num(row["price"]) + " silver)")
     if row["kind"] == "container":
-        return "  inside " + row["source_name"] + ", " + area
-    return "  floor in " + row["source_name"] + ", " + area
+        return "container: " + row["source_name"]
+    return "floor: " + row["source_name"]
 
 
 def _show_gear(player, slot=None):
@@ -699,18 +692,19 @@ def _show_gear(player, slot=None):
     if slot is not None:
         rows = results[slot]
         if not rows:
-            chprintln(player, "No known static " + slot + " upgrades for you.")
+            chprintln(player, "No " + slot + " upgrades for you.")
             return None
         lines = []
         for row in rows:
             lines.append(slot + " +" + num_str(row["gain"]) + "  "
                          + row["name"][:48])
-            lines.append(_source_detail(row)[:64])
+            lines.append(("  " + _source_detail(row))[:64])
+            lines.append(("    area: " + _area_name(row["tag"]))[:64])
             for alt in row["alts"]:
-                lines.append(("  also" + _source_detail(alt)[1:])[:64])
-        lines.append("Known source, not current availability.")
+                lines.append(("  also " + _source_detail(alt))[:64])
+                lines.append(("    area: " + _area_name(alt["tag"]))[:64])
         if slot in _HAND_SLOTS:
-            lines.append("Hand item is a candidate; wear best decides layout.")
+            lines.append("{wHand item is a candidate; wear best decides layout.{x")
         tpage(lines)
         return None
 
@@ -719,16 +713,16 @@ def _show_gear(player, slot=None):
         if results[category]:
             rows.append(results[category][0])
     if not rows:
-        chprintln(player, "No known static gear upgrades for you.")
+        chprintln(player, "No gear upgrades for you.")
         return None
     options = []
     for row in rows:
         options.append(
             pad_right(row["slot"], 8)
             + pad_left("+" + num_str(row["gain"]), 5) + " "
-            + pad_right(row["name"][:22], 22) + " "
-            + _source_summary(row)[:16])
-    choice = pick_from("Gear upgrades (known sources, not live):", options)
+            + row["name"][:35])
+    choice = pick_from(
+        "Gear upgrades (select one for source and/or alternatives):", options)
     if choice < 0:
         return None
     picked = rows[choice]["slot"]

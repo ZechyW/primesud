@@ -644,6 +644,8 @@ def test_mob_multi_area_marker(indexed_player, tmp_path, monkeypatch,
     body = pages[0][1:3]
     assert any(line.rstrip().endswith("+1") for line in body)
     assert not all(line.rstrip().endswith("+1") for line in body)
+    assert pages[0][-1] == (
+        "{wUse path <mob> or path <area> after choosing.{x")
 
 
 def test_gear_summary_picker_drills_to_slot(indexed_player, tmp_path,
@@ -656,12 +658,21 @@ def test_gear_summary_picker_drills_to_slot(indexed_player, tmp_path,
                   price=100, tag="far"),
     ))
     monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
-    monkeypatch.setattr(recommend, "pick_from", lambda *_args: 0)
+    picks = []
+
+    def pick(title, options):
+        picks.append((title, options))
+        return 0
+
+    monkeypatch.setattr(recommend, "pick_from", pick)
 
     assert recommend.do_recommend(indexed_player, ["gear"]) == (
         "recommend gear body")
-    assert any(line.startswith("  also buy from shop")
-               for line in pages[0])
+    assert picks[0][0] == (
+        "Gear upgrades (select one for source and/or alternatives):")
+    assert picks[0][1] == ["body     +200 item 600"]
+    assert any(line.startswith("  also shop: shop") for line in pages[0])
+    assert sum(line.startswith("    area: ") for line in pages[0]) == 2
 
     monkeypatch.setattr(recommend, "pick_from", lambda *_args: -1)
     assert recommend.do_recommend(indexed_player, ["gear"]) is None
