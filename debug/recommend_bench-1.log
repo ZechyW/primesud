@@ -1,0 +1,47 @@
+recommend_bench: recommend-scan timings
+mem free start: 7421824
+boot: load_world 10ms source=(None, True)
+player: level=1 room=3700 learned=20 gold=10 silver=100
+mem free after boot: 7413616
+io_summary: 4 reads, 182215B (+1024B head)
+.. io_summary pass 1/3 85ms
+.. io_summary pass 2/3 82ms
+.. io_summary pass 3/3 82ms
+io_summary: min=82ms max=85ms avg=83ms
+io_wield: 1 reads, 57993B (+1024B head)
+.. io_wield pass 1/3 28ms
+.. io_wield pass 2/3 28ms
+.. io_wield pass 3/3 28ms
+io_wield: min=28ms max=28ms avg=28ms
+mem free after io: 7412992
+.. scan_summary pass 1/3 3815ms
+.. scan_summary pass 2/3 3816ms
+.. scan_summary pass 3/3 3815ms
+scan_summary: min=3815ms max=3816ms avg=3815ms
+.. scan_summary shield: 1 rows, top +60 a wooden shield
+.. scan_summary hands: 1 rows, top +70 a pair of hard leather gloves
+.. scan_summary hold: 1 rows, top +20 a glass trinket
+.. scan_summary legs: 1 rows, top +70 a pair of hard leather pants
+.. scan_summary about: 1 rows, top +30 a sub issue cape
+.. scan_summary head: 1 rows, top +70 a hard leather cap
+.. scan_summary waist: 1 rows, top +70 a leather girdle
+.. scan_summary body: 1 rows, top +70 a hard leather jerkin
+.. scan_summary arms: 1 rows, top +70 a pair of hard leather sleeves
+.. scan_summary wield: 1 rows, top +4 a hand axe
+.. scan_summary feet: 1 rows, top +70 a pair of hard leather boots
+.. scan_summary wrist: 1 rows, top +40 a leather bracer
+.. scan_summary neck: 1 rows, top +30 a sub issue cloak
+mem free after scan_summary: 7407120
+.. scan_wield pass 1/3 1142ms
+.. scan_wield pass 2/3 1143ms
+.. scan_wield pass 3/3 1143ms
+scan_wield: min=1142ms max=1143ms avg=1142ms
+.. scan_wield wield: 10 rows, top +4 a hand axe
+mem free after scan_wield: 7408368
+.. scan_mobs pass 1/3 348ms
+.. scan_mobs pass 2/3 345ms
+.. scan_mobs pass 3/3 346ms
+scan_mobs: min=345ms max=348ms avg=346ms
+scan_mobs: 10 candidates
+mem free after scan_mobs: 7406656
+Done. Results in recommend_bench.log

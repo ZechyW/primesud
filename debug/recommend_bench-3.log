@@ -1,0 +1,5 @@
+recommend_bench: recommend-scan timings
+mem free start: 7421280
+boot: load_world 11908ms source=file
+player: level=10 room=2133 learned=20 gold=140 silver=1642
+mem free after boot: 7162480

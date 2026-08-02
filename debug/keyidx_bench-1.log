@@ -1,0 +1,28 @@
+keyidx_bench: mobs.bin / objs.bin scan timings
+mem free start: 7300368
+boot: load_world 13003ms source=file
+player: level=10 room=2133 areas=1
+mem free after boot: 7041776
+.. mob_find_hit pass 1/3 298ms
+.. mob_find_hit pass 2/3 283ms
+.. mob_find_hit pass 3/3 281ms
+mob_find_hit: min=281ms max=298ms avg=287ms
+mob_find_hit: 50 candidates for guard
+.. mob_find_miss pass 1/3 72ms
+.. mob_find_miss pass 2/3 73ms
+.. mob_find_miss pass 3/3 73ms
+mob_find_miss: min=72ms max=73ms avg=72ms
+mob_find_miss: 0 candidates for xyzzyq
+.. obj_find pass 1/3 311ms
+.. obj_find pass 2/3 298ms
+.. obj_find pass 3/3 298ms
+obj_find: min=298ms max=311ms avg=302ms
+obj_find: 45 candidates for sword
+mem free after finds: 7040784
+.. mob_stats_walk pass 1/3 120ms
+.. mob_stats_walk pass 2/3 106ms
+.. mob_stats_walk pass 3/3 105ms
+mob_stats_walk: min=105ms max=120ms avg=110ms
+mob_stats_walk: 30 of 30 vnums resolved
+mem free after walk: 7037664
+Done. Results in keyidx_bench.log

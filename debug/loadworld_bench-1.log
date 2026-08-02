@@ -1,0 +1,36 @@
+loadworld_bench: load_world() phase split
+mem free start: 7297312
+mem free after init_world: 7289408
+.. read pass 1/3 25ms
+.. read pass 2/3 18ms
+.. read pass 3/3 15ms
+read: min=15ms max=25ms avg=19ms
+read: 27133 bytes
+.. split pass 1/3 172ms
+.. split pass 2/3 173ms
+.. split pass 3/3 171ms
+split: min=171ms max=173ms avg=172ms
+split: 194 lines
+mem free after read+split: 7229376
+.. snap_decode pass 1/3 6606ms
+.. snap_decode pass 2/3 6607ms
+.. snap_decode pass 3/3 6607ms
+snap_decode: min=6606ms max=6607ms avg=6606ms
+snap_decode: 39 records, 13225 encoded bytes
+mem free after snap_decode: 7214560
+.. m_parse pass 1/3 2190ms
+.. m_parse pass 2/3 2189ms
+.. m_parse pass 3/3 2189ms
+m_parse: min=2189ms max=2190ms avg=2189ms
+m_parse: 344 mob entries, 8821 bytes
+mem free after m_parse: 7205376
+area_load: saved room=2133 area=hood loaded_before=0
+area_load: 1951ms
+area_load: present=yes loaded_after=1
+mem free after area_load: 7043520
+load_world_rest: 11033ms
+load_world_rest: source=file areas=1 snapshots=39
+player: level=10 room=2133
+mem free after load_world: 6948384
+cross-check: area_load + load_world_rest = 12984ms (keyidx_bench-1.log G1 baseline for the same save: 13003ms)
+Done. Results in loadworld_bench.log
