@@ -16,10 +16,20 @@ full), and chunked contiguous segment reads (summary: 16 seeks+reads ->
 baselines (L10, sword 80): summary 985 -> 642, wield detail 350 -> 287.
 Reject profile shows the residue is loot rows outside the source-level
 window (197 splits, and they suppress the early-stop floor) plus
-unlearnt-weapon rows adept-bound-sorted past the jump. Candidate next
-levers if G1 still slow: loot rows source-level-banded in the builder;
-row fields reordered so rejects parse a short split (partial-split
-reject). Awaiting G1 re-check and go/no-go on the levers.
+unlearnt-weapon rows adept-bound-sorted past the jump. Both follow-up
+levers approved and implemented same day: loot rows now lead each
+segment in "@@min_source_level|bytes" 5-level source-level bands
+(skipped whole outside the loot window; the non-loot item-band break
+stays safe because loot comes first), and row fields were reordered so
+all score rejects resolve from split("|", 9) -- the source/display tail
+is only parsed for keep-grade rows. Same PC probe: summary 642 -> 487
+row splits (at roughly half the allocs each; ~250 full-split
+equivalents vs the original 985), wield detail 287 -> 213. Remaining
+residue is boundary-band loot rows (5-level bands vs 4-level window)
+and genuine tie/candidate churn. Awaiting G1 re-check. Next levers if
+still slow: drop the redundant slot field from rows; a limit==1 fast
+path that skips alt bookkeeping in summary mode; static/wmax sub-splits
+of wield type groups.
 
 Desktop verification on 31 July 2026 (post-review: `gear.idx` segmented per
 wear slot for bounded seek reads; gear summary is a drill-in picker; detail

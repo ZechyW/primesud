@@ -122,10 +122,14 @@ def _gear_metadata(vnum, item):
         flags.append("two_hands")
     name = _flat(item.get("short_descr", ""))
     assert "|" not in weapon_type
+    # Reject-relevant fields lead so the runtime can drop a row from a
+    # short partial split; display strings (name, source_name) trail the
+    # row and are only parsed for kept candidates.
     return (
-        str(vnum), slot, str(item.get("level", 0)), str(static_score),
-        str(weapon_base), weapon_type, "1" if sharp else "0",
-        str(item.get("weight", 0)), ",".join(flags), name,
+        (str(vnum), slot, str(item.get("level", 0)), str(static_score),
+         str(weapon_base), weapon_type, "1" if sharp else "0",
+         str(item.get("weight", 0)), ",".join(flags)),
+        name,
     )
 
 
@@ -265,9 +269,10 @@ def main():
         if key in gear_seen:
             return
         gear_seen.add(key)
-        gear_rows.append(metadata + (
-            kind, str(source_vnum), str(source_level), str(room_vnum),
-            _flat(source_name), tag, str(price),
+        lead, name = metadata
+        gear_rows.append(lead + (
+            kind, str(source_level), str(source_vnum), str(room_vnum),
+            tag, str(price), name, _flat(source_name),
         ))
 
     # Model the device pipeline: world._load_area partitions the flat reset
@@ -373,42 +378,24 @@ def main():
                     else:
                         last_spawned = False
 
-    slot_order = {}
-    for index, slot in enumerate(_GEAR_SLOTS):
-        slot_order[slot] = index
-
     def _bound(row):
         return int(row[3]) + gear_score_weapon_max(int(row[4]), row[6] == "1")
 
-    # Within a slot, rows are grouped into 5-level item-level bands (bands
-    # ascending) and sorted inside each band by score upper bound,
-    # descending. The runtime walker breaks at the first band above the
-    # player's level and jumps past a band's remainder once the bound cannot
-    # beat the owned baseline, so it fully parses only a handful of rows.
-    # Wield bands additionally group by weapon type so the runtime can skip
-    # a whole unlearnt type from its header arithmetic alone.
-    gear_rows.sort(key=lambda row: (
-        slot_order[row[1]], int(row[2]) // 5,
-        row[5] if row[1] == "wield" else "", -_bound(row), int(row[0]),
-        _SOURCE_ORDER[row[10]], area_order[row[15]], int(row[11]),
-        int(row[13])))
-    # One contiguous segment per wear slot so the runtime can seek and read
-    # only the slots it needs instead of the whole file (help.dat pattern).
-    # Each band is prefixed by "@<min_level>|<row bytes>" for the jumps;
-    # wield bands hold "@=<type>|<max_static>|<max_wmax>|<row bytes>" type
-    # sub-segments (max_wmax = best adept-skill weapon bound in the group).
-    segments = []
-    for slot in _GEAR_SLOTS:
-        rows = [row for row in gear_rows if row[1] == slot]
+    def _emit_bands(rows, band_of, sigil, wield_subs):
+        """Emit rows as "<sigil><min_level>|<bytes>" bands; rows must be
+        pre-sorted by band (ascending), then weapon type when wield_subs,
+        then bound descending. Wield bands hold
+        "@=<type>|<max_static>|<max_wmax>|<row bytes>" type sub-segments
+        (max_wmax = best adept-skill weapon bound in the group)."""
         chunks = []
         index = 0
         while index < len(rows):
-            band = int(rows[index][2]) // 5
+            band = band_of(rows[index])
             band_rows = []
-            while index < len(rows) and int(rows[index][2]) // 5 == band:
+            while index < len(rows) and band_of(rows[index]) == band:
                 band_rows.append(rows[index])
                 index += 1
-            if slot == "wield":
+            if wield_subs:
                 parts = []
                 sub = 0
                 while sub < len(band_rows):
@@ -428,17 +415,47 @@ def main():
                 blob = "".join(parts)
             else:
                 blob = "".join("|".join(row) + "\n" for row in band_rows)
-            chunks.append("@" + str(band * 5) + "|" + str(len(blob))
+            chunks.append(sigil + str(band * 5) + "|" + str(len(blob))
                           + "\n" + blob)
-        segments.append("".join(chunks))
+        return "".join(chunks)
+
+    # One contiguous segment per wear slot so the runtime can seek and read
+    # only the slots it needs instead of the whole file (help.dat pattern).
+    # Each segment leads with its loot rows in "@@<min_source_level>|bytes"
+    # 5-level SOURCE-level bands: the runtime skips whole bands outside its
+    # loot window without parsing a row. Non-loot rows follow in
+    # "@<min_item_level>|bytes" item-level bands (ascending), where the
+    # walker breaks at the first band above the player's level -- safe only
+    # because the loot part comes first. Rows inside a band (or wield type
+    # group) sort by score upper bound, descending, so the walker jumps a
+    # band's remainder once the bound cannot beat the skip floor.
+    def _tiebreak(row):
+        return (-_bound(row), int(row[0]), _SOURCE_ORDER[row[9]],
+                area_order[row[13]], int(row[11]), int(row[12]))
+
+    segments = []
+    for slot in _GEAR_SLOTS:
+        subs = slot == "wield"
+        loot = [row for row in gear_rows
+                if row[1] == slot and row[9] == "loot"]
+        loot.sort(key=lambda row: (
+            int(row[10]) // 5, row[5] if subs else "") + _tiebreak(row))
+        other = [row for row in gear_rows
+                 if row[1] == slot and row[9] != "loot"]
+        other.sort(key=lambda row: (
+            int(row[2]) // 5, row[5] if subs else "") + _tiebreak(row))
+        segments.append(
+            _emit_bands(loot, lambda row: int(row[10]) // 5, "@@", subs)
+            + _emit_bands(other, lambda row: int(row[2]) // 5, "@", subs))
     out_path = os.path.join(OUTDIR, "gear.idx")
     header = (
         "# item_vnum|slot|item_level|static_score|weapon_base|weapon_type|"
-        "sharp|weight|item_flags|item_name|source_kind|source_vnum|"
-        "source_level|room_vnum|source_name|tag|price -- one segment per"
-        " wear slot in fixed slot order; line 2 lists segment byte lengths;"
-        " @min_level|bytes headers open 5-level bands sorted by max score;"
-        " wield bands hold @=type|max_static|max_wmax|bytes sub-segments"
+        "sharp|weight|item_flags|source_kind|source_level|source_vnum|"
+        "room_vnum|tag|price|item_name|source_name -- one segment per wear"
+        " slot in fixed slot order; line 2 lists segment byte lengths;"
+        " loot rows lead in @@min_source_level|bytes bands, then non-loot"
+        " in @min_item_level|bytes bands, all sorted by max score; wield"
+        " bands hold @=type|max_static|max_wmax|bytes sub-segments"
         " -- built by tools/build_mob_index.py, do not edit\n")
     with open(out_path, "w", newline="\n") as f:
         f.write(header

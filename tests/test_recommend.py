@@ -53,9 +53,9 @@ def _gear_row(vnum, slot="body", level=1, score=100, kind="floor",
               weapon_type="", sharp=0, weight=0):
     return "|".join((
         str(vnum), slot, str(level), str(score), str(weapon_base),
-        weapon_type, str(sharp), str(weight), flags, "item " + str(vnum),
-        kind, str(source_vnum), str(source_level), str(room), source, tag,
-        str(price),
+        weapon_type, str(sharp), str(weight), flags, kind,
+        str(source_level), str(source_vnum), str(room), tag, str(price),
+        "item " + str(vnum), source,
     ))
 
 
@@ -455,6 +455,31 @@ def test_wield_type_header_skips_unlearnt_type(indexed_player, tmp_path,
     assert rows[0]["gain"] == 17
 
 
+def test_loot_band_outside_window_skips_unparsed(indexed_player, tmp_path,
+                                                 monkeypatch):
+    """An @@source-level band that cannot intersect the loot window is
+    skipped whole -- its mislabeled in-window row is never parsed."""
+    low = _gear_row(600, score=500, kind="loot", source_vnum=20,
+                    source_level=10, source="mislabeled mob") + "\n"
+    ok = _gear_row(601, score=150, kind="loot", source_vnum=21,
+                   source_level=10, source="a fair fight") + "\n"
+    body = ("@@0|" + str(len(low)) + "\n" + low
+            + "@@10|" + str(len(ok)) + "\n" + ok)
+    blobs = ["" for _slot in recommend._GEAR_SLOTS]
+    blobs[recommend._GEAR_SLOTS.index("body")] = body
+    path = tmp_path / "gear.idx"
+    path.write_bytes(("# test gear.idx\n"
+                      + ",".join(str(len(blob)) for blob in blobs) + "\n"
+                      + "".join(blobs)).encode())
+    monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
+
+    rows = recommend._scan_gear(indexed_player, "body")["body"]
+
+    # Player L10 window is [8, 11]: the @@0 band (sources 0-4) is jumped
+    # even though the row inside claims source level 10; @@10 scans.
+    assert [row["vnum"] for row in rows] == [601]
+
+
 def test_full_results_raise_skip_floor(indexed_player, tmp_path, monkeypatch):
     """A full ten-row slot raises the jump floor to the weakest kept score:
     rows bounded below it jump the band (the mislabeled 200 is never
@@ -709,38 +734,50 @@ def test_generator_emits_fight_tags_and_all_source_kinds(
     assert sum(sizes) == sum(len(line) + 1 for line in gear_lines[2:])
     gear_rows = [row.split("|") for row in gear_lines[2:]
                  if not row.startswith("@")]
-    assert {row[10] for row in gear_rows} == {
+    assert {row[9] for row in gear_rows} == {
         "loot", "shop", "floor", "container"}
     # Segments follow _GEAR_SLOTS order, so slot column is grouped.
     slot_seq = [row[1] for row in gear_rows]
     assert slot_seq == sorted(
         slot_seq, key=list(recommend._GEAR_SLOTS).index)
     assert sum(1 for row in gear_rows if row[0] == "200") == 1
-    shops = [row for row in gear_rows if row[10] == "shop"]
+    shops = [row for row in gear_rows if row[9] == "shop"]
     assert sorted(row[0] for row in shops) == ["201", "205"]
-    assert all(row[11] == "101" and row[16] == "120" for row in shops)
+    assert all(row[11] == "101" and row[14] == "120" for row in shops)
     nested = next(row for row in gear_rows if row[0] == "207")
-    assert nested[10:13] == ["loot", "100", "10"]
-    assert nested[14] == "a fighter"
+    assert nested[9:12] == ["loot", "10", "100"]
+    assert nested[16] == "a fighter"
 
     # Band invariants the runtime shortcuts rely on: every row sits under a
-    # header, headers partition each slot segment exactly, bands ascend,
-    # rows inside a band (or wield type group) descend by max-score bound,
-    # and wield type headers carry honest group maxima.
+    # header, headers partition each slot segment exactly, loot rows lead
+    # in ascending @@source-level bands followed by non-loot in ascending
+    # @item-level bands, rows inside a band (or wield type group) descend
+    # by max-score bound, and wield type headers carry honest group maxima.
     text = (tmp_path / "gear.idx").read_text()
     body = text.split("\n", 2)[2]
     offset = 0
     saw_type_header = False
+    saw_loot_band = False
     for size in sizes:
         segment = body[offset:offset + size]
         offset += size
         pos = 0
         last_band = -1
+        in_loot_part = True
         while pos < len(segment):
             end = segment.index("\n", pos)
             header = segment[pos:end]
             assert header.startswith("@") and not header.startswith("@=")
-            band_level, band_bytes = header[1:].split("|")
+            loot_band = header.startswith("@@")
+            if loot_band:
+                saw_loot_band = True
+                assert in_loot_part  # loot bands never follow item bands
+                band_level, band_bytes = header[2:].split("|")
+            else:
+                if in_loot_part:
+                    in_loot_part = False
+                    last_band = -1
+                band_level, band_bytes = header[1:].split("|")
             assert int(band_level) > last_band
             last_band = int(band_level)
             band = segment[end + 1:end + 1 + int(band_bytes)]
@@ -772,12 +809,18 @@ def test_generator_emits_fight_tags_and_all_source_kinds(
             for group in groups:
                 bounds = []
                 for parts in group:
-                    assert int(parts[2]) // 5 * 5 == int(band_level)
+                    if loot_band:
+                        assert parts[9] == "loot"
+                        assert int(parts[10]) // 5 * 5 == int(band_level)
+                    else:
+                        assert parts[9] != "loot"
+                        assert int(parts[2]) // 5 * 5 == int(band_level)
                     bounds.append(int(parts[3])
                                   + inventory.gear_score_weapon_max(
                                       int(parts[4]), parts[6] == "1"))
                 assert bounds == sorted(bounds, reverse=True)
     assert saw_type_header  # the wield segment exercised the @= path
+    assert saw_loot_band  # loot sources exercised the @@ path
 
 
 def test_shipped_indexes_reproduce(tmp_path, monkeypatch):

@@ -382,17 +382,22 @@ def _scan_segment(player, data, pos, stop, slot, results, baselines,
     """Score and rank one slot segment's rows into results[slot].
 
     Scans data[pos:stop] (the segment may share a chunked read with its
-    neighbours). Segments carry "@min_level|bytes" band headers (5-level
-    item bands, ascending; rows inside a band sorted by max-score bound,
-    descending). The walk breaks at the first band above the player's
-    level and jumps past a band's remaining rows once the bound cannot
-    beat the skip floor -- the owned baseline, raised to the weakest kept
-    score once results[slot] is full (strict <, so equal-bound alternate
-    sources of a kept item still parse). Wield bands hold
-    "@=type|max_static|max_wmax|bytes" sub-segments whose adept-skill
-    bound is rescaled to the player's proficiency, skipping a whole
-    unlearnt weapon type without parsing a row. Data without headers or
-    ordering still scans correctly, just without the shortcuts.
+    neighbours). Loot rows lead the segment in "@@min_source_level|bytes"
+    5-level source-level bands, skipped whole when they cannot intersect
+    the loot window; non-loot rows follow in "@min_level|bytes" item-level
+    bands (ascending), where the walk breaks at the first band above the
+    player's level -- safe only because loot comes first. Rows inside a
+    band sort by max-score bound, descending, so the walk jumps a band's
+    remaining rows once the bound cannot beat the skip floor -- the owned
+    baseline, raised to the weakest kept score once results[slot] is full
+    (strict <, so equal-bound alternate sources of a kept item still
+    parse). Wield bands hold "@=type|max_static|max_wmax|bytes"
+    sub-segments whose adept-skill bound is rescaled to the player's
+    proficiency, skipping a whole unlearnt weapon type without parsing a
+    row. Rows reject from a short partial split (reject fields lead the
+    row; display strings trail and are only parsed for kept candidates).
+    Data without headers or ordering still scans correctly, just without
+    the shortcuts.
     """
     baseline = baselines[slot]
     floor = baseline + 1
@@ -413,6 +418,20 @@ def _scan_segment(player, data, pos, stop, slot, results, baselines,
         if line[0] == "@":
             jump_end = -1
             parts = line.split("|")
+            if line[1:2] == "@":
+                # "@@min_source_level|bytes": 5-level source-level band of
+                # loot rows; skip it whole unless it can intersect the
+                # loot window.
+                try:
+                    band_end = pos + int(parts[1])
+                    low = int(parts[0][2:])
+                    if low > loot_high or low + 4 < loot_low:
+                        pos = band_end
+                    else:
+                        jump_end = band_end
+                except (TypeError, ValueError, IndexError):
+                    pass
+                continue
             if line[1:2] == "=":
                 # Weapon-type sub-segment header. _weapon_score at skill s
                 # is at most its adept (s=120) value times s*(s+20)/16800;
@@ -438,20 +457,18 @@ def _scan_segment(player, data, pos, stop, slot, results, baselines,
             except (TypeError, ValueError, IndexError):
                 pass
             continue
-        parts = line.split("|")
-        if len(parts) != 17 or parts[1] != slot:
+        # Partial split: fields 0-8 decide every score-based reject, so
+        # most rows never allocate their source/display tail (per-row
+        # allocs dominate the on-device scan).
+        parts = line.split("|", 9)
+        if len(parts) != 10 or parts[1] != slot:
             continue
         try:
-            vnum = int(parts[0])
             item_level = int(parts[2])
             static_score = int(parts[3])
             weapon_base = int(parts[4])
             sharp = parts[6] == "1"
             weight = int(parts[7])
-            source_vnum = int(parts[11])
-            source_level = int(parts[12])
-            room_vnum = int(parts[13])
-            price = int(parts[16])
         except (TypeError, ValueError):
             continue
         bound = gear_score_weapon_max(weapon_base, sharp)
@@ -468,38 +485,52 @@ def _scan_segment(player, data, pos, stop, slot, results, baselines,
             continue
         if item_level > player_level:
             continue
+        if slot == "wield" and weight > wield_limit:
+            continue
+        wscore = gear_score_weapon(player, weapon_base, parts[5], sharp)
+        score = static_score + wscore
+        if score + wscore // 10 < floor:
+            # wscore//10 is the most the two-hander branch can add back.
+            continue
         flags = {}
         for flag in parts[8].split(","):
             if flag:
                 flags[flag] = True
         if not gear_flags_legal(player, flags):
             continue
-        if slot == "wield" and weight > wield_limit:
-            continue
-        kind = parts[10]
-        if (kind == "loot"
-                and not (loot_low <= source_level <= loot_high)):
-            continue
-        if kind not in _SOURCE_ORDER:
-            continue
-        wscore = gear_score_weapon(player, weapon_base, parts[5], sharp)
-        score = static_score + wscore
         if flags.get("two_hands") and small:
             # Forfeits the shield (cf. _best_hand_layout economics): +10%
             # dice, minus half the owned shield's score plus its block value.
             block = score * sb_pct // 100
             score += wscore // 10 - (baselines["shield"] + block) // 2
-        gain = score - baseline
-        if gain <= 0:
+        if score < floor:
             continue
-        tag = parts[15]
+        # Survivor: parse the source/display tail.
+        rest = parts[9].split("|")
+        if len(rest) != 8:
+            continue
+        kind = rest[0]
+        if kind not in _SOURCE_ORDER:
+            continue
+        try:
+            vnum = int(parts[0])
+            source_level = int(rest[1])
+            source_vnum = int(rest[2])
+            room_vnum = int(rest[3])
+            price = int(rest[5])
+        except (TypeError, ValueError):
+            continue
+        if (kind == "loot"
+                and not (loot_low <= source_level <= loot_high)):
+            continue
+        tag = rest[4]
         source_key = _source_key(
             kind, tag, price, funds, source_level, player_level,
             source_vnum, room_vnum, current, area_order)
         candidate = {
-            "vnum": vnum, "slot": slot, "gain": gain, "name": parts[9],
-            "kind": kind, "source_vnum": source_vnum,
-            "source_level": source_level, "source_name": parts[14],
+            "vnum": vnum, "slot": slot, "gain": score - baseline,
+            "name": rest[6], "kind": kind, "source_vnum": source_vnum,
+            "source_level": source_level, "source_name": rest[7],
             "tag": tag, "price": price, "source_key": source_key,
         }
         _keep_candidate(rows, candidate, limit)
