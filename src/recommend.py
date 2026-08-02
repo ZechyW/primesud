@@ -304,6 +304,16 @@ def _keep_candidate(rows, candidate, limit):
         rows.pop()
 
 
+def _as_bytes(data):
+    """Byte-cast a gear.bin read: device open(.., "rb") can hand back str.
+
+    [PRIMESUD] MicroPython str.encode() returns the underlying byte payload
+    without re-encoding, so a byte-faithful read mistagged as str recovers
+    exactly; genuinely translated data fails the header checks downstream.
+    """
+    return data.encode() if type(data) is str else data
+
+
 def _parse_gear_header(head):
     """Decode gear.bin's header (layout in tools/build_mob_index.py).
 
@@ -364,7 +374,7 @@ def _scan_gear(player, wanted_slot=None):
         return None
 
     with f:
-        head = f.read(4096)
+        head = _as_bytes(f.read(4096))
         try:
             meta = _parse_gear_header(head)
         except (IndexError, ValueError, UnicodeError):
@@ -429,7 +439,7 @@ def _scan_gear(player, wanted_slot=None):
                 stop += 1
             run_end = needed[stop - 1][1] + needed[stop - 1][2]
             f.seek(run_start)
-            data = f.read(run_end - run_start)
+            data = _as_bytes(f.read(run_end - run_start))
             if len(data) < run_end - run_start:
                 return None
             while index < stop:
@@ -448,7 +458,7 @@ def _scan_gear(player, wanted_slot=None):
         for slot in results:
             if results[slot]:
                 f.seek(strings_off)
-                names = f.read()
+                names = _as_bytes(f.read())
                 for got in results.values():
                     for row in got:
                         _resolve_names(names, row)

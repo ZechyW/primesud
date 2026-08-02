@@ -95,6 +95,60 @@ def timed(label, fn, n=N):
     return result
 
 
+# -- Binary read fidelity: does device open("rb") return faithful bytes? ----
+
+# PC-computed ground truth for src/gear.bin as shipped in this bundle.
+# Regenerate via tools/build_mob_index.py + a quick len/sum/slice check if
+# gear.bin changes.
+_BIN_LEN = 80283
+_BIN_SUM = 4853482
+_BIN_FIRST16 = (71, 66, 48, 49, 243, 1, 30, 0, 111, 223, 0, 0, 45, 0, 76, 0)
+_BIN_STRINGS_OFF = 57199
+_BIN_AT_STRINGS = (97, 110, 32, 105, 109, 112, 101, 114)
+
+
+def scenario_binprobe():
+    """One-transfer diagnosis of open('rb') semantics on-device: read type,
+    length, high-byte fidelity (first16 includes 0xF3), EOL/EOF translation
+    (file holds 651 CRs + 221 0x1A), seek addressing."""
+    with open(recommend.GEAR_INDEX_FILE, "rb") as f:
+        head = f.read(16)
+        tname = type(head).__name__
+        head = recommend._as_bytes(head)
+        parts = []
+        for value in head:
+            parts.append(int_str(value))
+        log("binprobe: head type=" + tname + " len=" + int_str(len(head))
+            + " [" + " ".join(parts) + "]")
+        ok = len(head) == 16
+        if ok:
+            for i in range(16):
+                if head[i] != _BIN_FIRST16[i]:
+                    ok = False
+                    break
+        log("binprobe: first16 " + ("MATCH" if ok else "MISMATCH"))
+        f.seek(_BIN_STRINGS_OFF)
+        probe = recommend._as_bytes(f.read(8))
+        ok = len(probe) == 8
+        if ok:
+            for i in range(8):
+                if probe[i] != _BIN_AT_STRINGS[i]:
+                    ok = False
+                    break
+        log("binprobe: seek(57199) " + ("MATCH" if ok else "MISMATCH"))
+        f.seek(0)
+        data = recommend._as_bytes(f.read())
+        total = 0
+        for value in data:
+            total += value
+        log("binprobe: full len=" + int_str(len(data))
+            + (" MATCH" if len(data) == _BIN_LEN else " MISMATCH expect "
+               + int_str(_BIN_LEN))
+            + " sum=" + int_str(total)
+            + (" MATCH" if total == _BIN_SUM else " MISMATCH expect "
+               + int_str(_BIN_SUM)))
+
+
 # -- I/O floor: _scan_gear's exact read pattern, no parsing -----------------
 
 def _gear_runs(wield_only):
@@ -103,7 +157,7 @@ def _gear_runs(wield_only):
     wield-only, plus the string-table offset for the winner-name read.
     Keep in sync with _scan_gear if the packing changes."""
     with open(recommend.GEAR_INDEX_FILE, "rb") as f:
-        head = f.read(4096)
+        head = recommend._as_bytes(f.read(4096))
     hsize = head[4] | head[5] << 8
     strings_off = (head[8] | head[9] << 8 | head[10] << 16
                    | head[11] << 24)
@@ -201,6 +255,9 @@ def main():
 
     gc.collect()
     log("mem free after boot: " + int_str(free()))
+
+    scenario_binprobe()
+    gc.collect()
 
     scenario_io("io_summary", False)
     scenario_io("io_wield", True)
