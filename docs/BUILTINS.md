@@ -108,7 +108,16 @@ Modules present (beyond the CLAUDE.md core of `hpprime`, `uio`, `cas`,
 | calc-specific | `arith` (gcd/isprime/...), `graphic` (draw_* wrappers), `linalg`, `cmath`, `matplotl` (page misspells it "maplotl") |
 
 Still absent: `utime` (confirmed 2026-07-07 independently of this list),
-`os`, `json`, `re` (only `ure`), `collections` (only `ucollections`).
+`os`, `uos` (both confirmed absent on-device 2026-08-02), `json`, `re`
+(only `ure`), `collections` (only `ucollections`).
+
+Import machinery (verified on-device 2026-08-02, `zz_syspath_probe`):
+`sys.path` exists but is `[]` and appending to it has no effect — the
+importer is a custom HP hook that scans the appdir filesystem
+dynamically (a runtime-written `.py` imports fine) but only tries the
+`.py` extension. `.mpy` files are never stat'ed, so precompiled
+bytecode cannot be loaded (see docs/PERFORMANCE.md sec. Boot import
+phase).
 
 Built-in container methods per the menu (unverified — see caveat above):
 

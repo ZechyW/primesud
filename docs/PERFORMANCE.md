@@ -273,6 +273,47 @@ nothing useful -- measure in a fresh session or not at all.
   58 KB (180 ms), `classes` 11 KB (28 ms), and `groups` 9 KB (30 ms). Total:
   ~119 KB, leaving ~8.07 MB free.
 
+## Boot import phase (G1, measured 02 Aug 2026)
+
+Full G1 boot ~43 s = **37.2 s firmware auto-import phase** + 6.2 s
+`load_world`. The firmware auto-imports every `.py` in the appdir in
+reverse-alphabetical filename order (game starts when it reaches
+`primesud.py`); a `zz_`-prefixed file sorts first and runs before
+anything else is loaded — the bench slot used by
+`debug/zz_import_bench.py` and the probes below.
+
+- Costs are first-import closure attribution (module + not-yet-loaded
+  deps charged to the first importer): `update` 20.1 s (pulls the game
+  bulk: combat/handler/item/mob/player/quest/economy/debug), `mobprog`
+  7.1 s (own 62 KB + `commands` closure), `training` 6.0 s
+  (magic/info/inventory/game_state/skills_table wave), `world` 1.3 s,
+  `recommend` 1.1 s, `shop` 0.9 s; everything else <0.3 s. The lazy
+  import trio (mobprog/socials/namegen) buys nothing at device boot —
+  the auto-import pass loads them regardless.
+- **Minification is a null result**: the 52 % byte cut from
+  `tools/build_dist.py` left the phase identical (37,207 vs 37,181 ms).
+  Import cost is structure-bound (per-construct compiler allocs), not
+  byte-bound. Minified payload kept anyway: resident heap 339 KB
+  lighter.
+- **Compile share is 98–99 %** (`zz_compile_probe`: combat 3,433 ms
+  compile vs 12 ms exec). The phase is compiler allocs re-paid every
+  boot. Compile cost per KB grows with heap occupancy (combat
+  ~55 ms/KB early, mobprog ~96 ms/KB later) — compile is the alloc
+  floor phenomenon.
+- **`.mpy` precompilation is dead** (`zz_mpy_probe` +
+  `zz_syspath_probe`, 02 Aug 2026): toy `.mpy` files (mpy-cross 1.9.4,
+  bytecode v3, both unicode flag variants) fail with `ImportError: no
+  module named` — the importer never stats them. `sys.path` is `[]`
+  and appending to it changes nothing; `uos`/`os` absent; a
+  runtime-written `.py` imports fine. HP's custom import hook scans the
+  filesystem dynamically but is hardwired to `.py`. Unfixable from
+  userland.
+
+Conclusion: the ~37 s floor stands. Deferring modules out of
+`.py`-space (ship as data, `compile()`+`exec()` on first use) only
+moves the cost to a first-use stall, and the expensive closures
+(update/mobprog/training) are all hot in the first minutes of play.
+
 ## Save path (G1, measured 27 Jul 2026)
 
 `debug/save_bench.py` used a real 7990-byte, 173-line, 965-token save payload,

@@ -1,0 +1,13 @@
+zz_syspath_probe: import machinery anatomy
+sys.path: []
+uos: absent
+os: absent
+open mpytoy.mpy OK, head: 'M\x03\x02\x1f'
+wrote mpytoy3.py
+.. import mpytoy3 OK (runtime-written .py) 777
+.. import mpytoy FAILED (baseline) ImportError("no module named 'mpytoy'",)
+.. import mpytoy FAILED (sys.path + '') ImportError("no module named 'mpytoy'",)
+.. import mpytoy FAILED (sys.path + '.') ImportError("no module named 'mpytoy'",)
+.. import mpytoy FAILED (sys.path + '/') ImportError("no module named 'mpytoy'",)
+VERDICT: .mpy DEAD, extension-specific -- importer scans fs dynamically but only tries .py. Track closed.
+Done. Results in zz_syspath_probe.log
