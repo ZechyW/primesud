@@ -228,6 +228,10 @@ Deliberate gameplay tweaks; each is a settled decision in DESIGN.md or a
   counter").
 - **No hunger or thirst** -- condition tracking isn't implemented; conjured
   food decays after a day so it doesn't pile up instead.
+- **Two-handed wield frees the hand** -- wielding a two-handed weapon while a
+  shield is worn removes the shield for you instead of refusing; a
+  cursed/noremove shield still blocks, and `wear all` never strips one
+  silently (inventory.py `wear_obj`).
 - **Per-word spell abbreviation** -- `cast`, `practice`, and `train` match
   skill names word by word (`c 'cu li'`, even `c 'c l w'`, finds cure light
   wounds); upstream only prefix-matches the whole string (skill_utils.py).

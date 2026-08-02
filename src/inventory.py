@@ -1231,8 +1231,15 @@ def wear_obj(player, obj, fReplace):
         if (_get_size(player) < SIZE_RANK["large"]
                 and item_weapon_flags(obj, tpl).get("two_hands")
                 and player["equip"].get("shield") is not None):
-            chprintln(player, "You need two hands free for that weapon.")
-            return
+            # [PRIMESUD] Upstream just refuses here. Deliberately wielding a
+            # two-handed weapon is an unambiguous request for both hands, so
+            # auto-remove the shield the same way any other occupied slot is
+            # replaced (fReplace only -- 'wear all' passes False and must not
+            # silently strip a shield). A cursed/noremove shield fails the
+            # remove, prints its own reason, and we fall back to the block.
+            if not (fReplace and remove_obj(player, "shield", fReplace)):
+                chprintln(player, "You need two hands free for that weapon.")
+                return
     elif slot == "shield":
         # cf. 1stMud wear_obj shield-vs-dual-wield check, act_obj.c:1593-1597
         if player["equip"].get("secondary") is not None:
