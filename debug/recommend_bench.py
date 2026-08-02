@@ -107,6 +107,29 @@ _BIN_STRINGS_OFF = 57199
 _BIN_AT_STRINGS = (97, 110, 32, 105, 109, 112, 101, 114)
 
 
+def scenario_uioprobe():
+    """Does uio.open exist and differ from builtin open? If it returns real
+    bytes with byte-counted sized reads, the _as_bytes cast can go."""
+    try:
+        import uio
+    except ImportError:
+        log("uioprobe: no uio module")
+        return
+    members = []
+    for name in dir(uio):
+        members.append(name)
+    log("uioprobe: uio has " + " ".join(members))
+    if not hasattr(uio, "open"):
+        return
+    try:
+        with uio.open(recommend.GEAR_INDEX_FILE, "rb") as f:
+            head = f.read(16)
+        log("uioprobe: uio.open read type=" + type(head).__name__
+            + " len=" + int_str(len(head)))
+    except Exception as exc:
+        log("uioprobe: uio.open failed: " + type(exc).__name__)
+
+
 def scenario_binprobe():
     """One-transfer diagnosis of open('rb') semantics on-device: read type,
     length, high-byte fidelity (first16 includes 0xF3), EOL/EOF translation
@@ -259,6 +282,7 @@ def main():
     gc.collect()
     log("mem free after boot: " + int_str(free()))
 
+    scenario_uioprobe()
     scenario_binprobe()
     gc.collect()
 
