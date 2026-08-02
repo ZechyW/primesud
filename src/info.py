@@ -153,7 +153,7 @@ _FLAG_TABLE = (
 
 
 def do_automap(player, args):
-    """Toggle automap display in room descriptions (cf. 1stMud `do_automap` in automap.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
+    """Toggle automap display in room descriptions (cf. 1stMud `do_automap` in automap.c). [Verified: 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOMAP
     if player["flags"] & PLR_AUTOMAP:
         chprintln(player, "You now see an automap in room descriptions.")
@@ -162,7 +162,7 @@ def do_automap(player, args):
 
 
 def do_autoloot(player, args):
-    """Toggle autoloot (cf. 1stMud do_autoloot in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
+    """Toggle autoloot (cf. 1stMud do_autoloot in act_info.c). [Verified: 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOLOOT
     if player["flags"] & PLR_AUTOLOOT:
         chprintln(player, "You now loot objects from corpses automatically.")
@@ -171,7 +171,7 @@ def do_autoloot(player, args):
 
 
 def do_autogold(player, args):
-    """Toggle autogold (cf. 1stMud do_autogold in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
+    """Toggle autogold (cf. 1stMud do_autogold in act_info.c). [Verified: 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOGOLD
     if player["flags"] & PLR_AUTOGOLD:
         chprintln(player, "You now loot gold from corpses automatically.")
@@ -180,7 +180,7 @@ def do_autogold(player, args):
 
 
 def do_autosac(player, args):
-    """Toggle autosac (cf. 1stMud do_autosac in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
+    """Toggle autosac (cf. 1stMud do_autosac in act_info.c). [Verified: 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOSAC
     if player["flags"] & PLR_AUTOSAC:
         chprintln(player, "You now sacrifice corpses automatically.")
@@ -189,7 +189,7 @@ def do_autosac(player, args):
 
 
 def do_autosplit(player, args):
-    """Toggle autosplit (cf. 1stMud do_autosplit in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
+    """Toggle autosplit (cf. 1stMud do_autosplit in act_info.c). [Verified: 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOSPLIT
     if player["flags"] & PLR_AUTOSPLIT:
         chprintln(player, "You now split gold with group members.")
@@ -198,7 +198,7 @@ def do_autosplit(player, args):
 
 
 def do_autoassist(player, args):
-    """Toggle autoassist (cf. 1stMud do_autoassist in act_info.c). [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
+    """Toggle autoassist (cf. 1stMud do_autoassist in act_info.c). [Verified: 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOASSIST
     if player["flags"] & PLR_AUTOASSIST:
         chprintln(player, "You now assist group members in combat.")
@@ -207,7 +207,7 @@ def do_autoassist(player, args):
 
 
 def do_autodamage(player, args):
-    """Toggle autodamage (cf. 1stMud do_autodamage in act_info.c). [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
+    """Toggle autodamage (cf. 1stMud do_autodamage in act_info.c). [Verified: 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTODAMAGE
     if player["flags"] & PLR_AUTODAMAGE:
         chprintln(player, "You now see damage amounts in combat.")
@@ -216,7 +216,7 @@ def do_autodamage(player, args):
 
 
 def do_autoexit(player, args):
-    """Toggle autoexit (cf. 1stMud do_autoexit in act_info.c). [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
+    """Toggle autoexit (cf. 1stMud do_autoexit in act_info.c). [Verified: 04/07/2026]"""
     player["flags"] = player.get("flags", PLR_DEFAULTS) ^ PLR_AUTOEXIT
     if player["flags"] & PLR_AUTOEXIT:
         chprintln(player, "Exits will now be displayed.")
@@ -264,7 +264,7 @@ def do_show(player, args):
 
 
 def do_autolist(player, args):
-    """Display toggle settings (cf. 1stMud do_autolist in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]"""
+    """Display toggle settings (cf. 1stMud do_autolist in act_info.c). [Verified: 04/07/2026]"""
     chprintln(player, " " + pad_right("Command", 9) + " " + pad_right("Status", 6) + "{w " + "Description")
     chprintln(player, draw_line())
     flags = player.get("flags", PLR_DEFAULTS)
@@ -351,8 +351,7 @@ def do_version(player, args):
 def do_wimpy(player, args):
     """Set the hp threshold below which the player auto-flees in combat (cf. 1stMud do_wimpy in act_info.c).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
-    bare str() swept 01/08/2026]
+    [Verified: 04/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -386,7 +385,7 @@ def _get_ed(name, extra_descs):
 def _show_char_to_char_1(player, mob_id):
     """Show mob description, health condition, equipment, and peek (cf. 1stMud show_char_to_char_1 in act_info.c).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026] -- "$n looks at ..." room/vict acts not ported
+    [Verified: 04/07/2026] -- "$n looks at ..." room/vict acts not ported
     (no other players to notify; mobs ignore them).
     """
     inst = world.chars[mob_id]
@@ -440,9 +439,7 @@ _CONTAINER_TYPES = ("npc_corpse", "pc_corpse", "container")
 def _look_in(player, args):
     """Show contents of a container in room or inventory (cf. 1stMud do_look 'in' case in act_info.c).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; closed-container check added and re-verified 05/07/2026;
-    ITEM_DRINK_CON branch added and re-verified 19/07/2026]
+    [Verified: 19/07/2026]
     """
     if not args:
         chprintln(player, "Look in what?")
@@ -483,9 +480,8 @@ def _look_in(player, args):
 
 
 def _show_container(player, obj, tpl):
-    """Print container contents (cf. 1stMud do_look 'in' case in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; can_see_obj content filter added and re-verified 10/07/2026]"""
-    obj_name = (isinstance(obj, dict) and obj.get("short_descr")) or tpl["short_descr"]
-    chprintln(player, obj_name + " holds:")
+    """Print container contents (cf. 1stMud do_look 'in' case in act_info.c). [Verified: 10/07/2026]"""
+    chprintln(player, obj_short(obj, tpl) + " holds:")
     contents = isinstance(obj, dict) and obj.get("contents", [])
     # cf. show_list_to_char's can_see_obj filter (invisible contents hidden)
     visible = [c for c in contents or [] if can_see_obj(player, c)]
@@ -500,7 +496,7 @@ def _show_container(player, obj, tpl):
 def _look_scan_items(player, target, number, count, items):
     """Scan an item list for extra_desc or name match (cf. 1stMud `do_look` in act_info.c: item scan loop).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; instance extra_descs check added and re-verified 05/07/2026; can_see_obj gate added and re-verified 10/07/2026; item_tpl seam re-verified 29/07/2026]
+    [Verified: 29/07/2026]
 
     Returns:
         tuple: (found, count) where found is True if the Nth match was displayed.
@@ -546,10 +542,7 @@ def _look_scan_items(player, target, number, count, items):
 def do_exits(player, args):
     """List obvious exits with destination room names (cf. 1stMud do_exits in act_info.c).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; world.rooms->ROOM_DEFS crash fix re-verified 05/07/2026;
-    check_blind gate + "Too dark to tell" dark-destination names added and
-    re-verified 08/07/2026]
+    [Verified: 08/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -684,7 +677,8 @@ def do_look(player, args):
     pitch-black gate ignores infrared (matching the source): infrared reveals
     living things via _show_char_to_char, not the room description.
 
-    [Verified: 03/07/2026; PLR_AUTOEXIT gate added and re-verified 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026; blind-exit ("to" None) autoexit skip added 04/07/2026 (cf. 1stMud do_exits u1.to_room != NULL check); check_blind + pitch-black/red-eyes + can_see_obj room-item filter added and re-verified 08/07/2026; pitch-black infrared gate dropped + char-list shared via _show_char_to_char to match act_info.c:1114 (infrared shows chars not room desc), re-verified 08/07/2026; PLR_HOLYLIGHT leg of the act_info.c:1115 condition added as debug channel and re-verified 10/07/2026; COMM_BRIEF "auto" gate added and re-verified 20/07/2026; bare str() swept 01/08/2026]
+    [Verified: 20/07/2026] -- the PLR_HOLYLIGHT leg of the act_info.c:1115
+    condition maps to the [PRIMESUD] debug channel.
 
     [PRIMESUD] Room output accumulated into a list and sent as one batched
     print (21/07/2026) -- perf deviation, 1stMud sends per line; player-visible
@@ -926,19 +920,10 @@ def _make_percent_bar(val, max_val, length):
 def do_score(player, args):
     """Display the character score sheet (cf. 1stMud dlm_score in act_info.c).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
-    header name+title (cf. dlm_score/set_title) added and re-verified 04/07/2026;
-    explored line (cf. act_info.c:1841) added and re-verified 08/07/2026;
-    [PRIMESUD] Tier cell (approved) added 11/07/2026; real player["title"]
-    field (set_title/do_title) wired into the header and COMM_SHOW_AFFECTS
-    do_affects tail added, re-verified 20/07/2026; bank/share row added and
-    re-verified 21/07/2026; [PRIMESUD] AC bars paired 2-per-row and the
-    values/AC separator dropped (approved) so the box fits the 22-row
-    screen, 21/07/2026; output batched via list chprintln 22/07/2026;
-    gold/silver order corrected and alignment shown 23/07/2026;
-    bare str() swept 01/08/2026]
-    -- data fields (age, hours, thac0, AC bars)
-    verified; box layout adapted for the 64-col screen [PRIMESUD].
+    [Verified: 21/07/2026] -- data fields (age, hours, thac0, AC bars)
+    verified; box layout adapted for the 64-col, 22-row screen (AC bars
+    paired 2-per-row, values/AC separator dropped) and a Tier cell added
+    [PRIMESUD].
     """
     # two-column box mirroring 1stMud dlm_score layout, with bright/normal colours
     # alternating between horizontal segments.
@@ -1133,8 +1118,7 @@ def do_title(player, argument):
 def do_worth(player, args):
     """Show gold, silver, experience and quest/trivia points (cf. 1stMud do_worth in act_info.c).
 
-    [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
-    bare str() swept 01/08/2026] -- IsNPC branch not applicable (single player);
+    [Verified: 04/07/2026] -- IsNPC branch not applicable (single player);
     "exp to level" uses the per-level xp model (xp_next - xp) in place of
     1stMud's (level+1)*exp_per_level - exp [PRIMESUD].
     """
@@ -1300,7 +1284,7 @@ def _print_level_lists(player, args, want_spells):
 
 
 def print_practice_table(player):
-    """Print learned practice percentages (cf. 1stMud do_practice in act_info.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; output batched via list chprintln 22/07/2026]"""
+    """Print learned practice percentages (cf. 1stMud do_practice in act_info.c). [Verified: 04/07/2026]"""
     items = []
     half = TERMINAL_COLS // 2
     name_w = 18
@@ -1393,7 +1377,7 @@ def do_index(player, args):
     offered `olc (23 helps)` and got an empty page from `index olc`. Both
     `index <n>` and `index <name>` resolve against that same filtered list, so
     neither can reach a category the listing withheld.
-    [Verified: 22/07/2026; level-filtered listing re-verified 25/07/2026]
+    [Verified: 25/07/2026]
     """
     trust = player.get("level", 1)
     if not args:
@@ -1486,13 +1470,8 @@ def do_help(player, args):
     the full ~150KB HELP_FILE -- neither fits the HP Prime heap/time budget.
     Index format: '<level>|<category>|<offset>|<keywords>' per line; offset is
     the byte position of the entry's first text line in HELP_FILE.
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; index-scan rework re-verified 05/07/2026; 'debug time'
-    timing instrumentation added 05/07/2026; one-shot idx read + substring
-    pre-filter re-verified 05/07/2026; output batched via list chprintln
-    22/07/2026; category field added and re-verified 22/07/2026; bare-help
-    browser and single-letter picker added, rest re-verified 25/07/2026;
-    bare str() swept 01/08/2026]
+    [Verified: 25/07/2026] -- [PRIMESUD] bare "help" opens a category
+    browser instead of printing the summary outright.
     """
     if not args:
         # [PRIMESUD] Bare help browses by category rather than printing the
@@ -1702,10 +1681,7 @@ def do_map(player, args):
 def do_affects(player, args):
     """List all active player affects with name, location, modifier, duration (cf. 1stMud do_affects in act_info.c).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
-    racial-ability section added and re-verified 06/07/2026; equipment-spells
-    section added and re-verified 06/07/2026; output batched via list
-    chprintln 22/07/2026; bare str() swept 01/08/2026]
+    [Verified: 06/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -1824,7 +1800,7 @@ def _convert_level(arg):
 
 
 def _print_area_levels(levels, comment=None):
-    """Format area level range for display (cf. 1stMud print_area_levels in db.c). [Verified: 03/07/2026; lvl_comment branch added and re-verified 08/07/2026]"""
+    """Format area level range for display (cf. 1stMud print_area_levels in db.c). [Verified: 08/07/2026]"""
     if comment:
         # Non-numeric credits token ("All", "None") shown verbatim,
         # centered in the 7-wide slot (1stMud: str_align(7, Center,
@@ -1871,7 +1847,7 @@ def _compress_path(parent, source, target):
 
     [PRIMESUD] Emits "<count><dir>" runs (e.g. "3s2en") matching do_run's
     parser; 1stMud's own run-length prepending is inconsistent/buggy.
-    [Verified: 03/07/2026; bare str() swept 01/08/2026]
+    [Verified: 03/07/2026]
     """
     path = []
     v = target
@@ -2148,12 +2124,9 @@ def _center_fill(text, width=0):
 def do_areas(player, args):
     """List areas with level ranges and builders (cf. 1stMud do_areas in db.c).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; directions column dropped for lazy-load 08/07/2026
-    [PRIMESUD]; sort switched to special range, level, then name
-    28/07/2026 [PRIMESUD]; bare str() swept 01/08/2026] --
-    clan restriction marker ("{G*") and its legend line not ported
-    (no clans).
+    [Verified: 04/07/2026] -- clan restriction marker ("{G*") and its
+    legend line not ported (no clans); [PRIMESUD] sorted by special range,
+    then level, then name (1stMud lists in area-file load order).
 
     [PRIMESUD] 1stMud's stock layout appends a per-area path_to_area()
     directions column; the codebase's own MudFlag(DISABLE_AREA_DIRECTIONS)
@@ -2319,7 +2292,7 @@ def do_read(player, args):
 def do_examine(player, args):
     """Examine an object: look at it, then show contents or coin count (cf. 1stMud do_examine in act_info.c).
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; picker visibility filter added 10/07/2026]
+    [Verified: 04/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -2366,11 +2339,7 @@ def _examine_extras(player, obj):
 
     [PRIMESUD] Container contents shown from the resolved obj directly; 1stMud
     re-resolves via do_look "in <arg>", which can match a different object.
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; jukebox do_play "list" branch added and re-verified 20/07/2026;
-    legacy sparse money fallback added and re-verified 21/07/2026;
-    mixed-pile singular/plural fixed and re-verified 31/07/2026;
-    bare str() swept 01/08/2026]
+    [Verified: 31/07/2026]
     """
     tpl = item_tpl(obj)
     obj_type = _item_type(obj, tpl)

@@ -66,7 +66,12 @@ Exception: intent-parity over bug-parity. If 1stMud's code contradicts its own h
 
 If a given function is marked as being verified against 1stmud in its docstring (`[Verified: <date>]`), NEVER edit it without asking for explicit permission first.
 
-Exception: targeted edits that resolve a documented TODO / "not ported" note toward 1stMud fidelity are allowed without asking. Keep the edit minimal, re-verify the function against the 1stMud source, and extend the tag (e.g. `[Verified: <old date>; <feature> added and re-verified <new date>]`). Anything beyond the documented TODO still needs explicit permission.
+The tag is a single date: the last full verification of the function against the 1stMud source. Bump it only when the whole function is re-verified; never append per-edit changelog notes -- change history lives in git, and intentional deviations belong in `[PRIMESUD]` comments (or the docstring's deviation notes outside the tag).
+
+Exceptions to the edit gate (no permission needed):
+
+- Targeted edits that resolve a documented TODO / "not ported" note toward 1stMud fidelity. Keep the edit minimal and re-verify the changed behaviour against the 1stMud source; bump the tag date only if that amounted to a full re-verify. Anything beyond the documented TODO still needs explicit permission.
+- Semantics-preserving mechanical sweeps (accessor swaps, output routing, lint conformance) that don't change behaviour vs upstream. Tag untouched.
 
 ## PrimeSUD-only extensions -- `[PRIMESUD]` tag
 

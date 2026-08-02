@@ -72,7 +72,7 @@ def _words_prefix(name, sk_name):
 
 def find_skill_spell(player, name):
     """Prefix-match a skill/spell, preferring usable learned entries (cf. 1stMud find_spell in magic.c).
-    [Verified: 03/07/2026; [PRIMESUD] per-word prefix matching added 17/07/2026]
+    [Verified: 03/07/2026]
 
     [PRIMESUD] 1stMud's IsNPC branch (plain skill_lookup) not ported -- only the
     player casts through this path. Case-sensitive matching is safe: command

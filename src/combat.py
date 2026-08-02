@@ -94,13 +94,8 @@ from world import (
 
 def violence_update(player):
     """One combat pulse: all chars with a fight target attack (cf. 1stMud violence_update in fight.c).
-    [Verified: 02/07/2026; hunt_victim wired and re-verified 04/07/2026; mob
-    TRIG_FIGHT/TRIG_HPCNT wired and re-verified 09/07/2026; [PRIMESUD]
-    autoskill hook added 18/07/2026; worn-obj + room TRIG_FIGHT wired and
-    re-verified 20/07/2026; post-multi_hit victim re-fetch (fight.c:86) fixed
-    and re-verified 21/07/2026; [PRIMESUD] keyboard-drain checkpoints added
-    30/07/2026; [PRIMESUD] active-fighter index scan added 30/07/2026; bare
-    str() swept 01/08/2026]
+    [Verified: 21/07/2026] -- [PRIMESUD] autoskill hook, keyboard-drain
+    checkpoints, and active-fighter index scan added.
 
     Args:
         player (dict): Player state dict.
@@ -193,9 +188,7 @@ def violence_update(player):
 
 def check_assist(ch, victim):
     """Let idle room chars join combat (cf. 1stMud check_assist in fight.c).
-    [Verified: 02/07/2026; charmed-follower assist added and re-verified
-    03/07/2026; PLR_AUTOASSIST player branch added and re-verified 04/07/2026;
-    assist scream routed through ported do_emote and re-verified 04/07/2026]
+    [Verified: 04/07/2026]
 
     Three cases mirror 1stMud exactly:
     - ch is player, rch is mob with assist_players: rch jumps in against victim.
@@ -832,8 +825,7 @@ def _try_riposte(ch, victim):
 
 def check_parry(ch, victim):
     """Check if victim parries ch's strike (cf. 1stMud check_parry in fight.c).
-    [Verified: 02/07/2026; stance bonuses added and re-verified 03/07/2026;
-    [PRIMESUD] riposte hook added 23/07/2026]
+    [Verified: 03/07/2026] -- [PRIMESUD] riposte hook added.
 
     Args:
         ch (dict): Attacker (player or mob instance).
@@ -915,7 +907,7 @@ def check_shield_block(ch, victim):
 
 def check_dodge(ch, victim):
     """Check if victim dodges ch's strike (cf. 1stMud check_dodge in fight.c).
-    [Verified: 02/07/2026; stance bonuses added and re-verified 03/07/2026]
+    [Verified: 03/07/2026]
 
     Args:
         ch (dict): Attacker (player or mob instance).
@@ -1003,8 +995,7 @@ def _randomize_damage(dam, roll):
 
 def is_safe(ch, victim):
     """Check if ch is prevented from attacking victim (cf. 1stMud is_safe in fight.c).
-    [Verified: 02/07/2026; quest-target check added and re-verified 03/07/2026;
-    ROOM_SAFE/ACT_PET added and re-verified 08/07/2026]
+    [Verified: 08/07/2026]
     -- PvP branches not ported (single-player, noted inline);
     "$g" deity rendered as "the gods".
 
@@ -1077,8 +1068,7 @@ def is_safe(ch, victim):
 
 def is_safe_spell(ch, victim, area):
     """Silent safety check for spell targeting (cf. 1stMud is_safe_spell in fight.c).
-    [Verified: 02/07/2026; quest-target check added and re-verified 03/07/2026;
-    ROOM_SAFE/ACT_PET added and re-verified 08/07/2026]
+    [Verified: 08/07/2026]
     -- immortal and PvP branches not ported (single-player, noted inline).
 
     Returns True if victim should NOT be hit. Unlike is_safe, prints no
@@ -1145,8 +1135,7 @@ def is_safe_spell(ch, victim, area):
 
 def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
     """Print damage message from ch's attack on victim (cf. 1stMud dam_message in fight.c).
-    [Verified: 02/07/2026; PLR_AUTODAMAGE gate added and re-verified 04/07/2026;
-    bare str() swept 01/08/2026]
+    [Verified: 04/07/2026]
     -- room/observer (buf1) messages and self-hit branch not ported (single-player).
 
     Single-player: only the player sees messages, as attacker (ch=player) or victim (ch=mob).
@@ -1197,10 +1186,7 @@ def dam_message(ch, victim, dam, dt, immune, attack_noun=None):
 def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
     """Apply damage to victim from ch; handle combat state, immunity, and death
     (cf. 1stMud damage in fight.c).
-    [Verified: 02/07/2026; stance re-checks and stop_follower added and
-    re-verified 03/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; TRIG_KILL/TRIG_DEATH mobprogs wired and re-verified
-    09/07/2026; bare str() swept 01/08/2026] -- force/static/flame shields, drunk reduction,
+    [Verified: 09/07/2026] -- force/static/flame shields, drunk reduction,
     arena/war, PvP, and wiznet not ported (noted inline);
     autoloot/autogold/autosac inlined instead of do_get/do_sacrifice
     dispatch; randomize_damage applied (1stMud discards it -- see FIXES.md).
@@ -1531,14 +1517,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
 def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False,
             accuracy_bonus=0, damage_percent=100):
     """One attack from ch against victim (cf. 1stMud one_hit in fight.c).
-    [Verified: 02/07/2026; stance dam mods and improve_stance added and
-    re-verified 03/07/2026; instance weapon dice read (quest gear) added
-    with permission and re-verified 03/07/2026; WEAPON_SHARP and weapon
-    procs (poison/vampiric/flaming/frost/shocking) added and re-verified
-    04/07/2026; [PRIMESUD] form attack modifiers added 23/07/2026; dead
-    never-written NPC m_hitroll term removed, restoring fight.c THAC0
-    formula, and re-verified 01/08/2026] --
-    old-format mob damage fallback skipped.
+    [Verified: 01/08/2026] -- old-format mob damage fallback skipped.
 
     Args:
         ch (dict): Attacker (player or mob instance).
@@ -1695,8 +1674,7 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False,
 
 def _weapon_procs(ch, victim, wobj, wtpl):
     """Post-hit weapon flag procs (cf. 1stMud one_hit in fight.c:777-861).
-    [Verified: 04/07/2026; fire/cold/shock_effect side effects wired
-    05/07/2026]
+    [Verified: 04/07/2026]
 
     Args:
         ch (dict): Attacker wielding the weapon.
@@ -1857,8 +1835,7 @@ def _sword_flourish(ch, victim):
 
 def do_kick(ch, args):
     """Kick for player or mob (cf. 1stMud do_kick in fight.c).
-    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- check_killer not ported.
+    [Verified: 04/07/2026] -- check_killer not ported.
 
     Args:
         ch (dict): Acting character (player or mob instance).
@@ -1896,8 +1873,7 @@ def do_kick(ch, args):
 
 def do_backstab(ch, args, victim=None):
     """Backstab a target from behind (cf. 1stMud do_backstab in fight.c).
-    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; direct-victim parameter added and re-verified 19/07/2026]
+    [Verified: 19/07/2026]
     -- check_killer not ported.
 
     Args:
@@ -2021,8 +1997,7 @@ def do_consider(player, args):
 
 def do_kill(player, args):
     """Initiate melee combat with a target (cf. 1stMud do_kill in fight.c).
-    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- self-hit branch and check_killer not ported;
+    [Verified: 04/07/2026] -- self-hit branch and check_killer not ported;
     [PRIMESUD] picker menu when no args.
 
     Args:
@@ -2262,11 +2237,8 @@ def special_move(ch, victim):
 
 def multi_hit(ch, victim, dt=TYPE_UNDEFINED):
     """Full attack sequence for one combat round (cf. 1stMud multi_hit in fight.c).
-    [Verified: 02/07/2026; stance special_move and viper/mantis/tiger extra
-    hits added and re-verified 03/07/2026; PrimeSUD-only unarmed special move
-    dropped and re-verified 04/07/2026; [PRIMESUD] Swordsman flourishes added
-    23/07/2026] -- Returns kill status ([PRIMESUD];
-    1stMud is void).
+    [Verified: 04/07/2026] -- Returns kill status ([PRIMESUD]; 1stMud is
+    void); [PRIMESUD] Swordsman flourishes added.
 
     Args:
         ch (dict): Attacker (player or mob instance).
@@ -2366,8 +2338,7 @@ _DEFAULT_POS = POS_FROM_SHORT
 
 def set_fighting(ch, victim):
     """Engage ch in combat against victim (cf. 1stMud set_fighting in fight.c).
-    [Verified: 02/07/2026; stance autodrop added and re-verified 03/07/2026;
-    [PRIMESUD] Swordsman form default added 23/07/2026]"""
+    [Verified: 03/07/2026] -- [PRIMESUD] Swordsman form default added."""
     # 1stMud: if (ch->fighting != NULL) { bug("Set_fighting: already fighting"); return; }
     if ch.get("fighting") is not None:
         return
@@ -2395,7 +2366,7 @@ def stop_fighting(ch, both=False):
     Given character stops fighting its target.
     Optionally make all other characters stop fighting it.
     (cf. 1stMud stop_fighting in fight.c).
-    [Verified: 02/07/2026; stance reset added and re-verified 03/07/2026]
+    [Verified: 03/07/2026]
 
     Args:
         ch (dict): Character that stops fighting its target.
@@ -2498,9 +2469,7 @@ _BODY_PART_TEXT = {
 def _death_cry(ch):
     """Death flavour message, body-part drop, and adjacent-room cry
     (cf. 1stMud death_cry in fight.c).
-    [Verified: 05/07/2026; PC form_flags/part_flags added and re-verified
-    05/07/2026; material-pointer fallthrough re-verified 23/07/2026;
-    food-check routed through item_tpl (no behaviour change) 29/07/2026]
+    [Verified: 23/07/2026]
     -- part-flag gated message/object selection,
     poison-food/trash-downgrade, and adjacent-room broadcast added per
     fight.c. PCs now get form_flags/part_flags from RACE_TABLE via
@@ -2563,8 +2532,7 @@ def _death_cry(ch):
 
 def create_money(gold, silver):
     """Create a coin item for the given gold/silver amounts (cf. 1stMud create_money in handler.c).
-    [Verified: 02/07/2026; mixed-pile singular/plural fixed and re-verified
-    31/07/2026; bare str() swept 01/08/2026] -- weight not tracked; zero/negative input returns
+    [Verified: 31/07/2026] -- weight not tracked; zero/negative input returns
     None instead of 1stMud's bug-log + clamp to 1.
 
     Args:
@@ -2729,8 +2697,7 @@ def update_death(victim, killer):
 
 def raw_kill(victim, killer):
     """Kill victim: stop fight, death cry, corpse, extract/respawn (cf. 1stMud raw_kill in fight.c).
-    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; post-death reset_char added and re-verified 06/07/2026]
+    [Verified: 06/07/2026]
     -- update_all_qobjs (quests) not ported;
     [PRIMESUD] respawn flavour text, per-kill save, and post-death
     reset_char added.
@@ -2824,8 +2791,7 @@ def _extract_char(ch, pull=True):
 
 def advance_level(player):
     """Roll HP/MP gains, grant practice and train (cf. 1stMud advance_level in update.c).
-    [Verified: 02/07/2026; update_all_qobjs added and re-verified 03/07/2026;
-    pet scaling added and re-verified 11/07/2026]
+    [Verified: 11/07/2026]
     -- last_level play-time stamp not ported; [PRIMESUD] full heal/restore
     on level.
 
@@ -2893,7 +2859,7 @@ def advance_level(player):
 
 def gain_exp(ch, gain):
     """Add XP to ch and level up as needed (cf. 1stMud gain_exp in update.c).
-    [Verified: 02/07/2026; bare str() swept 01/08/2026] -- [PRIMESUD] per-level XP model (xp/xp_next) replaces
+    [Verified: 02/07/2026] -- [PRIMESUD] per-level XP model (xp/xp_next) replaces
     1stMud cumulative exp; wiznet/announce and per-level save not ported.
 
     Args:
@@ -2952,8 +2918,7 @@ GROUP_LVL_LIMIT = 20
 
 def group_gain(ch, victim):
     """Award XP to ch's group for killing victim (cf. 1stMud group_gain in fight.c).
-    [Verified: 02/07/2026; quest kill hook added and re-verified 03/07/2026;
-    tprint->chprintln output routing re-verified 04/07/2026] -- bonus-XP
+    [Verified: 04/07/2026] -- bonus-XP
     event and gquest hook not ported (noted inline).
 
     Iterates all characters in the same room that share ch's group.  NPCs
@@ -3079,8 +3044,7 @@ def do_murder(ch, args, victim=None):
     guard (charmed mobs can't murder).  By 1stMud both run check_killer,
     so the practical difference is just the yell broadcast and the noprefix
     flag (can't trigger by abbreviation).
-    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; direct-victim parameter added and re-verified 19/07/2026]
+    [Verified: 19/07/2026]
     -- check_killer not ported; yell rendered locally.
 
     Args:
@@ -3141,8 +3105,7 @@ def do_murder(ch, args, victim=None):
 
 def do_suicide(ch, args):
     """Confirm-gated suicide (cf. 1stMud do_suicide in fight.c).
-    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- ROOM_ARENA/ROOM_SAFE check not ported.
+    [Verified: 04/07/2026] -- ROOM_ARENA/ROOM_SAFE check not ported.
 
     Args:
         ch (dict): Acting character.
@@ -3454,8 +3417,7 @@ def do_dirt(ch, args):
 
 def do_trip(ch, args):
     """Trip an opponent (cf. 1stMud do_trip in fight.c).
-    [Verified: 02/07/2026; stance-trip and charm-master check added and
-    re-verified 03/07/2026] -- kill-stealing and check_killer not ported
+    [Verified: 03/07/2026] -- kill-stealing and check_killer not ported
     (noted inline).
 
     Args:
@@ -3551,9 +3513,7 @@ def do_trip(ch, args):
 
 def do_flee(ch, args):
     """Attempt to flee from combat (cf. 1stMud do_flee in fight.c).
-    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; flee-look switched to "auto" arg and re-verified
-    20/07/2026] -- arena check not ported; [PRIMESUD] auto-look
+    [Verified: 20/07/2026] -- arena check not ported; [PRIMESUD] auto-look
     after fleeing.
 
     Works for both players and NPCs.
@@ -3637,8 +3597,7 @@ def do_rescue(ch, args):
     [PRIMESUD] Single-player: rescuing NPCs is blocked by 1stMud (!IsNPC(ch) &&
     IsNPC(victim) -> "Doesn't need your help!"). Ported for fidelity but largely
     a no-op in single-player.
-    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- check_killer not ported.
+    [Verified: 04/07/2026] -- check_killer not ported.
 
     Args:
         ch (dict): Acting character.
@@ -3744,8 +3703,7 @@ def disarm(ch, victim):
 
 def do_disarm(ch, args):
     """Attempt to disarm opponent's weapon (cf. 1stMud do_disarm in fight.c).
-    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- check_killer not ported.
+    [Verified: 04/07/2026] -- check_killer not ported.
 
     Args:
         ch (dict): Acting character.
@@ -3809,8 +3767,7 @@ def do_disarm(ch, args):
 
 def do_surrender(ch, args):
     """Surrender to current opponent (cf. 1stMud do_surrender in fight.c).
-    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026; TRIG_SURR mobprog trigger added and re-verified 19/07/2026].
+    [Verified: 19/07/2026].
 
     Args:
         ch (dict): Acting character.
@@ -3852,8 +3809,7 @@ def do_slay(ch, args):
 
     [PRIMESUD] No immortal system, but ported for completeness. Could be
     used as a debug/GM command.
-    [Verified: 02/07/2026; tprint->chprintln output routing re-verified
-    04/07/2026] -- trust check and TO_VICT/TO_NOTVICT messages not
+    [Verified: 04/07/2026] -- trust check and TO_VICT/TO_NOTVICT messages not
     ported (mob victims never see output).
 
     Args:

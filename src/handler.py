@@ -263,7 +263,7 @@ def affect_modify(char, af, add):
     to_resist, to_vuln) and stat mod based on af["location"].
 
     (cf. 1stMud affect_modify in handler.c).
-    [Verified: 23/06/2026; wield-drop added and re-verified 06/07/2026]
+    [Verified: 06/07/2026]
 
     Args:
         char (dict): Character state dict (player or mob instance).

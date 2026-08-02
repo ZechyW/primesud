@@ -1922,9 +1922,7 @@ def do_quaff(player, args):
 
 def do_envenom(player, args):
     """Coat a weapon or food/drink with poison (cf. 1stMud do_envenom in act_obj.c).
-    [Verified: 04/07/2026; tprint->chprintln output routing re-verified 04/07/2026;
-    instance type override added and re-verified 06/07/2026; get_obj_list
-    can_see_obj viewer gate added and re-verified 10/07/2026]
+    [Verified: 10/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -2359,9 +2357,9 @@ def do_zap(player, args):
         if victim is None and obj is None:
             chprintln(player, "You can't find it.")
             return
-        sd = obj_short(wand, tpl)
     WaitState(player, 2 * PULSE_VIOLENCE)
     if wand.get("charges", tpl.get("charges", tpl.get("max_charges", 0))) > 0:
+        sd = obj_short(wand, tpl)
         if victim is not None:
             vname = victim.get("name") or MOB_DEFS[victim["tpl"]]["short_descr"]
             chprintln(player, "You zap " + vname + " with " + sd + ".")

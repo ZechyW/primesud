@@ -268,8 +268,8 @@ def spell_harm(sn, level, ch, vo, target):
 
 def spell_magic_missile(sn, level, ch, vo, target):
     """Magic missile (cf. 1stMud spell_magic_missile in magic.c).
-    [Verified: 03/07/2026; (level|50) -> level+50 fix 03/07/2026] --
-    1stMud magic.c:3571 uses bitwise OR, a typo for +; see FIXES.md."""
+    [Verified: 03/07/2026] -- 1stMud magic.c:3571 uses bitwise OR, a typo
+    for +; see FIXES.md."""
     high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
     dam = randint(high // 2, high * 2)
     if saves_spell(level, vo, DAM_ENERGY):
@@ -376,8 +376,7 @@ def spell_chain_lightning(sn, level, ch, vo, target):
 
 def spell_teleport(sn, level, ch, vo, target):
     """Teleport target to random room (cf. 1stMud spell_teleport in magic.c).
-    [Verified: 03/07/2026; collapsed onto get_random_room (magic.c:4260 calls
-    it too) and re-verified 04/07/2026] -- failure checks and messages match
+    [Verified: 04/07/2026] -- failure checks and messages match
     magic.c:4244.
     """
     victim = vo
@@ -565,10 +564,8 @@ def _release_locate_areas(initial):
 
 def spell_locate_object(sn, level, ch, vo, target):
     """Locate object by name fragment (cf. 1stMud spell_locate_object in magic.c).
-    [Verified: 03/07/2026; can_see_obj filter and invisible-carrier
-    "somewhere" branch added and re-verified 20/07/2026; unloaded-area
-    coverage added and re-verified 22/07/2026] -- immortal branches not
-    ported; "carried by you" instead of player name is [PRIMESUD].
+    [Verified: 22/07/2026] -- immortal branches not ported; "carried by
+    you" instead of player name is [PRIMESUD].
 
     Recurses into container contents to match 1stMud's flat obj_first
     iteration (magic.c:3523).
@@ -619,8 +616,7 @@ def spell_locate_object(sn, level, ch, vo, target):
 
 def spell_control_weather(sn, level, ch, vo, target):
     """Nudge the current area's weather vectors (cf. 1stMud spell_control_weather in magic.c).
-    [Verified: 03/07/2026; upgraded from the interim precip-only model to the
-    full temp/precip/wind vectors and re-verified 08/07/2026]"""
+    [Verified: 08/07/2026]"""
     arg = ch.get("_target_name", "")
     area = _area_state_for_room(ch["room"])
     if area is None:
@@ -994,8 +990,7 @@ def spell_shield(sn, level, ch, vo, target):
 
 def spell_bless(sn, level, ch, vo, target):
     """Bless character and object paths (cf. 1stMud spell_bless in magic.c).
-    [Verified: 03/07/2026; caster saving_throw adjust for worn blessed items
-    added and re-verified 10/07/2026]"""
+    [Verified: 10/07/2026]"""
     if target == TARGET_OBJ:
         tpl = item_tpl(vo)
         flags = item_extra_flags(vo, tpl)
@@ -1087,8 +1082,7 @@ def spell_blindness(sn, level, ch, vo, target):
 
 def spell_poison(sn, level, ch, vo, target):
     """Poison character and object paths (cf. 1stMud spell_poison in magic.c).
-    [Verified: 03/07/2026; weapon envenom (to_weapon affect) added and
-    re-verified 04/07/2026]"""
+    [Verified: 04/07/2026]"""
     if target == TARGET_OBJ:
         tpl = item_tpl(vo)
         flags = item_extra_flags(vo, tpl)
@@ -1128,8 +1122,7 @@ def spell_poison(sn, level, ch, vo, target):
 
 def spell_curse(sn, level, ch, vo, target):
     """Curse character and object paths (cf. 1stMud spell_curse in magic.c).
-    [Verified: 03/07/2026; caster saving_throw adjust for worn cursed items
-    added and re-verified 10/07/2026]"""
+    [Verified: 10/07/2026]"""
     if target == TARGET_OBJ:
         tpl = item_tpl(vo)
         flags = item_extra_flags(vo, tpl)
@@ -1498,8 +1491,7 @@ def spell_color_spray(sn, level, ch, vo, target):
 
 def spell_continual_light(sn, level, ch, vo, target):
     """Create light ball or make carried item glow (cf. 1stMud spell_continual_light in magic.c).
-    [Verified: 03/07/2026; get_obj_list can_see_obj viewer gate added and
-    re-verified 10/07/2026]"""
+    [Verified: 10/07/2026]"""
     tail = ch.get("_target_name", "")
     if tail:
         obj = get_obj_list(tail, ch["inv"], ITEM_DEFS, ch)
@@ -1538,8 +1530,7 @@ def spell_create_food(sn, level, ch, vo, target):
 
 def spell_create_rose(sn, level, ch, vo, target):
     """Create a rose (cf. 1stMud spell_create_rose in magic.c).
-    [Verified: 10/07/2026; OBJ_VNUM_ROSE template added to area_limbo and
-    object creation wired up]"""
+    [Verified: 10/07/2026]"""
     rose = create_object(OBJ_VNUM_ROSE)
     act("$n has created a beautiful red rose.", ch, rose, None, TO_ROOM)
     chprintln(ch, "You create a beautiful red rose.")
@@ -1561,8 +1552,7 @@ def spell_create_spring(sn, level, ch, vo, target):
 
 def spell_create_water(sn, level, ch, vo, target):
     """Fill drink container with water (cf. 1stMud spell_create_water in magic.c).
-    [Verified: 03/07/2026; drink/fill/pour ported 04/07/2026] --
-    "water" keyword append not ported."""
+    [Verified: 03/07/2026] -- "water" keyword append not ported."""
     tpl = item_tpl(vo)
     if _item_type(vo, tpl) != "drink":
         chprintln(ch, "It is unable to hold water.")
@@ -1728,8 +1718,8 @@ def spell_dispel_good(sn, level, ch, vo, target):
 
 def spell_energy_drain(sn, level, ch, vo, target):
     """Energy drain (cf. 1stMud spell_energy_drain in magic.c).
-    [Verified: 03/07/2026; low-level branch fixed to victim hp 03/07/2026
-    [PRIMESUD], see FIXES.md; gain_exp call added and re-verified 10/07/2026]"""
+    [Verified: 10/07/2026] -- [PRIMESUD] low-level branch reads victim hp,
+    not 1stMud's ch->hit typo; see FIXES.md."""
     victim = vo
     if victim is not ch:
         ch["alignment"] = max(-1000, ch.get("alignment", 0) - 50)
@@ -1808,7 +1798,7 @@ def spell_faerie_fog(sn, level, ch, vo, target):
 
 def spell_floating_disc(sn, level, ch, vo, target):
     """Create and float a disc container (cf. 1stMud spell_floating_disc in magic.c).
-    [Verified: 03/07/2026; float-slot equip added and re-verified 03/07/2026]"""
+    [Verified: 03/07/2026]"""
     floating = ch["equip"].get("float")
     if floating is not None and item_extra_flags(
             floating, item_tpl(floating)).get("noremove"):
@@ -1876,11 +1866,7 @@ def spell_frenzy(sn, level, ch, vo, target):
 
 def spell_gate(sn, level, ch, vo, target):
     """Gate to another character's location (cf. 1stMud spell_gate in magic.c).
-    [Verified: 03/07/2026; pet gate added and re-verified 03/07/2026;
-    unloaded-area target fallback (get_char_world fidelity) added and
-    re-verified 04/07/2026; look "auto" arg added and re-verified
-    20/07/2026; get_char_world can_see filter added and re-verified
-    20/07/2026]"""
+    [Verified: 20/07/2026]"""
     tail = ch.get("_target_name", "")
     if not tail:
         chprintln(ch, "You failed.")
@@ -1991,7 +1977,7 @@ def spell_haste(sn, level, ch, vo, target):
 def spell_heat_metal(sn, level, ch, vo, target):
     """Heat metal: sear or drop victim's metal armor/weapons (cf. 1stMud
     spell_heat_metal in magic.c).
-    [Verified: 10/07/2026; full equipment drop/sear mechanic ported]"""
+    [Verified: 10/07/2026]"""
     victim = vo
     if saves_spell(level + 2, victim, DAM_FIRE) or victim["imm_flags"].get("fire"):
         chprintln(ch, "Your spell had no effect.")
@@ -2094,8 +2080,7 @@ def spell_heat_metal(sn, level, ch, vo, target):
 
 def spell_holy_word(sn, level, ch, vo, target):
     """Holy word (cf. 1stMud spell_holy_word in magic.c).
-    [Verified: 03/07/2026; caster self-buff added and message typo fixed,
-    re-verified 03/07/2026]"""
+    [Verified: 03/07/2026]"""
     act("$n utters a word of divine power!", ch, None, None, TO_ROOM)
     chprintln(ch, "You utter a word of divine power.")
     bless_sn = _skill_lookup("bless")
@@ -2230,8 +2215,7 @@ def spell_mass_healing(sn, level, ch, vo, target):
 
 def spell_mass_invis(sn, level, ch, vo, target):
     """Mass invis for the caster's group (cf. 1stMud spell_mass_invis in magic.c).
-    [Verified: 03/07/2026; group application added and re-verified
-    03/07/2026] -- group = leader-linked chars (player + pet/charmies)."""
+    [Verified: 03/07/2026] -- group = leader-linked chars (player + pet/charmies)."""
     room = world.rooms[ch["room"]]
     members = [world.chars.get(mob_id) for mob_id in list(room["mobs"])]
     members.append(ch)  # 1stMud room walk includes the caster
@@ -2516,11 +2500,8 @@ def spell_stone_skin(sn, level, ch, vo, target):
 
 def spell_summon(sn, level, ch, vo, target):
     """Summon (cf. 1stMud spell_summon in magic.c).
-    [Verified: 03/07/2026; unloaded-area target fallback (get_char_world
-    fidelity) added and re-verified 04/07/2026; get_char_world can_see
-    filter added and re-verified 20/07/2026] -- LEVEL_IMMORTAL /
-    PLR_NOSUMMON PC checks and AREA_CLOSED flag not ported (no other PCs;
-    area flags not modeled)."""
+    [Verified: 20/07/2026] -- LEVEL_IMMORTAL / PLR_NOSUMMON PC checks and
+    AREA_CLOSED flag not ported (no other PCs; area flags not modeled)."""
     tail = ch.get("_target_name", "")
 
     # get_char_world over loaded NPCs (cf. spell_gate) [PRIMESUD]
@@ -2578,7 +2559,7 @@ def spell_summon(sn, level, ch, vo, target):
 
 def spell_ventriloquate(sn, level, ch, vo, target):
     """Ventriloquate (cf. 1stMud spell_ventriloquate in magic.c).
-    [Verified: 03/07/2026; audience fixed 03/07/2026 [PRIMESUD]] --
+    [Verified: 03/07/2026] --
     1stMud magic.c:4290 inverts stock ROM's name test so only the named
     char hears anything (no visible output at all in single-player);
     restored to ROM behaviour: everyone EXCEPT the named char hears it.
@@ -2614,7 +2595,7 @@ def spell_ventriloquate(sn, level, ch, vo, target):
 
 def spell_acid_breath(sn, level, ch, vo, target):
     """Acid breath (cf. 1stMud spell_acid_breath in magic.c).
-    [Verified: 03/07/2026; acid_effect wired 05/07/2026]"""
+    [Verified: 03/07/2026]"""
     victim = vo
     act("$n spits acid at $N.", ch, None, victim, TO_NOTVICT)
     act("$n spits a stream of corrosive acid at you.", ch, None, victim, TO_VICT)
@@ -2633,7 +2614,7 @@ def spell_acid_breath(sn, level, ch, vo, target):
 
 def spell_fire_breath(sn, level, ch, vo, target):
     """Fire breath -- area effect (cf. 1stMud spell_fire_breath in magic.c).
-    [Verified: 03/07/2026; fire_effect wired 05/07/2026]"""
+    [Verified: 03/07/2026]"""
     victim = vo
     act("$n breathes forth a cone of fire.", ch, None, victim, TO_NOTVICT)
     act("$n breathes a cone of hot fire over you!", ch, None, victim, TO_VICT)
@@ -2675,7 +2656,7 @@ def spell_fire_breath(sn, level, ch, vo, target):
 
 def spell_frost_breath(sn, level, ch, vo, target):
     """Frost breath -- area effect (cf. 1stMud spell_frost_breath in magic.c).
-    [Verified: 03/07/2026; cold_effect wired 05/07/2026]"""
+    [Verified: 03/07/2026]"""
     victim = vo
     act("$n breathes out a freezing cone of frost!", ch, None, victim, TO_NOTVICT)
     act("$n breathes a freezing cone of frost over you!", ch, None, victim, TO_VICT)
@@ -2717,8 +2698,8 @@ def spell_frost_breath(sn, level, ch, vo, target):
 
 def spell_gas_breath(sn, level, ch, vo, target):
     """Gas breath -- area poison (cf. 1stMud spell_gas_breath in magic.c).
-    [Verified: 03/07/2026; NPC-vs-NPC filter aligned with fire/frost
-    03/07/2026 [PRIMESUD], see FIXES.md; poison_effect wired 05/07/2026]"""
+    [Verified: 03/07/2026] -- [PRIMESUD] NPC-vs-NPC filter aligned with
+    fire/frost; see FIXES.md."""
     act("$n breathes out a cloud of poisonous gas!", ch, None, None, TO_ROOM)
     act("You breath out a cloud of poisonous gas.", ch, None, None, TO_CHAR)
     hpch = max(16, ch.get("hit", 16))
@@ -2752,7 +2733,7 @@ def spell_gas_breath(sn, level, ch, vo, target):
 
 def spell_lightning_breath(sn, level, ch, vo, target):
     """Lightning breath (cf. 1stMud spell_lightning_breath in magic.c).
-    [Verified: 03/07/2026; shock_effect wired 05/07/2026]"""
+    [Verified: 03/07/2026]"""
     victim = vo
     act("$n breathes a bolt of lightning at $N.", ch, None, victim, TO_NOTVICT)
     act("$n breathes a bolt of lightning at you!", ch, None, victim, TO_VICT)
@@ -3058,7 +3039,7 @@ def spell_powerstorm(sn, level, ch, vo, target):
 
 def spell_mana_burn(sn, level, ch, vo, target):
     """Mana burn (cf. 1stMud spell_mana_burn in magic2.c).
-    [Verified: 03/07/2026; fire_effect wired 05/07/2026]"""
+    [Verified: 03/07/2026]"""
     dam = dice(level, 13)
     if saves_spell(level, vo, DAM_FIRE):
         dam //= 2
@@ -3186,7 +3167,7 @@ def spell_chaos_flare(sn, level, ch, vo, target):
 
 def spell_wild_magic(sn, level, ch, vo, target):
     """Wild magic -- random damage type (cf. 1stMud spell_wild_magic in magic2.c).
-    [Verified: 03/07/2026; elemental item effects wired 05/07/2026]
+    [Verified: 03/07/2026]
 
     Structure mirrors 1stMud exactly: each branch saves, halves dam, deals
     damage, then applies elemental effect, then early-returns.
@@ -3729,7 +3710,7 @@ def cast_item_spells(ch, item_obj, victim, obj):
 
 def do_cast(player, args):
     """Cast a spell through 1stMud-style command flow (cf. 1stMud do_cast in magic.c).
-    [Verified: 03/07/2026; cast level scaling for non-casters added and re-verified 05/07/2026]"""
+    [Verified: 05/07/2026]"""
     if not args:
         known = _known_runtime_spells(player)
         if not known:

@@ -92,17 +92,9 @@ def move_char(ch, direction):
     re-locked (unless noclose) once the player and any followers are
     through -- no 1stMud equivalent. [PRIMESUD]
 
-    [Verified: 03/07/2026; quest_room_check moved after follower loop to
-    match 1stMud order and re-verified same day; [PRIMESUD] auto-door
-    added 04/07/2026, auto-unlock with key added 05/07/2026; entry/greet
-    mobprogs wired after the follower loop and re-verified 09/07/2026;
-    exit/exall mobprog trigger wired at entry and re-verified 10/07/2026;
-    do_look("auto") now passed post-move so COMM_BRIEF gates the room desc,
-    re-verified 20/07/2026; obj/room exit + greet prog passes added and
-    re-verified 20/07/2026; movement WaitState(1) dropped as a [PRIMESUD]
-    single-player pacing deviation 28/07/2026] --
-    private-room / area-closed checks and area entry sound not ported (see
-    comments).
+    [Verified: 20/07/2026] -- private-room / area-closed checks and area
+    entry sound not ported (see comments); movement WaitState(1) dropped as
+    a [PRIMESUD] single-player pacing deviation.
 
     Args:
         ch (dict): Moving character (player or mob instance).
@@ -434,10 +426,7 @@ def get_random_room(ch):
 
 def do_enter(ch, args):
     """Enter a portal object in the room (cf. 1stMud do_enter in act_enter.c).
-    [Verified: 04/07/2026; entry/greet mobprogs wired after arrival and
-    re-verified 09/07/2026; get_obj_list can_see_obj viewer gate added and
-    re-verified 10/07/2026; do_look("auto") now gated by COMM_BRIEF and
-    re-verified 20/07/2026] -- IsTrusted immortal bypasses not ported.
+    [Verified: 20/07/2026] -- IsTrusted immortal bypasses not ported.
 
     Args:
         ch (dict): Character entering (player or follower mob).
@@ -797,9 +786,7 @@ def do_open(player, args):
 
     ITEM_PORTAL branch not ported -- no portal objects in any stock area
     [PRIMESUD].
-    [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
-    room + far-side messages) added and re-verified 04/07/2026; container
-    branch added and re-verified 05/07/2026]
+    [Verified: 05/07/2026]
     """
     exits = ROOM_DEFS[player["room"]]["exits"]
     _picked_dir = None
@@ -854,9 +841,7 @@ def do_close(player, args):
 
     ITEM_PORTAL branch not ported -- no portal objects in any stock area
     [PRIMESUD].
-    [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
-    room + far-side messages) added and re-verified 04/07/2026; container
-    branch added and re-verified 05/07/2026]
+    [Verified: 05/07/2026]
     """
     exits = ROOM_DEFS[player["room"]]["exits"]
     _picked_dir = None
@@ -968,9 +953,7 @@ def _set_rev_lock(player, direction, exit_val, locked):
 def do_lock(player, args):
     """Lock a closed door with its key, or lock a closed container with its
     key (cf. 1stMud do_lock in act_move.c).
-    [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
-    room message) added and re-verified 04/07/2026; container branch added
-    and re-verified 05/07/2026]
+    [Verified: 05/07/2026]
     """
     if args:
         obj = get_obj_here(player, " ".join(args))
@@ -1001,9 +984,7 @@ def do_lock(player, args):
 def do_unlock(player, args):
     """Unlock a closed door with its key, or unlock a closed container with
     its key (cf. 1stMud do_unlock in act_move.c).
-    [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
-    room message) added and re-verified 04/07/2026; container branch added
-    and re-verified 05/07/2026]
+    [Verified: 05/07/2026]
     """
     if args:
         obj = get_obj_here(player, " ".join(args))
@@ -1034,9 +1015,7 @@ def do_unlock(player, args):
 def do_pick(player, args):
     """Pick a door or container lock using the pick lock skill (cf. 1stMud do_pick in act_move.c).
 
-    [Verified: 03/07/2026; act/chprintln output routing (NPC-safe invoker,
-    room message) added and re-verified 04/07/2026; container branch added
-    and re-verified 06/07/2026] -- [PRIMESUD] intentional
+    [Verified: 06/07/2026] -- [PRIMESUD] intentional
     reorder: target door is resolved (with picker) before WaitState/close-
     stander/skill roll, while 1stMud rolls before find_door. Deliberately
     removes a 1stMud quirk where picking a nonexistent door still costs lag,
@@ -1103,7 +1082,7 @@ def do_pick(player, args):
 # for the same reason -- it needs these seams to exist.
 
 def do_stand(player, args):
-    """Stand up, waking first if asleep (cf. 1stMud do_stand in act_move.c). [Verified: 03/07/2026; do_look("auto") on wake (act_move.c:1080) so COMM_BRIEF gates the room desc, re-verified 20/07/2026]
+    """Stand up, waking first if asleep (cf. 1stMud do_stand in act_move.c). [Verified: 20/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -1247,7 +1226,7 @@ def do_wake(player, args):
 # -- Stealth -------------------------------------------------------------------
 
 def do_sneak(player, args):
-    """Attempt to move silently via the sneak skill (cf. 1stMud do_sneak in act_move.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
+    """Attempt to move silently via the sneak skill (cf. 1stMud do_sneak in act_move.c). [Verified: 04/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -1275,7 +1254,7 @@ def do_sneak(player, args):
 
 
 def do_hide(player, args):
-    """Attempt to hide via the hide skill (cf. 1stMud do_hide in act_move.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
+    """Attempt to hide via the hide skill (cf. 1stMud do_hide in act_move.c). [Verified: 04/07/2026]
 
     Hide is a bare AFF bit with no affect entry; any command except
     stealth/info commands removes it (see interpret in commands.py).
@@ -1297,7 +1276,7 @@ def do_hide(player, args):
 
 
 def do_visible(player, args):
-    """Strip invisibility, sneak, and hide (cf. 1stMud do_visible in act_move.c). [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026]
+    """Strip invisibility, sneak, and hide (cf. 1stMud do_visible in act_move.c). [Verified: 04/07/2026]
 
     Args:
         player (dict): Player state dict.
@@ -1320,7 +1299,7 @@ def perform_recall(player, location, what="recall"):
     "$n disappears." / "$n appears in the room." room acts are not ported
     (single-player, no arena). [PRIMESUD]
 
-    [Verified: 03/07/2026; tprint->chprintln output routing re-verified 04/07/2026; do_look("auto") post-recall (act_move.c:1631) so COMM_BRIEF gates the room desc, re-verified 20/07/2026]
+    [Verified: 20/07/2026]
     """
     room = ROOM_DEFS[player["room"]]
 
