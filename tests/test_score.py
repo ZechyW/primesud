@@ -52,7 +52,9 @@ def test_header_falls_back_to_bare_name_on_overflow(score_out):
 
 def test_box_fits_screen_with_command_echo(score_out):
     lines = _score_lines(score_out, CLASS_WARRIOR, "Hero")
-    assert len(lines) <= TERMINAL_ROWS - 1  # echoed command takes one row
+    # All TERMINAL_ROWS rows are usable -- interpret's echo line precedes the
+    # output and scrolls off (docs/PRIME_UX.md sec. Full-screen output budget).
+    assert len(lines) <= TERMINAL_ROWS
     assert any("Pierce" in ln and "Bash" in ln for ln in lines)  # paired AC
 
 
@@ -77,4 +79,4 @@ def test_bank_row_fits_and_shows_share_price(score_out, monkeypatch):
     bank_line = next(line for line in score_out if "Bank:" in line)
     assert color_len(bank_line) == TERMINAL_COLS
     assert "10000000 gold @ 1000" in bank_line
-    assert len(score_out) <= TERMINAL_ROWS  # bank row: only top border scrolls
+    assert len(score_out) <= TERMINAL_ROWS  # bank row takes it to the ceiling

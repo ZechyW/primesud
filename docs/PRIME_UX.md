@@ -28,15 +28,17 @@ bit indices may differ between hardware revisions.
 
 ## Digit and function-key macros
 
-Digit keys `0`–`9`, the decimal key, and ten function keys act as one-key
+Digit keys `0`–`9`, the decimal key, and sixteen function keys act as one-key
 shortcuts that load a command into the input buffer when it is empty (not
 auto-submitted — the player still presses Enter, allowing arguments to be
 appended first).  With a non-empty buffer, digits and the decimal key type
 normally, so numeric arguments still work.
 
 Default bindings live in `config.py` (`DEFAULT_MACROS` for digits and the
-decimal key, `DEFAULT_FNKEY_MACROS` for the two function-key rows above the
-numpad) — see that file for the current mapping, or `macro` in-game.
+decimal key, `FNKEY_TABLE`/`DEFAULT_FNKEY_MACROS` for the three function-key
+rows above the numpad — `Vars`…`a b/c`, `x^y`…`log`, `x^2`…`,` — plus `EEX`)
+— see that file for the current mapping, or `macro` in-game.  A `None`
+default leaves a key configurable but unbound; the `Vars` row ships that way.
 
 Bindings are live-editable with the `macro` command:
 
@@ -48,7 +50,11 @@ macro unset <key> — clear binding
 macro default     — restore all defaults
 ```
 
-The overview follows the physical keypad, with fixed keys shown dim. Long
+The overview follows the physical keypad, with fixed keys shown dim, and is
+sized to exactly fill the screen (see "Full-screen output budget"): each key
+row costs three lines, and the single rule at the section boundary — the
+numpad's `=` line closes the row above it, rather than each section drawing
+its own — is what buys room for the third row. Long
 commands are truncated with `...`; `macro <key>` shows the full command.
 The dim `/` key has `[Recall]` beneath it; `/` is a built-in, non-configurable
 alias for `recall`. The dim `On` key similarly has `[Exit]` beneath it and is
@@ -333,6 +339,32 @@ newly learned entries not yet in a saved rotation.
 The navpad Up/Down keys (bits 2/12, normally n/s movement in the game loop)
 are remapped for the editor by passing a private `key_commands` dict to
 `tml_prime.poll_char` — no changes to the tml key map.
+
+---
+
+## Full-screen output budget
+
+A single command may print exactly `config.py:TERMINAL_ROWS` (22) lines and
+still show whole.  No row is reserved for the cursor, and `interpret`'s
+blank echo line — printed *before* the command's own output — costs nothing:
+it scrolls off with the rest of the previous screen.  A 23rd line pushes the
+first line off the top (recoverable only via scrollback).
+
+The reason is that `terminal.py:print_lines` scrolls **lazily**.  After a
+print, `tr.cursor_y` is left parked at `tr.rows` — one row past the bottom —
+as a *pending* scroll rather than an applied one.  The next batch consumes
+it (`n1 = cy - tr.rows + 1`), adds its own overflow (`n2`), and lands at
+`top = cy - n2`; for a 22-line batch that solves to `top = 0`, filling rows
+0–21 exactly.
+
+Do not size layouts from `tml.py:_put_char` instead.  That path scrolls
+eagerly on the trailing newline, which does reserve a row and implies a
+21-line ceiling — but `tprint` does not go through it.  This is the easy
+wrong answer; it costs a usable row.
+
+Current full-screen consumers: `do_macro` at 22 (the ceiling — its keypad
+grid is sized to it, guarded by `tests/test_macros.py`) and `do_score` at
+21, or 22 with a bank row.
 
 ---
 

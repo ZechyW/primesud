@@ -11,6 +11,9 @@ BG_COLOR      = 0
 TAB_SIZE      = 8
 TERMINAL_COLS = 64   # character columns (5x10 font, 320 px wide)
 TERMINAL_ROWS = 22   # character rows    (5x10 font, 240 px high, excl. status bar)
+                     # All 22 are usable by one command's output -- no row is
+                     # reserved for the cursor. See docs/PRIME_UX.md sec.
+                     # Full-screen output budget before sizing a layout.
 FONT_GROB     = 9    # grob tml blits font glyphs from (HP Prime default)
 COLOR_GROB    = 8    # unmodified font copy; restored into FONT_GROB on colour reset
 SCRATCH_GROB  = 5    # offscreen compose buffer for batched renders (6=save, 7=history)
