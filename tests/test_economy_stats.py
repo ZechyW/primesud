@@ -3,11 +3,24 @@
 import economy
 import game_state
 import info
+import keyidx
 import shop
 import world
 from combat import update_death
 from game_time import time_info
 from player import create_char
+from tools import build_mob_index
+
+
+def _mob_row(vnum, keywords, name, level=7, home="alpha", tags=("alpha",)):
+    """One mobs.bin row dict in pack_key_index's input shape."""
+    return {"vnum": vnum, "level": level, "home": home,
+            "keywords": keywords, "name": name, "tags": list(tags)}
+
+
+def _write_key_index(path, rows, tags=None):
+    """Pack rows through the builder so fixtures keep the shipped layout."""
+    path.write_bytes(build_mob_index.pack_key_index(list(rows), tags))
 
 
 def test_new_player_starts_with_school_donation_money():
@@ -56,8 +69,8 @@ def test_empty_mob_counters_skip_index_read(fresh_world, monkeypatch):
     player = _scene(fresh_world)
     pages = []
     monkeypatch.setattr(info, "tpage", lambda lines: pages.append(lines))
-    monkeypatch.setattr(info, "open", lambda *args: (_ for _ in ()).throw(
-        AssertionError("empty counters read mobs.idx")), raising=False)
+    monkeypatch.setattr(keyidx, "load", lambda *args: (_ for _ in ()).throw(
+        AssertionError("empty counters read mobs.bin")))
 
     info.do_mobkills(player, [])
     assert pages[-1][-1] == "No Mobs listed yet."
@@ -68,10 +81,11 @@ def test_counter_commands_keep_upstream_threshold_and_ranking(fresh_world,
                                                                tmp_path):
     player = _scene(fresh_world)
     pages = []
-    index_data = ("150|alpha|7|test goblin|a test goblin|alpha\n"
-                  "152|alpha|8|other goblin|another goblin|alpha\n")
-    index_file = tmp_path / "mobs.idx"
-    index_file.write_text(index_data)
+    index_file = tmp_path / "mobs.bin"
+    _write_key_index(index_file, [
+        _mob_row(150, "test goblin", "a test goblin"),
+        _mob_row(152, "other goblin", "another goblin", level=8),
+    ])
     monkeypatch.setattr(info, "MOB_INDEX_FILE", str(index_file))
     monkeypatch.setattr(world, "_ensure_area_by_tag",
                         lambda tag: (_ for _ in ()).throw(
@@ -95,11 +109,11 @@ def test_counter_ranking_drops_stale_vnums_before_top_50(fresh_world,
     player = _scene(fresh_world)
     rows = []
     for vnum in range(150, 201):
-        rows.append(str(vnum) + "|alpha|7|mob|mob " + str(vnum) + "|alpha")
+        rows.append(_mob_row(vnum, "mob", "mob " + str(vnum)))
         world.mob_stats[vnum] = [1000 - vnum, 0]
     world.mob_stats[149] = [9999, 0]  # stale; absent from index
-    index_file = tmp_path / "mobs.idx"
-    index_file.write_text("\n".join(rows))
+    index_file = tmp_path / "mobs.bin"
+    _write_key_index(index_file, rows)
     monkeypatch.setattr(info, "MOB_INDEX_FILE", str(index_file))
     pages = []
     monkeypatch.setattr(info, "tpage", lambda lines: pages.append(lines))

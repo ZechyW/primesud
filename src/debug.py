@@ -4,6 +4,7 @@ import terminal
 import world
 from classes import exp_per_level
 from config import MAX_LEVEL
+import keyidx  # [PRIMESUD] leaf module: no game-module backref, see below
 from pager import tpage
 from skills_table import (GSN_PLAGUE, GSN_POISON, GSN_BLINDNESS, GSN_CURSE,
                           GSN_SLEEP)
@@ -662,37 +663,34 @@ def _debug_holylight(player, args):
 
 # Keyword index files (built by tools/build_mob_index.py). Module constants
 # so desktop tests can point them at synthetic files.
-MOBS_IDX = "mobs.idx"
-OBJS_IDX = "objs.idx"
+MOBS_BIN = "mobs.bin"
+OBJS_BIN = "objs.bin"
 
 
-def _find_idx(frag, idx_file, lines, mob=False):
+def _find_idx(frag, idx_file, lines):
     """Append "[vnum] keywords (tag, unloaded)" rows for unloaded-area matches. [PRIMESUD]
 
     One f.read() per call (looped readline() ~20ms/call on-device); nothing
     is retained, so no area load and no lasting heap cost. Missing index
-    file (desktop dev runs) degrades to loaded-area results only.
+    file (desktop dev runs) degrades to loaded-area results only. Mob and
+    object indexes share one record layout, so one branchless walk serves
+    both. Keywords display lowercased -- the index stores them folded for
+    the scanner, which is fine for a debug listing.
     """
-    from handler import is_name
-
-    try:
-        with open(idx_file) as f:
-            data = f.read()
-    except OSError:
+    index = keyidx.load(idx_file)
+    if index is None:
         return
-    for line in data.split("\n"):
-        if not line or line[0] == "#":
-            continue
-        parts = line.split("|", 5 if mob else 3)
-        if len(parts) < (6 if mob else 3):
-            continue
-        tag, vnum, keywords = ((parts[1], parts[0], parts[3]) if mob
-                               else (parts[0], parts[1], parts[2]))
+    data, meta = index
+    kw_off = meta[1]
+    tags = meta[4]
+    for pos in keyidx.candidates(data, meta, frag):
+        tag = tags[data[pos + 3]]
         if tag in world._LOADED_AREAS:
             continue
-        if is_name(frag, keywords):
-            lines.append("[" + pad_left(vnum, 5) + "] " + keywords + " ("
-                        + tag + ", unloaded)")
+        start = kw_off + (data[pos + 4] | data[pos + 5] << 8)
+        keywords = data[start:start + data[pos + 6]].decode()
+        lines.append("[" + pad_left(num_str(data[pos] | data[pos + 1] << 8), 5)
+                    + "] " + keywords + " (" + tag + ", unloaded)")
 
 
 def _debug_vnum(player, args):
@@ -700,7 +698,7 @@ def _debug_vnum(player, args):
     do_mfind / do_ofind in act_wiz.c). [PRIMESUD]
 
     Loaded areas answer from MOB_DEFS/ITEM_DEFS in memory (short_descr
-    shown); unloaded areas via the keyword indices mobs.idx / objs.idx
+    shown); unloaded areas via the keyword indexes mobs.bin / objs.bin
     (keywords shown), so no area load is forced.
     do_vnum's skill branch (do_slookup) not ported -- PrimeSUD skills are
     name-keyed (skills_table.py), there is no sn to look up.
@@ -735,8 +733,7 @@ def _debug_vnum(player, args):
             if is_name(frag, defs._data[vnum].get("keywords", "")):
                 lines.append("[" + pad_left(num_str(vnum), 5) + "] "
                             + defs._data[vnum].get("short_descr", ""))
-        _find_idx(frag, MOBS_IDX if kind == "mob" else OBJS_IDX, lines,
-                  kind == "mob")
+        _find_idx(frag, MOBS_BIN if kind == "mob" else OBJS_BIN, lines)
         if len(lines) == start:
             lines.append("No " + ("mobiles" if kind == "mob" else "objects")
                         + " by that name.")

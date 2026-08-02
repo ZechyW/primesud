@@ -71,7 +71,7 @@ def do_path(player, args):
 
     [PRIMESUD] Fixes upstream's inverted mob-target condition, drops its
     random saving-throw gate (see _mob_destination), and searches unloaded
-    mobs through mobs.idx. Routing runs over the precomputed border graph
+    mobs through mobs.bin. Routing runs over the precomputed border graph
     (paths.idx) and never loads areas at routing time.
 
     [PRIMESUD] Side effect: a computed route is stashed in

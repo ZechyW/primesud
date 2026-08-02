@@ -24,6 +24,7 @@ from handler import (is_name, is_affected, affect_to_char, affect_join, affect_s
                      TO_CHAR, TO_ROOM, TO_VICT, TO_NOTVICT, TO_ALL,
                      is_good, is_evil, is_neutral)
 from info import do_look
+import keyidx  # [PRIMESUD] binary mob/object keyword indexes
 from item import (get_obj_list, obj_vnum, item_spell_level,
                   item_spells, item_spell_name, item_extra_flags,
                   item_current_charges, item_affect_list,
@@ -419,7 +420,7 @@ def spell_farsight(sn, level, ch, vo, target):
     return True
 
 
-OBJ_INDEX_FILE = "objs.idx"  # [PRIMESUD] template keywords + reset spawn areas
+OBJ_INDEX_FILE = "objs.bin"  # [PRIMESUD] template keywords + reset spawn areas
 
 
 def _locate_obj_list(obj_list, location, wanted, level, ch, found, max_found):
@@ -504,26 +505,19 @@ def _locate_candidate_areas(wanted):
     """Read object index and return unloaded areas worth hydrating. [PRIMESUD]"""
     candidates = []
     vnums = set()
-    try:
-        with open(OBJ_INDEX_FILE) as f:
-            data = f.read()  # one read; looped readline() is costly on-device
-    except OSError:
+    index = keyidx.load(OBJ_INDEX_FILE)
+    if index is None:  # missing/corrupt index: resident state only
         return candidates
-    for line in data.split("\n"):
-        if not line or line[0] == "#":
-            continue
-        parts = line.split("|", 3)
-        if len(parts) < 3 or not is_name(wanted, parts[2]):
-            continue
-        try:
-            vnums.add(int(parts[1]))
-        except ValueError:
-            continue
-        if len(parts) > 3:
-            for tag in parts[3].split(","):
-                if (tag and tag not in world._LOADED_AREAS
-                        and tag not in candidates):
-                    candidates.append(tag)
+    data, meta = index
+    tags = meta[4]
+    for pos in keyidx.candidates(data, meta, wanted):
+        vnums.add(data[pos] | data[pos + 1] << 8)
+        for offset in range(pos + 11, pos + 11 + data[pos + 10]):
+            tag = tags[data[offset]]
+            if tag not in world._LOADED_AREAS and tag not in candidates:
+                candidates.append(tag)
+    index = None  # drop the blob before the pending-item parse allocates
+    data = None
     if not vnums:
         return candidates
     # Cheap substring gate before parsing: every serialized item starts
@@ -2790,16 +2784,17 @@ def spell_high_explosive(sn, level, ch, vo, target):
 # -- magic2.c spells --
 
 
-MOB_INDEX_FILE = "mobs.idx"  # [PRIMESUD] mob metadata + ordered spawn tags
+MOB_INDEX_FILE = "mobs.bin"  # [PRIMESUD] mob metadata + ordered spawn tags
 
 
 def _find_unloaded_mob(tail, ch):
     """Locate a name-matched mob in an unloaded area and load that area. [PRIMESUD]
 
     1stMud get_char_world sees every mob in the world; PrimeSUD only
-    instantiates mobs of loaded areas. Fallback: scan the keyword index
-    built by tools/build_mob_index.py (one line per template, ordered so
-    ambiguous names resolve to the cheapest area load).
+    instantiates mobs of loaded areas. Fallback: scan the binary keyword
+    index built by tools/build_mob_index.py (one record per template).
+    Spawn tag ids are _AREA_FILES positions, so sorting them ascending is
+    the cheapest-area-first order.
 
     Args:
         tail (str): Target name words.
@@ -2811,20 +2806,24 @@ def _find_unloaded_mob(tail, ch):
     """
     loads = 0
     candidates = []
-    with open(MOB_INDEX_FILE) as f:
-        data = f.read()  # one ~58KB read; looped readline() ~20ms/call on-device
-    for line in data.split("\n"):
-        if not line or line[0] == "#":
-            continue  # blank / header comment
-        parts = line.split("|")
-        if len(parts) < 6 or not is_name(tail, parts[3]):
-            continue
-        for tag in parts[5].split(","):
-            if (tag and tag not in world._LOADED_AREAS
-                    and tag not in candidates):
-                candidates.append(tag)
-    order = {area[1]: i for i, area in enumerate(world._AREA_FILES)}
-    candidates.sort(key=lambda tag: order.get(tag, len(order)))
+    index = keyidx.load(MOB_INDEX_FILE)
+    if index is None:  # missing/corrupt index: nothing to hydrate
+        return None, None
+    data, meta = index
+    tag_ids = []
+    for pos in keyidx.candidates(data, meta, tail):
+        for offset in range(pos + 11, pos + 11 + data[pos + 10]):
+            tag_id = data[offset]
+            if tag_id not in tag_ids:
+                tag_ids.append(tag_id)
+    tag_ids.sort()
+    tags = meta[4]
+    for tag_id in tag_ids:
+        tag = tags[tag_id]
+        if tag not in world._LOADED_AREAS:
+            candidates.append(tag)
+    index = None  # drop the blob before area loads claim heap
+    data = None
     for tag in candidates:
         world._ensure_area_by_tag(tag)
         # Re-scan all chars: loading one area spawns all its reset mobs.

@@ -4,7 +4,6 @@ src/area_*.txt -text
 src/help.txt -text
 src/socials.txt -text
 src/music.txt -text
-src/mobs.idx -text
 src/commands.txt -text
 *.idx -text
 *.bin -text

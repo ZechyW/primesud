@@ -80,7 +80,7 @@ flee-look for brief-mode consistency (commits 2fd9616, 69fb9c3, 2fc2c19).
 
 `path` ported 20/07/2026 with intent parity for the upstream inverted mob
 condition: area-first lookup, gate-style mob restrictions, live-room targets,
-and `mobs.idx` fallback. Routing is [PRIMESUD] border-graph Dijkstra over
+and `mobs.bin` fallback. Routing is [PRIMESUD] border-graph Dijkstra over
 the precomputed `paths.idx` (exact shortest routes, zero area loads at
 routing time, verified against unrestricted full-world BFS in
 tests/test_path_realworld.py), followed by forced cache eviction (path.py).
@@ -97,7 +97,7 @@ including upstream mob/area-perspective naming (`kills` = PCs killed), the
 mob-template/current-room area attribution split, self-death exclusion,
 mob-list >2 threshold, top-50 cap, and save persistence without loading all
 area templates. Display metadata comes from the compact all-template
-`mobs.idx`; stale saved vnums are discarded before the top-50 cut.
+`mobs.bin`; stale saved vnums are discarded before the top-50 cut.
 
 `bank` / `balance` ported 21/07/2026: bank-room and opening-hour gates,
 deposit/withdraw, persistent bank gold and shares, daytime share-price walk,
@@ -109,7 +109,7 @@ Player transfer and clan-bank branches remain excluded as multiplayer-only.
 help records without replacing PrimeSUD's edited help bodies; the runtime
 lists categories and numbered entries from the existing off-heap help index.
 
-`locate object` unloaded-area coverage ported 22/07/2026: `objs.idx` supplies
+`locate object` unloaded-area coverage ported 22/07/2026: `objs.bin` supplies
 ordered `O`/`E`/`G`/`P` reset-owning candidate areas, while nested pending-save
 items add non-reset candidates. Candidate areas load and scan one at a time,
 then unload in `finally`; accepted results retain upstream filters and stop
@@ -121,7 +121,7 @@ All resolved 20/07/2026 as `debug` subcommands (debug.py):
 
 | cmd | evidence | resolution (20/07/2026) |
 |---|---|---|
-| vnum | act_wiz.c:988 | PORTED as `debug vnum [mob\|obj] <name>` (the old vnum display channel folded into holylight, matching upstream's PLR_HOLYLIGHT room-vnum gate, act_info.c:1136; mob/obj vnum overlay kept as [PRIMESUD] superset). Loaded areas answer from defs in memory; unloaded areas via all-template keyword indices (mobs.idx + objs.idx, built by tools/build_mob_index.py) -- no area load forced. Skill branch (do_slookup) N/A: skills are name-keyed |
+| vnum | act_wiz.c:988 | PORTED as `debug vnum [mob\|obj] <name>` (the old vnum display channel folded into holylight, matching upstream's PLR_HOLYLIGHT room-vnum gate, act_info.c:1136; mob/obj vnum overlay kept as [PRIMESUD] superset). Loaded areas answer from defs in memory; unloaded areas via all-template binary keyword indexes (mobs.bin + objs.bin, built by tools/build_mob_index.py) -- no area load forced. Skill branch (do_slookup) N/A: skills are name-keyed |
 | flag | flags.c:35 | PORTED as `debug flag`; dict-key bits, +/-/=/toggle as upstream; plr/comm fields N/A (no player-flag/comm systems); no flag-name table at runtime, so result set is echoed instead of validated |
 | force | act_wiz.c:2720 | PORTED as `debug force <char> <cmd>`; all/players/gods sweeps + trust gates N/A solo |
 | switch/return | act_wiz.c:1609,1680 | CLOSED covered-by-force: upstream switch swaps the descriptor into the mob to issue commands as it; PrimeSUD has no descriptor layer and the whole command surface assumes the player dict. `debug force <mob> <cmd>` gives the same test lever (mob's own say doesn't fire speech triggers upstream either -- NPC gate) |

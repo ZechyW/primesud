@@ -4,7 +4,19 @@ import pytest
 import magic
 import world
 from handler import _char_base
+from tools import build_mob_index
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
+
+
+def _obj_row(vnum, keywords, home="beta", tags=("beta",)):
+    """One objs.bin row dict in pack_key_index's input shape."""
+    return {"vnum": vnum, "level": 0, "home": home, "keywords": keywords,
+            "name": "", "tags": list(tags)}
+
+
+def _write_key_index(path, rows):
+    """Pack rows through the builder so fixtures keep the shipped layout."""
+    path.write_bytes(build_mob_index.pack_key_index(list(rows)))
 
 
 def _setup(fw, monkeypatch):
@@ -43,14 +55,16 @@ def _mob(keywords):
 
 
 def _setup_remote(fw, monkeypatch, tmp_path, objects, resets=(), mobiles=None,
-                  index="beta|250|silver sword|beta\n"):
+                  index=None):
     fw.register_area("alpha", 100, 199, rooms={100: _room("Alpha")})
     fw.register_area("beta", 200, 299, rooms={200: _room("Beta")},
                      mobiles=mobiles, objects=objects, resets=resets)
     fw.setup()
     _ = ROOM_DEFS[100]
-    idx = tmp_path / "objs.idx"
-    idx.write_text(index)
+    idx = tmp_path / "objs.bin"
+    if index is None:
+        index = [_obj_row(250, "silver sword")]
+    _write_key_index(idx, index)
     monkeypatch.setattr(magic, "OBJ_INDEX_FILE", str(idx))
     monkeypatch.setattr(magic, "randint", lambda a, b: 1)
     out = []
@@ -121,7 +135,8 @@ def test_locate_finds_unloaded_nested_pending_item(
     player, out = _setup_remote(
         fresh_world, monkeypatch, tmp_path,
         {240: _obj("wooden chest", type="container"),
-         250: _obj("silver sword")}, index="beta|250|silver sword|\n")
+         250: _obj("silver sword")},
+        index=[_obj_row(250, "silver sword", tags=())])
     world._pending_room_items[200] = "v:240;co:[v:250]"
 
     assert magic.spell_locate_object(0, 20, player, None, "char")
@@ -133,7 +148,8 @@ def test_locate_does_not_load_resetless_template_without_pending_instance(
         fresh_world, monkeypatch, tmp_path):
     player, out = _setup_remote(
         fresh_world, monkeypatch, tmp_path,
-        {250: _obj("silver sword")}, index="beta|250|silver sword|\n")
+        {250: _obj("silver sword")},
+        index=[_obj_row(250, "silver sword", tags=())])
 
     assert not magic.spell_locate_object(0, 20, player, None, "char")
     assert out == ["Nothing like that in heaven or earth."]

@@ -25,6 +25,7 @@ from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, is_name
                      PLR_AUTOGOLD, PLR_AUTOSPLIT, PLR_AUTOASSIST, PLR_AUTOEXIT,
                      PLR_AUTODAMAGE, PLR_DEFAULTS,
                      COMM_BRIEF, COMM_COMPACT, COMM_SHOW_AFFECTS)
+import keyidx  # [PRIMESUD] binary mob keyword/metadata index
 from item import (get_obj_here, obj_vnum, item_extra_flags,
                   item_container_flags, liquid_color, liquid_left,
                   liquid_total, liquid_type)
@@ -2213,7 +2214,7 @@ def do_areas(player, args):
         chprintln(player, "{W" + _center_fill("[ {R" + num_str(count) + " areas found{W ]") + "{x")
 
 
-MOB_INDEX_FILE = "mobs.idx"  # [PRIMESUD] prebuilt mob display metadata
+MOB_INDEX_FILE = "mobs.bin"  # [PRIMESUD] prebuilt mob display metadata
 
 
 def _mob_stats(player, stat_index):
@@ -2233,17 +2234,23 @@ def _mob_stats(player, stat_index):
         tpage(lines)
         return
     metadata = {}
-    with open(MOB_INDEX_FILE) as f:
-        data = f.read()
-    for line in data.split("\n"):
-        if not line or line[0] == "#":
-            continue
-        parts = line.split("|", 5)
-        if len(parts) < 6:
-            continue
-        vnum = int(parts[0])
-        if vnum in counts:
-            metadata[vnum] = (parts[4], int(parts[2]), parts[1])
+    # One walk of the binary index; record fields are read by offset
+    # (layout in keyidx's docstring) so nothing allocates per template.
+    index = keyidx.load(MOB_INDEX_FILE)
+    if index is not None:
+        data, meta = index
+        kw_off = meta[1]
+        strings_off = meta[2]
+        tags = meta[4]
+        pos = meta[0]
+        while pos < kw_off:
+            vnum = data[pos] | data[pos + 1] << 8
+            if vnum in counts:
+                name_off = strings_off + (data[pos + 7] | data[pos + 8] << 8)
+                metadata[vnum] = (
+                    data[name_off:name_off + data[pos + 9]].decode(),
+                    data[pos + 2], tags[data[pos + 3]])
+            pos += 11 + data[pos + 10]
     ranked = [(count, vnum) for vnum, count in counts.items()
               if vnum in metadata]
     ranked.sort(key=lambda x: (-x[0], x[1]))

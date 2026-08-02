@@ -14,10 +14,23 @@ import handler
 import magic
 import movement
 import world
+from tools import build_mob_index
 from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS, OBJ_VNUM_PORTAL
 
 MOB_TPL = 9401
 STONE_VNUM = 9420
+
+
+def _mob_row(vnum, home, keywords, name, tags, level=10):
+    """One mobs.bin row dict in pack_key_index's input shape."""
+    return {"vnum": vnum, "level": level, "home": home,
+            "keywords": keywords, "name": name, "tags": list(tags)}
+
+
+def _write_key_index(path, rows, tags=None):
+    """Pack rows through the builder so fixtures keep the shipped layout
+    (tag ids are _AREA_FILES positions, the runtime's load priority)."""
+    path.write_bytes(build_mob_index.pack_key_index(list(rows), tags))
 
 
 def _stub_room(vnum, **extra):
@@ -221,9 +234,10 @@ def test_portal_targets_unloaded_area_mob(out, monkeypatch, tmp_path):
     player = _make_player(9001)
     _held_stone(player)
     player["_target_name"] = "dragon"
-    idx = tmp_path / "mobs.idx"
-    idx.write_text(
-        "9402|testarea|10|red dragon|a red dragon|testarea|otherarea\n")
+    idx = tmp_path / "mobs.bin"
+    _write_key_index(idx, [_mob_row(9402, "testarea", "red dragon",
+                                    "a red dragon",
+                                    ["testarea", "otherarea"])])
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
     loaded = []
 
@@ -243,9 +257,13 @@ def test_find_unloaded_mob_second_mob_same_area(monkeypatch, tmp_path):
     # first index hit has no instance; sibling mob spawned by the same
     # area load must still be found (later same-tag lines get skipped)
     player = _make_player(9001)
-    idx = tmp_path / "mobs.idx"
-    idx.write_text("9402|testarea|10|red dragon|a red dragon|testarea\n"
-                   "9403|testarea|10|blue dragon|a blue dragon|testarea\n")
+    idx = tmp_path / "mobs.bin"
+    _write_key_index(idx, [
+        _mob_row(9402, "testarea", "red dragon", "a red dragon",
+                 ["testarea"]),
+        _mob_row(9403, "testarea", "blue dragon", "a blue dragon",
+                 ["testarea"]),
+    ])
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
 
     def fake_load(tag):
@@ -263,8 +281,9 @@ def test_find_unloaded_mob_second_mob_same_area(monkeypatch, tmp_path):
 
 def test_find_unloaded_mob_tries_ordered_spawn_tags(monkeypatch, tmp_path):
     player = _make_player(9001)
-    idx = tmp_path / "mobs.idx"
-    idx.write_text("9402|home|10|red dragon|a red dragon|first,second\n")
+    idx = tmp_path / "mobs.bin"
+    _write_key_index(idx, [_mob_row(9402, "home", "red dragon",
+                                    "a red dragon", ["first", "second"])])
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
     loaded = []
 
@@ -283,9 +302,13 @@ def test_find_unloaded_mob_tries_ordered_spawn_tags(monkeypatch, tmp_path):
 
 def test_find_unloaded_mob_keeps_global_area_priority(monkeypatch, tmp_path):
     player = _make_player(9001)
-    idx = tmp_path / "mobs.idx"
-    idx.write_text("9402|home|10|red dragon|a dragon|first,third\n"
-                   "9403|home|10|blue dragon|a dragon|second\n")
+    idx = tmp_path / "mobs.bin"
+    # Tag ids follow _AREA_FILES order, so the index itself carries the
+    # global priority the runtime sorts on.
+    _write_key_index(idx, [
+        _mob_row(9402, "first", "red dragon", "a dragon", ["first", "third"]),
+        _mob_row(9403, "first", "blue dragon", "a dragon", ["second"]),
+    ], ["first", "second", "third"])
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
     monkeypatch.setattr(world, "_AREA_FILES",
                         [("", "first", "", 0, 0),
@@ -302,8 +325,9 @@ def test_find_unloaded_mob_keeps_global_area_priority(monkeypatch, tmp_path):
 def test_find_unloaded_mob_skips_invisible_spawn(monkeypatch, tmp_path):
     # get_char_world can_see fidelity: invisible spawn stays unfound
     player = _make_player(9001)
-    idx = tmp_path / "mobs.idx"
-    idx.write_text("9402|testarea|10|red dragon|a red dragon|testarea\n")
+    idx = tmp_path / "mobs.bin"
+    _write_key_index(idx, [_mob_row(9402, "testarea", "red dragon",
+                                    "a red dragon", ["testarea"])])
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
 
     def fake_load(tag):
@@ -324,17 +348,22 @@ def test_find_unloaded_mob_skips_invisible_spawn(monkeypatch, tmp_path):
 
 def test_find_unloaded_mob_edge_cases(monkeypatch, tmp_path):
     player = _make_player(9001)
-    # missing index file: fail loud (index always shipped in a dist)
+    # [PRIMESUD] Missing/corrupt index degrades to "no candidates" (was:
+    # raised OSError), matching locate object and `debug vnum`.
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(tmp_path / "absent.dat"))
-    with pytest.raises(OSError):
-        magic._find_unloaded_mob("dragon", player)
-    # loaded areas skipped; header comment ignored; no-spawn load capped at 2
-    idx = tmp_path / "mobs.idx"
-    idx.write_text("# header\n"
-                   "9402|loadedarea|10|red dragon|a dragon|loadedarea\n"
-                   "9403|ghost1|10|red dragon|a dragon|ghost1\n"
-                   "9404|ghost2|10|red dragon|a dragon|ghost2\n"
-                   "9405|ghost3|10|red dragon|a dragon|ghost3\n")
+    assert magic._find_unloaded_mob("dragon", player) == (None, None)
+    (tmp_path / "garbage.bin").write_bytes(b"not an index at all")
+    monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(tmp_path / "garbage.bin"))
+    assert magic._find_unloaded_mob("dragon", player) == (None, None)
+    # loaded areas skipped; no-spawn load capped at 2
+    idx = tmp_path / "mobs.bin"
+    _write_key_index(idx, [
+        _mob_row(9402, "loadedarea", "red dragon", "a dragon",
+                 ["loadedarea"]),
+        _mob_row(9403, "ghost1", "red dragon", "a dragon", ["ghost1"]),
+        _mob_row(9404, "ghost2", "red dragon", "a dragon", ["ghost2"]),
+        _mob_row(9405, "ghost3", "red dragon", "a dragon", ["ghost3"]),
+    ])
     monkeypatch.setattr(magic, "MOB_INDEX_FILE", str(idx))
     monkeypatch.setattr(world, "_LOADED_AREAS", {"loadedarea"})
     loaded = []

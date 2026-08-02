@@ -14,7 +14,19 @@ import debug
 import terminal
 import world
 from handler import _char_base
+from tools import build_mob_index
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS
+
+
+def _idx_row(vnum, home, keywords, name="", level=0, tags=()):
+    """One mobs.bin/objs.bin row dict in pack_key_index's input shape."""
+    return {"vnum": vnum, "level": level, "home": home,
+            "keywords": keywords, "name": name, "tags": list(tags)}
+
+
+def _write_key_index(path, rows):
+    """Pack rows through the builder so fixtures keep the shipped layout."""
+    path.write_bytes(build_mob_index.pack_key_index(list(rows)))
 
 
 @pytest.fixture
@@ -432,18 +444,20 @@ def test_vnum_loaded_template(scene, out, paged):
 
 
 def test_vnum_unloaded_via_idx(scene, out, paged, monkeypatch, tmp_path):
-    idx = tmp_path / "mobs.idx"
-    idx.write_text("# header\n9500|faraway|10|red dragon|a red dragon|faraway\n")
-    monkeypatch.setattr(debug, "MOBS_IDX", str(idx))
+    idx = tmp_path / "mobs.bin"
+    _write_key_index(idx, [_idx_row(9500, "faraway", "red dragon",
+                                    "a red dragon", 10, ["faraway"])])
+    monkeypatch.setattr(debug, "MOBS_BIN", str(idx))
     _run(scene["player"], "vnum mob dragon")
     assert any("9500" in l and "faraway, unloaded" in l for l in paged)
 
 
 def test_vnum_unloaded_object_ignores_spawn_tags(
         scene, out, paged, monkeypatch, tmp_path):
-    idx = tmp_path / "objs.idx"
-    idx.write_text("faraway|9501|silver sword|otherarea\n")
-    monkeypatch.setattr(debug, "OBJS_IDX", str(idx))
+    idx = tmp_path / "objs.bin"
+    _write_key_index(idx, [_idx_row(9501, "faraway", "silver sword",
+                                    tags=["otherarea"])])
+    monkeypatch.setattr(debug, "OBJS_BIN", str(idx))
     _run(scene["player"], "vnum obj sword")
     assert any("9501" in line and "faraway, unloaded" in line
                for line in paged)
@@ -451,9 +465,10 @@ def test_vnum_unloaded_object_ignores_spawn_tags(
 
 def test_vnum_idx_skips_loaded_areas(scene, out, paged, monkeypatch, tmp_path):
     # nonsense keyword so real loaded-area defs can't match either
-    idx = tmp_path / "mobs.idx"
-    idx.write_text("9500|loadedtag|10|qqxzdragon|a dragon|loadedtag\n")
-    monkeypatch.setattr(debug, "MOBS_IDX", str(idx))
+    idx = tmp_path / "mobs.bin"
+    _write_key_index(idx, [_idx_row(9500, "loadedtag", "qqxzdragon",
+                                    "a dragon", 10, ["loadedtag"])])
+    monkeypatch.setattr(debug, "MOBS_BIN", str(idx))
     world._LOADED_AREAS.add("loadedtag")
     try:
         _run(scene["player"], "vnum mob qqxzdragon")
@@ -463,10 +478,10 @@ def test_vnum_idx_skips_loaded_areas(scene, out, paged, monkeypatch, tmp_path):
 
 
 def test_vnum_untyped_searches_both(scene, out, paged, monkeypatch, tmp_path):
-    for name in ("mobs.idx", "objs.idx"):
-        (tmp_path / name).write_text("")
-    monkeypatch.setattr(debug, "MOBS_IDX", str(tmp_path / "mobs.idx"))
-    monkeypatch.setattr(debug, "OBJS_IDX", str(tmp_path / "objs.idx"))
+    for name in ("mobs.bin", "objs.bin"):
+        _write_key_index(tmp_path / name, [])
+    monkeypatch.setattr(debug, "MOBS_BIN", str(tmp_path / "mobs.bin"))
+    monkeypatch.setattr(debug, "OBJS_BIN", str(tmp_path / "objs.bin"))
     _run(scene["player"], "vnum sword")
     assert any("8001" in l and "a test sword" in l for l in paged)
 

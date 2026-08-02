@@ -741,10 +741,17 @@ def test_generator_emits_fight_tags_and_all_source_kinds(
 
     build_mob_index.main()
 
-    mob_rows = (tmp_path / "mobs.idx").read_text().splitlines()
-    assert "100|test|10|fighter|a fighter|test" in mob_rows
-    assert next(row for row in mob_rows if row.startswith("101|")).endswith(
-        "|test")
+    mob_rows, mob_tags = build_mob_index.parse_key_index(
+        (tmp_path / "mobs.bin").read_bytes())
+    assert {"vnum": 100, "level": 10, "home": "test", "keywords": "fighter",
+            "name": "a fighter", "tags": ["test"]} in mob_rows
+    assert next(row for row in mob_rows
+                if row["vnum"] == 101)["tags"] == ["test"]
+    assert mob_tags == ["test"]
+    obj_rows, _obj_tags = build_mob_index.parse_key_index(
+        (tmp_path / "objs.bin").read_bytes())
+    assert {"vnum": 203, "level": 0, "home": "test", "keywords": "chest",
+            "name": "", "tags": ["test"]} in obj_rows
     foes_blob = (tmp_path / "foes.bin").read_bytes()
     foes_rows, foes_tags, foes_sizes = build_mob_index.parse_foes_index(
         foes_blob)
@@ -797,7 +804,7 @@ def test_generator_emits_fight_tags_and_all_source_kinds(
             assert row["bound"] == row["static"] + wmax
 
     # The string table is deduplicated: the fighter's name is stored once
-    # even though two loot rows and mobs.idx-independent data cite it.
+    # even though two loot rows and mobs.bin-independent data cite it.
     assert blob.count(b"a fighter") == 1
 
 
@@ -807,5 +814,5 @@ def test_shipped_indexes_reproduce(tmp_path, monkeypatch):
 
     build_mob_index.main()
 
-    for name in ("mobs.idx", "objs.idx", "foes.bin", "gear.bin"):
+    for name in ("mobs.bin", "objs.bin", "foes.bin", "gear.bin"):
         assert (tmp_path / name).read_bytes() == (source / name).read_bytes()

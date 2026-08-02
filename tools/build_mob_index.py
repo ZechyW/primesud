@@ -1,14 +1,17 @@
 """Build mob, object, and gear recommendation indices.
 
-mobs.idx has one row per mob template. Metadata feeds mob counters without
-loading areas; ordered spawn tags feed portal/nexus/gate/summon lookups.
-Line order preserves _AREA_FILES priority, so ambiguous names still resolve
-to the cheapest area load.
+mobs.bin has one record per mob template (KX01 keyword-index format, see
+pack_key_index). Metadata feeds mob counters without loading areas;
+ordered spawn tags feed portal/nexus/gate/summon lookups. Record order
+preserves _AREA_FILES priority, so ambiguous names still resolve to the
+cheapest area load.
 
-objs.idx (every object template) feeds `debug find` name->vnum lookups
-and gives locate-object ordered reset-owning area candidates. It lists all
-templates, not just reset ones, because `debug load obj` can spawn any
-template and pending saves can contain resetless objects.
+objs.bin (every object template, same KX01 format) feeds `debug vnum`
+name->vnum lookups and gives locate-object ordered reset-owning area
+candidates. It lists all templates, not just reset ones, because
+`debug load obj` can spawn any template and pending saves can contain
+resetless objects. tools/dump_key_bin.py renders either file back to
+readable text.
 
 gear.bin records static wearable/source relationships for `recommend gear`
 in a fixed-width binary layout (see pack_gear_index); the on-device scanner
@@ -70,6 +73,22 @@ _GEAR_MAGIC = b"GB01"
 #   6 tag_count u8   7.. tag ids u8 x tag_count
 #  Deduplicated ascii string table at strings_off.
 _FOES_MAGIC = b"FB01"
+# mobs.bin / objs.bin ("KX01") layout, little-endian (manual byte reads in
+# src/keyidx.py, src/info.py._mob_stats and the consumers there):
+#   0 magic "KX01"   4 header_size u16   6 kw_off u32 (absolute)
+#  10 strings_off u32 (absolute)   14 record_count u16
+#  16 tag table (u8 count; u8 len + ascii per tag); header ends at
+#  header_size. Records follow at header_size, in file order, variable
+#  length (step = 11 + tag_count):
+#   0 vnum u16   2 level u8 (0 for objects)   3 home_tag u8
+#   4 kw_off u16 (relative to the keyword blob)   6 kw_len u8
+#   7 name_off u16 (relative to strings_off)   9 name_len u8
+#  10 tag_count u8   11.. spawn tag ids u8 x tag_count
+# The keyword blob at kw_off holds one lowercased ascii entry per record
+# in record order, separated by "\n" and with one leading "\n" so a
+# word-boundary probe at hit-1 is always in bounds. Deduplicated ascii
+# display strings (short_descr) live at strings_off.
+_KEY_MAGIC = b"KX01"
 _GEAR_BIAS = 32768
 _GEAR_KIND_NAMES = ("shop", "floor", "container", "loot")
 _GEAR_FLAG_BITS = {"sharp": 1, "two_hands": 2, "anti_good": 4,
@@ -435,6 +454,136 @@ def parse_foes_index(blob):
     return rows, tags, sizes
 
 
+def pack_key_index(rows, tags=None):
+    """Pack keyword rows into a binary KX01 blob (mobs.bin / objs.bin).
+
+    rows are dicts {vnum, level, home, keywords, name, tags} in emission
+    order (home and tags are area-tag strings); tags is the ordered
+    area-tag table (defaults to first-seen row order), so a tag id doubles
+    as the _AREA_FILES position that orders "cheapest area first". Shared
+    with tests so fixtures keep the shipped layout: record order is a
+    correctness invariant (the runtime maps keyword-blob hits back to
+    records with one sequential two-pointer walk), and keywords are
+    lowercased here so the scanner never allocates a lowered copy.
+    Byte layout above _KEY_MAGIC.
+    """
+    if tags is None:
+        tags = []
+        for row in rows:
+            for tag in [row["home"]] + list(row["tags"]):
+                if tag not in tags:
+                    tags.append(tag)
+    tag_ids = {tag: index for index, tag in enumerate(tags)}
+    assert len(tags) < 256
+    assert len(rows) < 65536
+
+    strings = {}
+    string_parts = []
+
+    def intern(text):
+        data = text.encode("ascii")
+        assert len(data) < 256, text
+        ref = strings.get(data)
+        if ref is None:
+            offset = sum(len(part) for part in string_parts)
+            assert offset + len(data) < 65536
+            ref = (offset, len(data))
+            strings[data] = ref
+            string_parts.append(data)
+        return ref
+
+    # Keyword blob: one lowercased entry per record, record order, leading
+    # separator included so the runtime's word-boundary probe at hit-1 is
+    # always in bounds (and correct for the first entry).
+    entries = []
+    kw_refs = []
+    kw_total = 1
+    for row in rows:
+        entry = row["keywords"].lower().encode("ascii")
+        assert len(entry) < 256, row["vnum"]
+        kw_refs.append(kw_total)
+        entries.append(entry)
+        kw_total += len(entry) + 1
+    assert kw_total < 65536
+    kwblob = b"\n" + b"\n".join(entries)
+
+    records = []
+    for index, row in enumerate(rows):
+        name_off, name_len = intern(row["name"])
+        vnum = row["vnum"]
+        level = row["level"]
+        row_tags = row["tags"]
+        assert 0 <= vnum < 65536 and 0 <= level < 256, row
+        assert len(row_tags) < 256, row
+        kw_off = kw_refs[index]
+        records.append(bytes((
+            vnum & 255, vnum >> 8, level, tag_ids[row["home"]],
+            kw_off & 255, kw_off >> 8, len(entries[index]),
+            name_off & 255, name_off >> 8, name_len, len(row_tags),
+        )) + bytes(tag_ids[tag] for tag in row_tags))
+    body = b"".join(records)
+
+    tables = bytearray()
+    tables.append(len(tags))
+    for name in tags:
+        data = name.encode("ascii")
+        assert len(data) < 256
+        tables.append(len(data))
+        tables += data
+    header_size = 16 + len(tables)
+    assert header_size <= 2048  # the scanner's header bound
+    kw_off = header_size + len(body)
+    strings_off = kw_off + len(kwblob)
+    header = (_KEY_MAGIC
+              + struct.pack("<HIIH", header_size, kw_off, strings_off,
+                            len(rows))
+              + bytes(tables))
+    return header + body + kwblob + b"".join(string_parts)
+
+
+def parse_key_index(blob):
+    """Decode a KX01 blob -> (rows in file order, tags).
+
+    PC-side reader shared by tools/dump_key_bin.py and the tests; the
+    device scanner in src/keyidx.py reads the same layout with manual byte
+    arithmetic. Row dicts mirror pack_key_index's input shape.
+    """
+    assert blob[:4] == _KEY_MAGIC
+    header_size, kw_off, strings_off, count = struct.unpack_from("<HIIH",
+                                                                 blob, 4)
+    pos = 16
+    tag_count = blob[pos]
+    pos += 1
+    tags = []
+    for _ in range(tag_count):
+        length = blob[pos]
+        tags.append(blob[pos + 1:pos + 1 + length].decode("ascii"))
+        pos += 1 + length
+    assert pos == header_size
+    assert blob[kw_off:kw_off + 1] == b"\n" or kw_off == strings_off
+
+    rows = []
+    offset = header_size
+    while offset < kw_off:
+        row_tags = blob[offset + 10]
+        kw_start = kw_off + (blob[offset + 4] | blob[offset + 5] << 8)
+        name_start = strings_off + (blob[offset + 7] | blob[offset + 8] << 8)
+        rows.append({
+            "vnum": blob[offset] | blob[offset + 1] << 8,
+            "level": blob[offset + 2],
+            "home": tags[blob[offset + 3]],
+            "keywords": blob[kw_start:kw_start + blob[offset + 6]
+                             ].decode("ascii"),
+            "name": blob[name_start:name_start + blob[offset + 9]
+                         ].decode("ascii"),
+            "tags": [tags[blob[offset + 11 + i]] for i in range(row_tags)],
+        })
+        offset += 11 + row_tags
+    assert offset == kw_off
+    assert len(rows) == count
+    return rows, tags
+
+
 def main():
     # Two passes: an M-reset may spawn a template defined in another file
     # (haon.are places arachnos-defined spiders in room 6134), so template
@@ -480,23 +629,22 @@ def main():
     # follow their defining area and remain visible to debug/counter listings.
     vnums = sorted(all_mobiles, key=lambda v: (
         area_order[(spawn_tags.get(v) or [home_tags[v]])[0]], v))
-    lines = []
+    mob_rows = []
     for vnum in vnums:
         mob = all_mobiles[vnum]
         # Flatten whitespace: some source fields carry stray newlines.
-        kw = " ".join(mob.get("keywords", "").split())
-        short = " ".join(mob.get("short_descr", "").split())
-        assert "|" not in kw, "pipe in keywords of mob %d" % vnum
-        assert "|" not in short, "pipe in short_descr of mob %d" % vnum
-        lines.append(str(vnum) + "|" + home_tags[vnum] + "|"
-                     + str(mob.get("level", 0)) + "|" + kw + "|" + short
-                     + "|" + ",".join(spawn_tags.get(vnum, ())))
-    out_path = os.path.join(OUTDIR, "mobs.idx")
-    header = ("# vnum|home_tag|level|keywords|short_descr|spawn_tags per mob"
-               " template -- built by tools/build_mob_index.py, do not edit\n")
-    with open(out_path, "w", newline="\n") as f:
-        f.write(header + "\n".join(lines) + "\n")
-    print("Wrote", out_path, "-", len(lines), "mobs,",
+        mob_rows.append({
+            "vnum": vnum, "level": mob.get("level", 0),
+            "home": home_tags[vnum],
+            "keywords": " ".join(mob.get("keywords", "").split()),
+            "name": " ".join(mob.get("short_descr", "").split()),
+            "tags": list(spawn_tags.get(vnum, ())),
+        })
+    blob = pack_key_index(mob_rows, [entry[1] for entry in world._AREA_FILES])
+    out_path = os.path.join(OUTDIR, "mobs.bin")
+    with open(out_path, "wb") as f:
+        f.write(blob)
+    print("Wrote", out_path, "-", len(mob_rows), "mobs,",
           os.path.getsize(out_path), "bytes")
 
     # foes.bin: fightable rows only, binary, one contiguous segment per mob
@@ -531,21 +679,22 @@ def main():
                 continue
             seen.add(reset[1])
             obj_spawn_tags.setdefault(reset[1], []).append(tag)
-    obj_lines = []
+    obj_rows = []
     for tag, ns in areas:
         for vnum in sorted(ns.get("OBJECTS", {})):
             kw = " ".join(ns["OBJECTS"][vnum].get("keywords", "").split())
-            assert "|" not in kw, "pipe in keywords of obj %d" % vnum
             if kw:
-                obj_lines.append(tag + "|" + str(vnum) + "|" + kw + "|"
-                                 + ",".join(obj_spawn_tags.get(vnum, ())))
-    out_path = os.path.join(OUTDIR, "objs.idx")
-    header = ("# home_tag|vnum|keywords|spawn_tags per object template,"
-              " areas ascending by size -- built by tools/build_mob_index.py,"
-              " do not edit\n")
-    with open(out_path, "w", newline="\n") as f:
-        f.write(header + "\n".join(obj_lines) + "\n")
-    print("Wrote", out_path, "-", len(obj_lines), "objects,",
+                # Objects carry no level/display string in this index: the
+                # consumers (debug vnum, locate object) show keywords.
+                obj_rows.append({
+                    "vnum": vnum, "level": 0, "home": tag, "keywords": kw,
+                    "name": "", "tags": list(obj_spawn_tags.get(vnum, ())),
+                })
+    blob = pack_key_index(obj_rows, [entry[1] for entry in world._AREA_FILES])
+    out_path = os.path.join(OUTDIR, "objs.bin")
+    with open(out_path, "wb") as f:
+        f.write(blob)
+    print("Wrote", out_path, "-", len(obj_rows), "objects,",
           os.path.getsize(out_path), "bytes")
 
     gear_rows = []
