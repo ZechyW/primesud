@@ -14,6 +14,7 @@ from magic import SPELL_FUNS, TARGET_CHAR, _skill_lookup
 from movement import move_char, do_open, do_close
 from skills_table import SKILLS
 from urandom import randint
+from util import obj_remove
 from world import ROOM_DEFS, item_tpl
 
 
@@ -333,7 +334,7 @@ def spec_janitor(ch):
             cost = tpl.get("value", 0)
         if _item_type(trash, tpl) in ("drink", "trash") or cost < 10:
             act("$n picks up some trash.", ch, None, None, TO_ROOM)
-            rs["items"].remove(trash)
+            obj_remove(rs["items"], trash)
             ch["inv"].append(trash)
             return True
     return False
@@ -627,7 +628,7 @@ def spec_fido(ch):
         act("$n savagely devours a corpse.", ch, None, None, TO_ROOM)
         for inner in corpse.get("contents", []):
             rs["items"].append(inner)
-        rs["items"].remove(corpse)
+        obj_remove(rs["items"], corpse)
         return True
     return False
 

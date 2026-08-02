@@ -41,6 +41,20 @@ def gc_collect():
     return gc.collect()
 
 
+def obj_remove(lst, obj):
+    """Remove obj from lst by identity (cf. 1stMud obj_from_room pointer
+    unlink). [PRIMESUD] list.remove() matches dicts by value: with two
+    value-equal instances (e.g. litter spill twins) it pulls the wrong
+    one -- aliasing dupes, or ValueError once a mutation diverges the
+    pair mid-loop.
+    """
+    for i in range(len(lst)):
+        if lst[i] is obj:
+            del lst[i]
+            return
+    lst.remove(obj)
+
+
 # -- Firmware-safe int rendering [PRIMESUD] ------------------------------------
 # The physical G1 corrupts its heap when bulk str(int) transients meet a
 # garbage collection (explicit or automatic) -- see docs/PRIME_FIRMWARE_BUGS.md

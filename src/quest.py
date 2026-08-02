@@ -37,7 +37,7 @@ from item import (create_object, obj_vnum, get_obj_list, item_extra_flags,
                   item_wear_flags, item_type as _item_type)
 from picker import pick_from
 from urandom import randint
-from util import count_str, num_str, pad_right
+from util import count_str, num_str, obj_remove, pad_right
 
 # -- Quest types (cf. 1stMud quest_t in defines.h) -----------------------------
 QUEST_RETURN_FINDMOB  = -5
@@ -673,7 +673,7 @@ def quest_reward(player, questman, rtype):
     if ovnum:
         for obj in list(player["inv"]):
             if obj_vnum(obj) == ovnum:
-                player["inv"].remove(obj)
+                obj_remove(player["inv"], obj)
                 break
 
     end_quest(player, QUEST_TIME + time_adj)
@@ -1063,7 +1063,7 @@ def do_quest(player, args):
         player["quest_points"] = player.get("quest_points", 0) + cost // 3
         act("$N takes $p from you for " + count_str(cost // 3, "questpoint") + ".",
             player, obj, questman, TO_CHAR)
-        player["inv"].remove(obj)  # cf. 1stMud extract_obj
+        obj_remove(player["inv"], obj)  # cf. 1stMud extract_obj
         world.save_pending = True  # cf. 1stMud save_char_obj
         return ("quest sell " + name) if picked else None
 

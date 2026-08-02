@@ -15,7 +15,7 @@ from item import (get_obj_list, obj_vnum, create_object, item_extra_flags,
                   obj_level)
 from skills_table import GSN_HAGGLE
 from urandom import randint
-from util import num_str, pad_left
+from util import num_str, obj_remove, pad_left
 from picker import pick_from
 
 
@@ -428,7 +428,7 @@ def do_buy(player, args):
             t_obj = create_object(obj_vnum(obj))
         else:
             t_obj = obj
-            keeper["inv"].remove(t_obj)
+            obj_remove(keeper["inv"], t_obj)
             if arg is not None:
                 obj = _get_obj_keeper(player, keeper, arg)
 
@@ -567,9 +567,9 @@ def _sell_one(player, keeper, obj):
     deduct_cost(keeper, cost)
 
     if _item_type(obj, tpl) == "trash" or flags.get("sell_extract"):
-        player["inv"].remove(obj)
+        obj_remove(player["inv"], obj)
     else:
-        player["inv"].remove(obj)
+        obj_remove(player["inv"], obj)
         if obj.get("timer", 0):
             ensure_item_extra_flags(obj, tpl)["had_timer"] = True
         else:

@@ -40,7 +40,7 @@ from skills_table import (GSN_SCROLLS, GSN_STAVES, GSN_WANDS, GSN_STEAL,
 from skills_table import SKILLS, WEAPON_GSN_MAP
 from terminal import tprint
 from urandom import randint
-from util import int_str, num_str
+from util import int_str, num_str, obj_remove
 from world import ITEM_DEFS, MOB_DEFS, item_tpl
 from world import (OBJ_VNUM_SCHOOL_BANNER,
                    OBJ_VNUM_SCHOOL_MACE, OBJ_VNUM_SCHOOL_DAGGER, OBJ_VNUM_SCHOOL_SWORD,
@@ -93,7 +93,7 @@ def _loot_container_picker(player, container):
             ctpl = item_tpl(cobj)
             if not _check_carry_get(player, cobj, ctpl):
                 continue
-            container["contents"].remove(cobj)
+            obj_remove(container["contents"], cobj)
             chprintln(player, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
             if not apply_money_pickup(player, cobj, ctpl):
                 player["inv"].append(cobj)
@@ -104,7 +104,7 @@ def _loot_container_picker(player, container):
     ctpl = item_tpl(cobj)
     if not _check_carry_get(player, cobj, ctpl):
         return
-    container["contents"].remove(cobj)
+    obj_remove(container["contents"], cobj)
     chprintln(player, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
     if not apply_money_pickup(player, cobj, ctpl):
         player["inv"].append(cobj)
@@ -229,7 +229,7 @@ def do_get(player, args):
                 tpl = item_tpl(obj)
                 if not _check_carry_get(player, obj, tpl):
                     continue
-                rs["items"].remove(obj)
+                obj_remove(rs["items"], obj)
                 chprintln(player, "You get " + obj_short(obj, tpl) + ".")
                 if not apply_money_pickup(player, obj, tpl):
                     player["inv"].append(obj)
@@ -241,7 +241,7 @@ def do_get(player, args):
             tpl = item_tpl(obj)
             if not _check_carry_get(player, obj, tpl):
                 return
-            rs["items"].remove(obj)
+            obj_remove(rs["items"], obj)
             chprintln(player, "You get " + obj_short(obj, tpl) + ".")
             # [PRIMESUD] picker-resolved history strings carry the FULL keywords
             # string: replay goes through is_name all-words prefix matching,
@@ -273,7 +273,7 @@ def do_get(player, args):
                 continue
             if not _check_carry_get(player, obj, tpl):
                 continue
-            rs["items"].remove(obj)
+            obj_remove(rs["items"], obj)
             chprintln(player, "You get " + obj_short(obj, tpl) + ".")
             if not apply_money_pickup(player, obj, tpl):
                 player["inv"].append(obj)
@@ -311,7 +311,7 @@ def do_get(player, args):
                             continue
                         if not _check_carry_get(player, cobj, ctpl, cont_carried):
                             continue
-                        cont_obj["contents"].remove(cobj)
+                        obj_remove(cont_obj["contents"], cobj)
                         chprintln(player, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
                         if not apply_money_pickup(player, cobj, ctpl):
                             player["inv"].append(cobj)
@@ -326,7 +326,7 @@ def do_get(player, args):
             ctpl = item_tpl(cobj)
             if not _check_carry_get(player, cobj, ctpl, cont_carried):
                 return
-            cont_obj["contents"].remove(cobj)
+            obj_remove(cont_obj["contents"], cobj)
             chprintln(player, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
             if not apply_money_pickup(player, cobj, ctpl):
                 player["inv"].append(cobj)
@@ -343,7 +343,7 @@ def do_get(player, args):
         return
     if not _check_carry_get(player, obj, tpl):
         return
-    rs["items"].remove(obj)
+    obj_remove(rs["items"], obj)
     chprintln(player, "You get " + obj_short(obj, tpl) + ".")
     if not apply_money_pickup(player, obj, tpl):
         player["inv"].append(obj)
@@ -379,7 +379,7 @@ def _drop_coins(player, amount, coin):
     for obj in list(rs["items"]):
         if not isinstance(obj, dict) or item_tpl(obj).get("type") != "money":
             continue
-        rs["items"].remove(obj)
+        obj_remove(rs["items"], obj)
         tpl = item_tpl(obj)
         silver_amt += obj.get("silver", tpl.get("silver", 0))
         gold += obj.get("gold", tpl.get("gold", 0))
@@ -427,7 +427,7 @@ def do_drop(player, args):
         tpl = item_tpl(obj)
         sd = obj_short(obj, tpl)
         resolved = "drop " + tpl.get("keywords", tpl["short_descr"])
-        player["inv"].remove(obj)
+        obj_remove(player["inv"], obj)
         ritems = world.rooms[player["room"]]["items"]
         ritems.append(obj)
         chprintln(player, "You drop " + sd + ".")
@@ -435,7 +435,7 @@ def do_drop(player, args):
         # cf. act_obj.c:586 `if (obj && ...)`: a drop prog may have purged or
         # moved the obj -- melt only if it still lies here
         if obj in ritems and item_extra_flags(obj, tpl).get("melt_drop"):
-            ritems.remove(obj)
+            obj_remove(ritems, obj)
             chprintln(player, sd + " dissolves into smoke.")
             return resolved
         return resolved
@@ -453,14 +453,14 @@ def do_drop(player, args):
                 continue
             found = True
             sd = obj_short(obj, tpl)
-            player["inv"].remove(obj)
+            obj_remove(player["inv"], obj)
             ritems = world.rooms[player["room"]]["items"]
             ritems.append(obj)
             chprintln(player, "You drop " + sd + ".")
             _drop_triggers(player, obj)
             # cf. act_obj.c:616 `if (obj && ...)`: prog may have moved it
             if obj in ritems and item_extra_flags(obj, tpl).get("melt_drop"):
-                ritems.remove(obj)
+                obj_remove(ritems, obj)
                 chprintln(player, sd + " dissolves into smoke.")
         if not found:
             if filter_kw:
@@ -477,14 +477,14 @@ def do_drop(player, args):
         return
     tpl = item_tpl(obj)
     sd = obj_short(obj, tpl)
-    player["inv"].remove(obj)
+    obj_remove(player["inv"], obj)
     ritems = world.rooms[player["room"]]["items"]
     ritems.append(obj)
     chprintln(player, "You drop " + sd + ".")
     _drop_triggers(player, obj)
     # cf. act_obj.c:586 `if (obj && ...)`: prog may have moved it
     if obj in ritems and item_extra_flags(obj, tpl).get("melt_drop"):
-        ritems.remove(obj)
+        obj_remove(ritems, obj)
         chprintln(player, sd + " dissolves into smoke.")
 
 
@@ -553,7 +553,7 @@ def do_put(player, args):
                 or get_obj_weight(obj) > max_item_weight * 10):
             chprintln(player, "It won't fit.")
             return
-    player["inv"].remove(obj)
+    obj_remove(player["inv"], obj)
     cont_obj.setdefault("contents", []).append(obj)
     chprintln(player, "You put " + obj_short(obj, tpl) + " in "
               + obj_short(cont_obj, cont_tpl) + ".")
@@ -731,7 +731,7 @@ def do_give(player, args):
             chprintln(player, "{RReturn to " + _giver_name(player)
                      + " before your time runs out!{x")
             player["quest_status"] = QUEST_RETURN_DELIVER
-            player["inv"].remove(obj)  # cf. 1stMud extract_obj
+            obj_remove(player["inv"], obj)  # cf. 1stMud extract_obj
             player["quest_obj"] = 0
             player["quest_mob"] = 0
             # 1stMud: interpret(victim, "thank <name>") -- [PRIMESUD] socials
@@ -773,7 +773,7 @@ def do_give(player, args):
         act("$N can't see it.", player, None, victim, TO_CHAR)
         return resolved
 
-    player["inv"].remove(obj)
+    obj_remove(player["inv"], obj)
     victim["inv"].append(obj)
     # cf. do_give (act_obj.c:845): MOBtrigger off around the give announcement
     # so the "gives you" text can't fire the recipient's act trigger -- the
@@ -801,7 +801,7 @@ def do_give(player, args):
     # [PRIMESUD] Player wallets absorb received money objects, matching pickup.
     if (not victim.get("is_npc") and obj in victim["inv"]
             and apply_money_pickup(victim, obj, tpl)):
-        victim["inv"].remove(obj)
+        obj_remove(victim["inv"], obj)
     # TRIG_GIVE: mob reacts to the received object (cf. do_give, act_obj.c:856)
     if victim.get("is_npc"):
         if mobprog.has_trigger(victim, "give"):
@@ -1163,7 +1163,7 @@ def _zap_anti_align(player, obj, tpl):
         return False
     act("You are zapped by $p and drop it.", player, obj, None, TO_CHAR)
     act("$n is zapped by $p and drops it.", player, obj, None, TO_ROOM)
-    player["inv"].remove(obj)
+    obj_remove(player["inv"], obj)
     world.rooms[player["room"]]["items"].append(obj)
     return True
 
@@ -1804,7 +1804,7 @@ def do_steal(player, args):
         return
     # [PRIMESUD] carry-weight check not ported (no weight tracking)
 
-    victim["inv"].remove(obj)
+    obj_remove(victim["inv"], obj)
     player["inv"].append(obj)
     act("You pocket $p.", player, obj, None)
     check_improve(player, GSN_STEAL, True, 2)
@@ -1937,7 +1937,7 @@ def do_quaff(player, args):
         return
     chprintln(player, "You quaff " + obj_short(obj, tpl) + ".")
     cast_item_spells(player, obj, player, None)
-    player["inv"].remove(obj)
+    obj_remove(player["inv"], obj)
 
 
 def do_envenom(player, args):
@@ -2044,7 +2044,7 @@ def do_eat(player, args):
     if otype == "pill" and validate_item_spell_payload(obj) is None:
         return
     # Remove from inventory first, then promote to dict for act() rendering [PRIMESUD]
-    player["inv"].remove(obj)
+    obj_remove(player["inv"], obj)
     # Promote plain vnum to dict so act() can render short_descr properly [PRIMESUD]
     if not isinstance(obj, dict):
         obj = create_object(obj_vnum(obj))
@@ -2300,7 +2300,7 @@ def do_recite(player, args):
     else:
         cast_item_spells(player, scroll, victim, obj)
         check_improve(player, GSN_SCROLLS, True, 2)
-    player["inv"].remove(scroll)
+    obj_remove(player["inv"], scroll)
 
 
 def do_brandish(player, args):
@@ -2495,7 +2495,7 @@ def _sacrifice_one(player, obj, rs):
 
     short = obj.get("short_descr") or tpl["short_descr"]
     chprintln(player, "You sacrifice " + short + " to your deity.")
-    rs["items"].remove(obj)
+    obj_remove(rs["items"], obj)
 
 
 def do_sacrifice(player, args):

@@ -78,7 +78,7 @@ from stances import (STANCE_TABLE, MAX_STANCE,
                      stance_name, stance_lookup, can_use_stance,
                      improve_stance, autodrop)
 from urandom import randint
-from util import wait, count_str, num_str, pad_right
+from util import wait, count_str, num_str, obj_remove, pad_right
 from world import MOB_DEFS, ROOM_DEFS, item_tpl
 from world import (
     OBJ_VNUM_CORPSE_NPC, OBJ_VNUM_CORPSE_PC,
@@ -1495,7 +1495,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                 if flags & PLR_AUTOLOOT and contents:
                     for cobj in list(contents):
                         ctpl = item_tpl(cobj)
-                        corpse["contents"].remove(cobj)
+                        obj_remove(corpse["contents"], cobj)
                         chprintln(ch, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
                         if not apply_money_pickup(ch, cobj, ctpl):
                             ch["inv"].append(cobj)
@@ -1506,7 +1506,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                     for cobj in list(corpse["contents"]):
                         ctpl = item_tpl(cobj)
                         if _item_type(cobj, ctpl) == "money":
-                            corpse["contents"].remove(cobj)
+                            obj_remove(corpse["contents"], cobj)
                             chprintln(ch, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
                             apply_money_pickup(ch, cobj, ctpl)
 
@@ -1523,7 +1523,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                         ch["silver"] = ch.get("silver", 0) + silver
                         short = corpse.get("short_descr", "a corpse")
                         chprintln(ch, "You sacrifice " + short + " to your deity.")
-                        world.rooms[ch["room"]]["items"].remove(corpse)
+                        obj_remove(world.rooms[ch["room"]]["items"], corpse)
 
         return True
 
@@ -3061,7 +3061,7 @@ def group_gain(ch, victim):
                 act("$n is zapped by $p.", gch, obj, None, TO_ROOM)
                 # 1stMud: obj_from_char + obj_to_room
                 unequip_char(gch, slot)
-                gch["inv"].remove(obj)
+                obj_remove(gch["inv"], obj)
                 world.rooms[gch["room"]]["items"].append(obj)
 
 
@@ -3745,7 +3745,7 @@ def disarm(ch, victim):
 
     # 1stMud: obj_from_char -- unequip (reverses stat/AC modifiers), off char
     unequip_char(victim, "wield")
-    victim["inv"].remove(wobj)
+    obj_remove(victim["inv"], wobj)
 
     # 1stMud: nodrop/inventory (or ROOM_ARENA, not ported) -> stays with victim
     if flags.get("nodrop") or flags.get("inventory"):
@@ -3755,7 +3755,7 @@ def disarm(ch, victim):
         # 1stMud: if IsNPC && wait==0 && can_see_obj -> get_obj (picks up to
         # inventory; does NOT re-wield)
         if victim["is_npc"] and victim.get("wait", 0) == 0:
-            world.rooms[victim["room"]]["items"].remove(wobj)
+            obj_remove(world.rooms[victim["room"]]["items"], wobj)
             victim["inv"].append(wobj)
             act("$n gets $p.", victim, wobj, None, TO_ROOM)
 

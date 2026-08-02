@@ -112,6 +112,16 @@ dicts at spawn (`create_mobile`), and runtime room state is a disjoint
 `{"items", "mobs"}` dict beside `ROOM_DEFS` -- neither shadows, so no
 parallel helpers exist or are needed.
 
+**Object-removal convention (settled 03/08/2026).** Object instances are
+dicts, and `list.remove()` matches by value: with two value-equal
+instances in one list (litter-spill twins) it unlinks the wrong one --
+aliasing dupes, or `ValueError: object not in sequence` once a mutation
+diverges the pair mid-loop. 1stMud's C lists unlink by pointer, so
+identity is also the faithful semantics. Removing an object instance
+(item/affect dict) from a live list goes through `util.obj_remove`
+(identity scan with `list.remove` fallback). Plain `.remove` stays for
+lists of scalars: room `mobs` id lists, reset tuples, alias pairs.
+
 **Dead-code sweep outcomes (settled 01/08/2026).** Full dead/legacy pass
 plus guard pass ran 01/08 (plan doc deleted per project rule; full text in
 git history). Durable retain decisions, so later sweeps don't re-litigate:

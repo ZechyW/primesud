@@ -26,7 +26,7 @@ from player import regen_update, tick_update
 from quest import quest_update
 from stances import first_stance_tip  # [PRIMESUD]
 from urandom import randint
-from util import count_str
+from util import count_str, obj_remove
 from world import ROOM_DEFS, item_tpl
 
 # -- Return flags for update_handler (cf. 1stMud update.c) --------------------
@@ -266,7 +266,7 @@ def _tick_contents(obj_list):
         timer -= 1
         obj["timer"] = timer
         if timer == 0:
-            obj_list.remove(obj)
+            obj_remove(obj_list, obj)
 
 
 def obj_update(tr, player):
@@ -319,7 +319,7 @@ def obj_update(tr, player):
                         set_item_extra_flag(inner, item_tpl(inner), "litter",
                                             True)
                     room["items"].append(inner)
-                room["items"].remove(obj)
+                obj_remove(room["items"], obj)
 
     # -- NPC inventories (cf. 1stMud obj->carried_by != NULL, IsNPC path) --
     for cid, ch in world.chars.items():
@@ -340,7 +340,7 @@ def obj_update(tr, player):
                 # Shopkeeper recoup (cf. 1stMud update.c:878)
                 if ch.get("shop"):
                     ch["silver"] = ch.get("silver", 0) + obj.get("cost", 0) // 5
-                ch["inv"].remove(obj)
+                obj_remove(ch["inv"], obj)
 
     # -- Player inventory + equipment (cf. 1stMud obj->carried_by, !IsNPC path) --
     for obj in list(player["inv"]):
@@ -363,7 +363,7 @@ def obj_update(tr, player):
             if itype == "pc_corpse" or item_wear_flags(obj, tpl).get("float"):
                 for inner in obj.get("contents", []):
                     player["inv"].append(inner)
-            player["inv"].remove(obj)
+            obj_remove(player["inv"], obj)
 
     for slot, obj in list(player["equip"].items()):
         if obj is None:
@@ -389,4 +389,4 @@ def obj_update(tr, player):
                     for inner in obj.get("contents", []):
                         room["items"].append(inner)
             unequip_char(player, slot)
-            player["inv"].remove(obj)
+            obj_remove(player["inv"], obj)

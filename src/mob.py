@@ -16,7 +16,7 @@ from item import create_object, ensure_item_extra_flags, item_wear_flags
 from game_time import init_weather, advance_weather, adjust_vectors, get_weather_echo
 from special import SPEC_TABLE
 from debug import DBG, dbg  # [PRIMESUD]
-from util import num_str
+from util import num_str, obj_remove
 
 
 # Area age thresholds (cf. 1stMud area_update: age < 3 skip; age >= 15 reset
@@ -720,7 +720,7 @@ def mobile_update(tr, player):
                     obj_best = obj
                     best_cost = cost
             if obj_best is not None:
-                room_items.remove(obj_best)
+                obj_remove(room_items, obj_best)
                 inst["inv"].append(obj_best)
                 act("$n gets $p.", inst, obj_best, None, TO_ROOM)
         if act_flags.get("sentinel"):

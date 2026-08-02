@@ -14,7 +14,7 @@ import world
 from world import MOB_DEFS, ROOM_DEFS, item_tpl, item_tpl_get
 from game_time import time_info, SUN_SET, SUN_DARK
 from debug import DBG  # [PRIMESUD] "holylight" debug toggle = 1stMud PLR_HOLYLIGHT
-from util import int_str, sstr
+from util import int_str, obj_remove, sstr
 
 # -- Alignment helpers (cf. 1stMud IsGood/IsEvil/IsNeutral in macro.h) ----------------
 
@@ -326,7 +326,7 @@ def affect_modify(char, af, add):
         act("You drop $p.", char, wield, None, TO_CHAR)
         act("$n drops $p.", char, wield, None, TO_ROOM)
         unequip_char(char, "wield")
-        char["inv"].remove(wield)
+        obj_remove(char["inv"], wield)
         world.rooms[char["room"]]["items"].append(wield)
         _affect_depth -= 1
 
@@ -399,7 +399,7 @@ def affect_remove(char, af):
     affect_modify(char, af, False)
     where = af.get("where", "to_affects")
     vector = af.get("bitvector", "")
-    affects.remove(af)
+    obj_remove(affects, af)
     affect_check(char, where, vector)
 
 
@@ -619,7 +619,7 @@ def unequip_char(char, slot):
 def equip_char(char, obj, slot):
     """Seat obj in slot and apply stat_bonuses (cf. 1stMud equip_char in handler.c)."""
     tpl = item_tpl(obj)
-    char["inv"].remove(obj)
+    obj_remove(char["inv"], obj)
     char["equip"][slot] = obj
     armor = _item_armor_runtime(tpl, obj)
     if armor is not None:

@@ -3,7 +3,7 @@
 import world
 from config import STR_APP_CARRY
 from handler import is_name, number_argument, can_see_obj, get_curr_stat
-from util import sstr
+from util import obj_remove, sstr
 from world import ITEM_DEFS, item_tpl
 
 # Item types that can hold contents, for loot/look-in purposes [PRIMESUD]:
@@ -320,7 +320,7 @@ def item_affect_remove(obj, af, tpl):
     """
     affects = obj.get("affect_list", [])
     if af in affects:
-        affects.remove(af)
+        obj_remove(affects, af)
     if not affects and "affect_list" in obj:
         del obj["affect_list"]
     bit = af.get("bitvector", "")

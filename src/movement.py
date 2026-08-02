@@ -14,7 +14,7 @@ from config import (EXIT_ORDER, EXIT_NAMES, REV_DIR, DIR_ALIASES,
 from info import (do_look, find_path_to_area, _area_level_str,
                   _sorted_area_files)
 from picker import pick_from
-from util import count_str
+from util import count_str, obj_remove
 from quest import quest_room_check
 from skills_table import (GSN_RECALL, GSN_PICK_LOCK, GSN_SNEAK, GSN_HIDE,
                           GSN_INVIS, GSN_MASS_INVIS, SKILLS)
@@ -502,7 +502,7 @@ def do_enter(ch, args):
 
     if gate.get("gowith"):
         if portal in rs["items"]:
-            rs["items"].remove(portal)
+            obj_remove(rs["items"], portal)
         world.rooms[dest]["items"].append(portal)
 
     if gate.get("normal_exit"):
@@ -553,7 +553,7 @@ def do_enter(ch, args):
         act("$p fades out of existence.", ch, portal, None, TO_CHAR)
         for items in (rs["items"], world.rooms[dest]["items"]):
             if portal in items:
-                items.remove(portal)
+                obj_remove(items, portal)
                 break
     # cf. 1stMud act_enter.c:206-212: entry (NPC) / the three greet passes
     # (player: mob, obj, room) run after arrival; no quest room check in

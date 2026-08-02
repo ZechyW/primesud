@@ -1002,3 +1002,32 @@ class TestInstanceOverridesBeatTemplate:
         inventory.wear_obj(player, obj, True)
         assert any("must be level 40" in ln for ln in lines), lines
         assert player["equip"].get("head") is None
+
+
+class TestObjRemoveIdentity:
+    """do_get 'ValueError: object not in sequence' on value-equal litter twins.
+
+    list.remove() matches dicts by value; two equal instance dicts (litter
+    spill twins) made 'get all' remove the wrong twin, then throw once
+    _get_triggers popped litter/timer and diverged the pair.  obj_remove()
+    unlinks by identity (cf. 1stMud pointer semantics).
+    """
+
+    def test_removes_by_identity_not_equality(self):
+        from util import obj_remove
+        a = {"vnum": 90010, "timer": 30, "extra_flags": {"litter": True}}
+        b = {"vnum": 90010, "timer": 30, "extra_flags": {"litter": True}}
+        items = [a, b]
+        obj_remove(items, b)
+        assert items == [a] and items[0] is a
+
+    def test_get_all_twin_loop_survives_mid_loop_mutation(self):
+        from util import obj_remove
+        a = {"vnum": 90010, "timer": 30, "extra_flags": {"litter": True}}
+        b = {"vnum": 90010, "timer": 30, "extra_flags": {"litter": True}}
+        room_items = [a, b]
+        for obj in list(room_items):
+            obj_remove(room_items, obj)          # old code: rs["items"].remove(obj)
+            obj["extra_flags"].pop("litter", None)   # _get_triggers mutation
+            obj.pop("timer", None)
+        assert room_items == []

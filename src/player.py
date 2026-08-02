@@ -17,7 +17,7 @@ from skills_table import (SKILLS, GSN_RECALL, GSN_FAST_HEALING, GSN_MEDITATION,
                           GSN_PLAGUE, GSN_POISON)
 from stances import STANCE_CURRENT, STANCE_AUTODROP, STANCE_NONE
 from urandom import randint
-from util import num_str
+from util import num_str, obj_remove
 from world import ROOM_DEFS, item_tpl, item_tpl_get
 
 _EQUIP_SAVE_ORDER = (
@@ -610,7 +610,7 @@ def _light_burnout(tr, player):
         # unequip_char reverses its modifiers and returns it to inventory
         # (mirrors update.py's decay extraction); then drop it for good.
         unequip_char(player, "light")
-        player["inv"].remove(light)
+        obj_remove(player["inv"], light)
     elif fuel <= 5:
         act("$p flickers.", player, light, None, TO_CHAR)
 

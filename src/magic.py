@@ -42,7 +42,7 @@ from skill_utils import can_use_skill_spell, find_skill_spell, spell_mana
 from skills_table import SKILLS, SKILL_TABLE
 from terminal import tprint
 from urandom import randint
-from util import num_str
+from util import num_str, obj_remove
 from world import ITEM_DEFS, MOB_DEFS, ROOM_DEFS, item_tpl
 from world import (OBJ_VNUM_MUSHROOM, OBJ_VNUM_LIGHT_BALL, OBJ_VNUM_SPRING,
                    OBJ_VNUM_DISC, OBJ_VNUM_PORTAL, OBJ_VNUM_ROSE)
@@ -806,7 +806,7 @@ def spell_enchant_armor(sn, level, ch, vo, target):
     result = randint(1, 100)
     if result < fail // 5:
         chprintln(ch, _item_name(vo) + " flares blindingly... and evaporates!")
-        ch["inv"].remove(vo)
+        obj_remove(ch["inv"], vo)
         return False
     if result < fail // 3:
         chprintln(ch, _item_name(vo) + " glows brightly, then fades...oops.")
@@ -894,7 +894,7 @@ def spell_enchant_weapon(sn, level, ch, vo, target):
     result = randint(1, 100)
     if result < fail // 5:
         chprintln(ch, _item_name(vo) + " shivers violently and explodes!")
-        ch["inv"].remove(vo)
+        obj_remove(ch["inv"], vo)
         return False
     if result < fail // 2:
         chprintln(ch, _item_name(vo) + " glows brightly, then fades...oops.")
@@ -2017,7 +2017,7 @@ def spell_heat_metal(sn, level, ch, vo, target):
                     act("$n yelps and throws $p to the ground!", victim, obj_lose, None, TO_ROOM)
                     act("You remove and drop $p before it burns you.", victim, obj_lose, None, TO_CHAR)
                     dam += randint(1, sear_max) // 3
-                    victim["inv"].remove(obj_lose)
+                    obj_remove(victim["inv"], obj_lose)
                     world.rooms[victim["room"]]["items"].append(obj_lose)
                     fail = False
                 else:
@@ -2031,7 +2031,7 @@ def spell_heat_metal(sn, level, ch, vo, target):
                     # burns you." (missing verb, magic.c:3011/3065) -- typo fix.
                     act("You drop $p before it burns you.", victim, obj_lose, None, TO_CHAR)
                     dam += randint(1, sear_max) // 6
-                    victim["inv"].remove(obj_lose)
+                    obj_remove(victim["inv"], obj_lose)
                     world.rooms[victim["room"]]["items"].append(obj_lose)
                     fail = False
                 else:
@@ -2046,7 +2046,7 @@ def spell_heat_metal(sn, level, ch, vo, target):
                     act("$n is burned by $p, and throws it to the ground.", victim, obj_lose, None, TO_ROOM)
                     chprintln(victim, "You throw your red-hot weapon to the ground!")
                     dam += 1
-                    victim["inv"].remove(obj_lose)
+                    obj_remove(victim["inv"], obj_lose)
                     world.rooms[victim["room"]]["items"].append(obj_lose)
                     fail = False
                 else:
@@ -2059,7 +2059,7 @@ def spell_heat_metal(sn, level, ch, vo, target):
                     # [PRIMESUD] typo fix, see armor branch above.
                     act("You drop $p before it burns you.", victim, obj_lose, None, TO_CHAR)
                     dam += randint(1, sear_max) // 6
-                    victim["inv"].remove(obj_lose)
+                    obj_remove(victim["inv"], obj_lose)
                     world.rooms[victim["room"]]["items"].append(obj_lose)
                     fail = False
                 else:
@@ -2352,7 +2352,7 @@ def spell_recharge(sn, level, ch, vo, target):
     act("$p glows brightly and explodes!", ch, vo, None, TO_CHAR)
     act("$p glows brightly and explodes!", ch, vo, None, TO_ROOM)
     if vo in ch["inv"]:
-        ch["inv"].remove(vo)
+        obj_remove(ch["inv"], vo)
     return False
 
 
@@ -2897,7 +2897,7 @@ def _consume_warp_stone(ch):
     act("You draw upon the power of $p.", ch, stone, None, TO_CHAR)
     act("It flares brightly and vanishes!", ch, stone, None, TO_CHAR)
     unequip_char(ch, "hold")
-    ch["inv"].remove(stone)  # extract_obj: unequip returns it to inventory
+    obj_remove(ch["inv"], stone)  # extract_obj: unequip returns it to inventory
     return True
 
 

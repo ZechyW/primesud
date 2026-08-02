@@ -123,7 +123,7 @@ from quest import is_quester
 from races import race_lookup
 from skill_utils import get_skill
 from skills_table import SKILLS
-from util import num_str, sstr
+from util import num_str, obj_remove, sstr
 
 # -- Interpreter limits (cf. programs.c:1942/1950) -----------------------------
 MAX_NESTED_LEVEL = 12
@@ -2373,10 +2373,10 @@ def _detach_obj(mob, obj):
     """Remove *obj* from the mob's room floor, inventory, or equipment. [PRIMESUD]"""
     rs = _room_of(mob)
     if rs is not None and obj in rs.get("items", []):
-        rs["items"].remove(obj)
+        obj_remove(rs["items"], obj)
         return
     if obj in mob["inv"]:
-        mob["inv"].remove(obj)
+        obj_remove(mob["inv"], obj)
         return
     for slot, o in list(mob["equip"].items()):
         if o is obj:
@@ -2723,12 +2723,12 @@ def _mp_junk(mob, args, pv, cl):
         o = get_obj_list(arg, mob["inv"], world.ITEM_DEFS, mob)
         if o is None:
             return
-        mob["inv"].remove(o)
+        obj_remove(mob["inv"], o)
     else:
         name = arg[4:] if al.startswith("all.") else ""
         for o in list(mob["inv"]):
             if not name or is_name(name, _obj_keywords(o)):
-                mob["inv"].remove(o)
+                obj_remove(mob["inv"], o)
         for slot, o in list(mob["equip"].items()):
             if o is not None and (not name or is_name(name, _obj_keywords(o))):
                 mob["equip"][slot] = None
@@ -2760,7 +2760,7 @@ def _remove_objs(victim, spec, label):
     vnum = _atoi(spec) if _is_number(spec) else 0
     for o in list(victim["inv"]):
         if fall or obj_vnum(o) == vnum:
-            victim["inv"].remove(o)
+            obj_remove(victim["inv"], o)
     for slot, o in list(victim["equip"].items()):
         if o is not None and (fall or obj_vnum(o) == vnum):
             victim["equip"][slot] = None
@@ -3080,7 +3080,7 @@ def _octx_detach(octx):
     c = octx.get("carrier")
     if c is not None:
         if o in c["inv"]:
-            c["inv"].remove(o)
+            obj_remove(c["inv"], o)
         else:
             for slot, it in list(c["equip"].items()):
                 if it is o:
@@ -3088,7 +3088,7 @@ def _octx_detach(octx):
     else:
         rs = world.rooms._data.get(octx.get("room"))
         if rs is not None and o in rs.get("items", []):
-            rs["items"].remove(o)
+            obj_remove(rs["items"], o)
 
 
 def _op_gecho(octx, args, pv):
@@ -3225,13 +3225,13 @@ def _op_purge(octx, args, pv):
         vobj = _obj_at(rvnum, arg)
         if vobj is not None:
             if rs is not None and vobj in rs.get("items", []):
-                rs["items"].remove(vobj)
+                obj_remove(rs["items"], vobj)
             return
         carrier = octx.get("carrier")
         if carrier is not None:
             vobj = get_obj_list(arg, carrier["inv"], world.ITEM_DEFS, carrier)
             if vobj is not None:
-                carrier["inv"].remove(vobj)
+                obj_remove(carrier["inv"], vobj)
                 return
             for slot, it in list(carrier["equip"].items()):
                 if it is not None and is_name(arg, _obj_keywords(it)):
@@ -3403,7 +3403,7 @@ def _op_otransfer(octx, args, pv):
         return
     rs = world.rooms._data.get(rvnum)
     if rs is not None and vobj in rs.get("items", []):
-        rs["items"].remove(vobj)
+        obj_remove(rs["items"], vobj)
     world.rooms[loc]["items"].append(vobj)
 
 
@@ -3738,7 +3738,7 @@ def _rp_purge(rvnum, args, pv):
         vobj = _obj_at(rvnum, arg)
         if vobj is not None:
             if vobj in rs.get("items", []):
-                rs["items"].remove(vobj)
+                obj_remove(rs["items"], vobj)
         else:
             dbg("roomprog: rppurge bad argument from room " + num_str(rvnum))
         return
@@ -3882,7 +3882,7 @@ def _rp_otransfer(rvnum, args, pv):
         return
     rs = _rp_state(rvnum)
     if rs is not None and vobj in rs.get("items", []):
-        rs["items"].remove(vobj)
+        obj_remove(rs["items"], vobj)
     world.rooms[loc]["items"].append(vobj)
 
 

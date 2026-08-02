@@ -14,6 +14,7 @@ from item import item_extra_flags, item_affect_to_obj, create_object, item_type
 from skill_utils import DazeState
 from skills_table import SKILL_TABLE, GSN_POISON
 from urandom import randint
+from util import obj_remove
 from world import item_tpl
 
 TARGET_NONE = "none"
@@ -94,13 +95,13 @@ def _remove_from_container(obj, container):
     if kind == "list":
         lst = container[1]
         if obj in lst:
-            lst.remove(obj)
+            obj_remove(lst, obj)
     else:
         _, ch, slot = container
         if ch["equip"].get(slot) is obj:
             unequip_char(ch, slot)
             if obj in ch["inv"]:
-                ch["inv"].remove(obj)
+                obj_remove(ch["inv"], obj)
 
 
 def _spill_contents(obj, obj_effect_fn, level, dam, owner, room):
