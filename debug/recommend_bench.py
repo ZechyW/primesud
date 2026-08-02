@@ -1,6 +1,7 @@
 """Recommend-scan timings on-device: gear summary, slot detail, mobs. [PRIMESUD]
 
-Companion probe to RECOMMEND_PLAN.md perf rounds (4c3b0d8 + e8d753c).
+Companion probe to the recommend perf stream (history in docs/PERFORMANCE.md
+sec. Recommend scans).
 Times the non-interactive scan core the `recommend` command sits on --
 recommend._scan_gear(player) / _scan_gear(player, "wield") /
 recommend._mob_candidates(player) -- so exact numbers come out of a log

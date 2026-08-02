@@ -22,6 +22,30 @@ split/iterate in memory. Never loop `readline()` over more than a handful of
 lines. Watch heap size: bulk reads are fine for KB-scale files, not the 150 KB
 `help.dat`.
 
+## Recommend scans (G1 + G2, measured 02 Aug 2026)
+
+The `recommend` perf stream (rounds 1-5, via `debug/recommend_bench.py`
+on a real L10 save; design in DESIGN.md sec. Lazy area loading) is the
+canonical demonstration that **allocation cost, not I/O or row count, is
+the on-device floor for file scans**: every text row parsed with
+`split()` costs ~10-30 heap allocs at ~0.5 ms each at full game heap
+(~13 ms/line), so index re-shapes that only cut row counts plateaued at
+8 s. Binary fixed-layout records walked with raw byte arithmetic (zero
+allocs per reject) removed the constant:
+
+| Scan | Text index (G1) | gear.bin/foes.bin (G1) | (G2) |
+|:-----|--------:|-------:|-----:|
+| `recommend gear` summary | 8,012 ms | 194 ms | 85 ms |
+| `recommend gear wield` | 3,024 ms | 164 ms | 67 ms |
+| `recommend mobs` | 2,383 ms | 75 ms | -- |
+
+Of the 194 ms summary, ~39 ms is I/O (one header read + one ~55 KB
+record-region read + one string-table read); the scanner handles 1,890
+records in ~155 ms, ~82 us/record. Winner display strings resolve from
+a deduplicated string table in one read -- per-winner seek+read pairs
+would have cost ~40 ms each. Device binary-read semantics (`"rb"`
+returns str, char-counted sized reads) in docs/BUILTINS.md.
+
 ## Area loading
 
 ### Initial load probe (measured 25 Jul 2026)
