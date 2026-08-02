@@ -10,13 +10,17 @@ and gives locate-object ordered reset-owning area candidates. It lists all
 templates, not just reset ones, because `debug load obj` can spawn any
 template and pending saves can contain resetless objects.
 
-gear.idx records static wearable/source relationships for `recommend gear`.
+gear.bin records static wearable/source relationships for `recommend gear`
+in a fixed-width binary layout (see pack_gear_index); the on-device scanner
+rejects rows with raw byte arithmetic instead of per-row string splits.
+tools/dump_gear_bin.py renders it back to readable text.
 
 Re-run after re-converting any area:
 
     python tools/build_mob_index.py
 """
 import os
+import struct
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -44,6 +48,21 @@ _STARTER_VNUMS = {
     world.OBJ_VNUM_SCHOOL_POLEARM,
 }
 _SOURCE_ORDER = {"shop": 0, "floor": 1, "container": 2, "loot": 3}
+
+# gear.bin record layout, little-endian, 30 bytes (offsets for the manual
+# byte reads in src/recommend.py._scan_records):
+#   0 bound u16 (+32768 bias)   2 item_level u8    3 flags u8
+#   4 weight u16                6 static u16 (+32768 bias)
+#   8 weapon_base u16          10 wtype_id u8     11 kind u8
+#  12 source_level u8          13 tag_id u8       14 item_vnum u16
+#  16 source_vnum u16          18 room_vnum u16   20 price u32
+#  24 name_off u16  26 name_len u8  27 sname_off u16  29 sname_len u8
+_GEAR_RECORD = struct.Struct("<HBBHHHBBBBHHHIHBHB")
+_GEAR_MAGIC = b"GB01"
+_GEAR_BIAS = 32768
+_GEAR_KIND_NAMES = ("shop", "floor", "container", "loot")
+_GEAR_FLAG_BITS = {"sharp": 1, "two_hands": 2, "anti_good": 4,
+                   "anti_evil": 8, "anti_neutral": 16}
 
 
 def _flat(value):
@@ -106,7 +125,7 @@ def _shop_price(mob, item):
 
 
 def _gear_metadata(vnum, item):
-    """Return shared gear-index fields, or None for excluded items."""
+    """Return shared gear-index fields as a dict, or None for excluded items."""
     if vnum in _STARTER_VNUMS:
         return None
     slot = _wear_flag({}, item)
@@ -120,17 +139,182 @@ def _gear_metadata(vnum, item):
             flags.append(name)
     if item.get("weapon_flags", {}).get("two_hands"):
         flags.append("two_hands")
-    name = _flat(item.get("short_descr", ""))
-    assert "|" not in weapon_type
-    # Reject-relevant fields lead so the runtime can drop a row from a
-    # short partial split; display strings (name, source_name) trail the
-    # row and are only parsed for kept candidates.
-    return (
-        (str(vnum), slot, str(item.get("level", 0)), str(static_score),
-         str(weapon_base), weapon_type, "1" if sharp else "0",
-         str(item.get("weight", 0)), ",".join(flags)),
-        name,
-    )
+    return {
+        "vnum": vnum, "slot": slot, "level": item.get("level", 0),
+        "static": static_score, "wbase": weapon_base, "wtype": weapon_type,
+        "sharp": sharp, "weight": item.get("weight", 0), "flags": flags,
+        "name": _flat(item.get("short_descr", "")),
+    }
+
+
+def _gear_bound(row):
+    """Precomputed max-score bound: static + adept weapon score, with the
+    two-hander 11/10 dice widening baked in for wield rows."""
+    wmax = gear_score_weapon_max(row["wbase"], row["sharp"])
+    if row["slot"] == "wield":
+        wmax += wmax // 10
+    return row["static"] + wmax
+
+
+def pack_gear_index(rows, tags=None):
+    """Pack gear source rows into the binary gear.bin blob.
+
+    rows are dicts (see _gear_metadata plus kind/source_level/source_vnum/
+    room/tag/price/source_name). tags is the ordered area-tag table
+    (defaults to first-seen row order). Shared with tests so fixtures keep
+    the shipped layout invariants: per slot, loot records first, then
+    non-loot, each region sorted by bound descending -- the scanner's
+    early-stop breaks depend on that order. Display strings live
+    deduplicated in a trailing string table.
+    """
+    if tags is None:
+        tags = []
+        for row in rows:
+            if row["tag"] not in tags:
+                tags.append(row["tag"])
+    tag_ids = {tag: index for index, tag in enumerate(tags)}
+    wtypes = sorted({row["wtype"] for row in rows} | {""})
+    wtype_ids = {name: index for index, name in enumerate(wtypes)}
+    assert len(tags) < 256 and len(wtypes) < 256
+
+    strings = {}
+    string_parts = []
+
+    def intern(text):
+        data = text.encode("ascii")
+        assert len(data) < 256, text
+        ref = strings.get(data)
+        if ref is None:
+            offset = sum(len(part) for part in string_parts)
+            # ponytail: u16 offsets cap the deduped table at 64KB; widen
+            # name_off/sname_off to u24 if this ever fires.
+            assert offset + len(data) < 65536
+            ref = (offset, len(data))
+            strings[data] = ref
+            string_parts.append(data)
+        return ref
+
+    def sort_key(row):
+        return (-_gear_bound(row), row["vnum"], _SOURCE_ORDER[row["kind"]],
+                tag_ids[row["tag"]], row["source_vnum"], row["room"])
+
+    def pack_row(row):
+        mask = _GEAR_FLAG_BITS["sharp"] if row["sharp"] else 0
+        for name in row["flags"]:
+            mask |= _GEAR_FLAG_BITS[name]
+        name_off, name_len = intern(row["name"])
+        sname_off, sname_len = intern(row["source_name"])
+        bound = _gear_bound(row) + _GEAR_BIAS
+        static = row["static"] + _GEAR_BIAS
+        assert 0 <= bound < 65536 and 0 <= static < 65536, row
+        assert (0 <= row["vnum"] < 65536 and 0 <= row["level"] < 256
+                and 0 <= row["wbase"] < 65536 and 0 <= row["weight"] < 65536
+                and 0 <= row["source_level"] < 256
+                and 0 <= row["source_vnum"] < 65536
+                and 0 <= row["room"] < 65536
+                and 0 <= row["price"] < 2 ** 32), row
+        return _GEAR_RECORD.pack(
+            bound, row["level"], mask, row["weight"], static, row["wbase"],
+            wtype_ids[row["wtype"]], _GEAR_KIND_NAMES.index(row["kind"]),
+            row["source_level"], tag_ids[row["tag"]], row["vnum"],
+            row["source_vnum"], row["room"], row["price"],
+            name_off, name_len, sname_off, sname_len)
+
+    counts = []
+    loot_counts = []
+    records = []
+    for slot in _GEAR_SLOTS:
+        loot = sorted((row for row in rows
+                       if row["slot"] == slot and row["kind"] == "loot"),
+                      key=sort_key)
+        other = sorted((row for row in rows
+                        if row["slot"] == slot and row["kind"] != "loot"),
+                       key=sort_key)
+        counts.append(len(loot) + len(other))
+        loot_counts.append(len(loot))
+        for row in loot + other:
+            records.append(pack_row(row))
+    body = b"".join(records)
+
+    tables = bytearray()
+    for group in (wtypes, tags):
+        tables.append(len(group))
+        for name in group:
+            data = name.encode("ascii")
+            assert len(data) < 256
+            tables.append(len(data))
+            tables += data
+    header_size = 76 + len(tables)
+    assert header_size <= 4096  # the scanner's single header read
+    strings_off = header_size + len(body)
+    header = (_GEAR_MAGIC
+              + struct.pack("<HHI", header_size, _GEAR_RECORD.size,
+                            strings_off)
+              + struct.pack("<16H", *counts)
+              + struct.pack("<16H", *loot_counts)
+              + bytes(tables))
+    return header + body + b"".join(string_parts)
+
+
+def parse_gear_index(blob):
+    """Decode a gear.bin blob -> ({slot: [row dicts]}, wtypes, tags).
+
+    PC-side reader shared by tools/dump_gear_bin.py and the tests; the
+    device scanner in src/recommend.py reads the same layout with manual
+    byte arithmetic. Row dicts add "bound" (debiased) and "loot" (True for
+    rows in the slot's leading loot region).
+    """
+    assert blob[:4] == _GEAR_MAGIC
+    header_size, rec_size, strings_off = struct.unpack_from("<HHI", blob, 4)
+    assert rec_size == _GEAR_RECORD.size
+    counts = struct.unpack_from("<16H", blob, 12)
+    loot_counts = struct.unpack_from("<16H", blob, 44)
+    pos = 76
+    tables = []
+    for _ in range(2):
+        count = blob[pos]
+        pos += 1
+        names = []
+        for _ in range(count):
+            length = blob[pos]
+            names.append(blob[pos + 1:pos + 1 + length].decode("ascii"))
+            pos += 1 + length
+        tables.append(names)
+    wtypes, tags = tables
+    assert pos == header_size
+
+    def text(off, length):
+        start = strings_off + off
+        return blob[start:start + length].decode("ascii")
+
+    slots = {}
+    offset = header_size
+    for index, slot in enumerate(_GEAR_SLOTS):
+        rows = []
+        for rownum in range(counts[index]):
+            (bound, level, mask, weight, static, wbase, wtype_id, kind,
+             source_level, tag_id, vnum, source_vnum, room, price,
+             name_off, name_len, sname_off, sname_len
+             ) = _GEAR_RECORD.unpack_from(blob, offset)
+            offset += rec_size
+            rows.append({
+                "vnum": vnum, "slot": slot, "level": level,
+                "bound": bound - _GEAR_BIAS, "static": static - _GEAR_BIAS,
+                "wbase": wbase, "wtype": wtypes[wtype_id],
+                "sharp": bool(mask & _GEAR_FLAG_BITS["sharp"]),
+                "weight": weight,
+                "flags": [name for name, bit in _GEAR_FLAG_BITS.items()
+                          if name != "sharp" and mask & bit],
+                "kind": _GEAR_KIND_NAMES[kind],
+                "loot": rownum < loot_counts[index],
+                "source_level": source_level, "source_vnum": source_vnum,
+                "room": room, "tag": tags[tag_id], "price": price,
+                "name": text(name_off, name_len),
+                "source_name": text(sname_off, sname_len),
+            })
+        slots[slot] = rows
+    assert offset == strings_off
+    return slots, wtypes, tags
 
 
 def main():
@@ -269,11 +453,11 @@ def main():
         if key in gear_seen:
             return
         gear_seen.add(key)
-        lead, name = metadata
-        gear_rows.append(lead + (
-            kind, str(source_level), str(source_vnum), str(room_vnum),
-            tag, str(price), name, _flat(source_name),
-        ))
+        row = dict(metadata)
+        row.update(kind=kind, source_level=source_level,
+                   source_vnum=source_vnum, room=room_vnum, tag=tag,
+                   price=price, source_name=_flat(source_name))
+        gear_rows.append(row)
 
     # Model the device pipeline: world._load_area partitions the flat reset
     # list into per-room lists via a running room context (M/O/R update it;
@@ -378,117 +562,11 @@ def main():
                     else:
                         last_spawned = False
 
-    def _bound(row):
-        return int(row[3]) + gear_score_weapon_max(int(row[4]), row[6] == "1")
-
-    def _row_line(row):
-        # The slot (index 1) is implied by the segment and not emitted.
-        return "|".join(row[:1] + row[2:]) + "\n"
-
-    def _emit_bands(rows, band_of, sigil, wield_subs, level_subs=False):
-        """Emit rows as "<sigil><min_level>|<bytes>" bands; rows must be
-        pre-sorted by band (ascending), then exact source level when
-        level_subs / weapon type when wield_subs, then bound descending.
-        Wield bands hold "@=<type>|<max_static>|<max_wmax>|<row bytes>"
-        type sub-segments (max_wmax = best adept-skill weapon bound in
-        the group); loot bands hold "@@=<source_level>|<row bytes>" exact
-        source-level sub-segments, so the runtime parses no row whose
-        carrier level misses the loot window (a 5-level band can overlap
-        the 4-level window only partially)."""
-        chunks = []
-        index = 0
-        while index < len(rows):
-            band = band_of(rows[index])
-            band_rows = []
-            while index < len(rows) and band_of(rows[index]) == band:
-                band_rows.append(rows[index])
-                index += 1
-            if level_subs:
-                parts = []
-                sub = 0
-                while sub < len(band_rows):
-                    level = band_rows[sub][10]
-                    group = []
-                    while (sub < len(band_rows)
-                           and band_rows[sub][10] == level):
-                        group.append(band_rows[sub])
-                        sub += 1
-                    blob = "".join(_row_line(row) for row in group)
-                    parts.append("@@=" + level + "|" + str(len(blob))
-                                 + "\n" + blob)
-                blob = "".join(parts)
-            elif wield_subs:
-                parts = []
-                sub = 0
-                while sub < len(band_rows):
-                    wtype = band_rows[sub][5]
-                    group = []
-                    while (sub < len(band_rows)
-                           and band_rows[sub][5] == wtype):
-                        group.append(band_rows[sub])
-                        sub += 1
-                    blob = "".join(_row_line(row) for row in group)
-                    parts.append(
-                        "@=" + wtype + "|"
-                        + str(max(int(row[3]) for row in group)) + "|"
-                        + str(max(gear_score_weapon_max(
-                              int(row[4]), row[6] == "1") for row in group))
-                        + "|" + str(len(blob)) + "\n" + blob)
-                blob = "".join(parts)
-            else:
-                blob = "".join(_row_line(row) for row in band_rows)
-            chunks.append(sigil + str(band * 5) + "|" + str(len(blob))
-                          + "\n" + blob)
-        return "".join(chunks)
-
-    # One contiguous segment per wear slot so the runtime can seek and read
-    # only the slots it needs instead of the whole file (help.dat pattern).
-    # Each segment leads with its loot rows in "@@<min_source_level>|bytes"
-    # 5-level SOURCE-level bands: the runtime skips whole bands outside its
-    # loot window without parsing a row. Non-loot rows follow in
-    # "@<min_item_level>|bytes" item-level bands (ascending), where the
-    # walker breaks at the first band above the player's level -- safe only
-    # because the loot part comes first. Rows inside a band (or wield type
-    # group) sort by score upper bound, descending, so the walker jumps a
-    # band's remainder once the bound cannot beat the skip floor.
-    def _tiebreak(row):
-        return (-_bound(row), int(row[0]), _SOURCE_ORDER[row[9]],
-                area_order[row[13]], int(row[11]), int(row[12]))
-
-    segments = []
-    for slot in _GEAR_SLOTS:
-        subs = slot == "wield"
-        # Loot bands sub-group by exact source level, not weapon type: the
-        # loot window admits at most 4 levels, so the surviving row volume
-        # is too small for type skips to pay for their headers.
-        loot = [row for row in gear_rows
-                if row[1] == slot and row[9] == "loot"]
-        loot.sort(key=lambda row: (
-            int(row[10]) // 5, int(row[10])) + _tiebreak(row))
-        other = [row for row in gear_rows
-                 if row[1] == slot and row[9] != "loot"]
-        other.sort(key=lambda row: (
-            int(row[2]) // 5, row[5] if subs else "") + _tiebreak(row))
-        segments.append(
-            _emit_bands(loot, lambda row: int(row[10]) // 5, "@@", False,
-                        level_subs=True)
-            + _emit_bands(other, lambda row: int(row[2]) // 5, "@", subs))
-    out_path = os.path.join(OUTDIR, "gear.idx")
-    header = (
-        "# item_vnum|item_level|static_score|weapon_base|weapon_type|"
-        "sharp|weight|item_flags|source_kind|source_level|source_vnum|"
-        "room_vnum|tag|price|item_name|source_name -- one segment per wear"
-        " slot in fixed slot order (the slot is implied by the segment);"
-        " line 2 lists segment byte lengths; loot rows lead in"
-        " @@min_source_level|bytes bands holding @@=source_level|bytes"
-        " exact-level sub-segments, then non-loot in @min_item_level|bytes"
-        " bands, all sorted by max score; wield item bands hold"
-        " @=type|max_static|max_wmax|bytes sub-segments"
-        " -- built by tools/build_mob_index.py, do not edit\n")
-    with open(out_path, "w", newline="\n") as f:
-        f.write(header
-                + ",".join(str(len(segment)) for segment in segments) + "\n"
-                + "".join(segments))
+    blob = pack_gear_index(
+        gear_rows, [entry[1] for entry in world._AREA_FILES])
+    out_path = os.path.join(OUTDIR, "gear.bin")
+    with open(out_path, "wb") as f:
+        f.write(blob)
     print("Wrote", out_path, "-", len(gear_rows), "gear sources,",
           os.path.getsize(out_path), "bytes")
 

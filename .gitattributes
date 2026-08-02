@@ -7,3 +7,4 @@ src/music.txt -text
 src/mobs.idx -text
 src/commands.txt -text
 *.idx -text
+*.bin -text

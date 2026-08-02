@@ -36,11 +36,28 @@ skip unparsed; loot wield type subs dropped -- post-window volume too
 small to pay for headers), and summary mode keeps a single winner per
 slot with no alt bookkeeping or loser-tie dicts. Same PC probe: summary
 487 -> 425 splits (zero loot-window tail parses, was the residue), wield
-213 -> 167, gear.idx 183KB -> 174KB. Awaiting second G1 re-check. Next
-levers if still slow: static/wmax sub-splits of wield type groups (the
-remaining "upper" rejects are learnt-type rows whose adept bound passes
-but skill-scaled score fails -- only sub-splits of the static component
-can cut those); foes.idx-side work for the 2.3s recommend mobs scan.
+213 -> 167, gear.idx 183KB -> 174KB.
+
+Round 4 (02/08/2026, first-principles redesign): the text format itself
+was the floor -- every parsed row cost ~10-30 allocations (line slice +
+splits + int()s) at ~0.5ms/alloc at full heap, i.e. ~13ms/line, matching
+the measured 8.0s for ~600 handled lines. Rounds 1-3 cut N; round 4 cuts
+the per-row constant: `gear.idx` replaced by binary `gear.bin`
+(fixed-width 30-byte records, header with per-slot record/loot counts +
+weapon-type/area-tag name tables, deduplicated trailing string table;
+layout beside _GEAR_RECORD in tools/build_mob_index.py, readable dump
+via tools/dump_gear_bin.py). The scanner rejects records with raw byte
+arithmetic -- zero allocations -- so the whole band/sub-band apparatus
+(@, @@, @@=, @= headers) is deleted: per slot, loot records lead and
+non-loot follow, each region sorted by precomputed bound descending, and
+one break per region replaces every skip. Bounds, flag bitmasks, and
+weapon-type ids are baked at build time; per-type effective skill is
+precomputed per scan; winner display strings resolve from one bounded
+string-table read after scanning. gear.bin is 80KB (records ~55KB: one
+summary-mode chunk read). Estimated scan_summary 8.0s -> ~0.3-0.5s.
+Awaiting G1 re-check (transfer recommend.py + gear.bin, delete stale
+gear.idx from the appdir). If confirmed, apply the same recipe to
+foes.idx for the 2.3s recommend mobs scan, then harvest this plan doc.
 
 Desktop verification on 31 July 2026 (post-review: `gear.idx` segmented per
 wear slot for bounded seek reads; gear summary is a drill-in picker; detail

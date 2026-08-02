@@ -3,10 +3,9 @@
 import world
 from combat import _get_size, _get_weapon_skill
 from config import SIZE_RANK, STR_APP_WIELD
-from handler import chprintln, get_curr_stat
+from handler import chprintln, get_curr_stat, is_evil, is_good, is_neutral
 from inventory import (_can_wear_best, _wear_flag, _weapon_dice_part,
-                       gear_flags_legal, gear_score, gear_score_weapon,
-                       gear_score_weapon_max, shield_block_pct)
+                       gear_score, shield_block_pct)
 from item import item_weapon_flags
 from pager import tpage
 from picker import pick_from
@@ -17,10 +16,14 @@ from world import item_tpl
 
 
 FOES_INDEX_FILE = "foes.idx"
-GEAR_INDEX_FILE = "gear.idx"
-# Largest single gear.idx read: fits the wield segment (~56KB) whole, and
-# packs the other 15 segments into ~3 more reads in summary mode.
+GEAR_INDEX_FILE = "gear.bin"
+# Largest single gear.bin read: the whole ~55KB record region usually fits
+# one summary-mode read; each seek+read pair costs ~40ms on-device.
 _CHUNK = 57344
+# gear.bin fixed record size; field offsets documented in
+# tools/build_mob_index.py next to _GEAR_RECORD.
+_REC = 30
+_KIND_NAMES = ("shop", "floor", "container", "loot")
 
 _GEAR_SLOTS = (
     "light", "finger", "neck", "body", "head", "legs", "feet", "hands",
@@ -251,7 +254,11 @@ _MAX_ALT_SOURCES = 2
 
 
 def _alt_key(row):
-    """Return rendered-source identity; detail lines omit the room."""
+    """Return rendered-source identity; detail lines omit the room.
+
+    During the scan source_name is still a packed string-table ref, which
+    works as identity because the table is deduplicated.
+    """
     return (row["kind"], row["source_vnum"], row["source_name"], row["tag"])
 
 
@@ -297,32 +304,74 @@ def _keep_candidate(rows, candidate, limit):
         rows.pop()
 
 
-def _scan_gear(player, wanted_slot=None):
-    """Scan needed gear.idx slot segments, retaining only displayed candidates.
+def _parse_gear_header(head):
+    """Decode gear.bin's header (layout in tools/build_mob_index.py).
 
-    gear.idx is segmented by wear slot (help.dat pattern): a comment header,
-    then one directory line of per-slot segment byte lengths in _GEAR_SLOTS
-    order, then the segments. Consecutive needed segments are read in
-    bounded <=_CHUNK chunks, so peak transient heap stays around one chunk,
-    never the file.
+    Returns (header_size, strings_off, counts, loot_counts, wtypes, tags),
+    or None when the header is malformed. Raises IndexError/UnicodeError
+    on truncated garbage -- the caller wraps.
+    """
+    if head[:4] != b"GB01" or (head[6] | head[7] << 8) != _REC:
+        return None
+    header_size = head[4] | head[5] << 8
+    strings_off = (head[8] | head[9] << 8 | head[10] << 16
+                   | head[11] << 24)
+    counts = []
+    loot_counts = []
+    for index in range(16):
+        counts.append(head[12 + 2 * index] | head[13 + 2 * index] << 8)
+        loot_counts.append(head[44 + 2 * index] | head[45 + 2 * index] << 8)
+    pos = 76
+    tables = []
+    for _ in range(2):
+        count = head[pos]
+        pos += 1
+        names = []
+        for _ in range(count):
+            length = head[pos]
+            names.append(head[pos + 1:pos + 1 + length].decode())
+            pos += 1 + length
+        tables.append(names)
+    if pos != header_size:
+        return None
+    return header_size, strings_off, counts, loot_counts, tables[0], tables[1]
+
+
+def _resolve_names(names, row):
+    """Swap a candidate's packed (offset << 8 | length) string refs for
+    real strings sliced from the string-table read."""
+    ref = row["name"]
+    row["name"] = names[ref >> 8:(ref >> 8) + (ref & 255)].decode()
+    ref = row["source_name"]
+    row["source_name"] = names[ref >> 8:(ref >> 8) + (ref & 255)].decode()
+
+
+def _scan_gear(player, wanted_slot=None):
+    """Scan needed gear.bin slot segments, retaining only displayed candidates.
+
+    gear.bin is binary: a header (magic, sizes, per-slot record and loot
+    counts, weapon-type and area-tag name tables), fixed 30-byte records
+    grouped by wear slot, then a deduplicated string table. Records for
+    consecutive needed slots are read in bounded <=_CHUNK chunks and
+    rejected with raw byte arithmetic -- ints only, no per-row allocation
+    (one small heap alloc costs ~0.5ms at full game heap; the old text
+    index spent ~15ms/row on split allocs). Winner display strings resolve
+    afterwards from one bounded string-table read.
     """
     try:
-        f = open(GEAR_INDEX_FILE)
+        f = open(GEAR_INDEX_FILE, "rb")
     except OSError:
         return None
 
     with f:
-        head = f.read(1024)
-        cut = head.find("\n")
-        end = head.find("\n", cut + 1) if cut >= 0 else -1
-        if end < 0:
-            return None
+        head = f.read(4096)
         try:
-            sizes = [int(v) for v in head[cut + 1:end].split(",")]
-        except (TypeError, ValueError):
+            meta = _parse_gear_header(head)
+        except (IndexError, ValueError, UnicodeError):
             return None
-        if len(sizes) != len(_GEAR_SLOTS) or min(sizes) < 0:
+        if meta is None:
             return None
+        header_size, strings_off, counts, loot_counts, wtypes, tags = meta
 
         baselines = _owned_baselines(player)
         current = _current_tag(player)
@@ -331,28 +380,45 @@ def _scan_gear(player, wanted_slot=None):
         loot_high = player_level + 1
         wield_limit = STR_APP_WIELD[get_curr_stat(player, "str")] * 10
         funds = player.get("gold", 0) * 100 + player.get("silver", 0)
+        small = _get_size(player) < SIZE_RANK["large"]
+        sb_pct = shield_block_pct(player)
         area_order = {}
         for index, entry in enumerate(world._AREA_FILES):
             area_order[entry[1]] = index
+        # Per-type effective skill (one_hit uses 20 + proficiency): rows
+        # index this by wtype_id instead of calling gear_score_weapon.
+        eff = []
+        for name in wtypes:
+            eff.append(20 + _get_weapon_skill(
+                player, WEAPON_GSN_MAP.get(name, -1)))
+        # Alignment legality as one bitmask test (cf. gear_flags_legal;
+        # bits match _GEAR_FLAG_BITS in tools/build_mob_index.py).
+        align_mask = 0
+        if is_good(player):
+            align_mask |= 4
+        if is_evil(player):
+            align_mask |= 8
+        if is_neutral(player):
+            align_mask |= 16
+
         results = {}
         if wanted_slot is None:
             for slot in _GEAR_SLOTS:
                 results[slot] = []
         else:
             results[wanted_slot] = []
+        limit = 10 if wanted_slot is not None else 1
 
-        pos = end + 1
+        pos = header_size
         needed = []
         for seg_index in range(len(_GEAR_SLOTS)):
             slot = _GEAR_SLOTS[seg_index]
-            size = sizes[seg_index]
+            size = counts[seg_index] * _REC
             if size and slot in results:
-                needed.append((slot, pos, size))
+                needed.append((slot, pos, size, loot_counts[seg_index] * _REC))
             pos += size
-        limit = 10 if wanted_slot is not None else 1
         # Segments are contiguous, so consecutive needed ones pack into
-        # <=_CHUNK-byte reads: each seek+read pair costs ~40ms on-device,
-        # and chunking drops the 16 summary-mode reads to ~4.
+        # <=_CHUNK-byte reads.
         index = 0
         while index < len(needed):
             run_start = needed[index][1]
@@ -364,186 +430,118 @@ def _scan_gear(player, wanted_slot=None):
             run_end = needed[stop - 1][1] + needed[stop - 1][2]
             f.seek(run_start)
             data = f.read(run_end - run_start)
+            if len(data) < run_end - run_start:
+                return None
             while index < stop:
-                slot, seg_pos, seg_size = needed[index]
+                slot, seg_pos, seg_size, loot_size = needed[index]
                 off = seg_pos - run_start
-                _scan_segment(player, data, off, off + seg_size, slot,
-                              results, baselines, current, player_level,
-                              loot_low, loot_high, wield_limit, funds,
-                              area_order, limit)
+                _scan_records(data, off, off + seg_size, off + loot_size,
+                              slot, results, baselines, current,
+                              player_level, loot_low, loot_high,
+                              wield_limit, funds, area_order, limit, eff,
+                              align_mask, small, sb_pct, tags)
                 index += 1
             data = None
+
+        # Resolve winner display strings: admits are rare, so one bounded
+        # read of the deduplicated table covers them all.
+        for slot in results:
+            if results[slot]:
+                f.seek(strings_off)
+                names = f.read()
+                for got in results.values():
+                    for row in got:
+                        _resolve_names(names, row)
+                        for alt in row["alts"]:
+                            _resolve_names(names, alt)
+                break
     return results
 
 
-def _scan_segment(player, data, pos, stop, slot, results, baselines,
+def _scan_records(data, pos, stop, loot_end, slot, results, baselines,
                   current, player_level, loot_low, loot_high, wield_limit,
-                  funds, area_order, limit):
-    """Score and rank one slot segment's rows into results[slot].
+                  funds, area_order, limit, eff, align_mask, small, sb_pct,
+                  tags):
+    """Score and rank one slot's fixed-width records into results[slot].
 
-    Scans data[pos:stop] (the segment may share a chunked read with its
-    neighbours). Loot rows lead the segment in "@@min_source_level|bytes"
-    5-level source-level bands, skipped whole when they cannot intersect
-    the loot window; admitted bands hold "@@=source_level|bytes"
-    exact-level sub-segments, so boundary-band rows whose carrier level
-    misses the window are skipped unparsed too. Non-loot rows follow in
-    "@min_level|bytes" item-level bands (ascending), where the walk
-    breaks at the first band above the player's level -- safe only
-    because loot comes first. Rows inside a band sort by max-score bound,
-    descending, so the walk jumps a band's remaining rows once the bound
-    cannot beat the skip floor -- the owned baseline, raised to the
-    weakest kept score once results[slot] is full (strict <, so
-    equal-bound alternate sources of a kept item still parse). Wield item
-    bands hold "@=type|max_static|max_wmax|bytes" sub-segments whose
-    adept-skill bound is rescaled to the player's proficiency, skipping a
-    whole unlearnt weapon type without parsing a row. Rows reject from a
-    short partial split (reject fields lead the row; the slot is implied
-    by the segment; display strings trail and are only parsed for kept
-    candidates). Summary mode (limit 1) keeps a single winner per slot
-    with empty alts and no alt bookkeeping. Data without headers or
-    ordering still scans correctly, just without the shortcuts.
+    data[pos:stop] holds 30-byte records (offsets documented in
+    tools/build_mob_index.py): loot rows first (ending at loot_end), then
+    non-loot, each region sorted by its precomputed max-score bound
+    (bytes 0-1, biased +32768), descending. A bound below the skip floor
+    therefore ends the whole region: the loot remainder jumps to
+    loot_end, the non-loot remainder ends the segment. The floor starts
+    at the owned baseline and rises to the weakest kept score once
+    results[slot] is full (strict compare, so equal-bound alternate
+    sources of a kept item still parse). Every reject runs on raw byte
+    arithmetic -- ints only, no allocation. Admitted candidates keep
+    their display strings as packed (offset << 8 | length) string-table
+    refs until _scan_gear resolves the winners. Summary mode (limit 1)
+    keeps a single winner per slot with empty alts and no alt
+    bookkeeping.
     """
     baseline = baselines[slot]
     floor = baseline + 1
+    fbias = floor + 32768
     rows = results[slot]
-    small = _get_size(player) < SIZE_RANK["large"]
-    sb_pct = shield_block_pct(player)
-    jump_end = -1
+    is_wield = slot == "wield"
     while pos < stop:
-        end = data.find("\n", pos)
-        if end < 0 or end > stop:
-            end = stop
-        line = data[pos:end]
-        pos = end + 1
-        if not line or line[0] == "#":
+        if (data[pos] | data[pos + 1] << 8) < fbias:
+            # Bound-sorted region exhausted: no later row in it can win.
+            if pos >= loot_end:
+                return
+            pos = loot_end
             continue
-        if line[-1] == "\r":
-            line = line[:-1]
-        if line[0] == "@":
-            jump_end = -1
-            parts = line.split("|")
-            if line[1:2] == "@":
-                if line[2:3] == "=":
-                    # "@@=source_level|bytes": exact source-level group
-                    # inside an admitted loot band; skip it whole when the
-                    # level misses the loot window (a 5-level band can
-                    # overlap the 4-level window only partially).
-                    try:
-                        sub_end = pos + int(parts[1])
-                        sub_level = int(parts[0][3:])
-                        if sub_level < loot_low or sub_level > loot_high:
-                            pos = sub_end
-                        else:
-                            jump_end = sub_end
-                    except (TypeError, ValueError, IndexError):
-                        pass
-                    continue
-                # "@@min_source_level|bytes": 5-level source-level band of
-                # loot rows; skip it whole unless it can intersect the
-                # loot window.
-                try:
-                    band_end = pos + int(parts[1])
-                    low = int(parts[0][2:])
-                    if low > loot_high or low + 4 < loot_low:
-                        pos = band_end
-                    else:
-                        jump_end = band_end
-                except (TypeError, ValueError, IndexError):
-                    pass
-                continue
-            if line[1:2] == "=":
-                # Weapon-type sub-segment header. _weapon_score at skill s
-                # is at most its adept (s=120) value times s*(s+20)/16800;
-                # the sharp term only shrinks that ratio. +4 absorbs the
-                # few points of floor-division slack, and scaled//10
-                # mirrors the two-hander bound widening below.
-                try:
-                    sub_end = pos + int(parts[3])
-                    eff = 20 + _get_weapon_skill(
-                        player, WEAPON_GSN_MAP.get(parts[0][2:], -1))
-                    scaled = int(parts[2]) * eff * (eff + 20) // 16800
-                    if int(parts[1]) + scaled + scaled // 10 + 4 < floor:
-                        pos = sub_end
-                    else:
-                        jump_end = sub_end
-                except (TypeError, ValueError, IndexError):
-                    pass
-                continue
-            try:
-                if int(parts[0][1:]) > player_level:
-                    return
-                jump_end = pos + int(parts[1])
-            except (TypeError, ValueError, IndexError):
-                pass
+        kind = data[pos + 11]
+        if kind == 3 and not (loot_low <= data[pos + 12] <= loot_high):
+            pos += 30
             continue
-        # Partial split: fields 0-7 decide every score-based reject, so
-        # most rows never allocate their source/display tail (per-row
-        # allocs dominate the on-device scan). The slot is implied by the
-        # segment and not stored in the row.
-        parts = line.split("|", 8)
-        if len(parts) != 9:
+        if data[pos + 2] > player_level:
+            pos += 30
             continue
-        try:
-            item_level = int(parts[1])
-            static_score = int(parts[2])
-            weapon_base = int(parts[3])
-            sharp = parts[5] == "1"
-            weight = int(parts[6])
-        except (TypeError, ValueError):
+        flags = data[pos + 3]
+        if flags & align_mask:
+            pos += 30
             continue
-        bound = gear_score_weapon_max(weapon_base, sharp)
-        if slot == "wield":
-            # Two-hander rows may add the no-shield 11/10 dice bonus below;
-            # widen the bound so the band skip stays conservative.
-            bound += bound // 10
-        if static_score + bound < floor:
-            # Bound-sorted band/type group: no later row in it can beat
-            # the floor either.
-            if jump_end >= 0:
-                pos = jump_end
-                jump_end = -1
+        if is_wield and (data[pos + 4] | data[pos + 5] << 8) > wield_limit:
+            pos += 30
             continue
-        if item_level > player_level:
-            continue
-        if slot == "wield" and weight > wield_limit:
-            continue
-        wscore = gear_score_weapon(player, weapon_base, parts[4], sharp)
-        score = static_score + wscore
+        wbase = data[pos + 8] | data[pos + 9] << 8
+        if wbase:
+            # Inlined gear_score_weapon via the per-type eff table.
+            skill = eff[data[pos + 10]]
+            wscore = wbase * skill // 10
+            if flags & 1:
+                wscore += wscore * skill // 700
+            wscore = wscore * (skill + 20) // 140
+        else:
+            wscore = 0
+        score = (data[pos + 6] | data[pos + 7] << 8) - 32768 + wscore
         if score + wscore // 10 < floor:
             # wscore//10 is the most the two-hander branch can add back.
+            pos += 30
             continue
-        flags = {}
-        for flag in parts[7].split(","):
-            if flag:
-                flags[flag] = True
-        if not gear_flags_legal(player, flags):
-            continue
-        if flags.get("two_hands") and small:
+        if flags & 2 and small:
             # Forfeits the shield (cf. _best_hand_layout economics): +10%
             # dice, minus half the owned shield's score plus its block value.
             block = score * sb_pct // 100
             score += wscore // 10 - (baselines["shield"] + block) // 2
         if score < floor:
+            pos += 30
             continue
-        # Survivor: parse the source/display tail.
-        rest = parts[8].split("|")
-        if len(rest) != 8:
-            continue
-        kind = rest[0]
-        if kind not in _SOURCE_ORDER:
-            continue
-        try:
-            vnum = int(parts[0])
-            source_level = int(rest[1])
-            source_vnum = int(rest[2])
-            room_vnum = int(rest[3])
-            price = int(rest[5])
-        except (TypeError, ValueError):
-            continue
-        if (kind == "loot"
-                and not (loot_low <= source_level <= loot_high)):
-            continue
-        tag = rest[4]
+        # Survivor: decode the tail fields.
+        vnum = data[pos + 14] | data[pos + 15] << 8
+        source_level = data[pos + 12]
+        source_vnum = data[pos + 16] | data[pos + 17] << 8
+        room_vnum = data[pos + 18] | data[pos + 19] << 8
+        price = (data[pos + 20] | data[pos + 21] << 8
+                 | data[pos + 22] << 16 | data[pos + 23] << 24)
+        kind = _KIND_NAMES[kind]
+        tag = tags[data[pos + 13]]
+        name_ref = ((data[pos + 24] | data[pos + 25] << 8) << 8
+                    | data[pos + 26])
+        sname_ref = ((data[pos + 27] | data[pos + 28] << 8) << 8
+                     | data[pos + 29])
+        pos += 30
         source_key = _source_key(
             kind, tag, price, funds, source_level, player_level,
             source_vnum, room_vnum, current, area_order)
@@ -559,25 +557,27 @@ def _scan_segment(player, data, pos, stop, slot, results, baselines,
                     continue
             rows[:] = [{
                 "vnum": vnum, "slot": slot, "gain": score - baseline,
-                "name": rest[6], "kind": kind, "source_vnum": source_vnum,
-                "source_level": source_level, "source_name": rest[7],
+                "name": name_ref, "kind": kind, "source_vnum": source_vnum,
+                "source_level": source_level, "source_name": sname_ref,
                 "tag": tag, "price": price, "source_key": source_key,
                 "alts": [],
             }]
             floor = score
+            fbias = floor + 32768
             continue
         candidate = {
             "vnum": vnum, "slot": slot, "gain": score - baseline,
-            "name": rest[6], "kind": kind, "source_vnum": source_vnum,
-            "source_level": source_level, "source_name": rest[7],
+            "name": name_ref, "kind": kind, "source_vnum": source_vnum,
+            "source_level": source_level, "source_name": sname_ref,
             "tag": tag, "price": price, "source_key": source_key,
         }
         _keep_candidate(rows, candidate, limit)
         if len(rows) == limit:
             # Full result list: only rows beating the weakest kept score
             # matter now. Alternate sources of a kept item tie its bound,
-            # so the strict < above still lets them parse into alts.
+            # so the strict compare above still lets them parse into alts.
             floor = rows[-1]["gain"] + baseline
+            fbias = floor + 32768
 
 
 def _comma_num(value):

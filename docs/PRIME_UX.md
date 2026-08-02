@@ -213,7 +213,7 @@ Weapon dice scores carry an expected-hit weighting of `(skill + 20) / 140`
 (skill = 20 + proficiency, mirroring `one_hit`'s floor), calibrated against
 measured hit-rate ratios so a barely-practiced weapon scores near its true
 combat worth instead of its dice; the factor reaches exactly 1 at adept, so
-`gear_score_weapon_max` band bounds in `gear.idx` are unaffected. There is no
+`gear_score_weapon_max` record bounds in `gear.bin` are unaffected. There is no
 proficiency cutoff -- unlearnt weapons simply rank where their expected damage
 puts them. Static affect bonuses are not skill-scaled.
 
@@ -254,13 +254,15 @@ including nested items in mob-carried containers, ordinary shops, floor
 resets, and items inside floor-reset containers. Hand items are candidates
 because hypothetical combined layouts remain the job of `wear best`.
 
-Both modes scan generated `.idx` files, retain only displayed rows, load no
+Both modes scan generated index files, retain only displayed rows, load no
 area, and keep no parsed cache. `foes.idx` is segmented by mob level behind
 a byte-length directory line, so the mob mode reads only its level band in
-one seek plus one bounded read. `gear.idx` is segmented by wear slot the same
-way; inside a segment, 5-level item bands sorted by maximum possible score
-let the scan stop as soon as no remaining row can beat the player's owned
-baseline, so only a handful of rows are ever parsed.
+one seek plus one bounded read. `gear.bin` is binary: fixed-width records
+grouped by wear slot, each slot's loot and non-loot regions sorted by
+precomputed maximum possible score, so the scan rejects records with raw
+byte arithmetic (no per-row allocation) and stops a region as soon as no
+remaining record can beat the player's owned baseline. Winner names resolve
+from a deduplicated string table in one bounded read at the end.
 
 ---
 

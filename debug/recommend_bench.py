@@ -21,7 +21,8 @@ equipment baselines).  SAVE_VAR is redirected to "smoketest" before
 world.init_world()/load_world(); SAVE_FILE to recommend_bench.sav after,
 so nothing here can touch the real save slot or file.
 
-Ship the full game closure (src/*.py + src/*.txt + src/*.idx) EXCEPT
+Ship the full game closure (src/*.py + src/*.txt + src/*.idx + gear.bin)
+EXCEPT
 src/primesud.py (its module level launches the game).  Only ONE
 self-running .py may be in the appdir (Prime auto-imports all): this
 probe OR combat_bench.py OR save_smoke.py etc., never more than one.
@@ -97,19 +98,21 @@ def timed(label, fn, n=N):
 # -- I/O floor: _scan_gear's exact read pattern, no parsing -----------------
 
 def _gear_runs(wield_only):
-    """Return (header_end, [(start, size)]) -- the greedy-packed read runs
-    _scan_gear would issue for summary mode (all slots) or wield-only.
+    """Return ([(start, size)], strings_off) -- the greedy-packed record
+    runs _scan_gear would issue for summary mode (all slots) or
+    wield-only, plus the string-table offset for the winner-name read.
     Keep in sync with _scan_gear if the packing changes."""
-    with open(recommend.GEAR_INDEX_FILE) as f:
-        head = f.read(1024)
-    cut = head.find("\n")
-    end = head.find("\n", cut + 1)
-    sizes = [int(v) for v in head[cut + 1:end].split(",")]
-    pos = end + 1
+    with open(recommend.GEAR_INDEX_FILE, "rb") as f:
+        head = f.read(4096)
+    hsize = head[4] | head[5] << 8
+    strings_off = (head[8] | head[9] << 8 | head[10] << 16
+                   | head[11] << 24)
+    pos = hsize
     needed = []
     for seg_index in range(len(recommend._GEAR_SLOTS)):
         slot = recommend._GEAR_SLOTS[seg_index]
-        size = sizes[seg_index]
+        size = (head[12 + 2 * seg_index]
+                | head[13 + 2 * seg_index] << 8) * recommend._REC
         if size and (not wield_only or slot == "wield"):
             needed.append((pos, size))
         pos += size
@@ -125,33 +128,36 @@ def _gear_runs(wield_only):
         runs.append((run_start,
                      needed[stop - 1][0] + needed[stop - 1][1] - run_start))
         index = stop
-    return runs
+    return runs, strings_off
 
 
-def _io_pass(runs):
-    with open(recommend.GEAR_INDEX_FILE) as f:
-        f.read(1024)
+def _io_pass(runs, strings_off):
+    with open(recommend.GEAR_INDEX_FILE, "rb") as f:
+        f.read(4096)
         for start, size in runs:
             f.seek(start)
             data = f.read(size)
             data = None
+        f.seek(strings_off)
+        data = f.read()
+        data = None
 
 
 def scenario_io(label, wield_only):
-    runs = _gear_runs(wield_only)
+    runs, strings_off = _gear_runs(wield_only)
     total = 0
     for _start, size in runs:
         total += size
-    log(label + ": " + int_str(len(runs)) + " reads, "
-        + int_str(total) + "B (+1024B head)")
-    timed(label, lambda: _io_pass(runs))
+    log(label + ": " + int_str(len(runs)) + " record reads, "
+        + int_str(total) + "B (+4096B head +strings)")
+    timed(label, lambda: _io_pass(runs, strings_off))
 
 
 # -- Sanity logging ---------------------------------------------------------
 
 def _log_gear_results(label, results):
     if results is None:
-        log(label + ": RESULTS None -- gear.idx missing?")
+        log(label + ": RESULTS None -- gear.bin missing?")
         return
     hits = 0
     for slot in results:

@@ -1035,9 +1035,9 @@ def _weapon_dice_part(player, obj):
 def gear_score_weapon_max(weapon_base, sharp):
     """Return gear_score_weapon at 100% proficiency: an upper bound. [PRIMESUD]
 
-    gear.idx sorts each level band by static_score + this bound, descending,
-    so the recommend scan can stop a band once the bound cannot beat the
-    owned baseline.
+    gear.bin sorts each slot region by static_score + this bound,
+    descending, so the recommend scan can stop a region once the bound
+    cannot beat the owned baseline.
     """
     if not weapon_base:
         return 0
