@@ -124,7 +124,10 @@ def candidates(data, meta, target):
     pos = kw_off
     while True:
         hit = data.find(needle, pos)
-        if hit < 0 or hit >= strings_off:
+        # hit < pos means find() ignored its start arg (never seen on
+        # firmware, but unprovable from PC): break with partial hits
+        # rather than sweep forever on-device.
+        if hit < pos or hit >= strings_off:
             break
         lead = data[hit - 1]  # in bounds: the blob opens with a separator
         if lead == 10 or lead == 32:
