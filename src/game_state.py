@@ -782,16 +782,58 @@ def load_world():
                 else:
                     time_info["sunlight"] = SUN_LIGHT
         elif key == "m":
-            for entry in val.split(";"):
-                if "," in entry:
-                    tpl, rooms = entry.split(",", 1)
-                    _tpl_i = int(tpl)
-                    _rl = [int(r) for r in rooms.split("|") if r]
-                    mob_saves[_tpl_i] = _rl
-                    # [PRIMESUD] Prefill the part-string cache from the raw
-                    # save entry (the serializer's exact output), keyed to
-                    # this list object -- first save renders nothing.
-                    world._PENDING_MOB_CACHE[_tpl_i] = (_rl, entry)
+            # [PRIMESUD] Byte-walk "<tpl>,<room>|<room>;<tpl>,..." instead
+            # of split(";") / split(",") / split("|") / int(): indexing
+            # bytes yields unboxed small ints, so only the per-entry room
+            # list and cache string allocate. The split-and-int version
+            # cost 2,189ms over 344 entries of the 13.0s G1 boot
+            # (debug/loadworld_bench-1.log) -- ~1,000 int() parses plus
+            # token churn, all of it allocation (CLAUDE.md pitfall 9).
+            _mb = val.encode()
+            _mn = len(_mb)
+            _mi = 0
+            while _mi < _mn:
+                # Span this entry and note its first "," in one pass.
+                _mstart = _mi
+                _mcomma = -1
+                while _mi < _mn and _mb[_mi] != 59:  # ";"
+                    if _mcomma < 0 and _mb[_mi] == 44:  # ","
+                        _mcomma = _mi
+                    _mi += 1
+                _mend = _mi
+                _mi += 1  # past the ";" (or harmlessly past the end)
+                if _mcomma < 0:
+                    continue  # no "," -- skipped, as the old split did
+                _mp = _mstart
+                _tpl_i = 0
+                while _mp < _mcomma and 48 <= _mb[_mp] <= 57:  # "0".."9"
+                    _tpl_i = _tpl_i * 10 + (_mb[_mp] - 48)
+                    _mp += 1
+                if _mp != _mcomma or _mcomma == _mstart:
+                    # Non-digit where a vnum belongs: int() raised here
+                    # too, and a corrupt "m=" line is already fatal.
+                    raise ValueError("load_world: bad mob template vnum")
+                _rl = []
+                _mp = _mcomma + 1
+                while _mp < _mend:
+                    if _mb[_mp] == 124:  # "|" -- empty token, skipped
+                        _mp += 1
+                        continue
+                    _rstart = _mp
+                    _rv = 0
+                    while _mp < _mend and 48 <= _mb[_mp] <= 57:
+                        _rv = _rv * 10 + (_mb[_mp] - 48)
+                        _mp += 1
+                    if _mp == _rstart or (_mp < _mend and _mb[_mp] != 124):
+                        raise ValueError("load_world: bad mob room vnum")
+                    _rl.append(_rv)
+                    _mp += 1  # past the "|"
+                mob_saves[_tpl_i] = _rl
+                # [PRIMESUD] Prefill the part-string cache from the raw
+                # save entry (the serializer's exact output), keyed to
+                # this list object -- first save renders nothing.
+                world._PENDING_MOB_CACHE[_tpl_i] = (
+                    _rl, _mb[_mstart:_mend].decode())
 
     # Buffer mob saves for deferred application: _load_area will apply
     # each area's deltas when it actually loads (player enters the area).

@@ -19,6 +19,8 @@ Covers:
 - A resident-owner item gets its it.* line from resident data even with
   no pre-existing registry entry
 """
+import pytest
+
 import world
 import game_state
 from item import create_object, serialize_item_token
@@ -696,3 +698,72 @@ class TestSavePathCaches:
         assert world._PENDING_MOB_CACHE[900] == (
             world._pending_mob_saves[900], "900,901|902")
         assert world._PENDING_MOB_CACHE[900][0] is world._pending_mob_saves[900]
+
+
+# ===== "m=" line parse ======================================================
+# load_world byte-walks the pending-mob line instead of splitting it. These
+# pin the shapes the old split-and-int version tolerated (or rejected).
+
+def _reload_with_m_line(m_val):
+    """Rewrite the save file's "m=" line to m_val and reload. [PRIMESUD]
+
+    Everything else in the payload stays as _serialize_world wrote it, so
+    only the pending-mob parse is under test.
+    """
+    with open(game_state.SAVE_FILE, "r") as f:
+        payload = f.read()
+    lines = [ln for ln in payload.split("~") if not ln.startswith("m=")]
+    lines.append("m=" + m_val)
+    with open(game_state.SAVE_FILE, "w") as f:
+        f.write("~".join(lines))
+    world.reset_lazy()
+    player = create_char()
+    player["_macros"] = {}
+    world.chars[1] = player
+    return game_state.load_world()
+
+
+class TestPendingMobLineParse:
+    def _saved_world(self, fw):
+        fw.register_area("alpha", 100, 199,
+                         rooms={100: {"name": "R100", "exits": {}}})
+        fw.setup()
+        world._load_area("alpha")
+        _make_player(100)
+        world._pending_mob_saves[900] = [901]
+        assert game_state.save_world(quiet=True)
+
+    def test_entry_shapes_and_cache_identity(self, fresh_world):
+        self._saved_world(fresh_world)
+        # Empty room tokens ("||", trailing "|") are skipped, an entry with
+        # no "," is skipped whole, and an entry with no rooms yields [].
+        assert _reload_with_m_line("900,901||902|;903,;nocomma;904,905;") == "file"
+        assert world._pending_mob_saves[900] == [901, 902]
+        assert world._pending_mob_saves[903] == []
+        assert world._pending_mob_saves[904] == [905]
+        # The cached part string is the raw entry, verbatim, and is keyed to
+        # the very list object stored in _pending_mob_saves -- that identity
+        # is what lets the first save re-emit it without rendering.
+        assert world._PENDING_MOB_CACHE[900] == (
+            world._pending_mob_saves[900], "900,901||902|")
+        assert world._PENDING_MOB_CACHE[900][0] is world._pending_mob_saves[900]
+        assert world._PENDING_MOB_CACHE[903][1] == "903,"
+        # "nocomma" and the trailing ";" left no entry behind.
+        assert sorted(world._PENDING_MOB_CACHE) == [900, 903, 904]
+
+    def test_single_entry_without_trailing_separator(self, fresh_world):
+        self._saved_world(fresh_world)
+        assert _reload_with_m_line("900,901|902") == "file"
+        assert world._pending_mob_saves[900] == [901, 902]
+        assert world._PENDING_MOB_CACHE[900][1] == "900,901|902"
+
+    @pytest.mark.parametrize("bad", [
+        "9x0,901",  # non-digit in the template vnum
+        ",901",  # empty template vnum
+        "900,9x1",  # non-digit in a room vnum
+        "900,901,902",  # stray "," inside the room list
+    ])
+    def test_corrupt_entry_raises(self, bad, fresh_world):
+        self._saved_world(fresh_world)
+        with pytest.raises(ValueError):
+            _reload_with_m_line(bad)

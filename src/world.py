@@ -604,81 +604,136 @@ def _snap_encode(value):
     return "".join(parts)
 
 
-def _snap_decode_len(s, pos):
+# The decoder walks the record as BYTES, comparing raw byte values, and
+# accumulates numbers digit by digit. Indexing a str allocates a one-char
+# str per visit and int(slice) allocates twice more; indexing bytes yields
+# small ints, which MicroPython keeps unboxed. That per-char allocation
+# floor (~0.5ms each at full game heap, CLAUDE.md pitfall 9) was the whole
+# cost of the 6,606ms boot decode over 39 cached templates on G1
+# (debug/loadworld_bench-1.log). Byte values used below:
+#   n=110  T=84  F=70  i=105  s=115  l=108  t=116  d=100
+#   ":"=58  "-"=45  digits 48("0")..57("9")
+# [PRIMESUD]
+
+
+def _snap_decode_len(b, n, cur):
     """Read a decimal length/count field up to its ":" terminator. [PRIMESUD]
 
+    Args:
+        b: bytes of the whole record.
+        n: len(b), passed down so the walk never re-measures it.
+        cur: one-element list holding the read cursor; advanced past
+            the ":" terminator.
+
     Returns:
-        tuple: (parsed int, index just past the ":").
+        int: the parsed length/count.
 
     Raises:
         ValueError: no digits found, or the ":" terminator is missing.
     """
+    pos = cur[0]
     start = pos
-    n = len(s)
-    while pos < n and s[pos].isdigit():
+    value = 0
+    while pos < n:
+        c = b[pos]
+        if c < 48 or c > 57:
+            break
+        value = value * 10 + (c - 48)
         pos += 1
-    if pos == start or pos >= n or s[pos] != ":":
+    if pos == start or pos >= n or b[pos] != 58:  # ":"
         raise ValueError("_snap_decode: bad length field")
-    return int(s[start:pos]), pos + 1
+    cur[0] = pos + 1
+    return value
 
 
-def _snap_decode_at(s, pos):
-    """Decode one value starting at s[pos]. [PRIMESUD]
+def _snap_decode_at(b, n, cur):
+    """Decode one value starting at b[cur[0]]. [PRIMESUD]
+
+    Args:
+        b: bytes of the whole record.
+        n: len(b), passed down so the recursion never re-measures it.
+        cur: one-element list holding the read cursor; advanced past the
+            value just decoded. A list rather than a returned position:
+            the old (value, pos) tuple cost one allocation per decoded
+            value, and a template record holds dozens.
 
     Returns:
-        tuple: (decoded value, index just past it).
+        The decoded value.
 
     Raises:
         ValueError: truncated record, unknown type tag, or a malformed
             length/int field.
     """
-    n = len(s)
+    pos = cur[0]
     if pos >= n:
         raise ValueError("_snap_decode: truncated record")
-    tag = s[pos]
+    tag = b[pos]
     pos += 1
-    if tag == "n":
-        return None, pos
-    if tag == "T":
-        return True, pos
-    if tag == "F":
-        return False, pos
-    if tag == "i":
+    if tag == 110:  # "n"
+        cur[0] = pos
+        return None
+    if tag == 84:  # "T"
+        cur[0] = pos
+        return True
+    if tag == 70:  # "F"
+        cur[0] = pos
+        return False
+    if tag == 105:  # "i"
+        neg = False
+        if pos < n and b[pos] == 45:  # "-"
+            neg = True
+            pos += 1
         start = pos
-        if pos < n and s[pos] == "-":
+        value = 0
+        while pos < n:
+            c = b[pos]
+            if c < 48 or c > 57:
+                break
+            value = value * 10 + (c - 48)
             pos += 1
-        digit_start = pos
-        while pos < n and s[pos].isdigit():
-            pos += 1
-        if pos == digit_start:
+        if pos == start:
             raise ValueError("_snap_decode: bad int")
-        return int(s[start:pos]), pos
-    if tag == "s":
-        length, pos = _snap_decode_len(s, pos)
-        if pos + length > n:
+        cur[0] = pos
+        return -value if neg else value
+    if tag == 115:  # "s"
+        cur[0] = pos
+        length = _snap_decode_len(b, n, cur)
+        pos = cur[0]
+        end = pos + length
+        if end > n:
             raise ValueError("_snap_decode: truncated string")
-        raw = s[pos:pos + length]
-        return _snap_unescape(raw), pos + length
-    if tag == "l" or tag == "t":
-        count, pos = _snap_decode_len(s, pos)
+        cur[0] = end
+        # Slice the bytes, not the source str: the length prefix counts
+        # bytes of the escaped payload, which is what _snap_encode_into
+        # writes (len() of an escaped ASCII str). _snap_unescape keeps a
+        # native "\\" not in s fast path, so unescaped payloads -- nearly
+        # all of them -- cost one containment scan and no rebuild.
+        return _snap_unescape(b[pos:end].decode())
+    if tag == 108 or tag == 116:  # "l" / "t"
+        cur[0] = pos
+        count = _snap_decode_len(b, n, cur)
         items = []
         for _i in range(count):
-            v, pos = _snap_decode_at(s, pos)
-            items.append(v)
-        return (items if tag == "l" else tuple(items)), pos
-    if tag == "d":
-        count, pos = _snap_decode_len(s, pos)
+            items.append(_snap_decode_at(b, n, cur))
+        return items if tag == 108 else tuple(items)
+    if tag == 100:  # "d"
+        cur[0] = pos
+        count = _snap_decode_len(b, n, cur)
         result = {}
         for _i in range(count):
-            k, pos = _snap_decode_at(s, pos)
-            v, pos = _snap_decode_at(s, pos)
-            result[k] = v
-        return result, pos
-    raise ValueError("_snap_decode: unknown type tag " + tag)
+            k = _snap_decode_at(b, n, cur)
+            result[k] = _snap_decode_at(b, n, cur)
+        return result
+    raise ValueError("_snap_decode: unknown type tag " + chr(tag))
 
 
 def _snap_decode(s):
     """Decode a full record produced by _snap_encode. [PRIMESUD]
+
+    Args:
+        s: the encoded record -- str (what a save-file read hands back)
+            or bytes; str is byte-cast once up front, then the whole walk
+            runs on bytes.
 
     Raises:
         ValueError: malformed input of any kind. Never raises anything
@@ -687,12 +742,18 @@ def _snap_decode(s):
             miss, not a load failure.
     """
     try:
-        value, pos = _snap_decode_at(s, 0)
+        b = s.encode() if type(s) is str else s
+        n = len(b)
+        cur = [0]
+        value = _snap_decode_at(b, n, cur)
     except ValueError:
         raise
-    except (IndexError, TypeError, KeyError):
+    except (IndexError, TypeError, KeyError, AttributeError):
+        # AttributeError too: the byte-cast above is the first thing a
+        # non-str/bytes argument now hits, and the contract is ValueError
+        # for every malformed input, never another exception type.
         raise ValueError("_snap_decode: malformed record")
-    if pos != len(s):
+    if cur[0] != n:
         raise ValueError("_snap_decode: trailing data")
     return value
 

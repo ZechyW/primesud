@@ -150,6 +150,52 @@ class TestMalformedInput:
         with pytest.raises(ValueError):
             _snap_decode("s2:\\z")
 
+    @pytest.mark.parametrize("bad", [
+        "s-1:x",  # "-" where a length digit belongs
+        "s99:ab",  # length far past the end of the record
+        "i5x",  # trailing junk after a valid int
+        "d1:s1:a",  # key decoded, value truncated
+        "t2:n",  # count says 2, one value present
+    ])
+    def test_raises_value_error_extra(self, bad):
+        with pytest.raises(ValueError):
+            _snap_decode(bad)
+
+    @pytest.mark.parametrize("bad", [5, None, 3.5, ["s1:a"]])
+    def test_non_string_input_raises_value_error(self, bad):
+        # Contract: ValueError for every malformed input, never another
+        # exception type -- the decoder now byte-casts its argument first,
+        # so a non-str/bytes argument fails there instead of mid-walk.
+        with pytest.raises(ValueError):
+            _snap_decode(bad)
+
+
+# ===== Byte-walk decoder =====================================================
+# The decoder walks bytes, not str: these pin the seams that shift with it
+# (length prefixes counting ESCAPED bytes, payloads that look like tags,
+# bytes input).
+
+class TestByteWalkDecode:
+    def test_nested_escapes_and_tag_lookalike_payloads(self):
+        # Every string here would mis-decode if a length prefix were read
+        # as anything but "bytes of the escaped payload", or if a payload
+        # were rescanned for type tags.
+        value = {
+            "desc": 'He said "hi".\nLine 2\r\n~tilde~ and a back\\slash',
+            "lookalike": "i-42",
+            "nested": ["s5:abcde", ("d1:", "l2:nn"), {"t1:": "T"}, "n", ""],
+        }
+        assert _snap_decode(_snap_encode(value)) == value
+
+    def test_length_prefix_counts_escaped_bytes(self):
+        # "\t" is the two-byte escape for "~": length 2, one decoded char.
+        assert _snap_decode("s2:\\t") == "~"
+        assert _snap_decode("l2:s2:\\qs1:a") == ['"', "a"]
+
+    def test_bytes_input_decodes(self):
+        value = {"a": [1, -2, True, None, "x~y"]}
+        assert _snap_decode(_snap_encode(value).encode()) == value
+
 
 # ===== Registry lifecycle ====================================================
 
