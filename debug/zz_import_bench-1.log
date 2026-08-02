@@ -1,0 +1,78 @@
+zz_import_bench: per-module first-import cost at boot
+sys.version: 3.4.0
+sys.implementation: (name='micropython', version=(1, 9, 4))
+sys.implementation._mpy: 'absent'
+mem free start: 8180256
+modules: 55
+
+import world: 1330ms (mem 8053936)
+import util: 0ms (mem 8053872)
+import update: 20074ms (mem 7223616)
+import training: 6046ms (mem 7101936)
+import tml_prime: 1ms (mem 7101872)
+import tml: 0ms (mem 7101792)
+import terminal: 1ms (mem 7101728)
+import system_cmds: 66ms (mem 7098944)
+import stances: 1ms (mem 7098880)
+import special: 0ms (mem 7098784)
+import socials: 253ms (mem 7091120)
+import skills_table: 1ms (mem 7091056)
+import skill_utils: 0ms (mem 7090992)
+import shop: 921ms (mem 7074896)
+import scan: 0ms (mem 7074832)
+import recommend: 1062ms (mem 7057136)
+import races: 1ms (mem 7057072)
+import quest: 1ms (mem 7056944)
+import prime_platform: 1ms (mem 7056880)
+import player: 0ms (mem 7056816)
+import picker: 0ms (mem 7056752)
+import path: 170ms (mem 7053264)
+import pager: 1ms (mem 7053200)
+import namegen: 169ms (mem 7045632)
+import music: 0ms (mem 7045568)
+import movement: 0ms (mem 7045504)
+import mobprog: 7069ms (mem 6872864)
+import mob: 0ms (mem 6872800)
+import magic: 0ms (mem 6872736)
+import macros: 0ms (mem 6872672)
+import keyidx: 0ms (mem 6872608)
+import item: 1ms (mem 6872544)
+import inventory: 1ms (mem 6872480)
+import info: 0ms (mem 6872288)
+import hunt: 0ms (mem 6872224)
+import homes: 1ms (mem 6872160)
+import healer: 1ms (mem 6872096)
+import handler: 0ms (mem 6872032)
+import groups: 0ms (mem 6871968)
+import gquest: 0ms (mem 6871904)
+import game_time: 1ms (mem 6871840)
+import game_state: 1ms (mem 6871776)
+import explored: 1ms (mem 6871712)
+import effects: 1ms (mem 6871648)
+import economy: 1ms (mem 6871584)
+import debug: 0ms (mem 6871520)
+import config: 1ms (mem 6871456)
+import commands: 0ms (mem 6871392)
+import comm: 0ms (mem 6871328)
+import combat: 0ms (mem 6871264)
+import colors: 1ms (mem 6871200)
+import classes: 1ms (mem 6871136)
+import autoskill: 0ms (mem 6871072)
+import automap: 1ms (mem 6871008)
+import aliases: 0ms (mem 6870944)
+
+total import: 37181ms over 55 modules
+mem free end: 6870912 (delta 1309344)
+
+top 10 by ms:
+  update: 20074ms
+  mobprog: 7069ms
+  training: 6046ms
+  world: 1330ms
+  recommend: 1062ms
+  shop: 921ms
+  socials: 253ms
+  path: 170ms
+  namegen: 169ms
+  system_cmds: 66ms
+Done. Results in zz_import_bench.log
