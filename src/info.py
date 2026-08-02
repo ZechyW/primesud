@@ -2316,9 +2316,14 @@ def do_examine(player, args):
         idx = pick_from("Examine what?", labels)
         if idx < 0:
             return
+        # [PRIMESUD] picker-resolved history strings use a SINGLE-WORD target
+        # token here: typed examine/look consume one token only (1stMud
+        # one_argument), unlike the inventory/shop pickers whose typed paths
+        # join args and so replay the full keywords string.
         if idx < len(mobs):
             _show_char_to_char_1(player, mobs[idx])
-            return
+            mtpl = MOB_DEFS[world.chars[mobs[idx]]["tpl"]]
+            return "examine " + mtpl.get("keywords", mtpl["short_descr"]).split()[0]
         obj = objs[idx - len(mobs)]
         tpl = item_tpl(obj)
         inst_desc = isinstance(obj, dict) and obj.get("description")
@@ -2326,7 +2331,7 @@ def do_examine(player, args):
                                      TERMINAL_COLS):
             chprintln(player, line)
         _examine_extras(player, obj)
-        return
+        return "examine " + tpl.get("keywords", tpl["short_descr"]).split()[0]
     arg = args[0]
     do_look(player, [arg])
     obj = get_obj_here(player, arg)

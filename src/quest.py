@@ -878,18 +878,20 @@ def do_quest(player, args):
         status = player.get("quest_status", QUEST_NONE)
         same_giver = (status != QUEST_NONE
                       and player.get("quest_giver", 0) == questman["tpl"])
-        actions = [("Quest status", "info")]
+        can_complete = same_giver and _quest_can_complete(player)
+        actions = []
+        if can_complete:
+            actions.append(("Complete quest", "complete"))
+        actions.append(("Quest status", "info"))
         if status == QUEST_NONE and player.get("quest_time", 0) <= 0:
             actions.append(("Request a quest", "request"))
-        if same_giver:
-            actions.append(("Complete quest", "complete"))
         actions.extend((
             ("List quest rewards", "list"),
             ("Buy quest reward", "buy"),
             ("Sell quest item", "sell"),
             ("Identify quest reward", "identify"),
         ))
-        if same_giver and not _quest_can_complete(player):
+        if same_giver and not can_complete:
             actions.append(("Give up quest", "quit"))
 
         idx = pick_from("Quest: choose an action",

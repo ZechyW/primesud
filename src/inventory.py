@@ -639,6 +639,7 @@ def do_give(player, args):
     """
     obj = None
     victim = None
+    resolved = None
     if not args and not player.get("is_npc"):
         rs = world.rooms[player["room"]]
         victims = [world.chars[i] for i in rs["mobs"]
@@ -683,10 +684,21 @@ def do_give(player, args):
         if idx < 0:
             return
         victim = victims[idx]
+        # [PRIMESUD] the recipient token may be multi-word -- both typed paths
+        # resolve it through _give_target, which joins the words, so the full
+        # keywords string replays fine.
+        vtpl = MOB_DEFS[victim["tpl"]]
+        target_kw = vtpl.get("keywords", vtpl["short_descr"])
         if amount is not None:
             _give_coins(player, amount, picked, [], victim)
-            return
+            return "give " + num_str(amount) + " " + picked + " " + target_kw
         obj = picked
+        # [PRIMESUD] the item token must be SINGLE-WORD: the typed path reads
+        # arg1 = args[0] only, unlike the recipient it joins from args[1:].
+        # short_descr fallback keeps split()[0] safe on a keywordless template.
+        otpl = item_tpl(obj)
+        resolved = ("give " + otpl.get("keywords", otpl["short_descr"]).split()[0]
+                    + " " + target_kw)
     else:
         if len(args) < 2:
             chprintln(player, "Give what to whom?")
@@ -729,37 +741,37 @@ def do_give(player, args):
             # [PRIMESUD] "who your ... deliver $p too" grammar fixed
             act("That isn't who you're supposed to deliver $p to.",
                 player, obj, None, TO_CHAR)
-        return
+        return resolved
 
     if victim.get("is_npc") and MOB_DEFS[victim["tpl"]].get("shop"):
         act("$N tells you 'Sorry, you'll have to sell that.'",
             player, None, victim, TO_CHAR)
-        return
+        return resolved
 
     if not can_drop_obj(player, obj):
         chprintln(player, "You can't let go of it.")
-        return
+        return resolved
 
     if (item_extra_flags(obj, tpl).get("quest")
             and player["level"] <= MAX_MORTAL_LEVEL):
         chprintln(player, "You can't give quest items.")
-        return
+        return resolved
 
     carried = victim["inv"] + [e for e in victim["equip"].values()
                                if e is not None]
     carry_n = sum(_obj_number(o) for o in carried)
     if carry_n + _obj_number(obj) > can_carry_n(victim):
         act("$N has $S hands full.", player, None, victim, TO_CHAR)
-        return
+        return resolved
 
     # cf. 1stMud act_obj.c do_give: get_carry_weight includes coin weight
     if get_carry_weight(victim) + get_obj_weight(obj) > can_carry_w(victim):
         act("$N can't carry that much weight.", player, None, victim, TO_CHAR)
-        return
+        return resolved
 
     if not can_see_obj(victim, obj):
         act("$N can't see it.", player, None, victim, TO_CHAR)
-        return
+        return resolved
 
     player["inv"].remove(obj)
     victim["inv"].append(obj)
@@ -794,6 +806,7 @@ def do_give(player, args):
     if victim.get("is_npc"):
         if mobprog.has_trigger(victim, "give"):
             mobprog.give_trigger(victim, player, obj)
+    return resolved
 
 
 def _obj_flags(obj, tpl):

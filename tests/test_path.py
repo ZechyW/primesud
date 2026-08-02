@@ -386,7 +386,8 @@ def test_path_result_leads_run_picker(fresh_world, monkeypatch):
     path_cmd.do_path(player, ["gam"])
     assert player["last_path"] == ("gamma", "2n", 2, 100)
 
-    movement.do_run(player, [])
+    # the picker resolves to the typed speedwalk form for history replay
+    assert movement.do_run(player, []) == "run 2n"
     assert shown[0][0] == "Run where?"
     assert shown[0][1][0] == "{Cgamma{x (2 steps)"
     assert player["run_buf"] == [("move", "n"), ("move", "n")]

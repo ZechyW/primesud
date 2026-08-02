@@ -1555,3 +1555,7 @@ def do_run(player, args):
 
     player["run_buf"] = steps
     chprintln(player, "You start running...")
+    if not args:
+        # [PRIMESUD] picker-resolved history string: the speedwalk buffer IS
+        # the typed form, so it replays the same route verbatim.
+        return "run " + buf

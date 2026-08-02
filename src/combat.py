@@ -2039,6 +2039,12 @@ def do_consider(player, args):
         msg = "Death will thank you for your gift."
 
     act(msg, player, None, victim, TO_CHAR)
+    if not args:
+        # [PRIMESUD] full keywords string, like do_kill's picker -- the typed
+        # path joins args, and the short_descr fallback avoids split()[0]
+        # blowing up on a keywordless template
+        vtpl = MOB_DEFS[victim["tpl"]]
+        return "consider " + vtpl.get("keywords", vtpl["short_descr"])
 
 
 def do_kill(player, args):

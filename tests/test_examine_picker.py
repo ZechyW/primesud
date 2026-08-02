@@ -41,8 +41,8 @@ def scene(monkeypatch):
     world.rooms._data[3001] = room
     ROOM_DEFS._data[3001] = room
 
-    MOB_DEFS._data[9001] = {"short_descr": "a guard", "level": 5,
-                            "description": "A burly guard."}
+    MOB_DEFS._data[9001] = {"short_descr": "a guard", "keywords": "guard",
+                            "level": 5, "description": "A burly guard."}
     mob = _char_base()
     mob.update({"is_npc": True, "id": 2, "tpl": 9001, "room": 3001,
                 "hit": 50, "max_hit": 50})
@@ -102,13 +102,15 @@ def test_picker_lists_mobs_then_items(monkeypatch, out, scene):
 
 def test_pick_mob_shows_char(monkeypatch, out, scene):
     monkeypatch.setattr(info, "pick_from", lambda t, o: 0)
-    info.do_examine(scene, [])
+    # resolved history string uses a single-word token: typed examine reads
+    # args[0] only
+    assert info.do_examine(scene, []) == "examine guard"
     assert "A burly guard." in out
 
 
 def test_pick_room_item_shows_description(monkeypatch, out, scene):
     monkeypatch.setattr(info, "pick_from", lambda t, o: 1)
-    info.do_examine(scene, [])
+    assert info.do_examine(scene, []) == "examine rock"
     assert "Just a rock." in out
 
 

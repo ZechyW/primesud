@@ -204,8 +204,25 @@ def test_bare_quest_picker_hides_quit_when_completeable(
     do_quest(fresh, [])
 
     assert seen["title"] == "Quest: choose an action"
-    assert "Complete quest [quest complete]" in seen["labels"]
+    assert seen["labels"][0] == "Complete quest [quest complete]"
     assert "Give up quest [quest quit]" not in seen["labels"]
+
+
+def test_bare_quest_picker_hides_complete_until_ready(fresh, monkeypatch):
+    fresh["quest_status"] = QUEST_KILL
+    fresh["quest_giver"] = 200
+    fresh["quest_time"] = 10
+    seen = {}
+
+    def pick(_title, labels):
+        seen["labels"] = labels
+        return -1
+
+    monkeypatch.setattr(quest, "pick_from", pick)
+    do_quest(fresh, [])
+
+    assert seen["labels"][0] == "Quest status [quest info]"
+    assert "Complete quest [quest complete]" not in seen["labels"]
 
 
 def test_bare_quest_nested_buy_picker(fresh, monkeypatch):
@@ -442,6 +459,28 @@ def test_give_coins_and_item(fresh):
     kw = ITEM_DEFS[214]["keywords"].split()[0]
     do_give(fresh, [kw, v_kw])
     assert obj not in fresh["inv"] and obj in victim["inv"]
+
+
+def test_give_picker_resolves_history(fresh, monkeypatch):
+    """[PRIMESUD] The two-stage picker returns the typed form for history:
+    single-word item token (typed do_give reads args[0]) plus the recipient's
+    full keywords (typed lookup joins args[1:])."""
+    import inventory
+    from item import create_object
+    victim = _fake_room_mob(fresh, 202)   # appended last to the room mob list
+    fresh["gold"] = 0
+    fresh["silver"] = 0
+    obj = create_object(214)
+    obj["extra_flags"] = {}  # instance override: plain giveable item
+    fresh["inv"] = [obj]
+    monkeypatch.setattr(
+        inventory, "pick_from",
+        lambda title, labels: 0 if title == "Give what?" else len(labels) - 1)
+
+    assert inventory.do_give(fresh, []) == (
+        "give " + ITEM_DEFS[214]["keywords"].split()[0] + " "
+        + MOB_DEFS[202]["keywords"])
+    assert obj in victim["inv"]
 
 
 def test_give_changer_exchanges_coins(fresh):

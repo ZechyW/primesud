@@ -68,3 +68,8 @@ class TestConsider:
     def test_not_here(self, scene, out):
         combat.do_consider(scene, ["dragon"])
         assert out == ["They're not here."]
+
+    def test_picker_resolves_history(self, scene, out, monkeypatch):
+        """[PRIMESUD] The no-arg picker returns the typed form for history."""
+        monkeypatch.setattr(combat, "pick_from", lambda title, opts: 0)
+        assert combat.do_consider(scene, []) == "consider guard"

@@ -940,7 +940,10 @@ def test_school_demo_full_interaction(school_world, monkeypatch):
         m.setattr(inventory, "pick_from", lambda title, options: next(picks))
         m.setattr(inventory.terminal.tr, "input",
                   lambda *args, **kwargs: "1")
-        inventory.do_give(player, [])
+        # picker resolves to the typed coin form (full recipient keywords --
+        # the typed target lookup joins args[2:])
+        assert inventory.do_give(player, []) == (
+            "give 1 silver " + MOB_DEFS[3700]["keywords"])
     assert player["silver"] == 1 and mob["silver"] == 1
     assert any("students this fund was made for" in l for l in out)
     assert player["gold"] == 1
