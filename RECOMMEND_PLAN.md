@@ -61,9 +61,12 @@ G1 re-check 02/08/2026 (recommend_bench-4.log): scan_summary 8012 ->
 run surfaced that Prime `open(.., "rb")` returns str with
 character-counted sized reads (byte-faithful payload; see
 docs/BUILTINS.md sec. File open() binary-mode semantics) -- fixed by the
-`_as_bytes()` encode cast (c2e3473). Round 4 CONFIRMED. Next: same
-recipe for foes.idx (scan_mobs still 2383ms), then harvest this plan
-doc. load_world 11.9s remains a separate open issue.
+`_as_bytes()` encode cast (c2e3473). G2 re-check same day
+(recommend_bench-G2-1.log): identical semantics and results, ~2.3x
+faster throughout (scan_summary 85ms, scan_wield 67ms, scan_mobs
+1102ms, load_world 4141ms). Round 4 CONFIRMED on both devices. Next:
+same recipe for foes.idx (scan_mobs 2383ms G1), then harvest this plan
+doc. load_world 11.9s on G1 remains a separate open issue.
 
 Desktop verification on 31 July 2026 (post-review: `gear.idx` segmented per
 wear slot for bounded seek reads; gear summary is a drill-in picker; detail

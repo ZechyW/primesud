@@ -163,9 +163,9 @@ Verified via smoke tests in `primesud.py` (June 2026).
 
 ## File `open()` binary-mode semantics (measured on-device)
 
-Probed 02 Aug 2026 on physical G1 via `debug/recommend_bench.py`
-`scenario_binprobe` against a PC-computed checksum of `gear.bin` (80,283
-bytes incl. 0xF3/CR/0x1A/NUL content):
+Probed 02 Aug 2026 on physical G1 AND G2 (identical behaviour on both)
+via `debug/recommend_bench.py` `scenario_binprobe` against a PC-computed
+checksum of `gear.bin` (80,283 bytes incl. 0xF3/CR/0x1A/NUL content):
 
 - `open(name, "rb")` is accepted but `read()` returns **str**, not bytes.
   The payload is byte-faithful (full-file length and checksum match
@@ -177,7 +177,7 @@ bytes incl. 0xF3/CR/0x1A/NUL content):
   20). Treat `n` as a lower bound; slice or bound by computed offsets.
 - `seek(off)` is byte-addressed and exact.
 - `uio.open` is NOT an escape hatch: identical behaviour (str result,
-  char-counted sized reads; probed G1 02/08/2026). uio also exposes
+  char-counted sized reads; probed G1+G2 02/08/2026). uio also exposes
   BytesIO / FileIO / StringIO / TextIOWrapper.
 
 Pattern in use: `recommend._as_bytes()` casts every gear.bin read; the
