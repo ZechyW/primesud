@@ -161,6 +161,28 @@ Verified via smoke tests in `primesud.py` (June 2026).
 
 ---
 
+## File `open()` binary-mode semantics (measured on-device)
+
+Probed 02 Aug 2026 on physical G1 via `debug/recommend_bench.py`
+`scenario_binprobe` against a PC-computed checksum of `gear.bin` (80,283
+bytes incl. 0xF3/CR/0x1A/NUL content):
+
+- `open(name, "rb")` is accepted but `read()` returns **str**, not bytes.
+  The payload is byte-faithful (full-file length and checksum match
+  exactly; no EOL translation, no 0x1A-EOF truncation); `.encode()` is a
+  raw byte cast on MicroPython, so `s.encode()` recovers the exact bytes.
+- **`read(n)` counts characters, not bytes.** A byte >= 0x80 acts as a
+  UTF-8 lead and drags continuation bytes along, so sized reads of binary
+  data can return MORE than `n` bytes (`read(16)` on gear.bin returned
+  20). Treat `n` as a lower bound; slice or bound by computed offsets.
+- `seek(off)` is byte-addressed and exact.
+
+Pattern in use: `recommend._as_bytes()` casts every gear.bin read; the
+scanner indexes by computed record offsets so over-returned tails are
+never touched.
+
+---
+
 ## Keyboard input semantics (measured on-device)
 
 Probed 06 Jul 2026 on physical Prime G2 via `debug/keydrop_probe.py`

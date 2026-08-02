@@ -55,9 +55,15 @@ weapon-type ids are baked at build time; per-type effective skill is
 precomputed per scan; winner display strings resolve from one bounded
 string-table read after scanning. gear.bin is 80KB (records ~55KB: one
 summary-mode chunk read). Estimated scan_summary 8.0s -> ~0.3-0.5s.
-Awaiting G1 re-check (transfer recommend.py + gear.bin, delete stale
-gear.idx from the appdir). If confirmed, apply the same recipe to
-foes.idx for the 2.3s recommend mobs scan, then harvest this plan doc.
+
+G1 re-check 02/08/2026 (recommend_bench-4.log): scan_summary 8012 ->
+194ms (41x), scan_wield 3024 -> 164ms, results identical. First device
+run surfaced that Prime `open(.., "rb")` returns str with
+character-counted sized reads (byte-faithful payload; see
+docs/BUILTINS.md sec. File open() binary-mode semantics) -- fixed by the
+`_as_bytes()` encode cast (c2e3473). Round 4 CONFIRMED. Next: same
+recipe for foes.idx (scan_mobs still 2383ms), then harvest this plan
+doc. load_world 11.9s remains a separate open issue.
 
 Desktop verification on 31 July 2026 (post-review: `gear.idx` segmented per
 wear slot for bounded seek reads; gear summary is a drill-in picker; detail

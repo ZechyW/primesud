@@ -36,7 +36,7 @@ build/
 /primesud.sav
 /primesud_backup.sav
 
-debug/transfer/
+debug/Python debug.hpappdir/
 
 # Claude Code local settings
 .claude/settings.local.json

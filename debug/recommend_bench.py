@@ -120,7 +120,10 @@ def scenario_binprobe():
             parts.append(int_str(value))
         log("binprobe: head type=" + tname + " len=" + int_str(len(head))
             + " [" + " ".join(parts) + "]")
-        ok = len(head) == 16
+        # Device read(n) counts characters, not bytes (G1, 02/08/2026): a
+        # high byte is a UTF-8 lead and drags continuation bytes along, so
+        # sized reads can over-return. Compare the first 16 values only.
+        ok = len(head) >= 16
         if ok:
             for i in range(16):
                 if head[i] != _BIN_FIRST16[i]:
