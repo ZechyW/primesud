@@ -21,7 +21,7 @@ equipment baselines).  SAVE_VAR is redirected to "smoketest" before
 world.init_world()/load_world(); SAVE_FILE to recommend_bench.sav after,
 so nothing here can touch the real save slot or file.
 
-Ship the full game closure (src/*.py + src/*.txt + src/*.idx + gear.bin)
+Ship the full game closure (src/*.py + src/*.txt + src/*.idx + src/*.bin)
 EXCEPT
 src/primesud.py (its module level launches the game).  Only ONE
 self-running .py may be in the appdir (Prime auto-imports all): this

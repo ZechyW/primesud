@@ -24,27 +24,14 @@ def _player(level=10, room=1):
 
 
 def _fight_row(vnum, level, name, tags="test"):
-    return str(vnum) + "|" + str(level) + "|" + name + "|" + tags
+    return {"vnum": vnum, "level": level, "name": name,
+            "tags": tags.split(",")}
 
 
-def _write_foes_idx(path, rows):
-    """Write rows in the level-segmented foes.idx layout."""
-    def _row_level(row):
-        try:
-            return max(0, int(row.split("|")[1]))
-        except (IndexError, ValueError):
-            return 0
-    ordered = sorted(rows, key=_row_level)
-    top = max([_row_level(row) for row in ordered], default=0)
-    sizes = [0] * (top + 1)
-    blob = ""
-    for row in ordered:
-        line = row + "\n"
-        sizes[_row_level(row)] += len(line)
-        blob += line
-    path.write_bytes(("# test foes.idx\n"
-                      + ",".join(str(size) for size in sizes) + "\n"
-                      + blob).encode())
+def _write_foes_bin(path, rows):
+    """Pack rows through the builder so fixtures keep the shipped
+    level-grouped layout the scanner's band seek depends on."""
+    path.write_bytes(build_mob_index.pack_foes_index(list(rows)))
 
 
 def _gear_row(vnum, slot="body", level=1, score=100, kind="floor",
@@ -113,8 +100,8 @@ def test_command_registration_keeps_existing_prefix_order():
 
 
 def test_mob_window_widens_lower_only(indexed_player, tmp_path, monkeypatch):
-    path = tmp_path / "foes.idx"
-    _write_foes_idx(path, (
+    path = tmp_path / "foes.bin"
+    _write_foes_bin(path, (
         _fight_row(100, 11, "upper"),
         _fight_row(101, 10, "same"),
         _fight_row(102, 9, "lower one"),
@@ -132,17 +119,13 @@ def test_mob_window_widens_lower_only(indexed_player, tmp_path, monkeypatch):
     assert all(row["level"] <= 11 for row in rows)
 
 
-def test_mob_filters_empty_tags_quest_and_malformed(
-        indexed_player, tmp_path, monkeypatch):
+def test_mob_quest_target_excluded(indexed_player, tmp_path, monkeypatch):
     indexed_player["quest_status"] = recommend.QUEST_FINDMOB
     indexed_player["quest_mob"] = 102
-    path = tmp_path / "foes.idx"
-    _write_foes_idx(path, (
-        "100|10|too few",
-        "101|10|no fight|",
+    path = tmp_path / "foes.bin"
+    _write_foes_bin(path, (
         _fight_row(102, 10, "protected"),
         _fight_row(103, 10, "eligible"),
-        "bad|10|broken|test",
     ))
     monkeypatch.setattr(recommend, "FOES_INDEX_FILE", str(path))
 
@@ -152,8 +135,8 @@ def test_mob_filters_empty_tags_quest_and_malformed(
 
 def test_mob_ranking_record_current_area_and_no_load(
         indexed_player, tmp_path, monkeypatch):
-    path = tmp_path / "foes.idx"
-    _write_foes_idx(path, (
+    path = tmp_path / "foes.bin"
+    _write_foes_bin(path, (
         _fight_row(100, 10, "far", "far"),
         _fight_row(101, 10, "current", "test"),
         _fight_row(102, 10, "bad", "test"),
@@ -170,15 +153,16 @@ def test_mob_ranking_record_current_area_and_no_load(
     assert world._LOADED_AREAS == before
 
 
-def test_corrupt_foes_directory_fails_softly(indexed_player, tmp_path,
-                                              monkeypatch, capture):
+def test_corrupt_foes_header_fails_softly(indexed_player, tmp_path,
+                                          monkeypatch, capture):
     pages, lines = capture
-    path = tmp_path / "foes.idx"
-    path.write_bytes(b"# header only, no directory line")
+    path = tmp_path / "foes.bin"
+    path.write_bytes(b"not a foes index at all")
     monkeypatch.setattr(recommend, "FOES_INDEX_FILE", str(path))
     recommend.do_recommend(indexed_player, ["mobs"])
 
-    path.write_bytes(b"# header\nnot,numbers,here\n")
+    # Right magic, garbage sizes: header walk never lands on header_size.
+    path.write_bytes(b"FB01\xff\x07\x1e\x00\x00\x00\x99\x99")
     recommend.do_recommend(indexed_player, ["mobs"])
 
     assert pages == []
@@ -189,7 +173,7 @@ def test_missing_indexes_fail_softly(indexed_player, tmp_path, monkeypatch,
                                      capture):
     pages, lines = capture
     monkeypatch.setattr(recommend, "FOES_INDEX_FILE",
-                        str(tmp_path / "missing-foes.idx"))
+                        str(tmp_path / "missing-foes.bin"))
     monkeypatch.setattr(recommend, "GEAR_INDEX_FILE",
                         str(tmp_path / "missing-gear.idx"))
 
@@ -565,6 +549,73 @@ def test_shipped_index_matches_naive_rescoring(indexed_player):
                 assert isinstance(row["source_name"], str)
 
 
+def _reference_mobs(player, rows_all):
+    """Naive dict-based ranking (the pre-binary algorithm, no shortcuts):
+    filter the widest band, raise the floor while >=5 remain, sort by
+    (bad record, foreign area, |level diff|, level, file order), take 10."""
+    level = player.get("level", 1)
+    lowest = max(1, level - 5)
+    highest = level + 1
+    current = recommend._current_tag(player)
+    protected = 0
+    if player.get("quest_status") in (recommend.QUEST_DELIVER,
+                                      recommend.QUEST_FINDMOB):
+        protected = player.get("quest_mob", 0)
+    rows = []
+    for order, row in enumerate(
+            row for row in rows_all
+            if lowest <= row["level"] <= highest):
+        if row["vnum"] == protected:
+            continue
+        stats = world.mob_stats.get(row["vnum"])
+        kills = stats[0] if stats else 0
+        deaths = stats[1] if stats else 0
+        rows.append({
+            "vnum": row["vnum"], "level": row["level"],
+            "tag": current if current in row["tags"] else row["tags"][0],
+            "extra": len(row["tags"]) - 1, "kills": kills,
+            "deaths": deaths, "bad": bool(stats and kills > deaths),
+            "order": order,
+        })
+    low = max(1, level - 2)
+    while low > lowest:
+        if sum(1 for row in rows if row["level"] >= low) >= 5:
+            break
+        low -= 1
+    rows = [row for row in rows if row["level"] >= low]
+    rows.sort(key=lambda row: (
+        row["bad"], row["tag"] != current,
+        abs(row["level"] - level), row["level"], row["order"]))
+    return [(row["vnum"], row["level"], row["tag"], row["extra"],
+             row["kills"], row["deaths"], row["bad"])
+            for row in rows[:10]]
+
+
+def test_shipped_foes_matches_naive_ranking(fresh_world):
+    """The two-pass packed-key scan of the shipped foes.bin agrees with a
+    naive full ranking, across levels, seeded kill records, and both a
+    foreign and a resident current area."""
+    fresh_world.register_area(
+        "midgaard", 3000, 3399,
+        rooms={3001: {"name": "Square", "flags": {}, "exits": {}}})
+    fresh_world.setup()
+    with open("foes.bin", "rb") as f:
+        rows_all, _tags, _sizes = build_mob_index.parse_foes_index(f.read())
+    for index, row in enumerate(rows_all):
+        if index % 7 == 0:
+            world.mob_stats[row["vnum"]] = [2, 0]
+        elif index % 7 == 3:
+            world.mob_stats[row["vnum"]] = [1, 4]
+    for level, room in ((3, 1), (10, 3001), (24, 3001), (45, 1)):
+        player = _player(level=level, room=room)
+        rows = recommend._mob_candidates(player)
+        assert [(row["vnum"], row["level"], row["tag"], row["extra"],
+                 row["kills"], row["deaths"], row["bad"])
+                for row in rows] == _reference_mobs(player, rows_all)
+        for row in rows:
+            assert isinstance(row["name"], str) and row["name"]
+
+
 def test_gear_detail_is_bounded_to_ten(indexed_player, tmp_path, monkeypatch):
     path = tmp_path / "gear.bin"
     _write_gear_bin(path, [
@@ -581,8 +632,8 @@ def test_gear_detail_is_bounded_to_ten(indexed_player, tmp_path, monkeypatch):
 def test_mob_multi_area_marker(indexed_player, tmp_path, monkeypatch,
                                capture):
     pages, _lines = capture
-    path = tmp_path / "foes.idx"
-    _write_foes_idx(path, (
+    path = tmp_path / "foes.bin"
+    _write_foes_bin(path, (
         _fight_row(100, 10, "roamer", "far,test"),
         _fight_row(101, 10, "homebody", "test"),
     ))
@@ -694,14 +745,17 @@ def test_generator_emits_fight_tags_and_all_source_kinds(
     assert "100|test|10|fighter|a fighter|test" in mob_rows
     assert next(row for row in mob_rows if row.startswith("101|")).endswith(
         "|test")
-    foes_lines = (tmp_path / "foes.idx").read_text().splitlines()
-    foes_sizes = [int(v) for v in foes_lines[1].split(",")]
+    foes_blob = (tmp_path / "foes.bin").read_bytes()
+    foes_rows, foes_tags, foes_sizes = build_mob_index.parse_foes_index(
+        foes_blob)
     # Only mob 100 is fightable (101 is a shopkeeper, 102 sits in a safe
     # room); its level-10 segment is the last and only non-empty one.
-    assert foes_lines[2:] == ["100|10|a fighter|test"]
+    assert [(row["vnum"], row["level"], row["name"], row["tags"])
+            for row in foes_rows] == [(100, 10, "a fighter", ["test"])]
     assert len(foes_sizes) == 11
-    assert foes_sizes[10] == len(foes_lines[2]) + 1
+    assert foes_sizes[10] == 8  # 7 fixed bytes + 1 tag id
     assert sum(foes_sizes) == foes_sizes[10]
+    assert "test" in foes_tags
 
     blob = (tmp_path / "gear.bin").read_bytes()
     slots_rows, wtypes, tags = build_mob_index.parse_gear_index(blob)
@@ -753,5 +807,5 @@ def test_shipped_indexes_reproduce(tmp_path, monkeypatch):
 
     build_mob_index.main()
 
-    for name in ("mobs.idx", "objs.idx", "foes.idx", "gear.bin"):
+    for name in ("mobs.idx", "objs.idx", "foes.bin", "gear.bin"):
         assert (tmp_path / name).read_bytes() == (source / name).read_bytes()

@@ -64,9 +64,21 @@ docs/BUILTINS.md sec. File open() binary-mode semantics) -- fixed by the
 `_as_bytes()` encode cast (c2e3473). G2 re-check same day
 (recommend_bench-G2-1.log): identical semantics and results, ~2.3x
 faster throughout (scan_summary 85ms, scan_wield 67ms, scan_mobs
-1102ms, load_world 4141ms). Round 4 CONFIRMED on both devices. Next:
-same recipe for foes.idx (scan_mobs 2383ms G1), then harvest this plan
-doc. load_world 11.9s on G1 remains a separate open issue.
+1102ms, load_world 4141ms). Round 4 CONFIRMED on both devices.
+
+Round 5 (02/08/2026): foes.idx -> binary foes.bin (19KB, was 27KB), same
+recipe adapted for the mob scan: variable-length records (7 bytes + one
+tag id per spawn area) grouped into per-level segments behind per-level
+byte sizes in the header, deduplicated name table at the tail. The band
+seek+read survives unchanged; ranking runs as two zero-alloc byte passes
+(per-level counts drive the band-floor raise, then a packed-int sort key
+-- bad record / foreign area / |level diff| / level / file order --
+keeps the top 10 via bounded insertion), and the <=10 winner names
+resolve from one string-table read. A naive dict-based reference ranking
+over parse_foes_index cross-checks the shipped file across player
+profiles, seeded kill records, and resident/foreign areas. Device
+re-check pending; then harvest this plan doc. load_world 11.9s on G1
+remains a separate open issue.
 
 Desktop verification on 31 July 2026 (post-review: `gear.idx` segmented per
 wear slot for bounded seek reads; gear summary is a drill-in picker; detail

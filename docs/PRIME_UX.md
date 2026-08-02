@@ -254,15 +254,16 @@ including nested items in mob-carried containers, ordinary shops, floor
 resets, and items inside floor-reset containers. Hand items are candidates
 because hypothetical combined layouts remain the job of `wear best`.
 
-Both modes scan generated index files, retain only displayed rows, load no
-area, and keep no parsed cache. `foes.idx` is segmented by mob level behind
-a byte-length directory line, so the mob mode reads only its level band in
-one seek plus one bounded read. `gear.bin` is binary: fixed-width records
-grouped by wear slot, each slot's loot and non-loot regions sorted by
-precomputed maximum possible score, so the scan rejects records with raw
-byte arithmetic (no per-row allocation) and stops a region as soon as no
-remaining record can beat the player's owned baseline. Winner names resolve
-from a deduplicated string table in one bounded read at the end.
+Both modes scan generated binary index files, retain only displayed rows,
+load no area, and keep no parsed cache, rejecting records with raw byte
+arithmetic (no per-row allocation). `foes.bin` is segmented by mob level
+behind per-level byte sizes in the header, so the mob mode reads only its
+level band in one seek plus one bounded read, then ranks it in two byte
+passes. `gear.bin` holds fixed-width records grouped by wear slot, each
+slot's loot and non-loot regions sorted by precomputed maximum possible
+score, so the scan stops a region as soon as no remaining record can beat
+the player's owned baseline. Winner names resolve from a deduplicated
+string table in one bounded read at the end.
 
 ---
 

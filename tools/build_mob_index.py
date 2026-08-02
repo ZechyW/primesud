@@ -59,6 +59,17 @@ _SOURCE_ORDER = {"shop": 0, "floor": 1, "container": 2, "loot": 3}
 #  24 name_off u16  26 name_len u8  27 sname_off u16  29 sname_len u8
 _GEAR_RECORD = struct.Struct("<HBBHHHBBBBHHHIHBHB")
 _GEAR_MAGIC = b"GB01"
+# foes.bin layout, little-endian (manual byte reads in
+# src/recommend.py._mob_candidates):
+#   0 magic "FB01"   4 header_size u16   6 strings_off u32
+#  10 level_count u16   12 per-level segment byte sizes u16 x level_count
+#  then the tag table (u8 count; u8 len + ascii per tag); header ends at
+#  header_size. Records follow, variable length, grouped by mob level
+#  ascending (stable cheapest-area order within a level):
+#   0 vnum u16   2 level u8   3 name_off u16   5 name_len u8
+#   6 tag_count u8   7.. tag ids u8 x tag_count
+#  Deduplicated ascii string table at strings_off.
+_FOES_MAGIC = b"FB01"
 _GEAR_BIAS = 32768
 _GEAR_KIND_NAMES = ("shop", "floor", "container", "loot")
 _GEAR_FLAG_BITS = {"sharp": 1, "two_hands": 2, "anti_good": 4,
@@ -317,6 +328,113 @@ def parse_gear_index(blob):
     return slots, wtypes, tags
 
 
+def pack_foes_index(rows, tags=None):
+    """Pack fightable-mob rows into the binary foes.bin blob.
+
+    rows are dicts {vnum, level, name, tags} in cheapest-area order; tags
+    is the ordered area-tag table (defaults to first-seen row order).
+    Shared with tests so fixtures keep the shipped layout invariant the
+    scanner's band seek depends on: records grouped by mob level
+    ascending, stable within a level. Names live deduplicated in a
+    trailing string table.
+    """
+    if tags is None:
+        tags = []
+        for row in rows:
+            for tag in row["tags"]:
+                if tag not in tags:
+                    tags.append(tag)
+    tag_ids = {tag: index for index, tag in enumerate(tags)}
+    assert len(tags) < 256
+
+    strings = {}
+    string_parts = []
+
+    def intern(text):
+        data = text.encode("ascii")
+        assert len(data) < 256, text
+        ref = strings.get(data)
+        if ref is None:
+            offset = sum(len(part) for part in string_parts)
+            assert offset + len(data) < 65536
+            ref = (offset, len(data))
+            strings[data] = ref
+            string_parts.append(data)
+        return ref
+
+    ordered = sorted(rows, key=lambda row: max(0, row["level"]))
+    top_level = max((max(0, row["level"]) for row in rows), default=0)
+    sizes = [0] * (top_level + 1)
+    records = []
+    for row in ordered:
+        level = max(0, row["level"])
+        name_off, name_len = intern(row["name"])
+        assert 0 <= row["vnum"] < 65536 and level < 256, row
+        assert 0 < len(row["tags"]) < 256, row
+        record = bytes((
+            row["vnum"] & 255, row["vnum"] >> 8, level,
+            name_off & 255, name_off >> 8, name_len, len(row["tags"]),
+        )) + bytes(tag_ids[tag] for tag in row["tags"])
+        sizes[level] += len(record)
+        records.append(record)
+    body = b"".join(records)
+
+    tables = bytearray()
+    tables.append(len(tags))
+    for name in tags:
+        data = name.encode("ascii")
+        assert len(data) < 256
+        tables.append(len(data))
+        tables += data
+    header_size = 12 + 2 * len(sizes) + len(tables)
+    assert header_size <= 2048  # the scanner's single header read
+    strings_off = header_size + len(body)
+    header = (_FOES_MAGIC
+              + struct.pack("<HIH", header_size, strings_off, len(sizes))
+              + struct.pack("<" + str(len(sizes)) + "H", *sizes)
+              + bytes(tables))
+    return header + body + b"".join(string_parts)
+
+
+def parse_foes_index(blob):
+    """Decode a foes.bin blob -> (rows in file order, tags, sizes).
+
+    PC-side reader shared by tools/dump_foes_bin.py and the tests; the
+    device scanner in src/recommend.py reads the same layout with manual
+    byte arithmetic. Row dicts carry vnum/level/name/tags.
+    """
+    assert blob[:4] == _FOES_MAGIC
+    header_size, strings_off, level_count = struct.unpack_from("<HIH", blob, 4)
+    sizes = list(struct.unpack_from("<" + str(level_count) + "H", blob, 12))
+    pos = 12 + 2 * level_count
+    count = blob[pos]
+    pos += 1
+    tags = []
+    for _ in range(count):
+        length = blob[pos]
+        tags.append(blob[pos + 1:pos + 1 + length].decode("ascii"))
+        pos += 1 + length
+    assert pos == header_size
+
+    rows = []
+    offset = header_size
+    while offset < strings_off:
+        vnum = blob[offset] | blob[offset + 1] << 8
+        level = blob[offset + 2]
+        name_off = blob[offset + 3] | blob[offset + 4] << 8
+        name_len = blob[offset + 5]
+        tag_count = blob[offset + 6]
+        start = strings_off + name_off
+        rows.append({
+            "vnum": vnum, "level": level,
+            "name": blob[start:start + name_len].decode("ascii"),
+            "tags": [tags[blob[offset + 7 + i]] for i in range(tag_count)],
+        })
+        offset += 7 + tag_count
+    assert offset == strings_off
+    return rows, tags, sizes
+
+
 def main():
     # Two passes: an M-reset may spawn a template defined in another file
     # (haon.are places arachnos-defined spiders in room 6134), so template
@@ -381,34 +499,26 @@ def main():
     print("Wrote", out_path, "-", len(lines), "mobs,",
           os.path.getsize(out_path), "bytes")
 
-    # foes.idx: fightable rows only, one contiguous segment per mob level,
-    # so `recommend mobs` seeks and reads just its level band instead of
-    # scanning 1,000 rows (per-row split allocs dominate on-device).
+    # foes.bin: fightable rows only, binary, one contiguous segment per mob
+    # level, so `recommend mobs` seeks and reads just its level band and
+    # rejects rows with raw byte arithmetic (per-row split allocs dominated
+    # on-device: 2.4s for the text index).
     fight_rows = []
     for vnum in vnums:
         tags = fight_tags.get(vnum)
         if not tags:
             continue
         mob = all_mobiles[vnum]
-        short = " ".join(mob.get("short_descr", "").split())
-        fight_rows.append((max(0, mob.get("level", 0)),
-                           str(vnum) + "|" + str(mob.get("level", 0)) + "|"
-                           + short + "|" + ",".join(tags) + "\n"))
-    # Stable sort: within a level, mobs.idx cheapest-area order is kept.
-    fight_rows.sort(key=lambda row: row[0])
-    top_level = fight_rows[-1][0] if fight_rows else 0
-    level_sizes = [0] * (top_level + 1)
-    for level, row in fight_rows:
-        level_sizes[level] += len(row)
-    out_path = os.path.join(OUTDIR, "foes.idx")
-    header = ("# vnum|level|short_descr|fight_tags per fightable mob, grouped"
-              " by level; line 2 lists per-level segment byte lengths for"
-              " levels 0..N -- built by tools/build_mob_index.py, do not"
-              " edit\n")
-    with open(out_path, "w", newline="\n") as f:
-        f.write(header
-                + ",".join(str(size) for size in level_sizes) + "\n"
-                + "".join(row for _level, row in fight_rows))
+        fight_rows.append({
+            "vnum": vnum, "level": mob.get("level", 0),
+            "name": " ".join(mob.get("short_descr", "").split()),
+            "tags": tags,
+        })
+    blob = pack_foes_index(fight_rows, [entry[1] for entry in
+                                        world._AREA_FILES])
+    out_path = os.path.join(OUTDIR, "foes.bin")
+    with open(out_path, "wb") as f:
+        f.write(blob)
     print("Wrote", out_path, "-", len(fight_rows), "fightable mobs,",
           os.path.getsize(out_path), "bytes")
 

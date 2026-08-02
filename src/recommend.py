@@ -15,7 +15,7 @@ from util import num_str, pad_left, pad_right
 from world import item_tpl
 
 
-FOES_INDEX_FILE = "foes.idx"
+FOES_INDEX_FILE = "foes.bin"
 GEAR_INDEX_FILE = "gear.bin"
 # Largest single gear.bin read: the whole ~55KB record region usually fits
 # one summary-mode read; each seek+read pair costs ~40ms on-device.
@@ -34,22 +34,6 @@ _HAND_SLOTS = ("wield", "shield", "hold")
 _SOURCE_ORDER = {"shop": 0, "floor": 1, "container": 2, "loot": 3}
 
 
-def _index_lines(data):
-    """Yield non-comment index rows without allocating an all-lines list."""
-    start = 0
-    size = len(data)
-    while start < size:
-        end = data.find("\n", start)
-        if end < 0:
-            end = size
-        if end > start and data[start] != "#":
-            line = data[start:end]
-            if line and line[-1] == "\r":
-                line = line[:-1]
-            yield line
-        start = end + 1
-
-
 def _current_tag(player):
     """Return player's resident area tag without lazy loading."""
     room = world.ROOM_DEFS._data.get(player.get("room"))
@@ -63,92 +47,170 @@ def _area_name(tag):
     return world._TAG_TO_NAME.get(tag, tag)
 
 
+def _parse_foes_header(head):
+    """Decode foes.bin's header (layout in tools/build_mob_index.py).
+
+    Returns (header_size, strings_off, sizes, tags), or None when the
+    header is malformed. Raises IndexError/UnicodeError on truncated
+    garbage -- the caller wraps.
+    """
+    if head[:4] != b"FB01":
+        return None
+    header_size = head[4] | head[5] << 8
+    strings_off = head[6] | head[7] << 8 | head[8] << 16 | head[9] << 24
+    level_count = head[10] | head[11] << 8
+    sizes = []
+    pos = 12
+    for _ in range(level_count):
+        sizes.append(head[pos] | head[pos + 1] << 8)
+        pos += 2
+    tags = []
+    count = head[pos]
+    pos += 1
+    for _ in range(count):
+        length = head[pos]
+        tags.append(head[pos + 1:pos + 1 + length].decode())
+        pos += 1 + length
+    if pos != header_size:
+        return None
+    return header_size, strings_off, sizes, tags
+
+
 def _mob_candidates(player):
     """Read and rank fightable mob rows without loading an area.
 
-    foes.idx groups fightable rows into one contiguous segment per mob
-    level behind a directory line of per-level byte lengths, so the widest
-    possible band [level-5, level+1] is one seek plus one bounded read --
-    never a full-file scan (per-row split allocs dominate on-device).
+    foes.bin groups fightable records into one contiguous segment per mob
+    level behind per-level byte sizes in the header, so the widest band
+    [level-5, level+1] is one seek plus one bounded read. Records are
+    variable-length (7 bytes + one byte per spawn tag; offsets in
+    tools/build_mob_index.py) and walked with raw byte arithmetic -- zero
+    allocations per reject, the text index spent ~13ms/row on split
+    allocs. Two passes over the band: per-level counts drive the
+    low-raise, then a packed-int sort key keeps the 10 best; winner names
+    resolve from one string-table read afterwards.
     """
     level = player.get("level", 1)
     lowest = max(1, level - 5)
     highest = level + 1
     try:
-        with open(FOES_INDEX_FILE) as f:
-            head = f.read(2048)
-            cut = head.find("\n")
-            end = head.find("\n", cut + 1) if cut >= 0 else -1
-            if end < 0:
-                return None
-            try:
-                sizes = [int(v) for v in head[cut + 1:end].split(",")]
-            except (TypeError, ValueError):
-                return None
-            if not sizes or min(sizes) < 0:
-                return None
-            top = len(sizes) - 1
-            low_seg = lowest if lowest <= top else top + 1
-            high_seg = highest if highest <= top else top
-            skip = 0
-            for index in range(low_seg):
-                skip += sizes[index]
-            length = 0
-            for index in range(low_seg, high_seg + 1):
-                length += sizes[index]
-            data = ""
-            if length:
-                f.seek(end + 1 + skip)
-                data = f.read(length)
+        f = open(FOES_INDEX_FILE, "rb")
     except OSError:
         return None
-
-    current = _current_tag(player)
-    protected = 0
-    if player.get("quest_status") in (QUEST_DELIVER, QUEST_FINDMOB):
-        protected = player.get("quest_mob", 0)
-    rows = []
-    order = 0
-    for line in _index_lines(data):
-        parts = line.split("|")
-        if len(parts) < 4:
-            continue
+    with f:
+        head = _as_bytes(f.read(2048))
         try:
-            vnum = int(parts[0])
-            mob_level = int(parts[1])
-        except (TypeError, ValueError):
-            continue
-        if vnum == protected or mob_level < lowest or mob_level > highest:
-            continue
-        tags = [tag for tag in parts[3].split(",") if tag]
-        if not tags:
-            continue
-        tag = current if current in tags else tags[0]
-        stats = world.mob_stats.get(vnum)
-        kills = stats[0] if stats else 0
-        deaths = stats[1] if stats else 0
-        rows.append({
-            "vnum": vnum, "level": mob_level, "name": parts[2],
-            "tag": tag, "extra": len(tags) - 1, "kills": kills,
-            "deaths": deaths, "bad": bool(stats and kills > deaths),
-            "order": order,
-        })
-        order += 1
+            meta = _parse_foes_header(head)
+        except (IndexError, ValueError, UnicodeError):
+            return None
+        if meta is None:
+            return None
+        header_size, strings_off, sizes, tags = meta
+        top = len(sizes) - 1
+        low_seg = lowest if lowest <= top else top + 1
+        high_seg = highest if highest <= top else top
+        skip = 0
+        for index in range(low_seg):
+            skip += sizes[index]
+        length = 0
+        for index in range(low_seg, high_seg + 1):
+            length += sizes[index]
+        data = b""
+        if length:
+            f.seek(header_size + skip)
+            data = _as_bytes(f.read(length))
+            if len(data) < length:
+                return None
 
-    low = max(1, level - 2)
-    while low > lowest:
-        count = 0
-        for row in rows:
-            if row["level"] >= low:
-                count += 1
-        if count >= 5:
-            break
-        low -= 1
-    rows = [row for row in rows if row["level"] >= low]
-    rows.sort(key=lambda row: (
-        row["bad"], row["tag"] != current,
-        abs(row["level"] - level), row["level"], row["order"]))
-    return rows[:10]
+        current = _current_tag(player)
+        cur_id = -1
+        for index in range(len(tags)):
+            if tags[index] == current:
+                cur_id = index
+                break
+        protected = 0
+        if player.get("quest_status") in (QUEST_DELIVER, QUEST_FINDMOB):
+            protected = player.get("quest_mob", 0)
+
+        # Pass 1: per-level counts (protected mob excluded) drive the
+        # low-raise -- shrink the band's floor toward level-2 while at
+        # least 5 candidates remain.
+        counts = [0] * (highest - lowest + 1)
+        pos = 0
+        while pos < length:
+            if (data[pos] | data[pos + 1] << 8) != protected:
+                counts[data[pos + 2] - lowest] += 1
+            pos += 7 + data[pos + 6]
+        low = max(1, level - 2)
+        while low > lowest:
+            total = 0
+            for index in range(low - lowest, len(counts)):
+                total += counts[index]
+            if total >= 5:
+                break
+            low -= 1
+
+        # Pass 2: keep the 10 best by packed ascending key: bad record,
+        # foreign area, |level diff|, level, file order (order is 15 bits;
+        # a band holds a few hundred records at most).
+        stats_map = world.mob_stats
+        top10 = []
+        order = 0
+        pos = 0
+        while pos < length:
+            step = 7 + data[pos + 6]
+            mob_level = data[pos + 2]
+            vnum = data[pos] | data[pos + 1] << 8
+            if mob_level >= low and vnum != protected:
+                stats = stats_map.get(vnum)
+                if stats:
+                    kills = stats[0]
+                    deaths = stats[1]
+                else:
+                    kills = 0
+                    deaths = 0
+                bad = 1 if kills > deaths else 0
+                member = 0
+                if cur_id >= 0:
+                    for index in range(pos + 7, pos + step):
+                        if data[index] == cur_id:
+                            member = 1
+                            break
+                diff = level - mob_level
+                if diff < 0:
+                    diff = -diff
+                key = (bad << 27 | (1 - member) << 26 | diff << 23
+                       | mob_level << 15 | order)
+                if len(top10) < 10 or key < top10[9][0]:
+                    row = [key, vnum, mob_level,
+                           cur_id if member else data[pos + 7],
+                           data[pos + 6] - 1,
+                           (data[pos + 3] | data[pos + 4] << 8) << 8
+                           | data[pos + 5],
+                           kills, deaths, bad]
+                    index = len(top10)
+                    while index and top10[index - 1][0] > key:
+                        index -= 1
+                    top10.insert(index, row)
+                    if len(top10) > 10:
+                        top10.pop()
+            pos += step
+            order += 1
+
+        rows = []
+        if top10:
+            f.seek(strings_off)
+            names = _as_bytes(f.read())
+            for entry in top10:
+                ref = entry[5]
+                rows.append({
+                    "vnum": entry[1], "level": entry[2],
+                    "name": names[ref >> 8:(ref >> 8)
+                                  + (ref & 255)].decode(),
+                    "tag": tags[entry[3]], "extra": entry[4],
+                    "kills": entry[6], "deaths": entry[7],
+                    "bad": bool(entry[8]),
+                })
+        return rows
 
 
 def _show_mobs(player):
