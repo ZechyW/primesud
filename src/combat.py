@@ -1235,7 +1235,9 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
     [Verified: 09/07/2026] -- force/static/flame shields, drunk reduction,
     arena/war, PvP, and wiznet not ported (noted inline);
     autoloot/autogold/autosac inlined instead of do_get/do_sacrifice
-    dispatch; randomize_damage applied (1stMud discards it -- see FIXES.md).
+    dispatch; [PRIMESUD] owned-pet kills trigger the present owner's
+    autoloot/autogold/autosac; randomize_damage applied (1stMud discards
+    it -- see FIXES.md).
 
     dt >= TYPE_HIT = physical attack (dodge/parry checks apply).
     dt < TYPE_HIT  = skill/spell (no defensive checks).
@@ -1485,8 +1487,20 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         # 1stMud: if (!IsNPC(ch) && (corpse = get_obj_list...) ... autoloot/autogold/autosac
         # [PRIMESUD] use corpse returned by raw_kill instead of searching by
         # name -- 1stMud searches and gets oldest corpse when multiples exist.
-        if not ch.get("is_npc"):
-            flags = ch.get("flags", PLR_DEFAULTS)
+        # [PRIMESUD] an owned pet's kill uses its present owner's auto flags
+        # (autoloot/autogold/autosac, each only if set); generic charmies and
+        # remote owners remain NPC kills.
+        auto_ch = ch
+        if ch.get("is_npc"):
+            owner = world.chars.get(ch.get("master"))
+            if (owner is not None and owner.get("pet") == ch.get("id")
+                    and owner.get("room") == ch.get("room")
+                    and owner.get("flags", PLR_DEFAULTS)
+                    & (PLR_AUTOLOOT | PLR_AUTOGOLD | PLR_AUTOSAC)):
+                auto_ch = owner
+
+        if not auto_ch.get("is_npc"):
+            flags = auto_ch.get("flags", PLR_DEFAULTS)
             if (corpse is not None and isinstance(corpse, dict)
                     and item_tpl(corpse).get("type") == "npc_corpse"):
                 contents = corpse.get("contents", [])
@@ -1496,9 +1510,9 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                     for cobj in list(contents):
                         ctpl = item_tpl(cobj)
                         obj_remove(corpse["contents"], cobj)
-                        chprintln(ch, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
-                        if not apply_money_pickup(ch, cobj, ctpl):
-                            ch["inv"].append(cobj)
+                        chprintln(auto_ch, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
+                        if not apply_money_pickup(auto_ch, cobj, ctpl):
+                            auto_ch["inv"].append(cobj)
 
                 # 1stMud: if (PLR_AUTOGOLD && content_first && !PLR_AUTOLOOT) get gold only
                 if (flags & PLR_AUTOGOLD and corpse.get("contents")
@@ -1507,8 +1521,8 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                         ctpl = item_tpl(cobj)
                         if _item_type(cobj, ctpl) == "money":
                             obj_remove(corpse["contents"], cobj)
-                            chprintln(ch, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
-                            apply_money_pickup(ch, cobj, ctpl)
+                            chprintln(auto_ch, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
+                            apply_money_pickup(auto_ch, cobj, ctpl)
 
                 # 1stMud: if (PLR_AUTOSAC) { if (autoloot && still has contents) skip; else sacrifice }
                 if flags & PLR_AUTOSAC:
@@ -1517,13 +1531,13 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                     else:
                         silver = max(1, corpse.get("level", 0) * 3)
                         if silver == 1:
-                            chprintln(ch, "Your deity gives you one silver coin for your sacrifice.")
+                            chprintln(auto_ch, "Your deity gives you one silver coin for your sacrifice.")
                         else:
-                            chprintln(ch, "Your deity gives you " + num_str(silver) + " silver coins for your sacrifice.")
-                        ch["silver"] = ch.get("silver", 0) + silver
+                            chprintln(auto_ch, "Your deity gives you " + num_str(silver) + " silver coins for your sacrifice.")
+                        auto_ch["silver"] = auto_ch.get("silver", 0) + silver
                         short = corpse.get("short_descr", "a corpse")
-                        chprintln(ch, "You sacrifice " + short + " to your deity.")
-                        obj_remove(world.rooms[ch["room"]]["items"], corpse)
+                        chprintln(auto_ch, "You sacrifice " + short + " to your deity.")
+                        obj_remove(world.rooms[auto_ch["room"]]["items"], corpse)
 
         return True
 

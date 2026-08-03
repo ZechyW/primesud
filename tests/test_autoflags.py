@@ -10,10 +10,10 @@ sys.path.insert(0, os.path.join(ROOT, _SRC))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
 from handler import (_char_base, PLR_AUTOEXIT, PLR_AUTODAMAGE, PLR_AUTOASSIST,
-                     PLR_DEFAULTS)
+                     PLR_AUTOLOOT, PLR_AUTOSAC, PLR_DEFAULTS)
 import combat
 from combat import check_assist, dam_message
-from config import TYPE_HIT
+from config import TYPE_HIT, DAM_BASH
 import handler
 import info
 import world
@@ -288,3 +288,45 @@ def test_autoassist_ignores_uncharmed_attacker(out, monkeypatch):
     monkeypatch.setattr(combat, "multi_hit", lambda ch, v, *a: hits.append((ch["id"], v["id"])))
     check_assist(pet, victim)
     assert (1, 3) not in hits
+
+
+@pytest.mark.parametrize(("owner_room", "owned", "flags", "looted", "sacked"), (
+    (9001, True, PLR_AUTOLOOT, True, False),
+    (9002, True, PLR_AUTOLOOT, False, False),
+    (9001, False, PLR_AUTOLOOT, False, False),
+    (9001, True, PLR_AUTOSAC, False, True),
+))
+def test_pet_kill_applies_present_owners_auto_flags(
+        owner_room, owned, flags, looted, sacked, out, monkeypatch):
+    player = _make_player(room=owner_room)
+    player["flags"] = flags
+    pet = _make_mob(2, master=1, leader=1, fighting=3)
+    pet["affected_by"]["charm"] = True
+    victim = _make_mob(3, hit=1, max_hit=1, fighting=2)
+    if owned:
+        player["pet"] = 2
+
+    world.ITEM_DEFS._data[9010] = {
+        "type": "armor", "short_descr": "a test prize", "keywords": "prize",
+    }
+    world.ITEM_DEFS._data[9011] = {
+        "type": "npc_corpse", "short_descr": "a corpse", "keywords": "corpse",
+    }
+    prize = {"vnum": 9010}
+    corpse = {"vnum": 9011, "contents": [prize], "level": 5}
+    world.rooms._data[9001]["items"].append(corpse)
+
+    monkeypatch.setattr(combat, "is_safe", lambda ch, v: False)
+    monkeypatch.setattr(combat, "check_dodge", lambda ch, v: False)
+    monkeypatch.setattr(combat, "check_parry", lambda ch, v: False)
+    monkeypatch.setattr(combat, "check_shield_block", lambda ch, v: False)
+    monkeypatch.setattr(combat, "group_gain", lambda ch, v: None)
+    monkeypatch.setattr(combat, "update_death", lambda v, ch: None)
+    monkeypatch.setattr(combat, "raw_kill", lambda v, ch: corpse)
+    monkeypatch.setattr(combat, "_advance_target", lambda *args: None)
+    monkeypatch.setattr(combat, "randint", lambda a, b: b)
+
+    assert combat.damage(pet, victim, 100, TYPE_HIT, DAM_BASH, False)
+    assert (prize in player["inv"]) is looted
+    assert (prize in corpse["contents"]) is not looted
+    assert (corpse in world.rooms._data[9001]["items"]) is not sacked

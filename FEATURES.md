@@ -220,6 +220,9 @@ Deliberate gameplay tweaks; each is a settled decision in DESIGN.md or a
 - **Combat flow** -- after a kill you auto-retarget a mob already fighting
   you; fleeing auto-looks at the destination; backstab without ranks refuses
   instead of burning a lagged round.
+- **Pet-assisted auto flags** -- autoloot/autogold/autosac (whichever are
+  set) still apply to a mob's corpse when your present, owned pet lands the
+  killing blow.
 - **Streaming output reveal** -- all game output (combat rounds, looks,
   help, the greeting) appears one line at a time (~25ms/line) instead of
   all at once, old-terminal style; any keypress during the reveal
