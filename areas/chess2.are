@@ -21,7 +21,7 @@ The Black Pawn looks quite like a small knight without his powerful steed.
 His armor is shiny and black. He stands ready to give his life for the Crown.
 ~
 human~
-ACF D -400 4200
+ABCF D -400 4200
 10 0 2d7+121 1d1+99 2d4+1 beating
 1 1 1 8
 EG A 0 0
@@ -37,7 +37,7 @@ His armor is spotless and white. He stands ready to give his life for the
 Crown.
 ~
 human~
-AC D 400 4201
+ABC D 400 4201
 10 0 2d7+121 1d1+99 2d4+1 beating
 1 1 1 8
 EG 0 0 0
@@ -52,7 +52,7 @@ The Black Rook is a very large man-made tomb on wheels.  Just
 from the looks of it, it will probably be YOUR tomb.
 ~
 human~
-AFH 0 -600 0
+ABFH 0 -600 0
 27 0 5d10+650 1d1+99 5d4+7 punch
 -8 -8 -8 6
 CEI A 0 0
@@ -67,7 +67,7 @@ The White Rook is a very large man-made tomb on wheels.  Just
 from the looks of it, it will probably be YOUR tomb.
 ~
 human~
-AH D 600 0
+ABH D 600 0
 27 0 5d10+650 1d1+99 5d4+7 punch
 -8 -8 -8 6
 CEI 0 0 0
@@ -82,7 +82,7 @@ The Black Knight is here, riding his ebony black war horse.  His eyes
 flash behind his visor in vengence.
 ~
 human~
-AH 0 -400 0
+ABH 0 -400 0
 18 0 3d9+283 1d1+99 2d7+4 pierce
 -3 -3 -3 7
 EF A 0 0
@@ -97,7 +97,7 @@ The White Knight is here, riding his ivory white war horse.  His eyes
 gleam behind his visor in joy.
 ~
 human~
-AH 0 400 0
+ABH 0 400 0
 18 0 3d9+283 1d1+99 2d7+4 pierce
 -3 -3 -3 7
 EF A 0 0
@@ -112,7 +112,7 @@ The Black Bishop seems willing to help you straight into your grave so
 he can bless you properly.
 ~
 human~
-AH 0 -500 0
+ABH 0 -500 0
 24 0 5d15+500 1d1+239 2d10+6 punch
 -6 -6 -6 6
 CDEF A 0 0
@@ -127,7 +127,7 @@ The White Bishop seems willing to help you in any possible so that he can
 attain a higher spirituality.
 ~
 human~
-A DN 500 0
+AB DN 500 0
 24 0 5d15+500 1d1+239 2d10+6 punch
 -6 -6 -6 6
 CDEF A 0 0

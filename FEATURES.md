@@ -208,6 +208,9 @@ Deliberate gameplay tweaks; each is a settled decision in DESIGN.md or a
 - **Faster pulses** -- combat rounds come quicker, player hp/mana/move recover
   smoothly every 5 seconds at the same 30-second total rate, and mob wander is
   slower (DESIGN.md "Pulse timing").
+- **Ordered Chessboard** -- all 32 chess pieces stay on their reset-authored
+  squares instead of wandering during idle pulses (DESIGN.md "Chessboard
+  piece placement").
 - **Every class can remort in town** -- Paladin shares the Cleric guilds,
   Ranger and Swordsman share the Warrior's, and all four Midgaard guildmasters can `gain`
   (DESIGN.md "Guild rooms").
