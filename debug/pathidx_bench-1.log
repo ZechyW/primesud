@@ -1,0 +1,22 @@
+pathidx_bench: paths.idx split parse vs byte-walk parse
+mem free start: 7415344
+boot: load_world 24450ms source=file
+player: level=11 room=9636 areas=2
+mem free after boot: 6273200
+index: paths.idx 18308 bytes
+.. parse_split pass 1/3 4537ms
+.. parse_split pass 2/3 4550ms
+.. parse_split pass 3/3 6056ms
+parse_split: min=4537ms max=6056ms avg=5047ms total=15143ms
+mem free after parse_split: 6210272
+.. parse_walk pass 1/3 751ms
+.. parse_walk pass 2/3 763ms
+.. parse_walk pass 3/3 761ms
+parse_walk: min=751ms max=763ms avg=758ms total=2275ms
+mem free after parse_walk: 6147344
+parse_split: S keys=91 rows=727 sum=5039502 dirs=436016
+parse_split: X keys=129 rows=145 sum=1265273 | V count=25 sum=92173
+parse_walk : S keys=91 rows=727 sum=5039502 dirs=436016
+parse_walk : X keys=129 rows=145 sum=1265273 | V count=25 sum=92173
+agree: yes
+Done. Results in pathidx_bench.log

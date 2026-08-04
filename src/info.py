@@ -1887,10 +1887,19 @@ _INDEX_CACHE = None  # (fname, segs, xedges, slivers)
 
 
 def _parse_index():
-    """Read paths.idx in one f.read() and parse all record types. [PRIMESUD]
+    """Read paths.idx in one f.read() and byte-walk all record types. [PRIMESUD]
 
     Parses once per PATH_INDEX_FILE value and returns the cached data
     after that; callers treat it as read-only.
+
+    [PRIMESUD] The walk indexes the raw bytes (unboxed ints, no per-line
+    or per-field string objects) and accumulates digits arithmetically
+    instead of split() + int() per line: on-device one small heap
+    allocation costs ~0.5ms at full game heap, so split-based text
+    parsing is allocation-bound, not data-bound (docs/PERFORMANCE.md
+    secs. Recommend scans, Boot load phase split). Only genuine payloads
+    allocate -- the S route string and the X direction character. The
+    paths.idx text format is unchanged (tools/build_path_index.py).
 
     Returns:
         tuple: (segs, xedges, slivers) where segs maps entry vnum ->
@@ -1906,20 +1915,80 @@ def _parse_index():
     segs = {}
     xedges = {}
     slivers = set()
-    with open(PATH_INDEX_FILE) as f:
+    with open(PATH_INDEX_FILE, "rb") as f:
         data = f.read()
-    for line in data.split("\n"):
-        if not line or line[0] == "#":
-            continue
-        parts = line.split("|")
-        if parts[0] == "S":
-            segs.setdefault(int(parts[1]), []).append(
-                (int(parts[2]), int(parts[3]), parts[4]))
-        elif parts[0] == "X":
-            xedges.setdefault(int(parts[1]), []).append(
-                (parts[2], int(parts[3])))
-        elif parts[0] == "V":
-            slivers.add(int(parts[1]))
+    if type(data) is str:
+        # Device open(.., "rb").read() hands back str; MicroPython's
+        # encode() is a raw byte cast, so this recovers the exact bytes
+        # (docs/BUILTINS.md sec. File open() binary-mode semantics, same
+        # guard as recommend._as_bytes).
+        data = data.encode()
+    dir_chars = {}  # byte -> 1-char str, interned across all X records
+    n = len(data)
+    i = 0
+    while i < n:
+        kind = data[i]
+        if kind == 83:  # "S|entry|exit|dist|dirs"
+            i += 2
+            entry = 0
+            while i < n and 47 < data[i] < 58:
+                entry = entry * 10 + data[i] - 48
+                i += 1
+            i += 1  # skip "|"
+            exit_vnum = 0
+            while i < n and 47 < data[i] < 58:
+                exit_vnum = exit_vnum * 10 + data[i] - 48
+                i += 1
+            i += 1
+            dist = 0
+            while i < n and 47 < data[i] < 58:
+                dist = dist * 10 + data[i] - 48
+                i += 1
+            i += 1
+            start = i
+            while i < n and data[i] != 10 and data[i] != 13:
+                i += 1
+            row = (exit_vnum, dist, data[start:i].decode())
+            seg = segs.get(entry)
+            if seg is None:
+                segs[entry] = [row]
+            else:
+                seg.append(row)
+        elif kind == 88:  # "X|exit|dir|to"
+            i += 2
+            exit_vnum = 0
+            while i < n and 47 < data[i] < 58:
+                exit_vnum = exit_vnum * 10 + data[i] - 48
+                i += 1
+            i += 1  # skip "|"
+            if i >= n:
+                break
+            b = data[i]
+            direction = dir_chars.get(b)
+            if direction is None:
+                direction = chr(b)
+                dir_chars[b] = direction
+            i += 2  # skip the direction char and its "|"
+            to_vnum = 0
+            while i < n and 47 < data[i] < 58:
+                to_vnum = to_vnum * 10 + data[i] - 48
+                i += 1
+            row = (direction, to_vnum)
+            xedge = xedges.get(exit_vnum)
+            if xedge is None:
+                xedges[exit_vnum] = [row]
+            else:
+                xedge.append(row)
+        elif kind == 86:  # "V|vnum"
+            i += 2
+            vnum = 0
+            while i < n and 47 < data[i] < 58:
+                vnum = vnum * 10 + data[i] - 48
+                i += 1
+            slivers.add(vnum)
+        while i < n and data[i] != 10:  # comments/blanks land here too
+            i += 1
+        i += 1
     _INDEX_CACHE = (PATH_INDEX_FILE, segs, xedges, slivers)
     return segs, xedges, slivers
 

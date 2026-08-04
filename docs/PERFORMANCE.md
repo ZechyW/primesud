@@ -68,6 +68,29 @@ Candidate counts matched PC ground truth exactly, which also proves
 firmware `bytes.find(needle, start)` honours its start argument
 (keyidx guards against the alternative rather than hanging).
 
+### paths.idx parse (G1, measured 05 Aug 2026)
+
+`info._parse_index` is cached per session, but its first call -- the
+first `path`/`run` command -- paid the full split()/int() parse of the
+898-line index. Byte-walk rewrite (digit accumulation over raw bytes,
+only route strings and interned direction chars allocate; text format
+unchanged) measured via `debug/pathidx_bench.py` against a frozen
+replica of the old parse, log `pathidx_bench-1.log`, real save loaded:
+
+| Variant | min | avg (N=3) |
+|:--------|----:|----------:|
+| old split parse (frozen control) | 4,537 ms | 5,047 ms |
+| byte-walk `_parse_index` | 751 ms | 758 ms |
+
+6.7x; record tallies from both variants agreed exactly. Remaining
+~750 ms is dominated by the real payload (727 seg tuples + route
+strings and the dict/list builds), i.e. near the eager-materialise
+floor. On desktop CPython the byte-walk is ~3x *slower* than split
+(C-level `split`/`int` beat per-byte bytecode) -- irrelevant there, and
+the inversion is expected; format stayed text because a binary index
+would still pay the same payload allocation, saving only the digit
+loops.
+
 ## Area loading
 
 ### Initial load probe (measured 25 Jul 2026)
