@@ -517,7 +517,20 @@ dominant parsers (0b7946e). Raw captures:
   today: area files are ASCII-only source, names are sanitized to
   ASCII letters). The old str-based decoder was accidentally immune.
 
-## Input-lag phase benchmark (G1, measured 30 Jul 2026)
+### Boot cost is save-location-dependent (G1, measured 05 Aug 2026)
+
+A ~25 s boot (`loadworld_bench-3.log`, same device, save at room 9636)
+prompted a creep scare; the phase split cleared the save side entirely.
+`snap_decode` had *shrunk* to 623 ms (22 records / 7.0 KB encoded vs the
+02/08 run's 39 / 13.2 KB -- the save-diet caches working), the frozen
+`m_parse` control read 2337 ms (conditions equal), and `area_load` was
+17,310 ms: room 9636 is newthalos, the biggest area file (265 KB), and
+its reset drain pulls midgaard defs (257 KB, second biggest -- see
+docs/CROSS_RESETS.md sec. newthalos), so quitting there boots the two
+largest areas back to back. `load_world_rest` scaled with save line
+count (7,826 ms at 276 lines vs ~4.2 s at 194). Structural, not creep:
+worst-case boot is set by where the player saves, and the exec + reset
+cost of big areas is not a parse item (sec. Area loading).
 
 `debug/combat_bench.py` (`debug/combat_bench-1.log`): synthetic phase
 timings against the real save (139 chars, 2 areas loaded), real terminal
