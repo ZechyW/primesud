@@ -233,6 +233,8 @@ Deliberate gameplay tweaks; each is a settled decision in DESIGN.md or a
 - **Pet-assisted auto flags** -- autoloot/autogold/autosac (whichever are
   set) still apply to a mob's corpse when your present, owned pet lands the
   killing blow.
+- **Pet-friendly XP** -- owned pets do not dilute kill XP; temporary charmed
+  mobs still contribute half their level to the group XP divisor.
 - **Streaming output reveal** -- all game output (combat rounds, looks,
   help, the greeting) appears one line at a time (~25ms/line) instead of
   all at once, old-terminal style; any keypress during the reveal

@@ -2988,13 +2988,14 @@ GROUP_LVL_LIMIT = 20
 
 def group_gain(ch, victim):
     """Award XP to ch's group for killing victim (cf. 1stMud group_gain in fight.c).
-    [Verified: 04/07/2026] -- bonus-XP
-    event and gquest hook not ported (noted inline).
+    [Verified: 04/07/2026] -- bonus-XP event and gquest hook not ported;
+    [PRIMESUD] owned pets do not dilute player XP.
 
     Iterates all characters in the same room that share ch's group.  NPCs
-    (pets) contribute to the group level pool (at half level) but do not
-    receive XP.  Each PC member receives XP proportional to their share of
-    the total group levels.
+    contribute to the group level pool (at half level) but do not receive XP;
+    owned pets are excluded because they share their owner's progression.
+    Each PC member receives XP proportional to their share of the total group
+    levels.
 
     Args:
         ch (dict): Killer (player or mob).
@@ -3022,7 +3023,11 @@ def group_gain(ch, victim):
     for gch in room_chars:
         if is_same_group(gch, ch):
             members += 1
-            group_levels += gch["level"] // 2 if gch["is_npc"] else gch["level"]
+            # [PRIMESUD] Persistent pets scale with their owner and cannot be
+            # ungrouped; charging half their level makes using one reduce XP.
+            if not (gch["is_npc"]
+                    and chars.get(gch.get("master"), {}).get("pet") == gch["id"]):
+                group_levels += gch["level"] // 2 if gch["is_npc"] else gch["level"]
 
     if members == 0:
         members = 1

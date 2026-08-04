@@ -259,7 +259,10 @@ Save line `p.tier` (absent in old saves -> defaults 0, no version bump).
 
 Owned pets share the player's progression instead of keeping NPC XP: they
 rescale whenever the player levels, survive ordinary remorts at the player's
-new level 1, and gain five effective scaling levels per prestige tier.  A tier
+new level 1, and gain five effective scaling levels per prestige tier.
+Because they cannot be ungrouped, an owned pet is also excluded from the
+`group_gain` XP divisor (temporary charmed mobs still contribute half their
+level as in 1stMud) -- otherwise bringing your pet would permanently tax XP.  A tier
 reset follows at most one optional mob-template `E <vnum>` evolution link;
 invalid and missing targets leave the current form intact.  Evolution
 adopts the target template's form and combat attributes while preserving the

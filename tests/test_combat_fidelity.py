@@ -7,8 +7,9 @@ _SRC = os.environ.get("PRIMESUD_SRC", "src")
 sys.path.insert(0, os.path.join(ROOT, _SRC))
 sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
+import combat
 import world
-from combat import _advance_target, xp_compute
+from combat import _advance_target, group_gain, xp_compute
 from handler import _char_base
 
 
@@ -34,6 +35,32 @@ class TestXpComputeAlignmentDrift:
         victim.update({"level": 10, "alignment": 0, "act_flags": {}})
         xp_compute(gch, victim, 10)
         assert gch["alignment"] == 251
+
+
+def test_pet_does_not_dilute_xp_but_charmie_does(monkeypatch):
+    player = _char_base()
+    player.update({"id": 1, "level": 10, "room": 9001, "pet": 2})
+    pet = _char_base()
+    pet.update({"id": 2, "is_npc": True, "level": 10, "room": 9001,
+                "master": 1, "leader": 1, "act_flags": {"pet": True}})
+    charmie = _char_base()
+    charmie.update({"id": 3, "is_npc": True, "level": 10, "room": 9001,
+                    "master": 1, "leader": 1})
+    victim = _char_base()
+    victim.update({"id": 4, "is_npc": True, "level": 10, "room": 9001})
+    monkeypatch.setattr(world, "chars", {1: player, 2: pet, 3: charmie})
+    monkeypatch.setattr(world, "rooms", {9001: {"mobs": [2, 3], "items": []}})
+
+    seen = []
+    monkeypatch.setattr(combat, "xp_compute",
+                        lambda gch, mob, total_levels: seen.append(total_levels) or 0)
+    monkeypatch.setattr(combat, "gain_exp", lambda ch, xp: None)
+    monkeypatch.setattr(combat, "quest_kill_check", lambda ch, mob: None)
+    monkeypatch.setattr(combat, "gq_kill_check", lambda ch, mob: None)
+
+    group_gain(player, victim)
+
+    assert seen == [15]  # player 10 + charmie 5; pet contributes 0
 
 
 class TestAdvanceTargetFighterIndex:
