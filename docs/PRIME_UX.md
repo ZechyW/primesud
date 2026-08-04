@@ -237,10 +237,12 @@ plus the no-shield bonus, minus half the owned shield plus its block value.
 
 Bare `recommend` opens a mobs/gear picker. `recommend mobs` reads generated
 fightable reset metadata and lists up to ten opponents from level -2 through
-level +1, widening only the lower edge to level -5 when fewer than five exist.
-It ranks favorable or unseen personal records first, then the current area and
-level proximity. A `+n` after the area marks a mob that also spawns in n other
-areas. Results are known reset sites, not live availability.
+level +1. Within each level it ranks favorable or unseen personal records
+first, then the current area, and draws round-robin from level, level -1,
+level +1, and level -2 so one level cannot crowd out the rest. Rows with the
+same displayed name and source area collapse to one result. A `+n` after the
+area marks a mob that also spawns in n other areas. Results are known reset
+sites, not live availability.
 
 `recommend gear` opens a picker over the best strict external upgrade in each
 player-facing wear category; choosing a row drills into that slot's detail

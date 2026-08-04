@@ -80,17 +80,17 @@ def _mob_candidates(player):
     """Read and rank fightable mob rows without loading an area.
 
     foes.bin groups fightable records into one contiguous segment per mob
-    level behind per-level byte sizes in the header, so the widest band
-    [level-5, level+1] is one seek plus one bounded read. Records are
+    level behind per-level byte sizes in the header, so the band
+    [level-2, level+1] is one seek plus one bounded read. Records are
     variable-length (7 bytes + one byte per spawn tag; offsets in
     tools/build_mob_index.py) and walked with raw byte arithmetic -- zero
     allocations per reject, the text index spent ~13ms/row on split
-    allocs. Two passes over the band: per-level counts drive the
-    low-raise, then a packed-int sort key keeps the 10 best; winner names
+    allocs. Four bounded level buckets keep the best rows, deduplicated by
+    displayed name and area, then feed the result round-robin; winner names
     resolve from one string-table read afterwards.
     """
     level = player.get("level", 1)
-    lowest = max(1, level - 5)
+    lowest = max(1, level - 2)
     highest = level + 1
     try:
         f = open(FOES_INDEX_FILE, "rb")
@@ -131,36 +131,19 @@ def _mob_candidates(player):
         if player.get("quest_status") in (QUEST_DELIVER, QUEST_FINDMOB):
             protected = player.get("quest_mob", 0)
 
-        # Pass 1: per-level counts (protected mob excluded) drive the
-        # low-raise -- shrink the band's floor toward level-2 while at
-        # least 5 candidates remain.
-        counts = [0] * (highest - lowest + 1)
-        pos = 0
-        while pos < length:
-            if (data[pos] | data[pos + 1] << 8) != protected:
-                counts[data[pos + 2] - lowest] += 1
-            pos += 7 + data[pos + 6]
-        low = max(1, level - 2)
-        while low > lowest:
-            total = 0
-            for index in range(low - lowest, len(counts)):
-                total += counts[index]
-            if total >= 5:
-                break
-            low -= 1
-
-        # Pass 2: keep the 10 best by packed ascending key: bad record,
-        # foreign area, |level diff|, level, file order (order is 15 bits;
-        # a band holds a few hundred records at most).
+        # Keep up to 10 per output bucket: level, level-1, level+1,
+        # level-2. Packed ascending key is bad record, foreign area,
+        # |level diff|, level, file order (order is 15 bits; a band holds
+        # a few hundred records at most).
         stats_map = world.mob_stats
-        top10 = []
+        buckets = [[], [], [], []]
         order = 0
         pos = 0
         while pos < length:
             step = 7 + data[pos + 6]
             mob_level = data[pos + 2]
             vnum = data[pos] | data[pos + 1] << 8
-            if mob_level >= low and vnum != protected:
+            if vnum != protected:
                 stats = stats_map.get(vnum)
                 if stats:
                     kills = stats[0]
@@ -180,21 +163,68 @@ def _mob_candidates(player):
                     diff = -diff
                 key = (bad << 27 | (1 - member) << 26 | diff << 23
                        | mob_level << 15 | order)
-                if len(top10) < 10 or key < top10[9][0]:
-                    row = [key, vnum, mob_level,
-                           cur_id if member else data[pos + 7],
-                           data[pos + 6] - 1,
-                           (data[pos + 3] | data[pos + 4] << 8) << 8
-                           | data[pos + 5],
+                if mob_level == level:
+                    bucket_index = 0
+                elif mob_level == level - 1:
+                    bucket_index = 1
+                elif mob_level == level + 1:
+                    bucket_index = 2
+                else:
+                    bucket_index = 3
+                bucket = buckets[bucket_index]
+                # Dedup only runs on guard-passing candidates, so a
+                # guard-rejected better duplicate can leave a worse one
+                # behind in another bucket; needs 11+ same-level rows plus
+                # a cross-level same-name-same-area dup, so accepted as a
+                # keep-rejects-allocation-free tradeoff. If the naive
+                # reference test ever diverges on new data, look here.
+                if len(bucket) < 10 or key < bucket[9][0]:
+                    tag_id = cur_id if member else data[pos + 7]
+                    name_ref = ((data[pos + 3] | data[pos + 4] << 8) << 8
+                                | data[pos + 5])
+                    duplicate = False
+                    found = False
+                    for other in buckets:
+                        for other_index in range(len(other)):
+                            entry = other[other_index]
+                            if entry[3] == tag_id and entry[5] == name_ref:
+                                found = True
+                                if key < entry[0]:
+                                    other.pop(other_index)
+                                else:
+                                    duplicate = True
+                                break
+                        if found:
+                            break
+                    if duplicate:
+                        pos += step
+                        order += 1
+                        continue
+                    row = [key, vnum, mob_level, tag_id,
+                           data[pos + 6] - 1, name_ref,
                            kills, deaths, bad]
-                    index = len(top10)
-                    while index and top10[index - 1][0] > key:
+                    index = len(bucket)
+                    while index and bucket[index - 1][0] > key:
                         index -= 1
-                    top10.insert(index, row)
-                    if len(top10) > 10:
-                        top10.pop()
+                    bucket.insert(index, row)
+                    if len(bucket) > 10:
+                        bucket.pop()
             pos += step
             order += 1
+
+        top10 = []
+        index = 0
+        while len(top10) < 10:
+            added = False
+            for bucket in buckets:
+                if index < len(bucket):
+                    top10.append(bucket[index])
+                    added = True
+                    if len(top10) == 10:
+                        break
+            if not added:
+                break
+            index += 1
 
         rows = []
         if top10:

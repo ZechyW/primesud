@@ -99,24 +99,49 @@ def test_command_registration_keeps_existing_prefix_order():
                 if entry[0].startswith("reco")) == "recommend"
 
 
-def test_mob_window_widens_lower_only(indexed_player, tmp_path, monkeypatch):
+def test_mob_window_is_fixed_and_round_robin(
+        indexed_player, tmp_path, monkeypatch):
     path = tmp_path / "foes.bin"
     _write_foes_bin(path, (
-        _fight_row(100, 11, "upper"),
-        _fight_row(101, 10, "same"),
-        _fight_row(102, 9, "lower one"),
-        _fight_row(103, 8, "lower two"),
-        _fight_row(104, 7, "widened"),
-        _fight_row(105, 5, "limit"),
-        _fight_row(106, 12, "too high"),
-        _fight_row(107, 4, "too low"),
+        _fight_row(80, 8, "low two a"),
+        _fight_row(81, 8, "low two b"),
+        _fight_row(90, 9, "low one a"),
+        _fight_row(91, 9, "low one b"),
+        _fight_row(92, 9, "low one c"),
+        _fight_row(100, 10, "same a"),
+        _fight_row(101, 10, "same b"),
+        _fight_row(102, 10, "same c"),
+        _fight_row(110, 11, "upper a"),
+        _fight_row(111, 11, "upper b"),
+        _fight_row(70, 7, "too low"),
+        _fight_row(120, 12, "too high"),
     ))
     monkeypatch.setattr(recommend, "FOES_INDEX_FILE", str(path))
 
     rows = recommend._mob_candidates(indexed_player)
 
-    assert {row["vnum"] for row in rows} == {100, 101, 102, 103, 104}
-    assert all(row["level"] <= 11 for row in rows)
+    assert [row["vnum"] for row in rows] == [
+        100, 90, 110, 80, 101, 91, 111, 81, 102, 92]
+
+
+def test_mob_dedupes_name_and_displayed_area(
+        indexed_player, tmp_path, monkeypatch):
+    path = tmp_path / "foes.bin"
+    _write_foes_bin(path, (
+        _fight_row(100, 10, "the duplicate", "test"),
+        _fight_row(101, 9, "the duplicate", "test"),
+        _fight_row(102, 11, "the duplicate", "far"),
+        _fight_row(103, 10, "unique", "test"),
+    ))
+    monkeypatch.setattr(recommend, "FOES_INDEX_FILE", str(path))
+
+    rows = recommend._mob_candidates(indexed_player)
+
+    assert [(row["vnum"], row["name"], row["tag"]) for row in rows] == [
+        (100, "the duplicate", "test"),
+        (102, "the duplicate", "far"),
+        (103, "unique", "test"),
+    ]
 
 
 def test_mob_quest_target_excluded(indexed_player, tmp_path, monkeypatch):
@@ -551,17 +576,17 @@ def test_shipped_index_matches_naive_rescoring(indexed_player):
 
 def _reference_mobs(player, rows_all):
     """Naive dict-based ranking (the pre-binary algorithm, no shortcuts):
-    filter the widest band, raise the floor while >=5 remain, sort by
-    (bad record, foreign area, |level diff|, level, file order), take 10."""
+    filter the fixed band, dedupe name/source, rank each level bucket, and
+    draw round-robin until 10 rows remain."""
     level = player.get("level", 1)
-    lowest = max(1, level - 5)
+    lowest = max(1, level - 2)
     highest = level + 1
     current = recommend._current_tag(player)
     protected = 0
     if player.get("quest_status") in (recommend.QUEST_DELIVER,
                                       recommend.QUEST_FINDMOB):
         protected = player.get("quest_mob", 0)
-    rows = []
+    deduped = {}
     for order, row in enumerate(
             row for row in rows_all
             if lowest <= row["level"] <= highest):
@@ -570,25 +595,49 @@ def _reference_mobs(player, rows_all):
         stats = world.mob_stats.get(row["vnum"])
         kills = stats[0] if stats else 0
         deaths = stats[1] if stats else 0
-        rows.append({
+        tag = current if current in row["tags"] else row["tags"][0]
+        candidate = {
             "vnum": row["vnum"], "level": row["level"],
-            "tag": current if current in row["tags"] else row["tags"][0],
+            "name": row["name"], "tag": tag,
             "extra": len(row["tags"]) - 1, "kills": kills,
             "deaths": deaths, "bad": bool(stats and kills > deaths),
             "order": order,
-        })
-    low = max(1, level - 2)
-    while low > lowest:
-        if sum(1 for row in rows if row["level"] >= low) >= 5:
+        }
+        key = (candidate["bad"], tag != current,
+               abs(row["level"] - level), row["level"], order)
+        identity = (row["name"], tag)
+        old = deduped.get(identity)
+        if old is None or key < old[0]:
+            deduped[identity] = (key, candidate)
+    buckets = [[], [], [], []]
+    for key, row in deduped.values():
+        if row["level"] == level:
+            bucket = 0
+        elif row["level"] == level - 1:
+            bucket = 1
+        elif row["level"] == level + 1:
+            bucket = 2
+        else:
+            bucket = 3
+        buckets[bucket].append((key, row))
+    for bucket in buckets:
+        bucket.sort(key=lambda entry: entry[0])
+    rows = []
+    index = 0
+    while len(rows) < 10:
+        added = False
+        for bucket in buckets:
+            if index < len(bucket):
+                rows.append(bucket[index][1])
+                added = True
+                if len(rows) == 10:
+                    break
+        if not added:
             break
-        low -= 1
-    rows = [row for row in rows if row["level"] >= low]
-    rows.sort(key=lambda row: (
-        row["bad"], row["tag"] != current,
-        abs(row["level"] - level), row["level"], row["order"]))
+        index += 1
     return [(row["vnum"], row["level"], row["tag"], row["extra"],
              row["kills"], row["deaths"], row["bad"])
-            for row in rows[:10]]
+            for row in rows]
 
 
 def test_shipped_foes_matches_naive_ranking(fresh_world):

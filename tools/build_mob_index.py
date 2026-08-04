@@ -662,6 +662,20 @@ def main():
             "name": " ".join(mob.get("short_descr", "").split()),
             "tags": tags,
         })
+    # `recommend mobs` reads the fixed band [level-2, level+1] with no
+    # adaptive widening (dropped 04/08/2026: every band held >=7 deduped
+    # candidates). Warn at build time if content drift starves a band.
+    per_level = {}
+    for row in fight_rows:
+        per_level.setdefault(row["level"], set()).add(
+            (row["name"], row["tags"][0]))
+    for pl in range(1, 51):
+        band = sum(len(per_level.get(l, ()))
+                   for l in range(max(1, pl - 2), pl + 2))
+        if band < 5:
+            print("WARNING: foes band [%d, %d] has only %d deduped "
+                  "candidates; revisit recommend's fixed window"
+                  % (max(1, pl - 2), pl + 1, band))
     blob = pack_foes_index(fight_rows, [entry[1] for entry in
                                         world._AREA_FILES])
     out_path = os.path.join(OUTDIR, "foes.bin")
