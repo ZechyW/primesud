@@ -32,38 +32,60 @@ def _loaded_mob(argument, player):
 
 
 def _mob_destination(player, mob):
-    """Apply the intended 1stMud do_path mob restrictions. [PRIMESUD]"""
+    """Apply the intended 1stMud do_path mob restrictions. [PRIMESUD]
+
+    [PRIMESUD] Returns a reason code alongside the destination so do_path can
+    say *why* a mob is unreachable.  Upstream collapses every failure into one
+    vague message, which is anti-oracle on a multiplayer MUD; PrimeSUD is
+    single-user, so the vagueness only costs the player information.  Which
+    mobs are blocked is unchanged -- the gates are merely evaluated in order
+    of how actionable the answer is.
+
+    Args:
+        player (dict): Player state dict.
+        mob (dict): Target mob state dict, or None if no keyword matched.
+
+    Returns:
+        tuple: (destination room vnum, None) when pathable, else
+            (None, reason code) -- one of "nomob", "norecall_here", "quest",
+            "level", "blocked".
+    """
     if mob is None:
-        return None
+        return None, "nomob"
+    src_flags = ROOM_DEFS.get(player.get("room"), {}).get("flags", {})
+    # Checked first: it blocks pathing to anything at all from this room.
+    if src_flags.get("no_recall"):
+        return None, "norecall_here"
+    if mob.get("is_npc") and (gq_is_target(mob.get("tpl"))
+                              or (is_quester(player)
+                                  and mob.get("tpl")
+                                  == player.get("quest_mob", 0))):
+        return None, "quest"
+    if mob.get("level", 0) >= player.get("level", 1) + 3:
+        return None, "level"
     dst = mob.get("room")
     if dst is None:
-        return None
-    src_flags = ROOM_DEFS.get(player.get("room"), {}).get("flags", {})
+        return None, "blocked"
     dst_flags = ROOM_DEFS.get(dst, {}).get("flags", {})
+    # [PRIMESUD] 1stMud also gates on saves_spell(ch->level, victim,
+    # DAM_OTHER).  Dropped: no skill or stat feeds it, so it is pure
+    # level-difference RNG on a free, no-feedback info command --
+    # the optimal play is to spam path until it rolls through.  The
+    # level signal it encoded is already carried deterministically by
+    # the level + 3 gate above.  It also made DAM_OTHER-immune (i.e.
+    # IMM_MAGIC) mobs permanently unpathable, which pathing never
+    # intended.  See docs/FIXES.md.
     if (not can_see_room(player, dst)
             or dst_flags.get("safe")
             # TODO [PRIMESUD] arena, clans, and area access flags not ported
-            or src_flags.get("no_recall")
             or dst_flags.get("no_recall")
             or dst_flags.get("private")
             or dst_flags.get("solitary")
-            or (mob.get("is_npc") and gq_is_target(mob.get("tpl")))
-            or (mob.get("is_npc") and is_quester(player)
-                and mob.get("tpl") == player.get("quest_mob", 0))
-            or mob.get("level", 0) >= player.get("level", 1) + 3
             or (not mob.get("is_npc")
                 and mob.get("level", 0) >= MAX_MORTAL_LEVEL)
-            # [PRIMESUD] 1stMud also gates on saves_spell(ch->level, victim,
-            # DAM_OTHER).  Dropped: no skill or stat feeds it, so it is pure
-            # level-difference RNG on a free, no-feedback info command --
-            # the optimal play is to spam path until it rolls through.  The
-            # level signal it encoded is already carried deterministically by
-            # the level + 3 gate above.  It also made DAM_OTHER-immune (i.e.
-            # IMM_MAGIC) mobs permanently unpathable, which pathing never
-            # intended.  See docs/FIXES.md.
             or mob.get("imm_flags", {}).get("summon")):
-        return None
-    return dst
+        return None, "blocked"
+    return dst, None
 
 
 def do_path(player, args):
@@ -73,6 +95,10 @@ def do_path(player, args):
     random saving-throw gate (see _mob_destination), and searches unloaded
     mobs through mobs.bin. Routing runs over the precomputed border graph
     (paths.idx) and never loads areas at routing time.
+
+    [PRIMESUD] Upstream's single "No such destination." for every mob-target
+    failure is split into per-reason messages (see _mob_destination); the
+    area-lookup and routing messages are unchanged.
 
     [PRIMESUD] Side effect: a computed route is stashed in
     player["last_path"] so the no-args `run` picker can offer it as the
@@ -99,9 +125,22 @@ def do_path(player, args):
             mob = _loaded_mob(argument, player)
             if mob is None:
                 mob = _find_unloaded_mob(argument, player)[1]
-            target_room = _mob_destination(player, mob)
+            target_room, reason = _mob_destination(player, mob)
             if target_room is None:
-                chprintln(player, "No such destination.")
+                if reason == "nomob":
+                    chprintln(player, "No mob or area by that name.")
+                elif reason == "norecall_here":
+                    chprintln(player,
+                              "Magic here prevents you from sensing a path.")
+                elif reason == "quest":
+                    chprintln(player,
+                              "You must track down quest targets on your own.")
+                elif reason == "level":
+                    chprintln(
+                        player,
+                        "You cannot sense a path to so powerful a creature.")
+                else:
+                    chprintln(player, "You cannot sense a path to them.")
                 return
             target_tag = world._vnum_to_tag(target_room)
             target_name = MOB_DEFS[mob["tpl"]]["short_descr"]

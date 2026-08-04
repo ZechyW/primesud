@@ -199,7 +199,7 @@ def test_mob_path_invisible_mob_hidden_without_detect(fresh_world, monkeypatch):
 
     path_cmd.do_path(player, ["dragon"])
     assert out == ["{D[Calculating path...]{x",
-                   "No such destination."]
+                   "No mob or area by that name."]
 
     # detect invis restores get_char_world visibility
     player["affected_by"] = {"detect_invis": True}
@@ -249,7 +249,135 @@ def test_mob_path_applies_fixed_level_restriction(fresh_world, monkeypatch):
     path_cmd.do_path(player, ["dragon"])
 
     assert out == ["{D[Calculating path...]{x",
-                   "No such destination."]
+                   "You cannot sense a path to so powerful a creature."]
+
+
+def _mob_in_beta(fw, monkeypatch, tags=("alpha", "beta"), level=10,
+                 room=200, tpl=250):
+    """Chain of areas plus a visible mob parked in the second one. [PRIMESUD]"""
+    _setup_chain(fw, monkeypatch, tags)
+    _ = ROOM_DEFS[100]
+    world._ensure_area_by_tag(tags[1])
+    MOB_DEFS._data[tpl] = {"keywords": "red dragon",
+                           "short_descr": "a red dragon"}
+    mob = _char_base()
+    mob.update({"id": 2, "is_npc": True, "tpl": tpl,
+                "room": room, "level": level})
+    world.chars[2] = mob
+    return mob
+
+
+def test_mob_path_unknown_keyword_names_the_bucket(fresh_world, monkeypatch):
+    """[PRIMESUD] Upstream's single vague failure is split per reason."""
+    _setup_chain(fresh_world, monkeypatch, ("alpha", "beta"))
+    player = _player()
+    _ = ROOM_DEFS[100]
+    monkeypatch.setattr(path_cmd, "_find_unloaded_mob",
+                        lambda _arg, _ch: (None, None))
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    path_cmd.do_path(player, ["wombat"])
+
+    assert out == ["{D[Calculating path...]{x",
+                   "No mob or area by that name."]
+
+
+def test_mob_path_no_recall_room_blames_the_room(fresh_world, monkeypatch):
+    """[PRIMESUD] A no_recall source room blocks pathing to anything, so it
+    outranks every mob-side reason."""
+    fw = fresh_world
+    fw.register_area("alpha", 100, 199,
+                     rooms={100: {"name": "alpha", "exits": {"n": 200},
+                                  "flags": {"no_recall": True}}})
+    fw.register_area("beta", 200, 299,
+                     rooms={200: {"name": "beta", "exits": {}}})
+    fw.setup()
+    _write_index(fw.tmp_path, monkeypatch, {
+        100: {"area": "alpha", "exits": {"n": 200}},
+        200: {"area": "beta", "exits": {}},
+    })
+    player = _player()
+    _ = ROOM_DEFS[100]
+    world._ensure_area_by_tag("beta")
+    MOB_DEFS._data[250] = {"keywords": "red dragon",
+                           "short_descr": "a red dragon"}
+    mob = _char_base()
+    mob.update({"id": 2, "is_npc": True, "tpl": 250,
+                "room": 200, "level": 10})
+    world.chars[2] = mob
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    path_cmd.do_path(player, ["dragon"])
+
+    assert out == ["{D[Calculating path...]{x",
+                   "Magic here prevents you from sensing a path."]
+
+
+def test_mob_path_gquest_target_is_named_as_quest(fresh_world, monkeypatch):
+    """[PRIMESUD] gquest targets stay unpathable, but the player is told why."""
+    _mob_in_beta(fresh_world, monkeypatch)
+    player = _player()
+    monkeypatch.setattr(path_cmd, "gq_is_target", lambda vnum: vnum == 250)
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    path_cmd.do_path(player, ["dragon"])
+
+    assert out == ["{D[Calculating path...]{x",
+                   "You must track down quest targets on your own."]
+
+
+def test_mob_path_own_quest_mob_is_named_as_quest(fresh_world, monkeypatch):
+    """[PRIMESUD] Same message for the player's personal quest target."""
+    _mob_in_beta(fresh_world, monkeypatch)
+    player = _player()
+    player["quest_mob"] = 250
+    monkeypatch.setattr(path_cmd, "is_quester", lambda _ch: True)
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    path_cmd.do_path(player, ["dragon"])
+
+    assert out == ["{D[Calculating path...]{x",
+                   "You must track down quest targets on your own."]
+
+
+def test_mob_path_safe_room_falls_in_vague_bucket(fresh_world, monkeypatch):
+    """[PRIMESUD] Gates with no player-actionable cause keep a vague message."""
+    fw = fresh_world
+    fw.register_area("alpha", 100, 199,
+                     rooms={100: {"name": "alpha", "exits": {"n": 200}}})
+    fw.register_area("beta", 200, 299,
+                     rooms={200: {"name": "beta", "exits": {},
+                                  "flags": {"safe": True}}})
+    fw.setup()
+    _write_index(fw.tmp_path, monkeypatch, {
+        100: {"area": "alpha", "exits": {"n": 200}},
+        200: {"area": "beta", "exits": {}},
+    })
+    player = _player()
+    _ = ROOM_DEFS[100]
+    world._ensure_area_by_tag("beta")
+    MOB_DEFS._data[250] = {"keywords": "red dragon",
+                           "short_descr": "a red dragon"}
+    mob = _char_base()
+    mob.update({"id": 2, "is_npc": True, "tpl": 250,
+                "room": 200, "level": 10})
+    world.chars[2] = mob
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    path_cmd.do_path(player, ["dragon"])
+
+    assert out == ["{D[Calculating path...]{x",
+                   "You cannot sense a path to them."]
 
 
 def test_mob_path_is_deterministic(fresh_world, monkeypatch):

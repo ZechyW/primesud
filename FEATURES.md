@@ -138,7 +138,9 @@ worth trusting -- the engineering layer.
   search Dijkstras a precomputed border graph (`paths.idx`) for exact
   shortest routes with zero area loads at routing time (DESIGN.md "Lazy
   area loading").  Mob targets resolve deterministically -- 1stMud's random
-  saving-throw gate is dropped (docs/FIXES.md).
+  saving-throw gate is dropped (docs/FIXES.md) -- and a failed mob lookup
+  says why (unknown name, no-recall room, quest target, too powerful)
+  instead of one vague message, single-player having no oracle to protect.
   Area targets skip *sliver* border rooms -- area-tagged fragments cut off
   from the area's body (e.g. New Thalos' Dark River) -- so `run <area>`
   lands at a real entrance instead of upstream's first-room-in-area.
