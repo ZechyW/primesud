@@ -1883,26 +1883,29 @@ PATH_INDEX_FILE = "paths.idx"
 # on-device the per-call re-parse dominated _route at ~4s/call
 # (debug/str_soak-1.log phase A). Filename keying keeps the test
 # monkeypatches of PATH_INDEX_FILE working (each points at a unique tmp file).
-_INDEX_CACHE = None  # (fname, segs, xedges)
+_INDEX_CACHE = None  # (fname, segs, xedges, slivers)
 
 
 def _parse_index():
-    """Read paths.idx in one f.read() and parse both record types. [PRIMESUD]
+    """Read paths.idx in one f.read() and parse all record types. [PRIMESUD]
 
-    Parses once per PATH_INDEX_FILE value and returns the cached dicts
-    after that; callers treat them as read-only.
+    Parses once per PATH_INDEX_FILE value and returns the cached data
+    after that; callers treat it as read-only.
 
     Returns:
-        tuple: (segs, xedges) where segs maps entry vnum ->
-            [(exit_vnum, dist, dirs), ...] intra-area segments and xedges
-            maps exit vnum -> [(dir, to_vnum), ...] cross-area exits.
+        tuple: (segs, xedges, slivers) where segs maps entry vnum ->
+            [(exit_vnum, dist, dirs), ...] intra-area segments, xedges
+            maps exit vnum -> [(dir, to_vnum), ...] cross-area exits, and
+            slivers is the set of border rooms stranded in a disconnected
+            fragment of their own area.
     """
     global _INDEX_CACHE
     c = _INDEX_CACHE
     if c is not None and c[0] == PATH_INDEX_FILE:
-        return c[1], c[2]
+        return c[1], c[2], c[3]
     segs = {}
     xedges = {}
+    slivers = set()
     with open(PATH_INDEX_FILE) as f:
         data = f.read()
     for line in data.split("\n"):
@@ -1915,8 +1918,10 @@ def _parse_index():
         elif parts[0] == "X":
             xedges.setdefault(int(parts[1]), []).append(
                 (parts[2], int(parts[3])))
-    _INDEX_CACHE = (PATH_INDEX_FILE, segs, xedges)
-    return segs, xedges
+        elif parts[0] == "V":
+            slivers.add(int(parts[1]))
+    _INDEX_CACHE = (PATH_INDEX_FILE, segs, xedges, slivers)
+    return segs, xedges, slivers
 
 
 def _bfs_leg(start, tag):
@@ -2001,7 +2006,7 @@ def _route(player, target_tag, target_room=None):
         if target_room is None or source == target_room:
             return "", 0
 
-    segs, xedges = _parse_index()
+    segs, xedges, slivers = _parse_index()
     START = -1
     GOAL = -2
 
@@ -2035,44 +2040,59 @@ def _route(player, target_tag, target_room=None):
                                                    target_room))
 
     # Dijkstra, integer weights, O(V^2) linear-min (no heapq: device
-    # availability unverified).
-    dist = {START: 0}
-    prev = {}
-    settled = set()
-    goal_node = None
-    while goal_node is None:
-        u = None
-        du = 0
-        for node in dist:
-            if node not in settled and (u is None or dist[node] < du):
-                u = node
-                du = dist[node]
-        if u is None:
-            return None, 0
-        settled.add(u)
-        if target_room is None:
-            # Area target: done on first arrival inside the target area
-            # (upstream path_to_area stops at the first such room).
-            if u >= 0 and world._vnum_to_tag(u) == target_tag:
+    # availability unverified). Two passes at most: the first refuses to
+    # land on a sliver room, the second (only run when a sliver was in fact
+    # skipped and nothing else was reachable) accepts them.
+    for skip_slivers in (True, False):
+        dist = {START: 0}
+        prev = {}
+        settled = set()
+        goal_node = None
+        skipped = False
+        while goal_node is None:
+            u = None
+            du = 0
+            for node in dist:
+                if node not in settled and (u is None or dist[node] < du):
+                    u = node
+                    du = dist[node]
+            if u is None:
+                break
+            settled.add(u)
+            if target_room is None:
+                # Area target: done on first arrival inside the target area
+                # (upstream path_to_area stops at the first such room).
+                # [PRIMESUD] except for sliver rooms -- area-tagged border
+                # rooms cut off from the rest of their own area (e.g. New
+                # Thalos' river rooms 9772-9775), where upstream's rule
+                # strands the walk outside the real area.
+                if u >= 0 and world._vnum_to_tag(u) == target_tag:
+                    if skip_slivers and u in slivers:
+                        skipped = True
+                    else:
+                        goal_node = u
+                        break
+            elif u == GOAL:
                 goal_node = u
                 break
-        elif u == GOAL:
-            goal_node = u
+            if u == START:
+                edges = start_edges
+            else:
+                edges = [(to, w, dirs) for to, w, dirs in segs.get(u, ())]
+                for direction, to in xedges.get(u, ()):
+                    edges.append((to, 1, direction))
+                if target_room is not None and u in tgt_entry:
+                    w, dirs = tgt_entry[u]
+                    edges.append((GOAL, w, dirs))
+            for to, w, dirs in edges:
+                nd = du + w
+                if to not in dist or nd < dist[to]:
+                    dist[to] = nd
+                    prev[to] = (u, dirs)
+        if goal_node is not None or not skipped:
             break
-        if u == START:
-            edges = start_edges
-        else:
-            edges = [(to, w, dirs) for to, w, dirs in segs.get(u, ())]
-            for direction, to in xedges.get(u, ()):
-                edges.append((to, 1, direction))
-            if target_room is not None and u in tgt_entry:
-                w, dirs = tgt_entry[u]
-                edges.append((GOAL, w, dirs))
-        for to, w, dirs in edges:
-            nd = du + w
-            if to not in dist or nd < dist[to]:
-                dist[to] = nd
-                prev[to] = (u, dirs)
+    if goal_node is None:
+        return None, 0
 
     parts = []
     node = goal_node

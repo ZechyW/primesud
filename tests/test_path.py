@@ -198,7 +198,8 @@ def test_mob_path_invisible_mob_hidden_without_detect(fresh_world, monkeypatch):
                         lambda _ch, text="": out.append(text))
 
     path_cmd.do_path(player, ["dragon"])
-    assert out == ["{D[Calculating path...]{x", "No such destination."]
+    assert out == ["{D[Calculating path...]{x",
+                   "No such destination."]
 
     # detect invis restores get_char_world visibility
     player["affected_by"] = {"detect_invis": True}
@@ -247,7 +248,8 @@ def test_mob_path_applies_fixed_level_restriction(fresh_world, monkeypatch):
 
     path_cmd.do_path(player, ["dragon"])
 
-    assert out == ["{D[Calculating path...]{x", "No such destination."]
+    assert out == ["{D[Calculating path...]{x",
+                   "No such destination."]
 
 
 def test_mob_path_is_deterministic(fresh_world, monkeypatch):
@@ -430,6 +432,123 @@ def test_run_picker_offers_route_with_no_areas(fresh_world, monkeypatch):
     del player["last_path"]
     movement.do_run(player, [])
     assert out[-1] == "No accessible areas from here."
+
+
+def _sliver_layout():
+    """[PRIMESUD] Area bee split in two: a 2-room sliver (200-201) wedged
+    between aye and cee, and the real 6-room body entered from cee at 210."""
+    layout = {
+        100: ("aye", {"n": 200}),
+        200: ("bee", {"e": 201}),
+        201: ("bee", {"e": 300}),
+        300: ("cee", {"e": 210}),
+        210: ("bee", {"w": 300, "n": 211}),
+        211: ("bee", {"n": 212}),
+        212: ("bee", {"n": 213}),
+        213: ("bee", {"n": 214}),
+        214: ("bee", {"n": 215}),
+        215: ("bee", {}),
+    }
+    return {v: {"area": tag, "exits": exits}
+            for v, (tag, exits) in layout.items()}
+
+
+def _register_sliver_world(fw, monkeypatch, rooms_data):
+    bounds = {"aye": (100, 199), "bee": (200, 299), "cee": (300, 399)}
+    by_area = {}
+    for vnum, room in rooms_data.items():
+        by_area.setdefault(room["area"], {})[vnum] = {
+            "name": "r" + str(vnum), "exits": room["exits"]}
+    for tag, rooms in by_area.items():
+        lo, hi = bounds[tag]
+        fw.register_area(tag, lo, hi, rooms=rooms)
+    fw.setup()
+    _write_index(fw.tmp_path, monkeypatch, rooms_data)
+
+
+def test_build_records_flags_only_sliver_border_rooms():
+    """[PRIMESUD] V records mark border rooms whose in-area BFS reaches
+    less than half the area; well-connected border rooms stay unflagged."""
+    lines = build_records(_sliver_layout())
+    flagged = set(int(l.split("|")[1]) for l in lines if l[0] == "V")
+
+    # 200/201 reach 2 and 1 of bee's 8 rooms; 210 reaches 6.  100 and 300
+    # are their whole (single-room) areas.
+    assert flagged == {200, 201}
+
+
+def test_area_path_skips_sliver_entry(fresh_world, monkeypatch):
+    """[PRIMESUD] The 1-step hop into the sliver is not a valid landing:
+    the route continues to the real body of the area."""
+    _register_sliver_world(fresh_world, monkeypatch, _sliver_layout())
+    player = _player()
+    _ = ROOM_DEFS[100]
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    path_cmd.do_path(player, ["bee"])
+
+    assert out == ["{D[Calculating path...]{x",
+                   "Shortest path to bee is 4 steps: n3e."]
+
+
+def test_mob_path_still_reaches_sliver_room(fresh_world, monkeypatch):
+    """[PRIMESUD] The skip is area-target only -- a mob standing on a
+    sliver room stays pathable at its true distance."""
+    _register_sliver_world(fresh_world, monkeypatch, _sliver_layout())
+    player = _player()
+    _ = ROOM_DEFS[100]
+    world._ensure_area_by_tag("bee")
+    MOB_DEFS._data[250] = {"keywords": "red dragon",
+                           "short_descr": "a red dragon"}
+    mob = _char_base()
+    mob.update({"id": 2, "is_npc": True, "tpl": 250,
+                "room": 201, "level": 10})
+    world.chars[2] = mob
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    path_cmd.do_path(player, ["dragon"])
+
+    assert out == ["{D[Calculating path...]{x",
+                   "Shortest path to a red dragon is 2 steps: ne."]
+
+
+def test_area_path_falls_back_to_sliver_only_entry(fresh_world, monkeypatch):
+    """[PRIMESUD] An area whose only entry is a sliver still routes -- the
+    second Dijkstra pass accepts flagged rooms rather than reporting the
+    area unreachable."""
+    rooms_data = {
+        100: {"area": "aye", "exits": {"n": 200}},
+        200: {"area": "bee", "exits": {}},
+        202: {"area": "bee", "exits": {"n": 203}},
+        203: {"area": "bee", "exits": {"n": 204}},
+        204: {"area": "bee", "exits": {}},
+    }
+    bounds = {"aye": (100, 199), "bee": (200, 299)}
+    by_area = {}
+    for vnum, room in rooms_data.items():
+        by_area.setdefault(room["area"], {})[vnum] = {
+            "name": "r" + str(vnum), "exits": room["exits"]}
+    for tag, rooms in by_area.items():
+        lo, hi = bounds[tag]
+        fresh_world.register_area(tag, lo, hi, rooms=rooms)
+    fresh_world.setup()
+    _write_index(fresh_world.tmp_path, monkeypatch, rooms_data)
+    assert 200 in info._parse_index()[2]
+
+    player = _player()
+    _ = ROOM_DEFS[100]
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    path_cmd.do_path(player, ["bee"])
+
+    assert out == ["{D[Calculating path...]{x",
+                   "Shortest path to bee is 1 step: n."]
 
 
 def test_merge_runs_unit():

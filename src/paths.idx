@@ -1,4 +1,4 @@
-# S|from|to|dist|dirs intra-area segments, X|from|dir|to cross-area exits -- built by tools/build_path_index.py, do not edit
+# S|from|to|dist|dirs intra-area segments, X|from|dir|to cross-area exits, V|vnum sliver border rooms -- built by tools/build_path_index.py, do not edit
 X|2|u|3001
 X|3|u|3054
 X|101|s|3525
@@ -871,3 +871,28 @@ S|9141|9101|12|dwsde2swuswd
 S|9301|9330|5|dne2n
 S|9772|9774|2|2w
 S|9774|9772|2|2e
+V|1
+V|2
+V|3
+V|200
+V|201
+V|202
+V|1392
+V|1483
+V|3472
+V|3500
+V|3502
+V|3503
+V|3525
+V|3526
+V|3532
+V|3760
+V|3900
+V|3904
+V|3908
+V|6201
+V|6202
+V|7114
+V|9594
+V|9772
+V|9774

@@ -90,8 +90,13 @@ def _exit_to(room, direction):
     return ev.get("to") if isinstance(ev, dict) else ev
 
 
-def _global_bfs(data, src, target_tag, target_room):
-    """Unrestricted full-world BFS oracle: steps to goal or None."""
+def _global_bfs(data, src, target_tag, target_room, slivers=()):
+    """Unrestricted full-world BFS oracle: steps to goal or None.
+
+    Mirrors _route's [PRIMESUD] sliver rule for area targets: rooms flagged
+    as slivers in the index are walked through but not landed on, and are
+    only accepted on a second pass if nothing else in the area is reachable.
+    """
     if target_room is not None:
         if src == target_room:
             return 0
@@ -111,9 +116,11 @@ def _global_bfs(data, src, target_tag, target_room):
             if target_room is not None:
                 if to == target_room:
                     return dist[to]
-            elif data[to].get("area") == target_tag:
+            elif data[to].get("area") == target_tag and to not in slivers:
                 return dist[to]
             queue.append(to)
+    if target_room is None and slivers:
+        return _global_bfs(data, src, target_tag, None)
     return None
 
 
@@ -137,6 +144,30 @@ def _walk(data, src, route):
     return pos, steps
 
 
+def _sliver_fragment(data, tag, slivers):
+    """Every room reachable in-area from one of tag's flagged rooms.
+
+    The index only flags border rooms, but the disconnected fragment they
+    sit in holds ordinary rooms too; the router can only ever land on a
+    border room, so the oracle must refuse the whole fragment to stay
+    comparable.  Sound by construction: anything a flagged room reaches
+    in-area has a reach no larger than its own, so it is a sliver too.
+    """
+    out = set()
+    stack = [v for v in slivers if data.get(v, {}).get("area") == tag]
+    while stack:
+        cur = stack.pop()
+        if cur in out:
+            continue
+        out.add(cur)
+        for direction in EXIT_ORDER:
+            to = _exit_to(data[cur], direction)
+            if (to is not None and to in data and to not in out
+                    and data[to].get("area") == tag):
+                stack.append(to)
+    return out
+
+
 def _first_room(data, tag):
     return min(v for v, r in data.items() if r.get("area") == tag)
 
@@ -150,15 +181,19 @@ def test_routes_match_unrestricted_bfs(real_world):
         (3001, "chess2", None),
         (_first_room(data, "chess2"), "midgaard", None),
         (3001, "moria", None),
+        (3001, "newthalos", None),               # sliver river rooms skipped
         (_first_room(data, "newthalos"), "midgaard", None),
         (_first_room(data, "olympus"), "catacomb", None),
         (3001, "thalos", _first_room(data, "thalos")),
         (_first_room(data, "catacomb"), "midgaard", 3054),
         (2, "moria", _first_room(data, "moria")),
     ]
+    slivers = info._parse_index()[2]
     for src, tag, room in pairs:
         label = "%s -> %s/%s" % (src, tag, room)
-        oracle = _global_bfs(data, src, tag, room)
+        skip = () if room is not None else _sliver_fragment(data, tag,
+                                                            slivers)
+        oracle = _global_bfs(data, src, tag, room, skip)
         route, steps = info._route({"room": src}, tag, room)
         if oracle is None:
             assert route is None, label
@@ -172,3 +207,18 @@ def test_routes_match_unrestricted_bfs(real_world):
             assert end == room, label
         else:
             assert data[end].get("area") == tag, label
+            assert end not in slivers, label
+
+
+def test_area_route_skips_disconnected_sliver(real_world):
+    """[PRIMESUD] Rooms 9772-9775 ("On the Dark River") carry the newthalos
+    tag but only link Midgaard to Haon Dor -- landing there strands the
+    player outside New Thalos proper.  The route must reach the West Gate
+    (9669) via Miden'nir instead."""
+    data = real_world
+    slivers = info._parse_index()[2]
+    assert 9772 in slivers and 9774 in slivers
+    route, steps = info._route({"room": 3001}, "newthalos")
+    end, walked = _walk(data, 3001, route)
+    assert end == 9669
+    assert walked == steps

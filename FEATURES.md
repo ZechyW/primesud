@@ -139,6 +139,9 @@ worth trusting -- the engineering layer.
   shortest routes with zero area loads at routing time (DESIGN.md "Lazy
   area loading").  Mob targets resolve deterministically -- 1stMud's random
   saving-throw gate is dropped (docs/FIXES.md).
+  Area targets skip *sliver* border rooms -- area-tagged fragments cut off
+  from the area's body (e.g. New Thalos' Dark River) -- so `run <area>`
+  lands at a real entrance instead of upstream's first-room-in-area.
 - **World-wide object location** -- `locate object` searches plausible
   unloaded areas one at a time through the object index, then releases each
   transient load (DESIGN.md "Lazy area loading").
