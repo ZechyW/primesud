@@ -99,7 +99,7 @@ def test_command_registration_keeps_existing_prefix_order():
                 if entry[0].startswith("reco")) == "recommend"
 
 
-def test_mob_window_is_fixed_and_round_robin(
+def test_mob_window_is_fixed_and_level_sorted(
         indexed_player, tmp_path, monkeypatch):
     path = tmp_path / "foes.bin"
     _write_foes_bin(path, (
@@ -120,8 +120,36 @@ def test_mob_window_is_fixed_and_round_robin(
 
     rows = recommend._mob_candidates(indexed_player)
 
+    # Band [level-2, level+1] only, displayed level descending then by the
+    # packed rank key (here plain file order within each level).
     assert [row["vnum"] for row in rows] == [
-        100, 90, 110, 80, 101, 91, 111, 81, 102, 92]
+        110, 111, 100, 101, 102, 90, 91, 92, 80, 81]
+
+
+def test_mob_selection_is_round_robin_over_bands(
+        indexed_player, tmp_path, monkeypatch):
+    """Selection keeps all four bands even when one could fill the list."""
+    rows_in = [_fight_row(200 + index, 10, "same " + str(index))
+               for index in range(30)]
+    rows_in.extend((
+        _fight_row(90, 9, "low one"),
+        _fight_row(80, 8, "low two"),
+        _fight_row(110, 11, "upper"),
+    ))
+    path = tmp_path / "foes.bin"
+    _write_foes_bin(path, rows_in)
+    monkeypatch.setattr(recommend, "FOES_INDEX_FILE", str(path))
+
+    rows = recommend._mob_candidates(indexed_player)
+
+    assert len(rows) == 20
+    levels = [row["level"] for row in rows]
+    assert levels == sorted(levels, reverse=True)
+    # One row per off-level band was drawn on the first three rounds; the
+    # remaining 17 come from the level-10 bucket, which alone holds 30.
+    assert levels.count(11) == 1 and levels.count(9) == 1
+    assert levels.count(8) == 1 and levels.count(10) == 17
+    assert [row["vnum"] for row in rows[:2]] == [110, 200]
 
 
 def test_mob_dedupes_name_and_displayed_area(
@@ -138,8 +166,8 @@ def test_mob_dedupes_name_and_displayed_area(
     rows = recommend._mob_candidates(indexed_player)
 
     assert [(row["vnum"], row["name"], row["tag"]) for row in rows] == [
-        (100, "the duplicate", "test"),
         (102, "the duplicate", "far"),
+        (100, "the duplicate", "test"),
         (103, "unique", "test"),
     ]
 
@@ -247,9 +275,9 @@ def test_indexed_weapon_score_matches_fresh_instance(
             == inventory.gear_score(indexed_player, {"vnum": 500}))
 
 
-def test_gear_downweights_unlearnt_weapon(indexed_player, tmp_path,
-                                          monkeypatch):
-    """Expected-hit weighting ranks a learnt weapon over bigger unlearnt dice."""
+def test_gear_downweights_barely_learnt_weapon(indexed_player, tmp_path,
+                                               monkeypatch):
+    """Expected-hit weighting ranks a learnt weapon over bigger raw dice."""
     path = tmp_path / "gear.bin"
     _write_gear_bin(path, (
         _gear_row(600, slot="wield", score=0, weapon_base=20,
@@ -259,12 +287,45 @@ def test_gear_downweights_unlearnt_weapon(indexed_player, tmp_path,
     ))
     monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
     indexed_player["learned"][WEAPON_GSN_MAP["dagger"]] = 80
+    indexed_player["learned"][WEAPON_GSN_MAP["sword"]] = 10
 
     rows = recommend._scan_gear(indexed_player, "wield")["wield"]
 
-    # dagger 10 base at 80% scores 85; sword 20 base at 0% only 11
+    # dagger 10 base at 80% scores 85; sword 20 base at 10% only 21
     assert [row["vnum"] for row in rows] == [601, 600]
-    assert [row["gain"] for row in rows] == [85, 11]
+    assert [row["gain"] for row in rows] == [85, 21]
+
+
+def test_gear_skips_weapons_under_the_wear_best_floor(
+        indexed_player, tmp_path, monkeypatch):
+    """Rows 'wear best' would refuse (<10% proficiency) never surface;
+    exotic types stay exempt exactly as they are in _can_wear_best."""
+    path = tmp_path / "gear.bin"
+    _write_gear_bin(path, (
+        _gear_row(600, slot="wield", score=0, weapon_base=20,
+                  weapon_type="sword"),
+        _gear_row(601, slot="wield", score=0, weapon_base=10,
+                  weapon_type="dagger"),
+        _gear_row(602, slot="wield", score=0, weapon_base=10,
+                  weapon_type="exotic"),
+    ))
+    monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
+    indexed_player["learned"][WEAPON_GSN_MAP["dagger"]] = 9
+    indexed_player["learned"][WEAPON_GSN_MAP["sword"]] = 10
+
+    rows = recommend._scan_gear(indexed_player, "wield")["wield"]
+
+    # dagger (9%) is gone; sword 20 base at 10% scores 21, exotic 10 base
+    # at the level-10 PC's 3 * level = 30% scores 25.
+    assert [(row["vnum"], row["gain"]) for row in rows] == [(602, 25),
+                                                            (600, 21)]
+
+    # Exotic has no gsn to practise (PCs get 3 * level), so it survives the
+    # floor even for a low-level player whose 3 * level is under 10.
+    low = _player(level=2)
+    low["learned"] = {}
+    assert [row["vnum"] for row in
+            recommend._scan_gear(low, "wield")["wield"]] == [602]
 
 
 def test_two_hander_pays_owned_shield_cost(indexed_player, tmp_path,
@@ -531,6 +592,10 @@ def _reference_summary(player, slots_rows):
                 continue
             if slot == "wield" and row["weight"] > wield_limit:
                 continue
+            if row["wbase"]:
+                sn = WEAPON_GSN_MAP.get(row["wtype"], -1)
+                if sn != -1 and recommend._get_weapon_skill(player, sn) < 10:
+                    continue  # wear best's proficiency floor
             wscore = inventory.gear_score_weapon(
                 player, row["wbase"], row["wtype"], row["sharp"])
             score = row["static"] + wscore
@@ -576,8 +641,8 @@ def test_shipped_index_matches_naive_rescoring(indexed_player):
 
 def _reference_mobs(player, rows_all):
     """Naive dict-based ranking (the pre-binary algorithm, no shortcuts):
-    filter the fixed band, dedupe name/source, rank each level bucket, and
-    draw round-robin until 10 rows remain."""
+    filter the fixed band, dedupe name/source, rank each level bucket, draw
+    round-robin until 20 rows remain, then sort them for display."""
     level = player.get("level", 1)
     lowest = max(1, level - 2)
     highest = level + 1
@@ -624,20 +689,21 @@ def _reference_mobs(player, rows_all):
         bucket.sort(key=lambda entry: entry[0])
     rows = []
     index = 0
-    while len(rows) < 10:
+    while len(rows) < 20:
         added = False
         for bucket in buckets:
             if index < len(bucket):
-                rows.append(bucket[index][1])
+                rows.append(bucket[index])
                 added = True
-                if len(rows) == 10:
+                if len(rows) == 20:
                     break
         if not added:
             break
         index += 1
+    rows.sort(key=lambda entry: (-entry[1]["level"], entry[0]))
     return [(row["vnum"], row["level"], row["tag"], row["extra"],
              row["kills"], row["deaths"], row["bad"])
-            for row in rows]
+            for _key, row in rows]
 
 
 def test_shipped_foes_matches_naive_ranking(fresh_world):

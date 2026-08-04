@@ -86,8 +86,10 @@ def _mob_candidates(player):
     tools/build_mob_index.py) and walked with raw byte arithmetic -- zero
     allocations per reject, the text index spent ~13ms/row on split
     allocs. Four bounded level buckets keep the best rows, deduplicated by
-    displayed name and area, then feed the result round-robin; winner names
-    resolve from one string-table read afterwards.
+    displayed name and area, then feed up to 20 winners round-robin so
+    every band is represented; the winners are re-sorted level descending
+    for display and their names resolve from one string-table read
+    afterwards.
     """
     level = player.get("level", 1)
     lowest = max(1, level - 2)
@@ -131,7 +133,7 @@ def _mob_candidates(player):
         if player.get("quest_status") in (QUEST_DELIVER, QUEST_FINDMOB):
             protected = player.get("quest_mob", 0)
 
-        # Keep up to 10 per output bucket: level, level-1, level+1,
+        # Keep up to 20 per output bucket: level, level-1, level+1,
         # level-2. Packed ascending key is bad record, foreign area,
         # |level diff|, level, file order (order is 15 bits; a band holds
         # a few hundred records at most).
@@ -174,11 +176,11 @@ def _mob_candidates(player):
                 bucket = buckets[bucket_index]
                 # Dedup only runs on guard-passing candidates, so a
                 # guard-rejected better duplicate can leave a worse one
-                # behind in another bucket; needs 11+ same-level rows plus
+                # behind in another bucket; needs 21+ same-level rows plus
                 # a cross-level same-name-same-area dup, so accepted as a
                 # keep-rejects-allocation-free tradeoff. If the naive
                 # reference test ever diverges on new data, look here.
-                if len(bucket) < 10 or key < bucket[9][0]:
+                if len(bucket) < 20 or key < bucket[19][0]:
                     tag_id = cur_id if member else data[pos + 7]
                     name_ref = ((data[pos + 3] | data[pos + 4] << 8) << 8
                                 | data[pos + 5])
@@ -207,30 +209,37 @@ def _mob_candidates(player):
                     while index and bucket[index - 1][0] > key:
                         index -= 1
                     bucket.insert(index, row)
-                    if len(bucket) > 10:
+                    if len(bucket) > 20:
                         bucket.pop()
             pos += step
             order += 1
 
-        top10 = []
+        winners = []
         index = 0
-        while len(top10) < 10:
+        while len(winners) < 20:
             added = False
             for bucket in buckets:
                 if index < len(bucket):
-                    top10.append(bucket[index])
+                    winners.append(bucket[index])
                     added = True
-                    if len(top10) == 10:
+                    if len(winners) == 20:
                         break
             if not added:
                 break
             index += 1
 
+        # Selection stays round-robin so all four level bands are
+        # represented; display sorts level descending, then the packed key
+        # (bad record, foreign area, |level diff|, level, file order) so
+        # favorable records and the current area lead each level group.
+        # <=20 rows, so the sort's allocations are bounded.
+        winners.sort(key=lambda entry: (-entry[2], entry[0]))
+
         rows = []
-        if top10:
+        if winners:
             f.seek(strings_off)
             names = _as_bytes(f.read())
-            for entry in top10:
+            for entry in winners:
                 ref = entry[5]
                 rows.append({
                     "vnum": entry[1], "level": entry[2],
@@ -488,10 +497,16 @@ def _scan_gear(player, wanted_slot=None):
             area_order[entry[1]] = index
         # Per-type effective skill (one_hit uses 20 + proficiency): rows
         # index this by wtype_id instead of calling gear_score_weapon.
+        # [PRIMESUD] Types under the 10% proficiency floor 'wear best'
+        # enforces (cf. _can_wear_best) get -1 instead: _scan_records
+        # rejects their rows before scoring, so the sentinel never reaches
+        # the score maths. Exotic (sn -1) is exempt from the floor here
+        # exactly as it is there -- PCs get 3 * level and never practice it.
         eff = []
         for name in wtypes:
-            eff.append(20 + _get_weapon_skill(
-                player, WEAPON_GSN_MAP.get(name, -1)))
+            sn = WEAPON_GSN_MAP.get(name, -1)
+            skill = _get_weapon_skill(player, sn)
+            eff.append(-1 if sn != -1 and skill < 10 else 20 + skill)
         # Alignment legality as one bitmask test (cf. gear_flags_legal;
         # bits match _GEAR_FLAG_BITS in tools/build_mob_index.py).
         align_mask = 0
@@ -610,6 +625,12 @@ def _scan_records(data, pos, stop, loot_end, slot, results, baselines,
         if wbase:
             # Inlined gear_score_weapon via the per-type eff table.
             skill = eff[data[pos + 10]]
+            if skill < 0:
+                # [PRIMESUD] Sentinel from _scan_gear: the type sits below
+                # the 10% proficiency floor in _can_wear_best, so never
+                # suggest a weapon 'wear best' would refuse to equip.
+                pos += 30
+                continue
             wscore = wbase * skill // 10
             if flags & 1:
                 wscore += wscore * skill // 700

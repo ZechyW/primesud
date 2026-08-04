@@ -213,9 +213,16 @@ Weapon dice scores carry an expected-hit weighting of `(skill + 20) / 140`
 (skill = 20 + proficiency, mirroring `one_hit`'s floor), calibrated against
 measured hit-rate ratios so a barely-practiced weapon scores near its true
 combat worth instead of its dice; the factor reaches exactly 1 at adept, so
-`gear_score_weapon_max` record bounds in `gear.bin` are unaffected. There is no
-proficiency cutoff -- unlearnt weapons simply rank where their expected damage
-puts them. Static affect bonuses are not skill-scaled.
+`gear_score_weapon_max` record bounds in `gear.bin` are unaffected. Static
+affect bonuses are not skill-scaled, so `wear best` (and `recommend gear`)
+additionally refuse any weapon whose type sits under 10% proficiency: below
+that the player never showed interest in the type, and an affect-heavy
+unpractised weapon would otherwise win the slot on affects alone. The floor is
+10 rather than 1 so incidental `check_improve` drift from an accidental wield
+still reads as no interest. Exotic weapons have no skill to practise (PCs get
+3 x level) and are exempt, as is a weapon already worn -- hand-slot layouts
+seed their pool from the equipped slots, so a manually wielded weapon is
+respected.
 
 `wear best` compares visible, level-appropriate, alignment-compatible inventory
 items against each occupied slot. It replaces only strict upgrades, keeps worn
@@ -236,11 +243,13 @@ plus the no-shield bonus, minus half the owned shield plus its block value.
 ### Recommendations
 
 Bare `recommend` opens a mobs/gear picker. `recommend mobs` reads generated
-fightable reset metadata and lists up to ten opponents from level -2 through
+fightable reset metadata and lists up to twenty opponents from level -2 through
 level +1. Within each level it ranks favorable or unseen personal records
 first, then the current area, and draws round-robin from level, level -1,
-level +1, and level -2 so one level cannot crowd out the rest. Rows with the
-same displayed name and source area collapse to one result. A `+n` after the
+level +1, and level -2 so one level cannot crowd out the rest. The drawn rows
+are then listed level descending (toughest first), each level group keeping its
+rank order. Rows with the same displayed name and source area collapse to one
+result. A `+n` after the
 area marks a mob that also spawns in n other areas. Results are known reset
 sites, not live availability.
 

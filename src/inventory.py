@@ -1310,14 +1310,26 @@ def gear_flags_legal(player, extra):
 
 
 def _can_wear_best(player, obj, tpl):
-    """Return whether wear best may equip obj (sight/level/align). [PRIMESUD]
+    """Return whether wear best may equip obj (sight/level/align/skill). [PRIMESUD]
 
-    No proficiency filter: the expected-hit weighting in _weapon_score
-    already sinks unlearnt weapons to their true combat worth.
+    Weapons under 10% proficiency in their mapped weapon type are skipped
+    outright: a proficiency that low means the player never showed any
+    interest in the type, and the static affect half of gear_score is not
+    skill-scaled, so an affect-heavy unpracticed weapon could otherwise
+    win the slot on affects alone. The floor sits at 10 rather than 1 so
+    incidental check_improve drift from an accidentally wielded weapon
+    still reads as no interest. Exotic types (sn -1) stay exempt -- PCs
+    get 3 * level there and never practice them. Already-worn items are
+    exempt as well, since _best_hand_layout seeds its pool from the
+    equipped slots directly: a manually wielded weapon is respected.
     """
     if (not can_see_obj(player, obj)
             or obj_level(obj, tpl, 1) > player["level"]):
         return False
+    if tpl.get("type") == "weapon":
+        sn = WEAPON_GSN_MAP.get(tpl.get("weapon_type", ""), -1)
+        if sn != -1 and _get_weapon_skill(player, sn) < 10:
+            return False
     return gear_flags_legal(player, item_extra_flags(obj, tpl))
 
 
