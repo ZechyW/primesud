@@ -863,8 +863,6 @@ def _show_gear(player, slot=None):
             for alt in row["alts"]:
                 lines.append(("  also " + _source_detail(alt))[:64])
                 lines.append(("    area: " + _area_name(alt["tag"]))[:64])
-        if slot in _HAND_SLOTS:
-            lines.append("{wHand item is a candidate; wear best decides layout.{x")
         if downs:
             # [PRIMESUD] Nearest non-upgrades: sizing context, and on
             # wield the best candidate per weapon type for type switchers.
