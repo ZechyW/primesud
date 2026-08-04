@@ -53,7 +53,9 @@ Things with no upstream equivalent.
   fightable reset mobs (up to 20, drawn round-robin across the four level
   bands and listed level-descending) and strict gear-score upgrades with known
   loot, shop, floor, or container sources -- skipping weapons `wear best`
-  would refuse -- without loading target areas (docs/PRIME_UX.md).
+  would refuse -- without loading target areas. Slot detail also lists the
+  nearest non-upgrades: the best candidate per weapon type on `wield`, the
+  five rows nearest below your current gear elsewhere (docs/PRIME_UX.md).
 
 ## Reimagined for one player
 
@@ -76,7 +78,7 @@ that into features rather than holes.
   proficiency, and `wear best` picks the best legal hand layout (shield,
   two-handed, dual wield) by combat-weighted value: defence at half weight,
   shield block and the shieldless 11/10 damage bonus modelled from one_hit.
-  Weapon types under 10% proficiency are skipped outright, so affect-heavy
+  Weapon types under 5% proficiency are skipped outright, so affect-heavy
   gear you never practised cannot claim your hands (docs/PRIME_UX.md).
 - **Browsable help** -- bare `help` opens a category-then-entry browser driven
   by digits and Enter, reaching all 288 entries without alpha-shifting a

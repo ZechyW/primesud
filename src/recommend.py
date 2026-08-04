@@ -2,7 +2,7 @@
 
 import world
 from combat import _get_size, _get_weapon_skill
-from config import SIZE_RANK, STR_APP_WIELD
+from config import SIZE_RANK, STR_APP_WIELD, WEAR_BEST_SKILL_FLOOR
 from handler import chprintln, get_curr_stat, is_evil, is_good, is_neutral
 from inventory import (_can_wear_best, _wear_flag, _weapon_dice_part,
                        gear_score, shield_block_pct)
@@ -351,6 +351,8 @@ def _candidate_key(row):
 
 
 _MAX_ALT_SOURCES = 2
+# Non-wield detail views keep this many nearest-below-current rows.
+_DOWN_LIMIT = 5
 
 
 def _alt_key(row):
@@ -382,6 +384,33 @@ def _keep_alt(alts, source, primary):
     alts.sort(key=lambda alt: alt["source_key"])
     if len(alts) > _MAX_ALT_SOURCES:
         alts.pop()
+
+
+def _down_key(row):
+    """Return nearest-below ordering: gain descending, source, VNUM."""
+    return (-row["gain"], row["source_key"], row["vnum"])
+
+
+def _keep_down(downs, row, per_type, cap):
+    """Insert a downgrade row into a bounded nearest-first list. [PRIMESUD]
+
+    Wield rows dedupe per weapon type (best row per type; the list is
+    naturally bounded by the type count), other slots per item VNUM with
+    the weakest popped past cap. No alt-source bookkeeping: each row
+    keeps only its best-ranked source.
+    """
+    ident = "wtid" if per_type else "vnum"
+    key = _down_key(row)
+    for index, kept in enumerate(downs):
+        if kept[ident] == row[ident]:
+            if key < _down_key(kept):
+                downs[index] = row
+                downs.sort(key=_down_key)
+            return
+    downs.append(row)
+    downs.sort(key=_down_key)
+    if not per_type and len(downs) > cap:
+        downs.pop()
 
 
 def _keep_candidate(rows, candidate, limit):
@@ -456,7 +485,7 @@ def _resolve_names(names, row):
     row["source_name"] = names[ref >> 8:(ref >> 8) + (ref & 255)].decode()
 
 
-def _scan_gear(player, wanted_slot=None):
+def _scan_gear(player, wanted_slot=None, downs=None):
     """Scan needed gear.bin slot segments, retaining only displayed candidates.
 
     gear.bin is binary: a header (magic, sizes, per-slot record and loot
@@ -467,6 +496,15 @@ def _scan_gear(player, wanted_slot=None):
     (one small heap alloc costs ~0.5ms at full game heap; the old text
     index spent ~15ms/row on split allocs). Winner display strings resolve
     afterwards from one bounded string-table read.
+
+    Args:
+        player (dict): Player instance dict.
+        wanted_slot (str): Single slot for detail mode, or None for the
+            per-slot summary.
+        downs (list): Detail mode only: receives nearest non-upgrade rows
+            (best per weapon type on wield, nearest _DOWN_LIMIT by score
+            elsewhere), all with gain <= 0. None skips downgrade
+            collection entirely.
     """
     try:
         f = open(GEAR_INDEX_FILE, "rb")
@@ -497,16 +535,19 @@ def _scan_gear(player, wanted_slot=None):
             area_order[entry[1]] = index
         # Per-type effective skill (one_hit uses 20 + proficiency): rows
         # index this by wtype_id instead of calling gear_score_weapon.
-        # [PRIMESUD] Types under the 10% proficiency floor 'wear best'
-        # enforces (cf. _can_wear_best) get -1 instead: _scan_records
-        # rejects their rows before scoring, so the sentinel never reaches
-        # the score maths. Exotic (sn -1) is exempt from the floor here
-        # exactly as it is there -- PCs get 3 * level and never practice it.
+        # [PRIMESUD] Types under the WEAR_BEST_SKILL_FLOOR proficiency
+        # floor 'wear best' enforces (cf. _can_wear_best) get -1 instead:
+        # _scan_records rejects their rows before scoring, so the sentinel
+        # never reaches the score maths and no row -- upgrade or nearest
+        # non-upgrade -- names a weapon 'wear best' would refuse to equip.
+        # Exotic (sn -1) is exempt from the floor here exactly as it is
+        # there -- PCs get 3 * level and never practice it.
         eff = []
         for name in wtypes:
             sn = WEAPON_GSN_MAP.get(name, -1)
             skill = _get_weapon_skill(player, sn)
-            eff.append(-1 if sn != -1 and skill < 10 else 20 + skill)
+            eff.append(-1 if sn != -1 and skill < WEAR_BEST_SKILL_FLOOR
+                       else 20 + skill)
         # Alignment legality as one bitmask test (cf. gear_flags_legal;
         # bits match _GEAR_FLAG_BITS in tools/build_mob_index.py).
         align_mask = 0
@@ -521,9 +562,20 @@ def _scan_gear(player, wanted_slot=None):
         if wanted_slot is None:
             for slot in _GEAR_SLOTS:
                 results[slot] = []
+            downs = None  # summary mode never collects downgrades
         else:
             results[wanted_slot] = []
         limit = 10 if wanted_slot is not None else 1
+        owned_vnums = None
+        if downs is not None:
+            # Suppress "downgrade" rows for items the player already owns
+            # in this slot; other equal-score sidegrades stay informative.
+            owned_vnums = set()
+            for obj in player["inv"] + [
+                    obj for obj in player["equip"].values()
+                    if obj is not None]:
+                if _wear_flag(obj, item_tpl(obj)) == wanted_slot:
+                    owned_vnums.add(obj.get("vnum"))
 
         pos = header_size
         needed = []
@@ -555,29 +607,35 @@ def _scan_gear(player, wanted_slot=None):
                               slot, results, baselines, current,
                               player_level, loot_low, loot_high,
                               wield_limit, funds, area_order, limit, eff,
-                              align_mask, small, sb_pct, tags)
+                              align_mask, small, sb_pct, tags, wtypes,
+                              downs, owned_vnums)
                 index += 1
             data = None
 
         # Resolve winner display strings: admits are rare, so one bounded
         # read of the deduplicated table covers them all.
-        for slot in results:
-            if results[slot]:
-                f.seek(strings_off)
-                names = _as_bytes(f.read())
-                for got in results.values():
-                    for row in got:
-                        _resolve_names(names, row)
-                        for alt in row["alts"]:
-                            _resolve_names(names, alt)
+        need_names = bool(downs)
+        for got in results.values():
+            if got:
+                need_names = True
                 break
+        if need_names:
+            f.seek(strings_off)
+            names = _as_bytes(f.read())
+            for got in results.values():
+                for row in got:
+                    _resolve_names(names, row)
+                    for alt in row["alts"]:
+                        _resolve_names(names, alt)
+            for row in downs or ():
+                _resolve_names(names, row)
     return results
 
 
 def _scan_records(data, pos, stop, loot_end, slot, results, baselines,
                   current, player_level, loot_low, loot_high, wield_limit,
                   funds, area_order, limit, eff, align_mask, small, sb_pct,
-                  tags):
+                  tags, wtypes, downs, owned_vnums):
     """Score and rank one slot's fixed-width records into results[slot].
 
     data[pos:stop] holds 30-byte records (offsets documented in
@@ -594,12 +652,31 @@ def _scan_records(data, pos, stop, loot_end, slot, results, baselines,
     refs until _scan_gear resolves the winners. Summary mode (limit 1)
     keeps a single winner per slot with empty alts and no alt
     bookkeeping.
+
+    [PRIMESUD] With downs not None, at-or-below-baseline rows also
+    collect: best per eligible weapon type on wield, nearest _DOWN_LIMIT
+    below baseline on other slots. The region-exit cut then starts fully
+    open and only rises -- never past the baseline, since every collected
+    row scores at or below it, so upgrade admissions are untouched -- once
+    the downgrade list saturates: all eligible types held on wield,
+    _DOWN_LIMIT rows elsewhere (a still-missing type could beat rows below
+    the kept minimum, so an early rise would be unsound).
     """
     baseline = baselines[slot]
     floor = baseline + 1
-    fbias = floor + 32768
-    rows = results[slot]
+    down_open = downs is not None
     is_wield = slot == "wield"
+    per_type = down_open and is_wield
+    if per_type:
+        down_target = 0
+        for skill in eff:
+            if skill >= 0:
+                down_target += 1
+    else:
+        down_target = _DOWN_LIMIT
+    cut = -32768 if down_open else floor
+    fbias = cut + 32768
+    rows = results[slot]
     while pos < stop:
         if (data[pos] | data[pos + 1] << 8) < fbias:
             # Bound-sorted region exhausted: no later row in it can win.
@@ -622,12 +699,14 @@ def _scan_records(data, pos, stop, loot_end, slot, results, baselines,
             pos += 30
             continue
         wbase = data[pos + 8] | data[pos + 9] << 8
+        wtid = -1
         if wbase:
             # Inlined gear_score_weapon via the per-type eff table.
-            skill = eff[data[pos + 10]]
+            wtid = data[pos + 10]
+            skill = eff[wtid]
             if skill < 0:
                 # [PRIMESUD] Sentinel from _scan_gear: the type sits below
-                # the 10% proficiency floor in _can_wear_best, so never
+                # the proficiency floor in _can_wear_best, so never
                 # suggest a weapon 'wear best' would refuse to equip.
                 pos += 30
                 continue
@@ -638,7 +717,7 @@ def _scan_records(data, pos, stop, loot_end, slot, results, baselines,
         else:
             wscore = 0
         score = (data[pos + 6] | data[pos + 7] << 8) - 32768 + wscore
-        if score + wscore // 10 < floor:
+        if score + wscore // 10 < cut:
             # wscore//10 is the most the two-hander branch can add back.
             pos += 30
             continue
@@ -647,7 +726,7 @@ def _scan_records(data, pos, stop, loot_end, slot, results, baselines,
             # dice, minus half the owned shield's score plus its block value.
             block = score * sb_pct // 100
             score += wscore // 10 - (baselines["shield"] + block) // 2
-        if score < floor:
+        if score < cut:
             pos += 30
             continue
         # Survivor: decode the tail fields.
@@ -667,39 +746,65 @@ def _scan_records(data, pos, stop, loot_end, slot, results, baselines,
         source_key = _source_key(
             kind, tag, price, funds, source_level, player_level,
             source_vnum, room_vnum, current, area_order)
-        if limit == 1:
-            # Summary fast path: a single winner needs no alt bookkeeping
-            # or candidate dict for losing ties -- just a key compare
-            # matching _candidate_key ordering.
-            if rows:
-                row = rows[0]
-                if ((-score, source_key, vnum)
-                        >= (-(row["gain"] + baseline), row["source_key"],
-                            row["vnum"])):
-                    continue
-            rows[:] = [{
+        if score >= floor:
+            if limit == 1:
+                # Summary fast path: a single winner needs no alt
+                # bookkeeping or candidate dict for losing ties -- just a
+                # key compare matching _candidate_key ordering.
+                if rows:
+                    row = rows[0]
+                    if ((-score, source_key, vnum)
+                            >= (-(row["gain"] + baseline),
+                                row["source_key"], row["vnum"])):
+                        continue
+                rows[:] = [{
+                    "vnum": vnum, "slot": slot, "gain": score - baseline,
+                    "name": name_ref, "kind": kind,
+                    "source_vnum": source_vnum,
+                    "source_level": source_level,
+                    "source_name": sname_ref, "tag": tag, "price": price,
+                    "source_key": source_key, "alts": [],
+                }]
+                floor = score
+                cut = floor
+                fbias = floor + 32768
+                continue
+            candidate = {
                 "vnum": vnum, "slot": slot, "gain": score - baseline,
                 "name": name_ref, "kind": kind, "source_vnum": source_vnum,
                 "source_level": source_level, "source_name": sname_ref,
                 "tag": tag, "price": price, "source_key": source_key,
-                "alts": [],
-            }]
-            floor = score
-            fbias = floor + 32768
-            continue
-        candidate = {
-            "vnum": vnum, "slot": slot, "gain": score - baseline,
-            "name": name_ref, "kind": kind, "source_vnum": source_vnum,
-            "source_level": source_level, "source_name": sname_ref,
-            "tag": tag, "price": price, "source_key": source_key,
-        }
-        _keep_candidate(rows, candidate, limit)
-        if len(rows) == limit:
-            # Full result list: only rows beating the weakest kept score
-            # matter now. Alternate sources of a kept item tie its bound,
-            # so the strict compare above still lets them parse into alts.
-            floor = rows[-1]["gain"] + baseline
-            fbias = floor + 32768
+            }
+            _keep_candidate(rows, candidate, limit)
+            if len(rows) == limit and not down_open:
+                # Full result list: only rows beating the weakest kept
+                # score matter now. Alternate sources of a kept item tie
+                # its bound, so the strict compare above still lets them
+                # parse into alts. (With downs open the exit floor stays
+                # governed by the lower downgrade cut instead.)
+                floor = rows[-1]["gain"] + baseline
+                cut = floor
+                fbias = cut + 32768
+            elif len(rows) == limit:
+                floor = rows[-1]["gain"] + baseline
+        elif down_open and score <= baseline:
+            # [PRIMESUD] Nearest non-upgrade collection (detail mode).
+            if is_wield and not wbase:
+                # Degenerate non-weapon wield row: dropping it keeps the
+                # per-type saturation count sound.
+                continue
+            if vnum in owned_vnums:
+                continue
+            _keep_down(downs, {
+                "vnum": vnum, "slot": slot, "gain": score - baseline,
+                "name": name_ref, "kind": kind, "source_vnum": source_vnum,
+                "source_level": source_level, "source_name": sname_ref,
+                "tag": tag, "price": price, "source_key": source_key,
+                "wtid": wtid, "wtype": wtypes[wtid] if wbase else "",
+            }, per_type, down_target)
+            if len(downs) >= down_target:
+                cut = downs[-1]["gain"] + baseline
+                fbias = cut + 32768
 
 
 def _comma_num(value):
@@ -730,22 +835,26 @@ def _source_detail(row):
 
 
 def _show_gear(player, slot=None):
-    """Render strict static gear upgrades.
+    """Render strict static gear upgrades and nearest non-upgrades.
 
     Summary mode opens a picker over the per-category best upgrades; choosing
-    a row drills into that slot's detail. Returns the resolved command string
-    ("recommend gear <slot>") when the player drills in, else None.
+    a row drills into that slot's detail. Detail mode appends a nearest-below
+    section (best per weapon type on wield). Returns the resolved command
+    string ("recommend gear <slot>") when the player drills in, else None.
     """
-    results = _scan_gear(player, slot)
+    downs = [] if slot is not None else None
+    results = _scan_gear(player, slot, downs)
     if results is None:
         chprintln(player, "Gear recommendations are unavailable.")
         return None
     if slot is not None:
         rows = results[slot]
-        if not rows:
+        if not rows and not downs:
             chprintln(player, "No " + slot + " upgrades for you.")
             return None
         lines = []
+        if not rows:
+            lines.append("No " + slot + " upgrades for you.")
         for row in rows:
             lines.append(slot + " +" + num_str(row["gain"]) + "  "
                          + row["name"][:48])
@@ -756,6 +865,20 @@ def _show_gear(player, slot=None):
                 lines.append(("    area: " + _area_name(alt["tag"]))[:64])
         if slot in _HAND_SLOTS:
             lines.append("{wHand item is a candidate; wear best decides layout.{x")
+        if downs:
+            # [PRIMESUD] Nearest non-upgrades: sizing context, and on
+            # wield the best candidate per weapon type for type switchers.
+            lines.append("{wNearest by weapon type:{x" if slot == "wield"
+                         else "{wNearest below current:{x")
+            for row in downs:
+                # Every collected row scores at or below the baseline, so
+                # num_str carries the sign (or renders a bare 0 sidegrade).
+                head = slot + " " + num_str(row["gain"])
+                if row["wtype"]:
+                    head += " [" + row["wtype"] + "]"
+                lines.append(head + "  " + row["name"][:40])
+                lines.append(("  " + _source_detail(row))[:64])
+                lines.append(("    area: " + _area_name(row["tag"]))[:64])
         tpage(lines)
         return None
 

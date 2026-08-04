@@ -410,6 +410,12 @@ XP_BASE = {
     -1: 66, 0: 83, 1: 99, 2: 121, 3: 143, 4: 165,
 }
 
+# -- Weapon proficiency floor [PRIMESUD] -----------------------------------------------
+# Weapon types practised below this percentage are skipped outright by
+# `wear best` and by `recommend gear`; rationale in _can_wear_best
+# (inventory.py). Single source of truth for both.
+WEAR_BEST_SKILL_FLOOR = 5
+
 # -- Size rank (cf. 1stMud SIZE_* in merc.h) -------------------------------------------
 SIZE_RANK = {"tiny": 0, "small": 1, "medium": 2, "large": 3, "huge": 4, "giant": 5}
 

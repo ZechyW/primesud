@@ -215,14 +215,15 @@ measured hit-rate ratios so a barely-practiced weapon scores near its true
 combat worth instead of its dice; the factor reaches exactly 1 at adept, so
 `gear_score_weapon_max` record bounds in `gear.bin` are unaffected. Static
 affect bonuses are not skill-scaled, so `wear best` (and `recommend gear`)
-additionally refuse any weapon whose type sits under 10% proficiency: below
-that the player never showed interest in the type, and an affect-heavy
-unpractised weapon would otherwise win the slot on affects alone. The floor is
-10 rather than 1 so incidental `check_improve` drift from an accidental wield
-still reads as no interest. Exotic weapons have no skill to practise (PCs get
-3 x level) and are exempt, as is a weapon already worn -- hand-slot layouts
-seed their pool from the equipped slots, so a manually wielded weapon is
-respected.
+additionally refuse any weapon whose type sits under 5% proficiency
+(`WEAR_BEST_SKILL_FLOOR`, the single threshold both use): below that the player
+never showed interest in the type, and an affect-heavy unpractised weapon would
+otherwise win the slot on affects alone. The floor is 5 rather than 1 so
+incidental `check_improve` drift from an accidental wield still reads as no
+interest, while one practice session clears it. Exotic weapons have no skill
+to practise (PCs get 3 x level) and are exempt, as is a weapon already worn --
+hand-slot layouts seed their pool from the equipped slots, so a manually
+wielded weapon is respected.
 
 `wear best` compares visible, level-appropriate, alignment-compatible inventory
 items against each occupied slot. It replaces only strict upgrades, keeps worn
@@ -264,6 +265,19 @@ weight rules as `compare` and `wear best`. Sources cover fightable mob loot,
 including nested items in mob-carried containers, ordinary shops, floor
 resets, and items inside floor-reset containers. Hand items are candidates
 because hypothetical combined layouts remain the job of `wear best`.
+
+Slot detail also closes with a nearest non-upgrade section, so a slot with no
+upgrades still says something useful. On `wield` it is headed `Nearest by
+weapon type:` and keeps the best candidate per weapon type, so a player
+weighing a type switch can see what the best axe or mace within reach would be
+worth; every other slot is headed `Nearest below current:` and keeps the five
+rows nearest below the owned baseline. Rows are listed with their signed
+(negative, or zero for a sidegrade) score difference against that same
+baseline, and candidates whose item VNUM the player already owns in the slot
+are suppressed -- the section is for gear not yet held. Weapon types under the
+`WEAR_BEST_SKILL_FLOOR` 5% proficiency floor are excluded here exactly as they
+are from upgrades: no row ever names a weapon `wear best` would refuse to
+equip.
 
 Both modes scan generated binary index files, retain only displayed rows,
 load no area, and keep no parsed cache, rejecting records with raw byte

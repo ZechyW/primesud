@@ -3619,6 +3619,11 @@ inside floor containers. Nested items in mob-carried containers use the
 holder as their level-filtered loot source. A source is known from area
 resets; it may not be available right now.
 
+Slot detail ends with the nearest non-upgrades and their signed score
+difference: on WIELD the best candidate per weapon type you can use, so a
+type switch is easy to weigh; on other slots the five rows nearest below
+your current gear. Items you already own are not repeated there.
+
 Gear slots are: light, finger, neck, body, head, legs, feet, hands, arms,
 about, waist, wrist, wield, shield, hold, and float. Hand results are
 candidates only; WEAR BEST remains the final layout authority.

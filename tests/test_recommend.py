@@ -8,6 +8,7 @@ import commands
 import inventory
 import recommend
 import world
+from config import WEAR_BEST_SKILL_FLOOR
 from handler import _char_base
 from skills_table import WEAPON_GSN_MAP
 from tools import build_mob_index
@@ -298,8 +299,8 @@ def test_gear_downweights_barely_learnt_weapon(indexed_player, tmp_path,
 
 def test_gear_skips_weapons_under_the_wear_best_floor(
         indexed_player, tmp_path, monkeypatch):
-    """Rows 'wear best' would refuse (<10% proficiency) never surface;
-    exotic types stay exempt exactly as they are in _can_wear_best."""
+    """Rows 'wear best' would refuse (under WEAR_BEST_SKILL_FLOOR) never
+    surface; exotic types stay exempt exactly as in _can_wear_best."""
     path = tmp_path / "gear.bin"
     _write_gear_bin(path, (
         _gear_row(600, slot="wield", score=0, weapon_base=20,
@@ -310,19 +311,20 @@ def test_gear_skips_weapons_under_the_wear_best_floor(
                   weapon_type="exotic"),
     ))
     monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
-    indexed_player["learned"][WEAPON_GSN_MAP["dagger"]] = 9
+    indexed_player["learned"][WEAPON_GSN_MAP["dagger"]] = (
+        WEAR_BEST_SKILL_FLOOR - 1)
     indexed_player["learned"][WEAPON_GSN_MAP["sword"]] = 10
 
     rows = recommend._scan_gear(indexed_player, "wield")["wield"]
 
-    # dagger (9%) is gone; sword 20 base at 10% scores 21, exotic 10 base
+    # dagger (4%) is gone; sword 20 base at 10% scores 21, exotic 10 base
     # at the level-10 PC's 3 * level = 30% scores 25.
     assert [(row["vnum"], row["gain"]) for row in rows] == [(602, 25),
                                                             (600, 21)]
 
     # Exotic has no gsn to practise (PCs get 3 * level), so it survives the
-    # floor even for a low-level player whose 3 * level is under 10.
-    low = _player(level=2)
+    # floor even for a level-1 player whose 3 * level is under it.
+    low = _player(level=1)
     low["learned"] = {}
     assert [row["vnum"] for row in
             recommend._scan_gear(low, "wield")["wield"]] == [602]
@@ -594,7 +596,8 @@ def _reference_summary(player, slots_rows):
                 continue
             if row["wbase"]:
                 sn = WEAPON_GSN_MAP.get(row["wtype"], -1)
-                if sn != -1 and recommend._get_weapon_skill(player, sn) < 10:
+                if (sn != -1 and recommend._get_weapon_skill(player, sn)
+                        < WEAR_BEST_SKILL_FLOOR):
                     continue  # wear best's proficiency floor
             wscore = inventory.gear_score_weapon(
                 player, row["wbase"], row["wtype"], row["sharp"])
@@ -742,6 +745,113 @@ def test_gear_detail_is_bounded_to_ten(indexed_player, tmp_path, monkeypatch):
 
     assert len(rows) == 10
     assert [row["gain"] for row in rows] == list(range(111, 101, -1))
+
+
+def test_gear_detail_lists_nearest_downgrades(indexed_player, tmp_path,
+                                              monkeypatch):
+    """Detail mode collects the nearest below-baseline rows: nearest
+    first, bounded to five, owned VNUMs suppressed, sidegrades kept."""
+    world.ITEM_DEFS._data[500] = {
+        "type": "armor", "wear_flags": {"take": True, "body": True},
+        "level": 1, "armor": (2, 2, 2, 2),  # owned baseline 80
+    }
+    indexed_player["inv"] = [{"vnum": 500}]
+    rows = [_gear_row(600, score=100),      # upgrade
+            _gear_row(500, score=80),       # owned copy: suppressed
+            _gear_row(601, score=80)]       # unowned sidegrade: kept
+    rows.extend(_gear_row(610 + index, score=78 - index)
+                for index in range(7))      # 78..72
+    path = tmp_path / "gear.bin"
+    _write_gear_bin(path, rows)
+    monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
+
+    downs = []
+    results = recommend._scan_gear(indexed_player, "body", downs)
+
+    assert [row["vnum"] for row in results["body"]] == [600]
+    assert [(row["vnum"], row["gain"]) for row in downs] == [
+        (601, 0), (610, -2), (611, -3), (612, -4), (613, -5)]
+    assert all(row["wtype"] == "" for row in downs)
+
+    # Summary mode never collects downgrades.
+    downs = []
+    recommend._scan_gear(indexed_player, None, downs)
+    assert downs == []
+
+
+def test_wield_downgrades_best_per_type(indexed_player, tmp_path,
+                                        monkeypatch):
+    """Wield downgrades keep the best row per weapon type: worse same-type
+    rows dedupe, types under the single proficiency floor stay hidden,
+    exotic is always eligible, and a type at or above the floor that beats
+    the baseline is an ordinary upgrade rather than a downgrade row."""
+    world.ITEM_DEFS._data[500] = {
+        "type": "weapon", "wear_flags": {"take": True, "wield": True},
+        "level": 1, "weapon_type": "sword", "dice": (2, 6, 0),
+    }
+    indexed_player["inv"] = [{"vnum": 500}]  # baseline 120 at 80% sword
+    indexed_player["learned"][WEAPON_GSN_MAP["sword"]] = 80
+    indexed_player["learned"][WEAPON_GSN_MAP["axe"]] = 7
+    indexed_player["learned"][WEAPON_GSN_MAP["dagger"]] = (
+        WEAR_BEST_SKILL_FLOOR - 1)
+    path = tmp_path / "gear.bin"
+    _write_gear_bin(path, (
+        _gear_row(600, slot="wield", score=0, weapon_base=20,
+                  weapon_type="sword"),      # 171: upgrade
+        _gear_row(601, slot="wield", score=0, weapon_base=10,
+                  weapon_type="sword"),      # 85: nearest sword below
+        _gear_row(602, slot="wield", score=0, weapon_base=8,
+                  weapon_type="sword"),      # 68: worse sword, deduped
+        _gear_row(603, slot="wield", score=0, weapon_base=140,
+                  weapon_type="axe"),        # 7% skill: 126, an upgrade
+        _gear_row(604, slot="wield", score=0, weapon_base=20,
+                  weapon_type="dagger"),     # 4% skill: hidden
+        _gear_row(605, slot="wield", score=0, weapon_base=10,
+                  weapon_type="exotic"),     # 3 * level -> 25
+    ))
+    monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
+
+    downs = []
+    results = recommend._scan_gear(indexed_player, "wield", downs)
+
+    # The 7% axe clears the floor, so its 126 is an upgrade like any other.
+    assert [(row["vnum"], row["gain"]) for row in results["wield"]] == [
+        (600, 51), (603, 6)]
+    # One row per eligible type left below the baseline, gain descending.
+    assert [(row["vnum"], row["wtype"], row["gain"]) for row in downs] == [
+        (601, "sword", -35),
+        (605, "exotic", -95)]
+
+
+def test_gear_detail_renders_downgrade_section(indexed_player, tmp_path,
+                                               monkeypatch, capture):
+    """Detail output appends the nearest section with signed gains and
+    weapon-type labels, and still renders with zero upgrades."""
+    pages, _lines = capture
+    indexed_player["learned"][WEAPON_GSN_MAP["sword"]] = 80
+    indexed_player["learned"][WEAPON_GSN_MAP["axe"]] = 7
+    world.ITEM_DEFS._data[500] = {
+        "type": "weapon", "wear_flags": {"take": True, "wield": True},
+        "level": 1, "weapon_type": "sword", "dice": (2, 9, 0),  # 171
+    }
+    indexed_player["inv"] = [{"vnum": 500}]
+    path = tmp_path / "gear.bin"
+    _write_gear_bin(path, (
+        _gear_row(601, slot="wield", score=0, weapon_base=10,
+                  weapon_type="sword"),      # 85 -> -86
+        _gear_row(603, slot="wield", score=0, weapon_base=20,
+                  weapon_type="axe"),        # 7% skill: 18 -> -153
+    ))
+    monkeypatch.setattr(recommend, "GEAR_INDEX_FILE", str(path))
+
+    recommend._show_gear(indexed_player, "wield")
+
+    body = pages[0]
+    assert body[0] == "No wield upgrades for you."
+    assert "{wNearest by weapon type:{x" in body
+    assert any(line.startswith("wield -86 [sword]") for line in body)
+    assert any(line.startswith("wield -153 [axe]") for line in body)
+    assert not any("*" in line for line in body)
 
 
 def test_mob_multi_area_marker(indexed_player, tmp_path, monkeypatch,

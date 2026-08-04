@@ -7,7 +7,8 @@ from combat import (_get_weapon_skill, is_safe, multi_hit, number_fuzzy,
 from comm import do_yell
 from config import (STR_APP_WIELD, PULSE_VIOLENCE, WEAR_LABELS,
                     MAX_LEVEL, MAX_MORTAL_LEVEL, TYPE_UNDEFINED,
-                    ATTACK_TABLE, DAM_BASH, SIZE_RANK)
+                    ATTACK_TABLE, DAM_BASH, SIZE_RANK,
+                    WEAR_BEST_SKILL_FLOOR)
 from debug import DBG  # [PRIMESUD] holylight vnum overlay
 from handler import (get_curr_stat, is_name, equip_char, unequip_char, act,
                      get_char_room, can_see, can_see_obj, is_awake,
@@ -1312,13 +1313,14 @@ def gear_flags_legal(player, extra):
 def _can_wear_best(player, obj, tpl):
     """Return whether wear best may equip obj (sight/level/align/skill). [PRIMESUD]
 
-    Weapons under 10% proficiency in their mapped weapon type are skipped
-    outright: a proficiency that low means the player never showed any
-    interest in the type, and the static affect half of gear_score is not
-    skill-scaled, so an affect-heavy unpracticed weapon could otherwise
-    win the slot on affects alone. The floor sits at 10 rather than 1 so
-    incidental check_improve drift from an accidentally wielded weapon
-    still reads as no interest. Exotic types (sn -1) stay exempt -- PCs
+    Weapons under WEAR_BEST_SKILL_FLOOR (5%) proficiency in their mapped
+    weapon type are skipped outright: a proficiency that low means the
+    player never showed any interest in the type, and the static affect
+    half of gear_score is not skill-scaled, so an affect-heavy unpracticed
+    weapon could otherwise win the slot on affects alone. The floor sits
+    at 5 rather than 1 so incidental check_improve drift from an
+    accidentally wielded weapon still reads as no interest, while a single
+    practice session clears it. Exotic types (sn -1) stay exempt -- PCs
     get 3 * level there and never practice them. Already-worn items are
     exempt as well, since _best_hand_layout seeds its pool from the
     equipped slots directly: a manually wielded weapon is respected.
@@ -1328,7 +1330,7 @@ def _can_wear_best(player, obj, tpl):
         return False
     if tpl.get("type") == "weapon":
         sn = WEAPON_GSN_MAP.get(tpl.get("weapon_type", ""), -1)
-        if sn != -1 and _get_weapon_skill(player, sn) < 10:
+        if sn != -1 and _get_weapon_skill(player, sn) < WEAR_BEST_SKILL_FLOOR:
             return False
     return gear_flags_legal(player, item_extra_flags(obj, tpl))
 

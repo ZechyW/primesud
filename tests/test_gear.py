@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.join(ROOT, "pc_shim"))
 
 import inventory
 import world
+from config import WEAR_BEST_SKILL_FLOOR
 from skills_table import GSN_DAGGER, GSN_SWORD
 from world import ITEM_DEFS
 
@@ -498,11 +499,11 @@ class TestWearBest:
 
     def test_wear_best_downweights_barely_learnt_weapon(self, scene, out):
         """Expected-hit weighting beats bigger dice on a barely learnt weapon."""
-        # 3d6 sword (4x the dagger's dice) at skill 10 -- just past the
-        # proficiency floor -- scores 22; the learnt 1d4 dagger scores 42,
-        # so the hit weighting decides it. Weights make either dual-wield
-        # combo illegal (do_second rules), so the primary pick alone
-        # carries the assertion.
+        # 3d6 sword (4x the dagger's dice) at skill 10 scores 22; the
+        # learnt 1d4 dagger scores 42, so the hit weighting decides it even
+        # though both clear the proficiency floor. Weights make either
+        # dual-wield combo illegal (do_second rules), so the primary pick
+        # alone carries the assertion.
         ITEM_DEFS[8001]["dice"] = (3, 6, 0)
         ITEM_DEFS[8001]["weight"] = 30
         ITEM_DEFS[8002]["weight"] = 40
@@ -515,14 +516,15 @@ class TestWearBest:
         assert scene["equip"]["wield"] is dagger
 
     def test_wear_best_skips_weapon_under_proficiency_floor(self, scene, out):
-        """A <10% weapon is refused however good its static affects are."""
+        """A sub-floor weapon is refused however good its static affects are."""
         # +10 damroll is worth 200 flat -- unscaled by skill, so without the
-        # floor this sword outscores the learnt dagger (42) at 1%.
+        # floor this sword (210 at 4%) outscores the learnt dagger (42).
         ITEM_DEFS[8001]["stat_bonuses"] = {"damroll": 10}
         ITEM_DEFS[8001]["weight"] = 30
         ITEM_DEFS[8002]["weight"] = 40
         sword, dagger = scene["inv"][0], scene["inv"][1]
-        scene["learned"] = {GSN_DAGGER: 80, GSN_SWORD: 9}
+        scene["learned"] = {GSN_DAGGER: 80,
+                            GSN_SWORD: WEAR_BEST_SKILL_FLOOR - 1}
         scene["equip"].update({"wield": None})
 
         inventory.do_wear(scene, ["best"])
@@ -530,8 +532,8 @@ class TestWearBest:
         assert scene["equip"]["wield"] is dagger
         assert sword in scene["inv"]
 
-        # One more practice session and the same sword is worth wielding.
-        scene["learned"][GSN_SWORD] = 10
+        # One more practice point and the same sword is worth wielding.
+        scene["learned"][GSN_SWORD] = WEAR_BEST_SKILL_FLOOR
         inventory.do_wear(scene, ["best"])
 
         assert scene["equip"]["wield"] is sword
@@ -541,9 +543,9 @@ class TestWearBest:
         """Exotic types have no skill to practise, so the floor skips them."""
         ITEM_DEFS[8001]["weapon_type"] = "exotic"
         ITEM_DEFS[8001]["weight"] = 5
-        # Level 2: the PC's exotic skill is 3 * level = 6, under the floor
+        # Level 1: the PC's exotic skill is 3 * level = 3, under the floor
         # that a mapped weapon type would fail.
-        scene["level"] = 2
+        scene["level"] = 1
         scene["inv"] = [scene["inv"][0]]
         scene["learned"] = {}
         scene["equip"].update({"wield": None})
