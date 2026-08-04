@@ -869,8 +869,6 @@ def test_mob_multi_area_marker(indexed_player, tmp_path, monkeypatch,
     body = pages[0][1:3]
     assert any(line.rstrip().endswith("+1") for line in body)
     assert not all(line.rstrip().endswith("+1") for line in body)
-    assert pages[0][-1] == (
-        "{wUse path <mob> or path <area> after choosing.{x")
 
 
 def test_gear_summary_picker_drills_to_slot(indexed_player, tmp_path,

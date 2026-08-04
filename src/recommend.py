@@ -278,7 +278,6 @@ def _show_mobs(player):
             + pad_left(record, 7) + " "
             + pad_right(row["name"][:28], 28) + " "
             + _area_name(row["tag"])[:22 - len(suffix)] + suffix)
-    lines.append("{wUse path <mob> or path <area> after choosing.{x")
     tpage(lines)
 
 
