@@ -312,7 +312,7 @@ def _owned_baselines(player):
         else:
             baselines[slot] = values[0] if values else 0
     # Owned two-handers forfeit the shield: same economics as candidate
-    # rows in _scan_segment (+10% dice, minus half the shield + block).
+    # rows in _scan_records (+10% dice, minus half the shield + block).
     sb_pct = shield_block_pct(player)
     for score, dice_part in wield_2h:
         block = score * sb_pct // 100
