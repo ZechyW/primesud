@@ -66,8 +66,7 @@ from skills_table import (
     GSN_BACKSTAB, GSN_BASH, GSN_BERSERK, GSN_DIRT, GSN_DISARM,
     GSN_DODGE, GSN_ENHANCED_DAMAGE, GSN_HAND_TO_HAND, GSN_KICK, GSN_PARRY,
     GSN_RESCUE, GSN_SHIELD_BLOCK, GSN_SECOND_ATTACK, GSN_THIRD_ATTACK,
-    GSN_TRIP, GSN_POISON, GSN_SWORD, GSN_FLOWING_FORM, GSN_RIPOSTE,
-    GSN_DRIVING_FORM,
+    GSN_TRIP, GSN_POISON,
 )
 from stances import (STANCE_TABLE, MAX_STANCE,
                      STANCE_NONE, STANCE_NORMAL, STANCE_VIPER, STANCE_CRANE,
@@ -774,58 +773,9 @@ def dambonus(ch, victim, dam, stance):
     return dam
 
 
-_RIPOSTE_LINES = (
-    ("You hang your blade over $N's stroke and return the point.",
-     "$n hangs $s blade over $N's stroke and returns the point."),
-    ("You lift $N's attack aside and answer in the same motion.",
-     "$n lifts $N's attack aside and answers in the same motion."),
-    ("Your wrist coils around $N's blade; your point springs free.",
-     "$n's wrist coils around $N's blade; $s point springs free."),
-    ("You press $N's sword down and cut across the opening.",
-     "$n presses $N's sword down and cuts across the opening."),
-)
-
-
-def _wields_sword(ch):
-    """Return whether ch's primary weapon is a sword. [PRIMESUD]"""
-    return _get_weapon_sn(ch)[0] == GSN_SWORD
-
-
-def _swordsman_dex_bonus(ch):
-    """Return small capped DEX bonus for Swordsman skills. [PRIMESUD]"""
-    return min(5, max(0, get_curr_stat(ch, "dex") - 13) // 2)
-
-
-def _sword_act(lines, ch, victim):
-    """Emit one random paired swordsman combat line. [PRIMESUD]"""
-    actor, room = lines[randint(0, len(lines) - 1)]
-    act(actor, ch, None, victim, TO_CHAR)
-    act(room, ch, None, victim, TO_ROOM)
-
-
-def _try_riposte(ch, victim):
-    """Let victim answer one successful parry with a sword attack. [PRIMESUD]"""
-    if (victim["is_npc"] or ch.get("_riposting")
-            or get_skill(victim, GSN_RIPOSTE) <= 0
-            or not _wields_sword(victim)):
-        return
-    chance = (get_skill(victim, GSN_RIPOSTE) // 4
-              + _swordsman_dex_bonus(victim))
-    if randint(1, 100) > chance:
-        check_improve(victim, GSN_RIPOSTE, False, 4)
-        return
-    _sword_act(_RIPOSTE_LINES, victim, ch)
-    victim["_riposting"] = True
-    try:
-        hit = one_hit(victim, ch)
-    finally:
-        victim.pop("_riposting", None)
-    check_improve(victim, GSN_RIPOSTE, hit, 4)
-
-
 def check_parry(ch, victim):
     """Check if victim parries ch's strike (cf. 1stMud check_parry in fight.c).
-    [Verified: 03/07/2026] -- [PRIMESUD] riposte hook added.
+    [Verified: 03/07/2026]
 
     Args:
         ch (dict): Attacker (player or mob instance).
@@ -869,7 +819,6 @@ def check_parry(ch, victim):
     if not victim["is_npc"]:
         # 1stMud calls check_improve unconditionally; its IsNPC early-return is this gate
         check_improve(victim, GSN_PARRY, True, 6)
-        _try_riposte(ch, victim)
     return True
 
 
@@ -1574,8 +1523,7 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
 
 # -- Core attack: one_hit ------------------------------------------------------
 
-def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False,
-            accuracy_bonus=0, damage_percent=100):
+def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False):
     """One attack from ch against victim (cf. 1stMud one_hit in fight.c).
     [Verified: 01/08/2026] -- old-format mob damage fallback skipped.
 
@@ -1586,8 +1534,6 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False,
             skill GSN (e.g. GSN_BACKSTAB) = skill-driven attack.
         bonus_damroll (int): Extra damage roll bonus (e.g. from skills).
         secondary (bool): True = secondary weapon (cf. 1stMud bool secondary).
-        accuracy_bonus (int): [PRIMESUD] THAC0 points subtracted for this hit.
-        damage_percent (int): [PRIMESUD] Final pre-cap damage multiplier.
 
     Returns:
         bool: True if damage was applied.
@@ -1608,7 +1554,6 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False,
     thac0 = get_thac0(ch)
     thac0 -= get_hitroll(ch) * skill // 100
     thac0 += 5 * (100 - skill) // 100
-    thac0 -= accuracy_bonus
 
     # Backstab THAC0 bonus (cf. 1stMud one_hit fight.c:654-655)
     if dt == GSN_BACKSTAB:
@@ -1717,7 +1662,6 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False,
             dam *= 2 + ch["level"] // 8
 
     dam += (get_damroll(ch) + bonus_damroll) * min(100, skill) // 100
-    dam = dam * damage_percent // 100
     dam = max(1, dam)
 
     # 1stMud: return damage(ch, victim, dam, dt, dam_type, true);
@@ -1794,103 +1738,6 @@ def _weapon_procs(ch, victim, wobj, wtpl):
         act("You are shocked by $p.", victim, wobj, None, TO_CHAR)
         shock_effect(victim, wlevel // 2, pdam, TARGET_CHAR)
         damage(ch, victim, pdam, 0, DAM_LIGHTNING, show=False)
-
-
-_FLOWING_FORM_LINES = (
-    ("You yield a step, drawing the point back along $N's guard.",
-     "$n yields a step, drawing the point back along $N's guard."),
-    ("Your wrist turns softly; the edge rises through $N's opening.",
-     "$n's wrist turns softly; the edge rises through $N's opening."),
-    ("You gather the sword at your centre, then unfold into a cut.",
-     "$n gathers the sword at $s centre, then unfolds into a cut."),
-    ("Your point traces a small circle and slips toward $N.",
-     "$n's point traces a small circle and slips toward $N."),
-)
-
-_DRIVING_FORM_LINES = (
-    ("You drive from the waist and thrust straight at $N.",
-     "$n drives from the waist and thrusts straight at $N."),
-    ("Your sword falls in a clean, upright cleave at $N.",
-     "$n's sword falls in a clean, upright cleave at $N."),
-    ("Your wrist snaps, hurling the point beneath $N's guard.",
-     "$n's wrist snaps, hurling the point beneath $N's guard."),
-    ("You turn through a level sweep, blade tearing toward $N.",
-     "$n turns through a level sweep, blade tearing toward $N."),
-)
-
-_FLOWING_FLOURISHES = (
-    ("You yield half a step, sword returning to your centre.",
-     "$n yields half a step, sword returning to $s centre."),
-    ("Your loose wrist guides the point through a quiet circle.",
-     "$n's loose wrist guides the point through a quiet circle."),
-    ("Blade and body travel together in one unbroken arc.",
-     "$n's blade and body travel together in one unbroken arc."),
-    ("You gather the sword close, then let it drift outward.",
-     "$n gathers the sword close, then lets it drift outward."),
-)
-
-_DRIVING_FLOURISHES = (
-    ("You crowd $N's guard with short, sharp cuts.",
-     "$n crowds $N's guard with short, sharp cuts."),
-    ("Your point snaps from one line to the next.",
-     "$n's point snaps from one line to the next."),
-    ("You step in behind the blade, pressing $N hard.",
-     "$n steps in behind the blade, pressing $N hard."),
-    ("Steel cuts a hard line as your waist turns.",
-     "Steel cuts a hard line as $n's waist turns."),
-)
-
-
-def _do_sword_form(ch, sn, form, lines, accuracy_bonus, damage_percent):
-    """Perform one active Swordsman form attack. [PRIMESUD]"""
-    skill = get_skill(ch, sn)
-    if skill <= 0:
-        chprintln(ch, "You do not know that form.")
-        return None
-    target_id = ch.get("fighting")
-    if target_id is None:
-        chprintln(ch, "You aren't fighting anyone.")
-        return None
-    if not _wields_sword(ch):
-        chprintln(ch, "You must wield a sword to use that form.")
-        return None
-
-    skill = min(100, skill + _swordsman_dex_bonus(ch))
-    target = world.chars[target_id]
-    ch["_sword_form"] = form
-    WaitState(ch, SKILLS[sn]["beats"])
-    _sword_act(lines, ch, target)
-    if randint(1, 100) < skill:
-        hit = one_hit(ch, target, accuracy_bonus=accuracy_bonus,
-                      damage_percent=damage_percent)
-        check_improve(ch, sn, hit, 2)
-    else:
-        damage(ch, target, 0, sn, DAM_SLASH, show=True,
-               attack_noun=SKILLS[sn]["noun_damage"])
-        check_improve(ch, sn, False, 2)
-    return None
-
-
-def do_flow(ch, args):
-    """Use flowing form for one precise sword attack. [PRIMESUD]"""
-    return _do_sword_form(ch, GSN_FLOWING_FORM, "flowing",
-                          _FLOWING_FORM_LINES, 4, 90)
-
-
-def do_drive(ch, args):
-    """Use driving form for one committed sword attack. [PRIMESUD]"""
-    return _do_sword_form(ch, GSN_DRIVING_FORM, "driving",
-                          _DRIVING_FORM_LINES, 0, 140)
-
-
-def _sword_flourish(ch, victim):
-    """Sometimes show a cosmetic line matching ch's active form. [PRIMESUD]"""
-    if (ch["is_npc"] or not classes.is_class(ch, classes.CLASS_SWORDSMAN)
-            or not _wields_sword(ch) or randint(1, 8) != 1):
-        return
-    lines = (_DRIVING_FLOURISHES if ch.get("_sword_form") == "driving"
-             else _FLOWING_FLOURISHES)
-    _sword_act(lines, ch, victim)
 
 
 def do_kick(ch, args):
@@ -2308,7 +2155,7 @@ def special_move(ch, victim):
 def multi_hit(ch, victim, dt=TYPE_UNDEFINED):
     """Full attack sequence for one combat round (cf. 1stMud multi_hit in fight.c).
     [Verified: 04/07/2026] -- Returns kill status ([PRIMESUD]; 1stMud is
-    void); [PRIMESUD] Swordsman flourishes added.
+    void).
 
     Args:
         ch (dict): Attacker (player or mob instance).
@@ -2328,9 +2175,6 @@ def multi_hit(ch, victim, dt=TYPE_UNDEFINED):
     if ch["is_npc"]:
         mob_hit(ch, victim, dt=dt)
         return victim.get("pos") == "dead"
-
-    if dt == TYPE_UNDEFINED:
-        _sword_flourish(ch, victim)
 
     # Primary
     one_hit(ch, victim, dt=dt)
@@ -2408,7 +2252,7 @@ _DEFAULT_POS = POS_FROM_SHORT
 
 def set_fighting(ch, victim):
     """Engage ch in combat against victim (cf. 1stMud set_fighting in fight.c).
-    [Verified: 03/07/2026] -- [PRIMESUD] Swordsman form default added."""
+    [Verified: 03/07/2026]"""
     # 1stMud: if (ch->fighting != NULL) { bug("Set_fighting: already fighting"); return; }
     if ch.get("fighting") is not None:
         return
@@ -2425,9 +2269,6 @@ def set_fighting(ch, victim):
     # directly elsewhere, you MUST update world.FIGHTERS too.
     world.FIGHTERS.add(ch["id"])
     ch["pos"] = "fighting"
-    if (not ch["is_npc"] and classes.is_class(ch, classes.CLASS_SWORDSMAN)
-            and "_sword_form" not in ch):
-        ch["_sword_form"] = "flowing"
     autodrop(ch)  # cf. 1stMud set_fighting fight.c:1651
 
 

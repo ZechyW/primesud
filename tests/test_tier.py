@@ -81,7 +81,7 @@ def _teardown():
 class TestTierReset:
     def test_full_flow(self, monkeypatch):
         import training
-        # avail = all 7 classes on a tier reset; pick=1 -> Cleric
+        # avail = all 6 classes on a tier reset; pick=1 -> Cleric
         player = _hero(monkeypatch, pick=CLASS_CLERIC)
         # in-progress skill above the floor, one below, one mastered
         player["learned"][WEAPON_GSN_MAP["sword"]] = 100   # mastered, kept

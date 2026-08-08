@@ -47,7 +47,7 @@ RACE_TABLE = {
         "stats":     (13, 13, 13, 13, 13),
         "max_stats": (18, 18, 18, 18, 18),
         "size": "medium",
-        "class_mult": (100, 100, 100, 100, 100, 100, 100),  # XP multiplier per class (classes.class_mult)
+        "class_mult": (100, 100, 100, 100, 100, 100),  # XP multiplier per class (classes.class_mult)
         "points": 0,  # [not ported] chargen creation points
         "skills": [],
     },
@@ -82,7 +82,7 @@ RACE_TABLE = {
         "stats":     (12, 14, 13, 15, 11),
         "max_stats": (16, 20, 18, 21, 15),
         "size": "small",
-        "class_mult": (100, 125, 100, 120, 125, 120, 100),  # XP multiplier per class (classes.class_mult)
+        "class_mult": (100, 125, 100, 120, 125, 120),  # XP multiplier per class (classes.class_mult)
         "points": 5,  # [not ported] chargen creation points
         "skills": ['sneak', 'hide'],
     },
@@ -117,7 +117,7 @@ RACE_TABLE = {
         "stats":     (14, 12, 14, 10, 15),
         "max_stats": (20, 16, 19, 14, 21),
         "size": "medium",
-        "class_mult": (150, 100, 125, 100, 100, 100, 125),  # XP multiplier per class (classes.class_mult)
+        "class_mult": (150, 100, 125, 100, 100, 100),  # XP multiplier per class (classes.class_mult)
         "points": 8,  # [not ported] chargen creation points
         "skills": ['berserk'],
     },
@@ -152,7 +152,7 @@ RACE_TABLE = {
         "stats":     (16, 11, 13, 11, 14),
         "max_stats": (22, 15, 18, 15, 20),
         "size": "large",
-        "class_mult": (200, 150, 150, 105, 150, 105, 120),  # XP multiplier per class (classes.class_mult)
+        "class_mult": (200, 150, 150, 105, 150, 105),  # XP multiplier per class (classes.class_mult)
         "points": 6,  # [not ported] chargen creation points
         "skills": ['bash', 'fast healing'],
     },
@@ -187,7 +187,7 @@ RACE_TABLE = {
         "stats":     (16, 13, 13, 10, 15),
         "max_stats": (22, 22, 22, 19, 22),
         "size": "huge",
-        "class_mult": (200, 200, 200, 200, 200, 200, 200),  # XP multiplier per class (classes.class_mult)
+        "class_mult": (200, 200, 200, 200, 200, 200),  # XP multiplier per class (classes.class_mult)
         "points": 10,  # [not ported] chargen creation points
         "skills": [],
     },
@@ -227,7 +227,7 @@ RACE_TABLE = {
         "stats":     (16, 10, 11, 15, 14),
         "max_stats": (22, 18, 19, 22, 20),
         "size": "medium",
-        "class_mult": (200, 200, 100, 100, 180, 130, 110),  # XP multiplier per class (classes.class_mult)
+        "class_mult": (200, 200, 100, 100, 180, 130),  # XP multiplier per class (classes.class_mult)
         "points": 7,  # [not ported] chargen creation points
         "skills": ['kick'],
     },

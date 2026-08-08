@@ -73,7 +73,6 @@ victim's strength by one.
 {x  Warrior   : weapons masters, hand to hand combat
 {x  Paladin   : crusaders of the light, some magic.
 {x  Ranger   : Masters of earth and animals
-{x  Swordsman : refined single-sword duelist
 
 Different races have different starting statistics, and also
 different stat maximums for magic items and training.
@@ -3570,35 +3569,6 @@ Syntax : worship <deity>
 
 When at a priest you can use the worship command to change your
 deity. Note that it costs 250 questpoints to do so.
-#0|commands|FLOW 'FLOWING FORM'
-Syntax: flow
-
-FLOW uses a soft, precise sword form against your current opponent. It is
-more accurate than a normal strike, deals slightly less damage, and has a
-short recovery. You must be fighting and wielding a sword.
-#0|commands|DRIVE 'DRIVING FORM'
-Syntax: drive
-
-DRIVE commits to one swift, forceful sword strike against your current
-opponent. It deals heavy damage but has a long recovery. You must be
-fighting and wielding a sword.
-#-1|skills|RIPOSTE
-Riposte is a passive Swordsman skill. After you parry an attack while
-wielding a sword, you may answer immediately with one normal sword strike.
-Ripostes cannot trigger further ripostes.
-#-1|creation|SWORDSMAN 'SWORD SAINT' 'SWORDSMAN BASICS' 'SWORDSMAN DEFAULT'
-Swordsmen are single-weapon finesse duelists. They master the sword at the
-cost of nearly every other weapon and have no magic.
-
-Their unique skills are flowing form, a soft and accurate active attack;
-riposte, a counterattack after a successful parry; and driving form, a
-committed heavy active strike. Their combat flourishes follow the last
-active form used and have no mechanical effect.
-
-Swordsmen begin with sword and second attack. Their default group grants
-dagger, disarm, dodge, enhanced damage, fast healing, hand to hand, parry,
-shield block, third attack, and all three unique sword skills.
-High Dexterity gives all three unique skills a small activation bonus.
 #0|commands|RECOMMEND
 Syntax: recommend
         recommend mobs

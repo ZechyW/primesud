@@ -1851,7 +1851,7 @@ ROOMS = {
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
         "sector": 'inside',
-        "guild": (3, 5, 6),
+        "guild": (3, 5),
     },
     3023: {
         "name": 'The Tournament and Practice Yard',
@@ -1862,7 +1862,7 @@ ROOMS = {
         },
         "flags": {"no_mob": True, "indoors": True, "law": True},
         "sector": 'inside',
-        "guild": (3, 5, 6),
+        "guild": (3, 5),
     },
     3024: {
         "name": 'Eastern End of Poor Alley',

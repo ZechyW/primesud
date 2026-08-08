@@ -27,13 +27,13 @@ def _sn(name):
 
 
 class TestGroupData:
-    def test_all_ratings_match_class_count(self):
+    def test_all_ratings_are_six_tuples(self):
         for name, ratings, members in GROUP_TABLE:
             assert len(ratings) == len(CLASS_TABLE), name
 
     def test_rom_basics_free_for_all(self):
         gn = group_lookup("rom basics")
-        assert GROUP_TABLE[gn][1] == (0, 0, 0, 0, 0, 0, 0)
+        assert GROUP_TABLE[gn][1] == (0, 0, 0, 0, 0, 0)
 
     def test_members_resolved(self):
         # import-time resolution raises on unknown names; spot-check contents

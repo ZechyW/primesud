@@ -88,8 +88,8 @@ Step counts match upstream `path_to_area`; the chosen equal-length route
 may differ.
 
 `slist` ported 20/07/2026: class views retain the upstream level-grouped,
-two-column layout; skill/spell views show all seven classes across three
-lines to fit the Prime's 64-column screen.
+two-column layout; skill/spell views show all six classes across two lines
+to fit the Prime's 64-column screen.
 
 `mobdeaths`, `mobkills`, `areadeaths`, and `areakills` ported 21/07/2026:
 the shared `update_death` seam keeps sparse per-template/per-area counters,

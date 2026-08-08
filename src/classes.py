@@ -19,7 +19,6 @@ CLASS_THIEF   = 2
 CLASS_WARRIOR = 3
 CLASS_PALADIN = 4
 CLASS_RANGER  = 5
-CLASS_SWORDSMAN = 6
 
 # Indices match the per-class tuples in skills_table.py and races.py class_mult.
 # "names" = remort-tier display names (tier index = remort count); needs one
@@ -105,18 +104,6 @@ CLASS_TABLE = (
         "base_group":  "ranger basics",
         "default_group": "ranger default",
         "summary":     "Wilderness fighter; warrior with tricks",
-    },
-    {
-        "names":       ("Swordsman", "Sword Saint"),
-        "attr_prime":  "dex",
-        "weapon":      "sword",
-        "skill_adept": 75,
-        "thac0_00":    20, "thac0_32": -8,
-        "hp_min":      9,  "hp_max":   13,
-        "f_mana":      False,
-        "base_group":  "swordsman basics",
-        "default_group": "swordsman default",
-        "summary":     "Single-sword duelist; poor with other weapons",
     },
 )
 

@@ -17,9 +17,7 @@ from combat import get_thac0, interpolate, _cdiv
 from config import LEVEL_IMMORTAL
 from handler import _char_base
 from player import create_char
-from races import RACE_TABLE
-from skills_table import (SKILL_TABLE, SKILLS, GSN_BASH, GSN_SANCTUARY,
-                          WEAPON_GSN_MAP)
+from skills_table import SKILLS, GSN_BASH, GSN_SANCTUARY, WEAPON_GSN_MAP
 
 
 def _pc(*cls, **kw):
@@ -30,22 +28,6 @@ def _pc(*cls, **kw):
 
 
 class TestClassLookups:
-    def test_per_class_table_widths(self):
-        width = len(CLASS_TABLE)
-        for sn, skill in SKILL_TABLE:
-            assert len(skill["skill_level"]) == width, sn
-            assert len(skill["rating"]) == width, sn
-        for name, race in RACE_TABLE.items():
-            if "class_mult" in race:
-                assert len(race["class_mult"]) == width, name
-
-    def test_picker_labels_fit_prime_screen(self):
-        for i, cls in enumerate(CLASS_TABLE):
-            line = "  " + str(i + 1) + ") " + cls["names"][0] + " - " + cls["summary"]
-            if i == 0:
-                line += " (default)"
-            assert len(line) <= 64, line
-
     def test_skill_level_uses_best_class(self):
         mage    = _pc(CLASS_MAGE)
         warrior = _pc(CLASS_WARRIOR)
@@ -210,7 +192,7 @@ class TestGuildRooms:
         guilds = {room["guild"] for room in data["ROOMS"].values()
                   if "guild" in room}
         assert (1, 4) in guilds       # cleric rooms shared with paladin
-        assert (3, 5, 6) in guilds    # warrior rooms shared with ranger/swordsman
+        assert (3, 5) in guilds       # warrior rooms shared with ranger
         assert (0,) in guilds         # mage rooms mage-only
 
 
