@@ -15,18 +15,15 @@ All figures measured on a physical HP Prime G1.
 - RECOMMEND command: `recommend mobs` ranks level-appropriate opponents (with your win/loss record against each); `recommend gear` finds strict upgrades over your equipped items and where they come from.
 - Browsable help: `index` opens a categorised, level-filtered help browser with pickers throughout.
 - Keypad macros: five more bindable keys plus EEX, a full-screen macro grid, and sensible default bindings for previously unset keys.
-- Pickers remember resolved history for consider, examine, give, and run.
-- PATH explains unpathable targets per reason and picks better area landing rooms.
 
 ## Gameplay and fixes
 
-- Pets pull their weight: a pet kill applies the present owner's autoloot/autogold/autosacrifice, and owned pets no longer dilute group XP.
+- Pet kills apply the present owner's autoloot/autogold/autosacrifice, and owned pets no longer dilute group XP.
 - Wielding a two-handed weapon now auto-removes a blocking shield.
 - WEAR BEST and RECOMMEND skip weapons you have no proficiency in.
 - Ported missing 1stMud combat observer messages (disarm and damage lines seen by bystanders).
 - Spilled corpse loot decays unless picked up.
 - Item instance overrides (e.g. quest-modified gear) win over templates in display and gates; a duplicate-object removal bug is fixed.
-- All 32 chess pieces hold their reset squares instead of wandering the board.
 
 ## Installation
 
