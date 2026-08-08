@@ -1,7 +1,7 @@
 # fmt: off
 """Game configuration constants, key maps, and stat tables."""
 
-VERSION = "1.0.0"  # [PRIMESUD] shown by do_version; upstream has no PrimeSUD-side equivalent
+VERSION = "1.0.2"  # [PRIMESUD] shown by do_version; upstream has no PrimeSUD-side equivalent
 
 # -- Display ---------------------------------------------------------------------------
 DARK_MODE     = True
