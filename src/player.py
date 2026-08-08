@@ -662,4 +662,11 @@ def show_prompt(player, buf):
         _PROMPT_CACHE[0] = key
         _PROMPT_CACHE[1] = prefix
         _PROMPT_CACHE[2] = avail
-    terminal.tr.set_status(prefix + buf[-avail:])
+    # NOTE: the status row spans cols 0..COLS-7 only -- the rightmost 6
+    # columns are tml's shift/alpha indicator band (_refresh_indicators),
+    # so a full prompt line still stops ~6 cells short of the screen edge.
+    # That gap is by design, not a wrapping-length bug (investigated 08/08/2026).
+    if len(buf) > avail:
+        # [PRIMESUD] "..." marks the hidden head of an over-long input.
+        buf = "..." + buf[3 - avail:]
+    terminal.tr.set_status(prefix + buf)
