@@ -116,6 +116,8 @@ def _table_dam(tbl, level):
     a 0 entry (below the spell's natural level) rolls 0 damage, as upstream.
     """
     d = tbl[level] if level < len(tbl) else tbl[-1]
+    if d == 0:
+        return 0  # below the spell's level gate; randint(0, 0) unverified on-device
     return randint(d // 2, d * 2)
 def _enchant_copy_template(vo, tpl):
     """Copy template affects to runtime affect_list before enchant (cf. 1stMud enchant_armor/weapon in magic.c:2273-2294).
