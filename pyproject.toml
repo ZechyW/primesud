@@ -1,0 +1,14 @@
+[project]
+name = "primesud"
+version = "0"
+description = "Text-based single-user RPG for the HP Prime calculator (dev tooling only; the game itself is stdlib-only)"
+requires-python = ">=3.10"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "python-minifier",
+]
+
+[tool.uv]
+package = false
