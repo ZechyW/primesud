@@ -17,11 +17,41 @@ from terminal import init_terminal
 init_terminal()
 
 import world
+import magic
 from world import ROOM_DEFS, MOB_DEFS, ITEM_DEFS
 from handler import _char_base
 from magic import do_cast, SPELL_FUNS, SKILLS, _skill_lookup
 from classes import CLASS_MAGE, CLASS_CLERIC, CLASS_WARRIOR, CLASS_THIEF
 from skill_utils import get_skill
+
+
+def test_rom_damage_tables_bounds_and_spell_wiring(monkeypatch):
+    tables = (
+        magic._DAM_MAGIC_MISSILE, magic._DAM_BURNING_HANDS,
+        magic._DAM_CHILL_TOUCH, magic._DAM_COLOR_SPRAY,
+        magic._DAM_FIREBALL, magic._DAM_LIGHTNING_BOLT,
+        magic._DAM_SHOCKING_GRASP)
+    spells = (
+        magic.spell_magic_missile, magic.spell_burning_hands,
+        magic.spell_chill_touch, magic.spell_color_spray,
+        magic.spell_fireball, magic.spell_lightning_bolt,
+        magic.spell_shocking_grasp)
+    assert [table[50] for table in tables] == [14, 48, 27, 79, 130, 64, 57]
+    assert magic._table_dam(magic._DAM_FIREBALL, 0) == 0
+    rolls = []
+    monkeypatch.setattr(magic, "randint",
+                        lambda low, high: rolls.append((low, high)) or high)
+    assert magic._table_dam(magic._DAM_FIREBALL, 99) == 260
+    assert rolls == [(65, 260)]
+
+    seen = []
+    monkeypatch.setattr(magic, "_table_dam",
+                        lambda table, level: seen.append((table, level)) or 0)
+    monkeypatch.setattr(magic, "saves_spell", lambda *args: True)
+    monkeypatch.setattr(magic, "damage", lambda *args, **kwargs: True)
+    for spell in spells:
+        assert spell(1, 20, {}, {}, magic.TARGET_CHAR) is True
+    assert seen == [(table, 20) for table in tables]
 
 
 def _make_player(**overrides):

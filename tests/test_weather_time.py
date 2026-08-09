@@ -60,7 +60,9 @@ class TestWeatherPersistence:
         try:
             player = create_char()
             player["name"] = "Tester"
-            player["room"] = 3001
+            # Keep load_world from lazy-loading a real area; this test owns
+            # weather state only and must not depend on worker test order.
+            player["room"] = 999999
             player["_macros"] = {}
             world.chars.clear()
             world.chars[1] = player
