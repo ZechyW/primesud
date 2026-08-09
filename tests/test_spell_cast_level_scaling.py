@@ -54,6 +54,19 @@ def test_rom_damage_tables_bounds_and_spell_wiring(monkeypatch):
     assert seen == [(table, 20) for table in tables]
 
 
+def test_calm_inverted_chance_fails_instead_of_crashing(test_room):
+    # chance = 4*level - high_level + 2*count goes negative vs a much
+    # higher-level combatant; 1stMud number_range returns 0, Python
+    # randint(0, chance) would raise ValueError (magic.py spell_calm).
+    player = _make_player(level=5, pos="fighting")
+    mob = _make_npc(level=60, pos="fighting")
+    player["id"], mob["id"] = 1, 2
+    world.chars[1], world.chars[2] = player, mob
+    player["fighting"], mob["fighting"] = 2, 1
+    test_room["mobs"] = [1, 2]
+    assert magic.spell_calm(0, 5, player, None, magic.TARGET_CHAR) is False
+
+
 def _make_player(**overrides):
     """Create a player character with full setup."""
     ch = _char_base()

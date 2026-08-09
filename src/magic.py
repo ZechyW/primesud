@@ -1418,7 +1418,12 @@ def spell_calm(sn, level, ch, vo, target):
         mlevel += ch.get("level", 1) // 2
         high_level = max(high_level, ch.get("level", 1))
     chance = 4 * level - high_level + 2 * count
-    if randint(0, chance) < mlevel:
+    # cf. 1stMud number_range(0, chance): an inverted range (chance < 0,
+    # e.g. a low-level caster against a much higher-level combatant)
+    # returns `from` (db.c:2682), but Python randint raises ValueError --
+    # clamp to the same result of 0, which fails against any mlevel > 0.
+    # [PRIMESUD]
+    if (randint(0, chance) if chance >= 0 else 0) < mlevel:
         return False
     found = False
     bail = False
