@@ -21,9 +21,13 @@ sys.path.insert(0, os.path.join(
 from build_path_index import build_records
 
 
-@pytest.fixture
-def real_world(tmp_path, monkeypatch):
-    """Load all real areas; snapshot/restore world state like fresh_world."""
+@pytest.fixture(scope="module")
+def real_world(tmp_path_factory):
+    """Load all real areas; snapshot/restore world state like fresh_world.
+
+    Module-scoped: the force-load of every area plus build_records costs
+    ~10s on slow hardware, and both tests only read from the loaded world.
+    """
     old_area_files = world._AREA_FILES[:]
     old_state = {
         "_LOADED_AREAS": set(world._LOADED_AREAS),
@@ -52,12 +56,14 @@ def real_world(tmp_path, monkeypatch):
         pass
 
     lines = build_records(world.ROOM_DEFS._data)
-    idx = tmp_path / "paths.idx"
+    idx = tmp_path_factory.mktemp("realworld") / "paths.idx"
     idx.write_text("# realworld test index\n" + "\n".join(lines) + "\n")
-    monkeypatch.setattr(info, "PATH_INDEX_FILE", str(idx))
+    mp = pytest.MonkeyPatch()
+    mp.setattr(info, "PATH_INDEX_FILE", str(idx))
 
     yield world.ROOM_DEFS._data
 
+    mp.undo()
     world._AREA_FILES[:] = old_area_files
     world._LOADED_AREAS.clear()
     world._LOADED_AREAS.update(old_state["_LOADED_AREAS"])

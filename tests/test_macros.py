@@ -140,7 +140,10 @@ def test_macro_bindings_survive_save_load(tmp_path, monkeypatch):
     saved = {".": "help", "7": "kill", _fn_key("xy"): "run"}
     player = create_char()
     player["name"] = "Tester"
-    player["room"] = 9001
+    # Room vnum outside every real area range: load_world must not lazy-load
+    # a real area here -- whether the world is initialized depends on which
+    # tests ran before us in this process (surfaced by pytest-xdist).
+    player["room"] = 999999
     player["_macros"] = dict(saved)
     world.chars[1] = player
     game_state._serialize_world()
@@ -148,7 +151,7 @@ def test_macro_bindings_survive_save_load(tmp_path, monkeypatch):
     world.chars.clear()
     player2 = create_char()
     player2["name"] = "Tester"
-    player2["room"] = 9001
+    player2["room"] = 999999
     player2["_macros"] = {}
     world.chars[1] = player2
     assert game_state.load_world() == "file"

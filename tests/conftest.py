@@ -21,7 +21,16 @@ def pytest_configure(config):
     import time, which happens during collection -- after configure, but
     before any fixture runs.  Doing it at import time instead would land
     before pytest resolves `testpaths`.
+
+    Under pytest-xdist the controller must NOT chdir: workers inherit its
+    cwd at spawn and then resolve the (relative) collection args against
+    it, so a controller sitting in src/ makes every worker collect zero
+    tests.  The controller runs no tests itself; each worker re-runs this
+    hook and pins its own cwd.
     """
+    if (getattr(config.option, "numprocesses", None)
+            and not hasattr(config, "workerinput")):
+        return  # xdist controller: coordinate only, keep rootdir cwd
     os.chdir(os.path.join(ROOT, _SRC))
 
 import pytest

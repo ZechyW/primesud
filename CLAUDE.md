@@ -100,7 +100,7 @@ Completed plan documents are deleted, not archived -- durable decisions get harv
 - Read `DESIGN.md`, and relevant reference docs before porting behavior from 1stMud.
 - Provide sanity check and brief explanation of key decisions -- especially HP Prime constraints or PPL interop -- before complex coding.
 - Minimal targeted changes. No surrounding refactor unless it is substantially cleaner or better; if so, raise for review.
-- After code changes, run the desktop test suite: `uv run pytest -q` (CPython via `pc_shim/` device shims; dev deps in `pyproject.toml`/`uv.lock`), plus `python tools/check_ascii_py.py` per pitfall 6. Plain `python -m pytest -q` also works if pytest and python-minifier are installed globally.
+- After code changes, run the desktop test suite: `uv run pytest -q -n 4` (CPython via `pc_shim/` device shims; dev deps in `pyproject.toml`/`uv.lock`; `-n 4` = pytest-xdist workers, drop it for serial debugging with `-s`/`--pdb`), plus `python tools/check_ascii_py.py` per pitfall 6. Plain `python -m pytest -q` also works if pytest and python-minifier are installed globally.
 - The suite runs with cwd == `src/` (pinned in `tests/conftest.py`), matching the device's flat filesystem and `run_source.py`, so runtime data files resolve by bare name. Tests must not chdir, and tools must resolve paths from `__file__`, not the cwd.
 - Commit messages: Conventional Commits (`feat(scope): ...`, `fix:`, `docs:`, ...).
 - Git flow: dev rebases onto main (never merge main into dev); main takes fast-forward merges from dev only. Keeps history linear.
