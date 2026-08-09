@@ -250,17 +250,25 @@ All seven spells roll damage as:
 dam = number_range((level | 50) / 2, (level | 50) * 2);
 ```
 
-`|` is bitwise OR, almost certainly a typo for `+`. Stock ROM used
-increasing per-level damage tables here; 1stMud replaced them with this
-expression, which for levels 1-50 produces a non-monotonic value stuck in
-the 50-63 band (level 2 -> 50, level 13 -> 63, level 32 -> 50). Gaining
-levels barely changes damage and can even lower it, and all seven spells
-share one flat damage band.
+`|` is bitwise OR, likely a typo for `+`. For levels 1-50 the expression
+produces a non-monotonic value stuck in the 50-63 band (level 2 -> 50,
+level 13 -> 63, level 32 -> 50): gaining levels barely changes damage and
+can even lower it, and all seven spells share one flat damage band **from
+level 1**. Stock ROM 2.4 rolled `number_range(d/2, d*2)` from increasing
+per-spell `dam_each` tables, giving each spell its own curve and natural
+level gate (magic missile avg ~4-17, fireball 0 below level 15 then up to
+~162). 1stMud's rewrite buffed magic missile ~7x and halved fireball's
+high end -- this flattening, not a port error, is why attack spells
+outdamage weapons from the first level.
 
 ### PrimeSUD fix -- implemented in `magic.py`
 
-`high = level + 50` in all seven spell functions, giving the obviously
-intended smooth scaling (`randint((level+50)/2, (level+50)*2)`). Each site
+ROM 2.4 stock `dam_each` tables restored for all seven spells
+(`_DAM_MAGIC_MISSILE` etc. + `_table_dam` helper, level clamped to 50).
+This deviates from 1stMud on purpose: the tables recover the per-spell
+balance the `(level | 50)` rewrite destroyed. An earlier PrimeSUD fix used
+`level + 50` (the presumed typo intent), but that kept the flattening --
+all seven spells identical, magic missile ~7x ROM at level 50. Each site
 carries a `[PRIMESUD]` comment referencing this entry.
 
 ---
@@ -737,3 +745,28 @@ already ported in `shop.py`):
 Items with a canonical timer never carry the flag, so potions looted from
 the floor still rot in inventory as upstream intends. Scavenger mobs that
 grab litter tick it down in the NPC-inventory loop instead -- acceptable.
+
+---
+
+## advance_level: "You can now use" announced for skills the char doesn't know
+
+**Upstream:** `reference/1stMud4.5.3/src/update.c`, lines 106-121 (gain_exp
+skill-availability loop -- a 1stMud addition; ROM 2.4 prints no such message).
+
+### The bug
+
+The loop fires for every skill whose `skill_level(ch, sn)` equals the new
+level, regardless of whether the char knows it. The verb is chosen by
+`learned[sn] == 1` -> "learn", **else** -> "use" -- and the else branch
+includes `learned == 0`. So a warrior hitting level 14 is told "You can now
+use the earthquake spell" while `do_practice` refuses unknown skills
+(`learned < 1`, act_info.c:3692) and spells can't be gained individually:
+the message promises what the game then denies.
+
+### PrimeSUD fix -- implemented in `combat.py` (advance_level)
+
+Verb chosen by actionability: `learned == 0` -> "learn" (must `gain` it, or
+its group, first) and `learned >= 1` -> "use" (known; practicable now).
+The line still appears for unknown skills -- warrior/earthquake at 14 is
+genuine ROM+1stMud data (`skills.dat`: warrior column 14, gainable via the
+`attack` group) -- but no longer claims the char can already use them.

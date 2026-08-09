@@ -256,22 +256,10 @@ Deliberate gameplay tweaks; each is a settled decision in DESIGN.md or a
 
 ## Upstream bugs fixed
 
-docs/FIXES.md carries full write-ups (upstream code excerpts and all) of the
-1stMud/ROM bugs PrimeSUD corrects. Highlights:
-
-- The +/-50% damage variance roll upstream computes and then discards.
-- Seven attack spells rolling `(level | 50)` -- bitwise OR, a typo for `+` --
-  flattening their damage across all 50 levels.
-- Ventriloquate, a complete no-op upstream thanks to an inverted name check.
-- Non-weapons in the offhand slot rolling their raw value fields as damage
-  dice (a container could hit for thousands).
-- Autoloot targeting the *oldest* corpse in the room, not your fresh kill.
-- `do_wake` standing the waker instead of the sleeper (ROM 2.4).
-- The pick-lock lag exploit: skill roll and lag applied before checking the
-  door exists (movement.py).
-- Silver-only mobs dropping no coins (`gold > 0` gate) (combat.py).
-- Remort zeroing the skills of a player who *kept* their race (inverted
-  `stay_race` condition).
+PrimeSUD corrects a number of 1stMud/ROM bugs along the way -- from a
+damage-variance roll upstream computes and then discards to spells that
+could never work as written. docs/FIXES.md is the full catalogue: one
+entry per bug, with upstream code excerpts and the PrimeSUD resolution.
 
 ## Deliberately not ported
 
