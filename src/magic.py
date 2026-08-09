@@ -2770,7 +2770,11 @@ def spell_gas_breath(sn, level, ch, vo, target):
     act("$n breathes out a cloud of poisonous gas!", ch, None, None, TO_ROOM)
     act("You breath out a cloud of poisonous gas.", ch, None, None, TO_CHAR)
     hpch = max(16, ch.get("hit", 16))
-    hp_dam = randint(hpch // 15 + 1, 8)
+    # cf. 1stMud number_range(hpch/15+1, 8): an inverted range (hit >= 120,
+    # i.e. most dragons) returns `from` (db.c:2682), but Python randint
+    # raises ValueError -- clamp to the same result. [PRIMESUD]
+    low = hpch // 15 + 1
+    hp_dam = randint(low, 8) if low <= 8 else low
     dice_dam = dice(level, 12)
     dam = max(hp_dam + dice_dam // 10, dice_dam + hp_dam // 10)
     room = world.rooms[ch["room"]]

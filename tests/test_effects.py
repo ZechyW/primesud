@@ -292,6 +292,18 @@ def test_spell_lightning_breath_wires_shock_effect(out, monkeypatch, force_roll)
     assert player["equip"]["hold"] is None
 
 
+def test_spell_gas_breath_high_hp_caster_no_valueerror(out, monkeypatch, force_roll):
+    """spell_gas_breath with caster hit >= 120 inverts number_range(hpch/15+1, 8);
+    ROM returns `from`, Python randint raised ValueError before the clamp
+    (cf. magic.c spell_gas_breath, db.c number_range). [PRIMESUD]"""
+    player = _make_player()
+    caster = _make_mob(2, hit=200)
+    world.rooms._data[ROOM_VNUM]["mobs"].append(1)
+    monkeypatch.setattr(magic, "saves_spell", lambda *a: True)
+    monkeypatch.setattr(magic, "damage", lambda *a, **kw: True)
+    assert magic.spell_gas_breath(0, 20, caster, None, magic.TARGET_CHAR) is True
+
+
 def test_weapon_proc_flaming_wires_fire_effect(out, monkeypatch, force_roll):
     """combat._weapon_procs' flaming branch calls fire_effect(victim,
     wlevel/2, pdam, TARGET_CHAR) before dealing proc damage (cf. fight.c
