@@ -51,6 +51,72 @@ TARGET_NONE = "none"
 TARGET_CHAR = "char"
 TARGET_OBJ = "obj"
 TARGET_ROOM = "room"
+
+# [PRIMESUD] ROM 2.4 stock per-level dam_each tables, restored for the seven
+# attack spells that 1stMud flattened to number_range((level|50)/2, (level|50)*2)
+# -- a rewrite that made every attack spell hit in one flat ~50-63 band from
+# level 1 (magic missile buffed ~7x, fireball's high end halved). ROM's tables
+# keep each spell's own curve and level gate. See FIXES.md sec. "magic:
+# (level | 50) bitwise-OR damage rolls". Index = caster level, clamped to 50.
+_DAM_MAGIC_MISSILE = (
+    0,
+    3, 3, 4, 4, 5, 6, 6, 6, 6, 6,
+    7, 7, 7, 7, 7, 8, 8, 8, 8, 8,
+    9, 9, 9, 9, 9, 10, 10, 10, 10, 10,
+    11, 11, 11, 11, 11, 12, 12, 12, 12, 12,
+    13, 13, 13, 13, 13, 14, 14, 14, 14, 14)
+_DAM_BURNING_HANDS = (
+    0,
+    0, 0, 0, 0, 14, 17, 20, 23, 26, 29,
+    29, 29, 30, 30, 31, 31, 32, 32, 33, 33,
+    34, 34, 35, 35, 36, 36, 37, 37, 38, 38,
+    39, 39, 40, 40, 41, 41, 42, 42, 43, 43,
+    44, 44, 45, 45, 46, 46, 47, 47, 48, 48)
+_DAM_CHILL_TOUCH = (
+    0,
+    0, 0, 6, 7, 8, 9, 12, 13, 13, 13,
+    14, 14, 14, 15, 15, 15, 16, 16, 16, 17,
+    17, 17, 18, 18, 18, 19, 19, 19, 20, 20,
+    20, 21, 21, 21, 22, 22, 22, 23, 23, 23,
+    24, 24, 24, 25, 25, 25, 26, 26, 26, 27)
+_DAM_COLOR_SPRAY = (
+    0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    30, 35, 40, 45, 50, 55, 55, 55, 56, 57,
+    58, 58, 59, 60, 61, 61, 62, 63, 64, 64,
+    65, 66, 67, 67, 68, 69, 70, 70, 71, 72,
+    73, 73, 74, 75, 76, 76, 77, 78, 79, 79)
+_DAM_FIREBALL = (
+    0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 30, 35, 40, 45, 50, 55,
+    60, 65, 70, 75, 80, 82, 84, 86, 88, 90,
+    92, 94, 96, 98, 100, 102, 104, 106, 108, 110,
+    112, 114, 116, 118, 120, 122, 124, 126, 128, 130)
+_DAM_LIGHTNING_BOLT = (
+    0,
+    0, 0, 0, 0, 0, 0, 0, 0, 25, 28,
+    31, 34, 37, 40, 40, 41, 42, 42, 43, 44,
+    44, 45, 46, 46, 47, 48, 48, 49, 50, 50,
+    51, 52, 52, 53, 54, 54, 55, 56, 56, 57,
+    58, 58, 59, 60, 60, 61, 62, 62, 63, 64)
+_DAM_SHOCKING_GRASP = (
+    0,
+    0, 0, 0, 0, 0, 0, 20, 25, 29, 33,
+    36, 39, 39, 39, 40, 40, 41, 41, 42, 42,
+    43, 43, 44, 44, 45, 45, 46, 46, 47, 47,
+    48, 48, 49, 49, 50, 50, 51, 51, 52, 52,
+    53, 53, 54, 54, 55, 55, 56, 56, 57, 57)
+
+
+def _table_dam(tbl, level):
+    """Roll ROM-style spell damage from a per-level dam_each table. [PRIMESUD]
+
+    ROM 2.4 rolls number_range(d/2, d*2) after clamping level to the table;
+    a 0 entry (below the spell's natural level) rolls 0 damage, as upstream.
+    """
+    d = tbl[level] if level < len(tbl) else tbl[-1]
+    return randint(d // 2, d * 2)
 def _enchant_copy_template(vo, tpl):
     """Copy template affects to runtime affect_list before enchant (cf. 1stMud enchant_armor/weapon in magic.c:2273-2294).
 
@@ -268,10 +334,9 @@ def spell_harm(sn, level, ch, vo, target):
 
 def spell_magic_missile(sn, level, ch, vo, target):
     """Magic missile (cf. 1stMud spell_magic_missile in magic.c).
-    [Verified: 03/07/2026] -- 1stMud magic.c:3571 uses bitwise OR, a typo
-    for +; see FIXES.md."""
-    high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
-    dam = randint(high // 2, high * 2)
+    [Verified: 03/07/2026] -- [PRIMESUD] ROM 2.4 dam_each table restored;
+    1stMud flattened to (level | 50), see FIXES.md."""
+    dam = _table_dam(_DAM_MAGIC_MISSILE, level)
     if saves_spell(level, vo, DAM_ENERGY):
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_ENERGY, True)
@@ -1318,9 +1383,9 @@ def spell_acid_blast(sn, level, ch, vo, target):
 
 def spell_burning_hands(sn, level, ch, vo, target):
     """Burning hands (cf. 1stMud spell_burning_hands in magic.c).
-    [Verified: 03/07/2026]"""
-    high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
-    dam = randint(high // 2, high * 2)
+    [Verified: 03/07/2026] -- [PRIMESUD] ROM 2.4 dam_each table restored;
+    1stMud flattened to (level | 50), see FIXES.md."""
+    dam = _table_dam(_DAM_BURNING_HANDS, level)
     if saves_spell(level, vo, DAM_FIRE):
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_FIRE, True)
@@ -1464,9 +1529,9 @@ def spell_charm_person(sn, level, ch, vo, target):
 
 def spell_chill_touch(sn, level, ch, vo, target):
     """Chill touch (cf. 1stMud spell_chill_touch in magic.c).
-    [Verified: 03/07/2026]"""
-    high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
-    dam = randint(high // 2, high * 2)
+    [Verified: 03/07/2026] -- [PRIMESUD] ROM 2.4 dam_each table restored;
+    1stMud flattened to (level | 50), see FIXES.md."""
+    dam = _table_dam(_DAM_CHILL_TOUCH, level)
     if not saves_spell(level, vo, DAM_COLD):
         act("$n turns blue and shivers.", vo, None, None, TO_ROOM)
         affect_join(vo, _new_affect(sn, level, 6, "str", -1))
@@ -1477,9 +1542,9 @@ def spell_chill_touch(sn, level, ch, vo, target):
 
 def spell_color_spray(sn, level, ch, vo, target):
     """Color spray (cf. 1stMud spell_color_spray in magic.c).
-    [Verified: 03/07/2026]"""
-    high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
-    dam = randint(high // 2, high * 2)
+    [Verified: 03/07/2026] -- [PRIMESUD] ROM 2.4 dam_each table restored;
+    1stMud flattened to (level | 50), see FIXES.md."""
+    dam = _table_dam(_DAM_COLOR_SPRAY, level)
     if saves_spell(level, vo, DAM_LIGHT):
         dam //= 2
     else:
@@ -1747,9 +1812,9 @@ def spell_energy_drain(sn, level, ch, vo, target):
 
 def spell_fireball(sn, level, ch, vo, target):
     """Fireball (cf. 1stMud spell_fireball in magic.c).
-    [Verified: 03/07/2026]"""
-    high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
-    dam = randint(high // 2, high * 2)
+    [Verified: 03/07/2026] -- [PRIMESUD] ROM 2.4 dam_each table restored;
+    1stMud flattened to (level | 50), see FIXES.md."""
+    dam = _table_dam(_DAM_FIREBALL, level)
     if saves_spell(level, vo, DAM_FIRE):
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_FIRE, True)
@@ -2191,9 +2256,9 @@ def spell_know_alignment(sn, level, ch, vo, target):
 
 def spell_lightning_bolt(sn, level, ch, vo, target):
     """Lightning bolt (cf. 1stMud spell_lightning_bolt in magic.c).
-    [Verified: 03/07/2026]"""
-    high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
-    dam = randint(high // 2, high * 2)
+    [Verified: 03/07/2026] -- [PRIMESUD] ROM 2.4 dam_each table restored;
+    1stMud flattened to (level | 50), see FIXES.md."""
+    dam = _table_dam(_DAM_LIGHTNING_BOLT, level)
     if saves_spell(level, vo, DAM_LIGHTNING):
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_LIGHTNING, True)
@@ -2426,9 +2491,9 @@ def spell_sanctuary(sn, level, ch, vo, target):
 
 def spell_shocking_grasp(sn, level, ch, vo, target):
     """Shocking grasp (cf. 1stMud spell_shocking_grasp in magic.c).
-    [Verified: 03/07/2026]"""
-    high = level + 50  # [PRIMESUD] 1stMud has (level | 50), bitwise-OR typo; see FIXES.md
-    dam = randint(high // 2, high * 2)
+    [Verified: 03/07/2026] -- [PRIMESUD] ROM 2.4 dam_each table restored;
+    1stMud flattened to (level | 50), see FIXES.md."""
+    dam = _table_dam(_DAM_SHOCKING_GRASP, level)
     if saves_spell(level, vo, DAM_LIGHTNING):
         dam //= 2
     return damage(ch, vo, dam, sn, DAM_LIGHTNING, True)
