@@ -2921,8 +2921,12 @@ def advance_level(player):
         # cf. 1stMud advance_level: skill_level(ch, sn) == ch->level (class-aware)
         if skill_level(player, _sn) == player["level"]:
             kind = "spell" if data.get("spell_fun", "spell_null") != "spell_null" else "skill"
-            # 1stMud: learned==1 -> "learn" (go practice it), >1 -> "use" (already practiced)
-            verb = "learn" if learned.get(_sn, 0) <= 1 else "use"
+            # [PRIMESUD] verb by actionability: learned==0 -> "learn" (must
+            # 'gain' it first; do_practice refuses unknown skills), else ->
+            # "use" (known, practicable now). 1stMud prints "learn" only at
+            # learned==1 and a false "use" at learned==0; ROM 2.4 has no such
+            # message at all. See FIXES.md.
+            verb = "learn" if learned.get(_sn, 0) == 0 else "use"
             chprintln(player, "{MYou can now " + verb + " the {W" + data["name"]
                       + "{M " + kind + ".{x")
 
