@@ -30,8 +30,15 @@ def _start_reader():
                 _q.put(c)
     else:
         import termios, tty
-        fd = sys.stdin.fileno()
-        old = termios.tcgetattr(fd)
+        try:
+            fd = sys.stdin.fileno()
+            old = termios.tcgetattr(fd)
+        except (ValueError, termios.error):
+            # No real tty (pytest capture, piped stdin) -- skip the reader;
+            # tests never read keys.
+            return
+        import atexit
+        atexit.register(termios.tcsetattr, fd, termios.TCSADRAIN, old)
         tty.setraw(fd)
         def _reader():
             while True:
