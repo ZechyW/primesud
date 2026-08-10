@@ -2389,16 +2389,40 @@ def do_examine(player, args):
     """
     if not args:
         # [PRIMESUD] picker menu when no args (1stMud prints "Examine what?" and
-        # stops); hidden/invisible entries filtered like the get/drop pickers
+        # stops); hidden/invisible entries filtered like the get/drop pickers.
+        # Order: mobs, objects, then the room's extra descriptions ({c, labelled
+        # by their first keyword) and any exit carrying a description ({g,
+        # labelled by full direction name).
         rs = world.rooms[player["room"]]
+        room = ROOM_DEFS[player["room"]]
         equipped = [o for o in player["equip"].values() if o is not None]
         mobs = [i for i in rs["mobs"] if can_see(player, world.chars[i])]
         objs = [o for o in (list(rs["items"]) + player["inv"] + equipped)
                 if can_see_obj(player, o)]
+        # [PRIMESUD] extra_descs and exit descs are room description text, so
+        # they honour do_look's blind and pitch-black gates (holylight lifts
+        # both), silently: the picker never prints the gate messages. Mob and
+        # object entries need no gate -- can_see/can_see_obj already handle
+        # blind and dark viewers.
+        eds = []
+        ex_dirs = []
+        if "holylight" in DBG or (not player["affected_by"].get("blind")
+                                  and not room_is_dark(player["room"])):
+            for keywords, desc in room.get("extra_descs", []):
+                words = keywords.split()
+                if words:
+                    eds.append((words[0], desc))
+            room_exits = room["exits"]
+            ex_dirs = [d for d in EXIT_ORDER
+                       if isinstance(room_exits.get(d), dict) and room_exits[d].get("desc")]
         labels = [world.chars[i].get("name") or MOB_DEFS[world.chars[i]["tpl"]]["short_descr"]
                   for i in mobs]
         for o in objs:
             labels.append(obj_short(o, item_tpl(o)))
+        for first_kw, desc in eds:
+            labels.append("{c" + first_kw + "{x")
+        for d in ex_dirs:
+            labels.append("{g" + EXIT_NAMES.get(d, d) + "{x")
         if not labels:
             chprintln(player, "Examine what?")
             return
@@ -2413,14 +2437,26 @@ def do_examine(player, args):
             _show_char_to_char_1(player, mobs[idx])
             mtpl = MOB_DEFS[world.chars[mobs[idx]]["tpl"]]
             return "examine " + mtpl.get("keywords", mtpl["short_descr"]).split()[0]
-        obj = objs[idx - len(mobs)]
-        tpl = item_tpl(obj)
-        inst_desc = isinstance(obj, dict) and obj.get("description")
-        for line in _wrap_paragraphs(inst_desc or tpl.get("description", tpl["short_descr"]),
-                                     TERMINAL_COLS):
-            chprintln(player, line)
-        _examine_extras(player, obj)
-        return "examine " + tpl.get("keywords", tpl["short_descr"]).split()[0]
+        if idx < len(mobs) + len(objs):
+            obj = objs[idx - len(mobs)]
+            tpl = item_tpl(obj)
+            inst_desc = isinstance(obj, dict) and obj.get("description")
+            for line in _wrap_paragraphs(inst_desc or tpl.get("description", tpl["short_descr"]),
+                                         TERMINAL_COLS):
+                chprintln(player, line)
+            _examine_extras(player, obj)
+            return "examine " + tpl.get("keywords", tpl["short_descr"]).split()[0]
+        idx -= len(mobs) + len(objs)
+        if idx < len(eds):
+            # same output as do_look's room extra_desc branch
+            first_kw, desc = eds[idx]
+            for line in _wrap_paragraphs(desc, TERMINAL_COLS):
+                chprintln(player, line)
+            return "examine " + first_kw
+        # exit description: reuse do_look's direction branch (desc + door state)
+        dir_name = EXIT_NAMES.get(ex_dirs[idx - len(eds)], ex_dirs[idx - len(eds)])
+        do_look(player, [dir_name])
+        return "examine " + dir_name
     arg = args[0]
     do_look(player, [arg])
     obj = get_obj_here(player, arg)

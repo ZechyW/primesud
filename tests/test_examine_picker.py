@@ -32,6 +32,7 @@ def out(monkeypatch):
 def scene(monkeypatch):
     """Room 3001 with one mob and one item; player carrying one item."""
     old_rooms = dict(world.rooms._data)
+    old_defs = dict(ROOM_DEFS._data)
     old_chars = dict(world.chars)
     old_mobs = dict(MOB_DEFS._data)
     old_items = dict(ITEM_DEFS._data)
@@ -64,7 +65,7 @@ def scene(monkeypatch):
     world.rooms._data.clear()
     world.rooms._data.update(old_rooms)
     ROOM_DEFS._data.clear()
-    ROOM_DEFS._data.update(old_rooms)
+    ROOM_DEFS._data.update(old_defs)
     world.chars.clear()
     world.chars.update(old_chars)
     MOB_DEFS._data.clear()
@@ -78,7 +79,9 @@ def test_empty_scene_prints_prompt(monkeypatch, out):
     room = {"name": "Empty", "desc": "x", "exits": {}, "items": [],
             "mobs": [], "area": "test", "sector": "inside"}
     old = dict(world.rooms._data)
+    old_defs = dict(ROOM_DEFS._data)
     world.rooms._data[3001] = room
+    ROOM_DEFS._data[3001] = room
     player = _char_base()
     player.update({"room": 3001, "inv": []})
     called = []
@@ -88,6 +91,8 @@ def test_empty_scene_prints_prompt(monkeypatch, out):
     finally:
         world.rooms._data.clear()
         world.rooms._data.update(old)
+        ROOM_DEFS._data.clear()
+        ROOM_DEFS._data.update(old_defs)
     assert called == []
     assert "Examine what?" in out
 
@@ -124,6 +129,101 @@ def test_cancel_prints_nothing(monkeypatch, out, scene):
     monkeypatch.setattr(info, "pick_from", lambda t, o: -1)
     info.do_examine(scene, [])
     assert out == []
+
+
+class TestPickerRoomDetailsAndExits:
+    """[PRIMESUD] picker also offers room extra descriptions ({c, first keyword)
+    and exits that carry a description ({g, full direction name), after the
+    mob and object entries."""
+
+    def _decorate(self):
+        """Add extra_descs and a mix of exits (with and without descriptions)."""
+        room = ROOM_DEFS._data[3001]
+        room["extra_descs"] = [("plant plants", "A leafy green plant."),
+                               ("sign", "The sign reads: keep out.")]
+        room["exits"] = {
+            "n": 3002,                                    # plain int: no desc
+            "e": {"to": 3002, "desc": "A shimmering gate."},
+            "s": {"to": 3002},                            # dict, but no desc
+            "d": {"to": 3002, "desc": "A dark hole.",
+                  "keyword": "trapdoor", "isdoor": True, "closed": True},
+        }
+
+    def _offers(self, monkeypatch, idx=-1):
+        offered = []
+
+        def pick(title, opts):
+            offered.append(opts)
+            return idx
+
+        monkeypatch.setattr(info, "pick_from", pick)
+        return offered
+
+    def test_picker_order_mobs_objs_eds_exits(self, monkeypatch, out, scene):
+        self._decorate()
+        offered = self._offers(monkeypatch)
+        info.do_examine(scene, [])
+        assert offered == [["a guard", "a rock", "a stick",
+                            "{cplant{x", "{csign{x",
+                            "{geast{x", "{gdown{x"]]
+
+    def test_exits_without_desc_not_offered(self, monkeypatch, out, scene):
+        self._decorate()
+        offered = self._offers(monkeypatch)
+        info.do_examine(scene, [])
+        assert "{gnorth{x" not in offered[0]  # plain int exit
+        assert "{gsouth{x" not in offered[0]  # dict exit with no desc
+
+    def test_no_eds_or_exits_leaves_menu_unchanged(self, monkeypatch, out, scene):
+        offered = self._offers(monkeypatch)
+        info.do_examine(scene, [])
+        assert offered == [["a guard", "a rock", "a stick"]]
+
+    def test_pick_ed_shows_desc(self, monkeypatch, out, scene):
+        self._decorate()
+        self._offers(monkeypatch, idx=3)
+        assert info.do_examine(scene, []) == "examine plant"
+        assert "A leafy green plant." in out
+
+    def test_pick_second_ed_shows_desc(self, monkeypatch, out, scene):
+        self._decorate()
+        self._offers(monkeypatch, idx=4)
+        assert info.do_examine(scene, []) == "examine sign"
+        assert "The sign reads: keep out." in out
+
+    def test_pick_exit_shows_desc(self, monkeypatch, out, scene):
+        self._decorate()
+        self._offers(monkeypatch, idx=5)
+        assert info.do_examine(scene, []) == "examine east"
+        assert "A shimmering gate." in out
+        assert not any("closed" in line for line in out)
+
+    def test_pick_door_exit_shows_desc_and_door_state(self, monkeypatch, out, scene):
+        self._decorate()
+        self._offers(monkeypatch, idx=6)
+        assert info.do_examine(scene, []) == "examine down"
+        assert "A dark hole." in out
+        assert "The trapdoor is closed." in out
+
+    def test_dark_room_hides_eds_and_exits(self, monkeypatch, out, scene):
+        """eds/exits honour do_look's pitch-black gate; mobs/objs are already
+        hidden by can_see/can_see_obj, so the picker never opens at all."""
+        self._decorate()
+        ROOM_DEFS._data[3001]["flags"] = {"dark": True}
+        offered = self._offers(monkeypatch)
+        info.do_examine(scene, [])
+        assert offered == []
+        assert out == ["Examine what?"]
+
+    def test_blind_player_gets_no_eds_or_exits(self, monkeypatch, out, scene):
+        """eds/exits honour do_look's blind gate, silently (no 'You can't see
+        a thing!' -- the empty picker falls through to the plain prompt)."""
+        self._decorate()
+        scene["affected_by"]["blind"] = True
+        offered = self._offers(monkeypatch)
+        info.do_examine(scene, [])
+        assert offered == []
+        assert out == ["Examine what?"]
 
 
 def test_examine_legacy_sparse_money_uses_template(out, scene):

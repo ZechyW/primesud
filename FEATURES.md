@@ -65,7 +65,12 @@ that into features rather than holes.
 - **Pickers replace typing** -- `kill`, `get`, `give`, `wear`, `cast`, `practice`,
   `train`, `buy`, `sell`, `examine`, `open`/`unlock`, remort, chargen: given no
   argument, each opens a numbered target menu instead of failing
-  (docs/PRIME_UX.md).
+  (docs/PRIME_UX.md).  The `kill`/`consider` menus list only mobs you can see,
+  and sink the ones you can't attack (shopkeepers, pets, quest targets) to the
+  bottom, dimmed.  The `examine` menu goes past mobs and objects to the scenery
+  a room only rewards guessing at: its extra descriptions (cyan) and every exit
+  with a description of its own (green), so hidden detail is browsable instead
+  of hunted for by keyword.
 - **Contextual quest hub** -- bare `quest` shows status away from questmasters;
   at one, it offers valid quest actions and nested reward-shop pickers, while
   completed quests auto-complete instead of accepting an accidental quit

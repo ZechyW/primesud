@@ -182,6 +182,13 @@ shopkeeper accepts, with the offered price; multi-item `drop`, `wear`, and
 `sell` pickers include an `[all]` choice. Typed forms remain available for bulk
 purchases and custom pet names. Bare `wear` also offers `[best] Equip strongest
 gear`, equivalent to `wear best`, and is the only picker to carry it. Bare
+`kill` and `consider` list only mobs the player can see, and sink unattackable
+mobs (shopkeepers, pets, quest targets -- anything `is_safe_spell` protects) to
+the bottom of the list, dimmed (`{D`). Bare `examine` extends past mobs and
+objects to the room's extra descriptions (cyan, labelled by first keyword) and
+any exit carrying a description (green, full direction name); these two
+categories honour the blind and pitch-black gates that `look` applies, silently
+-- mob and object entries are already filtered by `can_see`/`can_see_obj`. Bare
 `quest` shows status directly away from a questmaster; at one, it opens a
 contextual action picker for status, request/completion, giving up, and the
 quest shop. Quest and global-quest action
