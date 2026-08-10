@@ -646,7 +646,9 @@ def do_give(player, args):
         victims = [world.chars[i] for i in rs["mobs"]
                    if can_see(player, world.chars[i])]
         if not victims:
-            chprintln(player, "Give what to whom?")
+            # [PRIMESUD] not upstream's "Give what to whom?" argument prompt:
+            # an empty menu means nothing visible, not a missing argument
+            chprintln(player, "You don't see anyone here.")
             return
 
         giveables = []

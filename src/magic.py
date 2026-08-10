@@ -3513,6 +3513,9 @@ def _pick_cast_target_name(player, sn):
         names = []
         for mob_id in rs["mobs"]:
             mob = world.chars[mob_id]
+            # [PRIMESUD] don't betray mobs the player can't see
+            if not can_see(player, mob):
+                continue
             opts.append(mob.get("name") or MOB_DEFS[mob["tpl"]]["short_descr"])
             names.append(_mob_pick_name(mob))
         if not opts:
@@ -3526,6 +3529,9 @@ def _pick_cast_target_name(player, sn):
         opts = []
         names = []
         for obj in player["inv"]:
+            # [PRIMESUD] don't betray items the player can't see
+            if not can_see_obj(player, obj):
+                continue
             tpl = item_tpl(obj)
             opts.append(obj_short(obj, tpl))
             names.append(_obj_pick_name(obj))
@@ -3543,9 +3549,15 @@ def _pick_cast_target_name(player, sn):
         names = []
         for mob_id in rs["mobs"]:
             mob = world.chars[mob_id]
+            # [PRIMESUD] don't betray mobs the player can't see
+            if not can_see(player, mob):
+                continue
             opts.append(mob.get("name") or MOB_DEFS[mob["tpl"]]["short_descr"])
             names.append(_mob_pick_name(mob))
         for obj in rs["items"]:
+            # [PRIMESUD] don't betray items the player can't see
+            if not can_see_obj(player, obj):
+                continue
             tpl = item_tpl(obj)
             opts.append(obj_short(obj, tpl))
             names.append(_obj_pick_name(obj))

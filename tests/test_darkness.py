@@ -679,6 +679,170 @@ class TestKillPicker:
         assert out == ["You don't see anyone here."]
 
 
+class TestGivePicker:
+    """The no-arg give picker only lists mobs the player can see, so a room
+    holding nothing visible says so instead of prompting (inventory.do_give)."""
+
+    def test_no_visible_mobs_prints_prompt(self, fresh_world, monkeypatch):
+        import inventory
+        out = []
+        monkeypatch.setattr(inventory, "chprintln", lambda ch, msg: out.append(msg))
+        monkeypatch.setattr(inventory, "pick_from",
+                            lambda title, opts: pytest.fail("picker shown"))
+        _room(1, sector="inside")
+        MOB_DEFS._data[720] = {"short_descr": "a ghostly wraith",
+                               "keywords": "wraith", "level": 1,
+                               "affected_by": {"invisible": True}}
+        c2 = _char_base()
+        c2.update({"id": 2, "is_npc": True, "tpl": 720, "room": 1,
+                   "level": 1, "affected_by": {"invisible": True}})
+        world.chars[2] = c2
+        world.rooms._data[1]["mobs"] = [2]
+        inventory.do_give(_look_player(1), [])
+        assert out == ["You don't see anyone here."]
+
+    def test_empty_room_prints_prompt(self, fresh_world, monkeypatch):
+        import inventory
+        out = []
+        monkeypatch.setattr(inventory, "chprintln", lambda ch, msg: out.append(msg))
+        monkeypatch.setattr(inventory, "pick_from",
+                            lambda title, opts: pytest.fail("picker shown"))
+        _room(1, sector="inside")
+        inventory.do_give(_look_player(1), [])
+        assert out == ["You don't see anyone here."]
+
+
+class TestCastPicker:
+    """[PRIMESUD] cast target pickers share the other menus' sight filters, so
+    an undetected invis mob/item is not betrayed (magic._pick_cast_target_name)."""
+
+    def _sn(self, name):
+        from skills_table import SKILL_TABLE
+        for sn, sk in SKILL_TABLE:
+            if sk["name"] == name:
+                return sn
+        pytest.fail("no such spell: " + name)
+
+    def _mobs(self, monkeypatch, **aff):
+        import magic
+        _room(1, sector="inside")
+        MOB_DEFS._data[730] = {"short_descr": "a plain rat", "keywords": "rat",
+                               "level": 1, "affected_by": {}}
+        MOB_DEFS._data[731] = {"short_descr": "a ghostly wraith",
+                               "keywords": "wraith", "level": 1,
+                               "affected_by": {"invisible": True}}
+        c2 = _char_base()
+        c2.update({"id": 2, "is_npc": True, "tpl": 730, "room": 1,
+                   "level": 1, "affected_by": {}})
+        world.chars[2] = c2
+        c3 = _char_base()
+        c3.update({"id": 3, "is_npc": True, "tpl": 731, "room": 1,
+                   "level": 1, "affected_by": {"invisible": True}})
+        world.chars[3] = c3
+        world.rooms._data[1]["mobs"] = [2, 3]
+        offered = []
+        monkeypatch.setattr(magic, "pick_from",
+                            lambda title, opts: offered.append(opts) or -1)
+        p = _look_player(1)
+        p["affected_by"] = dict(aff)
+        magic._pick_cast_target_name(p, self._sn("acid blast"))
+        return offered
+
+    def test_invis_mob_absent_without_detect(self, fresh_world, monkeypatch):
+        assert self._mobs(monkeypatch) == [["a plain rat"]]
+
+    def test_invis_mob_offered_with_detect(self, fresh_world, monkeypatch):
+        assert self._mobs(monkeypatch, detect_invis=True) == [
+            ["a plain rat", "a ghostly wraith"]]
+
+    def test_no_visible_mobs_skips_picker(self, fresh_world, monkeypatch):
+        import magic
+        _room(1, sector="inside")
+        MOB_DEFS._data[732] = {"short_descr": "a ghostly wraith",
+                               "keywords": "wraith", "level": 1,
+                               "affected_by": {"invisible": True}}
+        c2 = _char_base()
+        c2.update({"id": 2, "is_npc": True, "tpl": 732, "room": 1,
+                   "level": 1, "affected_by": {"invisible": True}})
+        world.chars[2] = c2
+        world.rooms._data[1]["mobs"] = [2]
+        monkeypatch.setattr(magic, "pick_from",
+                            lambda title, opts: pytest.fail("picker shown"))
+        # empty menu falls through to the typed path's parity messages
+        assert magic._pick_cast_target_name(
+            _look_player(1), self._sn("acid blast")) == ""
+
+    def _items(self, monkeypatch, **aff):
+        """obj_inventory picker over one plain and one invis carried item."""
+        import magic
+        _room(1, sector="inside")
+        ITEM_DEFS._data[733] = {"type": "trash", "keywords": "stick",
+                                "short_descr": "a plain stick",
+                                "extra_flags": {}}
+        ITEM_DEFS._data[734] = {"type": "trash", "keywords": "bauble",
+                                "short_descr": "a shimmering bauble",
+                                "extra_flags": {"invis": True}}
+        offered = []
+        monkeypatch.setattr(magic, "pick_from",
+                            lambda title, opts: offered.append(opts) or -1)
+        p = _look_player(1)
+        p["affected_by"] = dict(aff)
+        p["inv"] = [{"vnum": 733}, {"vnum": 734}]
+        magic._pick_cast_target_name(p, self._sn("create water"))
+        return offered
+
+    def test_invis_item_absent_without_detect(self, fresh_world, monkeypatch):
+        assert self._items(monkeypatch) == [["a plain stick"]]
+
+    def test_invis_item_offered_with_detect(self, fresh_world, monkeypatch):
+        assert self._items(monkeypatch, detect_invis=True) == [
+            ["a plain stick", "a shimmering bauble"]]
+
+    def _whom_or_what(self, monkeypatch, **aff):
+        """obj_char_offensive picker: room mobs then room items."""
+        import magic
+        _room(1, sector="inside")
+        MOB_DEFS._data[735] = {"short_descr": "a plain rat", "keywords": "rat",
+                               "level": 1, "affected_by": {}}
+        MOB_DEFS._data[736] = {"short_descr": "a ghostly wraith",
+                               "keywords": "wraith", "level": 1,
+                               "affected_by": {"invisible": True}}
+        c2 = _char_base()
+        c2.update({"id": 2, "is_npc": True, "tpl": 735, "room": 1,
+                   "level": 1, "affected_by": {}})
+        world.chars[2] = c2
+        c3 = _char_base()
+        c3.update({"id": 3, "is_npc": True, "tpl": 736, "room": 1,
+                   "level": 1, "affected_by": {"invisible": True}})
+        world.chars[3] = c3
+        world.rooms._data[1]["mobs"] = [2, 3]
+        ITEM_DEFS._data[737] = {"type": "trash", "keywords": "stick",
+                                "short_descr": "a plain stick",
+                                "extra_flags": {}}
+        ITEM_DEFS._data[738] = {"type": "trash", "keywords": "bauble",
+                                "short_descr": "a shimmering bauble",
+                                "extra_flags": {"invis": True}}
+        world.rooms._data[1]["items"] = [737, 738]
+        offered = []
+        monkeypatch.setattr(magic, "pick_from",
+                            lambda title, opts: offered.append(opts) or -1)
+        p = _look_player(1)
+        p["affected_by"] = dict(aff)
+        magic._pick_cast_target_name(p, self._sn("curse"))
+        return offered
+
+    def test_invis_mob_and_item_absent_without_detect(self, fresh_world,
+                                                     monkeypatch):
+        assert self._whom_or_what(monkeypatch) == [
+            ["a plain rat", "a plain stick"]]
+
+    def test_invis_mob_and_item_offered_with_detect(self, fresh_world,
+                                                    monkeypatch):
+        assert self._whom_or_what(monkeypatch, detect_invis=True) == [
+            ["a plain rat", "a ghostly wraith",
+             "a plain stick", "a shimmering bauble"]]
+
+
 class TestDoMapBlind:
     def test_blind_refuses_map(self, fresh_world, look_out):
         import info

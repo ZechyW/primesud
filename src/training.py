@@ -162,6 +162,9 @@ def do_practice(player, args):
                            and can_use_skill_spell(player, sn)
                            and skill_rating(player, sn) > 0)]
         if not practicable:
+            # [PRIMESUD] say so rather than returning silently -- an empty
+            # picker with a teacher present read like a bug
+            chprintln(player, "You have nothing left to practice.")
             return
         # [PRIMESUD] Put skills closest to mastery first in the picker.
         practicable.sort(key=lambda entry: -entry[1])

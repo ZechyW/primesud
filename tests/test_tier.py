@@ -6,6 +6,8 @@ tiering). Stock remort behaviour is covered by test_classes.py TestRemort.
 import os
 import sys
 
+import pytest
+
 ROOT = os.path.dirname(os.path.dirname(__file__))
 _SRC = os.environ.get("PRIMESUD_SRC", "src")
 sys.path.insert(0, os.path.join(ROOT, _SRC))
@@ -314,6 +316,38 @@ class TestTierPerks:
             assert seen["labels"][:3] == [
                 "sword (60%)", "axe (45%)", "dagger (30%)",
             ]
+        finally:
+            _teardown()
+
+    def test_practice_picker_says_nothing_left(self, monkeypatch):
+        """[PRIMESUD] everything at the cap -> say so, don't return silently."""
+        import training
+        from world import ROOM_DEFS, MOB_DEFS
+
+        room = {"name": "Guild", "desc": "x", "items": [], "mobs": [2],
+                "area": "test", "sector": "inside", "flags": {}, "exits": {}}
+        ROOM_DEFS._data[3022] = room
+        world.rooms._data[3022] = room
+        MOB_DEFS._data[9900] = {"short_descr": "the teacher", "level": 60,
+                                "act_flags": {"practice": True}}
+        c2 = _char_base()
+        c2.update({"is_npc": True, "id": 2, "tpl": 9900, "room": 3022})
+        world.chars[2] = c2
+        player = create_char(CLASS_WARRIOR)
+        player["room"] = 3022
+        player["practice"] = 5
+        for sn in player["learned"]:
+            player["learned"][sn] = 100  # mastered: nothing under the cap
+        out = []
+
+        monkeypatch.setattr(training, "pick_from",
+                            lambda title, labels: pytest.fail("picker shown"))
+        monkeypatch.setattr(training, "print_practice_table", lambda _p: None)
+        monkeypatch.setattr(training, "chprintln",
+                            lambda _ch, msg="": out.append(msg))
+        try:
+            training.do_practice(player, [])
+            assert "You have nothing left to practice." in out
         finally:
             _teardown()
 
