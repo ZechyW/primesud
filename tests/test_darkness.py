@@ -611,7 +611,7 @@ class TestConsiderPicker:
         world.chars[4] = c4
         world.rooms._data[1]["mobs"] = [4]
         combat.do_consider(_look_player(1), [])
-        assert out == ["Consider killing whom?"]
+        assert out == ["You don't see anyone here."]
 
 
 class TestKillPicker:
@@ -666,7 +666,7 @@ class TestKillPicker:
         world.chars[4] = c4
         world.rooms._data[1]["mobs"] = [4]
         combat.do_kill(_look_player(1), [])
-        assert out == ["Kill whom?"]
+        assert out == ["You don't see anyone here."]
 
     def test_empty_room_prints_prompt(self, fresh_world, monkeypatch):
         import combat
@@ -676,7 +676,7 @@ class TestKillPicker:
                             lambda title, opts: pytest.fail("picker shown"))
         _room(1, sector="inside")
         combat.do_kill(_look_player(1), [])
-        assert out == ["Kill whom?"]
+        assert out == ["You don't see anyone here."]
 
 
 class TestDoMapBlind:

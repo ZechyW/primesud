@@ -2424,7 +2424,16 @@ def do_examine(player, args):
         for d in ex_dirs:
             labels.append("{g" + EXIT_NAMES.get(d, d) + "{x")
         if not labels:
-            chprintln(player, "Examine what?")
+            # [PRIMESUD] empty menu: say why, instead of upstream's bare
+            # "Examine what?" missing-argument prompt (which reads like a
+            # picker bug when the player asked for the menu). Blind and
+            # pitch-black reuse do_look's gate lines; holylight lifts both.
+            if "holylight" not in DBG and player["affected_by"].get("blind"):
+                chprintln(player, "You can't see a thing!")
+            elif "holylight" not in DBG and room_is_dark(player["room"]):
+                chprintln(player, "It is pitch black ... ")
+            else:
+                chprintln(player, "There is nothing here to examine.")
             return
         idx = pick_from("Examine what?", labels)
         if idx < 0:

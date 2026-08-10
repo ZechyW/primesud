@@ -2054,7 +2054,9 @@ def do_consider(player, args):
         # list and are dimmed.
         vis, names = _picker_mob_lists(player, live)
         if not vis:
-            chprintln(player, "Consider killing whom?")
+            # [PRIMESUD] not upstream's "Consider killing whom?" argument
+            # prompt: an empty menu means nothing visible, not a missing arg
+            chprintln(player, "You don't see anyone here.")
             return
         idx = pick_from("Consider killing whom?", names)
         if idx < 0:
@@ -2115,10 +2117,11 @@ def do_kill(player, args):
         # undetected hide/invis mob is not betrayed by the menu; mobs that
         # can't be attacked (shopkeepers, pets, ...) sink to the bottom of the
         # list and are dimmed.  An empty room -- or one holding nothing the
-        # player can see -- prints "Kill whom?" as 1stMud does.
+        # player can see -- prints "You don't see anyone here." instead of
+        # upstream's "Kill whom?" missing-argument prompt.
         vis, names = _picker_mob_lists(player, live)
         if not vis:
-            chprintln(player, "Kill whom?")
+            chprintln(player, "You don't see anyone here.")
             return
         idx = pick_from("Kill whom?", names)
         if idx < 0:

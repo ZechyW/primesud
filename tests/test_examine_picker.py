@@ -75,7 +75,7 @@ def scene(monkeypatch):
 
 
 def test_empty_scene_prints_prompt(monkeypatch, out):
-    """No targets anywhere -> plain 'Examine what?', no picker."""
+    """No targets anywhere -> 'nothing here' notice, no picker."""
     room = {"name": "Empty", "desc": "x", "exits": {}, "items": [],
             "mobs": [], "area": "test", "sector": "inside"}
     old = dict(world.rooms._data)
@@ -94,7 +94,7 @@ def test_empty_scene_prints_prompt(monkeypatch, out):
         ROOM_DEFS._data.clear()
         ROOM_DEFS._data.update(old_defs)
     assert called == []
-    assert "Examine what?" in out
+    assert "There is nothing here to examine." in out
 
 
 def test_picker_lists_mobs_then_items(monkeypatch, out, scene):
@@ -207,23 +207,24 @@ class TestPickerRoomDetailsAndExits:
 
     def test_dark_room_hides_eds_and_exits(self, monkeypatch, out, scene):
         """eds/exits honour do_look's pitch-black gate; mobs/objs are already
-        hidden by can_see/can_see_obj, so the picker never opens at all."""
+        hidden by can_see/can_see_obj, so the picker never opens and the
+        empty-menu fallthrough explains why with do_look's dark line."""
         self._decorate()
         ROOM_DEFS._data[3001]["flags"] = {"dark": True}
         offered = self._offers(monkeypatch)
         info.do_examine(scene, [])
         assert offered == []
-        assert out == ["Examine what?"]
+        assert out == ["It is pitch black ... "]
 
     def test_blind_player_gets_no_eds_or_exits(self, monkeypatch, out, scene):
-        """eds/exits honour do_look's blind gate, silently (no 'You can't see
-        a thing!' -- the empty picker falls through to the plain prompt)."""
+        """eds/exits honour do_look's blind gate; the empty picker falls
+        through to check_blind's line rather than the bare arg prompt."""
         self._decorate()
         scene["affected_by"]["blind"] = True
         offered = self._offers(monkeypatch)
         info.do_examine(scene, [])
         assert offered == []
-        assert out == ["Examine what?"]
+        assert out == ["You can't see a thing!"]
 
 
 def test_examine_legacy_sparse_money_uses_template(out, scene):
