@@ -86,10 +86,12 @@ def _mob_candidates(player):
     tools/build_mob_index.py) and walked with raw byte arithmetic -- zero
     allocations per reject, the text index spent ~13ms/row on split
     allocs. Four bounded level buckets keep the best rows, deduplicated by
-    displayed name and area, then feed up to 20 winners round-robin so
-    every band is represented; the winners are re-sorted level descending
-    for display and their names resolve from one string-table read
-    afterwards.
+    displayed name and area, then feed up to 20 winners: the near-level
+    bands (level, level-1, level+1) round-robin so each is represented,
+    and level-2 only fills slots they leave over -- it is the weakest xp
+    band, so it should not displace a near-level target. The winners are
+    re-sorted level descending for display and their names resolve from
+    one string-table read afterwards.
     """
     level = player.get("level", 1)
     lowest = max(1, level - 2)
@@ -215,10 +217,11 @@ def _mob_candidates(player):
             order += 1
 
         winners = []
+        near = buckets[:3]
         index = 0
         while len(winners) < 20:
             added = False
-            for bucket in buckets:
+            for bucket in near:
                 if index < len(bucket):
                     winners.append(bucket[index])
                     added = True
@@ -227,11 +230,19 @@ def _mob_candidates(player):
             if not added:
                 break
             index += 1
+        # [PRIMESUD] level-2 is filler only: worst xp of the four bands, so
+        # it takes just the slots the near-level bands left empty, in its
+        # sorted order.
+        for row in buckets[3]:
+            if len(winners) >= 20:
+                break
+            winners.append(row)
 
-        # Selection stays round-robin so all four level bands are
-        # represented; display sorts level descending, then the packed key
-        # (bad record, foreign area, |level diff|, level, file order) so
-        # favorable records and the current area lead each level group.
+        # The near-level bands round-robin so each is represented and
+        # level-2 backfills; display sorts level descending, then the
+        # packed key (bad record, foreign area, |level diff|, level, file
+        # order) so favorable records and the current area lead each level
+        # group.
         # <=20 rows, so the sort's allocations are bounded.
         winners.sort(key=lambda entry: (-entry[2], entry[0]))
 

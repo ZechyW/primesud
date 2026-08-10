@@ -129,7 +129,8 @@ def test_mob_window_is_fixed_and_level_sorted(
 
 def test_mob_selection_is_round_robin_over_bands(
         indexed_player, tmp_path, monkeypatch):
-    """Selection keeps all four bands even when one could fill the list."""
+    """Near-level bands are kept even when one could fill the list; the
+    level-2 band only backfills slots they leave over."""
     rows_in = [_fight_row(200 + index, 10, "same " + str(index))
                for index in range(30)]
     rows_in.extend((
@@ -146,10 +147,11 @@ def test_mob_selection_is_round_robin_over_bands(
     assert len(rows) == 20
     levels = [row["level"] for row in rows]
     assert levels == sorted(levels, reverse=True)
-    # One row per off-level band was drawn on the first three rounds; the
-    # remaining 17 come from the level-10 bucket, which alone holds 30.
+    # One row per near-level band was drawn on the first round; the
+    # remaining 18 come from the level-10 bucket, which alone holds 30, so
+    # the level-8 filler never gets a slot.
     assert levels.count(11) == 1 and levels.count(9) == 1
-    assert levels.count(8) == 1 and levels.count(10) == 17
+    assert levels.count(8) == 0 and levels.count(10) == 18
     assert [row["vnum"] for row in rows[:2]] == [110, 200]
 
 
@@ -645,7 +647,8 @@ def test_shipped_index_matches_naive_rescoring(indexed_player):
 def _reference_mobs(player, rows_all):
     """Naive dict-based ranking (the pre-binary algorithm, no shortcuts):
     filter the fixed band, dedupe name/source, rank each level bucket, draw
-    round-robin until 20 rows remain, then sort them for display."""
+    the near-level buckets round-robin and backfill from level-2 until 20
+    rows remain, then sort them for display."""
     level = player.get("level", 1)
     lowest = max(1, level - 2)
     highest = level + 1
@@ -694,7 +697,7 @@ def _reference_mobs(player, rows_all):
     index = 0
     while len(rows) < 20:
         added = False
-        for bucket in buckets:
+        for bucket in buckets[:3]:
             if index < len(bucket):
                 rows.append(bucket[index])
                 added = True
@@ -703,6 +706,10 @@ def _reference_mobs(player, rows_all):
         if not added:
             break
         index += 1
+    for entry in buckets[3]:
+        if len(rows) >= 20:
+            break
+        rows.append(entry)
     rows.sort(key=lambda entry: (-entry[1]["level"], entry[0]))
     return [(row["vnum"], row["level"], row["tag"], row["extra"],
              row["kills"], row["deaths"], row["bad"])
