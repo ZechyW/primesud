@@ -133,8 +133,8 @@ def test_cancel_prints_nothing(monkeypatch, out, scene):
 
 class TestPickerRoomDetailsAndExits:
     """[PRIMESUD] picker also offers room extra descriptions ({c, first keyword)
-    and exits that carry a description ({g, full direction name), after the
-    mob and object entries."""
+    and exits that carry a description ({g, full direction name), after the mob
+    and room-object entries but before carried items and worn equipment."""
 
     def _decorate(self):
         """Add extra_descs and a mix of exits (with and without descriptions)."""
@@ -159,13 +159,14 @@ class TestPickerRoomDetailsAndExits:
         monkeypatch.setattr(info, "pick_from", pick)
         return offered
 
-    def test_picker_order_mobs_objs_eds_exits(self, monkeypatch, out, scene):
+    def test_picker_order_mobs_room_objs_eds_exits_carried(self, monkeypatch, out, scene):
         self._decorate()
         offered = self._offers(monkeypatch)
         info.do_examine(scene, [])
-        assert offered == [["a guard", "a rock", "a stick",
+        assert offered == [["a guard", "a rock",
                             "{cplant{x", "{csign{x",
-                            "{geast{x", "{gdown{x"]]
+                            "{geast{x", "{gdown{x",
+                            "a stick"]]
 
     def test_exits_without_desc_not_offered(self, monkeypatch, out, scene):
         self._decorate()
@@ -179,31 +180,44 @@ class TestPickerRoomDetailsAndExits:
         info.do_examine(scene, [])
         assert offered == [["a guard", "a rock", "a stick"]]
 
+    def test_pick_room_object_shows_desc(self, monkeypatch, out, scene):
+        self._decorate()
+        self._offers(monkeypatch, idx=1)
+        assert info.do_examine(scene, []) == "examine rock"
+        assert "Just a rock." in out
+
     def test_pick_ed_shows_desc(self, monkeypatch, out, scene):
         self._decorate()
-        self._offers(monkeypatch, idx=3)
+        self._offers(monkeypatch, idx=2)
         assert info.do_examine(scene, []) == "examine plant"
         assert "A leafy green plant." in out
 
     def test_pick_second_ed_shows_desc(self, monkeypatch, out, scene):
         self._decorate()
-        self._offers(monkeypatch, idx=4)
+        self._offers(monkeypatch, idx=3)
         assert info.do_examine(scene, []) == "examine sign"
         assert "The sign reads: keep out." in out
 
     def test_pick_exit_shows_desc(self, monkeypatch, out, scene):
         self._decorate()
-        self._offers(monkeypatch, idx=5)
+        self._offers(monkeypatch, idx=4)
         assert info.do_examine(scene, []) == "examine east"
         assert "A shimmering gate." in out
         assert not any("closed" in line for line in out)
 
     def test_pick_door_exit_shows_desc_and_door_state(self, monkeypatch, out, scene):
         self._decorate()
-        self._offers(monkeypatch, idx=6)
+        self._offers(monkeypatch, idx=5)
         assert info.do_examine(scene, []) == "examine down"
         assert "A dark hole." in out
         assert "The trapdoor is closed." in out
+
+    def test_pick_carried_object_after_eds_and_exits(self, monkeypatch, out, scene):
+        """carried entries sit last, so their index is shifted past eds/exits"""
+        self._decorate()
+        self._offers(monkeypatch, idx=6)
+        assert info.do_examine(scene, []) == "examine stick"
+        assert "Just a stick." in out
 
     def test_dark_room_hides_eds_and_exits(self, monkeypatch, out, scene):
         """eds/exits honour do_look's pitch-black gate; mobs/objs are already

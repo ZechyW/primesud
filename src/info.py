@@ -2390,15 +2390,18 @@ def do_examine(player, args):
     if not args:
         # [PRIMESUD] picker menu when no args (1stMud prints "Examine what?" and
         # stops); hidden/invisible entries filtered like the get/drop pickers.
-        # Order: mobs, objects, then the room's extra descriptions ({c, labelled
-        # by their first keyword) and any exit carrying a description ({g,
-        # labelled by full direction name).
+        # Order: mobs, room objects, the room's extra descriptions ({c, labelled
+        # by their first keyword), any exit carrying a description ({g, labelled
+        # by full direction name), then carried objects (inventory, then worn).
+        # Room context comes first because it is what the player can only reach
+        # from here and it would otherwise sit pages deep on the calculator's
+        # short screen; carried gear stays reachable via inventory/equipment.
         rs = world.rooms[player["room"]]
         room = ROOM_DEFS[player["room"]]
         equipped = [o for o in player["equip"].values() if o is not None]
         mobs = [i for i in rs["mobs"] if can_see(player, world.chars[i])]
-        objs = [o for o in (list(rs["items"]) + player["inv"] + equipped)
-                if can_see_obj(player, o)]
+        robjs = [o for o in rs["items"] if can_see_obj(player, o)]
+        cobjs = [o for o in (player["inv"] + equipped) if can_see_obj(player, o)]
         # [PRIMESUD] extra_descs and exit descs are room description text, so
         # they honour do_look's blind and pitch-black gates (holylight lifts
         # both), silently: the picker never prints the gate messages. Mob and
@@ -2417,12 +2420,14 @@ def do_examine(player, args):
                        if isinstance(room_exits.get(d), dict) and room_exits[d].get("desc")]
         labels = [world.chars[i].get("name") or MOB_DEFS[world.chars[i]["tpl"]]["short_descr"]
                   for i in mobs]
-        for o in objs:
+        for o in robjs:
             labels.append(obj_short(o, item_tpl(o)))
         for first_kw, desc in eds:
             labels.append("{c" + first_kw + "{x")
         for d in ex_dirs:
             labels.append("{g" + EXIT_NAMES.get(d, d) + "{x")
+        for o in cobjs:
+            labels.append(obj_short(o, item_tpl(o)))
         if not labels:
             # [PRIMESUD] empty menu: say why, instead of upstream's bare
             # "Examine what?" missing-argument prompt (which reads like a
@@ -2446,26 +2451,32 @@ def do_examine(player, args):
             _show_char_to_char_1(player, mobs[idx])
             mtpl = MOB_DEFS[world.chars[mobs[idx]]["tpl"]]
             return "examine " + mtpl.get("keywords", mtpl["short_descr"]).split()[0]
-        if idx < len(mobs) + len(objs):
-            obj = objs[idx - len(mobs)]
-            tpl = item_tpl(obj)
-            inst_desc = isinstance(obj, dict) and obj.get("description")
-            for line in _wrap_paragraphs(inst_desc or tpl.get("description", tpl["short_descr"]),
-                                         TERMINAL_COLS):
-                chprintln(player, line)
-            _examine_extras(player, obj)
-            return "examine " + tpl.get("keywords", tpl["short_descr"]).split()[0]
-        idx -= len(mobs) + len(objs)
-        if idx < len(eds):
+        idx -= len(mobs)
+        # [PRIMESUD] eds and exits sit BETWEEN the room and carried object
+        # entries, so only indices past the room objects need un-shifting
+        # before the shared object lookup below.
+        if len(robjs) <= idx < len(robjs) + len(eds):
             # same output as do_look's room extra_desc branch
-            first_kw, desc = eds[idx]
+            first_kw, desc = eds[idx - len(robjs)]
             for line in _wrap_paragraphs(desc, TERMINAL_COLS):
                 chprintln(player, line)
             return "examine " + first_kw
-        # exit description: reuse do_look's direction branch (desc + door state)
-        dir_name = EXIT_NAMES.get(ex_dirs[idx - len(eds)], ex_dirs[idx - len(eds)])
-        do_look(player, [dir_name])
-        return "examine " + dir_name
+        if len(robjs) + len(eds) <= idx < len(robjs) + len(eds) + len(ex_dirs):
+            # exit description: reuse do_look's direction branch (desc + door state)
+            d = ex_dirs[idx - len(robjs) - len(eds)]
+            dir_name = EXIT_NAMES.get(d, d)
+            do_look(player, [dir_name])
+            return "examine " + dir_name
+        if idx >= len(robjs):
+            idx -= len(eds) + len(ex_dirs)
+        obj = (robjs + cobjs)[idx]
+        tpl = item_tpl(obj)
+        inst_desc = isinstance(obj, dict) and obj.get("description")
+        for line in _wrap_paragraphs(inst_desc or tpl.get("description", tpl["short_descr"]),
+                                     TERMINAL_COLS):
+            chprintln(player, line)
+        _examine_extras(player, obj)
+        return "examine " + tpl.get("keywords", tpl["short_descr"]).split()[0]
     arg = args[0]
     do_look(player, [arg])
     obj = get_obj_here(player, arg)
