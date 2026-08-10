@@ -2371,7 +2371,9 @@ def spell_ray_of_truth(sn, level, ch, vo, target):
         dam //= 2
     align = victim.get("alignment", 0) - 350
     if align < -1000:
-        align = -1000 + (align + 1000) // 3
+        # C division truncates toward zero; Python // floors. (align + 1000) is
+        # strictly negative in this branch, so divide the magnitude and negate.
+        align = -1000 - ((-1000 - align) // 3)
     dam = (dam * align * align) // 1000000
     ret = damage(ch, victim, dam, sn, DAM_HOLY, True)
     if ret:

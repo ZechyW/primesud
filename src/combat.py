@@ -1606,7 +1606,8 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False,
 
     # THAC0
     thac0 = get_thac0(ch)
-    thac0 -= get_hitroll(ch) * skill // 100
+    # _cdiv: hitroll can be negative (curse, cursed gear); C truncates toward zero.
+    thac0 -= _cdiv(get_hitroll(ch) * skill, 100)
     thac0 += 5 * (100 - skill) // 100
     thac0 -= accuracy_bonus
 
@@ -1628,7 +1629,8 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False,
     else:
         # None = unarmed (no noun in dam_message); mirrors 1stMud !armed display branch
         noun = None if dam_type == "none" else attack_noun
-    victim_ac = get_armor(victim, _ac_type_for_damage_class(dam_class)) // 10
+    # _cdiv: AC is negative for well-armoured targets; C truncates toward zero.
+    victim_ac = _cdiv(get_armor(victim, _ac_type_for_damage_class(dam_class)), 10)
     if victim_ac < -15:  # soft cap (cf. 1stMud one_hit fight.c)
         victim_ac = -((-victim_ac - 15) // 5) - 15
 
@@ -1716,7 +1718,8 @@ def one_hit(ch, victim, dt=TYPE_UNDEFINED, bonus_damroll=0, secondary=False,
         else:
             dam *= 2 + ch["level"] // 8
 
-    dam += (get_damroll(ch) + bonus_damroll) * min(100, skill) // 100
+    # _cdiv: damroll can be negative (curse, cursed gear); C truncates toward zero.
+    dam += _cdiv((get_damroll(ch) + bonus_damroll) * min(100, skill), 100)
     dam = dam * damage_percent // 100
     dam = max(1, dam)
 
@@ -3388,7 +3391,8 @@ def do_bash(ch, args):
 
     chance += get_curr_stat(ch, "str")
     chance -= (get_curr_stat(victim, "dex") * 4) // 3
-    chance -= get_armor(victim, AC_BASH) // 25
+    # _cdiv: AC is negative for well-armoured targets; C truncates toward zero.
+    chance -= _cdiv(get_armor(victim, AC_BASH), 25)
 
     # 1stMud: if (IsSet(OFF_FAST) || IsAffected(AFF_HASTE)) chance +/- ...
     if ch["off_flags"].get("fast") or ch["affected_by"].get("haste"):
@@ -3866,7 +3870,9 @@ def do_disarm(ch, args):
     else:
         chance = chance * ch_weapon // 100
 
-    chance += (ch_vict_weapon // 2 - vict_weapon) // 2
+    # _cdiv: the outer dividend goes negative when the victim out-skills ch on
+    # the victim's own weapon type; C truncates toward zero.
+    chance += _cdiv(ch_vict_weapon // 2 - vict_weapon, 2)
 
     chance += get_curr_stat(ch, "dex")
     chance -= 2 * get_curr_stat(victim, "str")

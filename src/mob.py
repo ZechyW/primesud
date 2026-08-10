@@ -143,7 +143,10 @@ def create_mobile(tpl_vnum):
         s_dex += 2
     size_delta = SIZE_RANK.get(tpl.get("size", "medium"), 2) - 2   # 2 = SIZE_MEDIUM
     s_str += size_delta
-    s_con += size_delta // 2
+    # C division truncates toward zero; Python // floors.  size_delta is
+    # negative below SIZE_MEDIUM, and db.c:1885 divides the signed delta, so a
+    # 'small' mob (-1) gains 0 CON upstream rather than losing 1.
+    s_con += -((-size_delta) // 2) if size_delta < 0 else size_delta // 2
     _ps = ch["perm_stat"]
     _ps["str"] = s_str; _ps["dex"] = s_dex; _ps["int"] = s_int
     _ps["wis"] = s_wis; _ps["con"] = s_con
