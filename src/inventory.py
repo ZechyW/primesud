@@ -833,7 +833,8 @@ def do_inventory(player, args):
     # [PRIMESUD] output accumulated and sent as one unjoined list --
     # batch-rendered by terminal.print_lines
     out = ["{YYou are carrying {W" + num_str(len(player["inv"])) + "/" + num_str(max_carry)
-           + "{Y items:{x"]
+           + "{Y items with {W" + num_str(get_carry_weight(player) // 10) + "/"
+           + num_str(can_carry_w(player) // 10) + "{Y weight:{x"]
     if not player["inv"]:
         chprintln(player, out)
         return
