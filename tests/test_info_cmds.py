@@ -13,7 +13,8 @@ import combat
 import commands
 import info
 import world
-from world import ROOM_DEFS
+from handler import _char_base
+from world import MOB_DEFS, ROOM_DEFS
 
 from scene_fixture import out, scene  # noqa: F401
 
@@ -73,3 +74,61 @@ class TestConsider:
         """[PRIMESUD] The no-arg picker returns the typed form for history."""
         monkeypatch.setattr(combat, "pick_from", lambda title, opts: 0)
         assert combat.do_consider(scene, []) == "consider guard"
+
+
+class TestPickerSafeDemotion:
+    """[PRIMESUD] consider/kill pickers sink unattackable mobs (is_safe_spell)
+    below attackable ones and dim them, keeping room order within each group."""
+
+    def _shopkeeper_first(self):
+        """Put an unattackable shopkeeper ahead of the guard in room order."""
+        MOB_DEFS._data[9002] = {"short_descr": "a shopkeeper",
+                                "keywords": "shopkeeper", "level": 10,
+                                "shop": {"profit_buy": 100, "profit_sell": 100}}
+        keeper = _char_base()
+        keeper.update({"is_npc": True, "id": 3, "tpl": 9002, "room": 3001,
+                       "level": 10, "hit": 50, "max_hit": 50})
+        world.chars[3] = keeper
+        world.rooms._data[3001]["mobs"] = [3, 2]
+
+    def _offers(self, monkeypatch, idx=-1):
+        offered = []
+
+        def pick(title, opts):
+            offered.append(opts)
+            return idx
+
+        monkeypatch.setattr(combat, "pick_from", pick)
+        return offered
+
+    def test_consider_picker_demotes_and_dims(self, scene, out, monkeypatch):
+        self._shopkeeper_first()
+        offered = self._offers(monkeypatch)
+        combat.do_consider(scene, [])
+        assert offered == [["a guard", "{Da shopkeeper{x"]]
+
+    def test_kill_picker_demotes_and_dims(self, scene, out, monkeypatch):
+        self._shopkeeper_first()
+        offered = self._offers(monkeypatch)
+        combat.do_kill(scene, [])
+        assert offered == [["a guard", "{Da shopkeeper{x"]]
+
+    def test_pick_maps_to_reordered_mob(self, scene, out, monkeypatch):
+        # index 0 is the guard even though the shopkeeper comes first in the room
+        self._shopkeeper_first()
+        self._offers(monkeypatch, idx=0)
+        assert combat.do_consider(scene, []) == "consider guard"
+
+    def test_pick_maps_to_demoted_mob(self, scene, out, monkeypatch):
+        # index 1 is the demoted shopkeeper, not the guard
+        self._shopkeeper_first()
+        self._offers(monkeypatch, idx=1)
+        combat.do_consider(scene, [])
+        assert "The shopkeeper wouldn't like that." in out
+        assert not any("match" in l for l in out)  # no level-diff line
+
+    def test_kill_pick_maps_to_reordered_mob(self, scene, out, monkeypatch):
+        self._shopkeeper_first()
+        self._offers(monkeypatch, idx=0)
+        monkeypatch.setattr(combat, "multi_hit", lambda *a, **k: None)
+        assert combat.do_kill(scene, []) == "kill guard"

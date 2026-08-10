@@ -2001,6 +2001,37 @@ def do_backstab(ch, args, victim=None):
     return None
 
 
+def _picker_mob_lists(player, live):
+    """Build the id/label lists for the no-args consider/kill pickers. [PRIMESUD]
+
+    Mobs the player cannot see are dropped, so an undetected hide/invis mob is
+    not betrayed by the menu.  Visible mobs keep room order, but ones the
+    player cannot attack (shopkeepers, pets, quest targets -- anything
+    is_safe_spell protects) are demoted below the attackable ones and dimmed.
+
+    Args:
+        player (dict): Player state dict.
+        live (list): Mob ids present in the player's room.
+
+    Returns:
+        tuple: (ids, names) -- parallel lists of mob ids and picker labels.
+    """
+    kill_ids = []
+    safe_ids = []
+    for i in live:
+        mob = world.chars[i]
+        if not can_see(player, mob):
+            continue
+        if is_safe_spell(player, mob, False):
+            safe_ids.append(i)
+        else:
+            kill_ids.append(i)
+    names = [MOB_DEFS[world.chars[i]["tpl"]]["short_descr"] for i in kill_ids]
+    for i in safe_ids:
+        names.append("{D" + MOB_DEFS[world.chars[i]["tpl"]]["short_descr"] + "{x")
+    return kill_ids + safe_ids, names
+
+
 def do_consider(player, args):
     """Judge a potential opponent's level relative to yours (cf. 1stMud do_consider in act_info.c).
 
@@ -2018,12 +2049,13 @@ def do_consider(player, args):
     else:
         # [PRIMESUD] picker menu when no args (1stMud prints "Consider killing whom?"
         # and stops). Offers only mobs the player can actually see, so an
-        # undetected hide/invis mob is not betrayed by the menu.
-        vis = [i for i in live if can_see(player, world.chars[i])]
+        # undetected hide/invis mob is not betrayed by the menu; mobs that
+        # can't be attacked (shopkeepers, pets, ...) sink to the bottom of the
+        # list and are dimmed.
+        vis, names = _picker_mob_lists(player, live)
         if not vis:
             chprintln(player, "Consider killing whom?")
             return
-        names = [MOB_DEFS[world.chars[i]["tpl"]]["short_descr"] for i in vis]
         idx = pick_from("Consider killing whom?", names)
         if idx < 0:
             return
@@ -2077,16 +2109,21 @@ def do_kill(player, args):
         if mob_id is None:
             chprintln(player, "They aren't here.")
             return
-    elif not live:
-        chprintln(player, "Kill whom?")
-        return
     else:
-        # [PRIMESUD] picker menu when no args (1stMud prints "Kill whom?" and stops)
-        names = [MOB_DEFS[world.chars[i]["tpl"]]["short_descr"] for i in live]
+        # [PRIMESUD] picker menu when no args (1stMud prints "Kill whom?" and
+        # stops). Offers only mobs the player can actually see, so an
+        # undetected hide/invis mob is not betrayed by the menu; mobs that
+        # can't be attacked (shopkeepers, pets, ...) sink to the bottom of the
+        # list and are dimmed.  An empty room -- or one holding nothing the
+        # player can see -- prints "Kill whom?" as 1stMud does.
+        vis, names = _picker_mob_lists(player, live)
+        if not vis:
+            chprintln(player, "Kill whom?")
+            return
         idx = pick_from("Kill whom?", names)
         if idx < 0:
             return
-        mob_id = live[idx]
+        mob_id = vis[idx]
 
     victim = world.chars[mob_id]
 
