@@ -3,6 +3,7 @@ import pytest
 
 import handler
 import info
+from colors import color_len
 
 
 @pytest.fixture
@@ -160,3 +161,70 @@ def test_help_is_name():
     assert info._help_is_name("fire", "'ACID BLAST' FIREBALL")
     assert not info._help_is_name("blast acid", "'ACID BLAST' FIREBALL")
     assert not info._help_is_name("frost", "'ACID BLAST' FIREBALL")
+
+
+def test_help_body_reflows_source_wrapping(monkeypatch, tmp_path):
+    help_file = tmp_path / "help.txt"
+    monkeypatch.setattr(info, "HELP_FILE", str(help_file))
+    monkeypatch.setattr(info, "TERMINAL_COLS", 12)
+
+    help_file.write_text("Alpha beta\ngamma delta.\n")
+    first = info._help_body(0)
+    help_file.write_text("Alpha beta gamma\ndelta.\n")
+
+    assert info._help_body(0) == first == ["Alpha beta", "gamma delta."]
+
+
+def test_help_body_preserves_structural_lines(monkeypatch, tmp_path):
+    help_file = tmp_path / "help.txt"
+    help_file.write_text(
+        "Syntax: list\n"
+        "\n"
+        "Choices:\n"
+        "  first choice\n"
+        "  second choice\n"
+        "\n"
+        ".nf\n"
+        "LEFT    RIGHT\n"
+        "one     two\n"
+        ".fi\n"
+        "\n"
+        "Tail prose.\n")
+    monkeypatch.setattr(info, "HELP_FILE", str(help_file))
+    monkeypatch.setattr(info, "TERMINAL_COLS", 30)
+
+    assert info._help_body(0) == [
+        "Syntax: list", "", "Choices:", "  first choice", "  second choice", "",
+        "LEFT    RIGHT", "one     two", "", "Tail prose."]
+
+
+def test_help_body_colour_hidden_indent_stays_hard(monkeypatch, tmp_path):
+    # WORSHIP: "{x       : worship list" indents behind a colour code
+    help_file = tmp_path / "help.txt"
+    help_file.write_text(
+        "Syntax : worship <deity>\n"
+        "{x       : worship list\n")
+    monkeypatch.setattr(info, "HELP_FILE", str(help_file))
+    monkeypatch.setattr(info, "TERMINAL_COLS", 64)
+
+    assert info._help_body(0) == [
+        "Syntax : worship <deity>", "{x       : worship list"]
+
+
+def test_help_body_wrap_is_colour_aware(monkeypatch, tmp_path):
+    help_file = tmp_path / "help.txt"
+    help_file.write_text("{RRed words manually\nwrapped across source lines.{x\n")
+    monkeypatch.setattr(info, "HELP_FILE", str(help_file))
+    monkeypatch.setattr(info, "TERMINAL_COLS", 16)
+
+    body = info._help_body(0)
+    assert all(color_len(line) <= 16 for line in body)
+    assert body[1].startswith("{R")
+
+
+def test_shop_commands_help_reflows_original_hard_wrap(help_out):
+    info.do_help(PLAYER, ["buy"])
+
+    assert "BUY buys an object from a shop keeper. When multiple items of" in help_out
+    assert "the same name are listed, type 'buy n.item', where n is the" in help_out
+    assert all(color_len(line) <= info.TERMINAL_COLS for line in help_out)

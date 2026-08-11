@@ -4,7 +4,7 @@ import terminal
 import world
 from automap import build_compact_lines, build_full_lines, COMPACT_W
 from classes import class_long, class_short
-from colors import color_len, upper, draw_line
+from colors import color_len, color_wrap_full, upper, draw_line
 from combat import get_thac0
 from config import (TERMINAL_COLS, EXIT_ORDER, EXIT_NAMES, POS_FROM_SHORT,
                     SECTOR_COLORS,
@@ -1356,15 +1356,57 @@ def _help_is_name(sstr, namelist):
 
 
 def _help_body(offset):
-    """Read one help body at its prebuilt byte offset. [PRIMESUD]"""
+    """Read and screen-wrap one help body at its prebuilt byte offset. [PRIMESUD]
+
+    Flush-left source lines form reflowable paragraphs. Blank lines retain
+    paragraph spacing; blocks containing indentation or ``Syntax:`` retain
+    their source line breaks. ``.nf``/``.fi`` delimit explicit fixed-layout
+    blocks for flush-left tables and ASCII art.
+    """
     body = []
+    block = []
+    fixed = False
+
+    def flush_block():
+        if not block:
+            return
+        hard_lines = fixed
+        if not hard_lines:
+            for text in block:
+                i = 0
+                while i + 1 < len(text) and text[i] == "{":
+                    i += 2  # indentation may hide behind colour codes
+                if (i < len(text) and (text[i] == " " or text[i] == "\t")) \
+                        or text.startswith("Syntax:"):
+                    hard_lines = True
+                    break
+        if hard_lines:
+            for text in block:
+                body.extend(color_wrap_full(text, TERMINAL_COLS))
+        else:
+            body.extend(color_wrap_full(" ".join(text.strip() for text in block),
+                                        TERMINAL_COLS))
+        del block[:]
+
     with open(HELP_FILE) as f:
         f.seek(offset)
         while True:
             line = f.readline()
             if not line or line[0] == "#":
                 break
-            body.append(line.rstrip("\n"))
+            line = line.rstrip("\n")
+            if line == ".nf":
+                flush_block()
+                fixed = True
+            elif line == ".fi":
+                flush_block()
+                fixed = False
+            elif not line:
+                flush_block()
+                body.append("")
+            else:
+                block.append(line)
+    flush_block()
     return body
 
 

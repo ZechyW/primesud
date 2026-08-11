@@ -93,6 +93,9 @@ that into features rather than holes.
   upstream's 50-entry `unknown` bucket is split, and helps for systems
   PrimeSUD doesn't port (OLC, clans, deities, immortal powers) sit at level 51
   instead of cluttering the browser and `index` (docs/PRIME_UX.md).
+- **Help text reflowed to screen width** -- help bodies re-wrap upstream's
+  80-column prose to the Prime's 64 columns at read time; indented lines,
+  `Syntax:` blocks, and `.nf`/`.fi`-marked tables keep their source layout.
 - **Name picker and free rename** -- chargen offers six generated fantasy
   names (1stMud's namegen syllable pools) with reroll and typed-entry
   options, and `rename` changes your name anytime -- no roster, no

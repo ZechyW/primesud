@@ -10,6 +10,10 @@ this to rebuild the index (any edit shifts byte offsets). Format:
     <text line>
     ...
 
+Flush-left body lines form reflowable paragraphs. Blank lines separate
+paragraphs; indentation and ``Syntax:`` preserve source line breaks. Wrap
+flush-left tables or ASCII art in ``.nf``/``.fi`` marker lines.
+
 Writes '<level>|<category>|<offset>|<keywords>' per entry, where offset is
 the byte offset of the entry's first text line in help.txt (LF line endings
 -- .gitattributes marks both files -text so git never normalizes them).

@@ -66,6 +66,7 @@ Syntax: cast 'chill touch' <victim>
 This spell inflicts damage on the victim and also reduces the
 victim's strength by one.
 #-1|creation|'CLASS HELP' CLASS CLASSES
+.nf
 {n has the following classes for player characters:
 {x  Mage      : powerfull magic users
 {x  Cleric    : healing magics, some combat
@@ -74,6 +75,7 @@ victim's strength by one.
 {x  Paladin   : crusaders of the light, some magic.
 {x  Ranger   : Masters of earth and animals
 {x  Swordsman : refined single-sword duelist
+.fi
 
 Different races have different starting statistics, and also
 different stat maximums for magic items and training.
@@ -263,12 +265,14 @@ class, which can be selected for a balanced selection of skills
 at a somewhat reduced cost.
 
 The experience breakdown is as follows:
+.nf
 points   exp/level     points   exp/level
 40        1000         90        6000
 50        1500         100       8000
 60	  2000         110      12000
 70        3000         120      16000
 80        4000         130      24000
+.fi
 The table continues in a similar manner for higher point totals.
 #-1|skills|'HAND TO HAND'
 Hand to hand combat is a rare skill in the lands of Midgaard.
@@ -412,12 +416,14 @@ This spell duplicates the built-in RECALL ability.  It is
 provided solely for Merc-based muds which wish to eliminate the
 built-in ability while still providing the spell.
 #0|credits|1STMUD '1STMUD CREDITS'
+.nf
 1stMud ROM Derivative (c) 2001-2004 by Ryan Jennings
 {G  http://firstmud.com/  {R<admin@firstmud.com>
 {x
 Mailing List
 {G  http://firstmud.com/scripts/sf-list.php  {R<list@firstmud.com>
 {x
+.fi
 #51|olc|AEDIT
 Syntax: edit area        -Enters the editor for the current
 area. Syntax: edit area <vnum> -Enters the editor for the
@@ -425,6 +431,7 @@ selected area.
 
 The follow commands are available from within the AEDITOR:
 
+.nf
 age <number>        - set the age of the area
 builder <player>    - toggle that builder's access
 commands            - prints a list of possible commands
@@ -439,6 +446,7 @@ vnum <lower> <upper>- set the lower and upper vnum's
 lvnum <lower>       - set the lower vnum
 uvnum <upper>       - set the upper vnum
 <flags>             - area flags, type ? AREA for a list
+.fi
 #-1|commands|AFFECTS AFFECT
 This command is used to show all the spells affecting your
 character. At low levels, only the spell name will be displayed,
@@ -591,6 +599,7 @@ still deal out a stinging blow.  Mages and thieves cannot use
 this group.  The attack spell group consists of the following
 spells:
 
+.nf
 demonfire	a powerful, but very evil, spell
 dispel evil	torments evil foes
 dispel good	calls down unholy power on good creatures
@@ -598,6 +607,7 @@ earthquake	brings the power of earth to bear against your foes
 flamestrike	sends a column of flame from the heavens
 heat metal	heats metal equipment to searing tempatures
 ray of truth	sends forth a blinding ray of holy energy
+.fi
 #0|commands|AUCTION BARTER
 Syntax: Auction <item> [minbid]
 Syntax: barter <message>
@@ -627,6 +637,7 @@ See also BID.
 splitting gold and sacrificing corpses.  The commands are as
 follows:
 
+.nf
 autolist  : list all automatic actions
 autoloot  : take all equipment from dead mobiles
 autogold  : take all gold from dead mobiles
@@ -637,6 +648,7 @@ autoassit : makes you help group members in combat
 autoprompt: display a prompt every time text is sent
 automap   : display a map in room descriptions
 autodamage: display damage amounts
+.fi
 
 Typing a command sets the action , typing it again removes it.
 #-1|commands|BACKSTAB
@@ -659,10 +671,12 @@ Every character starts with two skill groups, one for their
 class and a default set that all characters receive.  The
 default skills are:
 
+.nf
 recall  	essential escape skill (see help recall)
 scrolls		reading of scrolls and other magical volumes
 staves		use of magical staves
 wands		use of magical wands
+.fi
 
 for class defaults, check the classes themselves.
 #51|deities|BAST
@@ -682,9 +696,11 @@ others.  It consists of various charming magics, well suited for
 turning your foes to your cause. Only mages and thieves have
 access to the beguiling magics, which consist of the following:
 
+.nf
 calm            if successful, stops all fighting in the room
 charm person	turns an enemy into a trusted friend
 sleep		puts a foe into enchanted slumber
+.fi
 #51|deities|BELENUS
 {GBelenus {x(Bel-in-us)
 Aspects       - Harvest, Light, Strength. Outlook - Lawful Good.
@@ -702,11 +718,13 @@ upon your allies. They are often restricted to those of like
 alignment.  Only clerics and warriors may use these spells.  The
 benedictions spell group consists of the following:
 
+.nf
 bless		bestows divine favor upon the target
 calm		if successful, stops all fighting in the room
 frenzy		puts the recipient into beserker rage
 holy word	aids your allies while calling divine wrath upon your foes
 remove curse	removes malevolent magic from players and items
+.fi
 #-1|skills|BERSERK
 Only powerful warriors can master berserking, the ability to
 enter insane rage in combat.  Its effects are not altogether
@@ -912,6 +930,7 @@ All clerics begin with skill in the mace.  Other weapon or
 shield skills must be purchased, many at a very dear cost.  The
 default skill selection for clerics is as follows:
 
+.nf
 skills:
 flail		the proper use of flails
 
@@ -926,6 +945,7 @@ maladictions	an assortment of curses
 protective	defensive magics, including the powerful sanctuary spell
 transportation	spells for getting from here to there
 weather         spells for conjuring and mastering the elements
+.fi
 #0|interface|CLIENT FEATURES SUPPORT IMP MIP PUEBLO PORTAL MCCP MSP MXP FIRECLIENT MUSHCLIENT ZMUD PROTOCOL
 {CA:{R PROTOCOLS{B: {n supports the following:
  {C1{c.{Y MXP{W (Mud eXtension Protocol)
@@ -973,6 +993,7 @@ part of most wizards' collections. Clerics and thieves do not
 have access to these spells.  In order of power, the combat
 spell group contains the following magics:
 
+.nf
 magic missile	send a weak energy bolt into a foe
 chill touch	weakens your enemy with a frigid grasp
 burning hands	sends a blast of fire into your foe
@@ -982,6 +1003,7 @@ colour spray	blasts your opponent with a rainbow spray, which may blind him
 fireball	a powerful spell, great for burning your enemy to ashes
 acid blast	sends forth a stream of acid to eradicate your foes
 chain lightning	sends lightning bolts arcing through foes
+.fi
 #0|commands|COMPARE
 Syntax: compare <object-1> <object-2>
 Syntax: compare <object>
@@ -1010,12 +1032,14 @@ or drink, and use their powers to create nourishment as
 required.  All classes may become learned in this group, which
 contains these spells:
 
+.nf
 continual light	creates an eternal light source
 create food	produces a nourishing mushroom
 create rose	creates a beautiful red rose
 create spring	calls forth a small but pure spring from the ground
 create water	fills any available container with water
 floating disc	creates a floating disc of force perfect for hauling treasure
+.fi
 #0|commands|CREDITS
 Syntax: credits
 
@@ -1026,9 +1050,11 @@ The curative spells are used to heal various unpleasant conditions that can
 befall an adventurer.   For healing of damage, see the healing spell group.
 Curative spells cannot be used by mages or thieves.
 
+.nf
 cure blindness	restored sight to the blind
 cure disease	heals the plague
 cure poison	removes the harmful effects of poison
+.fi
 #0|spells|CURSE
 Syntax: cast 'curse' <character>
 
@@ -1171,6 +1197,7 @@ information. They can be used to see hidden objects, give
 information about treasure, or even scry out the true nature of
 your foe.  All classes except warriors can use detection spells.
 
+.nf
 detect evil	reveals the aura of evil monsters
 detect good	similar to above, only for good monsters
 detect hidden	shows the whereabouts of hidden foes
@@ -1181,6 +1208,7 @@ farsight	searches for living beings near the caster
 identify	gives information about the nature of an object
 know alignment	determines the moral character of a monster or person
 locate object	finds a specific item
+.fi
 #-1|credits|DIKU 'DIKU CREDITS'
                     Original game idea, concept, and design:
 
@@ -1222,11 +1250,13 @@ weapons upon your foes. Only mages have the mental training
 necessary to cast these spells, and few of them ever reach the
 level of mastery required to use them.
 
+.nf
 acid breath	 uses the black dragon's attack upon an enemy
 fire breath	 calls forth the flames of a red dragon
 frost breath	 drains the life from a foe with the power a white dragon
 gas breath	 suffocates your enemies with poison gas
 lightning breath summons the electrical fury of a blue dragon
+.fi
 #0|creation|DRAGONS
 Dragons are big mystical creatures with leathery wings, horns
 and claws. They are good at most every class except thieves due
@@ -1318,19 +1348,23 @@ properties. Currently, this spell group consists of enchant
 weapon and enchant armor, although more will be added in the
 future.  Only mages may enchant.
 
+.nf
 enchant weapon	increases the hit and damage bonuses of a weapon
 enchant armor	increases the protective value of armor
 fireproof       shields items from the harmful effects of fire and acid
 recharge	restores power to a depleted wand or staff
+.fi
 #-1|creation|ENHANCEMENT
 The enhancement spells improve upon the body's pontential,
 allowing feats of superhuman strength and speed.  However, these
 spells may often have harmful effects upon the recipient.
 
+.nf
 giant strength	grants increased strength
 haste		doubles the speed of the target, but slows down healing
 infravision	allows monsters to be seen in the dark
 refresh		restores energy to tired adventurers
+.fi
 #-1|commands|ENVENOM
 The envenom skill is a cowardly skill practiced only by thieves,
 designed to win a battle through alchemy and treachery rather
@@ -1368,6 +1402,7 @@ container'.
 #51|olc|EXIT
 For exits, type the direction (north/s/e/w) followed by:
 
+.nf
 dig <vnum>         - creates the room and makes a two way link
 link <room vnum>   - make a two way link
 room <room vnum>   - make a one way link (use with caution)
@@ -1376,6 +1411,7 @@ name <door name>   - makes the door's name/keywords = to the given name
 desc               - edit the description of the exit
 delete             - delete this exit
 <exit-flags>       - type ? EXIT for a list(make exit door, locked etc.)
+.fi
 
 The exit flags are presented in the following manner.  The
 capitalized flags are ones not included in the reset info.  i.e.
@@ -1401,6 +1437,7 @@ both his weapon and his opponent's.
 
 The weapon skills consist of the following:
 
+.nf
 weaponsmaster	skill group of all weapons listed below (save exotic weaponry)
 axe		the use of axes, ranging from hand to great (but not halberds)
 dagger		the use of knives and daggers, and other stabbing weapons
@@ -1411,6 +1448,7 @@ spear		this skill covers both spears and staves, but not polearms
 sword		the warrior's standby, from rapier to claymore
 whip		the use of whips, chains, and bullwhips
 exotic		the use of strange magical weapons
+.fi
 
 The exotic skill cannot be purchased, and is dependent solely
 upon level.
@@ -1545,10 +1583,12 @@ The gain command is used to learn new skills, once the proper
 trainer has been found. (Check New Thalos) The following options
 can be used with gain:
 
+.nf
 gain list:    list all groups and skills that can be learned
 gain points:  lower your creation points by 1 (costs two sessions)
 gain <name>:  add a skill or skill group, at the listed cost
 gain convert: turns 10 practices into one training session
+.fi
 
 Gain uses training sessions, not practices. (see 'help train')
 Gained skills and groups do NOT increase your experience per
@@ -1714,10 +1754,12 @@ generally turn the body against itself.  Only priests and
 warriors may use this spell group. In order of power, the
 harmful spells are:
 
+.nf
 cause light	inflicts minor wounds on an enemy
 cause serious	inflicts wounds on a foe
 cause critical  causes major damage to the target
 harm		the most deadly harmful spell
+.fi
 #-1|spells|HASTE
 Syntax: cast 'haste' <target>
 
@@ -1740,12 +1782,14 @@ as poison, see the curative spell group.  Only warriors and
 priests have access to this group. In order of power, the
 healing spells are:
 
+.nf
 cure light	heals minor wounds
 refresh		restores vigor to a tired adventurer
 cure serious	heals wounds
 cure critical	closes all but the worst wounds
 heal		the most powerful healing spell
 mass healing	casts a heal spell on each player in the room
+.fi
 #0|commands|HELP
 Syntax: help
 Syntax: help <keyword>
@@ -1870,9 +1914,11 @@ the party.  Currently, the illusion group is very small, but it
 will be expanded in the future. Only thieves and mages can cast
 illusion spells, which consist of the following:
 
+.nf
 invis		turns the target invisible
 mass invis	turns the caster's group invisible
 ventriloquate	allows the caster to put words in someone's mouth
+.fi
 #51|immortal|IMMORTAL IMMORT GOD WIZARD WIZ
 'Immortal' (often, simply, 'immort') refers to players who have
 reached the highest attainable levels in the game.  Here, anyone
@@ -2120,6 +2166,7 @@ All mages begin with skill in the dagger. Any other weapon
 skills must be purchased, at a very high rate.  The default
 skill selection for mages is as follows:
 
+.nf
 skills:
 lore		the lore of magical items
 
@@ -2133,11 +2180,13 @@ maladictions	a selection of curses fit for any witch
 protective	defensive magics, ranging from armor to stone skin
 transporation	spells for getting from here to there
 weather		spells for conjuring and mastering the elements
+.fi
 #-1|creation|MALADICTIONS
 Maladictions are a group of curses and other baneful spells,
 designed to cripple, inconvenience, or torture, rather than kill
 outright.  These spells may be cast by any class.
 
+.nf
 blindess	strikes the target blind
 curse		prevents recalling and weakens the target in combat
 energy drain	drains experience and mana, while strengthening the caster
@@ -2145,6 +2194,7 @@ plague		causes the target to suffer a slow, painful death from plague
 poison		weaker than plague, but often fatal
 slow		slows your enemies down, reducing their rate of attack
 weaken		drains the strength of the target
+.fi
 #51|olc|MANADICE
 A high number of dice makes for less variance in mobiles mana.
 The values the server generates for merc-type mobs is
@@ -2166,6 +2216,7 @@ selected mobile.
 
 The following commands are available from within the MEDITOR:
 
+.nf
 alignment <value>   - set the mobile's alignment
 commands            - prints a list of possible commands
 create <vnum>       - creates mobile with specified vnum
@@ -2193,6 +2244,7 @@ size		    - size, type ? SIZE for a list
 hitdice		    - dice to toss to get mobile's hitpoints
 manadice	    - dice to toss to get mobile's mana
 damdice		    - dice to toss to get mobile's hand to hand damage
+.fi
 
 type 'help HITDICE', 'help MANADICE', 'help DAMDICE' for lists
 of reasonable dice combinations on different levels.
@@ -2274,10 +2326,13 @@ Domains       - Death, Fire, Strength, War.
 In order to create a role-playing and adventure atmosphere throughout the
 realms of {n, you must choose a name accordingly explained below:
 
+.nf
 {c{CACCEPTABLE:
 {W1){c  Proper names, medieval or modern. i.e  (Takasi, Mitra)
 {c{W2){c  Created names with a medieval or fictional sound.  (Priatros, Sansoles)
+.fi
 
+.nf
 {CUNACCEPTABLE:
 {W1){c  Vulgar or sexually suggestive names.  (No examples needed)
 {W2){c  Nouns which are names of animals.  (Horse, Doll)
@@ -2285,6 +2340,7 @@ realms of {n, you must choose a name accordingly explained below:
 {W4){c  Titles which imply rank or privelege.   (Lord, Sir,...)
 {W5){c  Scientific phrases, words. (Proof, Logic, Electrics...)
 {W6){c  Object names. (Necklace, Staff, Sword etc)
+.fi
 
 Anyway, immortals may ask you to choose another name if they
 consider your name inappropriate.
@@ -2310,6 +2366,7 @@ Use these commands to walk in a particular direction.
 #-1|commands|NOTE 'NOTE WRITE' 'NOTE READ' BOARD 'NOTE SYSTEM' BOARDS UNREAD 'NOTE REPLY'
 Syntax:
 
+.nf
 board [number|name]          Shows or changes board.
 note                         Reads next note.
 note read [number]           Reads a certain note.
@@ -2322,6 +2379,7 @@ note catchup all             Marks all notes on all boards as read.
 note reset                   Marks all notes in this board unread.
 note print <number>          Prints a note to an object for viewing.
 note forward <number> <to>   Forwards a note to someone.
+.fi
 
 These commands are used for the new note system. Instead of just
 one board, there are several, each with its special purpose.
@@ -2385,6 +2443,7 @@ selected object.
 
 The following commands are available from within the OEDITOR:
 
+.nf
 addaffect           - applies an affect to an object, no args for help
 delaffect           - removes an affect to an object, no args for help
 commands            - prints a list of possible commands
@@ -2406,6 +2465,7 @@ type         	    - type of object, type ? TYPE for a list
 extra		    - attributes of object, type ? EXTRA for a list
 wear                - where object is worn, type ? WEAR for a list
 material            - material the object is made from
+.fi
 #51|olc|OLC EDIT
 Syntax: EDIT AREA [create/reset] [vnum]		- Area Creation and Repoping.
 Syntax: EDIT ROOM ( [create] [vnum] )		- Room Creation and Editing.
@@ -2490,6 +2550,7 @@ All paladins begin with skill in the mace.  Other weapon or
 shield skills must be purchased, many at a very dear cost.  The
 default skill selection for paladins is as follows:
 
+.nf
 skills:
 flail		the proper use of flails
 
@@ -2504,6 +2565,7 @@ maladictions	an assortment of curses
 protective	defensive magics, including the powerful sanctuary spell
 transportation	spells for getting from here to there
 weather         spells for conjuring and mastering the elements
+.fi
 #-1|skills|PARRY
 If at first you fail to dodge, block it.  Parry is useful for
 deflecting attacks, and is succesful more often than dodge.
@@ -2623,16 +2685,17 @@ this group are several spells for dispeling hostile magics. Any
 class may use this group, which consists of the following
 spells:
 
-armor           provides the target with an extra layer of
-defense cancellation a powerful dispel, used for removing spells
-from friends dispel magic   removes spells from enemies, not as
-effective as cancel fireproof       shields items from the
-harmful effects of fire and acid protection evil provides
-defense from the attacks of evil creatures protection good
-protects from the attacks of good beings sanctuary  reduces all
-damage taken by the recipient by half shield                puts
-a shimmering shield between you and your enemies stoneskin turns
-skin hard as stone, providing a huge armor boost
+.nf
+armor		provides the target with an extra layer of defense
+cancellation	a powerful dispel, used for removing spells from friends
+dispel magic	removes spells from enemies, not as effective as cancel
+fireproof	shields items from the harmful effects of fire and acid
+protection evil	provides defense from the attacks of evil creatures
+protection good protects from the attacks of good beings
+sanctuary	reduces all damage taken by the recipient by half
+shield		puts a shimmering shield between you and your enemies
+stoneskin	turns skin hard as stone, providing a huge armor boost
+.fi
 #0|world|QUEST QUESTS
 Certain characters in the game will allow you to go on quests to
 recover an item or kill another mob. To go on a quest, you must
@@ -2744,6 +2807,7 @@ with nature and try not to harm it in any way. They despise
 people destroying nature for fun or for profit.  Rangers begin
 with skill in the axe.
 
+.nf
 skills:
 weaponsmaster	this group provides knowledge of all weapon types
 shield block	the art of parrying with a shield
@@ -2752,6 +2816,7 @@ enhanced damage	this skill multiplies your damage in battle
 parry		the art of parrying with weapons
 rescue		allows you to take the blows aimed for a companion
 third attack	allows the skilled ranger to land three blows in one round
+.fi
 #0|commands|RECALL /
 Syntax: RECALL
 
@@ -2773,6 +2838,7 @@ Syntax: edit room		-Enters the editor for the current room.
 
 The following commands are available from within the REDITOR:
 
+.nf
 commands            - prints a list of possible commands
 create <vnum>       - creates a room with a certain vnum
 desc                - edit description of room
@@ -2788,6 +2854,7 @@ mlist               - lists mobiles in this area.
 room <flags>        - room attributes, type ? ROOM for a list
 sector <type>       - terrain of room, type ? SECTOR for a list
 <direction>         - see help EXIT, or type <dir> ?
+.fi
 #0|spells|REFRESH
 Syntax: cast refresh <character>
 
@@ -3007,10 +3074,12 @@ is 80.
 #51|olc|SEDIT
 Syntax:
 
+.nf
 sedit delete         <social>
 sedit new            <social>
 sedit show           <social>
 sedit <string-name>  <social> [string]
+.fi
 
 SEDIT allows online creation, deletion and editting of socials.
 
@@ -3077,6 +3146,7 @@ sex etc.
 So, to make a new social called 'epoke' which would poke eyes
 out, you would do the following:
 
+.nf
 SEDIT NEW epoke
 SEDIT cnoarg epoke Poke whose eyes out? (message sent to player)
 SEDIT cfound epoke You poke $N's eyes out!
@@ -3084,6 +3154,7 @@ SEDIT vfound epoke $n pokes your eyes out! Ouch..
 SEDIT ofound epoke $n pokes $N's eyes out!
 SEDIT cself  epoke Being bored, you poke your own eyes out.
 SEDIT oself  epoke $n pokes $s eyes out!
+.fi
 
 To get more examples, type SEDIT SHOW <social-name> to see one
 of the existing socials.
@@ -3159,9 +3230,11 @@ group who are in the same room as you.  It's customary to SPLIT
 the loot after a kill.  The first argument is the amount of silver
 the split (0 is acceptable), and the second gold (optional).
 Examples:
+.nf
 split 30 	--> split 30 silver
 split 20 50	--> split 20 silver, 50 gold
 split  0 10	--> split 10 gold
+.fi
 #0|commands|STANCES SSKILL
 Syntax: stance <style>
       : sskill
@@ -3242,6 +3315,7 @@ delete a character, and you cannot be forced to delete.  Typing
 delete with an argument will return your character to 'safe'
 status if you change your mind after the first delete.
 #-1|commands|SUMMARY
+.nf
 MOVEMENT                            GROUP
 north south east west up down       follow group gtell split gprompt
 exits recall
@@ -3259,6 +3333,7 @@ list buy sell value                 note
 COMBAT                              OTHER
 kill flee kick rescue disarm        ! save quit
 backstab cast wimpy                 practice train
+.fi
 
 
 For more help, type 'help <topic>' for any command, skill, or
@@ -3298,6 +3373,7 @@ in steal as well.  Any other weapon skills must be purchased,
 unless the default selection is chosen.  This default skill
 package includes:
 
+.nf
 skills:
 mace		the use of maces and other blunt weapons
 sword		swordplay and fencing
@@ -3310,6 +3386,7 @@ hide		the art of remaining undetected in a room
 peek		used to look into a person's belongings
 pick lock	a useful skill for breaking and entering
 sneak		with this skill, a thief can walk into a room undetected
+.fi
 #51|deities|THOTH
 {GThoth {x(Th-oth)
 Aspects       - Knowledge, Magic. Outlook - Neutral.
@@ -3377,6 +3454,7 @@ magical teleportation, or walking through walls.  All classes
 may learn these spells, which are among the most useful in the
 game.
 
+.nf
 fly		allows the target to fly over nearly all obstacles
 gate		transports the caster to the target
 nexus		forms a two-way portal to a far off destination
@@ -3385,6 +3463,7 @@ portal		creates a one-way portal to a destination
 summon		transports the target to the caster
 teleport	sends the target to a random location
 word of recall	transports the caster to safety in Midgaard
+.fi
 #-1|commands|TRIP
 Back by popular demand.  Trip is a somewhat dastardly attack,
 and involves using any one of a number of methods to bring your
@@ -3419,12 +3498,15 @@ Magical items require training to use properly.  If your
 character lacks the necessary skill to use an item, he will
 fail, possibly destroying it.  The item skills are as follows:
 
-scrolls         The reading of magical scrolls and books (see
-'help recite') staves             The use of staves and similar
-devices (see 'help brandish') wands               The use of
-wands and similar items (see 'help zap')
+.nf
+scrolls		The reading of magical scrolls and books (see 'help recite')
+staves		The use of staves and similar devices (see 'help brandish')
+wands		The use of wands and similar items (see 'help zap')
+.fi
 #0|combat|WARFARE ARENA_COMBAT
+.nf
 {G{N WARFARE{x
+.fi
 Warfare is a feature added to {n in which players can fight
 each other in wars declared by an immortal. A special area, the
 battlefield, exists for this. During a war, no death penalties are
@@ -3464,6 +3546,7 @@ in combat. Other weapon skills may be purchased cheaply, or
 gained in the default skill package, which includes the
 following:
 
+.nf
 skills:
 weaponsmaster	this group provides knowledge of all weapon types
 shield block	the art of parrying with a shield
@@ -3472,6 +3555,7 @@ enhanced damage	this skill multiplies your damage in battle
 parry		the art of parrying with weapons
 rescue		allows you to take the blows aimed for a companion
 third attack	allows the skilled warrior to land three blows in one round
+.fi
 #0|spells|WEAKEN
 Syntax: cast weaken <victim>
 
@@ -3496,11 +3580,13 @@ These spells allow the caster to manipulate local weather
 conditions, as well as summon fog clouds, lightning, or even
 electrical glows.  This group is usable by all classes.
 
+.nf
 call lightning	summons a huge bolt from the heavens, if the weather is right
 control weather	changes the weather in the manner desired by the caster
 faerie fire	surrounds the target in a glowing aura
 faerie fog	reveals all hidden creatures in the room
 lightning bolt	sends a bolt of electricity into the target
+.fi
 
 (the weather command, unrelated to this group, shows local
 weather conditions)
@@ -3529,6 +3615,7 @@ currently playing.
 With arguments, WHO can show players of certain classes or
 levels. For example:
 
+.nf
 who 10          lists all players of level 10 or above
 who 15 20       lists all players between level 15 and 20
 who cleric      lists all clerics playing
@@ -3536,6 +3623,7 @@ who immortal    lists all immortals playing
 who cleric 1 5  lists all clerics between levels 1 and 5
 who elf cleric  lists all elven clerics
 who demise e m  lists all elven mages in Demise (hi Alander!)
+.fi
 
 Classes and races may be abbreviated.
 #-1|commands|WHOIS
