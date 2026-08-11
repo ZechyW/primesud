@@ -33,6 +33,10 @@ churn). Nothing left to chase actively.
   70 clean collects, canaries clean (docs/PRIME_FIRMWARE_BUGS.md sec.
   Remediation status, 01 Aug follow-up).
 
+## Device checks pending (11/08/2026)
+
+- Confirm GROB memory is separate from Python heap: `gc.mem_free()` before/after the scrollback `dimgrob` calls (tml_prime.py `__init__`) should be ~unchanged. Validates the 250->500 `SCROLLBACK_SIZE` bump (~3.2MB of history pixels at 16bpp); note result in docs/PERFORMANCE.md.
+
 ## Input-lag stream leftovers (30/07/2026, measure-first)
 
 Low-priority residue from the closed input-lag stream (history:

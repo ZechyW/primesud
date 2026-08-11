@@ -99,7 +99,7 @@ SECTOR_SYMBOLS = {
 }
 
 # -- Scrollback [PRIMESUD] -------------------------------------------------------------
-SCROLLBACK_SIZE = 250  # rows to keep in history (0 = disabled)
+SCROLLBACK_SIZE = 500  # rows to keep in history (0 = disabled)
 SCROLL_STEP     = 7   # rows scrolled per Shift+- / Shift++ keypress
 
 # -- Touch input [PRIMESUD] ------------------------------------------------------------
