@@ -198,6 +198,19 @@ def test_help_body_preserves_structural_lines(monkeypatch, tmp_path):
         "LEFT    RIGHT", "one     two", "", "Tail prose."]
 
 
+def test_help_body_reads_across_chunks(monkeypatch, tmp_path):
+    # body > 2048 bytes spans multiple chunked reads; terminator excluded
+    help_file = tmp_path / "help.txt"
+    para = ("word " * 600).strip()
+    help_file.write_text(para + "\n#0|misc|NEXT\nother entry\n")
+    monkeypatch.setattr(info, "HELP_FILE", str(help_file))
+    monkeypatch.setattr(info, "TERMINAL_COLS", 64)
+
+    body = info._help_body(0)
+    assert sum(len(line.split()) for line in body) == 600
+    assert "other" not in " ".join(body)
+
+
 def test_help_body_colour_hidden_indent_stays_hard(monkeypatch, tmp_path):
     # WORSHIP: "{x       : worship list" indents behind a colour code
     help_file = tmp_path / "help.txt"

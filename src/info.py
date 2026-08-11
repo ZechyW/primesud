@@ -1390,22 +1390,35 @@ def _help_body(offset):
 
     with open(HELP_FILE) as f:
         f.seek(offset)
+        # [PRIMESUD] chunked read to the '#' terminator line; looped
+        # readline() costs ~20ms/call on-device (docs/PERFORMANCE.md).
+        text = ""
         while True:
-            line = f.readline()
-            if not line or line[0] == "#":
+            chunk = f.read(2048)
+            text += chunk
+            end = text.find("\n#")
+            if end >= 0:
+                text = text[:end]
                 break
-            line = line.rstrip("\n")
-            if line == ".nf":
-                flush_block()
-                fixed = True
-            elif line == ".fi":
-                flush_block()
-                fixed = False
-            elif not line:
-                flush_block()
-                body.append("")
-            else:
-                block.append(line)
+            if len(chunk) < 2048:
+                # EOF: drop the file's final newline, not a blank body line
+                if text[-1:] == "\n":
+                    text = text[:-1]
+                break
+    if text[:1] == "#":
+        text = ""  # empty body: offset sits on the next entry's header
+    for line in (text.split("\n") if text else ()):
+        if line == ".nf":
+            flush_block()
+            fixed = True
+        elif line == ".fi":
+            flush_block()
+            fixed = False
+        elif not line:
+            flush_block()
+            body.append("")
+        else:
+            block.append(line)
     flush_block()
     return body
 
