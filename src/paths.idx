@@ -1,4 +1,4 @@
-# S|from|to|dist|dirs intra-area segments, X|from|dir|to cross-area exits, V|vnum sliver border rooms -- built by tools/build_path_index.py, do not edit
+# S|from|to|dist|dirs intra-area segments, X|from|dir|to cross-area exits, V|vnum sliver border rooms; dir/dirs step *<vnum> = take the live exit to <vnum> (shuffled room) -- built by tools/build_path_index.py, do not edit
 X|2|u|3001
 X|3|u|3054
 X|101|s|3525
@@ -22,13 +22,13 @@ X|1219|e|3150
 X|1219|n|3161
 X|1219|s|3170
 X|1300|s|6137
-X|1304|n|2201
-X|1306|e|9301
-X|1392|d|9141
-X|1392|e|3460
-X|1392|n|5113
-X|1392|u|7428
-X|1392|w|938
+X|1304|*|2201
+X|1306|*|9301
+X|1392|*|5113
+X|1392|*|3460
+X|1392|*|938
+X|1392|*|7428
+X|1392|*|9141
 X|1483|u|3001
 X|1501|n|3526
 X|1701|w|5267
@@ -101,7 +101,7 @@ X|5267|e|1701
 X|5267|s|9201
 X|5270|d|5100
 X|5280|s|2300
-X|5378|n|8903
+X|5378|*|8903
 X|5550|s|314
 X|5553|e|601
 X|6000|e|3052
@@ -126,7 +126,7 @@ X|7900|s|9101
 X|7914|d|3120
 X|8001|n|5062
 X|8301|n|6125
-X|8604|u|3050
+X|8604|*|3050
 X|8700|w|5057
 X|8903|n|5378
 X|8905|u|9000
@@ -166,18 +166,18 @@ S|1215|1219|8|3u5e
 S|1219|1203|3|3w
 S|1219|1215|6|5wd
 S|1219|1218|1|w
-S|1300|1304|3|nes
-S|1300|1306|3|2nw
-S|1300|1392|41|n2we2n3e2nu3w4s4e4nu4w4s3e2s
-S|1300|1483|66|n2we2n3e2nu3w4s4e4nu4w2sw2ue2s4e4nu2w5s2u6n2w
-S|1304|1300|3|2es
-S|1304|1306|2|es
-S|1304|1392|40|ewe2n3e2nu3w4s4e4nu4w4s3e2s
-S|1304|1483|65|ewe2n3e2nu3w4s4e4nu4w2sw2ue2s4e4nu2w5s2u6n2w
-S|1306|1300|3|ses
-S|1306|1304|2|sn
-S|1306|1392|40|n2e2n3e2nu3w4s4e4nu4w4s3e2s
-S|1306|1483|65|n2e2n3e2nu3w4s4e4nu4w2sw2ue2s4e4nu2w5s2u6n2w
+S|1300|1304|3|n*1307*1304
+S|1300|1306|3|n*1309*1306
+S|1300|1392|41|n*1305*1302*1311nn3e2nu3w4s4e4nu4w4s3e2s
+S|1300|1483|66|n*1305*1302*1311nn3e2nu3w4s4e4nu4w2sw2ue2s4e4nu2w5s2u6n2w
+S|1304|1300|3|*1305*1308*1300
+S|1304|1306|2|*1305*1306
+S|1304|1392|40|*1305*1302*1311nn3e2nu3w4s4e4nu4w4s3e2s
+S|1304|1483|65|*1305*1302*1311nn3e2nu3w4s4e4nu4w2sw2ue2s4e4nu2w5s2u6n2w
+S|1306|1300|3|*1305*1308*1300
+S|1306|1304|2|*1305*1304
+S|1306|1392|40|*1303*1302*1311nn3e2nu3w4s4e4nu4w4s3e2s
+S|1306|1483|65|*1303*1302*1311nn3e2nu3w4s4e4nu4w2sw2ue2s4e4nu2w5s2u6n2w
 S|2001|2065|18|6se3s3ese3s
 S|2065|2001|18|3nwn3w3nw6n
 S|2101|2160|19|3e3sesw6sws2w

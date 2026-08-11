@@ -149,6 +149,10 @@ worth trusting -- the engineering layer.
   Area targets skip *sliver* border rooms -- area-tagged fragments cut off
   from the area's body (e.g. New Thalos' Dark River) -- so `run <area>`
   lands at a real entrance instead of upstream's first-room-in-area.
+  Routes stay reliable through the mazes whose exits reshuffle on every area
+  reset (Old Thalos' mirror void, the High Tower shadow grove, the Dream
+  Realm): those steps are stored as room targets, shown as `?` by `path`,
+  and resolved by `run` against the live exits as it walks.
 - **World-wide object location** -- `locate object` searches plausible
   unloaded areas one at a time through the object index, then releases each
   transient load (DESIGN.md "Lazy area loading").

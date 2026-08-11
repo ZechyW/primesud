@@ -1901,6 +1901,13 @@ def _parse_index():
     allocate -- the S route string and the X direction character. The
     paths.idx text format is unchanged (tools/build_path_index.py).
 
+    [PRIMESUD] A "*" X direction marks an exit out of a room whose exits
+    an "R" reset reshuffles every reset; the stored direction becomes the
+    room-target token "*<to_vnum>" ("take whichever live exit leads
+    there"), which movement.run_buf_step resolves as it walks.  S dirs
+    strings carry the same tokens inline and need no extra parsing (they
+    are copied out verbatim).
+
     Returns:
         tuple: (segs, xedges, slivers) where segs maps entry vnum ->
             [(exit_vnum, dist, dirs), ...] intra-area segments, xedges
@@ -1964,15 +1971,18 @@ def _parse_index():
             if i >= n:
                 break
             b = data[i]
-            direction = dir_chars.get(b)
-            if direction is None:
-                direction = chr(b)
-                dir_chars[b] = direction
             i += 2  # skip the direction char and its "|"
             to_vnum = 0
             while i < n and 47 < data[i] < 58:
                 to_vnum = to_vnum * 10 + data[i] - 48
                 i += 1
+            if b == 42:  # "*": exit out of a shuffled room -- see docstring
+                direction = "*" + num_str(to_vnum)
+            else:
+                direction = dir_chars.get(b)
+                if direction is None:
+                    direction = chr(b)
+                    dir_chars[b] = direction
             row = (direction, to_vnum)
             xedge = xedges.get(exit_vnum)
             if xedge is None:
@@ -2030,8 +2040,13 @@ def _merge_runs(parts):
 
     "3n" + "2n" -> "5n"; format is count-then-dir with count omitted when
     1, matching _compress_path / do_run's parser. [PRIMESUD]
+
+    [PRIMESUD] "*<vnum>" room-target tokens (paths.idx steps out of a
+    shuffle-reset room) are atomic single steps: they never merge with
+    anything, and a run count is never emitted straight after one, whose
+    digits would fuse with the token's vnum ("*3054" + "3n" -> "*3054nnn").
     """
-    runs = []  # [dir, count] pairs
+    runs = []  # [part, count] pairs; part is a dir char or a "*<vnum>" token
     for s in parts:
         i = 0
         n = len(s)
@@ -2042,15 +2057,26 @@ def _merge_runs(parts):
             count = int(s[i:j]) if j > i else 1
             d = s[j]
             i = j + 1
+            if d == "*":
+                while i < n and "0" <= s[i] <= "9":
+                    i += 1
+                runs.append([s[j:i], 1])
+                continue
             if runs and runs[-1][0] == d:
                 runs[-1][1] += count
             else:
                 runs.append([d, count])
     out = []
+    prev_token = False
     for d, count in runs:
-        if count > 1:
+        if count == 1:
+            out.append(d)
+        elif prev_token:
+            out.append(d * count)
+        else:
             out.append(num_str(count))
-        out.append(d)
+            out.append(d)
+        prev_token = d[0] == "*"
     return "".join(out)
 
 

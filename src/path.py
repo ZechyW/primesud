@@ -88,6 +88,29 @@ def _mob_destination(player, mob):
     return dst, None
 
 
+def _display_route(route):
+    """Render a route's "*<vnum>" room-target tokens as "?". [PRIMESUD]
+
+    Tokens mean "take whichever live exit leads to room <vnum>" (steps out
+    of a shuffle-reset maze, see tools/build_path_index.py); the vnum is
+    noise to the player, so the walk shows one "?" per such step.  `run`
+    still gets the raw token string.
+    """
+    out = []
+    i = 0
+    n = len(route)
+    while i < n:
+        c = route[i]
+        i += 1
+        if c == "*":
+            out.append("?")
+            while i < n and "0" <= route[i] <= "9":
+                i += 1
+        else:
+            out.append(c)
+    return "".join(out)
+
+
 def do_path(player, args):
     """Show the shortest route to an area or mob (cf. 1stMud do_path in act_enter.c).
 
@@ -99,6 +122,10 @@ def do_path(player, args):
     [PRIMESUD] Upstream's single "No such destination." for every mob-target
     failure is split into per-reason messages (see _mob_destination); the
     area-lookup and routing messages are unchanged.
+
+    [PRIMESUD] Steps out of a shuffle-reset maze print as "?" (see
+    _display_route) plus one helper line; player["last_path"] keeps the raw
+    "*<vnum>" tokens so `run` can resolve them live.
 
     [PRIMESUD] Side effect: a computed route is stashed in
     player["last_path"] so the no-args `run` picker can offer it as the
@@ -153,7 +180,12 @@ def do_path(player, args):
         else:
             # [PRIMESUD] singular/plural fixed; 1stMud always prints "steps"
             chprintln(player, "Shortest path to " + target_name + " is "
-                      + count_str(steps, "step") + ": " + route + ".")
+                      + count_str(steps, "step") + ": "
+                      + _display_route(route) + ".")
+            if "*" in route:
+                chprintln(player,
+                          "{D(? = shifting maze exit -- run finds it as you"
+                          " go){x")
             # [PRIMESUD] Offer the route as the default entry in the no-args
             # `run` picker (movement.do_run).  Transient: saving is a
             # whitelist (game_state._PLAYER_STRING_SAVE_KEYS and friends), so

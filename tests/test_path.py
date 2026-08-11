@@ -684,3 +684,165 @@ def test_merge_runs_unit():
     assert info._merge_runs(["3n2e", "2e", "s"]) == "3n4es"
     assert info._merge_runs(["", "n", ""]) == "n"
     assert info._merge_runs([]) == ""
+
+
+# ===== Shuffle-reset maze tokens ===========================================
+# Rooms with an "R" reset get their exits reshuffled every area reset, so the
+# index writes steps out of one as "*<vnum>" room-target tokens instead of a
+# compass direction. [PRIMESUD]
+
+# The layout the index is built from: aye -> a 3-room maze -> zed.
+_MAZE_INDEX_LAYOUT = {
+    100: {"area": "aye", "exits": {"n": 200}},
+    200: {"area": "maze", "exits": {"n": 201, "s": 100}},
+    201: {"area": "maze", "exits": {"n": 202, "s": 200}},
+    202: {"area": "maze", "exits": {"e": 300, "s": 201}},
+    300: {"area": "zed", "exits": {"w": 202}},
+}
+
+# The same maze after a reset reshuffled 200 and 201: same neighbours, other
+# directions -- what the player actually walks.
+_MAZE_LIVE_EXITS = {
+    200: {"w": 201, "d": 100},
+    201: {"e": 202, "u": 200},
+    202: {"e": 300, "s": 201},
+}
+
+_MAZE_SHUFFLED = frozenset((200, 201))
+
+
+def _register_maze_world(fw, monkeypatch, live=True):
+    """Register the maze world (live layout) + an index of the frozen one."""
+    exits = _MAZE_LIVE_EXITS if live else None
+    for tag, lo, hi in (("aye", 100, 199), ("maze", 200, 299),
+                        ("zed", 300, 399)):
+        rooms = {}
+        for vnum, room in _MAZE_INDEX_LAYOUT.items():
+            if room["area"] != tag:
+                continue
+            rooms[vnum] = {"name": "r" + str(vnum),
+                           "exits": (exits or {}).get(vnum, room["exits"])}
+        fw.register_area(tag, lo, hi, rooms=rooms)
+    fw.setup()
+    lines = build_records(_MAZE_INDEX_LAYOUT, _MAZE_SHUFFLED)
+    idx = fw.tmp_path / "paths.idx"
+    idx.write_text("# test index\n" + "\n".join(lines) + "\n")
+    monkeypatch.setattr(info, "PATH_INDEX_FILE", str(idx))
+
+
+def test_build_records_emits_tokens_for_shuffled_rooms():
+    """[PRIMESUD] Steps leaving a shuffled room become "*<vnum>" tokens, in
+    both X records (dir field "*") and S segment strings."""
+    plain = build_records(_MAZE_INDEX_LAYOUT)
+    tokened = build_records(_MAZE_INDEX_LAYOUT, _MAZE_SHUFFLED)
+
+    assert "X|200|s|100" in plain
+    assert "S|200|202|2|2n" in plain
+
+    # 200 and 201 are shuffled: their outgoing steps are room targets...
+    assert "X|200|*|100" in tokened
+    assert "S|200|202|2|*201*202" in tokened
+    # ...202 is not, so its own steps stay compass directions.
+    assert "X|202|e|300" in tokened
+    assert "S|202|200|2|s*200" in tokened
+
+
+def test_encoders_never_write_a_count_after_a_token():
+    """[PRIMESUD] A run count straight after a token would fuse with the
+    token's vnum digits, so both encoders spell the run out instead."""
+    import build_path_index
+
+    assert build_path_index._encode_steps(["*200", "n", "n", "n"]) == "*200nnn"
+    assert build_path_index._encode_steps(["n", "n", "*200"]) == "2n*200"
+    assert info._merge_runs(["*200", "3n"]) == "*200nnn"
+    assert info._merge_runs(["2n*201", "n"]) == "2n*201n"
+    assert info._merge_runs(["n", "*200", "*201"]) == "n*200*201"
+
+
+def test_path_prints_tokens_as_question_marks(fresh_world, monkeypatch):
+    """[PRIMESUD] Token steps show as "?" plus one helper line; last_path
+    keeps the raw tokens so `run` can resolve them live."""
+    _register_maze_world(fresh_world, monkeypatch)
+    player = _player()
+    _ = ROOM_DEFS[100]
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    path_cmd.do_path(player, ["zed"])
+
+    assert out == ["{D[Calculating path...]{x",
+                   "Shortest path to zed is 4 steps: n??e.",
+                   "{D(? = shifting maze exit -- run finds it as you go){x"]
+    assert player["last_path"] == ("zed", "n*201*202e", 4, 100)
+
+
+def test_path_without_tokens_prints_no_helper_line(fresh_world, monkeypatch):
+    _setup_chain(fresh_world, monkeypatch, ("alpha", "beta"))
+    player = _player()
+    out = []
+    monkeypatch.setattr(path_cmd, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    path_cmd.do_path(player, ["bet"])
+
+    assert out == ["{D[Calculating path...]{x",
+                   "Shortest path to beta is 1 step: n."]
+
+
+def test_run_walks_token_route_through_a_reshuffled_maze(
+        fresh_world, monkeypatch):
+    """[PRIMESUD] The whole loop: route from the index, tokens parsed into
+    "goto" steps, each resolved against the live (reshuffled) exits."""
+    _register_maze_world(fresh_world, monkeypatch)
+    player = _player()
+    player["move"] = 100
+    _ = ROOM_DEFS[100]
+    monkeypatch.setattr(path_cmd, "chprintln", lambda _ch, text="": None)
+    out = []
+    monkeypatch.setattr(movement, "chprintln",
+                        lambda _ch, text="": out.append(text))
+    monkeypatch.setattr(movement, "do_look", lambda _ch, _args: None)
+
+    path_cmd.do_path(player, ["zed"])
+    movement.do_run(player, [player["last_path"][1]])
+
+    assert player["run_buf"] == [("move", "n"), ("goto", 201),
+                                 ("goto", 202), ("move", "e")]
+    while movement.run_buf_step(player):
+        pass
+    assert player["room"] == 300
+    assert "Alas, you cannot go that way." not in out
+
+
+def test_run_token_with_no_matching_exit_cancels_the_run(
+        fresh_world, monkeypatch):
+    """[PRIMESUD] An unresolvable token cancels like blocked movement."""
+    _register_maze_world(fresh_world, monkeypatch)
+    player = _player(room=200)
+    player["move"] = 100
+    _ = ROOM_DEFS[200]
+    out = []
+    monkeypatch.setattr(movement, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    movement.do_run(player, ["*999w"])
+    assert player["run_buf"] == [("goto", 999), ("move", "w")]
+
+    assert movement.run_buf_step(player) is True
+    assert player["room"] == 200
+    assert out[-1] == "Alas, you cannot go that way."
+    assert not player.get("run_buf")
+
+
+def test_run_rejects_a_token_with_no_vnum(fresh_world, monkeypatch):
+    _register_maze_world(fresh_world, monkeypatch)
+    player = _player(room=200)
+    out = []
+    monkeypatch.setattr(movement, "chprintln",
+                        lambda _ch, text="": out.append(text))
+
+    movement.do_run(player, ["n*"])
+
+    assert out == ["Invalid direction!"]
+    assert not player.get("run_buf")

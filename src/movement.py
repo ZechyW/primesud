@@ -261,7 +261,7 @@ def move_char(ch, direction):
         # branch in info.py).
         # [PRIMESUD] During speedwalk, intermediate rooms get brief one-liners.
         run_buf = ch.get("run_buf")
-        if run_buf and any(a == "move" for a, _ in run_buf):
+        if run_buf and any(a != "open" for a, _ in run_buf):
             _brief_room_line(ch)
         else:
             do_look(ch, ["auto"])
@@ -1369,8 +1369,14 @@ def _parse_run_buf(buf):
     chars (n/e/s/w/u/d) are steps, 'o' prefix means open door before
     moving (cf. 1stMud read_from_buffer in comm.c).
 
+    [PRIMESUD] "*<vnum>" is a room-target token step -- "take whichever
+    live exit leads to room <vnum>" -- emitted by paths.idx for rooms whose
+    exits an "R" reset reshuffles, and resolved at walk time by
+    run_buf_step.
+
     Returns:
-        list: [(action, dir), ...] where action is "move" or "open".
+        list: [(action, arg), ...] where action is "move" or "open" (arg is
+              a direction char) or "goto" (arg is a target room vnum).
               None on parse error.
     """
     steps = []
@@ -1384,7 +1390,17 @@ def _parse_run_buf(buf):
             break
         ch = buf[i]
         i += 1
-        if ch == "o":
+        if ch == "*":
+            vnum = 0
+            digits = 0
+            while i < len(buf) and buf[i].isdigit():
+                vnum = vnum * 10 + int(buf[i])
+                i += 1
+                digits += 1
+            if not digits:
+                return None
+            steps.append(("goto", vnum))
+        elif ch == "o":
             if i >= len(buf) or buf[i] not in _RUN_DIRS:
                 return None
             steps.append(("open", buf[i]))
@@ -1424,6 +1440,21 @@ _DIR_CMDS = {
 }
 
 
+def _run_token_dir(player, vnum):
+    """Live direction from the player's room to room vnum, or None. [PRIMESUD]
+
+    Resolves a "*<vnum>" room-target token against the exits as they stand
+    right now, so a route through a shuffle-reset maze walks whatever
+    layout the last reset left behind.
+    """
+    exits = ROOM_DEFS.get(player.get("room"), {}).get("exits") or {}
+    for d in EXIT_ORDER:
+        ev = exits.get(d)
+        if ev is not None and _exit_to(ev) == vnum:
+            return d
+    return None
+
+
 def run_buf_step(player):
     """Consume one step from player's run_buf (cf. 1stMud read_from_buffer in comm.c).
 
@@ -1433,6 +1464,11 @@ def run_buf_step(player):
     cancellation handled by direction commands via free_runbuf
     (cf. 1stMud do_north in act_move.c). Brief vs full room display
     handled by move_char checking run_buf state.
+
+    [PRIMESUD] "goto" steps are room-target tokens (see _parse_run_buf):
+    the direction is looked up in the current room's live exits, and a
+    token with no matching exit cancels the run exactly like blocked
+    movement.
 
     Returns:
         bool: True if a step was consumed.
@@ -1452,6 +1488,13 @@ def run_buf_step(player):
 
     if action == "open":
         do_open(player, [EXIT_NAMES[d]])
+    elif action == "goto":
+        direction = _run_token_dir(player, d)
+        if direction is None:
+            chprintln(player, "Alas, you cannot go that way.")
+            free_runbuf(player)
+            return True
+        _DIR_CMDS[direction](player, [])
     else:
         _DIR_CMDS[d](player, [])
 
@@ -1539,7 +1582,9 @@ def do_run(player, args):
     # Validate (cf. 1stMud do_run validation in act_move.c)
     has_dir = False
     for ch in buf:
-        if ch in _RUN_DIRS:
+        # [PRIMESUD] "*" starts a "*<vnum>" room-target token (a step in
+        # its own right); _parse_run_buf rejects one with no digits.
+        if ch in _RUN_DIRS or ch == "*":
             has_dir = True
         elif ch != "o" and not ch.isdigit():
             chprintln(player, "Invalid direction!")

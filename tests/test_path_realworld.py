@@ -135,7 +135,11 @@ def _global_bfs(data, src, target_tag, target_room, slivers=()):
 
 
 def _walk(data, src, route):
-    """Walk a compressed route through real exits; return (end, steps)."""
+    """Walk a compressed route through real exits; return (end, steps).
+
+    Resolves "*<vnum>" room-target tokens the way movement.run_buf_step
+    does: scan the current room's live exits for one leading there.
+    """
     pos = src
     steps = 0
     i = 0
@@ -146,6 +150,21 @@ def _walk(data, src, route):
         count = int(route[i:j]) if j > i else 1
         direction = route[j]
         i = j + 1
+        if direction == "*":
+            j = i
+            while j < len(route) and "0" <= route[j] <= "9":
+                j += 1
+            target = int(route[i:j])
+            i = j
+            found = False
+            for d in EXIT_ORDER:
+                if _exit_to(data[pos], d) == target:
+                    found = True
+                    break
+            assert found, "route token has no live exit"
+            pos = target
+            steps += 1
+            continue
         for _ in range(count):
             to = _exit_to(data[pos], direction)
             assert to is not None, "route walks a missing exit"
@@ -176,6 +195,10 @@ def _sliver_fragment(data, tag, slivers):
                     and data[to].get("area") == tag):
                 stack.append(to)
     return out
+
+
+# Mirror void "R" resets (src/area_mirror.txt RESETS): {room: num_dirs}.
+_MIRROR_RESETS = {5375: 5, 5376: 6, 5377: 6, 5378: 5}
 
 
 def _first_room(data, tag):
@@ -218,6 +241,42 @@ def test_routes_match_unrestricted_bfs(real_world):
         else:
             assert data[end].get("area") == tag, label
             assert end not in slivers, label
+
+
+def test_shipped_index_routes_out_of_a_reshuffled_maze(real_world,
+                                                       monkeypatch):
+    """[PRIMESUD] Regression: the mirror void (5375-5378) carries "R" resets
+    that reshuffle its exits every area reset, so the index's own layout is
+    stale within minutes -- `run` out of 5378 used to die on "Alas, you
+    cannot go that way".  Routes leave those rooms by room-target token, so
+    they walk whatever layout the last reset left behind.
+
+    Runs against the shipped src/paths.idx (not the fixture's rebuild): the
+    committed index is what the device reads.
+    """
+    import random
+
+    import mob
+
+    data = real_world
+    monkeypatch.setattr(info, "PATH_INDEX_FILE", "paths.idx")
+    saved = {v: dict(data[v]["exits"]) for v in _MIRROR_RESETS}
+    rng_state = random.getstate()
+    try:
+        for seed in (1, 7, 20260721):
+            random.seed(seed)
+            for vnum, num_dirs in _MIRROR_RESETS.items():
+                mob._reset_randomize_exits(vnum, num_dirs)
+            route, steps = info._route({"room": 5378}, "mega1")
+            assert route and "*" in route, route
+            end, walked = _walk(data, 5378, route)
+            assert data[end].get("area") == "mega1"
+            assert walked == steps
+    finally:
+        random.setstate(rng_state)
+        for vnum, exits in saved.items():
+            data[vnum]["exits"].clear()
+            data[vnum]["exits"].update(exits)
 
 
 def test_area_route_skips_disconnected_sliver(real_world):
