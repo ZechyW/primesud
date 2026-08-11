@@ -23,7 +23,7 @@ _canvas = None
 _canvas_image = None
 _display_image = None
 _tk = None
-_scale = 2
+_scale = 1
 _dirty = True
 _closed = False
 _pointer_down = False
@@ -31,7 +31,7 @@ _pointer_x = 0
 _pointer_y = 0
 
 
-def init_display(scale=2):
+def init_display(scale=1):
     """Open the graphical PC display."""
     global _root, _canvas, _canvas_image, _tk, _scale, _closed
     global _pointer_down
@@ -53,6 +53,7 @@ def init_display(scale=2):
     _canvas.pack()
     _canvas_image = _canvas.create_image(0, 0, anchor="nw")
     _root.bind("<KeyPress>", _on_key)
+    _root.bind("<MouseWheel>", _on_wheel)
     _canvas.bind("<ButtonPress-1>", _on_pointer_down)
     _canvas.bind("<B1-Motion>", _on_pointer_move)
     _canvas.bind("<ButtonRelease-1>", _on_pointer_up)
@@ -116,6 +117,14 @@ def _on_key(event):
         value = ("char", event.char)
     if value:
         _events.append(value)
+    return "break"
+
+
+def _on_wheel(event):
+    # Windows: event.delta is a multiple of 120 per notch.
+    kind = "scroll_up" if event.delta > 0 else "scroll_down"
+    for _ in range(max(1, abs(event.delta) // 120)):
+        _events.append((kind, None))
     return "break"
 
 
