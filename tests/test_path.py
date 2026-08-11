@@ -773,7 +773,7 @@ def test_path_prints_tokens_as_question_marks(fresh_world, monkeypatch):
 
     assert out == ["{D[Calculating path...]{x",
                    "Shortest path to zed is 4 steps: n??e.",
-                   "{D(? = shifting maze exit -- run finds it as you go){x"]
+                   "{D(? = random maze exit){x"]
     assert player["last_path"] == ("zed", "n*201*202e", 4, 100)
 
 

@@ -184,8 +184,7 @@ def do_path(player, args):
                       + _display_route(route) + ".")
             if "*" in route:
                 chprintln(player,
-                          "{D(? = shifting maze exit -- run finds it as you"
-                          " go){x")
+                          "{D(? = random maze exit){x")
             # [PRIMESUD] Offer the route as the default entry in the no-args
             # `run` picker (movement.do_run).  Transient: saving is a
             # whitelist (game_state._PLAYER_STRING_SAVE_KEYS and friends), so
