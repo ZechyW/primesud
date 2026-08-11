@@ -114,6 +114,15 @@ def test_desktop_keys_route_through_device_translation():
     tr._pump_keyboard({2: ("\\U", None)})
     assert tr._dequeue_key() == ("\\U", None)
 
+    # A modal keymap (pager.hpan) reclaims the otherwise-unused Left/Right
+    # arrows, which only carry the prompt-history override at their default
+    # w/e movement binding.
+    gui_hpprime._on_key(_event("Left"))
+    gui_hpprime._on_key(_event("Right"))
+    tr._pump_keyboard({7: ("\\L", None), 8: ("\\R", None)})
+    assert tr._dequeue_key() == ("\\L", None)
+    assert tr._dequeue_key() == ("\\R", None)
+
     gui_hpprime._on_key(_event("Prior"))
     tr._pump_keyboard()
     assert tr._dequeue_key() == (gui_tml._HIST_UP, None)

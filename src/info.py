@@ -31,7 +31,7 @@ from item import (get_obj_here, obj_vnum, item_extra_flags,
                   liquid_total, liquid_type, obj_short,
                   item_type as _item_type)
 from music import do_play
-from pager import tpage
+from pager import hpan, tpage
 from picker import pick_from, _MAX_OPTS as _PICKER_PAGE
 from player import _EQUIP_SAVE_ORDER, set_title
 from prime_platform import ticks  # [PRIMESUD] 'debug time' channel timings
@@ -77,6 +77,24 @@ def _wrap_paragraphs(text, width):
             lines.append('')
         lines.extend(_wrap(flat, width))
     return lines
+
+
+def _print_desc(player, text, width):
+    """Print a description, panning oversized verbatim art in place first. [PRIMESUD]
+
+    Wide dot-marked ASCII art (the ROM no-format marker honoured by
+    _wrap_paragraphs) is unreadable once hard-wrapped, so offer it to
+    pager.hpan first; the column offset the player leaves it at decides
+    which window is then printed as the scrollback record.  Narrow art,
+    ordinary prose, and non-interactive terminals get offset 0 back and
+    print exactly as before.
+    """
+    lines = _wrap_paragraphs(text, width)
+    col = hpan(lines, width)
+    if col:
+        lines = [ln[col:col + width] for ln in lines]
+    for line in lines:
+        chprintln(player, line)
 
 
 def _current_area_def(player):
@@ -521,8 +539,7 @@ def _look_scan_items(player, target, number, count, items):
             if pdesc is not None:
                 count += 1
                 if count == number:
-                    for line in _wrap_paragraphs(pdesc, TERMINAL_COLS):
-                        chprintln(player, line)
+                    _print_desc(player, pdesc, TERMINAL_COLS)
                     return True, count
                 continue
         # Then check template extra_descs (cf. 1stMud obj->pIndexData->ed_first, act_info.c:1259)
@@ -530,18 +547,16 @@ def _look_scan_items(player, target, number, count, items):
         if pdesc is not None:
             count += 1
             if count == number:
-                for line in _wrap_paragraphs(pdesc, TERMINAL_COLS):
-                    chprintln(player, line)
+                _print_desc(player, pdesc, TERMINAL_COLS)
                 return True, count
             continue
         if is_name(target, tpl.get("keywords", "")):
             count += 1
             if count == number:
                 inst_desc = isinstance(obj, dict) and obj.get("description")
-                for line in _wrap_paragraphs(
-                        inst_desc or tpl.get("description", tpl["short_descr"]),
-                        TERMINAL_COLS):
-                    chprintln(player, line)
+                _print_desc(player,
+                            inst_desc or tpl.get("description", tpl["short_descr"]),
+                            TERMINAL_COLS)
                 return True, count
     return False, count
 
@@ -752,8 +767,7 @@ def do_look(player, args):
         if pdesc is not None:
             count += 1
             if count == number:
-                for line in _wrap_paragraphs(pdesc, TERMINAL_COLS):
-                    chprintln(player, line)
+                _print_desc(player, pdesc, TERMINAL_COLS)
                 return
 
         if count > 0 and count != number:
@@ -2548,8 +2562,7 @@ def do_examine(player, args):
         if len(robjs) <= idx < len(robjs) + len(eds):
             # same output as do_look's room extra_desc branch
             first_kw, desc = eds[idx - len(robjs)]
-            for line in _wrap_paragraphs(desc, TERMINAL_COLS):
-                chprintln(player, line)
+            _print_desc(player, desc, TERMINAL_COLS)
             return "examine " + first_kw
         if len(robjs) + len(eds) <= idx < len(robjs) + len(eds) + len(ex_dirs):
             # exit description: reuse do_look's direction branch (desc + door state)
@@ -2562,9 +2575,8 @@ def do_examine(player, args):
         obj = (robjs + cobjs)[idx]
         tpl = item_tpl(obj)
         inst_desc = isinstance(obj, dict) and obj.get("description")
-        for line in _wrap_paragraphs(inst_desc or tpl.get("description", tpl["short_descr"]),
-                                     TERMINAL_COLS):
-            chprintln(player, line)
+        _print_desc(player, inst_desc or tpl.get("description", tpl["short_descr"]),
+                    TERMINAL_COLS)
         _examine_extras(player, obj)
         return "examine " + tpl.get("keywords", tpl["short_descr"]).split()[0]
     arg = args[0]

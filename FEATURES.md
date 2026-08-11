@@ -188,6 +188,10 @@ worth trusting -- the engineering layer.
 - **Streaming output reveal** -- multi-row output (looks, combat rounds, help
   pages) streams in at 25ms/row for a terminal feel; any key skips the rest
   instantly and is kept as input (terminal.py, docs/PRIME_UX.md).
+- **In-place art panner** -- examining dot-marked ASCII art wider than the
+  64-col screen (the Midgaard/Thera maps) opens a full-screen modal panned
+  with the navpad, instead of hard-wrapping into mush; Esc/Enter restores the
+  screen and records the last-viewed window in scrollback (pager.py, info.py).
 - **Session clock in place of a battery gauge** -- the Prime exposes no battery
   level to PPL or Python, so `time` reports how long the current sitting has
   run and an hourly notice announces it unprompted (update.py, info.py).
