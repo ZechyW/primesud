@@ -251,3 +251,11 @@ class TestLookExtraDesc:
         """
         # This is a documentation test - it passes unconditionally.
         pass
+
+
+def test_wrap_paragraphs_dot_marker_verbatim():
+    """Leading "." (ROM no-format marker) suppresses reflow; art kept verbatim."""
+    art = ".\n  A---B\n   \  |\n    C-D"
+    assert info._wrap_paragraphs(art, 20) == ["  A---B", "   \  |", "    C-D"]
+    # Unmarked prose still collapses and wraps.
+    assert info._wrap_paragraphs("a  b\nc", 20) == ["a b c"]

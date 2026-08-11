@@ -63,6 +63,13 @@ def _wrap(text, width):
 
 def _wrap_paragraphs(text, width):
     """Word-wrap text, preserving blank-line paragraph breaks from .are descriptions. [PRIMESUD]"""
+    # [PRIMESUD] Leading "." is the ROM builder no-format marker (protects
+    # ASCII art like the vnum-3162 city maps from OLC's format command);
+    # honour it here too: emit verbatim, marker line dropped. Upstream
+    # chprints raw so the "." shows there; PrimeSUD's 64-col reflow is the
+    # deviation that made the guard necessary.
+    if text.startswith('.\n'):
+        return text.split('\n')[1:]
     lines = []
     for para in text.split('\n\n'):
         flat = ' '.join(para.split())  # [PRIMESUD] collapse whitespace runs (cf. erase_new_lines in automap.c)
