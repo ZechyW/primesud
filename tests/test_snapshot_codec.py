@@ -201,9 +201,15 @@ class TestByteWalkDecode:
 
 class TestRegistryLifecycle:
     def test_reset_lazy_clears_item_snapshots(self):
+        # reset_lazy() repopulates AREA_DEFS from _AREA_FILES; put it back so
+        # the next test does not inherit 50 stub area records.
+        old_area_defs = list(world.AREA_DEFS)
         ITEM_SNAPSHOTS[999] = ("rev", {"short_descr": "x"}, {})
-        reset_lazy()
-        assert ITEM_SNAPSHOTS == {}
+        try:
+            reset_lazy()
+            assert ITEM_SNAPSHOTS == {}
+        finally:
+            world.AREA_DEFS[:] = old_area_defs
 
 
 # ===== All-area drift guard ==================================================

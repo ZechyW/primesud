@@ -146,8 +146,7 @@ def _capture(fn, *a):
     return lines
 
 
-def test_do_explored_list_sorts():
-    world.init_world()
+def test_do_explored_list_sorts(stock_world):
     p = _blank_player(room=3001)
     _set(p, *range(3000, 3050))            # ~50 midgaard rooms explored
     lines = _capture(do_explored, p, ["list"])
@@ -157,8 +156,7 @@ def test_do_explored_list_sorts():
     assert "Midgaard" in lines[0]
 
 
-def test_do_explored_noarg_lines():
-    world.init_world()
+def test_do_explored_noarg_lines(stock_world):
     p = _blank_player(room=3001)
     _set(p, 3001, 3002)
     lines = _capture(do_explored, p, [])
@@ -168,8 +166,7 @@ def test_do_explored_noarg_lines():
     assert "explored {G2 (" in lines[3]     # current area line
 
 
-def test_do_explored_never_lazy_loads():
-    world.init_world()
+def test_do_explored_never_lazy_loads(stock_world):
     p = _blank_player(room=3001)
     _set(p, 3001, 3002)
     before = set(world._LOADED_AREAS)

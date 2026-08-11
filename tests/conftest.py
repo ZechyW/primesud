@@ -1,4 +1,9 @@
-"""Test fixtures for PrimeSUD lazy area loading tests."""
+"""Test fixtures for PrimeSUD lazy area loading tests.
+
+Convention: new synthetic/stub vnums in tests should be >= 20000.  Real areas
+span 1-17899, so a stub above that can never fall inside `world._VNUM_RANGES`
+and trigger a surprise lazy area load if some earlier test leaks world state.
+"""
 import os
 import sys
 
@@ -39,6 +44,51 @@ init_terminal()
 import world
 
 
+def _world_sig():
+    """Cheap O(1) signature of the world tables lazy loading depends on."""
+    return (world._WORLD_READY, len(world._VNUM_RANGES),
+            len(world._TAG_TO_FILE), len(world._TAG_TO_NAME),
+            len(world.AREA_DEFS), len(world._LOADED_AREAS))
+
+
+def pytest_runtest_setup(item):
+    """Record the world-state signature before anything sets up (tripwire)."""
+    item._world_sig_before = _world_sig()
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_teardown(item, nextitem):
+    """Fail the test that leaks global world state, not its innocent successor.
+
+    An unrestored `init_world()` leaves `_VNUM_RANGES` populated, so a later
+    test's fake vnum can land inside a real area's range and trigger a lazy
+    load against tables its own fixture already tore down.  Reading before
+    setup and after teardown catches the fixture that never restores at all,
+    not just the one that restores incompletely.
+
+    A hook wrapper, not an autouse fixture: the check has to see state after
+    everything has put back what it borrowed, and fixture teardown order does
+    not reliably put an autouse fixture last -- the shared `monkeypatch`
+    instance (pulled in by `isolate_persistence`) undoes after it.
+
+    Modules whose own module/session-scoped fixture deliberately holds real
+    world state across their tests opt out with the `world_state_persists`
+    marker; that fixture's teardown is what guarantees the restore.
+    """
+    result = yield
+    before = getattr(item, "_world_sig_before", None)
+    after = _world_sig()
+    if (before is not None and after != before
+            and item.get_closest_marker("world_state_persists") is None):
+        pytest.fail(
+            "test leaked global world state (see tests/conftest.py "
+            "stock_world / fresh_world for the restore pattern)\n"
+            "  (_WORLD_READY, _VNUM_RANGES, _TAG_TO_FILE, _TAG_TO_NAME, "
+            "AREA_DEFS, _LOADED_AREAS)\n"
+            "  before: " + repr(before) + "\n  after:  " + repr(after))
+    return result
+
+
 @pytest.fixture(autouse=True)
 def isolate_persistence(tmp_path, monkeypatch):
     """Keep tests away from the PC player's real save files."""
@@ -51,6 +101,53 @@ def isolate_persistence(tmp_path, monkeypatch):
                         str(tmp_path / "primesud.sav"))
     monkeypatch.setattr(game_state, "BACKUP_FILE",
                         str(tmp_path / "primesud_backup.sav"))
+
+
+@pytest.fixture
+def stock_world():
+    """Run a test against the real, fully initialised world; restore after.
+
+    Snapshots every mutable world table `init_world()` (and any lazy load it
+    enables) can touch, then puts them back at teardown.  Restores in place --
+    module-level names are aliased elsewhere -- except `world.areas`, which
+    world.py rebinds itself.
+    """
+    snap = {
+        "chars": dict(world.chars),
+        "rooms": dict(world.rooms._data),
+        "_LOADED_AREAS": set(world._LOADED_AREAS),
+        "ROOM_DEFS": dict(world.ROOM_DEFS._data),
+        "MOB_DEFS": dict(world.MOB_DEFS._data),
+        "ITEM_DEFS": dict(world.ITEM_DEFS._data),
+        "DOOR_DEFS": dict(world.DOOR_DEFS),
+        "areas": list(world.areas),
+        "AREA_DEFS": list(world.AREA_DEFS),
+        "_VNUM_RANGES": list(world._VNUM_RANGES),
+        "_TAG_TO_FILE": dict(world._TAG_TO_FILE),
+        "_TAG_TO_NAME": dict(world._TAG_TO_NAME),
+        "_pending_mob_saves": dict(world._pending_mob_saves),
+        "_pending_room_items": dict(world._pending_room_items),
+        "_WORLD_READY": world._WORLD_READY,
+    }
+    world.init_world()
+    yield
+    for name in ("chars", "DOOR_DEFS", "_TAG_TO_FILE", "_TAG_TO_NAME",
+                 "_pending_mob_saves", "_pending_room_items"):
+        d = getattr(world, name)
+        d.clear()
+        d.update(snap[name])
+    world._LOADED_AREAS.clear()
+    world._LOADED_AREAS.update(snap["_LOADED_AREAS"])
+    world.rooms._data.clear()
+    world.rooms._data.update(snap["rooms"])
+    for name in ("ROOM_DEFS", "MOB_DEFS", "ITEM_DEFS"):
+        d = getattr(world, name)._data
+        d.clear()
+        d.update(snap[name])
+    world.AREA_DEFS[:] = snap["AREA_DEFS"]
+    world._VNUM_RANGES[:] = snap["_VNUM_RANGES"]
+    world.areas = snap["areas"]
+    world._WORLD_READY = snap["_WORLD_READY"]
 
 
 def _write_area_txt(path, rooms, mobiles=None, objects=None, resets=None,

@@ -28,8 +28,7 @@ QUESTMASTER_ROOM = 200  # quest area; Edurin (mob 200) resets here
 
 
 @pytest.fixture
-def fresh():
-    world.init_world()
+def fresh(stock_world):
     world.reset_lazy()
     ch = _char_base()
     ch["id"] = 1

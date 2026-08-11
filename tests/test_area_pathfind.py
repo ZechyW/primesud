@@ -297,6 +297,9 @@ def real_world():
         "chars": dict(world.chars),
         "areas": list(world.areas),
         "_WORLD_READY": world._WORLD_READY,
+        "_TAG_TO_FILE": dict(world._TAG_TO_FILE),
+        "_TAG_TO_NAME": dict(world._TAG_TO_NAME),
+        "_VNUM_RANGES": list(world._VNUM_RANGES),
     }
 
     world.init_world()
@@ -324,6 +327,11 @@ def real_world():
         world.rooms._data.update(old_state["rooms"])
         world.areas = old_state["areas"]
         world._WORLD_READY = old_state["_WORLD_READY"]
+        world._TAG_TO_FILE.clear()
+        world._TAG_TO_FILE.update(old_state["_TAG_TO_FILE"])
+        world._TAG_TO_NAME.clear()
+        world._TAG_TO_NAME.update(old_state["_TAG_TO_NAME"])
+        world._VNUM_RANGES[:] = old_state["_VNUM_RANGES"]
 
 
 class TestFindPathToAreaRealData:

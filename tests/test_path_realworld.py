@@ -20,6 +20,10 @@ sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
 from build_path_index import build_records
 
+# The module-scoped real_world fixture below deliberately holds the fully
+# loaded world across this module's tests; its own teardown restores it.
+pytestmark = pytest.mark.world_state_persists
+
 
 @pytest.fixture(scope="module")
 def real_world(tmp_path_factory):
