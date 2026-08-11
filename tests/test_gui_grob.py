@@ -74,7 +74,8 @@ def test_grob_blit_and_overlap():
 
 
 def test_pointer_coordinates_use_unscaled_screen_pixels():
-    event = type("Event", (), {"x": 40, "y": 60})()
+    pad = gui_hpprime._PAD
+    event = type("Event", (), {"x": 40 + pad, "y": 60 + pad})()
     gui_hpprime._scale = 2
     gui_hpprime._on_pointer_down(event)
     assert gui_hpprime.mouse() == [(20, 30, 1)]

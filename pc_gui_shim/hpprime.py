@@ -29,6 +29,9 @@ _closed = False
 _pointer_down = False
 _pointer_x = 0
 _pointer_y = 0
+# Viewport padding so Windows 11's rounded window corners don't clip pixels;
+# grey (vs black) marks the exact 320x240 emulated area.
+_PAD = 8
 
 
 def init_display(scale=1):
@@ -47,11 +50,11 @@ def init_display(scale=1):
     _root.title("PrimeSUD")
     _root.resizable(False, False)
     _canvas = tkinter.Canvas(
-        _root, width=320 * scale, height=240 * scale,
-        borderwidth=0, highlightthickness=0,
+        _root, width=320 * scale + 2 * _PAD, height=240 * scale + 2 * _PAD,
+        borderwidth=0, highlightthickness=0, bg="#303030",
     )
     _canvas.pack()
-    _canvas_image = _canvas.create_image(0, 0, anchor="nw")
+    _canvas_image = _canvas.create_image(_PAD, _PAD, anchor="nw")
     _root.bind("<KeyPress>", _on_key)
     _root.bind("<MouseWheel>", _on_wheel)
     _canvas.bind("<ButtonPress-1>", _on_pointer_down)
@@ -130,8 +133,8 @@ def _on_wheel(event):
 
 def _pointer_position(event):
     return (
-        min(319, max(0, event.x // _scale)),
-        min(239, max(0, event.y // _scale)),
+        min(319, max(0, (event.x - _PAD) // _scale)),
+        min(239, max(0, (event.y - _PAD) // _scale)),
     )
 
 
