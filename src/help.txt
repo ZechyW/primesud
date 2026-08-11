@@ -425,9 +425,8 @@ Mailing List
 {x
 .fi
 #51|olc|AEDIT
-Syntax: edit area        -Enters the editor for the current
-area. Syntax: edit area <vnum> -Enters the editor for the
-selected area.
+Syntax: edit area	 -Enters the editor for the current area.
+Syntax: edit area <vnum> -Enters the editor for the selected area.
 
 The follow commands are available from within the AEDITOR:
 
@@ -2211,8 +2210,7 @@ The mass healing spell, as its name might suggest, performs a
 healing spell on all players in the room.  It also throws in a
 refresh spell for good measure.
 #51|olc|MEDIT
-Syntax: medit <vnum>            -Enters the editor for the
-selected mobile.
+Syntax: medit <vnum>		-Enters the editor for the selected mobile.
 
 The following commands are available from within the MEDITOR:
 
@@ -2438,8 +2436,7 @@ Creations     - Andaokut, Harpies, Seelie.
 Honored title - Argetlamh (Argetlau). Largest temple - Talizar.
 Domains       - Air, Healing, Good, Magic.
 #51|olc|OEDIT
-Syntax: edit object <vnum>      -Enters the editor for the
-selected object.
+Syntax: edit object <vnum>	-Enters the editor for the selected object.
 
 The following commands are available from within the OEDITOR:
 
