@@ -784,6 +784,7 @@ def _scan_records(data, pos, stop, loot_end, slot, results, baselines,
                 "name": name_ref, "kind": kind, "source_vnum": source_vnum,
                 "source_level": source_level, "source_name": sname_ref,
                 "tag": tag, "price": price, "source_key": source_key,
+                "wtype": wtypes[wtid] if wbase else "",
             }
             _keep_candidate(rows, candidate, limit)
             if len(rows) == limit and not down_open:
@@ -866,8 +867,12 @@ def _show_gear(player, slot=None):
         if not rows:
             lines.append("No " + slot + " upgrades for you.")
         for row in rows:
-            lines.append(slot + " +" + num_str(row["gain"]) + "  "
-                         + row["name"][:48])
+            head = slot + " +" + num_str(row["gain"])
+            if row["wtype"]:
+                # [PRIMESUD] weapon type tag, matching the nearest-by-type list
+                head += " [" + row["wtype"] + "]"
+            lines.append(head + "  "
+                         + row["name"][:40 if row["wtype"] else 48])
             lines.append(("  " + _source_detail(row))[:64])
             lines.append(("    area: " + _area_name(row["tag"]))[:64])
             for alt in row["alts"]:
