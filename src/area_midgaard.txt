@@ -1671,11 +1671,11 @@ ROOMS = {
     },
     3006: {
         "name": 'Entrance to the Grunting Boar Inn',
-        "desc": 'You are standing in the entrance hall of the Grunting Boar Inn.  The hall\nhas been wisely decorated with simple but functional furniture.  A small\nstaircase leads up to the defunct reception room and the bar is to the east.',
+        "desc": 'You are standing in the entrance hall of the Grunting Boar Inn.  The hall\nhas been wisely decorated with simple but functional furniture.  A small\nstaircase leads up to the city bank and the bar is to the east.',
         "exits": {
             "e": {"to": 3007, "desc": 'Surprise! You see the bar.'},
             "w": {"to": 3005, "desc": 'You see the temple square.'},
-            "u": {"to": 3008, "desc": 'You see the defunct reception room.'},
+            "u": {"to": 3008, "desc": 'You see the city bank.'},
         },
         "flags": {"indoors": True, "law": True},
         "sector": 'inside',
@@ -1691,12 +1691,12 @@ ROOMS = {
         "extra_descs": [('writing carving carvings symbols symbol', 'Although it is very hard to understand, you think it looks a lot like beer,\npoems about beer, and small beer-mugs.'), ('sign', 'The sign reads:\nFree instructions provided by the Grunting Boar Inn.\n\n   Buy  - Buy something (drinkable) from the bartender.\n   List - The bartender will show you all the different drinks and\n          specialties, and tell the price of each.')],
     },
     3008: {
-        "name": 'The Defunct Reception',
-        "desc": 'You are standing in a dusty, defunct reception.  The staircase leads\ndown to the entrance hall.',
+        "name": 'Midgaard City Bank',
+        "desc": "You are standing in the offices of the Midgaard City Bank, open for\nbusiness once again.  The dust has been swept from a long oak counter, a\nfresh ledger lies open beside a set of brass scales, and an iron-bound\nstrongbox squats behind the teller's window.  The staircase leads down to\nthe entrance hall.",
         "exits": {
             "d": {"to": 3006, "desc": 'You see the entrance hall.'},
         },
-        "flags": {"indoors": True, "law": True},
+        "flags": {"indoors": True, "bank": True, "law": True},
         "sector": 'inside',
     },
     3009: {
@@ -4325,14 +4325,14 @@ OBJECTS = {
         "extra_descs": [('letter resignation', 'The letter is written in a bold and feminine Carolinian hand.\n\n    To whom it may concern,\n\n        Merc Industries has installed a new no-rent save and quit\n        system.  Apparently one can now save and quit at any time\n        from anywhere inside a town or out.  My services here are\n        no longer required.\n\n    Diana the Receptionist')],
     },
     3140: {
-        "keywords":    'notice liquidation bank',
-        "short_descr": "the bank's notice of liquidation",
-        "description": "The bank's notice of liquidation is taped to the wall.",
+        "keywords":    'notice reopening bank',
+        "short_descr": "the bank's notice of reopening",
+        "description": "The bank's notice of reopening is taped to the wall.",
         "material":    'paper',
         "type": 'furniture',
         "wear_flags": {},
         "level": 0, "weight": 0, "value": 0,
-        "extra_descs": [('notice liquidation bank', "The letter is written in a reserved and dignified Spencer hand.\n\n    To whom it may concern,\n\n        Merc Industries has charmed your money.  Apparently one's\n        gold will remain close, even beyond death. We are closing\n        down our offices and ATM machines.  Our services here are\n        no longer required.\n\n    Midgaard City Bank")],
+        "extra_descs": [('notice reopening bank', 'The letter is written in a reserved and dignified Spencer hand.\n\n    To whom it may concern,\n\n        Merc Industries has lifted the charm from your money.  Gold\n        that keeps too close to its owner, we are told, is of no use\n        to anybody.  These offices and their ATM machines are open\n        once more under new management, and our services here are\n        required after all.\n\n    Midgaard City Bank')],
     },
     3150: {
         "keywords":    'coffee cup cinnamon',
@@ -4410,7 +4410,7 @@ OBJECTS = {
         "wear_flags": {"take": True},
         "values": (1, 0, 0, 0, 0),
         "level": 0, "weight": 10, "value": 500,
-        "extra_descs": [('map midgaard', ".\n                        * * * MIDGAARD * * *\n                         = = ========== = =\n\n                                     Rainbow Bridge (Asgard and Valhalla)\n                                    /\n          North            Temple Altar   Mud School <--- ** NEWBIES **\n            |   /Up        (Healer, Pit)      |           ** GO HERE **\n            | /                  |       /Entrance to\n     West---+---East             |     /  Mud School\n          / |                 Temple of       |\n    Down/   |                   Mota        Arena\n          South               (Recall)\n                                 |\n                                 |   /In the Air   /Defunct Reception\n                  Cleric         | /             /\n       Northern   Guild----Temple Square---Grunting---Bar    Northern\n       Midgaard              (Fountain)    Boar Inn          Midgaard\n     (Clan Road) Magic           |                          (Clan Road)\n           |     Shop   Bakery   |    Grocer    Weaponsmith     |\n           |       |      |      |       |           |          |\nTo    <---West---Main-Street---Market----Main-Street-+--------East--->Cross\nShire,    Gate     |      |    Square    |           |        Gate    Roads\nForest of  |     Mage  Armoury   |     Jeweler    Warrior       |\nHaon-Dor   |     Guild           |                 Guild     Wall Road\n          Wall                   |                              |\n          Road  Leather  Map     |    Grebe's  Pet   Apothecary |\n           |     Shop    Shop    |    Tavern   Shop  (Potions)  |\n           |      |       |    Common   |       |       |       |\n          Wall---Poor-Alley----Square---Dark-Alley------+----Wall Road\n          Road    |       |      |      |       |       |       |\n           |   Temple   Grubby   |   Thieves  Levee   Warehouse |\n           |  Of Stupid  Inn     |    Guild   (Boats) (Sailor)  |\n           |                    Dump            |               |\n          Wall  Mob      Sewers/ |              |             Wall\n          Road--Factory          |              |             Road\n           |                   South         Midgaard           |         To the\n         Bridge                Bridge         River---------> Bridge <--> Sands\n           |                     |                              |           of\n        Southern              Southern                       Southern     Sorrow\n        Midgaard              Midgaard                       Midgaard")],
+        "extra_descs": [('map midgaard', ".\n                        * * * MIDGAARD * * *\n                         = = ========== = =\n\n                                     Rainbow Bridge (Asgard and Valhalla)\n                                    /\n          North            Temple Altar   Mud School <--- ** NEWBIES **\n            |   /Up        (Healer, Pit)      |           ** GO HERE **\n            | /                  |       /Entrance to\n     West---+---East             |     /  Mud School\n          / |                 Temple of       |\n    Down/   |                   Mota        Arena\n          South               (Recall)\n                                 |\n                                 |   /In the Air   /City Bank\n                  Cleric         | /             /\n       Northern   Guild----Temple Square---Grunting---Bar    Northern\n       Midgaard              (Fountain)    Boar Inn          Midgaard\n     (Clan Road) Magic           |                          (Clan Road)\n           |     Shop   Bakery   |    Grocer    Weaponsmith     |\n           |       |      |      |       |           |          |\nTo    <---West---Main-Street---Market----Main-Street-+--------East--->Cross\nShire,    Gate     |      |    Square    |           |        Gate    Roads\nForest of  |     Mage  Armoury   |     Jeweler    Warrior       |\nHaon-Dor   |     Guild           |                 Guild     Wall Road\n          Wall                   |                              |\n          Road  Leather  Map     |    Grebe's  Pet   Apothecary |\n           |     Shop    Shop    |    Tavern   Shop  (Potions)  |\n           |      |       |    Common   |       |       |       |\n          Wall---Poor-Alley----Square---Dark-Alley------+----Wall Road\n          Road    |       |      |      |       |       |       |\n           |   Temple   Grubby   |   Thieves  Levee   Warehouse |\n           |  Of Stupid  Inn     |    Guild   (Boats) (Sailor)  |\n           |                    Dump            |               |\n          Wall  Mob      Sewers/ |              |             Wall\n          Road--Factory          |              |             Road\n           |                   South         Midgaard           |         To the\n         Bridge                Bridge         River---------> Bridge <--> Sands\n           |                     |                              |           of\n        Southern              Southern                       Southern     Sorrow\n        Midgaard              Midgaard                       Midgaard")],
     },
     3163: {
         "keywords":    'map thera',

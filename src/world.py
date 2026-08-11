@@ -336,7 +336,7 @@ AREA_ROOM_COUNTS = {
     "newthalos":  257,
 }
 
-CONTENT_REVISION = "2f4e7d7226b9"
+CONTENT_REVISION = "cb45fb36b092"
 # -- END GENERATED --
 
 # -- Lazy loading state -------------------------------------------------------

@@ -36,6 +36,7 @@ churn). Nothing left to chase actively.
 ## Device checks pending (11/08/2026)
 
 - Confirm GROB memory is separate from Python heap: `gc.mem_free()` before/after the scrollback `dimgrob` calls (tml_prime.py `__init__`) should be ~unchanged. Validates the 250->500 `SCROLLBACK_SIZE` bump (~3.2MB of history pixels at 16bpp); note result in docs/PERFORMANCE.md.
+- Bank reopening + remort-bank-gold (12/08/2026): load an existing G1 save against the bumped `CONTENT_REVISION` (buffered save deltas), then walk Temple Square -> e -> u, `bank deposit/withdraw`, and a remort with split purse/bank funds.
 
 ## Input-lag stream leftovers (30/07/2026, measure-first)
 

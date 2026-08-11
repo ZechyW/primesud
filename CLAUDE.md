@@ -79,13 +79,15 @@ Code with no 1stMud equivalent or intentional deviation marked `# [PRIMESUD]`. W
 
 When shipping a notable player-facing `[PRIMESUD]` feature or deviation (new system, balance change, UX behaviour -- not micro-fixes), add a one-liner to the matching section of root `FEATURES.md` in the same commit.
 
+World/lore/content changes (new or rewritten rooms, items, area text, content classes) go to root `WORLD.md` instead of `FEATURES.md`, same one-liner rule.
+
 ## Docstrings
 
 Google-style: one-line summary, then `Args:` / `Returns:` / `Raises:` as needed; omit empty sections. For ported functions append `(cf. 1stMud <symbol> in <file>)` to summary (exact name + source file, e.g. `fight.c`); PrimeSUD-only functions and helpers should be explicitly marked [PRIMESUD].
 
 ## Documentation map
 
-Root: `README.md`, `CLAUDE.md`, `DESIGN.md` (intentional deviations + settled decisions), `FEATURES.md` (curated what's-different-from-1stMud index for readers -- one-liners pointing at DESIGN.md/docs; add a line when shipping a notable [PRIMESUD] feature), `TODO.md` (loose ends). Everything else lives in `docs/`:
+Root: `README.md`, `CLAUDE.md`, `DESIGN.md` (intentional deviations + settled decisions), `FEATURES.md` (curated what's-different-from-1stMud index for readers -- one-liners pointing at DESIGN.md/docs; add a line when shipping a notable [PRIMESUD] feature), `WORLD.md` (curated index of world/lore/content changes vs the stock 1stMud world -- rooms, items, lore, content classes), `TODO.md` (loose ends). Everything else lives in `docs/`:
 
 - 1stMud reference: `REFERENCE.md`, `COMMANDS.md`, `SKILLS.md`
 - Device limits/perf: `BUILTINS.md`, `PERFORMANCE.md`, `PRIME_FIRMWARE_BUGS.md`, `PRIME_COLOURS.md`
