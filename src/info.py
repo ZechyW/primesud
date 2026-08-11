@@ -2267,8 +2267,10 @@ def do_areas(player, args):
             builder = world.AREA_BUILDERS.get(tag, "")
             # [PRIMESUD] "here" marker, see docstring.
             here = "{G>{x" if tag == source_area else " "
+            # [PRIMESUD] builder column 10 wide (upstream %-7s): "Andersen"
+            # is 8 chars and shifted Pyramid/Astral names by one.
             chprintln(player, here + "{W[{B" + pad_right(lvl_str, 7)
-                   + "{W] {r" + pad_right(builder, 7) + " {C" + name + "{x")
+                   + "{W] {r" + pad_right(builder, 10) + " {C" + name + "{x")
             count += 1
 
     if count == 0:
