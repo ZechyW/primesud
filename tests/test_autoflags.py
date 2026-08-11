@@ -330,3 +330,38 @@ def test_pet_kill_applies_present_owners_auto_flags(
     assert (prize in player["inv"]) is looted
     assert (prize in corpse["contents"]) is not looted
     assert (corpse in world.rooms._data[9001]["items"]) is not sacked
+
+
+def test_blind_killer_skips_the_whole_auto_block(out, monkeypatch):
+    """An unseen corpse no-ops autoloot/autosac (cf. fight.c:1165 can_see_obj)."""
+    player = _make_player()
+    player["flags"] = PLR_AUTOLOOT | PLR_AUTOSAC
+    player["affected_by"]["blind"] = True
+    player["silver"] = 0
+    victim = _make_mob(3, hit=1, max_hit=1, fighting=1)
+
+    world.ITEM_DEFS._data[9010] = {
+        "type": "armor", "short_descr": "a test prize", "keywords": "prize",
+    }
+    world.ITEM_DEFS._data[9011] = {
+        "type": "npc_corpse", "short_descr": "a corpse", "keywords": "corpse",
+    }
+    prize = {"vnum": 9010}
+    corpse = {"vnum": 9011, "contents": [prize], "level": 5}
+    world.rooms._data[9001]["items"].append(corpse)
+
+    monkeypatch.setattr(combat, "is_safe", lambda ch, v: False)
+    monkeypatch.setattr(combat, "check_dodge", lambda ch, v: False)
+    monkeypatch.setattr(combat, "check_parry", lambda ch, v: False)
+    monkeypatch.setattr(combat, "check_shield_block", lambda ch, v: False)
+    monkeypatch.setattr(combat, "group_gain", lambda ch, v: None)
+    monkeypatch.setattr(combat, "update_death", lambda v, ch: None)
+    monkeypatch.setattr(combat, "raw_kill", lambda v, ch: corpse)
+    monkeypatch.setattr(combat, "_advance_target", lambda *args: None)
+    monkeypatch.setattr(combat, "randint", lambda a, b: b)
+
+    assert combat.damage(player, victim, 100, TYPE_HIT, DAM_BASH, False)
+    assert prize not in player["inv"]
+    assert corpse["contents"] == [prize]
+    assert corpse in world.rooms._data[9001]["items"]
+    assert player["silver"] == 0

@@ -44,7 +44,8 @@ from debug import DBG, dbg  # [PRIMESUD]
 from effects import TARGET_CHAR, fire_effect, cold_effect, shock_effect
 from gquest import gq_kill_check
 from handler import (get_hitroll, get_damroll, get_armor, get_curr_stat, act,
-                     is_awake, can_see, affect_to_char, affect_remove, affect_strip,
+                     is_awake, can_see, can_see_obj,
+                     affect_to_char, affect_remove, affect_strip,
                      affect_join, is_affected,
                      chprintln, get_char_room, unequip_char,
                      TO_CHAR, TO_NOTVICT, TO_ROOM, TO_VICT,
@@ -1487,6 +1488,11 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         # 1stMud: if (!IsNPC(ch) && (corpse = get_obj_list...) ... autoloot/autogold/autosac
         # [PRIMESUD] use corpse returned by raw_kill instead of searching by
         # name -- 1stMud searches and gets oldest corpse when multiples exist.
+        # Visibility matches upstream: get_obj_list filters through can_see_obj
+        # (handler.c:2007), so an unseen corpse no-ops the whole block, and
+        # do_get's "all <container>" loop tests can_see_obj per item
+        # (act_obj.c:310), so unseen items stay in the corpse. The autosac
+        # skip-guard stays on raw contents, exactly as upstream.
         # [PRIMESUD] an owned pet's kill uses its present owner's auto flags
         # (autoloot/autogold/autosac, each only if set); generic charmies and
         # remote owners remain NPC kills.
@@ -1502,12 +1508,15 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
         if not auto_ch.get("is_npc"):
             flags = auto_ch.get("flags", PLR_DEFAULTS)
             if (corpse is not None and isinstance(corpse, dict)
-                    and item_tpl(corpse).get("type") == "npc_corpse"):
+                    and item_tpl(corpse).get("type") == "npc_corpse"
+                    and can_see_obj(auto_ch, corpse)):
                 contents = corpse.get("contents", [])
 
                 # 1stMud: if (PLR_AUTOLOOT && corpse->content_first) do_get("all corpse")
                 if flags & PLR_AUTOLOOT and contents:
                     for cobj in list(contents):
+                        if not can_see_obj(auto_ch, cobj):
+                            continue
                         ctpl = item_tpl(cobj)
                         obj_remove(corpse["contents"], cobj)
                         chprintln(auto_ch, "You get " + (cobj.get("short_descr") or ctpl["short_descr"]) + ".")
@@ -1518,6 +1527,8 @@ def damage(ch, victim, dam, dt, dam_type, show, attack_noun=None):
                 if (flags & PLR_AUTOGOLD and corpse.get("contents")
                         and not (flags & PLR_AUTOLOOT)):
                     for cobj in list(corpse["contents"]):
+                        if not can_see_obj(auto_ch, cobj):
+                            continue
                         ctpl = item_tpl(cobj)
                         if _item_type(cobj, ctpl) == "money":
                             obj_remove(corpse["contents"], cobj)
