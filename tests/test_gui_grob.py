@@ -99,7 +99,20 @@ def test_desktop_keys_route_through_device_translation():
 
     gui_hpprime._on_key(_event("Up"))
     tr._pump_keyboard({2: ("n", True)})
-    assert tr._dequeue_key() == ("n", True)
+    assert tr._dequeue_key() == (gui_tml._HIST_UP, None)
+
+    gui_hpprime._on_key(_event("Down"))
+    tr._pump_keyboard({12: ("s", True)})
+    assert tr._dequeue_key() == (gui_tml._HIST_DN, None)
+
+    gui_hpprime._on_key(_event("Left"))
+    gui_hpprime._on_key(_event("Right"))
+    tr._pump_keyboard({7: ("w", True), 8: ("e", True)})
+    assert tr._dequeue_key() is None
+
+    gui_hpprime._on_key(_event("Up"))
+    tr._pump_keyboard({2: ("\\U", None)})
+    assert tr._dequeue_key() == ("\\U", None)
 
     gui_hpprime._on_key(_event("Prior"))
     tr._pump_keyboard()
