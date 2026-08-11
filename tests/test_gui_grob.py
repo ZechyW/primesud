@@ -123,6 +123,26 @@ def test_desktop_keys_route_through_device_translation():
     assert tr._dequeue_key() == (gui_tml._SB_DN, None)
 
 
+def test_desktop_scale_shortcuts(monkeypatch):
+    configured = []
+    monkeypatch.setattr(
+        gui_hpprime, "_canvas",
+        type("Canvas", (), {"configure": lambda self, **values: configured.append(values)})(),
+    )
+    gui_hpprime._scale = 1
+
+    gui_hpprime._on_key(_event("equal", char="=", state=4))
+    assert gui_hpprime._scale == 2
+    assert configured[-1]["width"] == 320 * 2 + 2 * gui_hpprime._PAD
+
+    gui_hpprime._on_key(_event("minus", char="-", state=4))
+    assert gui_hpprime._scale == 1
+
+    gui_hpprime._scale = 3
+    gui_hpprime._on_key(_event("0", char="0", state=4))
+    assert gui_hpprime._scale == 1
+
+
 def test_keyboard_resync_clears_desktop_events():
     tr = _bare_terminal()
     tr._refresh_indicators = lambda: None

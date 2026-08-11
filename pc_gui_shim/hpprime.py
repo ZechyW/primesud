@@ -32,6 +32,7 @@ _pointer_y = 0
 # Viewport padding so Windows 11's rounded window corners don't clip pixels;
 # grey (vs black) marks the exact 320x240 emulated area.
 _PAD = 8
+_MAX_SCALE = 8
 
 
 def init_display(scale=1):
@@ -85,6 +86,20 @@ def _on_close():
         _events.append(("interrupt", None))
 
 
+def _set_scale(scale):
+    """Resize the desktop view without changing emulated coordinates."""
+    global _scale, _dirty
+    scale = min(_MAX_SCALE, max(1, scale))
+    if scale == _scale:
+        return
+    _scale = scale
+    _canvas.configure(
+        width=320 * scale + 2 * _PAD,
+        height=240 * scale + 2 * _PAD,
+    )
+    _dirty = True
+
+
 def _on_key(event):
     key_bits = {
         "Escape": 4,
@@ -107,7 +122,13 @@ def _on_key(event):
         "F10": 20,
     }
     value = None
-    if event.state & 4 and event.keysym.lower() == "c":
+    if event.state & 4 and event.keysym in ("equal", "plus", "KP_Add"):
+        _set_scale(_scale + 1)
+    elif event.state & 4 and event.keysym in ("minus", "KP_Subtract"):
+        _set_scale(_scale - 1)
+    elif event.state & 4 and event.keysym == "0":
+        _set_scale(1)
+    elif event.state & 4 and event.keysym.lower() == "c":
         value = ("interrupt", None)
     elif event.keysym == "Prior":
         value = ("scroll_up", None) if event.state & 1 else ("bit", 1)
