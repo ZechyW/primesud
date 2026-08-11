@@ -222,6 +222,9 @@ Deliberate gameplay tweaks; each is a settled decision in DESIGN.md or a
   "levelled at 1 HP mid-fight".
 - **Remort power knob** -- the stock remort grant (~6000 hp) is divided by
   `REMORT_POWER_DIV` (default 12, ~500 hp); set 1 for stock (config.py).
+- **Remort takes banked gold** -- the 500,000-gold remort fee counts your bank
+  balance as well as your purse (carried coins spend first); upstream only
+  ever looks at what you carry (DESIGN.md "Remort gold fee").
 - **Remort kindness floors** -- the weapon-40%/recall-50% floors are applied
   *after* the skill reset, so they survive it (upstream's ordering wipes
   them back to 1%).

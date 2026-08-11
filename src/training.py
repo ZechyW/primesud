@@ -222,11 +222,31 @@ def do_practice(player, args):
 REMORT_GOLD = 500000  # cf. 1stMud do_remort: check_worth(ch, 500000, VALUE_GOLD)
 
 
+def _pay_remort_gold(player):
+    """Deduct the remort gold fee, carried coins first then bank. [PRIMESUD]
+
+    1stMud deduct_cost(ch, 500000, VALUE_GOLD) takes carried
+    gold only; accepting banked gold spares the pointless withdraw trip
+    (coin weight only ever blocked pickups anyway). Silver still excluded,
+    matching upstream VALUE_GOLD.
+
+    Args:
+        player (dict): Player state dict (eligibility already checked, so
+            carried + banked gold covers REMORT_GOLD).
+    """
+    from_hand = min(player["gold"], REMORT_GOLD)
+    player["gold"] -= from_hand
+    player["gold_bank"] -= REMORT_GOLD - from_hand
+
+
 def do_remort(player, args):
     """Remort into an additional class at max level (cf. 1stMud do_remort in multiclass.c).
 
     Requirements: at own class guild with a trainer/gainer mob present, at
     calc_max_level, REMORT_GOLD gold.
+    [PRIMESUD] The gold fee may be paid out of banked gold: eligibility
+    tests carried + banked, and _pay_remort_gold spends carried coins
+    first, then the bank. Upstream counts carried gold only.
     Two-step confirm as in 1stMud (type remort twice; remort <arg> cancels).
     [PRIMESUD] nanny.c re-creation flow replaced by race + sex + class
     pickers; no immortal backup/wiznet. Race is re-pickable on EVERY remort
@@ -276,7 +296,8 @@ def do_remort(player, args):
         chprintln(player, "Don't you want to finish your quest first?")
         return
 
-    if player["gold"] < REMORT_GOLD or player.get("quest_points", 0) < 500:
+    if (player["gold"] + player["gold_bank"] < REMORT_GOLD
+            or player.get("quest_points", 0) < 500):
         chprintln(player, "You need 500,000 gold and 500 quest points to remort.")
         return
 
@@ -479,7 +500,7 @@ def finish_remort(player, new_class, new_race=None, new_sex=None):
 
     player["level"] = 1
     player["xp"] = 0
-    player["gold"] -= REMORT_GOLD
+    _pay_remort_gold(player)  # [PRIMESUD] carried gold first, then bank
     player["quest_points"] = player.get("quest_points", 0) - 500  # cf. 1stMud finish_remort
     if new_race is not None:
         _apply_remort_race(player, new_race)  # before xp_next: race class_mult
@@ -568,7 +589,7 @@ def finish_tier_reset(player, new_class, new_race=None, new_sex=None):
     player["prime_class"] = 0
     player["level"] = 1
     player["xp"] = 0
-    player["gold"] -= REMORT_GOLD
+    _pay_remort_gold(player)  # [PRIMESUD] carried gold first, then bank
     player["quest_points"] = player.get("quest_points", 0) - 500
     # near-fresh pools: create_char baselines (50/100/100) + 50 per tier
     player["max_hit"]  = player["perm_hit"]  = 50 + 50 * tier

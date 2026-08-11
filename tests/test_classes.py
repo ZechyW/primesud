@@ -350,6 +350,62 @@ class TestRemort:
         finally:
             self._teardown()
 
+    def test_remort_gold_paid_from_purse_then_bank(self, monkeypatch):
+        # [PRIMESUD] the fee counts carried + banked gold, spending carried
+        # coins first; upstream deduct_cost(ch, 500000, VALUE_GOLD) only ever
+        # touches what the player carries
+        import training
+        import game_state
+        monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
+        player = self._hero(monkeypatch, pick=0)
+        player["gold"] = 200000
+        player["gold_bank"] = 400000
+        try:
+            training.do_remort(player, [])
+            training.do_remort(player, [])
+            assert player["classes"] == [CLASS_WARRIOR, CLASS_MAGE]
+            assert player["gold"] == 0            # purse drained first
+            assert player["gold_bank"] == 100000  # only the 300k remainder
+        finally:
+            self._teardown()
+
+    def test_remort_gold_fully_banked(self, monkeypatch):
+        # [PRIMESUD] nothing carried at all still remorts
+        import training
+        import game_state
+        monkeypatch.setattr(game_state, "save_world", lambda quiet=False: True)
+        player = self._hero(monkeypatch, pick=0)
+        player["gold"] = 0
+        player["gold_bank"] = 500000
+        try:
+            training.do_remort(player, [])
+            training.do_remort(player, [])
+            assert player["classes"] == [CLASS_WARRIOR, CLASS_MAGE]
+            assert player["gold"] == 0
+            assert player["gold_bank"] == 0
+        finally:
+            self._teardown()
+
+    def test_remort_refused_when_purse_and_bank_short(self, monkeypatch):
+        # combined total below the fee: the standard refusal, no deduction
+        import training
+        player = self._hero(monkeypatch)
+        player["gold"] = 200000
+        player["gold_bank"] = 299999
+        out = []
+        monkeypatch.setattr(training, "chprintln",
+                            lambda _ch, msg="": out.append(msg))
+        try:
+            training.do_remort(player, [])
+            assert not player.get("confirm_remort")
+            assert out[-1] == ("You need 500,000 gold and 500 quest points"
+                               " to remort.")
+            assert player["gold"] == 200000
+            assert player["gold_bank"] == 299999
+            assert player["classes"] == [CLASS_WARRIOR]
+        finally:
+            self._teardown()
+
     def test_remort_refused_when_not_max_level(self, monkeypatch):
         import training
         player = self._hero(monkeypatch)
