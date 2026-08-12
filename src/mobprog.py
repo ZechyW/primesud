@@ -58,8 +58,8 @@ which command categories are prog-safe:
     * mark_explored(): interpret() marks the actor's room explored, allocating
       a ~2KB per-mob mask.  Guarded now -- mark_explored early-returns on
       is_npc (explored maps are a PC-only concept).
-    * leading blank line: interpret() prints a blank separator echoing player
-      input.  Guarded now -- suppressed when the actor is_npc.
+    * leading echo line: interpret() prints a dim "> cmd" separator echoing
+      player input.  Guarded now -- suppressed when the actor is_npc.
     * commands that call the picker UI, tprint() directly, or read player-only
       pcdata (train/practice/score/quest/save/quit/macro/debug, shop pickers)
       assume the local player and would emit to the screen or touch missing
