@@ -565,10 +565,12 @@ def interpret(raw, player):
                 return None
         else:
             _inlast = argument
-    # Blank separator line echoes the player's own input; a mob acting through
-    # the interpreter (mobprog command actor) must not emit it. [PRIMESUD]
+    # Dim echo of the player's own input separates output blocks and gives
+    # scrollback attribution (input lives on the status bar, so it never
+    # reaches the scroll region otherwise); a mob acting through the
+    # interpreter (mobprog command actor) must not emit it. [PRIMESUD]
     if not player.get("is_npc"):
-        tprint("")
+        tprint("{D> " + argument + "{x")
 
     # [PRIMESUD] Alias substitution (cf. 1stMud substitute_alias in alias.c,
     # normally invoked from the descriptor input handler before interpret()

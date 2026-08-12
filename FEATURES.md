@@ -185,6 +185,10 @@ worth trusting -- the engineering layer.
   Symb/Help step command history, Shift-minus or a touch swipe opens a 250-row
   scrollback, and a persistent status bar shows hp/mana/xp plus the live input
   buffer (docs/PRIME_UX.md).
+- **Command echo** -- every player command echoes as a dim `> command` line in
+  the scroll region (replacing the plain blank separator), so scrollback shows
+  what produced each output block -- input otherwise lives only on the status
+  bar (commands.py).
 - **Streaming output reveal** -- multi-row output (looks, combat rounds, help
   pages) streams in at 25ms/row for a terminal feel; any key skips the rest
   instantly and is kept as input (terminal.py, docs/PRIME_UX.md).
