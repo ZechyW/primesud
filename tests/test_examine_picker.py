@@ -113,6 +113,31 @@ def test_pick_mob_shows_char(monkeypatch, out, scene):
     assert "A burly guard." in out
 
 
+def test_pick_second_mob_uses_counted_token(monkeypatch, out, scene):
+    """[PRIMESUD] picking the second of two same-keyword mobs must return a
+    `2.` token so the replay resolves to the mob actually shown."""
+    MOB_DEFS._data[9002] = {"short_descr": "a tall guard", "keywords": "guard",
+                            "level": 5, "description": "A tall guard."}
+    mob = _char_base()
+    mob.update({"is_npc": True, "id": 3, "tpl": 9002, "room": 3001,
+                "hit": 50, "max_hit": 50})
+    world.chars[3] = mob
+    world.rooms._data[3001]["mobs"].append(3)
+    monkeypatch.setattr(info, "pick_from", lambda t, o: 1)
+    assert info.do_examine(scene, []) == "examine 2.guard"
+    assert "A tall guard." in out
+    assert "A burly guard." not in out
+
+
+def test_pick_renamed_mob_uses_instance_keywords(monkeypatch, out, scene):
+    """[PRIMESUD] instance keywords (renamed pets) override the template in
+    get_char_room, so the replay token must come from the same source."""
+    world.chars[2]["keywords"] = "fluffy"
+    monkeypatch.setattr(info, "pick_from", lambda t, o: 0)
+    assert info.do_examine(scene, []) == "examine fluffy"
+    assert "A burly guard." in out
+
+
 def test_pick_room_item_shows_description(monkeypatch, out, scene):
     monkeypatch.setattr(info, "pick_from", lambda t, o: 1)
     assert info.do_examine(scene, []) == "examine rock"

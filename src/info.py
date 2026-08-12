@@ -2534,7 +2534,7 @@ def do_read(player, args):
 
 
 def do_examine(player, args):
-    """Examine an object: look at it, then show contents or coin count (cf. 1stMud do_examine in act_info.c).
+    """Examine a target via do_look, or pick from a menu with no argument (cf. 1stMud do_examine in act_info.c).
 
     [Verified: 04/07/2026]
 
@@ -2607,9 +2607,19 @@ def do_examine(player, args):
         # one_argument), unlike the inventory/shop pickers whose typed paths
         # join args and so replay the full keywords string.
         if idx < len(mobs):
-            _show_char_to_char_1(player, mobs[idx])
-            mtpl = MOB_DEFS[world.chars[mobs[idx]]["tpl"]]
-            return "examine " + mtpl.get("keywords", mtpl["short_descr"]).split()[0]
+            # [PRIMESUD] delegate to do_look with an exact `N.` token like the
+            # object branch below: get_char_room counts visible keyword matches
+            # in room order, so seed with the picked mob's same-keyword
+            # predecessors. Instance keywords override the template (renamed
+            # pets), matching get_char_room's own predicate.
+            inst = world.chars[mobs[idx]]
+            mtpl = MOB_DEFS[inst["tpl"]]
+            kw = (inst.get("keywords")
+                  or mtpl.get("keywords", mtpl["short_descr"])).split()[0]
+            n = _count_mob_matches(player, kw, mobs[:idx])
+            target = kw if n == 0 else num_str(n + 1) + "." + kw
+            do_look(player, [target])
+            return "examine " + target
         idx -= len(mobs)
         # [PRIMESUD] eds and exits sit BETWEEN the room and carried object
         # entries, so only indices past the room objects need un-shifting
@@ -2676,8 +2686,10 @@ def _examine_extras(player, obj):
     tpl = item_tpl(obj)
     obj_type = _item_type(obj, tpl)
     if obj_type == "money":
-        silver = obj.get("silver", tpl.get("silver", 0))
-        gold = obj.get("gold", tpl.get("gold", 0))
+        # bare-vnum instances carry no overrides (cf. _show_container's guard)
+        inst = obj if isinstance(obj, dict) else {}
+        silver = inst.get("silver", tpl.get("silver", 0))
+        gold = inst.get("gold", tpl.get("gold", 0))
         if silver == 0:
             if gold == 0:
                 chprintln(player, "Odd...there's no coins in the pile.")
