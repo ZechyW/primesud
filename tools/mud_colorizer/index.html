@@ -490,6 +490,8 @@
         let minDistance = Infinity;
         let closestLetter = "w";
         for (let i = 0; i < primesudPalette.length; i++) {
+          // never quantize to {d: black is invisible on the device's dark background
+          if (primesudPalette[i][0] === "d") continue;
           const hex = primesudPalette[i][1];
           const dr = rgb.r - ((hex >> 16) & 0xff);
           const dg = rgb.g - ((hex >> 8) & 0xff);
