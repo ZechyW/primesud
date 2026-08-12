@@ -3124,16 +3124,17 @@ def group_gain(ch, victim):
         # 1stMud: gquest target check (is_gqmob)
         gq_kill_check(gch, victim)
 
-        # 1stMud: worn anti-align items zap after the kill's alignment shift
-        # (1stMud checks ch, the killer, not gch)
+        # 1stMud: worn anti-align items zap after the kill's alignment shift.
+        # [PRIMESUD] Check the wearer, not upstream's killer `ch`; otherwise a
+        # good pet/groupmate can zap legal anti-good gear from a neutral PC.
         for slot in list(gch["equip"].keys()):
             obj = gch["equip"].get(slot)
             if obj is None:
                 continue
             ef = item_extra_flags(obj, item_tpl(obj))
-            if ((ef.get("anti_evil") and is_evil(ch))
-                    or (ef.get("anti_good") and is_good(ch))
-                    or (ef.get("anti_neutral") and is_neutral(ch))):
+            if ((ef.get("anti_evil") and is_evil(gch))
+                    or (ef.get("anti_good") and is_good(gch))
+                    or (ef.get("anti_neutral") and is_neutral(gch))):
                 act("You are zapped by $p.", gch, obj, None, TO_CHAR)
                 act("$n is zapped by $p.", gch, obj, None, TO_ROOM)
                 # 1stMud: obj_from_char + obj_to_room

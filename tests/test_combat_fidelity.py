@@ -63,6 +63,35 @@ def test_pet_does_not_dilute_xp_but_charmie_does(monkeypatch):
     assert seen == [15]  # player 10 + charmie 5; pet contributes 0
 
 
+def test_good_pet_kill_does_not_zap_neutral_owners_anti_good_gear(monkeypatch):
+    player = _char_base()
+    gear = {"vnum": 42}
+    player.update({"id": 1, "level": 10, "room": 9001, "pet": 2,
+                   "alignment": 14, "equip": {"body": gear}})
+    pet = _char_base()
+    pet.update({"id": 2, "is_npc": True, "level": 10, "room": 9001,
+                "master": 1, "leader": 1, "alignment": 500,
+                "act_flags": {"pet": True}})
+    victim = _char_base()
+    victim.update({"id": 3, "is_npc": True, "level": 10, "room": 9001})
+    monkeypatch.setattr(world, "chars", {1: player, 2: pet})
+    monkeypatch.setattr(world, "rooms", {9001: {"mobs": [2], "items": []}})
+    monkeypatch.setattr(combat, "xp_compute", lambda gch, mob, levels: 0)
+    monkeypatch.setattr(combat, "gain_exp", lambda ch, xp: None)
+    monkeypatch.setattr(combat, "quest_kill_check", lambda ch, mob: None)
+    monkeypatch.setattr(combat, "gq_kill_check", lambda ch, mob: None)
+    monkeypatch.setattr(combat, "chprintln", lambda ch, text: None)
+    monkeypatch.setattr(combat, "act", lambda *args: None)
+    monkeypatch.setattr(combat, "item_tpl", lambda obj: {})
+    monkeypatch.setattr(combat, "item_extra_flags",
+                        lambda obj, tpl: {"anti_good": True})
+
+    group_gain(pet, victim)
+
+    assert player["equip"]["body"] is gear
+    assert world.rooms[9001]["items"] == []
+
+
 class TestAdvanceTargetFighterIndex:
     """Post-kill retarget must run full set_fighting: raw_kill's
     stop_fighting(both=True) cleared fighting/pos/stance and removed the
