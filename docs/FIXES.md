@@ -806,3 +806,57 @@ handing `do_look` an exact cumulative `N.` token rather than hand-rendering
 the description, which also fixes selected objects skipping their own
 extra_descs (the Midgaard bank letters showed "...is taped to the wall."
 instead of their contents).
+
+---
+
+## get_obj_here: the `N.` counter restarts per list, hiding same-keyword objects
+
+**Upstream:** `reference/1stMud4.5.3/src/handler.c`, `get_obj_here()`, line
+2063 (three independent lookups: `get_obj_list` on the room, then
+`get_obj_carry`, then `get_obj_wear`).
+
+### The bug
+
+Same family as the `do_look` counter fix above, on the object-resolution
+side. Each of the three lookups parses the `N.` prefix and counts matches
+from zero independently, so the Nth match is unaddressable whenever
+same-keyword items span lists: with one potion on the floor and one carried,
+`get 2.potion` fails outright -- the room scan counts 1 and gives up, the
+carry scan restarts at 0 and its potion is match 1, never 2. Blast radius is
+every object-resolving command that routes through `get_obj_here`: `get`,
+`put`, `open`, `look in`, mobprogs, and so on.
+
+### PrimeSUD fix -- implemented in `get_obj_here` in `item.py`
+
+One `get_obj_list` call over the concatenated room + inventory + equipped
+lists, so the counter runs cumulatively across all three. Un-prefixed
+lookups are byte-identical: the priority order (room first, then carried,
+then worn) is upstream-faithful and load-bearing -- `get sword` must prefer
+the floor copy over the one in hand.
+
+Residual: `look N.<kw>` and `get N.<kw>` can still number differently, as
+upstream. `do_look`'s unified sequence counts mobs and extra-descriptions;
+`get_obj_here` counts only keyword-matching objects -- the namespaces are
+disjoint whenever a same-keyword mob or extra-description exists, so full
+alignment is unattainable rather than unimplemented.
+
+---
+
+## group_gain: pet or groupmate alignment wrongly zaps another player's gear
+
+**Upstream:** `reference/1stMud4.5.3/src/fight.c`, `group_gain()`, lines
+2168-2182.
+
+### The bug
+
+After a kill, `group_gain` scans each player `gch` and drops worn items whose
+anti-alignment flags conflict with `ch`, the character that landed the kill.
+Those can differ in a group or when a pet lands the kill. A good pet therefore
+zaps its neutral owner's legal `anti_good` gear; the owner can immediately
+wear it again because upstream `equip_char` correctly checks the wearer.
+
+### PrimeSUD fix -- implemented in `combat.py` (12/08/2026)
+
+Check each gear wearer's alignment (`gch`) during the post-kill scan. Solo
+alignment-shift zaps stay unchanged, while pets and groupmates can no longer
+cause false drops.

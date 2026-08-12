@@ -630,9 +630,12 @@ def get_obj_list(fragment, item_list, templates, viewer=None):
 def get_obj_here(player, arg):
     """Find a visible obj in room, inventory, or equipped (cf. 1stMud get_obj_here in handler.c:2063).
 
-    The can_see_obj gate is baked in, as in the source (its room scan runs
-    through the gated get_obj_list, carry/wear through get_obj_carry /
-    get_obj_wear which gate likewise).
+    The can_see_obj gate is baked in, as in the source (everything runs
+    through the gated get_obj_list; upstream's get_obj_carry / get_obj_wear
+    legs gate likewise).
+
+    [PRIMESUD] The `N.` counter is cumulative across the three lists;
+    upstream restarts it per list (docs/FIXES.md).
 
     Args:
         player (dict): Observer state dict (player or mob).
@@ -642,14 +645,14 @@ def get_obj_here(player, arg):
         Item (int or dict), or None if not found.
     """
     rs = world.rooms[player["room"]]
-    obj = get_obj_list(arg, rs["items"], ITEM_DEFS, player)
-    if obj is not None:
-        return obj
-    obj = get_obj_list(arg, player["inv"], ITEM_DEFS, player)
-    if obj is not None:
-        return obj
+    # [PRIMESUD] one get_obj_list call over the concatenated lists so the
+    # `N.` counter runs cumulatively across room -> inventory -> equipped.
+    # Upstream restarts it per list, leaving the Nth match unaddressable
+    # when same-keyword items span lists (docs/FIXES.md: get_obj_here
+    # N.-prefix counter). Priority order itself is upstream-faithful.
     equipped = [it for it in player["equip"].values() if it is not None]
-    return get_obj_list(arg, equipped, ITEM_DEFS, player)
+    return get_obj_list(arg, rs["items"] + player["inv"] + equipped,
+                        ITEM_DEFS, player)
 
 
 def apply_money_pickup(player, obj, tpl):

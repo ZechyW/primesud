@@ -1031,3 +1031,34 @@ class TestObjRemoveIdentity:
             obj["extra_flags"].pop("litter", None)   # _get_triggers mutation
             obj.pop("timer", None)
         assert room_items == []
+
+
+class TestGetObjHereCumulativeCounter:
+    """`N.` counter runs cumulatively across room -> inventory -> equipped.
+
+    Upstream get_obj_here restarts the counter per list, so with one potion
+    in the room and one carried, `get 2.potion` matched nothing at all --
+    the Nth match was unaddressable whenever same-keyword items spanned
+    lists (docs/FIXES.md: get_obj_here N.-prefix counter).
+    """
+
+    def test_nth_match_spans_lists(self):
+        from item import get_obj_here
+        _stub_item_tpl(90020, itype="potion", keywords="potion",
+                       short_descr="a potion")
+        _stub_room(3001)
+        world.rooms[3001]["items"].append(90020)      # room copy: bare vnum
+        carried = _stub_item_instance(90020)
+        worn = _stub_item_instance(90020)
+        player = _make_char(room=3001)
+        player["inv"].append(carried)
+        player["equip"]["hold"] = worn
+        world.chars[1] = player
+
+        # un-prefixed lookup keeps upstream room-first priority
+        assert get_obj_here(player, "potion") == 90020
+        # upstream returned None for both: room scan counts 1 then gives up,
+        # inv/equip scans restart at 0 and never reach 2
+        assert get_obj_here(player, "2.potion") is carried
+        assert get_obj_here(player, "3.potion") is worn
+        assert get_obj_here(player, "4.potion") is None

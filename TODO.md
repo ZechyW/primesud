@@ -38,16 +38,6 @@ churn). Nothing left to chase actively.
 - Confirm GROB memory is separate from Python heap: `gc.mem_free()` before/after the scrollback `dimgrob` calls (tml_prime.py `__init__`) should be ~unchanged. Validates the 250->500 `SCROLLBACK_SIZE` bump (~3.2MB of history pixels at 16bpp); note result in docs/PERFORMANCE.md.
 - Bank reopening + remort-bank-gold (12/08/2026): load an existing G1 save against the bumped `CONTENT_REVISION` (buffered save deltas), then walk Temple Square -> e -> u, `bank deposit/withdraw`, and a remort with split purse/bank funds.
 
-## Counted-target residue (12/08/2026)
-
-- `get_obj_here` still restarts its `N.` counter per list (room, then
-  inventory, then worn) -- same family as the do_look counter unified in
-  docs/FIXES.md ("do_look N.-prefix counter"), reachable via
-  `look in N.<kw>`, `get`, `put`, `open`, etc. Blast radius is every
-  object-resolving command, so it wants its own decision pass: unify to
-  one cumulative sequence (and pick the scan order), or keep upstream
-  per-list semantics and document.
-
 ## Input-lag stream leftovers (30/07/2026, measure-first)
 
 Low-priority residue from the closed input-lag stream (history:
