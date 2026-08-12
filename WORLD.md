@@ -12,6 +12,18 @@ depth lives in DESIGN.md, docs/AREA_FILES.md, and the `areas/*.are` sources.
   command works there; pairs with the remort fee accepting banked gold
   (DESIGN.md "Remort gold fee").
 
+## Items
+
+- **Quest catalogue expanded** -- six new questmaster rewards modelled on the
+  Aardwolf quest item list (`reference/aardwolf_qlist.md`): a dagger, mace,
+  and staff alongside the stock sword, plus bracers (arms), wings (about),
+  and an amulet (neck).
+- **Aura of the Ancients reworked** -- now the Aardwolf Aura of Sanctuary:
+  permanent sanctuary and +3 dex, with the stock hitroll/damroll/AC bonuses
+  dropped; the level-scaled hp/mana/move stays.
+- **Quest items renamed in colour** -- every quest reward's short description
+  now reads in the red/yellow of the Ancients rather than plain white.
+
 ## Lore
 
 - **Bank notice rewritten** -- the liquidation notice (obj 3140) is now a

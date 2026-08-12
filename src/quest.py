@@ -68,22 +68,31 @@ for _a in world._AREA_FILES:
 del _a
 
 # Questmaster shop vnums (cf. 1stMud OBJ_VNUM_QUEST_* in vnums.h)
-_OBJ_QUEST_AURA   = 201
-_OBJ_QUEST_BPLATE = 204
-_OBJ_QUEST_SHIELD = 210
+_OBJ_QUEST_AURA    = 201
+_OBJ_QUEST_BPLATE  = 204
+_OBJ_QUEST_SHIELD  = 210
+_OBJ_QUEST_BRACERS = 221  # [PRIMESUD] no 1stMud equivalent
 
 # (name, vnum, cost) cf. 1stMud quest_table in quest.c.
 # [PRIMESUD] "nohunger" (vnum 0, 3000qp) omitted -- hunger/thirst not ported.
+# [PRIMESUD] Catalogue expansion after the Aardwolf quest item list
+# (reference/aardwolf_qlist.md): dagger/mace/staff, bracers, wings, amulet.
 QUEST_TABLE = (
     ("aura",         _OBJ_QUEST_AURA, 2600),
     ("sword",         203,            2500),
+    ("dagger",        218,            2500),
+    ("mace",          219,            2500),
+    ("staff",         220,            2500),
     ("breastplate",  _OBJ_QUEST_BPLATE, 2500),
     ("boots",         205,            2500),
     ("gloves",        206,            2500),
     ("flame",         207,            2500),
     ("helm",          208,            2300),
+    ("bracers",      _OBJ_QUEST_BRACERS, 2000),
+    ("wings",         222,            1200),
     ("bag",           209,            1000),
     ("shield",       _OBJ_QUEST_SHIELD, 750),
+    ("amulet",        223,             750),
     ("regeneration",  211,             700),
     ("invisibility",  212,             500),
     ("trivia",        200,             100),
@@ -396,6 +405,15 @@ def update_questobj(ch, obj):
     if vnum in (_OBJ_QUEST_BPLATE, _OBJ_QUEST_SHIELD):
         _add_apply(obj, "damroll", pbonus, lvl)
         _add_apply(obj, "hitroll", pbonus, lvl)
+    elif vnum == _OBJ_QUEST_BRACERS:
+        # [PRIMESUD] No 1stMud equivalent; stats per the Aardwolf Bracers of
+        # Iron Grip (reference/aardwolf_qlist.md) minus its cannot-be-disarmed
+        # flag, which ROM has no object bit for.  Being armor, the generic
+        # armor branch below also scales their AC (as it does the gloves').
+        _add_apply(obj, "hitroll", pbonus, lvl)
+        _add_apply(obj, "damroll", pbonus, lvl)
+        _add_apply(obj, "hit", max(50, lvl), lvl)
+        _add_apply(obj, "mana", max(50, lvl), lvl)
     elif vnum == _OBJ_QUEST_AURA:
         _add_apply(obj, "hit", max(50, lvl), lvl)
         _add_apply(obj, "mana", max(50, lvl), lvl)

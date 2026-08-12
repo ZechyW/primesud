@@ -54,21 +54,18 @@ pill ABGSTYa AP
 0 0 0 P
 #201
 quest aura sanctuary~
-An Aura of the Ancients~
+{RAn Aura of t{Yhe Ancients{x~
 A red and yellow aura lies here.~
 unknown~
 jewelry ABGSYa APQ
 0 0 0 0 0
 0 1 -1 P
 A
-17 -100
-A
-18 50
-A
-19 50
+2 3
+F A 0 0 H
 #203
 Sword Quest Ancient~
-A Sword of the Ancients~
+{RA Sword of t{Yhe Ancients{x~
 A red and yellow sword lies here.~
 adamantite~
 weapon ABYa ANP
@@ -76,7 +73,7 @@ sword -1 -1 slice A
 0 35 -1 P
 #204
 breastplate quest ancient~
-A BreastPlate of the Ancients~
+{RA BreastPlate o{Yf the Ancients{x~
 Some red and yellow platemail was left here.~
 unknown~
 armor ABYa ADP
@@ -99,7 +96,7 @@ A
 13 125
 #205
 boots quest ancient~
-Boots of the Ancients~
+{RBoots of th{Ye Ancients{x~
 Some red and yellow boots were left here.~
 unknown~
 armor GYa AGP
@@ -110,7 +107,7 @@ A
 F A 0 0 V
 #206
 gloves quest protection~
-Gloves of Protection~
+{RGloves of {YProtection{x~
 Some red and yellow gloves lie here.~
 unknown~
 armor GYa AHP
@@ -130,7 +127,7 @@ F A 0 -1 N
 F A 0 -1 O
 #207
 flame quest ancients~
-Flame of the Ancients~
+{RFlame of th{Ye Ancients{x~
 A red and yellow flame burns here.~
 unknown~
 light AYa AOP
@@ -153,7 +150,7 @@ A
 12 150
 #208
 quest helm true sight~
-A Helm of True Sight~
+{RA Helm of {YTrue Sight{x~
 A red and yellow helm lies here.~
 unknown~
 armor ABGYa AEP
@@ -166,7 +163,7 @@ F A 0 0 F
 F A 0 0 D
 #209
 bag quest ancient~
-Bag of the Ancients~
+{RBag of the {YAncients{x~
 A red and yellow bag lies here.~
 unknown~
 container AGSa APS
@@ -179,7 +176,7 @@ A
 14 200
 #210
 shield quest ancient~
-A Shield of the Ancients~
+{RA Shield of {Ythe Ancients{x~
 A red and yellow shield lies here.~
 unknown~
 armor GYab AJP
@@ -190,7 +187,7 @@ A
 F R 0 -1 D
 #211
 quest ring regeneration~
-A Ring of Regeneration~
+{RA Ring of R{Yegeneration{x~
 A red and yellow ring lies here.~
 unknown~
 jewelry ABYa ABP
@@ -199,7 +196,7 @@ jewelry ABYa ABP
 F A 0 0 c
 #212
 quest ring invisibility~
-A Ring of Invisibility~
+{RA Ring of I{Ynvisibility{x~
 A red and yellow ring was left here.~
 unknown~
 jewelry ABYa ABP
@@ -240,6 +237,71 @@ unknown~
 trash Y AP
 0 0 0 0 0
 0 0 0 P
+#218
+Dagger Quest Ancient~
+{RA Dagger of {Ythe Ancients{x~
+A red and yellow dagger lies here.~
+adamantite~
+weapon ABYa ANP
+dagger -1 -1 pierce D
+0 10 -1 P
+#219
+Mace Quest Ancient~
+{RA Mace of t{Yhe Ancients{x~
+A red and yellow mace lies here.~
+adamantite~
+weapon ABYa ANP
+mace -1 -1 pound B
+0 20 -1 P
+#220
+Staff Quest Ancient~
+{RA Staff of t{Yhe Ancients{x~
+A red and yellow staff lies here.~
+adamantite~
+weapon ABYa ANP
+staff -1 -1 thwack G
+0 15 -1 P
+#221
+bracers quest ancient~
+{RBracers of t{Yhe Ancients{x~
+Some red and yellow bracers lie here.~
+unknown~
+armor GYa AIP
+0 0 0 0 0
+0 5 -1 P
+#222
+wings quest ancient~
+{RWings of th{Ye Ancients{x~
+A pair of red and yellow wings lies here.~
+unknown~
+armor GYa AKP
+0 0 0 0 0
+0 1 -1 P
+A
+4 2
+A
+5 2
+A
+2 3
+F A 0 0 T
+#223
+amulet quest ancient~
+{RAn Amulet of {Ythe Ancients{x~
+A red and yellow amulet lies here.~
+unknown~
+jewelry ABYa ACP
+0 0 0 0 0
+0 4 -1 P
+A
+1 1
+A
+2 1
+A
+3 1
+A
+4 1
+A
+5 1
 #0
 
 #ROOMS
