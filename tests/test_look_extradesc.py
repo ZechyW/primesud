@@ -253,6 +253,32 @@ class TestLookExtraDesc:
         pass
 
 
+class TestLookCountedTargets:
+    """`N.` indexes mobs and objects as one sequence (docs/FIXES.md: look
+    counter restarts per namespace)."""
+
+    def _scene(self):
+        """One mob matching "test", then two distinguishable room swords."""
+        player = _make_player()
+        _make_mob(2)  # template keywords "mob test"
+        world.rooms._data[9001]["items"].extend([
+            {"vnum": ITEM_VNUM, "description": "The first sword."},
+            {"vnum": ITEM_VNUM, "description": "The second sword."},
+        ])
+        return player
+
+    def test_second_match_is_the_first_object(self, out):
+        """Mob is match 1, so 2.test is the FIRST object, not the second."""
+        info.do_look(self._scene(), ["2.test"])
+        output = " ".join(out)
+        assert "The first sword." in output
+        assert "The second sword." not in output
+
+    def test_overshoot_counts_mobs_and_objects(self, out):
+        info.do_look(self._scene(), ["9.test"])
+        assert "You only see 3 of those here." in " ".join(out)
+
+
 def test_wrap_paragraphs_dot_marker_verbatim():
     """Leading "." (ROM no-format marker) suppresses reflow; art kept verbatim."""
     art = ".\n  A---B\n   \  |\n    C-D"

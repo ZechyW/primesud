@@ -241,6 +241,34 @@ class TestPickerRoomDetailsAndExits:
         assert out == ["You can't see a thing!"]
 
 
+def test_pick_object_shows_its_extra_desc(monkeypatch, out, scene):
+    """Bank-letter regression: the picker delegates to do_look's typed scan,
+    which prefers the object's extra_desc over its "taped to the wall" desc."""
+    ITEM_DEFS._data[8004] = {
+        "type": "furniture", "short_descr": "a letter", "keywords": "letter",
+        "description": "The letter is taped to the wall.",
+        "extra_descs": [("letter", "To whom it may concern.")],
+    }
+    world.rooms._data[3001]["items"].append(8004)
+    monkeypatch.setattr(info, "pick_from", lambda t, o: 2)  # guard, rock, letter
+    assert info.do_examine(scene, []) == "examine letter"
+    assert "To whom it may concern." in out
+    assert "The letter is taped to the wall." not in out
+
+
+def test_pick_object_sharing_keyword_uses_cumulative_token(monkeypatch, out, scene):
+    """Carried and room copies of one keyword: the selected entry resolves via
+    a cumulative "N." token counting mobs, then carried, then room objects."""
+    scene["inv"].append({"vnum": 8001, "description": "Carried rock."})
+    world.rooms._data[3001]["items"].append({"vnum": 8001,
+                                             "description": "Room rock."})
+    # guard, rock, room rock, stick, carried rock
+    monkeypatch.setattr(info, "pick_from", lambda t, o: 2)
+    assert info.do_examine(scene, []) == "examine 3.rock"
+    assert "Room rock." in out
+    assert "Carried rock." not in out
+
+
 def test_examine_legacy_sparse_money_uses_template(out, scene):
     ITEM_DEFS._data[8003] = {
         "type": "money", "short_descr": "A gold coin", "keywords": "gold coin",

@@ -561,6 +561,27 @@ def _look_scan_items(player, target, number, count, items):
     return False, count
 
 
+def _count_mob_matches(player, target, mob_ids):
+    """Count mobs in mob_ids visible to player whose keywords match target. [PRIMESUD]
+
+    Mirrors get_char_room's per-mob predicate (instance keywords overriding the
+    template, can_see gate) so do_look's `N.` counter can span mobs and objects
+    as one sequence -- see docs/FIXES.md, do_look N.-prefix counter.
+
+    Returns:
+        int: Number of visible matching mobs.
+    """
+    count = 0
+    for mob_id in mob_ids:
+        inst = world.chars[mob_id]
+        if not can_see(player, inst):
+            continue
+        kw = inst.get("keywords") or MOB_DEFS[inst["tpl"]].get("keywords", "")
+        if is_name(target, kw):
+            count += 1
+    return count
+
+
 def do_exits(player, args):
     """List obvious exits with destination room names (cf. 1stMud do_exits in act_info.c).
 
@@ -749,7 +770,11 @@ def do_look(player, args):
             _show_char_to_char_1(player, mob_id)
             return
 
-        count = 0
+        # [PRIMESUD] Seed the counter with the room's visible mob matches so
+        # `N.` indexes one unified mob -> object -> extra-desc sequence.
+        # Upstream restarts at 0 here, leaving objects behind a same-keyword
+        # mob unaddressable (docs/FIXES.md: do_look N.-prefix counter).
+        count = _count_mob_matches(player, target, rs["mobs"])
         # Inventory + equipped (cf. 1stMud carrying_first which includes worn)
         equipped = [o for o in player["equip"].values() if o is not None]
         found, count = _look_scan_items(player, target, number, count,
@@ -2560,10 +2585,22 @@ def do_examine(player, args):
         # entries, so only indices past the room objects need un-shifting
         # before the shared object lookup below.
         if len(robjs) <= idx < len(robjs) + len(eds):
-            # same output as do_look's room extra_desc branch
+            # [PRIMESUD] delegate to do_look with an exact cumulative `N.` token
+            # (see do_look's unified counter): room extra_descs are scanned
+            # after every mob and object, and an earlier extra_desc matching
+            # the same keyword takes one more slot ahead of this one.
             first_kw, desc = eds[idx - len(robjs)]
-            _print_desc(player, desc, TERMINAL_COLS)
-            return "examine " + first_kw
+            n = _count_mob_matches(player, first_kw, rs["mobs"])
+            found, n = _look_scan_items(player, first_kw, -1, n,
+                                        player["inv"] + equipped + rs["items"])
+            for kws, d in room.get("extra_descs", []):
+                if d is desc:
+                    break
+                if is_name(first_kw, kws):
+                    n += 1
+            target = first_kw if n == 0 else num_str(n + 1) + "." + first_kw
+            do_look(player, [target])
+            return "examine " + target
         if len(robjs) + len(eds) <= idx < len(robjs) + len(eds) + len(ex_dirs):
             # exit description: reuse do_look's direction branch (desc + door state)
             d = ex_dirs[idx - len(robjs) - len(eds)]
@@ -2574,11 +2611,27 @@ def do_examine(player, args):
             idx -= len(eds) + len(ex_dirs)
         obj = (robjs + cobjs)[idx]
         tpl = item_tpl(obj)
-        inst_desc = isinstance(obj, dict) and obj.get("description")
-        _print_desc(player, inst_desc or tpl.get("description", tpl["short_descr"]),
-                    TERMINAL_COLS)
+        # [PRIMESUD] route through do_look's typed scan with an exact cumulative
+        # `N.` token instead of hand-rendering the description: the typed path
+        # checks the object's extra_descs first (e.g. a letter's contents rather
+        # than "...is taped to the wall.").  Scan order is inventory + worn,
+        # then room items; bare-vnum ints make `is` stop at an earlier equal
+        # vnum, which is harmless -- identical items render identically.
+        kw = tpl.get("keywords", tpl["short_descr"]).split()[0]
+        prefix_list = []
+        for o in player["inv"] + equipped + rs["items"]:
+            if o is obj:
+                break
+            prefix_list.append(o)
+        n = _count_mob_matches(player, kw, rs["mobs"])
+        found, n = _look_scan_items(player, kw, -1, n, prefix_list)
+        target = kw if n == 0 else num_str(n + 1) + "." + kw
+        do_look(player, [target])
+        # extras come from the picked instance, not a re-resolution of `target`
+        # (get_obj_here numbers each list separately, so a cumulative token can
+        # miss); same rationale as _examine_extras' own [PRIMESUD] note.
         _examine_extras(player, obj)
-        return "examine " + tpl.get("keywords", tpl["short_descr"]).split()[0]
+        return "examine " + target
     arg = args[0]
     do_look(player, [arg])
     obj = get_obj_here(player, arg)

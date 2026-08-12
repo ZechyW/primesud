@@ -770,3 +770,39 @@ its group, first) and `learned >= 1` -> "use" (known; practicable now).
 The line still appears for unknown skills -- warrior/earthquake at 14 is
 genuine ROM+1stMud data (`skills.dat`: warrior column 14, gainable via the
 `attack` group) -- but no longer claims the char can already use them.
+
+---
+
+## look: the `N.` counter restarts per namespace, hiding same-keyword objects
+
+**Upstream:** `reference/1stMud4.5.3/src/act_info.c`, `do_look()`, lines
+1238-1327 (mob lookup via `get_char_room`, then `count = 0` before the
+object and extra-description scans).
+
+### The bug
+
+`get_char_room` counts matching mobs with its own private counter, then
+`do_look` resets `count` to 0 for the object and room-extra-description
+scans. The two namespaces therefore both start at 1.
+
+With one guard mob and two "guard" objects in the room, `1.guard` resolves to
+the mob and `2.guard` to the *second* object -- the first object is
+unreachable, and there is no token that reaches it. Overshooting prints
+`You only see one guard here.` (the object-side count) while the player can
+plainly see three matches listed, so the message contradicts the room.
+
+### PrimeSUD fix -- implemented in `do_look` in `info.py`
+
+The object scan is seeded with the number of visible room mobs matching the
+target (`_count_mob_matches`, which mirrors `get_char_room`'s per-mob
+predicate) instead of 0, so `N.` indexes one unified mob -> object ->
+extra-description sequence and the "You only see N of those here." count
+covers every visible match. Mob-first resolution is unchanged: `N` within the
+mob range still resolves through `get_char_room`, and unnumbered targets
+behave exactly as before.
+
+The no-args `examine` picker relies on this: it resolves the selected entry by
+handing `do_look` an exact cumulative `N.` token rather than hand-rendering
+the description, which also fixes selected objects skipping their own
+extra_descs (the Midgaard bank letters showed "...is taped to the wall."
+instead of their contents).
