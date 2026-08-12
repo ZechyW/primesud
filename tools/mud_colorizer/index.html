@@ -2468,7 +2468,7 @@
       // Function to adjust brightness of color codes in text
       function adjustTextBrightness(text, factor) {
         // Match all color codes including ANSI (both actual escape chars and visible \033)
-        return text.replace(/((?:\x1b|\u001b|\\033)\[(?:3[0-7]|9[0-7]|38;5;\d{1,3}|38;2;\d{1,3};\d{1,3};\d{1,3})m|\$X[0-9a-fA-F]{6}|\$x\d{3}|@x\d{3}|\{x\d{3}|\^\[[F]\d{3}\]|@\[[F]\d{3}\]|\\t\[[F]\d{3}\]|\&\d{3}|\{\d{3})/g, function(match) {
+        return text.replace(/((?:\x1b|\u001b|\\033)\[(?:3[0-7]|9[0-7]|38;5;\d{1,3}|38;2;\d{1,3};\d{1,3};\d{1,3})m|\$X[0-9a-fA-F]{6}|\$x\d{3}|@x\d{3}|\{x\d{3}|\{[rRgGyYbBmMcCwWdD](?![0-9])|\^\[[F]\d{3}\]|@\[[F]\d{3}\]|\\t\[[F]\d{3}\]|\&\d{3}|\{\d{3})/g, function(match) {
           let rgb;
           let newColorCode;
           
@@ -2522,6 +2522,17 @@
             const idx = parseInt(match.slice(2), 10);
             const newIdx = adjustXtermColor(idx, factor > 0);
             newColorCode = match.slice(0, 2) + String(newIdx).padStart(3, "0");
+          } else if (/^\{[rRgGyYbBmMcCwWdD]$/.test(match)) {
+            // PrimeSUD adaptation: 16-color codes only have dim/bright pairs, so
+            // Lighter/Darker toggles case. Saturating and lossy: an up-then-down
+            // cycle merges mixed-brightness codes (cf. the xterm tooltip caveat).
+            const letter = match.charAt(1);
+            if (factor > 0) {
+              newColorCode = "{" + letter.toUpperCase();
+            } else {
+              // never darken {D to {d: black is invisible on the device
+              newColorCode = "{" + (letter === "D" ? "D" : letter.toLowerCase());
+            }
           } else if ((match.startsWith("@[F") && match.endsWith("]")) ||
                      (match.startsWith("\\t[F") && match.endsWith("]")) ||
                      (match.startsWith("^[F") && match.endsWith("]"))) {
