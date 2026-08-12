@@ -312,6 +312,29 @@ class TestLookEmitsExamineExtras:
         info.do_examine(scene, ["chest"])
         assert out == looked
 
+    def test_look_closed_container_says_closed(self, out, scene):
+        ITEM_DEFS._data[8007] = {
+            "type": "container", "short_descr": "a locked chest",
+            "keywords": "chest", "description": "A locked chest.",
+            "container_flags": {"closed": True},
+        }
+        world.rooms._data[3001]["items"].append(
+            {"vnum": 8007, "contents": [{"vnum": 8002}]})
+        info.do_look(scene, ["chest"])
+        assert "It is closed." in out
+        assert "a stick" not in out
+
+    def test_look_drink_shows_fill_line(self, out, scene):
+        ITEM_DEFS._data[8008] = {
+            "type": "drink", "short_descr": "a fountain",
+            "keywords": "fountain", "description": "A marble fountain.",
+            "liquid_total": 100, "liquid_left": 100, "liquid_type": "water",
+        }
+        world.rooms._data[3001]["items"].append({"vnum": 8008})
+        info.do_look(scene, ["fountain"])
+        assert "A marble fountain." in out
+        assert "It's more than half-filled with  a clear liquid." in out
+
     def test_extras_come_from_the_matched_instance(self, out, scene):
         """The scan's own instance is used, so a cumulative "N." token cannot
         drift onto a different pile the way get_obj_here re-resolution did."""

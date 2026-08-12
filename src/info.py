@@ -474,7 +474,17 @@ def _look_in(player, args):
     if obj is None:
         chprintln(player, "You do not see that here.")
         return
-    tpl = item_tpl(obj)
+    _look_in_obj(player, obj, item_tpl(obj))
+
+
+def _look_in_obj(player, obj, tpl):
+    """Show the interior of a resolved drink container, container, or corpse (cf. 1stMud do_look 'in' case in act_info.c).
+
+    [PRIMESUD] Post-resolution body of _look_in, split out so _examine_extras
+    can delegate by resolved object -- upstream examine re-builds "in <arg>"
+    and re-resolves via get_obj_here, which can match a different object.
+    [Verified: 19/07/2026] (as part of _look_in)
+    """
     if _item_type(obj, tpl) == "drink":
         # cf. 1stMud do_look 'in' ITEM_DRINK_CON case, act_info.c:1205-1220
         left = liquid_left(obj, tpl)
@@ -2685,8 +2695,13 @@ def _examine_extras(player, obj):
             # silver coins", so the noun only ever attached to the silver half.
             chprintln(player, "There are " + count_str(gold, "gold coin") + " and "
                       + count_str(silver, "silver coin") + " in the pile.")
-    elif obj_type in _CONTAINER_TYPES:
-        _show_container(player, obj, tpl)
+    elif obj_type == "drink" or obj_type in _CONTAINER_TYPES:
+        # cf. 1stMud sprintf(buf, "in %s", argument); do_look(buf) -- same
+        # switch arms (DRINK_CON, CONTAINER, both corpses), delegated by
+        # resolved object instead of re-built string. Restores the closed
+        # check ("It is closed.") and the drink fill line the old direct
+        # _show_container call skipped.
+        _look_in_obj(player, obj, tpl)
     elif obj_type == "jukebox":
         # cf. 1stMud do_function(ch, &do_play, "list") -- re-resolves the
         # jukebox from scratch rather than reusing the already-matched obj,
