@@ -37,6 +37,12 @@ churn). Nothing left to chase actively.
 
 - Confirm GROB memory is separate from Python heap: `gc.mem_free()` before/after the scrollback `dimgrob` calls (tml_prime.py `__init__`) should be ~unchanged. Validates the 250->500 `SCROLLBACK_SIZE` bump (~3.2MB of history pixels at 16bpp); note result in docs/PERFORMANCE.md.
 - Bank reopening + remort-bank-gold (12/08/2026): load an existing G1 save against the bumped `CONTENT_REVISION` (buffered save deltas), then walk Temple Square -> e -> u, `bank deposit/withdraw`, and a remort with split purse/bank funds.
+- Quest catalogue expansion (12/08/2026): eyeball the recoloured `{R`/`{Y` quest item names on-device (`quest list` picker, inventory, wear/remove messages) and one wings-flight + aura-sanctuary wear; engine-side all tested, but the colour bands have never been rendered on hardware.
+
+## Quest catalogue leftovers (12/08/2026)
+
+- Practices-for-qp (Aardwolf sells 30 pracs / 250qp, `reference/aardwolf_qlist.md`) deliberately skipped for now -- revisit if qp sinks feel thin after the expansion.
+- `tools/mud_colorizer/index.html` still never opened in a real browser since the PrimeSUD-format adaptation; one manual smoke (pick PrimeSUD format, run a gradient, Lighter/Darker) would close it out.
 
 ## Input-lag stream leftovers (30/07/2026, measure-first)
 

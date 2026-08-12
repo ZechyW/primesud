@@ -325,6 +325,39 @@ def test_shop_list_and_buy(fresh):
     assert obj["wear_flags"].get("no_sac")
 
 
+def test_shop_buy_full_catalogue(fresh):
+    """Every QUEST_TABLE row resolves to a buyable live template. [PRIMESUD]"""
+    for name, vnum, cost in quest.QUEST_TABLE:
+        fresh["quest_points"] = cost
+        do_quest(fresh, ["buy", name])
+        assert any(o["vnum"] == vnum for o in fresh["inv"]), name
+        assert fresh["quest_points"] == 0, name
+
+
+def test_shop_buy_bracers_scaling(fresh):
+    """Bracers: pbonus hit/dam, level hp/mana (min 50), armor scale. [PRIMESUD]"""
+    fresh["level"] = 40
+    fresh["quest_points"] = 2000
+    do_quest(fresh, ["buy", "bracers"])
+    obj = next(o for o in fresh["inv"] if o["vnum"] == 221)
+    locs = {af["location"]: af["modifier"] for af in obj["affect_list"]}
+    assert locs["hitroll"] == 8 and locs["damroll"] == 8  # max(5, 40//5)
+    assert locs["hit"] == 50 and locs["mana"] == 50  # max(50, 40)
+    assert obj["armor"] == (40, 40, 40, 33)
+
+
+def test_aura_grants_sanctuary_when_worn(fresh):
+    """Reworked aura carries permanent sanctuary via flag_affects. [PRIMESUD]"""
+    from handler import equip_char, unequip_char
+    fresh["quest_points"] = 2600
+    do_quest(fresh, ["buy", "aura"])
+    obj = next(o for o in fresh["inv"] if o["vnum"] == 201)
+    equip_char(fresh, obj, "float")
+    assert fresh["affected_by"].get("sanctuary")
+    unequip_char(fresh, "float")
+    assert not fresh["affected_by"].get("sanctuary")
+
+
 def test_quest_sword_instance_dice_in_combat(fresh):
     # one_hit must read instance dice (tpl dice are (-1,-1,0) placeholders)
     from combat import one_hit
