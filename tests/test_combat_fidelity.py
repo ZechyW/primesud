@@ -92,6 +92,35 @@ def test_good_pet_kill_does_not_zap_neutral_owners_anti_good_gear(monkeypatch):
     assert world.rooms[9001]["items"] == []
 
 
+def test_own_kill_still_zaps_wearers_conflicting_gear(monkeypatch):
+    import handler
+    player = _char_base()
+    gear = {"vnum": 42}
+    player.update({"id": 1, "level": 10, "room": 9001,
+                   "alignment": -400, "equip": {"body": gear}})
+    victim = _char_base()
+    victim.update({"id": 3, "is_npc": True, "level": 10, "room": 9001})
+    monkeypatch.setattr(world, "chars", {1: player})
+    monkeypatch.setattr(world, "rooms", {9001: {"mobs": [], "items": []}})
+    monkeypatch.setattr(combat, "xp_compute", lambda gch, mob, levels: 0)
+    monkeypatch.setattr(combat, "gain_exp", lambda ch, xp: None)
+    monkeypatch.setattr(combat, "quest_kill_check", lambda ch, mob: None)
+    monkeypatch.setattr(combat, "gq_kill_check", lambda ch, mob: None)
+    monkeypatch.setattr(combat, "chprintln", lambda ch, text: None)
+    monkeypatch.setattr(combat, "act", lambda *args: None)
+    monkeypatch.setattr(combat, "item_tpl", lambda obj: {})
+    # unequip_char resolves the template through handler's own import
+    monkeypatch.setattr(handler, "item_tpl", lambda obj: {})
+    monkeypatch.setattr(combat, "item_extra_flags",
+                        lambda obj, tpl: {"anti_evil": True})
+
+    group_gain(player, victim)
+
+    assert player["equip"]["body"] is None
+    assert gear not in player["inv"]
+    assert world.rooms[9001]["items"] == [gear]
+
+
 class TestAdvanceTargetFighterIndex:
     """Post-kill retarget must run full set_fighting: raw_kill's
     stop_fighting(both=True) cleared fighting/pos/stance and removed the
