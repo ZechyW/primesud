@@ -1391,13 +1391,17 @@ Syntax: look    <direction>
 Syntax: look    <keyword>
 Syntax: look in <container>
 Syntax: look in <corpse>
-Syntax: examine <container>
-Syntax: examine <corpse>
+Syntax: examine
+Syntax: examine <target>
 
-LOOK looks at something and sees what you can see.
+LOOK looks at something and sees what you can see.  Looking at an
+object also counts the coins in a pile and lists what a container
+or corpse is holding.
 
-EXAMINE is short for 'LOOK container' followed by 'LOOK IN
-container'.
+[PRIMESUD] EXAMINE <target> is the same command as LOOK <target>;
+upstream it was short for 'LOOK container' followed by 'LOOK IN
+container'.  EXAMINE with no argument opens a menu of everything
+here worth a closer look.
 #51|olc|EXIT
 For exits, type the direction (north/s/e/w) followed by:
 

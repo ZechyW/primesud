@@ -523,8 +523,13 @@ def _look_scan_items(player, target, number, count, items):
 
     [Verified: 29/07/2026]
 
+    [PRIMESUD] Returns the matched object instead of a bare flag, so do_look
+    can hang examine's extras off the exact instance the scan resolved (see
+    DESIGN.md, "Look/examine merged for targeted lookups").
+
     Returns:
-        tuple: (found, count) where found is True if the Nth match was displayed.
+        tuple: (found, count) where found is the object whose Nth match was
+            displayed, or None if the Nth match was not in this list.
     """
     for obj in items:
         # cf. act_info.c:1234/1263 -- both look-item loops gate on can_see_obj
@@ -540,7 +545,7 @@ def _look_scan_items(player, target, number, count, items):
                 count += 1
                 if count == number:
                     _print_desc(player, pdesc, TERMINAL_COLS)
-                    return True, count
+                    return obj, count
                 continue
         # Then check template extra_descs (cf. 1stMud obj->pIndexData->ed_first, act_info.c:1259)
         pdesc = _get_ed(target, tpl.get("extra_descs", []))
@@ -548,7 +553,7 @@ def _look_scan_items(player, target, number, count, items):
             count += 1
             if count == number:
                 _print_desc(player, pdesc, TERMINAL_COLS)
-                return True, count
+                return obj, count
             continue
         if is_name(target, tpl.get("keywords", "")):
             count += 1
@@ -557,8 +562,8 @@ def _look_scan_items(player, target, number, count, items):
                 _print_desc(player,
                             inst_desc or tpl.get("description", tpl["short_descr"]),
                             TERMINAL_COLS)
-                return True, count
-    return False, count
+                return obj, count
+    return None, count
 
 
 def _count_mob_matches(player, target, mob_ids):
@@ -723,6 +728,12 @@ def do_look(player, args):
     [Verified: 20/07/2026] -- the PLR_HOLYLIGHT leg of the act_info.c:1115
     condition maps to the [PRIMESUD] debug channel.
 
+    [PRIMESUD] A targeted look that resolves to an object also emits examine's
+    extras (coin counts, container contents) via _examine_extras, so typed
+    `look <target>` and typed `examine <target>` are the same command. Upstream
+    keeps them split (help.dat: "EXAMINE is short for 'LOOK container' followed
+    by 'LOOK IN container'") -- see DESIGN.md, "Look/examine merged".
+
     [PRIMESUD] Room output accumulated into a list and sent as one batched
     print (21/07/2026) -- perf deviation, 1stMud sends per line; player-visible
     output unchanged. The list is passed through unjoined (see pitfall 8 /
@@ -779,11 +790,16 @@ def do_look(player, args):
         equipped = [o for o in player["equip"].values() if o is not None]
         found, count = _look_scan_items(player, target, number, count,
                                         player["inv"] + equipped)
-        if found:
+        if found is not None:
+            # [PRIMESUD] examine's extras are merged into the targeted look, so
+            # `look <obj>` and `examine <obj>` are identical; they attach to the
+            # instance the scan matched, not a get_obj_here re-resolution.
+            _examine_extras(player, found)
             return
         # Room items
         found, count = _look_scan_items(player, target, number, count, rs["items"])
-        if found:
+        if found is not None:
+            _examine_extras(player, found)  # [PRIMESUD] as above
             return
 
         # Room extra_descs (cf. 1stMud do_look line 1309)
@@ -2512,6 +2528,10 @@ def do_examine(player, args):
 
     [Verified: 04/07/2026]
 
+    [PRIMESUD] With an argument this is now exactly do_look: the extras moved
+    into do_look's object path, so the two commands cannot drift (DESIGN.md,
+    "Look/examine merged"). Only the no-arg picker below is examine-specific.
+
     Args:
         player (dict): Player state dict.
         args (list): Parsed command arguments.
@@ -2614,9 +2634,10 @@ def do_examine(player, args):
         # [PRIMESUD] route through do_look's typed scan with an exact cumulative
         # `N.` token instead of hand-rendering the description: the typed path
         # checks the object's extra_descs first (e.g. a letter's contents rather
-        # than "...is taped to the wall.").  Scan order is inventory + worn,
-        # then room items; bare-vnum ints make `is` stop at an earlier equal
-        # vnum, which is harmless -- identical items render identically.
+        # than "...is taped to the wall.") and emits the extras itself.  Scan
+        # order is inventory + worn, then room items; bare-vnum ints make `is`
+        # stop at an earlier equal vnum, which is harmless -- identical items
+        # render identically.
         kw = tpl.get("keywords", tpl["short_descr"]).split()[0]
         prefix_list = []
         for o in player["inv"] + equipped + rs["items"]:
@@ -2627,22 +2648,18 @@ def do_examine(player, args):
         found, n = _look_scan_items(player, kw, -1, n, prefix_list)
         target = kw if n == 0 else num_str(n + 1) + "." + kw
         do_look(player, [target])
-        # extras come from the picked instance, not a re-resolution of `target`
-        # (get_obj_here numbers each list separately, so a cumulative token can
-        # miss); same rationale as _examine_extras' own [PRIMESUD] note.
-        _examine_extras(player, obj)
         return "examine " + target
-    arg = args[0]
-    do_look(player, [arg])
-    obj = get_obj_here(player, arg)
-    if obj is not None:
-        _examine_extras(player, obj)
+    # [PRIMESUD] typed examine IS typed look: do_look's object path emits the
+    # extras itself (see DESIGN.md, "Look/examine merged").
+    do_look(player, [args[0]])
 
 
 def _examine_extras(player, obj):
     """Show money coin counts or container contents after looking at obj (cf. 1stMud do_examine in act_info.c).
 
-    [PRIMESUD] Container contents shown from the resolved obj directly; 1stMud
+    [PRIMESUD] Called from do_look's targeted-object path, not do_examine, so
+    typed look and typed examine print the same thing (DESIGN.md, "Look/examine
+    merged"). Container contents shown from the resolved obj directly; 1stMud
     re-resolves via do_look "in <arg>", which can match a different object.
     [Verified: 31/07/2026]
     """

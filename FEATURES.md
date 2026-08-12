@@ -71,6 +71,11 @@ that into features rather than holes.
   a room only rewards guessing at: its extra descriptions (cyan) and every exit
   with a description of its own (green), so hidden detail is browsable instead
   of hunted for by keyword.
+- **`look` and `examine` are one command** -- looking at an object also counts
+  the coins in a pile and lists what a container or corpse holds, so there is
+  no second command to remember; upstream splits the two (DESIGN.md
+  "look vs examine").  Bare `examine` still opens the picker, bare `look`
+  still shows the room, and `look in <container>` is unchanged.
 - **Contextual quest hub** -- bare `quest` shows status away from questmasters;
   at one, it offers valid quest actions and nested reward-shop pickers, while
   completed quests auto-complete instead of accepting an accidental quit

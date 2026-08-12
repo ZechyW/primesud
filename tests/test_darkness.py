@@ -543,10 +543,10 @@ class TestObjectVisibilityGates:
         v = self._invis_item(621)
         _room(1, sector="inside")
         found, count = info._look_scan_items(self._actor(1), "bauble", 1, 0, [v])
-        assert found is False
+        assert found is None
         found, count = info._look_scan_items(
             self._actor(1, detect_invis=True), "bauble", 1, 0, [v])
-        assert found is True
+        assert found == v
 
     def test_container_hides_invisible_contents(self, fresh_world, look_out):
         import info

@@ -269,6 +269,60 @@ def test_pick_object_sharing_keyword_uses_cumulative_token(monkeypatch, out, sce
     assert "Carried rock." not in out
 
 
+class TestLookEmitsExamineExtras:
+    """[PRIMESUD] examine's extras live in do_look's object path, so a typed
+    look and a typed examine of the same target print identically (DESIGN.md,
+    "Look/examine merged for targeted lookups")."""
+
+    def _money(self):
+        ITEM_DEFS._data[8005] = {
+            "type": "money", "short_descr": "a pile of coins",
+            "keywords": "pile coins", "description": "A pile of coins.",
+            "silver": 0, "gold": 5,
+        }
+        world.rooms._data[3001]["items"].append({"vnum": 8005, "silver": 0,
+                                                 "gold": 5})
+
+    def _chest(self):
+        ITEM_DEFS._data[8006] = {
+            "type": "container", "short_descr": "a chest", "keywords": "chest",
+            "description": "A wooden chest.", "extra_flags": {},
+        }
+        world.rooms._data[3001]["items"].append(
+            {"vnum": 8006, "contents": [{"vnum": 8002}]})
+
+    def test_look_money_shows_coin_count(self, out, scene):
+        self._money()
+        info.do_look(scene, ["pile"])
+        assert "A pile of coins." in out
+        assert "There are 5 gold coins in the pile." in out
+
+    def test_look_container_shows_contents(self, out, scene):
+        self._chest()
+        info.do_look(scene, ["chest"])
+        assert "A wooden chest." in out
+        assert "a chest holds:" in out
+        assert "  a stick" in out
+
+    def test_typed_examine_matches_typed_look(self, out, scene):
+        self._chest()
+        info.do_look(scene, ["chest"])
+        looked = list(out)
+        del out[:]
+        info.do_examine(scene, ["chest"])
+        assert out == looked
+
+    def test_extras_come_from_the_matched_instance(self, out, scene):
+        """The scan's own instance is used, so a cumulative "N." token cannot
+        drift onto a different pile the way get_obj_here re-resolution did."""
+        self._money()
+        scene["inv"].append({"vnum": 8005, "silver": 0, "gold": 1})
+        # inventory is scanned first, so the room pile is match 2
+        info.do_look(scene, ["2.pile"])
+        assert "There are 5 gold coins in the pile." in out
+        assert "Wow. One gold coin." not in out
+
+
 def test_examine_legacy_sparse_money_uses_template(out, scene):
     ITEM_DEFS._data[8003] = {
         "type": "money", "short_descr": "A gold coin", "keywords": "gold coin",
