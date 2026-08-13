@@ -1,9 +1,9 @@
 """Render PrimeSUD greeting, room, score, or macro screens to a device-accurate PNG.
 
-The PC shim (pc_shim/) is text/ANSI only -- its hpprime pixel calls are
-no-ops -- so it cannot produce a real screen capture. This tool instead
-reproduces the on-device pixel output directly: it blits glyphs from the
-selected font atlas and recolours each {X run exactly like src/terminal.py
+The headless modules directly under pc_shim/ use text/ANSI output and no-op
+hpprime pixel calls, so they cannot produce a real screen capture. This tool
+instead reproduces the on-device pixel output directly: it blits glyphs from
+the selected font atlas and recolours each {X run exactly like src/terminal.py
 does on the calculator (dark mode, black background, per-run foreground
 recolour).
 

@@ -7,7 +7,7 @@ from hpprime import clear_events, has_events, poll_event, pump_events
 
 
 _SRC_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "src", "tml_prime.py",
 )
 _SPEC = importlib.util.spec_from_file_location("_device_tml_prime", _SRC_PATH)

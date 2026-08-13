@@ -6,7 +6,7 @@ import sys
 
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-_PATH = os.path.join(ROOT, "pc_gui_shim", "hpprime.py")
+_PATH = os.path.join(ROOT, "pc_shim", "gui", "hpprime.py")
 _SPEC = importlib.util.spec_from_file_location("gui_hpprime_test", _PATH)
 gui_hpprime = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(gui_hpprime)
@@ -18,13 +18,13 @@ def _load_gui_tml():
     old_path = sys.path[:]
     try:
         sys.path[0:0] = [
-            os.path.join(ROOT, "pc_gui_shim"),
+            os.path.join(ROOT, "pc_shim", "gui"),
             os.path.join(ROOT, "src"),
         ]
         sys.modules["hpprime"] = gui_hpprime
         for name in names[1:]:
             sys.modules.pop(name, None)
-        path = os.path.join(ROOT, "pc_gui_shim", "tml_prime.py")
+        path = os.path.join(ROOT, "pc_shim", "gui", "tml_prime.py")
         spec = importlib.util.spec_from_file_location("gui_tml_test", path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)

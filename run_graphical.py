@@ -10,7 +10,7 @@ import sys
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path[0:0] = [
-    os.path.join(_ROOT, "pc_gui_shim"),
+    os.path.join(_ROOT, "pc_shim", "gui"),
     os.path.join(_ROOT, "src"),
     os.path.join(_ROOT, "pc_shim"),
 ]
