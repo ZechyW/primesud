@@ -869,12 +869,18 @@ cause false drops.
 
 ### The bug
 
-The weapon-class word reads `polear`. 1stMud's `weapon_class` lookup
-(handler.c) matches `weapon_table` names only, so the typo silently falls
-back to exotic -- the mirrored White Pawn's Halberd (4225) is a proper
-`polearm`, breaking the area's black/white item symmetry.
+The weapon-class word reads `polear` (builder typo; the mirrored White
+Pawn's Halberd 4225 says `polearm`).  1stMud's `weapon_class` lookup
+(handler.c:113) PREFIX-matches `weapon_table` names via `str_prefix`, so
+upstream still loaded the truncation as a polearm.  PrimeSUD's exact dict
+lookups (`item._WEAPON_CLASS_NUM`, `skills_table.WEAPON_GSN_MAP`) took the
+unknown-word fallback instead, degrading the weapon to exotic -- a porting
+regression, not upstream behaviour.
 
 ### PrimeSUD fix -- implemented in `area_chess2.txt` (14/08/2026)
 
-`weapon_type` corrected to `polearm`, matching the mirror item; `[PRIMESUD]`
-comment at the site.
+Data word corrected to the canonical `polearm`; `[PRIMESUD]` comment at the
+site.  Exact matching stays (cheap on-device); `tests/test_area_vocab.py`
+now lints every enumerated data word against its consuming table, so any
+word upstream's lenient prefix matching would have quietly accepted fails
+the suite instead.
