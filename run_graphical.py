@@ -23,6 +23,7 @@ hpprime.init_display()
 
 import game_state
 game_state.SAVE_FILE = os.path.join(_ROOT, "primesud.sav")
+game_state.BACKUP_FILE = os.path.join(_ROOT, "primesud_backup.sav")
 
 try:
     import primesud

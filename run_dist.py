@@ -30,5 +30,6 @@ gc.mem_free = lambda: 0
 # artifact for the physical Prime
 import game_state
 game_state.SAVE_FILE = os.path.join(_ROOT, "primesud.sav")
+game_state.BACKUP_FILE = os.path.join(_ROOT, "primesud_backup.sav")
 
 import primesud

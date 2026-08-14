@@ -466,6 +466,14 @@ PrimeSUD affect-location names track 1stMud closely here: `APPLY_HIT` -> `hit`,
 | `whip`    | WEAPON_WHIP    |                                            |
 | `polearm` | WEAPON_POLEARM |                                            |
 
+These are the only valid `weapon_type` data words. `spear` is a SKILL name
+only (gsn_spear, sn 105 -- "covers both spears and staves", group.are); the
+weapon-class data word for that class is `staff`, and a `spear` data word
+falls back to exotic in both engines. Upstream `weapon_class` (handler.c)
+prefix-matches these names, PrimeSUD exact-matches (`item._WEAPON_CLASS_NUM`,
+`skills_table.WEAPON_GSN_MAP`) with `tests/test_area_vocab.py` linting every
+area data word -- see docs/FIXES.md sec. chess2 "polear".
+
 **dam_type names** (attack_table in `src/const.c`, affects damage class):
 
 | Name      | Class  |     | Name     | Class  |
