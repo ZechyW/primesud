@@ -590,6 +590,16 @@ def test_ifcheck_objval_weapon_and_attrib_override(prog_world):
     assert _ce(mob, "objval0", "$o == 9", ch=player, arg1=sword) is True
 
 
+def test_ifcheck_objval0_staff_is_spear_class(prog_world):
+    # data word "staff" -> WEAPON_SPEAR (3), cf. 1stMud weapon_class; an
+    # unknown word falls back to exotic (0)
+    player, mob, sword, out = prog_world
+    ITEM_DEFS._data[9100]["weapon_type"] = "staff"
+    assert _ce(mob, "objval0", "$o == 3", ch=player, arg1=sword) is True
+    ITEM_DEFS._data[9100]["weapon_type"] = "polear"
+    assert _ce(mob, "objval0", "$o == 0", ch=player, arg1=sword) is True
+
+
 def test_ifcheck_objval_in_objprog(prog_world):
     player, mob, sword, out = prog_world
     ITEM_DEFS._data[9100]["dice"] = (3, 4, 0)

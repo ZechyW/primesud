@@ -722,8 +722,11 @@ def get_carry_weight(ch):
     return w + ch.get("silver", 0) // 10 + ch.get("gold", 0) * 2 // 5
 
 
-# cf. 1stMud weapon_t enum order, defines.h:392 (exotic=0 .. polearm=8)
-_WEAPON_CLASS_NUM = {"exotic": 0, "sword": 1, "dagger": 2, "spear": 3,
+# cf. 1stMud weapon_t enum order, defines.h:392 (exotic=0 .. polearm=8).
+# Keys are the DATA words weapon_class (handler.c) matches, i.e. weapon_table
+# names: the spear class's data/UI word is "staff", and an unknown word falls
+# back to exotic -- same reasoning as skills_table.WEAPON_GSN_MAP.
+_WEAPON_CLASS_NUM = {"exotic": 0, "sword": 1, "dagger": 2, "staff": 3,
                      "mace": 4, "axe": 5, "flail": 6, "whip": 7, "polearm": 8}
 # cf. 1stMud WEAPON_* flag bits, bits.h:389-396 (BIT_A..BIT_H)
 _WEAPON_FLAG_BIT = {"flaming": 1, "frost": 2, "vampiric": 4, "sharp": 8,

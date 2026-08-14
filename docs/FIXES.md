@@ -860,3 +860,21 @@ wear it again because upstream `equip_char` correctly checks the wearer.
 Check each gear wearer's alignment (`gch`) during the post-kill scan. Solo
 alignment-shift zaps stay unchanged, while pets and groupmates can no longer
 cause false drops.
+
+---
+
+## chess2: Black Pawn's Halberd weapon class typo "polear"
+
+**Upstream:** chess2.are, object 4224 (`a Black Pawn's Halberd`).
+
+### The bug
+
+The weapon-class word reads `polear`. 1stMud's `weapon_class` lookup
+(handler.c) matches `weapon_table` names only, so the typo silently falls
+back to exotic -- the mirrored White Pawn's Halberd (4225) is a proper
+`polearm`, breaking the area's black/white item symmetry.
+
+### PrimeSUD fix -- implemented in `area_chess2.txt` (14/08/2026)
+
+`weapon_type` corrected to `polearm`, matching the mirror item; `[PRIMESUD]`
+comment at the site.

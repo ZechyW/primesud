@@ -1348,7 +1348,9 @@ OBJECTS = {
         "wear_flags": {"take": True, "wield": True},
         "condition": 90,
         "extra_flags": {"anti_good": True},
-        "weapon_type": 'polear', "dam_type": 'pierce', "dice": (2, 6, 0),
+        # [PRIMESUD] upstream .are said 'polear' (builder typo; silently fell
+        # back to exotic) -- fixed to match the mirrored White Pawn's Halberd
+        "weapon_type": 'polearm', "dam_type": 'pierce', "dice": (2, 6, 0),
         "weapon_flags": {},
         "level": 10, "weight": 100, "value": 750,
     },

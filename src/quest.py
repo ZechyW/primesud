@@ -436,7 +436,8 @@ def update_questobj(ch, obj):
     elif itype == "light":
         # 1stMud: value[2] = -1 (infinite) -- [PRIMESUD] light fuel not modeled
         pass
-    # 1stMud staff/portal branches: no such items in the quest table
+    # 1stMud staff/portal branches: no such ITEM TYPES in the quest table
+    # (the "staff" catalogue entry is a weapon-class staff, handled above)
 
 
 def rescale_quest_gear(ch):
