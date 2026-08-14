@@ -107,7 +107,7 @@ def _draw_window(tr, lines, col, top, width, rows):
 
 
 def hpan(lines, width):
-    """Pan oversized verbatim ASCII art in place; return the chosen column. [PRIMESUD]
+    """Pan oversized verbatim ASCII art in place; return whether it ran. [PRIMESUD]
 
     Art carrying ROM's leading-dot no-format marker (see _wrap_paragraphs
     in info.py) routinely runs 80 columns wide and 40 rows tall -- the
@@ -115,33 +115,33 @@ def hpan(lines, width):
     hard-wrap into mush.  Draw it directly onto the screen grob instead,
     outside the scrollback entirely, and let the navpad slide a window
     over it until Enter or Esc.  The screen is saved and restored around
-    the modal, so the caller can then print the art sliced at the returned
-    offset as the one scrollback record of what the player last saw.
+    the modal; the caller prints a one-line marker instead of the art,
+    which could only land in the scrollback as hard-wrapped mush.
 
-    Returns 0 (caller prints unchanged) when the art already fits, when it
-    carries colour codes -- slicing would cut a `{X` pair in half -- or
-    when the terminal cannot draw in place.  That last case covers the
-    ANSI/PC shim and the headless test harness, whose tr has no save grob,
-    so no test can ever block here waiting on a keypress.
+    Returns False (caller prints unchanged) when the art already fits,
+    when it carries colour codes -- windowing would cut a `{X` pair in
+    half -- or when the terminal cannot draw in place.  That last case
+    covers the ANSI/PC shim and the headless test harness, whose tr has
+    no save grob, so no test can ever block here waiting on a keypress.
 
     Args:
         lines (list[str]): Verbatim art rows.
         width (int): Terminal column count.
 
     Returns:
-        int: Final column offset; 0 if no modal ran.
+        bool: True if the modal ran; False if the caller should print.
     """
     tr = terminal.tr
     if tr is None or getattr(tr, "_save_grob", None) is None:
-        return 0
+        return False
     span = 0
     for ln in lines:
         if "{" in ln:
-            return 0
+            return False
         if len(ln) > span:
             span = len(ln)
     if span <= width:
-        return 0
+        return False
 
     rows = tr.rows
     max_col = span - width
@@ -199,4 +199,4 @@ def hpan(lines, width):
         tr._scrollback_ms = sb0
         tr.set_status(old_status)
         tr.resync_keyboard()
-    return col
+    return True

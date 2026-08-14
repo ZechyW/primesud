@@ -125,7 +125,7 @@ def test_hpan_declines_without_an_in_place_terminal(fake_tr):
     # FakeTr (and the ANSI/headless shims) have no save grob, so the modal
     # never opens -- this is what keeps the suite from blocking on a key.
     fake_tr()
-    assert hpan(["x" * 80, "y" * 80], 64) == 0
+    assert hpan(["x" * 80, "y" * 80], 64) is False
 
 
 class PanTr(FakeTr):
@@ -153,9 +153,9 @@ class PanTr(FakeTr):
 
 def test_hpan_declines_for_narrow_or_coloured_art(monkeypatch):
     monkeypatch.setattr(terminal, "tr", PanTr())
-    assert hpan(["short", "also short"], 64) == 0
-    assert hpan(["{Rwide" + "x" * 80, "y" * 80], 64) == 0
-    assert hpan([], 64) == 0
+    assert hpan(["short", "also short"], 64) is False
+    assert hpan(["{Rwide" + "x" * 80, "y" * 80], 64) is False
+    assert hpan([], 64) is False
 
 
 def test_hpan_pans_clamps_and_restores(monkeypatch):
@@ -164,7 +164,7 @@ def test_hpan_pans_clamps_and_restores(monkeypatch):
     monkeypatch.setattr(terminal, "tr", tr)
 
     # width 10 -> max_col 5, step 5; rows 4 -> max_row 2, step 2
-    assert hpan(art, 10) == 5  # third \\R clamps at the right edge
+    assert hpan(art, 10) is True
     # initial draw + one per accepted key ('z' ignored, Enter exits)
     assert len(tr.windows) == 6
     assert tr.windows[0] == ["A" + "." * 9, "B" + "." * 9, "C" + "." * 9, "D" + "." * 9]
@@ -182,7 +182,7 @@ def test_hpan_pans_clamps_and_restores(monkeypatch):
 def test_hpan_short_art_pads_rows_and_omits_scroll_hint(monkeypatch):
     tr = PanTr(keys=[_ESC])
     monkeypatch.setattr(terminal, "tr", tr)
-    assert hpan(["x" * 20, "y" * 20], 10) == 0  # Esc keeps the starting offset
+    assert hpan(["x" * 20, "y" * 20], 10) is True
     assert tr.windows[0] == ["x" * 10, "y" * 10, " " * 10, " " * 10]
     assert "scroll" not in tr.statuses[0]
 

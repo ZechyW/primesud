@@ -200,7 +200,8 @@ worth trusting -- the engineering layer.
 - **In-place art panner** -- examining dot-marked ASCII art wider than the
   64-col screen (the Midgaard/Thera maps) opens a full-screen modal panned
   with the navpad, instead of hard-wrapping into mush; Esc/Enter restores the
-  screen and records the last-viewed window in scrollback (pager.py, info.py).
+  screen and leaves a one-line `[shown in pan view]` marker in scrollback --
+  re-looking reopens the modal (pager.py, info.py).
 - **Session clock in place of a battery gauge** -- the Prime exposes no battery
   level to PPL or Python, so `time` reports how long the current sitting has
   run and an hourly notice announces it unprompted (update.py, info.py).

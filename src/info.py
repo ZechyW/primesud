@@ -84,15 +84,16 @@ def _print_desc(player, text, width):
 
     Wide dot-marked ASCII art (the ROM no-format marker honoured by
     _wrap_paragraphs) is unreadable once hard-wrapped, so offer it to
-    pager.hpan first; the column offset the player leaves it at decides
-    which window is then printed as the scrollback record.  Narrow art,
-    ordinary prose, and non-interactive terminals get offset 0 back and
-    print exactly as before.
+    pager.hpan first; when the modal ran, a one-line marker is the whole
+    scrollback record -- the art itself would only wrap into mush there,
+    and re-looking reopens the modal.  Narrow art, ordinary prose, and
+    non-interactive terminals decline the modal and print exactly as
+    before.
     """
     lines = _wrap_paragraphs(text, width)
-    col = hpan(lines, width)
-    if col:
-        lines = [ln[col:col + width] for ln in lines]
+    if hpan(lines, width):
+        chprintln(player, "{D[shown in pan view]{x")
+        return
     for line in lines:
         chprintln(player, line)
 

@@ -285,3 +285,16 @@ def test_wrap_paragraphs_dot_marker_verbatim():
     assert info._wrap_paragraphs(art, 20) == ["  A---B", "   \  |", "    C-D"]
     # Unmarked prose still collapses and wraps.
     assert info._wrap_paragraphs("a  b\nc", 20) == ["a b c"]
+
+
+def test_print_desc_pan_modal_leaves_marker_not_art(out, monkeypatch):
+    """When hpan ran, the scrollback record is one marker line, not the art."""
+    monkeypatch.setattr(info, "hpan", lambda lines, width: True)
+    info._print_desc({}, ".\n" + "x" * 80 + "\n" + "y" * 80, 64)
+    # out fixture joins the player arg in; match on the printed text
+    assert len(out) == 1 and out[0].endswith("{D[shown in pan view]{x")
+    # Modal declined -> art prints as before.
+    del out[:]
+    monkeypatch.setattr(info, "hpan", lambda lines, width: False)
+    info._print_desc({}, ".\nshort art", 64)
+    assert len(out) == 1 and out[0].endswith("short art")
