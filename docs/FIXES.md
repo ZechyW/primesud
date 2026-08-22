@@ -888,6 +888,45 @@ fails the suite instead.
 
 ---
 
+## check_parry: sight check tests the attacker's vision, not the defender's
+
+**Upstream:** `reference/1stMud4.5.3/src/fight.c`, `check_parry()`, line 1536
+
+### The bug
+
+```c
+if (!can_see(ch, victim))   /* ch = attacker, victim = the one parrying */
+    chance /= 2;
+```
+
+The parry penalty keys on the *attacker's* sight of the defender, so:
+
+- Blinding your attacker halves your own parry chance -- casting blindness on
+  an enemy degrades your defence against them.
+- An invisible or hidden defender parries their attacker at half chance.
+- A blind defender parries at full chance yet dodges at half.
+
+The twin `check_dodge()` (fight.c:1586) tests `can_see(victim, ch)` -- the
+defender's sight of the attacker -- which is the physically sensible gate: you
+parry a blow you can see coming.  Nothing distinguishes the two checks by
+design; the pair is a classic argument-transposition slip, inherited from
+stock ROM 2.4.  `one_hit()` (fight.c:676) already penalises the blind
+attacker's to-hit (`victim_ac -= 4`), so the design intent that blindness
+hurts the blind one is established by the surrounding pipeline; the parry
+line as written rewards the blind attacker one stage later.
+
+`check_shield_block()` has no sight check at all, so parry/dodge are the only
+pair -- and they disagree.
+
+### PrimeSUD fix -- implemented in `combat.py` `check_parry` (23/08/2026)
+
+Sight check flipped to `can_see(victim, ch)`, matching `check_dodge`.
+`[PRIMESUD]` comment at the site.  Player-facing effect: blinding an enemy no
+longer sabotages your parry, and invisibility no longer halves the invisible
+character's parry.
+
+---
+
 ## Dragon Tower: Great Hall entrance is an unexplained one-way trap
 
 **Upstream:** `reference/quickmud/area/draconia.are`, rooms 2223-2224.

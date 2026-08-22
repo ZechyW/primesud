@@ -478,7 +478,7 @@ def xp_compute(gch, victim, total_levels):
     # -- Randomize +/-25% (cf. 1stMud xp_compute: number_range(xp*3/4, xp*5/4))
     xp = randint(xp * 3 // 4, xp * 5 // 4)
 
-    # -- Group scaling (cf. 1stMud xp_compute: xp * gch->level / total_levels)
+    # -- Group scaling (cf. 1stMud xp_compute: xp * gch->level / Max(1, total_levels - 1))
     xp = xp * gch["level"] // max(1, total_levels - 1)
 
     return xp
@@ -826,7 +826,9 @@ def _try_riposte(ch, victim):
 
 def check_parry(ch, victim):
     """Check if victim parries ch's strike (cf. 1stMud check_parry in fight.c).
-    [Verified: 03/07/2026] -- [PRIMESUD] riposte hook added.
+    [Verified: 03/07/2026] -- [PRIMESUD] riposte hook added; sight check
+    flipped to can_see(victim, ch) (upstream transposition slip, see
+    docs/FIXES.md).
 
     Args:
         ch (dict): Attacker (player or mob instance).
@@ -849,7 +851,12 @@ def check_parry(ch, victim):
         else:
             return False
 
-    if not can_see(ch, victim):
+    # [PRIMESUD] 1stMud tests can_see(ch, victim) -- the attacker's sight of
+    # the defender -- so blinding your attacker halved your own parry. A
+    # transposition slip: the twin check_dodge tests can_see(victim, ch), and
+    # one_hit already penalises the blind attacker (victim_ac -= 4). Flipped
+    # to the defender's sight of the attacker. See docs/FIXES.md.
+    if not can_see(victim, ch):
         chance //= 2
 
     # Stance bonuses (cf. 1stMud check_parry fight.c:1539-1545)
@@ -2507,10 +2514,6 @@ def stop_fighting(ch, both=False):
                     MOB_DEFS[char["tpl"]].get("default_pos", "stand"), "standing")
             else:
                 char["pos"] = "standing"
-            update_pos(char)
-            # [PRIMESUD] original .are files allow for mobs to have default positions
-            # specified, but we haven't ported this yet.
-            char["pos"] = "standing"
             update_pos(char)
             # cf. 1stMud: SetStance(fch, STANCE_CURRENT, STANCE_NONE)
             set_stance(char, STANCE_CURRENT, STANCE_NONE)

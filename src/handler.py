@@ -461,7 +461,7 @@ def is_awake(ch):
 
 
 def get_hitroll(char):
-    """Effective hitroll: base + STR bonus + equipped weapon bonus (cf. 1stMud GetHitroll macro in macro.h).
+    """Effective hitroll: base (includes equip affects) + STR bonus (cf. 1stMud GetHitroll macro in macro.h).
 
     Args:
         char (dict): Character state dict (player or mob instance).
@@ -473,7 +473,7 @@ def get_hitroll(char):
 
 
 def get_damroll(char):
-    """Effective damroll: base + STR bonus + equipped weapon bonus (cf. 1stMud GetDamroll macro in macro.h).
+    """Effective damroll: base (includes equip affects) + STR bonus (cf. 1stMud GetDamroll macro in macro.h).
 
     Args:
         char (dict): Character state dict (player or mob instance).
@@ -485,7 +485,7 @@ def get_damroll(char):
 
 
 def get_armor(char, ac_type):
-    """Effective bucket AC: base + DEX bonus + equipped armor bonus. [PRIMESUD]
+    """Effective bucket AC: base (includes equip affects) + DEX bonus. [PRIMESUD]
 
     Args:
         char (dict): Character state dict (player or mob instance).
