@@ -1,9 +1,9 @@
 # PrimeSUD -- What's Changed in the World
 
-FEATURES.md indexes engine changes; this file indexes world changes -- the
-rooms, items, lore, and classes PrimeSUD adds or rewrites on top of stock
-1stMud content. Anything not listed here is stock. One line per entry;
-depth lives in DESIGN.md, docs/AREA_FILES.md, and the `areas/*.are` sources.
+FEATURES.md indexes engine changes; this file indexes notable authored world
+changes -- new rooms, items, lore, and classes, plus substantial rewrites of
+stock content. One line per entry; data corrections live in docs/FIXES.md and
+the exhaustive source-delta ledger in docs/AREA_FILES.md.
 
 ## World
 
@@ -11,13 +11,9 @@ depth lives in DESIGN.md, docs/AREA_FILES.md, and the `areas/*.are` sources.
   (stock's "The Defunct Reception") carries `ROOM_BANK` again, so the `bank`
   command works there; pairs with the remort fee accepting banked gold
   (DESIGN.md "Remort gold fee").
-- **Dragon Tower Great Hall exit repaired** -- room 2224 now leads west back
-  to entrance room 2223, removing stock's unexplained one-way hallway trap.
 
 ## Items
 
-- **Black Pawn's Halberd weapon class corrected** -- canonical Chessboard
-  source now says `polearm`, preserving its intended weapon class on regeneration.
 - **Quest catalogue expanded** -- six new questmaster rewards modelled on the
   Aardwolf quest item list (`reference/aardwolf_qlist.md`): a dagger, mace,
   and staff alongside the stock sword, plus bracers (arms), wings (about),

@@ -68,8 +68,11 @@ If the calculator reports "Insufficient memory," power-cycle it first -- Shift+O
 ## Read more
 
 - [`FEATURES.md`](FEATURES.md) -- new systems, solo adaptations, and quality-of-life changes.
+- [`WORLD.md`](WORLD.md) -- notable authored world, item, lore, and class changes.
 - [`docs/PRIME_UX.md`](docs/PRIME_UX.md) -- controls, shortcuts, scrollback, autosave, and other Prime-specific features.
 - [`DESIGN.md`](DESIGN.md) -- where PrimeSUD deliberately differs from its source.
+- [`docs/FIXES.md`](docs/FIXES.md) -- upstream bugs intentionally corrected in PrimeSUD.
+- [`docs/AREA_FILES.md`](docs/AREA_FILES.md) -- area format and exhaustive source-data deviations.
 - [`TODO.md`](TODO.md) -- remaining work and planned features.
 - [`docs/BUILTINS.md`](docs/BUILTINS.md) -- device Python availability and semantics.
 - [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) -- on-device benchmarks and resulting decisions.

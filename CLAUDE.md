@@ -79,7 +79,7 @@ Code with no 1stMud equivalent or intentional deviation marked `# [PRIMESUD]`. W
 
 When shipping a notable player-facing `[PRIMESUD]` feature or deviation (new system, balance change, UX behaviour -- not micro-fixes), add a one-liner to the matching section of root `FEATURES.md` in the same commit.
 
-World/lore/content changes (new or rewritten rooms, items, area text, content classes) go to root `WORLD.md` instead of `FEATURES.md`, same one-liner rule.
+Notable authored world/lore/content changes (new rooms, items, area text, content classes, or substantial rewrites) go to root `WORLD.md` instead of `FEATURES.md`, same one-liner rule. Micro-fixes and stock-data corrections go in `docs/FIXES.md`; every `.are` source deviation also goes in `docs/AREA_FILES.md`.
 
 ## Docstrings
 
