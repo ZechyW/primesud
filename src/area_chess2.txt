@@ -1348,10 +1348,6 @@ OBJECTS = {
         "wear_flags": {"take": True, "wield": True},
         "condition": 90,
         "extra_flags": {"anti_good": True},
-        # [PRIMESUD] upstream .are said 'polear' (builder typo; upstream's
-        # prefix-matching weapon_class still read it as polearm, PrimeSUD's
-        # exact lookup degraded it to exotic) -- canonical word restored to
-        # match the mirrored White Pawn's Halberd; see docs/FIXES.md
         "weapon_type": 'polearm', "dam_type": 'pierce', "dice": (2, 6, 0),
         "weapon_flags": {},
         "level": 10, "weight": 100, "value": 750,

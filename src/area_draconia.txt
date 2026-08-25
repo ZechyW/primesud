@@ -743,6 +743,7 @@ ROOMS = {
         "exits": {
             "n": {"to": 2225, "desc": 'You see a narrow passageway.'},
             "e": {"to": 2229, "desc": 'You see the Hall.'},
+            "w": {"to": 2223, "desc": 'You see the entrance to the Great Hall.'},
         },
         "flags": {"indoors": True},
         "sector": 'city',

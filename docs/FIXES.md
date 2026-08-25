@@ -877,10 +877,25 @@ lookups (`item._WEAPON_CLASS_NUM`, `skills_table.WEAPON_GSN_MAP`) took the
 unknown-word fallback instead, degrading the weapon to exotic -- a porting
 regression, not upstream behaviour.
 
-### PrimeSUD fix -- implemented in `area_chess2.txt` (14/08/2026)
+### PrimeSUD fix -- implemented in `areas/chess2.are` (25/08/2026)
 
-Data word corrected to the canonical `polearm`; `[PRIMESUD]` comment at the
-site.  Exact matching stays (cheap on-device); `tests/test_area_vocab.py`
-now lints every enumerated data word against its consuming table, so any
-word upstream's lenient prefix matching would have quietly accepted fails
-the suite instead.
+Data word corrected to canonical `polearm` in converter source, then regenerated
+into `src/area_chess2.txt`. Object entries have no comment seam, so provenance
+lives in `docs/AREA_FILES.md`. Exact matching stays (cheap on-device);
+`tests/test_area_vocab.py` lints every enumerated data word against its consuming
+table, so any word upstream's lenient prefix matching would have quietly accepted
+fails the suite instead.
+
+---
+
+## Dragon Tower: Great Hall entrance is an unexplained one-way trap
+
+**Upstream:** `reference/quickmud/area/draconia.are`, rooms 2223-2224.
+
+Stock room 2223 leads east into room 2224, but room 2224 has no west exit.
+Its north and east branches only return to room 2224, leaving recall or death
+as the only way back despite no room text or mechanism describing a trap.
+
+### PrimeSUD fix -- implemented in `areas/draconia.are` (25/08/2026)
+
+Room 2224 now leads west to room 2223, making the ordinary hallway reciprocal.
