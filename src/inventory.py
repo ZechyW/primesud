@@ -257,6 +257,10 @@ def do_get(player, args):
             quest_obj_check(player, obj)  # cf. 1stMud get_obj quest hook
             return resolved
         return _loot_container_picker(player, conts[idx - cont_start])
+    # cf. 1stMud act_obj.c:193-194 -- a bare "from" is dropped, so "get X from Y"
+    # and "get X Y" are the same command; "get X from" degrades to a room get.
+    if len(args) >= 2 and args[1] == "from":
+        args = [args[0]] + args[2:]
     arg = " ".join(args)
     if arg == "all" or arg.startswith("all."):
         filter_kw = arg[4:] if arg.startswith("all.") else None
@@ -289,9 +293,6 @@ def do_get(player, args):
         return
     if len(args) >= 2:
         cont_arg = " ".join(args[1:])
-        # cf. 1stMud act_obj.c:193-194 -- strip a bare "from" token
-        if args[1] == "from":
-            cont_arg = " ".join(args[2:])
         cont_obj = get_obj_list(cont_arg, rs["items"], ITEM_DEFS, player)
         if cont_obj is None:
             cont_obj = get_obj_list(cont_arg, player["inv"], ITEM_DEFS, player)

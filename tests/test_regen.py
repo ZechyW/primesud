@@ -370,3 +370,34 @@ class TestDiseaseAndBleed:
         from config import DAM_DISEASE
         assert (2, GSN_PLAGUE, DAM_DISEASE) in calls
         assert p["mana"] == 98 and p["move"] == 98
+
+
+class TestAffectLevelDecay:
+    """Per-tick affect level fade (cf. 1stMud char_update in update.c:648-651)."""
+
+    def _aff(self, level, duration=5):
+        return {"type": GSN_PLAGUE, "level": level, "duration": duration}
+
+    def test_level_decays_on_one_in_five_roll(self, monkeypatch):
+        monkeypatch.setattr(player_mod, "randint", lambda a, b: 0)
+        p = _full_player()
+        p["affect_list"].append(self._aff(3))
+        player_mod._tick_affects(p, None)
+        assert p["affect_list"][0]["duration"] == 4
+        assert p["affect_list"][0]["level"] == 2
+
+    def test_level_holds_when_roll_misses(self, monkeypatch):
+        monkeypatch.setattr(player_mod, "randint", lambda a, b: 1)
+        p = _full_player()
+        p["affect_list"].append(self._aff(3))
+        player_mod._tick_affects(p, None)
+        assert p["affect_list"][0]["duration"] == 4
+        assert p["affect_list"][0]["level"] == 3
+
+    def test_level_floors_at_zero(self, monkeypatch):
+        # C guards with paf->level > 0, so a level-0 affect stays at 0
+        monkeypatch.setattr(player_mod, "randint", lambda a, b: 0)
+        p = _full_player()
+        p["affect_list"].append(self._aff(0))
+        player_mod._tick_affects(p, None)
+        assert p["affect_list"][0]["level"] == 0

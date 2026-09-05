@@ -691,18 +691,21 @@ def can_drop_obj(ch, obj):
 
 
 def can_carry_n(ch):
-    """Max number of items ch can carry (cf. 1stMud can_carry_n in handler.c)."""
-    # cf. 1stMud handler.c:806-807
-    if ch.get("is_npc") and ch["act_flags"].get("pet"):
-        return 100
+    """Max number of items ch can carry (cf. 1stMud can_carry_n in handler.c).
+
+    [PRIMESUD] 1stMud caps ACT_PET at a flat 100 items (handler.c:806-807) to
+    stop players using pets as shared mules; single-player has nobody to
+    exploit, so pets use the same DEX/level formula as everyone else.
+    """
     return 20 + 2 * get_curr_stat(ch, "dex") + ch["level"]
 
 
 def can_carry_w(ch):
-    """Max carry weight for ch in tenths of lbs (cf. 1stMud can_carry_w in handler.c)."""
-    # cf. 1stMud handler.c:817-818
-    if ch.get("is_npc") and ch["act_flags"].get("pet"):
-        return 1000
+    """Max carry weight for ch in tenths of lbs (cf. 1stMud can_carry_w in handler.c).
+
+    [PRIMESUD] 1stMud caps ACT_PET at a flat 1000 tenths (handler.c:817-818);
+    dropped for the same reason as the can_carry_n cap.
+    """
     return STR_APP_CARRY[get_curr_stat(ch, "str")] * 10 + ch["level"] * 25
 
 
@@ -711,7 +714,10 @@ def get_obj_weight(obj):
     tpl = item_tpl(obj)
     w = tpl.get("weight", 0)
     if isinstance(obj, dict):
-        # cf. 1stMud handler.c:2292, WeightMult macro.h:373-374
+        # cf. 1stMud handler.c:2292, WeightMult macro.h:373-374. No
+        # item_type == ITEM_CONTAINER guard: the converter
+        # (tools/are_to_primesud.py) emits container_weight_mult only for
+        # containers, so non-containers default to 100 -- same effect.
         mult = tpl.get("container_weight_mult", 100)
         for c in obj.get("contents", []):
             w += get_obj_weight(c) * mult // 100
@@ -719,8 +725,11 @@ def get_obj_weight(obj):
 
 
 def get_true_weight(obj):
-    """Actual weight of obj including contents, no container_weight_mult
-    applied to obj itself (cf. 1stMud get_true_weight in handler.c)."""
+    """Weight of obj including contents, unreduced (cf. 1stMud get_true_weight in handler.c).
+
+    Unlike get_obj_weight, obj's own container_weight_mult is not applied to
+    its contents; nested containers still get theirs.
+    """
     w = item_tpl(obj).get("weight", 0)
     if isinstance(obj, dict):
         for c in obj.get("contents", []):

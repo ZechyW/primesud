@@ -264,6 +264,9 @@ Deliberate gameplay tweaks; each is a settled decision in DESIGN.md or a
   killing blow.
 - **Pet-friendly XP** -- owned pets do not dilute kill XP; temporary charmed
   mobs still contribute half their level to the group XP divisor.
+- **Pets carry their own weight** -- 1stMud caps a pet at a flat 100 items and
+  100 lbs to stop players stashing gear on a shared mule; with nobody to share
+  with, pets are limited by their own DEX, STR and level like any character.
 - **Streaming output reveal** -- all game output (combat rounds, looks,
   help, the greeting) appears one line at a time (~25ms/line) instead of
   all at once, old-terminal style; any keypress during the reveal

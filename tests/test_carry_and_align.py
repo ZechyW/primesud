@@ -247,18 +247,17 @@ def test_obj_weight_scales_contents_by_container_mult():
     assert get_true_weight(pack) == 25 + 400
 
 
-# -- can_carry_n / can_carry_w ACT_PET flat caps ---------------------------------
-# cf. 1stMud handler.c:806-807, 817-818
+# -- can_carry_n / can_carry_w: pets use the ordinary formula ---------------------
+# [PRIMESUD] 1stMud's ACT_PET flat caps (handler.c:806-807, 817-818) are dropped;
+# pets are stat-limited like any other character.
 
-def test_pet_flat_carry_caps():
+def test_pet_carry_uses_stat_formula():
     from item import can_carry_n, can_carry_w
     pet = _make_player(is_npc=True, act_flags={"pet": True})
-    assert can_carry_n(pet) == 100
-    assert can_carry_w(pet) == 1000
     ch = _make_player(is_npc=True, act_flags={})
     # MAX_WEAR=20, dex=13, level=10 -> 46; str 13 carry 130*10 + 10*25 -> 1550
-    assert can_carry_n(ch) == 20 + 2 * 13 + 10
-    assert can_carry_w(ch) == 130 * 10 + 10 * 25
+    assert can_carry_n(pet) == can_carry_n(ch) == 20 + 2 * 13 + 10
+    assert can_carry_w(pet) == can_carry_w(ch) == 130 * 10 + 10 * 25
 
 
 # -- do_get "from" container token ------------------------------------------------
@@ -294,14 +293,13 @@ def test_get_from_pouch_without_from_token(out):
     assert pouch["contents"] == [] and len(player["inv"]) == 2
 
 
-def test_get_item_from_bare_token_fails(out):
+def test_get_with_trailing_from_degrades_to_room_get(out):
+    # cf. 1stMud act_obj.c:193-196 -- the bare "from" leaves arg2 empty, so
+    # "get sword from" is a plain room get, not a failed container lookup.
     player, pouch = _pouch_with_sword()
     inventory.do_get(player, ["sword", "from"])
-    # "from" stripped -> empty container arg -> no container found ->
-    # falls back to room lookup of "sword from", which finds nothing
-    assert not any("You get" in l for l in out)
-    assert pouch["contents"] and len(player["inv"]) == 1 and player["inv"][0] is pouch
-    assert any("I see no" in l for l in out)
+    assert pouch["contents"] and len(player["inv"]) == 1
+    assert any("I see no sword here." in l for l in out)
 
 
 # -- Task 1: do_put container capacity -------------------------------------------

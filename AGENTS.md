@@ -24,3 +24,11 @@ local overlay fs instead:
 UV_PROJECT_ENVIRONMENT=/tmp/primesud-venv uv run pytest -q -n 4
 UV_PROJECT_ENVIRONMENT=/tmp/primesud-venv uv run python tools/check_ascii_py.py
 ```
+
+## Line endings
+
+Shared Windows/Linux worktree: preserve each file's existing line endings, and
+do not normalize unless the task requires it. If git reports widespread
+unexpected modifications, check `git diff HEAD --stat` before rewriting
+anything -- files it shows as empty are a stale cache, not edits, and the check
+itself may clear them.
