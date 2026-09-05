@@ -144,11 +144,14 @@ one player has no intent left to port.
 **When a new mechanic perturbs an existing test, neutralize the variable rather
 than retuning the inputs to preserve the assertion.** The poison test had its
 affect level changed from 20 to 30 so that `level // 10 + 1` would still
-evaluate to 3 after decay. The assertion survives, but the test now silently
-depends on the decay firing, and a reader cannot tell which mechanic it covers.
-Pin the RNG so decay does not fire, or update the expected value and say why.
-(The plague test's 1 -> 2 bump was genuinely forced, since level 1 is the value
-under test -- that one is fine.)
+evaluate to 3 after decay. The sweep did comment both perturbed tests
+(`test_regen.py:328-330, 344-346`), so a reader can tell what moved; the
+residual point is narrower than first written -- the input was chosen to keep
+the assertion's *value* unchanged, which is what hides the perturbation, not the
+missing note. Against that, the coupling buys real coverage: decay-before-damage
+-read (`update.c:644-668` before `:735`) is a genuine ordering property, and
+nothing else pins it. Documented coupling, not a defect. (The plague test's
+1 -> 2 bump was genuinely forced, since level 1 is the value under test.)
 
 **When translating C argument parsing, always ask what the empty remainder
 does.** C's `one_argument` overwrites its output buffer, so a stripped token
@@ -156,7 +159,13 @@ naturally leaves an empty string that falls into an existing empty-argument
 branch. A Python port that joins the remainder into a new variable loses that
 behaviour for free and has to reconstruct it. More generally: before writing a
 new parsing special case, read the sibling command. `do_put` had already solved
-the same problem, correctly, forty lines away.
+the same problem, correctly, forty lines away. (The sibling also carries the
+port-wide `[PRIMESUD]` multi-word join for the container argument, where C's
+`one_argument` takes one word -- so `get sword large bag` resolves here and does
+not in C. That divergence predates the sweep and is already recorded on the
+`do_sell` row of `parity_sweep.md`. Note it does not make `get sword from the
+bag` work: `is_name` requires every typed word to prefix-match a keyword, so
+`the` fails the same way C's one-word `arg2` of `the` does.)
 
 **A test asserting that something fails deserves a check against upstream.** If
 the reason for the failure is a quirk of the port's control flow rather than a
@@ -177,5 +186,6 @@ annotation inside it means the declaration needs updating in the same pass.
 construction."** Dropping C's `item_type == ITEM_CONTAINER` guard is correct
 *today* because the converter only emits that key for containers. That is a real
 invariant, but it lives in a different file from the code relying on it, and it
-deserves a comment at the point of reliance. The present comment cites the C
-macro but not the data invariant that makes the guard unnecessary.
+deserves a comment at the point of reliance. The sweep's comment already does
+that (`item.py:717-720`, naming `tools/are_to_primesud.py`); the lesson stands as
+the general rule, not as an outstanding gap.
