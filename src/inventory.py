@@ -19,6 +19,7 @@ from handler import (get_curr_stat, is_name, equip_char, unequip_char, act,
 from item import (get_obj_list, get_obj_here, obj_vnum, create_object,
                   item_extra_flags, item_wear_flags, apply_money_pickup,
                   can_drop_obj, can_carry_n, can_carry_w, get_obj_weight,
+                  get_true_weight,
                   get_carry_weight,
                   item_weapon_flags, item_affect_to_obj,
                   item_container_flags, CONTAINER_TYPES,
@@ -288,6 +289,9 @@ def do_get(player, args):
         return
     if len(args) >= 2:
         cont_arg = " ".join(args[1:])
+        # cf. 1stMud act_obj.c:193-194 -- strip a bare "from" token
+        if args[1] == "from":
+            cont_arg = " ".join(args[2:])
         cont_obj = get_obj_list(cont_arg, rs["items"], ITEM_DEFS, player)
         if cont_obj is None:
             cont_obj = get_obj_list(cont_arg, player["inv"], ITEM_DEFS, player)
@@ -550,7 +554,8 @@ def do_put(player, args):
     max_weight = cont_tpl.get("container_max_weight")
     max_item_weight = cont_tpl.get("container_max_item_weight")
     if max_weight is not None and max_item_weight is not None:
-        if (get_obj_weight(obj) + get_obj_weight(cont_obj) > max_weight * 10
+        # cf. 1stMud act_obj.c:409-411 -- container side uses true weight
+        if (get_obj_weight(obj) + get_true_weight(cont_obj) > max_weight * 10
                 or get_obj_weight(obj) > max_item_weight * 10):
             chprintln(player, "It won't fit.")
             return

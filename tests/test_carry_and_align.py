@@ -223,6 +223,87 @@ def test_get_money_picker_resolves_history(out, monkeypatch):
     assert player["gold"] == 1
 
 
+# -- get_obj_weight container_weight_mult / get_true_weight ----------------------
+# cf. 1stMud handler.c:2285-2306, macro.h:373-374 (WeightMult)
+
+def test_obj_weight_scales_contents_by_container_mult():
+    from item import get_obj_weight, get_true_weight
+    ITEM_DEFS._data[40001] = {
+        "keywords": "pack test", "short_descr": "a test pack",
+        "type": "container", "level": 0, "weight": 25,
+        "wear_flags": {}, "extra_flags": {},
+        "container_max_weight": 100, "container_max_item_weight": 100,
+        "container_weight_mult": 25, "container_flags": {},
+    }
+    ITEM_DEFS._data[40002] = {
+        "keywords": "crate test", "short_descr": "a test crate",
+        "type": "misc", "level": 0, "weight": 400,
+        "wear_flags": {"take": True}, "extra_flags": {},
+    }
+    pack = {"vnum": 40001, "contents": [{"vnum": 40002}]}
+    # cf. handler.c:2292 -- contents scaled by container_weight_mult/100
+    assert get_obj_weight(pack) == 25 + 400 * 25 // 100
+    # cf. handler.c:2297-2306 -- true weight: no mult on the container itself
+    assert get_true_weight(pack) == 25 + 400
+
+
+# -- can_carry_n / can_carry_w ACT_PET flat caps ---------------------------------
+# cf. 1stMud handler.c:806-807, 817-818
+
+def test_pet_flat_carry_caps():
+    from item import can_carry_n, can_carry_w
+    pet = _make_player(is_npc=True, act_flags={"pet": True})
+    assert can_carry_n(pet) == 100
+    assert can_carry_w(pet) == 1000
+    ch = _make_player(is_npc=True, act_flags={})
+    # MAX_WEAR=20, dex=13, level=10 -> 46; str 13 carry 130*10 + 10*25 -> 1550
+    assert can_carry_n(ch) == 20 + 2 * 13 + 10
+    assert can_carry_w(ch) == 130 * 10 + 10 * 25
+
+
+# -- do_get "from" container token ------------------------------------------------
+# cf. 1stMud act_obj.c:193-194
+
+def _pouch_with_sword():
+    player = _make_player()
+    ITEM_DEFS._data[40003] = {
+        "keywords": "pouch test", "short_descr": "a test pouch",
+        "type": "container", "level": 0, "weight": 5,
+        "wear_flags": {"take": True}, "extra_flags": {},
+        "container_max_weight": 100, "container_max_item_weight": 100,
+        "container_weight_mult": 100, "container_flags": {},
+    }
+    pouch = {"vnum": 40003, "contents": []}
+    player["inv"].append(pouch)
+    pouch["contents"].append({"vnum": SWORD_VNUM})
+    return player, pouch
+
+
+def test_get_from_pouch_with_from_token(out):
+    player, pouch = _pouch_with_sword()
+    inventory.do_get(player, ["sword", "from", "pouch"])
+    assert any("You get a test sword." in l for l in out)
+    assert pouch["contents"] == [] and len(player["inv"]) == 2
+    assert {"vnum": SWORD_VNUM} in player["inv"] and pouch in player["inv"]
+
+
+def test_get_from_pouch_without_from_token(out):
+    player, pouch = _pouch_with_sword()
+    inventory.do_get(player, ["sword", "pouch"])
+    assert any("You get a test sword." in l for l in out)
+    assert pouch["contents"] == [] and len(player["inv"]) == 2
+
+
+def test_get_item_from_bare_token_fails(out):
+    player, pouch = _pouch_with_sword()
+    inventory.do_get(player, ["sword", "from"])
+    # "from" stripped -> empty container arg -> no container found ->
+    # falls back to room lookup of "sword from", which finds nothing
+    assert not any("You get" in l for l in out)
+    assert pouch["contents"] and len(player["inv"]) == 1 and player["inv"][0] is pouch
+    assert any("I see no" in l for l in out)
+
+
 # -- Task 1: do_put container capacity -------------------------------------------
 
 def test_put_item_too_heavy_for_container(out):

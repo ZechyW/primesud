@@ -320,12 +320,14 @@ class TestDiseaseAndBleed:
         p = _full_player()
         p.update({"pos": "standing",
                   "affected_by": {"poison": True},
-                  "affect_list": [{"type": GSN_POISON, "level": 20,
+                  "affect_list": [{"type": GSN_POISON, "level": 30,
                                    "duration": 5, "location": "none",
                                    "modifier": 0, "bitvector": "poison"}]})
         self._tick(p)
         from config import DAM_POISON
-        assert (20 // 10 + 1, GSN_POISON, DAM_POISON) in calls
+        # level decay (update.c:650-651) runs before the damage read, and
+        # this test's pinned RNG (roll=0) is the 1-in-5 decay hit: 30 -> 29
+        assert (29 // 10 + 1, GSN_POISON, DAM_POISON) in calls
 
     def test_poison_slowed_skips(self, isolate, monkeypatch):
         calls = self._patch(monkeypatch)
@@ -339,12 +341,14 @@ class TestDiseaseAndBleed:
         assert calls == []
 
     def test_plague_level_one_is_inert(self, isolate, monkeypatch):
+        # level 2: the pinned RNG (roll=0) is the 1-in-5 level-decay hit
+        # (update.c:650-651), so it becomes level 1 before the disease read --
         # af.level == 1: messages only, no drain, no damage (update.c:694-695)
         calls = self._patch(monkeypatch)
         p = _full_player()
         p.update({"pos": "standing",
                   "affected_by": {"plague": True},
-                  "affect_list": [{"type": GSN_PLAGUE, "level": 1,
+                  "affect_list": [{"type": GSN_PLAGUE, "level": 2,
                                    "duration": 5, "location": "str",
                                    "modifier": -5, "bitvector": "plague"}]})
         self._tick(p)

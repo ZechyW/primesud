@@ -692,11 +692,17 @@ def can_drop_obj(ch, obj):
 
 def can_carry_n(ch):
     """Max number of items ch can carry (cf. 1stMud can_carry_n in handler.c)."""
+    # cf. 1stMud handler.c:806-807
+    if ch.get("is_npc") and ch["act_flags"].get("pet"):
+        return 100
     return 20 + 2 * get_curr_stat(ch, "dex") + ch["level"]
 
 
 def can_carry_w(ch):
     """Max carry weight for ch in tenths of lbs (cf. 1stMud can_carry_w in handler.c)."""
+    # cf. 1stMud handler.c:817-818
+    if ch.get("is_npc") and ch["act_flags"].get("pet"):
+        return 1000
     return STR_APP_CARRY[get_curr_stat(ch, "str")] * 10 + ch["level"] * 25
 
 
@@ -704,6 +710,18 @@ def get_obj_weight(obj):
     """Total weight of obj including contents (cf. 1stMud get_obj_weight in handler.c)."""
     tpl = item_tpl(obj)
     w = tpl.get("weight", 0)
+    if isinstance(obj, dict):
+        # cf. 1stMud handler.c:2292, WeightMult macro.h:373-374
+        mult = tpl.get("container_weight_mult", 100)
+        for c in obj.get("contents", []):
+            w += get_obj_weight(c) * mult // 100
+    return w
+
+
+def get_true_weight(obj):
+    """Actual weight of obj including contents, no container_weight_mult
+    applied to obj itself (cf. 1stMud get_true_weight in handler.c)."""
+    w = item_tpl(obj).get("weight", 0)
     if isinstance(obj, dict):
         for c in obj.get("contents", []):
             w += get_obj_weight(c)

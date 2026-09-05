@@ -625,6 +625,9 @@ def _tick_affects(ch, tr):
     for aff in list(ch["affect_list"]):
         if aff["duration"] > 0:
             aff["duration"] -= 1
+            # cf. 1stMud update.c:650-651
+            if randint(0, 4) == 0 and aff["level"] > 0:
+                aff["level"] -= 1
         elif aff["duration"] == 0:
             if tr is not None:
                 msg = SKILLS.get(aff.get("type"), {}).get("msg_off", "")
