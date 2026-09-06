@@ -1,10 +1,10 @@
 # Parity Sweep -- 1stMud 4.5.3 C vs PrimeSUD Python
 
 Sweep of every top-level function in act_obj.c, handler.c and update.c
-135 rows closed -- faithful (none), deliberately deviated (known),
-no single-player counterpart (unmapped), or resolved by the 2026-09-05
-fix pass (`[fixed]`/`[resolved]`) -- are condensed to one-liners. The
-7 OPEN port-drift rows keep their full evidence under "Open port-drift rows".
+136 rows closed -- faithful (none), deliberately deviated (known),
+no single-player counterpart (unmapped), or resolved by the fix pass
+(`[fixed]`/`[resolved]`) -- are condensed to one-liners. The
+6 OPEN port-drift rows keep their full evidence under "Open port-drift rows".
 
 ## Taxonomy
 - **upstream-bug** -- the C contradicts its own stated intent. Correct fix would
@@ -29,7 +29,7 @@ drift (classify none/known): no `%`/`.format()` (concatenation/`chprintf`),
 - act_obj.c: 33 functions
 - handler.c: 96 functions
 - update.c: 13 functions
-- Total rows: 142 (33 + 96 + 13); 135 closed (condensed below), 7 open (full detail at the bottom)
+- Total rows: 142 (33 + 96 + 13); 136 closed (condensed below), 6 open (full detail at the bottom)
 
 ---
 
@@ -106,6 +106,7 @@ drift (classify none/known): no `%`/`.format()` (concatenation/`chprintf`),
 | affect_to_char | 1150-1163 | none |  |
 | affect_to_obj | 1165-1191 | none | missing TO_WEAPON type guard unreachable (affects only created on weapons) |
 | affect_remove | 1193-1214 | none | C bug() on empty list vs Py no-op guard -- defensive, not observable |
+| affect_remove_obj | 1216-1254 | [fixed] | resolved 2026-09-06: in-place wearer reversal added (item.py:326-329, cf. handler.c:1227-1228, 1251-1252); cast one-shot untouched (magic.py:1079-1083, 1211-1215); tests appended to test_bug_regressions.py |
 | affect_strip | 1256-1269 | none |  |
 | is_affected | 1271-1282 | none |  |
 | affect_join | 1284-1304 | none | debuff-only use, matches C call sites |
@@ -199,7 +200,6 @@ parentheses. Severity note appended per row.
 | 37 | do_put | 332-466 | `put all in <container>` bulk loop missing (single item only) | convenience, not correctness |
 | 48 | do_remove | 1743-1778 | `remove all.<name>` class subform missing | low, rare subform |
 | 87 | get_skill | 318-359 | get_skill(mob,-1) reorder: C level*5/2 vs Py level-based | low, rare |
-| 106 | affect_remove_obj | 1216-1254 | worn-item wearer handling dropped -- item curse/bless saving_throw +/-1 never reverts | persistent, observable |
 | 111 | char_to_room | 1332-1415 | entry-time plague contagion (1/64) not ported; only the 1/16 tick vector | infection route, if a carrier present |
 | 112 | link_obj_to_char | 1417-1455 | shopkeeper dup-merge + level-sorted insert missing | visible, any shop sell |
 | 113 | obj_to_char | 1457-1469 | quest item not rescaled on re-pickup | rare edge |
@@ -221,12 +221,6 @@ Severity: low -- the `all.<name>` subform is rare; the row itself rates it low i
 Reorder: C checks sn==-1 first for all chars (handler.c:322) then IsNPC (handler.c:331); Py checks is_mob first (skill_utils.py:212) then sn==-1 (skill_utils.py:215), so mob+sn==-1 gives C=level*5/2 vs Py=level-based (level 10: 25 vs 8). Only affects get_skill(mob,-1). Also: drunk skill reduction (handler.c:355-356, 9/10 when COND_DRUNK>10) omitted - documented condition-system non-port (combat.py:1318-1320 [PRIMESUD]); bad-sn bugf diagnostic dropped (handler.c:326-330, Py returns 0 via .get default, no log); Py adds sn>=0 guard on daze (handler.c:349 indexes skill_table[sn]=OOB for sn==-1).
 
 Severity: low -- only `get_skill(mob, -1)` (unknown weapon on a mob) differs; player path is faithful.
-
-### affect_remove_obj (original row 106)
-
-Py omits C's worn-item wearer handling: affect_modify(carried_by,paf,false) (1227-1228) and affect_check on the wearer (1251-1252); Py docstring scopes the function to the flag-bit switch only (cites C 1233-1245). Observable: item curse (magic.py:1209 to_object "saves" +1, duration 2*level; 1211-1215 caster saving_throw +1, cf. C magic.c:1657-1669) and item bless (magic.py:1077,1079-1083, cf. magic.c:758-759) set a caster saving_throw offset at cast; on expiry (update.py:231-232, cf. update.c:815) or dispel (magic.py:1071,1203, cf. magic.c:734,1643) C reverts the wearer's saving_throw - in single-player caster==wearer==player - while Py never reverts: the only other saving_throw writers are the char-affect path (handler.py:314) and reset (player.py:234), so the +/-1 persists permanently. Not listed in docs/FIXES.md.
-
-Severity: persistent, observable -- item curse/bless saving_throw +/-1 set at cast is never reverted on expiry or dispel; the only other writers are the char-affect path and reset, so the offset persists.
 
 ### char_to_room (original row 111)
 

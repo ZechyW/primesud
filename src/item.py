@@ -2,7 +2,8 @@
 
 import world
 from config import STR_APP_CARRY
-from handler import is_name, number_argument, can_see_obj, get_curr_stat
+from handler import (is_name, number_argument, can_see_obj, get_curr_stat,
+                      affect_modify, affect_check)
 from util import obj_remove, sstr
 from world import ITEM_DEFS, item_tpl
 
@@ -311,13 +312,25 @@ def item_affect_find(obj, sn):
     return None
 
 
-def item_affect_remove(obj, af, tpl):
-    """Remove one object affect and clear its direct flag bit if present. [PRIMESUD]
+def item_affect_remove(obj, af, tpl, wearer=None):
+    """Remove one object affect and clear its direct flag bit if present.
 
     where="to_weapon" affects clear a weapon_flags bit, where="to_object" an
     extra_flags bit; other wheres (to_affects etc.) touch no item flags
     (cf. 1stMud affect_remove_obj switch in handler.c:1233-1245, default case).
+
+    If the item is currently worn by `wearer`, first reverse the stat
+    modifier the affect applied at cast time (cf. 1stMud
+    affect_remove_obj in handler.c:1227-1228, affect_modify negating the
+    modifier at handler.c:949), then re-check the bitvector
+    (cf. handler.c:1251-1252; a no-op for to_object/to_weapon items, which
+    early-return in affect_check). `wearer=None` leaves the reversal off --
+    room items and NPC-carried gear have no equipped wearer to reverse.
     """
+    where = af.get("where", "")
+    vector = af.get("bitvector", "")
+    if wearer is not None and obj in list(wearer.get("equip", {}).values()):
+        affect_modify(wearer, af, False)  # cf. 1stMud handler.c:1227-1228
     affects = obj.get("affect_list", [])
     if af in affects:
         obj_remove(affects, af)
@@ -329,6 +342,8 @@ def item_affect_remove(obj, af, tpl):
             set_item_weapon_flag(obj, tpl, bit, False)
         elif af.get("where") == "to_object":
             set_item_extra_flag(obj, tpl, bit, False)
+    if wearer is not None and obj in list(wearer.get("equip", {}).values()):
+        affect_check(wearer, where, vector)  # cf. 1stMud handler.c:1251-1252
 
 
 def item_affect_to_obj(obj, af, tpl):

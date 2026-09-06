@@ -216,8 +216,13 @@ def update_handler():
     return fired
 
 
-def _obj_affect_update(obj):
-    """Tick object affects: decrement duration, fade level, remove expired (cf. 1stMud obj_update in update.c, lines 781-816)."""
+def _obj_affect_update(obj, wearer=None):
+    """Tick object affects: decrement duration, fade level, remove expired (cf. 1stMud obj_update in update.c).
+
+    Expired affects on a worn item reverse the wearer's stat modifier in
+    place (cf. 1stMud affect_remove_obj in handler.c:1227-1228); the
+    `wearer` param supplies that char when the caller has one.
+    """
     affects = obj.get("affect_list")
     if not affects:
         return
@@ -229,7 +234,7 @@ def _obj_affect_update(obj):
             if randint(0, 4) == 0 and af.get("level", 0) > 0:
                 af["level"] = af["level"] - 1
         elif dur == 0:
-            item_affect_remove(obj, af, tpl)
+            item_affect_remove(obj, af, tpl, wearer)
 
 
 def _decay_message(obj):
@@ -327,7 +332,7 @@ def obj_update(tr, player):
             continue
         for obj in list(ch["inv"]):
             _tick_contents(obj.get("contents", []))
-            _obj_affect_update(obj)
+            _obj_affect_update(obj, ch)
             if (oprogs and mobprog.pulse_obj(obj, ch["room"], ch, True)
                     and obj not in ch["inv"]):
                 continue
@@ -345,7 +350,7 @@ def obj_update(tr, player):
     # -- Player inventory + equipment (cf. 1stMud obj->carried_by, !IsNPC path) --
     for obj in list(player["inv"]):
         _tick_contents(obj.get("contents", []))
-        _obj_affect_update(obj)
+        _obj_affect_update(obj, player)
         if (oprogs and mobprog.pulse_obj(obj, player["room"], player, True)
                 and obj not in player["inv"]):
             continue
@@ -369,7 +374,7 @@ def obj_update(tr, player):
         if obj is None:
             continue
         _tick_contents(obj.get("contents", []))
-        _obj_affect_update(obj)
+        _obj_affect_update(obj, player)
         if (oprogs and mobprog.pulse_obj(obj, player["room"], player, True)
                 and player["equip"].get(slot) is not obj):
             continue

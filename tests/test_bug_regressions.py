@@ -801,6 +801,115 @@ class TestObjAffectUpdate:
         assert not weapon.get("extra_flags", {}).get("bless"), "bless flag should be cleared"
 
 
+class TestItemAffectRemoveWearer:
+    """In-place wearer reversal when a worn item affect is removed
+    (cf. 1stMud affect_remove_obj in handler.c:1227-1228/1251-1252)."""
+
+    def _cursed_weapon(self, vnum):
+        tpl = _stub_item_tpl(vnum, itype="weapon", weight=0)
+        af = {"type": "curse", "level": 5, "duration": 3,
+              "location": "saves", "modifier": 1, "bitvector": "evil",
+              "where": "to_object"}
+        weapon = _stub_item_instance(vnum, timer=-1)
+        weapon["affect_list"] = [af]
+        weapon["extra_flags"] = {"evil": True}
+        return weapon, af, tpl
+
+    def test_reversal_when_worn(self):
+        """Removing a worn item's saves affect reverses the wearer's saving_throw."""
+        from item import item_affect_remove
+
+        weapon, af, tpl = self._cursed_weapon(221)
+        player = _make_char(saving_throw=11, equip={"wield": weapon})
+
+        item_affect_remove(weapon, af, tpl, wearer=player)
+
+        assert player["saving_throw"] == 10
+        assert af not in weapon.get("affect_list", [])
+        assert not weapon["extra_flags"].get("evil")
+
+    def test_no_reversal_when_not_worn(self):
+        """An item in the wearer's inventory (not equip) gets no reversal."""
+        from item import item_affect_remove
+
+        weapon, af, tpl = self._cursed_weapon(222)
+        player = _make_char(saving_throw=11, inv=[weapon], equip={})
+
+        item_affect_remove(weapon, af, tpl, wearer=player)
+
+        assert player["saving_throw"] == 11
+        assert af not in weapon.get("affect_list", [])
+        assert not weapon["extra_flags"].get("evil")
+
+    def test_reversal_when_wearer_none(self):
+        """wearer=None leaves the reversal off (room/NPC-carried gear)."""
+        from item import item_affect_remove
+
+        weapon, af, tpl = self._cursed_weapon(223)
+        player = _make_char(saving_throw=11, equip={"wield": weapon})
+
+        item_affect_remove(weapon, af, tpl)
+
+        assert player["saving_throw"] == 11
+        assert af not in weapon.get("affect_list", [])
+        assert not weapon["extra_flags"].get("evil")
+
+    def test_expiry_reverses_saves_while_worn(self):
+        """obj_update expiry of a worn item affect restores the caster's saves."""
+        from update import obj_update
+
+        _stub_item_tpl(220, itype="weapon", weight=0)
+        _stub_room(3001)
+        af = {"type": "bless", "level": 5, "duration": 0,
+              "location": "saves", "modifier": -1, "bitvector": "bless",
+              "where": "to_object"}
+        weapon = _stub_item_instance(220, timer=-1)
+        weapon["affect_list"] = [af]
+        weapon["extra_flags"] = {"bless": True}
+        player = _make_char(room=3001, id=1, inv=[],
+                            saving_throw=9, equip={"wield": weapon})
+        world.chars[1] = player
+        world.rooms[3001]["items"] = []
+
+        class FakeTr:
+            def print(self, *a, **kw):
+                pass
+
+        obj_update(FakeTr(), player)
+
+        assert player["saving_throw"] == 10
+        assert af not in player["equip"]["wield"].get("affect_list", [])
+        assert player["equip"]["wield"] is weapon
+
+    def test_dispel_reverses_saves_when_worn(self, monkeypatch):
+        """spell_bless dispeling a curse on a worn item reverses the +1 saves."""
+        from magic import spell_bless, TARGET_OBJ, _skill_lookup
+
+        _stub_item_tpl(230, itype="weapon", weight=0)
+        _stub_room(3001)
+        curse_sn = _skill_lookup("curse")
+        assert curse_sn != -1
+        af = {"type": curse_sn, "level": 5, "duration": 3,
+              "location": "saves", "modifier": 1, "bitvector": "evil",
+              "where": "to_object"}
+        weapon = _stub_item_instance(230, timer=-1)
+        weapon["affect_list"] = [af]
+        weapon["extra_flags"] = {"evil": True}
+        player = _make_char(room=3001, id=1, level=20, inv=[],
+                            saving_throw=11, equip={"wield": weapon})
+        world.chars[1] = player
+
+        monkeypatch.setattr("magic.randint", lambda a, b: 100)
+        monkeypatch.setattr("magic.chprintln", lambda ch, txt: None)
+
+        ok = spell_bless(_skill_lookup("bless"), 20, player, weapon, TARGET_OBJ)
+
+        assert ok is True
+        assert player["saving_throw"] == 10
+        assert af not in weapon.get("affect_list", [])
+        assert not weapon["extra_flags"].get("evil")
+
+
 # ===========================================================================
 # Bug #14 -- Item level not serialized  (UNFIXED)
 # ===========================================================================

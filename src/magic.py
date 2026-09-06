@@ -1068,7 +1068,7 @@ def spell_bless(sn, level, ch, vo, target):
             paf = item_affect_find(vo, _skill_lookup("curse"))
             if not saves_dispel(level, paf.get("level", obj_level(vo, tpl)) if paf else obj_level(vo, tpl), 0):
                 if paf is not None:
-                    item_affect_remove(vo, paf, tpl)
+                    item_affect_remove(vo, paf, tpl, ch)  # cf. 1stMud handler.c:1227-1228
                 set_item_extra_flag(vo, tpl, "evil", False)
                 chprintln(ch, _item_name(vo) + " glows a pale blue.")
                 return True
@@ -1200,7 +1200,7 @@ def spell_curse(sn, level, ch, vo, target):
             paf = item_affect_find(vo, _skill_lookup("bless"))
             if not saves_dispel(level, paf.get("level", obj_level(vo, tpl)) if paf else obj_level(vo, tpl), 0):
                 if paf is not None:
-                    item_affect_remove(vo, paf, tpl)
+                    item_affect_remove(vo, paf, tpl, ch)  # cf. 1stMud handler.c:1227-1228
                 set_item_extra_flag(vo, tpl, "bless", False)
                 chprintln(ch, _item_name(vo) + " glows with a red aura.")
                 return True
